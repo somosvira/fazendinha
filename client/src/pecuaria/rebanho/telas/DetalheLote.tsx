@@ -1,3 +1,5 @@
+import { Composicao } from "./CartoesLotes";
+import { ResumoPesagensLote } from "./ResumoPesagensLote";
 // Página do lote — resumo (efetivo, peso, GMD, idade), animais do lote (com
 // movimentação individual/em massa e "trazer animais" de outros lotes),
 // animais que saíram por baixa, histórico de movimentações e alterações do
@@ -217,7 +219,8 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
         <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
         <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} icon={Calendar} />
       </div>
-
+      <div className="mt-4 grid gap-4 xl:grid-cols-2"><Panel className="p-5"><h2 className="h3 mb-3">Composição do lote</h2><Composicao resumo={resumo} /></Panel><ResumoPesagensLote resumo={resumo} /></div>
+      <Panel className="mt-4 overflow-hidden"><div className="consulta-visual-barra"><h2 className="h3">Animais do lote</h2><Button secondary onClick={() => document.getElementById("lote-aba-animais")?.click()}>Ver todos</Button></div>{animais.length ? <TabelaFinanceira rotulo="Prévia dos animais do lote" itens={animais.slice(0, 3)} colunas={COLUNAS_ANIMAIS.filter(c => !["selecionar", "acoes"].includes(c.chave))} chaveDe={a => a.id} onAbrir={a => navegarPara(linkFichaAnimal(a.id))} /> : <p className="p-5 text-sm">Nenhum animal disponível nesta consulta.</p>}</Panel>
     </>}
     </div>
 

@@ -1,3 +1,5 @@
+import { beforeEach } from "vitest";
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
@@ -249,3 +251,6 @@ it("conserva a aba de participantes do ciclo ao sincronizar a URL", async () => 
   render(<Sanidade podeLancar={false} />);
   await waitFor(() => expect(new URLSearchParams(window.location.search).get("abaCiclo")).toBe("participantes"));
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -83,3 +84,6 @@ it("preserva o sítio do exame histórico ao abrir pelo acompanhamento de animal
   await screen.findByText("Consulta histórica efetuada");
   expect(reqSanidade).toHaveBeenCalledWith("/exames/exame-historico?propriedadeId=1");
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

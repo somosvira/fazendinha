@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -528,3 +529,6 @@ it("falha técnica não é apresentada como animal ausente", async () => {
   await screen.findByText("Serviço indisponível");
   expect(screen.queryByRole("heading", { name: /Animal não/ })).toBeNull();
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

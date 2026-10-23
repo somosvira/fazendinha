@@ -22,7 +22,7 @@ export function useVisualizacaoConsulta(chave: string, dominio = "consultas") {
   };
   return { modo, mudar };
 }
-export function AlternarVisualizacaoConsulta({ modo, mudar, visual = "Cartões", rotulo }: { modo: ModoConsulta; mudar: (v: ModoConsulta) => void; visual?: "Cartões" | "Semana" | "Calendário"; rotulo: string }) {
+export function AlternarVisualizacaoConsulta({ modo, mudar, visual = "Cartões", rotulo }: { modo: ModoConsulta; mudar: (v: ModoConsulta) => void; visual?: "Cartões" | "Semana" | "Calendário" | "Linha do tempo" | "Prazos"; rotulo: string }) {
   const Icone = visual !== "Cartões" ? CalendarDays : LayoutGrid;
   return <div role="group" aria-label={rotulo} className="consulta-visual-alternador"><button type="button" aria-pressed={modo === "visual"} onClick={() => mudar("visual")}><Icone size={16} aria-hidden />{visual}</button><button type="button" aria-pressed={modo === "tabela"} onClick={() => mudar("tabela")}><List size={16} aria-hidden />Tabela</button></div>;
 }

@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { limparRascunhoRelatorioAtivo, estadoRascunhoRelatorioAtivo } from "./rascunhoRelatorioAtivo";
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
@@ -194,3 +195,6 @@ it("novo relatório espera a gravação em andamento antes de descartar e limpa 
   expect(estadoRascunhoRelatorioAtivo().recuperacao).toBeNull();
   expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toMatch(/^Relatório financeiro — /);
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

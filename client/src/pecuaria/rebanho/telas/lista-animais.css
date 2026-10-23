@@ -68,3 +68,31 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 .pecuaria-content .animais-filtros-e-selecao { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .pecuaria-content .animais-selecionar-todos { display: inline-flex; align-items: center; gap: 7px; padding: 5px 2px; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; cursor: pointer; }
 .pecuaria-content .animais-selecionar-todos:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+.animais-cartoes.consulta-entidades { grid-template-columns: repeat(auto-fill, minmax(min(100%, 265px), 1fr)); gap: 12px; padding: 16px; }
+.animais-cartoes .animal-cartao { padding: 14px; border-radius: 12px; box-shadow: none; display: flex; flex-direction: column; }
+.animais-cartoes .animal-cartao-selecionado { background: var(--accent); outline-color: var(--primary); }
+.animais-cartoes .animal-cartao > header { gap: 8px; align-items: center; }
+.animais-cartoes .animal-cartao h3 { font-size: 15px; }
+.animais-cartoes .animal-cartao .consulta-entidade-detalhe { margin-top: 2px; }
+.animais-cartoes .animal-cartao > header label { min-width: 28px; min-height: 36px; }
+.animais-cartoes .animal-cartao .consulta-entidade-conteudo { margin-top: 8px; }
+.animal-cartao-categoria { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; max-width: 112px; }
+.animal-cartao-categoria > span { max-width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+.animal-cartao-categoria > span > span { white-space: normal; overflow-wrap: anywhere; }
+.animais-cartoes .animal-cartao .consulta-entidade-status { flex-shrink: 1; }
+.pecuaria-content .animais-cartoes .animal-cartao .consulta-entidade-link { min-height: 24px; }
+.pecuaria-content .animais-cartoes .animal-cartao footer button { min-height: 32px; min-width: 32px; padding: 6px; }
+.pecuaria-content .animais-selecionar-todos input.animal-checkbox { min-height: 18px; height: 18px; padding: 0; }
+.animais-cartoes .animal-cartao .consulta-fatos { gap: 8px; padding-top: 8px; }
+.animais-cartoes .animal-cartao .consulta-fatos.mt-3 { margin-top: 8px; }
+.animais-cartoes .animal-cartao .consulta-fato > span { margin-bottom: 3px; }
+.animais-cartoes .animal-cartao .consulta-fato strong { font-size: 16px; }
+.animais-cartoes .animal-cartao .consulta-fato small { margin-top: 2px; }
+.animais-cartoes .animal-cartao footer { border: 0; padding-top: 4px; margin-top: auto; }
+.animal-checkbox { appearance: none; position: relative; display: inline-grid; place-content: center; width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--control-border, #7a928d); border-radius: 4px; background: var(--card); cursor: pointer; vertical-align: middle; }
+.animal-checkbox:checked, .animal-checkbox:indeterminate { background: var(--primary); border-color: var(--primary); }
+.animal-checkbox:checked::after { content: ""; width: 9px; height: 5px; border-left: 2px solid white; border-bottom: 2px solid white; transform: translateY(-1px) rotate(-45deg); }
+.animal-checkbox:indeterminate::after { content: ""; width: 10px; height: 2px; background: white; transform: none; border: 0; }
+.animal-checkbox:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.animal-checkbox:hover { border-color: var(--primary); }
+@media (forced-colors: active) { .animal-checkbox { appearance: auto; } .animal-checkbox::after { display: none; } }

@@ -1,3 +1,7 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
+import { LinhaTempoConsulta } from "@/components/ConsultaVisual";
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, Undo2 } from "lucide-react";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { BuscaLista } from "@/components/BuscaLista";
 import "./extrato-consulta.css";
@@ -69,7 +73,7 @@ function useFiltrosExtrato(contas: Conta[], filtros: FiltrosExtratoGeral, onChan
   return {edicao,campos,erro,criterios};
 }
 
-function MovimentacaoExtrato({ movimento, onAbrir }: { movimento: MovimentoGeral; onAbrir: (movimento: MovimentoGeral) => void }) {
+function MovimentacaoExtrato({ movimento, onAbrir, somenteSituacao = false }: { movimento: MovimentoGeral; onAbrir: (movimento: MovimentoGeral) => void; somenteSituacao?: boolean }) {
   const [aberto, setAberto] = useState(false);
   const transacao = movimento.transacao;
   const reversao = infoReversao(transacao);
@@ -78,7 +82,7 @@ function MovimentacaoExtrato({ movimento, onAbrir }: { movimento: MovimentoGeral
   const etiqueta = reversao ? "Estorno" : "Estornada";
   return <>
     <div className="extrato-movimentacao-titulo">
-      <strong>{titulo}</strong>
+      {!somenteSituacao && <strong>{titulo}</strong>}
       {(reversao || estornada) && <Popover open={aberto} onOpenChange={setAberto}>
         <PopoverTrigger asChild>
           <button type="button" className={`extrato-situacao h-auto ${reversao ? "extrato-situacao-estorno" : ""}`} aria-label={`Detalhes: ${etiqueta.toLocaleLowerCase("pt-BR")}`} onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()}>{etiqueta}</button>
@@ -92,7 +96,7 @@ function MovimentacaoExtrato({ movimento, onAbrir }: { movimento: MovimentoGeral
         </PopoverContent>
       </Popover>}
     </div>
-    {transacao.operacao && <div className="extrato-origem"><LinkOperacaoFinanceira id={transacao.operacao.id} numero={transacao.operacao.numero} /></div>}
+    {!somenteSituacao && transacao.operacao && <div className="extrato-origem"><LinkOperacaoFinanceira id={transacao.operacao.id} numero={transacao.operacao.numero} /></div>}
   </>;
 }
 
@@ -107,6 +111,7 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
   erro: string | null;
   onAbrir: (movimento: MovimentoGeral) => void;
 }) {
+  const visual = useVisualizacaoConsulta("visualExtrato");
   const { inicio, fim, conta, instituicao } = filtros;
   const [pagina, setPagina] = useState(1);
   useEffect(() => setPagina(1), [inicio, fim, conta, instituicao, filtros.natureza, filtros.busca, filtros.minimo, filtros.maximo, movimentos]);
@@ -120,13 +125,14 @@ export function ExtratoGeral({ contas, movimentos, filtros, onChangeFiltros, car
     <Panel tom="info" className="fin-painel overflow-hidden">
       {!ocultarFiltros && <BarraConsulta ordenacao={ordem.controle} campos={consulta.campos} edicaoFiltros={consulta.edicao} erroFiltros={consulta.erro} criterios={consulta.criterios} onLimpar={()=>onChangeFiltros({...filtros,conta:"",instituicao:"",busca:"",minimo:"",maximo:""})}><BuscaLista rotulo="Buscar movimento" placeholder="Buscar descrição, conta ou parceiro" valor={filtros.busca??""} onChange={busca=>onChangeFiltros({...filtros,busca})}/>{controles}</BarraConsulta>}
       {filtros.natureza && <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border p-4 text-sm"><span>{filtros.natureza === "recebimentos" ? "Recebimentos" : "Pagamentos"} realizados, líquidos de estornos · transferências excluídas</span><Button variant="link" onClick={() => onChangeFiltros({ ...filtros, natureza: undefined })}>Mostrar todas as movimentações</Button></div>}
+      {!ocultarFiltros && <div className="consulta-visual-barra"><span>Movimentações por data</span><AlternarVisualizacaoConsulta {...visual} visual="Linha do tempo" rotulo="Visualização do extrato" /></div>}
       <ErrorBox erro={erro} />
-      {intervaloInvalido ? <p role="alert" className="p-3">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonListaFinanceira label="Carregando extrato geral" /> : erro ? <p className="p-3">Não foi possível carregar as movimentações.</p> : filtrados.length ? <><TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(consulta.campos,consulta.edicao,consulta.erro)} cartaoComLinks compacta barraRolagemSuperior rotulo="Extrato geral" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
+      {intervaloInvalido ? <p role="alert" className="p-3">A data final deve ser igual ou posterior à data inicial.</p> : carregando ? <SkeletonListaFinanceira label="Carregando extrato geral" /> : erro ? <p className="p-3">Não foi possível carregar as movimentações.</p> : filtrados.length ? <>{visual.modo === "visual" && !ocultarFiltros ? <LinhaTempoConsulta rotulo="Movimentações por data" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} dataDe={m => m.transacao.data} chaveDe={m => m.id} render={m => <CartaoConsulta titulo={infoReversao(m.transacao)?.detalhe ?? m.transacao.descricao ?? m.transacao.tipo.replaceAll("_", " ")} icon={m.transacao.tipo === "REVERSAO" ? Undo2 : m.transacao.tipo === "TRANSFERENCIA" ? ArrowLeftRight : m.direcao === "ENTRADA" ? ArrowDownLeft : ArrowUpRight} onAbrir={() => onAbrir(m)} status={m.transacao.status === "REVERTIDA" || infoReversao(m.transacao) ? <div className="consulta-entidade-acao"><MovimentacaoExtrato movimento={m} onAbrir={onAbrir} somenteSituacao /></div> : undefined}><div className="consulta-fatos"><FatoConsulta rotulo="Conta">{m.conta.nome}</FatoConsulta><FatoConsulta rotulo={m.transacao.tipo === "TRANSFERENCIA" ? "Transferência entre contas" : "Operação"}><div className="consulta-entidade-acao">{m.transacao.operacao ? <LinkOperacaoFinanceira id={m.transacao.operacao.id} numero={m.transacao.operacao.numero} /> : "Transação avulsa"}</div></FatoConsulta><FatoConsulta rotulo={m.direcao === "ENTRADA" ? "Entrada" : "Saída"}><strong style={{ color: m.direcao === "ENTRADA" ? "var(--primary)" : "var(--ink)" }}>{m.direcao === "ENTRADA" ? "+" : "−"}{brl(m.valor)}</strong></FatoConsulta></div></CartaoConsulta>} /> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(consulta.campos,consulta.edicao,consulta.erro)} cartaoComLinks compacta barraRolagemSuperior rotulo="Extrato geral" itens={filtrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={m => m.id} onAbrir={onAbrir} colunas={[
         { chave: "data", titulo: "Data", alinhamento: "centro", larguraMinima: 110, celula: m => dataBR(m.transacao.data) },
         { chave: "descricao", titulo: "Movimentação", principal: true, larguraMinima: 260, celula: m => <MovimentacaoExtrato movimento={m} onAbrir={onAbrir} /> },
         { chave: "conta", titulo: "Conta", larguraMinima: 160, celula: m => m.conta.nome },
         { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 150, celula: m => <span className="whitespace-nowrap font-semibold" style={{ color: m.direcao === "ENTRADA" ? "var(--primary)" : "var(--ink)" }}><span className="sr-only">{m.direcao === "ENTRADA" ? "Entrada de " : "Saída de "}</span>{m.direcao === "ENTRADA" ? "+" : "−"}{brl(m.valor)}</span> },
-      ]} /><Paginacao ocultarControlesPaginaUnica pagina={paginaAtual} totalPaginas={totalPaginas} total={filtrados.length} porPagina={15} rotulo="Paginação do extrato geral" substantivo="movimentos" idSelect="pagina-extrato-geral" onPagina={setPagina} /></> : <Empty>Nenhuma movimentação encontrada para os filtros selecionados.</Empty>}
+      ]} />}<Paginacao ocultarControlesPaginaUnica pagina={paginaAtual} totalPaginas={totalPaginas} total={filtrados.length} porPagina={15} rotulo="Paginação do extrato geral" substantivo="movimentos" idSelect="pagina-extrato-geral" onPagina={setPagina} /></> : <Empty>Nenhuma movimentação encontrada para os filtros selecionados.</Empty>}
     </Panel>
   </section>;
 }
