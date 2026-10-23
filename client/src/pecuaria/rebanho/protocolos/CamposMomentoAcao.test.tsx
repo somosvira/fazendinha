@@ -15,7 +15,7 @@ it("cria outro momento e oferece inserção apenas como aplicação", () => {
   const onChange = vi.fn(), onSubtipoChange = vi.fn();
   render(<CamposMomentoAcao momento={{ nome: "D0", ordem: 1 }} momentos={[{ nome: "D0", ordem: 1 }, { nome: "D0", ordem: 1 }]} aplicacao subtipo="APLICACAO" onChange={onChange} onRenomear={vi.fn()} onSubtipoChange={onSubtipoChange} />);
   fireEvent.click(screen.getByRole("button", { name: "Criar outro momento" }));
-  expect(onChange).toHaveBeenCalledWith({ nome: "Momento 2", ordem: 2 });
+  expect(onChange).toHaveBeenCalledWith({ nome: "Momento 2", ordem: 2, modoAtendimento: "MANUAL" });
   fireEvent.change(screen.getByLabelText("Procedimento de aplicação"), { target: { value: "INSERCAO_DISPOSITIVO" } });
   expect(onSubtipoChange).toHaveBeenCalledWith("INSERCAO_DISPOSITIVO");
 });

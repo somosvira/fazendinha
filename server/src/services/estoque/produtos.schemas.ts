@@ -22,7 +22,7 @@ export const produtoSchema = z.object({
   categoriaId: z.string({ required_error: CATEGORIA_OBRIGATORIA, invalid_type_error: CATEGORIA_OBRIGATORIA }).uuid(CATEGORIA_OBRIGATORIA),
   centroCustoIds: idsSchema("Centros de custo").default([]),
   fornecedorIds: idsSchema("Fornecedores").default([]),
-  perfilSanitario: z.object({ carenciaLeiteHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), carenciaCarneHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), viaPadrao: z.string().trim().max(80, "Informe uma via com até 80 caracteres.").nullish(), referenciaTecnica: z.string().trim().max(300, "Informe uma referência com até 300 caracteres.").nullish() }).optional(),
+  perfilSanitario: z.object({ tipoAplicacaoId: z.string().uuid().nullish(), orientacaoUso: z.string().trim().max(2000, "Informe uma orientação com até 2.000 caracteres.").nullish(), carenciaLeiteHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), carenciaCarneHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), viaPadrao: z.string().trim().max(80, "Informe uma via com até 80 caracteres.").nullish(), referenciaTecnica: z.string().trim().max(300, "Informe uma referência com até 300 caracteres.").nullish() }).optional(),
   perfilNutricional: z.object({ materiaSecaPercentual: z.number({ invalid_type_error: "Informe a matéria seca entre 0% e 100%." }).finite("Informe a matéria seca entre 0% e 100%.").min(0, "Informe a matéria seca entre 0% e 100%.").max(100, "Informe a matéria seca entre 0% e 100%.").multipleOf(0.01, "Use até duas casas decimais na matéria seca.").nullable() }).optional(),
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
@@ -39,3 +39,10 @@ export const produtosQuerySchema = z.object({
   ativo: z.enum(["true", "false"]).optional(),
 });
 export type ProdutosQuery = z.infer<typeof produtosQuerySchema>;
+
+export const tiposAplicacaoProdutoQuerySchema = z.object({
+  pagina: z.coerce.number().int().positive().default(1),
+  porPagina: z.coerce.number().int().min(1).max(10).default(10),
+  busca: z.string().trim().max(120).default(""),
+  selecionadoId: z.string().uuid().optional(),
+}).strict();

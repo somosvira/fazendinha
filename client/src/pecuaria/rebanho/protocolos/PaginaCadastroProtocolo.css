@@ -1,0 +1,42 @@
+.cadastro-protocolo-pagina { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; width: 100%; min-width: 0; }
+.cadastro-protocolo-editor, .cadastro-protocolo-revisao { background: var(--card); border: 1px solid var(--border); border-radius: 16px; min-width: 0; }
+.cadastro-protocolo-editor { padding: 24px; }
+.cadastro-protocolo-caminho, .cadastro-protocolo-caminho button { display: flex; align-items: center; gap: 8px; font-size: .8125rem; }
+.cadastro-protocolo-caminho { flex-wrap: wrap; margin-bottom: 24px; color: var(--muted-foreground); }
+.cadastro-protocolo-caminho button { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.cadastro-protocolo-editor h1 { font-size: 2rem; line-height: 1.2; font-weight: 750; margin: 0 0 28px; }
+.cadastro-protocolo-pagina h2 { font-size: 1.125rem; font-weight: 700; margin-bottom: 16px; }
+.cadastro-protocolo-editor section + section { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--border); }
+.cadastro-protocolo-pagina label { font-size: .875rem; }
+.cadastro-protocolo-origens { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+.cadastro-protocolo-origens label { display: flex; gap: 10px; align-items: flex-start; padding: 16px; border: 1px solid var(--border); border-radius: 12px; cursor: pointer; }
+.cadastro-protocolo-origens label:has(input:checked) { background: var(--secondary); border-color: var(--primary); }
+.cadastro-protocolo-origens input { margin-top: 4px; accent-color: var(--primary); }
+.cadastro-protocolo-origens small { display: block; margin-top: 5px; color: var(--muted-foreground); }
+.cadastro-protocolo-editor table { margin-top: 20px; width: 100%; }
+.cadastro-protocolo-editor th, .cadastro-protocolo-editor td { padding: 12px; text-align: left; }
+.cadastro-protocolo-editor td:last-child { text-align: right; }
+.cadastro-protocolo-campos { min-width: 0; border: 0; padding: 0; margin: 0; }
+.cadastro-protocolo-origem { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; background: var(--secondary); padding: 16px; border-radius: 12px; }
+.cadastro-protocolo-origem h2 { margin-bottom: 8px; }
+.cadastro-protocolo-identificacao { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.cadastro-protocolo-identificacao label { display: grid; gap: 6px; }
+.cadastro-protocolo-nome { grid-column: 1 / -1; }
+.cadastro-protocolo-pagina input[readonly] { background: var(--secondary); }
+.cadastro-protocolo-revisao { position: sticky; top: 20px; display: flex; flex-direction: column; max-height: calc(100dvh - 40px); }
+.cadastro-protocolo-resumo { padding: 22px; overflow-y: auto; min-height: 0; }
+.cadastro-protocolo-resumo h3 { font-size: .9375rem; font-weight: 700; margin-top: 24px; margin-bottom: 8px; }
+.cadastro-protocolo-resumo p, .cadastro-protocolo-acoes p { font-size: .8125rem; line-height: 1.6; color: var(--muted-foreground); }
+.cadastro-protocolo-resumo p + p { margin-top: 10px; }
+.cadastro-protocolo-produto { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: .8125rem; padding-block: 12px; border-bottom: 1px solid var(--border); }
+.cadastro-protocolo-produto > span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cadastro-protocolo-acoes { padding: 22px; display: grid; gap: 12px; border-top: 1px solid var(--border); }
+.cadastro-protocolo-pagina .builder-etapas-layout { display: block; }
+.cadastro-protocolo-pagina .builder-etapas-lista { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; border: 0; padding: 0 0 24px; }
+.cadastro-protocolo-pagina .builder-etapas-lista > .builder-etapas-titulo, .cadastro-protocolo-pagina .builder-etapas-lista > .builder-etapas-ajuda, .cadastro-protocolo-pagina .builder-etapas-lista > .pec-paginacao { grid-column: 1/-1; flex-direction: row; }
+.cadastro-protocolo-pagina .builder-etapas-opcao { margin: 0; height: 100%; }
+.cadastro-protocolo-pagina .builder-etapas-editor { margin-top: 0; padding-top: 24px; }
+.cadastro-protocolo-pagina button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+@media (min-width: 1600px) { .cadastro-protocolo-pagina .builder-etapas-lista { grid-template-columns: repeat(5,minmax(0,1fr)); } }
+@media (max-width: 1100px) { .cadastro-protocolo-pagina { grid-template-columns: minmax(0,1fr); } .cadastro-protocolo-revisao { position: static; max-height: none; } .cadastro-protocolo-resumo { overflow: visible; } }
+@media (max-width: 600px) { .cadastro-protocolo-editor { padding: 18px; } .cadastro-protocolo-origens, .cadastro-protocolo-identificacao { grid-template-columns: minmax(0,1fr); } .cadastro-protocolo-origem { flex-direction: column; } .cadastro-protocolo-pagina .builder-etapas-lista { grid-template-columns: repeat(2,minmax(0,1fr)); } .cadastro-protocolo-editor h1 { font-size: 1.625rem; } }

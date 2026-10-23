@@ -117,7 +117,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
       : { nome });
   }
   return <section className="mt-5 grid min-w-0 gap-5">
-    {embutido && <h1 className="text-2xl font-semibold">{titulo}</h1>}
+    {embutido && aba !== "protocolos" && <h1 className="text-2xl font-semibold">{titulo}</h1>}
     {!embutido && <div role="tablist" aria-label="Cadastros sanitários" className="abas-pasta">
       {abas.map((a) => <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} aria-controls={`cadastro-${a.id}`} disabled={ocupado} onClick={() => selecionar(a.id)} className={`rounded-lg px-4 py-2 text-sm font-semibold ${aba === a.id ? "bg-mast text-white" : "border border-border text-ink-2"}`}>{a.nome}</button>)}
     </div>}

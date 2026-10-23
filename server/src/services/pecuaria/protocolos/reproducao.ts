@@ -1,7 +1,7 @@
 import { associarMomentosAcoesTx, snapshotMomento } from "./momentos.js";
 import { reservarVersaoTx } from "./versoes.js";
 import { vincularFatoTarefaTx, encerrarVinculoAtualTx } from "./vinculos.js";
-import { Prisma, type ProtocoloIatf, type ProgramacaoIatf, type ParticipanteIatf, type TarefaIatf } from "@prisma/client";
+import { Prisma, type FinalidadeProtocolo, type ProtocoloIatf, type ProgramacaoIatf, type ParticipanteIatf, type TarefaIatf } from "@prisma/client";
 import { etapaIatfSchema } from "../reproducao/schemas.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -20,12 +20,12 @@ export async function resolverIdReprodutivoTx(tx: Tx, entidade: Entidade, id: st
   return registro.id;
 }
 
-type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
+type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; finalidade?: FinalidadeProtocolo | null; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
 export async function criarProtocoloReprodutivoTx(tx: Tx, { data }: { data: DadosProtocolo }): Promise<ProtocoloIatf> {
   const etapas = etapasReprodutivasDoContrato(data.etapas);
   const versao = await reservarVersaoTx(tx, "REPRODUTIVO", data.nome.trim(), data.versao);
   const p = await tx.protocolo.create({ data: { id: data.id, tipo: "REPRODUTIVO", nome: data.nome.trim(), descricao: data.descricao, versao,
-    publicado: false, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
+    publicado: false, finalidade: data.finalidade, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
   await associarMomentosAcoesTx(tx, p.id, Array.isArray(data.etapas) ? data.etapas.map(e => { const { referencias: _referencias, ...campos } = e as Record<string, Prisma.InputJsonValue>; return etapaIatfSchema.parse(campos); }) : []);
   if (data.publicado) await tx.protocolo.update({ where: { id: p.id }, data: { publicado: true, publicadoEm: new Date() } });
   return tx.protocoloIatf.findUniqueOrThrow({ where: { id: p.id } });
@@ -41,6 +41,7 @@ export function etapasReprodutivasDoContrato(etapasEntrada: Prisma.InputJsonValu
       diaRelativo: e.intervalo, unidadeIntervalo: e.unidade,
       produtoId: e.planoAplicacao?.produtoId, materialId: e.planoTentativa?.materialId,
       tipoExameId: e.tipo === "AVALIACAO" ? e.planoAvaliacao?.tipoExameId ?? TIPO_EXAME_REPRODUTIVO : e.planoExame?.tipoExameId,
+      tipoAplicacaoId: e.planoAplicacao?.tipoAplicacaoId, tipoAplicacaoNomeSnapshot: (referencias && typeof referencias === "object" && !Array.isArray(referencias) && referencias.tipoAplicacao && typeof referencias.tipoAplicacao === "object" && !Array.isArray(referencias.tipoAplicacao) ? referencias.tipoAplicacao.nome as string : undefined),
       dose: e.planoAplicacao?.dose, unidade: e.planoAplicacao?.unidadeDose, via: e.planoAplicacao?.via,
       configuracao: json({ ...e, ...(referencias ? { referencias } : {}) }) };
   });

@@ -12,7 +12,9 @@ export type TarefaOperacional = { id: string; tarefaId: string; participacaoId: 
 export type EventoProtocolo = { chave: string; propriedadeId: number; tipo: "NAO_ATENDIDO" | "ADIAMENTO" | "RETIFICACAO_JUSTIFICATIVA"; ocorridaEm: string; motivo: string; previstaPara?: string; eventoCorrigidoId?: string };
 export class ProtocoloApiError extends Error { constructor(message: string, public readonly status: number, public readonly code?: string, public readonly campo?: string) { super(message); } }
 export async function reqProtocolo<T>(caminho: string, propriedadeId?: number, body?: object): Promise<T> {
-  const resposta = await fetch(`/api/pecuaria/rebanho/protocolos/operacao${caminho}`, { method: body ? "POST" : "GET", headers: { ...comPropriedade(body ? { "Content-Type": "application/json" } : {}), ...(propriedadeId != null ? { "X-Propriedade-Id": String(propriedadeId) } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  // Opções do builder pertencem ao catálogo de cadastros, fora do executor operacional.
+  const base = caminho.startsWith("/cadastros/opcoes?") ? "/api/pecuaria/rebanho/protocolos" : "/api/pecuaria/rebanho/protocolos/operacao";
+  const resposta = await fetch(`${base}${caminho}`, { method: body ? "POST" : "GET", headers: { ...comPropriedade(body ? { "Content-Type": "application/json" } : {}), ...(propriedadeId != null ? { "X-Propriedade-Id": String(propriedadeId) } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
   const dados = await resposta.json().catch(() => ({}));
   if (!resposta.ok) throw new ProtocoloApiError(dados.error ?? `Erro HTTP ${resposta.status}`, resposta.status, dados.code, dados.campo);
   return dados as T;

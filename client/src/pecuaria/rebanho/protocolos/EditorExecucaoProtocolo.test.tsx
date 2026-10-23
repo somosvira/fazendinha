@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import type { ReactNode } from "react";
 import type { AplicacaoInput } from "../sanidade/api";
 import type { TarefaOperacional } from "./api";
-import { EditorExecucaoProtocolo } from "./EditorExecucaoProtocolo";
+import { EditorExecucaoProtocolo, planoAplicacaoTarefa } from "./EditorExecucaoProtocolo";
 const m=vi.hoisted(()=>({req:vi.fn(),erro:vi.fn(),itens:[] as AplicacaoInput[]}));
 vi.mock("./api",async original=>({...await original<typeof import("./api")>(),reqProtocolo:m.req}));
 vi.mock("../sanidade/FormAplicacaoServico",()=>({FormAplicacaoServico:({onConferirConjunto,conteudoExtra,rotuloSubmeter}:{onConferirConjunto:(itens:AplicacaoInput[])=>Promise<void>;conteudoExtra:ReactNode;rotuloSubmeter:string})=><section>{conteudoExtra}<button onClick={()=>{void onConferirConjunto(m.itens).catch(m.erro);}}>{rotuloSubmeter}</button></section>}));
@@ -53,3 +53,9 @@ describe("editor comum de execução",()=>{
     expect(salvo).not.toHaveBeenCalled();fireEvent.click(screen.getByRole("button",{name:"Concluir"}));expect(salvo).toHaveBeenCalledTimes(1);
   });
 });
+
+ it("aplicação reprodutiva usa a classificação congelada da ação, sem consultar padrão atual do produto",()=>{
+   const t=tarefa(1);
+   t.tarefaOrigem.planejadoSnapshot={etapa:{nome:"Aplicação",tipo:"APLICACAO",intervalo:0,unidade:"DIAS",planoAplicacao:{produtoId:"produto",dose:"2",unidadeDose:"ML",tipoAplicacaoId:"tipo-congelado"}},previstaEm:"2026-10-01",previsaoOriginal:"2026-10-01",inicioReferencia:"2026-10-01"};
+   expect(planoAplicacaoTarefa(t).tipoAplicacaoId).toBe("tipo-congelado");
+ });

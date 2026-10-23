@@ -6,6 +6,7 @@ import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { consultaCadastroProtocoloSchema, consultaAcoesCadastroSchema } from "../../services/pecuaria/protocolos/cadastros.schemas.js";
 import { listarCadastrosProtocolos, obterCadastroProtocolo, listarAcoesCadastroProtocolo } from "../../services/pecuaria/protocolos/cadastros.js";
 import { listarOpcoesCadastro } from "../../services/pecuaria/protocolos/cadastros-opcoes.js";
+import { listarEstruturaCadastro, listarProcedimentosEtapaCadastro } from "../../services/pecuaria/protocolos/estrutura-cadastro.js";
 function falha(c: Context, e: unknown) {
   if (e instanceof z.ZodError) return c.json({ error: e.issues[0]?.message ?? "Consulta inválida", code: "VALIDACAO" }, 422);
   if (e instanceof RebanhoError) return c.json({ error: e.message, code: e.code }, e.code === "NAO_ENCONTRADO" ? 404 : 409);
@@ -29,4 +30,10 @@ protocolosCadastrosRouter.get("/:id", async c => {
 });
 protocolosCadastrosRouter.get("/:id/acoes", async c => {
   try { return c.json(await listarAcoesCadastroProtocolo(z.string().uuid().parse(c.req.param("id")), consultaAcoesCadastroSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); }
+});
+protocolosCadastrosRouter.get("/:id/estrutura", async c => {
+  try { return c.json(await listarEstruturaCadastro(z.string().uuid().parse(c.req.param("id")), consultaAcoesCadastroSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); }
+});
+protocolosCadastrosRouter.get("/:id/estrutura/:momentoId/procedimentos", async c => {
+  try { return c.json(await listarProcedimentosEtapaCadastro(z.string().uuid().parse(c.req.param("id")), z.string().uuid().parse(c.req.param("momentoId")), consultaAcoesCadastroSchema.parse(c.req.query()))); } catch (e) { return falha(c, e); }
 });

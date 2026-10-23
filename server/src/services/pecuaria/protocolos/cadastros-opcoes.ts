@@ -12,7 +12,7 @@ export async function listarOpcoesCadastro(entrada:unknown){const f=opcoesCadast
  const id=f.selecionadoId?{id:f.selecionadoId}:{},ativo=f.selecionadoId?{}:{ativo:true},nome={contains:f.busca,mode:Prisma.QueryMode.insensitive};
  if(f.opcao==="PRODUTO"){
   const where:Prisma.ProdutoWhereInput={...id,...ativo,usoSanitario:true,nome};
-  return pagina(()=>tx.produto.count({where}),(skip,take)=>tx.produto.findMany({where,skip,take,orderBy:[{nome:"asc"},{id:"asc"}],select:{id:true,nome:true,ativo:true,unidade:true,usoSanitario:true,usoGenetico:true,rastrearPartidas:true}}));
+  return pagina(()=>tx.produto.count({where}),(skip,take)=>tx.produto.findMany({where,skip,take,orderBy:[{nome:"asc"},{id:"asc"}],select:{id:true,nome:true,ativo:true,unidade:true,usoSanitario:true,usoGenetico:true,rastrearPartidas:true,perfilSanitarioProduto:{select:{viaPadrao:true,orientacaoUso:true,tipoAplicacaoId:true}}}}).then(itens=>itens.map(({perfilSanitarioProduto,...p})=>({...p,perfilSanitario:perfilSanitarioProduto}))));
  }
  if(f.opcao==="TIPO_APLICACAO"){
   const where:Prisma.TipoAplicacaoSanitariaWhereInput={...id,...ativo,nome};

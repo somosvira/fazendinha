@@ -131,3 +131,13 @@ it("hidratação do material planejado não cria exceções e todos herdam mater
   const entrada = vi.mocked(reqProtocolo).mock.calls.find(([p])=>p==="/execucoes/previa")![2] as EntradaClinica;
   expect(entrada.itens.map(i=>({animalId:i.animalId,materialId:i.materialId,partidaId:i.partidaId}))).toEqual(grupo.map(t=>({animalId:t.animal.id,materialId:"novo",partidaId:"lote"})));
 });
+
+it("TETF novo propõe TE e mantém material e quantidade para preenchimento no atendimento", async () => {
+  const t: TarefaOperacional = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "TENTATIVA", planejadoSnapshot: { etapa: { nome: "Transferência", tipo: "TENTATIVA", tentativaTipo: "TE", intervalo: 17, unidade: "DIAS" }, previstaEm: "2026-10-21", previsaoOriginal: "2026-10-21", inicioReferencia: "2026-10-04" } } };
+  render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  expect(screen.getByLabelText<HTMLSelectElement>("Tipo de tentativa").value).toBe("TE");
+  expect(screen.getByLabelText<HTMLInputElement>("Quantidade por animal").value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "Selecionar material genético" }));
+  await waitFor(() => expect(obterOpcoesClinicas).toHaveBeenCalledWith(t.id, 7, "MATERIAL", 1, "", undefined, "", "TE", true));
+  expect(reqProtocolo).not.toHaveBeenCalled();
+});

@@ -1554,6 +1554,9 @@ model AlocacaoPartidaEstoque {
 }
 
 model PerfilSanitarioProduto {
+  orientacaoUso String?
+  tipoAplicacaoId String?
+  tipoAplicacao TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
   id                 String   @id @default(uuid())
   produtoId          String   @unique
   produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
@@ -1646,6 +1649,7 @@ model OcorrenciaSanitaria {
 }
 
 model TipoAplicacaoSanitaria {
+  perfisProdutos PerfilSanitarioProduto[]
   id           String                    @id @default(uuid())
   nome         String                    @unique
   ativo        Boolean                   @default(true)
@@ -1757,7 +1761,17 @@ enum PrecisaoCalendarioProtocolo {
   @@schema("pecuaria")
 }
 
+enum FinalidadeProtocolo {
+  SANITARIO
+  PRE_SINCRONIZACAO
+  IATF
+  TETF
+
+  @@schema("pecuaria")
+}
+
 model Protocolo {
+  finalidade FinalidadeProtocolo?
   momentos MomentoProtocolo[]
   referenciaTecnica Json?
   tipo TipoProtocolo @default(SANITARIO)
@@ -1781,6 +1795,8 @@ model Protocolo {
 }
 
 model MomentoProtocolo {
+  instrucoesGerais String?
+  modoAtendimento String?
   id String @id @default(uuid())
   protocoloId String
   protocolo Protocolo @relation(fields: [protocoloId], references: [id], onDelete: Cascade)

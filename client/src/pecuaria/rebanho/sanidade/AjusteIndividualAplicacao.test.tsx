@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { alterarControle } from "../../../lib/controles.fixture";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIndividualAplicacao";
+import { alterarControle } from "../../../lib/controles.fixture";
 vi.mock("../nutricao/api",()=>({listarPartidasNutricionais:vi.fn().mockResolvedValue([])}));
 afterEach(cleanup);
 function Excecao() {

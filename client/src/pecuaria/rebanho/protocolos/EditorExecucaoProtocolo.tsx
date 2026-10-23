@@ -15,10 +15,10 @@ type Entrada = { versao: 1; propriedadeId: number; itens: Item[] };
 type Previa = { fingerprint: string; temDesvios: boolean; tarefas: PaginaProtocolo<PreviaExecucao["itens"][number] & { inicioLegado: { exigeCiencia: boolean; total: number } }>; consumos: PaginaProtocolo<PreviaExecucao["consumos"][number]> };
 type Recibo = PaginaProtocolo<{ tarefaId: string; animalId: string; tipo: "APLICACAO"; id: string }> & { chave: string; versao: 1 };
 export function planoAplicacaoTarefa(t: TarefaOperacional): TarefaAplicacao {
-  const bruto = t.tarefaOrigem.planejadoSnapshot as { etapa?: { planoAplicacao?: { produtoId: string; dose: string; unidadeDose: string; via?: string } } } | null;
+  const bruto = t.tarefaOrigem.planejadoSnapshot as { etapa?: { planoAplicacao?: { produtoId: string; dose: string; unidadeDose: string; via?: string; tipoAplicacaoId?: string | null } } } | null;
   const plano = bruto?.etapa?.planoAplicacao;
   const p = t.tarefaOrigem.parametros;
-  return { id: t.id, animalId: t.animal.id, produtoId: plano?.produtoId ?? p?.produtoId ?? "", tipoAplicacaoId: p?.tipoAplicacaoId ?? "",
+  return { id: t.id, animalId: t.animal.id, produtoId: plano?.produtoId ?? p?.produtoId ?? "", tipoAplicacaoId: plano?.tipoAplicacaoId ?? p?.tipoAplicacaoId ?? "",
     dose: plano?.dose ?? p?.dose ?? "", unidade: plano?.unidadeDose ?? p?.unidade ?? "ML", via: plano?.via ?? p?.via,
     previstaPara: t.previstaPara ?? undefined, protocoloNome: t.tarefaOrigem.execucao.protocolo.nome, protocoloVersao: t.tarefaOrigem.execucao.protocolo.versao };
 }

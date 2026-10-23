@@ -10,6 +10,7 @@ import { compararParametros, exigeMotivoExecucao } from "../desvios.calc.js";
 import { vincularFatoTarefaTx } from "./vinculos.js";
 import { itemExecucaoManejoSchema, type ItemExecucaoManejo } from "./execucao.manejos.schemas.js";
 import { paginaExecucaoSchema } from "./execucao.schemas.js";
+import { consultaInsercoesRetiradaSchema, filtroInsercoesRetirada } from "./insercoes-retirada.js";
 
 type Tx=Prisma.TransactionClient;
 const json=(v:unknown):Prisma.InputJsonValue=>JSON.parse(JSON.stringify(v));
@@ -85,13 +86,19 @@ export async function executarManejoDaTarefaIatfTx(tx:Tx,id:string,input:Paramet
   return tx.tarefaIatf.findUniqueOrThrow({where:{id:contexto.tarefa.id}});
 }
 export async function listarInsercoesTarefa(tarefaId:string,propriedadeId:number,consulta:unknown) {
-  const f=paginaExecucaoSchema.parse(consulta);
-  const t=await prisma.tarefaProtocolo.findFirst({where:{id:tarefaId,etapa:{tipo:"RETIRADA"},execucao:{propriedadeId}},select:{execucao:{select:{animalId:true}}}});
-  if(!t)throw new RebanhoError("NAO_ENCONTRADO","Tarefa de retirada não encontrada neste sítio");
-  const where:Prisma.AplicacaoProdutoWhereInput={animalId:t.execucao.animalId,status:"VALIDO",OR:[{tarefa:{etapa:{tipo:"APLICACAO",configuracao:{path:["subtipo"],equals:"INSERCAO_DISPOSITIVO"}}}},{insercaoDispositivoSnapshot:{not:Prisma.DbNull}}],retiradasDispositivo:{none:{OR:[{status:"VALIDO"},{realizacaoMantida:true}]}}};
-  const total=await prisma.aplicacaoProduto.count({where});const pagina=Math.min(f.pagina,Math.max(1,Math.ceil(total/f.porPagina)));
-  const itens=await prisma.aplicacaoProduto.findMany({where,select:{id:true,data:true,aplicadaEm:true,precisaoTemporal:true,nomeProdutoAplicado:true,dose:true,unidadeDose:true},orderBy:[{data:"desc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
-  return{itens,total,pagina,porPagina:f.porPagina};
+  const f = consultaInsercoesRetiradaSchema.parse(consulta);
+  return prisma.$transaction(async tx => {
+    const t = await tx.tarefaProtocolo.findFirst({ where: { id: tarefaId, etapa: { tipo: "RETIRADA" }, execucao: { propriedadeId } }, select: { execucao: { select: { animalId: true } } } });
+    if (!t) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa de retirada não encontrada neste sítio");
+    const where = filtroInsercoesRetirada(t.execucao.animalId, f.realizadaEm);
+    const total = await tx.aplicacaoProduto.count({ where });
+    const pagina = Math.min(f.pagina, Math.max(1, Math.ceil(total / f.porPagina)));
+    const itens = await tx.aplicacaoProduto.findMany({ where, select: { id: true, data: true, aplicadaEm: true, precisaoTemporal: true, nomeProdutoAplicado: true, dose: true, unidadeDose: true }, orderBy: [{ data: "desc" }, { id: "asc" }], skip: (pagina - 1) * f.porPagina, take: f.porPagina });
+    // Só uma origem no conjunto inteiro autoriza proposta. Ordenação e página não decidem origem.
+    const sugestaoInsercaoId = f.realizadaEm && total === 1 ? itens[0]?.id ?? null : null;
+    return { itens, total, pagina, porPagina: f.porPagina, sugestaoInsercaoId,
+      situacaoOrigem: !f.realizadaEm ? "DATA_NECESSARIA" : total === 0 ? "SEM_ORIGEM" : total === 1 ? "UNIVOCA" : "AMBIGUA" };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 
 export async function listarServicosManejo(tarefaId:string,propriedadeId:number,consulta:unknown){

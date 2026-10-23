@@ -82,7 +82,7 @@ export type Produto = {
   id: string; nome: string;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   rastrearPartidas?: boolean;
-  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null } | null;
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null; orientacaoUso?: string | null; tipoAplicacaoId?: string | null } | null;
   perfilNutricional?: { materiaSecaPercentual: string | null } | null;
   unidade: UnidadeMedida;
   minimoEstoque?: string | null; ativo?: boolean;

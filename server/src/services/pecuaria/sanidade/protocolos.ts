@@ -1,4 +1,7 @@
-import { validarReferenciasCusto, type ReferenciasCusto } from "../custos/referencias-planejadas.js";
+import { z } from "zod";
+import { momentoAcaoSchema } from "../protocolos/momentos.js";
+import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
+import { referenciasCustoSchema, validarReferenciasCusto, type ReferenciasCusto } from "../custos/referencias-planejadas.js";
 import { associarMomentosAcoesTx, snapshotMomento, type MomentoAcao } from "../protocolos/momentos.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
@@ -15,30 +18,42 @@ import { transacaoPecuaria } from "../transacao.js";
 import { confirmarFato } from "../idempotencia.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
 
-type Etapa = {
-  referenciasCusto?: ReferenciasCusto;
-  momento?: MomentoAcao | null; subtipo?: "APLICACAO" | "INSERCAO_DISPOSITIVO";
-  diaRelativo: number; tipo: "APLICACAO" | "EXAME" | "MANEJO" | "RETIRADA"; produtoId?: string | null; tipoExameId?: string | null;
-  finalidade?: FinalidadeAplicacao | null; dose?: number | null; unidade?: string | null; via?: string | null;
-  tipoAplicacaoId?: string | null;
-};
+export const protocoloCadastroSchema = z.object({
+  nome: z.string().trim().min(2).max(160), descricao: z.string().trim().max(500).nullish(), finalidade: z.literal("SANITARIO").nullish(),
+  versao: z.number().int().positive().optional(), publicado: z.boolean().optional(), origemVersaoId: z.string().uuid().optional(),
+  etapas: z.array(z.object({
+    referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.nullish(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(),
+    diaRelativo: z.number().int("O calendário sanitário por data exige dias inteiros; conserve o modelo original").nonnegative(), unidadeIntervalo: z.literal("DIAS").optional(),
+    tipo: z.enum(["APLICACAO", "EXAME", "MANEJO", "RETIRADA"]), produtoId: z.string().uuid().nullish(), tipoExameId: z.string().uuid().nullish(), tipoAplicacaoId: z.string().uuid().nullish(),
+    finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).nullish(), dose: z.number().positive().nullish(), unidade: z.string().trim().max(30).nullish(), via: z.string().trim().max(80).nullish(),
+  }).strict()).min(1).max(100),
+}).strict();
+type Etapa = z.infer<typeof protocoloCadastroSchema>["etapas"][number] & { produtoSnapshot?: { id: string; nome: string; unidade: string; viaPadrao: string | null; orientacaoUso: string | null } };
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 const somarDias = (data: Date, n: number) => deslocarCalendario(data, n, "DIAS", "DIA");
 
-async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[]) {
+async function validarEtapas(tx: Prisma.TransactionClient, etapas: Etapa[], builder = false) {
   if (!etapas.length) throw new RebanhoError("VALIDACAO", "O protocolo precisa de ao menos uma etapa", "etapas");
   await travarUsosProduto(tx, etapas.flatMap((e) => e.produtoId ? [e.produtoId] : []));
   for (const [indice, e] of etapas.entries()) {
+    if (builder && e.tipo === "MANEJO") throw new RebanhoError("VALIDACAO", "O novo builder não oferece procedimentos livres", `etapas.${indice}.tipo`);
+    if (e.momento?.modoAtendimento === "AUTOMATIZADA" && e.tipo === "EXAME") throw new RebanhoError("VALIDACAO", "Exames exigem atendimento manual", `etapas.${indice}.momento.modoAtendimento`);
     e.referenciasCusto = validarReferenciasCusto(e.referenciasCusto, e.unidade ?? null, e.tipo === "APLICACAO");
     if (!Number.isInteger(e.diaRelativo) || e.diaRelativo < 0) throw new RebanhoError("VALIDACAO", "Dia relativo inválido", `etapas.${indice}.diaRelativo`);
     if (e.tipo === "APLICACAO") {
-      if (!e.produtoId || (!e.finalidade && !e.tipoAplicacaoId) || !e.dose || e.dose <= 0 || !e.unidade || e.tipoExameId) {
+      if (!e.produtoId || (!builder && !e.finalidade && !e.tipoAplicacaoId) || !e.dose || e.dose <= 0 || !e.unidade || e.tipoExameId) {
         throw new RebanhoError("VALIDACAO", "Etapa de aplicação precisa de Produto, finalidade, dose e unidade", `etapas.${indice}`);
       }
-      if (!(await tx.produto.findFirst({ where: { id: e.produtoId, ativo: true, usoSanitario: true } }))) throw new RebanhoError("VALIDACAO", "Selecione um produto ativo com uso sanitário", `etapas.${indice}.produtoId`);
-      const tipo = await tx.tipoAplicacaoSanitaria.findFirst({ where: { id: e.tipoAplicacaoId ?? (e.finalidade === "VACINA" ? "a0300000-0000-4000-8000-000000000002" : e.finalidade === "VERMIFUGO" ? "a0300000-0000-4000-8000-000000000003" : "a0300000-0000-4000-8000-000000000001"), ativo: true } });
-      if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de aplicação inativo ou inexistente", `etapas.${indice}.tipoAplicacaoId`);
-      e.tipoAplicacaoId = tipo.id;
+      const produto = await tx.produto.findFirst({ where: { id: e.produtoId, ativo: true, usoSanitario: true }, include: { perfilSanitarioProduto: true } });
+      if (!produto) throw new RebanhoError("VALIDACAO", "Selecione um produto ativo com uso sanitário", `etapas.${indice}.produtoId`);
+      if (builder && e.unidade !== produto.unidade) throw new RebanhoError("VALIDACAO", "A unidade deve ser herdada do produto", `etapas.${indice}.unidade`);
+      const legado = !builder ? (e.finalidade === "VACINA" ? "a0300000-0000-4000-8000-000000000002" : e.finalidade === "VERMIFUGO" ? "a0300000-0000-4000-8000-000000000003" : "a0300000-0000-4000-8000-000000000001") : null;
+      const tipo = await resolverTipoAplicacaoCadastroTx(tx, e.tipoAplicacaoId, builder ? produto.perfilSanitarioProduto?.tipoAplicacaoId : legado, e.momento?.modoAtendimento === "AUTOMATIZADA", `etapas.${indice}.tipoAplicacaoId`);
+      e.tipoAplicacaoId = tipo?.id ?? null;
+      if (builder) {
+        e.via = produto.perfilSanitarioProduto?.viaPadrao ?? null;
+        e.produtoSnapshot = { id: produto.id, nome: produto.nome, unidade: produto.unidade, viaPadrao: e.via, orientacaoUso: produto.perfilSanitarioProduto?.orientacaoUso ?? null };
+      }
     } else if (e.tipo === "MANEJO" || e.tipo === "RETIRADA") {
       if(e.produtoId||e.tipoExameId||e.dose)throw new RebanhoError("VALIDACAO","Manejo não consome produto: configure aplicação separada",`etapas.${indice}`);
     } else if (e.tipo === "EXAME") {
@@ -52,16 +67,21 @@ export async function listarProtocolos() {
   return prisma.protocolo.findMany({ where: { tipo: "SANITARIO" }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } }, orderBy: [{ nome: "asc" }, { versao: "desc" }] });
 }
 
-export async function criarProtocolo(input: { nome: string; descricao?: string | null; etapas: Etapa[] }, usuarioId: number | null, id?: string) {
+export async function criarProtocolo(input: z.infer<typeof protocoloCadastroSchema>, usuarioId: number | null, id?: string) {
+  input = protocoloCadastroSchema.parse(input);
   return prisma.$transaction(async (tx) => {
-    await validarEtapas(tx, input.etapas);
+    const origem = input.origemVersaoId ? await carregarVersaoTx(tx, input.origemVersaoId, "SANITARIO") : null;
+    if (origem && (id || input.nome.trim() !== origem.nome)) throw new RebanhoError("VALIDACAO", "Uma nova versão deve preservar o protocolo-base", "origemVersaoId");
     const existente = id ? await carregarVersaoTx(tx, id, "SANITARIO", true) : null;
     if (id && !existente) throw new RebanhoError("NAO_ENCONTRADO", "Protocolo não encontrado");
+    input.finalidade = input.finalidade ?? (existente?.finalidade === "SANITARIO" ? "SANITARIO" : null);
+    const etapas: Etapa[] = input.etapas;
+    await validarEtapas(tx, etapas, input.finalidade != null);
     if (existente?.publicadoEm) throw new RebanhoError("CONFLITO", "Protocolo publicado é imutável; crie nova versão");
-    const versao = existente?.versao ?? await reservarVersaoTx(tx, "SANITARIO", input.nome.trim());
-    const dados = { nome: input.nome.trim(),
+    const versao = existente?.versao ?? await reservarVersaoTx(tx, "SANITARIO", input.nome.trim(), input.versao);
+    const dados = { nome: input.nome.trim(), finalidade: input.finalidade,
       descricao: input.descricao?.trim() || null,
-      etapas: { create: input.etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo, configuracao: { subtipo: e.subtipo ?? "APLICACAO", ...(e.referenciasCusto ? {referenciasCusto:e.referenciasCusto} : {}) },
+      etapas: { create: etapas.map((e, i) => ({ ordem: i + 1, diaRelativo: e.diaRelativo, tipo: e.tipo, configuracao: { subtipo: e.subtipo ?? "APLICACAO", ...(e.produtoSnapshot ? { produtoSnapshot: e.produtoSnapshot } : {}), ...(e.referenciasCusto ? {referenciasCusto:e.referenciasCusto} : {}) },
         produtoId: e.tipo === "APLICACAO" ? e.produtoId : null, tipoExameId: e.tipo === "EXAME" ? e.tipoExameId : null,
         finalidade: e.tipo === "APLICACAO" ? e.finalidade : null, dose: e.tipo === "APLICACAO" ? e.dose : null,
         tipoAplicacaoId: e.tipo === "APLICACAO" ? e.tipoAplicacaoId : null,
@@ -71,22 +91,32 @@ export async function criarProtocolo(input: { nome: string; descricao?: string |
       await tx.etapaProtocolo.deleteMany({ where: { protocoloId: existente.id } });
       await tx.momentoProtocolo.deleteMany({ where: { protocoloId: existente.id } });
     }
-    const novo = existente ? await tx.protocolo.update({ where: { tipo: "SANITARIO", id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } }) : await tx.protocolo.create({ data: { ...dados, versao }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
+    const novo = existente ? await tx.protocolo.update({ where: { tipo: "SANITARIO", id: existente.id }, data: { ...dados, etapas: { deleteMany: {}, ...dados.etapas } }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } }) : await tx.protocolo.create({ data: { ...dados, versao, criadoPorId: usuarioId }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
     await associarMomentosAcoesTx(tx, novo.id, input.etapas);
     const atualizado = await tx.protocolo.findUniqueOrThrow({ where: { id: novo.id }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
     await auditar(tx, { entidade: "ProtocoloSanitario", entidadeId: novo.id, acao: existente ? "RASCUNHO_EDITADO" : "VERSAO_CRIADA", usuarioId, ...(existente ? { antes: existente } : {}), depois: atualizado });
+    if (input.publicado) {
+      await publicarSanitarioTx(tx, novo.id, usuarioId);
+      return tx.protocolo.findUniqueOrThrow({ where: { id: novo.id }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } } } });
+    }
     return atualizado;
   });
 }
 
 export async function publicarProtocolo(id: string, usuarioId: number | null) {
-  return prisma.$transaction(async tx => publicarVersaoTx(tx, id, "SANITARIO", usuarioId, async protocolo => {
-    await validarEtapas(tx, protocolo.etapas.map(e => ({ ...e, referenciasCusto: (e.configuracao as {referenciasCusto?:ReferenciasCusto}|null)?.referenciasCusto, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] })));
-    for (const etapa of protocolo.etapas) if (etapa.tipoAplicacaoId) {
-      const tipo = await tx.tipoAplicacaoSanitaria.findUniqueOrThrow({ where: { id: etapa.tipoAplicacaoId } });
-      await tx.etapaProtocolo.update({ where: { id: etapa.id }, data: { tipoAplicacaoNomeSnapshot: tipo.nome } });
+  return prisma.$transaction(async tx => publicarSanitarioTx(tx, id, usuarioId));
+}
+
+async function publicarSanitarioTx(tx: Prisma.TransactionClient, id: string, usuarioId: number | null) {
+  return publicarVersaoTx(tx, id, "SANITARIO", usuarioId, async protocolo => {
+    const etapas: Etapa[] = protocolo.etapas.map(e => ({ ...e, unidadeIntervalo: z.literal("DIAS").parse(e.unidadeIntervalo), momento: e.momento ? momentoAcaoSchema.parse({ nome: e.momento.nome, ordem: e.momento.ordem, modoAtendimento: e.momento.modoAtendimento, instrucoesGerais: e.momento.instrucoesGerais }) : null, referenciasCusto: (e.configuracao as {referenciasCusto?:ReferenciasCusto}|null)?.referenciasCusto, dose: e.dose?.toNumber() ?? null, tipo: e.tipo as Etapa["tipo"] }));
+    await validarEtapas(tx, etapas, protocolo.finalidade != null);
+    for (const [i, etapa] of etapas.entries()) {
+      const tipo = etapa.tipoAplicacaoId ? await tx.tipoAplicacaoSanitaria.findUniqueOrThrow({ where: { id: etapa.tipoAplicacaoId } }) : null;
+      const configuracao = protocolo.etapas[i].configuracao as Record<string, Prisma.JsonValue>;
+      await tx.etapaProtocolo.update({ where: { id: protocolo.etapas[i].id }, data: { tipoAplicacaoId: etapa.tipoAplicacaoId, tipoAplicacaoNomeSnapshot: tipo?.nome ?? null, via: etapa.via, configuracao: { ...configuracao, ...(etapa.produtoSnapshot ? { produtoSnapshot: etapa.produtoSnapshot } : {}) } } });
     }
-  }));
+  });
 }
 
 export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { chave?: string; protocoloId: string; animalId: string; propriedadeId: number; inicio: string;

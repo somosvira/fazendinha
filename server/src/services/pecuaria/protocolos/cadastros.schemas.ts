@@ -6,7 +6,7 @@ export const paginaCadastroProtocoloSchema = z.object({
 export const consultaCadastroProtocoloSchema = paginaCadastroProtocoloSchema.extend({
   tipo: z.enum(["SANITARIO", "REPRODUTIVO"]),
   busca: z.string().trim().max(160).optional(),
-  situacao: z.enum(["TODAS", "RASCUNHO", "PUBLICADA", "INATIVA"]).default("TODAS"),
+  situacao: z.enum(["TODAS", "ATIVA", "RASCUNHO", "PUBLICADA", "INATIVA"]).default("TODAS"),
 });
 export const consultaAcoesCadastroSchema = paginaCadastroProtocoloSchema.extend({ revisao: z.string().datetime().optional() });
 export type ConsultaCadastroProtocolo = z.infer<typeof consultaCadastroProtocoloSchema>;

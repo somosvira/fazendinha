@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 const mocks = vi.hoisted(() => ({ listar: vi.fn(), politicas: vi.fn(), criarPolitica: vi.fn(), previa: vi.fn(), adotar: vi.fn(), perda: vi.fn(), parto: vi.fn(), corrigirParto: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
-vi.mock("../../services/pecuaria/reproducao/acompanhamento.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/acompanhamento.js")>(), listarAcompanhamentosPaginados: mocks.listar, listarPoliticasAcompanhamento: mocks.politicas, criarPoliticaAcompanhamento: mocks.criarPolitica, previaAdocaoAcompanhamento: mocks.previa, adotarAcompanhamento: mocks.adotar }));
+vi.mock("../../services/pecuaria/reproducao/acompanhamento.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/acompanhamento.js")>(), listarAcompanhamentosPaginados: async (sitio: number, entrada: unknown) => {
+  const { consultaAcompanhamentoSchema } = await import("../../services/pecuaria/reproducao/acompanhamento.schemas.js");
+  consultaAcompanhamentoSchema.parse(entrada);
+  return mocks.listar(sitio, entrada);
+}, listarPoliticasAcompanhamento: mocks.politicas, criarPoliticaAcompanhamento: mocks.criarPolitica, previaAdocaoAcompanhamento: mocks.previa, adotarAcompanhamento: mocks.adotar }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), registrarPerda: mocks.perda, criarParto: mocks.parto, corrigirParto: mocks.corrigirParto }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 import { rebanhoRouter } from "./rebanho.js";
@@ -18,7 +22,7 @@ const politica = () => ({ chave: uid(3), propriedadeId: 1, vigenteDesde: "2026-0
 const raiz = "/reproducao/acompanhamento";
 beforeEach(() => {
   vi.resetAllMocks(); mocks.leitura.mockResolvedValue(1); mocks.escrita.mockResolvedValue(1);
-  mocks.listar.mockResolvedValue({ itens: [], pagina: 1, porPagina: 10, total: 0, totalPaginas: 1, resumo: { pendentes: 0 } }); mocks.politicas.mockResolvedValue([]); mocks.criarPolitica.mockResolvedValue({ id: uid(5) }); mocks.previa.mockResolvedValue({ propostas: [], revisao: "a".repeat(64) }); mocks.adotar.mockResolvedValue({ propostas: [] });
+  mocks.listar.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10, resumo: { total: 0, pendentes: 0, resolvidas: 0, encerradas: 0, semData: 0 } }); mocks.politicas.mockResolvedValue([]); mocks.criarPolitica.mockResolvedValue({ id: uid(5) }); mocks.previa.mockResolvedValue({ propostas: [], revisao: "a".repeat(64) }); mocks.adotar.mockResolvedValue({ propostas: [] });
   mocks.perda.mockResolvedValue({ id: uid(6), tipoEncerramento: "PERDA" }); mocks.parto.mockResolvedValue({ id: uid(7), tipo: "ABORTO" }); mocks.corrigirParto.mockResolvedValue({ id: uid(7) });
 });
 describe("acompanhamento — autorização e contratos HTTP independentes", () => {
@@ -35,12 +39,14 @@ describe("acompanhamento — autorização e contratos HTTP independentes", () =
   });
   it("GET usa o sítio resolvido e não chama funções escritoras", async () => {
     mocks.leitura.mockResolvedValue(7); const a = app(perfil(["pecuaria"], []));
-    expect((await a.request(`${raiz}?animalId=${uid(2)}&data=2026-01-20`)).status).toBe(200);
-    expect(mocks.listar).toHaveBeenCalledWith(7, { animalId: uid(2), data: "2026-01-20", pagina: 1, porPagina: 10 });
+    const resposta = await a.request(`${raiz}?animalId=${uid(2)}&data=2026-01-20`);
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toMatchObject({ itens: [], total: 0, pagina: 1, porPagina: 10, resumo: { pendentes: 0 } });
+    expect(mocks.listar).toHaveBeenCalledWith(7, { animalId: uid(2), data: "2026-01-20" });
     expect((await a.request(`${raiz}/politicas`)).status).toBe(200); expect(mocks.politicas).toHaveBeenCalledWith(7);
     for (const gravar of [mocks.criarPolitica, mocks.adotar, mocks.perda, mocks.parto]) expect(gravar).not.toHaveBeenCalled();
   });
-  it.each(["animalId=invalido", "data=2026-02-31", "data=ontem", "porPagina=11"])("GET inválido %s recebe422 antes do serviço", async query => {
+  it.each(["animalId=invalido", "data=2026-02-31", "data=ontem"])("GET inválido %s recebe422 antes do serviço", async query => {
     expect((await app().request(`${raiz}?${query}`)).status).toBe(422); expect(mocks.listar).not.toHaveBeenCalled();
   });
   it("sítio indefinido não é convertido em consolidado silencioso", async () => {

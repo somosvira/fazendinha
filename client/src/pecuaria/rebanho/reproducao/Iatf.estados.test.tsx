@@ -56,6 +56,7 @@ const paginaCatalogo = (itens: CadastroProtocoloMeta[]) => ({ itens, total: iten
 const paginaProgramacoes = (itens: ProgramacaoIatf[]) => ({ itens: itens.map(cabecalho), total: itens.length, pagina: 1, porPagina: 10 });
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", "/pecuaria/reproducao");
   vi.mocked(reqV4).mockResolvedValue([]);
@@ -73,7 +74,7 @@ it("não declara protocolos ausentes enquanto aguarda a primeira consulta", asyn
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
   expect(screen.getByRole("status").textContent).toBe("Carregando protocolos…");
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   await act(async () => leitura.resolver(paginaCatalogo([protocolo])));
   expect(
@@ -81,7 +82,7 @@ it("não declara protocolos ausentes enquanto aguarda a primeira consulta", asyn
   ).toBeTruthy();
   expect(screen.queryByText("Carregando protocolos…")).toBeNull();
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
 });
 it("distingue erro de catálogo vazio e retry recupera os protocolos", async () => {
@@ -97,30 +98,30 @@ it("distingue erro de catálogo vazio e retry recupera os protocolos", async () 
     "Falha ao consultar protocolos",
   );
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
   await screen.findByRole("heading", { name: /Protocolo confirmado/ });
   expect(screen.queryByRole("alert")).toBeNull();
-  expect(listarCadastrosProtocolos).toHaveBeenNthCalledWith(2, "REPRODUTIVO", 1, "", "TODAS");
+  expect(listarCadastrosProtocolos).toHaveBeenNthCalledWith(2, "REPRODUTIVO", 1, "", "ATIVA");
 });
 it("sucesso vazio orienta cadastro somente ao perfil autorizado", async () => {
   const { rerender } = render(
     <Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />,
   );
-  await screen.findByText("Nenhum protocolo reprodutivo cadastrado.");
+  await screen.findByText("Nenhum protocolo encontrado.");
   expect(
-    screen.queryByRole("button", { name: "Novo protocolo reprodutivo" }),
+    screen.queryByRole("button", { name: "Novo protocolo" }),
   ).toBeNull();
   expect(
-    screen.getByText(/cadastro e a publicação exigem permissão/),
+    screen.getByText(/Revise a busca ou inclua os protocolos inativos/),
   ).toBeTruthy();
   rerender(<Iatf modo="cadastros" propriedadeId={1} podeLancar />);
   expect(
-    screen.getByRole("button", { name: "Novo protocolo reprodutivo" }),
+    screen.getByRole("button", { name: "Novo protocolo" }),
   ).toBeTruthy();
   expect(
-    screen.getByText(/copie uma referência da biblioteca como rascunho/),
+    screen.getByText(/Revise a busca ou inclua os protocolos inativos/),
   ).toBeTruthy();
 });
 it("atualização conserva protocolos confirmados durante carregamento e falha", async () => {
@@ -131,7 +132,7 @@ it("atualização conserva protocolos confirmados durante carregamento e falha",
     .mockResolvedValueOnce(paginaCatalogo([]));
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
   await screen.findByRole("heading", { name: /Protocolo confirmado/ });
-  fireEvent.click(screen.getByRole("button", { name: "Atualizar protocolos" }));
+  fireEvent.change(screen.getByRole("searchbox",{name:"Buscar protocolos"}),{target:{value:"confirmado"}});
   expect(
     screen.getByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeTruthy();
@@ -145,10 +146,10 @@ it("atualização conserva protocolos confirmados durante carregamento e falha",
     screen.getByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeTruthy();
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  await screen.findByText("Nenhum protocolo reprodutivo cadastrado.");
+  await screen.findByText("Nenhum protocolo encontrado.");
   expect(
     screen.queryByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeNull();

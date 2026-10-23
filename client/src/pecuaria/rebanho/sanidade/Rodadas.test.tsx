@@ -6,7 +6,7 @@ import type { AnimalResumo } from "../types";
 vi.mock("../api", () => ({ obterCatalogos: vi.fn().mockResolvedValue({ propriedades: [{ id: 1, nome: "Sítio A" }] }), buscarFichaAnimal: vi.fn() }));
 const mocks = vi.hoisted(() => ({ prever: vi.fn(), criar: vi.fn(), adicionar: vi.fn(), preverAdicao: vi.fn(), rodadas: vi.fn(), rodada: vi.fn(), etapas: vi.fn(), participantes: vi.fn(), tarefas: vi.fn(), cabecalhoComum: vi.fn(), etapasComuns: vi.fn(), tarefasComuns: vi.fn(), eventoComum: vi.fn() }));
 vi.mock("./rodadas-api", async (original) => ({ ...await original<typeof import("./rodadas-api")>(), preverRodada: mocks.prever, criarRodada: mocks.criar, adicionarParticipantes: mocks.adicionar, preverParticipantes: mocks.preverAdicao, listarRodadas: mocks.rodadas, consultarRodada: mocks.rodada, listarEtapasRodada: mocks.etapas, listarParticipantesRodada: mocks.participantes, listarTarefasEtapa: mocks.tarefas }));
-vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterCabecalhoProtocolo: mocks.cabecalhoComum, obterEtapasProtocolo: mocks.etapasComuns, obterTarefasProtocolo: mocks.tarefasComuns, registrarEventoProtocolo: mocks.eventoComum, reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "p", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterMomentosProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }), obterCabecalhoProtocolo: mocks.cabecalhoComum, obterEtapasProtocolo: mocks.etapasComuns, obterTarefasProtocolo: mocks.tarefasComuns, registrarEventoProtocolo: mocks.eventoComum, reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "p", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
 vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));
 vi.mock("../reproducao/RegularizarOrigem", () => ({ RegularizarOrigem: ({ propriedadeId }: { propriedadeId: number }) => <p data-testid="regularizacao-sitio">{propriedadeId}</p>, consumoMantidoUltimaAnulacao: () => false }));
 vi.mock("./api", async (original) => ({ ...await original<typeof import("./api")>(), reqSanidade: vi.fn().mockResolvedValue([{ id: "p", nome: "Protocolo publicado", versao: 2, ativo: true, publicadoEm: "2026-10-01" }]) }));
@@ -31,15 +31,15 @@ describe("ciclos de protocolos", () => {
     fireEvent.click(screen.getByRole("button",{name:"Ver ciclo"}));expect(abrir).toHaveBeenCalledWith("r");
     fireEvent.click(screen.getByRole("button",{name:"Tabela"}));expect(screen.getByRole("button",{name:"Abrir ciclo Campanha de outubro"})).toBeTruthy();
   });
-  it("agrupa contagens iguais e não renderiza indicadores zerados", async () => {
+  it("conserva contagens no seletor comum sem duplicar a comparação das etapas", async () => {
     const contagens = { total: 2, pendentes: 2, atendidos: 0 };
     mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]));
     render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
     await screen.findByRole("button", { name: /Dia 0 Exame/ });
     expect(screen.queryByRole("columnheader", { name: "Filtro atual" })).toBeNull();
     expect(screen.queryByText(/Comparar com/)).toBeNull();
-    expect(screen.getByText("2 pendentes")).toBeTruthy();
-    expect(screen.queryByText(/0 atendidos/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Dia 0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText("realizadas", { exact: true })).toBeNull();
     expect(screen.queryByText("canceladas", { exact: true })).toBeNull();
   });
