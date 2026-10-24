@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   listarFornecedores: vi.fn(),
   listarCategorias: vi.fn(),
   listarCentrosCusto: vi.fn(),
+  listarTiposAplicacaoSanitarios: vi.fn(),
   criarProduto: vi.fn(),
   editarProduto: vi.fn(),
 }));
@@ -18,11 +19,13 @@ vi.mock("../estoque/api", async (importOriginal) => ({
   listarFornecedores: mocks.listarFornecedores,
   listarCategorias: mocks.listarCategorias,
   listarCentrosCusto: mocks.listarCentrosCusto,
+  listarTiposAplicacaoSanitarios: mocks.listarTiposAplicacaoSanitarios,
   criarProduto: mocks.criarProduto,
   editarProduto: mocks.editarProduto,
 }));
 
 beforeEach(() => {
+  mocks.listarTiposAplicacaoSanitarios.mockResolvedValue({ itens: [{ id: uid(77), nome: "Hormônio", ativo: true }], total: 1, pagina: 1, porPagina: 10 });
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -49,7 +52,7 @@ describe("tipos de uso e validação dos perfis", () => {
     fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
     await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({
       categoriaId: uid(12), usoSanitario: true,
-      perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular" },
+      perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, viaPadrao: "Intramuscular", tipoAplicacaoId: null, orientacaoUso: null },
     })));
   });
   beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });
@@ -188,4 +191,18 @@ describe("proteção dos vínculos ao fechar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
     expect(screen.getByRole("button", { name: `Remover ${opcao}` })).toBeTruthy();
   });
+});
+
+it("configura tipo padrão e orientação opcionais no produto compartilhado", async () => {
+  vi.clearAllMocks();
+  mocks.criarProduto.mockResolvedValue(produtoCriado);
+  render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Produto sanitário" } });
+  await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
+  fireEvent.click(screen.getByLabelText("Sanitário"));
+  fireEvent.click(screen.getByRole("button", { name: "Selecionar Tipo de aplicação padrão (opcional)" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Usar Hormônio" }));
+  fireEvent.change(screen.getByLabelText("Orientação de uso (opcional)"), { target: { value: "Conferir o rótulo do produto" } });
+  fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ perfilSanitario: expect.objectContaining({ tipoAplicacaoId: uid(77), orientacaoUso: "Conferir o rótulo do produto", viaPadrao: null }) })));
 });

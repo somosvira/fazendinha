@@ -1,3 +1,5 @@
+import { referenciasCustoSchema } from "../custos/referencias-planejadas.js";
+import { momentoAcaoSchema } from "../protocolos/momentos.js";
 import { causaClinicaPerdaSchema } from "./acompanhamento.schemas.js";
 import { observacoesExameSchema } from "../exames/formatos.js";
 import { z } from "zod";
@@ -17,17 +19,29 @@ export const avaliacaoSchema = z.object({ ...base, demandaAcompanhamentoId: uuid
 export { partoAmpliadoSchema as partoSchema } from "./partos.schemas.js";
 export const perdaSchema = z.object({ ...base, gestacaoId: uuid, motivo, causaClinica: causaClinicaPerdaSchema.optional() }).strict();
 export const exposicaoSchema = z.object({ chave: uuid, propriedadeId: sitio, loteId: uuid, touroId: uuid.nullish(), touroExternoId: uuid.nullish(), inicio: data, fim: data.nullish(), observacao: texto }).strict();
-export const planoAplicacaoIatfSchema = z.object({ produtoId: uuid, dose: z.string().regex(/^\d+(\.\d{1,3})?$/).refine(v=>Number(v)>0,"Dose planejada deve ser positiva"), unidadeDose: z.nativeEnum(UnidadeMedida), via: z.string().trim().max(80).nullish() }).strict();
+export const planoAplicacaoIatfSchema = z.object({ produtoId: uuid, tipoAplicacaoId: uuid.nullish(), orientacaoUso: z.string().trim().max(2000).nullish(), dose: z.string().regex(/^\d+(\.\d{1,3})?$/).refine(v=>Number(v)>0,"Dose planejada deve ser positiva"), unidadeDose: z.nativeEnum(UnidadeMedida), via: z.string().trim().max(80).nullish() }).strict();
 export const planoTentativaIatfSchema = z.object({ tipo: z.enum(["IA", "TE"]), materialId: uuid, quantidade: z.number().positive().max(99999999) }).strict();
 export const planoAvaliacaoIatfSchema = z.object({ tipoExameId: uuid.optional(), tipo: z.enum(["DIAGNOSTICO", "RECONFIRMACAO", "SEXAGEM"]) }).strict();
 export const orientacaoTemporalSchema = z.object({versao:z.literal(1),referencia:z.enum(["INICIO_EFETIVO","ETAPA_ANTERIOR"]),intervaloHoras:z.number().nonnegative().max(24000),toleranciaAntesMinutos:z.number().int().nonnegative().max(10080),toleranciaDepoisMinutos:z.number().int().nonnegative().max(10080),efeito:z.literal("ALERTA")}).strict();
-export const etapaIatfSchema = z.object({ nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
+export const etapaIatfSchema = z.object({ referenciasCusto: referenciasCustoSchema.optional(), momento: momentoAcaoSchema.optional(), subtipo: z.enum(["APLICACAO", "INSERCAO_DISPOSITIVO"]).optional(), tentativaTipo: z.enum(["IA", "TE"]).optional(), nome: z.string().trim().min(1).max(120), tipo: z.enum(["APLICACAO", "MANEJO", "RETIRADA", "TENTATIVA", "AVALIACAO", "EXAME"]), intervalo: z.number().nonnegative().max(10000), unidade: z.enum(["DIAS", "HORAS"]), orientacaoTemporal:orientacaoTemporalSchema.optional(), planoAplicacao: planoAplicacaoIatfSchema.optional(), planoTentativa: planoTentativaIatfSchema.optional(), planoExame: z.object({ tipoExameId: uuid }).strict().optional(), planoAvaliacao: planoAvaliacaoIatfSchema.optional() }).strict().superRefine((etapa,ctx)=>{
+  if (etapa.tentativaTipo && etapa.tipo !== "TENTATIVA") ctx.addIssue({code:"custom",path:["tentativaTipo"],message:"Tipo de tentativa exige ação de tentativa"});
+  if (etapa.momento?.modoAtendimento === "AUTOMATIZADA" && ["TENTATIVA", "AVALIACAO", "EXAME"].includes(etapa.tipo)) ctx.addIssue({code:"custom",path:["momento","modoAtendimento"],message:"Exames e tentativas exigem atendimento manual"});
+  if (etapa.referenciasCusto?.material && !["APLICACAO", "TENTATIVA"].includes(etapa.tipo)) ctx.addIssue({code:"custom",path:["referenciasCusto","material"],message:"Ação não utiliza material planejado"});
+  if (etapa.subtipo && etapa.tipo !== "APLICACAO") ctx.addIssue({ code:"custom",path:["subtipo"],message:"Subtipo de aplicação exige ação de aplicação" });
   for(const [campo,tipo] of [["planoExame","EXAME"],["planoAplicacao","APLICACAO"],["planoTentativa","TENTATIVA"],["planoAvaliacao","AVALIACAO"]] as const) if(etapa[campo] && etapa.tipo!==tipo)ctx.addIssue({code:"custom",path:[campo],message:"Planejamento incompatível com a ação da etapa"});
 });
-export const protocoloSchema = z.object({ origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
+export const protocoloSchema = z.object({ finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
+  const builder = protocolo.finalidade != null;
+  protocolo.etapas.forEach((etapa, i) => {
+    if (builder && etapa.tipo === "MANEJO") ctx.addIssue({ code: "custom", path: ["etapas", i, "tipo"], message: "O novo builder não oferece procedimentos livres" });
+    if (builder && etapa.planoTentativa) ctx.addIssue({ code: "custom", path: ["etapas", i, "planoTentativa"], message: "Material genético é definido na realização, sem plano fixo no builder" });
+    if (builder && etapa.tipo === "TENTATIVA" && !etapa.tentativaTipo) ctx.addIssue({ code: "custom", path: ["etapas", i, "tentativaTipo"], message: "Declare IA ou TE para esta ação" });
+  });
   if(!protocolo.publicado)return;
-  if(!protocolo.etapas.some(e=>e.tipo==="TENTATIVA"))ctx.addIssue({code:"custom",path:["etapas"],message:"Protocolo publicado exige etapa de tentativa planejada"});
-  protocolo.etapas.forEach((etapa,i)=>{const campo=etapa.tipo==="APLICACAO"?"planoAplicacao":etapa.tipo==="TENTATIVA"?"planoTentativa":etapa.tipo==="AVALIACAO"?"planoAvaliacao":etapa.tipo==="EXAME"?"planoExame":null;if(campo && !etapa[campo])ctx.addIssue({code:"custom",path:["etapas",i,campo],message:"Defina o planejamento desta etapa antes de publicar"});});
+  if (!builder && !protocolo.etapas.some(e=>e.tipo==="TENTATIVA")) ctx.addIssue({code:"custom",path:["etapas"],message:"Protocolo publicado exige etapa de tentativa planejada"});
+  const tentativaExigida = protocolo.finalidade === "IATF" ? "IA" : protocolo.finalidade === "TETF" ? "TE" : null;
+  if (tentativaExigida && !protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo === tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Finalidade ${protocolo.finalidade} exige ao menos uma ação ${tentativaExigida}` });
+  protocolo.etapas.forEach((etapa,i)=>{const campo=etapa.tipo==="APLICACAO"?"planoAplicacao":etapa.tipo==="TENTATIVA" && !builder?"planoTentativa":etapa.tipo==="AVALIACAO"?"planoAvaliacao":etapa.tipo==="EXAME"?"planoExame":null;if(campo && !etapa[campo])ctx.addIssue({code:"custom",path:["etapas",i,campo],message:"Defina o planejamento desta etapa antes de publicar"});});
 });
 export const programacaoSchema = z.object({ chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: dataOuHorario, animais: z.array(z.object({ animalId: uuid, inicioPrevisto: dataOuHorario.optional() })).min(1).max(100) }).strict();
 export const visitaSchema = z.object({ chave: uuid.optional(), propriedadeId: sitio, data, nome: z.string().trim().min(2).max(120), responsavel: z.string().trim().max(160).nullish() }).strict();

@@ -1,3 +1,5 @@
+import { paginaSubstitutosTarefa } from "../../services/pecuaria/protocolos/substitutos.js";
+import { referenciasCustoSchema } from "../../services/pecuaria/custos/referencias-planejadas.js";
 import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { regularizacaoSchema } from "../../services/pecuaria/reproducao/schemas.js";
 import { regularizarTarefaSanitaria, substitutosTarefaComum } from "../../services/pecuaria/protocolos/regularizacao.js";
@@ -121,7 +123,7 @@ export const sanidadeRouter = new Hono()
     try { return c.json(await protocolos.inativarProtocolo(uuid.parse(c.req.param("id")), getUsuario(c)?.id ?? null)); } catch (e) { return falha(c, e); }
   })
   .get("/tarefas/:id/substitutos", async c => {
-    try { const propriedadeId = await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined); return c.json(await substitutosTarefaComum(uuid.parse(c.req.param("id")), propriedadeId, "SANITARIO")); }
+    try { const propriedadeId = await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined); const {propriedadeId:_sitio,paginado,...consulta}=c.req.query(); return c.json(paginado==="true"?await paginaSubstitutosTarefa(uuid.parse(c.req.param("id")),propriedadeId,consulta,"SANITARIO"):await substitutosTarefaComum(uuid.parse(c.req.param("id")), propriedadeId, "SANITARIO")); }
     catch (e) { return falha(c,e); }
   })
   .post("/tarefas/:id/regularizacao", validar(regularizacaoSchema), async c => {
@@ -162,7 +164,7 @@ export const sanidadeRouter = new Hono()
   .post("/aplicacoes/:id/carencia", validar(aplicacaoSchema.pick({ estadoCarenciaLeite: true, estadoCarenciaCarne: true, carenciaLeiteHoras: true, carenciaCarneHoras: true, justificativaCarenciaLeite: true, justificativaCarenciaCarne: true }).extend({ propriedadeId: z.number().int().positive(), motivo: z.string().trim().min(5).max(500) }).strict()), async (c) => {
     try { const { propriedadeId: solicitado, ...input } = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, solicitado); return c.json(ocultarCustos(await aplicacoes.corrigirCarencia(c.req.param("id"), propriedadeId, input, getUsuario(c)?.id ?? null), c)); } catch (e) { return falha(c, e); }
   })
-  .patch("/protocolos/:id", validar(z.object({ nome: z.string().trim().min(2).max(160), descricao: z.string().trim().max(500).nullish(), etapas: z.array(z.object({ diaRelativo: z.number().int().nonnegative(), tipo: z.enum(["APLICACAO", "EXAME"]), produtoId: uuid.nullish(), tipoExameId: uuid.nullish(), tipoAplicacaoId: uuid.nullish(), dose: z.number().positive().nullish(), unidade: z.string().trim().max(30).nullish(), via: z.string().trim().max(80).nullish() })).min(1) })), async (c) => {
+  .patch("/protocolos/:id", validar(protocolos.protocoloCadastroSchema), async (c) => {
     try { return c.json(await protocolos.criarProtocolo(c.req.valid("json"), getUsuario(c)?.id ?? null, c.req.param("id"))); } catch (e) { return falha(c, e); }
   })
   .get("/compras-diretas", async (c) => {
@@ -219,11 +221,7 @@ export const sanidadeRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .get("/protocolos", async (c) => { try { return c.json(await protocolos.listarProtocolos()); } catch (e) { return falha(c, e); } })
-  .post("/protocolos", validar(z.object({ nome: z.string().trim().min(2).max(160), descricao: z.string().trim().max(500).nullish(),
-    etapas: z.array(z.object({ diaRelativo: z.number().int().nonnegative(), tipo: z.enum(["APLICACAO", "EXAME"]),
-      produtoId: uuid.nullish(), tipoExameId: uuid.nullish(), tipoAplicacaoId: uuid.nullish(), finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).nullish(),
-      dose: z.number().positive().nullish(), unidade: z.string().trim().max(30).nullish(), via: z.string().trim().max(80).nullish() })).min(1),
-  })), async (c) => {
+  .post("/protocolos", validar(protocolos.protocoloCadastroSchema), async (c) => {
     try { return c.json(await protocolos.criarProtocolo(c.req.valid("json"), getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })

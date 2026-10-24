@@ -104,7 +104,7 @@ export function nomeExameHistorico(formato: Prisma.JsonValue, nomeAtual: string)
   return formato && typeof formato === "object" && !Array.isArray(formato) && typeof formato.nome === "string" ? formato.nome : nomeAtual;
 }
 
-export type ExameInput = { chave?: string; animalId: string; propriedadeId: number; tipoExameId: string; data: string;
+export type ExameInput = { observacao?: string | null; formatoExameHash?: string; chave?: string; animalId: string; propriedadeId: number; tipoExameId: string; data: string;
   resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[];
   responsavel?: string | null; ocorrenciaId?: string | null; tarefaId?: string | null; operacaoServicoId?: string | null; desvio?: DesvioInput };
 
@@ -116,6 +116,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     const tipo = await tx.tipoExame.findFirst({ where: { id: input.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } }, include: { formatoQualidadeLeite: { select: { tipoExameId: true } } } });
     if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", "tipoExameId");
     if (tipo.formatoQualidadeLeite && !qualidadeLeite) throw new RebanhoError("CONFLITO", "Registre este formato pelo fluxo de qualidade do leite", "tipoExameId");
+    if (input.formatoExameHash && input.formatoExameHash !== hashFormatoExame(tipo)) throw new RebanhoError("CONFLITO", "O formato do exame mudou. Atualize e confira os resultados", "tipoExameId");
     const resultados = tipo.tipoResultado === "MULTIPLO" ? validarObservacoesExame(tipo.campos, input.resultados ?? [], (input.resultados?.length ?? 0) > 0) : [];
     if (tipo.tipoResultado !== "MULTIPLO" && input.resultados?.length) throw new RebanhoError("VALIDACAO", "Este exame usa o resultado simples do formato histórico", "resultados");
     const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v !== undefined && v !== null && v !== "");
@@ -147,7 +148,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
       throw new RebanhoError("VALIDACAO", "Serviço inválido para este sítio", "operacaoServicoId");
     }
     const dadosCriacao: Prisma.ExameAnimalUncheckedCreateInput = { animalId: input.animalId, propriedadeId: input.propriedadeId,
-      tipoExameId: tipo.id, data, resultadoTexto: input.resultadoTexto?.trim() || null,
+      tipoExameId: tipo.id, data, observacao: input.observacao?.trim() || null, resultadoTexto: input.resultadoTexto?.trim() || null,
       resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null,
       formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, unidade: tipo.unidade, opcoes: tipo.opcoes },
       criadoPorId: usuarioId, realizacao: preenchidos.length || resultados.length ? "REALIZADO" : "COLETA_REGISTRADA",

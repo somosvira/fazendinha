@@ -10,6 +10,14 @@ const preparo = () => componentesDaFonte(fonte({ id: "preparo", tipo: "APLICACAO
   valorMaterial: "30.00", operacaoServicoId: null, valorServico: null, classificacao: classificacao({ servicoNaoAplicavel: true }) }));
 
 describe("oráculos independentes de custo direto e atribuições", () => {
+  it("manejo tem somente custo de serviço e conserva custo de realização mantida", () => {
+    const linhas = componentesDaFonte(fonte({ tipo: "MANEJO", origemMaterial: "NAO_APLICAVEL", movimentoEstoqueId: null, valorMaterial: null, valorServico: "12.34", estadoFato: "ANULADO · realização mantida" }));
+    expect(linhas).toHaveLength(1);
+    expect(linhas[0]).toMatchObject({ natureza: "SERVICO", estado: "CONHECIDO", tipoFonte: "MANEJO" });
+    expect(consolidarCustos([...linhas, ...linhas]).totalConhecido).toBe("12.34");
+    expect(consolidarCustos(linhas, false).totalConhecido).toBeNull();
+  });
+
   it("30 de preparatórios + 50 de material + 20 de Serviço totalizam 100 em cada visão", () => {
     const componentes = [...preparo(), ...componentesDaFonte(fonte())];
     const tentativa = consolidarCustos(componentes);

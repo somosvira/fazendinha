@@ -4,7 +4,7 @@ type Tx = Prisma.TransactionClient;
 const entidade = (tipo: TipoProtocolo) => tipo === "SANITARIO" ? "ProtocoloSanitario" : "ProtocoloIatf";
 export async function carregarVersaoTx(tx: Tx, id: string, tipo: TipoProtocolo, editavel = false) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-protocolo:${id}`}))`;
-  const p = await tx.protocolo.findFirst({ where: { id, tipo }, include: { etapas: { orderBy: { ordem: "asc" } }, _count: { select: { execucoes: true, rodadas: true } } } });
+  const p = await tx.protocolo.findFirst({ where: { id, tipo }, include: { etapas: { include: { momento: true }, orderBy: { ordem: "asc" } }, _count: { select: { execucoes: true, rodadas: true } } } });
   if (!p) throw new RebanhoError("NAO_ENCONTRADO", "Versão de protocolo não encontrada neste cadastro");
   if (editavel && (p.publicado || p.publicadoEm || p._count.execucoes || p._count.rodadas)) throw new RebanhoError("CONFLITO", "Versão publicada ou utilizada é imutável; crie nova versão");
   return p;

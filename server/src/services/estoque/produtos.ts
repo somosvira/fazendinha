@@ -88,6 +88,12 @@ export async function criarProduto(input: ProdutoInput, usuarioId?: number | nul
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
 }
 
+async function validarTipoAplicacaoPerfil(tx: Prisma.TransactionClient, tipoAplicacaoId: string | null | undefined, anterior?: string | null) {
+  if (tipoAplicacaoId && tipoAplicacaoId !== anterior && !await tx.tipoAplicacaoSanitaria.findFirst({ where: { id: tipoAplicacaoId, ativo: true }, select: { id: true } })) {
+    throw new FinanceiroError("VALIDACAO", "Selecione um tipo de aplicação ativo para o padrão do produto", "perfilSanitario.tipoAplicacaoId");
+  }
+}
+
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
   const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
@@ -97,6 +103,7 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
   if (perfilSanitario && !produto.usoSanitario) throw new FinanceiroError("VALIDACAO", "Selecione o uso sanitário para preencher esse perfil", "usoSanitario");
+  await validarTipoAplicacaoPerfil(tx, perfilSanitario?.tipoAplicacaoId);
   if (perfilNutricional && !produto.usoNutricional) throw new FinanceiroError("VALIDACAO", "Selecione o uso nutricional para preencher esse perfil", "usoNutricional");
   const criado = await tx.produto.create({
     data: {
@@ -164,6 +171,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         await validarCentrosCusto(tx, centroCustoIds, new Set(anterior.centrosCusto.map((v) => v.centroCustoId)));
       }
 
+      await validarTipoAplicacaoPerfil(tx, perfilSanitario?.tipoAplicacaoId, anterior.perfilSanitarioProduto?.tipoAplicacaoId);
       const atualizado = await tx.produto.update({
         where: { id },
         data: {
@@ -219,4 +227,18 @@ export async function obterUltimoPreco(produtoId: string, f: { parceiroId?: stri
     data: item.operacao.data.toISOString().slice(0, 10),
     parceiro: item.operacao.parceiro ? { id: item.operacao.parceiro.id, nome: item.operacao.parceiro.nome } : null,
   };
+}
+
+/** Catálogo compartilhado: não revela procedimentos, animais ou custos pecuários. */
+export async function listarTiposAplicacaoSanitarios(input: { pagina: number; porPagina: number; busca: string; selecionadoId?: string }) {
+  return prisma.$transaction(async tx => {
+    const where: Prisma.TipoAplicacaoSanitariaWhereInput = {
+      ...(input.selecionadoId ? { id: input.selecionadoId } : { ativo: true }),
+      nome: { contains: input.busca, mode: "insensitive" },
+    };
+    const total = await tx.tipoAplicacaoSanitaria.count({ where });
+    const pagina = Math.min(input.pagina, Math.max(1, Math.ceil(total / input.porPagina)));
+    const itens = await tx.tipoAplicacaoSanitaria.findMany({ where, select: { id: true, nome: true, ativo: true }, orderBy: [{ nome: "asc" }, { id: "asc" }], skip: (pagina - 1) * input.porPagina, take: input.porPagina });
+    return { itens, total, pagina, porPagina: input.porPagina };
+  }, { isolationLevel: "RepeatableRead" });
 }

@@ -1,3 +1,4 @@
+import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
@@ -132,6 +133,8 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       }
     </div>}</ConsultaPorSitio>;
   }
+  const participacaoRota = caminho.match(/^\/pecuaria\/reproducao\/participacoes\/([^/]+)\/?$/);
+  if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="REPRODUTIVO" propriedadeId={Number(new URLSearchParams(consultaUrl).get("sitio")) || propriedadeId || undefined} podeLancar={podeLancar} />;
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
     const [,tipo,id]=detalheRota;

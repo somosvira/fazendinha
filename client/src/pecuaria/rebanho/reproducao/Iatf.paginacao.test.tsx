@@ -1,0 +1,30 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { Iatf } from "./Iatf";
+import { reqV4 } from "./api";
+import { obterCabecalhoProtocolo, reqProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
+vi.mock("./api", () => ({ reqV4: vi.fn() }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn(), obterCabecalhoProtocolo: vi.fn() }));
+vi.mock("../protocolos/OperacaoProtocolo", () => ({ OperacaoProtocolo: ({ gestao }: { gestao: import("react").ReactNode }) => <>{gestao}</> }));
+vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([]) }));
+vi.mock("../api", () => ({ listarMaterialGenetico: vi.fn().mockResolvedValue([]) }));
+const header = (n: number): CabecalhoProtocolo => ({ id: `g${n}`, nome: `Grupo ${n}`, modo: "COLETIVO", tipo: "REPRODUTIVO", propriedadeId: 1, propriedadeContextoId: 7, protocolo: { id: "p", nome: "Protocolo", versao: 1 }, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA", status: "ABERTA", animal: null, participantesTotal: 21, contagens: { total: 42, atendidos: 0, pendentes: 42, atrasadas: 0, naoAtendidos: 0, adiados: 0, semRegistro: 42, previstos: 0, regularizacoes: 0, encerradas: 0 } });
+afterEach(() => { cleanup(); vi.clearAllMocks(); window.history.replaceState(null, "", "/"); });
+it("lista, detalhe e gestão usam API comum paginada no sítio consultado, sem baixar array legado", async () => {
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=programacoes");
+  vi.mocked(reqProtocolo).mockImplementation(async path => { const url = new URL(`https://local${path}`); const pagina = Number(url.searchParams.get("pagina")); if (url.pathname.endsWith("/participantes")) return { itens: [{ id: "participacao", animalId: "animal", animal: { id: "animal", brinco: "Animal escolhido", nome: null }, inicioPrevisto: "2026-10-19", inicioEfetivo: null, encerradoEm: null }], total: 21, pagina: 1, porPagina: 10 }; return { itens: Array.from({ length: pagina === 3 ? 1 : 10 }, (_, i) => header((pagina - 1) * 10 + i + 1)), total: 21, pagina, porPagina: 10 }; });
+  vi.mocked(obterCabecalhoProtocolo).mockResolvedValue(header(11));
+  render(<Iatf propriedadeId={7} podeLancar />);
+  await screen.findAllByRole("link", { name: "Grupo 1" });
+  expect(screen.queryByRole("link", { name: "Grupo 11" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  fireEvent.click((await screen.findAllByRole("button", { name: "Ver IATF Grupo 11" }))[0]);
+  await waitFor(() => expect(obterCabecalhoProtocolo).toHaveBeenCalledWith({ programacaoId: "g11" }, 7));
+  fireEvent.click(await screen.findByRole("button", { name: "Gestão das participações" }));
+  expect(await screen.findByRole("link", { name: "Animal escolhido" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Retirar participação" })).toBeNull();
+  expect(reqProtocolo).toHaveBeenCalledWith(expect.stringMatching(/^\/programacoes\?tipo=REPRODUTIVO&pagina=2&porPagina=10$/), 7);
+  expect(reqProtocolo).toHaveBeenCalledWith("/programacoes/g11/participantes?pagina=1&porPagina=10", 7);
+  expect(reqV4).not.toHaveBeenCalled();
+});

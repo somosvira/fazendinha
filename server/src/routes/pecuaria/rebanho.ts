@@ -36,6 +36,8 @@ import { leiteCustosRouter } from "./leite-custos.js";
 import { leiteEstoqueRouter } from "./leite-estoque.js";
 import { leiteDestinosRouter } from "./leite-destinos.js";
 import { leiteProgramacaoRouter } from "./leite-programacao.js";
+import { protocolosOperacaoRouter } from "./protocolos-operacao.js";
+import { protocolosCadastrosRouter } from "./protocolos-cadastros.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
@@ -113,7 +115,7 @@ function validarQuery<T extends z.ZodTypeAny>(schema: T) {
  * depende do gate de área (`exigeArea("pecuaria")` em app.ts).
  */
 const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
-  if (c.req.method === "GET" || (c.req.method === "POST" && /\/visitas\/selecoes\/previa\/?$/.test(c.req.path))) return next();
+  if (c.req.method === "GET" || (c.req.method === "POST" && /\/(?:visitas\/selecoes|protocolos\/operacao\/participacoes)\/previa\/?$/.test(c.req.path))) return next();
   return exigePermissao("lancar")(c, next);
 };
 
@@ -450,3 +452,5 @@ rebanhoRouter.route("/leite", leiteHistoricoRouter);
 rebanhoRouter.route("/leite", leitePreviaRouter);
 rebanhoRouter.route("/leite/consultas-producao", leiteConsultasProducaoRouter);
 rebanhoRouter.route("/leite", leiteRouter);
+rebanhoRouter.route("/protocolos/operacao", protocolosOperacaoRouter);
+rebanhoRouter.route("/protocolos/cadastros", protocolosCadastrosRouter);

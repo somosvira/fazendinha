@@ -10,10 +10,12 @@ import { BibliotecaReprodutiva } from "./BibliotecaReprodutiva";
 function adiada<T>() { let resolve!: (v: T) => void; const promise = new Promise<T>(r => { resolve = r; }); return { promise, resolve }; }
 const politica = (id = "p1", versao = 1) => ({ id, versao, vigenteDesde: "2026-01-01", parametros: { versao: 1, efeito: "ALERTA", diagnostico: { diasAposTentativa: 0 }, reconfirmacoes: [] } });
 const demanda = (data: string) => ({ id: `d${data}`, finalidade: "DIAGNOSTICO", ocorrencia: 1, tentativaId: "t", gestacaoId: null, previstaPara: data, estado: "PENDENTE", motivoEncerramento: null, regraSnapshot: { politicaVersao: 1 }, exameResolucaoId: null });
+const paginaDemandas = (itens: ReturnType<typeof demanda>[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10, resumo: { total: itens.length, pendentes: itens.filter(d => d.estado === "PENDENTE").length, resolvidas: 0, encerradas: 0, semData: 0 } });
 const painel = (animalId: string): PainelReprodutivo => ({ animais: [], tentativas: [{ id: `t-${animalId}`, animalId, data: "2026-01-01", status: "VALIDO" }], avaliacoes: [], partos: [], restricoes: [], gestacoes: [] });
 const referencia = { id: "referencia", nome: "Referência técnica", familia: "Família", versaoReferencia: "1", fonte: { titulo: "Publicação técnica", url: "https://example.org/referencia", pagina: 1, data: "2026-01-01", consultadaEm: "2026-10-16" }, objetivo: "Conferir manejo", populacaoIndicada: "Matrizes", camposACompletar: ["Produtos e doses"], observacoes: ["A configuração requer revisão técnica"] };
 const previa = () => ({ revisao: "a".repeat(64), propostas: [{ acao: "CRIAR", finalidade: "DIAGNOSTICO", ocorrencia: 1, previstaPara: "2026-01-10" }] });
 const padrao = async (url: string, body?: object) => {
+ if (url.startsWith("/reproducao/acompanhamento?")) return paginaDemandas([]);
  if (url === "/reproducao/biblioteca") return [referencia];
  if (url === "/reproducao/acompanhamento/politicas") return body ? { id: "p-nova" } : [politica()];
  if (url === "/reproducao/tipos-exame") return [{ id: "tipo", nome: "Exame configurável", contexto: "REPRODUTIVO", ativo: true }];
@@ -31,7 +33,7 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  it("leitura das demandas independe da demora ou falha das regras administrativas", async () => {
   let rejeitar!: (motivo: Error) => void;
   const lenta = new Promise<never>((_resolve, reject) => { rejeitar = reject; });
-  mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") ? lenta : url.includes("animalId=a") ? Promise.resolve([demanda("2026-01-11")]) : padrao(url, body));
+  mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") ? lenta : url.includes("animalId=a") ? Promise.resolve(paginaDemandas([demanda("2026-01-11")])) : padrao(url, body));
   render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
   await screen.findByText("11/01/2026");
   expect(screen.queryByRole("status")).toBeNull();
@@ -42,7 +44,7 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  });
 
  it.each([true, false])("DG de origem inválido fica explícito para podeLancar=%s e impede avaliação vinculada", async (podeLancar) => {
-  mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve([{ ...demanda("2026-01-11"), finalidade: "RECONFIRMACAO", pendencias: ["EXAME_ORIGEM_INVALIDO"] }]) : padrao(url, body));
+  mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve({ ...paginaDemandas([demanda("2026-01-11")]), itens: [{ ...demanda("2026-01-11"), finalidade: "RECONFIRMACAO", pendencias: ["EXAME_ORIGEM_INVALIDO"] }] }) : padrao(url, body));
   const avaliar = vi.fn();
   render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar={podeLancar} onAvaliar={avaliar} atualizacao={0}/>);
   await screen.findByText(/O DG de origem foi alterado ou anulado/);
@@ -62,13 +64,13 @@ describe("UI acompanhamento — contraprovas independentes", () => {
   await waitFor(() => expect(posts()).toHaveLength(2)); expect(posts()[1]).toEqual(["/reproducao/acompanhamento/adocao", expect.objectContaining({ propriedadeId: 1, politicaId: "p1", tentativaIds: ["t-a"], motivo: "Adoção explicitamente conferida", revisao: "a".repeat(64), chave: expect.any(String) }), "POST", 1]);
  });
  it("consulta lenta do animalA não substitui demandas do animalB no outro sítio", async () => {
-  const antiga = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? antiga.promise : url.includes("animalId=b") ? Promise.resolve([demanda("2026-02-22")]) : padrao(url, body));
+  const antiga = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? antiga.promise : url.includes("animalId=b") ? Promise.resolve(paginaDemandas([demanda("2026-02-22")])) : padrao(url, body));
   const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
   rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/22\/02\/2026/);
-  await act(async () => antiga.resolve([demanda("2026-01-11")])); expect(screen.queryByText(/11\/01\/2026/)).toBeNull(); expect(screen.getByText(/22\/02\/2026/)).toBeTruthy();
+  await act(async () => antiga.resolve(paginaDemandas([demanda("2026-01-11")]))); expect(screen.queryByText(/11\/01\/2026/)).toBeNull(); expect(screen.getByText(/22\/02\/2026/)).toBeTruthy();
  });
  it("erro no segundo animal não conserva dados do primeiro", async () => {
-  mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve([demanda("2026-01-11")]) : url.includes("animalId=b") ? Promise.reject(new Error("Consulta do animalB falhou")) : padrao(url, body));
+  mocks.req.mockImplementation((url, body) => url.includes("animalId=a") ? Promise.resolve(paginaDemandas([demanda("2026-01-11")])) : url.includes("animalId=b") ? Promise.reject(new Error("Consulta do animalB falhou")) : padrao(url, body));
   const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/11\/01\/2026/);
   rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText("Consulta do animalB falhou"); expect(screen.queryByText(/11\/01\/2026/)).toBeNull();
  });

@@ -55,3 +55,13 @@ describe("Lista individual da seleção livre", () => {
     expect(screen.getByText("Nenhum animal nesta seleção.")).toBeTruthy();
   });
 });
+
+it("mantém onze animais no rascunho com dez visíveis por página", () => {
+  const onAbrir = vi.fn();
+  render(<ListaAnimaisVisita animais={Array.from({ length: 11 }, (_, i) => ({ id: `p${i}`, animalId: `a${i}`, brinco: String(i + 1), status: "PENDENTE" }))} busca="" onBusca={vi.fn()} onAbrir={onAbrir} />);
+  expect(within(screen.getByRole("list")).getAllByRole("listitem")).toHaveLength(10);
+  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  expect(within(screen.getByRole("list")).getAllByRole("listitem")).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 11" }));
+  expect(onAbrir).toHaveBeenCalledWith("p10");
+});

@@ -59,6 +59,8 @@ export async function limparMovimentosValorizadosFixtureTx(tx: Prisma.Transactio
   if (!produtoIds.length) return;
   if (produtoIds.some(id => !id)) throw new Error("A limpeza exige os IDs explícitos dos produtos da fixture");
   const produtoId = { in: [...new Set(produtoIds)] };
+  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId }, select: { id: true } });
+  await tx.auditoriaFinanceira.deleteMany({ where: { entidade: "MovimentoEstoque", entidadeId: { in: movimentos.map(m => m.id) } } });
   await tx.parcelaValorizacaoEstoque.deleteMany({ where: { movimentoEstoque: { produtoId } } });
   await tx.baseValorizacaoEstoque.deleteMany({ where: { produtoId } });
   await tx.alocacaoPartidaEstoque.deleteMany({ where: { movimentoEstoque: { produtoId } } });

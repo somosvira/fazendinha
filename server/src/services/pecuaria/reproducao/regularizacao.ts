@@ -16,12 +16,16 @@ export async function validarSubstitutoTx(tx: Prisma.TransactionClient, fatoTipo
   const fato = fatoTipo === "TentativaReprodutiva" ? await tx.tentativaReprodutiva.findFirst({ where })
     : fatoTipo === "AvaliacaoReprodutiva" ? await tx.avaliacaoReprodutiva.findFirst({ where })
     : fatoTipo === "AplicacaoProduto" ? await tx.aplicacaoProduto.findFirst({where})
-    : fatoTipo === "ExameAnimal" ? await tx.exameAnimal.findFirst({where}) : null;
+    : fatoTipo === "ExameAnimal" ? await tx.exameAnimal.findFirst({where}) : fatoTipo==="ManejoAnimal"?await tx.manejoAnimal.findFirst({where}):null;
   if(!fato) throw new RebanhoError("VALIDACAO", "Substituto deve ser fato válido do mesmo tipo, animal, sítio e data", "fatoId");
   if(fatoTipo === "TentativaReprodutiva") {
     const anterior = anteriorId ? await tx.tentativaReprodutiva.findUnique({where:{id:anteriorId}}) : null;
     if(anterior && "tipo" in fato && anterior.tipo !== fato.tipo)
       throw new RebanhoError("VALIDACAO", "Substituto deve preservar o tipo da tentativa original", "fatoId");
+  }
+  if(fatoTipo==="ManejoAnimal"){
+    const original=anteriorId?await tx.manejoAnimal.findUnique({where:{id:anteriorId}}):null;
+    if(!original||!("tipo" in fato)||!("insercaoAplicacaoId" in fato)||fato.tipo!==original.tipo||fato.insercaoAplicacaoId!==original.insercaoAplicacaoId)throw new RebanhoError("VALIDACAO","Substituto deve conservar ação e inserção do manejo original","fatoId");
   }
   return fato;
 }
@@ -40,9 +44,10 @@ export async function listarSubstitutosTx(tx: Prisma.TransactionClient, fatoTipo
   const original = fatoTipo === "TentativaReprodutiva" ? await tx.tentativaReprodutiva.findFirst({ where: { id: anteriorId, animalId, propriedadeId } })
     : fatoTipo === "AvaliacaoReprodutiva" ? await tx.avaliacaoReprodutiva.findFirst({ where: { id: anteriorId, animalId, propriedadeId } })
     : fatoTipo === "AplicacaoProduto" ? await tx.aplicacaoProduto.findFirst({ where: { id: anteriorId, animalId, propriedadeId } })
-    : fatoTipo === "ExameAnimal" ? await tx.exameAnimal.findFirst({ where: { id: anteriorId, animalId, propriedadeId } }) : null;
+    : fatoTipo === "ExameAnimal" ? await tx.exameAnimal.findFirst({ where: { id: anteriorId, animalId, propriedadeId } }) : fatoTipo==="ManejoAnimal"?await tx.manejoAnimal.findFirst({where:{id:anteriorId,animalId,propriedadeId}}):null;
   if (!original) return [];
   const where = { animalId, propriedadeId, data: original.data, status: "VALIDO" as const };
+  if(fatoTipo==="ManejoAnimal"&&"tipo" in original&&"insercaoAplicacaoId" in original)return(await tx.manejoAnimal.findMany({where:{...where,tipo:original.tipo,insercaoAplicacaoId:original.insercaoAplicacaoId,vinculosTarefa:{none:{}}},orderBy:[{criadoEm:"desc"},{id:"asc"}],take:10,select:{id:true,tipo:true,data:true,responsavel:true}})).map(m=>({id:m.id,descricao:`${m.tipo} · ${m.data.toISOString().slice(0,10)}${m.responsavel?` · ${m.responsavel}`:""}`}));
   const data = original.data.toISOString().slice(0, 10);
   if (fatoTipo === "TentativaReprodutiva" && "tipo" in original) return (await tx.tentativaReprodutiva.findMany({ where: { ...where, tipo: original.tipo }, select: { id: true, tipo: true, responsavel: true }, orderBy: { criadoEm: "desc" } })).map(f => ({ id: f.id, descricao: `${f.tipo} · ${data}${f.responsavel ? ` · ${f.responsavel}` : ""}` }));
   if (fatoTipo === "AvaliacaoReprodutiva") return (await tx.avaliacaoReprodutiva.findMany({ where, select: { id: true, resultado: true, anotacaoOriginal: true }, orderBy: { criadoEm: "desc" } })).map(f => ({ id: f.id, descricao: `${f.anotacaoOriginal || ({POSITIVO:"Positivo",NEGATIVO:"Negativo",RECONFIRMACAO:"Reconfirmação",SEXAGEM:"Sexagem",INCONCLUSIVO:"Inconclusivo",NAO_AVALIADO:"Não avaliado"} as Record<string,string>)[f.resultado] || f.resultado} · ${data}` }));

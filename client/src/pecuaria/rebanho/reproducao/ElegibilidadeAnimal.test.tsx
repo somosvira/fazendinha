@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 import { ConfiguracaoReprodutiva } from "./ConfiguracaoReprodutiva";
 import {
@@ -28,7 +28,12 @@ vi.mock("./elegibilidade-api", async (original) => ({
   decidirElegibilidade: vi.fn(),
   anularDecisao: vi.fn(),
 }));
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-22T00:14:00Z"));
+});
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   vi.clearAllMocks();
 });
@@ -41,9 +46,7 @@ const painel = {
   situacoesIniciais: [],
 } as PainelReprodutivo;
 it("consultar ciclo antigo não grava e vínculo exige revisão explícita da evidência", async () => {
-  const hoje = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date());
+  const hoje = new Intl.DateTimeFormat("en-CA").format(new Date());
   vi.mocked(consultarElegibilidade).mockResolvedValue({
     animalId: "a",
     propriedadeId: 1,
@@ -128,7 +131,7 @@ function elegibilidade(data: string): ElegibilidadeNaData {
   return { animalId: "a", propriedadeId: 1, dataReferencia: data, estado: "NAO_ELEGIVEL", baseElegivel: false, elegivel: false, aptaDesde: null, ciclo: { chaveCiclo: `PARTO:${data}`, inicioCiclo: data, partoId: `parto:${data}` }, vinculoCicloId: `vinculo:${data}`, politicaId: "politica", politicaVersao: 1, metodologia: "v1", decisaoId: null, motivos: ["DIAGNOSTICO_PENDENTE"], alertas: [], restricaoIds: [] };
 }
 it("consulta automaticamente hoje e mantém a decisão independente do filtro histórico", async () => {
-  const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+  const hoje = new Intl.DateTimeFormat("en-CA").format(new Date());
   vi.mocked(consultarElegibilidade).mockImplementation(async (_animal, _sitio, data) => elegibilidade(data));
   vi.mocked(decidirElegibilidade).mockRejectedValue(new Error("Falha transitória da decisão"));
   render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);

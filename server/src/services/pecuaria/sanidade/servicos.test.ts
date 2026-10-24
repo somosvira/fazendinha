@@ -5,6 +5,18 @@ import { validarAtribuicoesServico, type ProcedimentoServico } from "./servicos.
 const id = "a0300000-0000-4000-8000-000000000001";
 const fato = (patch: Partial<ProcedimentoServico> = {}): ProcedimentoServico => ({ id, tipo: "EXAME", animalId: id, animal: { id, brinco: "100", nome: "Bela" }, propriedade: { id: 1, nome: "Principal" }, nome: "Exame", dataHora: "2026-10-01T00:00:00Z", status: "VALIDO", origem: "MANUAL", valor: null, vinculado: true, podeEditar: true, execucaoId: null, operacaoServicoId: id, ...patch });
 describe("contrato de procedimentos de Serviço", () => {
+  it("inclui manejo e limita a consulta a dez procedimentos", () => {
+    expect(consultaProcedimentosServicoSchema.parse({ tipo: "MANEJO" }).limite).toBe(10);
+    expect(consultaProcedimentosServicoSchema.safeParse({ limite: 11 }).success).toBe(false);
+    expect(confirmarProcedimentosServicoSchema.safeParse({ propriedadeId: 1, chaveIdempotencia: id, motivo: "Conferir manejo do protocolo", itens: [{ id, tipo: "MANEJO", valor: "0" }] }).success).toBe(true);
+  });
+
+  it("realização de manejo mantida após anulação conserva sua atribuição no Serviço", () => {
+    const manejo = fato({ tipo: "MANEJO", status: "ANULADO", realizacaoMantida: true, valor: "80" });
+    expect(() => validarAtribuicoesServico([manejo, fato({ valor: "21" })], new Prisma.Decimal(100))).toThrow(/ultrapassam/);
+    expect(validarAtribuicoesServico([manejo, fato({ valor: "20" })], new Prisma.Decimal(100)).toString()).toBe("100");
+  });
+
   it("mantém valor omitido distinto de vazio e zero explícito", () => {
     for (const item of [{ id, tipo: "EXAME" }, { id, tipo: "EXAME", valor: null }, { id, tipo: "EXAME", valor: "0" }]) {
       const result = confirmarProcedimentosServicoSchema.parse({ propriedadeId: 1, chaveIdempotencia: id, motivo: "Conferir atendimento", itens: [item] });

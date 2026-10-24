@@ -14,20 +14,20 @@ import { TabelaFinanceira, Pill } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { Paginacao } from "../ui";
 import type { FatoReprodutivo } from "./api";
-import type { ProgramacaoIatf } from "./Iatf";
+import { OrigensFatoProtocolo } from "../protocolos/OrigensFatoProtocolo";
 
 export type FatoHistorico = FatoReprodutivo & { grupo: string; chaveHistorico?: string };
 export const rotulosReprodutivos: Record<string, string> = { VAZIA: "Vazia", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", POSITIVO: "Positivo", NEGATIVO: "Negativo", INCONCLUSIVO: "Inconclusivo", IA: "Inseminação artificial", TE: "Transferência de embrião", COBERTURA: "Cobertura", NAO_AVALIADO: "Não avaliado", ABORTO: "Aborto registrado", NASCIMENTO: "Nascimento", NATIMORTO: "Natimorto", NORMAL: "Parto", DISTOCICO: "Parto distócico", PARTO_DISTOCICO: "Parto distócico", PARTO_NORMAL: "Parto normal", GESTACAO_ENCERRADA_PARTO: "Gestação encerrada pelo parto", GESTACAO_ENCERRADA_PERDA: "Gestação encerrada por perda", PERDA: "Perda gestacional", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem", ANULADO: "Anulado", ENCERRADA: "Encerrada", ATIVA: "Confirmada" };
 const filtros = [["Todos", ""], ["Tentativas", "Tentativa"], ["Avaliações", "Avaliação"], ["Gestações e perdas", "Gestação"], ["Partos", "Parto"], ["Restrições", "Restrição"], ["Situações iniciais", "Situação inicial"]] as const;
 export function tituloFato(f: FatoHistorico) { return f.grupo === "Tentativa" ? rotulosReprodutivos[f.tipo ?? ""] ?? "Tentativa" : f.grupo === "Parto" ? rotulosReprodutivos[f.desfecho ?? f.tipo ?? ""] ?? "Parto" : f.grupo; }
-export function HistoricoReprodutivo({ fatos, programacoes, origemDisponivel = true, onAbrir }: { fatos: FatoHistorico[]; programacoes: ProgramacaoIatf[]; origemDisponivel?: boolean; onAbrir: (fato: FatoHistorico) => void }) {
+export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir }: { fatos: FatoHistorico[]; animalId: string; propriedadeId?: number; onAbrir: (fato: FatoHistorico) => void }) {
   const periodo = useRef<HTMLDivElement>(null);
   const [tipos, setTipos] = useState<string[]>(()=>new URLSearchParams(window.location.search).getAll("historicoTipos"));
   const [inicio, setInicio] = useState<string | null>(()=>new URLSearchParams(window.location.search).get("historicoInicio"));
   const [fim, setFim] = useState<string | null>(()=>new URLSearchParams(window.location.search).get("historicoFim"));
   const [pagina, setPagina] = useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("historicoPagina"))||1)));
-  const [tamanho, setTamanho] = useState(()=>{const valor=Number(new URLSearchParams(window.location.search).get("historicoTamanho"));return [5,10,20,50].includes(valor)?valor:10;});
-  useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setTipos(p.getAll("historicoTipos"));setInicio(p.get("historicoInicio"));setFim(p.get("historicoFim"));setPagina(Math.max(1,Math.floor(Number(p.get("historicoPagina"))||1)));const n=Number(p.get("historicoTamanho"));setTamanho([5,10,20,50].includes(n)?n:10);};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
+  const [tamanho, setTamanho] = useState(()=>{const valor=Number(new URLSearchParams(window.location.search).get("historicoTamanho"));return [5,10].includes(valor)?valor:10;});
+  useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setTipos(p.getAll("historicoTipos"));setInicio(p.get("historicoInicio"));setFim(p.get("historicoFim"));setPagina(Math.max(1,Math.floor(Number(p.get("historicoPagina"))||1)));const n=Number(p.get("historicoTamanho"));setTamanho([5,10].includes(n)?n:10);};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
   useEffect(()=>{const u=new URL(window.location.href);["historicoTipos","historicoInicio","historicoFim","historicoPagina","historicoTamanho"].forEach(k=>u.searchParams.delete(k));tipos.forEach(t=>u.searchParams.append("historicoTipos",t));if(inicio!=null)u.searchParams.set("historicoInicio",inicio);if(fim!=null)u.searchParams.set("historicoFim",fim);if(pagina>1)u.searchParams.set("historicoPagina",String(pagina));if(tamanho!==10)u.searchParams.set("historicoTamanho",String(tamanho));window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[tipos,inicio,fim,pagina,tamanho]);
   const hoje = getHojeISO();
   const primeiro = [...fatos].filter(f => f.data && f.data.slice(0, 10) <= hoje).sort((a,b) => a.data.localeCompare(b.data))[0]?.data.slice(0,10) ?? "";
@@ -43,7 +43,7 @@ export function HistoricoReprodutivo({ fatos, programacoes, origemDisponivel = t
   const selecionados = invalido ? [] : fatos.filter(f => `${tituloFato(f)} ${f.resultado??""} ${f.status??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!tipos.length || tipos.includes(f.grupo)) && (!f.data ? inicio == null && fim == null : (!de || f.data.slice(0,10) >= de) && (!ate || f.data.slice(0,10) <= ate)));
   const totalPaginas = Math.max(1, Math.ceil(selecionados.length / tamanho));
   const paginaAtual = Math.min(pagina, totalPaginas);
-  const origem = (f: FatoHistorico) => { if (!origemDisponivel) return "Vínculo não consultado"; const g = programacoes.filter(g => g.participantes.some(p => p.tarefas.some(t => [t.tentativaId, t.avaliacaoId, t.fatoId].includes(f.id) || !!f.exame && [t.avaliacaoId, t.fatoId].includes(f.exame.id)))); return g.length ? g.map(g => g.protocolo ? `${g.protocolo.nome} · v${g.protocolo.versao} · ${g.nome}` : g.nome).join("; ") : "Sem vínculo registrado"; };
+
   return <div className="repro-historico">
     <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={erroFiltro} criterios={tipos.map(t=>({id:t,rotulo:filtros.find(([,v])=>v===t)?.[0]??"Tipo selecionado",limpar:()=>{setTipos(v=>v.filter(x=>x!==t));setPagina(1);}}))}>
       <BuscaLista rotulo="Buscar evento" placeholder="Evento ou resultado" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
@@ -53,12 +53,12 @@ export function HistoricoReprodutivo({ fatos, programacoes, origemDisponivel = t
     <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao,erroFiltro)} rotulo="Histórico reprodutivo" itens={selecionados.slice((paginaAtual-1)*tamanho, paginaAtual*tamanho)} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
       { chave: "data", titulo: "Data", principal: true, celula: f => f.data ? formatBRDateISO(f.data) : "Não informada" },
       { chave: "evento", titulo: "Evento", larguraFlexivel: true, celula: tituloFato },
-      { chave: "protocolo", titulo: "Protocolo / programação", celula: origem },
+      { chave: "protocolo", titulo: "Protocolo / programação", celula: f => f.grupo === "Tentativa" || f.grupo === "Avaliação" ? <OrigensFatoProtocolo animalId={animalId} fatoId={f.id} exameId={f.exame?.id} propriedadeId={propriedadeId}/> : "Sem vínculo registrado" },
       { chave: "resultado", titulo: "Resultado", celula: f => <Pill>{f.status === "ANULADO" ? "Anulado" : f.grupo === "Tentativa" ? rotulosReprodutivos[f.resultado ?? ""] ?? "Consultar avaliações" : rotulosReprodutivos[f.resultado ?? f.desfecho ?? f.tipo ?? ""] ?? (f.motivo ? "Encerramento registrado" : "Registrado")}</Pill> },
       { chave: "acao", titulo: "Ação", acoes: true, celula: f => <Button variant="outline" size="sm" onClick={() => f.grupo === "Parto" ? navegarPara(`/pecuaria/reproducao/partos/${f.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search+window.location.hash)}${f.propriedadeId != null ? `&sitio=${f.propriedadeId}` : ""}`) : onAbrir(f)}>Ver detalhes</Button> },
     ]}/>
     {!selecionados.length && <p className="p-4 text-ink-3">Nenhum evento registrado neste período e tipo.</p>}
-    {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10,20,50].map(n => <option key={n}>{n}</option>)}</select></label></div>
+    {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
     <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/></>}
   </div>;
 }

@@ -100,9 +100,11 @@ export interface ProdutoInput {
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];
-  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null };
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null; orientacaoUso?: string | null; tipoAplicacaoId?: string | null };
   perfilNutricional?: { materiaSecaPercentual: number | null };
 }
+export type TipoAplicacaoSanitariaProduto = { id: string; nome: string; ativo: boolean };
+export const listarTiposAplicacaoSanitarios = (f: { pagina: number; porPagina?: number; busca?: string; selecionadoId?: string }) => req<{ itens: TipoAplicacaoSanitariaProduto[]; total: number; pagina: number; porPagina: number }>(`/estoque/tipos-aplicacao-sanitarios${qs({ ...f, porPagina: 10 })}`);
 export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });

@@ -9,6 +9,7 @@ import {
   isNovoAnimalRebanho,
   isNovoRelatorioFinanceiro,
   isSubrotaFinanceira,
+  isSubrotaPecuaria,
   isSubrotaRebanho,
   URL_NOVA_OPERACAO,
   parseAnimalId,
@@ -225,4 +226,13 @@ it("relatórios pecuários têm área própria e política antiga mantém filtro
   expect(pathToTab("/pecuaria/relatorios")).toBe("pec-relatorios");
   expect(tabToPath("pec-relatorios")).toBe("/pecuaria/relatorios");
   expect(normalizarRotaPecuaria("/pecuaria/reproducao?rotina=configuracao&sitio=7#historico")).toBe("/configuracoes/pecuaria/reproducao/politica?sitio=7#historico");
+});
+
+
+describe("rotas individuais dos protocolos", () => {
+  it("mantém a área sanitária e reprodutiva no detalhe da participação", () => {
+    expect(pathToTab(`/pecuaria/sanidade/participacoes/${uid(601)}`)).toBe("pec-sanidade");
+    expect(pathToTab(`/pecuaria/reproducao/participacoes/${uid(602)}`)).toBe("pec-reproducao");
+    expect(isSubrotaPecuaria("pec-sanidade", `/pecuaria/sanidade/participacoes/${uid(601)}`)).toBe(true);
+  });
 });

@@ -1,8 +1,10 @@
+import { executarComGuardaNavegacao } from "../navegacaoGuardada";
+import { PaginaCadastroProtocolo } from "../pecuaria/rebanho/protocolos/PaginaCadastroProtocolo";
 import { ConfiguracaoReprodutiva } from "../pecuaria/rebanho/reproducao/ConfiguracaoReprodutiva";
 import { ConsultaPorSitio } from "../pecuaria/rebanho/reproducao/ConsultaPorSitio";
 import { Iatf } from "../pecuaria/rebanho/reproducao/Iatf";
 import { RegrasSanitarias } from "../pecuaria/rebanho/reproducao/RegrasSanitarias";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Beef, Dna, HeartPulse, Leaf, ChevronRight } from "lucide-react";
 import { navegarPara } from "../router";
 import { Cadastros, type AbaCadastroRebanho } from "../pecuaria/rebanho/telas/Cadastros";
@@ -24,12 +26,25 @@ function LinkCadastro({ href, children }: { href: string; children: React.ReactN
 
 /** Agrupa os cadastros existentes sem recriar seus formulários nem contratos. */
 export function ConfiguracoesPecuaria({ podeLancar }: { podeLancar: boolean }) {
- const [path, setPath] = useState(window.location.pathname);
+ const [localizacao, setLocalizacao] = useState(() => window.location.pathname + window.location.search);
+ const path = localizacao.split("?")[0];
  const [busca, setBusca] = useState("");
- useEffect(() => { const sync = () => setPath(window.location.pathname); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
+ const localizacaoAtual = useRef(localizacao);
+ useEffect(() => {
+   const sync = () => {
+     const seguinte = window.location.pathname + window.location.search;
+     const anterior = localizacaoAtual.current;
+     if (seguinte === anterior) return;
+     const resultado = executarComGuardaNavegacao(() => { localizacaoAtual.current = seguinte; setLocalizacao(seguinte); });
+     if (resultado) void resultado.then(ok => { if (!ok) window.history.replaceState(window.history.state, "", anterior); });
+   };
+   window.addEventListener("popstate", sync);
+   return () => window.removeEventListener("popstate", sync);
+ }, []);
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);
  const item = grupo?.itens.find(i => i.id === partes[3]);
+ if (item?.id === "protocolos" && (grupo?.id === "sanidade" || grupo?.id === "reproducao") && partes[4] === "novo") return <PaginaCadastroProtocolo key={localizacao} tipo={grupo.id === "sanidade" ? "SANITARIO" : "REPRODUTIVO"} podeLancar={podeLancar} />;
  if (item && grupo && !("href" in item)) return <>
    <nav className="pec-config-caminho" aria-label="Cadastros da Pecuária"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden="true" /><span>{grupo.nome}</span></nav>
    {"rebanho" in item ? <Cadastros key={item.id} cadastro={item.rebanho} embutido podeLancar={podeLancar} /> : "sanitario" in item ? <CadastrosSanitarios key={item.id} cadastro={item.sanitario} embutido podeLancar={podeLancar} /> : "reproducao" in item ? item.reproducao === "politica" ? <><h1 className="mb-5 text-2xl font-semibold">Política reprodutiva</h1><ConsultaPorSitio>{id => <ConfiguracaoReprodutiva key={id} propriedadeId={id} podeLancar={podeLancar}/>}</ConsultaPorSitio></> : item.reproducao === "protocolos" ? <Iatf modo="cadastros" podeLancar={podeLancar} /> : item.reproducao === "regras" ? <RegrasSanitarias podeEditar={podeLancar} /> : <CadastrosSanitarios cadastro="exame" contextoExames="REPRODUTIVO" embutido podeLancar={podeLancar} /> : null}

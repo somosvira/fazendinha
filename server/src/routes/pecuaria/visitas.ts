@@ -9,6 +9,7 @@ import {
 } from "./escopo-custos.js";
 import * as s from "../../services/pecuaria/reproducao/schemas.js";
 import * as visitas from "../../services/pecuaria/reproducao/visitas.js";
+import { resumoVisita, listarParticipantesAtividade, obterParticipanteVisita, obterImpressaoVisita } from "../../services/pecuaria/reproducao/visitas-consultas.js";
 import {
   validarV4,
   falhaV4,
@@ -103,7 +104,7 @@ export const visitasRouter = new Hono()
       return c.json(
         apresentarV4(
           c,
-          await visitas.detalheVisita(
+          c.req.query("resumo")==="true" ? await resumoVisita(s.uuid.parse(c.req.param("id")),await resolverEscopoLeitura(c)) : await visitas.detalheVisita(
             c.req.param("id"),
             await resolverEscopoLeitura(c),
           ),
@@ -240,19 +241,32 @@ visitasRouter.get("/:id/atividades/:atividadeId/previa", async (c) => {
         c.req.param("id"),
         c.req.param("atividadeId"),
         await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId"))),
+        {...Object.fromEntries(Object.entries(c.req.query()).filter(([k])=>k!=="propriedadeId"&&k!=="participanteId")),...(c.req.queries("participanteId")?.length?{participanteIds:c.req.queries("participanteId")}:{})},
       ),
     );
   } catch (e) {
     return falhaV4(c, e);
   }
 });
+visitasRouter.get("/:id/atividades/:atividadeId/confirmacoes/:chave",async c=>{
+  try{const {propriedadeId:_sitio,...consulta}=c.req.query();return c.json(await visitas.obterConfirmacaoVisita(c.req.param("id"),c.req.param("atividadeId"),c.req.param("chave"),await resolverEscopoEscrita(c,Number(c.req.query("propriedadeId"))),usuarioV4(c),consulta));}catch(e){return falhaV4(c,e);}
+});
 
+visitasRouter.get("/:id/atividades/:atividadeId/participantes",async c=>{
+ try {const {motivo:_motivo,propriedadeId:_sitio,...query}=c.req.query();return c.json(apresentarV4(c,await listarParticipantesAtividade(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("atividadeId")),await resolverEscopoLeitura(c),{...query,motivos:c.req.queries("motivo")??[]})));} catch(e){return falhaV4(c,e);}
+});
+visitasRouter.get("/:id/impressoes/:impressaoId",async c=>{
+ try{return c.json(apresentarV4(c,await obterImpressaoVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("impressaoId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
+});
+visitasRouter.get("/:id/participantes/:participanteId",async c=>{
+ try{return c.json(apresentarV4(c,await obterParticipanteVisita(s.uuid.parse(c.req.param("id")),s.uuid.parse(c.req.param("participanteId")),await resolverEscopoLeitura(c))));}catch(e){return falhaV4(c,e);}
+});
 visitasRouter.post("/:id/participantes/:participanteId/regularizacao",validarV4(s.regularizacaoSchema),async c=>{
   try{const b=c.req.valid("json");return c.json(apresentarV4(c,await visitas.regularizarParticipanteVisita(c.req.param("id"),c.req.param("participanteId"),{...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c))));}catch(e){return falhaV4(c,e);}
 });
 
 visitasRouter.get("/:id/participantes/:participanteId/substitutos", async c => {
-  try { return c.json(await visitas.substitutosParticipanteVisita(s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined))); }
+  try {const {paginado,propriedadeId:_sitio,...consulta}=c.req.query(); return c.json(await visitas.substitutosParticipanteVisita(s.uuid.parse(c.req.param("id")), s.uuid.parse(c.req.param("participanteId")), await resolverEscopoEscrita(c, Number(c.req.query("propriedadeId")) || undefined),paginado==="true"?consulta:undefined)); }
   catch (e) { return falhaV4(c, e); }
 });
 

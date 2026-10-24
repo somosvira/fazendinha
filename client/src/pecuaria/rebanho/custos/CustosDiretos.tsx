@@ -15,7 +15,7 @@ type Props = { fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; links
 
 export function CustosDiretos(props: Props) {
   // Uma nova identidade inicia filtros e rascunhos próprios, sem herdar o sítio anterior.
-  const chave = JSON.stringify([props.propriedadeId, props.animalId, props.tentativaId, props.participacaoId, props.aplicacaoId, props.exameId, props.programacaoId, props.finalidadeInicial]);
+  const chave = JSON.stringify([props.propriedadeId, props.animalId, props.tentativaId, props.participacaoId, props.aplicacaoId, props.exameId, props.manejoId, props.programacaoId, props.finalidadeInicial]);
   return <ComposicaoCustos key={chave} {...props} />;
 }
 
@@ -32,18 +32,20 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
   const fim = periodo.end ? isoDate(periodo.end) : "";
   const [finalidade, setFinalidade] = useState<string>(finalidadeInicial ?? "");
   const [pagina, setPagina] = useState(1);
+  const [fontesPagina,setFontesPagina]=useState(1);
+  const [preparosPagina,setPreparosPagina]=useState(1);
   const [atualizacao, setAtualizacao] = useState(0);
   const [motivo, setMotivo] = useState("");
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const usuario = getUsuario();
   const podeEditar = podeLancar && !!usuario && temAcessoArea(usuario.areas, "financeiro", !!usuario.dono) && (!!usuario.dono || usuario.flags.includes("verValores"));
-  const { animalId, tentativaId, participacaoId, aplicacaoId, exameId, programacaoId } = escopo;
-  const identidade = JSON.stringify([propriedadeId, animalId, tentativaId, participacaoId, aplicacaoId, exameId, programacaoId]);
+  const { animalId, tentativaId, participacaoId, aplicacaoId, exameId, manejoId, programacaoId } = escopo;
+  const identidade = JSON.stringify([propriedadeId, animalId, tentativaId, participacaoId, aplicacaoId, exameId, manejoId, programacaoId]);
   const contextoAtual = useRef({ identidade });
   if (contextoAtual.current.identidade !== identidade) contextoAtual.current = { identidade };
   const contexto = contextoAtual.current;
   const sequencia = useRef(0);
-  const consulta = JSON.stringify([identidade, inicio, fim, pagina, finalidade]);
+  const consulta = JSON.stringify([identidade, inicio, fim, pagina, finalidade,fontesPagina,preparosPagina]);
   const bruto = respostaIdentidade === consulta ? resposta : null;
   const dados = bruto ? { ...bruto, componentes: bruto.componentes.map(c => ({ ...c, descricao: descricaoCusto(c.descricao) })), fontes: bruto.fontes.map(f => ({ ...f, descricao: descricaoCusto(f.descricao) })), atribuicoesPreparos: bruto.atribuicoesPreparos.map(a => ({ ...a, descricao: descricaoCusto(a.descricao) })) } : null;
 
@@ -53,7 +55,7 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     setResposta(null);
     setErro("");
     try {
-      const r = await obterCustos({ animalId, tentativaId, participacaoId, aplicacaoId, exameId, programacaoId }, propriedadeId, inicio, fim, pagina, finalidade);
+      const r = await obterCustos({ animalId, tentativaId, participacaoId, aplicacaoId, exameId, manejoId, programacaoId }, propriedadeId, inicio, fim, pagina, finalidade,fontesPagina,preparosPagina);
       if (contexto === contextoAtual.current && pedido === sequencia.current) {
         setResposta(r);
         setRespostaIdentidade(consulta);
@@ -67,11 +69,11 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     } finally {
       if (contexto === contextoAtual.current && pedido === sequencia.current) setCarregando(false);
     }
-  }, [animalId, tentativaId, participacaoId, aplicacaoId, exameId, programacaoId, propriedadeId, inicio, fim, pagina, finalidade, contexto, consulta]);
+  }, [animalId, tentativaId, participacaoId, aplicacaoId, exameId, manejoId, programacaoId, propriedadeId, inicio, fim, pagina, finalidade,fontesPagina,preparosPagina, contexto, consulta]);
 
   useEffect(() => { void carregar(); return () => { sequencia.current += 1; }; }, [carregar, atualizacao]);
   useEffect(() => {
-    setMotivo(""); setErro(""); setOcupado(false); setPagina(1); setChave(crypto.randomUUID());
+    setFontesPagina(1);setPreparosPagina(1);setMotivo(""); setErro(""); setOcupado(false); setPagina(1); setChave(crypto.randomUUID());
   }, [identidade]);
 
   const alterar = () => setChave(crypto.randomUUID());
@@ -117,9 +119,9 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     {erroPeriodo && <p role="alert" className="text-destructive">{erroPeriodo}</p>}
     {carregando && <p role="status">Consultando custos…</p>}
     {erro && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button secondary disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
-    {dados && visivel && <ResumoCustosDiretos fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} />}
+    {dados && visivel && <ResumoCustosDiretos fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
     {/* Os editores conservam rascunhos durante a recarga e reiniciam ao trocar o alvo/sítio. */}
-    <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
-    {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}
+    <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
+    {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} aoMudarPaginaVinculos={setPreparosPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}
   </section>;
 }

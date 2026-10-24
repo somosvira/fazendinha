@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { listarCadastrosProtocolos, type CadastroProtocoloMeta, type PaginaCadastro } from "../protocolos/cadastros-api";
 import {
   act,
   cleanup,
@@ -8,10 +9,14 @@ import {
   waitFor,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Iatf, type ProgramacaoIatf, type ProtocoloIatf } from "./Iatf";
+import { Iatf, type ProgramacaoIatf } from "./Iatf";
 import { reqV4 } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { obterCabecalhoProtocolo, reqProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
+vi.mock("../protocolos/cadastros-api", () => ({ listarCadastrosProtocolos: vi.fn() }));
 vi.mock("./api", () => ({ reqV4: vi.fn() }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn(), obterCabecalhoProtocolo: vi.fn(), obterEtapasProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));
 vi.mock("./BibliotecaReprodutiva", () => ({
   BibliotecaReprodutiva: () => null,
 }));
@@ -31,12 +36,12 @@ function pendente<T>() {
   });
   return { promessa, resolver, rejeitar };
 }
-const protocolo: ProtocoloIatf = {
+const protocolo: CadastroProtocoloMeta = {
+  tipo: "REPRODUTIVO", ativo: true, descricao: null, publicadoEm: "2026-10-01", atualizadoEm: "2026-10-21T12:00:00.000Z", totalEtapas: 0, utilizada: false,
   id: "protocolo",
   nome: "Protocolo confirmado",
   versao: 1,
   publicado: true,
-  etapas: [],
 };
 const programacao: ProgramacaoIatf = {
   id: "programacao",
@@ -46,38 +51,45 @@ const programacao: ProgramacaoIatf = {
   status: "ABERTA",
   participantes: [],
 };
+const cabecalho = (p: ProgramacaoIatf): CabecalhoProtocolo => ({ id: p.id, nome: p.nome, status: p.status, tipo: "REPRODUTIVO", modo: "COLETIVO", protocolo: { id: p.protocoloId, nome: "Protocolo", versao: 1 }, inicioReferencia: p.inicioPrevisto, precisaoTemporal: "DIA", participantesTotal: p.participantes.length, propriedadeId: null, animal: null, contagens: { total: 0, atendidos: 0, pendentes: 0, atrasadas: 0, naoAtendidos: 0, adiados: 0, semRegistro: 0, previstos: 0, regularizacoes: 0, encerradas: 0 } });
+const paginaCatalogo = (itens: CadastroProtocoloMeta[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10 });
+const paginaProgramacoes = (itens: ProgramacaoIatf[]) => ({ itens: itens.map(cabecalho), total: itens.length, pagina: 1, porPagina: 10 });
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", "/pecuaria/reproducao");
   vi.mocked(reqV4).mockResolvedValue([]);
+  vi.mocked(listarCadastrosProtocolos).mockResolvedValue(paginaCatalogo([]));
+  vi.mocked(reqProtocolo).mockResolvedValue(paginaProgramacoes([]));
+  vi.mocked(obterCabecalhoProtocolo).mockResolvedValue(cabecalho(programacao));
 });
 afterEach(() => {
   cleanup();
   setPropriedadeAtiva(null);
 });
 it("não declara protocolos ausentes enquanto aguarda a primeira consulta", async () => {
-  const leitura = pendente<ProtocoloIatf[]>();
-  vi.mocked(reqV4).mockReturnValue(leitura.promessa);
+  const leitura = pendente<PaginaCadastro<CadastroProtocoloMeta>>();
+  vi.mocked(listarCadastrosProtocolos).mockReturnValue(leitura.promessa);
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
   expect(screen.getByRole("status").textContent).toBe("Carregando protocolos…");
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
-  await act(async () => leitura.resolver([protocolo]));
+  await act(async () => leitura.resolver(paginaCatalogo([protocolo])));
   expect(
     screen.getByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeTruthy();
   expect(screen.queryByText("Carregando protocolos…")).toBeNull();
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
 });
 it("distingue erro de catálogo vazio e retry recupera os protocolos", async () => {
-  const leitura = pendente<ProtocoloIatf[]>();
-  vi.mocked(reqV4)
+  const leitura = pendente<PaginaCadastro<CadastroProtocoloMeta>>();
+  vi.mocked(listarCadastrosProtocolos)
     .mockReturnValueOnce(leitura.promessa)
-    .mockResolvedValueOnce([protocolo]);
+    .mockResolvedValueOnce(paginaCatalogo([protocolo]));
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
   await act(async () =>
     leitura.rejeitar(new Error("Falha ao consultar protocolos")),
@@ -86,47 +98,41 @@ it("distingue erro de catálogo vazio e retry recupera os protocolos", async () 
     "Falha ao consultar protocolos",
   );
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
   await screen.findByRole("heading", { name: /Protocolo confirmado/ });
   expect(screen.queryByRole("alert")).toBeNull();
-  expect(reqV4).toHaveBeenNthCalledWith(
-    2,
-    "/reproducao/protocolos?propriedadeId=1",
-    undefined,
-    "POST",
-    1,
-  );
+  expect(listarCadastrosProtocolos).toHaveBeenNthCalledWith(2, "REPRODUTIVO", 1, "", "ATIVA");
 });
 it("sucesso vazio orienta cadastro somente ao perfil autorizado", async () => {
   const { rerender } = render(
     <Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />,
   );
-  await screen.findByText("Nenhum protocolo reprodutivo cadastrado.");
+  await screen.findByText("Nenhum protocolo encontrado.");
   expect(
-    screen.queryByRole("button", { name: "Novo protocolo reprodutivo" }),
+    screen.queryByRole("button", { name: "Novo protocolo" }),
   ).toBeNull();
   expect(
-    screen.getByText(/cadastro e a publicação exigem permissão/),
+    screen.getByText(/Revise a busca ou inclua os protocolos inativos/),
   ).toBeTruthy();
   rerender(<Iatf modo="cadastros" propriedadeId={1} podeLancar />);
   expect(
-    screen.getByRole("button", { name: "Novo protocolo reprodutivo" }),
+    screen.getByRole("button", { name: "Novo protocolo" }),
   ).toBeTruthy();
   expect(
-    screen.getByText(/copie uma referência da biblioteca como rascunho/),
+    screen.getByText(/Revise a busca ou inclua os protocolos inativos/),
   ).toBeTruthy();
 });
 it("atualização conserva protocolos confirmados durante carregamento e falha", async () => {
-  const atualizacao = pendente<ProtocoloIatf[]>();
-  vi.mocked(reqV4)
-    .mockResolvedValueOnce([protocolo])
+  const atualizacao = pendente<PaginaCadastro<CadastroProtocoloMeta>>();
+  vi.mocked(listarCadastrosProtocolos)
+    .mockResolvedValueOnce(paginaCatalogo([protocolo]))
     .mockReturnValueOnce(atualizacao.promessa)
-    .mockResolvedValueOnce([]);
+    .mockResolvedValueOnce(paginaCatalogo([]));
   render(<Iatf modo="cadastros" propriedadeId={1} podeLancar={false} />);
   await screen.findByRole("heading", { name: /Protocolo confirmado/ });
-  fireEvent.click(screen.getByRole("button", { name: "Atualizar protocolos" }));
+  fireEvent.change(screen.getByRole("searchbox",{name:"Buscar protocolos"}),{target:{value:"confirmado"}});
   expect(
     screen.getByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeTruthy();
@@ -140,10 +146,10 @@ it("atualização conserva protocolos confirmados durante carregamento e falha",
     screen.getByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeTruthy();
   expect(
-    screen.queryByText("Nenhum protocolo reprodutivo cadastrado."),
+    screen.queryByText("Nenhum protocolo encontrado."),
   ).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  await screen.findByText("Nenhum protocolo reprodutivo cadastrado.");
+  await screen.findByText("Nenhum protocolo encontrado.");
   expect(
     screen.queryByRole("heading", { name: /Protocolo confirmado/ }),
   ).toBeNull();
@@ -152,19 +158,7 @@ it.each(["resolver", "rejeitar"] as const)(
   "troca de sítio ignora lista anterior ao %s fora de ordem",
   async (desfecho) => {
     const antiga = pendente<ProgramacaoIatf[]>();
-    vi.mocked(reqV4).mockImplementation(async (path) =>
-      path.startsWith("/reproducao/protocolos")
-        ? []
-        : path.endsWith("propriedadeId=1")
-          ? antiga.promessa
-          : [
-              {
-                ...programacao,
-                id: "nova",
-                nome: "Programação do sítio atual",
-              },
-            ],
-    );
+    vi.mocked(reqProtocolo).mockImplementation(async (_path, sitio) => paginaProgramacoes(sitio === 1 ? await antiga.promessa : [{ ...programacao, id: "nova", nome: "Programação do sítio atual" }]));
     const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
     expect(screen.queryByText(/Nenhuma programação/)).toBeNull();
     rerender(<Iatf propriedadeId={2} podeLancar={false} />);
@@ -195,13 +189,8 @@ it("programações vazias distinguem sítio e permissão, sem oferecer criação
 });
 it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", async () => {
   const antiga = pendente<ProgramacaoIatf>();
-  vi.mocked(reqV4).mockImplementation(async (path) =>
-    path.startsWith("/reproducao/protocolos")
-      ? []
-      : path.includes("/programacoes/programacao")
-        ? antiga.promessa
-        : [programacao],
-  );
+  vi.mocked(reqProtocolo).mockResolvedValue(paginaProgramacoes([programacao]));
+  vi.mocked(obterCabecalhoProtocolo).mockImplementation(async (_contexto, sitio) => sitio === 1 ? cabecalho(await antiga.promessa) : cabecalho(programacao));
   const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
   fireEvent.click(
     (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
@@ -212,9 +201,9 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
   rerender(<Iatf propriedadeId={2} podeLancar={false} />);
   await act(async () => antiga.rejeitar(new Error("Falha do sítio anterior")));
   expect(screen.queryByText("Falha do sítio anterior")).toBeNull();
-  vi.mocked(reqV4)
+  vi.mocked(obterCabecalhoProtocolo)
     .mockRejectedValueOnce(new Error("Falha no detalhe"))
-    .mockResolvedValueOnce(programacao);
+    .mockResolvedValueOnce(cabecalho(programacao));
   fireEvent.click(
     (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
   );
@@ -227,10 +216,5 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
       screen.getByRole("button", { name: "Fechar detalhes" }),
     ).toBeTruthy(),
   );
-  expect(vi.mocked(reqV4).mock.calls.at(-1)).toEqual([
-    "/reproducao/programacoes/programacao?propriedadeId=2",
-    undefined,
-    "POST",
-    2,
-  ]);
+  expect(obterCabecalhoProtocolo).toHaveBeenLastCalledWith({ programacaoId: "programacao" }, 2);
 });
