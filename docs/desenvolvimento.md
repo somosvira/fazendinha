@@ -77,6 +77,8 @@ O ambiente local consolidado tem somente **dois registros de sítio**, com a **F
 
 São 185 animais-base e cinco crias vivas, criados aditivamente. O guia **`server/.seedatev3/v4/guia.html`** contém o mapa dos brincos e links reais das fichas/visitas. Os cenários descrevem a preparação inicial; o usuário pode evoluí-los normalmente. Consultar a data-base do guia ao filtrar relatórios.
 
+A preparação V4 passa a origem explícita nas retiradas. Nas participações demonstrativas já publicadas sem subtipo de inserção, o seed reconhece a única aplicação válida anterior da própria participação pelo serviço auditado, sem editar o modelo, criar aplicação ou repetir baixa. Origem ausente/ambígua interrompe a preparação; reconhecimento existente e tarefas concluídas no manifesto são preservados. A conferência de custos usa o limite vigente de dez componentes por página, conservando os totais integrais da consulta.
+
 O manifesto próprio `server/.seedatev3/v4/manifesto.json` congela a primeira data-base no Brasil e conserva IDs/ações/etapas. Reexecutar retoma sem restaurar resultados modificados pela interface. Manifesto ausente/corrompido, identidade incompatível, registro removido ou registros V4 sem manifesto impedem recriação silenciosa. `--verificar` usa conexões somente leitura; não escreve manifesto/guia nem aprova roteiros. `--interromper-apos=<etapa>` permite conferir a retomada sem desfazer dados.
 
 Históricos de material usam origem documentada, sem fabricar baixas retroativas; atendimentos atuais têm estoque próprio disponível. R2/anexos permanecem pendentes. Snapshots/impressões locais não comprovam arquivos R2; a massa não substitui homologação pela fazenda.

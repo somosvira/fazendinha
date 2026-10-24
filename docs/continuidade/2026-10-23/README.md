@@ -88,3 +88,17 @@ Antes de iniciar o servidor neste notebook, revisar a configuração privada: o 
 Para a próxima rodada de design, distinguir as telas recém-incorporadas de protocolos (cadastro/builder, catálogo de modelos e atendimento comum) das apresentações complementares desta branch: operações/relatórios em cartões, extrato em linha do tempo, distribuição de saldos, consultas sanitárias, histórico do animal, resumo de pesagens e vigências nutricionais. As tabelas alternativas e contratos operacionais continuam disponíveis. Definir o próximo escopo visual antes de implementar uma nova direção.
 
 A integração foi conferida com o build de ambos os workspaces, a suíte completa da interface e os testes de protocolos/sanidade/reprodução do servidor. Integrações que escrevem em PostgreSQL ficaram desativadas; não houve homologação no navegador nesta retomada.
+
+### Inicialização local autorizada — 24/10/2026
+
+Após autorização explícita do usuário, foi criado `fazendinha_seedatev3` no container PostgreSQL existente (porta 54332) e ajustadas as URLs privadas locais. As 55 migrations foram aplicadas sem pendências. Interface em 41875 e API em 41873 responderam; health e consulta de banco passaram também pelo proxy Vite.
+
+O seed mais recente integrado é `seedatev4`, complementar à base V3. A V5 existe em branch remota separada, sem seed V5 nesta árvore. A execução oficial da V3 parou na conferência inicial do R2 por credenciais locais de exemplo/incompatíveis; nenhum animal ou operação foi criado. O manifesto inicial deve ser preservado para retomar. Para concluir, configurar credenciais autorizadas de R2 em `server/.env` (namespace `dev`), executar `seedatev3`, depois `seedatev4` e suas verificações. Não considerar o cenário populado ou as telas homologadas só porque o health passou. Nenhum banco anterior foi removido ou alterado.
+
+### Cenário V4 disponível no notebook
+
+A configuração privada de R2 fornecida pelo usuário passou na conferência de armazenamento do seed; segredos permanecem somente no `.env` ignorado. A V3 criou catálogos, rebanho, financeiro e sanidade, mas parou na nutrição: após dois fechamentos de Novilhas até 10 e 24/09/2026, tenta inserir outro fechamento em 10/09 no mesmo produto/sítio, recusado pela cronologia de valorização. A base V3 continua parcial; não recebeu os arquivos, reposição atual e fechamento administrativo das etapas posteriores. Nenhum dado foi apagado para contornar a restrição. Não reaplicar a V3 neste cenário como se estivesse concluída.
+
+O complemento V4 foi concluído e sua conferência somente de leitura passou, com data-base 24/10/2026: 185 animais-base, cinco crias vivas, sete modelos, dez programações, cinco visitas e duas emissões locais. Foram corrigidas duas incompatibilidades do seed com a main: retirada com origem explícita/reconhecimento auditado e limite de consulta de custos atualizado. Testes cobrem reconhecimento, retomada e recusa de origem ausente/ambígua; typecheck do seed aprovado. A retirada não recria aplicação ou baixa.
+
+Interface/API estão em 41875/41873, e o health do banco passou pelo proxy. Login demonstrativo de dono e lista de animais conferidos no navegador. Selecionar `V4 · Fazenda Escola` para explorar os percursos V4. O guia local em `server/.seedatev3/v4/guia.html` foi gerado; seu texto de consolidação em dois sítios descreve outro ambiente e não esta instalação nova, que mantém Principal/Destino da V3 e os sítios próprios da V4. Upload/download R2 e homologação de todos os fluxos permanecem separados da conferência de acesso ao armazenamento.

@@ -32,9 +32,9 @@ export async function verificarInicial(c: Contexto) {
   assert.ok(await prisma.fornecimentoColostro.count({ where: { propriedadeId: sitio(c) } }) >= 8);
   const agenda = await prisma.atividadeVisita.findMany({ where: { visitaId: id(c, 'visita:Agenda — 120 diagnósticos') }, select: { id: true } });
   assert.equal(await prisma.participanteVisita.count({ where: { atividadeId: { in: agenda.map(a => a.id) }, status: 'PENDENTE' } }), 120);
-  const completo = await consultarCustos(sitio(c), { tentativaId: id(c, 'tentativa:1:1'), pagina: 1, limite: 100 }, true);
+  const completo = await consultarCustos(sitio(c), { tentativaId: id(c, 'tentativa:1:1'), pagina: 1, limite: 10 }, true);
   assert.equal(completo.situacao, 'COMPLETO');
-  const preparo = await consultarCustos(sitio(c), { tentativaId: id(c, 'tentativa:3:3'), pagina: 1, limite: 100 }, true);
+  const preparo = await consultarCustos(sitio(c), { tentativaId: id(c, 'tentativa:3:3'), pagina: 1, limite: 10 }, true);
   assert.equal(Number(preparo.totalConhecido), 60, 'Material documentado 50 + parcela explícita 10');
   const indicadores = await consultarIndicadoresReprodutivos({ propriedadeId: sitio(c), inicio: c.dias(-210), fim: c.dias(0), corte: c.dias(0), deslocamentoTeDias: 7, concepcaoEstimada: 50, janelaPerdaDias: 120 });
   assert.ok(indicadores.acompanhamento?.iep.pares.some(p => p.animalId === animal(c, 65) && p.dias === 410), 'IEP de 410 dias precisa vir de dois partos factuais');

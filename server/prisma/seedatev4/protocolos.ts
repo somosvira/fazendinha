@@ -1,3 +1,4 @@
+import { prepararRetiradaDemonstrativa } from './retirada.js';
 import { prisma } from '../../src/db.js';
 import * as iatf from '../../src/services/pecuaria/reproducao/iatf.js';
 import * as sanitario from '../../src/services/pecuaria/sanidade/protocolos.js';
@@ -59,11 +60,13 @@ async function executarAte(c: Contexto, programa: string, etapa: number) {
   const tarefas = await prisma.tarefaIatf.findMany({ where: { participanteId: { in: participantes }, etapa: { lte: etapa } },
     orderBy: [{ participanteId: 'asc' }, { etapa: 'asc' }] });
   for (const t of tarefas) {
+    if (c.manifesto.acoes.includes(ref(`executar:${t.id}`))) continue;
     let dados: Record<string, unknown> = { observacao: AVISO };
     if (t.tipo === 'APLICACAO') dados = {
       produtoId: id(c, 'produto:sanitario'), nomeProdutoAplicado: nomeV4('sanitario'), origemInsumo: 'BAIXA_ESTOQUE', dose: '2', unidadeDose: 'ML', via: 'Demonstrativa',
       tipoAplicacaoId: c.id('aplicacao:Tratamento'), estadoCarenciaLeite: 'INFORMADO', estadoCarenciaCarne: 'INFORMADO', carenciaLeiteHoras: 0, carenciaCarneHoras: 0, referenciaCarencia: AVISO,
     };
+    if (t.tipo === 'RETIRADA') dados = await prepararRetiradaDemonstrativa(c, t);
     if (t.tipo === 'TENTATIVA') dados = { tipo: 'IA', materialId: id(c, 'material:semen'), origem: 'DOCUMENTADA', justificativaSemOrigem: AVISO, quantidade: 1, observacao: AVISO };
     await acao(c, `executar:${t.id}`, () => iatf.executarTarefa(t.id, { chave: key(`executar:${t.id}`), propriedadeId: sitio(c), realizadaEm: t.previstaEm.toISOString().slice(0, 10), dados }, uid(c)));
   }
