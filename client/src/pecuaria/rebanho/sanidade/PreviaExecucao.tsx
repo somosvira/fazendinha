@@ -1,3 +1,4 @@
+import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
 type ExibicaoExecucao = { planejado: Record<string, string | null>; realizado: Record<string, string | null> };
 export type PreviaExecucao = {
@@ -21,18 +22,18 @@ function carenciaRevisada(estado: string, horas: number | null): string {
   if (estado === "INFORMADO" && horas != null) return `${horas} h`;
   return "Não informado";
 }
-export function ConferenciaExecucao({ previa, animais }: { previa: PreviaExecucao; animais: Array<{ id: string; brinco: string }> }) {
+export function ConferenciaExecucao({ previa, animais, paginadaNoServidor = false }: { paginadaNoServidor?: boolean; previa: PreviaExecucao; animais: Array<{ id: string; brinco: string }> }) {
   return <section className="grid gap-3" aria-label="Conferência da execução">
     <h3 className="font-semibold">Planejado e realizado</h3>
-    {previa.itens.map((i) => <section key={i.tarefaId} className="rounded-lg border border-border p-3">
+    <ListaRascunho itens={previa.itens} rotulo="atendimentos em conferência" texto={paginadaNoServidor?undefined:i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <section key={i.tarefaId} className="rounded-lg border border-border p-3">
       <strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? "Animal não identificado"}</strong>
       {(i.aferido === false || i.referencia === "LEGADO_SEM_SNAPSHOT") && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}
       {i.diferencas.length ? <ul className="list-inside list-disc">{i.diferencas.map((d) => <li key={d.campo}>{rotulos[d.campo] ?? d.campo}: {valorComparacaoExecucao(d.campo, d.planejado, i.exibicao?.planejado[d.campo])} → {valorComparacaoExecucao(d.campo, d.realizado, i.exibicao?.realizado[d.campo])}</li>)}</ul> : i.aferido !== false && i.referencia !== "LEGADO_SEM_SNAPSHOT" && <p>Realização conforme o planejamento.</p>}
       {i.motivoObrigatorio && <p>Motivo: {i.motivo ?? "Informe o motivo do desvio antes de confirmar."}</p>}
       {i.carencia && <p>Carência revisada: leite {carenciaRevisada(i.carencia.estadoLeite, i.carencia.leiteHoras)} · carne {carenciaRevisada(i.carencia.estadoCarne, i.carencia.carneHoras)}</p>}
-    </section>)}
+    </section>} />
     <h3 className="font-semibold">Consumo total · Previsto para confirmação</h3>
-    {previa.consumos.length ? previa.consumos.map((c, n) => <p key={n}>{c.quantidade} {unidadeSanitaria(c.unidade)} · {valorComparacaoExecucao("produtoId", c.produtoId, c.produtoNome)} · {c.partidaId ? <>lote {valorComparacaoExecucao("partidaId", c.partidaId, c.partidaNome)} · validade {c.partidaValidade ? dataSanitaria(c.partidaValidade) : "não informada"}</> : c.itemCompraDiretaId ? "compra direta" : "estoque"}</p>) : <p>Sem consumo de estoque.</p>}
+    {previa.consumos.length ? <ListaRascunho itens={previa.consumos} rotulo="consumos previstos" renderizar={(c, n) => <p key={n}>{c.quantidade} {unidadeSanitaria(c.unidade)} · {valorComparacaoExecucao("produtoId", c.produtoId, c.produtoNome)} · {c.partidaId ? <>lote {valorComparacaoExecucao("partidaId", c.partidaId, c.partidaNome)} · validade {c.partidaValidade ? dataSanitaria(c.partidaValidade) : "não informada"}</> : c.itemCompraDiretaId ? "compra direta" : "estoque"}</p>} /> : <p>Sem consumo de estoque.</p>}
     <p className="text-sm text-ink-3">A confirmação salva o conjunto inteiro. Revise origem, lote, hora, responsável e carência antes de confirmar.</p>
   </section>;
 }

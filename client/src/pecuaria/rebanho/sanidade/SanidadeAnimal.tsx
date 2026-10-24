@@ -13,7 +13,6 @@ import { FormAplicacaoServico } from "./FormAplicacaoServico";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 import { FormAplicacaoAnimal } from "./FormAplicacaoAnimal";
 import { RodadasAnimal } from "./RodadasAnimal";
-import { FormRodada } from "./FormRodada";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { reqSanidade, type EstadoPrazo } from "./api";
@@ -60,19 +59,20 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
   const [prazos, setPrazos] = useState<Record<"leite" | "carne", { estado: EstadoPrazo; horas: string }>>({ leite: { estado: "NAO_INFORMADO", horas: "" }, carne: { estado: "NAO_INFORMADO", horas: "" } });
   const [justificativaCarne, setJustificativaCarne] = useState("");
   const [ocupado, setOcupado] = useState(false);
-  const [detalhe, setDetalhe] = useState<{ tipo: string; id: string; propriedadeId?: number | null } | null>(null);
+  const [detalhe, setDetalhe] = useState<{ tipo: string; id: string; propriedadeId?: number | null } | null>(() => { const id = new URLSearchParams(window.location.search).get("participacaoId"); return window.location.hash === "#sanidade" && id ? { tipo: "execucao", id } : null; });
   const [conteudo, setConteudo] = useState<unknown>(null);
   const [erroDetalhe, setErroDetalhe] = useState<string | null>(null);
   const [retryDetalhe, setRetryDetalhe] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [erroConsulta, setErroConsulta] = useState<string | null>(null);
+  useEffect(() => { const selecionar = () => { const id = new URLSearchParams(window.location.search).get("participacaoId"); if (window.location.hash === "#sanidade" && id) setDetalhe({ tipo: "execucao", id }); }; window.addEventListener("popstate", selecionar); return () => window.removeEventListener("popstate", selecionar); }, [animalId]);
   useEffect(() => {
     if (!detalhe) return;
     let vivo = true;
     setConteudo(null); setErroDetalhe(null);
     const recurso = { aplicacao: "aplicacoes", ocorrencia: "ocorrencias", exame: "exames", execucao: "execucoes" }[detalhe.tipo];
-    const sitio = detalhe.propriedadeId ?? aplicacoes.find((a) => a.id === detalhe.id)?.propriedadeId ?? propriedadeId;
-    reqSanidade<unknown>(`/${recurso}/${encodeURIComponent(detalhe.id)}${sitio != null ? `?propriedadeId=${sitio}` : ""}`).then((v) => { if (vivo) setConteudo(v); }).catch((e: unknown) => { if (vivo) setErroDetalhe(e instanceof Error ? e.message : String(e)); });
+    const sitio = detalhe.propriedadeId ?? aplicacoes.find((a) => a.id === detalhe.id)?.propriedadeId ?? (Number(new URLSearchParams(window.location.search).get("sitio")) || propriedadeId);
+    reqSanidade<unknown>(`/${recurso}/${encodeURIComponent(detalhe.id)}${sitio != null ? `?propriedadeId=${sitio}` : ""}`, undefined, sitio ?? undefined).then((v) => { if (!vivo) return; const dado = v && typeof v === "object" ? v as Record<string, unknown> : null; if (detalhe.tipo === "execucao" && dado?.animalId && dado.animalId !== animalId) { setErroDetalhe("A participação selecionada não pertence a este animal."); return; } setConteudo(v); }).catch((e: unknown) => { if (vivo) setErroDetalhe(e instanceof Error ? e.message : String(e)); });
     return () => { vivo = false; };
   }, [detalhe, retryDetalhe, propriedadeId, aplicacoes]);
   function verDetalhe(a: AplicacaoSanitaria) {
@@ -112,7 +112,7 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
     {!erroConsulta && !carregando && <>
     {animalId && <CarenciasSanitarias carencia={carencia} integrado={somenteCarencias} />}
     {typeof filtrosUI !== "function" && filtrosUI}
-    {!geral && !somenteCarencias && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} />}
+    {!geral && !somenteCarencias && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} propriedadeId={propriedadeId??undefined} podeLancar={podeLancar} aoSalvar={()=>{setVersao(v=>v+1);onMudou?.();}} />}
     {<SecaoAplicacoes geral={geral} somenteCarencias={somenteCarencias}>{(geral && lista ? lista : aplicacoes).length ? <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} colunas={[
       ...(geral ? [{ chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: (a: AplicacaoSanitaria) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" }] : []),
       { chave: "registro", titulo: "Registro", principal: !geral, larguraMinima: 175, celula: (a) => <><div>{dataAplicacaoSanitaria(a)}</div><div className="text-xs text-ink-3">{tipoSanitario(a)}</div></> },
@@ -122,12 +122,12 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
         { chave: "carne", titulo: "Prazo para abate", larguraMinima: 140, celula: (a: AplicacaoSanitaria) => prazoRegistrado(a.estadoCarenciaCarne, a.carenciaCarneHoras) },
       ] : []),
       { chave: "situacao", titulo: "Situação", celula: (a) => <EstadoSanitario tom={a.status === "ANULADO" ? "neutro" : a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" ? "atencao" : "verde"}>{a.status === "ANULADO" ? "Anulada" : a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" ? "Origem pendente" : "Válida"}</EstadoSanitario> },
-      { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 180, celula: (a) => <div className="sanidade-acoes-linha" onClick={(evento) => evento.stopPropagation()}>{podeLancar && (a.propriedadeId ?? propriedadeId) != null && a.status === "VALIDO" && <div className="contents">{!somenteCarencias && a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" && <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Reconciliar origem de ${a.nomeProdutoAplicado}`} title="Reconciliar origem" onClick={() => setReconciliando(a)}><Link2 size={16} aria-hidden /><span className="sr-only">Origem</span></button>}<button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Corrigir carência de ${a.nomeProdutoAplicado}`} title="Corrigir carência" onClick={() => { setErro(null); setCorrecao({ id: a.id, anular: false }); setMotivo(""); setPrazos({ leite: { estado: a.estadoCarenciaLeite, horas: a.carenciaLeiteHoras?.toString() ?? "" }, carne: { estado: a.estadoCarenciaCarne, horas: a.carenciaCarneHoras?.toString() ?? "" } }); setJustificativaCarne(a.justificativaCarenciaCarne ?? ""); }}><Pencil size={16} aria-hidden /><span className="sr-only">Carência</span></button>{!somenteCarencias && <button type="button" className="sanidade-acao-anular inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Anular aplicação de ${a.nomeProdutoAplicado}`} title="Anular com motivo" onClick={() => { setErro(null); setCorrecao({ id: a.id, anular: true }); setMotivo(""); }}><Ban size={16} aria-hidden /><span className="sr-only">Anular</span></button>}</div>}
+      { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 180, celula: (a) => <div className="sanidade-acoes-linha" onClick={(evento) => evento.stopPropagation()}>{podeLancar && (a.propriedadeId ?? propriedadeId) != null && a.status === "VALIDO" && <div className="contents">{!somenteCarencias && a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" && <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Reconciliar origem de ${a.nomeProdutoAplicado}`} title="Reconciliar origem" onClick={() => setReconciliando(a)}><Link2 size={16} aria-hidden /><span className="sr-only">Origem</span></button>}<button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Corrigir carência de ${a.nomeProdutoAplicado}`} title="Corrigir carência" onClick={() => { setErro(null); setCorrecao({ id: a.id, anular: false }); setMotivo(""); setPrazos({ leite: { estado: a.estadoCarenciaLeite, horas: a.carenciaLeiteHoras?.toString() ?? "" }, carne: { estado: a.estadoCarenciaCarne, horas: a.carenciaCarneHoras?.toString() ?? "" } }); setJustificativaCarne(a.justificativaCarenciaCarne ?? ""); }}><Pencil size={16} aria-hidden /><span className="sr-only">Carência</span></button>{!somenteCarencias && <button type="button" className="sanidade-acao-anular inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Anular aplicação de ${a.nomeProdutoAplicado}`} title="Anular com motivo" onClick={() => { setErro(null); setDestinoConsumo(""); setAdministracao(""); setCorrecao({ id: a.id, anular: true }); setMotivo(""); }}><Ban size={16} aria-hidden /><span className="sr-only">Anular</span></button>}</div>}
 </div> },
      ]} /> : <p className="text-sm text-ink-3">Nenhuma aplicação sanitária registrada.</p>}</SecaoAplicacoes>}
     {!geral && !somenteCarencias && <HistoricoSanitario key={versao + recarregarToken} animalId={animalId} abrir={(tipo, id, propriedadeId) => setDetalhe({ tipo, id, propriedadeId })} />}
     </>}
-    {novoFato === "protocolo" ? <FormRodada animalInicial={animalId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
+    {novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
     {detalhe && <PainelDetalheSanitario tipo={detalhe.tipo} onFechar={() => setDetalhe(null)}>
       {erroDetalhe ? <><ErrorBox erro={erroDetalhe} /><Button secondary onClick={() => setRetryDetalhe((v) => v + 1)}>Tentar novamente</Button></> : conteudo == null ? <SkeletonSanitario estrutura="detalhe" label="Carregando detalhe sanitário…" /> : <DetalheSanitario tipo={detalhe.tipo} valor={conteudo} abrir={(tipo, id) => setDetalhe({ tipo, id, propriedadeId: detalhe.propriedadeId })} />}
     </PainelDetalheSanitario>}

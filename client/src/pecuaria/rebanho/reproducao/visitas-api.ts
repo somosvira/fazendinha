@@ -26,6 +26,7 @@ export type RascunhoVisita = {
   status?: string;
   inicioEfetivo?: string;
   realizadaEm?: string;
+  previstaPara?: string;
   dados?: Record<string, unknown>;
 };
 export type ParticipanteVisita = {
@@ -39,6 +40,7 @@ export type ParticipanteVisita = {
   regularizacaoPendente?: boolean;
   historicoRegularizacao?: Array<{acao?: string; destinoConsumo?: string | null}>;
   snapshot: ContextoTemporalAnimal & {
+    execucaoProtocolo?: {versao:number;tarefaId:string;tipo:string;fatoId:string};
     acompanhamento?:{id:string;finalidade:string;ocorrencia:number;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>;versao:number};
     animalId?: string;
     sexo?: string;
@@ -93,6 +95,7 @@ export type AtividadeVisita = {
   tipo: TipoAtividade;
   extra: boolean;
   participantes: ParticipanteVisita[];
+  totais?: {totalParticipantes:number;confirmados:number;pendentes:number;naoAtendidos:number;adiados:number};
   contexto?: (Record<string, unknown> & { inicioIatf?: { versao: 1; protocoloId: string; nomeProtocolo: string; versaoProtocolo: number; programacaoId?: string } }) | null;
 };
 export type Visita = {
@@ -103,6 +106,8 @@ export type Visita = {
   status: string;
   responsavel?: string | null;
   atividades: AtividadeVisita[];
+  totalAnimais?: number;
+  totalParticipantes?: number;
   impressoes: Array<{
     id: string;
     criadoEm?: string;
@@ -111,7 +116,14 @@ export type Visita = {
 };
 export type VisitaResumo = Pick<Visita, "id" | "propriedadeId" | "nome" | "data" | "status" | "responsavel">;
 export const listarVisitas = () => reqV4<VisitaResumo[]>("/visitas");
-export const obterVisita = (id: string) => reqV4<Visita>(`/visitas/${id}`);
+export const obterVisita = async (id: string) => { const v = await reqV4<Visita>(`/visitas/${id}?resumo=true`); return {...v,atividades:v.atividades.map(a=>({...a,participantes:a.participantes??[]}))}; };
+export type PaginaParticipantesVisita = {itens:ParticipanteVisita[];total:number;pagina:number;porPagina:number};
+export const listarParticipantesVisita = (visitaId:string, atividadeId:string, propriedadeId:number, filtros:{pagina?:number;busca?:string;status?:string;motivos?:string[]} = {}) => {
+  const q = new URLSearchParams({pagina:String(filtros.pagina ?? 1),porPagina:"10",propriedadeId:String(propriedadeId)});
+  if(filtros.busca)q.set("busca",filtros.busca); if(filtros.status)q.set("status",filtros.status); filtros.motivos?.forEach(m=>q.append("motivo",m));
+  return reqV4<PaginaParticipantesVisita>(`/visitas/${visitaId}/atividades/${atividadeId}/participantes?${q}`,undefined,"GET",propriedadeId);
+};
+export const obterParticipanteVisita = (visitaId:string, participanteId:string, propriedadeId:number) => reqV4<ParticipanteVisita>(`/visitas/${visitaId}/participantes/${participanteId}`,undefined,"GET",propriedadeId);
 export const criarVisita = (input: {
   chave?: string;
   propriedadeId: number;
@@ -163,7 +175,7 @@ export const confirmarVisita = (
       motivo?: string;
     }>;
   },
-) => reqV4(`/visitas/${id}/atividades/${atividadeId}/confirmacao`, input);
+) => reqV4<{itens?:ParticipanteVisita[];total?:number;pagina?:number;porPagina?:number}>(`/visitas/${id}/atividades/${atividadeId}/confirmacao`, input);
 export type SugestaoTarefa = {
   previsaoPendente?: boolean;
   precisaoTemporal?: "DIA" | "HORA";

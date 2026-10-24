@@ -1,3 +1,4 @@
+import { reqProtocolo } from "../protocolos/api";
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -6,6 +7,7 @@ import { reqV4, type AnimalReprodutivo } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 
 vi.mock("./api", () => ({ reqV4: vi.fn() }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "protocolo", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([]) }));
 vi.mock("../api", () => ({ listarMaterialGenetico: vi.fn().mockResolvedValue([]) }));
 
@@ -40,7 +42,7 @@ it("abre programação com indicados, permite editar a seleção e grava no sít
     propriedadeId: 7, nome: "Turma após visita", protocoloId: "protocolo", inicioPrevisto: "2026-10-18",
     animais: [{ animalId: "a0" }],
   }), "POST", 7));
-  expect(reqV4).toHaveBeenCalledWith("/reproducao/programacoes?propriedadeId=7", undefined, "POST", 7);
+  expect(reqProtocolo).toHaveBeenCalledWith("/programacoes?tipo=REPRODUTIVO&pagina=1&porPagina=10", 7);
   expect(vi.mocked(reqV4).mock.calls.filter(([, body]) => body)).toHaveLength(1);
 });
 
@@ -49,6 +51,8 @@ it("limita a primeira programação a 100 e mantém todos os indicados disponív
   render(<Iatf animais={animais} animaisIndicadosInicialmente={animais.map(a => a.animalId)} propriedadeId={7} podeLancar />);
   await screen.findByRole("dialog", { name: "Nova programação IATF" });
   expect(screen.getByText("Participantes: 100/100")).toBeTruthy();
+  expect(screen.getAllByRole("checkbox").length).toBeLessThanOrEqual(11);
+  fireEvent.change(screen.getByLabelText("Buscar animais disponíveis"), { target: { value: "200" } });
   expect(screen.getByRole("checkbox", { name: "200" })).toHaveProperty("checked", false);
   expect(screen.getByText(/os demais indicados continuam disponíveis/)).toBeTruthy();
   expect(vi.mocked(reqV4).mock.calls.every(([, body]) => !body)).toBe(true);

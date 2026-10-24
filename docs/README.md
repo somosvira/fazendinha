@@ -22,6 +22,8 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Testes manuais da branch V4](pecuaria/artefatos/testes-manuais-branch-v4.html) | Execução humana do follow-up e alterações locais: consultas, ações de gravação, bordas e evidências; marcações próprias inicialmente pendentes |
 | [Guia manual V4](pecuaria/artefatos/testes-v4-guia.html) | Roteiro específico com pré-condições, resultados esperados e registro/exportação da execução; inicia pendente |
 | [Protocolos, exames e papéis](pecuaria/protocolos-exames.md) | Modelo comum implementado, versões, migração, compatibilidade e limites |
+| [Plano de protocolos individuais e coletivos](pecuaria/plano-protocolos-unificados.md) | Proposta comum sanitária/reprodutiva, pendências por animal, calendário, custos e paginação de até dez itens |
+| [Base documental dos protocolos](pecuaria/artefatos/protocolos/index.html) | Explicação, diagramas interativos, diagrama físico com catálogo SQL e mockup aprovado; estrutura atual e proposta separadas |
 | [Desenvolvimento](desenvolvimento.md) | Seed unificado, carga IDEAGRI e preparação do guia manual |
 | [Deploy](../DEPLOY.md) | Publicação exclusiva em Cloudflare Workers, configuração e migrations |
 | [Guia manual V3](pecuaria/artefatos/testes-v3-guia.html) | Homologação sequencial ainda em uso; marcações locais no navegador |

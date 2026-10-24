@@ -8,8 +8,8 @@ export const TIPO_EXAME_REPRODUTIVO = "b0400000-0000-4000-8000-000000000001";
 type DadosAvaliacao = Pick<AvaliacaoReprodutiva, "animalId" | "data" | "resultado"> &
   Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
 
-/** Persiste somente a evidência e sua interpretação. Efeitos clínicos pertencem ao executor de domínio. */
-export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva> {
+/** Valida formato versionado e resultados sem gravar a evidência. */
+export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao) {
   if (!["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(dados.resultado)) throw new RebanhoError("VALIDACAO", "Resultado reprodutivo não reconhecido", "resultado");
   const tipoExameId = dados.tipoExameId ?? TIPO_EXAME_REPRODUTIVO;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-tipo-exame:${tipoExameId}`}))`;
@@ -28,6 +28,12 @@ export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient
   observacoes.push(...(dados.resultados ?? []));
   if (dados.sexoFetal) observacoes.push({ campo: "SEXO_FETAL", valor: dados.sexoFetal });
   const resultados = validarObservacoesExame(tipo.campos, observacoes, dados.resultado !== "NAO_AVALIADO");
+  return { tipoExameId, tipo, finalidade, finalidades, resultados };
+}
+
+/** Persiste somente a evidência e sua interpretação. Efeitos clínicos pertencem ao executor de domínio. */
+export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva> {
+  const { tipoExameId, tipo, finalidade, finalidades, resultados } = await prepararEvidenciaAvaliacaoTx(tx, dados);
   const id = dados.id ?? crypto.randomUUID();
   await tx.exameAnimal.create({ data: {
     id, animalId: dados.animalId, propriedadeId: dados.propriedadeId, tipoExameId,

@@ -150,6 +150,8 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
     const participante = await prisma.participanteIatf.findFirstOrThrow({
       where: { programacaoId: programacao.id },
     });
+    // Esta regressão exerce o calendário histórico preservado pelo backfill.
+    await prisma.participacaoProtocolo.update({ where: { id: participante.id }, data: { origemCalendario: "INICIO_EFETIVO_LEGADO" } });
     const tarefas = await prisma.tarefaIatf.findMany({
       where: { participanteId: participante.id },
       orderBy: { etapa: "asc" },
@@ -177,7 +179,8 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
     expect(inicial.previsaoOriginal.toISOString()).toBe(
       "2026-09-30T12:00:00.000Z",
     );
-    expect(inicial.historicoReprogramacao as unknown[]).toHaveLength(2);
+    expect(inicial.historicoReprogramacao as unknown[]).toHaveLength(1);
+    expect(await prisma.eventoTarefaProtocolo.count({ where: { tarefaId: inicial.id, tipo: "ADIAMENTO" } })).toBe(1);
     const ia = await prisma.tarefaIatf.findUniqueOrThrow({
       where: { id: tarefas[2].id },
     });

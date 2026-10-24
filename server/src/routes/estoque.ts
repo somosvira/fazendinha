@@ -13,7 +13,7 @@ import * as partidasSvc from "../services/estoque/partidas.js";
 import * as fichaSvc from "../services/estoque/ficha-produto.js";
 import { transferirEstoque } from "../services/estoque/transferencias.js";
 import { perdaEstoqueSchema, transferenciaEstoqueSchema } from "../services/estoque/transferencias.schemas.js";
-import { produtoSchema, patchProdutoSchema, produtosQuerySchema } from "../services/estoque/produtos.schemas.js";
+import { produtoSchema, patchProdutoSchema, produtosQuerySchema, tiposAplicacaoProdutoQuerySchema } from "../services/estoque/produtos.schemas.js";
 import * as refSvc from "../services/estoque/referencias.js";
 import { listarParceiros } from "../services/financeiro/parceiros.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
@@ -89,6 +89,7 @@ function validarProduto<T extends z.ZodTypeAny>(schema: T) {
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
+  .get("/estoque/tipos-aplicacao-sanitarios", zValidator("query", tiposAplicacaoProdutoQuerySchema), async c => c.json(await produtosSvc.listarTiposAplicacaoSanitarios(c.req.valid("query"))))
   .post("/estoque/perdas", exigePermissao("lancar"), validarProduto(perdaEstoqueSchema), async (c) => {
     try { const body = c.req.valid("json"); const origemId = await resolverEscopoEscrita(c, body.origemId); return c.json(await transferirEstoque({ ...body, origemId, destinoId: origemId, modo: "PERDA" }, usuarioId(c)), 201); } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
   })

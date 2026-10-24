@@ -372,6 +372,7 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
+  manejosPecuaria ManejoAnimal[]
   composicaoComercial Json?
   categoriaNome               String?
   classificacao               ClassificacaoCategoria?
@@ -863,6 +864,8 @@ enum TipoToken {
 }
 
 model Usuario {
+  manejosProtocolos ManejoAnimal[] @relation("ManejoCriadoPor")
+  pecEventosTarefaRegistrados EventoTarefaProtocolo[]
   id                       Int                           @id @default(autoincrement())
   nome                     String
   email                    String                        @unique
@@ -1551,6 +1554,9 @@ model AlocacaoPartidaEstoque {
 }
 
 model PerfilSanitarioProduto {
+  orientacaoUso String?
+  tipoAplicacaoId String?
+  tipoAplicacao TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
   id                 String   @id @default(uuid())
   produtoId          String   @unique
   produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
@@ -1643,6 +1649,7 @@ model OcorrenciaSanitaria {
 }
 
 model TipoAplicacaoSanitaria {
+  perfisProdutos PerfilSanitarioProduto[]
   id           String                    @id @default(uuid())
   nome         String                    @unique
   ativo        Boolean                   @default(true)
@@ -1655,6 +1662,8 @@ model TipoAplicacaoSanitaria {
 }
 
 model AplicacaoProduto {
+  insercaoDispositivoSnapshot Json?
+  retiradasDispositivo ManejoAnimal[] @relation("InsercaoDispositivo")
   destinosPreparoCusto VinculoPreparoTentativa[]
 
   classificacaoCusto ClassificacaoCustoPecuaria?
@@ -1732,6 +1741,19 @@ enum TipoProtocolo {
   @@schema("pecuaria")
 }
 
+enum OrigemCalendarioProtocolo {
+  REFERENCIA_PROGRAMADA
+  INICIO_EFETIVO_LEGADO
+  @@schema("pecuaria")
+}
+
+enum TipoEventoTarefaProtocolo {
+  NAO_ATENDIDO
+  ADIAMENTO
+  RETIFICACAO_JUSTIFICATIVA
+  @@schema("pecuaria")
+}
+
 enum PrecisaoCalendarioProtocolo {
   DIA
   HORA
@@ -1739,7 +1761,18 @@ enum PrecisaoCalendarioProtocolo {
   @@schema("pecuaria")
 }
 
+enum FinalidadeProtocolo {
+  SANITARIO
+  PRE_SINCRONIZACAO
+  IATF
+  TETF
+
+  @@schema("pecuaria")
+}
+
 model Protocolo {
+  finalidade FinalidadeProtocolo?
+  momentos MomentoProtocolo[]
   referenciaTecnica Json?
   tipo TipoProtocolo @default(SANITARIO)
   legadoIatfId String? @unique
@@ -1761,7 +1794,24 @@ model Protocolo {
   @@schema("pecuaria")
 }
 
+model MomentoProtocolo {
+  instrucoesGerais String?
+  modoAtendimento String?
+  id String @id @default(uuid())
+  protocoloId String
+  protocolo Protocolo @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  nome String
+  ordem Int
+  etapas EtapaProtocolo[]
+
+  @@unique([protocoloId, ordem])
+  @@unique([id, protocoloId])
+  @@schema("pecuaria")
+}
+
 model EtapaProtocolo {
+  momentoId String?
+  momento MomentoProtocolo? @relation(fields: [momentoId, protocoloId], references: [id, protocoloId], onDelete: Cascade, onUpdate: Restrict, map: "EtapaProtocolo_momento_versao_fkey")
   nome String @default("Etapa")
   unidadeIntervalo String @default("DIAS")
   configuracao Json @default("{}")
@@ -1769,7 +1819,7 @@ model EtapaProtocolo {
   material MaterialGenetico? @relation(fields: [materialId], references: [id], onDelete: Restrict)
   id                        String                  @id @default(uuid())
   protocoloId               String
-  protocolo                 Protocolo      @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo                 Protocolo      @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
   ordem                     Int
   diaRelativo               Float @map("intervalo")
   tipo                      String
@@ -1813,6 +1863,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  origemCalendario OrigemCalendarioProtocolo @default(REFERENCIA_PROGRAMADA)
   destinosPreparoCusto VinculoPreparoTentativa[]
 
   classificacaoCusto ClassificacaoCustoPecuaria?
@@ -1850,6 +1901,9 @@ model ParticipacaoProtocolo {
 }
 
 model TarefaProtocolo {
+  manejos ManejoAnimal[]
+  momentoSnapshot Json?
+  eventos EventoTarefaProtocolo[]
   demandaAcompanhamento DemandaAcompanhamentoReprodutivo?
   precisaoRealizacao PrecisaoCalendarioProtocolo?
   previsaoPendente Boolean @default(false)
@@ -1882,7 +1936,33 @@ model TarefaProtocolo {
   @@schema("pecuaria")
 }
 
+model EventoTarefaProtocolo {
+  id String @id @default(uuid())
+  tarefaId String
+  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tipo TipoEventoTarefaProtocolo
+  ocorridaEm DateTime
+  motivo String
+  previsaoAnterior DateTime?
+  previsaoNova DateTime?
+  precisaoAnterior PrecisaoCalendarioProtocolo?
+  precisaoNova PrecisaoCalendarioProtocolo?
+  eventoCorrigidoId String?
+  eventoCorrigido EventoTarefaProtocolo? @relation("RetificacaoEvento", fields: [eventoCorrigidoId], references: [id], onDelete: Restrict)
+  retificacoes EventoTarefaProtocolo[] @relation("RetificacaoEvento")
+  registradoEm DateTime @default(now())
+  registradoPorId Int?
+  registradoPor Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+
+  @@index([tarefaId, registradoEm, id])
+  @@index([eventoCorrigidoId])
+  @@index([registradoPorId])
+  @@schema("pecuaria")
+}
+
 model VinculoTarefaProtocolo {
+  manejoId String? @unique
+  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict)
   id String @id @default(uuid())
   tarefaId String
   tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
@@ -2016,6 +2096,20 @@ model InterpretacaoReprodutiva {
 }
 
 model ManejoAnimal {
+  tarefaId String?
+  tarefa TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  realizadaEm DateTime?
+  precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
+  criadoPorId Int?
+  criadoPor Usuario? @relation("ManejoCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  insercaoAplicacaoId String?
+  insercaoAplicacao AplicacaoProduto? @relation("InsercaoDispositivo", fields: [insercaoAplicacaoId], references: [id], onDelete: Restrict)
+  operacaoServicoId String?
+  operacaoServico Operacao? @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  valorServicoAtribuido Decimal? @db.Decimal(14,2)
+  realizacaoMantida Boolean @default(false)
+  vinculosTarefa VinculoTarefaProtocolo[]
+  classificacaoCusto ClassificacaoCustoPecuaria?
   id             String               @id @default(uuid())
   animalId       String
   animal         Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
@@ -2548,7 +2642,7 @@ view ParticipanteIatf {
   precisaoInicioEfetivo PrecisaoCalendarioProtocolo?
   id                 String    @unique
   referenciaExterna  String?   @unique
-  programacaoId      String
+  programacaoId      String?
   animalId           String
   inicioPrevisto     DateTime
   inicioEfetivo      DateTime?
@@ -2803,6 +2897,8 @@ model ParcelaValorizacaoEstoque {
 
 // Classificação gerencial e prova documental não alteram o valor do fato original.
 model ClassificacaoCustoPecuaria {
+  manejoId String? @unique
+  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict)
   participacaoConsumoId String? @unique
   participacaoConsumo ParticipacaoConsumoAnimal? @relation(fields: [participacaoConsumoId], references: [id], onDelete: Restrict)
 
@@ -2881,10 +2977,10 @@ model DemandaAcompanhamentoReprodutivo {
   gestacaoId String?
   gestacao GestacaoAnimal? @relation(fields:[gestacaoId],references:[id],onDelete:Restrict)
   ocorrencia Int @default(1)
-  politicaId String
-  politica PoliticaAcompanhamentoReprodutivo @relation(fields:[politicaId],references:[id],onDelete:Restrict)
+  politicaId String?
+  politica PoliticaAcompanhamentoReprodutivo? @relation(fields:[politicaId],references:[id],onDelete:Restrict)
   dataReferencia DateTime @db.Date
-  previstaPara DateTime @db.Date
+  previstaPara DateTime? @db.Date
   regraSnapshot Json
   origemAdocao String @default("FATO_NOVO")
   estado String @default("PENDENTE")

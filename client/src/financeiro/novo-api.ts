@@ -8,10 +8,12 @@ import { SEM_VINCULO } from "../lib/ids";
 import { reqSanidade } from "../pecuaria/rebanho/sanidade/api";
 
 export type ProcedimentoServico = {
-  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; animalId: string;
+  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA" | "MANEJO"; animalId: string;
   animal: { id: string; brinco: string; nome: string | null }; propriedade: { id: number; nome: string } | null;
   nome: string; dataHora: string; status: string; origem: string; valor: string | null;
   consumoMantido?: boolean;
+  realizacaoMantida?: boolean;
+  tipoProtocolo?: string; programacaoId?: string | null;
   vinculado: boolean; podeEditar: boolean; execucaoId: string | null; operacaoServicoId: string | null;
 };
 export type ConsultaProcedimentosServico = {
@@ -28,6 +30,14 @@ export function confirmarProcedimentosServico(servicoId: string, input: { propri
   return reqSanidade<{ servicoId: string; quantidade: number; salvo: boolean; reenvio: boolean; itens?: Array<{ id: string; tipo: ProcedimentoServico["tipo"]; valor: string | null }> }>(`/servicos/${encodeURIComponent(servicoId)}/procedimentos`, { method: "POST", body: JSON.stringify(input) });
 }
 export function linkProcedimentoServico(item: ProcedimentoServico, retorno?: string) {
+  if (item.tipo === "MANEJO" || item.tipo === "PROTOCOLO" && item.tipoProtocolo === "REPRODUTIVO") {
+    const params = new URLSearchParams();
+    if (item.execucaoId) params.set("participacaoId", item.execucaoId);
+    if (item.programacaoId) params.set("programacaoId", item.programacaoId);
+    if (item.propriedade) params.set("sitio", String(item.propriedade.id));
+    if (retorno) params.set("retorno", retorno);
+    return `/pecuaria/rebanho/animais/${encodeURIComponent(item.animalId)}?${params}#${item.tipoProtocolo === "REPRODUTIVO" ? "reproducao" : "sanidade"}`;
+  }
   if (item.tipo === "TENTATIVA") {
     const params = new URLSearchParams({ animalId: item.animalId, tentativaId: item.id });
     if (item.propriedade) params.set("propriedadeId", String(item.propriedade.id));
@@ -72,7 +82,7 @@ export type Produto = {
   id: string; nome: string;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   rastrearPartidas?: boolean;
-  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null } | null;
+  perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao: string | null; referenciaTecnica: string | null; orientacaoUso?: string | null; tipoAplicacaoId?: string | null } | null;
   perfilNutricional?: { materiaSecaPercentual: string | null } | null;
   unidade: UnidadeMedida;
   minimoEstoque?: string | null; ativo?: boolean;

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Terrano · Novo protocolo · Proposta</title><link rel="stylesheet" href="pagina.css"></head>
+<body>
+<div class="demo">Mockup interativo · dados fictícios · nenhuma gravação no sistema</div>
+<div class="shell">
+  <aside class="sidebar" aria-label="Contexto da aplicação">
+    <div class="brand"><img src="assets/terrano.svg" alt="">TERRANO</div>
+    <div class="farm"><small>SÍTIO</small><strong>Fazenda Escola</strong></div>
+    <div class="navigation"><span>Financeiro</span><span>Pecuária</span><span class="subnav">Rebanho</span><span class="subnav">Sanidade</span><span class="subnav">Nutrição</span><span class="subnav">Reprodução</span><span>Estoque</span><span class="active">Configurações</span></div>
+    <div class="account">Proprietário<small>Fazenda Escola</small></div>
+  </aside>
+  <main id="main">
+    <div class="workspace">
+      <div class="editor">
+        <nav class="breadcrumb" aria-label="Navegação"><a id="catalog-link" href="http://localhost:41875/configuracoes/pecuaria/reproducao/protocolos">Protocolos reprodutivos</a><span aria-hidden="true">/</span><span>Novo protocolo</span></nav>
+        <header class="pagehead"><h1>Novo protocolo</h1></header>
+        <section aria-labelledby="start-title" class="section">
+          <h2 id="start-title">Como deseja começar?</h2>
+          <div id="origin-controls"><fieldset class="choices"><legend class="sr-only">Origem do novo protocolo</legend>
+            <label><input type="radio" name="start" value="zero"><span><strong>Começar do zero</strong><small>Definir etapas e procedimentos.</small></span></label>
+            <label><input type="radio" name="start" value="base" checked><span><strong>Usar protocolo como base</strong><small>Criar uma nova versão e adaptar.</small></span></label>
+          </fieldset>
+          </div>
+          <div id="base-selector">
+            <div class="search"><label>Buscar protocolo<input id="base-search" type="search" placeholder="Nome do protocolo…"></label></div>
+            <div class="table-wrap"><table><thead><tr><th>Protocolo-base</th><th>Versão</th><th>Etapas</th><th><span class="sr-only">Escolher</span></th></tr></thead><tbody id="bases"></tbody></table></div>
+            <nav id="bases-page" class="pager" aria-label="Paginação dos protocolos-base"></nav>
+            <p class="hint">Você copia somente a estrutura: etapas, produtos, quantidades e instruções. Animais e atendimentos ficam no protocolo de origem.</p>
+          </div>
+          <div id="chosen" hidden></div>
+          <div id="replace" class="notice" hidden><strong>Trocar a origem do protocolo?</strong><p>As alterações feitas aqui serão descartadas. A versão original permanece preservada.</p><div class="buttons"><button id="keep">Continuar editando</button><button id="replace-confirm" class="primary">Escolher outra base</button></div></div>
+          <div id="zero-start" hidden><p class="hint">Crie a estrutura do modelo. Os animais serão incluídos quando ele for utilizado.</p><button id="start-zero" class="primary">Criar estrutura vazia</button></div>
+        </section>
+        <div id="draft" hidden>
+          <section class="section" aria-labelledby="identity-title"><h2 id="identity-title">Identificação</h2><div class="fields"><label class="wide">Nome do protocolo<input id="name" maxlength="160" required></label><label>Finalidade<select id="purpose"></select></label><label>Versão<input id="version" value="1" readonly></label><label class="wide">Descrição <span class="optional">(opcional)</span><textarea id="description" rows="2"></textarea></label></div></section>
+          <section class="section" aria-labelledby="stages-title">
+            <div class="sectionhead"><h2 id="stages-title">Etapas e procedimentos</h2><button id="add-stage">Adicionar etapa</button></div>
+            <div id="stages" class="stages" role="group" aria-label="Etapas do modelo"></div><nav id="stages-page" class="pager" aria-label="Paginação das etapas"></nav>
+            <section id="stage-editor" aria-label="Etapa selecionada"></section>
+          </section>
+        </div>
+        <div id="feedback" role="status" tabindex="-1" hidden></div>
+      </div>
+      <aside class="review" aria-labelledby="review-title">
+        <div class="review-body"><h2 id="review-title">Revisão do protocolo</h2><div id="review-content"><p class="muted">Escolha uma base ou comece do zero para revisar a estrutura.</p></div></div>
+        <div class="review-actions"><p class="hint">Salvar o modelo não inicia protocolos em animais nem movimenta estoque.</p><button id="save" class="primary" disabled>Salvar protocolo</button></div>
+      </aside>
+    </div>
+  </main>
+</div>
+<script src="pagina.js"></script>
+</body></html>

@@ -1,4 +1,11 @@
-import { reconciliarDemandasAnimalTx } from "./acompanhamento.js";
+import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
+import { validarReferenciasCusto } from "../custos/referencias-planejadas.js";
+import { executarManejoDaTarefaIatfTx } from "../protocolos/execucao.manejos.js";
+import { associarMomentosAcoesTx } from "../protocolos/momentos.js";
+import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
+import crypto from "node:crypto";
+import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -23,6 +30,7 @@ import {
   programacaoSchema,
   tentativaSchema,
   type EtapaIatf,
+  dataOuHorario,
 } from "./schemas.js";
 import { calendarioIatf } from "./regras.calc.js";
 import {
@@ -41,14 +49,16 @@ import {
 import { travarUsosProduto } from "../../estoque/usos.js";
 import { converterQuantidade } from "../../estoque/unidades.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
+import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
 import { exigeMotivoExecucao } from "../desvios.calc.js";
-const exameDaTarefaSchema = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional() });
+const exameDaTarefaSchema = executarExameEtapaSchema.omit({ tipo: true, tarefaId: true }).extend({ chave: z.string().uuid().optional(), observacao: z.string().trim().max(1000).nullish(), formatoExameHash: z.string().regex(/^[a-f0-9]{64}$/).optional() });
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
 type EtapaFonte = EtapaIatf & { referencias?: Record<string, unknown> };
 async function congelarEtapasTx(
   tx: Prisma.TransactionClient,
   etapas: EtapaIatf[],
+  builder = false,
 ) {
   const materiais = await tx.materialGenetico.findMany({
     where: {
@@ -68,11 +78,12 @@ async function congelarEtapasTx(
   ]);
   await travarTiposExame(tx, etapas.flatMap(e => e.planoAvaliacao ? [e.planoAvaliacao.tipoExameId ?? TIPO_EXAME_REPRODUTIVO] : e.planoExame ? [e.planoExame.tipoExameId] : []));
   const congeladas: EtapaFonte[] = [];
-  for (const [indice, e] of etapas.entries()) {
+  for (const [indice, original] of etapas.entries()) {
+    let e = original;
     const referencias: Record<string, unknown> = {};
     if (e.planoAplicacao) {
       const p = await tx.produto.findUnique({
-        where: { id: e.planoAplicacao.produtoId },
+        where: { id: e.planoAplicacao.produtoId }, include: { perfilSanitarioProduto: true },
       });
       if (!p?.ativo || !p.usoSanitario)
         erro(
@@ -91,7 +102,13 @@ async function congelarEtapasTx(
           "etapas",
         );
       }
-      referencias.produto = { id: p.id, nome: p.nome, unidade: p.unidade };
+      validarReferenciasCusto(e.referenciasCusto, e.planoAplicacao.unidadeDose, true);
+      if (builder && e.planoAplicacao.unidadeDose !== p.unidade) erro(`Etapa ${indice + 1}: unidade deve ser herdada do produto`, "etapas");
+      const classificacao = await resolverTipoAplicacaoCadastroTx(tx, e.planoAplicacao.tipoAplicacaoId, builder ? p.perfilSanitarioProduto?.tipoAplicacaoId : null, e.momento?.modoAtendimento === "AUTOMATIZADA", `etapas.${indice}.planoAplicacao.tipoAplicacaoId`);
+      if (classificacao) e = { ...e, planoAplicacao: { ...e.planoAplicacao, tipoAplicacaoId: classificacao.id } };
+      if (builder) e = { ...e, planoAplicacao: { ...e.planoAplicacao!, via: p.perfilSanitarioProduto?.viaPadrao ?? null, orientacaoUso: p.perfilSanitarioProduto?.orientacaoUso ?? null } };
+      referencias.produto = { id: p.id, nome: p.nome, unidade: p.unidade, ...(builder ? { viaPadrao: p.perfilSanitarioProduto?.viaPadrao ?? null, orientacaoUso: p.perfilSanitarioProduto?.orientacaoUso ?? null } : {}) };
+      if (classificacao) referencias.tipoAplicacao = classificacao;
     }
     if (e.planoTentativa) {
       const m = materiais.find((m) => m.id === e.planoTentativa!.materialId);
@@ -110,6 +127,7 @@ async function congelarEtapasTx(
           `Etapa ${indice + 1}: quantidade exige até três casas decimais`,
           "etapas",
         );
+      validarReferenciasCusto(e.referenciasCusto, m.produto.unidade, true);
       referencias.material = {
         id: m.id,
         tipo: m.tipo,
@@ -162,16 +180,11 @@ export async function criarProtocolo(
   usuarioId: number | null,
 ) {
   input = protocoloSchema.parse(input);
-  const tentativas = input.etapas.filter((e) => e.tipo === "TENTATIVA");
-  if (input.publicado && !tentativas.length)
-    erro(
-      "Protocolo publicado deve definir a etapa de tentativa após início efetivo",
-      "etapas",
-    );
   return transacaoPecuaria(async (tx) => {
     const origem=input.origemVersaoId?await tx.protocolo.findFirst({where:{id:input.origemVersaoId,tipo:"REPRODUTIVO"}}):null;
     if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
-    const etapas = await congelarEtapasTx(tx, input.etapas);
+    if (origem && input.nome.trim() !== origem.nome) erro("Uma nova versão deve preservar o protocolo-base", "nome");
+    const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
     const p = await criarProtocoloReprodutivoTx(tx, {
       data: { ...input, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
     });
@@ -182,16 +195,16 @@ export async function criarProtocolo(
       usuarioId,
       depois: p,
     });
-    return p;
+    return { ...p, finalidade: input.finalidade ?? null };
   });
 }
 export async function listarProtocolos() {
   const [versoes, contratos] = await Promise.all([
-    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, referenciaTecnica:true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
+    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, finalidade: true, referenciaTecnica:true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
     prisma.protocoloIatf.findMany({ orderBy: [{ nome: "asc" }, { versao: "desc" }] }),
   ]);
   const metas = new Map(versoes.map(v => [v.id, v]));
-  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, ativo: v.ativo, referenciaTecnica:v.referenciaTecnica, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
+  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, finalidade: v.finalidade, ativo: v.ativo, referenciaTecnica:v.referenciaTecnica, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
 }
 function etapaSemReferencias(e: Prisma.JsonValue) {
   if (!e || typeof e !== "object" || Array.isArray(e)) erro("Etapa de protocolo inválida", "etapas");
@@ -200,26 +213,29 @@ function etapaSemReferencias(e: Prisma.JsonValue) {
 }
 async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, usuarioId: number | null) {
   await publicarVersaoTx(tx, id, "REPRODUTIVO", usuarioId, async p => {
-    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
-    if (!validado.etapas.some(e => e.tipo === "TENTATIVA")) erro("Protocolo IATF publicado exige uma etapa de tentativa", "etapas");
-    const congeladas = await congelarEtapasTx(tx, validado.etapas);
+    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, finalidade: p.finalidade, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
+    const congeladas = await congelarEtapasTx(tx, validado.etapas, validado.finalidade != null);
     const etapas = etapasReprodutivasDoContrato(json(congeladas));
     for (const [i, etapa] of etapas.entries()) await tx.etapaProtocolo.update({ where: { id: p.etapas[i].id }, data: etapa });
   });
-  return tx.protocoloIatf.findUniqueOrThrow({ where: { id } });
+  const [contrato, meta] = await Promise.all([tx.protocoloIatf.findUniqueOrThrow({ where: { id } }), tx.protocolo.findUniqueOrThrow({ where: { id }, select: { finalidade: true } })]);
+  return { ...contrato, finalidade: meta.finalidade };
 }
 export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null) {
-  input = protocoloSchema.parse(input);
   return transacaoPecuaria(async tx => {
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
+    input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade });
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
-    const congeladas = await congelarEtapasTx(tx, input.etapas);
-    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
+    await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
+    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    await associarMomentosAcoesTx(tx, identidade, input.etapas);
     if (input.publicado) await publicarReprodutivoTx(tx, identidade, usuarioId);
     const depois = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: identidade } });
     await auditar(tx, { entidade: "ProtocoloIatf", entidadeId: identidade, acao: "RASCUNHO_EDITADO", usuarioId, antes, depois });
-    return depois;
+    return { ...depois, finalidade: input.finalidade ?? antes.finalidade };
   });
 }
 export async function publicarProtocolo(id: string, usuarioId: number | null) {
@@ -318,7 +334,48 @@ export const criarProgramacao = (
     );
   });
 export const dataNoBrasil = diaIatf;
-/** Planeja tarefas pelo núcleo comum; o início e seus bloqueios são confirmados separadamente. */
+/** Adesão individual usa a mesma versão e os mesmos executores, sem criar um grupo. */
+export const participacaoIndividualReprodutivaSchema = z.object({
+  chave: z.string().uuid(), protocoloId: z.string().uuid(), animalId: z.string().uuid(),
+  propriedadeId: z.number().int().positive().max(2147483647), inicioReferencia: dataOuHorario,
+  cienciaSanitaria: z.boolean().optional(), confirmarSobreposicao: z.boolean().optional(),
+  justificativaSobreposicao: z.string().trim().min(5).max(1000).optional(),
+}).strict();
+export async function criarParticipacaoIndividualReprodutiva(entrada: z.infer<typeof participacaoIndividualReprodutivaSchema>, usuarioId: number | null) {
+  const input = participacaoIndividualReprodutivaSchema.parse(entrada);
+  return transacaoPecuaria(async tx => {
+    await travarAnimais(tx, [input.animalId]);
+    return operacaoIdempotenteTx(tx, input, usuarioId, "PARTICIPACAO_REPRODUTIVA_INDIVIDUAL", async () => {
+      const protocoloId = await resolverIdReprodutivoTx(tx, "protocolo", input.protocoloId);
+      const p = await carregarVersaoTx(tx, protocoloId, "REPRODUTIVO");
+      if (!p.ativo || !p.publicado || !p.publicadoEm) erro("Selecione uma versão publicada e ativa do protocolo", "protocoloId");
+      const protocolo = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: protocoloId } });
+      const temporal = lerDataIatf(input.inicioReferencia);
+      await conferirDisponibilidadeTx(tx, input.animalId, input.propriedadeId,
+        temporal.instante > new Date() ? dia(diaIatf(new Date())) : dia(temporal.data), "IATF", input.cienciaSanitaria);
+      if (temporal.instante > new Date() && !await tx.localizacaoAnimal.findFirst({ where: {
+        animalId: input.animalId, propriedadeId: input.propriedadeId, desde: { lte: temporal.instante },
+        OR: [{ ate: null }, { ate: { gt: temporal.instante } }],
+      } })) erro("Animal não estará neste sítio na referência prevista", "inicioReferencia");
+      const sobreposta = await tx.participacaoProtocolo.findFirst({ where: { animalId: input.animalId, canceladaEm: null,
+        protocolo: { tipo: "REPRODUTIVO", nome: { equals: p.nome, mode: "insensitive" } },
+        tarefas: { some: { realizadaEm: null, dispensadaEm: null } },
+      } });
+      if (sobreposta && (!input.confirmarSobreposicao || !input.justificativaSobreposicao))
+        throw new RebanhoError("CONFLITO", "O animal já tem este protocolo pendente; confirme a sobreposição com justificativa", "confirmarSobreposicao");
+      const participante = await tx.participacaoProtocolo.create({ data: { protocoloId, animalId: input.animalId,
+        propriedadeId: input.propriedadeId, inicio: temporal.instante, precisaoTemporal: temporal.precisao,
+        origemCalendario: "REFERENCIA_PROGRAMADA", criadoPorId: usuarioId } });
+      await criarTarefasReprodutivasTx(tx, { data: calendarioIatf(temporal.instante, protocolo.etapas as EtapaFonte[], temporal.precisao)
+        .map(e => dadosTarefa(participante.id, e, temporal.instante)) });
+      await auditar(tx, { entidade: "ParticipacaoProtocolo", entidadeId: participante.id, animalId: input.animalId,
+        propriedadeId: input.propriedadeId, acao: "ADESAO_INDIVIDUAL", usuarioId,
+        depois: { ...participante, ...(sobreposta ? { sobreposicao: { participacaoId: sobreposta.id, motivo: input.justificativaSobreposicao } } : {}) } });
+      return participante;
+    });
+  });
+}
+
 export async function criarParticipacaoPlanejadaTx(
   tx: Prisma.TransactionClient,
   programacaoId: string,
@@ -339,6 +396,15 @@ export async function criarParticipacaoPlanejadaTx(
     propriedadeId: programacao.propriedadeId, acao: "PARTICIPACAO_ADICIONADA", usuarioId, depois: participante });
   return participante;
 }
+async function contextoParticipacaoReprodutivaTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number) {
+  const comum = await tx.participacaoProtocolo.findFirst({ where: { id, propriedadeId, protocolo: { tipo: "REPRODUTIVO" } }, include: { rodada: true } });
+  if (!comum || comum.rodada && comum.rodada.propriedadeId !== propriedadeId)
+    throw new RebanhoError("NAO_ENCONTRADO", "Participação não encontrada neste sítio");
+  const participante = await tx.participanteIatf.findUniqueOrThrow({ where: { id } });
+  return { comum, participante, programacao: { id: comum.rodada?.id ?? null, protocoloId: comum.protocoloId,
+    propriedadeId, status: comum.rodada?.status ?? "ABERTA" } };
+}
+
 export async function iniciarParticipanteTx(
   tx: Prisma.TransactionClient,
   id: string,
@@ -346,23 +412,16 @@ export async function iniciarParticipanteTx(
   inicioEfetivo: string,
   usuarioId: number | null,
   cienciaSanitaria = false,
+  acaoInicial?: "APLICACAO" | "EXAME" | "AVALIACAO" | "TENTATIVA" | "MANEJO" | "RETIRADA",
 ) {
   id = await resolverIdReprodutivoTx(tx, "participacao", id);
   const referencia = await tx.participanteIatf.findUnique({ where: { id } });
   if (!referencia)
     throw new RebanhoError("NAO_ENCONTRADO", "Participante não encontrado");
   await travarAnimais(tx, [referencia.animalId]);
-  const participante = await tx.participanteIatf.findUniqueOrThrow({
-    where: { id },
-  });
-  const programacao = await tx.programacaoIatf.findFirst({
-    where: { id: participante.programacaoId, propriedadeId, status: "ABERTA" },
-  });
-  if (!programacao || participante.encerradoEm)
-    throw new RebanhoError(
-      "NAO_ENCONTRADO",
-      "Participação não está aberta neste sítio",
-    );
+  const { participante, comum, programacao } = await contextoParticipacaoReprodutivaTx(tx, id, propriedadeId);
+  if (programacao.status !== "ABERTA" || participante.encerradoEm)
+    throw new RebanhoError("CONFLITO", "Participação não está aberta neste sítio");
   const temporal = lerDataIatf(inicioEfetivo);
   const inicio = temporal.instante;
   if (anteriorIatf(new Date(), "HORA", inicio, temporal.precisao))
@@ -375,7 +434,8 @@ export async function iniciarParticipanteTx(
       "inicioEfetivo",
     );
   }
-  await conferirDisponibilidadeTx(
+  if (acaoInicial) await conferirMatrizTx(tx, participante.animalId, propriedadeId, dia(temporal.data));
+  else await conferirDisponibilidadeTx(
     tx,
     participante.animalId,
     propriedadeId,
@@ -386,7 +446,7 @@ export async function iniciarParticipanteTx(
   const protocolo = await tx.protocoloIatf.findUniqueOrThrow({
     where: { id: programacao.protocoloId },
   });
-  for (const etapa of calendarioIatf(
+  if (comum.origemCalendario === "INICIO_EFETIVO_LEGADO") for (const etapa of calendarioIatf(
     inicio,
     protocolo.etapas as EtapaFonte[], temporal.precisao,
   )) {
@@ -395,8 +455,9 @@ export async function iniciarParticipanteTx(
         participanteId_etapa: { participanteId: id, etapa: etapa.etapa },
       },
     });
-    if (tarefa.realizadaEm)
+    if (tarefa.realizadaEm && await tx.tarefaProtocolo.count({where:{id:tarefa.id,...condicaoSituacaoTarefa("REALIZADA")}}))
       erro("Há execução anterior ao início efetivo", "inicioEfetivo");
+    if (tarefa.dispensadaEm) continue;
     await atualizarTarefaReprodutivaTx(tx, { usuarioId,
       where: { id: tarefa.id },
       data: {
@@ -468,83 +529,58 @@ export async function contextoTarefaTx(
   const tarefa = await tx.tarefaIatf.findUnique({ where: { id } });
   if (!tarefa)
     throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
-  const participante = await tx.participanteIatf.findUniqueOrThrow({
-    where: { id: tarefa.participanteId },
-  });
-  const programacao = await tx.programacaoIatf.findFirst({
-    where: { id: participante.programacaoId, propriedadeId },
-  });
-  if (!programacao)
-    throw new RebanhoError(
-      "NAO_ENCONTRADO",
-      "Tarefa não encontrada neste sítio",
-    );
-  return { tarefa, participante, programacao };
+  const { participante, programacao, comum } = await contextoParticipacaoReprodutivaTx(tx, tarefa.participanteId, propriedadeId);
+  return { tarefa, participante, programacao, comum };
 }
-export async function reprogramarTarefa(
-  id: string,
-  propriedadeId: number,
-  previstaEm: string,
-  motivo: string,
-  usuarioId: number | null,
-) {
-  return transacaoPecuaria(async (tx) => {
-    const referencia = await contextoTarefaTx(tx, id, propriedadeId);
-    await travarAnimais(tx, [referencia.participante.animalId]);
-    const { tarefa, participante, programacao } = await contextoTarefaTx(
-      tx,
-      id,
-      propriedadeId,
-    );
-    if (
-      tarefa.realizadaEm ||
-      tarefa.dispensadaEm ||
-      participante.encerradoEm ||
-      programacao.status !== "ABERTA"
-    )
-      erro("Tarefa não está pendente");
-    const historico = Array.isArray(tarefa.historicoReprogramacao)
-      ? tarefa.historicoReprogramacao
-      : [];
-    const temporal = lerDataIatf(previstaEm);
-    const salva = await atualizarTarefaReprodutivaTx(tx, { usuarioId,
-      where: { id },
-      data: {
-        previstaEm: temporal.instante, precisaoTemporal: temporal.precisao, previsaoPendente: false,
-        historicoReprogramacao: [
-          ...historico,
-          {
-            motivo,
-            anterior: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
-            nova: previstaEm, precisaoAnterior: tarefa.precisaoTemporal, precisaoNova: temporal.precisao,
-            usuarioId,
-            registradoEm: new Date().toISOString(),
-          },
-        ],
-        ...(tarefa.planejadoSnapshot
-          ? {
-              planejadoSnapshot: json({
-                ...(tarefa.planejadoSnapshot as object),
-                previstaEm: serializarDataIatf(temporal.instante, temporal.precisao), precisaoTemporal: temporal.precisao, previsaoPendente: false,
-              }),
-            }
-          : {}),
-      },
-    });
-    await auditar(tx, {
-      entidade: "TarefaIatf",
-      entidadeId: id,
-      animalId: participante.animalId,
-      propriedadeId,
-      acao: "REPROGRAMACAO",
-      usuarioId,
-      antes: tarefa,
-      depois: salva,
-    });
-    return salva;
+export async function reprogramarTarefa(id: string, propriedadeId: number, previstaEm: string, motivo: string, usuarioId: number | null, chave?: string) {
+  return transacaoPecuaria(async tx => {
+    const identidade = await resolverIdReprodutivoTx(tx, "tarefa", id);
+    await registrarEventoTarefaTx(tx, identidade, { chave: chave ?? crypto.randomUUID(), propriedadeId, tipo: "ADIAMENTO",
+      ocorridaEm: new Date().toISOString(), motivo, previstaPara: previstaEm }, usuarioId, "REPRODUTIVO");
+    return tx.tarefaIatf.findUniqueOrThrow({ where: { id: identidade } });
   });
 }
-export async function executarTarefaTx(
+export const previaInicioExecucaoSchema = z.object({
+  propriedadeId: z.number().int().positive().max(2147483647), realizadaEm: dataOuHorario,
+  pagina: z.number().int().positive().default(1), porPagina: z.number().int().positive().max(10).default(10),
+}).strict();
+type EntradaPreviaInicio = z.input<typeof previaInicioExecucaoSchema>;
+
+async function impactosInicioExecucaoTx(tx: Prisma.TransactionClient, contexto: Awaited<ReturnType<typeof contextoTarefaTx>>, realizadaEm: string) {
+  const modoLegado = contexto.comum.origemCalendario === "INICIO_EFETIVO_LEGADO";
+  if (!modoLegado || contexto.participante.inicioEfetivo) return { modoLegado, itens: [] };
+  const [protocolo, tarefas] = await Promise.all([
+    tx.protocoloIatf.findUniqueOrThrow({ where: { id: contexto.comum.protocoloId } }),
+    tx.tarefaIatf.findMany({ where: { participanteId: contexto.participante.id }, orderBy: [{ etapa: "asc" }, { id: "asc" }] }),
+  ]);
+  const marcadas=tarefas.filter(t=>t.realizadaEm).map(t=>t.id);
+  if (marcadas.length && await tx.tarefaProtocolo.count({where:{id:{in:marcadas},...condicaoSituacaoTarefa("REALIZADA")}})) erro("Há execução anterior ao início efetivo", "inicioEfetivo");
+  return { modoLegado, itens: impactosInicioLegado(realizadaEm, protocolo.etapas as EtapaFonte[], tarefas) };
+}
+
+/** Sem auditoria, chave de reenvio ou escritas de domínio; a transação também proíbe escrita no PostgreSQL. */
+export async function preverInicioExecucaoTarefa(id: string, entrada: EntradaPreviaInicio) {
+  const input = previaInicioExecucaoSchema.parse(entrada);
+  const temporal = lerDataIatf(input.realizadaEm);
+  if (anteriorIatf(new Date(), "HORA", temporal.instante, temporal.precisao)) erro("A realização deve ter ocorrido até agora", "realizadaEm");
+  return prisma.$transaction(async tx => {
+    await tx.$executeRaw`SET TRANSACTION READ ONLY`;
+    const referencia = await tx.tarefaProtocolo.findFirst({ where: { OR: [{ id }, { legadoIatfId: id }],
+      execucao: { propriedadeId: input.propriedadeId } }, select: { execucao: { select: { protocolo: { select: { tipo: true } } } } } });
+    if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada neste sítio");
+    if (referencia.execucao.protocolo.tipo !== "REPRODUTIVO")
+      return { exigeCiencia: false, modoLegado: false, itens: [], total: 0, pagina: 1, porPagina: input.porPagina };
+    const contexto = await contextoTarefaTx(tx, id, input.propriedadeId);
+    if (contexto.participante.encerradoEm || contexto.tarefa.realizadaEm || contexto.tarefa.dispensadaEm || contexto.programacao.status !== "ABERTA")
+      erro("A tarefa exige participação aberta e pendente");
+    const { modoLegado, itens } = await impactosInicioExecucaoTx(tx, contexto, input.realizadaEm);
+    const total = itens.length, pagina = Math.min(input.pagina, Math.max(1, Math.ceil(total / input.porPagina)));
+    return { exigeCiencia: total > 0, modoLegado, itens: itens.slice((pagina - 1) * input.porPagina, pagina * input.porPagina),
+      total, pagina, porPagina: input.porPagina };
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
+}
+
+export async function prepararExecucaoTarefaTx(
   tx: Prisma.TransactionClient,
   id: string,
   input: {
@@ -553,37 +589,57 @@ export async function executarTarefaTx(
     realizadaEm: string;
     dados: Record<string, unknown>;
     motivo?: string;
+    cienciaRecalendarioLegado?: boolean;
   },
   usuarioId: number | null,
 ) {
   const referencia = await contextoTarefaTx(tx, id, input.propriedadeId);
   await travarAnimais(tx, [referencia.participante.animalId]);
-  const { tarefa, participante, programacao } = await contextoTarefaTx(
-    tx,
-    id,
-    input.propriedadeId,
-  );
-  if (
-    !participante.inicioEfetivo ||
-    participante.encerradoEm ||
-    tarefa.realizadaEm ||
-    tarefa.dispensadaEm ||
-    programacao.status !== "ABERTA"
-  )
-    erro("A tarefa exige participação iniciada e pendente");
+  let contexto = await contextoTarefaTx(tx, id, input.propriedadeId);
+  if (contexto.participante.encerradoEm || contexto.tarefa.dispensadaEm || contexto.programacao.status !== "ABERTA")
+    erro("A tarefa exige participação aberta e pendente");
+  const comum = await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: contexto.tarefa.id }, include: {
+    vinculos: { include: { aplicacao: true, tentativa: true, exame: true } },
+    aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } }, tentativas: { where: { status: "VALIDO" } },
+  } });
+  if (comum.regularizacaoPendente || comum.vinculos.some(v => v.estado === "ENCERRADO" || v.aplicacao?.consumoMantido || v.tentativa?.consumoMantido || v.estado === "ATUAL" && (v.aplicacao?.status === "VALIDO" || v.tentativa?.status === "VALIDO" || (v.exame?.status === "VALIDO" && v.exame.realizacao !== "NAO_REALIZADO"))) || comum.aplicacoes.length || comum.exames.some(e => e.realizacao !== "NAO_REALIZADO") || comum.tentativas.length)
+    erro("A tarefa já possui execução ou exige regularização");
+  if (contexto.tarefa.realizadaEm && !comum.exames.some(e => e.realizacao === "NAO_REALIZADO")
+    && !comum.vinculos.some(v => v.estado === "ATUAL" && v.exame?.status === "VALIDO" && v.exame.realizacao === "NAO_REALIZADO"))
+    erro("A tarefa já possui realização registrada");
+  const impactosInicio = !contexto.participante.inicioEfetivo ? await impactosInicioExecucaoTx(tx, contexto, input.realizadaEm) : { modoLegado: contexto.comum.origemCalendario === "INICIO_EFETIVO_LEGADO", itens: [] };
+  if (!contexto.participante.inicioEfetivo) {
+    const impactos = impactosInicio;
+    // Projeta o início e o calendário somente em memória. Esta função nunca
+    // inicia participação, reprograma tarefa ou grava auditoria.
+    const temporalInicio = lerDataIatf(input.realizadaEm);
+    const impacto = impactos.itens.find(i => i.id === contexto.tarefa.id);
+    contexto = { ...contexto,
+      participante: { ...contexto.participante, inicioEfetivo: temporalInicio.instante, precisaoInicioEfetivo: temporalInicio.precisao },
+      tarefa: impacto ? { ...contexto.tarefa, previstaEm: new Date(impacto.previstaNova), precisaoTemporal: impacto.precisaoNova, previsaoPendente: impacto.previsaoPendente } : contexto.tarefa };
+  }
+  const { tarefa, participante } = contexto;
   const temporal = lerDataIatf(input.realizadaEm);
   const realizada = temporal.instante;
   const data = temporal.data;
-  if (anteriorIatf(new Date(), "HORA", realizada, temporal.precisao) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo, participante.precisaoInicioEfetivo ?? "HORA"))
+  if (anteriorIatf(new Date(), "HORA", realizada, temporal.precisao) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo!, participante.precisaoInicioEfetivo ?? "HORA"))
     erro("Execução deve ocorrer após início efetivo e até agora", "realizadaEm");
-  if (["APLICACAO", "MANEJO", "TENTATIVA"].includes(tarefa.tipo))
+  if (tarefa.tipo === "TENTATIVA")
+    await conferirDisponibilidadeTx(
+      tx, participante.animalId, input.propriedadeId, dia(data), tentativaSchema.shape.tipo.parse(input.dados.tipo),
+      input.dados.cienciaSanitaria === true,
+    );
+  else if (tarefa.tipo === "APLICACAO")
     await conferirDisponibilidadeTx(
       tx, participante.animalId, input.propriedadeId, dia(data), "IATF",
       input.dados.cienciaSanitaria === true,
     );
   else
     await conferirMatrizTx(tx, participante.animalId, input.propriedadeId, dia(data));
-  const plano = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  const planoOriginal = tarefa.planejadoSnapshot as SnapshotIatf | null;
+  // A referência operacional pode ser adiada sem reescrever o snapshot publicado.
+  const plano = planoOriginal ? { ...planoOriginal, previstaEm: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
+    precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente } : null;
   const demanda = tarefa.tipo === "AVALIACAO"
     ? await tx.demandaAcompanhamentoReprodutivo.findUnique({ where: { tarefaId: tarefa.id } })
     : null;
@@ -629,14 +685,14 @@ export async function executarTarefaTx(
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
   if(plano?.etapa.orientacaoTemporal){
     const regra=plano.etapa.orientacaoTemporal;
-    if(regra.referencia==="INICIO_EFETIVO")plano.referenciaTemporalEfetiva={data:participante.inicioEfetivo.toISOString(),precisao:participante.precisaoInicioEfetivo??"DIA",fatoId:participante.id};
+    if(regra.referencia==="INICIO_EFETIVO")plano.referenciaTemporalEfetiva={data:participante.inicioEfetivo!.toISOString(),precisao:participante.precisaoInicioEfetivo??"DIA",fatoId:participante.id};
     else {
       const anteriores=await tx.tarefaIatf.findMany({where:{participanteId:participante.id,etapa:{lt:tarefa.etapa}},orderBy:{etapa:"desc"}});
       const anterior=anteriores[0];
       const atual=anterior?await tx.tarefaProtocolo.findUnique({where:{id:anterior.id},include:{vinculos:{where:{estado:"ATUAL"},include:{aplicacao:true,exame:true,tentativa:true}}}}):null;
       const historico=Array.isArray(atual?.historicoRegularizacao)?atual.historicoRegularizacao:[];
       const ultima=historico.at(-1) as {acao?:string}|undefined;
-      const lastro=!!atual&&!atual.regularizacaoPendente&&ultima?.acao!=="ENCERRAR_SEM_SUBSTITUICAO"&&(["MANEJO","RETIRADA"].includes(anterior!.tipo)||atual.vinculos.some(v=>v.aplicacao?.status==="VALIDO"||v.exame?.status==="VALIDO"||v.tentativa?.status==="VALIDO"));
+      const lastro=!!atual&&!atual.regularizacaoPendente&&ultima?.acao!=="ENCERRAR_SEM_SUBSTITUICAO"&&(["MANEJO","RETIRADA"].includes(anterior!.tipo)||atual.vinculos.some(v=>v.aplicacao?.status==="VALIDO"||v.exame?.status==="VALIDO"&&v.exame.realizacao!=="NAO_REALIZADO"||v.tentativa?.status==="VALIDO"));
       plano.referenciaTemporalEfetiva=anterior?.realizadaEm&&lastro?{data:anterior.realizadaEm.toISOString(),precisao:anterior.precisaoRealizacao??"DIA",fatoId:anterior.id}:null;
     }
   }
@@ -701,16 +757,29 @@ export async function executarTarefaTx(
         unidade: p.unidade,
       };
   }
-  if (
-    exigeMotivoExecucao(desvio) &&
-    (!input.motivo || input.motivo.trim().length < 5)
-  )
-    erro(
-      !desvio.aferido
-        ? "Planejamento histórico não aferível: documente motivo antes da execução"
-        : `Execução diverge de ${desvio.diferencas.map((d) => d.campo).join(", ")}; informe motivo`,
-      "motivo",
-    );
+  return { contexto, tarefa, participante, temporal, realizada, data, preparado, desvio, referenciasRealizadas, plano, impactosInicio };
+}
+
+/** Confirmação e prévia usam a mesma preparação; só este limite produz os fatos. */
+export async function executarTarefaTx(
+  tx: Prisma.TransactionClient,
+  id: string,
+  input: Parameters<typeof prepararExecucaoTarefaTx>[2],
+  usuarioId: number | null,
+) {
+  const contextoAcao = await contextoTarefaTx(tx, id, input.propriedadeId);
+  if (["MANEJO", "RETIRADA"].includes(contextoAcao.tarefa.tipo))
+    return executarManejoDaTarefaIatfTx(tx, id, input, usuarioId);
+  let preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId);
+  if (!preparacao.contexto.comum.inicioEfetivo) {
+    if (preparacao.impactosInicio.itens.length && input.cienciaRecalendarioLegado !== true)
+      erro("Revise a prévia e confirme ciência das mudanças no calendário legado", "cienciaRecalendarioLegado");
+    await iniciarParticipanteTx(tx, preparacao.participante.id, input.propriedadeId, input.realizadaEm, usuarioId, input.dados.cienciaSanitaria === true, z.enum(["APLICACAO", "EXAME", "AVALIACAO", "TENTATIVA"]).parse(preparacao.tarefa.tipo));
+    preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId);
+  }
+  const { tarefa, participante, temporal, realizada, preparado, desvio, referenciasRealizadas, plano } = preparacao;
+  if (exigeMotivoExecucao(desvio) && (!input.motivo || input.motivo.trim().length < 5))
+    erro(!desvio.aferido ? "Planejamento histórico não aferível: documente motivo antes da execução" : `Execução diverge de ${desvio.diferencas.map(d => d.campo).join(", ")}; informe motivo`, "motivo");
   let fato: { id: string } | null = null,
     vinculo: {
       aplicacaoId?: string;
@@ -784,6 +853,8 @@ export async function executarTarefaTx(
     antes: tarefa,
     depois: { ...salva, fato },
   });
+  if (tarefa.tipo === "AVALIACAO" && preparado.resultado === "INCONCLUSIVO" && fato)
+    await garantirDemandaProtocoloTx(tx, tarefa.id, fato.id, usuarioId);
   await reconciliarDemandasAnimalTx(tx, participante.animalId, usuarioId);
   return salva;
 }
@@ -795,6 +866,7 @@ export const executarTarefa = (
     realizadaEm: string;
     dados: Record<string, unknown>;
     motivo?: string;
+    cienciaRecalendarioLegado?: boolean;
   },
   usuarioId: number | null,
 ) =>
@@ -820,16 +892,8 @@ export async function retirarParticipante(
     const participante = await tx.participanteIatf.findUnique({
       where: { id: participanteId },
     });
-    if (
-      !participante ||
-      !(await tx.programacaoIatf.count({
-        where: { id: participante.programacaoId, propriedadeId },
-      }))
-    )
-      throw new RebanhoError(
-        "NAO_ENCONTRADO",
-        "Participante não encontrado neste sítio",
-      );
+    if (!participante) throw new RebanhoError("NAO_ENCONTRADO", "Participante não encontrado neste sítio");
+    await contextoParticipacaoReprodutivaTx(tx, participanteId, propriedadeId);
     await travarAnimais(tx, [participante.animalId]);
     const atual = await tx.participanteIatf.findUniqueOrThrow({
       where: { id: participanteId },

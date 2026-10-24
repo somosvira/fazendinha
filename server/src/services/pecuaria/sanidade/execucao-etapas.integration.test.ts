@@ -26,7 +26,6 @@ afterAll(async () => {
   await prisma.tarefaProtocolo.deleteMany({ where: { execucaoId: { in: execucoes } } });
   await prisma.participacaoProtocolo.deleteMany({ where: { id: { in: execucoes } } });
   await prisma.programacaoProtocolo.deleteMany({ where: { propriedadeId: { in: sitios } } });
-  await prisma.etapaProtocolo.deleteMany({ where: { protocoloId: { in: protocolos } } });
   await prisma.protocolo.deleteMany({ where: { id: { in: protocolos } } });
   await prisma.tipoExame.deleteMany({ where: { id: { in: tiposExame } } });
   await prisma.produto.deleteMany({ where: { id: { in: produtos } } });

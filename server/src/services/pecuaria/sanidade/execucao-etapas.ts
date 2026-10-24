@@ -15,7 +15,7 @@ function validarConjunto(input: ExecucaoEtapasInput) {
   }
 }
 
-async function conferirConsumos(tx: Prisma.TransactionClient, input: ExecucaoEtapasInput, quantidadesDiretas: Map<string, Prisma.Decimal>) {
+export async function conferirConsumosExecucaoTx(tx: Prisma.TransactionClient, input: { propriedadeId: number; itens: Array<Omit<Extract<ExecucaoEtapasInput["itens"][number], { tipo: "APLICACAO" }>, "aplicadaEm"> | Extract<ExecucaoEtapasInput["itens"][number], { tipo: "EXAME" }>> }, quantidadesDiretas: Map<string, Prisma.Decimal>) {
   const grupos = new Map<string, { produtoId: string; partidaId: string | null; itemCompraDiretaId: string | null; unidade: string; quantidade: Prisma.Decimal }>();
   const produtos = await tx.produto.findMany({ where: { id: { in: input.itens.flatMap((i) => i.tipo === "APLICACAO" && i.produtoId ? [i.produtoId] : []) } } });
   const compras = await tx.itemOperacao.findMany({ where: { id: { in: input.itens.flatMap((i) => i.tipo === "APLICACAO" && i.itemCompraDiretaId ? [i.itemCompraDiretaId] : []) } } });
@@ -53,7 +53,7 @@ async function conferirConsumos(tx: Prisma.TransactionClient, input: ExecucaoEta
   });
 }
 
-async function prepararPreviaTx(tx: Prisma.TransactionClient, input: ExecucaoEtapasInput) {
+export async function prepararPreviaEtapasTx(tx: Prisma.TransactionClient, input: ExecucaoEtapasInput) {
   validarConjunto(input);
   await travarAnimais(tx, input.itens.map((i) => i.animalId));
   const tarefas = await tx.tarefaProtocolo.findMany({ where: { id: { in: input.itens.map((i) => i.tarefaId) } }, include: { execucao: true } });
@@ -73,19 +73,19 @@ async function prepararPreviaTx(tx: Prisma.TransactionClient, input: ExecucaoEta
           estadoCarne: "estadoCarenciaCarne" in dados ? dados.estadoCarenciaCarne : null, leiteHoras: item.carenciaLeiteHoras ?? null, carneHoras: item.carenciaCarneHoras ?? null } : null });
     } catch (e) { if (e instanceof RebanhoError) throw new RebanhoError(e.code, `Animal ${linha + 1}: ${e.message}`, `itens.${linha}.${e.campo ?? "tarefaId"}`); throw e; }
   }
-  const consumos = await conferirConsumos(tx, input, quantidadesDiretas);
+  const consumos = await conferirConsumosExecucaoTx(tx, input, quantidadesDiretas);
   const dados = { itens, consumos, temDesvios: itens.some((i) => i.motivoObrigatorio) };
   const fingerprint = crypto.createHash("sha256").update(JSON.stringify({ ...dados, itens: [...itens].sort((a, b) => a.tarefaId.localeCompare(b.tarefaId)) })).digest("hex");
   return { ...dados, fingerprint };
 }
 
-export async function preverExecucaoEtapas(input: ExecucaoEtapasInput) { return transacaoPecuaria((tx) => prepararPreviaTx(tx, input)); }
+export async function preverExecucaoEtapas(input: ExecucaoEtapasInput) { return transacaoPecuaria((tx) => prepararPreviaEtapasTx(tx, input)); }
 
 export async function confirmarExecucaoEtapas(input: ExecucaoEtapasInput & { chave: string; fingerprint: string }, usuarioId: number | null) {
   validarConjunto(input);
   return confirmarColetivo(input, usuarioId, "ETAPA_PROTOCOLO_COLETIVA", async (tx, item, autor) => {
     if (item === input.itens[0]) {
-      const previa = await prepararPreviaTx(tx, input);
+      const previa = await prepararPreviaEtapasTx(tx, input);
       if (previa.fingerprint !== input.fingerprint) throw new RebanhoError("CONFLITO", "O planejamento ou os dados mudaram. Confira uma nova prévia", "fingerprint");
     }
     return item.tipo === "APLICACAO" ? criarAplicacaoTx(tx, item, autor) : registrarExameTx(tx, item, autor);

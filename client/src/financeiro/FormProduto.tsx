@@ -2,13 +2,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SelectCampo } from "./SelectCampo";
 import { Input } from "@/components/ui/input";
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput } from "../estoque/api";
+import { ApiError, criarProduto, editarProduto, listarCategorias, listarCentrosCusto, listarFornecedores, listarTiposAplicacaoSanitarios, type Categoria, type CentroCusto, type Parceiro, type ProdutoDTO as Produto, type ProdutoInput } from "../estoque/api";
 import { Button, ErrorBox } from "./financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
 import { papeisDoParceiro } from "./lib/parceiros";
 import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 import { PartidasProduto } from "../estoque/PartidasProduto";
+import { SeletorCatalogoProtocolo } from "../pecuaria/rebanho/protocolos/SeletorCatalogoProtocolo";
 import { Package } from "lucide-react";
 
 const TIPOS = [{ campo: "usoGenetico", nome: "Genético" }, { campo: "usoSanitario", nome: "Sanitário" }, { campo: "usoNutricional", nome: "Nutricional" }] as const;
@@ -57,6 +58,8 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [leite, setLeite] = useState(produto?.perfilSanitario?.carenciaLeiteHoras?.toString() ?? "");
   const [carne, setCarne] = useState(produto?.perfilSanitario?.carenciaCarneHoras?.toString() ?? "");
   const [via, setVia] = useState(produto?.perfilSanitario?.viaPadrao ?? "");
+  const [orientacaoUso, setOrientacaoUso] = useState(produto?.perfilSanitario?.orientacaoUso ?? "");
+  const [tipoAplicacaoId, setTipoAplicacaoId] = useState(produto?.perfilSanitario?.tipoAplicacaoId ?? "");
   const [materiaSeca, setMateriaSeca] = useState(produto?.perfilNutricional?.materiaSecaPercentual ?? "");
   const [usos, setUsos] = useState({ usoGenetico: produto?.usoGenetico ?? false, usoSanitario: produto?.usoSanitario ?? false, usoNutricional: produto?.usoNutricional ?? false });
   const [rastrearPartidas, setRastrearPartidas] = useState(produto?.rastrearPartidas ?? false);
@@ -87,6 +90,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     if (usos.usoSanitario) for (const [campo, valor] of [["carenciaLeiteHoras", leite], ["carenciaCarneHoras", carne]]) {
       if (valor !== "" && (!Number.isInteger(Number(valor)) || Number(valor) < 0)) novosErros[campo] = "Informe um número inteiro de horas, igual ou maior que zero.";
     }
+    if (usos.usoSanitario && orientacaoUso.trim().length > 2000) novosErros.orientacaoUso = "Informe uma orientação com até 2.000 caracteres.";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('#form-produto-financeiro [aria-invalid="true"]')?.focus()); return;
     }
@@ -95,7 +99,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId,
       centroCustoIds, fornecedorIds,
       ...usos, ...(!produto ? { rastrearPartidas } : {}),
-      ...(usos.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), viaPadrao: via || null } } : {}),
+      ...(usos.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), viaPadrao: via || null, orientacaoUso: orientacaoUso.trim() || null, tipoAplicacaoId: tipoAplicacaoId || null } } : {}),
       ...(usos.usoNutricional ? { perfilNutricional: { materiaSecaPercentual: ms === "" ? null : Number(ms) } } : {}),
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
@@ -127,7 +131,11 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => setUnidade(valor as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <Input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      {usos.usoSanitario && <fieldset className="grid gap-3 rounded-lg border border-border p-3"><legend>Perfil sanitário — sugestões para revisão</legend><CampoFormulario id="produto-leite" rotulo="Carência sugerida de leite (horas)" erro={erros.carenciaLeiteHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={leite} onChange={(e) => setLeite(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-carne" rotulo="Carência sugerida de carne (horas)" erro={erros.carenciaCarneHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={carne} onChange={(e) => setCarne(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario></fieldset>}
+      {usos.usoSanitario && <fieldset className="grid gap-3 rounded-lg border border-border p-3"><legend>Perfil sanitário — sugestões para revisão</legend><CampoFormulario id="produto-leite" rotulo="Carência sugerida de leite (horas)" erro={erros.carenciaLeiteHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={leite} onChange={(e) => setLeite(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-carne" rotulo="Carência sugerida de carne (horas)" erro={erros.carenciaCarneHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={carne} onChange={(e) => setCarne(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <SeletorCatalogoProtocolo opcao="TIPO_APLICACAO" origem="SANITARIO" rotulo="Tipo de aplicação padrão (opcional)" valor={tipoAplicacaoId} onChange={setTipoAplicacaoId} listarOpcoes={listarTiposAplicacaoSanitarios} erroCampo={erros.tipoAplicacaoId} />
+        <p className="text-xs text-ink-3">Sem tipo padrão, o atendimento exige classificação manual. O cadastro do produto não define indicação clínica.</p>
+        <CampoFormulario id="produto-orientacao" rotulo="Orientação de uso (opcional)" erro={erros.orientacaoUso} ajuda="Instrução do cadastro do produto, independente da referência técnica histórica.">{(p) => <textarea {...p} maxLength={2000} value={orientacaoUso} onChange={e => setOrientacaoUso(e.target.value)} className={classeInput} />}</CampoFormulario>
+      </fieldset>}
       {usos.usoNutricional && <CampoFormulario id="produto-ms" rotulo="Matéria seca (%)" erro={erros.materiaSecaPercentual} ajuda="Opcional. Ausência significa cobertura incompleta, não zero.">{(p) => <Input {...p} type="text" inputMode="decimal" value={materiaSeca} onChange={(e) => setMateriaSeca(e.target.value)} className={classeInput} />}</CampoFormulario>}
       {produto ? <PartidasProduto configuracao produtoId={produto.id} rastreado={rastrearPartidas} onMudou={() => setRastrearPartidas(true)} /> : <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Lotes e validade</legend><label className="flex items-center gap-2 text-sm"><Checkbox  checked={rastrearPartidas} onCheckedChange={(checked) => setRastrearPartidas(checked === true)} />Controlar lotes por validade</label><p className="text-xs text-ink-3">Opcional. Entradas e saídas passam a identificar o lote do produto. Depois de ativado, o controle não pode ser desligado.</p></fieldset>}
       <MultiSelect

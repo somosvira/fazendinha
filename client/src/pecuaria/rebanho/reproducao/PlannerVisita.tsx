@@ -328,8 +328,8 @@ export function PlannerVisita({ visita, podeLancar, propriedadeNome, etapa = "pl
   }
 
   const totais = resumoRevisao(revisados);
-  const preparadosUnicos = new Set(visita.atividades.flatMap(a => a.participantes.map(p => p.animalId))).size;
-  const procedimentos = visita.atividades.reduce((s, a) => s + a.participantes.length, 0);
+  const preparadosUnicos = visita.totalAnimais ?? new Set(visita.atividades.flatMap(a => a.participantes.map(p => p.animalId))).size;
+  const procedimentos = visita.totalParticipantes ?? visita.atividades.reduce((s, a) => s + a.participantes.length, 0);
   const linhas = (lista: GrupoPlanner[]) => <div>{lista.map(g => {
     const selecionado = revisados.find(r => chaveGrupo(r.previa.grupo.grupo) === chaveGrupo(g.grupo));
     const quantidade = selecionado ? resumoRevisao([selecionado]).animais : g.totalAnimais;
@@ -489,6 +489,6 @@ export function PlannerVisita({ visita, podeLancar, propriedadeNome, etapa = "pl
         </section>
         <div className="visita-rodape"><div><strong>{revisao.previa.total - revisao.excluidos.length} de {revisao.previa.total} animais incluídos neste grupo</strong><small>{resumoRevisao(comRevisaoAtual()).animais} animais únicos · {resumoRevisao(comRevisaoAtual()).procedimentos} procedimentos na seleção da visita.</small></div><div className="visita-acoes"><button className="visita-botao" disabled={ocupado} onClick={livre ? ()=>ir(etapaInicial) : guardarRevisao}>{livre ? "Voltar aos filtros" : "Salvar grupo revisado"}</button><button className="visita-botao primario" disabled={!!jaPreparado || !podeLancar || ocupado || carregando || revisao.previa.total === revisao.excluidos.length || revisados.some(r => invalidos.includes(chaveGrupo(r.previa.grupo.grupo)) && chaveGrupo(r.previa.grupo.grupo) !== chaveGrupo(revisao.previa.grupo.grupo))} onClick={() => livre ? (salvarEstado(visita,modo,[],revisao,[],[],criteriosLivres,atividadeLivre), ir("atividade",{grupo:chaveGrupo(revisao.previa.grupo.grupo)})) : void prepararRevisao()}>{livre ? "Definir atividade e visita" : "Preparar visita e ir ao atendimento"}</button></div></div>
       </>}
-    </> : <Panel><CabecalhoTabela titulo="Atendimento da visita" descricao="Escolha uma atividade para continuar o registro."/><div className="divide-y divide-border">{visita.atividades.map(a => <button key={a.id} type="button" className="w-full p-4 text-left hover:bg-surface-2" onClick={() => ir("atendimento", {atividade:a.id})}>{a.nome}<span className="ml-2 text-xs text-ink-3">{a.participantes.length} animais</span></button>)}{!visita.atividades.length && <p className="p-4">Nenhuma atividade preparada.</p>}</div></Panel>}
+    </> : <Panel><CabecalhoTabela titulo="Atendimento da visita" descricao="Escolha uma atividade para continuar o registro."/><div className="divide-y divide-border">{visita.atividades.map(a => <button key={a.id} type="button" className="w-full p-4 text-left hover:bg-surface-2" onClick={() => ir("atendimento", {atividade:a.id})}>{a.nome}<span className="ml-2 text-xs text-ink-3">{a.totais?.totalParticipantes ?? a.participantes.length} animais</span></button>)}{!visita.atividades.length && <p className="p-4">Nenhuma atividade preparada.</p>}</div></Panel>}
   </section>;
 }

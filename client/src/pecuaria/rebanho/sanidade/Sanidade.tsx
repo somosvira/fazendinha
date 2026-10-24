@@ -1,3 +1,4 @@
+import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
 import { AgendaSemanal } from "./AgendaSemanal";
 import { CartoesOcorrencias, type ResumoOcorrencias } from "./CartoesOcorrencias";
@@ -174,6 +175,11 @@ import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 
 export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
+  const participacaoRota = window.location.pathname.match(/^\/pecuaria\/sanidade\/participacoes\/([^/]+)\/?$/);
+  if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="SANITARIO" propriedadeId={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva() || undefined} podeLancar={podeLancar} />;
+  return <ConteudoSanidade podeLancar={podeLancar}/>;
+}
+function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [rateando, setRateando] = useState(false);
   const [servicosGerenciamento, setServicosGerenciamento] = useState<ServicoSanitario[]>([]);
   const [erroServicos, setErroServicos] = useState<string | null>(null);
@@ -302,7 +308,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
     const preferencias = new URLSearchParams(window.location.search);
     for (const chave of ["visualCiclos", "visualTarefas", "visualOcorrencias", "semanaSanitaria"]) { const valor = preferencias.get(chave); if (valor) params.set(chave, valor); }
     if (aba === "ocorrencias" && doencaVisual) params.set("doencaId", doencaVisual);
-    if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
+    if (aba === "agenda" && rodadaId) { const atual = new URLSearchParams(window.location.search); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) { const v = atual.get(chave); if (v) params.set(chave, v); } }
     params.set("aba", aba);
     if (aba === "agenda") { params.set("visaoAgenda", visaoAgenda); if (rodadaId) params.set("rodadaId", rodadaId); }
     for (const [k, v] of Object.entries({
@@ -812,7 +818,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
   ];
   return (
     <PaginaFinanceira><div className="sanidade-pagina">
-      {executandoEtapa && <ExecutarEtapa tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
+      {executandoEtapa && <ExecutarEtapa key={executandoEtapa.map(t => t.id).join(":")} tarefas={executandoEtapa} onFechar={() => setExecutandoEtapa(null)} onSalvo={() => { setExecutandoEtapa(null); setRevisao((v) => v + 1); }} />}
       {rateando && !carregandoServicos && !erroServicos && (
         <RateioServico
           propriedadeId={getPropriedadeAtiva()}
@@ -883,7 +889,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "agenda" && (
             <>
 
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 20 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
+              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
               <div className="san-visual-barra"><p>Planeje por dia ou consulte todas as tarefas na tabela.</p><AlternarVisualizacaoSanitaria rotulo="Visualização das tarefas" semana {...visualTarefas}/></div>
               {visualTarefas.modo === "visual" ? <AgendaSemanal<Tarefa> filtros={{animalId,buscaAnimal,loteId,de,ate,situacao}} revisao={revisao} podeLancar={podeLancar} acoes={t=>colunasTarefas.find(c=>c.chave==="acoes")!.celula(t)} regularizacao={t=><RegularizacaoTarefa tarefa={t} podeLancar={podeLancar} onMudou={async()=>setRevisao(v=>v+1)}/>} onExecutar={itens=>setExecutandoEtapa(itens.map(t=>({...t,parametros:{...t.parametros,tipo:t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME"}})))}/> : <>
               <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} />
@@ -1246,7 +1252,7 @@ export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
           </form>
         </PainelCadastro>
       )}
-      {novoFato === "protocolo" ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
+      {novoFato === "protocolo" && !animalId ? <FormRodada animalInicial={animalId || undefined} onFechar={() => setNovoFato(null)} onSalvo={(id) => { setNovoFato(null); setVisaoAgenda("rodadas"); setRodadaId(id); setRevisao((v) => v + 1); }} /> : novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalDaAcao?.animalId ?? animalId} fixo={!!tarefaExameId} cadastroInicial={cadastroId} tarefaId={tarefaExameId} onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); setRevisao((v) => v + 1); }} />}
     </div></PaginaFinanceira>
   );
 }

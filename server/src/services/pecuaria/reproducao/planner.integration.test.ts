@@ -63,17 +63,15 @@ suite("seleções e planner — fixtures próprias em rollback", () => {
   it("usa núcleo comum, separa turmas/janelas e ignora realizada, dispensada, regularização e transferência", async () => comRollback(async tx => {
     const { sitio, animais, visita } = await fixture(tx);
     const protocolo = await tx.protocolo.create({ data: { tipo: "REPRODUTIVO", nome: `Planner protocolo ${randomUUID()}`, versao: 1,
-      etapas: { create: { nome: "Avaliação", ordem: 1, tipo: "EXAME", diaRelativo: 0, configuracao: { tipo: "AVALIACAO", nome: "Avaliação", intervalo: 0, unidade: "DIAS" } } } }, include: { etapas: true } });
+      etapas: { create: Array.from({ length: 10 }, (_, i) => ({ nome: `Avaliação ${i + 1}`, ordem: i + 1, tipo: "EXAME", diaRelativo: 0, configuracao: { tipo: "AVALIACAO", nome: `Avaliação ${i + 1}`, intervalo: 0, unidade: "DIAS" } })) } }, include: { etapas: { orderBy: { ordem: "asc" } } } });
     const turma = await tx.programacaoProtocolo.create({ data: { protocoloId: protocolo.id, propriedadeId: sitio.id, nome: "Turma A", inicioReferencia: new Date("2026-10-01") } });
     const turmaB = await tx.programacaoProtocolo.create({ data: { protocoloId: protocolo.id, propriedadeId: sitio.id, nome: "Turma B", inicioReferencia: new Date("2026-10-01") } });
     async function tarefa(prevista: string, modificacoes: Partial<Prisma.TarefaProtocoloUncheckedCreateInput> = {}, rodadaId = turma.id, animalId = animais[0].id) {
       const execucao = await tx.participacaoProtocolo.findFirst({ where: { rodadaId, animalId } })
         ?? await tx.participacaoProtocolo.create({ data: { protocoloId: protocolo.id, propriedadeId: sitio.id, animalId, rodadaId, inicio: new Date("2026-10-01") } });
-      let etapaId = protocolo.etapas[0].id;
-      if (await tx.tarefaProtocolo.count({ where: { execucaoId: execucao.id, etapaId } })) {
-        const ordem = (await tx.etapaProtocolo.count({ where: { protocoloId: protocolo.id } })) + 1;
-        etapaId = (await tx.etapaProtocolo.create({ data: { protocoloId: protocolo.id, ordem, nome: `Etapa ${ordem}`, tipo: "EXAME", diaRelativo: 0, configuracao: { tipo: "AVALIACAO", nome: "Avaliação", intervalo: 0, unidade: "DIAS" } } })).id;
-      }
+      const usadas = await tx.tarefaProtocolo.findMany({ where: { execucaoId: execucao.id }, select: { etapaId: true } });
+      const etapaId = protocolo.etapas.find(e => !usadas.some(t => t.etapaId === e.id))?.id;
+      if (!etapaId) throw new Error("A fixture exige um procedimento previamente configurado");
       return tx.tarefaProtocolo.create({ data: { execucaoId: execucao.id, etapaId, previstaPara: new Date(prevista), ...modificacoes } });
     }
     const doDia = await tarefa(data);

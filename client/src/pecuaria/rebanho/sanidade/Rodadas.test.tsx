@@ -4,8 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { AnimalResumo } from "../types";
 vi.mock("../api", () => ({ obterCatalogos: vi.fn().mockResolvedValue({ propriedades: [{ id: 1, nome: "Sítio A" }] }), buscarFichaAnimal: vi.fn() }));
-const mocks = vi.hoisted(() => ({ prever: vi.fn(), criar: vi.fn(), adicionar: vi.fn(), preverAdicao: vi.fn(), rodadas: vi.fn(), rodada: vi.fn(), etapas: vi.fn(), participantes: vi.fn(), tarefas: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prever: vi.fn(), criar: vi.fn(), adicionar: vi.fn(), preverAdicao: vi.fn(), rodadas: vi.fn(), rodada: vi.fn(), etapas: vi.fn(), participantes: vi.fn(), tarefas: vi.fn(), cabecalhoComum: vi.fn(), etapasComuns: vi.fn(), tarefasComuns: vi.fn(), eventoComum: vi.fn() }));
 vi.mock("./rodadas-api", async (original) => ({ ...await original<typeof import("./rodadas-api")>(), preverRodada: mocks.prever, criarRodada: mocks.criar, adicionarParticipantes: mocks.adicionar, preverParticipantes: mocks.preverAdicao, listarRodadas: mocks.rodadas, consultarRodada: mocks.rodada, listarEtapasRodada: mocks.etapas, listarParticipantesRodada: mocks.participantes, listarTarefasEtapa: mocks.tarefas }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterMomentosProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }), obterCabecalhoProtocolo: mocks.cabecalhoComum, obterEtapasProtocolo: mocks.etapasComuns, obterTarefasProtocolo: mocks.tarefasComuns, registrarEventoProtocolo: mocks.eventoComum, reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "p", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
+vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));
+vi.mock("../reproducao/RegularizarOrigem", () => ({ RegularizarOrigem: ({ propriedadeId }: { propriedadeId: number }) => <p data-testid="regularizacao-sitio">{propriedadeId}</p>, consumoMantidoUltimaAnulacao: () => false }));
 vi.mock("./api", async (original) => ({ ...await original<typeof import("./api")>(), reqSanidade: vi.fn().mockResolvedValue([{ id: "p", nome: "Protocolo publicado", versao: 2, ativo: true, publicadoEm: "2026-10-01" }]) }));
 vi.mock("../components/SeletorAnimais", () => ({ SeletorAnimais: ({ onConfirmar }: { onConfirmar: (v: AnimalResumo[]) => void }) => <button onClick={() => onConfirmar([{ id: "a", brinco: "A01", propriedade: { id: 1, nome: "Sítio A" } }, { id: "b", brinco: "A02", propriedade: { id: 1, nome: "Sítio A" } }] as AnimalResumo[])}>Usar animais</button> }));
 vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange, ...props }: { value: string; onChange: (v: string) => void }) => <input {...props} type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
@@ -14,8 +17,8 @@ import { AgendaRodadas } from "./AgendaRodadas";
 import type { RodadaSanitaria } from "./rodadas-api";
 const rodada: RodadaSanitaria = { id: "r", nome: "Campanha de outubro", propriedadeId: 1, protocoloId: "p", inicioReferencia: "2026-10-06", protocolo: { id: "p", nome: "Protocolo publicado", versao: 2 } };
 const previa = { itens: [{ animalId: "a", inicio: "2026-10-06", tarefas: [{ etapaId: "e", previstaPara: "2026-10-06", parametros: { tipo: "EXAME", tipoExameNomeSnapshot: "Coleta" } }] }] };
-const pagina = <T,>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 20 });
-beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&rodadaId=r"); vi.clearAllMocks(); mocks.prever.mockResolvedValue(previa); mocks.preverAdicao.mockResolvedValue(previa); mocks.criar.mockResolvedValue(rodada); mocks.rodadas.mockResolvedValue(pagina([rodada])); mocks.rodada.mockResolvedValue(rodada); mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens: { total: 7, pendentes: 5, realizadas: 2, dispensadas: 0, atrasadas: 1 }, contagensFiltradas: { total: 1, pendentes: 1, realizadas: 0, dispensadas: 0, atrasadas: 0 } }])); mocks.participantes.mockResolvedValue(pagina([])); mocks.tarefas.mockResolvedValue(pagina([{ id: "t", etapaId: "e", execucaoId: "x", previstaPara: "2026-10-06", situacao: "PENDENTE", parametros: { tipo: "EXAME" }, execucao: { animalId: "a", propriedadeId: 1, animal: { id: "a", brinco: "A01", nome: null }, protocolo: rodada.protocolo } }])); });
+const pagina = <T,>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10 });
+beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&rodadaId=r"); vi.clearAllMocks(); mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", contagens: { total: 2, atendidos: 0, pendentes: 2 }, precisaoTemporal: "DIA" }); mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens: { total: 2, atendidos: 0, pendentes: 2 } }])); mocks.tarefasComuns.mockResolvedValue(pagina([])); mocks.prever.mockResolvedValue(previa); mocks.preverAdicao.mockResolvedValue(previa); mocks.criar.mockResolvedValue(rodada); mocks.rodadas.mockResolvedValue(pagina([rodada])); mocks.rodada.mockResolvedValue(rodada); mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens: { total: 7, pendentes: 5, realizadas: 2, dispensadas: 0, atrasadas: 1 }, contagensFiltradas: { total: 1, pendentes: 1, realizadas: 0, dispensadas: 0, atrasadas: 0 } }])); mocks.participantes.mockResolvedValue(pagina([])); mocks.tarefas.mockResolvedValue(pagina([{ id: "t", etapaId: "e", execucaoId: "x", previstaPara: "2026-10-06", situacao: "PENDENTE", parametros: { tipo: "EXAME" }, execucao: { animalId: "a", propriedadeId: 1, animal: { id: "a", brinco: "A01", nome: null }, protocolo: rodada.protocolo } }])); });
 afterEach(cleanup);
 async function preparar() { await screen.findByRole("option", { hidden: true,  name: "Protocolo publicado · v2" }); await alterarControle(screen.getByLabelText("Sítio na data de início"), { target: { value: "1" } }); await alterarControle(screen.getByLabelText("Nome do ciclo"), { target: { value: "Campanha de outubro" } }); await alterarControle(screen.getByLabelText("Protocolo publicado"), { target: { value: "p" } }); await alterarControle(screen.getByLabelText("Início de referência"), { target: { value: "2026-10-06" } }); fireEvent.click(screen.getByRole("button", { name: /Selecionar animais/ })); fireEvent.click(screen.getByRole("button", { name: "Usar animais" })); }
 describe("ciclos de protocolos", () => {
@@ -28,13 +31,15 @@ describe("ciclos de protocolos", () => {
     fireEvent.click(screen.getByRole("button",{name:"Ver ciclo"}));expect(abrir).toHaveBeenCalledWith("r");
     fireEvent.click(screen.getByRole("button",{name:"Tabela"}));expect(screen.getByRole("button",{name:"Abrir ciclo Campanha de outubro"})).toBeTruthy();
   });
-  it("agrupa contagens iguais e não renderiza indicadores zerados", async () => {
-    const contagens = { total: 2, pendentes: 2, realizadas: 0, dispensadas: 0, atrasadas: 0, canceladas: 0 };
-    mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens, contagensFiltradas: { ...contagens } }]));
+  it("conserva contagens no seletor comum sem duplicar a comparação das etapas", async () => {
+    const contagens = { total: 2, pendentes: 2, atendidos: 0 };
+    mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]));
     render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    await screen.findByRole("button", { name: /Dia 0 · Exame/ });
+    await screen.findByRole("button", { name: /Dia 0 Exame/ });
     expect(screen.queryByRole("columnheader", { name: "Filtro atual" })).toBeNull();
     expect(screen.queryByText(/Comparar com/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Dia 0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText("realizadas", { exact: true })).toBeNull();
     expect(screen.queryByText("canceladas", { exact: true })).toBeNull();
   });
@@ -103,47 +108,34 @@ describe("ciclos de protocolos", () => {
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByText(/Nenhum ciclo corresponde/);
   });
-  it("etapas separam contagens e ações de cada tarefa independem do filtro de animal", async () => {
+  it("etapa comum mostra contagens e reutiliza executor com tarefa e sítio da origem", async () => {
+    const contagens = { total: 7, atendidos: 2, pendentes: 5 };
+    mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", contagens, precisaoTemporal: "DIA" });
+    mocks.etapasComuns.mockResolvedValue({ ...pagina([{ id: "e", nome: "Coleta", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]), porPagina: 10 });
+    const origem = { id: "t", etapaId: "e", execucaoId: "x", previstaPara: "2026-10-06", situacao: "PENDENTE", parametros: { tipo: "EXAME" }, execucao: { animalId: "a", propriedadeId: 1, animal: { id: "a", brinco: "A01", nome: null }, protocolo: rodada.protocolo } };
+    mocks.tarefasComuns.mockResolvedValue({ ...pagina([{ id: "t", participacaoId: "x", animal: origem.execucao.animal, propriedadeId: 1, situacao: "SEM_REGISTRO", previstaPara: origem.previstaPara, precisaoTemporal: "DIA", realizadaEm: null, acoes: { atender: true, justificar: true, adiar: true }, tarefaOrigem: origem }]), porPagina: 10 });
+    mocks.eventoComum.mockResolvedValue({ id: "evento" });
     const executar = vi.fn(), acao = vi.fn();
     render(<AgendaRodadas filtros={{ pagina: 1, animalId: "" }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={executar} onAcao={acao} />);
-    await screen.findAllByLabelText("7 previstas · 5 pendentes · 2 realizadas · 1 atrasada");
-    expect(screen.queryByLabelText("Resumo da página sanitária")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Andamento das tarefas" })).toBeNull();
-    expect(screen.getAllByLabelText("1 prevista · 1 pendente").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /Dia 0 · Exame/ }));
-    fireEvent.click((await screen.findAllByRole("button", { name: "Executar tarefa" }))[0]);
+    await screen.findByText("2 atendidos · 5 pendentes");
+    fireEvent.click((await screen.findAllByRole("button", { name: "Atender" }))[0]);
     expect(executar.mock.calls[0][0][0].execucao.animalId).toBe("a");
-    fireEvent.pointerDown(screen.getAllByRole("button", { name: "Mais ações de A01" })[0], { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Adiar" }));
-    expect(acao).toHaveBeenCalledWith("adiar", expect.objectContaining({ id: "t", execucao: expect.objectContaining({ propriedadeId: 1 }) }));
+    fireEvent.click(screen.getByRole("button", { name: "Adiar" }));
+    fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "2026-10-08" } });
+    fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível na data prevista" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(mocks.eventoComum).toHaveBeenCalledWith("t", expect.objectContaining({ tipo: "ADIAMENTO", propriedadeId: 1, previstaPara: "2026-10-08" })));
+
   });
-  it("separa participantes, identifica etapa e conserva permissão de consulta", async () => {
-    render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    await screen.findByRole("heading", { name: "Tarefas · Dia 0 · Exame" });
-    expect(screen.getByRole("button", { name: /Dia 0 · Exame/ }).getAttribute("aria-pressed")).toBe("true");
-    expect(within(await screen.findByRole("table", { name: "Tarefas da etapa" })).getAllByRole("columnheader")).toHaveLength(6);
-    expect(screen.queryByRole("table", { name: "Participantes do ciclo" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Executar tarefa" })).toBeNull();
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "Participantes e histórico" }), { button: 0 });
-    await screen.findByRole("table", { name: "Participantes do ciclo" });
-    expect(screen.queryByRole("table", { name: "Tarefas da etapa" })).toBeNull();
-    expect(new URLSearchParams(window.location.search).get("abaCiclo")).toBe("participantes");
+  it("consulta ciclo de origem A no sítio efetivo B e conserva B na regularização", async () => {
+    const contagens = { total: 1, atendidos: 0, pendentes: 1 };
+    mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", propriedadeId: 1, propriedadeContextoId: 2, contagens, precisaoTemporal: "DIA" });
+    mocks.etapasComuns.mockResolvedValue({ itens: [{ id: "e", nome: "Coleta", diaRelativo: 0, previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }], total: 1, pagina: 1, porPagina: 10 });
+    mocks.tarefasComuns.mockResolvedValue({ itens: [{ id: "t", participacaoId: "x", animal: { id: "a", brinco: "A01", nome: null }, propriedadeId: 1, situacao: "REGULARIZACAO_PENDENTE", previstaPara: "2026-10-06", precisaoTemporal: "DIA", realizadaEm: null, acoes: { regularizar: true }, tarefaOrigem: { id: "t", regularizacaoPendente: true, propriedadeRegularizacaoId: 2, execucao: { propriedadeId: 1 } } }], total: 1, pagina: 1, porPagina: 10 });
+    render(<AgendaRodadas filtros={{ propriedadeId: 2 }} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
+    expect(await screen.findByTestId("regularizacao-sitio")).toHaveProperty("textContent", "2");
+    expect(mocks.cabecalhoComum).toHaveBeenCalledWith({ programacaoId: "r" }, 2);
+    expect(mocks.tarefasComuns).toHaveBeenCalledWith({ programacaoId: "r" }, expect.objectContaining({ etapaId: "e" }), 2);
   });
-  it("nomeia e limpa animal sem apagar ciclo e demais filtros", async () => {
-    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&rodadaId=r&animalId=a&situacao=PENDENTE");
-    mocks.participantes.mockResolvedValue(pagina([{ id: "x", animalId: "a", animal: { id: "a", brinco: "A01", nome: "Aurora" }, inicio: "2026-10-01", canceladaEm: null }]));
-    render(<AgendaRodadas filtros={{ animalId: "a", situacao: "PENDENTE" }} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    await screen.findByText("A01 · Aurora");
-    fireEvent.click(screen.getByRole("button", { name: "Limpar filtro de animal" }));
-    const p = new URLSearchParams(window.location.search);
-    expect(p.has("animalId")).toBe(false);
-    expect(p.get("rodadaId")).toBe("r");
-    expect(p.get("situacao")).toBe("PENDENTE");
-  });
-  it("abre gestão do ciclo por menu e mantém edição de nome", async () => {
-    render(<AgendaRodadas filtros={{}} podeLancar rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    fireEvent.pointerDown(await screen.findByRole("button", { name: "Gerenciar ciclo" }), { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Renomear ciclo" }));
-    expect(screen.getByLabelText("Novo nome do ciclo")).toHaveProperty("value", rodada.nome);
-  });
+
 });
