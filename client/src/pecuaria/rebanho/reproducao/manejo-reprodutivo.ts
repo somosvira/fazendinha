@@ -13,15 +13,15 @@ export type LinhaManejo = {
   dias: number | null;
   motivos: string[];
 };
-export type ConsultaManejo = { fila: FilaManejo; busca: string; lote: string; ordem: string; pagina: number; tamanho: number };
+export type ConsultaManejo = { fila: FilaManejo | "todas"; busca: string; lote: string; ordem: string; pagina: number; tamanho: number };
 const numero = (v: string | null, padrao: number) => v && /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : padrao;
 export function lerConsultaManejo(): ConsultaManejo {
   const p = new URLSearchParams(window.location.search);
   const fila = p.get("fila");
   return {
-    fila: fila === "diagnostico" || fila === "pendencias" ? fila : "liberadas",
+    fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" ? fila : "todas",
     busca: p.get("q") ?? "", lote: p.get("lote") ?? "",
-    ordem: ["maior-espera", "menor-espera", "animal"].includes(p.get("ordem") ?? "") ? p.get("ordem")! : "maior-espera",
+    ordem: ["maior-espera", "menor-espera", "animal", "animal-desc"].includes(p.get("ordem") ?? "") ? p.get("ordem")! : "maior-espera",
     pagina: numero(p.get("pagina"), 1), tamanho: [4, 10, 25, 50].includes(numero(p.get("porPagina"), 4)) ? numero(p.get("porPagina"), 4) : 4,
   };
 }
@@ -79,12 +79,12 @@ export function filtrarManejo(linhas: LinhaManejo[], consulta: ConsultaManejo): 
   const normalizar = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
   return linhas.filter(a => (!consulta.lote || (consulta.lote === "sem-lote" ? !a.lote : a.lote?.id === consulta.lote)) && normalizar(`${a.brinco} ${a.nome ?? ""}`).includes(normalizar(consulta.busca.trim())))
     .sort((a, b) => {
-      if (consulta.ordem !== "animal") {
+      if (!consulta.ordem.startsWith("animal")) {
         if (a.dias === null && b.dias !== null) return 1;
         if (b.dias === null && a.dias !== null) return -1;
         const diferenca = (a.dias ?? 0) - (b.dias ?? 0);
         if (diferenca) return consulta.ordem === "menor-espera" ? diferenca : -diferenca;
       }
-      return a.brinco.localeCompare(b.brinco, "pt-BR", { numeric: true }) || a.animalId.localeCompare(b.animalId);
+      return (consulta.ordem === "animal-desc" ? -1 : 1) * (a.brinco.localeCompare(b.brinco, "pt-BR", { numeric: true }) || a.animalId.localeCompare(b.animalId));
     });
 }

@@ -247,3 +247,7 @@ Correção documental cria fato substituto na mesma transação, conserva o orig
 Manejos podem vincular Serviço confirmado compatível com sítio, data e participação, com atribuição monetária opcional. Material é não aplicável; pacote ou atribuição na participação não pode ser somado novamente ao procedimento. Os limites do Serviço consideram o conjunto e as realizações mantidas após anulação. Valores exigem a autorização financeira no servidor. Ficha e protocolo consultam o mesmo fato; a confirmação coletiva continua atômica, limitada a cem animais, com prévia e recibo de até dez itens por página.
 
 A persistência usa as migrations aditivas `20261021210000_manejos_protocolos` e `20261021212000_reconhecimento_insercao_dispositivo`, as garantias de vínculo, unicidade e classificação SQL e os adaptadores `execucao.manejos.ts`/`manejos-correcao.ts`. As rotas comuns expõem origens, reconhecimento, consulta, correção, anulação e regularização sob o escopo do sítio; os endpoints antigos de desmama/castração não podem anular um manejo protocolar contornando esse contrato.
+
+### Consulta operacional de grupos
+
+A lista comum de programações aceita situação `ABERTA|ENCERRADA` e ordem `RECENTES|NOME`, além da busca por nome do grupo ou do protocolo versionado. Filtros e ordem são executados antes de paginar, com o mesmo escopo autorizado na contagem e na página. A aba Reprodução usa o nome Protocolos e oferece cartões/tabela; isso não funde modelo (`Protocolo`) e grupo (`ProgramacaoProtocolo`) nem altera seus fluxos de escrita.

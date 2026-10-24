@@ -1,3 +1,10 @@
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { BuscaLista } from "../../../components/BuscaLista";
+import { CampoFiltro } from "../../../financeiro/PainelFiltros";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
+import { CartaoProtocoloReprodutivo, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useConsultaCadastroProtocolos } from "../protocolos/useConsultaCadastroProtocolos";
 import { urlCadastroProtocolo } from "../protocolos/rotas-cadastro";
 import "../protocolos/protocolos.css";
@@ -12,7 +19,6 @@ import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
-import { Button as BotaoUI } from "../../../components/ui/button";
 import {BibliotecaReprodutiva} from "./BibliotecaReprodutiva";
 import { CampoDataIatf, dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 export { dataHoraISO, horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
@@ -21,7 +27,6 @@ import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOr
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
-  CabecalhoTabela,
   ErrorBox,
   Empty,
   Panel,
@@ -212,6 +217,13 @@ export function Iatf({
   useEffect(()=>{if(programacaoId||modo!=="operacao")return;const u=new URL(window.location.href);buscaProgramacao?u.searchParams.set("iatfBusca",buscaProgramacao):u.searchParams.delete("iatfBusca");paginaProgramacoes>1?u.searchParams.set("iatfPagina",String(paginaProgramacoes)):u.searchParams.delete("iatfPagina");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[buscaProgramacao,paginaProgramacoes,programacaoId,modo]);
   useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setBuscaProgramacao(p.get("iatfBusca")??"");setPaginaProgramacoes(Math.max(1,Math.floor(Number(p.get("iatfPagina"))||1)));};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
   const filtradas = programacoes;
+  const visual = useVisualizacaoConsulta("visualProtocolosReproducao", "reproducao");
+  const [criterios, setCriterios] = useState(() => ({ status: new URLSearchParams(window.location.search).get("iatfStatus") ?? "", ordem: new URLSearchParams(window.location.search).get("iatfOrdem") ?? "RECENTES" }));
+  const edicaoProgramacoes = useRascunhoConsulta({ busca: buscaProgramacao, ...criterios }, { busca: "", status: "", ordem: "RECENTES" }, v => {
+    setBuscaProgramacao(v.busca); setPaginaProgramacoes(1); setCriterios({ status: v.status, ordem: v.ordem });
+    const url = new URL(window.location.href); for (const [k, valor] of [["iatfStatus", v.status], ["iatfOrdem", v.ordem]]) valor ? url.searchParams.set(k, valor) : url.searchParams.delete(k); window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  });
+  useEffect(() => { const restaurar = () => { const p = new URLSearchParams(window.location.search); setCriterios(c=>{ const v={ status: p.get("iatfStatus") ?? "", ordem: p.get("iatfOrdem") ?? "RECENTES" }; return JSON.stringify(c)===JSON.stringify(v)?c:v; }); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   const paginasProgramacoes=Math.max(1,Math.ceil((consultaVisivel?.total ?? 0)/10));
   const paginaLista = consultaVisivel?.pagina ?? paginaProgramacoes;
   const carregando = leitura.contexto !== contexto || leitura.carregando;
@@ -263,7 +275,7 @@ export function Iatf({
     try {
       const [protocolos, programacoes] = await Promise.all([
         modo === "cadastros" ? listarCadastrosProtocolos("REPRODUTIVO", paginaProtocolos, buscaProtocolos, situacaoProtocolos) : Promise.resolve({ itens: [] as CadastroProtocoloMeta[], total: 0, pagina: 1, porPagina: 10 }),
-        modo === "cadastros" || programacaoId ? Promise.resolve({ itens: [] as CabecalhoProtocolo[], total: 0, pagina: 1, porPagina: 10 }) : reqProtocolo<{ itens: CabecalhoProtocolo[]; total: number; pagina: number; porPagina: number }>(`/programacoes${consultaProtocolo({ tipo: "REPRODUTIVO", busca: buscaProgramacao, pagina: paginaProgramacoes })}`, sitioEfetivo ?? undefined),
+        modo === "cadastros" || programacaoId ? Promise.resolve({ itens: [] as CabecalhoProtocolo[], total: 0, pagina: 1, porPagina: 10 }) : reqProtocolo<{ itens: CabecalhoProtocolo[]; total: number; pagina: number; porPagina: number }>(`/programacoes${consultaProtocolo({ tipo: "REPRODUTIVO", busca: buscaProgramacao, status: criterios.status || undefined, ordem: criterios.ordem === "RECENTES" ? undefined : criterios.ordem, pagina: paginaProgramacoes })}`, sitioEfetivo ?? undefined),
       ]);
       if (atual()) {
         setConsulta({ contexto, protocolos: protocolos.itens, protocolosTotal: protocolos.total, protocolosPagina: protocolos.pagina, programacoes: programacoes.itens, total: programacoes.total, pagina: programacoes.pagina });
@@ -278,7 +290,7 @@ export function Iatf({
           erro: e instanceof Error ? e.message : String(e),
         });
     }
-  }, [contexto, modo, reqIatf, programacaoId, buscaProgramacao, paginaProgramacoes, sitioEfetivo, paginaProtocolos, buscaProtocolos, situacaoProtocolos]);
+  }, [contexto, modo, reqIatf, programacaoId, buscaProgramacao, criterios, paginaProgramacoes, sitioEfetivo, paginaProtocolos, buscaProtocolos, situacaoProtocolos]);
   useEffect(() => {
     setDetalheCarregado(null);
     setLeituraDetalhe(null);
@@ -384,29 +396,15 @@ export function Iatf({
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && <Panel>
-        <CabecalhoTabela titulo="Programações de IATF" acao={<div className="flex flex-wrap gap-2">
-                <Button secondary disabled={carregando} onClick={() => void carregar()}>Atualizar programações</Button>
-                {podeLancar && <>
-                <a className="inline-flex items-center rounded-lg border border-border px-3 py-2 text-sm" href="/configuracoes/pecuaria/reproducao/protocolos" onClick={e => { if (!e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/configuracoes/pecuaria/reproducao/protocolos"); } }}>Gerenciar protocolos reprodutivos</a>
-                <Button
-                  disabled={!sitioEfetivo || carregando || !!erroConsulta}
-                  onClick={() => {
-                    setNome("");
-                    setNovo("programacao");
-                    setChaveProgramacao(crypto.randomUUID());
-                    setCienciaSanitaria(false);
-                  }}
-                >
-                  Nova programação
-                </Button>
-                </>}
-              </div>} />
-        <div className="p-4 space-y-3">
-          <p className="text-sm text-ink-3">
-            Indicação, programação, início efetivo e execução são fatos
-            separados. A referência planeja as datas; a primeira execução confirma
-            o início real, respeitando a origem do calendário de cada participação.
-          </p>
+        <BarraConsulta edicaoFiltros={edicaoProgramacoes} campos={[
+          { chave: "busca", conteudo: <CampoFiltro rotulo="Protocolo ou grupo"><input className={classeInput} aria-label="Buscar programação no filtro" value={edicaoProgramacoes.rascunho.busca} onChange={e=>edicaoProgramacoes.editar("busca",e.target.value)}/></CampoFiltro> },
+          { chave: "situacao", conteudo: <CampoFiltro rotulo="Situação"><SelectCampo value={edicaoProgramacoes.rascunho.status} onValueChange={v=>edicaoProgramacoes.editar("status",v)}><option value="">Todas</option><option value="ABERTA">Aberta</option><option value="ENCERRADA">Encerrada</option></SelectCampo></CampoFiltro> },
+          { chave: "ordem", conteudo: <CampoFiltro rotulo="Ordenar por"><SelectCampo value={edicaoProgramacoes.rascunho.ordem} onValueChange={v=>edicaoProgramacoes.editar("ordem",v)}><option value="RECENTES">Mais recentes</option><option value="NOME">Nome do grupo</option></SelectCampo></CampoFiltro> },
+        ].map(c=>({...c,ativo:false,limpar:edicaoProgramacoes.limpar}))} criterios={criterios.status?[{id:"status",rotulo:criterios.status==="ABERTA"?"Aberta":"Encerrada",limpar:()=>{setCriterios(c=>({...c,status:""}));setPaginaProgramacoes(1);const u=new URL(window.location.href);u.searchParams.delete("iatfStatus");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);}}]:[]} acao={<>
+          {podeLancar && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
+          <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos em acompanhamento"/>
+        </>}><BuscaLista rotulo="Buscar programação" placeholder="Protocolo ou grupo" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
+        <div className="space-y-3">
           {carregando && (
             <p role="status" className="rounded-lg bg-muted p-3 text-sm">
               {consultaVisivel
@@ -416,14 +414,13 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          <label className="block text-sm">Buscar programação<input className={classeInput} aria-label="Buscar programação" value={buscaProgramacao} onChange={e=>{setBuscaProgramacao(e.target.value);setPaginaProgramacoes(1);}}/></label>
-          <TabelaFinanceira rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
+          <>{visual.modo === "visual" ? <div className="reproducao-cartoes">{filtradas.map(p => <CartaoProtocoloReprodutivo key={p.id} grupo={p} sitio={sitioEfetivo ?? undefined} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}/>)}</div> : <TabelaFinanceira rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
             {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=><a href={`/pecuaria/reproducao/programacoes/${encodeURIComponent(p.id)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}${sitioEfetivo ? `&sitio=${sitioEfetivo}` : ""}`} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); } }}>{p.nome}</a>},
             {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioReferencia,p.precisaoTemporal)},
             {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantesTotal ?? "—"},
             {chave:"situacao",titulo:"Situação",larguraMinima:120,celula:p=><Pill>{p.status==="ABERTA"?"Aberta":p.status==="ENCERRADA"?"Encerrada":"A conferir"}</Pill>},
-            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><BotaoUI variant="outline" aria-label={`Ver IATF ${p.nome}`} onClick={e => { e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); }}>Ver IATF</BotaoUI>},
-          ]}/>
+            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><LinkReproducao botao sitio={sitioEfetivo ?? undefined} href={`/pecuaria/reproducao/programacoes/${p.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}>Abrir acompanhamento</LinkReproducao>},
+          ]}/>}</>
           {(consultaVisivel?.total ?? 0)>10&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={consultaVisivel?.total ?? 0} itensPorPagina={10} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
           {!carregando && !erroConsulta && consultaVisivel && !!buscaProgramacao.trim() && !programacoes.length && <Empty>Nenhuma programação encontrada com esta busca. Ajuste os critérios para consultar outras programações.</Empty>}
           {!carregando &&

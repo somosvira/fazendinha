@@ -1,0 +1,31 @@
+.reproducao-identificacao { display: block; color: var(--primary); text-decoration: none; padding-block: 4px; border-radius: 4px; }
+.reproducao-identificacao strong { display: block; font-weight: 650; }
+.reproducao-identificacao span { display: block; color: var(--muted-foreground); font-size: 12px; margin-top: 3px; }
+.reproducao-identificacao:hover strong { text-decoration: underline; text-underline-offset: 3px; }
+.reproducao-identificacao:focus-visible, .reproducao-link-botao:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.reproducao-link-botao { display: inline-flex; justify-content: center; align-items: center; min-height: 40px; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--card); color: var(--foreground); font-size: 13px; font-weight: 500; text-decoration: none; }
+.reproducao-link-botao:hover { background: var(--muted); }
+.reproducao-cartoes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; padding: 16px; }
+.reproducao-cartao { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; min-width: 0; display: flex; flex-direction: column; }
+.reproducao-cartao > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 18px 14px; }
+.reproducao-cartao h2 { font-size: 17px; font-weight: 700; }
+.reproducao-cartao header p { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+.reproducao-cartao > dl { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 4px 18px 16px; margin: 0; }
+.reproducao-cartao dt, .reproducao-cartao-acompanhamento > span { display: block; font-size: 12px; color: var(--muted-foreground); }
+.reproducao-cartao dd { margin-top: 4px; font-weight: 600; }
+.reproducao-cartao-acompanhamento { padding: 12px 18px; border-top: 1px solid var(--border); background: var(--muted); margin-top: auto; }
+.reproducao-cartao-acompanhamento strong { display: block; margin-top: 3px; font-size: 13px; font-weight: 600; }
+.reproducao-cartao footer { padding: 12px 18px; border-top: 1px solid var(--border); text-align: right; }
+.reproducao-pendencias { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: var(--fin-warning-bg); color: var(--warn); padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.reproducao-pendencias > div { flex: 1; min-width: 180px; }
+.reproducao-pendencias p { font-size: 13px; }
+.reproducao-v4 .consulta-controles > :is(.fin-filtro-busca,.busca-lista,.consulta-busca) { max-width: none; }
+.reproducao-v4 .consulta-linha { align-items: center; }
+.indicadores-taxas { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border-block: 1px solid var(--border); }
+.indicadores-taxas > section { padding: 20px; }
+.indicadores-taxas > section + section { border-left: 1px solid var(--border); }
+.indicadores-taxas h2 { font-size: 14px; color: var(--muted-foreground); }
+.indicadores-taxas strong { display: block; font-size: 28px; font-weight: 700; margin-block: 7px; }
+.indicadores-taxas p { font-size: 12px; color: var(--muted-foreground); }
+@media(min-width:1550px) { .reproducao-cartoes { grid-template-columns: repeat(3,minmax(0,1fr)); } }
+@media(max-width:900px) { .reproducao-cartoes { grid-template-columns: 1fr; padding: 14px; gap: 14px; } .reproducao-link-botao { min-height: 44px; } .reproducao-pendencias > button { width: 100%; } .indicadores-taxas { grid-template-columns: 1fr; } .indicadores-taxas > section + section { border-left: 0; border-top: 1px solid var(--border); } }

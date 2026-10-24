@@ -162,7 +162,7 @@ it.each(["resolver", "rejeitar"] as const)(
     const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
     expect(screen.queryByText(/Nenhuma programação/)).toBeNull();
     rerender(<Iatf propriedadeId={2} podeLancar={false} />);
-    (await screen.findAllByRole("button", { name: /Programação do sítio atual/ }))[0];
+    (await screen.findAllByRole("link", { name: /Programação do sítio atual/ }))[0];
     await act(async () =>
       desfecho === "resolver"
         ? antiga.resolver([{ ...programacao, nome: "Resposta antiga" }])
@@ -170,21 +170,21 @@ it.each(["resolver", "rejeitar"] as const)(
     );
     expect(screen.queryByText(/Resposta antiga|Erro antigo/)).toBeNull();
     expect(
-      screen.getAllByRole("button", { name: /Programação do sítio atual/ })[0],
+      screen.getAllByRole("link", { name: /Programação do sítio atual/ })[0],
     ).toBeTruthy();
   },
 );
 it("programações vazias distinguem sítio e permissão, sem oferecer criação ao leitor", async () => {
   const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
   await screen.findByText("Nenhuma programação neste sítio.");
-  expect(screen.queryByRole("button", { name: "Nova programação" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Programar protocolo" })).toBeNull();
   expect(
     screen.queryByRole("link", { name: "Gerenciar protocolos reprodutivos" }),
   ).toBeNull();
   rerender(<Iatf podeLancar />);
   await screen.findByText("Selecione um sítio para criar uma programação.");
   expect(
-    screen.getByRole("button", { name: "Nova programação" }),
+    screen.getByRole("button", { name: "Programar protocolo" }),
   ).toHaveProperty("disabled", true);
 });
 it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", async () => {
@@ -193,7 +193,7 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
   vi.mocked(obterCabecalhoProtocolo).mockImplementation(async (_contexto, sitio) => sitio === 1 ? cabecalho(await antiga.promessa) : cabecalho(programacao));
   const { rerender } = render(<Iatf propriedadeId={1} podeLancar={false} />);
   fireEvent.click(
-    (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
+    (await screen.findAllByRole("link", { name: /Programação confirmada/ }))[0],
   );
   expect(screen.getByRole("status").textContent).toBe(
     "Carregando programação…",
@@ -205,7 +205,7 @@ it("abertura que falha repete o mesmo detalhe e ignora erro de outro sítio", as
     .mockRejectedValueOnce(new Error("Falha no detalhe"))
     .mockResolvedValueOnce(cabecalho(programacao));
   fireEvent.click(
-    (await screen.findAllByRole("button", { name: /Programação confirmada/ }))[0],
+    (await screen.findAllByRole("link", { name: /Programação confirmada/ }))[0],
   );
   await screen.findByRole("alert");
   fireEvent.click(

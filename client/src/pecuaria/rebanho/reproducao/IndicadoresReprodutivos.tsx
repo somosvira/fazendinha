@@ -1,3 +1,4 @@
+import { ConsultaIndicadoresOperacionais } from "./ConsultaIndicadoresOperacionais";
 import { DateRangePicker } from "../../../components/DateRangePicker";
 import { getHojeISO } from "../../../lib/hoje";
 import { periodoPadrao, usePeriodoConsulta } from "./periodo-consulta";
@@ -35,7 +36,7 @@ function assinaturaFiltros(f: FiltrosIndicadores) {
     f.janelaPerdaDias ?? null, f.iepModo ?? "VIVOS_NATIMORTOS", f.concepcaoEstimada ?? null,
     f.loteId ?? "", [...(f.tiposTentativa ?? [])].sort(), [...(f.papeis ?? [])].sort()]);
 }
-export function IndicadoresReprodutivos({
+function RelatorioIndicadores({
   propriedadeId,
   podeLancar,
   modo = "relatorio",
@@ -959,4 +960,8 @@ function ImpressaoIndicadores({
       ))}
     </div>
   );
+}
+
+export function IndicadoresReprodutivos(props: { propriedadeId: number; podeLancar: boolean; modo?: "painel" | "relatorio" }) {
+  return props.modo === "painel" ? <ConsultaIndicadoresOperacionais propriedadeId={props.propriedadeId}/> : <RelatorioIndicadores {...props}/>;
 }

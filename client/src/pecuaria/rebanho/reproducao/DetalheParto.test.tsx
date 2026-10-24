@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DetalheParto, type PartoOperacional } from "./DetalheParto";
 import { reqV4 } from "./api";
 vi.mock("./api",()=>({reqV4:vi.fn()}));
-vi.mock("./CorrigirFato",()=>({CorrigirFato:({id,propriedadeId,onSalvo,onFechar}:{id:string;propriedadeId:number;onSalvo:()=>void;onFechar:()=>void})=><div role="dialog" aria-label="Correção do parto"><span>{id} · sítio {propriedadeId}</span><button onClick={onSalvo}>Concluir correção de teste</button><button onClick={onFechar}>Cancelar correção de teste</button></div>}));
+vi.mock("./CorrigirFato",()=>({CorrigirFato:({id,propriedadeId,complementoInicial,onSalvo,onFechar}:{id:string;propriedadeId:number;complementoInicial?:string;onSalvo:()=>void;onFechar:()=>void})=><div role="dialog" aria-label="Correção do parto"><span>{id} · sítio {propriedadeId} · complemento {complementoInicial}</span><button onClick={onSalvo}>Concluir correção de teste</button><button onClick={onFechar}>Cancelar correção de teste</button></div>}));
 vi.mock("./AnularFato",()=>({AnularFato:({id,propriedadeId,onFechar}:{id:string;propriedadeId:number;onFechar:()=>void})=><div role="dialog" aria-label="Anulação do parto"><span>{id} · sítio {propriedadeId}</span><button onClick={onFechar}>Cancelar anulação de teste</button></div>}));
 const parto:PartoOperacional={id:"p",versao:1,propriedadeId:1,status:"VALIDO",matriz:{id:"a",brinco:"V4-011",nome:null},data:"2026-10-07",ocorridoEm:null,horarioEstimado:false,desfecho:"NASCIMENTO",tipo:"DISTOCICO",induzido:null,dificuldade:true,assistenciaDescricao:null,retencaoPlacenta:true,responsavel:null,observacao:null,lancador:null,criadoEm:"2026-10-07",ocorrenciasRetencaoPlacenta:[],pesosMatriz:[],escoresMatriz:[{id:"e",data:"2026-10-07",responsavel:null,resultados:[{campo:"ESCORE",valor:0},{campo:"ESCALA_MAX",valor:5}]}],crias:[{id:"c",animalId:null,ordem:1,sexo:"F",viva:false,filiacaoSnapshot:{},pesos:[],colostro:[]}]};
 afterEach(cleanup);beforeEach(()=>vi.clearAllMocks());
@@ -54,4 +54,12 @@ it.each([false,true])("oculta escritas para leitor ou parto anulado (anulado=%s)
  expect(screen.queryByRole("button",{name:"Corrigir / completar parto"})).toBeNull();
  expect(screen.queryByRole("button",{name:"Conferir anulação"})).toBeNull();
  expect(screen.queryByRole("button",{name:/Gerenciar colostro/})).toBeNull();
+});
+
+it("avaliação de escore conserva parto e sítio mesmo sem avaliações anteriores",async()=>{
+ vi.mocked(reqV4).mockResolvedValue({...parto,acompanhamentos:[]});
+ render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
+ fireEvent.click(await screen.findByRole("button",{name:"Registrar avaliação de escore"}));
+ expect(screen.getByRole("dialog",{name:"Correção do parto"}).textContent).toContain("p · sítio 1 · complemento escore");
+ expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });
