@@ -57,7 +57,7 @@ async function fixture(quantidade:number,saldo:number,reprodutivo=false){
  const run=uuid().slice(0,8),sitio=await prisma.propriedade.create({data:{nome:`Visita ações ${run}`}});sitios.push(sitio.id);
  const produto=await prisma.produto.create({data:{nome:`Material visita ${run}`,unidade:reprodutivo?"DOSE":"ML",usoGenetico:reprodutivo,usoSanitario:!reprodutivo}});produtos.push(produto.id);
  const ids:string[]=[];
- for(let n=0;n<quantidade;n++){const a=await cadastrar(cadastrarAnimalSchema.parse({brinco:`VPA${run}${n}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(a.id);ids.push(a.id);}
+ for(let n=0;n<quantidade;n++){const a=await cadastrar(cadastrarAnimalSchema.parse({brinco:`VPA${run}${String(n).padStart(2,"0")}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(a.id);ids.push(a.id);}
  let grupoId:string,materialId:string|undefined;
  if(reprodutivo){
   const touro=await prisma.genitorExterno.create({data:{nome:`Touro visita ${run}`,sexo:"M"}});genitores.push(touro.id);
