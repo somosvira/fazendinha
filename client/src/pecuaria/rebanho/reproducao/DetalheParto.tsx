@@ -1,3 +1,4 @@
+import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useEffect, useState } from "react";
 import { Button as BotaoAcao } from "../../../components/ui/button";
 import { CalendarDays, HeartPulse, Users, Weight } from "lucide-react";
@@ -12,7 +13,7 @@ import {
 } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { navegarPara } from "../../../router";
-import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import { SecaoRecolhivel, SecaoFicha } from "../components/SecaoRecolhivel";
 import { Paginacao } from "../ui";
 import { reqV4 } from "./api";
 import {
@@ -136,10 +137,16 @@ export function DetalheParto({
     [erro, setErro] = useState<string | null>(null),
     [revisao, setRevisao] = useState(0);
   const [acao, setAcao] = useState<"corrigir" | "anular" | null>(null);
+  const [criaAberta, setCriaAberta] = useState<CriaRelatorio | null>(null);
+  const [complemento, setComplemento] = useState<"escore" | "peso" | "retencao" | undefined>();
   const [criaColostro, setCriaColostro] = useState<string | null>(null);
   useEffect(() => {
     let ativo = true;
     setParto(null);
+    setCriaAberta(null);
+    setCriaColostro(null);
+    setComplemento(undefined);
+    setAcao(null);
     setErro(null);
     void reqV4<PartoOperacional>(
       `/reproducao/partos/${encodeURIComponent(id)}`,
@@ -221,7 +228,7 @@ export function DetalheParto({
         </Button>
       </div>
       {podeEditar && <div className="flex flex-wrap gap-3">
-        <Button secondary onClick={() => setAcao("corrigir")}>Corrigir / completar parto</Button>
+        <Button secondary onClick={() => {setComplemento(undefined);setAcao("corrigir");}}>Corrigir / completar parto</Button>
         <Button danger onClick={() => setAcao("anular")}>Conferir anulação</Button>
       </div>}
       {p.status !== "VALIDO" && (
@@ -252,7 +259,7 @@ export function DetalheParto({
           detalhe={p.assistenciaDescricao ?? "Assistência não informada"}
         />
       </div>
-      <SecaoRecolhivel
+      <SecaoFicha
         titulo="Crias"
         resumo="Identificação e situação de cada cria"
       >
@@ -264,11 +271,7 @@ export function DetalheParto({
               chave: "cria",
               titulo: "Cria",
               principal: true,
-              celula: (c) =>
-                texto(
-                  registro(c.filiacaoSnapshot).brincoInformado ??
-                    `Cria ${c.ordem}`,
-                ),
+              celula: c => c.animalId ? <IdentificacaoReproducao id={c.animalId} brinco={texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)} sitio={propriedadeId}/> : <BotaoAcao variant="ghost" onClick={()=>setCriaAberta(c)}>{texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)}</BotaoAcao>,
             },
             { chave: "sexo", titulo: "Sexo", celula: (c) => texto(c.sexo) },
             {
@@ -314,9 +317,10 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      <SecaoRecolhivel
+      </SecaoFicha>
+      <SecaoFicha
         titulo="Pesos vinculados"
+        acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("peso");setAcao("corrigir");}}>Registrar pesagem da matriz</Button> : undefined}
         resumo="Pesagens da matriz e das crias associadas ao parto"
       >
         <Lista
@@ -341,8 +345,8 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      <SecaoRecolhivel titulo="Escore corporal da matriz">
+      </SecaoFicha>
+      <SecaoFicha titulo="Escore corporal da matriz">
         <Lista
           rotulo="Escores da matriz"
           itens={escores}
@@ -362,8 +366,8 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      <SecaoRecolhivel
+      </SecaoFicha>
+      <SecaoFicha
         titulo="Fornecimentos de colostro"
         resumo="Quantidade em litros; unidade original preservada nos detalhes"
       >
@@ -440,8 +444,8 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      <SecaoRecolhivel titulo="Avaliações pós-parto">
+      </SecaoFicha>
+      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar avaliação de escore</Button> : undefined}>
         <Lista
           rotulo="Avaliações vinculadas ao parto"
           itens={p.acompanhamentos ?? []}
@@ -470,8 +474,8 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      <SecaoRecolhivel titulo="Retenção de placenta">
+      </SecaoFicha>
+      <SecaoFicha titulo="Retenção de placenta" acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("retencao");setAcao("corrigir");}}>Completar retenção de placenta</Button> : undefined}>
         <Lista
           rotulo="Ocorrências pós-parto"
           itens={p.ocorrenciasRetencaoPlacenta}
@@ -489,9 +493,10 @@ export function DetalheParto({
             },
           ]}
         />
-      </SecaoRecolhivel>
-      {podeEditar && acao === "corrigir" && <CorrigirFato tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
+      </SecaoFicha>
+      {podeEditar && acao === "corrigir" && <CorrigirFato complementoInicial={complemento} tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
+      {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="Registro do parto" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
       {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="Parto e pós-parto" onClose={() => setCriaColostro(null)}>
         <div className="p-5"><ColostroCria key={criaSelecionada.id} criaId={criaSelecionada.id} propriedadeId={propriedadeId} dataParto={p.data} podeLancar={podeLancar} onMudou={atualizar}/></div>
       </Modal>}

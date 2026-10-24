@@ -53,7 +53,7 @@ it("troca rotina pela URL preservando filtros e deep links e responde ao histór
   fireEvent.click(screen.getByRole("tab", { name: "Indicadores" }));
   await screen.findByText("Indicadores do sítio 7");
   expect(screen.queryByRole("tab", { name: "Política reprodutiva" })).toBeNull();
-  expect(screen.getByRole("link", { name: "Política reprodutiva" }).getAttribute("href")).toBe("/configuracoes/pecuaria/reproducao/politica?sitio=7");
+  expect(screen.queryByRole("link", { name: "Política reprodutiva" })).toBeNull();
 });
 it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da página para %s", async rotina => {
   setPropriedadeAtiva(null);

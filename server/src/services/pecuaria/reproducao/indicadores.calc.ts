@@ -3,7 +3,8 @@ import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type Elegibi
 import { resolverPapelReprodutivo } from "../rebanho/papel-reprodutivo.calc.js";
 import type { ConsultaIndicadoresInput } from "./indicadores.schemas.js";
 
-export const VERSAO_METODOLOGIA_INDICADORES = "FAZENDINHA_IDEAGRI_IILB_V1";
+export const VERSAO_METODOLOGIA_INDICADORES = "FAZENDINHA_IDEAGRI_IILB_V2_BASE_VALIDA";
+export type BaseCalculoIndicadores = { animaisValidos: number; animaisPendentes: number; participacoesValidas: number; participacoesPendentes: number; parcial: boolean };
 export const FONTES_METODOLOGIA_INDICADORES = [
   "https://www.ideagri.com.br/siteideagridados/New/dicas/2028/PRENHEZ_DICA_2028.pdf",
   "https://centralderecursos.ideagri.com.br/posts/conheca-a-listagem-para-conferencia-e-ajuste-de-dados-da-taxa-de-prenhez",
@@ -38,23 +39,23 @@ export type TaxasIndicadores = { servico: number | null; concepcao: number | nul
 export type DetalheAnimalIndicador = {
   animalId: string; brinco: string | null; nome: string | null;
   origemElegibilidade: "VAZIA_APTA" | "NEGATIVA_ANTERIOR" | "SEM_DIAGNOSTICO_ANTERIOR" | "SAIDA_PEV" | "EXCLUIDA" | "PENDENTE";
-  contribuicaoElegiveis: number | null; servida: boolean; motivos: string[];
+  incluidaNaBase?: boolean; contribuicaoElegiveis: number | null; servida: boolean; motivos: string[];
   elegibilidadeInicio: ElegibilidadeNaData; elegibilidadeLiberacao: ElegibilidadeNaData | null;
   tentativaAnterior: TentativaDetalheIndicador | null; tentativas: TentativaDetalheIndicador[];
 };
 export type PeriodoIndicadores = {
   id: string; inicio: string; fim: string; contagens: ContagensIndicadores; taxas: TaxasIndicadores;
-  pendencias: string[]; maturidade: { corte: string; diasAposFim: number; tentativasAbertas: number };
+  baseCalculo?: BaseCalculoIndicadores; pendencias: string[]; maturidade: { corte: string; diasAposFim: number; tentativasAbertas: number };
   detalhamento: DetalheAnimalIndicador[];
 };
 export type SnapshotIndicadoresReprodutivos = {
-  versao: 1 | 2; acompanhamento?:ReturnType<typeof import("./acompanhamento-indicadores.js").calcularAcompanhamentoDoConjunto>; versaoMetodologia: typeof VERSAO_METODOLOGIA_INDICADORES;
+  versao: 1 | 2; acompanhamento?:ReturnType<typeof import("./acompanhamento-indicadores.js").calcularAcompanhamentoDoConjunto>; versaoMetodologia: typeof VERSAO_METODOLOGIA_INDICADORES | "FAZENDINHA_IDEAGRI_IILB_V1";
   metodologia: { rotulo: string; fontes: string[]; regras: string[]; deslocamentoTeDias: number; concepcaoEstimada: number | null };
   filtros: ConsultaIndicadoresInput;
   politicas: DadosElegibilidade["politicas"];
   sobraInicial: { inicio: string; fim: string; dias: number } | null;
   periodos: PeriodoIndicadores[];
-  totais: { contagens: ContagensIndicadores; taxas: TaxasIndicadores; participacoesAnimalPeriodo: number; animaisUnicos: number };
+  totais: { baseCalculo?: BaseCalculoIndicadores; contagens: ContagensIndicadores; taxas: TaxasIndicadores; participacoesAnimalPeriodo: number; animaisUnicos: number };
   pendencias: string[];
 };
 
@@ -225,9 +226,12 @@ export function calcularIndicadoresReprodutivos(dados: DadosIndicadores, filtros
         }
       } else if (filtroInicio.pendencias.length) { detalhe.origemElegibilidade = "PENDENTE"; detalhe.contribuicaoElegiveis = null; }
       else motivos.push("FORA_DO_FILTRO_NO_INICIO");
-      if (detalhe.contribuicaoElegiveis === null && detalhe.origemElegibilidade === "PENDENTE") contagens.animaisComPendenciaElegibilidade++;
-      if (detalhe.servida) contagens.matrizesServidas++;
-      for (const t of tentativasIncluidas) {
+      detalhe.incluidaNaBase = detalhe.contribuicaoElegiveis !== null;
+      if (!detalhe.incluidaNaBase) contagens.animaisComPendenciaElegibilidade++;
+      // Serviço e seu denominador compartilham a população elegível comprovada.
+      // TC conserva a independência da aptidão inicial quando a base é conhecida.
+      if (detalhe.incluidaNaBase && detalhe.contribuicaoElegiveis! > 0 && detalhe.servida) contagens.matrizesServidas++;
+      for (const t of detalhe.incluidaNaBase ? tentativasIncluidas : []) {
         if (t.resultado === "NAO_CLASSIFICAVEL") { contagens.naoClassificaveis++; motivos.push(...t.motivos); }
         else { contagens.tentativas++; if (t.resultado === "POSITIVA") contagens.positivas++; else if (t.resultado === "NEGATIVA") contagens.negativas++; else contagens.abertas++; }
       }
@@ -236,7 +240,7 @@ export function calcularIndicadoresReprodutivos(dados: DadosIndicadores, filtros
     }
     contagens.estimativaVaziasAnteriores = contagens.anterioresSemDiagnostico && filtros.concepcaoEstimada === undefined ? null : contagens.anterioresSemDiagnostico * (1 - (filtros.concepcaoEstimada ?? 0) / 100);
     contagens.elegiveisConhecidas = contagens.vaziasAptasInicio + contagens.negativasAnteriores + contagens.contribuicaoPev;
-    contagens.elegiveis = contagens.estimativaVaziasAnteriores === null || contagens.animaisComPendenciaElegibilidade > 0 ? null : contagens.elegiveisConhecidas + contagens.estimativaVaziasAnteriores;
+    contagens.elegiveis = contagens.elegiveisConhecidas + (contagens.estimativaVaziasAnteriores ?? 0);
     contagens.denominadorConcepcao = contagens.tentativas - contagens.abertas;
     if (contagens.estimativaVaziasAnteriores === null) pendencias.push("CONCEPCAO_ESTIMADA_NAO_INFORMADA");
     if (contagens.animaisComPendenciaElegibilidade) pendencias.push("ELEGIBILIDADE_PENDENTE");
@@ -245,7 +249,7 @@ export function calcularIndicadoresReprodutivos(dados: DadosIndicadores, filtros
     if (contagens.elegiveis === 0) pendencias.push("SEM_DENOMINADOR_ELEGIVEIS");
     if (!contagens.denominadorConcepcao) pendencias.push("SEM_DENOMINADOR_CONCEPCAO");
     pendencias.push(...detalhamento.flatMap(d => d.motivos.filter(m => m.includes("NO_FILTRO") || m === "SITIO_DA_TENTATIVA_DIVERGENTE" || m === "GESTACAO_SEM_TENTATIVA_COMPROVADA")));
-    return { ...janelaPeriodo, contagens, taxas: calcularTaxasIndicadores(contagens), pendencias: unicos(pendencias),
+    return { ...janelaPeriodo, baseCalculo: resumirBase(detalhamento), contagens, taxas: calcularTaxasIndicadores(contagens), pendencias: unicos(pendencias),
       maturidade: { corte: filtros.corte, diasAposFim: diasCalendarioContexto(fim, corte), tentativasAbertas: contagens.abertas }, detalhamento };
   });
   const contagens = contagensVazias();
@@ -259,13 +263,15 @@ export function calcularIndicadoresReprodutivos(dados: DadosIndicadores, filtros
     }
   }
   return { versao: 1, versaoMetodologia: VERSAO_METODOLOGIA_INDICADORES,
-    metodologia: { rotulo: "Base IDEAGRI/IILB — metodologia Fazendinha v1", fontes: [...FONTES_METODOLOGIA_INDICADORES],
+    metodologia: { rotulo: "Base IDEAGRI/IILB — metodologia Fazendinha v2 (base válida)", fontes: [...FONTES_METODOLOGIA_INDICADORES],
       deslocamentoTeDias: filtros.deslocamentoTeDias, concepcaoEstimada: filtros.concepcaoEstimada ?? null,
       regras: ["Janelas inclusivas de 21 dias ancoradas no fim; sobra inicial descartada.",
         "E = V + N + U × (1 − q) + C; q é a concepção estimada explicitamente informada.",
         "Saída do PEV no dia d usa (22 − d) / 21, sem arredondamento intermediário.",
         "TS = 100 × matrizes únicas servidas / E; serviço de recém-liberadas também conta.",
-        "TC = 100 × tentativas positivas / (tentativas − abertas); independe da aptidão inicial.",
+        "TC = 100 × tentativas positivas / (tentativas − abertas) da base conhecida; independe da aptidão inicial comprovada.",
+        "Animais com contribuição de elegibilidade desconhecida ficam fora dos numeradores e denominadores; as taxas da base restante são parciais.",
+        "Ausência de estimativa não zera os animais sem diagnóstico: suas contribuições permanecem pendentes e são excluídas da base válida.",
         "TP = TS × TC / 100; totais recalculados das somas, sem média das taxas.",
         "Baixa até o fim exclui a matriz de todo o período; períodos anteriores são preservados.",
         "Filtros de lote e papel usam o início para E e a data factual da tentativa para serviço/concepção.",
@@ -275,9 +281,16 @@ export function calcularIndicadoresReprodutivos(dados: DadosIndicadores, filtros
         "A precisão interna e bordas não comprovadas da fonte não permitem alegar equivalência integral ao IDEAGRI."] },
     filtros, politicas: base.politicas.filter(p => periodos.some(periodo => periodo.detalhamento.some(d => d.elegibilidadeInicio.politicaId === p.id || d.elegibilidadeLiberacao?.politicaId === p.id))),
     sobraInicial: janela.sobraInicial, periodos,
-    totais: { contagens, taxas: calcularTaxasIndicadores(contagens), participacoesAnimalPeriodo: periodos.reduce((s, p) => s + p.detalhamento.filter(d => d.contribuicaoElegiveis !== 0).length, 0),
-      animaisUnicos: new Set(periodos.flatMap(p => p.detalhamento.filter(d => d.contribuicaoElegiveis !== 0 || d.servida).map(d => d.animalId))).size },
+    totais: { baseCalculo: resumirBase(periodos.flatMap(p => p.detalhamento)), contagens, taxas: calcularTaxasIndicadores(contagens), participacoesAnimalPeriodo: periodos.reduce((s, p) => s + p.detalhamento.filter(d => d.incluidaNaBase && d.contribuicaoElegiveis !== 0).length, 0),
+      animaisUnicos: new Set(periodos.flatMap(p => p.detalhamento.filter(d => d.incluidaNaBase && (d.contribuicaoElegiveis !== 0 || d.servida)).map(d => d.animalId))).size },
     pendencias: unicos([...(!periodos.length ? ["JANELA_SEM_PERIODO_COMPLETO"] : []), ...periodos.flatMap(p => p.pendencias)]) };
+}
+
+function resumirBase(detalhes: DetalheAnimalIndicador[]): BaseCalculoIndicadores {
+  const validos = detalhes.filter(d => d.incluidaNaBase && (d.contribuicaoElegiveis !== 0 || d.servida));
+  const pendentes = detalhes.filter(d => d.incluidaNaBase === false);
+  return { animaisValidos: new Set(validos.map(d => d.animalId)).size, animaisPendentes: new Set(pendentes.map(d => d.animalId)).size,
+    participacoesValidas: validos.length, participacoesPendentes: pendentes.length, parcial: pendentes.length > 0 };
 }
 
 /** CSV usa valores completos; aspas protegem também nomes com separador/quebra de linha. */
@@ -293,6 +306,12 @@ export function exportarIndicadoresCsv(snapshot: SnapshotIndicadoresReprodutivos
     p.contagens.positivas, p.contagens.negativas, p.contagens.abertas, p.taxas.servico, p.taxas.concepcao, p.taxas.prenhez, p.pendencias.join(" | ")]);
   const { contagens: c, taxas: t } = snapshot.totais;
   linhas.push(["TOTAL", "", c.elegiveis, c.matrizesServidas, c.tentativas, c.positivas, c.negativas, c.abertas, t.servico, t.concepcao, t.prenhez, snapshot.pendencias.join(" | ")]);
+  if (snapshot.totais.baseCalculo) {
+    const base = snapshot.totais.baseCalculo;
+    linhas.push([], ["COBERTURA DA BASE"], ["Resultado parcial", base.parcial ? "SIM" : "NAO"],
+      ["Animais na base válida", base.animaisValidos], ["Animais com pendências de elegibilidade", base.animaisPendentes],
+      ["Participações válidas", base.participacoesValidas], ["Participações excluídas", base.participacoesPendentes]);
+  }
   linhas.push([], ["DETALHAMENTO POR MATRIZ"], ["Início", "Fim", "Animal ID", "Brinco", "Nome", "Origem elegibilidade", "Contribuição E", "Servida", "Política ID", "Política versão", "Apta desde", "Tentativa anterior", "Resultado anterior", "Motivos"]);
   for (const p of snapshot.periodos) for (const d of p.detalhamento) linhas.push([p.inicio, p.fim, d.animalId, d.brinco, d.nome, d.origemElegibilidade,
     d.contribuicaoElegiveis, d.servida ? "SIM" : "NAO", d.elegibilidadeInicio.politicaId, d.elegibilidadeInicio.politicaVersao,

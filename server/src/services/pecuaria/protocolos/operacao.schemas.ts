@@ -18,6 +18,7 @@ export const previaParticipacaoIndividualSchema = z.object({
   pagina:z.number().int().positive().default(1),porPagina:z.number().int().min(1).max(10).default(10),
 }).strict();
 export const listaOperacaoSchema = consultaOperacaoSchema.pick({pagina:true,porPagina:true,busca:true}).extend({
+  status:z.enum(["ABERTA","ENCERRADA"]).optional(),ordem:z.enum(["RECENTES","NOME"]).optional(),
   programacaoId:z.string().uuid().optional(),animalId:z.string().uuid().optional(),tipo:z.enum(["SANITARIO","REPRODUTIVO"]).optional(),
 });
 export type ListaOperacao = z.infer<typeof listaOperacaoSchema>;

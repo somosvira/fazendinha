@@ -67,103 +67,35 @@ function snapshot(): SnapshotIndicadoresReprodutivos {
     pendencias: ["ELEGIBILIDADE_PENDENTE"],
   };
 }
-it("explica taxas com contagens reais e distingue pendente, conhecido e zero", () => {
-  const s = snapshot();
-  s.totais.taxas.concepcao = 0;
-  s.totais.contagens.positivas = 0;
-  render(<PainelIndicadores snapshot={s} />);
+it("conserva zero e mostra cobertura parcial com acesso contextualizado", () => {
+  const s=snapshot();s.totais.taxas={servico:50,concepcao:0,prenhez:0};s.totais.contagens.positivas=0;
+  s.totais.baseCalculo={animaisValidos:8,animaisPendentes:2,participacoesValidas:20,participacoesPendentes:2,parcial:true};
+  render(<PainelIndicadores snapshot={s}/>);
   expect(screen.getAllByText("0%").length).toBeGreaterThan(0);
-  expect(
-    screen.getByText("0 positivas / 4 no denominador de concepção."),
-  ).toBeTruthy();
-  expect(
-    screen.getByText(/2 participações com aptidão a conferir/),
-  ).toBeTruthy();
-  expect(screen.getByText("Depende da taxa de serviço.")).toBeTruthy();
-  expect(screen.queryByText("57%")).toBeNull();
-  fireEvent.click(
-    screen.getAllByRole("button", { name: "Conferir pendências" })[0],
-  );
-  expect(
-    screen
-      .getByRole("tab", { name: "Pendências" })
-      .getAttribute("aria-selected"),
-  ).toBe("true");
-  expect(
-    screen.getByRole("table", { name: "Animais e participações a conferir" }),
-  ).toBeTruthy();
+  expect(screen.getByText("0 positivas / 4 tentativas com resultado")).toBeTruthy();
+  expect(screen.getByText("Resultado parcial · 2 animais com pendências")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Revisar pendências"}));
+  expect(screen.getByRole("dialog",{name:/Pendências fora da base/})).toBeTruthy();
+  expect(screen.queryByRole("tab",{name:"Pendências"})).toBeNull();
 });
-it("pagina períodos, mantém seleção na página e conserva datas completas acessíveis", () => {
-  render(<PainelIndicadores snapshot={snapshot()} />);
-  expect(
-    screen
-      .getByRole("button", { name: "01/06/2026 a 21/06/2026" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  expect(
-    screen.queryByRole("button", { name: "01/01/2026 a 21/01/2026" }),
-  ).toBeNull();
-  fireEvent.click(
-    within(
-      screen.getByRole("navigation", { name: "Paginação de períodos" }),
-    ).getByRole("button", { name: "Próxima" }),
-  );
-  expect(
-    screen
-      .getByRole("button", { name: "01/02/2026 a 21/02/2026" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  fireEvent.click(
-    screen.getByRole("button", { name: "01/01/2026 a 21/01/2026" }),
-  );
-  fireEvent.click(
-    screen.getByRole("button", { name: "Ver animais deste período" }),
-  );
-  expect(screen.getByText("Nenhum animal neste período.")).toBeTruthy();
-  fireEvent.change(
-    screen.getByRole("combobox", { name: "Períodos por página" }),
-    { target: { value: "8" } },
-  );
-  expect(
-    screen
-      .getByRole("button", { name: "01/06/2026 a 21/06/2026" })
-      .getAttribute("aria-pressed"),
-  ).toBe("true");
-  expect(screen.queryByText("Nenhum animal neste período.")).toBeNull();
+it("pagina períodos e abre os animais da janela com datas completas",()=>{
+ const s=snapshot();s.periodos=[...s.periodos,...s.periodos.map(p=>({...p,id:`outro-${p.id}`}))];
+ render(<PainelIndicadores snapshot={s}/>);
+ expect(screen.getByText("1–10 de 12 períodos")).toBeTruthy();
+ fireEvent.click(within(screen.getByRole("navigation",{name:"Paginação de períodos"})).getByRole("button",{name:"Próxima"}));
+ expect(screen.getByText("11–12 de 12 períodos")).toBeTruthy();
+ fireEvent.click(screen.getAllByRole("button",{name:"Ver animais"})[0]);
+ expect(screen.getByRole("dialog",{name:"Animais da base válida"})).toBeTruthy();
+ expect(screen.getAllByText(/01\/02\/2026.*21\/02\/2026/).length).toBeGreaterThan(0);
 });
-it("torna o ano visível em intervalo multianual e navega abas pelo teclado", () => {
-  const s = snapshot();
-  s.periodos[0].inicio = "2025-12-20";
-  s.periodos[0].fim = "2026-01-09";
-  render(<PainelIndicadores snapshot={s} />);
-  expect(
-    screen.getByRole("button", { name: "01/06/2026 a 21/06/2026" }).textContent,
-  ).toContain("2026");
-  const aba = screen.getByRole("tab", { name: "Visão geral" });
-  aba.focus();
-  fireEvent.keyDown(aba, { key: "End" });
-  expect(document.activeElement).toBe(
-    screen.getByRole("tab", { name: "Pendências" }),
-  );
-  fireEvent.keyDown(document.activeElement!, { key: "ArrowLeft" });
-  expect(
-    screen
-      .getByRole("tab", { name: "Fila de manejo" })
-      .getAttribute("aria-selected"),
-  ).toBe("true");
-  expect(screen.getByText(/não contém acompanhamento gerencial/)).toBeTruthy();
+it("mostra ambos os anos quando a janela cruza dezembro",()=>{
+ const s=snapshot();s.periodos[0].inicio="2025-12-20";s.periodos[0].fim="2026-01-09";
+ render(<PainelIndicadores snapshot={s}/>);
+ expect(screen.getAllByText("20/12/2025 – 09/01/2026").length).toBeGreaterThan(0);
 });
-it("intervalo menor que 21 dias conserva ausência de denominador e mostra orientação", () => {
-  const s = snapshot();
-  s.periodos = [];
-  s.totais.taxas = { servico: null, concepcao: null, prenhez: null };
-  s.totais.contagens.denominadorConcepcao = 0;
-  render(<PainelIndicadores snapshot={s} />);
-  expect(
-    screen.getByText("O intervalo não contém um período completo de 21 dias."),
-  ).toBeTruthy();
-  expect(screen.getByText(/Nenhum período completo de 21 dias/)).toBeTruthy();
-  expect(
-    screen.getByText("Sem tentativas com resultado para calcular concepção."),
-  ).toBeTruthy();
+it("orienta ampliar intervalos menores que 21 dias sem inventar taxa zero",()=>{
+ const s=snapshot();s.periodos=[];s.totais.taxas={servico:null,concepcao:null,prenhez:null};
+ render(<PainelIndicadores snapshot={s}/>);
+ expect(screen.getByText(/Nenhum período completo de 21 dias/)).toBeTruthy();
+ expect(screen.getAllByText("Sem base suficiente").length).toBeGreaterThan(0);
 });
