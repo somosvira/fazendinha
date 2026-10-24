@@ -1,3 +1,4 @@
+import { participacaoNoEscopoOperacao, programacaoNoEscopoOperacao } from "../protocolos/operacao.escopo.js";
 import { Prisma, type ClassificacaoCustoPecuaria } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
@@ -9,8 +10,12 @@ import { componentesDaFonte, aplicarParcelaPreparo, conferirParcelasPreparo, con
 import { classificacaoCustoSchema, consultaCustosSchema, vinculoPreparoSchema, type ClassificacaoCustoInput, type ConsultaCustos, type VinculoPreparoInput } from "./custos.schemas.js";
 
 type Db = Prisma.TransactionClient;
+export function paginaCustos<T>(itens:T[], solicitada:number, porPagina:number) {
+  const pagina=Math.min(solicitada,Math.max(1,Math.ceil(itens.length/porPagina)));
+  return {itens:itens.slice((pagina-1)*porPagina,pagina*porPagina),total:itens.length,pagina,porPagina};
+}
 const dia = (v: Date) => v.toISOString().slice(0,10);
-const campoFonte = (tipo: TipoFonteCusto) => ({ TENTATIVA: "tentativaId", APLICACAO: "aplicacaoId", EXAME: "exameId", PARTICIPACAO: "participacaoId", NUTRICAO: "participacaoConsumoId" } as const)[tipo];
+const campoFonte = (tipo: TipoFonteCusto) => ({ TENTATIVA: "tentativaId", APLICACAO: "aplicacaoId", EXAME: "exameId", PARTICIPACAO: "participacaoId", NUTRICAO: "participacaoConsumoId", MANEJO: "manejoId" } as const)[tipo];
 const classificacao = (c: ClassificacaoCustoPecuaria | null): ClassificacaoCusto | null => c ? { finalidade: c.finalidade as ClassificacaoCusto["finalidade"], materialNaoAplicavel: c.materialNaoAplicavel, servicoNaoAplicavel: c.servicoNaoAplicavel, coberturaServico: c.coberturaServico as ClassificacaoCusto["coberturaServico"], valorMaterialDocumentado: c.valorMaterialDocumentado } : null;
 const tarefa = { select: { execucaoId: true } } as const;
 const relacoes = { classificacaoCusto: true, tarefa, vinculosProtocolo: { where: { estado: "ATUAL" }, select: { tarefa: { select: { execucaoId: true } } } } } as const;
@@ -19,15 +24,16 @@ function traduzirCalculo<T>(executar: () => T): T { try { return executar(); } c
 
 /** Só fatos do sítio consultado; localização atual nunca concede leitura de custo de outro sítio. */
 export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtro: { animalId?: string; participacaoId?: string; programacaoId?: string; ids?: Partial<Record<TipoFonteCusto,string[]>> } = {}): Promise<FonteCusto[]> {
-  const participacoes = filtro.participacaoId ? [filtro.participacaoId] : filtro.programacaoId ? (await tx.participacaoProtocolo.findMany({ where: { propriedadeId, rodadaId: filtro.programacaoId }, select: { id: true } })).map(p=>p.id) : null;
+  const participacoes = filtro.participacaoId ? [filtro.participacaoId] : filtro.programacaoId ? (await tx.participacaoProtocolo.findMany({ where: { rodadaId: filtro.programacaoId, AND:[participacaoNoEscopoOperacao(propriedadeId)] }, select: { id: true } })).map(p=>p.id) : null;
   const base = { propriedadeId, ...(filtro.animalId ? { animalId: filtro.animalId } : {}) };
   const vinculo = participacoes ? { OR: [{ tarefa: { execucaoId: { in: participacoes } } }, { vinculosProtocolo: { some: { estado: "ATUAL", tarefa: { execucaoId: { in: participacoes } } } } }] } : {};
   const porId = (tipo: TipoFonteCusto) => filtro.ids ? { id: { in: filtro.ids[tipo] ?? [] } } : {};
-  const [tentativas, aplicacoes, exames, protocolos] = await Promise.all([
+  const [tentativas, aplicacoes, exames, protocolos, manejos] = await Promise.all([
     tx.tentativaReprodutiva.findMany({ where: { ...base, AND: [{ OR: [{ status: "VALIDO" }, { consumoMantido: true }] }, vinculo], ...porId("TENTATIVA") }, include: relacoes }),
     tx.aplicacaoProduto.findMany({ where: { ...base, AND: [{ OR: [{ status: "VALIDO" }, { consumoMantido: true }] }, vinculo], ...porId("APLICACAO") }, include: relacoes }),
-    tx.exameAnimal.findMany({ where: { ...base, status: "VALIDO", realizacao: { not: "NAO_REALIZADO" }, ...vinculo, ...porId("EXAME") }, include: relacoes }),
+    tx.exameAnimal.findMany({ where: { ...base, status: "VALIDO", realizacao: { not: "NAO_REALIZADO" }, ...(participacoes ? { OR: [...vinculo.OR!, { demandaAcompanhamento: { tarefa: { execucaoId: { in: participacoes } } } }] } : {}), ...porId("EXAME") }, include: { ...relacoes, demandaAcompanhamento: { select: { tarefa: { select: { execucaoId: true } } } } } }),
     tx.participacaoProtocolo.findMany({ where: { ...base, ...(participacoes ? { id: { in: participacoes } } : {}), ...porId("PARTICIPACAO"), ...(filtro.ids?.PARTICIPACAO?.length ? {} : { OR: [{ operacaoServicoId: { not: null } }, { classificacaoCusto: { isNot: null } }] }) }, include: { classificacaoCusto: true, protocolo: { select: { nome: true } } } }),
+    tx.manejoAnimal.findMany({ where: { ...base, tarefaId: { not: null }, AND: [{ OR: [{ status: "VALIDO" }, { realizacaoMantida: true }] }, ...(participacoes ? [{ OR: [{ tarefa: { execucaoId: { in: participacoes } } }, { vinculosTarefa: { some: { estado: "ATUAL", tarefa: { execucaoId: { in: participacoes } } } } }] }] : [])], ...porId("MANEJO") }, include: { classificacaoCusto: true, vinculosTarefa: relacoes.vinculosProtocolo, tarefa: { select: { execucaoId: true, nomeSnapshot: true } } } }),
   ]);
   const participacao = (f: { tarefa: { execucaoId: string } | null; vinculosProtocolo: Array<{ tarefa: { execucaoId: string } }> }) => f.tarefa?.execucaoId ?? f.vinculosProtocolo[0]?.tarefa.execucaoId ?? null;
   const nutricao:FonteCusto[]=[];
@@ -46,7 +52,8 @@ export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtr
     ...nutricao,
     ...tentativas.map(f => ({ id:f.id,tipo:"TENTATIVA" as const,animalId:f.animalId,propriedadeId,data:dia(f.data),descricao:`Tentativa ${f.tipo} · ciclo ${f.ciclo} · ${f.ordem}`,estadoFato:f.status+(f.consumoMantido ? " · consumo mantido" : ""),participacaoId:participacao(f),origemMaterial:f.origemMaterial,movimentoEstoqueId:f.movimentoEstoqueId,operacaoServicoId:f.operacaoServicoId,valorMaterial:f.valorProdutoAtribuido,valorServico:f.valorServicoAtribuido,documentoMaterial:f.classificacaoCusto?.documentoMaterial??null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
     ...aplicacoes.map(f => ({ id:f.id,tipo:"APLICACAO" as const,animalId:f.animalId,propriedadeId,data:dia(f.data),descricao:f.nomeProdutoAplicado,estadoFato:f.status+(f.consumoMantido ? " · consumo mantido" : ""),participacaoId:participacao(f),origemMaterial:f.origemInsumo==="SEM_ORIGEM_JUSTIFICADA"?"DOCUMENTADA":f.origemInsumo,movimentoEstoqueId:f.movimentoEstoqueId,operacaoServicoId:f.operacaoServicoId,valorMaterial:f.valorProdutoAtribuido,valorServico:f.valorServicoAtribuido,documentoMaterial:f.classificacaoCusto?.documentoMaterial??null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
-    ...exames.map(f => ({ id:f.id,tipo:"EXAME" as const,animalId:f.animalId,propriedadeId,data:dia(f.data),descricao:"Exame realizado",estadoFato:f.status,participacaoId:participacao(f),origemMaterial:"NAO_APLICAVEL",movimentoEstoqueId:null,operacaoServicoId:f.operacaoServicoId,valorMaterial:null,valorServico:f.valorServicoAtribuido,documentoMaterial:f.classificacaoCusto?.documentoMaterial??null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
+    ...exames.map(f => ({ id:f.id,tipo:"EXAME" as const,animalId:f.animalId,propriedadeId,data:dia(f.data),descricao:"Exame realizado",estadoFato:f.status,participacaoId:participacao(f) ?? f.demandaAcompanhamento?.tarefa?.execucaoId ?? null,origemMaterial:"NAO_APLICAVEL",movimentoEstoqueId:null,operacaoServicoId:f.operacaoServicoId,valorMaterial:null,valorServico:f.valorServicoAtribuido,documentoMaterial:f.classificacaoCusto?.documentoMaterial??null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
+    ...manejos.map(f => ({ id:f.id,tipo:"MANEJO" as const,animalId:f.animalId,propriedadeId,data:dia(f.data),descricao:f.tarefa?.nomeSnapshot ?? (f.tipo === "RETIRADA_DISPOSITIVO" ? "Retirada de dispositivo" : "Manejo protocolar"),estadoFato:f.status+(f.realizacaoMantida ? " · realização mantida" : ""),participacaoId:participacao({ ...f, vinculosProtocolo: f.vinculosTarefa }),origemMaterial:"NAO_APLICAVEL",movimentoEstoqueId:null,operacaoServicoId:f.operacaoServicoId,valorMaterial:null,valorServico:f.valorServicoAtribuido,documentoMaterial:null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
     ...protocolos.map(f => ({ id:f.id,tipo:"PARTICIPACAO" as const,animalId:f.animalId,propriedadeId,data:dia(f.inicio),descricao:`Participação · ${f.protocolo.nome}`,estadoFato:f.canceladaEm ? "INTERROMPIDA · custos preservados" : "ATIVA",participacaoId:f.id,origemMaterial:"NAO_APLICAVEL",movimentoEstoqueId:null,operacaoServicoId:f.operacaoServicoId,valorMaterial:null,valorServico:f.valorServicoAtribuido,documentoMaterial:f.classificacaoCusto?.documentoMaterial??null,versaoClassificacao:f.classificacaoCusto?.versao??0,classificacao:classificacao(f.classificacaoCusto) })),
   ];
 }
@@ -61,11 +68,11 @@ async function verificarAlvoTx(tx: Db, propriedadeId: number, filtro: ConsultaCu
     if (!await tx.animal.findFirst({where:{id:filtro.animalId,localizacoes:{some:{propriedadeId}}},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Animal não encontrado neste sítio");
   } else if (filtro.tentativaId) {
     if (!await tx.tentativaReprodutiva.findFirst({where:{id:filtro.tentativaId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Tentativa não encontrada neste sítio");
-  } else if (filtro.aplicacaoId || filtro.exameId) {
-    await fonteTx(tx,filtro.aplicacaoId?"APLICACAO":"EXAME",(filtro.aplicacaoId??filtro.exameId)!,propriedadeId);
+  } else if (filtro.aplicacaoId || filtro.exameId || filtro.manejoId) {
+    await fonteTx(tx,filtro.aplicacaoId?"APLICACAO":filtro.exameId?"EXAME":"MANEJO",(filtro.aplicacaoId??filtro.exameId??filtro.manejoId)!,propriedadeId);
   } else if (filtro.participacaoId) {
-    if (!await tx.participacaoProtocolo.findFirst({where:{id:filtro.participacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Participação não encontrada neste sítio");
-  } else if (!await tx.programacaoProtocolo.findFirst({where:{id:filtro.programacaoId,propriedadeId},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Programação não encontrada neste sítio");
+    if (!await tx.participacaoProtocolo.findFirst({where:{id:filtro.participacaoId,AND:[participacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Participação não encontrada neste sítio");
+  } else if (!await tx.programacaoProtocolo.findFirst({where:{id:filtro.programacaoId,AND:[programacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})) throw new RebanhoError("NAO_ENCONTRADO","Programação não encontrada neste sítio");
 }
 export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: ConsultaCustos, verValores: boolean, verDocumentos = verValores) {
   await verificarAlvoTx(tx,propriedadeId,filtro);
@@ -78,10 +85,10 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
     componentes=componentesDaFonte(propria);
     for(const v of vinculos){const origem=fontes.find(f=>f.id===(v.aplicacaoId??v.exameId??v.participacaoId)&&campoFonte(f.tipo)===(v.aplicacaoId?"aplicacaoId":v.exameId?"exameId":"participacaoId"));if(origem)componentes.push(...traduzirCalculo(()=>aplicarParcelaPreparo(componentesDaFonte(origem),{...v,modo:v.modo as "INTEGRAL"|"PARCELA"})));}
   } else {
-    fontes=await carregarFontesCustoTx(tx,propriedadeId,{...filtro,...filtro.aplicacaoId?{ids:{APLICACAO:[filtro.aplicacaoId]}}:filtro.exameId?{ids:{EXAME:[filtro.exameId]}}:{}});
+    fontes=await carregarFontesCustoTx(tx,propriedadeId,{...filtro,...filtro.aplicacaoId?{ids:{APLICACAO:[filtro.aplicacaoId]}}:filtro.exameId?{ids:{EXAME:[filtro.exameId]}}:filtro.manejoId?{ids:{MANEJO:[filtro.manejoId]}}:{}});
     componentes=fontes.flatMap(componentesDaFonte);
     if(filtro.participacaoId||filtro.programacaoId){
-      const participacoes=filtro.participacaoId?[filtro.participacaoId]:(await tx.participacaoProtocolo.findMany({where:{propriedadeId,rodadaId:filtro.programacaoId},select:{id:true}})).map(p=>p.id);
+      const participacoes=filtro.participacaoId?[filtro.participacaoId]:(await tx.participacaoProtocolo.findMany({where:{rodadaId:filtro.programacaoId,AND:[participacaoNoEscopoOperacao(propriedadeId)]},select:{id:true}})).map(p=>p.id);
       // A associação de um preparatório realizado sobrevive à anulação da tentativa.
       const alvos=await tx.tentativaReprodutiva.findMany({where:{propriedadeId,OR:[{tarefa:{execucaoId:{in:participacoes}}},{vinculosProtocolo:{some:{estado:"ATUAL",tarefa:{execucaoId:{in:participacoes}}}}}]},select:{id:true}});
       const idsAlvo=new Set(alvos.map(t=>t.id));const relevantes=vinculos.filter(v=>idsAlvo.has(v.tentativaId));
@@ -110,18 +117,23 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
     const originais=componentesDaFonte(f);const integral=vs.some(v=>v.modo==="INTEGRAL");
     const parcelas=["MATERIAL","SERVICO"].map(natureza=>{const original=originais.find(c=>c.natureza===natureza&&c.valor!=null)?.valor??null;const atribuido=integral?original:vs.reduce((s,v)=>s.plus(natureza==="MATERIAL"?v.valorMaterial??0:v.valorServico??0),new Prisma.Decimal(0));return{natureza,valorOrigem:verValores?original?.toFixed(2)??null:null,valorAtribuido:verValores?atribuido?.toFixed(2)??null:null,restante:verValores&&original!=null?original.minus(atribuido??0).toFixed(2):null};});
     const aAtribuir=!integral&&(originais.some(c=>c.estado==="DESCONHECIDO")||originais.some(c=>c.valor!=null&&c.valor.gt(vs.reduce((s,v)=>s.plus(c.natureza==="MATERIAL"?v.valorMaterial??0:v.valorServico??0),new Prisma.Decimal(0)))));
-    return { fonteId:f.id,tipo:f.tipo,descricao:f.descricao,vinculos:vs.map(v=>({id:v.id,tentativaId:v.tentativaId,modo:v.modo})),aAtribuir,parcelas };
+    return { fonteId:f.id,tipo:f.tipo,descricao:f.descricao,vinculos:vs.filter(v=>!filtro.tentativaId||v.tentativaId===filtro.tentativaId).slice(0,10).map(v=>({id:v.id,tentativaId:v.tentativaId,modo:v.modo})),aAtribuir,parcelas };
 
   });
-  return {...consolidado,escopo:filtro.tentativaId?"TENTATIVA":filtro.participacaoId?"PARTICIPACAO":filtro.programacaoId?"PROGRAMACAO":filtro.aplicacaoId?"APLICACAO":filtro.exameId?"EXAME":"ANIMAL_PERIODO",propriedadeId,
+  const paginada=paginaCustos(consolidado.componentes,filtro.pagina,filtro.limite);
+  const fontesPaginadas=paginaCustos([...new Map(fontes.map(f=>[chaveFonte(f),f])).values()].sort((a,b)=>b.data.localeCompare(a.data)||chaveFonte(a).localeCompare(chaveFonte(b))),filtro.fontesPagina??1,10);
+  const atribuicoesPaginadas=paginaCustos(atribuicoes.sort((a,b)=>`${a.tipo}:${a.fonteId}`.localeCompare(`${b.tipo}:${b.fonteId}`)),filtro.preparosPagina??1,10);
+  const apresentarFonte=(f:FonteCusto)=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,periodoConsumo:f.periodoConsumo,origemMaterial:f.origemMaterial,documentoMaterial:verDocumentos?f.documentoMaterial??null:null,versaoClassificacao:f.versaoClassificacao??0,classificacao:f.classificacao?{...f.classificacao,valorMaterialDocumentado:verValores?f.classificacao.valorMaterialDocumentado?.toString()??null:null}:null});
+  return {...consolidado,escopo:filtro.tentativaId?"TENTATIVA":filtro.participacaoId?"PARTICIPACAO":filtro.programacaoId?"PROGRAMACAO":filtro.aplicacaoId?"APLICACAO":filtro.exameId?"EXAME":filtro.manejoId?"MANEJO":"ANIMAL_PERIODO",propriedadeId,
     periodo:{inicio:filtro.inicio??null,fim:filtro.fim??null,referencia:"DATA_DO_FATO"},totalIntegral:filtro.animalId?null:{rotulo:"Protocolo ou tentativa inteira, sem recorte",cobertura:totalIntegral.cobertura,situacao:totalIntegral.situacao,totalConhecido:totalIntegral.totalConhecido,componentesPendentes:totalIntegral.componentesPendentes},
-    componentes:consolidado.componentes.slice((filtro.pagina-1)*filtro.limite,filtro.pagina*filtro.limite),totalComponentes:consolidado.componentes.length,pagina:filtro.pagina,limite:filtro.limite,
-    fontes:[...new Map(fontes.map(f=>[chaveFonte(f),f])).values()].map(f=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,periodoConsumo:f.periodoConsumo,origemMaterial:f.origemMaterial,documentoMaterial:verDocumentos?f.documentoMaterial??null:null,versaoClassificacao:f.versaoClassificacao??0,classificacao:f.classificacao?{...f.classificacao,valorMaterialDocumentado:verValores?f.classificacao.valorMaterialDocumentado?.toString()??null:null}:null})),atribuicoesPreparos:atribuicoes};
+    componentes:paginada.itens,itens:paginada.itens,total:paginada.total,totalComponentes:paginada.total,pagina:paginada.pagina,porPagina:paginada.porPagina,limite:paginada.porPagina,
+    fontes:fontesPaginadas.itens.map(apresentarFonte),fontesPaginadas:{...fontesPaginadas,itens:fontesPaginadas.itens.map(apresentarFonte)},atribuicoesPreparos:atribuicoesPaginadas.itens,atribuicoesPaginadas};
 }
 export async function consultarCustos(propriedadeId:number,filtro:ConsultaCustos,verValores:boolean,verDocumentos=verValores){return prisma.$transaction(tx=>consultarCustosTx(tx,propriedadeId,consultaCustosSchema.parse(filtro),verValores,verDocumentos),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});}
 async function travarFonteTx(tx:Db,f:FonteCusto){await travarAnimais(tx,[f.animalId]);await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-custo:${chaveFonte(f)}`}))`;}
-async function vinculosFonteTx(tx:Db,f:FonteCusto){return tx.vinculoPreparoTentativa.findMany({where:{[campoFonte(f.tipo)]:f.id,encerradoEm:null}});}
+async function vinculosFonteTx(tx:Db,f:FonteCusto){if(f.tipo==="MANEJO")return [];return tx.vinculoPreparoTentativa.findMany({where:{[campoFonte(f.tipo)]:f.id,encerradoEm:null}});}
 function conferirClassificacao(f:FonteCusto,c:ClassificacaoCusto){
+  if(f.tipo==="MANEJO"&&(!c.materialNaoAplicavel||c.valorMaterialDocumentado!=null||c.coberturaServico!=="PROCEDIMENTO"))throw new RebanhoError("VALIDACAO","Manejo não admite custo material ou pacote; classifique somente o procedimento");
   if(c.valorMaterialDocumentado!=null&&(f.origemMaterial!=="DOCUMENTADA"||f.movimentoEstoqueId||f.valorMaterial!=null))throw new RebanhoError("VALIDACAO","Valor documentado só pode completar material de origem DOCUMENTADA sem valor já congelado");
   if(c.materialNaoAplicavel&&(f.movimentoEstoqueId||f.valorMaterial!=null||c.valorMaterialDocumentado!=null))throw new RebanhoError("VALIDACAO","Material utilizado não pode ser marcado como não aplicável");
   if(c.servicoNaoAplicavel&&(f.operacaoServicoId||f.valorServico!=null))throw new RebanhoError("VALIDACAO","Serviço vinculado não pode ser marcado como não aplicável");
@@ -156,18 +168,19 @@ export async function encerrarVinculoPreparo(id:string,input:{chave:string;propr
   const v=await tx.vinculoPreparoTentativa.findFirst({where:{id,tentativa:{propriedadeId:input.propriedadeId}},include:{tentativa:true}});if(!v)throw new RebanhoError("NAO_ENCONTRADO","Vínculo não encontrado neste sítio");await travarAnimais(tx,[v.tentativa.animalId]);await exigirPeriodoAberto(tx,input.propriedadeId,v.tentativa.data);
   if(v.encerradoEm)throw new RebanhoError("CONFLITO","Vínculo já encerrado");const depois=await tx.vinculoPreparoTentativa.update({where:{id},data:{encerradoEm:new Date(),motivoEncerramento:input.motivo}});await auditar(tx,{entidade:"VinculoPreparoTentativa",entidadeId:id,animalId:v.tentativa.animalId,propriedadeId:input.propriedadeId,usuarioId,acao:"ENCERRADO",antes:v,depois});return{id};
 }));}
-export async function candidatosPreparo(tentativaId:string,propriedadeId:number,verValores:boolean){return prisma.$transaction(async tx=>{
+export async function candidatosPreparo(tentativaId:string,propriedadeId:number,verValores:boolean,pagina=1,porPagina=10){return prisma.$transaction(async tx=>{
  const t=await fonteTx(tx,"TENTATIVA",tentativaId,propriedadeId);const fontes=(await carregarFontesCustoTx(tx,propriedadeId,{animalId:t.animalId})).filter(f=>["APLICACAO","EXAME","PARTICIPACAO"].includes(f.tipo)&&f.data<=t.data);
- return{itens:fontes.map(f=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,participacaoId:f.participacaoId,...consolidarCustos(componentesDaFonte(f),verValores)}))};
+ const recorte=paginaCustos(fontes.sort((a,b)=>b.data.localeCompare(a.data)||chaveFonte(a).localeCompare(chaveFonte(b))),pagina,Math.min(10,porPagina));
+ return{...recorte,itens:recorte.itens.map(f=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,participacaoId:f.participacaoId,...consolidarCustos(componentesDaFonte(f),verValores)}))};
 });}
 
 /** Chamado antes de reatribuir Serviço: preserva cobertura declarada e preparos já divididos. */
-export async function conferirAtribuicaoServicoCustoTx(tx:Db,itens:Array<{id:string;tipo:"APLICACAO"|"EXAME"|"PROTOCOLO"|"TENTATIVA";operacaoServicoId:string|null;valor:string|null}>){
+export async function conferirAtribuicaoServicoCustoTx(tx:Db,itens:Array<{id:string;tipo:"APLICACAO"|"EXAME"|"PROTOCOLO"|"TENTATIVA"|"MANEJO";operacaoServicoId:string|null;valor:string|null}>){
  const ids=(tipo:string)=>itens.filter(i=>i.tipo===tipo).map(i=>i.id);
- const filtros=[{aplicacaoId:{in:ids("APLICACAO")}},{exameId:{in:ids("EXAME")}},{participacaoId:{in:ids("PROTOCOLO")}},{tentativaId:{in:ids("TENTATIVA")}}];
+ const filtros=[{aplicacaoId:{in:ids("APLICACAO")}},{exameId:{in:ids("EXAME")}},{participacaoId:{in:ids("PROTOCOLO")}},{tentativaId:{in:ids("TENTATIVA")}},{manejoId:{in:ids("MANEJO")}}];
  const [classes,vinculos]=await Promise.all([tx.classificacaoCustoPecuaria.findMany({where:{OR:filtros}}),tx.vinculoPreparoTentativa.findMany({where:{encerradoEm:null,OR:filtros.slice(0,3)}})]);
- for(const item of itens){const campo=item.tipo==="APLICACAO"?"aplicacaoId":item.tipo==="EXAME"?"exameId":item.tipo==="PROTOCOLO"?"participacaoId":"tentativaId";const c=classes.find(c=>c[campo]===item.id);
+ for(const item of itens){const campo=item.tipo==="APLICACAO"?"aplicacaoId":item.tipo==="EXAME"?"exameId":item.tipo==="PROTOCOLO"?"participacaoId":item.tipo==="MANEJO"?"manejoId":"tentativaId";const c=classes.find(c=>c[campo]===item.id);
   if(c&&((c.servicoNaoAplicavel&&item.operacaoServicoId!=null)||(c.coberturaServico!=="PROCEDIMENTO"&&item.operacaoServicoId==null)))throw new RebanhoError("CONFLITO","Revise a classificação de custo antes de alterar o Serviço deste fato");
-  if(campo!=="tentativaId"){const parcelas=vinculos.filter(v=>v[campo]===item.id&&v.valorServico!=null);const soma=parcelas.reduce((s,v)=>s.plus(v.valorServico??0),new Prisma.Decimal(0));if(parcelas.length&&(item.valor==null||soma.gt(item.valor)))throw new RebanhoError("CONFLITO","A atribuição do Serviço ficaria abaixo dos preparatórios já divididos");}
+  if(campo!=="tentativaId"&&campo!=="manejoId"){const parcelas=vinculos.filter(v=>v[campo]===item.id&&v.valorServico!=null);const soma=parcelas.reduce((s,v)=>s.plus(v.valorServico??0),new Prisma.Decimal(0));if(parcelas.length&&(item.valor==null||soma.gt(item.valor)))throw new RebanhoError("CONFLITO","A atribuição do Serviço ficaria abaixo dos preparatórios já divididos");}
  }
 }

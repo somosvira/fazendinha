@@ -532,3 +532,13 @@ it("falha técnica não é apresentada como animal ausente", async () => {
 
 // A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
 beforeEach(preferirTabelas);
+it("link do protocolo conserva hash, sítio explícito e retorno na ficha", async () => {
+  window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1?participacaoId=p1&programacaoId=g1&sitio=7&retorno=%2Fpecuaria%2Freproducao%2Fprogramacoes%2Fg1%3Fsitio%3D7#reproducao");
+  vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
+  render(<DetalheAnimal id="animal-1" onVoltar={vi.fn()} />, { wrapper: Wrapper });
+  await screen.findByText("Mimosa");
+  expect(screen.getByRole("tab", { name: "Reprodução" }).getAttribute("aria-selected")).toBe("true");
+  expect(buscarFichaAnimal).toHaveBeenCalledWith("animal-1", { periodoDias: "entrada" }, 7);
+  expect(vi.mocked(ReproducaoAnimal).mock.calls.at(-1)?.[0].propriedadeId).toBe(7);
+  expect(screen.getByRole("link", { name: "Voltar ao protocolo" }).getAttribute("href")).toBe("/pecuaria/reproducao/programacoes/g1?sitio=7");
+});

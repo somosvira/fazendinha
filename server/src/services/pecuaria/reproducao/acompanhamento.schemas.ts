@@ -14,7 +14,7 @@ export const parametrosAcompanhamentoSchema=z.object({
  for(const r of [...v.diagnostico?[v.diagnostico]:[],...v.reconfirmacoes])if(r.tipoExameVersao&&!r.tipoExameId)c.addIssue({code:"custom",path:["diagnostico"],message:"A versão do exame exige seu tipo identificado"});
 });
 export const criarPoliticaAcompanhamentoSchema=z.object({chave:id,propriedadeId:sitio,vigenteDesde:z.string().date(),parametros:parametrosAcompanhamentoSchema}).strict();
-export const consultaAcompanhamentoSchema=z.object({animalId:id.optional(),data:z.string().date().optional()}).strict();
+export const consultaAcompanhamentoSchema=z.object({animalId:id.optional(),data:z.string().date().optional(),pagina:z.coerce.number().int().min(1).max(100000).default(1),porPagina:z.coerce.number().int().min(1).max(10).default(10),estado:z.enum(["PENDENTE","RESOLVIDA","ENCERRADA"]).optional(),finalidade:z.enum(["DIAGNOSTICO","RECONFIRMACAO","SEXAGEM"]).optional()}).strict();
 const selecaoAdocao={propriedadeId:sitio,politicaId:id,tentativaIds:z.array(id).max(100).default([]),gestacaoIds:z.array(id).max(100).default([])};
 const validarSelecao=(v:{tentativaIds:string[];gestacaoIds:string[]},c:z.RefinementCtx)=>{
  if(!v.tentativaIds.length&&!v.gestacaoIds.length)c.addIssue({code:"custom",path:["tentativaIds"],message:"Selecione os fatos existentes para conferir a adoção"});

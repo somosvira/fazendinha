@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   escrita: vi.fn(),
   leitura: vi.fn(),
   listarProdutos: vi.fn(),
+  listarTiposAplicacaoSanitarios: vi.fn(),
   criarProduto: vi.fn(),
   atualizarProduto: vi.fn(),
   listarCategorias: vi.fn(),
@@ -37,6 +38,7 @@ vi.mock("../services/estoque/produtos.js", async (importOriginal) => {
   return {
     ...real,
     listarProdutos: mocks.listarProdutos,
+    listarTiposAplicacaoSanitarios: mocks.listarTiposAplicacaoSanitarios,
     criarProduto: mocks.criarProduto,
     atualizarProduto: mocks.atualizarProduto,
     obterUltimoPreco: mocks.obterUltimoPreco,
@@ -352,4 +354,16 @@ describe("estoque compartilhado após retirada de áreas", () => {
     expect(res.status).toBe(403);
     expect(mocks.listarProdutos).not.toHaveBeenCalled();
   });
+});
+
+it("catálogo sanitário do produto atende Financeiro sem expor fatos pecuários e limita dez", async () => {
+  mocks.listarTiposAplicacaoSanitarios.mockResolvedValue({ itens: [{ id: uid(1), nome: "Tratamento", ativo: true }], total: 1, pagina: 1, porPagina: 10 });
+  const res = await appCom(soFinanceiro).request("/estoque/tipos-aplicacao-sanitarios");
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ itens: [{ nome: "Tratamento" }], porPagina: 10 });
+  expect(mocks.listarTiposAplicacaoSanitarios).toHaveBeenCalledWith({ pagina: 1, porPagina: 10, busca: "" });
+  mocks.listarTiposAplicacaoSanitarios.mockClear();
+  expect((await appCom(soFinanceiro).request("/estoque/tipos-aplicacao-sanitarios?porPagina=11")).status).toBe(400);
+  expect((await appCom({ ...base, areas: [] }).request("/estoque/tipos-aplicacao-sanitarios")).status).toBe(403);
+  expect(mocks.listarTiposAplicacaoSanitarios).not.toHaveBeenCalled();
 });

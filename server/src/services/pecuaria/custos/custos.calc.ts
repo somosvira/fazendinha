@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 
-export type TipoFonteCusto = "TENTATIVA" | "APLICACAO" | "EXAME" | "PARTICIPACAO" | "NUTRICAO";
+export type TipoFonteCusto = "TENTATIVA" | "APLICACAO" | "EXAME" | "PARTICIPACAO" | "NUTRICAO" | "MANEJO";
 export type FinalidadeCusto = "REPRODUCAO" | "SANIDADE" | "ROTINA";
 export type ClassificacaoCusto = {
   finalidade: FinalidadeCusto | null; materialNaoAplicavel: boolean; servicoNaoAplicavel: boolean;
@@ -39,7 +39,7 @@ export function componentesDaFonte(f: FonteCusto): ComponenteCusto[] {
     periodoConsumo:f.periodoConsumo, estadoFato: f.estadoFato, participacaoId: f.participacaoId, finalidade: c?.finalidade ?? null };
   const linhas: ComponenteCusto[] = [];
   // Exame e atribuição de participação não presumem consumo de material próprio.
-  if (!["EXAME", "PARTICIPACAO"].includes(f.tipo)) linhas.push({ ...comum, natureza: "MATERIAL",
+  if (!["EXAME", "PARTICIPACAO", "MANEJO"].includes(f.tipo)) linhas.push({ ...comum, natureza: "MATERIAL",
     chave: f.tipo === "NUTRICAO" ? `nutricao:${f.id}:${f.componenteId}` : f.movimentoEstoqueId ? `movimento:${f.movimentoEstoqueId}` : `material:${f.tipo}:${f.id}`,
     origemId: f.movimentoEstoqueId, estado: material != null ? "CONHECIDO" : c?.materialNaoAplicavel ? "NAO_APLICAVEL" : pacoteMaterial ? "INCLUIDO_PACOTE" : "DESCONHECIDO",
     valor: material != null ? dinheiro(material) : null });

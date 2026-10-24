@@ -1,0 +1,28 @@
+import { comPropriedade } from "../../../propriedadeScope";
+import type { TarefaIatf } from "../reproducao/Iatf";
+import type { TarefaRodada } from "../sanidade/rodadas-api";
+import type { PaginaProtocolo } from "./EtapasProtocolo";
+export type ContextoProtocolo = { programacaoId: string; participacaoId?: never } | { participacaoId: string; programacaoId?: never };
+export type ContagensProtocolo = { animaisPendentes?: number; pendenciasOperacionais?: number; acompanhamentosPendentes?: number; total: number; atendidos: number; pendentes: number; atrasadas: number; naoAtendidos: number; adiados: number; semRegistro: number; previstos: number; regularizacoes: number; encerradas: number };
+export type AnimalProtocolo = { id: string; brinco: string; nome: string | null };
+export type CabecalhoProtocolo = { id: string; modo: "INDIVIDUAL" | "COLETIVO"; tipo: "SANITARIO" | "REPRODUTIVO"; nome: string; protocolo: { id: string; nome: string; versao: number }; propriedadeId: number | null; propriedadeContextoId?: number | null; inicioReferencia: string; precisaoTemporal: "DIA" | "HORA"; status: string; animal: AnimalProtocolo | null; contagens: ContagensProtocolo; podeEditarValores?: boolean; participantesTotal?: number };
+export type MomentoProtocolo = { id: string; nome: string; ordem: number | null };
+export type EtapaProtocolo = { momento?: MomentoProtocolo | null; configuracao?: { subtipo?: string }; id: string; nome: string; ordem: number; tipo: string; diaRelativo: number; unidadeIntervalo: string; previstaPara: string | null; precisaoTemporal: "DIA" | "HORA"; contagens: ContagensProtocolo };
+export type TarefaOperacional = { id: string; tarefaId: string; participacaoId: string; etapaId: string; animal: AnimalProtocolo; propriedadeId: number; situacao: string; previstaPara: string | null; previsaoOriginal: string | null; previsaoIndividual: boolean; precisaoTemporal: "DIA" | "HORA"; realizadaEm: string | null; precisaoRealizacao: "DIA" | "HORA" | null; previsaoPendente: boolean; ultimoEvento: { id: string; tipo: string; motivo: string; ocorridaEm: string } | null; vinculoAtual: { tipo: string; id: string; origem: string } | null; acoes: { atender: boolean; justificar: boolean; adiar: boolean; retificar: boolean; regularizar: boolean; reavaliar?: boolean }; acompanhamento?: {id:string;estado:string;finalidade:string;previstaPara:string|null;versao:number;exameResolucaoId?:string|null}|null; acompanhamentoPendente?: boolean; resultadoProcedimento?: {realizacao:string;resultados:Array<{campo:string;valor:unknown}>}|null; tarefaOrigem: TarefaIatf & TarefaRodada };
+export type EventoProtocolo = { chave: string; propriedadeId: number; tipo: "NAO_ATENDIDO" | "ADIAMENTO" | "RETIFICACAO_JUSTIFICATIVA"; ocorridaEm: string; motivo: string; previstaPara?: string; eventoCorrigidoId?: string };
+export class ProtocoloApiError extends Error { constructor(message: string, public readonly status: number, public readonly code?: string, public readonly campo?: string) { super(message); } }
+export async function reqProtocolo<T>(caminho: string, propriedadeId?: number, body?: object): Promise<T> {
+  // Opções do builder pertencem ao catálogo de cadastros, fora do executor operacional.
+  const base = caminho.startsWith("/cadastros/opcoes?") ? "/api/pecuaria/rebanho/protocolos" : "/api/pecuaria/rebanho/protocolos/operacao";
+  const resposta = await fetch(`${base}${caminho}`, { method: body ? "POST" : "GET", headers: { ...comPropriedade(body ? { "Content-Type": "application/json" } : {}), ...(propriedadeId != null ? { "X-Propriedade-Id": String(propriedadeId) } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new ProtocoloApiError(dados.error ?? `Erro HTTP ${resposta.status}`, resposta.status, dados.code, dados.campo);
+  return dados as T;
+}
+export const caminhoContexto = (contexto: ContextoProtocolo) => contexto.programacaoId ? `/programacoes/${encodeURIComponent(contexto.programacaoId)}` : `/participacoes/${encodeURIComponent(contexto.participacaoId!)}`;
+export function consultaProtocolo(filtros: Record<string, string | number | undefined>) { const params = new URLSearchParams(); Object.entries(filtros).forEach(([k, v]) => { if (v !== undefined && v !== "") params.set(k, String(v)); }); params.set("porPagina", "10"); return `?${params}`; }
+export const obterCabecalhoProtocolo = (contexto: ContextoProtocolo, propriedadeId?: number) => reqProtocolo<CabecalhoProtocolo>(caminhoContexto(contexto), propriedadeId);
+export const obterMomentosProtocolo = (contexto: ContextoProtocolo, pagina: number, propriedadeId?: number) => reqProtocolo<PaginaProtocolo<MomentoProtocolo>>(`${caminhoContexto(contexto)}/momentos${consultaProtocolo({ pagina })}`, propriedadeId);
+export const obterEtapasProtocolo = (contexto: ContextoProtocolo, pagina: number, propriedadeId?: number, momentoId?: string) => reqProtocolo<PaginaProtocolo<EtapaProtocolo>>(`${caminhoContexto(contexto)}/etapas${consultaProtocolo({ pagina, momentoId })}`, propriedadeId);
+export const obterTarefasProtocolo = (contexto: ContextoProtocolo, filtros: Record<string, string | number | undefined>, propriedadeId?: number) => reqProtocolo<PaginaProtocolo<TarefaOperacional>>(`${caminhoContexto(contexto)}/tarefas${consultaProtocolo(filtros)}`, propriedadeId);
+export const registrarEventoProtocolo = (id: string, body: EventoProtocolo) => reqProtocolo(`/tarefas/${encodeURIComponent(id)}/eventos`, body.propriedadeId, body);

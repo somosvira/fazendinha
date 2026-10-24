@@ -178,9 +178,6 @@ afterAll(async () => {
   await prisma.participacaoProtocolo.deleteMany({
     where: { propriedadeId: props },
   });
-  await prisma.etapaProtocolo.deleteMany({
-    where: { protocoloId: { in: protocolos } },
-  });
   await prisma.protocolo.deleteMany({
     where: { id: { in: protocolos } },
   });

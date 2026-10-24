@@ -7,11 +7,13 @@ const mocks = vi.hoisted(() => ({
     ocorrenciaSanitaria: { updateMany: vi.fn(), findFirst: vi.fn() },
     etapaProtocolo: { findFirst: vi.fn() },
     tipoExame: { findUnique: vi.fn(), update: vi.fn() },
-    tarefaProtocolo: { findUnique: vi.fn(), update: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() },
+    tarefaProtocolo: { findFirst: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() },
     protocolo: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     participacaoProtocolo: { findMany: vi.fn(), create: vi.fn() },
     aplicacaoProduto: { findFirst: vi.fn() }, exameAnimal: { findFirst: vi.fn() },
-    $executeRaw: vi.fn(),
+    eventoTarefaProtocolo: { findFirst: vi.fn(), create: vi.fn() },
+    requisicaoPecuaria: { findUnique: vi.fn(), create: vi.fn() },
+    $executeRaw: vi.fn(), $queryRaw: vi.fn(),
   }, auditar: vi.fn(), travar: vi.fn(),
 }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (fn: (tx: typeof mocks.tx) => unknown) => fn(mocks.tx) } }));
@@ -23,7 +25,17 @@ import { editarTipoExame, nomeExameHistorico } from "./exames.js";
 import { adiarTarefa, iniciarExecucao, inativarProtocolo } from "./protocolos.js";
 import { obterAplicacao, obterExame, ocultarCustosDetalhe } from "./detalhes.js";
 
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => {
+  vi.resetAllMocks();
+  mocks.tx.tarefaProtocolo.findFirst.mockResolvedValue({ id: "tarefa", execucao: { animalId: "animal" } });
+  mocks.tx.tarefaProtocolo.findUniqueOrThrow.mockImplementation(async () => {
+    const entrada = await mocks.tx.tarefaProtocolo.findUnique();
+    return { id: "tarefa", previstaPara: new Date("2026-09-01"), previsaoOriginal: null, precisaoTemporal: "DIA", dispensadaEm: null,
+      regularizacaoPendente: false, etapa: { protocoloId: "protocolo" }, aplicacoes: [], exames: [], tentativas: [], vinculos: [], ...entrada,
+      execucao: { propriedadeId: 2, protocoloId: "protocolo", rodada: null, ...entrada?.execucao } };
+  });
+  mocks.tx.eventoTarefaProtocolo.create.mockImplementation(async ({ data }) => ({ id: "evento", ...data }));
+});
 describe("manutenção sanitária preserva fatos e decisões", () => {
   it("renomear e inativar doença congela o nome legado antes da alteração e audita", async () => {
     mocks.tx.doenca.findUnique.mockResolvedValue({ id: "doenca", nome: "Mastite", ativo: true });
@@ -51,14 +63,21 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
     expect(mocks.tx.tipoExame.update).not.toHaveBeenCalled();
   });
 
-  it("adia tarefa pendente no sítio atual sem alterar parâmetros clínicos", async () => {
+  it("adia tarefa pendente no sítio autorizado sem alterar parâmetros clínicos", async () => {
     const tarefa = { id: "tarefa", previstaPara: new Date("2026-09-01"), dispensadaEm: null, execucao: { animalId: "animal", canceladaEm: null }, aplicacoes: [], exames: [], parametros: { dose: "5" } };
     mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue(tarefa);
     mocks.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 2 });
     mocks.tx.tarefaProtocolo.update.mockResolvedValue({ ...tarefa, previstaPara: new Date("2026-09-03") });
     await adiarTarefa("tarefa", { previstaPara: "2026-09-03", motivo: "Veterinário remarcou a visita" }, 7, 2);
-    expect(mocks.tx.tarefaProtocolo.update).toHaveBeenCalledWith({ where: { id: "tarefa" }, data: { previstaPara: new Date("2026-09-03") } });
-    expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ acao: "ADIAMENTO", propriedadeId: 2, antes: tarefa, depois: expect.objectContaining({ motivo: "Veterinário remarcou a visita" }) }));
+    expect(mocks.tx.tarefaProtocolo.update).toHaveBeenCalledWith({ where: { id: "tarefa" }, data: {
+      previstaPara: new Date("2026-09-03"), previsaoOriginal: tarefa.previstaPara, precisaoTemporal: "DIA", previsaoPendente: false,
+    } });
+    expect(mocks.tx.eventoTarefaProtocolo.create).toHaveBeenCalledWith({ data: expect.objectContaining({
+      tarefaId: "tarefa", tipo: "ADIAMENTO", motivo: "Veterinário remarcou a visita", registradoPorId: 7,
+      previsaoAnterior: tarefa.previstaPara, previsaoNova: new Date("2026-09-03"), precisaoAnterior: "DIA", precisaoNova: "DIA",
+    }) });
+    expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ entidade: "EventoTarefaProtocolo", entidadeId: "evento", usuarioId: 7,
+      acao: "ADIAMENTO", propriedadeId: 2, depois: expect.objectContaining({ motivo: "Veterinário remarcou a visita" }) }));
   });
 
   it.each(["realizada", "dispensada", "cancelada"])("recusa adiar tarefa %s", async (situacao) => {

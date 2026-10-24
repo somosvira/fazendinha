@@ -1,0 +1,42 @@
+.builder-etapas { min-width: 0; color: var(--foreground); }
+.builder-etapas-layout { display: grid; grid-template-columns: minmax(190px, .8fr) minmax(0, 2fr); gap: 26px; margin-block: 24px; }
+.builder-etapas-lista { min-width: 0; border-right: 1px solid var(--border); padding-right: 24px; }
+.builder-etapas-titulo, .builder-etapas-acao-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.builder-etapas-lista > .builder-etapas-titulo { align-items: flex-start; flex-direction: column; }
+.builder-etapas h3 { margin: 0; font-size: 1rem; font-weight: 700; line-height: 1.4; }
+.builder-etapas-ajuda, .builder-etapas-opcao span { color: var(--muted-foreground); font-size: .8125rem; line-height: 1.5; }
+.builder-etapas-ajuda { margin-block: 12px; }
+.builder-etapas-opcao { display: block; width: 100%; margin-block: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); text-align: left; cursor: pointer; overflow-wrap: anywhere; }
+.builder-etapas-opcao strong, .builder-etapas-opcao span { display: block; }
+.builder-etapas-opcao span { margin-top: 5px; }
+.builder-etapas-opcao:hover { background: var(--secondary); }
+.builder-etapas-opcao[aria-pressed="true"] { background: var(--fin-filter-bg, var(--secondary)); border-color: var(--fin-filter-border, var(--primary)); }
+.builder-etapas button:focus-visible, .builder-etapas input:focus-visible, .builder-etapas select:focus-visible, .builder-etapas textarea:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.builder-etapas input, .builder-etapas textarea { caret-color: var(--primary); }
+.builder-etapas ::selection { color: var(--primary-foreground); background: var(--primary); }
+.builder-etapas-editor { min-width: 0; }
+.builder-etapas-editor > h3 { margin-bottom: 18px; }
+.builder-etapas-campo { display: grid; gap: 6px; margin-block: 16px; font-size: .875rem; font-weight: 600; }
+.builder-etapas-campo textarea { resize: vertical; }
+.builder-etapas-modo { padding: 0; border: 0; margin: 24px 0; }
+.builder-etapas-modo legend { margin-bottom: 8px; font-size: .9375rem; font-weight: 700; }
+.builder-etapas-modo label { display: flex; gap: 12px; align-items: flex-start; padding: 14px; margin-block: 8px; border: 1px solid var(--border); border-radius: 10px; cursor: pointer; }
+.builder-etapas-modo label:has(input:checked) { background: var(--fin-filter-bg, var(--secondary)); border-color: var(--fin-filter-border, var(--primary)); }
+.builder-etapas-modo input { width: 18px; height: 18px; flex-shrink: 0; margin-top: 3px; accent-color: var(--primary); }
+.builder-etapas-modo strong { font-size: .875rem; }
+.builder-etapas-modo small { display: block; margin-top: 4px; font-size: .8125rem; line-height: 1.5; color: var(--muted-foreground); }
+.builder-etapas-acao { margin-block: 16px 24px; padding-block: 16px 0; border-top: 1px solid var(--border); }
+.builder-etapas-acao-cabecalho { margin-bottom: 16px; }
+.builder-etapas-acao h4 { margin: 0; font-size: .875rem; font-weight: 700; }
+.builder-etapas .pec-paginacao { margin-block: 16px; padding-inline: 0; font-variant-numeric: tabular-nums; }
+.builder-etapas-lista .pec-paginacao { align-items: flex-start; flex-direction: column; }
+.builder-etapas-carga, .builder-etapas-legado { margin-block: 16px; padding: 16px; background: var(--secondary); border-radius: 10px; font-size: .875rem; line-height: 1.5; }
+.builder-etapas-carga p, .builder-etapas-legado p { margin-bottom: 12px; max-width: 70ch; }
+.builder-etapas-vazio { padding-block: 24px; color: var(--muted-foreground); font-size: .875rem; line-height: 1.5; }
+.builder-form-protocolo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.builder-form-protocolo > label { min-width: 0; grid-column: span 1; }
+.builder-form-protocolo > label:has(textarea) { grid-column: span 2; }
+.builder-form-protocolo > :not(label), .builder-form-protocolo > label:has(input[type="checkbox"]) { min-width: 0; grid-column: 1 / -1; }
+@media (max-width: 950px) { .builder-etapas-layout { grid-template-columns: minmax(0, 1fr); } .builder-etapas-lista { border-right: 0; border-bottom: 1px solid var(--border); padding: 0 0 16px; } .builder-etapas-lista > .builder-etapas-titulo { flex-direction: row; align-items: center; } .builder-etapas-lista .pec-paginacao { flex-direction: row; } }
+@media (max-width: 650px) { .builder-form-protocolo { grid-template-columns: minmax(0, 1fr); } .builder-form-protocolo > label, .builder-form-protocolo > label:has(textarea) { grid-column: 1 / -1; } }
+@media (max-width: 480px) { .builder-etapas-acao-cabecalho { align-items: flex-start; } .builder-etapas-modo label { padding: 12px; } .builder-etapas .pec-paginacao > div { gap: 6px; flex-wrap: wrap; } }

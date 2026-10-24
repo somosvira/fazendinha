@@ -1,76 +1,116 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { reqProtocolo } from "../protocolos/api";
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
+import { PaginaCadastroProtocolo } from "../protocolos/PaginaCadastroProtocolo";
+import { navegarPara } from "../../../router";
+vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
 import { listarTiposAplicacao, reqSanidade } from "./api";
 import { listarProdutos } from "../../../estoque/api";
+import { listarCadastrosProtocolos, obterCadastroProtocolo, obterAcoesCadastro, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
+import { obterEstruturaCadastro } from "../protocolos/estrutura-cadastro-api";
+vi.mock("../protocolos/estrutura-cadastro-api",()=>({obterEstruturaCadastro:vi.fn(),obterProcedimentosEtapaCadastro:vi.fn()}));
 vi.mock("./api", () => ({ listarTiposAplicacao: vi.fn(), reqSanidade: vi.fn() }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn() }));
-const protocolo = { id: "p1", nome: "Controle CCS", descricao: null, ativo: true, versao: 1, publicadoEm: null, etapas: [{ diaRelativo: 0, tipo: "EXAME", tipoExameId: "e1", produtoId: null, tipoAplicacaoId: null, tipoAplicacaoNomeSnapshot: null, dose: null, unidade: null }] };
+vi.mock("../protocolos/cadastros-api", () => ({ listarCadastrosProtocolos: vi.fn(), obterCadastroProtocolo: vi.fn(), obterAcoesCadastro: vi.fn() }));
+vi.mock("../protocolos/api", async original=>({...await original<typeof import("../protocolos/api")>(),reqProtocolo:vi.fn()}));
+const protocolo: CadastroProtocoloMeta = { id: "p1", nome: "Controle CCS", tipo: "SANITARIO", descricao: null, ativo: true, versao: 1, publicado: false, publicadoEm: null, atualizadoEm: "2026-10-21T12:00:00.000Z", utilizada: false, totalEtapas: 1 };
+const etapa = { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: "e1", produtoId: null, tipoAplicacaoId: null, tipoAplicacaoNomeSnapshot: null, dose: null, unidade: null };
+const pagina = <T,>(itens: T[], total = itens.length, atual = 1) => ({ itens, total, pagina: atual, porPagina: 10 });
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  localStorage.clear();
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos");
+  vi.mocked(reqProtocolo).mockImplementation(async path => { const id=new URL(path,"https://local").searchParams.get("selecionadoId"); return pagina(id ? [{id,nome:id === "e1" ? "CCS" : id === "p1" ? "Produto" : "Hormônio",unidade:"ML"}] : []); });
   vi.mocked(listarProdutos).mockResolvedValue([]);
   vi.mocked(listarTiposAplicacao).mockResolvedValue([]);
-  vi.mocked(reqSanidade).mockImplementation(async (path) => {
-    if (path === "/protocolos?incluirInativos=true") return [protocolo] as never;
-    if (path.endsWith("/publicacao")) return { id: "p1", nome: protocolo.nome, ativo: true, versao: 1, publicadoEm: "2026-10-06" } as never;
-    if (path.endsWith("/inativacao")) return { ...protocolo, ativo: false } as never;
-    if (path === "/protocolos") return { ...protocolo, id: "p2", versao: 2 } as never;
-    return [{ id: "e1", nome: "CCS", ativo: true, tipoResultado: "NUMERO", unidade: null, opcoes: null }] as never;
-  });
+  vi.mocked(listarCadastrosProtocolos).mockResolvedValue(pagina([protocolo]));
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue(protocolo);
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([etapa]));
+  vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([{id:"e1",nome:"Exame",agrupada:false,modoAtendimento:null,instrucoesGerais:null,procedimentos:pagina([{id:"e1",nome:"Exame",procedimento:"Exame / diagnóstico",intervalo:0,unidadeIntervalo:"DIAS",referencia:"CCS",definirMaterialNoAtendimento:false,quantidade:null,unidadeQuantidade:null,via:null,orientacaoUso:null}])}]));
+  vi.mocked(reqSanidade).mockImplementation(async (_path, init) => init ? protocolo as never : [{ id: "e1", nome: "CCS", ativo: true, tipoResultado: "NUMERO", unidade: null, opcoes: null }] as never);
 });
 afterEach(cleanup);
-describe("Protocolos sanitários", () => {
-  it("publica localmente preservando etapas quando a resposta é parcial", async () => {
-    render(<ProtocolosCadastro podeLancar />);
-    await screen.findAllByText("Controle CCS");
-    expect(screen.getByText("Publicar")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Sobre versões e etapas dos protocolos" }));
-    expect(screen.getByText(/Versões publicadas não são editadas/)).toBeTruthy();
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    fireEvent.click(screen.getAllByRole("button", { name: "Publicar Controle CCS v1" })[0]);
-    await screen.findByText("Versão publicada.");
-    expect(screen.getAllByText("Publicado")).toHaveLength(1);
-    fireEvent.click(screen.getAllByRole("button", { name: "Ver etapas de Controle CCS v1" })[0]);
-    expect(screen.getByText("Etapa 1 · Dia 0")).toBeTruthy();
-    expect(screen.getByText("Exame · CCS")).toBeTruthy();
-    expect(reqSanidade).toHaveBeenCalledTimes(3);
+it("lista metadados e busca estrutura somente no modal de consulta, inclusive para leitor", async () => {
+  render(<ProtocolosCadastro podeLancar={false} />);
+  await screen.findByText("Controle CCS");
+  expect(obterAcoesCadastro).not.toHaveBeenCalled();
+  expect(screen.queryByRole("button", { name: "Novo protocolo" })).toBeNull();
+  expect(obterEstruturaCadastro).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: /Ver detalhes de/ }));
+  expect(await screen.findByRole("dialog")).toBeTruthy();
+  expect(await screen.findAllByText("CCS")).toBeTruthy();
+  expect(screen.getByText("Procedimento individual sem agrupamento em etapa")).toBeTruthy();
+  expect(screen.queryByText("Etapa legada sem momento")).toBeNull();
+  expect(obterEstruturaCadastro).toHaveBeenCalledWith(protocolo, 1);
+});
+it("consulta o catálogo apenas ao editar ou abrir referência e mantém a lista disponível se falhar", async () => {
+  vi.mocked(obterEstruturaCadastro).mockRejectedValue(new Error("Detalhes indisponíveis"));
+  render(<ProtocolosCadastro podeLancar />);
+  await screen.findByText("Controle CCS");
+  expect(reqProtocolo).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "Novo protocolo" })).toHaveProperty("disabled", false);
+  fireEvent.click(screen.getByRole("button", { name: /Ver detalhes de/ }));
+  expect(await screen.findByText("Detalhes indisponíveis")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:"Fechar detalhes"}));
+  expect(screen.getByText("Controle CCS")).toBeTruthy();
+});
+it("encaminha conclusão ao builder e inativa pelo contrato existente, reconsultando a lista", async () => {
+  render(<ProtocolosCadastro podeLancar />);
+  fireEvent.click(await screen.findByRole("button", { name: "Concluir cadastro de Controle CCS v1" }));
+  expect(new URL(vi.mocked(navegarPara).mock.calls.at(-1)![0],"http://local").searchParams.get("editar")).toBe("p1");
+  expect(screen.queryByRole("button",{name:/Publicar/})).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Inativar Controle CCS v1" }));
+  await screen.findByText("Versão inativada.");
+  expect(listarCadastrosProtocolos).toHaveBeenCalledTimes(2);
+});
+it("trocar produto limpa a dose, herda unidade e metadados sem reaproveitar quantidade", async () => {
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ ...etapa, tipo: "APLICACAO", produtoId: "p1", tipoAplicacaoId: "t1", dose: "2", unidade: "ML" }]));
+  vi.mocked(reqProtocolo).mockImplementation(async path => {
+    const q = new URL(path, "https://local").searchParams;
+    if (q.get("opcao") !== "PRODUTO") return pagina([{ id: "t1", nome: "Hormônio" }]);
+    const produtos = [{ id: "p1", nome: "Solução", unidade: "L", perfilSanitario: { viaPadrao: "IM" } }, { id: "p2", nome: "Dispositivo", unidade: "UN", perfilSanitario: { orientacaoUso: "Conferir embalagem", tipoAplicacaoId: "t1" } }];
+    return pagina(q.has("selecionadoId") ? produtos.filter(p => p.id === q.get("selecionadoId")) : produtos);
   });
-  it("mantém lista e detalhes consultáveis se o catálogo falha", async () => {
-    vi.mocked(listarProdutos).mockRejectedValueOnce(new Error("Catálogo indisponível"));
-    render(<ProtocolosCadastro podeLancar />);
-    await screen.findAllByText("Controle CCS");
-    await screen.findByText("Catálogo indisponível");
-    expect((screen.getByRole("button", { name: "Novo protocolo" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getAllByRole("button", { name: "Ver etapas de Controle CCS v1" })[0]);
-    expect(screen.getByText("Etapa 1 · Dia 0")).toBeTruthy();
-  });
-  it("mostra detalhes em somente leitura sem ações de escrita", async () => {
-    render(<ProtocolosCadastro podeLancar={false} />);
-    await screen.findAllByText("Controle CCS");
-    expect(screen.queryByRole("button", { name: /Publicar/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Novo protocolo" })).toBeNull();
-    fireEvent.click(screen.getAllByRole("button", { name: /Ver etapas/ })[0]);
-    expect(screen.getByText("Etapa 1 · Dia 0")).toBeTruthy();
-  });
-  it("inativa e não oferece reativação inexistente no contrato", async () => {
-    render(<ProtocolosCadastro podeLancar />);
-    await screen.findAllByText("Controle CCS");
-    fireEvent.click(screen.getAllByRole("button", { name: "Inativar Controle CCS v1" })[0]);
-    await screen.findByText("Versão inativada.");
-    expect(screen.queryByRole("button", { name: /Reativar/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Inativar/ })).toBeNull();
-  });
-  it("uma versão publicada abre novo rascunho usando POST", async () => {
-    vi.mocked(reqSanidade).mockImplementation(async (path, init) => {
-      if (path === "/protocolos?incluirInativos=true") return [{ ...protocolo, publicadoEm: "2026-10-06" }] as never;
-      if (init) return { ...protocolo, id: "p2", versao: 2 } as never;
-      return [{ id: "e1", nome: "CCS", ativo: true, tipoResultado: "NUMERO", unidade: null, opcoes: null }] as never;
-    });
-    render(<ProtocolosCadastro podeLancar />);
-    await waitFor(() => expect((screen.getAllByRole("button", { name: "Nova versão de Controle CCS v1" })[0] as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getAllByRole("button", { name: "Nova versão de Controle CCS v1" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
-    await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/protocolos", expect.objectContaining({ method: "POST" })));
-  });
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos/novo?editar=p1");
+  render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
+  await screen.findByLabelText("Quantidade prevista (ML)");
+  expect(screen.getByLabelText("Quantidade prevista (ML)")).toHaveProperty("value", "2");
+  fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Usar Solução" }));
+  expect(screen.getByLabelText("Quantidade prevista (ML)")).toHaveProperty("value", "2");
+  fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Usar Dispositivo" }));
+  expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("value", "");
+  expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("required", true);
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Selecionar Produto" }));
+  expect(screen.queryByText("Via: IM")).toBeNull();
+  expect(await screen.findByText("Orientação de uso: Conferir embalagem")).toBeTruthy();
+});
+it("salva cadastro manual de aplicação sem tipo padrão omitindo ID vazio", async () => {
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({ ...protocolo, finalidade: "SANITARIO" });
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{ ...etapa, tipo: "APLICACAO", produtoId: "p1", tipoAplicacaoId: null, dose: "2", unidade: "ML", momento: { nome: "Manual", ordem: 1, modoAtendimento: "MANUAL" } }]));
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos/novo?editar=p1");
+  render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Salvar protocolo" })).toHaveProperty("disabled", false));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
+  await waitFor(() => expect(reqSanidade).toHaveBeenCalledWith("/protocolos/p1", expect.objectContaining({ method: "PATCH" })));
+  const escrita = vi.mocked(reqSanidade).mock.calls.find(([path]) => path === "/protocolos/p1")!;
+  const payload = JSON.parse(escrita[1]!.body as string);
+  expect(payload.finalidade).toBe("SANITARIO");
+  expect(payload.etapas[0]).not.toHaveProperty("tipoAplicacaoId");
+  expect(payload.etapas[0].momento.modoAtendimento).toBe("MANUAL");
+});
+
+it("abre página própria preservando o filtro da lista e não abre modal", async () => {
+  render(<ProtocolosCadastro podeLancar />);
+  await screen.findByText("Controle CCS");
+  fireEvent.change(screen.getByLabelText("Buscar protocolos"), { target: { value: "CCS" } });
+  await waitFor(() => expect(screen.getByRole("button", { name: "Novo protocolo" })).toHaveProperty("disabled", false));
+  fireEvent.click(screen.getByRole("button", { name: "Novo protocolo" }));
+  const destino = vi.mocked(navegarPara).mock.calls.at(-1)![0];
+  expect(destino).toContain("/configuracoes/pecuaria/sanidade/protocolos/novo?");
+  expect(new URL(destino, "https://local").searchParams.get("retorno")).toContain("cadastroBusca=CCS");
+  expect(screen.queryByRole("dialog")).toBeNull();
 });

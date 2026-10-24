@@ -1,3 +1,4 @@
+import { Paginacao } from "../ui";
 import { useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -5,6 +6,7 @@ import { escreverCustos, type Classificacao, type CustosDTO } from "./api";
 
 const inicial: Classificacao = { finalidade: null, materialNaoAplicavel: false, servicoNaoAplicavel: false, coberturaServico: "PROCEDIMENTO", valorMaterialDocumentado: null };
 type Props = {
+  aoMudarPagina?:(pagina:number)=>void;
   dados: CustosDTO | null;
   visivel: boolean;
   propriedadeId: number;
@@ -16,7 +18,7 @@ type Props = {
   gravar: (acao: () => Promise<unknown>) => Promise<void>;
 };
 
-export function EditorClassificacaoCusto({ dados, visivel, propriedadeId, chave, ocupado, motivo, aoMudarMotivo, aoAlterar, gravar }: Props) {
+export function EditorClassificacaoCusto({ dados, aoMudarPagina,visivel, propriedadeId, chave, ocupado, motivo, aoMudarMotivo, aoAlterar, gravar }: Props) {
   const [fonte, setFonte] = useState("");
   const [classificacao, setClassificacao] = useState<Classificacao>(inicial);
   const [valor, setValor] = useState("");
@@ -45,6 +47,7 @@ export function EditorClassificacaoCusto({ dados, visivel, propriedadeId, chave,
       <label>Fato a classificar<select className={classeInput} required value={fonte} onChange={e => selecionar(e.target.value)}>
         <option value="">Selecione</option>{dados.fontes.map(f => <option key={`${f.tipo}:${f.id}`} value={`${f.tipo}:${f.id}`}>{f.data} · {f.descricao}</option>)}
       </select></label>
+      {dados.fontesPaginadas&&aoMudarPagina&&<Paginacao paginaAtual={dados.fontesPaginadas.pagina} totalPaginas={Math.max(1,Math.ceil(dados.fontesPaginadas.total/10))} totalItens={dados.fontesPaginadas.total} itensPorPagina={10} onPaginaChange={aoMudarPagina} rotulo="fatos" idSelect="custos-fontes-pagina"/>}
       {atual && <>
         <label>Finalidade gerencial<select className={classeInput} value={classificacao.finalidade ?? ""} onChange={e => setClassificacao({ ...classificacao, finalidade: (e.target.value || null) as Classificacao["finalidade"] })}>
           <option value="">Sem classificação</option><option value="REPRODUCAO">Reprodução</option><option value="SANIDADE">Sanidade</option><option value="ROTINA">Rotina/manutenção</option>

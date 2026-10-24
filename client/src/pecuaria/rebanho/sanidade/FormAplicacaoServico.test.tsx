@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+import { EditorExecucaoProtocolo } from "../protocolos/EditorExecucaoProtocolo";
+import { reqProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -9,6 +11,7 @@ import { listarPartidasNutricionais } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
 import { getPropriedadeAtiva, setPropriedadeAtiva } from "../../../propriedadeScope";
 
+vi.mock("../protocolos/api",async original=>({...await original<typeof import("../protocolos/api")>(),reqProtocolo:vi.fn()}));
 vi.mock("./api", () => ({
   listarServicos: vi.fn().mockResolvedValue([{ id: "servico", numero: 12, descricao: "Atendimento" }]),
   listarTiposAplicacao: vi.fn().mockResolvedValue([{ id: "tipo", nome: "Tratamento personalizado", ativo: true }, { id: "inativo", nome: "Inativo", ativo: false }]),
@@ -264,4 +267,45 @@ it("preenche parâmetros da visita sem criar vínculo sanitário e conserva sít
   expect(vi.mocked(registrar).mock.calls[0][0].tarefaId).toBeUndefined();
   expect(buscarFichaAnimal).toHaveBeenCalledWith("animal", undefined, 7);
   expect(listarProdutos).toHaveBeenCalledWith({ ativo: true }, 7);
+});
+
+it("completa tipo operacional não planejado sem exigir desvio nem reaplicar vazio ao coletivo",async()=>{
+    const ficha={sexo:"F",aptidao:"LEITE",historicoLocalizacoes:[{desde:"2026-08-01",ate:null,propriedade:{id:1,nome:"Sítio"}}]};
+    vi.mocked(buscarFichaAnimal).mockResolvedValueOnce(ficha as Awaited<ReturnType<typeof buscarFichaAnimal>>).mockResolvedValueOnce(ficha as Awaited<ReturnType<typeof buscarFichaAnimal>>).mockResolvedValueOnce(ficha as Awaited<ReturnType<typeof buscarFichaAnimal>>);
+    const tarefas=["animal","outro"].map((animalId,i)=>({id:`tarefa${i}`,animalId,produtoId:"produto",tipoAplicacaoId:"",dose:"2",unidade:"ML",previstaPara:"2026-09-10"}));
+    const conferir=vi.fn().mockResolvedValue(undefined);
+    render(<FormAplicacaoServico animalId="animal" propriedadeId={1} tarefa={tarefas[0]} tarefas={tarefas} animais={[{id:"animal",brinco:"RN01",propriedadeId:1},{id:"outro",brinco:"RN02",propriedadeId:1}]} onConferirConjunto={conferir} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+    await screen.findByText("Tratamento personalizado");
+    expect(screen.getByLabelText(/Tipo de aplicação/)).toHaveProperty("disabled",false);
+    await alterarControle(screen.getByLabelText(/Tipo de aplicação/),{target:{value:"tipo"}});
+    fireEvent.change(screen.getByLabelText(/Hora/),{target:{value:"10:00"}});
+    submeter();await screen.findByText("Revisão por animal");submeter();
+    await waitFor(()=>expect(conferir).toHaveBeenCalledTimes(1));
+    expect(conferir.mock.calls[0][0]).toMatchObject([{tipoAplicacaoId:"tipo",dose:"2"},{tipoAplicacaoId:"tipo",dose:"2"}]);
+    expect(conferir.mock.calls[0][0].some((i:object)=>"desvio" in i)).toBe(false);
+  });
+
+
+it("editor real conserva DIA e horário opcional na aplicação reprodutiva individual e coletiva",async()=>{
+  const ficha={sexo:"F",aptidao:"LEITE",historicoLocalizacoes:[{desde:"2026-08-01",ate:null,propriedade:{id:1,nome:"Sítio"}}]};
+  for(let n=0;n<4;n++)vi.mocked(buscarFichaAnimal).mockResolvedValueOnce(ficha as Awaited<ReturnType<typeof buscarFichaAnimal>>);
+  const tarefas:TarefaOperacional[]=["animal","outro"].map((animalId,n)=>{
+    const animal={id:animalId,brinco:`RN0${n+1}`,nome:null};const etapa={nome:"Aplicação",tipo:"APLICACAO" as const,intervalo:0,unidade:"DIAS" as const,planoAplicacao:{produtoId:"produto",dose:"2",unidadeDose:"ML" as const}};
+    return{id:`tarefa${n}`,tarefaId:`tarefa${n}`,participacaoId:`participacao${n}`,etapaId:"etapa",animal,propriedadeId:1,situacao:"SEM_REGISTRO",previstaPara:"2026-09-10",previsaoOriginal:null,previsaoIndividual:false,precisaoTemporal:"DIA",realizadaEm:null,precisaoRealizacao:null,previsaoPendente:false,ultimoEvento:null,vinculoAtual:null,acoes:{atender:true,justificar:true,adiar:true,retificar:false,regularizar:false},tarefaOrigem:{id:`tarefa${n}`,etapaId:"etapa",execucaoId:`participacao${n}`,tipo:"APLICACAO",previstaEm:"2026-09-10",previstaPara:"2026-09-10",status:"PENDENTE",situacao:"PENDENTE",parametros:{tipo:"APLICACAO"},planejadoSnapshot:{etapa,previstaEm:"2026-09-10",previsaoOriginal:"2026-09-10",inicioReferencia:"2026-09-10"},execucao:{animalId,propriedadeId:1,animal,protocolo:{nome:"Reprodutivo",versao:1}}}};
+  });
+  vi.mocked(reqProtocolo).mockResolvedValue({fingerprint:"a".repeat(64),temDesvios:false,tarefas:{itens:[],total:2,pagina:1,porPagina:10},consumos:{itens:[],total:0,pagina:1,porPagina:10}});
+  const {rerender}=render(<EditorExecucaoProtocolo tarefas={[tarefas[0]]} reprodutivo onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  await screen.findByText("Tratamento personalizado");
+  expect(screen.getByLabelText(/Horário não informado na IATF/)).toHaveProperty("required",false);
+  await alterarControle(screen.getByLabelText(/Tipo de aplicação/),{target:{value:"tipo"}});submeter();
+  await waitFor(()=>expect(reqProtocolo).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(reqProtocolo).mock.calls[0][2]).toMatchObject({itens:[{data:"2026-09-10",aplicadaEm:undefined}]});
+  rerender(<EditorExecucaoProtocolo key="coletivo" tarefas={tarefas} reprodutivo onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  await screen.findByText("Tratamento personalizado");await alterarControle(screen.getByLabelText(/Tipo de aplicação/),{target:{value:"tipo"}});
+  submeter();await screen.findByText("Revisão por animal");submeter();
+  await waitFor(()=>expect(reqProtocolo).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(reqProtocolo).mock.calls[1][2]).toMatchObject({itens:[{aplicadaEm:undefined},{aplicadaEm:undefined}]});
+  fireEvent.change(screen.getByLabelText("Horário (opcional) · Data da aplicação"),{target:{value:"09:30"}});submeter();
+  await waitFor(()=>expect(reqProtocolo).toHaveBeenCalledTimes(3));
+  expect(vi.mocked(reqProtocolo).mock.calls[2][2]).toMatchObject({itens:[{aplicadaEm:"2026-09-10T12:30:00.000Z"},{aplicadaEm:"2026-09-10T12:30:00.000Z"}]});
 });

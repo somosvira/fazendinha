@@ -10,7 +10,7 @@ vi.mock("./FormAplicacaoServico", () => ({ FormAplicacaoServico: () => null }));
 vi.mock("./ReconciliarOrigem", () => ({ ReconciliarOrigem: () => null }));
 const aplicacao = { id: "a1", animalId: "animal1", animal: { id: "animal1", brinco: "GV3-1", nome: null }, propriedadeId: 1, data: "2026-10-05", aplicadaEm: "2026-10-05T13:04:00Z", tipoAplicacaoNomeSnapshot: "Tipo preservado", nomeProdutoAplicado: "Medicamento", dose: "2", unidadeDose: "mL", status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } as AplicacaoSanitaria;
 beforeEach(() => vi.clearAllMocks());
-afterEach(cleanup);
+afterEach(() => { cleanup(); window.history.replaceState(null, "", "/"); });
 it("mostra tabela geral compacta mesmo com filtro individual", async () => {
   render(<SanidadeAnimal geral animalId="animal1" propriedadeId={2} podeLancar recarregarToken={0} lista={[aplicacao]} />);
   await screen.findByRole("table");
@@ -82,7 +82,16 @@ it("preserva o sítio do exame histórico ao abrir pelo acompanhamento de animal
   render(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar={false} recarregarToken={0} lista={[]} />);
   fireEvent.click(await screen.findByRole("button", { name: "Abrir exame histórico" }));
   await screen.findByText("Consulta histórica efetuada");
-  expect(reqSanidade).toHaveBeenCalledWith("/exames/exame-historico?propriedadeId=1");
+  expect(reqSanidade).toHaveBeenCalledWith("/exames/exame-historico?propriedadeId=1", undefined, 1);
+});
+
+it("link da participação abre seu detalhe sanitário na ficha, usando sítio e id da URL", async () => {
+  window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal1?participacaoId=participacao1&programacaoId=grupo1&sitio=7&retorno=%2Fpecuaria%2Fsanidade%3FrodadaId%3Dgrupo1#sanidade");
+  vi.mocked(reqSanidade).mockImplementation(async path => path.startsWith("/execucoes/") ? { id: "participacao1", animalId: "animal1", animal: { id: "animal1", brinco: "GV3-1" }, protocolo: { nome: "Protocolo escolhido", versao: 2 }, tarefas: [], inicio: "2026-10-19", status: "ATIVA" } : []);
+  render(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar={false} recarregarToken={0} lista={[]} />);
+  await screen.findByRole("dialog");
+  await screen.findByText(/Protocolo escolhido/);
+  expect(reqSanidade).toHaveBeenCalledWith("/execucoes/participacao1?propriedadeId=7", undefined, 7);
 });
 
 // A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.

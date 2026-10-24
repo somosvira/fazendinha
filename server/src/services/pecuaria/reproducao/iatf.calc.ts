@@ -54,6 +54,7 @@ export function compararExecucaoIatf(
     );
     comparar("via", texto(e.planoAplicacao.via), texto(dados.via));
   }
+  if (e.tipo === "TENTATIVA" && e.tentativaTipo) comparar("tipoTentativa", e.tentativaTipo, dados.tipo ?? null);
   if (e.tipo === "TENTATIVA" && e.planoTentativa) {
     comparar("tipoTentativa", e.planoTentativa.tipo, dados.tipo ?? null);
     comparar(
@@ -78,7 +79,7 @@ export function compararExecucaoIatf(
   const aferido =
     (e.tipo !== "EXAME" || !!e.planoExame) &&
     (e.tipo !== "APLICACAO" || !!e.planoAplicacao) &&
-    (e.tipo !== "TENTATIVA" || !!e.planoTentativa) &&
+    (e.tipo !== "TENTATIVA" || !!e.planoTentativa || !!e.tentativaTipo) &&
     (e.tipo !== "AVALIACAO" || !!e.planoAvaliacao);
   return { ...compararParametros(planejado, realizado, aferido), horarioAferido, orientacaoTemporal:orientacao };
 }

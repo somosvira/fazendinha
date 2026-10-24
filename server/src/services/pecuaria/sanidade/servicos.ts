@@ -11,13 +11,14 @@ import { nomeExameHistorico } from "./exames.js";
 import { confirmarProcedimentosServicoSchema, consultaProcedimentosServicoSchema, type ConsultaProcedimentosServico, type ConfirmarProcedimentosServico } from "./servicos.schemas.js";
 
 const identidade = { animal: { select: { id: true, brinco: true, nome: true } }, propriedade: { select: { id: true, nome: true } } } as const;
-const realizado = { tarefas: { some: { OR: [{ aplicacoes: { some: { status: "VALIDO" as const } } }, { exames: { some: { status: "VALIDO" as const } } }] } } };
+const contextoFato = { tarefa: { select: { execucaoId: true } }, vinculosProtocolo: { where: { estado: "ATUAL" }, select: { tarefa: { select: { execucaoId: true } } } } } as const;
+const realizado = { tarefas: { some: { OR: [{ aplicacoes: { some: { status: "VALIDO" as const } } }, { exames: { some: { status: "VALIDO" as const, realizacao: { not: "NAO_REALIZADO" as const } } } }, { tentativas: { some: { status: "VALIDO" as const } } }, { manejos: { some: { status: "VALIDO" as const } } }] } } };
 type Db = Prisma.TransactionClient;
 export type ProcedimentoServico = {
-  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; animalId: string;
+  id: string; tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA" | "MANEJO"; animalId: string;
   animal: { id: string; brinco: string; nome: string | null }; propriedade: { id: number; nome: string } | null;
   nome: string; dataHora: string; status: string; origem: string; valor: string | null;
-  consumoMantido?: boolean;
+  consumoMantido?: boolean; realizacaoMantida?: boolean; tipoProtocolo?: string; programacaoId?: string | null;
   vinculado: boolean; podeEditar: boolean; execucaoId: string | null; operacaoServicoId: string | null;
 };
 async function servico(tx: Db, id: string, propriedadeId: number, confirmado = false) {
@@ -34,53 +35,58 @@ async function fatos(tx: Db, id: string, propriedadeId: number, filtro?: Consult
   const data = { ...(filtro?.inicio ? { gte: new Date(`${filtro.inicio}T00:00:00Z`) } : {}), ...(filtro?.fim ? { lte: new Date(`${filtro.fim}T00:00:00Z`) } : {}) };
   const take = filtro ? filtro.pagina * filtro.limite : undefined;
   const aWhere = { ...base, ...(elegiveis ? { status: "VALIDO" as const } : {}), ...(Object.keys(data).length ? { data } : {}) };
-  const pWhere = { ...base, protocolo: { tipo: "SANITARIO" as const }, ...(elegiveis ? { canceladaEm: null, ...realizado } : {}), ...(Object.keys(data).length ? { inicio: data } : {}) };
+  const pWhere = { ...base, ...(elegiveis ? { canceladaEm: null, ...realizado } : {}), ...(Object.keys(data).length ? { inicio: data } : {}) };
   const { animal: buscaAnimal, ...tentativaBase } = aWhere;
   const candidatos = buscaAnimal ? await tx.animal.findMany({ where: buscaAnimal, select: { id: true } }) : null;
   const tWhere = { ...tentativaBase, ...(candidatos ? { animalId: { in: candidatos.map((a) => a.id) } } : {}) };
-  const [aplicacoes, exames, protocolos, na, ne, np, tentativas, nt] = await Promise.all([
-    filtro?.tipo && filtro.tipo !== "APLICACAO" ? [] : tx.aplicacaoProduto.findMany({ where: aWhere, include: { ...identidade, tarefa: { select: { execucaoId: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
-    filtro?.tipo && filtro.tipo !== "EXAME" ? [] : tx.exameAnimal.findMany({ where: { ...aWhere, realizacao: { not: "NAO_REALIZADO" } }, include: { ...identidade, tarefa: { select: { execucaoId: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
-    filtro?.tipo && filtro.tipo !== "PROTOCOLO" ? [] : tx.participacaoProtocolo.findMany({ where: pWhere, include: { ...identidade, protocolo: { select: { nome: true } }, tarefas: { where: realizado.tarefas.some, select: { id: true } } }, orderBy: [{ inicio: "desc" }, { id: "asc" }], take }),
+  const [aplicacoes, exames, protocolos, na, ne, np, tentativas, nt, manejos, nm] = await Promise.all([
+    filtro?.tipo && filtro.tipo !== "APLICACAO" ? [] : tx.aplicacaoProduto.findMany({ where: aWhere, include: { ...identidade, ...contextoFato }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
+    filtro?.tipo && filtro.tipo !== "EXAME" ? [] : tx.exameAnimal.findMany({ where: { ...aWhere, realizacao: { not: "NAO_REALIZADO" } }, include: { ...identidade, ...contextoFato, demandaAcompanhamento: { select: { tarefa: { select: { execucaoId: true } } } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
+    filtro?.tipo && filtro.tipo !== "PROTOCOLO" ? [] : tx.participacaoProtocolo.findMany({ where: pWhere, include: { ...identidade, protocolo: { select: { nome: true, tipo: true } }, tarefas: { where: realizado.tarefas.some, select: { id: true } } }, orderBy: [{ inicio: "desc" }, { id: "asc" }], take }),
     !filtro || filtro.tipo && filtro.tipo !== "APLICACAO" ? 0 : tx.aplicacaoProduto.count({ where: aWhere }),
     !filtro || filtro.tipo && filtro.tipo !== "EXAME" ? 0 : tx.exameAnimal.count({ where: { ...aWhere, realizacao: { not: "NAO_REALIZADO" } } }),
     !filtro || filtro.tipo && filtro.tipo !== "PROTOCOLO" ? 0 : tx.participacaoProtocolo.count({ where: pWhere }),
-    filtro?.tipo && filtro.tipo !== "TENTATIVA" ? [] : tx.tentativaReprodutiva.findMany({ where: tWhere, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
+    filtro?.tipo && filtro.tipo !== "TENTATIVA" ? [] : tx.tentativaReprodutiva.findMany({ where: tWhere, include: contextoFato, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
     !filtro || filtro.tipo && filtro.tipo !== "TENTATIVA" ? 0 : tx.tentativaReprodutiva.count({ where: tWhere }),
+    filtro?.tipo && filtro.tipo !== "MANEJO" ? [] : tx.manejoAnimal.findMany({ where: { ...aWhere, tarefaId: { not: null } }, include: { ...identidade, tarefa: { select: { execucaoId: true, nomeSnapshot: true, execucao: { select: { rodadaId: true, protocolo: { select: { tipo: true } } } } } } }, orderBy: [{ data: "desc" }, { id: "asc" }], take }),
+    !filtro || filtro.tipo && filtro.tipo !== "MANEJO" ? 0 : tx.manejoAnimal.count({ where: { ...aWhere, tarefaId: { not: null } } }),
   ]);
   const [animaisTentativas, propriedadeTentativas] = tentativas.length ? await Promise.all([
     tx.animal.findMany({ where: { id: { in: tentativas.map((t) => t.animalId) } }, select: { id: true, brinco: true, nome: true } }),
     tx.propriedade.findUnique({ where: { id: propriedadeId }, select: { id: true, nome: true } }),
   ]) : [[], null];
-  const comum = (f: typeof aplicacoes[number] | typeof exames[number] | typeof protocolos[number]) => ({ id: f.id, animalId: f.animalId, animal: f.animal, propriedade: f.propriedade, valor: f.valorServicoAtribuido?.toString() ?? null, vinculado: f.operacaoServicoId === id, operacaoServicoId: f.operacaoServicoId });
+  const comum = (f: typeof aplicacoes[number] | typeof exames[number] | typeof protocolos[number] | typeof manejos[number]) => ({ id: f.id, animalId: f.animalId, animal: f.animal, propriedade: f.propriedade, valor: f.valorServicoAtribuido?.toString() ?? null, vinculado: f.operacaoServicoId === id, operacaoServicoId: f.operacaoServicoId });
+  const participacaoFato = (f: { tarefa: { execucaoId: string } | null; vinculosProtocolo: Array<{ tarefa: { execucaoId: string } }> }) => f.tarefa?.execucaoId ?? f.vinculosProtocolo[0]?.tarefa.execucaoId ?? null;
   const itens: ProcedimentoServico[] = [
+    ...manejos.map(m => ({ ...comum(m), tipo: "MANEJO" as const, nome: m.tarefa?.nomeSnapshot ?? (m.tipo === "RETIRADA_DISPOSITIVO" ? "Retirada de dispositivo" : "Manejo protocolar"), dataHora: (m.realizadaEm ?? m.data).toISOString(), status: m.status, origem: m.tipo, realizacaoMantida: m.realizacaoMantida, podeEditar: m.status === "VALIDO", execucaoId: m.tarefa?.execucaoId ?? null, tipoProtocolo: m.tarefa?.execucao.protocolo.tipo, programacaoId: m.tarefa?.execucao.rodadaId ?? null })),
     ...tentativas.map((t) => ({ id: t.id, tipo: "TENTATIVA" as const, animalId: t.animalId,
       animal: animaisTentativas.find((a) => a.id === t.animalId)!, propriedade: propriedadeTentativas,
       nome: `${t.tipo} · tentativa ${t.ordem} do ciclo ${t.ciclo}`, dataHora: t.data.toISOString(), status: t.status,
       origem: t.origemMaterial, valor: t.valorServicoAtribuido?.toString() ?? null, vinculado: t.operacaoServicoId === id,
-      consumoMantido: t.consumoMantido, podeEditar: t.status === "VALIDO", execucaoId: null, operacaoServicoId: t.operacaoServicoId,
+      consumoMantido: t.consumoMantido, podeEditar: t.status === "VALIDO", execucaoId: participacaoFato(t), operacaoServicoId: t.operacaoServicoId,
     })),
-    ...aplicacoes.map((a) => ({ ...comum(a), consumoMantido: a.consumoMantido, tipo: "APLICACAO" as const, nome: a.nomeProdutoAplicado, dataHora: (a.aplicadaEm ?? a.data).toISOString(), status: a.status, origem: a.origemInsumo, podeEditar: a.status === "VALIDO", execucaoId: a.tarefa?.execucaoId ?? null })),
-    ...exames.map((e) => ({ ...comum(e), tipo: "EXAME" as const, nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome), dataHora: e.data.toISOString(), status: e.status, origem: e.origem, podeEditar: e.status === "VALIDO", execucaoId: e.tarefa?.execucaoId ?? null })),
-    ...protocolos.map((p) => ({ ...comum(p), tipo: "PROTOCOLO" as const, nome: p.protocolo.nome, dataHora: p.inicio.toISOString(), status: p.canceladaEm ? "CANCELADO" : p.tarefas.length ? "REALIZADO" : "PENDENTE", origem: "PROTOCOLO", consumoMantido: p.valorServicoAtribuido != null, podeEditar: !p.canceladaEm && p.tarefas.length > 0, execucaoId: p.id })),
+    ...aplicacoes.map((a) => ({ ...comum(a), consumoMantido: a.consumoMantido, tipo: "APLICACAO" as const, nome: a.nomeProdutoAplicado, dataHora: (a.aplicadaEm ?? a.data).toISOString(), status: a.status, origem: a.origemInsumo, podeEditar: a.status === "VALIDO", execucaoId: participacaoFato(a) })),
+    ...exames.map((e) => ({ ...comum(e), tipo: "EXAME" as const, nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome), dataHora: e.data.toISOString(), status: e.status, origem: e.origem, podeEditar: e.status === "VALIDO", execucaoId: participacaoFato(e) ?? e.demandaAcompanhamento?.tarefa?.execucaoId ?? null })),
+    ...protocolos.map((p) => ({ ...comum(p), tipo: "PROTOCOLO" as const, nome: p.protocolo.nome, dataHora: p.inicio.toISOString(), status: p.canceladaEm ? "CANCELADO" : p.tarefas.length ? "REALIZADO" : "PENDENTE", origem: "PROTOCOLO", consumoMantido: p.valorServicoAtribuido != null, podeEditar: !p.canceladaEm && p.tarefas.length > 0, execucaoId: p.id, tipoProtocolo: p.protocolo.tipo, programacaoId: p.rodadaId })),
   ];
   itens.sort((a, b) => b.dataHora.slice(0, 10).localeCompare(a.dataHora.slice(0, 10)) || a.id.localeCompare(b.id));
-  return { itens, total: filtro ? na + ne + np + nt : itens.length };
+  return { itens, total: filtro ? na + ne + np + nt + nm : itens.length };
 }
 export async function listarProcedimentosServico(servicoId: string, propriedadeId: number, query: Partial<ConsultaProcedimentosServico> = {}, verValores = true) {
   const filtro = consultaProcedimentosServicoSchema.parse(query);
   return prisma.$transaction(async (tx) => {
     const op = await servico(tx, servicoId, propriedadeId);
     const [consulta, total] = await Promise.all([fatos(tx, servicoId, propriedadeId, filtro), totalAtribuidoServicoTx(tx, servicoId, propriedadeId)]);
-    const itens = consulta.itens.slice((filtro.pagina - 1) * filtro.limite, filtro.pagina * filtro.limite).map((i) => ({ ...i, podeEditar: i.podeEditar && op.status === "CONFIRMADA", valor: verValores ? i.valor : null }));
-    return { servico: { id: op.id, numero: op.numero, descricao: op.descricao, status: op.status, propriedadeId, propriedade: op.propriedade, data: op.data.toISOString(), valorConfirmado: verValores ? op.valorTotal.toString() : null, totalAtribuido: verValores ? total.toString() : null, disponivel: verValores ? op.valorTotal.minus(total).toString() : null }, itens, total: consulta.total, pagina: filtro.pagina, limite: filtro.limite, paginas: Math.max(1, Math.ceil(consulta.total / filtro.limite)) };
+    const pagina = Math.min(filtro.pagina, Math.max(1, Math.ceil(consulta.total / filtro.limite)));
+    const itens = consulta.itens.slice((pagina - 1) * filtro.limite, pagina * filtro.limite).map((i) => ({ ...i, podeEditar: i.podeEditar && op.status === "CONFIRMADA", valor: verValores ? i.valor : null }));
+    return { servico: { id: op.id, numero: op.numero, descricao: op.descricao, status: op.status, propriedadeId, propriedade: op.propriedade, data: op.data.toISOString(), valorConfirmado: verValores ? op.valorTotal.toString() : null, totalAtribuido: verValores ? total.toString() : null, disponivel: verValores ? op.valorTotal.minus(total).toString() : null }, itens, total: consulta.total, pagina, limite: filtro.limite, paginas: Math.max(1, Math.ceil(consulta.total / filtro.limite)) };
   });
 }
 export async function procedimentosOperacaoServico(id: string, propriedadeId: number) {
   return (await fatos(prisma, id, propriedadeId)).itens;
 }
 export function validarAtribuicoesServico(itens: ProcedimentoServico[], valorConfirmado: Prisma.Decimal) {
-  const ativos = itens.filter((i) => i.consumoMantido || (i.status !== "ANULADO" && i.status !== "CANCELADO"));
+  const ativos = itens.filter((i) => i.consumoMantido || i.realizacaoMantida || (i.status !== "ANULADO" && i.status !== "CANCELADO"));
   const total = ativos.reduce((s, i) => s.plus(i.valor ?? 0), new Prisma.Decimal(0));
   if (total.gt(valorConfirmado)) throw new RebanhoError("CONFLITO", "Os valores ultrapassam o Serviço confirmado", "itens");
   if (ativos.some((i) => i.tipo === "PROTOCOLO" && i.valor != null && ativos.some((f) => f.tipo !== "PROTOCOLO" && f.execucaoId === i.id && f.valor != null))) throw new RebanhoError("CONFLITO", "Retire o valor do protocolo ou dos procedimentos dele", "itens");
@@ -98,7 +104,7 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
     await tx.$queryRaw`SELECT id FROM "Operacao" WHERE id = ${input.servicoId} FOR UPDATE`;
     const op = await servico(tx, input.servicoId, input.propriedadeId);
     if (anterior) {
-      return { servicoId: op.id, quantidade: input.itens.length, salvo: true, reenvio: true, itens: previa.itens.map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
+      return { servicoId: op.id, quantidade: input.itens.length, salvo: true, reenvio: true, itens: previa.itens.slice(0, 10).map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
     }
     if (op.status !== "CONFIRMADA") throw new RebanhoError("CONFLITO", "Este Serviço foi cancelado; recarregue a consulta");
     await exigirPeriodoAberto(tx, input.propriedadeId, op.data);
@@ -108,9 +114,9 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
       if (!atual || !atual.podeEditar || atual.operacaoServicoId && atual.operacaoServicoId !== op.id) throw new RebanhoError("CONFLITO", "Procedimento indisponível neste sítio ou vinculado a outro Serviço", `itens.${indice}.id`);
       return { ...atual, valor: mudanca.valor === undefined ? atual.valor : mudanca.valor, operacaoServicoId: op.id, vinculado: true };
     });
-    for (const item of alterados.filter((i) => i.tipo === "TENTATIVA")) {
+    for (const item of alterados.filter((i) => (i.tipo === "TENTATIVA" || i.tipo === "MANEJO"))) {
       const dataFato = new Date(item.dataHora);
-      if (dataFato < op.data) throw new RebanhoError("VALIDACAO", "A tentativa antecede a data do Serviço", "itens");
+      if (dataFato < op.data) throw new RebanhoError("VALIDACAO", "O procedimento antecede a data do Serviço", "itens");
       await exigirPeriodoAberto(tx, input.propriedadeId, dataFato);
     }
     const execucaoIds = [...new Set(alterados.flatMap((i) => i.execucaoId ? [i.execucaoId] : []))];
@@ -119,8 +125,8 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
     const protocolosAlterados = alterados.filter((i) => i.tipo === "PROTOCOLO").map((i) => i.id);
     if (protocolosAlterados.length) {
       const outroServico = { propriedadeId: input.propriedadeId, operacaoServicoId: { not: op.id }, NOT: { operacaoServicoId: null }, status: "VALIDO" as const, tarefa: { execucaoId: { in: protocolosAlterados } } };
-      const [a, e] = await Promise.all([tx.aplicacaoProduto.count({ where: outroServico }), tx.exameAnimal.count({ where: outroServico })]);
-      if (a || e) throw new RebanhoError("CONFLITO", "Há procedimentos desta execução vinculados a outro Serviço");
+      const [a, e, m, t] = await Promise.all([tx.aplicacaoProduto.count({ where: outroServico }), tx.exameAnimal.count({ where: { ...outroServico, tarefa: undefined, OR: [{ tarefa: outroServico.tarefa }, { demandaAcompanhamento: { tarefa: outroServico.tarefa } }] } }), tx.manejoAnimal.count({ where: outroServico }), tx.tentativaReprodutiva.count({ where: outroServico })]);
+      if (a || e || m || t) throw new RebanhoError("CONFLITO", "Há procedimentos desta execução vinculados a outro Serviço");
     }
     validarAtribuicoesServico([...vinculados.itens.filter((i) => !alterados.some((a) => a.id === i.id && a.tipo === i.tipo)), ...alterados], op.valorTotal);
     await conferirAtribuicaoServicoCustoTx(tx,alterados);
@@ -129,10 +135,11 @@ export async function confirmarProcedimentosServico(input: ConfirmarProcedimento
       if (item.tipo === "APLICACAO") await tx.aplicacaoProduto.update({ where: { id: item.id }, data });
       else if (item.tipo === "EXAME") await tx.exameAnimal.update({ where: { id: item.id }, data });
       else if (item.tipo === "TENTATIVA") await tx.tentativaReprodutiva.update({ where: { id: item.id }, data });
+      else if (item.tipo === "MANEJO") await tx.manejoAnimal.update({ where: { id: item.id }, data });
       else await tx.participacaoProtocolo.update({ where: { id: item.id }, data });
-      await auditar(tx, { entidade: item.tipo === "APLICACAO" ? "AplicacaoProduto" : item.tipo === "EXAME" ? "ExameAnimal" : item.tipo === "TENTATIVA" ? "TentativaReprodutiva" : "ExecucaoProtocoloSanitario", entidadeId: item.id, animalId: item.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: "PROCEDIMENTO_SERVICO", antes: selecionados.itens.find((i) => i.id === item.id), depois: { servicoId: op.id, valor: item.valor, motivo: input.motivo } });
+      await auditar(tx, { entidade: item.tipo === "APLICACAO" ? "AplicacaoProduto" : item.tipo === "EXAME" ? "ExameAnimal" : item.tipo === "TENTATIVA" ? "TentativaReprodutiva" : item.tipo === "MANEJO" ? "ManejoAnimal" : "ExecucaoProtocoloSanitario", entidadeId: item.id, animalId: item.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: "PROCEDIMENTO_SERVICO", antes: selecionados.itens.find((i) => i.id === item.id), depois: { servicoId: op.id, valor: item.valor, motivo: input.motivo } });
     }
     await guardarRequisicaoTx(tx, identidadeRequisicao, { servicoId: op.id, ids: alterados.map((i) => i.id) });
-    return { servicoId: op.id, quantidade: alterados.length, salvo: true, reenvio: false, itens: alterados.map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
+    return { servicoId: op.id, quantidade: alterados.length, salvo: true, reenvio: false, itens: alterados.slice(0, 10).map((i) => ({ id: i.id, tipo: i.tipo, valor: podeEditarValores ? i.valor : null })) };
   });
 }
