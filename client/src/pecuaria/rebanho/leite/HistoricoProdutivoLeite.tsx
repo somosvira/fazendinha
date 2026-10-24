@@ -1,3 +1,5 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Milk } from "lucide-react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -55,20 +57,21 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Consultando histórico produtivo…</p>}
     {!carregando && !erro && dados && <>
+      {dados.controleIndividual && <aside aria-label="Periodicidade do controle individual"><p>Controle individual a cada {dados.controleIndividual.quantidade} {dados.controleIndividual.unidade === "MESES" ? "mês(es)" : "dia(s)"}.</p><p>Última aferição até {dataSanitaria(dados.periodo.fim)}: {dados.controleIndividual.ultimaAfericao ? dataSanitaria(dados.controleIndividual.ultimaAfericao) : "não registrada"}. Próxima referência: {dados.controleIndividual.proximaAfericao ? dataSanitaria(dados.controleIndividual.proximaAfericao) : "aguarda a primeira aferição"}.</p><p>É possível registrar controles extras. Dias entre aferições não são estimados.</p></aside>}
       <div className="historico-produtivo-resumo"><p><strong>{formatarLitros(dados.totaisPeriodo.litros)}</strong><br /><span className="text-sm text-ink-3">Litros registrados no período</span></p>
         <p>{dados.coberturaPeriodo.diasComRegistro} de {dados.coberturaPeriodo.diasCalendario} dias com participação registrada.<br /><span className="text-sm text-ink-3">Dias sem registro não foram preenchidos com zero.</span></p>
         {dados.totaisPeriodo.pendentes > 0 && <p role="status">Produção parcial: {dados.totaisPeriodo.pendentes} ordenha(s) aguardando medição.</p>}
       </div>
       {dados.itens.length ? <div className="historico-produtivo-tabela" role="region" aria-label="Produção diária com rolagem horizontal" tabIndex={0}>
-        <table><caption className="sr-only">Produção diária do animal entre {dataSanitaria(dados.periodo.inicio)} e {dataSanitaria(dados.periodo.fim)}</caption>
-          <thead><tr><th scope="col">Dia</th><th scope="col">Produção registrada</th><th scope="col">Finalidade na produção</th><th scope="col">Lactação e DEL</th><th scope="col">Ordenhas</th></tr></thead>
-          <tbody>{dados.itens.map(d => <tr key={d.participanteId}>
-            <td>{dataSanitaria(d.dataOperacional)}{d.excluidoEm && <p className="text-sm">Excluído dos totais{d.motivoExclusao ? ` · ${d.motivoExclusao}` : ""}</p>}</td>
-            <td className="tabular-nums">{formatarLitros(d.totais.litros)}{!d.totais.completa && <p className="text-sm text-ink-3">Parcial</p>}</td>
-            <td>{d.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar"}{d.finalidade?.estado !== "COMPROVADA" && <p className="text-sm text-ink-3">Litros registrados preservados; finalidade ainda não comprovada.</p>}</td>
-            <td>{d.del === null ? "DEL não informado" : `${d.del} dias em lactação`}<p className="text-sm text-ink-3">{d.lactacao ? `Início em ${dataSanitaria(d.lactacao.inicio)}` : "Lactação não informada"}</p></td>
-            <td><details><summary>Ver {d.medicoes.length} ordenha(s)</summary><ul>{d.medicoes.map(m => <li key={m.posicaoId}><strong>{m.nomeOrdenha}:</strong> {m.estado === "MEDIDO" ? formatarLitros(m.litros) : m.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Medição pendente"}{m.motivo ? ` · ${m.motivo}` : ""}</li>)}</ul></details></td>
-          </tr>)}</tbody></table>
+        <Table semContainer><TableCaption className="sr-only">Produção diária do animal entre {dataSanitaria(dados.periodo.inicio)} e {dataSanitaria(dados.periodo.fim)}</TableCaption>
+          <TableHeader><TableRow><TableHead scope="col">Dia</TableHead><TableHead scope="col">Produção registrada</TableHead><TableHead scope="col">Finalidade na produção</TableHead><TableHead scope="col">Lactação e DEL</TableHead><TableHead scope="col">Ordenhas</TableHead></TableRow></TableHeader>
+          <TableBody>{dados.itens.map(d => <TableRow key={d.participanteId}>
+            <TableCell>{dataSanitaria(d.dataOperacional)}{d.excluidoEm && <p className="text-sm">Excluído dos totais{d.motivoExclusao ? ` · ${d.motivoExclusao}` : ""}</p>}</TableCell>
+            <TableCell className="tabular-nums">{formatarLitros(d.totais.litros)}{!d.totais.completa && <p className="text-sm text-ink-3">Parcial</p>}</TableCell>
+            <TableCell>{d.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar"}{d.finalidade?.estado !== "COMPROVADA" && <p className="text-sm text-ink-3">Litros registrados preservados; finalidade ainda não comprovada.</p>}</TableCell>
+            <TableCell>{d.del === null ? "DEL não informado" : `${d.del} dias em lactação`}<p className="text-sm text-ink-3">{d.lactacao ? `Início em ${dataSanitaria(d.lactacao.inicio)}` : "Lactação não informada"}</p></TableCell>
+            <TableCell><SecaoDetalhesLeite  titulo={<>Ver {d.medicoes.length} ordenha(s)</>}><ul>{d.medicoes.map(m => <li key={m.posicaoId}><strong>{m.nomeOrdenha}:</strong> {m.estado === "MEDIDO" ? formatarLitros(m.litros) : m.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Medição pendente"}{m.motivo ? ` · ${m.motivo}` : ""}</li>)}</ul></SecaoDetalhesLeite></TableCell>
+          </TableRow>)}</TableBody></Table>
       </div> : <p role="status">Nenhum registro de produção neste período. A ausência de registros não confirma produção zero nem secagem.</p>}
       {dados.total > dados.tamanho && <nav aria-label="Páginas do histórico produtivo" className="historico-produtivo-paginas"><Button secondary disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</Button><span>Página {pagina} · {dados.total} registros</span><Button secondary disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próxima</Button></nav>}
       <p className="text-xs text-ink-3">DEL usa D0 no início da lactação e a data de cada registro. Lactação ausente permanece não informada.</p>

@@ -1,3 +1,4 @@
+import { linhasProducaoGeralTx } from "./producao-geral-consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { carregarFontesCustoTx } from "../custos/custos.js";
@@ -66,6 +67,8 @@ export async function consultarCustosLeiteTx(
       })),
     }),
   );
+  const linhasGerais = filtro.animalId ? [] : (await linhasProducaoGeralTx(tx, dias)).filter(l => !filtro.posicaoId || l.posicaoId === filtro.posicaoId);
+  const diasGerais = new Set(dias.filter(d => d.configuracao?.fonteProducao === "GERAL").map(d => d.dataOperacional.toISOString().slice(0,10)));
   const populacaoPeriodo = await consultarPopulacaoPeriodoLeiteTx(tx, propriedadeId, filtro.inicio, filtro.fim, filtro.animalId);
   const todosAnimais = [
     ...new Set([...folhas.flatMap((f) => f.animais.map((a) => a.animalId)), ...populacaoPeriodo.flatMap(d => d.elegiveis)]),
@@ -152,7 +155,8 @@ export async function consultarCustosLeiteTx(
       });
       continue;
     }
-    const resumo = resumirProducao(
+    const geral = !filtro.animalId && diasGerais.has(data);
+    const resumo = geral ? resumirProducao(linhasGerais.filter(l => l.data === data)) : resumirProducao(
       folha.animais
         .filter((a) => !filtro.animalId || a.animalId === filtro.animalId)
         .flatMap((a) =>
@@ -165,10 +169,10 @@ export async function consultarCustosLeiteTx(
       data,
       litros: resumo.litros,
       estado:
-        folha.animais.some(a => (!filtro.animalId || a.animalId === filtro.animalId) && a.finalidade.estado !== "COMPROVADA") || populacao.estado === "FINALIDADE_PENDENTE"
+        !geral && (folha.animais.some(a => (!filtro.animalId || a.animalId === filtro.animalId) && a.finalidade.estado !== "COMPROVADA") || populacao.estado === "FINALIDADE_PENDENTE")
           ? "FINALIDADE_PENDENTE"
           : resumo.esperadas === 0
-          ? populacao.estado === "SEM_ANIMAIS_ELEGIVEIS" ? "SEM_ANIMAIS_ELEGIVEIS" : "SEM_PARTICIPANTES"
+          ? !geral && populacao.estado === "SEM_ANIMAIS_ELEGIVEIS" ? "SEM_ANIMAIS_ELEGIVEIS" : "SEM_PARTICIPANTES"
           : resumo.completa
             ? "COMPLETA"
             : "PARCIAL",
@@ -184,21 +188,40 @@ export async function consultarCustosLeiteTx(
     diasSemFolha,
     diasSemAnimaisElegiveis: ritmo.filter(d => d.estado === "SEM_ANIMAIS_ELEGIVEIS").map(d => d.data),
     diasFinalidadePendente: ritmo.filter(d => d.estado === "FINALIDADE_PENDENTE").map(d => d.data),
-    diasParciais: folhas
-      .filter((f) => !f.totais.completa)
-      .map((f) => f.dataOperacional),
+    diasParciais: ritmo.filter(d => d.estado === "PARCIAL").map(d => d.data),
     completa:
       ritmo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS"),
   };
-  const comCobertura = (resumo: ResumoCustosLeite) =>
+  const comCobertura = (resumo: ResumoCustosLeite): ResumoCustosLeite =>
     coberturaPeriodo.completa
       ? resumo
       : {
           ...resumo,
           custoPorLitro: null,
           situacao: verValores ? ("NAO_APURADO" as const) : ("OCULTO" as const),
-          motivos: [...resumo.motivos, ...(diasSemFolha.length ? ["DIAS_SEM_FOLHA"] : []), ...(coberturaPeriodo.diasFinalidadePendente.length ? ["FINALIDADE_PRODUCAO_PENDENTE"] : [])],
+          motivos: [...resumo.motivos, ...(diasSemFolha.length ? ["DIAS_SEM_FOLHA" as const] : []), ...(coberturaPeriodo.diasFinalidadePendente.length ? ["FINALIDADE_PRODUCAO_PENDENTE" as const] : [])],
         };
+  let consolidado = comCobertura(resultado.consolidado);
+  if (!filtro.animalId && diasGerais.size) {
+    const individuais = folhas.filter(f => !diasGerais.has(f.dataOperacional)).flatMap(f => f.animais.flatMap(a => a.medicoes.filter(m => !filtro.posicaoId || m.posicaoId === filtro.posicaoId)));
+    const producao = resumirProducao([...individuais, ...linhasGerais]);
+    const populacaoConferida = [...diasGerais].every(data => {
+      const populacao = populacaoPeriodo.find(p => p.data === data);
+      if (!populacao || populacao.pendentes.length || populacao.potenciais.length) return false;
+      const esperados = populacao.elegiveis;
+      const sessoes = dias.find(d => d.dataOperacional.toISOString().slice(0,10) === data)!.sessoes.filter(s => !filtro.posicaoId || s.posicaoId === filtro.posicaoId);
+      return esperados.length > 0 && sessoes.every(s => {
+        const origens = new Set(linhasGerais.filter(l => l.data === data && l.posicaoId === s.posicaoId).flatMap(l => l.animaisOrigem));
+        return origens.size === esperados.length && esperados.every(id => origens.has(id));
+      });
+    });
+    const motivos: ResumoCustosLeite["motivos"] = resultado.consolidado.motivos.filter(m => m !== "PRODUCAO_PARCIAL" && m !== "SEM_VOLUME_POSITIVO");
+    if (!producao.completa || !coberturaPeriodo.completa) motivos.push("PRODUCAO_PARCIAL");
+    if (producao.litros == null || producao.litros <= 0) motivos.push("SEM_VOLUME_POSITIVO");
+    if (!populacaoConferida) motivos.push("POPULACAO_GERAL_NAO_CONCILIADA");
+    consolidado = { ...resultado.consolidado, producao, motivos, custoPorLitro: verValores && !motivos.length && resultado.consolidado.custos.totalConhecido != null && producao.litros != null && producao.litros > 0 ? new Prisma.Decimal(resultado.consolidado.custos.totalConhecido).div(producao.litros).toFixed(2) : null, situacao: !verValores ? "OCULTO" : motivos.length ? "NAO_APURADO" : "APURADO" };
+  }
+  const individual = (a: ResumoCustosLeite): ResumoCustosLeite => diasGerais.size ? { ...a, custoPorLitro: null, situacao: verValores ? "NAO_APURADO" : "OCULTO", motivos: [...a.motivos, "PRODUCAO_INDIVIDUAL_PERIODICA"] } : a;
   return {
     propriedadeId,
     periodo,
@@ -209,12 +232,12 @@ export async function consultarCustosLeiteTx(
       const identificacao = porAnimal.get(a.animalId)?.[0];
       return {
         ...a,
-        ...comCobertura(a),
+        ...individual(comCobertura(a)),
         brinco: identificacao?.brinco ?? null,
         nome: identificacao?.nome ?? null,
       };
     }),
-    consolidado: comCobertura(resultado.consolidado),
+    consolidado: filtro.animalId ? individual(consolidado) : consolidado,
   };
 }
 

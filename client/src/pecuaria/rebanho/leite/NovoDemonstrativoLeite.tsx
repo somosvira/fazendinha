@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useRef, useState } from "react";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -362,7 +364,7 @@ export function NovoDemonstrativoLeite({
                 }
               />
             </label>
-            <button
+            <Button variant="outline"
               type="button"
               className="leite-secondary"
               onClick={() =>
@@ -370,10 +372,10 @@ export function NovoDemonstrativoLeite({
               }
             >
               Remover componente {i + 1}
-            </button>
+            </Button>
           </div>
         ))}
-        <button
+        <Button variant="outline"
           type="button"
           className="leite-secondary"
           disabled={componentes.length >= 100}
@@ -385,7 +387,7 @@ export function NovoDemonstrativoLeite({
           }
         >
           Adicionar componente manual
-        </button>
+        </Button>
         <h3>Selecionar entregas e alocar</h3>
         {!parceiro && (
           <p>Escolha o comprador para consultar entregas reais no período.</p>
@@ -394,39 +396,39 @@ export function NovoDemonstrativoLeite({
         {erroConsulta && (
           <p role="alert">
             {erroConsulta}
-            <button
+            <Button variant="outline"
               type="button"
               className="leite-secondary"
               onClick={() => setRevisao((r) => r + 1)}
             >
               Consultar entregas novamente
-            </button>
+            </Button>
           </p>
         )}
         {entregas && (
           <>
             <div className="leite-tabela-scroll">
-              <table>
-                <caption>Entregas do comprador no período</caption>
-                <thead>
-                  <tr>
-                    <th>Entrega</th>
-                    <th>Volume para alocação</th>
-                    <th>Valor disponível</th>
-                    <th>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table semContainer>
+                <TableCaption>Entregas do comprador no período</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Entrega</TableHead>
+                    <TableHead>Volume para alocação</TableHead>
+                    <TableHead>Valor disponível</TableHead>
+                    <TableHead>Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entregas.itens.map((e) => (
-                    <tr key={e.id}>
-                      <td>
+                    <TableRow key={e.id}>
+                      <TableCell>
                         {e.referencia}
                         <small>
                           {e.data.split("-").reverse().join("/")} · venda #
                           {e.numeroOperacao}
                         </small>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {e.aceitePendente ? (
                           <>
                             Aceite desconhecido
@@ -446,17 +448,17 @@ export function NovoDemonstrativoLeite({
                               : Number(e.quantidadeDisponivel),
                           )
                         )}
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {e.valorDisponivel === null
                           ? "Não disponível"
                           : Number(e.valorDisponivel).toLocaleString("pt-BR", {
                               style: "currency",
                               currency: "BRL",
                             })}
-                      </td>
-                      <td>
-                        <button
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline"
                           type="button"
                           className="leite-secondary"
                           disabled={
@@ -482,34 +484,34 @@ export function NovoDemonstrativoLeite({
                           }
                         >
                           Alocar {e.referencia}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             {!entregas.itens.length && (
               <p>Nenhuma entrega disponível no período para este comprador.</p>
             )}
             <div className="leite-form-inline">
-              <button
+              <Button variant="outline"
                 type="button"
                 className="leite-secondary"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
                 Entregas anteriores para alocar
-              </button>
+              </Button>
               <span>Página {pagina}</span>
-              <button
+              <Button variant="outline"
                 type="button"
                 className="leite-secondary"
                 disabled={pagina * entregas.porPagina >= entregas.total}
                 onClick={() => setPagina((p) => p + 1)}
               >
                 Próximas entregas para alocar
-              </button>
+              </Button>
             </div>
           </>
         )}
@@ -555,7 +557,7 @@ export function NovoDemonstrativoLeite({
                 />
               </label>
             )}
-            <button
+            <Button variant="outline"
               type="button"
               className="leite-secondary"
               onClick={() =>
@@ -563,7 +565,7 @@ export function NovoDemonstrativoLeite({
               }
             >
               Remover alocação de {a.entrega.referencia}
-            </button>
+            </Button>
           </fieldset>
         ))}
         <p>
@@ -572,18 +574,18 @@ export function NovoDemonstrativoLeite({
         </p>
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button
+          <Button variant="outline"
             type="button"
             className="leite-secondary"
             onClick={aoCancelar}
           >
             Cancelar demonstrativo
-          </button>
-          <button disabled={ocupado || !alocacoes.length}>
+          </Button>
+          <Button disabled={ocupado || !alocacoes.length}>
             {ocupado
               ? "Registrando…"
               : "Confirmar demonstrativo sem nova venda"}
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>

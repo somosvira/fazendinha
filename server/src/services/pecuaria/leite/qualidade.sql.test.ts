@@ -26,3 +26,12 @@ describe("garantias declaradas na migration de qualidade (sem execução em banc
     expect(sql).toContain('Campo/unidade fora do formato preservado');
   });
 });
+
+
+it("datas novas são DATE anuláveis, só na amostra e sem preenchimento retroativo (checagem estrutural)", () => {
+  const datas = readFileSync(new URL("../../../../prisma/migrations/20261023160000_datas_qualidade_leite/migration.sql", import.meta.url), "utf8");
+  expect(datas).toContain('ALTER TABLE pecuaria."AmostraQualidadeLeite"');
+  expect(datas).toContain('ADD COLUMN "dataResultadoLaboratorial" DATE');
+  expect(datas).toContain('ADD COLUMN "dataRecebimentoLaudo" DATE');
+  expect(datas).not.toMatch(/NOT NULL|DEFAULT|UPDATE |ExameAnimal/);
+});

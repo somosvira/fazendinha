@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
@@ -140,9 +142,9 @@ export function CustosLeite({
             }}
           />
         </label>
-        <button disabled={carregando}>
+        <Button disabled={carregando}>
           {carregando ? "Consultando…" : "Consultar período"}
-        </button>
+        </Button>
       </form>
       {erro && <p role="alert">{erro}</p>}
       {dados && (
@@ -184,7 +186,7 @@ export function CustosLeite({
           {!!dados.coberturaPeriodo.diasFinalidadePendente?.length && <p role="status">Finalidade histórica a conciliar em {dados.coberturaPeriodo.diasFinalidadePendente.length} dia(s). Litros registrados preservados; custo por litro não apurado.</p>}
           {dados.consolidado.situacao !== "OCULTO" && <MotivosCusto motivos={dados.consolidado.motivos} />}
           {podeExportar && (
-            <button
+            <Button variant="outline"
               className="leite-secondary"
               disabled={exportando}
               onClick={() => void exportar()}
@@ -192,45 +194,45 @@ export function CustosLeite({
               {exportando
                 ? "Preparando exportação…"
                 : "Exportar período em CSV"}
-            </button>
+            </Button>
           )}
           <RitmoLeite dias={dados.ritmo} />
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>Custos individuais no período</caption>
-              <thead>
-                <tr>
-                  <th>Animal</th>
-                  <th>Litros medidos</th>
-                  <th>Custo registrado</th>
-                  <th>Custo/L</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Custos individuais no período</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Animal</TableHead>
+                  <TableHead>Litros medidos</TableHead>
+                  <TableHead>Custo registrado</TableHead>
+                  <TableHead>Custo/L</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {dados.animais.map((a) => (
-                  <tr key={a.animalId}>
-                    <td>
+                  <TableRow key={a.animalId}>
+                    <TableCell>
                       <a href={`/pecuaria/rebanho/animais/${a.animalId}`}>
                         {a.brinco ?? "Sem brinco"}
                         {a.nome ? ` · ${a.nome}` : ""}
                       </a>
                       {a.situacao !== "OCULTO" && <MotivosCusto motivos={a.motivos} />}
-                    </td>
-                    <td>{formatarLitros(a.producao.litros)}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>{formatarLitros(a.producao.litros)}</TableCell>
+                    <TableCell>
                       {a.situacao === "OCULTO"
                         ? "Restrito"
                         : dinheiro(a.custos.totalConhecido)}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {a.situacao === "OCULTO"
                         ? "Restrito"
                         : dinheiro(a.custoPorLitro)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {!dados.animais.length && (
             <p>

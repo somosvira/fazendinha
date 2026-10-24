@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { NovaAmostra } from "./QualidadeLeite";
@@ -25,9 +26,9 @@ export function SelecaoQualidadeFechamento({ sitio, inicio, fim, selecionadas, o
       {dados?.itens.filter(a => a.status === "VALIDO").map(a => <label className="leite-checkbox" key={a.id}><input type="checkbox" checked={selecionadas.some(s => s.amostraId === a.id)} onChange={e => onChange(e.target.checked ? [...selecionadas.filter(s => s.amostraId !== a.id), { amostraId: a.id, versaoEsperada: a.versao }] : selecionadas.filter(s => s.amostraId !== a.id))} />{a.data} · {a.sujeito.tipo === "COLETIVO" ? a.sujeito.origem : a.animal?.brinco} · {a.formatoSnapshot.nome} · versão {a.versao}{!a.resultados.length ? " · Resultado pendente" : ""}</label>)}
       {dados && !dados.itens.length && <p>Nenhuma amostra neste período.</p>}
       <p>{selecionadas.length} amostra(s) selecionada(s), incluindo outras páginas.</p>
-      {!!selecionadas.length && <button type="button" onClick={() => onChange([])}>Remover todos os vínculos desta versão</button>}
-      <button type="button" className="leite-secondary" onClick={() => setNova(true)}>Registrar nova amostra para selecionar</button>
-      <div className="leite-form-inline"><button type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Amostras anteriores</button><span>Página {pagina}</span><button type="button" disabled={!dados || pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próximas amostras</button></div>
+      {!!selecionadas.length && <Button type="button" onClick={() => onChange([])}>Remover todos os vínculos desta versão</Button>}
+      <Button variant="outline" type="button" className="leite-secondary" onClick={() => setNova(true)}>Registrar nova amostra para selecionar</Button>
+      <div className="leite-form-inline"><Button type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Amostras anteriores</Button><span>Página {pagina}</span><Button type="button" disabled={!dados || pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próximas amostras</Button></div>
     </fieldset>
     {nova && <NovaAmostra formatos={formatos} sitio={sitio} onCancelar={() => setNova(false)} onSalvo={a => {
       setNova(false); setRevisao(r => r + 1);

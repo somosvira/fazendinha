@@ -38,3 +38,23 @@ describe("qualidade do leite configurada a partir do laudo", () => {
     expect(consultarQualidadeSchema.safeParse({ sujeito: "COLETIVO", animalId: id }).success).toBe(false);
   });
 });
+
+
+describe("datas operacionais da amostra", () => {
+  const sujeito = { tipo: "COLETIVO", origem: "Tanque" };
+  const correcao = { chave: id, propriedadeId: 1, versaoEsperada: 1, motivo: "Conferência das datas" };
+  it("aceita datas independentes e opcionais sem inferir ou impor ordem cronológica", () => {
+    expect(registrarQualidadeSchema.parse({ ...base, sujeito, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: null })).toMatchObject({ dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: null });
+    expect(registrarQualidadeSchema.parse({ ...base, sujeito, dataRecebimentoLaudo: "2026-10-16" })).not.toHaveProperty("dataResultadoLaboratorial");
+    expect(registrarQualidadeSchema.safeParse({ ...base, sujeito, dataResultadoLaboratorial: "2026-02-30" }).success).toBe(false);
+    expect(registrarQualidadeSchema.safeParse({ ...base, sujeito, dataRecebimentoLaudo: "2026-10-16T00:00:00Z" }).success).toBe(false);
+  });
+  it("correção só de datas exige motivo e versão, distingue omissão de limpeza e não aceita resultados vazios", () => {
+    expect(corrigirQualidadeSchema.parse({ ...correcao, dataRecebimentoLaudo: null })).toMatchObject({ dataRecebimentoLaudo: null });
+    expect(corrigirQualidadeSchema.parse({ ...correcao, dataRecebimentoLaudo: "2026-10-16" })).not.toHaveProperty("dataResultadoLaboratorial");
+    expect(corrigirQualidadeSchema.safeParse(correcao).success).toBe(false);
+    expect(corrigirQualidadeSchema.safeParse({ ...correcao, dataRecebimentoLaudo: null, motivo: "" }).success).toBe(false);
+    expect(corrigirQualidadeSchema.safeParse({ ...correcao, dataRecebimentoLaudo: null, versaoEsperada: undefined }).success).toBe(false);
+    expect(corrigirQualidadeSchema.safeParse({ ...correcao, dataRecebimentoLaudo: null, resultados: [] }).success).toBe(false);
+  });
+});

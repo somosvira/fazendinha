@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useState } from "react";
 import type { FolhaLeite } from "./types";
 import { formatarLitros } from "./modelo";
@@ -145,11 +148,11 @@ function ConfirmarGrupo({
           </p>
         )}
         {!!sessao.entradasEstoque?.length && (
-          <details>
-            <summary>
+          <SecaoDetalhesLeite  titulo={<>
               Grupos já registrados nesta ordenha (
               {sessao.entradasEstoque.length})
-            </summary>
+            </>}>
+
             <ul>
               {sessao.entradasEstoque.map((g) => (
                 <li key={g.entradaId}>
@@ -180,7 +183,7 @@ function ConfirmarGrupo({
                 </li>
               ))}
             </ul>
-          </details>
+          </SecaoDetalhesLeite>
         )}
         <label>
           Buscar animal em {sessao.nome}
@@ -194,20 +197,20 @@ function ConfirmarGrupo({
           />
         </label>
         <div className="leite-tabela-scroll">
-          <table>
-            <caption>Selecionar animais da ordenha {sessao.nome}</caption>
-            <thead>
-              <tr>
-                <th>Selecionar</th>
-                <th>Animal</th>
-                <th>Medição</th>
-                <th>Disponibilidade</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table semContainer>
+            <TableCaption>Selecionar animais da ordenha {sessao.nome}</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Selecionar</TableHead>
+                <TableHead>Animal</TableHead>
+                <TableHead>Medição</TableHead>
+                <TableHead>Disponibilidade</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {visiveis.map(({ animal: a, medicao: m }) => (
-                <tr key={a.animalId}>
-                  <td>
+                <TableRow key={a.animalId}>
+                  <TableCell>
                     <input
                       style={{ width: 24, minHeight: 24 }}
                       type="checkbox"
@@ -226,13 +229,13 @@ function ConfirmarGrupo({
                           );
                       }}
                     />
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     {a.nome || a.brinco}
                     <small>Brinco {a.brinco}</small>
-                  </td>
-                  <td>{formatarLitros(m.litros)}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell>{formatarLitros(m.litros)}</TableCell>
+                  <TableCell>
                     {m.confirmacaoEstoque ? (
                       <>
                         Já confirmado ·{" "}
@@ -256,33 +259,29 @@ function ConfirmarGrupo({
                     ) : (
                       "Disponível para este grupo"
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
         {!visiveis.length && <p>Nenhum animal nesta busca.</p>}
         <div className="leite-form-inline">
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
             disabled={paginaAtual <= 1}
-            onClick={() => setPagina((p) => p - 1)}
-          >
+            onClick={() => setPagina((p) => p - 1)}>
             Animais anteriores de {sessao.nome}
-          </button>
+          </Button>
           <span>
             Página {paginaAtual} de {paginas}
           </span>
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
             disabled={paginaAtual >= paginas}
-            onClick={() => setPagina((p) => p + 1)}
-          >
+            onClick={() => setPagina((p) => p + 1)}>
             Próximos animais de {sessao.nome}
-          </button>
+          </Button>
         </div>
         {podeLancar && (
           <>
@@ -340,9 +339,9 @@ function ConfirmarGrupo({
                 />
               </label>
             )}
-            <button disabled={!podeConfirmar}>
+            <Button disabled={!podeConfirmar}>
               Preparar grupo de {sessao.nome} · {formatarLitros(litros)}
-            </button>
+            </Button>
           </>
         )}
         {grupos.length > 0 && (
@@ -352,18 +351,18 @@ function ConfirmarGrupo({
             <ul>
               {grupos.map((g, indice) => <li key={g.chave}>
                 {nomeNaturezaGrupo(g.natureza)} · {formatarLitros(g.litros)} · {g.medicaoIds.length} animais
-                <button type="button" disabled={ocupado} onClick={() => setGrupos(atual => atual.filter(item => item.chave !== g.chave))}>Remover grupo {indice + 1} de {sessao.nome}</button>
+                <Button type="button" disabled={ocupado} onClick={() => setGrupos(atual => atual.filter(item => item.chave !== g.chave))}>Remover grupo {indice + 1} de {sessao.nome}</Button>
               </li>)}
             </ul>
             <p role="status">{formatarLitros(grupos.reduce((total, g) => total + g.litros, 0))} em grupos · {linhas.filter(l => disponivel(l.medicao)).length} animais ainda sem grupo</p>
-            <button type="button" disabled={!podeLancar || ocupado || faltandoMetadados || linhas.some(l => disponivel(l.medicao)) || (exigeParcial && motivoParcial.trim().length < 5)}
+            <Button type="button" disabled={!podeLancar || ocupado || faltandoMetadados || linhas.some(l => disponivel(l.medicao)) || (exigeParcial && motivoParcial.trim().length < 5)}
               onClick={() => void executar("/estoque/confirmacoes-sessao", {
                 sessaoId: sessao.id, versaoEsperada: sessao.versao,
                 grupos: grupos.map(({ litros: _litros, ...g }) => g),
                 ...(exigeParcial ? { motivoParcial: motivoParcial.trim() } : {}),
               }, "Ordenha confirmada. Todos os grupos foram registrados juntos, com suas origens preservadas.")}>
               Confirmar sessão de {sessao.nome} · {formatarLitros(grupos.reduce((total, g) => total + g.litros, 0))}
-            </button>
+            </Button>
           </div>
         )}
       </fieldset>

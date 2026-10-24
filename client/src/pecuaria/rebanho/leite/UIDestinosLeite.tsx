@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -186,40 +189,38 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
             }}
           />
         </label>
-        <button
-          className="leite-secondary"
+        <Button variant="outline" className="leite-secondary"
           disabled={ocupado || estornando}
-          onClick={() => setRevisao((r) => r + 1)}
-        >
+          onClick={() => setRevisao((r) => r + 1)}>
           Atualizar histórico
-        </button>
+        </Button>
       </div>
       {erro && <p role="alert">{erro}</p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>Destinos registrados · histórico preservado</caption>
-              <thead>
-                <tr>
-                  <th>Data</th>
-                  <th>Natureza e volume</th>
-                  <th>Animais e parcelas</th>
-                  <th>Situação</th>
-                  <th>Detalhes</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Destinos registrados · histórico preservado</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Natureza e volume</TableHead>
+                  <TableHead>Animais e parcelas</TableHead>
+                  <TableHead>Situação</TableHead>
+                  <TableHead>Detalhes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {historico.itens.map((d) => (
-                  <tr key={d.id}>
-                    <td>{dataPt(d.data)}</td>
-                    <td>
+                  <TableRow key={d.id}>
+                    <TableCell>{dataPt(d.data)}</TableCell>
+                    <TableCell>
                       {nomeNaturezaDestino(d.natureza)}
                       <br />
                       {formatarLitros(d.quantidadeLitros)}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {d.parcelas.map((p) => (
                         <div key={p.id}>
                           {p.nome || p.brinco} ·{" "}
@@ -233,14 +234,14 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                           )}
                         </div>
                       ))}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {d.status === "ESTORNADO" ? "Estornado" : "Confirmado"}
                       <small>Versão {d.versao}</small>
-                    </td>
-                    <td>
-                      <details>
-                        <summary>Ver detalhes</summary>
+                    </TableCell>
+                    <TableCell>
+                      <SecaoDetalhesLeite  titulo={<>Ver detalhes</>}>
+
                         <p>{d.declaracaoOrigem}</p>
                         <p>
                           Saldo da origem no ato:{" "}
@@ -253,50 +254,44 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                         {d.motivoEstorno && (
                           <p>Motivo do estorno: {d.motivoEstorno}</p>
                         )}
-                      </details>
+                      </SecaoDetalhesLeite>
                       {podeLancar && d.status !== "ESTORNADO" && (
-                        <button
-                          className="leite-secondary"
+                        <Button variant="outline" className="leite-secondary"
                           disabled={estornando}
                           onClick={() => {
                             setEstorno(d);
                             setMotivo("");
-                          }}
-                        >
+                          }}>
                           Estornar destino de {dataPt(d.data)}
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {!historico.itens.length && (
             <p>Nenhum destino registrado no período.</p>
           )}
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina <= 1 || ocupado || estornando}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Página anterior
-            </button>
+            </Button>
             <span>
               Página {pagina} · {historico.total} registros
             </span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={
                 pagina * historico.porPagina >= historico.total ||
                 ocupado ||
                 estornando
               }
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próxima página
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -326,16 +321,14 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
               />
             </label>
             <div className="leite-form-inline">
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
-                onClick={() => setEstorno(null)}
-              >
+                onClick={() => setEstorno(null)}>
                 Cancelar estorno
-              </button>
-              <button>
+              </Button>
+              <Button >
                 {estornando ? "Estornando…" : "Confirmar estorno"}
-              </button>
+              </Button>
             </div>
           </fieldset>
         </form>
@@ -666,13 +659,11 @@ function FormularioDestino({
             estoque antes de registrar o destino.
           </p>
         )}
-        <button
-          className="leite-secondary"
+        <Button variant="outline" className="leite-secondary"
           type="button"
-          onClick={() => setRevisao((r) => r + 1)}
-        >
+          onClick={() => setRevisao((r) => r + 1)}>
           Consultar produtos, origens e destinatários novamente
-        </button>
+        </Button>
         {origemEscolhida &&
           origens.some(
             (o) =>
@@ -682,8 +673,7 @@ function FormularioDestino({
           ) && (
             <p role="alert">
               O saldo consultado mudou.{" "}
-              <button
-                className="leite-secondary"
+              <Button variant="outline" className="leite-secondary"
                 type="button"
                 onClick={() =>
                   mudar({
@@ -692,10 +682,9 @@ function FormularioDestino({
                         (o) => o.entradaId === origemEscolhida?.entradaId,
                       ) ?? null,
                   })
-                }
-              >
+                }>
                 Usar saldo atualizado e revisar parcelas
-              </button>{" "}
+              </Button>{" "}
               O retry da tentativa anterior conserva o saldo conferido.
             </p>
           )}
@@ -758,17 +747,17 @@ function FormularioDestino({
         {candidatos && (
           <>
             <div className="leite-tabela-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Animal</th>
-                    <th>Seleção</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table semContainer>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Animal</TableHead>
+                    <TableHead>Seleção</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {candidatos.itens.map((a) => (
-                    <tr key={a.animalId}>
-                      <td>
+                    <TableRow key={a.animalId}>
+                      <TableCell>
                         {a.nome || a.brinco}
                         <small>
                           Brinco {a.brinco}
@@ -776,51 +765,45 @@ function FormularioDestino({
                             ? " · cria de parto registrada"
                             : ""}
                         </small>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" type="button"
                           className="leite-secondary"
                           disabled={
                             rascunho.parcelas.some(
                               (p) => p.animalId === a.animalId,
                             ) || rascunho.parcelas.length >= 200
                           }
-                          onClick={() => adicionar(a)}
-                        >
+                          onClick={() => adicionar(a)}>
                           {rascunho.parcelas.some(
                             (p) => p.animalId === a.animalId,
                           )
                             ? "Adicionado"
                             : `Adicionar ${a.nome || a.brinco}`}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
             {!candidatos.itens.length && (
               <p>Nenhum destinatário encontrado nesta busca e data.</p>
             )}
             <div className="leite-form-inline">
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
                 disabled={pagina <= 1}
-                onClick={() => setPagina((p) => p - 1)}
-              >
+                onClick={() => setPagina((p) => p - 1)}>
                 Destinatários anteriores
-              </button>
+              </Button>
               <span>Página {pagina}</span>
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
                 disabled={pagina * candidatos.porPagina >= candidatos.total}
-                onClick={() => setPagina((p) => p + 1)}
-              >
+                onClick={() => setPagina((p) => p + 1)}>
                 Próximos destinatários
-              </button>
+              </Button>
             </div>
           </>
         )}
@@ -836,22 +819,22 @@ function FormularioDestino({
           </p>
         ) : (
           <div className="leite-tabela-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Animal</th>
-                  <th>Litros servidos</th>
+            <Table semContainer>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Animal</TableHead>
+                  <TableHead>Litros servidos</TableHead>
                   {rascunho.natureza === "COLOSTRO" && (
-                    <th>Registro de colostro</th>
+                    <TableHead>Registro de colostro</TableHead>
                   )}
-                  <th>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
+                  <TableHead>Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {rascunho.parcelas.map((p) => (
-                  <tr key={p.animalId}>
-                    <td>{p.nome || p.brinco}</td>
-                    <td>
+                  <TableRow key={p.animalId}>
+                    <TableCell>{p.nome || p.brinco}</TableCell>
+                    <TableCell>
                       <input
                         aria-label={`Litros servidos a ${p.nome || p.brinco}`}
                         aria-invalid={
@@ -867,9 +850,9 @@ function FormularioDestino({
                           mudarParcela(p.animalId, { litros: e.target.value })
                         }
                       />
-                    </td>
+                    </TableCell>
                     {rascunho.natureza === "COLOSTRO" && (
-                      <td>
+                      <TableCell>
                         <select
                           aria-label={`Registro de colostro de ${p.nome || p.brinco}`}
                           value={p.fornecimentoColostroId ?? ""}
@@ -904,11 +887,10 @@ function FormularioDestino({
                             </option>
                           ))}
                         </select>
-                      </td>
+                      </TableCell>
                     )}
-                    <td>
-                      <button
-                        type="button"
+                    <TableCell>
+                      <Button variant="outline" type="button"
                         className="leite-secondary"
                         onClick={() =>
                           mudar({
@@ -916,15 +898,14 @@ function FormularioDestino({
                               (a) => a.animalId !== p.animalId,
                             ),
                           })
-                        }
-                      >
+                        }>
                         Remover {p.nome || p.brinco}
-                      </button>
-                    </td>
-                  </tr>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
         <dl className="leite-indicadores">
@@ -969,20 +950,18 @@ function FormularioDestino({
           </label>
         </div>
         {erro && <p role="alert">{erro}</p>}
-        <button
-          disabled={
+        <Button disabled={
             salvando ||
             !(sitio ?? rascunho.propriedadeId) ||
             !origemEscolhida ||
             !resumo.validas ||
             resumo.excedeu ||
             rascunho.declaracao.trim().length < 10
-          }
-        >
+          }>
           {salvando
             ? "Registrando…"
             : `Confirmar destino e baixar ${formatarLitros(resumo.total)}`}
-        </button>
+        </Button>
         <small>
           A confirmação registra as parcelas e uma única baixa do estoque. Em
           caso de falha, o rascunho e a chave do retry são preservados.

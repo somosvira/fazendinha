@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useRef, useState } from "react";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -107,56 +109,56 @@ export function HistoricoVendasLeite({
         Período de {dataPt(`${data.slice(0, 7)}-01`)} a {dataPt(data)}. A
         correção preserva os litros e a saída física original.
       </p>
-      <button
+      <Button variant="outline"
         type="button"
         className="leite-secondary"
         disabled={carregando}
         onClick={() => setAtualizacao((r) => r + 1)}
       >
         Atualizar vendas
-      </button>
+      </Button>
       {carregando && <p role="status">Consultando vendas e versões…</p>}
       {erro && <p role="alert">{erro}</p>}
       {aviso && <p role="status">{aviso}</p>}
       {historico && (
         <>
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>
+            <Table semContainer>
+              <TableCaption>
                 Histórico comercial · versões vigentes e substituídas
-              </caption>
-              <thead>
-                <tr>
-                  <th>Venda</th>
-                  <th>Comprador</th>
-                  <th>Volume e valor</th>
-                  <th>Estado</th>
-                  <th>Correção</th>
-                </tr>
-              </thead>
-              <tbody>
+              </TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Venda</TableHead>
+                  <TableHead>Comprador</TableHead>
+                  <TableHead>Volume e valor</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Correção</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {historico.itens.map((v) => (
-                  <tr key={v.operacaoId}>
-                    <td>
+                  <TableRow key={v.operacaoId}>
+                    <TableCell>
                       #{v.numero}
                       <small>
                         {dataPt(v.data)} · versão {v.versaoComercial}
                       </small>
-                    </td>
-                    <td>{v.parceiroNome ?? "Comprador não informado"}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>{v.parceiroNome ?? "Comprador não informado"}</TableCell>
+                    <TableCell>
                       {formatarLitros(Number(v.quantidadeLitros))}
                       <br />
                       {dinheiro(v.valorTotal)}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {nomeEstadoVenda(v.estadoFinanceiro)}
                       <small>
                         Recebido confirmado:{" "}
                         {dinheiro(v.valorRecebidoConfirmado)}
                       </small>
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {v.motivoCorrecao && (
                         <p>Motivo registrado: {v.motivoCorrecao}</p>
                       )}
@@ -171,7 +173,7 @@ export function HistoricoVendasLeite({
                           </small>
                         )}
                       {podeLancar && corrigivel(v) && (
-                        <button
+                        <Button variant="outline"
                           type="button"
                           className="leite-secondary"
                           disabled={!config || carregando}
@@ -181,19 +183,19 @@ export function HistoricoVendasLeite({
                           }}
                         >
                           Corrigir venda #{v.numero}
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {!historico.itens.length && (
             <p>Nenhuma venda registrada para o filtro no período.</p>
           )}
           <div className="leite-form-inline">
-            <button
+            <Button variant="outline"
               type="button"
               className="leite-secondary"
               disabled={pagina <= 1 || carregando}
@@ -203,11 +205,11 @@ export function HistoricoVendasLeite({
               }}
             >
               Vendas anteriores
-            </button>
+            </Button>
             <span>
               Página {pagina} · {historico.total} versões
             </span>
-            <button
+            <Button variant="outline"
               type="button"
               className="leite-secondary"
               disabled={
@@ -219,7 +221,7 @@ export function HistoricoVendasLeite({
               }}
             >
               Próxima página de vendas
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -472,16 +474,16 @@ function FormularioCorrecao({
         </label>
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button
+          <Button variant="outline"
             className="leite-secondary"
             type="button"
             onClick={aoCancelar}
           >
             Cancelar correção
-          </button>
-          <button>
+          </Button>
+          <Button>
             {salvando ? "Corrigindo…" : "Confirmar correção comercial"}
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>

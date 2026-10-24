@@ -91,3 +91,13 @@ it("distingue dia comprovadamente sem elegíveis e lacuna de finalidade", () => 
   const folhaVazia = resumirPainelLeite([{propriedadeId:1,data:new Date("2026-10-01"),animais:0,ordenhas:3,medidas:0,resolvidas:0,litros:null}], [1], "2026-10-01", "2026-10-01", [{propriedadeId:1,data:"2026-10-01",estado:"ELEGIVEIS"}]);
   expect(folhaVazia.completa).toBe(false);
 });
+
+it("cobertura geral usa tanques esperados, sem exigir medições individuais", () => {
+  const linha = { fonte: "GERAL" as const, propriedadeId: 1, data: new Date("2026-10-01"), ordenhas: 3, animais: 0, esperadas: 6, medidas: 6, resolvidas: 6, litros: "2000" };
+  expect(resumirPainelLeite([linha], [1], "2026-10-01", "2026-10-01")).toMatchObject({ litros: "2000.000", completa: true, medicoesPendentes: 0 });
+  expect(resumirPainelLeite([{ ...linha, medidas: 5, resolvidas: 5 }], [1], "2026-10-01", "2026-10-01")).toMatchObject({ completa: false, medicoesPendentes: 1 });
+});
+
+it("não comprova dia geral sem tanques pela ausência de animais elegíveis", () => {
+  expect(resumirPainelLeite([{ fonte: "GERAL", propriedadeId: 1, data: new Date("2026-10-01"), ordenhas: 3, animais: 0, esperadas: 0, medidas: 0, resolvidas: 0, litros: null }], [1], "2026-10-01", "2026-10-01", [{ propriedadeId: 1, data: "2026-10-01", estado: "SEM_ANIMAIS_ELEGIVEIS" }])).toMatchObject({ litros: null, completa: false });
+});

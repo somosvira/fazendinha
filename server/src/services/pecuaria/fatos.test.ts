@@ -28,6 +28,8 @@ const db = {
   fornecimentoColostro: { count: vi.fn(), findMany: vi.fn() },
   vinculoPesagemParto: { findMany: vi.fn() },
   finalidadeAnimal: { findMany: vi.fn() },
+  medicaoGeralLeite: { count: vi.fn() },
+  $queryRaw: vi.fn(),
   participanteProducaoLeite: { count: vi.fn(), findMany: vi.fn() },
   parcelaDestinoLeite: { count: vi.fn(), findMany: vi.fn() },
 };
@@ -44,6 +46,8 @@ beforeEach(() => {
   db.vinculoPesagemParto.findMany.mockResolvedValue([]);
   db.participanteProducaoLeite.count.mockResolvedValue(0);
   db.participanteProducaoLeite.findMany.mockResolvedValue([]);
+  db.medicaoGeralLeite.count.mockResolvedValue(0);
+  db.$queryRaw.mockResolvedValue([]);
   db.parcelaDestinoLeite.count.mockResolvedValue(0);
   db.parcelaDestinoLeite.findMany.mockResolvedValue([]);
   for (const modelo of [db.fornecimentoColostro, db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria, db.tentativaReprodutiva, db.avaliacaoReprodutiva, db.partoAnimal, db.situacaoInicialReprodutiva, db.restricaoReprodutiva, db.gestacaoAnimal, db.lactacaoAnimal, db.criaParto, db.participanteIatf, db.participanteVisita, db.participacaoExposicao, db.periodoReprodutivoAnimal]) {
@@ -153,5 +157,58 @@ describe("guardas de finalidade contra reclassificação da ordenha", () => {
   it("recorta a faixa alterada e não exige conciliar fatos antigos não atingidos", async () => {
     await conferirFinalidadesComProducaoTx(tx, animal.id, dia("2026-10-15"), dia("2026-10-20"));
     expect(db.participanteProducaoLeite.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { animalId: animal.id, excluidoEm: null, dia: { dataOperacional: { gte: dia("2026-10-15"), lt: dia("2026-10-20") } } } }));
+  });
+});
+
+const geral = (animaisOrigem = [animal.id], data = "2026-10-20", propriedadeId = 1) => ({
+  animalId: animaisOrigem[0] ?? "sem-origem", propriedadeId, data: dia(data), entradaId: null, evidencia: null,
+});
+describe("origens identificadas da produção geral", () => {
+  beforeEach(() => {
+    db.animal.findMany.mockResolvedValue([{ ...animal, sexo: "F" }]);
+    db.$queryRaw.mockResolvedValue([geral()]);
+    db.finalidadeAnimal.findMany.mockResolvedValue([
+      { id: "leite", aptidao: "LEITE", desde: dia("2026-01-01"), ate: dia("2026-10-19") },
+      { id: "corte", aptidao: "CORTE", desde: dia("2026-10-19"), ate: null },
+    ]);
+  });
+  it.each([false, true])("reproduz finalidade Corte desde 19/10 incompatível com origem geral em 20/10, confirmação=%s e sem controle individual", async confirmada => {
+    if (confirmada) db.$queryRaw.mockResolvedValue([{ ...geral(), entradaId: "entrada", evidencia: { animalId: animal.id, finalidadeId: "leite", localizacaoId: local.id, lactacaoId: null } }]);
+    await expect(conferirFinalidadesComProducaoTx(tx, animal.id, dia("2026-10-19"))).rejects.toMatchObject({ code: "CONFLITO", campo: "finalidade" });
+    expect(db.participanteProducaoLeite.findMany).toHaveBeenCalled();
+  });
+  it("permite finalidade Leite na data e recorta a consulta ao intervalo afetado", async () => {
+    db.finalidadeAnimal.findMany.mockResolvedValue([{ id: "leite", aptidao: "LEITE", desde: dia("2026-01-01"), ate: dia("2026-10-21") }]);
+    await expect(conferirFinalidadesComProducaoTx(tx, animal.id, dia("2026-10-19"), dia("2026-10-21"))).resolves.toBeUndefined();
+    const consulta = db.$queryRaw.mock.lastCall?.[0] as Prisma.Sql;
+    expect(consulta.sql).toContain('d."dataOperacional">=');
+    expect(consulta.sql).toContain('d."dataOperacional"<');
+    expect(consulta.values).toEqual([[animal.id], dia("2026-10-19"), dia("2026-10-21")]);
+  });
+  it.each([{ animais: [] }, { animais: ["outro-animal"] }])("não infere vínculos nem bloqueia animal ausente da origem $animais", async ({ animais }) => {
+    db.$queryRaw.mockResolvedValue([geral(animais)]);
+    await expect(conferirFinalidadesComProducaoTx(tx, animal.id)).resolves.toBeUndefined();
+  });
+  it("preserva localização congelada mesmo quando a troca manteria o mesmo sítio", async () => {
+    db.$queryRaw.mockResolvedValue([{ ...geral(), entradaId: "entrada", evidencia: { animalId: animal.id, finalidadeId: "leite", localizacaoId: "local-original", lactacaoId: null } }]);
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/localização comprovada/);
+  });
+  it("preserva evidência da finalidade de uma entrada confirmada", async () => {
+    db.finalidadeAnimal.findMany.mockResolvedValue([{ id: "outra-leite", aptidao: "LEITE", desde: dia("2026-01-01"), ate: null }]);
+    db.$queryRaw.mockResolvedValue([{ ...geral(), entradaId: "entrada", evidencia: { animalId: animal.id, finalidadeId: "leite", localizacaoId: local.id, lactacaoId: null } }]);
+    await expect(conferirFinalidadesComProducaoTx(tx, animal.id)).rejects.toMatchObject({ campo: "finalidade" });
+  });
+  it("baixa, sexo, entrada e sítio também conservam a origem geral", async () => {
+    db.medicaoGeralLeite.count.mockResolvedValue(1);
+    await expect(conferirFatosNaBaixa(tx, animal.id, dia("2026-10-19"))).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(db.medicaoGeralLeite.count).toHaveBeenCalledWith({ where: { animaisOrigem: { array_contains: [animal.id] }, sessao: { dia: { dataOperacional: { gt: dia("2026-10-19") } } } } });
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).resolves.toBeUndefined();
+    db.animal.findMany.mockResolvedValue([animal]);
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toMatchObject({ campo: "sexo" });
+    db.animal.findMany.mockResolvedValue([{ ...animal, sexo: "F", dataEntrada: dia("2026-10-21") }]);
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/anteriores/);
+    db.animal.findMany.mockResolvedValue([{ ...animal, sexo: "F" }]);
+    db.$queryRaw.mockResolvedValue([geral([animal.id], "2026-10-20", 2)]);
+    await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/sítio de fatos/);
   });
 });

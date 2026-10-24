@@ -10,7 +10,9 @@ vi.mock("../../financeiro/regras.js", async importar => ({ ...await importar<typ
 vi.mock("../../estoque/leite.js", async importar => ({ ...await importar<typeof import("../../estoque/leite.js")>(), classificarEntradaLeiteTx: f.classificar }));
 vi.mock("../../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), previaRetroatividadeTx: vi.fn(async () => ({ permitido: true })) }));
 
-import { correcaoVendaLeiteSchema, consultaVendasLeiteSchema, anularEntradaProducaoLeite, apurarValorProducaoLeite, classificarEntradaLeiteSchema, confirmarProducaoLeite, confirmarSessaoProducaoLeite, confirmarSessaoProducaoLeiteSchema, exigirSessaoLeiteEditavelTx, confirmarProducaoLeiteSchema, apuracaoValorLeiteSchema } from "./estoque.js";
+vi.mock("./producao.js", async original => ({ ...await original<typeof import("./producao.js")>(), conferirAnimaisOrigemGeralTx: vi.fn(async () => []) }));
+import { travarValorizacaoTx } from "../../estoque/valorizacao.js";
+import { correcaoVendaLeiteSchema, consultaVendasLeiteSchema, anularEntradaProducaoLeite, apurarValorProducaoLeite, classificarEntradaLeiteSchema, confirmarProducaoLeite, confirmarProducaoGeral, confirmarSessaoProducaoLeite, confirmarSessaoProducaoLeiteSchema, exigirSessaoLeiteEditavelTx, confirmarProducaoLeiteSchema, apuracaoValorLeiteSchema } from "./estoque.js";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const contexto = { propriedadeId: 7, usuarioId: 9 };
@@ -31,6 +33,7 @@ function banco() {
     sessaoOrdenha: { findUniqueOrThrow: vi.fn(async () => ({ id: input.sessaoId, versao: 3, nome: "Manhã", dia: { dataOperacional: new Date("2026-10-18"), participantes },
       medicoes: [{ id: id(11), estado: "MEDIDO", litros: new Prisma.Decimal(12), versao: 2, origensEstoque: [], participante: participantes[0] },
         { id: id(12), estado: "PENDENTE", litros: null, versao: 1, origensEstoque: [], participante: participantes[1] }] })) },
+    medicaoGeralLeite: { findUniqueOrThrow: vi.fn() },
     produto: { findFirst: vi.fn(async () => ({ id: input.produtoId, unidade: "L", rastrearPartidas: false })) },
     movimentoEstoque: { count: vi.fn(async () => 0), create: vi.fn(async ({ data }: { data: Prisma.MovimentoEstoqueUncheckedCreateInput }) => ({ id: id(7), ...data })), update: vi.fn() },
   };
@@ -278,4 +281,71 @@ it("a baixa no dia preserva confirmação single e coletiva da finalidade que el
   const coletiva = await confirmarSessaoProducaoLeite({ chave: id(700), sessaoId: input.sessaoId, versaoEsperada: 3, motivoParcial: dados.motivoParcial,
     grupos: [{ chave: id(701), produtoId: input.produtoId, medicaoIds: input.medicaoIds, natureza: "COMERCIAL", motivoNatureza: input.motivoNatureza }] }, contexto);
   expect(coletiva.grupos).toHaveLength(1);
+});
+
+it("confirma litros gerais uma vez, sem vínculos individuais ou custo inventado", async () => {
+  const medicao = { id: id(70), sessaoId: input.sessaoId, tanqueId: id(71), versao: 1, litros: new Prisma.Decimal(800), reguaMm: null, origemLitros: "LITROS_INFORMADOS", animaisOrigem: [], natureza: "NAO_COMERCIAL", tanque: { nome: "Tanque" }, sessao: { id: input.sessaoId, nome: "Manhã", horario: null, versao: 3, dia: { dataOperacional: new Date("2026-10-18"), configuracao: { fonteProducao: "GERAL" } } }, entradasEstoque: [] as {id: string}[] };
+  const medicoes = { findFirst: vi.fn(async () => medicao), findFirstOrThrow: vi.fn(async () => medicao) };
+  Object.assign(tx, { medicaoGeralLeite: medicoes });
+  const comando = { chave: id(72), medicaoId: medicao.id, versaoEsperada: 1, produtoId: input.produtoId, motivoNatureza: "Leite separado para alimentação" };
+  const r = await confirmarProducaoGeral(comando, contexto);
+  expect(r.quantidadeLitros).toBe("800");
+  expect(tx.movimentoEstoque.create).toHaveBeenCalledWith({ data: expect.objectContaining({ quantidade: new Prisma.Decimal(800), custoUnitario: null, valorTotal: null }) });
+  const entrada = tx.entradaProducaoLeite.create.mock.calls[0][0].data;
+  expect(entrada.medicaoGeralId).toBe(medicao.id);
+  expect(entrada.vinculosMedicoes).toBeUndefined();
+  medicao.entradasEstoque = [{ id: r.id }];
+  await expect(confirmarProducaoGeral({ ...comando, chave: id(73) }, contexto)).rejects.toMatchObject({ code: "CONFLITO" });
+  expect(tx.movimentoEstoque.create).toHaveBeenCalledTimes(1);
+});
+it("controle individual de data geral não gera uma segunda produção física", async () => {
+  const sessao = await tx.sessaoOrdenha.findUniqueOrThrow();
+  tx.sessaoOrdenha.findUniqueOrThrow.mockResolvedValue({ ...sessao, dia: { ...sessao.dia, configuracao: { fonteProducao: "GERAL" } } } as never);
+  await expect(confirmarProducaoLeite({ ...input, motivoParcial: "Controle mensal" }, contexto)).rejects.toMatchObject({ code: "CONFLITO" });
+  expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
+});
+
+
+describe("ordem das travas ao anular origem geral", () => {
+  const origem = (numero: number, animaisOrigem: string[]) => ({
+    id: id(numero), sessaoId: id(numero + 1), medicaoGeralId: id(numero + 2), movimentoId: id(numero + 3),
+    status: "CONFIRMADA", medicaoGeral: { animaisOrigem }, alocacoes: [],
+    movimento: { id: id(numero + 3), produtoId: input.produtoId, quantidade: new Prisma.Decimal(12), data: new Date("2026-10-18") },
+  });
+  it("duas aferições com animal compartilhado adquirem animal antes de sessão e produto", async () => {
+    const primeira = origem(700, [id(40), id(50)]), segunda = origem(800, [id(40), id(60)]);
+    for (const entrada of [primeira, segunda]) {
+      tx.entradaProducaoLeite.findFirst.mockResolvedValueOnce(entrada as never);
+      tx.medicaoGeralLeite.findUniqueOrThrow.mockResolvedValueOnce(entrada.medicaoGeral);
+      tx.entradaProducaoLeite.findUniqueOrThrow.mockResolvedValueOnce(entrada);
+      await anularEntradaProducaoLeite({ entradaId: entrada.id, motivo: "Origem conferida" }, contexto);
+    }
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(2);
+    for (const indice of [0, 1]) {
+      expect(tx.$executeRaw.mock.calls[indice][1]).toContain(`pec-animal:${id(40)}`);
+      expect(tx.$executeRaw.mock.invocationCallOrder[indice]).toBeLessThan(tx.$queryRaw.mock.invocationCallOrder[indice]);
+      expect(tx.$queryRaw.mock.invocationCallOrder[indice]).toBeLessThan(vi.mocked(travarValorizacaoTx).mock.invocationCallOrder[indice]);
+    }
+    expect(tx.entradaProducaoLeite.update).toHaveBeenCalledTimes(2);
+    // Prova da ordem sequencial dos comandos; não representa concorrência PostgreSQL real.
+  });
+  it("revalida a composição antes de criar inverso quando a referência ficou obsoleta", async () => {
+    const entrada = origem(700, [id(40)]);
+    tx.entradaProducaoLeite.findFirst.mockResolvedValueOnce(entrada as never);
+    tx.medicaoGeralLeite.findUniqueOrThrow.mockResolvedValueOnce(entrada.medicaoGeral);
+    tx.entradaProducaoLeite.findUniqueOrThrow.mockResolvedValueOnce({ ...entrada, medicaoGeral: { animaisOrigem: [id(50)] } });
+    await expect(anularEntradaProducaoLeite({ entradaId: entrada.id, motivo: "Origem conferida" }, contexto)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
+    expect(tx.entradaProducaoLeite.update).not.toHaveBeenCalled();
+  });
+  it("reenvio da anulação geral recupera o inverso sem segunda saída", async () => {
+    const entrada = origem(700, [id(40)]), motivo = "Origem conferida";
+    const inverso = { id: id(900), observacao: motivo, criadoPorId: contexto.usuarioId };
+    tx.entradaProducaoLeite.findFirst.mockResolvedValueOnce(entrada as never);
+    tx.medicaoGeralLeite.findUniqueOrThrow.mockResolvedValueOnce(entrada.medicaoGeral);
+    tx.entradaProducaoLeite.findUniqueOrThrow.mockResolvedValueOnce({ ...entrada, status: "ANULADA", movimento: { ...entrada.movimento, revertidoPor: inverso } });
+    await expect(anularEntradaProducaoLeite({ entradaId: entrada.id, motivo }, contexto)).resolves.toEqual(inverso);
+    expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
+    expect(tx.entradaProducaoLeite.update).not.toHaveBeenCalled();
+  });
 });

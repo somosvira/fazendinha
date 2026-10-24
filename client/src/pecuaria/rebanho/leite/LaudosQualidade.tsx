@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useRef, useState } from "react";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import type { AmostraQualidade } from "./qualidade-types";
@@ -101,13 +102,11 @@ export function LaudosQualidade({
         <ul>
           {laudos.map((l) => (
             <li key={l.id}>
-              <button
-                className="leite-secondary"
+              <Button variant="outline" className="leite-secondary"
                 type="button"
-                onClick={() => void baixar(l.id)}
-              >
+                onClick={() => void baixar(l.id)}>
                 Abrir {l.nome}
-              </button>{" "}
+              </Button>{" "}
               · {Math.ceil(l.tamanhoBytes / 1024)} KB
             </li>
           ))}

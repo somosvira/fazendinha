@@ -12,7 +12,7 @@ import { emitirRelatorioLeiteSchema, type EmitirRelatorioLeiteInput } from "./re
 import { amostraQualidadeDTO } from "./qualidade.js";
 
 export class RelatorioLeiteAcessoError extends Error {}
-export const VERSAO_CALCULO_RELATORIO_LEITE = "LEITE_GERENCIAL_V3";
+export const VERSAO_CALCULO_RELATORIO_LEITE = "LEITE_GERENCIAL_V5";
 const data = (s: string) => new Date(`${s}T00:00:00Z`);
 const texto = (d: Date) => d.toISOString().slice(0, 10);
 const json = (valor: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(valor));
@@ -21,6 +21,8 @@ const MAX_AMOSTRAS = 1_000;
 function conferirLimite(quantidade: number, limite = MAX_FATOS) {
   if (quantidade > limite) throw new RebanhoError("VALIDACAO", "O relatório contém muitos fatos; reduza o período");
 }
+const dataQualidade = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional();
+const datasQualidadeVinculadaSchema = z.object({ data: dataQualidade, dataResultadoLaboratorial: dataQualidade, dataRecebimentoLaudo: dataQualidade, criadoEm: z.string().datetime().optional() });
 /** Todas as seções são lidas na mesma transação; nenhuma fonte é relida na abertura. */
 export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number, input: EmitirRelatorioLeiteInput) {
   const propriedade = await tx.propriedade.findUnique({ where: { id: propriedadeId }, select: { id: true, nome: true } });
@@ -29,7 +31,7 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
   const periodo = { gte: data(input.inicio), lte: data(input.fim) };
   const custos = await consultarCustosLeiteTx(tx, propriedadeId, { inicio: input.inicio, fim: input.fim, ...(input.animalId ? { animalId: input.animalId } : {}), ...(input.posicaoId ? { posicaoId: input.posicaoId } : {}) }, input.incluirValores);
   const folhasFonte = await tx.diaProducaoLeite.findMany({ where: { propriedadeId, dataOperacional: periodo },
-    select: { id: true, versao: true, dataOperacional: true, configuracaoId: true, sessoes: { select: { id: true, versao: true } },
+    select: { id: true, versao: true, dataOperacional: true, configuracaoId: true, sessoes: { select: { id: true, versao: true, medicoesGerais: { select: { id: true, versao: true, tanqueId: true, litros: true, reguaMm: true } } } },
       participantes: { where: { excluidoEm: null, ...(input.animalId ? { animalId: input.animalId } : {}) }, select: { id: true, animalId: true, finalidadeId: true, finalidadeSnapshot: true,
         medicoes: { ...(input.posicaoId ? { where: { sessao: { posicaoId: input.posicaoId } } } : {}), select: { id: true, versao: true } } } } }, orderBy: { dataOperacional: "asc" } });
   const amostras = await tx.amostraQualidadeLeite.findMany({ where: { propriedadeId, data: periodo, status: "VALIDO",
@@ -69,7 +71,32 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
   const origens = await tx.entradaProducaoLeite.findMany({ where: { status: "CONFIRMADA", movimento: { propriedadeId, status: "CONFIRMADO", data: periodo } },
     select: { id: true, sessaoId: true, versaoSessao: true, movimentoId: true, movimento: { select: { produtoId: true, data: true, quantidade: true } }, vinculosMedicoes: { where: { ativo: true }, select: { medicaoId: true, versaoMedicao: true, quantidade: true } }, classificacoes: { orderBy: { versao: "desc" }, take: 1, select: { id: true, versao: true, natureza: true } } }, take: MAX_FATOS + 1 });
   conferirLimite(origens.length);
-  const comerciais = input.incluirValores ? await tx.versaoComercialVendaLeite.findMany({ where: { retirada: { propriedadeId, status: "CONFIRMADO", data: periodo }, operacao: { status: "CONFIRMADA" } },
+  // Mesmo recorte de Vendas: sobreposição do período comercial, nunca data de caixa.
+  const whereOperacoes = { propriedadeId, fim: { gte: data(input.inicio) }, inicio: { lte: data(input.fim) } };
+  const quantidadeOperacoes = await tx.operacaoComercialLeite.count({ where: whereOperacoes });
+  const quantidadeVinculosQualidade = await tx.vinculoQualidadeFechamentoLeite.count({ where: { fechamento: { comercial: whereOperacoes } } });
+  // Conta inclusive vínculos históricos antes do join; teto conservador para memória do Worker.
+  conferirLimite(quantidadeOperacoes + quantidadeVinculosQualidade);
+  const operacoes = await tx.operacaoComercialLeite.findMany({ where: whereOperacoes,
+    select: { id: true, parceiroId: true, parceiro: { select: { nome: true } }, inicio: true, fim: true, referencia: true, versao: true, status: true,
+      fechamentos: { orderBy: { versao: "desc" }, take: 1, select: { id: true, versao: true, operacaoId: true, volumeReconhecido: true,
+        ...(input.incluirValores ? { precoUnitario: true, ajuste: true } : {}),
+        operacao: { select: { numero: true, data: true, status: true, ...(input.incluirValores ? { valorTotal: true } : {}) } },
+        amostras: { select: { amostraId: true, versaoAmostra: true, snapshot: true }, orderBy: { amostraId: "asc" } } } } },
+    orderBy: [{ inicio: "asc" }, { id: "asc" }], take: MAX_FATOS + 1 });
+  conferirLimite(operacoes.length);
+  const financeirasFechamentos = new Set(operacoes.flatMap(o => o.fechamentos.map(f => f.operacaoId)));
+  const operacoesComerciais = operacoes.map(o => {
+    const f = o.fechamentos[0];
+    return { id: o.id, parceiroId: o.parceiroId, parceiroNome: o.parceiro.nome, inicio: texto(o.inicio), fim: texto(o.fim), referencia: o.referencia,
+      versao: o.versao, status: o.status, parcialForaFiltro: o.inicio < data(input.inicio) || o.fim > data(input.fim),
+      situacao: o.status === "ABERTA" ? "PRECO_PENDENTE" : o.status === "FECHADA" && f?.operacao.status === "CONFIRMADA" ? "FECHADA" : "INATIVA",
+      fechamento: f ? { id: f.id, versao: f.versao, operacaoId: f.operacaoId, numeroOperacao: f.operacao.numero, data: texto(f.operacao.data),
+        statusFinanceiro: f.operacao.status, volumeReconhecidoLitros: f.volumeReconhecido.toString(),
+        // Não publica JSON arbitrário do vínculo ou justificativas comerciais no bloco operacional.
+        amostras: f.amostras.map(a => { const datas = datasQualidadeVinculadaSchema.parse(a.snapshot); return { amostraId: a.amostraId, versaoAmostra: a.versaoAmostra, ...datas }; }) } : null };
+  });
+  const comerciais = input.incluirValores ? await tx.versaoComercialVendaLeite.findMany({ where: { retirada: { propriedadeId, status: "CONFIRMADO", data: periodo }, operacao: { status: "CONFIRMADA", fechamentoComercialLeite: null } },
     select: { id: true, retiradaId: true, versao: true, operacaoId: true, retirada: { select: { data: true, quantidade: true, produto: { select: { nome: true } } } }, operacao: { select: { numero: true, parceiro: { select: { nome: true } }, itens: { select: { valorTotal: true } } } } }, take: MAX_FATOS + 1 }) : [];
   conferirLimite(comerciais.length);
   const entregas = await tx.entregaLeite.findMany({ where: { propriedadeId, retirada: { status: "CONFIRMADO", data: periodo, versoesComerciaisLeite: { some: { operacao: { status: "CONFIRMADA" } } } } },
@@ -85,7 +112,7 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
   conferirLimite(quantidadeDocumentos, 200);
   // Teto conservador: cada documento aceita até100componentes no contrato70000.
   // A contagem ocorre ANTES do join, para não materializar milhares de parcelas por documento.
-  conferirLimite(quantidadeDocumentos * 100 + quantidadeParcelasDocumentais + quantidadeParcelasDestino + quantidadeParcelasNutricionais + quantidadeOrigensNutricionais + fornecimentos.length + entregas.length + amostras.length + destinos.length + descartes.length + movimentos.length + semLastro.length + origens.length + comerciais.length + conferencias.length);
+  conferirLimite(quantidadeDocumentos * 100 + quantidadeParcelasDocumentais + quantidadeParcelasDestino + quantidadeParcelasNutricionais + quantidadeOrigensNutricionais + fornecimentos.length + entregas.length + amostras.length + destinos.length + descartes.length + movimentos.length + semLastro.length + origens.length + comerciais.length + conferencias.length + operacoes.length + quantidadeVinculosQualidade);
   const demonstrativos = await tx.demonstrativoLeite.findMany({ where: whereDocumentos,
     select: { id: true, referencia: true, inicio: true, fim: true, versao: true, precoBase: true, volumeReconhecido: true, valorComercial: true, valorPagamentoInformado: true, componentes: true, parceiro: { select: { nome: true } },
       alocacoes: { where: { ativo: true, entrega: { retirada: { status: "CONFIRMADO", data: periodo } } }, select: { id: true, entregaId: true, versaoVendaId: true, quantidade: true, valor: true,
@@ -108,11 +135,11 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
     filtros: { inicio: input.inicio, fim: input.fim, animalId: input.animalId ?? null, posicaoId: input.posicaoId ?? null },
     referenciasProducao: folhasFonte.map(f => ({ ...f, dataOperacional: texto(f.dataOperacional) })),
     unidades: { producao: "L", destinos: "L", balanco: "L", qualidade: "UNIDADE_DO_CAMPO_NO_FORMATO", custos: "BRL", custoPorLitro: "BRL/L" },
-    fontes: { producao: ["DiaProducaoLeite", "ParticipanteProducaoLeite", "MedicaoLeite"], custos: ["Componentes de custo pecuário documentados"],
+    fontes: { producao: ["DiaProducaoLeite", "ParticipanteProducaoLeite", "MedicaoLeite", "MedicaoGeralLeite", "TanqueLeite"], custos: ["Componentes de custo pecuário documentados"],
       qualidade: ["AmostraQualidadeLeite", "ExameAnimal", "Resultados vigentes e formato snapshot"], destinos: ["DestinoInternoLeite", "ParcelaDestinoLeite", "FornecimentoNutricionalLeite", "MovimentoFornecimentoNutricionalLeite", "ParcelaFornecimentoNutricionalLeite"],
-      comercial: ["RetiradaOperacaoLeite (preço pode estar pendente)", "MovimentoEstoque", "VersaoComercialVendaLeite", "EntregaLeite", "ConferenciaEntregaLeite", "DemonstrativoLeite válido e alocações ativas"], descarte: ["DescarteLeite"], balanco: ["Razão MovimentoEstoque confirmado/revertido com inversos", "ConferenciaSaldoLeite versionada, observação manual sem ajuste"] },
+      comercial: ["OperacaoComercialLeite (sobreposição do período integral)", "FechamentoOperacaoLeite (última versão e estado financeiro no corte)", "RetiradaOperacaoLeite (preço pode estar pendente)", "MovimentoEstoque", "VersaoComercialVendaLeite", "EntregaLeite", "ConferenciaEntregaLeite", "DemonstrativoLeite válido e alocações ativas"], descarte: ["DescarteLeite"], balanco: ["Razão MovimentoEstoque confirmado/revertido com inversos", "ConferenciaSaldoLeite versionada, observação manual sem ajuste"] },
     escopos: { producaoCustos: "SITIO_PERIODO_ANIMAL_ORDENHA", qualidade: input.animalId ? "INDIVIDUAL_DO_ANIMAL_NO_PERIODO" : "INDIVIDUAL_E_COLETIVO_NO_SITIO_PERIODO",
-      destinosComercialBalanco: "SITIO_PERIODO_INDEPENDENTE_DO_FILTRO_PRODUTOR", ordenhaQualidade: "NAO_ATRIBUIDA" },
+      destinosComercialBalanco: "SITIO_PERIODO_INDEPENDENTE_DO_FILTRO_PRODUTOR", ordenhaQualidade: "NAO_ATRIBUIDA", operacoesComerciais: "SITIO_SOBREPOSICAO_PERIODO_COMERCIAL_INTEGRAL_SEM_RATEIO" },
     cobertura: { producao: custos.coberturaPeriodo, qualidade: { amostras: qualidade.length, comResultados: qualidade.filter(a => a.resultados.length).length, semResultados: qualidade.filter(a => !a.resultados.length).length,
         estado: qualidade.length ? "AMOSTRAS_REGISTRADAS_SEM_EXTRAPOLACAO" : "SEM_AMOSTRAS", agregacao: "SEM_MEDIAS_ENTRE_FORMATOS_OU_UNIDADES" },
       producaoFazenda: producaoFazenda.coberturaPeriodo, producaoNaoConfirmadaLitros: naoConfirmada, producaoNaoConfirmadaEstado: diferencaProducao?.lt(0) ? "CONFLITO_DE_FONTES" : !producaoFazenda.coberturaPeriodo.completa ? "PARCIAL" : "CONHECIDA", balanco: { estado: balanco.some(b => b.encerramentoRazao !== null) ? "RAZAO_RECONSTITUIDO" : "SEM_MOVIMENTOS", medicaoCampo: balanco.some(b => b.medicaoCampo !== null) ? "OBSERVACOES_MANUAIS_NO_CORTE" : "NAO_INFORMADA" }, medicaoCampo: balanco.some(b => b.medicaoCampo !== null) ? "OBSERVACOES_MANUAIS_NO_CORTE" : "NAO_INFORMADA" },
@@ -137,19 +164,25 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
           quantidadeFaturadaLitros: parcelasFaturadas.filter(p => p.entregaId === e.id).reduce((s, p) => s.plus(p.quantidade), new Prisma.Decimal(0)).toString() };
       }), demonstrativos: demonstrativos.map(d => ({ id: d.id, referencia: d.referencia, inicio: texto(d.inicio), fim: texto(d.fim), parceiroNome: d.parceiro.nome,
         versao: d.versao, volumeReconhecidoLitros: d.volumeReconhecido.toString(), alocacoes: d.alocacoes.map(a => ({ id: a.id, entregaId: a.entregaId, dataEntrega: texto(a.entrega.retirada.data), numeroOperacao: a.versaoVenda.operacao.numero, quantidadeLitros: a.quantidade.toString(), versaoVendaId: a.versaoVendaId })) })) },
+      operacoesComerciais,
       balanco,
     },
     valoresIncluidos: input.incluirValores,
     valores: input.incluirValores ? { custos,
+      operacoesComerciais: operacoes.filter(o => o.status === "FECHADA" && o.fechamentos[0]?.operacao.status === "CONFIRMADA").map(o => {
+        const f = o.fechamentos[0];
+        return { comercialId: o.id, fechamentoId: f.id, versao: f.versao, operacaoId: f.operacaoId,
+          precoUnitario: f.precoUnitario.toFixed(4), ajuste: f.ajuste.toFixed(2), valorTotal: f.operacao.valorTotal.toFixed(2) };
+      }),
       documental: { demonstrativos: demonstrativos.map(d => ({ id: d.id, referencia: d.referencia, precoBase: d.precoBase.toFixed(4), valorComercial: d.valorComercial.toFixed(2),
         valorPagamentoInformado: d.valorPagamentoInformado?.toFixed(2) ?? null, componentes: d.componentes, alocacoes: d.alocacoes.map(a => ({ id: a.id, entregaId: a.entregaId, numeroOperacao: a.versaoVenda.operacao.numero, valor: a.valor.toFixed(2), quantidadeLitros: a.quantidade.toString() })) })),
         faturamento: calcularPrecoFaturadoLeite(parcelasFaturadas) },
-      comercial: comerciais.map(v => ({ id: v.id, retiradaId: v.retiradaId, versao: v.versao, operacaoId: v.operacaoId, numeroOperacao: v.operacao.numero, data: texto(v.retirada.data), quantidadeLitros: v.retirada.quantidade.toString(), produtoNome: v.retirada.produto.nome, parceiroNome: v.operacao.parceiro?.nome ?? null,
+      comercial: comerciais.filter(v => !financeirasFechamentos.has(v.operacaoId)).map(v => ({ id: v.id, retiradaId: v.retiradaId, versao: v.versao, operacaoId: v.operacaoId, numeroOperacao: v.operacao.numero, data: texto(v.retirada.data), quantidadeLitros: v.retirada.quantidade.toString(), produtoNome: v.retirada.produto.nome, parceiroNome: v.operacao.parceiro?.nome ?? null,
       valorTotal: v.operacao.itens.reduce((s, i) => s.plus(i.valorTotal), new Prisma.Decimal(0)).toFixed(2) })) } : null,
-    limitacoes: ["O bloco financeiro desta emissão usa fontes comerciais anteriores: não inclui os novos FechamentoOperacaoLeite nem referências gerenciais do fornecimento nutricional. Não representa o total comercial atual com os dois percursos; consulte Vendas para os novos fechamentos e Nutrição para as referências gerenciais", "Razão e observação manual são fontes separadas; ausência de conferência permanece desconhecida. Observação anterior informa sua data, sem presumir abertura atual ou ajuste automático", "Custo direto parcial não é lucro", "Qualidade preservada por amostra/formato/versão/unidade, sem média incompatível", "Destinos/comercial/balanço usam sítio e período, sem atribuição automática ao produtor filtrado"] };
+    limitacoes: ["Operações comerciais usam período integral por sobreposição, sem rateio diário; não somar seus valores com vendas legadas por data de retirada ou faturamento documental de outra competência. Valores de referência gerencial do fornecimento nutricional não integram a emissão; consulte Nutrição para as referências gerenciais", "Razão e observação manual são fontes separadas; ausência de conferência permanece desconhecida. Observação anterior informa sua data, sem presumir abertura atual ou ajuste automático", "Custo direto parcial não é lucro", "Qualidade preservada por amostra/formato/versão/unidade, sem média incompatível", "Destinos/comercial/balanço usam sítio e período, sem atribuição automática ao produtor filtrado"] };
 }
 export type SnapshotRelatorioLeite = Awaited<ReturnType<typeof montarSnapshotRelatorioLeiteTx>>;
-const envelopeSchema = z.object({ versao: z.literal(1), versaoCalculo: z.enum(["LEITE_GERENCIAL_V1", "LEITE_GERENCIAL_V2", VERSAO_CALCULO_RELATORIO_LEITE]), corteEm: z.string().datetime(), valoresIncluidos: z.boolean(), valores: z.object({}).passthrough().nullable(), dados: z.object({}).passthrough(), propriedade: z.object({ id: z.number(), nome: z.string() }) }).passthrough();
+const envelopeSchema = z.object({ versao: z.literal(1), versaoCalculo: z.enum(["LEITE_GERENCIAL_V1", "LEITE_GERENCIAL_V2", "LEITE_GERENCIAL_V3", "LEITE_GERENCIAL_V4", VERSAO_CALCULO_RELATORIO_LEITE]), corteEm: z.string().datetime(), valoresIncluidos: z.boolean(), valores: z.object({}).passthrough().nullable(), dados: z.object({}).passthrough(), propriedade: z.object({ id: z.number(), nome: z.string() }) }).passthrough();
 function dto(registro: { id: string; criadoEm: Date; criadoPorId: number | null; snapshot: Prisma.JsonValue }, verValores: boolean) {
   // A validação de envelope impede abrir uma versão desconhecida como se fosse a atual.
   const snapshot = envelopeSchema.parse(registro.snapshot);

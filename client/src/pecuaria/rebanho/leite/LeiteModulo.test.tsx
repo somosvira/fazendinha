@@ -27,7 +27,7 @@ describe("Consultas independentes no módulo Leite", () => {
   it("mantém seis consultas e acesso por teclado às rotinas sem apagar o recorte", async () => {
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} />);
     const nav = screen.getByRole("navigation", { name: "Produção de leite" });
-    expect(within(nav).getAllByRole("button").map(b => b.textContent)).toEqual([
+    expect([...within(nav).getAllByRole("tab"), within(nav).getByRole("button", { name: "Mais rotinas" })].map(b => b.textContent)).toEqual([
       "Ordenhas", "Produção", "Estoque", "Coletas", "Qualidade", "Vendas", "Mais rotinas",
     ]);
     fireEvent.keyDown(within(nav).getByRole("button", { name: "Mais rotinas" }), { key: "ArrowDown" });
@@ -61,7 +61,7 @@ describe("Consultas independentes no módulo Leite", () => {
 
   it("navega para qualidade e responde ao histórico sem perder filtros de produção", () => {
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} podeExportar />);
-    fireEvent.click(screen.getByRole("button", { name: "Qualidade" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Qualidade" }));
     expect(screen.getByRole("heading", { name: "Consulta de qualidade" })).toBeTruthy();
     expect(new URLSearchParams(location.search).get("producaoVisao")).toBe("mes");
     history.replaceState(null, "", "/pecuaria/leite?leiteSecao=producao&producaoVisao=mes");

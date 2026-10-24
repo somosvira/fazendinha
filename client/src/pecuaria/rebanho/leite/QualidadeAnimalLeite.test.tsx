@@ -1,0 +1,61 @@
+// @vitest-environment jsdom
+import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { consultarLeite } from "./operacoes-api";
+import { QualidadeAnimalLeite } from "./QualidadeAnimalLeite";
+vi.mock("./operacoes-api", () => ({ consultarLeite: vi.fn() }));
+afterEach(() => {
+  cleanup();
+  vi.resetAllMocks();
+});
+it("consulta só amostras do animal e preserva zero, falso e unidades do laudo", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({
+    total: 1,
+    tamanho: 20,
+    pagina: 1,
+    itens: [
+      {
+        id: "a",
+        data: "2026-10-10",
+        dataResultadoLaboratorial: "2026-10-15",
+        dataRecebimentoLaudo: "2026-10-16",
+        criadoEm: "2026-10-23T12:00:00Z",
+        formatoSnapshot: {
+          nome: "Controle",
+          campos: [
+            { codigo: "GORDURA", rotulo: "Gordura", unidade: "%" },
+            { codigo: "PRESENCA", rotulo: "Presença" },
+          ],
+        },
+        resultados: [
+          { campo: "GORDURA", valor: 0 },
+          { campo: "PRESENCA", valor: false },
+        ],
+        versao: 1,
+        status: "VALIDO",
+      },
+    ],
+  });
+  render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
+  await screen.findByText("Gordura");
+  expect(screen.getByText("0 %")).toBeTruthy();
+  expect(screen.getByText("Não")).toBeTruthy();
+  expect(screen.getByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
+  expect(screen.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
+  expect(screen.getByText(/Cadastro da amostra: 23\/10\/2026/)).toBeTruthy();
+  const [url, sitio] = vi.mocked(consultarLeite).mock.calls[0];
+  expect(url).toContain("animalId=vaca-1");
+  expect(url).toContain("sujeito=ANIMAL");
+  expect(sitio).toBe(2);
+});
+it("sem sítio não consulta nem mistura amostras coletivas", async () => {
+  render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={null} />);
+  await waitFor(() => expect(consultarLeite).not.toHaveBeenCalled());
+  expect(screen.getByText(/Selecione o sítio autorizado/)).toBeTruthy();
+});
+it("falha de consulta não é apresentada como ausência de exames", async () => {
+  vi.mocked(consultarLeite).mockRejectedValue(new Error("Falha ao consultar"));
+  render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
+  await screen.findByRole("alert");
+  expect(screen.queryByText(/Nenhuma análise/)).toBeNull();
+});

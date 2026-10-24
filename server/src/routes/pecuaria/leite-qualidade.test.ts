@@ -72,3 +72,19 @@ it("histórico por parâmetro valida período, exige sessão e resolve sítio se
   m.leitura.mockResolvedValue(null);
   expect((await app().request(path)).status).toBe(422);
 });
+
+
+it("datas opcionais passam pela validação com escopo e autoria, inclusive limpeza sem resultados", async () => {
+  const datas = { dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16" };
+  const entrada = { ...coleta, data: "2026-10-10", ...datas };
+  expect((await app({ lancar: true }).request("/amostras", post(entrada))).status).toBe(201);
+  expect(m.registrar).toHaveBeenCalledWith({ ...entrada, resultados: [] }, 7);
+  m.corrigir.mockResolvedValue({ id: uid, ...datas, dataResultadoLaboratorial: null });
+  const correcao = { chave: uid, propriedadeId: 2, versaoEsperada: 1, motivo: "Conferência das datas", dataResultadoLaboratorial: null };
+  const r = await app({ lancar: true }).request(`/amostras/${uid}/correcoes`, post(correcao));
+  expect(r.status).toBe(200);
+  expect(m.corrigir).toHaveBeenCalledWith(uid, { ...correcao, anular: false }, 7);
+  expect(await r.json()).toMatchObject({ dataResultadoLaboratorial: null, dataRecebimentoLaudo: "2026-10-16" });
+  expect((await app({ lancar: true }).request(`/amostras/${uid}/correcoes`, post({ ...correcao, dataResultadoLaboratorial: "2026-02-30" }))).status).toBe(422);
+  expect(m.corrigir).toHaveBeenCalledTimes(1);
+});

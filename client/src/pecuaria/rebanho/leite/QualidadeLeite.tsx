@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import {
@@ -18,6 +21,7 @@ import type {
   HistoricoQualidade,
 } from "./qualidade-types";
 import { HistoricoParametrosQualidade } from "./HistoricoParametrosQualidade";
+import { CamposDatasQualidade, DatasQualidade } from "./DatasQualidade";
 import { LaudosQualidade } from "./LaudosQualidade";
 const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
@@ -120,26 +124,22 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           />
         </label>
         {podeLancar && (
-          <button
-            disabled={!propriedadeResolvida}
+          <Button disabled={!propriedadeResolvida}
             onClick={() => {
               setNova(true);
               setSelecionada(null);
-            }}
-          >
+            }}>
             Registrar amostra
-          </button>
+          </Button>
         )}
         {podeLancar && (
-          <button
-            className="leite-secondary"
+          <Button variant="outline" className="leite-secondary"
             onClick={() => {
               setNovoFormato(true);
               setDerivar(null);
-            }}
-          >
+            }}>
             Criar formato de laudo
-          </button>
+          </Button>
         )}
       </div>
       <HistoricoParametrosQualidade sitio={sitio} formatos={formatos} data={data} revisao={revisao} />
@@ -187,70 +187,65 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             tabIndex={0}
             aria-label="Tabela de laudos, com rolagem horizontal"
           >
-            <table className="leite-laudos-tabela">
-              <caption>Amostras e resultados</caption>
-              <thead>
-                <tr>
-                  <th>Data e origem</th>
-                  <th>Laudo e resultados</th>
-                  <th>Situação</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer className="leite-laudos-tabela">
+              <TableCaption>Amostras e resultados</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data e origem</TableHead>
+                  <TableHead>Laudo e resultados</TableHead>
+                  <TableHead>Situação</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {amostras.itens.map((a) => (
-                  <tr key={a.id}>
-                    <td>
+                  <TableRow key={a.id}>
+                    <TableCell>
                       {a.data.slice(0, 10).split("-").reverse().join("/")}
                       <small>
                         {a.sujeito.tipo === "ANIMAL"
                           ? `${a.animal?.brinco ?? "Sem brinco"} · ${a.animal?.nome ?? "Sem nome"}`
                           : a.sujeito.origem}
                       </small>
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {a.formatoSnapshot.nome}
                       <Resultados amostra={a} />
-                    </td>
-                    <td>
+                      <DatasQualidade {...a} />
+                    </TableCell>
+                    <TableCell>
                       {a.status === "ANULADO"
                         ? "Anulada"
                         : a.realizacao === "COLETA_REGISTRADA"
                           ? "Aguardando resultado"
                           : "Resultado informado"}
-                    </td>
-                    <td>
-                      <button
-                        className="leite-secondary"
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="outline" className="leite-secondary"
                         onClick={() => {
                           setSelecionada(a);
                           setNova(false);
-                        }}
-                      >
+                        }}>
                         Abrir amostra
-                      </button>
-                    </td>
-                  </tr>
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina === 1 || carregando}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Página anterior
-            </button>
+            </Button>
             <span>Página {pagina}</span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina * 20 >= amostras.total || carregando}
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próxima página
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -264,8 +259,8 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
         />
       )}
-      <details>
-        <summary>Formatos de laudo</summary>
+      <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>}>
+
         <p>
           Campos e unidades vêm do laudo. Alterar um formato já utilizado exige
           nova versão; não altera amostras anteriores.
@@ -279,26 +274,22 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             </span>
             {podeLancar && (
               <>
-                <button
-                  className="leite-secondary"
+                <Button variant="outline" className="leite-secondary"
                   onClick={() => {
                     setDerivar(f);
                     setNovoFormato(false);
-                  }}
-                >
+                  }}>
                   Nova versão de {f.nome}
-                </button>
-                <button
-                  className="leite-secondary"
-                  onClick={() => void mudarAtivo(f)}
-                >
+                </Button>
+                <Button variant="outline" className="leite-secondary"
+                  onClick={() => void mudarAtivo(f)}>
                   {f.ativo ? "Inativar" : "Reativar"} {f.nome}
-                </button>
+                </Button>
               </>
             )}
           </div>
         ))}
-      </details>
+      </SecaoDetalhesLeite>
     </section>
   );
 }
@@ -394,14 +385,12 @@ function EditorFormato({
         />
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button disabled={!campos.length || ocupado}>Salvar formato</button>
-          <button
-            type="button"
+          <Button disabled={!campos.length || ocupado}>Salvar formato</Button>
+          <Button variant="outline" type="button"
             className="leite-secondary"
-            onClick={onCancelar}
-          >
+            onClick={onCancelar}>
             Cancelar formato
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>
@@ -424,6 +413,8 @@ export function NovaAmostra({
     [animal, setAnimal] = useState<CandidatoDestinoLeite | null>(null),
     [origem, setOrigem] = useState("");
   const [entradaId, setEntradaId] = useState("");
+  const [dataResultado, setDataResultado] = useState("");
+  const [dataRecebimento, setDataRecebimento] = useState("");
   const [responsavel, setResponsavel] = useState(""),
     [anotacao, setAnotacao] = useState("");
   const [valores, setValores] = useState<ObservacaoExame[]>([]),
@@ -452,6 +443,8 @@ export function NovaAmostra({
             ? { tipo: "ANIMAL", animalId: animal!.animalId }
             : { tipo: "COLETIVO", origem, ...(entradaId ? { entradaId } : {}) },
         resultados: informar ? valores : [],
+        ...(dataResultado ? { dataResultadoLaboratorial: dataResultado } : {}),
+        ...(dataRecebimento ? { dataRecebimentoLaudo: dataRecebimento } : {}),
         ...(responsavel.trim() ? { responsavel } : {}),
         ...(anotacao.trim() ? { anotacaoOriginal: anotacao } : {}),
       });
@@ -563,6 +556,7 @@ export function NovaAmostra({
             />
           </label>
         </div>
+        <CamposDatasQualidade resultado={dataResultado} recebimento={dataRecebimento} onResultado={setDataResultado} onRecebimento={setDataRecebimento} />
         <label className="leite-checkbox">
           <input
             type="checkbox"
@@ -585,18 +579,14 @@ export function NovaAmostra({
         )}
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button
-            disabled={ocupado || !formato || (informar && !valores.length)}
-          >
+          <Button disabled={ocupado || !formato || (informar && !valores.length)}>
             Registrar amostra
-          </button>
-          <button
-            className="leite-secondary"
+          </Button>
+          <Button variant="outline" className="leite-secondary"
             type="button"
-            onClick={onCancelar}
-          >
+            onClick={onCancelar}>
             Cancelar amostra
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>
@@ -641,13 +631,11 @@ function SeletorAnimal({
       {animal ? (
         <p>
           {animal.brinco} · {animal.nome ?? "Sem nome"}{" "}
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
-            onClick={() => onChange(null)}
-          >
+            onClick={() => onChange(null)}>
             Trocar animal
-          </button>
+          </Button>
         </p>
       ) : (
         <>
@@ -667,31 +655,25 @@ function SeletorAnimal({
               <span>
                 {a.brinco} · {a.nome ?? "Sem nome"}
               </span>
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
-                onClick={() => onChange(a)}
-              >
+                onClick={() => onChange(a)}>
                 Selecionar {a.brinco}
-              </button>
+              </Button>
             </div>
           ))}
           {lista && (
             <div className="leite-form-inline">
-              <button
-                type="button"
+              <Button type="button"
                 disabled={pagina === 1}
-                onClick={() => setPagina((p) => p - 1)}
-              >
+                onClick={() => setPagina((p) => p - 1)}>
                 Animais anteriores
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button type="button"
                 disabled={pagina * lista.porPagina >= lista.total}
-                onClick={() => setPagina((p) => p + 1)}
-              >
+                onClick={() => setPagina((p) => p + 1)}>
                 Próximos animais
-              </button>
+              </Button>
             </div>
           )}
         </>
@@ -713,12 +695,17 @@ function DetalheAmostra({
   onSalvo: () => void;
 }) {
   const [paginaHistorico, setPaginaHistorico] = useState(1);
+  const [dataResultado, setDataResultado] = useState(inicial.dataResultadoLaboratorial ?? "");
+  const [dataRecebimento, setDataRecebimento] = useState(inicial.dataRecebimentoLaudo ?? "");
   const [valores, setValores] = useState<ObservacaoExame[]>(inicial.resultados),
     [motivo, setMotivo] = useState(""),
     [anular, setAnular] = useState(false);
   const [erro, setErro] = useState(""),
     [ocupado, setOcupado] = useState(false),
     [historico, setHistorico] = useState<HistoricoQualidade | null>(null);
+  const datasAlteradas = dataResultado !== (inicial.dataResultadoLaboratorial ?? "") || dataRecebimento !== (inicial.dataRecebimentoLaudo ?? "");
+  const resultadosAlterados = JSON.stringify(valores) !== JSON.stringify(inicial.resultados);
+  const somenteDatas = datasAlteradas && !resultadosAlterados;
   const trava = useRef(false);
   useEffect(() => {
     let ativo = true;
@@ -750,7 +737,11 @@ function DetalheAmostra({
           versaoEsperada: inicial.versao,
           motivo,
           anular,
-          ...(anular ? {} : { resultados: valores }),
+          ...(anular ? {} : {
+            ...(somenteDatas ? {} : { resultados: valores }),
+            ...(dataResultado !== (inicial.dataResultadoLaboratorial ?? "") ? { dataResultadoLaboratorial: dataResultado || null } : {}),
+            ...(dataRecebimento !== (inicial.dataRecebimentoLaudo ?? "") ? { dataRecebimentoLaudo: dataRecebimento || null } : {}),
+          }),
         },
       );
       onSalvo();
@@ -769,6 +760,7 @@ function DetalheAmostra({
         {inicial.formatoSnapshot.versao ?? 1}. O formato utilizado na coleta
         permanece preservado.
       </p>
+      <DatasQualidade {...inicial} />
       {inicial.anotacaoOriginal && <p>{inicial.anotacaoOriginal}</p>}
       {podeLancar && inicial.status !== "ANULADO" ? (
         <form
@@ -787,13 +779,14 @@ function DetalheAmostra({
               />
               Anular a amostra mantendo o histórico
             </label>
-            {!anular && (
+            {!anular && <>
+              <CamposDatasQualidade resultado={dataResultado} recebimento={dataRecebimento} onResultado={setDataResultado} onRecebimento={setDataRecebimento} />
               <CamposResultadoExame
                 campos={inicial.formatoSnapshot.campos}
                 valores={valores}
                 onChange={setValores}
               />
-            )}
+            </>}
             <label>
               Motivo da atualização
               <textarea
@@ -804,9 +797,9 @@ function DetalheAmostra({
                 onChange={(e) => setMotivo(e.target.value)}
               />
             </label>
-            <button disabled={ocupado || (!anular && !valores.length)}>
+            <Button disabled={ocupado || (!anular && !somenteDatas && !valores.length)}>
               Confirmar atualização
-            </button>
+            </Button>
           </fieldset>
         </form>
       ) : (
@@ -818,8 +811,8 @@ function DetalheAmostra({
         podeLancar={podeLancar}
       />
       {erro && <p role="alert">{erro}</p>}
-      <details>
-        <summary>Histórico da amostra</summary>
+      <SecaoDetalhesLeite  titulo={<>Histórico da amostra</>}>
+
         {historico ? (
           <ol>
             {historico.itens.map((h) => (
@@ -831,7 +824,9 @@ function DetalheAmostra({
                   · {h.autor?.nome ?? "Autoria não informada"} ·{" "}
                   {h.acao === "ANULACAO"
                     ? "Anulação"
-                    : h.acao === "RESULTADO_CORRIGIDO"
+                    : h.acao === "DATAS_CORRIGIDAS"
+                      ? "Datas corrigidas"
+                      : h.acao === "RESULTADO_CORRIGIDO"
                       ? "Resultado corrigido"
                       : h.acao === "REGISTRO"
                         ? "Registro"
@@ -856,27 +851,23 @@ function DetalheAmostra({
         )}
         {historico && (
           <div className="leite-form-inline">
-            <button
-              type="button"
+            <Button type="button"
               disabled={paginaHistorico === 1}
-              onClick={() => setPaginaHistorico((p) => p - 1)}
-            >
+              onClick={() => setPaginaHistorico((p) => p - 1)}>
               Histórico anterior
-            </button>
+            </Button>
             <span>Página {paginaHistorico}</span>
-            <button
-              type="button"
+            <Button type="button"
               disabled={paginaHistorico * historico.tamanho >= historico.total}
-              onClick={() => setPaginaHistorico((p) => p + 1)}
-            >
+              onClick={() => setPaginaHistorico((p) => p + 1)}>
               Próximo histórico
-            </button>
+            </Button>
           </div>
         )}
-      </details>
-      <button type="button" className="leite-secondary" onClick={onFechar}>
+      </SecaoDetalhesLeite>
+      <Button variant="outline" type="button" className="leite-secondary" onClick={onFechar}>
         Fechar amostra
-      </button>
+      </Button>
     </section>
   );
 }
@@ -898,6 +889,10 @@ function ValoresHistoricos({
   return (
     <div>
       <strong>{rotulo}</strong>
+      <DatasQualidade
+        dataResultadoLaboratorial={typeof registro.dataResultadoLaboratorial === "string" ? registro.dataResultadoLaboratorial.slice(0, 10) : null}
+        dataRecebimentoLaudo={typeof registro.dataRecebimentoLaudo === "string" ? registro.dataRecebimentoLaudo.slice(0, 10) : null}
+      />
       {typeof registro.status === "string" && (
         <p>{registro.status === "ANULADO" ? "Anulada" : "Válida"}</p>
       )}
@@ -972,8 +967,8 @@ function OrigemQualidade({
     };
   }, [sitio, data, busca, pagina]);
   return (
-    <details>
-      <summary>Vincular à origem de estoque (opcional)</summary>
+    <SecaoDetalhesLeite  titulo={<>Vincular à origem de estoque (opcional)</>}>
+
       <p>
         Escolha apenas quando o laudo comprovar o vínculo. Origens já consumidas
         também permanecem disponíveis para consulta.
@@ -982,16 +977,14 @@ function OrigemQualidade({
         <p>
           {selecionada.produtoNome} · {selecionada.data.slice(0, 10)} ·{" "}
           {selecionada.nomeOrdenha}{" "}
-          <button
-            className="leite-secondary"
+          <Button variant="outline" className="leite-secondary"
             type="button"
             onClick={() => {
               onChange("");
               setSelecionada(null);
-            }}
-          >
+            }}>
             Remover vínculo de origem
-          </button>
+          </Button>
         </p>
       ) : (
         <>
@@ -1011,16 +1004,14 @@ function OrigemQualidade({
                 {o.produtoNome} · {o.data.slice(0, 10)} · {o.nomeOrdenha} ·{" "}
                 {o.quantidadeLitros} L
               </span>
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
                 onClick={() => {
                   onChange(o.entradaId);
                   setSelecionada(o);
-                }}
-              >
+                }}>
                 Vincular origem {o.nomeOrdenha} de {o.data.slice(0, 10)}
-              </button>
+              </Button>
             </div>
           ))}
           {dados && !dados.itens.length && (
@@ -1028,25 +1019,21 @@ function OrigemQualidade({
           )}
           {dados && (
             <div className="leite-form-inline">
-              <button
-                type="button"
+              <Button type="button"
                 disabled={pagina === 1}
-                onClick={() => setPagina((p) => p - 1)}
-              >
+                onClick={() => setPagina((p) => p - 1)}>
                 Origens anteriores
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button type="button"
                 disabled={pagina * dados.tamanho >= dados.total}
-                onClick={() => setPagina((p) => p + 1)}
-              >
+                onClick={() => setPagina((p) => p + 1)}>
                 Próximas origens
-              </button>
+              </Button>
             </div>
           )}
         </>
       )}
       {erro && <p role="alert">{erro}</p>}
-    </details>
+    </SecaoDetalhesLeite>
   );
 }

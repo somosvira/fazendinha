@@ -1,0 +1,371 @@
+/* Extensão da interface de ordenhas: mesmos tokens e componentes da Cooperativa. */
+.leite-ajuste-form,
+.leite-ajuste-secao {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.leite-ajuste-form {
+  color: var(--foreground);
+  font-size: 14px;
+}
+.leite-ajuste-form fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.leite-ajuste-form .leite-ajuste-secao + .leite-ajuste-secao {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.leite-ajuste-form :is(h3, legend),
+.leite-geral h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+.leite-ajuste-form legend {
+  float: left;
+  width: 100%;
+}
+.leite-ajuste-form label,
+.leite-geral label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  min-width: 0;
+}
+.leite-ajuste-form label > .mt-1\.5 {
+  margin-top: 0;
+}
+.leite-ajuste-form p,
+.leite-geral p {
+  margin: 0;
+  line-height: 1.5;
+}
+.leite-ajuste-ajuda,
+.leite-ajuste-form p,
+.leite-geral p {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 400;
+}
+.leite-ajuste-grade {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.leite-ajuste-form label:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+}
+.leite-ajuste-form input[type="checkbox"],
+.leite-geral input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+}
+.leite-ajuste-divisao {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+.leite-ajuste-lista {
+  display: grid;
+  gap: 16px;
+}
+.leite-ajuste-ordenha {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 120px;
+  gap: 10px;
+  align-items: end;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.leite-ajuste-ordenha > span {
+  align-self: center;
+  color: var(--muted-foreground);
+}
+.leite-ajuste-ordem {
+  display: flex;
+  gap: 8px;
+  grid-column: 2;
+}
+.leite-ajuste-ordenha > button {
+  justify-self: end;
+}
+.leite-ajuste-ordenha button {
+  min-width: 40px;
+  min-height: 40px;
+}
+.leite-ajuste-form textarea {
+  resize: vertical;
+  font-variant-numeric: tabular-nums;
+}
+.leite-ajuste-form .leite-erro,
+.leite-geral .leite-erro {
+  color: var(--destructive);
+}
+.leite-geral .leite-header h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+  font-weight: 650;
+}
+.leite-geral-acoes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.leite-geral-acoes > div {
+  width: 170px;
+}
+.leite-geral-acoes input {
+  padding-right: 44px !important;
+}
+.leite-tanques-area {
+  min-width: 0;
+}
+.leite-tanques-titulo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+}
+.leite-tanques-titulo p {
+  margin-top: 4px;
+}
+.leite-tanque-afericao {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  background: var(--card);
+}
+.leite-tanque-cabecalho {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.leite-tanque-cabecalho > svg {
+  color: var(--primary);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.leite-tanque-cabecalho p {
+  margin-top: 4px;
+}
+.leite-tanque-afericao fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+.leite-tanque-afericao fieldset > button {
+  justify-self: end;
+}
+.leite-tanque-afericao
+  :is(input:not([type="checkbox"]), [data-slot="select-trigger"]) {
+  width: 100%;
+  min-height: 42px;
+  font-size: 14px;
+}
+.leite-tanque-afericao > [role="status"] {
+  background: var(--fin-filter-bg);
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.leite-tanque-afericao > [role="status"] button {
+  margin: 8px 0 0;
+}
+.leite-tanque-confirmacao {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+.leite-tanque-confirmacao button {
+  justify-self: start;
+}
+.leite-geral .leite-resumos {
+  display: grid;
+  gap: 16px;
+}
+.leite-geral .leite-resumo {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.leite-geral .leite-resumo h3 {
+  margin-bottom: 16px;
+}
+.leite-geral-parciais {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  font-size: 14px;
+}
+.leite-geral-parciais > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.leite-geral-parciais dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.leite-geral-total {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+  font-size: 14px;
+}
+.leite-geral-total strong {
+  font-size: 28px;
+  font-weight: 650;
+  color: var(--primary);
+}
+.leite-tanques-config > div {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+.leite-tanques-config button {
+  margin-top: 10px;
+}
+.leite-escolha-tanque{display:grid;gap:10px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.leite-escolha-tanque [data-slot="select-trigger"]{width:100%;min-height:44px}
+.leite-origens-painel{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.leite-origens-painel h4{margin:0 0 6px;font-size:14px;font-weight:650}
+.leite-origens-painel p+p{margin-top:6px}
+.leite-origens-painel button{flex-shrink:0}
+.leite-origens-modal,.leite-tanques-catalogo{display:grid;gap:16px;color:var(--foreground);font-size:14px}
+.leite-origens-modal>label{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.leite-origens-modal :is(input,[data-slot="checkbox"]){width:18px;height:18px;min-height:18px;flex-shrink:0;accent-color:var(--primary)}
+.leite-origens-modal strong,.leite-origens-modal small{display:block}
+.leite-origens-modal small,.leite-origens-modal p,.leite-tanques-catalogo p{color:var(--muted-foreground);line-height:1.5}
+.leite-origens-modal small{margin-top:4px}
+.leite-tanques-catalogo section+section{padding-top:16px;border-top:1px solid var(--border)}
+.leite-tanques-catalogo h3{margin:0 0 8px;font-size:16px;font-weight:650}
+.leite-tanques-catalogo button{margin-top:12px}
+@media(max-width:600px){.leite-origens-painel{display:grid;gap:14px}.leite-origens-painel button{width:100%;min-height:44px}}
+.leite-modos { margin: 0 0 24px; }
+@media (max-width: 900px) {
+  .leite-geral .leite-corpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .leite-geral .leite-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+}
+@media (max-width: 600px) {
+  .leite-ajuste-grade {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .leite-tanques-titulo {
+    flex-wrap: wrap;
+  }
+  .leite-tanque-afericao {
+    padding: 16px;
+  }
+  .leite-geral .leite-sessoes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .leite-ajuste-ordenha {
+    grid-template-columns: 16px minmax(0, 1fr) 104px;
+    gap: 8px;
+  }
+  .leite-ajuste-form
+    :is(input:not([type="checkbox"]), [data-slot="select-trigger"], textarea),
+  .leite-geral :is(input:not([type="checkbox"]), [data-slot="select-trigger"]) {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .leite-ajuste-form button,
+  .leite-geral button {
+    min-height: 44px;
+  }
+  .leite-tanque-confirmacao button {
+    white-space: normal;
+    height: auto;
+    text-align: center;
+  }
+}
+.leite-qualidade-animal {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--foreground);
+}
+.leite-qualidade-animal h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 650;
+}
+.leite-qualidade-animal p {
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 8px 0 16px;
+}
+.leite-qualidade-animal .leite-form-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.leite-qualidade-animal label {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.leite-qualidade-amostra {
+  border-top: 1px solid var(--border);
+  padding: 20px 0;
+}
+.leite-qualidade-amostra h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+}
+.leite-qualidade-amostra dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  margin: 16px 0;
+}
+.leite-qualidade-amostra dt {
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+.leite-qualidade-amostra dd {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 600px) {
+  .leite-qualidade-animal {
+    padding: 16px;
+  }
+  .leite-qualidade-animal input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}

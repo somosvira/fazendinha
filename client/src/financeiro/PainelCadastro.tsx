@@ -10,7 +10,7 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   titulo: string;
   onFechar: () => void;
   children: ReactNode;
-  rodape: ReactNode;
+  rodape: ReactNode | ((fechar: () => void) => ReactNode);
   /** classe Tailwind de largura máxima do painel — mais largo para conteúdo com tabela (ex.: seletor de animais). */
   largura?: string;
   compacto?: boolean;
@@ -22,16 +22,16 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   const [confirmarSaida, setConfirmarSaida] = useState(false);
   const fechar = () => { if (bloqueado) return; if (alterado.current || alteracoesExternas) setConfirmarSaida(true); else onFechar(); };
   const corpo = <div className="min-h-0 flex-1 overflow-y-auto p-4" onChangeCapture={() => { alterado.current = true; }}>{children}</div>;
-  const confirmar = <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" onConfirm={onFechar} onCancel={() => setConfirmarSaida(false)} />;
+  const confirmar = <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" processando={bloqueado} onConfirm={() => { if (!bloqueado) onFechar(); }} onCancel={() => setConfirmarSaida(false)} />;
   return <>{compacto ? <Dialog open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
     <DialogContent className="financeiro-colorido z-[1100] flex max-h-[90dvh] max-w-lg flex-col gap-0 overflow-hidden p-0" overlayClassName="z-[1090]" onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
       <DialogHeader className="fin-cabecalho border-b border-border p-4 pr-12"><div className="flex items-center gap-3">{Icon && <span className="fin-section-icon"><Icon aria-hidden="true" /></span>}<DialogTitle>{titulo}</DialogTitle></div><DialogDescription className="sr-only">{titulo}</DialogDescription></DialogHeader>
-      {corpo}<DialogFooter className="border-t border-border bg-card p-4">{rodape}</DialogFooter>
+      {corpo}<DialogFooter className="border-t border-border bg-card p-4">{typeof rodape === "function" ? rodape(fechar) : rodape}</DialogFooter>
     </DialogContent>
   </Dialog> : <Sheet open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
     <SheetContent side="right" overlayClassName="z-[1090]" className={`financeiro-colorido z-[1100] flex w-full flex-col gap-0 overflow-hidden p-0 ${largura}`}>
       <SheetHeader className="fin-cabecalho shrink-0 border-b border-border p-4 pr-12 text-left"><div className="flex items-center gap-3">{Icon && <span className="fin-section-icon"><Icon aria-hidden="true" /></span>}<SheetTitle className="font-serif text-2xl font-normal">{titulo}</SheetTitle></div><SheetDescription className="sr-only">{titulo}</SheetDescription></SheetHeader>
-      {corpo}<SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border bg-card p-4">{rodape}</SheetFooter>
+      {corpo}<SheetFooter className="shrink-0 flex-row justify-end gap-2 border-t border-border bg-card p-4">{typeof rodape === "function" ? rodape(fechar) : rodape}</SheetFooter>
     </SheetContent>
   </Sheet>}{confirmar}</>;
 

@@ -11,17 +11,24 @@ export const sujeitoQualidadeSchema = z.discriminatedUnion("tipo", [
   z.object({ tipo: z.literal("ANIMAL"), animalId: z.string().uuid() }).strict(),
   z.object({ tipo: z.literal("COLETIVO"), origem: texto(300), entradaId: z.string().uuid().optional() }).strict(),
 ]);
+const datasQualidade = {
+  dataResultadoLaboratorial: dataLeiteSchema.nullish(),
+  dataRecebimentoLaudo: dataLeiteSchema.nullish(),
+};
 export const registrarQualidadeSchema = z.object({
+  ...datasQualidade,
   chave, propriedadeId: propriedadeLeiteSchema, data: dataLeiteSchema,
   tipoExameId: z.string().uuid(), formatoExameHash: z.string().regex(/^[a-f0-9]{64}$/),
   sujeito: sujeitoQualidadeSchema, resultados: observacoesExameSchema.default([]),
   responsavel: texto(120).nullish(), anotacaoOriginal: texto(4000).nullish(),
 }).strict();
 export const corrigirQualidadeSchema = z.object({
+  ...datasQualidade,
   chave, propriedadeId: propriedadeLeiteSchema, versaoEsperada: z.number().int().positive(),
   motivo: texto(1000), resultados: observacoesExameSchema.optional(), anular: z.boolean().default(false),
 }).strict().superRefine((v, ctx) => {
-  if (!v.anular && !v.resultados?.length) ctx.addIssue({ code: "custom", path: ["resultados"], message: "Informe os resultados corrigidos" });
+  if (!v.anular && (v.resultados !== undefined ? !v.resultados.length : v.dataResultadoLaboratorial === undefined && v.dataRecebimentoLaudo === undefined))
+    ctx.addIssue({ code: "custom", path: ["resultados"], message: "Informe os resultados ou as datas corrigidas" });
   if (v.anular && v.resultados?.length) ctx.addIssue({ code: "custom", path: ["resultados"], message: "Anular não substitui os resultados do laudo" });
 });
 export const consultarQualidadeSchema = z.object({

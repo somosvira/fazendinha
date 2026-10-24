@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -196,13 +198,11 @@ export function NovaEntregaComercialLeite({
             {erroCandidatos && (
               <p role="alert">
                 {erroCandidatos}
-                <button
-                  type="button"
+                <Button variant="outline" type="button"
                   className="leite-secondary"
-                  onClick={() => setRevisao((r) => r + 1)}
-                >
+                  onClick={() => setRevisao((r) => r + 1)}>
                   Consultar vendas novamente
-                </button>
+                </Button>
               </p>
             )}
             <label>
@@ -229,8 +229,8 @@ export function NovaEntregaComercialLeite({
                 ))}
               </select>
             </label>
-            <details>
-              <summary>Impedimentos para vínculo</summary>
+            <SecaoDetalhesLeite  titulo={<>Impedimentos para vínculo</>}>
+
               {candidatos?.itens
                 .filter((v) => v.impedimento)
                 .map((v) => (
@@ -244,26 +244,22 @@ export function NovaEntregaComercialLeite({
                   registre uma nova venda, se autorizado.
                 </p>
               )}
-            </details>
+            </SecaoDetalhesLeite>
             {candidatos && (
               <div className="leite-form-inline">
-                <button
-                  className="leite-secondary"
+                <Button variant="outline" className="leite-secondary"
                   type="button"
                   disabled={pagina <= 1}
-                  onClick={() => setPagina((p) => p - 1)}
-                >
+                  onClick={() => setPagina((p) => p - 1)}>
                   Vendas anteriores
-                </button>
+                </Button>
                 <span>Página {pagina}</span>
-                <button
-                  className="leite-secondary"
+                <Button variant="outline" className="leite-secondary"
                   type="button"
                   disabled={pagina * candidatos.porPagina >= candidatos.total}
-                  onClick={() => setPagina((p) => p + 1)}
-                >
+                  onClick={() => setPagina((p) => p + 1)}>
                   Próximas vendas
-                </button>
+                </Button>
               </div>
             )}
             {selecionada && (
@@ -479,22 +475,18 @@ export function NovaEntregaComercialLeite({
         />
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
-            onClick={aoCancelar}
-          >
+            onClick={aoCancelar}>
             Cancelar entrega
-          </button>
-          <button
-            disabled={ocupado || (tipoEfetivo === "NOVA_VENDA" && !config)}
-          >
+          </Button>
+          <Button disabled={ocupado || (tipoEfetivo === "NOVA_VENDA" && !config)}>
             {ocupado
               ? "Registrando…"
               : tipoEfetivo === "NOVA_VENDA"
                 ? "Confirmar venda e entrega"
                 : "Confirmar vínculo da entrega"}
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>

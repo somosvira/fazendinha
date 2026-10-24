@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
   Dialog,
@@ -78,12 +79,12 @@ export function IncluirAnimal({
         ) : erro ? (
           <p role="alert" className="leite-erro">
             {erro}
-            <button
+            <Button
               className="leite-button"
               onClick={() => setRevisao((r) => r + 1)}
             >
               Tentar novamente
-            </button>
+            </Button>
           </p>
         ) : (
           <>
@@ -97,13 +98,13 @@ export function IncluirAnimal({
                       {!a.lactacaoId ? " · Lactação a conciliar" : ""}
                     </small>
                   </span>
-                  <button
+                  <Button
                     className="leite-button"
                     disabled={existentes.includes(a.animalId)}
                     onClick={() => aoIncluir(a)}
                   >
                     {existentes.includes(a.animalId) ? "Incluído" : "Incluir"}
-                  </button>
+                  </Button>
                 </div>
               ))}
               {!resultado?.itens.length && (
@@ -117,15 +118,15 @@ export function IncluirAnimal({
               ))}
             </div>
             <div className="leite-config-acoes">
-              <button
+              <Button
                 className="leite-button"
                 disabled={pagina <= 1}
                 onClick={() => setPagina((p) => p - 1)}
               >
                 Anterior
-              </button>
+              </Button>
               <span className="leite-muted">Página {pagina}</span>
-              <button
+              <Button
                 className="leite-button"
                 disabled={
                   !resultado || pagina * resultado.porPagina >= resultado.total
@@ -133,7 +134,7 @@ export function IncluirAnimal({
                 onClick={() => setPagina((p) => p + 1)}
               >
                 Próxima
-              </button>
+              </Button>
             </div>
           </>
         )}

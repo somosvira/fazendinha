@@ -65,6 +65,7 @@ const lista = (v: unknown): Record<string, unknown>[] => Array.isArray(v) ? v.ma
 /** CSV de leitura humana, somente do snapshot autorizado, sem consultas vivas. */
 export function csvSnapshotLeite(emissao: unknown): string {
   const e = objeto(emissao), s = objeto(e.snapshot ?? emissao), filtros = objeto(s.filtros), site = objeto(s.propriedade), dados = objeto(s.dados), cobertura = objeto(s.cobertura);
+  const valores = objeto(s.valores);
   const linhas: unknown[][] = [["Relatório de leite"], ["Referência da emissão", e.id], ["Sítio", site.nome], ["Período", filtros.inicio, filtros.fim], ["Corte da emissão", s.corteEm], ["Método", s.versaoCalculo],
     ["Fonte", "Medições por animal e ordenha; fatos confirmados de estoque; amostras com formato próprio"], ["Conferência física de campo", "Observações manuais explícitas quando disponíveis; razão e observado permanecem separados"],
     ["Produção medida ainda sem confirmação no estoque (L)", cobertura.producaoNaoConfirmadaLitros]];
@@ -75,13 +76,13 @@ export function csvSnapshotLeite(emissao: unknown): string {
   for (const d of lista(producao.ritmo)) linhas.push([d.data, d.litros, d.estado, d.esperadas, d.resolvidas, d.pendentes]);
   linhas.push([], ["Produção por animal"], ["Brinco", "Nome", "Litros (L)", "Medições", "Pendências"]);
   for (const a of lista(producao.animais)) { const p = objeto(a.producao); linhas.push([a.brinco, a.nome, p.litros, p.medidas, p.pendentes]); }
-  linhas.push([], ["Qualidade por amostra — sem médias entre formatos ou unidades"], ["Data", "Sujeito", "Formato", "Versão", "Campo", "Resultado", "Unidade", "Referência da amostra"]);
+  linhas.push([], ["Qualidade por amostra — sem médias entre formatos ou unidades"], ["Data da amostra", "Sujeito", "Formato", "Versão", "Campo", "Resultado", "Unidade", "Referência da amostra", "Resultado laboratorial", "Recebimento do laudo", "Cadastro da amostra"]);
   for (const a of lista(dados.qualidade)) {
     const f = objeto(a.formatoSnapshot), sujeito = objeto(a.sujeito), animal = objeto(a.animal);
     const nome = sujeito.tipo === "ANIMAL" ? `Animal ${animal.brinco ?? ""} ${animal.nome ?? ""}`.trim() : `Coletivo: ${sujeito.origem ?? "Origem registrada"}`;
     const resultados = lista(a.resultados);
-    if (!resultados.length) linhas.push([a.data, nome, f.nome, f.versao, "Coleta sem resultado", "", "", a.id]);
-    for (const r of resultados) { const campo = lista(f.campos).find(c => c.codigo === r.campo); linhas.push([a.data, nome, f.nome, f.versao, campo?.rotulo ?? r.campo, r.valor, r.unidade, a.id]); }
+    if (!resultados.length) linhas.push([a.data, nome, f.nome, f.versao, "Coleta sem resultado", "", "", a.id, a.dataResultadoLaboratorial, a.dataRecebimentoLaudo, a.criadoEm]);
+    for (const r of resultados) { const campo = lista(f.campos).find(c => c.codigo === r.campo); linhas.push([a.data, nome, f.nome, f.versao, campo?.rotulo ?? r.campo, r.valor, r.unidade, a.id, a.dataResultadoLaboratorial, a.dataRecebimentoLaudo, a.criadoEm]); }
   }
   linhas.push([], ["Fornecimento interno confirmado"], ["Data", "Natureza", "Brinco", "Nome", "Litros servidos (L)", "Referência", "Base da quantidade"]);
   for (const d of lista(dados.destinos)) for (const p of lista(d.parcelas)) { const a = objeto(p.animal); linhas.push([d.data, d.natureza, a.brinco, a.nome, p.quantidadeLitros, d.id, p.baseQuantidade ?? "Conforme destino"]); }
@@ -91,12 +92,26 @@ export function csvSnapshotLeite(emissao: unknown): string {
   for (const b of lista(dados.balanco)) linhas.push([b.produtoNome, b.abertura, objeto(b.aberturaObservada).data, objeto(b.aberturaObservada).litrosObservados, b.producaoConfirmada, b.vendas, b.interno, b.descarte, b.outrosMovimentos, b.encerramentoRazao, objeto(b.medicaoCampo).litrosObservados, b.divergenciaLitros, b.conciliacaoCampo, Array.isArray(b.pendencias) ? b.pendencias.join(", ") : ""]);
   linhas.push([], ["Retiradas comerciais e inversos"], ["Data", "Venda nº (quando existir)", "Produto", "Tipo", "Litros (L)", "Referência", "Situação comercial"]);
   for (const m of lista(dados.comercial)) linhas.push([m.data, m.numeroOperacao, m.produtoNome, m.tipo, m.quantidadeLitros, m.movimentoId, m.naturezaComercial === "RETIRADA_COM_PRECO_NAO_INFERIDO" ? "Retirada física; preço não inferido" : "Venda registrada"]);
+  // Só novas emissões contêm esta seção; versões anteriores continuam sem reconstrução.
+  if (Array.isArray(dados.operacoesComerciais)) {
+    const comValores = s.valores !== null && Array.isArray(valores.operacoesComerciais);
+    linhas.push([], ["Operações comerciais por período integral"], ["Comprador", "Referência", "Início integral", "Fim integral", "Abrangência", "Situação", "Venda nº", "Versão do fechamento", "Data financeira", "Estado financeiro", "Volume reconhecido integral (L)",
+      ...(comValores ? ["Preço negociado (BRL/L)", "Ajuste (BRL)", "Valor integral da venda (BRL)"] : [])]);
+    for (const o of lista(dados.operacoesComerciais)) {
+      const f = objeto(o.fechamento), v = lista(valores.operacoesComerciais).find(v => v.comercialId === o.id && v.fechamentoId === f.id);
+      linhas.push([o.parceiroNome, o.referencia, o.inicio, o.fim, o.parcialForaFiltro ? "Abrange datas fora do filtro" : "Integral dentro do filtro",
+        o.situacao === "PRECO_PENDENTE" ? "Preço pendente" : o.situacao === "FECHADA" ? "Fechada" : "Inativa", f.numeroOperacao, f.versao, f.data, f.statusFinanceiro, f.volumeReconhecidoLitros,
+        ...(comValores ? [v?.precoUnitario, v?.ajuste, v?.valorTotal] : [])]);
+    }
+    linhas.push(["Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento."]);
+    linhas.push([], ["Amostras vinculadas ao fechamento — datas preservadas no acordo"], ["Referência da operação", "Versão do fechamento", "Referência da amostra", "Versão da amostra", "Data da amostra", "Resultado laboratorial", "Recebimento do laudo", "Cadastro da amostra"]);
+    for (const o of lista(dados.operacoesComerciais)) { const f = objeto(o.fechamento); for (const a of lista(f.amostras)) linhas.push([o.referencia, f.versao, a.amostraId, a.versaoAmostra, a.data, a.dataResultadoLaboratorial, a.dataRecebimentoLaudo, a.criadoEm]); }
+  }
   const documental = objeto(dados.comercialDocumental);
   linhas.push([], ["Entregas e aceite informado"], ["Data", "Venda nº", "Comprador", "Produto", "Referência", "Expedido (L)", "Aceito (L)", "Conferência", "Faturado no recorte (L)"]);
   for (const d of lista(documental.entregas)) linhas.push([d.data, d.numeroOperacao, d.parceiroNome, d.produtoNome, d.referencia, d.expedidoLitros, d.volumeAceito, d.situacao, d.quantidadeFaturadaLitros]);
   linhas.push([], ["Parcelas dos demonstrativos válidos — entregas do período"], ["Referência documental", "Período inicial", "Período final", "Data da entrega", "Venda nº", "Volume da parcela (L)"]);
   for (const d of lista(documental.demonstrativos)) for (const a of lista(d.alocacoes)) linhas.push([d.referencia, d.inicio, d.fim, a.dataEntrega, a.numeroOperacao, a.quantidadeLitros]);
-  const valores = objeto(s.valores);
   if (s.valores !== null && Object.keys(valores).length) {
     const custos = objeto(valores.custos), consolidado = objeto(custos.consolidado), total = objeto(consolidado.custos);
     linhas.push([], ["Custos diretos registrados — não é lucro"], ["Total conhecido (BRL)", "Custo por litro (BRL/L)", "Situação", "Componentes pendentes"], [total.totalConhecido, consolidado.custoPorLitro, consolidado.situacao, total.componentesPendentes]);

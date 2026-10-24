@@ -1,8 +1,12 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva, comPropriedade } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { hojeOperacional, formatarLitros } from "./modelo";
 import { RitmoLeite, type DiaRitmoLeite } from "./RitmoLeite";
+import { DatasQualidade } from "./DatasQualidade";
 import type { AmostraQualidade } from "./qualidade-types";
 interface ListaEmissoes {
   propriedadeId: number;
@@ -81,6 +85,31 @@ interface ValoresDocumentais {
     componentes: { natureza: string; valor: number; referencia: string }[];
   }[];
 }
+interface OperacaoPeriodoPreservada {
+  id: string;
+  parceiroNome: string;
+  referencia: string;
+  inicio: string;
+  fim: string;
+  parcialForaFiltro: boolean;
+  situacao: string;
+  fechamento: null | {
+    id: string;
+    versao: number;
+    numeroOperacao: number;
+    data: string;
+    statusFinanceiro: string;
+    volumeReconhecidoLitros: string;
+    amostras: { amostraId: string; versaoAmostra: number; data?: string | null; dataResultadoLaboratorial?: string | null; dataRecebimentoLaudo?: string | null; criadoEm?: string }[];
+  };
+}
+interface ValorOperacaoPeriodo {
+  comercialId: string;
+  fechamentoId: string;
+  precoUnitario: string;
+  ajuste: string;
+  valorTotal: string;
+}
 interface Emissao {
   id: string;
   criadoEm: string;
@@ -126,6 +155,7 @@ interface Emissao {
       balanco: Balanco[];
       comercial?: { movimentoId: string; data: string; produtoNome: string; quantidadeLitros: string; tipo: string; numeroOperacao: number | null; naturezaComercial?: string }[];
       comercialDocumental?: ComercialDocumental;
+      operacoesComerciais?: OperacaoPeriodoPreservada[];
     };
     valores: null | {
       custos: {
@@ -136,6 +166,7 @@ interface Emissao {
       };
       comercial: { operacaoId: string; valorTotal: string }[];
       documental?: ValoresDocumentais;
+      operacoesComerciais?: ValorOperacaoPeriodo[];
     };
     limitacoes: string[];
   };
@@ -309,9 +340,9 @@ export function RelatoriosLeite({
               Incluir valores financeiros
             </label>
           )}
-          <button disabled={ocupado || !lista}>
+          <Button disabled={ocupado || !lista}>
             Emitir relatório preservado
-          </button>
+          </Button>
         </form>
       ) : (
         <p>
@@ -321,90 +352,82 @@ export function RelatoriosLeite({
       )}
       {erro && <p role="alert">{erro}</p>}
       {lista && (
-        <details open>
-          <summary>Emissões disponíveis</summary>
+        <SecaoDetalhesLeite inicialmenteAberto titulo={<>Emissões disponíveis</>}>
+
           {lista.itens.length ? (
             <div className="leite-tabela-scroll">
-              <table>
-                <caption>Relatórios emitidos neste sítio</caption>
-                <thead>
-                  <tr>
-                    <th>Período</th>
-                    <th>Corte da consulta</th>
-                    <th>Conteúdo</th>
-                    <th>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table semContainer>
+                <TableCaption>Relatórios emitidos neste sítio</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Período</TableHead>
+                    <TableHead>Corte da consulta</TableHead>
+                    <TableHead>Conteúdo</TableHead>
+                    <TableHead>Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {lista.itens.map((i) => (
-                    <tr key={i.id}>
-                      <td>
+                    <TableRow key={i.id}>
+                      <TableCell>
                         {dataPt(i.inicio)} a {dataPt(i.fim)}
-                      </td>
-                      <td>{new Date(i.corteEm).toLocaleString("pt-BR")}</td>
-                      <td>
+                      </TableCell>
+                      <TableCell>{new Date(i.corteEm).toLocaleString("pt-BR")}</TableCell>
+                      <TableCell>
                         {i.valoresIncluidos
                           ? "Operacional e financeiro"
                           : "Operacional"}
-                      </td>
-                      <td>
-                        <button
-                          className="leite-secondary"
-                          onClick={() => void abrir(i.id)}
-                        >
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="outline" className="leite-secondary"
+                          onClick={() => void abrir(i.id)}>
                           Abrir relatório de {dataPt(i.inicio)}
-                        </button>
-                      </td>
-                    </tr>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <p>Nenhum relatório emitido neste sítio.</p>
           )}
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina === 1}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Emissões anteriores
-            </button>
+            </Button>
             <span>Página {pagina}</span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina * lista.tamanho >= lista.total}
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próximas emissões
-            </button>
-            <button
-              className="leite-secondary"
-              onClick={() => setRevisao((r) => r + 1)}
-            >
+            </Button>
+            <Button variant="outline" className="leite-secondary"
+              onClick={() => setRevisao((r) => r + 1)}>
               Atualizar lista de emissões
-            </button>
+            </Button>
           </div>
-        </details>
+        </SecaoDetalhesLeite>
       )}
       {emissao && (
         <>
           <div className="leite-form-inline">
             {podeExportar && (
-              <button disabled={ocupado} onClick={() => void baixar()}>
+              <Button disabled={ocupado} onClick={() => void baixar()}>
                 Exportar esta emissão em CSV
-              </button>
+              </Button>
             )}
           </div>
-          <ConteudoEmissao key={emissao.id} emissao={emissao} />
+          <ConteudoEmissao key={emissao.id} emissao={emissao} podeFinanceiro={podeFinanceiro} />
         </>
       )}
     </section>
   );
 }
-function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
-  const s = emissao.snapshot;
+function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFinanceiro: boolean }) {
+  const s = { ...emissao.snapshot, valores: podeFinanceiro ? emissao.snapshot.valores : null };
   const [paginaAnimal, setPaginaAnimal] = useState(1),
     [paginaQualidade, setPaginaQualidade] = useState(1),
     [paginaSaida, setPaginaSaida] = useState(1);
@@ -434,29 +457,29 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
       </dl>
       <RitmoLeite dias={s.dados.producao.ritmo} />
       <div className="leite-tabela-scroll">
-        <table>
-          <caption>Produção individual preservada</caption>
-          <thead>
-            <tr>
-              <th>Animal</th>
-              <th>Litros medidos</th>
-              <th>Medições pendentes</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table semContainer>
+          <TableCaption>Produção individual preservada</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Animal</TableHead>
+              <TableHead>Litros medidos</TableHead>
+              <TableHead>Medições pendentes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {s.dados.producao.animais
               .slice((paginaAnimal - 1) * 50, paginaAnimal * 50)
               .map((a) => (
-                <tr key={a.animalId}>
-                  <td>
+                <TableRow key={a.animalId}>
+                  <TableCell>
                     {a.brinco ?? "Sem brinco"} · {a.nome ?? "Sem nome"}
-                  </td>
-                  <td>{formatarLitros(a.producao.litros)}</td>
-                  <td>{a.producao.pendentes}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{formatarLitros(a.producao.litros)}</TableCell>
+                  <TableCell>{a.producao.pendentes}</TableCell>
+                </TableRow>
               ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <PaginasPreservadas
         titulo="Animais"
@@ -465,29 +488,29 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
         onChange={setPaginaAnimal}
       />
       <div className="leite-tabela-scroll">
-        <table>
-          <caption>Balanço do razão de estoque</caption>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Abertura</th>
-              <th>Produção confirmada</th>
-              <th>Vendas</th>
-              <th>Alimentação</th>
-              <th>Descarte</th>
-              <th>Outros movimentos</th>
-              <th>Encerramento calculado</th>
-              <th>Medição física</th>
-              <th>Diferença observada</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table semContainer>
+          <TableCaption>Balanço do razão de estoque</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Produto</TableHead>
+              <TableHead>Abertura</TableHead>
+              <TableHead>Produção confirmada</TableHead>
+              <TableHead>Vendas</TableHead>
+              <TableHead>Alimentação</TableHead>
+              <TableHead>Descarte</TableHead>
+              <TableHead>Outros movimentos</TableHead>
+              <TableHead>Encerramento calculado</TableHead>
+              <TableHead>Medição física</TableHead>
+              <TableHead>Diferença observada</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {s.dados.balanco.map((b) => (
-              <tr key={b.produtoId}>
-                <td>
+              <TableRow key={b.produtoId}>
+                <TableCell>
                   {b.produtoNome}
                   {!b.confiavel && <small>Há pendências no lastro.</small>}
-                </td>
+                </TableCell>
                 {[
                   b.abertura,
                   b.producaoConfirmada,
@@ -497,26 +520,26 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
                   b.outrosMovimentos,
                   b.encerramentoRazao,
                 ].map((v, i) => (
-                  <td key={i}>
+                  <TableCell key={i}>
                     {formatarLitros(v === null ? null : Number(v))}
-                  </td>
+                  </TableCell>
                 ))}
-                <td>
+                <TableCell>
                   {b.medicaoCampo
                     ? formatarLitros(Number(b.medicaoCampo.litrosObservados))
                     : "Não informada"}
-                </td>
-                <td>
+                </TableCell>
+                <TableCell>
                   {formatarLitros(
                     b.divergenciaLitros == null
                       ? null
                       : Number(b.divergenciaLitros),
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <p>
         O encerramento é calculado dos movimentos. Não comprova medição física
@@ -549,6 +572,7 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
                 ? a.sujeito.origem
                 : `${a.animal?.brinco ?? "Sem brinco"} · ${a.animal?.nome ?? "Sem nome"}`}
             </p>
+            {("dataResultadoLaboratorial" in a || "dataRecebimentoLaudo" in a) && <DatasQualidade {...a} />}
             {a.resultados.length ? (
               <dl>
                 {a.resultados.map((r) => {
@@ -587,45 +611,45 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
       />
       <h2>Alimentação e descarte</h2>
       <div className="leite-tabela-scroll">
-        <table>
-          <caption>Saídas internas preservadas</caption>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Destino</th>
-              <th>Litros</th>
-              <th>Motivo</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table semContainer>
+          <TableCaption>Saídas internas preservadas</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data</TableHead>
+              <TableHead>Destino</TableHead>
+              <TableHead>Litros</TableHead>
+              <TableHead>Motivo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {s.dados.destinos
               .slice((paginaSaida - 1) * 50, paginaSaida * 50)
               .map((d) => (
-                <tr key={d.id}>
-                  <td>{dataPt(d.data)}</td>
-                  <td>
+                <TableRow key={d.id}>
+                  <TableCell>{dataPt(d.data)}</TableCell>
+                  <TableCell>
                     {d.natureza === "COLOSTRO"
                       ? "Colostro aos animais"
                       : ["LEITE_NAO_COMERCIAL", "NAO_COMERCIAL"].includes(d.natureza)
                         ? "Leite não comercial aos animais"
                         : d.natureza === "MISTA" ? "Mistura de origens aos animais" : "Leite comum aos animais"}
-                  </td>
-                  <td>{formatarLitros(Number(d.quantidadeLitros))}</td>
-                  <td>Conforme registro do destino</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{formatarLitros(Number(d.quantidadeLitros))}</TableCell>
+                  <TableCell>Conforme registro do destino</TableCell>
+                </TableRow>
               ))}
             {s.dados.descartes
               .slice((paginaSaida - 1) * 50, paginaSaida * 50)
               .map((d) => (
-                <tr key={d.id}>
-                  <td>{dataPt(d.data)}</td>
-                  <td>Descarte físico</td>
-                  <td>{formatarLitros(Number(d.quantidadeLitros))}</td>
-                  <td>{d.motivo}</td>
-                </tr>
+                <TableRow key={d.id}>
+                  <TableCell>{dataPt(d.data)}</TableCell>
+                  <TableCell>Descarte físico</TableCell>
+                  <TableCell>{formatarLitros(Number(d.quantidadeLitros))}</TableCell>
+                  <TableCell>{d.motivo}</TableCell>
+                </TableRow>
               ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       <PaginasPreservadas
         titulo="Saídas"
@@ -636,11 +660,12 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
       {!!s.dados.comercial?.length && <section aria-label="Retiradas comerciais preservadas">
         <h2>Retiradas comerciais</h2>
         <p>A retirada física conserva sua data mesmo com preço pendente; não representa recebimento.</p>
-        <div className="leite-tabela-scroll" tabIndex={0} aria-label="Retiradas preservadas, com rolagem horizontal"><table>
-          <caption>Retiradas comerciais e inversos no período</caption><thead><tr><th>Data</th><th>Produto</th><th>Litros</th><th>Movimento</th><th>Venda</th></tr></thead>
-          <tbody>{s.dados.comercial.map(r => <tr key={r.movimentoId}><td>{dataPt(r.data)}</td><td>{r.produtoNome}</td><td>{formatarLitros(Number(r.quantidadeLitros))}</td><td>{r.tipo === "ENTRADA" ? "Inverso" : "Retirada"}</td><td>{r.numeroOperacao === null ? "Preço não inferido" : `Nº ${r.numeroOperacao}`}</td></tr>)}</tbody>
-        </table></div>
+        <div className="leite-tabela-scroll" tabIndex={0} aria-label="Retiradas preservadas, com rolagem horizontal"><Table semContainer>
+          <TableCaption>Retiradas comerciais e inversos no período</TableCaption><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Produto</TableHead><TableHead>Litros</TableHead><TableHead>Movimento</TableHead><TableHead>Venda</TableHead></TableRow></TableHeader>
+          <TableBody>{s.dados.comercial.map(r => <TableRow key={r.movimentoId}><TableCell>{dataPt(r.data)}</TableCell><TableCell>{r.produtoNome}</TableCell><TableCell>{formatarLitros(Number(r.quantidadeLitros))}</TableCell><TableCell>{r.tipo === "ENTRADA" ? "Inverso" : "Retirada"}</TableCell><TableCell>{r.numeroOperacao === null ? "Preço não inferido" : `Nº ${r.numeroOperacao}`}</TableCell></TableRow>)}</TableBody>
+        </Table></div>
       </section>}
+      {s.dados.operacoesComerciais && <OperacoesPeriodoPreservadas dados={s.dados.operacoesComerciais} valores={s.valores?.operacoesComerciais} />}
       {s.dados.comercialDocumental && (
         <ComercialPreservado
           dados={s.dados.comercialDocumental}
@@ -672,14 +697,14 @@ function ConteudoEmissao({ emissao }: { emissao: Emissao }) {
           Valores financeiros não incluídos ou ocultos pela permissão atual.
         </p>
       )}
-      <details>
-        <summary>Fontes e limites desta emissão</summary>
+      <SecaoDetalhesLeite  titulo={<>Fontes e limites desta emissão</>}>
+
         <ul>
           {s.limitacoes.map((l) => (
             <li key={l}>{l}</li>
           ))}
         </ul>
-      </details>
+      </SecaoDetalhesLeite>
     </article>
   );
 }
@@ -697,23 +722,19 @@ function PaginasPreservadas({
 }) {
   return total > 50 ? (
     <div className="leite-form-inline">
-      <button
-        className="leite-secondary"
+      <Button variant="outline" className="leite-secondary"
         disabled={pagina === 1}
-        onClick={() => onChange(pagina - 1)}
-      >
+        onClick={() => onChange(pagina - 1)}>
         {titulo} anteriores
-      </button>
+      </Button>
       <span>
         Página {pagina} de {Math.ceil(total / 50)}
       </span>
-      <button
-        className="leite-secondary"
+      <Button variant="outline" className="leite-secondary"
         disabled={pagina * 50 >= total}
-        onClick={() => onChange(pagina + 1)}
-      >
+        onClick={() => onChange(pagina + 1)}>
         Próximos registros de {titulo.toLowerCase()}
-      </button>
+      </Button>
     </div>
   ) : null;
 }
@@ -736,43 +757,43 @@ function ComercialPreservado({
         declarado pelo comprador.
       </p>
       <div className="leite-tabela-scroll">
-        <table>
-          <caption>Entregas e volumes preservados</caption>
-          <thead>
-            <tr>
-              <th>Data e comprovante</th>
-              <th>Comprador e venda</th>
-              <th>Expedido</th>
-              <th>Aceito</th>
-              <th>Faturado documentado</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table semContainer>
+          <TableCaption>Entregas e volumes preservados</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Data e comprovante</TableHead>
+              <TableHead>Comprador e venda</TableHead>
+              <TableHead>Expedido</TableHead>
+              <TableHead>Aceito</TableHead>
+              <TableHead>Faturado documentado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {dados.entregas.slice((pagina - 1) * 50, pagina * 50).map((e) => (
-              <tr key={e.id}>
-                <td>
+              <TableRow key={e.id}>
+                <TableCell>
                   {dataPt(e.data)} · {e.referencia}
                   <small>{e.produtoNome}</small>
-                </td>
-                <td>
+                </TableCell>
+                <TableCell>
                   {e.parceiroNome}
                   <small>
                     {e.numeroOperacao === null
                       ? "Venda sem número informado"
                       : `Venda #${e.numeroOperacao}`}
                   </small>
-                </td>
-                <td>{formatarLitros(Number(e.expedidoLitros))}</td>
-                <td>
+                </TableCell>
+                <TableCell>{formatarLitros(Number(e.expedidoLitros))}</TableCell>
+                <TableCell>
                   {formatarLitros(
                     e.volumeAceito === null ? null : Number(e.volumeAceito),
                   )}
-                </td>
-                <td>{formatarLitros(Number(e.quantidadeFaturadaLitros))}</td>
-              </tr>
+                </TableCell>
+                <TableCell>{formatarLitros(Number(e.quantidadeFaturadaLitros))}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {valores && (
         <dl className="leite-indicadores">
@@ -798,10 +819,10 @@ function ComercialPreservado({
       {dados.demonstrativos.slice((pagina - 1) * 50, pagina * 50).map((d) => {
         const v = valores?.demonstrativos.find((v) => v.id === d.id);
         return (
-          <details key={d.id}>
-            <summary>
+          <SecaoDetalhesLeite key={d.id} titulo={<>
               {d.referencia} · {d.parceiroNome} · versão {d.versao}
-            </summary>
+            </>}>
+
             <p>
               Documento integral de {dataPt(d.inicio)} a {dataPt(d.fim)} ·{" "}
               {formatarLitros(Number(d.volumeReconhecidoLitros))} reconhecidos.
@@ -850,7 +871,7 @@ function ComercialPreservado({
                 </li>
               ))}
             </ul>
-          </details>
+          </SecaoDetalhesLeite>
         );
       })}
       <PaginasPreservadas
@@ -865,4 +886,43 @@ function ComercialPreservado({
       </p>
     </section>
   );
+}
+
+
+function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriodoPreservada[]; valores?: ValorOperacaoPeriodo[] }) {
+  const [pagina, setPagina] = useState(1);
+  const linhas = dados.slice((pagina - 1) * 50, pagina * 50);
+  return <section aria-label="Operações comerciais preservadas">
+    <h2>Operações comerciais por período integral</h2>
+    <p>Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento.</p>
+    <p>Vendas legadas por data da retirada e faturamento documental têm recortes próprios. Seus valores não compõem um total combinado com estes acordos.</p>
+    {!dados.length ? <p>Nenhuma operação comercial com período sobreposto ao filtro.</p> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Operações por período integral, com rolagem horizontal">
+      <Table semContainer>
+        <TableCaption>Operações e última versão de fechamento no corte da emissão</TableCaption>
+        <TableHeader><TableRow><TableHead>Comprador e referência</TableHead><TableHead>Período integral</TableHead><TableHead>Abrangência</TableHead><TableHead>Situação</TableHead><TableHead>Venda nº</TableHead><TableHead>Versão do fechamento</TableHead><TableHead>Data financeira</TableHead><TableHead>Estado financeiro</TableHead><TableHead>Volume reconhecido integral (L)</TableHead>{valores && <><TableHead>Preço negociado (BRL/L)</TableHead><TableHead>Ajuste (BRL)</TableHead><TableHead>Valor integral da venda (BRL)</TableHead></>}</TableRow></TableHeader>
+        <TableBody>{linhas.map(o => {
+          const f = o.fechamento;
+          const v = valores?.find(v => v.comercialId === o.id && v.fechamentoId === f?.id);
+          return <TableRow key={o.id}>
+            <TableCell>{o.parceiroNome}<small>{o.referencia}</small></TableCell>
+            <TableCell>{dataPt(o.inicio)} a {dataPt(o.fim)}</TableCell>
+            <TableCell>{o.parcialForaFiltro ? "Abrange datas fora do filtro" : "Integral dentro do filtro"}</TableCell>
+            <TableCell>{o.situacao === "PRECO_PENDENTE" ? "Preço pendente" : o.situacao === "FECHADA" ? "Fechada" : "Inativa"}</TableCell>
+            <TableCell>{f?.numeroOperacao ?? "—"}</TableCell><TableCell>{f?.versao ?? "—"}</TableCell><TableCell>{f ? dataPt(f.data) : "—"}</TableCell><TableCell>{f?.statusFinanceiro ?? "—"}</TableCell>
+            <TableCell>{f ? formatarLitros(Number(f.volumeReconhecidoLitros)) : "Não reconhecido"}</TableCell>
+            {valores && <><TableCell>{v ? `${Number(v.precoUnitario).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 })}/L` : "—"}</TableCell><TableCell>{v ? dinheiro(v.ajuste) : "—"}</TableCell><TableCell>{v ? dinheiro(v.valorTotal) : "—"}</TableCell></>}
+          </TableRow>;
+        })}</TableBody>
+      </Table>
+    </div>}
+    {linhas.filter(o => o.fechamento?.amostras.length).map(o => <SecaoDetalhesLeite key={o.id} titulo={<>Amostras vinculadas ao fechamento · {o.referencia} · versão {o.fechamento!.versao}</>}>
+
+      <p>Datas preservadas no acordo; correções posteriores da amostra não alteram esta versão.</p>
+      {o.fechamento!.amostras.map(a => <div key={a.amostraId}>
+        <p>Amostra {a.amostraId} · versão {a.versaoAmostra}{a.data ? ` · coleta em ${dataPt(a.data)}` : ""}</p>
+        <DatasQualidade {...a} />
+      </div>)}
+    </SecaoDetalhesLeite>)}
+    <PaginasPreservadas titulo="Operações comerciais" pagina={pagina} total={dados.length} onChange={setPagina} />
+  </section>;
 }

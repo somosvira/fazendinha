@@ -1,19 +1,25 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ConsultasProducaoLeite } from "./ConsultasProducaoLeite";
 import { consultarLeite } from "./operacoes-api";
 vi.mock("./operacoes-api", () => ({ consultarLeite: vi.fn() }));
 vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: () => 2 }));
 vi.mock("./RitmoLeite", () => ({ RitmoLeite: () => null }));
+beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+  HTMLElement.prototype.releasePointerCapture = vi.fn();
+});
 afterEach(() => { cleanup(); vi.resetAllMocks(); history.replaceState(null, "", "/"); });
 it("abre mês pela URL e muda para dia sem perder parâmetro externo", async () => {
   history.replaceState(null, "", "/?leiteSecao=producao&producaoData=2026-10-31&producaoVisao=mes");
   vi.mocked(consultarLeite).mockResolvedValue({ itens: [{ data: "2026-10-31", animalId: "a", brinco: "123", nome: null, ordenha: "Manhã", natureza: "A_CLASSIFICAR", estado: "MEDIDO", litros: 10 }], total: 1, tamanho: 30, mesEmAndamento: true, coberturaCompleta: false, totais: { litros: 10 }, ritmo: [] });
   render(<ConsultasProducaoLeite />);
-  await screen.findByText("A classificar");
+  await screen.findByRole("table", { name: "Produção por origem e ordenha" });
   expect(consultarLeite).toHaveBeenCalledWith(expect.stringContaining("inicio=2026-10-01&fim=2026-10-31"), 2);
-  fireEvent.change(screen.getByLabelText("Consultar produção por"), { target: { value: "dia" } });
+  fireEvent.click(screen.getByRole("combobox", { name: "Consultar produção por" }));
+  fireEvent.click(await screen.findByRole("option", { name: /^Dia$/ }));
   await waitFor(() => expect(consultarLeite).toHaveBeenLastCalledWith(expect.stringContaining("inicio=2026-10-31&fim=2026-10-31"), 2));
   expect(location.search).toContain("leiteSecao=producao");
   expect(screen.getByText(/Produção parcial/)).toBeTruthy();
@@ -27,7 +33,7 @@ it("preserva litros legados pendentes ao lado da evidência histórica comprovad
   ], total: 2, tamanho: 30, mesEmAndamento: false, coberturaCompleta: false, totais: { litros: 18 }, ritmo: [] });
   render(<ConsultasProducaoLeite />);
   await screen.findByText("18 L medidos no período");
-  expect(screen.getByText("Leite comprovada na data")).toBeTruthy();
-  expect(screen.getByText("Finalidade histórica a conciliar")).toBeTruthy();
-  expect(screen.getByText("8 L")).toBeTruthy();
+  expect(within(screen.getByRole("table")).getByText("Leite comprovada na data")).toBeTruthy();
+  expect(within(screen.getByRole("table")).getByText("Finalidade histórica a conciliar")).toBeTruthy();
+  expect(within(screen.getByRole("table")).getByText("8 L")).toBeTruthy();
 });

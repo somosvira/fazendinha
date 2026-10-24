@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({ tx: { $executeRaw: vi.fn(), propriedade: { findUnique: vi.fn() }, diaProducaoLeite: { findMany: vi.fn() }, requisicaoPecuaria: { findUnique: vi.fn(), create: vi.fn() }, auditoriaPecuaria: { create: vi.fn() },
-  animal: { findMany: vi.fn() }, fornecimentoNutricionalLeite: { findMany: vi.fn() }, parcelaFornecimentoNutricionalLeite: { count: vi.fn() }, movimentoFornecimentoNutricionalLeite: { count: vi.fn() }, entregaLeite: { findMany: vi.fn() }, alocacaoDemonstrativoLeite: { count: vi.fn() }, demonstrativoLeite: { count: vi.fn(), findMany: vi.fn() }, conferenciaSaldoLeite: { findMany: vi.fn() }, parcelaDestinoLeite: { count: vi.fn() }, amostraQualidadeLeite: { findMany: vi.fn() }, destinoInternoLeite: { findMany: vi.fn() }, descarteLeite: { findMany: vi.fn() }, movimentoEstoque: { findMany: vi.fn() }, entradaProducaoLeite: { findMany: vi.fn() }, versaoComercialVendaLeite: { findMany: vi.fn() }, emissaoRelatorioLeite: { create: vi.fn(), findFirst: vi.fn(), findFirstOrThrow: vi.fn() } }, custos: vi.fn(), put: vi.fn(), reqs: new Map<string, Record<string, unknown>>() }));
+  operacaoComercialLeite: { count: vi.fn(), findMany: vi.fn() }, vinculoQualidadeFechamentoLeite: { count: vi.fn() }, animal: { findMany: vi.fn() }, fornecimentoNutricionalLeite: { findMany: vi.fn() }, parcelaFornecimentoNutricionalLeite: { count: vi.fn() }, movimentoFornecimentoNutricionalLeite: { count: vi.fn() }, entregaLeite: { findMany: vi.fn() }, alocacaoDemonstrativoLeite: { count: vi.fn() }, demonstrativoLeite: { count: vi.fn(), findMany: vi.fn() }, conferenciaSaldoLeite: { findMany: vi.fn() }, parcelaDestinoLeite: { count: vi.fn() }, amostraQualidadeLeite: { findMany: vi.fn() }, destinoInternoLeite: { findMany: vi.fn() }, descarteLeite: { findMany: vi.fn() }, movimentoEstoque: { findMany: vi.fn() }, entradaProducaoLeite: { findMany: vi.fn() }, versaoComercialVendaLeite: { findMany: vi.fn() }, emissaoRelatorioLeite: { create: vi.fn(), findFirst: vi.fn(), findFirstOrThrow: vi.fn() } }, custos: vi.fn(), put: vi.fn(), reqs: new Map<string, Record<string, unknown>>() }));
 vi.mock("../../../db.js", () => ({ prisma: m.tx }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: (f: (tx: typeof m.tx) => Promise<unknown>) => f(m.tx) }));
 vi.mock("../../../lib/storage.js", () => ({ getStorage: async () => ({ putObject: m.put }) }));
@@ -19,6 +19,7 @@ beforeEach(() => {
   vi.resetAllMocks(); m.reqs.clear(); registro = null;
   m.tx.requisicaoPecuaria.findUnique.mockImplementation(async ({ where }: { where: { chave: string } }) => m.reqs.get(where.chave) ?? null);
   m.tx.requisicaoPecuaria.create.mockImplementation(async ({ data }: { data: Record<string, unknown> & { chave: string } }) => { m.reqs.set(data.chave, data); return data; });
+  m.tx.operacaoComercialLeite.count.mockResolvedValue(0); m.tx.vinculoQualidadeFechamentoLeite.count.mockResolvedValue(0); m.tx.operacaoComercialLeite.findMany.mockResolvedValue([]);
   m.tx.parcelaFornecimentoNutricionalLeite.count.mockResolvedValue(0); m.tx.movimentoFornecimentoNutricionalLeite.count.mockResolvedValue(0); m.tx.parcelaDestinoLeite.count.mockResolvedValue(0); m.tx.demonstrativoLeite.count.mockResolvedValue(0); m.tx.alocacaoDemonstrativoLeite.count.mockResolvedValue(0);
   m.tx.propriedade.findUnique.mockResolvedValue({ id: 7, nome: "Sítio leite" }); m.custos.mockResolvedValue(custos());
   for (const tabela of [m.tx.animal, m.tx.fornecimentoNutricionalLeite, m.tx.entregaLeite, m.tx.demonstrativoLeite, m.tx.diaProducaoLeite, m.tx.conferenciaSaldoLeite, m.tx.amostraQualidadeLeite, m.tx.destinoInternoLeite, m.tx.descarteLeite, m.tx.movimentoEstoque, m.tx.entradaProducaoLeite, m.tx.versaoComercialVendaLeite]) tabela.findMany.mockResolvedValue([]);
@@ -28,14 +29,14 @@ beforeEach(() => {
 });
 describe("emissões persistidas de leite", () => {
   it("reabre e exporta a emissão original após corrigir produção/custos/qualidade sem reler fontes", async () => {
-    m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([{ id: id(50), data: input.inicio, resultados: [{ campo: "CCS", valor: "100", unidade: "mil/mL" }], formatoSnapshot: { nome: "Qualidade A", versao: 1 }, sujeito: { tipo: "COLETIVO", origem: "Tanque" } }]);
+    m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([{ id: id(50), data: input.inicio, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z", resultados: [{ campo: "CCS", valor: "100", unidade: "mil/mL" }], formatoSnapshot: { nome: "Qualidade A", versao: 1 }, sujeito: { tipo: "COLETIVO", origem: "Tanque" } }]);
     m.tx.conferenciaSaldoLeite.findMany.mockResolvedValue([{ id: id(60), produtoId: id(61), produto: { nome: "Leite" }, data: new Date(input.fim), litrosObservados: new Prisma.Decimal(10), versao: 1, referencia: "Régua do tanque", responsavel: "João" }]);
     const emitida = await emitirRelatorioLeite(input, 5, true);
     m.custos.mockResolvedValue(custos(99, "999.99")); m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([]); m.tx.conferenciaSaldoLeite.findMany.mockResolvedValue([]);
     const reaberta = await obterRelatorioLeite(emitida.id, 7, true);
     expect(reaberta).toEqual(emitida); expect(JSON.stringify(reaberta)).toContain('"litros":12'); expect(JSON.stringify(reaberta)).toContain("24.00"); expect(JSON.stringify(reaberta)).toContain("mil/mL"); expect(JSON.stringify(reaberta)).toContain('"litrosObservados":"10"');
     const arquivo = await exportarRelatorioLeiteCsv(emitida.id, 7, true);
-    expect(arquivo.conteudo).toContain('"12"'); expect(arquivo.conteudo).toContain('"24.00"'); expect(arquivo.conteudo).not.toContain("999.99");
+    expect(arquivo.conteudo).toContain('"12"'); expect(arquivo.conteudo).toContain('"24.00"'); expect(arquivo.conteudo).not.toContain("999.99"); expect(arquivo.conteudo).toContain("Resultado laboratorial"); expect(arquivo.conteudo).toContain('"2026-10-15";"2026-10-16";"2026-10-23T12:00:00Z"');
     expect(m.custos).toHaveBeenCalledTimes(1); expect(m.tx.amostraQualidadeLeite.findMany).toHaveBeenCalledTimes(1); expect(m.put).toHaveBeenCalledTimes(1);
     expect(await emitirRelatorioLeite(input, 5, true)).toEqual(emitida); expect(m.tx.emissaoRelatorioLeite.create).toHaveBeenCalledTimes(1);
   });
@@ -91,13 +92,92 @@ it("preserva retirada sem operação financeira e alimentação nutricional mist
   m.tx.fornecimentoNutricionalLeite.findMany.mockResolvedValue([{ id: id(90), itemId: id(91), data: new Date(input.inicio), quantidadeLitros: new Prisma.Decimal(6), movimentos: [{ entradaId: id(92), movimentoId: id(93), natureza: "COMERCIAL", quantidadeLitros: new Prisma.Decimal(2) }, { entradaId: id(94), movimentoId: id(95), natureza: "NAO_COMERCIAL", quantidadeLitros: new Prisma.Decimal(4) }], parcelas: [{ id: id(96), animalId: id(20), quantidadeLitros: new Prisma.Decimal(6), baseQuantidade: "ATRIBUIDA" }] }]);
   m.tx.animal.findMany.mockResolvedValue([{ id: id(20), brinco: "Bezerra", nome: null }]);
   const resposta = await emitirRelatorioLeite({ ...input, incluirValores: false }, 5, false);
-  expect(resposta.snapshot.versaoCalculo).toBe("LEITE_GERENCIAL_V3");
+  expect(resposta.snapshot.versaoCalculo).toBe("LEITE_GERENCIAL_V5");
   expect(resposta.snapshot.dados).toMatchObject({ comercial: [{ numeroOperacao: null, quantidadeLitros: "4", naturezaComercial: "RETIRADA_COM_PRECO_NAO_INFERIDO" }], destinos: [{ fonte: "NUTRICAO", natureza: "MISTA", quantidadeLitros: "6", parcelas: [{ quantidadeLitros: "6", baseQuantidade: "ATRIBUIDA" }] }], balanco: [{ vendas: "4", outrosMovimentos: "0" }] });
   const csv = (await exportarRelatorioLeiteCsv(resposta.id, 7, false)).conteudo;
-  expect(csv).toContain("não inclui os novos FechamentoOperacaoLeite"); expect(csv).toContain("Nutrição para as referências gerenciais"); expect(csv).toContain("Retirada física; preço não inferido"); expect(csv).toContain("Bezerra"); expect(csv).toContain("ATRIBUIDA"); expect(resposta.snapshot.valores).toBeNull();
+  expect(csv).not.toContain("não inclui os novos FechamentoOperacaoLeite"); expect(csv).toContain("Nutrição para as referências gerenciais"); expect(csv).toContain("Retirada física; preço não inferido"); expect(csv).toContain("Bezerra"); expect(csv).toContain("ATRIBUIDA"); expect(resposta.snapshot.valores).toBeNull();
 });
 it("continua abrindo envelope V1 sem reconstruir o snapshot", async () => {
   const resposta = await emitirRelatorioLeite(input, 5, true);
   registro!.snapshot = { ...(registro!.snapshot as Prisma.JsonObject), versaoCalculo: "LEITE_GERENCIAL_V1" };
   expect((await obterRelatorioLeite(resposta.id, 7, false)).snapshot.versaoCalculo).toBe("LEITE_GERENCIAL_V1");
+});
+
+const comercialPeriodo = (versao = 1, statusFinanceiro = "CONFIRMADA") => ({
+  id: id(100), parceiroId: id(101), parceiro: { nome: "Laticínio período" }, inicio: new Date("2026-09-25"), fim: new Date("2026-10-24"), referencia: "Período integral", status: "FECHADA", versao: versao + 1,
+  fechamentos: [{ id: id(110 + versao), versao, operacaoId: id(120 + versao), volumeReconhecido: new Prisma.Decimal(10), precoUnitario: new Prisma.Decimal(versao === 1 ? 2 : 3), ajuste: new Prisma.Decimal(0),
+    operacao: { numero: 400 + versao, data: new Date("2026-10-25"), status: statusFinanceiro, valorTotal: new Prisma.Decimal(versao === 1 ? 20 : 30) },
+    amostras: [{ amostraId: id(130), versaoAmostra: 2, snapshot: { data: "2026-10-01", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z", valores: { segredo: "segredo monetário" }, motivoComercial: "segredo monetário" } }] }],
+});
+it("preserva fechamento integral por sobreposição, deduplica a versão financeira e mantém o legado", async () => {
+  const o = comercialPeriodo();
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([o]);
+  const venda = (operacaoId: string) => ({ id: id(140), retiradaId: id(141), versao: 1, operacaoId, retirada: { data: new Date(input.inicio), quantidade: new Prisma.Decimal(10), produto: { nome: "Leite" } }, operacao: { numero: 401, parceiro: { nome: "Comprador" }, itens: [{ valorTotal: new Prisma.Decimal(20) }] } });
+  m.tx.versaoComercialVendaLeite.findMany.mockResolvedValue([venda(o.fechamentos[0].operacaoId), venda(id(142))]);
+  const e = await emitirRelatorioLeite(input, 5, true);
+  expect(e.snapshot.versaoCalculo).toBe("LEITE_GERENCIAL_V5");
+  expect(e.snapshot.dados).toMatchObject({ operacoesComerciais: [{ id: o.id, inicio: "2026-09-25", fim: "2026-10-24", parcialForaFiltro: true, situacao: "FECHADA", fechamento: { id: id(111), versao: 1, volumeReconhecidoLitros: "10", statusFinanceiro: "CONFIRMADA", amostras: [{ amostraId: id(130), versaoAmostra: 2, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16" }] } }] });
+  expect(e.snapshot.valores).toMatchObject({ operacoesComerciais: [{ comercialId: o.id, fechamentoId: id(111), precoUnitario: "2.0000", valorTotal: "20.00" }], comercial: [{ operacaoId: id(142) }] });
+  expect((e.snapshot.valores as { comercial: unknown[] }).comercial).toHaveLength(1);
+  expect(JSON.stringify(e.snapshot.dados)).not.toContain("segredo monetário");
+  expect(m.tx.operacaoComercialLeite.findMany.mock.calls[0][0]).toMatchObject({ where: { propriedadeId: 7, fim: { gte: new Date(input.inicio) }, inicio: { lte: new Date(input.fim) } }, select: { fechamentos: { orderBy: { versao: "desc" }, take: 1 } } });
+  const csv = (await exportarRelatorioLeiteCsv(e.id, 7, true)).conteudo;
+  expect(csv).toContain("Operações comerciais por período integral"); expect(csv).toContain("Abrange datas fora do filtro"); expect(csv).toContain('"2.0000";"0.00";"20.00"');
+});
+it("não relê ou retifica a emissão comercial depois de revisão; nova emissão captura a nova versão", async () => {
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([comercialPeriodo()]);
+  const anterior = await emitirRelatorioLeite(input, 5, true);
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([comercialPeriodo(2)]);
+  expect(await obterRelatorioLeite(anterior.id, 7, true)).toEqual(anterior);
+  const nova = await emitirRelatorioLeite({ ...input, chave: id(2) }, 5, true);
+  expect(nova.snapshot.valores).toMatchObject({ operacoesComerciais: [{ versao: 2, valorTotal: "30.00" }] });
+  expect(anterior.snapshot.valores).toMatchObject({ operacoesComerciais: [{ versao: 1, valorTotal: "20.00" }] });
+});
+it.each(["CANCELADA", "ANULADA", "ESTORNADA"])("fechamento financeiro %s não vira receita ativa", async status => {
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([comercialPeriodo(1, status)]);
+  const e = await emitirRelatorioLeite(input, 5, true);
+  expect(e.snapshot.valores).toMatchObject({ operacoesComerciais: [] });
+  expect(e.snapshot.dados).toMatchObject({ operacoesComerciais: [{ situacao: "INATIVA", fechamento: { statusFinanceiro: status } }] });
+});
+it("operação aberta fica com preço pendente e valores não escapam no DTO/CSV sem acesso", async () => {
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([{ ...comercialPeriodo(), id: id(150), status: "ABERTA", fechamentos: [] }, comercialPeriodo()]);
+  const e = await emitirRelatorioLeite(input, 5, true);
+  expect(e.snapshot.dados).toMatchObject({ operacoesComerciais: [{ situacao: "PRECO_PENDENTE", fechamento: null }, { situacao: "FECHADA" }] });
+  const oculto = await obterRelatorioLeite(e.id, 7, false);
+  const csv = (await exportarRelatorioLeiteCsv(e.id, 7, false)).conteudo;
+  expect(oculto.snapshot.valores).toBeNull(); expect(JSON.stringify(oculto)).not.toContain("precoUnitario"); expect(JSON.stringify(oculto)).not.toContain("valorTotal"); expect(JSON.stringify(oculto)).not.toContain("segredo monetário");
+  expect(csv).not.toContain("20.00"); expect(csv).not.toContain("2.0000"); expect(csv).toContain("Preço pendente");
+});
+it("limita operações e vínculos de qualidade antes do join comercial", async () => {
+  m.tx.operacaoComercialLeite.count.mockResolvedValue(10_000); m.tx.vinculoQualidadeFechamentoLeite.count.mockResolvedValue(10_001);
+  await expect(emitirRelatorioLeite(input, 5, true)).rejects.toMatchObject({ code: "VALIDACAO" });
+  expect(m.tx.operacaoComercialLeite.findMany).not.toHaveBeenCalled();
+});
+it.each([1, 2, 3, 4])("abre V%s sem acrescentar operações ou novas datas ao snapshot histórico", async versao => {
+  const e = await emitirRelatorioLeite(input, 5, true);
+  const antigo = JSON.parse(JSON.stringify(registro!.snapshot));
+  antigo.versaoCalculo = `LEITE_GERENCIAL_V${versao}`;
+  delete antigo.dados.operacoesComerciais; delete antigo.valores.operacoesComerciais;
+  registro!.snapshot = antigo;
+  const atual = await obterRelatorioLeite(e.id, 7, true);
+  expect(atual.snapshot).toEqual(antigo);
+  expect(m.tx.operacaoComercialLeite.findMany).toHaveBeenCalledTimes(1);
+});
+
+it("emissão operacional conserva volume do fechamento sem consultar dinheiro ou copiar seu snapshot bruto", async () => {
+  const o = comercialPeriodo();
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([o]);
+  const e = await emitirRelatorioLeite({ ...input, incluirValores: false }, 5, false);
+  expect(e.snapshot.dados).toMatchObject({ operacoesComerciais: [{ fechamento: { volumeReconhecidoLitros: "10" } }] });
+  expect(e.snapshot.valores).toBeNull();
+  expect(JSON.stringify(e)).not.toContain("precoUnitario"); expect(JSON.stringify(e)).not.toContain("valorTotal"); expect(JSON.stringify(e)).not.toContain("segredo monetário");
+  const selecao = m.tx.operacaoComercialLeite.findMany.mock.calls[0][0].select.fechamentos.select;
+  expect(selecao).not.toHaveProperty("precoUnitario"); expect(selecao).not.toHaveProperty("ajuste"); expect(selecao.operacao.select).not.toHaveProperty("valorTotal");
+});
+it("período integral contido no filtro é identificado sem parcialidade nem agregação com outras competências", async () => {
+  m.tx.operacaoComercialLeite.findMany.mockResolvedValue([{ ...comercialPeriodo(), inicio: new Date(input.inicio), fim: new Date(input.fim) }]);
+  const e = await emitirRelatorioLeite(input, 5, true);
+  expect(e.snapshot.dados).toMatchObject({ operacoesComerciais: [{ parcialForaFiltro: false }] });
+  expect((await exportarRelatorioLeiteCsv(e.id, 7, true)).conteudo).toContain("Integral dentro do filtro");
+  expect(e.snapshot.valores).not.toHaveProperty("totalComercial");
 });

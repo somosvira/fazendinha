@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { LaudosQualidade } from "./LaudosQualidade";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -195,23 +198,19 @@ export function OperacoesComerciaisLeite({
             }}
           />
         </label>
-        <button
-          type="button"
+        <Button variant="outline" type="button"
           className="leite-secondary"
-          onClick={() => setRevisao((r) => r + 1)}
-        >
+          onClick={() => setRevisao((r) => r + 1)}>
           Atualizar operações
-        </button>
+        </Button>
         {podeLancar && (
-          <button
-            type="button"
+          <Button type="button"
             onClick={() => {
               setNova(true);
               setAcao(null);
-            }}
-          >
+            }}>
             Abrir operação
-          </button>
+          </Button>
         )}
       </div>
       {carregando && <p role="status">Consultando operações…</p>}
@@ -277,14 +276,12 @@ export function OperacoesComerciaisLeite({
               </label>
             </div>
             <div className="leite-form-inline">
-              <button disabled={ocupado}>Confirmar abertura</button>
-              <button
-                className="leite-secondary"
+              <Button disabled={ocupado}>Confirmar abertura</Button>
+              <Button variant="outline" className="leite-secondary"
                 type="button"
-                onClick={() => setNova(false)}
-              >
+                onClick={() => setNova(false)}>
                 Cancelar abertura
-              </button>
+              </Button>
             </div>
           </fieldset>
         </form>
@@ -301,80 +298,74 @@ export function OperacoesComerciaisLeite({
         tabIndex={0}
         aria-label="Operações de leite por comprador e período"
       >
-        <table>
-          <caption>Compradores e períodos</caption>
-          <thead>
-            <tr>
-              <th>Operação</th>
-              <th>Período</th>
-              <th>Retirado</th>
-              <th>Situação</th>
-              <th>Ação</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table semContainer>
+          <TableCaption>Compradores e períodos</TableCaption>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Operação</TableHead>
+              <TableHead>Período</TableHead>
+              <TableHead>Retirado</TableHead>
+              <TableHead>Situação</TableHead>
+              <TableHead>Ação</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {dados?.itens.map((l) => (
-              <tr key={l.id}>
-                <td>
+              <TableRow key={l.id}>
+                <TableCell>
                   {l.referencia}
                   <small>
                     {l.parceiroNome} · {l.id}
                   </small>
-                </td>
-                <td>
+                </TableCell>
+                <TableCell>
                   {dataPt(l.inicio)} a {dataPt(l.fim)}
-                </td>
-                <td>{formatarLitros(Number(l.retiradoLitros))}</td>
-                <td>
+                </TableCell>
+                <TableCell>{formatarLitros(Number(l.retiradoLitros))}</TableCell>
+                <TableCell>
                   {l.status === "ABERTA"
                     ? "Aberta · preço pendente"
                     : "Fechada"}
                   {l.fechamento?.valorTotal && (
                     <small>{moeda(l.fechamento.valorTotal)}</small>
                   )}
-                </td>
-                <td>
-                  <button
-                    className="leite-secondary"
+                </TableCell>
+                <TableCell>
+                  <Button variant="outline" className="leite-secondary"
                     type="button"
                     onClick={() => {
                       setSelecionada(l.id);
                       setAcao(null);
-                    }}
-                  >
+                    }}>
                     Ver {l.referencia}
-                  </button>
-                </td>
-              </tr>
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {dados && (
         <div className="leite-form-inline">
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
             disabled={pagina === 1}
             onClick={() => {
               setPagina((p) => p - 1);
               setSelecionada(null);
-            }}
-          >
+            }}>
             Anteriores
-          </button>
+          </Button>
           <span>Página {pagina}</span>
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
             disabled={pagina * dados.porPagina >= dados.total}
             onClick={() => {
               setPagina((p) => p + 1);
               setSelecionada(null);
-            }}
-          >
+            }}>
             Próximas
-          </button>
+          </Button>
         </div>
       )}
       {o && (
@@ -390,18 +381,16 @@ export function OperacoesComerciaisLeite({
           {podeLancar && (
             <div className="leite-form-inline">
               {o.status === "ABERTA" && (
-                <button type="button" onClick={() => setAcao("RETIRAR")}>
+                <Button type="button" onClick={() => setAcao("RETIRAR")}>
                   Registrar retirada
-                </button>
+                </Button>
               )}
               {podeFinanceiro && o.retiradas.length > 0 && (
-                <button
-                  type="button"
+                <Button variant="outline" type="button"
                   className="leite-secondary"
-                  onClick={() => setAcao("FECHAR")}
-                >
+                  onClick={() => setAcao("FECHAR")}>
                   {o.fechamento ? "Corrigir fechamento" : "Conferir fechamento"}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -495,14 +484,12 @@ export function OperacoesComerciaisLeite({
                   </label>
                 </div>
                 <div className="leite-form-inline">
-                  <button disabled={ocupado}>Confirmar retirada</button>
-                  <button
-                    className="leite-secondary"
+                  <Button disabled={ocupado}>Confirmar retirada</Button>
+                  <Button variant="outline" className="leite-secondary"
                     type="button"
-                    onClick={() => setAcao(null)}
-                  >
+                    onClick={() => setAcao(null)}>
                     Cancelar retirada
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </form>
@@ -539,9 +526,9 @@ export function OperacoesComerciaisLeite({
                 .
               </p>
               {podeFinanceiro && (
-                <a href={`/financeiro/operacoes/${o.fechamento.operacaoId}`}>
+                <Button variant="outline" asChild><a href={`/financeiro/operacoes/${o.fechamento.operacaoId}`}>
                   Abrir operação financeira #{o.fechamento.numeroOperacao}
-                </a>
+                </a></Button>
               )}
               <p>
                 Fechamento {o.fechamento.id} · versão {o.fechamento.versao}.
@@ -550,11 +537,11 @@ export function OperacoesComerciaisLeite({
           )}
           <h3>Coletas da operação</h3>
           {o.retiradas.map((r) => (
-            <details key={r.id}>
-              <summary>
+            <SecaoDetalhesLeite key={r.id} titulo={<>
                 {dataPt(r.data)} · {formatarLitros(Number(r.quantidadeLitros))}{" "}
                 · {r.referencia}
-              </summary>
+              </>}>
+
               <p>
                 {r.pontoColeta ?? "Ponto não informado"} ·{" "}
                 {r.horarioColeta ?? "Horário não informado"}
@@ -565,11 +552,11 @@ export function OperacoesComerciaisLeite({
                 podeLancar={podeLancar}
                 onMudou={atualizar}
               />
-            </details>
+            </SecaoDetalhesLeite>
           ))}
           {o.historicoFechamentos.length > 0 && (
-            <details>
-              <summary>Versões do fechamento</summary>
+            <SecaoDetalhesLeite  titulo={<>Versões do fechamento</>}>
+
               {o.historicoFechamentos.map((f) => (
                 <section key={f.id}>
                   <h3>
@@ -583,7 +570,7 @@ export function OperacoesComerciaisLeite({
                       ? ` · ${moeda(f.valorTotal)}`
                       : " · valores ocultos"}
                   </p>
-                  {!!f.amostras?.length && <div><h4>Qualidade preservada nesta versão</h4>{f.amostras.map(a => <details key={a.amostraId}><summary>{a.snapshot.data} · {a.snapshot.formatoSnapshot.nome} · amostra versão {a.versaoAmostra}</summary><p>{a.snapshot.sujeito.tipo === "COLETIVO" ? a.snapshot.sujeito.origem : a.snapshot.animal?.brinco}</p>{a.snapshot.resultados.map(r => <p key={r.campo}>{a.snapshot.formatoSnapshot.campos.find(c => c.codigo === r.campo)?.rotulo ?? r.campo}: {typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {a.snapshot.formatoSnapshot.campos.find(c => c.codigo === r.campo)?.unidade ?? ""}</p>)}<LaudosQualidade amostra={a.snapshot} sitio={o.propriedadeId} podeLancar={false} /></details>)}</div>}
+                  {!!f.amostras?.length && <div><h4>Qualidade preservada nesta versão</h4>{f.amostras.map(a => <SecaoDetalhesLeite key={a.amostraId} titulo={<>{a.snapshot.data} · {a.snapshot.formatoSnapshot.nome} · amostra versão {a.versaoAmostra}</>}><p>{a.snapshot.sujeito.tipo === "COLETIVO" ? a.snapshot.sujeito.origem : a.snapshot.animal?.brinco}</p>{a.snapshot.resultados.map(r => <p key={r.campo}>{a.snapshot.formatoSnapshot.campos.find(c => c.codigo === r.campo)?.rotulo ?? r.campo}: {typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {a.snapshot.formatoSnapshot.campos.find(c => c.codigo === r.campo)?.unidade ?? ""}</p>)}<LaudosQualidade amostra={a.snapshot} sitio={o.propriedadeId} podeLancar={false} /></SecaoDetalhesLeite>)}</div>}
                   {f.motivo && <p>{f.motivo}</p>}
                   {f.motivoAjuste && (
                     <p>
@@ -606,7 +593,7 @@ export function OperacoesComerciaisLeite({
                   </ul>
                 </section>
               ))}
-            </details>
+            </SecaoDetalhesLeite>
           )}
         </section>
       )}

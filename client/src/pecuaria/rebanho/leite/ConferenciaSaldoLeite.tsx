@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { formatarLitros } from "./modelo";
@@ -126,8 +129,8 @@ export function ConferenciaSaldoLeite({
     }
   }
   return (
-    <details>
-      <summary>Conferência física do tanque em {data}</summary>
+    <SecaoDetalhesLeite  titulo={<>Conferência física do tanque em {data}</>}>
+
       <p>
         Informe o volume realmente observado para este produto no encerramento
         do dia. A conferência não cria entrada, saída nem ajuste no estoque. A
@@ -200,18 +203,16 @@ export function ConferenciaSaldoLeite({
                 />
               </label>
             )}
-            <button
-              disabled={
+            <Button disabled={
                 ocupado ||
                 !lista ||
                 volume === null ||
                 referencia.trim().length < 3 ||
                 responsavel.trim().length < 2 ||
                 (!!atual && motivo.trim().length < 5)
-              }
-            >
+              }>
               Salvar conferência sem ajustar estoque
-            </button>
+            </Button>
           </fieldset>
         </form>
       )}
@@ -220,50 +221,46 @@ export function ConferenciaSaldoLeite({
       {lista && (
         <>
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>Histórico de conferências da data</caption>
-              <thead>
-                <tr>
-                  <th>Versão</th>
-                  <th>Volume observado</th>
-                  <th>Responsável</th>
-                  <th>Referência e motivo</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Histórico de conferências da data</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Versão</TableHead>
+                  <TableHead>Volume observado</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead>Referência e motivo</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {lista.itens.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.versao}</td>
-                    <td>{formatarLitros(c.litrosObservados)}</td>
-                    <td>{c.responsavel}</td>
-                    <td>
+                  <TableRow key={c.id}>
+                    <TableCell>{c.versao}</TableCell>
+                    <TableCell>{formatarLitros(c.litrosObservados)}</TableCell>
+                    <TableCell>{c.responsavel}</TableCell>
+                    <TableCell>
                       {c.referencia}
                       {c.motivoCorrecao && <small>{c.motivoCorrecao}</small>}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina === 1}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Conferências anteriores
-            </button>
+            </Button>
             <span>Página {pagina}</span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina * lista.tamanho >= lista.total}
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próximas conferências
-            </button>
+            </Button>
           </div>
         </>
       )}
-    </details>
+    </SecaoDetalhesLeite>
   );
 }

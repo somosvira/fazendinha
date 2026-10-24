@@ -14,14 +14,14 @@ vi.mock("../sanidade/exames.js", () => ({ registrarExameTx: m.registrarExame, co
 vi.mock("../sanidade/detalhes.js", () => ({ ocultarCustosDetalhe: (v: unknown) => v }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: m.auditar, travarAnimais: m.travarAnimal, hojeFazendaDate: () => new Date("2026-10-19") }));
 import { hashFormatoExame } from "../exames/formato-snapshot.js";
-import { registrarQualidade, corrigirQualidade, listarAmostrasQualidade, listarOrigensQualidade, criarFormatoQualidade, consultarParametrosQualidade } from "./qualidade.js";
+import { registrarQualidade, corrigirQualidade, listarAmostrasQualidade, listarOrigensQualidade, criarFormatoQualidade, consultarParametrosQualidade, historicoQualidade } from "./qualidade.js";
 const uid = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const campos = [{ codigo: "DADO", tipo: "NUMERO" as const, unidade: "unidade do laudo", obrigatorio: true }, { codigo: "PRESENTE", tipo: "BOOLEANO" as const, obrigatorio: false }];
 const tipo = { id: uid(1), nome: "Formato informado", tipoResultado: "MULTIPLO", campos, versaoFormato: 1, versaoAnteriorId: null, opcoes: null, unidade: null, contexto: "SANITARIO", ativo: true };
 const agora = new Date("2026-10-19T15:00:00Z");
 const input = () => ({ chave: uid(2), propriedadeId: 1, data: "2026-10-19", tipoExameId: tipo.id, formatoExameHash: hashFormatoExame(tipo), sujeito: { tipo: "COLETIVO" as const, origem: "Identificação transcrita do laudo" }, resultados: [{ campo: "DADO", valor: 0 }, { campo: "PRESENTE", valor: false }] });
 function amostra() { return { id: uid(3), propriedadeId: 1, data: new Date("2026-10-19"), sujeito: "COLETIVO", tipoExameId: tipo.id,
-  exameAnimalId: null, exameAnimal: null, origemColetiva: "Identificação transcrita do laudo", entradaId: null,
+  dataResultadoLaboratorial: null, dataRecebimentoLaudo: null, exameAnimalId: null, exameAnimal: null, origemColetiva: "Identificação transcrita do laudo", entradaId: null,
   formatoSnapshot: { nome: tipo.nome, tipoResultado: "MULTIPLO", versao: 1, campos }, formato: { tipoExame: tipo },
   resultados: [{ id: uid(4), campo: "DADO", valor: "0", unidade: "unidade do laudo", criadoEm: agora, criadoPorId: 7 }],
   realizacao: "REALIZADO", status: "VALIDO", versao: 1, responsavel: null, anotacaoOriginal: null, motivoAnulacao: null, anuladoEm: null, criadoEm: agora, atualizadoEm: agora, criadoPorId: 7, laudos: [] };
@@ -142,5 +142,58 @@ describe("histórico por parâmetro", () => {
     expect(new Set(r.itens.map(i => i.serie)).size).toBe(3);
     expect(r.itens[0].formato.versao).toBe(1);
     expect(r.itens[3].unidade).toBeNull();
+  });
+});
+
+
+describe("datas da qualidade sem duplicar resultados", () => {
+  const datas = { dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16" };
+  const correcao = { chave: uid(20), propriedadeId: 1, versaoEsperada: 1, motivo: "Datas conferidas no laudo", anular: false };
+  it.each(["COLETIVO", "ANIMAL"] as const)("cria %s com coleta, resultado, recebimento e cadastro distintos", async sujeito => {
+    const a = { ...amostra(), data: new Date("2026-10-10"), dataResultadoLaboratorial: new Date(datas.dataResultadoLaboratorial), dataRecebimentoLaudo: new Date(datas.dataRecebimentoLaudo), criadoEm: new Date("2026-10-23T15:00:00Z") };
+    m.tx.amostraQualidadeLeite.findFirst.mockResolvedValue(a);
+    m.registrarExame.mockResolvedValue({ id: uid(5) });
+    const r = await registrarQualidade({ ...input(), data: "2026-10-10", ...datas, sujeito: sujeito === "ANIMAL" ? { tipo: "ANIMAL", animalId: uid(6) } : input().sujeito }, 7);
+    expect(r).toMatchObject({ data: "2026-10-10", ...datas, criadoEm: "2026-10-23T15:00:00.000Z" });
+    expect(m.tx.amostraQualidadeLeite.create.mock.calls[0][0].data).toMatchObject({ dataResultadoLaboratorial: new Date("2026-10-15"), dataRecebimentoLaudo: new Date("2026-10-16") });
+    if (sujeito === "ANIMAL") {
+      expect(m.registrarExame.mock.calls[0][1]).not.toHaveProperty("dataResultadoLaboratorial");
+      expect(m.registrarExame.mock.calls[0][1]).not.toHaveProperty("dataRecebimentoLaudo");
+      expect(m.tx.exameAnimal.update.mock.calls[0][0].data).not.toHaveProperty("dataResultadoLaboratorial");
+    }
+  });
+  it.each(["COLETIVO", "ANIMAL"] as const)("corrige apenas datas de %s e preserva resultados, realização e data omitida", async sujeito => {
+    const exame = sujeito === "ANIMAL" ? { animalId: uid(6), animal: { id: uid(6), brinco: "123", nome: "Aurora" }, formatoSnapshot: amostra().formatoSnapshot, resultados: [], realizacao: "COLETA_REGISTRADA", status: "VALIDO", motivoAnulacao: null } : null;
+    const antes = { ...amostra(), dataResultadoLaboratorial: new Date("2026-10-15"), sujeito, exameAnimalId: sujeito === "ANIMAL" ? uid(5) : null, exameAnimal: exame, resultados: [], realizacao: "COLETA_REGISTRADA" };
+    const depois = { ...antes, versao: 2, dataRecebimentoLaudo: new Date("2026-10-16") };
+    m.tx.amostraQualidadeLeite.findFirst.mockResolvedValueOnce(antes).mockResolvedValue(depois);
+    const r = await corrigirQualidade(uid(3), { ...correcao, dataRecebimentoLaudo: datas.dataRecebimentoLaudo }, 9);
+    expect(r).toMatchObject({ ...datas, versao: 2, resultados: [], realizacao: "COLETA_REGISTRADA" });
+    expect(m.tx.amostraQualidadeLeite.update).toHaveBeenCalledWith({ where: { id: uid(3) }, data: { versao: { increment: 1 }, dataRecebimentoLaudo: new Date("2026-10-16") } });
+    expect(m.corrigirExame).not.toHaveBeenCalled();
+    expect(m.tx.resultadoQualidadeLeite.updateMany).not.toHaveBeenCalled();
+    expect(m.tx.resultadoQualidadeLeite.createMany).not.toHaveBeenCalled();
+    expect(m.auditar).toHaveBeenCalledWith(m.tx, expect.objectContaining({ acao: "DATAS_CORRIGIDAS", usuarioId: 9, antes: expect.objectContaining({ dataRecebimentoLaudo: null, versao: 1 }), depois: expect.objectContaining({ ...datas, versao: 2, motivo: correcao.motivo }) }));
+  });
+  it("versão antiga também bloqueia correção exclusiva de datas antes de qualquer gravação", async () => {
+    await expect(corrigirQualidade(uid(3), { ...correcao, versaoEsperada: 2, dataRecebimentoLaudo: "2026-10-16" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(m.tx.amostraQualidadeLeite.update).not.toHaveBeenCalled();
+    expect(m.auditar).not.toHaveBeenCalled();
+  });
+  it("limpeza explícita não limpa o outro campo e mantém os resultados vigentes", async () => {
+    await corrigirQualidade(uid(3), { ...correcao, dataResultadoLaboratorial: null }, 9);
+    expect(m.tx.amostraQualidadeLeite.update).toHaveBeenCalledWith({ where: { id: uid(3) }, data: { versao: { increment: 1 }, dataResultadoLaboratorial: null } });
+    expect(m.tx.resultadoQualidadeLeite.updateMany).not.toHaveBeenCalled();
+    expect(m.corrigirExame).not.toHaveBeenCalled();
+  });
+  it("consulta de parâmetro transporta datas sem mudar filtro pela coleta ou registro do resultado", async () => {
+    m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([{ ...amostra(), dataResultadoLaboratorial: new Date("2026-10-15"), dataRecebimentoLaudo: new Date("2026-10-16") }]);
+    m.tx.amostraQualidadeLeite.count.mockResolvedValue(1);
+    expect(await consultarParametrosQualidade(1, { campo: "DADO", inicio: "2026-10-01", fim: "2026-10-31", pagina: 1, tamanho: 20 })).toMatchObject({ itens: [{ ...datas, registradoEm: agora.toISOString(), dataAmostra: "2026-10-19" }] });
+  });
+  it("histórico devolve evidência preservada, sem completar datas antigas", async () => {
+    m.tx.auditoriaPecuaria.findMany.mockResolvedValue([{ id: uid(30), em: agora, acao: "DATAS_CORRIGIDAS", usuarioId: 9, usuario: { id: 9, nome: "Operador" }, antes: { data: "2026-10-10" }, depois: { ...datas, motivo: correcao.motivo } }]);
+    m.tx.auditoriaPecuaria.count.mockResolvedValue(1);
+    expect(await historicoQualidade(uid(3), 1)).toMatchObject({ itens: [{ antes: { data: "2026-10-10" }, depois: datas, motivo: correcao.motivo }] });
   });
 });

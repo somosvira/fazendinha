@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { SelecaoQualidadeFechamento } from "./SelecaoQualidadeFechamento";
 import { useRef, useState } from "react";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
@@ -173,24 +175,24 @@ export function FecharOperacaoComercialLeite({
           tabIndex={0}
           aria-label="Reconhecimento por retirada do fechamento"
         >
-          <table>
-            <caption>Reconhecimento por retirada</caption>
-            <thead>
-              <tr>
-                <th>Coleta</th>
-                <th>Retirado</th>
-                <th>Reconhecido (L)</th>
-                <th>Justificativa de diferença</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table semContainer>
+            <TableCaption>Reconhecimento por retirada</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Coleta</TableHead>
+                <TableHead>Retirado</TableHead>
+                <TableHead>Reconhecido (L)</TableHead>
+                <TableHead>Justificativa de diferença</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {o.retiradas.map((r, i) => (
-                <tr key={r.id}>
-                  <td>
+                <TableRow key={r.id}>
+                  <TableCell>
                     {r.data} · {r.referencia}
-                  </td>
-                  <td>{formatarLitros(Number(r.quantidadeLitros))}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell>{formatarLitros(Number(r.quantidadeLitros))}</TableCell>
+                  <TableCell>
                     <label>
                       Litros reconhecidos em {r.referencia}
                       <input
@@ -211,8 +213,8 @@ export function FecharOperacaoComercialLeite({
                         }
                       />
                     </label>
-                  </td>
-                  <td>
+                  </TableCell>
+                  <TableCell>
                     <label>
                       Diferença em {r.referencia}
                       <input
@@ -230,11 +232,11 @@ export function FecharOperacaoComercialLeite({
                         }
                       />
                     </label>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
         <div className="leite-form-inline">
           <label>
@@ -364,16 +366,16 @@ export function FecharOperacaoComercialLeite({
         </div>
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button disabled={ocupado}>
+          <Button disabled={ocupado}>
             {ocupado ? "Registrando fechamento…" : "Confirmar fechamento"}
-          </button>{" "}
-          <button
+          </Button>{" "}
+          <Button variant="outline"
             type="button"
             className="leite-secondary"
             onClick={aoCancelar}
           >
             Cancelar fechamento
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>

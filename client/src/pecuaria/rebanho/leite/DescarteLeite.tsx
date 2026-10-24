@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -232,7 +234,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
                 {formatarLitros(Number(origem.quantidadeDisponivelLitros))}.
               </p>
             )}
-            <button
+            <Button
               disabled={
                 !lista ||
                 ocupado ||
@@ -244,40 +246,40 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
               }
             >
               Confirmar descarte físico
-            </button>
+            </Button>
           </fieldset>
         </form>
       )}
       {lista && (
         <>
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>Descartes do mês até a data selecionada</caption>
-              <thead>
-                <tr>
-                  <th>Data e origem</th>
-                  <th>Litros</th>
-                  <th>Motivo</th>
-                  <th>Situação</th>
-                  <th>Ação</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Descartes do mês até a data selecionada</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data e origem</TableHead>
+                  <TableHead>Litros</TableHead>
+                  <TableHead>Motivo</TableHead>
+                  <TableHead>Situação</TableHead>
+                  <TableHead>Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {lista.itens.map((d) => (
-                  <tr key={d.id}>
-                    <td>
+                  <TableRow key={d.id}>
+                    <TableCell>
                       {d.data} · {d.nomeOrdenha}
                       <small>{d.produtoNome}</small>
-                    </td>
-                    <td>{formatarLitros(d.quantidadeLitros)}</td>
-                    <td>{d.motivo}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell>{formatarLitros(d.quantidadeLitros)}</TableCell>
+                    <TableCell>{d.motivo}</TableCell>
+                    <TableCell>
                       {d.status === "CONFIRMADO" ? "Confirmado" : "Estornado"}
                       {d.motivoEstorno && <small>{d.motivoEstorno}</small>}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {podeLancar && d.status === "CONFIRMADO" && (
-                        <button
+                        <Button variant="outline"
                           className="leite-secondary"
                           onClick={() => {
                             setEstorno(d);
@@ -285,33 +287,33 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
                           }}
                         >
                           Corrigir descarte de {d.data}
-                        </button>
+                        </Button>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {!lista.itens.length && (
             <p>Nenhum descarte registrado neste período.</p>
           )}
           <div className="leite-form-inline">
-            <button
+            <Button variant="outline"
               className="leite-secondary"
               disabled={pagina === 1}
               onClick={() => setPagina((p) => p - 1)}
             >
               Descartes anteriores
-            </button>
+            </Button>
             <span>Página {pagina}</span>
-            <button
+            <Button variant="outline"
               className="leite-secondary"
               disabled={pagina * lista.tamanho >= lista.total}
               onClick={() => setPagina((p) => p + 1)}
             >
               Próximos descartes
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -348,16 +350,16 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
               />
             </label>
             <div className="leite-form-inline">
-              <button disabled={ocupado || motivoEstorno.trim().length < 5}>
+              <Button disabled={ocupado || motivoEstorno.trim().length < 5}>
                 Estornar lançamento incorreto
-              </button>
-              <button
+              </Button>
+              <Button variant="outline"
                 type="button"
                 className="leite-secondary"
                 onClick={() => setEstorno(null)}
               >
                 Cancelar regularização
-              </button>
+              </Button>
             </div>
           </fieldset>
         </form>

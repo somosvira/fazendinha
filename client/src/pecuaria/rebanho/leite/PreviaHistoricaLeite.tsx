@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { registrarLeite } from "./operacoes-api";
@@ -209,17 +212,15 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
               placeholder="Indique o cabeçalho ou a conferência que comprova litros"
             />
           </label>
-          <button
-            disabled={
+          <Button disabled={
               !podeLancar ||
               ocupado ||
               !unidade ||
               !linhas.length ||
               referencia.trim().length < 5
-            }
-          >
+            }>
             {ocupado ? "Conferindo lote…" : "Conferir sem importar"}
-          </button>
+          </Button>
         </fieldset>
       </form>
       {!podeLancar && <p>Conferir lotes exige permissão de lançamento.</p>}
@@ -251,59 +252,55 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
             conciliados; esta prévia não os apaga nem os repete.
           </p>
           <div className="leite-tabela-scroll">
-            <table>
-              <caption>Conferência por registro de origem</caption>
-              <thead>
-                <tr>
-                  <th>Linha</th>
-                  <th>Animal e ordenha</th>
-                  <th>Data</th>
-                  <th>Litros</th>
-                  <th>Conferência</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Conferência por registro de origem</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Linha</TableHead>
+                  <TableHead>Animal e ordenha</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Litros</TableHead>
+                  <TableHead>Conferência</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {previa.linhas
                   .slice((pagina - 1) * 20, pagina * 20)
                   .map((l) => (
-                    <tr key={l.linha}>
-                      <td>
+                    <TableRow key={l.linha}>
+                      <TableCell>
                         {l.linha}
                         <small>{l.origemId}</small>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {l.brinco} · {l.ordenha}
-                      </td>
-                      <td>{l.data}</td>
-                      <td>{formatarLitros(l.litros)}</td>
-                      <td>
+                      </TableCell>
+                      <TableCell>{l.data}</TableCell>
+                      <TableCell>{formatarLitros(l.litros)}</TableCell>
+                      <TableCell>
                         {rotulo(l.situacao)}
                         <small>{l.motivo}</small>
                         {l.pendencias.length > 0 && (
                           <small>Lactação ainda não conciliada.</small>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina === 1}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Linhas anteriores
-            </button>
+            </Button>
             <span>Página {pagina}</span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina * 20 >= previa.linhas.length}
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próximas linhas
-            </button>
+            </Button>
           </div>
           <ul>
             {previa.avisos.map((a) => (
@@ -312,8 +309,8 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           </ul>
         </>
       )}
-      <details>
-        <summary>Como preparar o arquivo</summary>
+      <SecaoDetalhesLeite  titulo={<>Como preparar o arquivo</>}>
+
         <p>
           O arquivo de preparação contém uma lista chamada “linhas”. Cada linha
           conserva seu identificador de origem, brinco literal, data, nome da
@@ -326,7 +323,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           O formato deve ser preparado após inspecionar a planilha ou folha
           real. Ainda não há execução automática da carga neste fluxo.
         </p>
-      </details>
+      </SecaoDetalhesLeite>
     </section>
   );
 }

@@ -24,6 +24,9 @@ const configuracao: ConfiguracaoOrdenha = {
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
+  HTMLElement.prototype.releasePointerCapture = vi.fn();
   vi.mocked(salvarConfiguracao).mockResolvedValue(configuracao);
 });
 describe("Configuração de ordenhas", () => {
@@ -84,4 +87,58 @@ describe("Configuração de ordenhas", () => {
       (screen.getAllByLabelText("Nome")[0] as HTMLInputElement).value,
     ).toBe("Primeira");
   });
+});
+
+it("configura a fonte geral e o intervalo individual sem mudar as ordenhas", async () => {
+  render(
+    <ConfiguracoesOrdenha
+      configuracao={configuracao}
+      data="2026-10-23"
+      aoFechar={vi.fn()}
+      aoSalvar={vi.fn()}
+    />,
+  );
+  fireEvent.keyDown(
+    screen.getByRole("combobox", { name: "Fonte da produção diária" }),
+    { key: "ArrowDown" },
+  );
+  fireEvent.click(
+    await screen.findByRole("option", { name: "Aferição geral nos tanques" }),
+  );
+  fireEvent.change(screen.getByLabelText("Aferir a cada"), {
+    target: { value: "2" },
+  });
+
+  fireEvent.click(screen.getByRole("button", { name: "Salvar configuração" }));
+  await waitFor(() =>
+    expect(salvarConfiguracao).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fonteProducao: "GERAL",
+        intervaloIndividualQuantidade: 2,
+        intervaloIndividualUnidade: "MESES",
+        ordenhas: configuracao.ordenhas,
+      }),
+    ),
+  );
+});
+
+it("protege Cancelar após reordenar mesmo sem mudar um campo nativo", async () => {
+  const aoFechar = vi.fn();
+  render(<ConfiguracoesOrdenha configuracao={configuracao} data="2026-10-23" aoFechar={aoFechar} aoSalvar={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Mover Tarde para cima" }));
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  await screen.findByText("Descartar alterações?");
+  expect(aoFechar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+  expect((screen.getAllByLabelText("Nome")[0] as HTMLInputElement).value).toBe("Tarde");
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Descartar alterações" }));
+  expect(aoFechar).toHaveBeenCalledOnce();
+});
+it("Cancelar fecha a configuração intacta sem aviso", () => {
+  const aoFechar = vi.fn();
+  render(<ConfiguracoesOrdenha configuracao={configuracao} data="2026-10-23" aoFechar={aoFechar} aoSalvar={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(aoFechar).toHaveBeenCalledOnce();
+  expect(screen.queryByText("Descartar alterações?")).toBeNull();
 });

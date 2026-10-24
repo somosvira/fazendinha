@@ -21,3 +21,15 @@ it("recusa versão alterada, anulação e amostra fora do período", async () =>
   m.obter.mockResolvedValueOnce({ id: "a", versao: 2, data: new Date("2026-11-01") });
   await expect(executar()).rejects.toMatchObject({ code: "VALIDACAO" });
 });
+
+it("snapshot comercial conserva datas conhecidas e não infere ausentes a partir do cadastro", async () => {
+  const dto = { id: "a", versao: 2, status: "VALIDO", data: "2026-10-10", criadoEm: "2026-10-23T12:00:00Z", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16" };
+  m.dto.mockReturnValue(dto);
+  const selecao = [{ amostraId: "a", versaoEsperada: 2 }];
+  const r = await prepararVinculosQualidadeFechamentoTx(tx as unknown as Prisma.TransactionClient, selecao, periodo, 7);
+  dto.dataResultadoLaboratorial = "2026-10-20";
+  expect(r[0].snapshot).toMatchObject({ data: "2026-10-10", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z" });
+  m.dto.mockReturnValue({ id: "a", versao: 2, status: "VALIDO", data: "2026-10-10", criadoEm: "2026-10-23T12:00:00Z", dataResultadoLaboratorial: null, dataRecebimentoLaudo: null });
+  const antigo = await prepararVinculosQualidadeFechamentoTx(tx as unknown as Prisma.TransactionClient, selecao, periodo, 7);
+  expect(antigo[0].snapshot).toMatchObject({ dataResultadoLaboratorial: null, dataRecebimentoLaudo: null });
+});

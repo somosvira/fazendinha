@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   matriz: vi.fn(),
   tx: { $executeRaw: vi.fn(), lactacaoAnimal: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
-    participanteProducaoLeite: { findMany: vi.fn() }, auditoriaPecuaria: { create: vi.fn() } },
+    $queryRaw: vi.fn(), participanteProducaoLeite: { findMany: vi.fn() }, auditoriaPecuaria: { create: vi.fn() } },
 }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: (executar: (tx: typeof mocks.tx) => Promise<unknown>) => executar(mocks.tx) }));
@@ -14,6 +14,7 @@ beforeEach(() => {
   mocks.matriz.mockResolvedValue({ id: "animal", sexo: "F" });
   mocks.tx.lactacaoAnimal.findFirst.mockResolvedValue({ id: "lactacao", animalId: "animal", propriedadeId: 1, inicio: dia("2026-01-01"), encerradaEm: null, versao: 1 });
   mocks.tx.lactacaoAnimal.findMany.mockResolvedValue([]);
+  mocks.tx.$queryRaw.mockResolvedValue([]);
   mocks.tx.participanteProducaoLeite.findMany.mockResolvedValue([{ lactacaoId: "lactacao", dia: { dataOperacional: dia("2026-10-01") } }]);
 });
 describe("alteração da lactação conserva a origem da produção", () => {
@@ -25,4 +26,11 @@ describe("alteração da lactação conserva a origem da produção", () => {
     await expect(corrigirLactacao("lactacao", { propriedadeId: 1, inicio: "2026-10-02", versaoEsperada: 1, motivo: "Início corrigido" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
     expect(mocks.tx.lactacaoAnimal.update).not.toHaveBeenCalled();
   });
+});
+
+it("secagem não escreve sobre produção geral identificada sem controle individual", async () => {
+  mocks.tx.participanteProducaoLeite.findMany.mockResolvedValue([]);
+  mocks.tx.$queryRaw.mockResolvedValue([{ animalId: "animal", propriedadeId: 1, data: dia("2026-10-20"), entradaId: null, evidencia: null }]);
+  await expect(encerrarLactacao("lactacao", 1, "2026-10-19", "Secagem retroativa", 7)).rejects.toMatchObject({ code: "CONFLITO" });
+  expect(mocks.tx.lactacaoAnimal.update).not.toHaveBeenCalled();
 });

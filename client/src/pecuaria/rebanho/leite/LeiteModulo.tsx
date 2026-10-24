@@ -1,7 +1,11 @@
+import { PageHeader } from "../../../financeiro/financeiro-ui";
+import { SubTabs } from "../../../components/SubTabs";
+import { Button } from "../../../components/ui/button";
 import { useEffect, useState } from "react";
 import { PreviaHistoricaLeite } from "./PreviaHistoricaLeite";
 import { OperacoesComerciaisLeite } from "./OperacoesComerciaisLeite";
 import { ComercialLeite } from "./ComercialLeite";
+import { OrdenhasGerais } from "./OrdenhasGerais";
 import { Leite } from "./Leite";
 import { ConsultasComerciaisLeite } from "./ConsultasComerciaisLeite";
 import { ConsultasProducaoLeite } from "./ConsultasProducaoLeite";
@@ -42,15 +46,18 @@ export function LeiteModulo({
   podeFinanceiro: boolean;
   podeExportar?: boolean;
 }) {
+  const [modo, setModo] = useState(() => new URLSearchParams(location.search).get("leiteModo") ?? "geral");
   const [acoesContainer, setAcoesContainer] = useState<HTMLDivElement | null>(null);
   const [secao, setSecao] = useState(
     () => new URLSearchParams(location.search).get("leiteSecao") ?? "ordenhas",
   );
   useEffect(() => {
-    const atualizar = () =>
+    const atualizar = () => {
+      setModo(new URLSearchParams(location.search).get("leiteModo") ?? "geral");
       setSecao(
         new URLSearchParams(location.search).get("leiteSecao") ?? "ordenhas",
       );
+    };
     window.addEventListener("popstate", atualizar);
     return () => window.removeEventListener("popstate", atualizar);
   }, []);
@@ -62,23 +69,15 @@ export function LeiteModulo({
   }
   return (
     <div className="leite-modulo">
-      <header className="leite-modulo-header">
-        <div><h1>Leite</h1>
-        <p>Registre cada ordenha e acompanhe a produção da fazenda.</p></div>
-        <div ref={setAcoesContainer} className="leite-modulo-acoes" />
-      </header>
-      <nav aria-label="Produção de leite" className="leite-subnav">
-        {consultas.map(({ id, nome, Icon }) => (
-          <button key={id} type="button" aria-current={secao === id ? "page" : undefined} onClick={() => selecionar(id)}>
-            <Icon size={20} aria-hidden="true" />{nome}
-          </button>
-        ))}
+      <PageHeader titulo="Leite" descricao="Registre cada ordenha e acompanhe a produção da fazenda." acao={<div ref={setAcoesContainer} className="leite-modulo-acoes" />} />
+      <nav aria-label="Produção de leite" className="leite-navegacao">
+        <SubTabs variant="financeiro" ariaLabel="Consultas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={selecionar} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button type="button" className="leite-mais-rotinas" data-selecionada={rotinas.some(([id]) => id === secao)}>
+            <Button variant="outline" type="button" className="leite-mais-rotinas" data-selecionada={rotinas.some(([id]) => id === secao)}>
               {rotinas.find(([id]) => id === secao)?.[1] ?? "Mais rotinas"}
               <ChevronDown size={18} aria-hidden="true" />
-            </button>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="leite-menu-rotinas" aria-label="Mais rotinas do leite">
             {rotinas.map(([id, nome]) => (
@@ -120,7 +119,10 @@ export function LeiteModulo({
       ) : secao === "custos" ? (
         <CustosLeite podeExportar={podeExportar} />
       ) : (
-        <Leite podeLancar={podeLancar} acoesContainer={acoesContainer} />
+        <>
+          <SubTabs variant="financeiro" aparencia="botoes" className="leite-modos" ariaLabel="Forma de aferição" tabs={[{ id: "geral", label: "Produção geral" }, { id: "individual", label: "Controle individual" }]} active={modo} onSelect={id => { setModo(id); const url = new URL(location.href); url.searchParams.set("leiteModo", id); history.replaceState(null, "", url); }} />
+          {modo === "individual" ? <><p>Controle individual nas datas aferidas. Não representa a produção de todos os dias entre os controles.</p><Leite podeLancar={podeLancar} acoesContainer={acoesContainer} /></> : <OrdenhasGerais podeLancar={podeLancar} acoesContainer={acoesContainer} />}
+        </>
       )}
       </div>
     </div>

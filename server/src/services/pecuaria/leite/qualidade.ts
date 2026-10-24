@@ -40,6 +40,8 @@ export function amostraQualidadeDTO(a: Amostra): AmostraQualidadeLeiteDTO {
   const e = a.exameAnimal;
   const snapshot = (e?.formatoSnapshot ?? a.formatoSnapshot) as { nome: string; tipoResultado: string; versao: number; campos: unknown };
   return { id: a.id, propriedadeId: a.propriedadeId, data: a.data.toISOString().slice(0, 10), versao: a.versao,
+    dataResultadoLaboratorial: a.dataResultadoLaboratorial?.toISOString().slice(0, 10) ?? null,
+    dataRecebimentoLaudo: a.dataRecebimentoLaudo?.toISOString().slice(0, 10) ?? null,
     sujeito: e ? { tipo: "ANIMAL", animalId: e.animalId } : { tipo: "COLETIVO", origem: a.origemColetiva!, ...(a.entradaId ? { entradaId: a.entradaId } : {}) },
     animal: e?.animal ?? null, exameAnimalId: a.exameAnimalId, tipoExameId: a.tipoExameId,
     formatoSnapshot: { nome: snapshot.nome, tipoResultado: "MULTIPLO", versao: snapshot.versao, campos: camposExameSchema.parse(snapshot.campos) },
@@ -110,6 +112,8 @@ export async function registrarQualidade(input: RegistrarQualidadeInput, usuario
       const coletivo = sujeito.tipo === "COLETIVO";
       const criado = await tx.amostraQualidadeLeite.create({ data: {
         propriedadeId: input.propriedadeId, data: dia(input.data), sujeito: input.sujeito.tipo, tipoExameId: tipo.id, exameAnimalId,
+        dataResultadoLaboratorial: input.dataResultadoLaboratorial ? dia(input.dataResultadoLaboratorial) : null,
+        dataRecebimentoLaudo: input.dataRecebimentoLaudo ? dia(input.dataRecebimentoLaudo) : null,
         origemColetiva: sujeito.tipo === "COLETIVO" ? sujeito.origem : null, entradaId: sujeito.tipo === "COLETIVO" ? sujeito.entradaId ?? null : null,
         formatoSnapshot: coletivo ? { nome: tipo.nome, tipoResultado: "MULTIPLO", versao: tipo.versaoFormato, campos: tipo.campos } : Prisma.DbNull,
         realizacao: resultados.length ? "REALIZADO" : "COLETA_REGISTRADA", responsavel: input.responsavel, anotacaoOriginal: input.anotacaoOriginal,
@@ -130,18 +134,23 @@ export async function corrigirQualidade(id: string, input: CorrigirQualidadeInpu
       const original = await obterAmostraQualidadeTx(tx, id, input.propriedadeId);
       if (original.versao !== input.versaoEsperada) throw new RebanhoError("CONFLITO", "A amostra mudou; recarregue o laudo");
       if (original.status !== "VALIDO" || original.exameAnimal?.status === "ANULADO") throw new RebanhoError("CONFLITO", "Amostra anulada não pode receber outro resultado");
-      if (original.exameAnimalId) {
+      if (original.exameAnimalId && (input.anular || input.resultados !== undefined)) {
         await corrigirExameTx(tx, original.exameAnimalId, input.propriedadeId, { motivo: input.motivo, resultados: input.resultados, anular: input.anular }, usuarioId, id);
-      } else if (!input.anular) {
+      } else if (!original.exameAnimalId && !input.anular && input.resultados !== undefined) {
         const formato = original.formatoSnapshot as { campos: unknown };
-        const resultados = validarObservacoesExame(formato.campos, input.resultados ?? []);
+        const resultados = validarObservacoesExame(formato.campos, input.resultados);
         await tx.resultadoQualidadeLeite.updateMany({ where: { amostraId: id, vigente: true }, data: { vigente: false, substituidoEm: new Date() } });
         await tx.resultadoQualidadeLeite.createMany({ data: resultados.map(r => ({ ...r, amostraId: id, criadoPorId: usuarioId })) });
       }
-      await tx.amostraQualidadeLeite.update({ where: { id }, data: { versao: { increment: 1 }, ...(input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { realizacao: "REALIZADO" }) } });
+      await tx.amostraQualidadeLeite.update({ where: { id }, data: {
+        versao: { increment: 1 },
+        ...(input.dataResultadoLaboratorial !== undefined ? { dataResultadoLaboratorial: input.dataResultadoLaboratorial === null ? null : dia(input.dataResultadoLaboratorial) } : {}),
+        ...(input.dataRecebimentoLaudo !== undefined ? { dataRecebimentoLaudo: input.dataRecebimentoLaudo === null ? null : dia(input.dataRecebimentoLaudo) } : {}),
+        ...(input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : input.resultados !== undefined ? { realizacao: "REALIZADO" } : {}),
+      } });
       const depois = await obterAmostraQualidadeTx(tx, id, input.propriedadeId);
       await auditar(tx, { entidade: "AmostraQualidadeLeite", entidadeId: id, propriedadeId: input.propriedadeId,
-        animalId: original.exameAnimal?.animalId, usuarioId, acao: input.anular ? "ANULACAO" : "RESULTADO_CORRIGIDO", antes: amostraQualidadeDTO(original), depois: { ...amostraQualidadeDTO(depois), motivo: input.motivo } });
+        animalId: original.exameAnimal?.animalId, usuarioId, acao: input.anular ? "ANULACAO" : input.resultados !== undefined ? "RESULTADO_CORRIGIDO" : "DATAS_CORRIGIDAS", antes: amostraQualidadeDTO(original), depois: { ...amostraQualidadeDTO(depois), motivo: input.motivo } });
       return { id };
     });
     return amostraQualidadeDTO(await obterAmostraQualidadeTx(tx, resposta.id, input.propriedadeId));
@@ -208,7 +217,7 @@ export async function consultarParametrosQualidade(propriedadeId: number, input:
       const serie = hashDados({ tipoExameId: a.tipoExameId, formato: a.formatoSnapshot,
         campo: filtro.campo, unidade: r.unidade, sujeito: a.sujeito });
       return { amostraId: a.id, dataAmostra: a.data, registradoEm: r.criadoEm,
-        dataResultadoLaboratorial: null, sujeito: a.sujeito, animal: a.animal,
+        dataResultadoLaboratorial: a.dataResultadoLaboratorial, dataRecebimentoLaudo: a.dataRecebimentoLaudo, sujeito: a.sujeito, animal: a.animal,
         campo: r.campo, rotulo: campo.rotulo ?? campo.codigo, valor: r.valor, unidade: r.unidade,
         formato: { id: a.tipoExameId, nome: a.formatoSnapshot.nome, versao: a.formatoSnapshot.versao },
         serie, versaoAmostra: a.versao };

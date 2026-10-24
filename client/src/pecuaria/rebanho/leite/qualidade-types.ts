@@ -13,6 +13,9 @@ export interface AmostraQualidade {
   id: string;
   propriedadeId: number;
   data: string;
+  dataResultadoLaboratorial: string | null;
+  dataRecebimentoLaudo: string | null;
+  criadoEm: string;
   sujeito:
     | { tipo: "ANIMAL"; animalId: string }
     | { tipo: "COLETIVO"; origem: string; entradaId?: string };

@@ -1,3 +1,6 @@
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import {
@@ -221,15 +224,13 @@ export function EstoqueLeite({
             <p role="status">{estoque.motivoNaoAferivel}</p>
           )}
           <h2>Confirmar grupos da produção do dia</h2>
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
             disabled={ocupado}
-            onClick={() => setRevisao((r) => r + 1)}
-          >
+            onClick={() => setRevisao((r) => r + 1)}>
             Atualizar conferência das medições
-          </button>
-          {!folha?.id ? (
+          </Button>
+          {folha?.configuracao.fonteProducao === "GERAL" ? <p>A produção desta data é aferida nos tanques. Confirme as aferições em Ordenhas → Produção geral; o controle individual não cria outra entrada.</p> : !folha?.id ? (
             <p>
               A folha desse dia ainda não foi salva. Registre as medições em
               Ordenhas.
@@ -255,25 +256,25 @@ export function EstoqueLeite({
             <p>Nenhuma produção confirmada para este produto neste sítio.</p>
           ) : (
             <div className="leite-tabela-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Data de origem</th>
-                    <th>Saldo da origem</th>
-                    <th>Natureza declarada</th>
-                    <th>Valor do saldo</th>
-                    <th>Ação</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table semContainer>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data de origem</TableHead>
+                    <TableHead>Saldo da origem</TableHead>
+                    <TableHead>Natureza declarada</TableHead>
+                    <TableHead>Valor do saldo</TableHead>
+                    <TableHead>Ação</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {estoque.origens.map((o) => (
-                    <tr key={o.entradaId}>
-                      <td>
+                    <TableRow key={o.entradaId}>
+                      <TableCell>
                         {o.data.slice(0, 10).split("-").reverse().join("/")} ·{" "}
                         {o.nomeOrdenha}
-                      </td>
-                      <td>{formatarLitros(Number(o.quantidadeLitros))}</td>
-                      <td>
+                      </TableCell>
+                      <TableCell>{formatarLitros(Number(o.quantidadeLitros))}</TableCell>
+                      <TableCell>
                         {(
                           {
                             NAO_INFORMADA: "A declarar",
@@ -282,8 +283,8 @@ export function EstoqueLeite({
                             NAO_COMERCIAL: "Não comercial",
                           } as Record<string, string>
                         )[o.natureza] ?? "A declarar"}
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {o.estadoValor === "OCULTO"
                           ? "Restrito"
                           : o.valorTotal === null
@@ -292,15 +293,14 @@ export function EstoqueLeite({
                                 style: "currency",
                                 currency: "BRL",
                               })}
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         {podeLancar && (
                           <div className="leite-form-inline">
                             {!["COLOSTRO", "NAO_COMERCIAL"].includes(
                               o.natureza,
                             ) && (
-                              <button
-                                className="leite-secondary"
+                              <Button variant="outline" className="leite-secondary"
                                 disabled={ocupado}
                                 onClick={() => {
                                   setOperacaoOrigem({
@@ -308,13 +308,11 @@ export function EstoqueLeite({
                                     acao: "classificar",
                                   });
                                   setMotivoOperacao("");
-                                }}
-                              >
+                                }}>
                                 Declarar natureza
-                              </button>
+                              </Button>
                             )}
-                            <button
-                              className="leite-secondary"
+                            <Button variant="outline" className="leite-secondary"
                               disabled={ocupado}
                               onClick={() => {
                                 setOperacaoOrigem({
@@ -322,32 +320,29 @@ export function EstoqueLeite({
                                   acao: "anular",
                                 });
                                 setMotivoOperacao("");
-                              }}
-                            >
+                              }}>
                               Regularizar entrada
-                            </button>
+                            </Button>
                           </div>
                         )}
                         {podeFinanceiro && podeLancar && (
-                          <button
-                            className="leite-secondary"
+                          <Button variant="outline" className="leite-secondary"
                             disabled={ocupado}
                             onClick={() => {
                               setEntrada(o.entradaId);
                               setValor("");
                               setMotivo("");
-                            }}
-                          >
+                            }}>
                             {o.versaoApuracao
                               ? "Corrigir apuração"
                               : "Apurar custo"}
-                          </button>
+                          </Button>
                         )}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
           {alvo && operacaoOrigem && podeLancar && (
@@ -423,19 +418,17 @@ export function EstoqueLeite({
                   />
                 </label>
                 <div className="leite-form-inline">
-                  <button>
+                  <Button >
                     Confirmar{" "}
                     {operacaoOrigem.acao === "classificar"
                       ? "declaração"
                       : "anulação"}
-                  </button>
-                  <button
-                    className="leite-secondary"
+                  </Button>
+                  <Button variant="outline" className="leite-secondary"
                     type="button"
-                    onClick={() => setOperacaoOrigem(null)}
-                  >
+                    onClick={() => setOperacaoOrigem(null)}>
                     Cancelar
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </form>
@@ -507,13 +500,13 @@ export function EstoqueLeite({
                     onChange={(e) => setMotivo(e.target.value)}
                   />
                 </label>
-                <button>Confirmar apuração</button>
+                <Button >Confirmar apuração</Button>
               </fieldset>
             </form>
           )}
           {podeFinanceiro && (
-            <details>
-              <summary>Registrar retirada e venda</summary>
+            <SecaoDetalhesLeite  titulo={<>Registrar retirada e venda</>}>
+
               {!estoque.comercial.confiavel && (
                 <p role="status">{estoque.comercial.motivoNaoAferivel}</p>
               )}
@@ -636,13 +629,13 @@ export function EstoqueLeite({
                         </select>
                       </label>
                     )}
-                    <button disabled={!config || !estoque.comercial.confiavel}>
+                    <Button disabled={!config || !estoque.comercial.confiavel}>
                       Confirmar retirada e venda
-                    </button>
+                    </Button>
                   </div>
                 </fieldset>
               </form>
-            </details>
+            </SecaoDetalhesLeite>
           )}
         </>
       )}

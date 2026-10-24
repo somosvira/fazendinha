@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import {
@@ -218,34 +221,28 @@ export function ComercialLeite({
             onChange={(e) => alterarPeriodo("ate", e.target.value)}
           />
         </label>
-        <button
-          className="leite-secondary"
+        <Button variant="outline" className="leite-secondary"
           disabled={carregando || anulando}
-          onClick={atualizar}
-        >
+          onClick={atualizar}>
           Atualizar comercial
-        </button>
+        </Button>
         {podeLancar && (
-          <button
-            disabled={resolvido === null || !entregas || carregando}
+          <Button disabled={resolvido === null || !entregas || carregando}
             onClick={() => {
               setNovaEntrega(true);
               setNovoDoc(false);
-            }}
-          >
+            }}>
             Registrar entrega
-          </button>
+          </Button>
         )}
         {podeFinanceiro && podeLancar && (
-          <button
-            disabled={!config || resolvido === null || !entregas || carregando}
+          <Button disabled={!config || resolvido === null || !entregas || carregando}
             onClick={() => {
               setNovoDoc(true);
               setNovaEntrega(false);
-            }}
-          >
+            }}>
             Registrar demonstrativo
-          </button>
+          </Button>
         )}
       </div>
       {carregando && <p role="status">Consultando documentos comerciais…</p>}
@@ -300,20 +297,20 @@ export function ComercialLeite({
             role="region"
             aria-label="Entregas, com rolagem horizontal"
           >
-            <table>
-              <caption>Histórico de entregas do sítio</caption>
-              <thead>
-                <tr>
-                  <th>Entrega</th>
-                  <th>Volumes</th>
-                  <th>Conferência</th>
-                  <th>Detalhes e comprovantes</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table semContainer>
+              <TableCaption>Histórico de entregas do sítio</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Entrega</TableHead>
+                  <TableHead>Volumes</TableHead>
+                  <TableHead>Conferência</TableHead>
+                  <TableHead>Detalhes e comprovantes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {entregas.itens.map((e) => (
-                  <tr key={e.id}>
-                    <td>
+                  <TableRow key={e.id}>
+                    <TableCell>
                       {e.referencia}
                       <small>
                         {dataPt(e.data)} ·{" "}
@@ -324,8 +321,8 @@ export function ComercialLeite({
                       {e.horarioColeta && (
                         <small>Horário informado: {e.horarioColeta}</small>
                       )}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       Expedido: {formatarLitros(Number(e.expedidoLitros))}
                       <br />
                       Aceito:{" "}
@@ -348,8 +345,8 @@ export function ComercialLeite({
                       {podeFinanceiro && e.valorFaturado !== null && (
                         <small>Valor alocado: {moeda(e.valorFaturado)}</small>
                       )}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       {nomeSituacaoEntrega(e.situacao)}
                       <small>Versão {e.versao}</small>
                       <p>{e.motivo}</p>
@@ -363,19 +360,17 @@ export function ComercialLeite({
                             de revisar o aceite ou a destinação.
                           </p>
                         ) : (
-                          <button
-                            className="leite-secondary"
-                            onClick={() => setConferir(e)}
-                          >
+                          <Button variant="outline" className="leite-secondary"
+                            onClick={() => setConferir(e)}>
                             Conferir {e.referencia}
-                          </button>
+                          </Button>
                         ))}
-                    </td>
-                    <td>
-                      <details>
-                        <summary>
+                    </TableCell>
+                    <TableCell>
+                      <SecaoDetalhesLeite  titulo={<>
                           Ver histórico e arquivos de {e.referencia}
-                        </summary>
+                        </>}>
+
                         {e.historico.map((h) => (
                           <p key={h.versao}>
                             Versão {h.versao}: {nomeSituacaoEntrega(h.situacao)}{" "}
@@ -398,36 +393,32 @@ export function ComercialLeite({
                             atualizar();
                           }}
                         />
-                      </details>
-                    </td>
-                  </tr>
+                      </SecaoDetalhesLeite>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           {!entregas.itens.length && (
             <p>Nenhuma entrega registrada no período.</p>
           )}
           <div className="leite-form-inline">
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={pagina <= 1 || carregando}
-              onClick={() => setPagina((p) => p - 1)}
-            >
+              onClick={() => setPagina((p) => p - 1)}>
               Entregas anteriores
-            </button>
+            </Button>
             <span>
               Página {pagina} · {entregas.total} entregas
             </span>
-            <button
-              className="leite-secondary"
+            <Button variant="outline" className="leite-secondary"
               disabled={
                 pagina * entregas.porPagina >= entregas.total || carregando
               }
-              onClick={() => setPagina((p) => p + 1)}
-            >
+              onClick={() => setPagina((p) => p + 1)}>
               Próximas entregas
-            </button>
+            </Button>
           </div>
         </>
       )}
@@ -461,19 +452,19 @@ export function ComercialLeite({
                 role="region"
                 aria-label="Demonstrativos, com rolagem horizontal"
               >
-                <table>
-                  <caption>Demonstrativos e anulações preservados</caption>
-                  <thead>
-                    <tr>
-                      <th>Documento</th>
-                      <th>Composição</th>
-                      <th>Alocações e estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table semContainer>
+                  <TableCaption>Demonstrativos e anulações preservados</TableCaption>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Documento</TableHead>
+                      <TableHead>Composição</TableHead>
+                      <TableHead>Alocações e estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {docs.itens.map((d) => (
-                      <tr key={d.id}>
-                        <td>
+                      <TableRow key={d.id}>
+                        <TableCell>
                           {d.referencia}
                           <small>
                             {config?.parceiros.find(
@@ -498,8 +489,8 @@ export function ComercialLeite({
                               : moeda(d.valorPagamentoInformado)}{" "}
                             · não confirma recebimento
                           </small>
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell>
                           {d.componentes.length
                             ? d.componentes.map((c, i) => (
                                 <p key={i}>
@@ -508,17 +499,17 @@ export function ComercialLeite({
                                 </p>
                               ))
                             : "Sem componentes adicionais informados"}
-                        </td>
-                        <td>
+                        </TableCell>
+                        <TableCell>
                           {d.status === "ANULADO" ? "Anulado" : "Válido"} ·
                           versão {d.versao}
                           {d.motivoAnulacao && (
                             <p>Motivo da anulação: {d.motivoAnulacao}</p>
                           )}
-                          <details>
-                            <summary>
+                          <SecaoDetalhesLeite  titulo={<>
                               Parcelas do demonstrativo {d.referencia}
-                            </summary>
+                            </>}>
+
                             {d.alocacoes.map((a) => (
                               <p key={a.id}>
                                 {entregas?.itens.find(
@@ -532,48 +523,42 @@ export function ComercialLeite({
                                   : ""}
                               </p>
                             ))}
-                          </details>
+                          </SecaoDetalhesLeite>
                           {podeLancar && d.status === "VALIDO" && (
-                            <button
-                              className="leite-secondary"
+                            <Button variant="outline" className="leite-secondary"
                               disabled={anulando}
                               onClick={() => {
                                 setAnular(d);
                                 setMotivoAnulacao("");
-                              }}
-                            >
+                              }}>
                               Anular {d.referencia}
-                            </button>
+                            </Button>
                           )}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
               {!docs.itens.length && (
                 <p>Nenhum demonstrativo registrado no período.</p>
               )}
               <div className="leite-form-inline">
-                <button
-                  className="leite-secondary"
+                <Button variant="outline" className="leite-secondary"
                   disabled={paginaDoc <= 1 || carregando}
-                  onClick={() => setPaginaDoc((p) => p - 1)}
-                >
+                  onClick={() => setPaginaDoc((p) => p - 1)}>
                   Demonstrativos anteriores
-                </button>
+                </Button>
                 <span>
                   Página {paginaDoc} · {docs.total} demonstrativos
                 </span>
-                <button
-                  className="leite-secondary"
+                <Button variant="outline" className="leite-secondary"
                   disabled={
                     paginaDoc * docs.porPagina >= docs.total || carregando
                   }
-                  onClick={() => setPaginaDoc((p) => p + 1)}
-                >
+                  onClick={() => setPaginaDoc((p) => p + 1)}>
                   Próximos demonstrativos
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -601,18 +586,16 @@ export function ComercialLeite({
                   />
                 </label>
                 <div className="leite-form-inline">
-                  <button
-                    type="button"
+                  <Button variant="outline" type="button"
                     className="leite-secondary"
-                    onClick={() => setAnular(null)}
-                  >
+                    onClick={() => setAnular(null)}>
                     Cancelar anulação
-                  </button>
-                  <button>
+                  </Button>
+                  <Button >
                     {anulando
                       ? "Anulando…"
                       : "Confirmar anulação do demonstrativo"}
-                  </button>
+                  </Button>
                 </div>
               </fieldset>
             </form>
@@ -691,16 +674,14 @@ function ConferirEntrega({
         <CamposConferenciaEntrega valor={valor} onChange={setValor} />
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
-          <button
-            type="button"
+          <Button variant="outline" type="button"
             className="leite-secondary"
-            onClick={aoCancelar}
-          >
+            onClick={aoCancelar}>
             Cancelar conferência
-          </button>
-          <button>
+          </Button>
+          <Button >
             {ocupado ? "Registrando…" : "Confirmar conferência da entrega"}
-          </button>
+          </Button>
         </div>
       </fieldset>
     </form>

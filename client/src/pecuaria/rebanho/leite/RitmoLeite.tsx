@@ -1,3 +1,5 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import {
   Bar,
   BarChart,
@@ -69,36 +71,36 @@ export function RitmoLeite({ dias }: { dias: DiaRitmoLeite[] }) {
           </BarChart>
         </ResponsiveContainer>
       </div>
-      <details>
-        <summary>Conferir cobertura de cada dia</summary>
+      <SecaoDetalhesLeite  titulo={<>Conferir cobertura de cada dia</>}>
+
         <div className="leite-tabela-scroll">
-          <table>
-            <caption>Produção e cobertura diárias</caption>
-            <thead>
-              <tr>
-                <th>Data</th>
-                <th>Litros conhecidos</th>
-                <th>Cobertura</th>
-                <th>Situação</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table semContainer>
+            <TableCaption>Produção e cobertura diárias</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Data</TableHead>
+                <TableHead>Litros conhecidos</TableHead>
+                <TableHead>Cobertura</TableHead>
+                <TableHead>Situação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {dias.map((d) => (
-                <tr key={d.data}>
-                  <td>{d.data.split("-").reverse().join("/")}</td>
-                  <td>{formatarLitros(d.litros)}</td>
-                  <td>
+                <TableRow key={d.data}>
+                  <TableCell>{d.data.split("-").reverse().join("/")}</TableCell>
+                  <TableCell>{formatarLitros(d.litros)}</TableCell>
+                  <TableCell>
                     {d.esperadas === null
                       ? "Não informada"
                       : `${d.resolvidas} de ${d.esperadas} resolvidas`}
-                  </td>
-                  <td>{rotulos[d.estado]}</td>
-                </tr>
+                  </TableCell>
+                  <TableCell>{rotulos[d.estado]}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
-      </details>
+      </SecaoDetalhesLeite>
     </section>
   );
 }

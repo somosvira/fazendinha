@@ -14,6 +14,7 @@ export interface DiaHistoricoProdutivo {
   totais: ResumoLeite;
 }
 export interface HistoricoProdutivo {
+  controleIndividual?: { quantidade: number; unidade: "DIAS" | "MESES"; ultimaAfericao: string | null; proximaAfericao: string | null };
   propriedadeId: number; animal: { id: string; brinco: string; nome: string | null };
   periodo: { inicio: string; fim: string }; itens: DiaHistoricoProdutivo[];
   total: number; pagina: number; tamanho: number; totaisPeriodo: ResumoLeite;

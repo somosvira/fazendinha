@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { carregarFontesCustoTx } from "../custos/custos.js";
 import { consultarCustosLeiteTx } from "./custos.js";
+import { consultarPopulacaoPeriodoLeiteTx } from "./populacao-periodo.js";
+import { linhasProducaoGeralTx } from "./producao-geral-consulta.js";
 import { consultaCustosLeiteSchema } from "./custos.schemas.js";
 
 vi.mock("../../../db.js", () => ({
@@ -15,8 +17,9 @@ vi.mock("../../../db.js", () => ({
   },
 }));
 vi.mock("./populacao-periodo.js", () => ({ consultarPopulacaoPeriodoLeiteTx: vi.fn(async (_tx, _id, inicio: string, fim: string) => {
-  const dias = []; for (let t=Date.parse(inicio);t<=Date.parse(fim);t+=86400000) dias.push({data:new Date(t).toISOString().slice(0,10),estado:"ELEGIVEIS",elegiveis:[],pendentes:[]}); return dias;
+  const dias = []; for (let t=Date.parse(inicio);t<=Date.parse(fim);t+=86400000) dias.push({data:new Date(t).toISOString().slice(0,10),estado:"ELEGIVEIS",elegiveis:[],pendentes:[],potenciais:[]}); return dias;
 }) }));
+vi.mock("./producao-geral-consulta.js", () => ({ linhasProducaoGeralTx: vi.fn(async () => []) }));
 vi.mock("../custos/custos.js", () => ({ carregarFontesCustoTx: vi.fn() }));
 const animalId = "00000000-0000-4000-8000-000000000001";
 const periodo = { inicio: "2026-10-01", fim: "2026-10-01" };
@@ -194,4 +197,17 @@ describe("consulta do custo por litro", () => {
     expect(prisma.diaProducaoLeite.findMany).not.toHaveBeenCalled();
     expect(carregarFontesCustoTx).not.toHaveBeenCalled();
   });
+});
+
+it.each(["pendentes", "potenciais"] as const)("não apura custo/L geral se há animais %s apesar de tanque completo", async (pendencia) => {
+  vi.mocked(prisma.medicaoLeite.count).mockResolvedValue(1);
+  const folha = dia();
+  vi.mocked(prisma.diaProducaoLeite.findMany).mockResolvedValue([{ ...folha, configuracao: { ...folha.configuracao, fonteProducao: "GERAL" } }] as never);
+  vi.mocked(consultarPopulacaoPeriodoLeiteTx).mockResolvedValueOnce([{ data: periodo.inicio, estado: "ELEGIVEIS", elegiveis: [animalId], pendentes: [], potenciais: [], [pendencia]: ["animal-incerto"] }]);
+  vi.mocked(linhasProducaoGeralTx).mockResolvedValueOnce([{ animaisOrigem: [animalId], fonte: "GERAL", tanqueId: "tanque", data: periodo.inicio, animalId: null, brinco: "Tanque", nome: "Tanque", finalidade: null, posicaoId: "manha", ordenha: "Manhã", natureza: "COMERCIAL", estado: "MEDIDO", litros: 1000, confirmada: false }]);
+  vi.mocked(carregarFontesCustoTx).mockResolvedValue([]);
+  const r = await consultarCustosLeiteTx(prisma, 3, periodo, true);
+  expect(r.consolidado.producao.litros).toBe(1000);
+  expect(r.consolidado.custoPorLitro).toBeNull();
+  expect(r.consolidado.motivos).toContain("POPULACAO_GERAL_NAO_CONCILIADA");
 });

@@ -1,8 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { consultarPopulacaoPeriodoLeiteTx, type EstadoPopulacaoLeite } from "./populacao-periodo.js";
+import { linhasProducaoGeralTx } from "./producao-geral-consulta.js";
 import { consultaCustosLeiteSchema } from "./custos.schemas.js";
 export interface LinhaPainelLeite {
+  fonte?: "GERAL" | "INDIVIDUAL";
+  esperadas?: number;
   propriedadeId: number;
   data: Date;
   ordenhas: bigint | number;
@@ -29,15 +32,15 @@ export function resumirPainelLeite(
         .toFixed(3)
     : null;
   const parciais = linhas.filter(
-    (l) => Number(l.animais) * Number(l.ordenhas) > Number(l.resolvidas),
+    (l) => (l.esperadas ?? Number(l.animais) * Number(l.ordenhas)) > Number(l.resolvidas),
   ).length;
-  const semParticipantes = linhas.filter((l) => Number(l.animais) === 0).length;
-  const semElegiveis = populacoes.filter(p => p.estado === "SEM_ANIMAIS_ELEGIVEIS" && !linhas.some(l => l.propriedadeId === p.propriedadeId && l.data.toISOString().slice(0, 10) === p.data && Number(l.animais) > 0)).length;
+  const semParticipantes = linhas.filter((l) => (l.fonte === "GERAL" ? l.esperadas === 0 : Number(l.animais) === 0)).length;
+  const semElegiveis = populacoes.filter(p => p.estado === "SEM_ANIMAIS_ELEGIVEIS" && !linhas.some(l => l.propriedadeId === p.propriedadeId && l.data.toISOString().slice(0, 10) === p.data && (l.fonte === "GERAL" || Number(l.animais) > 0))).length;
   const finalidadePendente = new Set([
-    ...populacoes.filter(p => p.estado === "FINALIDADE_PENDENTE").map(p => `${p.propriedadeId}:${p.data}`),
+    ...populacoes.filter(p => p.estado === "FINALIDADE_PENDENTE" && !linhas.some(l => l.fonte === "GERAL" && l.propriedadeId === p.propriedadeId && l.data.toISOString().slice(0,10) === p.data)).map(p => `${p.propriedadeId}:${p.data}`),
     ...linhas.filter(l => Number(l.finalidadesPendentes ?? 0) > 0).map(l => `${l.propriedadeId}:${l.data.toISOString().slice(0, 10)}`),
   ]).size;
-  const semParticipantesNaoComprovados = linhas.filter(l => Number(l.animais) === 0 && !populacoes.some(p => p.propriedadeId === l.propriedadeId && p.data === l.data.toISOString().slice(0, 10) && p.estado === "SEM_ANIMAIS_ELEGIVEIS")).length;
+  const semParticipantesNaoComprovados = linhas.filter(l => l.fonte === "GERAL" ? !l.esperadas : Number(l.animais) === 0 && !populacoes.some(p => p.propriedadeId === l.propriedadeId && p.data === l.data.toISOString().slice(0, 10) && p.estado === "SEM_ANIMAIS_ELEGIVEIS")).length;
   const semFolha = Math.max(0, diasSitioEsperados - linhas.length - populacoes.filter(p => p.estado === "SEM_ANIMAIS_ELEGIVEIS" && !linhas.some(l => l.propriedadeId === p.propriedadeId && l.data.toISOString().slice(0, 10) === p.data)).length);
   return {
     litros,
@@ -54,7 +57,7 @@ export function resumirPainelLeite(
         s +
         Math.max(
           0,
-          Number(l.animais) * Number(l.ordenhas) - Number(l.resolvidas),
+          (l.esperadas ?? Number(l.animais) * Number(l.ordenhas)) - Number(l.resolvidas),
         ),
       0,
     ),
@@ -91,11 +94,21 @@ export function consultarPainelLeite(
         (SELECT count(*) FROM pecuaria."MedicaoLeite" m JOIN pecuaria."ParticipanteProducaoLeite" p ON p.id=m."participanteId" WHERE p."diaId"=d.id AND p."excluidoEm" IS NULL AND m.estado IN ('MEDIDO','NAO_ORDENHADO')) AS resolvidas,
         (SELECT count(*) FROM pecuaria."ParticipanteProducaoLeite" p WHERE p."diaId"=d.id AND p."excluidoEm" IS NULL AND (p."finalidadeId" IS NULL OR p."finalidadeSnapshot" IS NULL OR p."finalidadeSnapshot"->>'regra' IS DISTINCT FROM 'FINALIDADE_LEITE_V1' OR p."finalidadeSnapshot"->>'aptidao' IS DISTINCT FROM 'LEITE' OR p."finalidadeSnapshot"->>'dataOperacional' IS DISTINCT FROM to_char(d."dataOperacional",'YYYY-MM-DD'))) AS "finalidadesPendentes",
         (SELECT sum(m.litros) FROM pecuaria."MedicaoLeite" m JOIN pecuaria."ParticipanteProducaoLeite" p ON p.id=m."participanteId" WHERE p."diaId"=d.id AND p."excluidoEm" IS NULL AND m.estado='MEDIDO') AS litros
-      FROM pecuaria."DiaProducaoLeite" d
-      WHERE d."propriedadeId" IN (${Prisma.join(ids)}) AND d."dataOperacional">=${new Date(inicio)} AND d."dataOperacional"<=${new Date(fim)}
+      FROM pecuaria."DiaProducaoLeite" d JOIN pecuaria."ConfiguracaoOrdenha" c ON c.id=d."configuracaoId"
+      WHERE c."fonteProducao" = 'INDIVIDUAL' AND d."propriedadeId" IN (${Prisma.join(ids)}) AND d."dataOperacional">=${new Date(inicio)} AND d."dataOperacional"<=${new Date(fim)}
       ORDER BY d."dataOperacional",d."propriedadeId"
     `)
         : [];
+      // A fonte diária define o agregado; controles individuais nunca se somam aos tanques.
+      for (const id of ids) {
+        const diasGerais = await tx.diaProducaoLeite.findMany({ where: { propriedadeId: id, dataOperacional: { gte: new Date(inicio), lte: new Date(fim) }, configuracao: { fonteProducao: "GERAL" } }, include: { configuracao: true, sessoes: true } });
+        const gerais = await linhasProducaoGeralTx(tx, diasGerais);
+        for (const d of diasGerais) {
+          const medidas = gerais.filter(l => l.data === d.dataOperacional.toISOString().slice(0,10));
+          const conhecidas = medidas.filter(l => l.litros !== null);
+          linhas.push({ fonte: "GERAL", propriedadeId: id, data: d.dataOperacional, ordenhas: d.sessoes.length, animais: 0, esperadas: medidas.length, medidas: conhecidas.length, resolvidas: conhecidas.length, litros: conhecidas.length ? conhecidas.reduce((s,l)=>s.plus(l.litros!),new Prisma.Decimal(0)) : null });
+        }
+      }
       const populacoes = [];
       for (const id of ids) populacoes.push(...(await consultarPopulacaoPeriodoLeiteTx(tx, id, inicio, fim)).map(p => ({ ...p, propriedadeId: id })));
       return {

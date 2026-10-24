@@ -1,3 +1,6 @@
+import { consultarOrdenhasGerais, registrarTanque, salvarMedicaoGeral } from "../../services/pecuaria/leite/tanques.js";
+import { tanqueLeiteSchema, medicaoGeralLeiteSchema, confirmarMedicaoGeralSchema } from "../../services/pecuaria/leite/tanques.schemas.js";
+import { confirmarProducaoGeral } from "../../services/pecuaria/leite/estoque.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { Prisma } from "@prisma/client";
@@ -31,6 +34,18 @@ function autor(c: Context): number | null {
 }
 export const leiteRouter = new Hono()
   .use("*", exigeArea("pecuaria"))
+  .get("/geral", validarQuery(consultaFolhaSchema), async c => {
+    try { return c.json(await consultarOrdenhasGerais(await sitioLeitura(c), c.req.valid("query").dataOperacional)); } catch (e) { return falha(c, e); }
+  })
+  .post("/tanques", exigePermissao("lancar"), validar(tanqueLeiteSchema), async c => {
+    try { const dados = c.req.valid("json"); return c.json(await registrarTanque({ ...dados, propriedadeId: await resolverEscopoEscrita(c, dados.propriedadeId) }, autor(c)), 201); } catch (e) { return falha(c, e); }
+  })
+  .post("/geral", exigePermissao("lancar"), validar(medicaoGeralLeiteSchema), async c => {
+    try { const dados = c.req.valid("json"); return c.json(await salvarMedicaoGeral({ ...dados, propriedadeId: await resolverEscopoEscrita(c, dados.propriedadeId) }, autor(c))); } catch (e) { return falha(c, e); }
+  })
+  .post("/geral/confirmacoes", exigePermissao("lancar"), validar(confirmarMedicaoGeralSchema), async c => {
+    try { return c.json(await confirmarProducaoGeral(c.req.valid("json"), { propriedadeId: await resolverEscopoEscrita(c), usuarioId: autor(c) }), 201); } catch (e) { return falha(c, e); }
+  })
   .get("/candidatos", validarQuery(consultaCandidatosSchema), async c => {
     try {
       const { dataOperacional, busca, pagina } = c.req.valid("query");

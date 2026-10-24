@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { conferirAnimaisOrigemGeralTx } from "./producao.js";
 import type { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
 
@@ -48,7 +50,13 @@ export async function conferirCarenciaOrigensVendaTx(tx: Prisma.TransactionClien
     include: { movimento: { select: { data: true } }, sessao: { select: { horario: true } },
       vinculosMedicoes: { where: { ativo: true }, include: { medicao: { select: { participante: { select: { animalId: true } } } } } } } });
   for (const origem of origens) {
-    const animalIds = origem.vinculosMedicoes.map(v => v.medicao.participante.animalId);
+    const snapshot = z.object({ animaisOrigem: z.array(z.object({ animalId: z.string().uuid() })) }).safeParse(origem.snapshot);
+    const animalIds = origem.medicaoGeralId && snapshot.success ? snapshot.data.animaisOrigem.map(a => a.animalId) : origem.vinculosMedicoes.map(v => v.medicao.participante.animalId);
+    if (origem.medicaoGeralId) {
+      const dados = await tx.movimentoEstoque.findUniqueOrThrow({ where: { id: origem.movimentoId }, select: { propriedadeId: true } });
+      if (dados.propriedadeId == null) throw new RebanhoError("CONFLITO", "Origem sem sítio");
+      await conferirAnimaisOrigemGeralTx(tx, dados.propriedadeId, origem.movimento.data, animalIds);
+    }
     if (!animalIds.length) throw new RebanhoError("CONFLITO", "A origem não tem animais comprovados; regularize antes de vender");
     const carencia = await conferirCarenciaProducaoTx(tx, { data: origem.movimento.data, horario: origem.sessao.horario, animalIds });
     if (carencia.animais.some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA"))

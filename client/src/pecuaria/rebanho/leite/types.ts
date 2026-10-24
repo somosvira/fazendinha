@@ -33,6 +33,9 @@ export interface ConfiguracaoOrdenha {
   propriedadeId: number;
   vigenteDesde: string;
   inicial: boolean;
+  fonteProducao?: "INDIVIDUAL" | "GERAL";
+  intervaloIndividualQuantidade?: number;
+  intervaloIndividualUnidade?: "DIAS" | "MESES";
   ordenhas: PosicaoOrdenha[];
 }
 export interface MedicaoLeite {
@@ -104,6 +107,9 @@ export interface SalvarFolhaInput {
   motivoCorrecao?: string | null;
 }
 export interface ConfiguracaoInput {
+  fonteProducao?: "INDIVIDUAL" | "GERAL";
+  intervaloIndividualQuantidade?: number;
+  intervaloIndividualUnidade?: "DIAS" | "MESES";
   chave: string;
   propriedadeId: number;
   vigenteDesde: string;

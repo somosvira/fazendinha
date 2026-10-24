@@ -1,8 +1,11 @@
+import { Button } from "@/components/ui/button";
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
+import { DatasQualidade } from "./DatasQualidade";
 import type { FormatoQualidade } from "./qualidade-types";
 interface Linha {
-  amostraId: string; dataAmostra: string; registradoEm: string; dataResultadoLaboratorial: null;
+  amostraId: string; dataAmostra: string; registradoEm: string; dataResultadoLaboratorial: string | null; dataRecebimentoLaudo: string | null;
   sujeito: { tipo: "ANIMAL"; animalId: string } | { tipo: "COLETIVO"; origem: string };
   animal: { brinco: string; nome: string | null } | null;
   rotulo: string; valor: string | number | boolean; unidade: string | null;
@@ -54,16 +57,16 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
     {dados && <>
       <p>{dados.total} resultado(s). Cada origem e versão de formato conserva sua própria série; não calculamos médias ou preço automaticamente.</p>
       {!dados.itens.length ? <p>Nenhum resultado informado para este parâmetro no período.</p> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Resultados por parâmetro, com rolagem horizontal">
-        <table><caption>Resultados pela data da amostra</caption><thead><tr><th>Amostra e origem</th><th>Resultado</th><th>Formato</th><th>Registro do resultado</th></tr></thead>
-          <tbody>{dados.itens.map(r => <tr key={r.amostraId}>
-            <td>{r.dataAmostra.split("-").reverse().join("/")}<small>{r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : `${r.animal?.brinco ?? "Sem brinco"} · ${r.animal?.nome ?? "Sem nome"}`}</small></td>
-            <td>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</td>
-            <td>{r.formato.nome} · versão {r.formato.versao}<small>Amostra versão {r.versaoAmostra}</small></td>
-            <td>{new Date(r.registradoEm).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}<small>Data laboratorial não informada</small></td>
-          </tr>)}</tbody>
-        </table>
+        <Table semContainer><TableCaption>Resultados pela data da amostra</TableCaption><TableHeader><TableRow><TableHead>Amostra e origem</TableHead><TableHead>Resultado</TableHead><TableHead>Formato</TableHead><TableHead>Registro do resultado</TableHead></TableRow></TableHeader>
+          <TableBody>{dados.itens.map(r => <TableRow key={r.amostraId}>
+            <TableCell>{r.dataAmostra.split("-").reverse().join("/")}<small>{r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : `${r.animal?.brinco ?? "Sem brinco"} · ${r.animal?.nome ?? "Sem nome"}`}</small></TableCell>
+            <TableCell>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</TableCell>
+            <TableCell>{r.formato.nome} · versão {r.formato.versao}<small>Amostra versão {r.versaoAmostra}</small></TableCell>
+            <TableCell>{new Date(r.registradoEm).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}<DatasQualidade dataResultadoLaboratorial={r.dataResultadoLaboratorial} dataRecebimentoLaudo={r.dataRecebimentoLaudo} /></TableCell>
+          </TableRow>)}</TableBody>
+        </Table>
       </div>}
-      <div className="leite-form-inline"><button type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Resultados anteriores</button><span>Página {pagina}</span><button type="button" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próximos resultados</button></div>
+      <div className="leite-form-inline"><Button type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Resultados anteriores</Button><span>Página {pagina}</span><Button type="button" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próximos resultados</Button></div>
     </>}
   </section>;
 }

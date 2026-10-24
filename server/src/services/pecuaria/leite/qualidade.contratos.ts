@@ -18,6 +18,7 @@ export interface LaudoQualidadeDTO {
 }
 export interface AmostraQualidadeLeiteDTO {
   id: string; propriedadeId: number; data: string; versao: number;
+  dataResultadoLaboratorial: string | null; dataRecebimentoLaudo: string | null;
   sujeito: RegistrarQualidadeInput["sujeito"];
   animal: { id: string; brinco: string; nome: string | null } | null;
   exameAnimalId: string | null; tipoExameId: string;

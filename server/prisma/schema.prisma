@@ -710,6 +710,7 @@ model Propriedade {
   requisicaoPecuarias         RequisicaoPecuaria[]
 
   @@schema("public")
+  tanquesLeite TanqueLeite[]
 }
 
 enum TipoMovimento {
@@ -3051,6 +3052,9 @@ model ConfiguracaoOrdenha {
   inicial Boolean @default(false)
   criadoEm DateTime @default(now())
   criadoPorId Int?
+  fonteProducao String @default("INDIVIDUAL")
+  intervaloIndividualQuantidade Int @default(1)
+  intervaloIndividualUnidade String @default("MESES")
   ordenhas PosicaoOrdenha[]
   dias DiaProducaoLeite[]
 
@@ -3102,6 +3106,7 @@ model SessaoOrdenha {
   ordem Int
   horario String?
   medicoes MedicaoLeite[]
+  medicoesGerais MedicaoGeralLeite[]
   entradasEstoque EntradaProducaoLeite[]
 
   @@unique([diaId, posicaoId])
@@ -3166,6 +3171,8 @@ model MedicaoLeite {
 // O único efeito físico é MovimentoEstoque; estas entidades preservam a origem
 // por ordenha e o valor conhecido posteriormente, sem outro saldo de litros.
 model EntradaProducaoLeite {
+  medicaoGeralId String?
+  medicaoGeral MedicaoGeralLeite? @relation(fields: [medicaoGeralId], references: [id], onDelete: Restrict)
   descartes DescarteLeite[]
   amostrasQualidadeLeite AmostraQualidadeLeite[]
   vinculosMedicoes VinculoMedicaoEntradaLeite[]
@@ -3384,6 +3391,8 @@ model AmostraQualidadeLeite {
   propriedadeId Int
   propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   data DateTime @db.Date
+  dataResultadoLaboratorial DateTime? @db.Date
+  dataRecebimentoLaudo DateTime? @db.Date
   sujeito String
   tipoExameId String
   formato FormatoQualidadeLeite @relation(fields: [tipoExameId], references: [tipoExameId], onDelete: Restrict)
@@ -3751,5 +3760,54 @@ model VinculoQualidadeFechamentoLeite {
   criadoPorId Int?
   @@id([fechamentoId, amostraId])
   @@index([amostraId])
+  @@schema("pecuaria")
+}
+
+
+// Versões de especificações/calibração imutáveis; identidade une o mesmo tanque.
+model TanqueLeite {
+  id String @id @default(uuid())
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  identidadeId String
+  versao Int
+  nome String
+  fabricante String?
+  modelo String?
+  numeroSerie String?
+  capacidadeLitros Decimal @db.Decimal(14,3)
+  vigenteDesde DateTime @db.Date
+  ativo Boolean @default(true)
+  tabelaConversao Json
+  referenciaTabela String?
+  criadoPorId Int?
+  criadoEm DateTime @default(now())
+  medicoes MedicaoGeralLeite[]
+  @@unique([propriedadeId,identidadeId,versao])
+  @@unique([propriedadeId,identidadeId,vigenteDesde])
+  @@index([propriedadeId,vigenteDesde])
+  @@schema("pecuaria")
+}
+
+// Produção aferida da ordenha, não saldo acumulado do tanque nem produção animal.
+model MedicaoGeralLeite {
+  id String @id @default(uuid())
+  sessaoId String
+  sessao SessaoOrdenha @relation(fields: [sessaoId], references: [id], onDelete: Restrict)
+  tanqueId String
+  tanque TanqueLeite @relation(fields: [tanqueId], references: [id], onDelete: Restrict)
+  litros Decimal @db.Decimal(14,3)
+  reguaMm Decimal? @db.Decimal(10,3)
+  origemLitros String
+  natureza String
+  animaisOrigem Json
+  responsavel String
+  observacao String?
+  versao Int @default(1)
+  criadoPorId Int?
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  entradasEstoque EntradaProducaoLeite[]
+  @@unique([sessaoId,tanqueId])
   @@schema("pecuaria")
 }

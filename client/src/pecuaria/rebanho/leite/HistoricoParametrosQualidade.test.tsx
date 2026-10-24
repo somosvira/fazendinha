@@ -13,7 +13,7 @@ it("consulta independente por período e parâmetro, preserva zero e distingue d
   fireEvent.change(screen.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
   await screen.findByText("Tanque A");
   expect(screen.getByText("0 (unidade não informada)")).toBeTruthy();
-  expect(screen.getByText("Data laboratorial não informada")).toBeTruthy();
+  expect(screen.getByText("Resultado laboratorial: Não informado")).toBeTruthy();
   expect(consultarLeite).toHaveBeenCalledWith("/qualidade/parametros?campo=NU&inicio=2026-10-01&fim=2026-10-21&pagina=1&tamanho=20", 2);
   fireEvent.click(screen.getByRole("button", { name: "Próximos resultados" }));
   await waitFor(() => expect(consultarLeite).toHaveBeenLastCalledWith(expect.stringContaining("pagina=2"), 2));
@@ -24,4 +24,13 @@ it("mostra falha e permite consultar outro parâmetro sem resultados antigos", a
   fireEvent.change(screen.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
   await screen.findByRole("alert");
   expect(screen.getByText("Serviço indisponível")).toBeTruthy();
+});
+
+it("exibe resultado laboratorial e recebimento separados do registro no sistema", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({ itens: [{ amostraId: "a", dataAmostra: "2026-10-10", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", registradoEm: "2026-10-23T12:00:00Z", valor: 1, unidade: "%", sujeito: { tipo: "COLETIVO", origem: "Tanque A" }, formato: { nome: "Laudo", versao: 1 }, versaoAmostra: 2 }], total: 1, tamanho: 20, pagina: 1 });
+  render(<HistoricoParametrosQualidade sitio={2} formatos={formatos} data="2026-10-23" revisao={0} />);
+  fireEvent.change(screen.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
+  expect(await screen.findByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
+  expect(screen.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
+  expect(screen.getByText(/23\/10\/2026, 09:00:00/)).toBeTruthy();
 });

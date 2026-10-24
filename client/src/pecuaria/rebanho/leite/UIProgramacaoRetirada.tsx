@@ -1,3 +1,6 @@
+import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Settings2 } from "lucide-react";
 import {
@@ -88,20 +91,16 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
             onChange={(e) => setData(e.target.value)}
           />
         </label>
-        <button
-          className="leite-secondary"
+        <Button variant="outline" className="leite-secondary"
           disabled={carregando}
-          onClick={() => setRevisao((r) => r + 1)}
-        >
+          onClick={() => setRevisao((r) => r + 1)}>
           Atualizar
-        </button>
+        </Button>
         {podeLancar && (
-          <button
-            disabled={!dados || carregando}
-            onClick={() => setConfig(true)}
-          >
+          <Button disabled={!dados || carregando}
+            onClick={() => setConfig(true)}>
             <Settings2 size={16} aria-hidden /> Configurar retirada
-          </button>
+          </Button>
         )}
       </div>
       {carregando && <p role="status">Consultando a programação…</p>}
@@ -156,31 +155,31 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           </h2>
           {dados.previsoes.length ? (
             <div className="leite-tabela-scroll">
-              <table>
-                <caption>Datas previstas de retirada</caption>
-                <thead>
-                  <tr>
-                    <th>Data</th>
-                    <th>Programação</th>
-                    <th>Natureza</th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table semContainer>
+                <TableCaption>Datas previstas de retirada</TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Programação</TableHead>
+                    <TableHead>Natureza</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {dados.previsoes.map((p) => (
-                    <tr key={p.data}>
-                      <td>{dataPt(p.data)}</td>
-                      <td>
+                    <TableRow key={p.data}>
+                      <TableCell>{dataPt(p.data)}</TableCell>
+                      <TableCell>
                         {nomeProgramacao(
                           dados.historico.find(
                             (h) => h.id === p.programacaoId,
                           )!,
                         )}
-                      </td>
-                      <td>Previsão</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell>Previsão</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           ) : (
             <p>
@@ -189,35 +188,35 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 : "Nenhuma retirada prevista no intervalo."}
             </p>
           )}
-          <details>
-            <summary>
+          <SecaoDetalhesLeite  titulo={<>
               Histórico de programações ({dados.historico.length})
-            </summary>
+            </>}>
+
             {dados.historico.length ? (
               <div className="leite-tabela-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Versão</th>
-                      <th>Vigência</th>
-                      <th>Regra</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table semContainer>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Versão</TableHead>
+                      <TableHead>Vigência</TableHead>
+                      <TableHead>Regra</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {dados.historico.map((p) => (
-                      <tr key={p.id}>
-                        <td>{p.versao}</td>
-                        <td>{dataPt(p.vigenteDesde)}</td>
-                        <td>{nomeProgramacao(p)}</td>
-                      </tr>
+                      <TableRow key={p.id}>
+                        <TableCell>{p.versao}</TableCell>
+                        <TableCell>{dataPt(p.vigenteDesde)}</TableCell>
+                        <TableCell>{nomeProgramacao(p)}</TableCell>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             ) : (
               <p>Ainda não há versões registradas.</p>
             )}
-          </details>
+          </SecaoDetalhesLeite>
           {config && (
             <ConfigurarRetirada
               dados={dados}
@@ -447,13 +446,11 @@ function ConfigurarRetirada({
                 {erroProdutos && (
                   <p role="alert">
                     {erroProdutos}
-                    <button
-                      type="button"
+                    <Button variant="outline" type="button"
                       className="leite-secondary"
-                      onClick={() => setRevisaoProdutos((r) => r + 1)}
-                    >
+                      onClick={() => setRevisaoProdutos((r) => r + 1)}>
                       Consultar produtos novamente
-                    </button>
+                    </Button>
                   </p>
                 )}
                 <label>
@@ -473,14 +470,12 @@ function ConfigurarRetirada({
             )}
             {erro && <p role="alert">{erro}</p>}
             <div className="leite-form-inline">
-              <button
-                type="button"
+              <Button variant="outline" type="button"
                 className="leite-secondary"
-                onClick={aoFechar}
-              >
+                onClick={aoFechar}>
                 Cancelar
-              </button>
-              <button>{salvando ? "Salvando…" : "Salvar programação"}</button>
+              </Button>
+              <Button >{salvando ? "Salvando…" : "Salvar programação"}</Button>
             </div>
           </fieldset>
         </form>

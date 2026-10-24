@@ -9,6 +9,7 @@ import { conferirCorrecaoMedicao, medicaoMudou, resumirProducao } from "./produc
 import { salvarFolhaSchema, type SalvarFolhaInput } from "./schemas.js";
 import type { AnimalFolhaLeiteDTO, ConfiguracaoOrdenhaDTO, FolhaLeiteDTO, MedicaoLeiteDTO } from "./contratos.js";
 import { exigirSessaoLeiteEditavelTx } from "./estoque.js";
+import { preSelecionarOrigensGerais } from "./origens-automaticas.calc.js";
 export type { FolhaLeiteDTO } from "./contratos.js";
 
 const incluirEntrada = { movimento: { select: { produtoId: true, quantidade: true } }, classificacoes: { orderBy: { versao: "desc" as const }, take: 1 } };
@@ -68,6 +69,11 @@ async function populacaoTx(tx: DbPecuaria, animais: AnimalContextoLeite[], propr
     throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado neste sítio na data");
   return populacao;
 }
+export async function consultarOrigensAutomaticasGeraisTx(tx: DbPecuaria, propriedadeId: number, data: Date) {
+  const animais = await carregarAnimaisTx(tx, propriedadeId, data);
+  const lactacoes = await tx.lactacaoAnimal.findMany({ where: { animalId: { in: animais.map(a => a.id) } } });
+  return preSelecionarOrigensGerais(animais, lactacoes, propriedadeId, data);
+}
 function medicaoPendente(posicaoId: string): MedicaoLeiteDTO {
   return { id: null, posicaoId, estado: "PENDENTE", litros: null, motivo: null, versao: 0, confirmacaoEstoque: null };
 }
@@ -76,14 +82,14 @@ export async function consultarFolha(propriedadeId: number, dataOperacional: str
     await conferirSitioLeiteTx(tx, propriedadeId);
     const data = new Date(`${dataOperacional}T00:00:00Z`);
     const dia = await tx.diaProducaoLeite.findUnique({ where: { propriedadeId_dataOperacional: { propriedadeId, dataOperacional: data } }, include: incluirDia });
-    if (dia) return folhaLeiteDTO(dia);
+    if (dia && (dia.participantes.length || dia.configuracao.fonteProducao !== "GERAL")) return folhaLeiteDTO(dia);
     const configuracao = configuracaoDTO(await buscarConfiguracaoLeiteTx(tx, propriedadeId, data), propriedadeId);
     const populacao = await populacaoTx(tx, await carregarAnimaisTx(tx, propriedadeId, data), propriedadeId, data);
     const animais = populacao.map(p => {
       const medicoes = configuracao.ordenhas.map(o => medicaoPendente(o.posicaoId));
       return { ...p, finalidade: evidenciaFinalidadeLeite(p, dataOperacional), participanteId: null, excluidoEm: null, motivoExclusao: null, medicoes, totais: resumirProducao(medicoes) };
     });
-    const folha = comporFolha(propriedadeId, dataOperacional, configuracao, animais);
+    const folha = comporFolha(propriedadeId, dataOperacional, configuracao, animais, dia ?? undefined);
     const candidatos = await carregarAnimaisTx(tx, propriedadeId, data);
     folha.impedimentos = candidatos.flatMap(a => {
       const f = resolverFinalidadeLeite(a.destinos, data, a.baixas);
@@ -174,6 +180,12 @@ export async function salvarFolhaTx(tx: Prisma.TransactionClient, input: SalvarF
       dia.sessoes.forEach(s => alteradas.add(s.id));
       dia = await tx.diaProducaoLeite.findUniqueOrThrow({ where: { id: dia.id }, include: incluirDia });
     }
+    // O registro geral cria apenas dia/sessões. A população individual nasce no primeiro controle.
+    if (!dia.participantes.length && dia.configuracao.fonteProducao === "GERAL" && input.medicoes.length) {
+      const populacao = await populacaoTx(tx, candidatos, input.propriedadeId, data, input.animaisAdicionar);
+      for (const contexto of populacao) await adicionarParticipanteTx(tx, dia, contexto, usuarioId);
+      dia = await tx.diaProducaoLeite.findUniqueOrThrow({ where: { id: dia.id }, include: incluirDia });
+    }
     for (const inputMedicao of input.medicoes) {
       const participante = dia.participantes.find(p => p.animalId === inputMedicao.animalId && !p.excluidoEm);
       const sessao = dia.sessoes.find(s => s.posicaoId === inputMedicao.posicaoId);
@@ -220,4 +232,12 @@ export async function salvarFolhaTx(tx: Prisma.TransactionClient, input: SalvarF
 export async function salvarFolha(input: SalvarFolhaInput, usuarioId: number | null) {
   const validado = salvarFolhaSchema.parse(input);
   return transacaoPecuaria(tx => salvarFolhaTx(tx, validado, usuarioId));
+}
+
+/** Identifica origens sem atribuir litros individuais a uma aferição geral. */
+export async function conferirAnimaisOrigemGeralTx(tx: Prisma.TransactionClient, propriedadeId: number, data: Date, ids: string[]) {
+  const candidatos = await carregarAnimaisTx(tx, propriedadeId, data, ids);
+  const escolhidos = candidatos.filter(a => ids.includes(a.id));
+  if (escolhidos.length !== ids.length) throw new RebanhoError("VALIDACAO", "Confira os animais de origem neste sítio e data");
+  return populacaoTx(tx, escolhidos, propriedadeId, data, ids);
 }

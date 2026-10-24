@@ -11,8 +11,11 @@ const incluirOrdenhas = { ordenhas: { orderBy: { ordem: "asc" as const } } };
 type Configuracao = Prisma.ConfiguracaoOrdenhaGetPayload<{ include: typeof incluirOrdenhas }>;
 export function configuracaoDTO(configuracao: Configuracao | null, propriedadeId: number): ConfiguracaoOrdenhaDTO {
   return configuracao ? { id: configuracao.id, propriedadeId, vigenteDesde: configuracao.vigenteDesde.toISOString().slice(0, 10),
+    fonteProducao: configuracao.fonteProducao === "GERAL" ? "GERAL" : "INDIVIDUAL",
+    intervaloIndividualQuantidade: configuracao.intervaloIndividualQuantidade ?? 1,
+    intervaloIndividualUnidade: configuracao.intervaloIndividualUnidade === "DIAS" ? "DIAS" : "MESES",
     inicial: configuracao.inicial, ordenhas: configuracao.ordenhas.map(({ posicaoId, nome, ordem, horario }) => ({ posicaoId, nome, ordem, horario })) }
-    : { id: null, propriedadeId, vigenteDesde: "1900-01-01", inicial: true, ordenhas: ORDENHAS_INICIAIS.map(o => ({ ...o })) };
+    : { id: null, propriedadeId, vigenteDesde: "1900-01-01", inicial: true, fonteProducao: "GERAL", intervaloIndividualQuantidade: 1, intervaloIndividualUnidade: "MESES", ordenhas: ORDENHAS_INICIAIS.map(o => ({ ...o })) };
 }
 export async function travarRotinaLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-leite-sitio:${propriedadeId}`}))`;
@@ -34,7 +37,7 @@ export async function garantirConfiguracaoLeiteTx(tx: Prisma.TransactionClient, 
     return tx.configuracaoOrdenha.findUniqueOrThrow({ where: { id: vigente.id }, include: incluirOrdenhas });
   }
   return tx.configuracaoOrdenha.create({ data: { propriedadeId, vigenteDesde: new Date("1900-01-01T00:00:00Z"), inicial: true,
-    criadoPorId: usuarioId, ordenhas: { create: ORDENHAS_INICIAIS.map(o => ({ ...o, horario: o.horario ?? null })) } }, include: incluirOrdenhas });
+    criadoPorId: usuarioId, fonteProducao: "GERAL", ordenhas: { create: ORDENHAS_INICIAIS.map(o => ({ ...o, horario: o.horario ?? null })) } }, include: incluirOrdenhas });
 }
 export async function listarConfiguracoes(propriedadeId: number, data: string) {
   await conferirSitioLeiteTx(prisma, propriedadeId);
@@ -55,6 +58,7 @@ export async function criarConfiguracao(input: ConfiguracaoOrdenhaInput, usuario
       if (await tx.diaProducaoLeite.count({ where: { propriedadeId: input.propriedadeId, dataOperacional: { gte: vigenteDesde } } }))
         throw new RebanhoError("CONFLITO", "A vigência alcança folhas já guardadas; escolha uma data posterior");
       const configuracao = await tx.configuracaoOrdenha.create({ data: { propriedadeId: input.propriedadeId, vigenteDesde, criadoPorId: usuarioId,
+        fonteProducao: input.fonteProducao, intervaloIndividualQuantidade: input.intervaloIndividualQuantidade, intervaloIndividualUnidade: input.intervaloIndividualUnidade,
         ordenhas: { create: input.ordenhas.map(o => ({ ...o, horario: o.horario ?? null })) } }, include: incluirOrdenhas });
       const dto = configuracaoDTO(configuracao, input.propriedadeId);
       await auditar(tx, { entidade: "ConfiguracaoOrdenha", entidadeId: configuracao.id, propriedadeId: input.propriedadeId,

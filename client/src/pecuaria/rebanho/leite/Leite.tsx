@@ -1,3 +1,6 @@
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -390,19 +393,17 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
     ),
   );
   const acaoConfigurar = podeLancar ? (
-<button
-                  className="leite-button leite-configurar"
+<Button className="leite-button leite-configurar"
                   disabled={salvando || sujo || carregando || !folha}
                   title={
                     sujo
                       ? "Salve a ordenha antes de alterar a configuração"
                       : undefined
                   }
-                  onClick={() => setConfig(true)}
-                >
+                  onClick={() => setConfig(true)}>
                   <Settings2 size={20} aria-hidden="true" />
                   <span>Configurar ordenhas</span>
-                </button>
+                </Button>
   ) : null;
   return (
     <section className="leite-page" aria-label="Ordenha">
@@ -414,13 +415,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
         <div className="leite-header-acoes">
           {acoesContainer ? createPortal(acaoConfigurar, acoesContainer) : acaoConfigurar}
         <div className="leite-data">
-          <button
-            className="leite-icon"
+          <Button className="leite-icon"
             onClick={() => dia(-1)}
-            aria-label="Dia anterior"
-          >
+            aria-label="Dia anterior">
             <ChevronLeft />
-          </button>
+          </Button>
           <input
             aria-label="Data operacional"
             type="date"
@@ -429,13 +428,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
               if (dataValida(e.target.value)) navegar(e.target.value);
             }}
           />
-          <button
-            className="leite-icon"
+          <Button className="leite-icon"
             onClick={() => dia(1)}
-            aria-label="Próximo dia"
-          >
+            aria-label="Próximo dia">
             <ChevronRight />
-          </button>
+          </Button>
         </div>
         </div>
       </header>
@@ -447,25 +444,21 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
       {erro && (
         <div role="alert" className="leite-erro">
           {erro}
-          <button
-            className="leite-button"
+          <Button className="leite-button"
             onClick={() => setRevisao((r) => r + 1)}
-            disabled={salvando}
-          >
+            disabled={salvando}>
             Atualizar folha
-          </button>
+          </Button>
           {sujo && (
-            <button
-              className="leite-button"
+            <Button className="leite-button"
               disabled={salvando}
               onClick={() => {
                 sessionStorage.removeItem(chaveRascunho(sitio, data));
                 setSujo(false);
                 setRevisao((r) => r + 1);
-              }}
-            >
+              }}>
               Descartar rascunho e atualizar
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -476,11 +469,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
       )}
       {folha && (
         <>
-          {folha.impedimentos?.length > 0 && <details className="leite-aviso">
-            <summary>Animais fora da ordenha nesta data ({folha.impedimentos.length})</summary>
+          {folha.impedimentos?.length > 0 && <SecaoDetalhesLeite className="leite-aviso" titulo={<>Animais fora da ordenha nesta data ({folha.impedimentos.length})</>}>
+
             <p>A finalidade e os demais requisitos são conferidos pelo servidor na data da produção. Confira o cadastro antes de tentar incluir.</p>
             <ul>{folha.impedimentos.map(a => <li key={a.animalId}>{a.nome || a.brinco} · Brinco {a.brinco}: {a.motivo}</li>)}</ul>
-          </details>}
+          </SecaoDetalhesLeite>}
           <div
             className="leite-sessoes"
             ref={sessoesRef}
@@ -493,12 +486,10 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
               );
               const Icon = i === 2 ? Moon : Sun;
               return (
-                <button
-                  aria-pressed={s.posicaoId === posicao}
+                <Button aria-pressed={s.posicaoId === posicao}
                   className={`leite-sessao ${s.posicaoId === posicao ? "selecionada" : ""}`}
                   key={s.posicaoId}
-                  onClick={() => navegar(data, s.posicaoId)}
-                >
+                  onClick={() => navegar(data, s.posicaoId)}>
                   <Icon size={28} />
                   <span>
                     <strong>{s.nome}</strong>
@@ -513,7 +504,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                       <small>parcial</small>
                     )}
                   </b>
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -521,13 +512,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
             <div className="leite-tabela-area">
               <div className="leite-filtro">
                 {podeLancar && (
-                  <button
-                    className="leite-button"
+                  <Button className="leite-button"
                     disabled={!podeEditar}
-                    onClick={() => setIncluir(true)}
-                  >
+                    onClick={() => setIncluir(true)}>
                     Incluir animal
-                  </button>
+                  </Button>
                 )}
                 <div className="leite-busca-campo">
                   <label htmlFor="leite-busca">Buscar animal</label>
@@ -543,16 +532,16 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                 </div>
               </div>
               <div className="leite-table-scroll">
-                <table className="leite-table" aria-label="Medições por animal">
-                  <thead>
-                    <tr>
-                      <th className="leite-coluna-numero" scope="col">#</th>
-                      <th scope="col">Animal</th>
-                      <th scope="col">Litros nesta ordenha (L)</th>
-                      <th scope="col">Situação</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                <Table semContainer className="leite-table" aria-label="Medições por animal">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="leite-coluna-numero" scope="col">#</TableHead>
+                      <TableHead scope="col">Animal</TableHead>
+                      <TableHead scope="col">Litros nesta ordenha (L)</TableHead>
+                      <TableHead scope="col">Situação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {visiveis.map((a, i) => {
                       const c = celulas.find(
                         (c) =>
@@ -560,11 +549,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                       );
                       if (!c) return null;
                       return (
-                        <tr key={a.animalId} data-estado={c.estado}>
-                          <td className="leite-coluna-numero">
+                        <TableRow key={a.animalId} data-estado={c.estado}>
+                          <TableCell className="leite-coluna-numero">
                             {(Math.min(pagina, paginas) - 1) * 10 + i + 1}
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
                             <div className="leite-animal">
                               <Milk size={19} />
                               <span>
@@ -588,8 +577,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               </span>
                             </div>
                             {podeLancar && folha.congelada && (
-                              <button
-                                className="leite-excluir"
+                              <Button className="leite-excluir"
                                 disabled={!podeEditar}
                                 onClick={() => {
                                   if (
@@ -610,13 +598,12 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                   } else
                                     setExcluir((ids) => [...ids, a.animalId]);
                                   setSujo(true);
-                                }}
-                              >
+                                }}>
                                 Excluir do dia
-                              </button>
+                              </Button>
                             )}
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
                             <div className="leite-valor">
                               <input
                                 ref={(el) => {
@@ -691,8 +678,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               />
                               <span>L</span>
                               {podeEditar && c.estado === "MEDIDO" && (
-                                <button
-                                  className="leite-icon"
+                                <Button className="leite-icon"
                                   aria-label={`Limpar litros de ${a.nome ? `${a.nome}, brinco ${a.brinco}` : `brinco ${a.brinco}`}`}
                                   onClick={() => {
                                     mudar(a.animalId, {
@@ -710,14 +696,13 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                           id !== `${a.animalId}:${posicao}`,
                                       ),
                                     );
-                                  }}
-                                >
+                                  }}>
                                   <X size={16} />
-                                </button>
+                                </Button>
                               )}
                             </div>
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
                             {podeLancar ? (
                               <select
                                 data-estado={c.estado}
@@ -783,11 +768,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                   a.medicoes.find(m => m.posicaoId === posicao)?.id ? "Salvo no servidor" : "Ainda não salvo"}
                             </small>
                             {podeLancar && (
-                              <button className="leite-button leite-salvar-animal" disabled={!podeEditar || invalidos.includes(`${a.animalId}:${posicao}`) ||
+                              <Button className="leite-button leite-salvar-animal" disabled={!podeEditar || invalidos.includes(`${a.animalId}:${posicao}`) ||
                                 JSON.stringify(c) === JSON.stringify(originais.find(o => o.animalId === c.animalId && o.posicaoId === c.posicaoId))}
                                 onClick={() => void salvar(a.animalId)}>
                                 Salvar animal · {a.nome || a.brinco}
-                              </button>
+                              </Button>
                             )}
                             {c.estado === "NAO_ORDENHADO" && (
                               <input
@@ -802,12 +787,12 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                 }
                               />
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       );
                     })}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
               {!filtrados.length && (
                 <p className="leite-vazio">
@@ -821,35 +806,29 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                   {filtrados.length} animais · página{" "}
                   {Math.min(pagina, paginas)} de {paginas}
                 </span>
-                <button
-                  className="leite-icon"
+                <Button className="leite-icon"
                   aria-label="Página anterior"
                   disabled={pagina <= 1}
-                  onClick={() => filtrar(busca, pagina - 1)}
-                >
+                  onClick={() => filtrar(busca, pagina - 1)}>
                   <ChevronLeft size={18} />
-                </button>
-                <button
-                  className="leite-icon"
+                </Button>
+                <Button className="leite-icon"
                   aria-label="Próxima página"
                   disabled={pagina >= paginas}
-                  onClick={() => filtrar(busca, pagina + 1)}
-                >
+                  onClick={() => filtrar(busca, pagina + 1)}>
                   <ChevronRight size={18} />
-                </button>
+                </Button>
               </div>
               {excluir.length > 0 && (
                 <div className="leite-aviso">
                   {excluir.length} exclusões aguardando salvar.{" "}
-                  <button
-                    className="leite-button"
+                  <Button className="leite-button"
                     onClick={() => {
                       setExcluir([]);
                       setSujo(true);
-                    }}
-                  >
+                    }}>
                     Desfazer exclusões
-                  </button>
+                  </Button>
                 </div>
               )}
               {sujo && (
@@ -945,14 +924,12 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
             </div>
             <div className="leite-footer-acoes">
               {podeLancar && (
-                <button
-                  className="leite-button leite-primary"
+                <Button className="leite-button leite-primary"
                   disabled={!podeEditar || !sujo || invalidos.length > 0}
-                  onClick={() => void salvar()}
-                >
+                  onClick={() => void salvar()}>
                   <Save size={20} />
                   {salvando ? "Salvando…" : "Salvar ordenha"}
-                </button>
+                </Button>
               )}
             </div>
           </footer>

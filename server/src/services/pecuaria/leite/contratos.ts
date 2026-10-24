@@ -8,6 +8,9 @@ export interface ConfiguracaoOrdenhaDTO {
   /** Na configuração inicial, 1900-01-01 é marco técnico, sem operação presumida. */
   vigenteDesde: string;
   inicial: boolean;
+  fonteProducao?: "INDIVIDUAL" | "GERAL";
+  intervaloIndividualQuantidade?: number;
+  intervaloIndividualUnidade?: "DIAS" | "MESES";
   ordenhas: PosicaoOrdenhaDTO[];
 }
 export interface MedicaoLeiteDTO {

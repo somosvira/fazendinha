@@ -17,6 +17,9 @@ export const configuracaoOrdenhaSchema = z.object({
   chave: uuid,
   propriedadeId: propriedadeLeiteSchema,
   vigenteDesde: dataLeiteSchema,
+  fonteProducao: z.enum(["INDIVIDUAL", "GERAL"]).default("INDIVIDUAL"),
+  intervaloIndividualQuantidade: z.number().int().min(1).max(365).default(1),
+  intervaloIndividualUnidade: z.enum(["DIAS", "MESES"]).default("MESES"),
   ordenhas: z.array(posicaoOrdenhaSchema).min(1).max(12),
 }).strict().superRefine((valor, ctx) => {
   for (const campo of ["posicaoId", "ordem"] as const) {
@@ -61,7 +64,7 @@ export const salvarFolhaSchema = z.object({
 export const consultaFolhaSchema = z.object({ dataOperacional: dataLeiteSchema, propriedadeId: z.coerce.number().int().min(1).max(2147483647).optional() });
 export const consultaConfiguracaoSchema = z.object({ data: dataLeiteSchema, propriedadeId: z.coerce.number().int().min(1).max(2147483647).optional() });
 export const consultaCandidatosSchema = consultaFolhaSchema.extend({ busca: z.string().trim().max(100).default(""), pagina: z.coerce.number().int().min(1).max(100000).default(1) });
-export type ConfiguracaoOrdenhaInput = z.infer<typeof configuracaoOrdenhaSchema>;
+export type ConfiguracaoOrdenhaInput = z.input<typeof configuracaoOrdenhaSchema>;
 export type SalvarFolhaInput = z.infer<typeof salvarFolhaSchema>;
 export type MedicaoLeiteInput = z.infer<typeof medicaoLeiteSchema>;
 export type PosicaoOrdenhaDTO = z.infer<typeof posicaoOrdenhaSchema>;

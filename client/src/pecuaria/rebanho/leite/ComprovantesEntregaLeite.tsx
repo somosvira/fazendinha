@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import type { EntregaComercial } from "./comercial-types";
@@ -118,13 +119,13 @@ export function ComprovantesEntregaLeite({
         <ul>
           {entrega.comprovantes.map((c) => (
             <li key={c.id}>
-              <button
+              <Button variant="outline"
                 className="leite-secondary"
                 type="button"
                 onClick={() => void baixar(c.id)}
               >
                 Abrir {c.nome}
-              </button>{" "}
+              </Button>{" "}
               · {Math.ceil(c.tamanhoBytes / 1024)} KB
             </li>
           ))}

@@ -3,16 +3,17 @@ import { prisma } from "../../../db.js";
 import { hojeFazendaDate, RebanhoError } from "../rebanho/regras.js";
 import { diasCalendarioContexto } from "../reproducao/contexto-animal.calc.js";
 import { carenciaAnimalTx } from "../sanidade/aplicacoes.js";
-import { conferirSitioLeiteTx } from "./configuracoes.js";
+import { buscarConfiguracaoLeiteTx, configuracaoDTO, conferirSitioLeiteTx } from "./configuracoes.js";
 import { evidenciaFinalidadeLeite } from "./finalidade.calc.js";
 import { lactacaoVigenteLeite } from "./populacao.calc.js";
 import { resumirProducao } from "./producao.calc.js";
 import { consultarHistoricoProdutivoSchema, type ConsultaHistoricoProdutivo } from "./historico.schemas.js";
 import type { ContextoCarenciaLeiteDTO, DiaHistoricoProdutivoDTO, HistoricoProdutivoLeiteDTO } from "./historico.contratos.js";
+import { proximaAfericaoIndividual } from "./tanques.calc.js";
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 const texto = (d: Date) => d.toISOString().slice(0, 10);
 const incluirParticipante = {
-  dia: { include: { sessoes: { orderBy: { ordem: "asc" } } } }, medicoes: true,
+  dia: { include: { configuracao: true, sessoes: { orderBy: { ordem: "asc" } } } }, medicoes: true,
   lactacao: { select: { id: true, animalId: true, inicio: true, encerradaEm: true } },
 } as const;
 type Participante = Prisma.ParticipanteProducaoLeiteGetPayload<{ include: typeof incluirParticipante }>;
@@ -41,7 +42,13 @@ export async function consultarHistoricoProdutivoTx(tx: Prisma.TransactionClient
   // Uma vaca e no máximo 366 dias: a soma inclui todo o período antes da paginação.
   // Não criar folhas virtuais nem estimar litros para datas sem participação persistida.
   const participantes = await tx.participanteProducaoLeite.findMany({ where: { animalId, dia: { propriedadeId, dataOperacional: { gte: dia(inicio), lte: dia(fim) } } }, include: incluirParticipante, orderBy: [{ dia: { dataOperacional: "desc" } }, { id: "asc" }] });
-  const dias = participantes.map(diaDTO), ativos = dias.filter(d => d.excluidoEm === null);
+  const configuracao = configuracaoDTO(await buscarConfiguracaoLeiteTx(tx, propriedadeId, dia(fim)), propriedadeId);
+  const ultimaMedicao = await tx.medicaoLeite.findFirst({ where: { estado: "MEDIDO", participante: { animalId, excluidoEm: null }, sessao: { dia: { propriedadeId, dataOperacional: { lte: dia(fim) } } } }, orderBy: { sessao: { dia: { dataOperacional: "desc" } } }, select: { sessao: { select: { dia: { select: { dataOperacional: true } } } } } });
+  const ultimaAfericao = ultimaMedicao ? texto(ultimaMedicao.sessao.dia.dataOperacional) : null;
+  const quantidade = configuracao.intervaloIndividualQuantidade ?? 1;
+  const unidade = configuracao.intervaloIndividualUnidade ?? "MESES";
+  const controleIndividual = { quantidade, unidade, ultimaAfericao, proximaAfericao: ultimaAfericao ? proximaAfericaoIndividual(ultimaAfericao, quantidade, unidade) : null };
+  const dias = participantes.filter(p => p.dia.configuracao?.fonteProducao !== "GERAL" || p.medicoes.some(m => m.estado !== "PENDENTE")).map(diaDTO), ativos = dias.filter(d => d.excluidoEm === null);
   const diasComRegistro = new Set(ativos.map(d => d.dataOperacional)).size;
   const diasCalendario = diasCalendarioContexto(dia(inicio), dia(fim)) + 1;
   const atual = await tx.localizacaoAnimal.findFirst({ where: { animalId }, orderBy: [{ desde: "desc" }, { criadoEm: "desc" }], select: { propriedadeId: true } });
@@ -53,7 +60,7 @@ export async function consultarHistoricoProdutivoTx(tx: Prisma.TransactionClient
     carenciaLeite = { dataReferencia: fim, disponibilidade: "DISPONIVEL", leite: c.leite.estado === "CONHECIDO" ? { ...c.leite, ate: c.leite.ate.toISOString() } : c.leite,
       revisaoLeitePendente: c.revisaoLeitePendente, revisaoAdministracaoPendente: c.revisaoAdministracaoPendente };
   }
-  return { propriedadeId, animal, periodo: { inicio, fim }, itens: dias.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
+  return { propriedadeId, animal, controleIndividual, periodo: { inicio, fim }, itens: dias.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
     total: dias.length, pagina: filtro.pagina, tamanho: filtro.tamanho, totaisPeriodo: resumirProducao(ativos.flatMap(d => d.medicoes)),
     coberturaPeriodo: { diasCalendario, diasComRegistro, diasSemRegistro: Math.max(0, diasCalendario - diasComRegistro) }, carenciaLeite };
 }
