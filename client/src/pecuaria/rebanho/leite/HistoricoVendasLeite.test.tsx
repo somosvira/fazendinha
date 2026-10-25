@@ -91,14 +91,12 @@ beforeEach(() => {
 });
 async function preparar() {
   fireEvent.click(
-    await screen.findByRole("button", { name: "Corrigir venda #10" }),
+    (await screen.findAllByRole("button", { name: "Corrigir venda #10" }))[0],
   );
   fireEvent.change(screen.getByLabelText("Novo valor total (R$)"), {
     target: { value: "250,00" },
   });
-  fireEvent.change(screen.getByLabelText("Nova condição financeira"), {
-    target: { value: "A_PRAZO" },
-  });
+  await escolher("Nova condição financeira", "A receber");
   fireEvent.change(screen.getByLabelText("Vencimento da nova parcela"), {
     target: { value: "2026-10-30" },
   });
@@ -106,10 +104,15 @@ async function preparar() {
     target: { value: "Preço definitivo corrigido" },
   });
 }
+async function escolher(rotulo: string, opcao: string) {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  fireEvent.keyDown(screen.getByLabelText(rotulo), { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+}
 describe("Histórico comercial do leite", () => {
   it("consulta todos os produtos do sítio quando nenhum produto está selecionado", async () => {
     render(<HistoricoVendasLeite {...props} produtoId="" />);
-    await screen.findByRole("button", { name: "Corrigir venda #10" });
+    (await screen.findAllByRole("button", { name: "Corrigir venda #10" }))[0];
     expect(
       screen.getByRole("heading", { name: "Vendas de leite do sítio" }),
     ).toBeTruthy();
@@ -189,7 +192,8 @@ describe("Histórico comercial do leite", () => {
       porPagina: 20,
     });
     render(<HistoricoVendasLeite {...props} podeLancar={false} />);
-    await screen.findByText("Recebida");
+    await screen.findAllByText("Recebida");
+    fireEvent.click(screen.getAllByRole("button", { name: "Ver venda #10" })[0]);
     expect(
       screen.queryByRole("button", { name: "Corrigir venda #10" }),
     ).toBeNull();
@@ -208,7 +212,7 @@ describe("Histórico comercial do leite", () => {
       porPagina: 20,
     });
     render(<HistoricoVendasLeite {...props} />);
-    await screen.findByText("A receber");
+    await screen.findAllByText("A receber");
     expect(
       screen.queryByRole("button", { name: "Corrigir venda #10" }),
     ).toBeNull();
@@ -216,12 +220,8 @@ describe("Histórico comercial do leite", () => {
   it("recebido agora exige conta real e envia nova condição explícita", async () => {
     render(<HistoricoVendasLeite {...props} />);
     await preparar();
-    fireEvent.change(screen.getByLabelText("Nova condição financeira"), {
-      target: { value: "A_VISTA" },
-    });
-    fireEvent.change(screen.getByLabelText("Conta de recebimento"), {
-      target: { value: "conta" },
-    });
+    await escolher("Nova condição financeira", "Recebido agora");
+    await escolher("Conta de recebimento", "Conta real");
     fireEvent.click(
       screen.getByRole("button", { name: "Confirmar correção comercial" }),
     );

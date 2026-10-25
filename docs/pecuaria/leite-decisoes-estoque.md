@@ -11,7 +11,13 @@ Contrato da integração entre produção de leite e estoque, conforme as decis�
 
 ## Fonte física e confirmação
 
-A fonte física é definida na configuração vigente: `MedicaoLeite` para produção individual; `MedicaoGeralLeite` para produção geral por tanque/ordenha. Na data geral, os controles individuais servem ao acompanhamento do animal e não geram outra entrada. `POST /geral/confirmacoes` confirma uma aferição positiva inteira, com régua, tanque/versão e origens no snapshot; permite custo pendente. Índice parcial impede duas entradas ativas da mesma aferição. A anulação conserva o histórico e permite nova confirmação após regularização. A origem comercial exige animais identificados e carências conferidas, sem exigir litros individuais.
+A fonte física é definida na configuração vigente: `MedicaoLeite` para produção individual; parcelas `MedicaoGeralLeite` de `SessaoOrdenha` para produção geral. Na data geral, os controles individuais acompanham o animal e não geram outra entrada. Guardar parcelas não movimenta estoque. Cada parcela identifica tanque/versionamento ou recipiente livre segregado; litros e régua são informados manualmente e somente litros compõem a quantidade. A capacidade é validada somente para tanque cadastrado. Naturezas diferentes não podem ser obtidas por rateio de leite já misturado; cada recipiente aparece uma única vez na sessão.
+
+`POST /geral/parcelas/confirmacoes` confirma o conjunto selecionado em uma transação `Serializable`, com chave do conjunto e chave, versão, produto e motivo próprios de cada parcela. Cada parcela positiva inteira gera uma entrada separada; zero é preservado na aferição, sem criar entrada. Falha de uma recusa todo o conjunto; reenvio idêntico recupera o resultado sem duplicar origens. Chaves de reenvio são reservadas antes das travas ordenadas de animais, sessão e produtos. `POST /geral/confirmacoes` permanece adaptador individual do mesmo núcleo. O índice parcial continua impedindo duas entradas ativas da mesma parcela.
+
+A origem conserva recipiente/tanque/versão, régua/litros, natureza, animais e declarações no snapshot. A comercial exige animais identificados e carências conferidas, sem litros individuais. Descarte e Colostro podem usar registro direto justificado com origens desconhecidas (`animaisOrigem=[]`), mantendo custo/população pendentes, sem fabricar carência ou parto e sem liberar venda. Regra de colostro, fronteiras civis, declaração da primeira ordenha, deduplicação por parto/animal e histórico sem regra estão no [contrato de produção](leite.md#contexto-colostro-e-registro-direto).
+
+Uma parcela confirmada não pode ser corrigida antes de regularizar a entrada e seus consumidores. A anulação conserva o histórico e permite nova confirmação após regularização. Acrescentar outra parcela em recipiente distinto não reabre as confirmadas. A classificação vigente orienta a consulta, mantendo a natureza originalmente aferida no histórico.
 
 Na fonte individual, `MedicaoLeite` continua sendo a fonte dos litros por animal/ordenha. O estoque usa o mesmo `MovimentoEstoque` compartilhado com os demais domínios. `EntradaProducaoLeite` conserva a sessão/versão confirmadas e o snapshot das medições/cobertura; não é outro saldo físico.
 
@@ -33,7 +39,7 @@ Cada confirmação conserva o marco inicial `ClassificacaoEntradaLeite` `NAO_INF
 
 A classificação abrange **todos os litros daquela entrada e seu remanescente**, independentemente de quantos já foram servidos aos bezerros. Um destino de colostro ou leite não comercial registra a restrição na mesma transação da saída interna. O estorno do fornecimento devolve quantidade, mas não remove a declaração restritiva. Vendas anteriores preservam o snapshot comercial vigente na data da saída; a restrição posterior impede novas vendas da sobra.
 
-A segregação ocorre ao confirmar grupos distintos de medições inteiras, com vínculo `VinculoMedicaoEntradaLeite` preservando medição, animal, litros e versão no snapshot. Por exemplo, duas vacas da mesma ordenha podem gerar uma origem comercial de 12 L e outra de colostro de 4 L. A natureza abrange todos os litros do grupo confirmado. Uma medição já misturada não é separada automaticamente e nenhuma sobra se torna comercial pela subtração do que foi fornecido. A declaração registra a prática informada, sem certificar elegibilidade sanitária.
+Na fonte individual, a segregação ocorre ao confirmar grupos distintos de medições inteiras, com vínculo `VinculoMedicaoEntradaLeite` preservando medição, animal, litros e versão no snapshot. Por exemplo, duas vacas da mesma ordenha podem gerar uma origem comercial de 12 L e outra de colostro de 4 L. A natureza abrange todos os litros do grupo confirmado. Uma medição já misturada não é separada automaticamente e nenhuma sobra se torna comercial pela subtração do que foi fornecido. A declaração registra a prática informada, sem certificar elegibilidade sanitária.
 
 O planejador recebe finalidade explícita `VENDA`, `CONSUMO` ou `DESCARTE`. Venda seleciona somente origens declaradas `COMERCIAL`, mesmo quando o custo ainda está pendente. Alocação preserva finalidade e FK/snapshot da classificação da mesma entrada. O SQL confere a classificação vigente ao criar a saída e impede tratar uma operação `VENDA` como consumo para contornar a restrição. Não há certificação sanitária implícita nessa declaração operacional.
 
@@ -59,11 +65,11 @@ O saldo confiável depende da igualdade entre o razão físico e as origens conf
 
 O preço comercial do item é separado do custo físico: 100 L vendidos por R$ 225 criam a operação e seu recebível de R$ 225, enquanto o custo dos 100 L pode permanecer pendente. Liquidação posterior usa as rotas existentes e não baixa estoque. Valor pago parcial conserva o restante pendente.
 
-A versão entregue recebe o valor comercial definitivo conhecido; não infere frete, bonificação, desconto de qualidade, retenção ou divergência de volume. Composição comercial própria do leite exige contrato posterior; os campos de desconto/logística do executor atual são restritos a compras.
+A venda avulsa recebe o valor comercial definitivo conhecido, sem inferir frete, bonificação, desconto de qualidade, retenção ou divergência de volume. A operação por período registra preço negociado e ajuste explícitos no fechamento; entregas/demonstrativos conservam a composição documental, sem outro motor de preço ou recebimento. Esses percursos e seus limites estão no [contrato comercial](leite-comercial.md). Campos de desconto/logística do executor financeiro genérico continuam restritos a compras.
 
 ## Correções e limites do incremento
 
-- Sem consumidores ativos, `anularEntradaProducaoLeite()` cria inverso físico, preserva o original e desativa somente os vínculos daquela entrada, sem apagar seu histórico. As medições liberadas podem compor uma nova confirmação; editar a sessão exige não haver outra entrada confirmada nela. Retry da mesma anulação retorna o inverso existente e recusa motivo/autor divergente.
+- Sem consumidores ativos, `anularEntradaProducaoLeite()` cria inverso físico, preserva o original e desativa somente os vínculos daquela entrada, sem apagar seu histórico. As medições liberadas podem compor uma nova confirmação; na fonte individual, editar a sessão exige não haver outra entrada confirmada nela; na fonte geral, a proteção de edição alcança a parcela confirmada. Retry da mesma anulação retorna o inverso existente e recusa motivo/autor divergente.
 - Com litros consumidos ou vendidos, a origem não pode ser anulada isoladamente. O serviço e o SQL exigem regularização dos dependentes.
 - Destinos internos usam `baixarLeiteTx()` e `estornarBaixaLeiteTx()` na mesma transação do fato chamador, preservando alocações/custos originais. O adaptador recusa estorno de uma saída vinculada a `VENDA`, que exige tratar o financeiro junto.
 - `corrigirVendaLeite()` substitui comercialmente a versão vigente, conservando a mesma retirada, produto, litros, sítio e data. O novo comprador, total e condição financeira são explícitos. Categoria e centro omitidos preservam os IDs e snapshots da operação anterior, inclusive quando os cadastros históricos foram inativados; novos selecionados precisam estar ativos. Produto histórico inativo pode receber apenas essa correção estritamente comercial, após prova da retirada existente; nova retirada continua exigindo produto ativo. Não se herda o cadastro atual do produto. Compromissos antigos são cancelados e a operação substituta é criada pelo executor financeiro na mesma transação; não há nova baixa, inverso físico ou estorno automático de dinheiro.
@@ -77,6 +83,9 @@ Serviços/validadores em `server/src/services/pecuaria/leite/estoque.ts`:
 
 | Interface | Entrada principal |
 |---|---|
+| `confirmarParcelasOrdenha` | chave do conjunto e parcelas gerais com chave, medição, versão, produto e motivo da natureza; confirmação atômica |
+| `confirmarProducaoGeral` | medição geral, versão, produto, motivo e chave; adaptador compatível |
+| `consultarResumoEstoqueLeite` | sítio, produto/busca opcionais e paginação; resumo de todo o recorte e valores mascarados |
 | `confirmarSessaoProducaoLeite` | sessão, versão, chave, todos os grupos e justificativa de cobertura parcial quando necessária |
 | `confirmarProducaoLeite` | `sessaoId`, `versaoEsperada`, `produtoId`, `chave`, `medicaoIds`, `natureza`, `motivoNatureza`, `motivoParcial` quando necessário |
 | `venderLeite` | produto, quantidade, data, comprador, valor definitivo, categoria/centro quando informados, condição financeira e chave |
@@ -91,11 +100,17 @@ A folha sempre retorna `medicoes[].confirmacaoEstoque` como `null` ou `{ entrada
 
 Todas recebem sítio/usuário resolvidos pelo servidor. As rotas devem exigir sessão, área, ação e sítio; venda/apuração exigem as permissões financeiras apropriadas. Quantidade pendente, custo pendente, zero comprovado e valor oculto por permissão são estados distintos.
 
-Adaptadores transacionais compartilhados ficam em `services/estoque/leite.ts`; cálculos puros em `leite.calc.ts`. A migration aditiva `20261020000000_estoque_leite_valor_pendente` preserva os métodos anteriores e acrescenta constraints, vínculos e imutabilidade do leite. Não foi aplicada por esta tarefa.
+Adaptadores transacionais compartilhados ficam em `services/estoque/leite.ts`; cálculos puros em `leite.calc.ts`. O SQL versionado protege custo pendente, classificações imutáveis, vínculos das medições, soma exata, origem ativa única e coerência dos inversos. Migrations históricas preservam ou recusam vínculos ambíguos conforme suas próprias verificações; este contrato não presume sua aplicação no ambiente nem autoriza reconciliação automática.
 
-A migration `20261020030000_classificacao_entrada_leite` acrescenta classificação, finalidade e snapshot com FK. Entradas anteriores sem consumidores recebem somente `NAO_INFORMADA`; se já houver alocações V5 anteriores, a migration recusa a aplicação para exigir reconciliação dos snapshots, sem inventar uma declaração comercial histórica. Não foi aplicada por esta tarefa.
+A nova migration `20261024200000_parcelas_ordenha_colostro` acrescenta recipientes, declarações e snapshots do contexto. Mantém unicidade por tanque/sessão e acrescenta unicidade do recipiente livre normalizado, guardas conjuntas de segregação e evidências de parto/lactação, sem preencher regra antiga. Ela não foi aplicada nesta rodada. A conferência estrutural não comprova execução ou concorrência PostgreSQL. Confirmação e edição usam `Serializable`; escritas manuais com snapshot `RepeatableRead` antigo não são percurso suportado.
 
-A migration aditiva `20261020050000_segregacao_origens_leite` troca a unicidade por sessão pela unicidade parcial da medição ativa, preserva vínculos e exige soma exata e prova do snapshot. O histórico anterior só recebe vínculos derivados de medições positivas explícitas no snapshot; inconsistências abortam a aplicação. A anulação exige inverso e ausência de consumidores e somente desativa seus vínculos. Essa migration não foi aplicada nesta tarefa. Confirmação e edição do serviço usam transações `Serializable` e a mesma trava da sessão. O guard SQL da medição também trava as sessões antiga/nova antes de verificar entradas, para serializar escritas SQL em `ReadCommitted`. Escritas manuais com snapshot `RepeatableRead` antigo não são um percurso suportado: a trava sem atualização do pai não invalida esse snapshot. Nenhuma prova concorrente em PostgreSQL foi executada nesta tarefa.
+## Consulta consolidada do estoque
+
+`GET /estoque/resumo`, sob o prefixo leiteiro, identifica produtos por movimentos do método leiteiro no sítio; um cadastro em litros isolado não comprova que o produto é leite. Retorna `itens`, `total`, `pagina`, `porPagina` e `resumo` calculado sobre todo o conjunto autorizado e filtrado antes da paginação. Busca/produto refinam o recorte; exceder os limites de segurança exige refinamento, sem totais truncados.
+
+A abertura mostra todos esses produtos e separa quantidade física, comercial, Descarte, Colostro, classificação pendente e custo pendente. Classificação pendente não é uma quarta natureza. Quantidade e valor ficam `null` quando o razão não concilia com as origens ou há mistura incompatível de métodos; ausência de lastro não vira zero. Custo ausente mantém o valor pendente mesmo com litros comprovados, e `verValores` também protege o resumo e o volume de custo pendente. As sobras usam consumos líquidos, estornos e a última apropriação de valor de cada origem.
+
+Aferições salvas sem confirmação continuam na consulta de Ordenhas, separadas do saldo disponível. O tanque informado na origem prova o recipiente na produção, sem demonstrar onde toda a sobra está hoje; a consulta não estima saldo atual por tanque. Estoque Leite é um recorte do estoque compartilhado, sem pré-estoque ou transferência fictícia.
 
 ## Validação e evidência
 
@@ -103,6 +118,6 @@ Testes de cálculos verificam FIFO, valor pendente, conservação e precisão. T
 
 Classificação tem contraprovas de venda limitada ao volume comercial, restrição terminal, ausência de declaração, snapshot de origem, falta de cobertura da meta e confirmação futura na virada UTC com data operacional em `America/Sao_Paulo`.
 
-Regressões de estoque, valorização, operações e nutrição são verificadas separadamente. Integração real de banco, aplicação da migration, inspeção visual e homologação da fazenda continuam etapas distintas; nenhum seed/carga ou banco auxiliar foi criado para esta mudança.
+Regressões de estoque, valorização, operações e nutrição são verificadas separadamente. Integração real de banco, aplicação da nova migration, inspeção visual e homologação da fazenda são etapas distintas. Esta atualização documental não aplica SQL, executa seed/carga, cria banco auxiliar nem altera resultados dos roteiros.
 
 A consulta comercial usa uma transação de leitura `RepeatableRead`; a elegibilidade exibida é informativa e todas as condições são revalidadas na escrita. Datas inexistentes e paginação fora do limite são rejeitadas. O custo médio compartilhado omite uma base enquanto houver remanescente físico com apuração pendente no escopo consultado; bases parcialmente conhecidas não aparecem como custo médio completo.

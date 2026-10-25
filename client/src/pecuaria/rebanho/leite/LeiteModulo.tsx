@@ -1,23 +1,23 @@
+import { useEffect, useState } from "react";
+import { Box, ChartNoAxesCombined, FlaskConical, Milk, Truck, Wallet, Baby, Settings2, FileText, FileSearch } from "lucide-react";
 import { PageHeader } from "../../../financeiro/financeiro-ui";
 import { SubTabs } from "../../../components/SubTabs";
 import { Button } from "../../../components/ui/button";
-import { useEffect, useState } from "react";
+import { navegarPara } from "../../../router";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { PreviaHistoricaLeite } from "./PreviaHistoricaLeite";
-import { OperacoesComerciaisLeite } from "./OperacoesComerciaisLeite";
-import { ComercialLeite } from "./ComercialLeite";
 import { OrdenhasGerais } from "./OrdenhasGerais";
+import { ConfiguracoesProducaoLeite } from "./ConfiguracoesProducaoLeite";
 import { Leite } from "./Leite";
 import { ConsultasComerciaisLeite } from "./ConsultasComerciaisLeite";
 import { ConsultasProducaoLeite } from "./ConsultasProducaoLeite";
 import { EstoqueLeite } from "./EstoqueLeite";
 import { RelatoriosLeite } from "./RelatoriosLeite";
 import { QualidadeLeite } from "./QualidadeLeite";
-import { CustosLeite } from "./CustosLeite";
+import { VendasLeite } from "./VendasLeite";
 import { ProgramacaoRetirada } from "./UIProgramacaoRetirada";
 import { DescarteLeite } from "./DescarteLeite";
 import { DestinosLeite } from "./UIDestinosLeite";
-import { Box, ChartNoAxesCombined, ChevronDown, FlaskConical, Milk, Truck, Wallet } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu";
 import "./operacoes.css";
 
 const consultas = [
@@ -27,104 +27,51 @@ const consultas = [
   { id: "coletas", nome: "Coletas", Icon: Truck },
   { id: "qualidade", nome: "Qualidade", Icon: FlaskConical },
   { id: "vendas", nome: "Vendas", Icon: Wallet },
+  { id: "destinos", nome: "Alimentação e descarte", Icon: Baby },
 ];
-const rotinas = [
-  ["operacoes", "Operações de venda"],
-  ["comercial", "Entregas e demonstrativos"],
-  ["destinos", "Alimentação e descarte"],
-  ["programacao", "Programação de retirada"],
-  ["custos", "Ritmo e custos"],
-  ["relatorios", "Relatórios preservados"],
-  ["historico", "Conferência histórica"],
-];
-export function LeiteModulo({
-  podeLancar,
-  podeFinanceiro,
-  podeExportar = false,
-}: {
-  podeLancar: boolean;
-  podeFinanceiro: boolean;
-  podeExportar?: boolean;
+const lerSecao = () => {
+  const atual = new URLSearchParams(location.search).get("leiteSecao") ?? "ordenhas";
+  return atual === "operacoes" || atual === "comercial" ? "vendas" : atual === "custos" ? "producao" : atual;
+};
+export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false }: {
+  podeLancar: boolean; podeFinanceiro: boolean; podeExportar?: boolean;
 }) {
   const [modo, setModo] = useState(() => new URLSearchParams(location.search).get("leiteModo") ?? "geral");
+  const [secao, setSecao] = useState(lerSecao);
   const [acoesContainer, setAcoesContainer] = useState<HTMLDivElement | null>(null);
-  const [secao, setSecao] = useState(
-    () => new URLSearchParams(location.search).get("leiteSecao") ?? "ordenhas",
-  );
   useEffect(() => {
-    const atualizar = () => {
-      setModo(new URLSearchParams(location.search).get("leiteModo") ?? "geral");
-      setSecao(
-        new URLSearchParams(location.search).get("leiteSecao") ?? "ordenhas",
-      );
-    };
+    const atualizar = () => { setModo(new URLSearchParams(location.search).get("leiteModo") ?? "geral"); setSecao(lerSecao()); };
     window.addEventListener("popstate", atualizar);
     return () => window.removeEventListener("popstate", atualizar);
   }, []);
-  function selecionar(valor: string) {
-    setSecao(valor);
+  function selecionar(valor: string, forma?: string) {
     const url = new URL(location.href);
     url.searchParams.set("leiteSecao", valor);
-    history.replaceState(null, "", url);
+    if (forma) url.searchParams.set("leiteModo", forma);
+    void executarComGuardaNavegacao(() => navegarPara(url.pathname + url.search + url.hash));
   }
-  return (
-    <div className="leite-modulo">
-      <PageHeader titulo="Leite" descricao="Registre cada ordenha e acompanhe a produção da fazenda." acao={<div ref={setAcoesContainer} className="leite-modulo-acoes" />} />
-      <nav aria-label="Produção de leite" className="leite-navegacao">
-        <SubTabs variant="financeiro" ariaLabel="Consultas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={selecionar} />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" type="button" className="leite-mais-rotinas" data-selecionada={rotinas.some(([id]) => id === secao)}>
-              {rotinas.find(([id]) => id === secao)?.[1] ?? "Mais rotinas"}
-              <ChevronDown size={18} aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="leite-menu-rotinas" aria-label="Mais rotinas do leite">
-            {rotinas.map(([id, nome]) => (
-              <DropdownMenuItem key={id} aria-current={secao === id ? "page" : undefined} onSelect={() => selecionar(id)}>{nome}</DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </nav>
-      <div className="leite-superficie">
-      {secao === "producao" ? (
-        <ConsultasProducaoLeite podeExportar={podeExportar} />
-      ) : secao === "estoque" ? (
-        <EstoqueLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
-      ) : secao === "coletas" || secao === "vendas" ? (
-        <ConsultasComerciaisLeite key={secao} tipo={secao} />
-      ) : secao === "operacoes" ? (
-        <OperacoesComerciaisLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
-      ) : secao === "comercial" ? (
-        <ComercialLeite
-          podeLancar={podeLancar}
-          podeFinanceiro={podeFinanceiro}
-        />
-      ) : secao === "destinos" ? (
-        <>
-          <DestinosLeite podeLancar={podeLancar} />
-          <DescarteLeite podeLancar={podeLancar} />
-        </>
-      ) : secao === "programacao" ? (
-        <ProgramacaoRetirada podeLancar={podeLancar} />
-      ) : secao === "qualidade" ? (
-        <QualidadeLeite podeLancar={podeLancar} />
-      ) : secao === "historico" ? (
-        <PreviaHistoricaLeite podeLancar={podeLancar} />
-      ) : secao === "relatorios" ? (
-        <RelatoriosLeite
-          podeExportar={podeExportar}
-          podeFinanceiro={podeFinanceiro}
-        />
-      ) : secao === "custos" ? (
-        <CustosLeite podeExportar={podeExportar} />
-      ) : (
-        <>
-          <SubTabs variant="financeiro" aparencia="botoes" className="leite-modos" ariaLabel="Forma de aferição" tabs={[{ id: "geral", label: "Produção geral" }, { id: "individual", label: "Controle individual" }]} active={modo} onSelect={id => { setModo(id); const url = new URL(location.href); url.searchParams.set("leiteModo", id); history.replaceState(null, "", url); }} />
-          {modo === "individual" ? <><p>Controle individual nas datas aferidas. Não representa a produção de todos os dias entre os controles.</p><Leite podeLancar={podeLancar} acoesContainer={acoesContainer} /></> : <OrdenhasGerais podeLancar={podeLancar} acoesContainer={acoesContainer} />}
-        </>
-      )}
-      </div>
+  const operacional = consultas.some(c => c.id === secao);
+  return <div className="leite-modulo">
+    <PageHeader titulo={secao === "configuracoes" ? "Configurações de produção" : secao === "relatorios" ? "Relatórios do leite" : secao === "historico" ? "Conferir importação" : "Leite"} acao={<div className="leite-cabecalho-acoes"><div ref={setAcoesContainer} className="leite-modulo-acoes" /><Button variant="outline" onClick={() => selecionar("configuracoes")} aria-label="Configurações de produção"><Settings2 size={16} aria-hidden />Configurações</Button></div>} />
+    <nav aria-label="Produção de leite" className="leite-navegacao leite-sete-rotinas">
+      <SubTabs variant="financeiro" ariaLabel="Rotinas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={id => selecionar(id)} />
+    </nav>
+    <div className="leite-superficie">
+      {secao === "producao" ? <ConsultasProducaoLeite podeExportar={podeExportar} />
+        : secao === "estoque" ? <EstoqueLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
+        : secao === "coletas" ? <ConsultasComerciaisLeite tipo="coletas" podeLancar={podeLancar} />
+        : secao === "vendas" ? <VendasLeite podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />
+        : secao === "destinos" ? <><DestinosLeite podeLancar={podeLancar} /><DescarteLeite podeLancar={podeLancar} /></>
+        : secao === "qualidade" ? <QualidadeLeite podeLancar={podeLancar} />
+        : secao === "historico" ? <PreviaHistoricaLeite podeLancar={podeLancar} />
+        : secao === "relatorios" ? <RelatoriosLeite podeExportar={podeExportar} podeFinanceiro={podeFinanceiro} />
+        : secao === "programacao" ? <ProgramacaoRetirada podeLancar={podeLancar} />
+        : secao === "configuracoes" ? <><ConfiguracoesProducaoLeite podeLancar={podeLancar} /><ProgramacaoRetirada podeLancar={podeLancar} /></>
+        : <>
+          {modo !== "registro" && <SubTabs variant="financeiro" aparencia="botoes" className="leite-modos" ariaLabel="Forma de aferição" tabs={[{ id: "geral", label: "Ordenhas registradas" }, { id: "individual", label: "Controle individual" }]} active={modo} onSelect={id => selecionar("ordenhas", id)} />}
+          {modo === "individual" ? <Leite podeLancar={podeLancar} acoesContainer={acoesContainer} /> : <OrdenhasGerais podeLancar={podeLancar} acoesContainer={acoesContainer} />}
+        </>}
     </div>
-  );
+    {operacional && <nav className="leite-ferramentas" aria-label="Ferramentas do leite"><Button variant="outline" onClick={() => selecionar("relatorios")}><FileText size={16} aria-hidden />Relatórios</Button><Button variant="outline" onClick={() => selecionar("historico")}><FileSearch size={16} aria-hidden />Conferir importação</Button></nav>}
+  </div>;
 }

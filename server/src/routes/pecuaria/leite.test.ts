@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ geral: vi.fn(), salvarGeral: vi.fn(), tanque: vi.fn(), consultar: vi.fn(), salvar: vi.fn(), candidatos: vi.fn(), configuracoes: vi.fn(), criarConfiguracao: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
+const mocks = vi.hoisted(() => ({ geral: vi.fn(), salvarGeral: vi.fn(), salvarParcelas: vi.fn(), confirmarParcelas: vi.fn(), tanque: vi.fn(), consultar: vi.fn(), salvar: vi.fn(), candidatos: vi.fn(), configuracoes: vi.fn(), criarConfiguracao: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/leite/producao.js", () => ({ consultarFolha: mocks.consultar, salvarFolha: mocks.salvar, listarCandidatos: mocks.candidatos }));
 vi.mock("../../services/pecuaria/leite/configuracoes.js", () => ({ listarConfiguracoes: mocks.configuracoes, criarConfiguracao: mocks.criarConfiguracao }));
-vi.mock("../../services/pecuaria/leite/tanques.js", () => ({ consultarOrdenhasGerais: mocks.geral, salvarMedicaoGeral: mocks.salvarGeral, registrarTanque: mocks.tanque }));
+vi.mock("../../services/pecuaria/leite/tanques.js", () => ({ consultarOrdenhasGerais: mocks.geral, salvarMedicaoGeral: mocks.salvarGeral, salvarParcelasOrdenha: mocks.salvarParcelas, registrarTanque: mocks.tanque }));
+vi.mock("../../services/pecuaria/leite/estoque.js", () => ({ confirmarProducaoGeral: vi.fn(), confirmarParcelasOrdenha: mocks.confirmarParcelas }));
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { leiteRouter } from "./leite.js";
 const app = (opcoes: { autenticado?: boolean; lancar?: boolean; pecuaria?: boolean } = {}) => new Hono().use("*", async (c, next) => {
@@ -67,11 +68,29 @@ describe("rotas de produção leiteira", () => {
 it("protege leitura, configuração e aferição geral com sessão, área e lançamento", async () => {
   expect((await app({ autenticado: false }).request("/geral?dataOperacional=2026-10-01")).status).toBe(401);
   expect((await app({ pecuaria: false }).request("/geral?dataOperacional=2026-10-01")).status).toBe(403);
-  for (const rota of ["/geral", "/tanques", "/geral/confirmacoes"]) expect((await app().request(rota, post({}))).status).toBe(403);
+  for (const rota of ["/geral", "/tanques", "/geral/confirmacoes", "/geral/parcelas", "/geral/parcelas/confirmacoes"]) expect((await app().request(rota, post({}))).status).toBe(403);
   expect(mocks.salvarGeral).not.toHaveBeenCalled();
   mocks.geral.mockResolvedValue({ tanques: [] });
   expect((await app().request("/geral?dataOperacional=2026-10-01")).status).toBe(200);
   expect(mocks.geral).toHaveBeenCalledWith(2, "2026-10-01");
   mocks.leitura.mockResolvedValue(null);
   expect((await app().request("/geral?dataOperacional=2026-10-01")).status).toBe(422);
+});
+
+it("valida conjunto de parcelas e resolve o sítio/autoria antes do núcleo", async () => {
+  const parcela = { recipiente: "Balde segregado", litros: 0, reguaMm: 0, natureza: "COLOSTRO", versaoEsperada: 0, responsavel: "Equipe", animaisOrigem: [], declaracaoDireta: { justificativa: "Registro sem origem conhecida" } };
+  const dados = { chave, propriedadeId: 2, dataOperacional: "2026-10-01", posicaoId, parcelas: [parcela] };
+  mocks.salvarParcelas.mockResolvedValue({ parcelas: [] });
+  expect((await app({ lancar: true }).request("/geral/parcelas", post(dados))).status).toBe(200);
+  expect(mocks.salvarParcelas).toHaveBeenCalledWith(dados, 7);
+  expect(mocks.escrita).toHaveBeenCalledWith(expect.anything(), 2);
+  expect((await app({ lancar: true }).request("/geral/parcelas", post({ ...dados, parcelas: [{ ...parcela, litros: undefined }] }))).status).toBe(422);
+  expect((await app({ lancar: true }).request("/geral/parcelas", post({ ...dados, parcelas: [{ ...parcela, tanqueId: animalId }] }))).status).toBe(422);
+});
+it("confirmação de parcelas exige lançamento, chave por parcela e escopo da request", async () => {
+  const dados = { chave, parcelas: [{ chave: animalId, medicaoId: posicaoId, versaoEsperada: 1, produtoId: posicaoId, motivoNatureza: "Fisicamente segregado" }] };
+  mocks.confirmarParcelas.mockResolvedValue({ entradas: [] });
+  expect((await app({ lancar: true }).request("/geral/parcelas/confirmacoes", post(dados))).status).toBe(201);
+  expect(mocks.confirmarParcelas).toHaveBeenCalledWith(dados, { propriedadeId: 2, usuarioId: 7 });
+  expect((await app({ lancar: true }).request("/geral/parcelas/confirmacoes", post({ ...dados, parcelas: [dados.parcelas[0], dados.parcelas[0]] }))).status).toBe(422);
 });

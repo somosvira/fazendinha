@@ -1,5 +1,6 @@
+import { TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { Button } from "@/components/ui/button";
-import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { DatasQualidade } from "./DatasQualidade";
@@ -22,6 +23,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
   const [pagina, setPagina] = useState(1);
   const [dados, setDados] = useState<Consulta | null>(null);
   const [erro, setErro] = useState("");
+  const [tentativa, setTentativa] = useState(0);
   const [carregando, setCarregando] = useState(false);
   const campos = [...new Map(formatos.flatMap(f => f.campos).map(c => [c.codigo, c])).values()];
   useEffect(() => {
@@ -36,7 +38,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
       .catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível consultar. Tente novamente."); })
       .finally(() => { if (ativa) setCarregando(false); });
     return () => { ativa = false; };
-  }, [sitio, campo, inicio, fim, sujeito, pagina, revisao]);
+  }, [sitio, campo, inicio, fim, sujeito, pagina, revisao, tentativa]);
   return <section aria-label="Histórico por parâmetro">
     <h2>Histórico por parâmetro</h2>
     <p>Consulte CPP, gordura, proteína, NU, extrato seco e lactose conforme os campos cadastrados no laudo. Unidades e métodos não são presumidos.</p>
@@ -53,20 +55,17 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
     </div>
     {!campo && <p>Selecione um campo do formato para consultar seus resultados vigentes.</p>}
     {carregando && <p role="status">Consultando histórico do parâmetro…</p>}
-    {erro && <p role="alert">{erro}</p>}
+    {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button></p>}
     {dados && <>
       <p>{dados.total} resultado(s). Cada origem e versão de formato conserva sua própria série; não calculamos médias ou preço automaticamente.</p>
-      {!dados.itens.length ? <p>Nenhum resultado informado para este parâmetro no período.</p> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Resultados por parâmetro, com rolagem horizontal">
-        <Table semContainer><TableCaption>Resultados pela data da amostra</TableCaption><TableHeader><TableRow><TableHead>Amostra e origem</TableHead><TableHead>Resultado</TableHead><TableHead>Formato</TableHead><TableHead>Registro do resultado</TableHead></TableRow></TableHeader>
-          <TableBody>{dados.itens.map(r => <TableRow key={r.amostraId}>
-            <TableCell>{r.dataAmostra.split("-").reverse().join("/")}<small>{r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : `${r.animal?.brinco ?? "Sem brinco"} · ${r.animal?.nome ?? "Sem nome"}`}</small></TableCell>
-            <TableCell>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</TableCell>
-            <TableCell>{r.formato.nome} · versão {r.formato.versao}<small>Amostra versão {r.versaoAmostra}</small></TableCell>
-            <TableCell>{new Date(r.registradoEm).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}<DatasQualidade dataResultadoLaboratorial={r.dataResultadoLaboratorial} dataRecebimentoLaudo={r.dataRecebimentoLaudo} /></TableCell>
-          </TableRow>)}</TableBody>
-        </Table>
-      </div>}
-      <div className="leite-form-inline"><Button type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Resultados anteriores</Button><span>Página {pagina}</span><Button type="button" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próximos resultados</Button></div>
+      {!dados.itens.length ? <p>Nenhum resultado informado para este parâmetro no período.</p> : <TabelaFinanceira compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
+        { chave: "data", titulo: "Amostra", principal: true, celula: r => r.dataAmostra.split("-").reverse().join("/") },
+        { chave: "origem", titulo: "Origem", celula: r => r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco ?? "Sem brinco" },
+        { chave: "resultado", titulo: "Resultado", celula: r => <>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</> },
+        { chave: "formato", titulo: "Formato", celula: r => r.formato.nome },
+        { chave: "detalhes", titulo: "Ações", acoes: true, celula: r => <DialogConsultaLeite titulo="Ver resultado"><p>{r.formato.nome} · versão {r.formato.versao}</p><p>Amostra versão {r.versaoAmostra}</p><p>Registro no sistema: {new Date(r.registradoEm).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p><DatasQualidade dataResultadoLaboratorial={r.dataResultadoLaboratorial} dataRecebimentoLaudo={r.dataRecebimentoLaudo} /></DialogConsultaLeite> },
+      ]} />}
+      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.tamanho))} total={dados.total} porPagina={dados.tamanho} rotulo="Paginação dos resultados" substantivo="resultados" idSelect="pagina-resultados-leite" onPagina={setPagina} />
     </>}
   </section>;
 }

@@ -34,3 +34,6 @@ output/seedatev4/
 
 # Carga real da Pecuária v1 (extraída do IDEAGRI) — dado de fazenda, não commitar.
 server/prisma/pecuaria_v1.json
+
+# Manifesto e guia da seed unificada local.
+server/.seed/

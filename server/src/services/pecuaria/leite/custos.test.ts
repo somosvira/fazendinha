@@ -204,10 +204,37 @@ it.each(["pendentes", "potenciais"] as const)("não apura custo/L geral se há a
   const folha = dia();
   vi.mocked(prisma.diaProducaoLeite.findMany).mockResolvedValue([{ ...folha, configuracao: { ...folha.configuracao, fonteProducao: "GERAL" } }] as never);
   vi.mocked(consultarPopulacaoPeriodoLeiteTx).mockResolvedValueOnce([{ data: periodo.inicio, estado: "ELEGIVEIS", elegiveis: [animalId], pendentes: [], potenciais: [], [pendencia]: ["animal-incerto"] }]);
-  vi.mocked(linhasProducaoGeralTx).mockResolvedValueOnce([{ animaisOrigem: [animalId], fonte: "GERAL", tanqueId: "tanque", data: periodo.inicio, animalId: null, brinco: "Tanque", nome: "Tanque", finalidade: null, posicaoId: "manha", ordenha: "Manhã", natureza: "COMERCIAL", estado: "MEDIDO", litros: 1000, confirmada: false }]);
+  vi.mocked(linhasProducaoGeralTx).mockResolvedValueOnce([{ animaisOrigem: [animalId], fonte: "GERAL", tanqueId: "tanque", medicaoGeralId: "medicao-geral", recipiente: null, sessaoId: "sessao", data: periodo.inicio, animalId: null, brinco: "Tanque", nome: "Tanque", finalidade: null, posicaoId: "manha", ordenha: "Manhã", natureza: "COMERCIAL", estado: "MEDIDO", litros: 1000, confirmada: false }]);
   vi.mocked(carregarFontesCustoTx).mockResolvedValue([]);
   const r = await consultarCustosLeiteTx(prisma, 3, periodo, true);
   expect(r.consolidado.producao.litros).toBe(1000);
   expect(r.consolidado.custoPorLitro).toBeNull();
   expect(r.consolidado.motivos).toContain("POPULACAO_GERAL_NAO_CONCILIADA");
 });
+
+
+it("não rateia custos reais pelas naturezas e o filtro mantém valores sem vínculo a apurar", async () => {
+  prepararCustoNatureza();
+  const r = await consultarCustosLeiteTx(prisma, 3, { ...periodo, natureza: "A_CLASSIFICAR" }, true);
+  expect(r.porNatureza).toHaveLength(1);
+  expect(r.porNatureza[0]).toMatchObject({ natureza: "A_CLASSIFICAR", producao: { litros: 600 }, custoTotal: null, custoPorLitro: null, motivos: ["NATUREZA_SEM_VINCULO"] });
+  expect(r.consolidado.custoPorLitro).toBeNull();
+  expect(r.consolidado.custos.totalConhecido).toBeNull();
+  expect(r.consolidado.motivos).toContain("NATUREZA_SEM_VINCULO");
+  expect(r.porClassificacao).toEqual([]);
+});
+
+it("preserva no consolidado o custo real e a classificação sem percentuais por volume", async () => {
+  prepararCustoNatureza();
+  const r = await consultarCustosLeiteTx(prisma, 3, periodo, true);
+  expect(r.consolidado.custos.totalConhecido).toBe("900.00");
+  expect(r.porNatureza.every(n => n.custoTotal === null && n.custoPorLitro === null)).toBe(true);
+  expect(r.porClassificacao).toMatchObject([{ finalidade: null, custos: { totalConhecido: "900.00" } }]);
+});
+
+function prepararCustoNatureza() {
+  vi.mocked(prisma.medicaoLeite.count).mockResolvedValue(1);
+  vi.mocked(prisma.diaProducaoLeite.findMany).mockResolvedValue([dia()]);
+  vi.mocked(linhasProducaoGeralTx).mockResolvedValue([]);
+  vi.mocked(carregarFontesCustoTx).mockResolvedValue([{ id: "nutricao", tipo: "NUTRICAO", animalId, propriedadeId: 3, data: periodo.inicio, descricao: "Alimentação", estadoFato: "CONFIRMADO", participacaoId: null, origemMaterial: "ESTOQUE", movimentoEstoqueId: "movimento", operacaoServicoId: null, valorMaterial: new Prisma.Decimal(900), valorServico: null, classificacao: null, componenteId: "alimento", periodoConsumo: periodo }]);
+}

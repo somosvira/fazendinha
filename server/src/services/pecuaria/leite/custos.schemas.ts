@@ -6,6 +6,7 @@ export const consultaCustosLeiteSchema = z.object({
   fim: dataLeiteSchema,
   animalId: z.string().uuid().optional(),
   posicaoId: z.string().uuid().optional(),
+  natureza: z.enum(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO", "A_CLASSIFICAR"]).optional(),
   propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(),
 }).strict().refine(v => v.inicio <= v.fim &&
   (Date.parse(v.fim) - Date.parse(v.inicio)) / 86400000 < 366,

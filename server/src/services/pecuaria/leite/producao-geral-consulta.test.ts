@@ -74,3 +74,12 @@ it("usa a classificação vigente e deixa apenas a ordenha sem aferição como p
     }),
   );
 });
+
+
+it("aceita origem em recipiente sem tanque e normaliza natureza histórica não informada", async () => {
+  const tx = { tanqueLeite: { findMany: vi.fn(async () => []) }, medicaoGeralLeite: { findMany: vi.fn(async () => [
+    { id: "m", sessaoId: "s", tanqueId: null, recipiente: "Balde colostro", animaisOrigem: [], litros: new Prisma.Decimal(0), natureza: "COLOSTRO", entradasEstoque: [{ id: "e", classificacoes: [{ natureza: "NAO_INFORMADA" }] }] },
+  ]) } };
+  const linhas = await linhasProducaoGeralTx(tx as unknown as Prisma.TransactionClient, [{ id: "d", dataOperacional: new Date("2026-10-01"), configuracao: { fonteProducao: "GERAL" }, sessoes: [{ id: "s", posicaoId: "p", nome: "Extra" }] }]);
+  expect(linhas[0]).toMatchObject({ sessaoId: "s", medicaoGeralId: "m", tanqueId: null, recipiente: "Balde colostro", nome: "Balde colostro", litros: 0, natureza: "A_CLASSIFICAR" });
+});

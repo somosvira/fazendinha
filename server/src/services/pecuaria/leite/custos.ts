@@ -2,7 +2,7 @@ import { linhasProducaoGeralTx } from "./producao-geral-consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { carregarFontesCustoTx } from "../custos/custos.js";
-import { componentesDaFonte } from "../custos/custos.calc.js";
+import { componentesDaFonte, consolidarCustos } from "../custos/custos.calc.js";
 import { RebanhoError } from "../rebanho/regras.js";
 import { calcularCustosLeite, type ResumoCustosLeite } from "./custos.calc.js";
 import {
@@ -43,7 +43,7 @@ export async function consultarCustosLeiteTx(
       configuracao: { include: { ordenhas: { orderBy: { ordem: "asc" } } } },
       sessoes: { orderBy: { ordem: "asc" } },
       participantes: {
-        include: { medicoes: true },
+        include: { medicoes: { include: { origensEstoque: { where: { ativo: true }, include: { entrada: { include: { classificacoes: { orderBy: { versao: "desc" }, take: 1 } } } } } } } },
         orderBy: [{ brinco: "asc" }, { animalId: "asc" }],
       },
     },
@@ -108,13 +108,14 @@ export async function consultarCustosLeiteTx(
   const finalidades = await tx.finalidadeAnimal.findMany({ where: { animalId: { in: animalIds } } });
   const baixas = await tx.baixaAnimal.findMany({ where: { animalId: { in: animalIds }, estornadaEm: null } });
   const animaisFinalidadePendente = [...new Set(folhas.flatMap(f => f.animais.filter(a => a.finalidade.estado !== "COMPROVADA").map(a => a.animalId)))];
+  const componentes = fontes.flatMap(componentesDaFonte);
   const resultado = calcularCustosLeite({
     periodo, finalidades, baixas, animaisFinalidadePendente,
     animalIds,
     custos: {
       periodo,
       animalIds,
-      componentes: fontes.flatMap(componentesDaFonte),
+      componentes,
     },
     producao: {
       periodo,
@@ -221,18 +222,57 @@ export async function consultarCustosLeiteTx(
     if (!populacaoConferida) motivos.push("POPULACAO_GERAL_NAO_CONCILIADA");
     consolidado = { ...resultado.consolidado, producao, motivos, custoPorLitro: verValores && !motivos.length && resultado.consolidado.custos.totalConhecido != null && producao.litros != null && producao.litros > 0 ? new Prisma.Decimal(resultado.consolidado.custos.totalConhecido).div(producao.litros).toFixed(2) : null, situacao: !verValores ? "OCULTO" : motivos.length ? "NAO_APURADO" : "APURADO" };
   }
+  const naturezas = ["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO", "A_CLASSIFICAR"] as const;
+  const medidasIndividuais = dias.filter(d => filtro.animalId || d.configuracao.fonteProducao !== "GERAL").flatMap(d =>
+    d.participantes.filter(a => !a.excluidoEm && (!filtro.animalId || a.animalId === filtro.animalId)).flatMap(a =>
+      a.medicoes.filter(m => !filtro.posicaoId || d.sessoes.some(s => s.id === m.sessaoId && s.posicaoId === filtro.posicaoId)).map(m => {
+        const declaradas = new Set((m.origensEstoque ?? []).filter(o => o.entrada.status === "CONFIRMADA").map(o => o.entrada.classificacoes[0]?.natureza ?? "NAO_INFORMADA"));
+        const natureza = declaradas.size === 1 ? [...declaradas][0] : "NAO_INFORMADA";
+        return { data: d.dataOperacional.toISOString().slice(0, 10), estado: m.estado, litros: m.litros?.toNumber() ?? null, natureza: natureza === "NAO_INFORMADA" ? "A_CLASSIFICAR" : natureza };
+      })));
+  const producaoClassificada = [...medidasIndividuais, ...linhasGerais];
+  const porNatureza = naturezas.filter(n => !filtro.natureza || filtro.natureza === n).map(natureza => ({
+    natureza, producao: resumirProducao(producaoClassificada.filter(l => l.natureza === natureza)),
+    custoTotal: null, custoPorLitro: null, situacao: verValores ? "NAO_APURADO" as const : "OCULTO" as const,
+    motivos: ["NATUREZA_SEM_VINCULO" as const],
+  }));
+  // Os componentes têm classificação do fato/animal, mas não vínculo monetário à
+  // parcela de leite. Filtrar natureza nunca autoriza distribuir valores por litros.
+  if (filtro.natureza) consolidado = { ...consolidado,
+    custos: { ...consolidado.custos, totalConhecido: null, componentes: [] },
+    producao: porNatureza[0].producao, custoPorLitro: null,
+    situacao: verValores ? "NAO_APURADO" : "OCULTO", motivos: [...consolidado.motivos, "NATUREZA_SEM_VINCULO"],
+  };
+  const consolidados = resultado.consolidado.custos.componentes;
+  const porClassificacao = filtro.natureza ? [] : [...new Set(consolidados.map(c => c.finalidade))].map(finalidade => {
+    const chaves = new Set(consolidados.filter(c => c.finalidade === finalidade).map(c => c.chave));
+    // Valores são reconstruídos das fontes originais somente para componentes já
+    // validados pelo motor temporal, conservando custos sem valor como pendentes.
+    const linhas = componentes.filter(c => chaves.has(c.chave)).map(c => {
+      const validado = consolidados.find(v => v.chave === c.chave)!;
+      return { ...c, estado: validado.estado, valor: validado.valor === null ? null : new Prisma.Decimal(validado.valor) };
+    });
+    return { finalidade, custos: consolidarCustos(linhas, verValores) };
+  });
   const individual = (a: ResumoCustosLeite): ResumoCustosLeite => diasGerais.size ? { ...a, custoPorLitro: null, situacao: verValores ? "NAO_APURADO" : "OCULTO", motivos: [...a.motivos, "PRODUCAO_INDIVIDUAL_PERIODICA"] } : a;
   return {
     propriedadeId,
     periodo,
     posicaoId: filtro.posicaoId ?? null,
+    natureza: filtro.natureza ?? null,
+    porNatureza, porClassificacao,
     coberturaPeriodo,
-    ritmo,
+    ritmo: filtro.natureza ? ritmo.map(d => {
+      const resumo = resumirProducao(producaoClassificada.filter(l => l.data === d.data && l.natureza === filtro.natureza));
+      return { ...d, litros: resumo.litros, esperadas: resumo.esperadas, resolvidas: resumo.resolvidas, pendentes: resumo.pendentes,
+        estado: d.estado === "SEM_FOLHA" ? d.estado : !resumo.esperadas ? "SEM_PARTICIPANTES" as const : resumo.completa ? "COMPLETA" as const : "PARCIAL" as const };
+    }) : ritmo,
     animais: resultado.animais.map((a) => {
       const identificacao = porAnimal.get(a.animalId)?.[0];
       return {
         ...a,
         ...individual(comCobertura(a)),
+        ...(filtro.natureza ? { custoPorLitro: null, situacao: verValores ? "NAO_APURADO" as const : "OCULTO" as const, custos: { ...a.custos, totalConhecido: null, componentes: [] }, motivos: [...a.motivos, "NATUREZA_SEM_VINCULO" as const] } : {}),
         brinco: identificacao?.brinco ?? null,
         nome: identificacao?.nome ?? null,
       };

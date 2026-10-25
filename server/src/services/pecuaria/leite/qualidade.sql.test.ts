@@ -1,37 +1,39 @@
+import { contemSql, funcaoSql, tabelaSql } from "../../../test/sql-baseline.js";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-const sql = readFileSync(new URL("../../../../prisma/migrations/20261020060000_qualidade_leite_configuravel/migration.sql", import.meta.url), "utf8");
+const sql = readFileSync(new URL("../../../../prisma/migrations/20261025000000_base_unificada/migration.sql", import.meta.url), "utf8");
 describe("garantias declaradas na migration de qualidade (sem execução em banco)", () => {
   it("coletivo tem origem explícita sem animal e individual referencia exame real", () => {
-    expect(sql).toContain("sujeito='ANIMAL' AND \"exameAnimalId\" IS NOT NULL");
-    expect(sql).toContain("sujeito='COLETIVO' AND \"exameAnimalId\" IS NULL AND \"origemColetiva\" IS NOT NULL");
-    expect(sql).toContain('e."propriedadeId" IS DISTINCT FROM NEW."propriedadeId"');
-    expect(sql).toContain('e.data<>NEW.data');
+    expect(contemSql(sql, "(sujeito = 'ANIMAL'::text) AND (\"exameAnimalId\" IS NOT NULL)")).toBe(true);
+    expect(contemSql(sql, "(sujeito = 'COLETIVO'::text) AND (\"exameAnimalId\" IS NULL) AND (\"origemColetiva\" IS NOT NULL)")).toBe(true);
+    expect(contemSql(sql, 'e."propriedadeId" IS DISTINCT FROM NEW."propriedadeId"')).toBe(true);
+    expect(contemSql(sql, 'e.data<>NEW.data')).toBe(true);
   });
   it("entrada aponta para sítio/data comprovados, sem condicionar ao saldo restante", () => {
-    expect(sql).toContain('d."propriedadeId"=NEW."propriedadeId" AND d."dataOperacional"<=NEW.data');
-    expect(sql).toContain("x.status='CONFIRMADA'");
-    expect(sql).not.toMatch(/saldo|disponivel/);
+    expect(contemSql(sql, 'd."propriedadeId"=NEW."propriedadeId" AND d."dataOperacional"<=NEW.data')).toBe(true);
+    expect(contemSql(sql, "x.status='CONFIRMADA'")).toBe(true);
+    expect(funcaoSql("conferir_amostra_qualidade_leite")).not.toMatch(/saldo|disponivel/);
   });
   it("formato utilizado congela campos/unidades também após coleta coletiva", () => {
-    expect(sql).toContain('BEFORE UPDATE ON pecuaria."TipoExame"');
-    expect(sql).toContain('EXISTS (SELECT 1 FROM pecuaria."AmostraQualidadeLeite" WHERE "tipoExameId"=OLD.id)');
-    expect(sql).toContain('(NEW."tipoResultado",NEW.unidade,NEW.opcoes,NEW.campos) IS DISTINCT FROM');
+    expect(contemSql(sql, 'BEFORE UPDATE ON pecuaria."TipoExame"')).toBe(true);
+    expect(contemSql(sql, 'EXISTS (SELECT 1 FROM pecuaria."AmostraQualidadeLeite" WHERE "tipoExameId"=OLD.id)')).toBe(true);
+    expect(contemSql(sql, '(NEW."tipoResultado",NEW.unidade,NEW.opcoes,NEW.campos) IS DISTINCT FROM')).toBe(true);
   });
   it("resultados só encerram vigência, preservando valor/autoria e sem apagar", () => {
-    expect(sql).toContain('BEFORE UPDATE OR DELETE ON pecuaria."ResultadoQualidadeLeite"');
-    expect(sql).toContain('NEW.valor,NEW.unidade,NEW."criadoEm",NEW."criadoPorId"');
-    expect(sql).toContain('OR NOT OLD.vigente OR NEW.vigente OR NEW."substituidoEm" IS NULL');
-    expect(sql).toContain('WHERE vigente');
-    expect(sql).toContain('Campo/unidade fora do formato preservado');
+    expect(contemSql(sql, 'BEFORE UPDATE OR DELETE ON pecuaria."ResultadoQualidadeLeite"')).toBe(true);
+    expect(contemSql(sql, 'NEW.valor,NEW.unidade,NEW."criadoEm",NEW."criadoPorId"')).toBe(true);
+    expect(contemSql(sql, 'OR NOT OLD.vigente OR NEW.vigente OR NEW."substituidoEm" IS NULL')).toBe(true);
+    expect(contemSql(sql, 'WHERE vigente')).toBe(true);
+    expect(contemSql(sql, 'Campo/unidade fora do formato preservado')).toBe(true);
   });
 });
 
 
 it("datas novas são DATE anuláveis, só na amostra e sem preenchimento retroativo (checagem estrutural)", () => {
-  const datas = readFileSync(new URL("../../../../prisma/migrations/20261023160000_datas_qualidade_leite/migration.sql", import.meta.url), "utf8");
-  expect(datas).toContain('ALTER TABLE pecuaria."AmostraQualidadeLeite"');
-  expect(datas).toContain('ADD COLUMN "dataResultadoLaboratorial" DATE');
-  expect(datas).toContain('ADD COLUMN "dataRecebimentoLaudo" DATE');
-  expect(datas).not.toMatch(/NOT NULL|DEFAULT|UPDATE |ExameAnimal/);
+  const amostra = tabelaSql("AmostraQualidadeLeite");
+  for (const coluna of ["dataResultadoLaboratorial", "dataRecebimentoLaudo"]) {
+    expect(amostra).toContain(`"${coluna}" date,`);
+    expect(amostra).not.toMatch(new RegExp(`"${coluna}" date (?:NOT NULL|DEFAULT)`));
+    expect(tabelaSql("ExameAnimal")).not.toContain(coluna);
+  }
 });

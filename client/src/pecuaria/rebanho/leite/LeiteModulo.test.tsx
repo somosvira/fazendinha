@@ -9,6 +9,8 @@ vi.mock("./ConsultasProducaoLeite", () => ({
     <h1>Consulta de produção {podeExportar ? "com exportação" : "sem exportação"}</h1>,
 }));
 vi.mock("./ConsultasComerciaisLeite", () => ({ ConsultasComerciaisLeite: ({ tipo }: { tipo: string }) => <h1>Consulta independente de {tipo}</h1> }));
+vi.mock("./ConfiguracoesProducaoLeite", () => ({ ConfiguracoesProducaoLeite: () => <h1>Configuração do leite</h1> }));
+vi.mock("./VendasLeite", () => ({ VendasLeite: () => <h1>Vendas unificadas do leite</h1> }));
 vi.mock("./EstoqueLeite", () => ({ EstoqueLeite: () => null }));
 vi.mock("./OperacoesComerciaisLeite", () => ({ OperacoesComerciaisLeite: () => <h1>Operações por comprador e período</h1> }));
 vi.mock("./ComercialLeite", () => ({ ComercialLeite: () => <h1>Entregas anteriores</h1> }));
@@ -24,18 +26,15 @@ beforeEach(() => history.replaceState(null, "", "/pecuaria/leite?leiteSecao=prod
 afterEach(cleanup);
 
 describe("Consultas independentes no módulo Leite", () => {
-  it("mantém seis consultas e acesso por teclado às rotinas sem apagar o recorte", async () => {
+  it("mantém alimentação entre as consultas e conserva o recorte ao navegar", async () => {
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} />);
     const nav = screen.getByRole("navigation", { name: "Produção de leite" });
-    expect([...within(nav).getAllByRole("tab"), within(nav).getByRole("button", { name: "Mais rotinas" })].map(b => b.textContent)).toEqual([
-      "Ordenhas", "Produção", "Estoque", "Coletas", "Qualidade", "Vendas", "Mais rotinas",
-    ]);
-    fireEvent.keyDown(within(nav).getByRole("button", { name: "Mais rotinas" }), { key: "ArrowDown" });
-    const item = await screen.findByRole("menuitem", { name: "Operações de venda" });
-    fireEvent.click(item);
-    expect(screen.getByRole("heading", { name: "Operações por comprador e período" })).toBeTruthy();
+    expect(within(nav).getByRole("tab", { name: "Alimentação e descarte" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Mais rotinas" })).toBeNull();
+    fireEvent.click(within(nav).getByRole("tab", { name: "Vendas" }));
+    expect(screen.getByRole("heading", { name: "Vendas unificadas do leite" })).toBeTruthy();
     expect(new URLSearchParams(location.search).get("producaoData")).toBe("2026-10-01");
-    expect(new URLSearchParams(location.search).get("leiteSecao")).toBe("operacoes");
+    expect(new URLSearchParams(location.search).get("leiteSecao")).toBe("vendas");
   });
   it("abre produção diretamente sem permissão de lançar ou ver valores", () => {
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} podeExportar={false} />);
@@ -43,19 +42,16 @@ describe("Consultas independentes no módulo Leite", () => {
     expect(screen.queryByRole("heading", { name: "Folha de ordenha" })).toBeNull();
   });
 
-  it("abre operações de venda diretamente e preserva acesso às entregas anteriores", async () => {
-    history.replaceState(null, "", "/pecuaria/leite?leiteSecao=operacoes");
+  it.each(["operacoes", "comercial"])("preserva a URL antiga %s na entrada unificada de vendas", secao => {
+    history.replaceState(null, "", `/pecuaria/leite?leiteSecao=${secao}&operacaoLeiteId=operacao-historica`);
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} />);
-    expect(screen.getByRole("heading", { name: "Operações por comprador e período" })).toBeTruthy();
-    fireEvent.keyDown(screen.getByRole("button", { name: "Operações de venda" }), { key: "ArrowDown" });
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Entregas e demonstrativos" }));
-    expect(screen.getByRole("heading", { name: "Entregas anteriores" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Vendas unificadas do leite" })).toBeTruthy();
+    expect(new URLSearchParams(location.search).get("operacaoLeiteId")).toBe("operacao-historica");
   });
-
   it.each(["coletas", "vendas"])("abre %s diretamente sem exigir fluxo de ordenha ou fechamento", tipo => {
     history.replaceState(null, "", `/pecuaria/leite?leiteSecao=${tipo}`);
     render(<LeiteModulo podeLancar={false} podeFinanceiro={false} />);
-    expect(screen.getByRole("heading", { name: `Consulta independente de ${tipo}` })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: tipo === "vendas" ? "Vendas unificadas do leite" : `Consulta independente de ${tipo}` })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Folha de ordenha" })).toBeNull();
   });
 

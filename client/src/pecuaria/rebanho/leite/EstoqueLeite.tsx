@@ -1,17 +1,18 @@
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { BuscaLista } from "../../../components/BuscaLista";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
+import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import "./consultas-leite.css";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
-import {
-  obterConfiguracoesFinanceiras,
-  type ConfiguracoesFinanceiras,
-} from "../../../financeiro/novo-api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { obterFolha } from "./api";
 import { ConferenciaSaldoLeite } from "./ConferenciaSaldoLeite";
 import { ConfirmacaoGruposLeite } from "./ConfirmacaoGruposLeite";
-import { HistoricoVendasLeite } from "./HistoricoVendasLeite";
 import type { FolhaLeite } from "./types";
 import { hojeOperacional, formatarLitros } from "./modelo";
 import {
@@ -20,20 +21,21 @@ import {
   type EstoqueLeiteDTO,
 } from "./operacoes-api";
 
-export function EstoqueLeite({
+function DetalheEstoqueLeite({
   podeLancar,
   podeFinanceiro,
+  produtoInicial,
 }: {
   podeLancar: boolean;
   podeFinanceiro: boolean;
+  produtoInicial: string;
 }) {
   const sitio = getPropriedadeAtiva();
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]),
-    [produto, setProduto] = useState("");
+    [produto, setProduto] = useState(produtoInicial);
   const [data, setData] = useState(hojeOperacional),
     [folha, setFolha] = useState<FolhaLeite | null>(null);
-  const [estoque, setEstoque] = useState<EstoqueLeiteDTO | null>(null),
-    [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null);
+  const [estoque, setEstoque] = useState<EstoqueLeiteDTO | null>(null);
   const [erro, setErro] = useState(""),
     [aviso, setAviso] = useState(""),
     [ocupado, setOcupado] = useState(false),
@@ -43,12 +45,6 @@ export function EstoqueLeite({
     [referencia, setReferencia] = useState(""),
     [evidencia, setEvidencia] = useState(""),
     [motivo, setMotivo] = useState("");
-  const [parceiro, setParceiro] = useState(""),
-    [litros, setLitros] = useState(""),
-    [preco, setPreco] = useState(""),
-    [vencimento, setVencimento] = useState(hojeOperacional),
-    [condicao, setCondicao] = useState("A_PRAZO"),
-    [conta, setConta] = useState("");
   const [operacaoOrigem, setOperacaoOrigem] = useState<{
     id: string;
     acao: "classificar" | "anular";
@@ -68,14 +64,6 @@ export function EstoqueLeite({
       .catch((e) => {
         if (vivo) setErro(String(e.message));
       });
-    if (podeFinanceiro)
-      obterConfiguracoesFinanceiras()
-        .then((c) => {
-          if (vivo) setConfig(c);
-        })
-        .catch((e) => {
-          if (vivo) setErro(String(e.message));
-        });
     return () => {
       vivo = false;
     };
@@ -149,11 +137,11 @@ export function EstoqueLeite({
       <div className="leite-form-inline">
         <label>
           Produto de leite
-          <select
+          <SelectCampo
             value={produto}
             disabled={ocupado}
-            onChange={(e) => {
-              setProduto(e.target.value);
+            onValueChange={(valor) => {
+              setProduto(valor);
               setAviso("");
             }}
           >
@@ -163,7 +151,7 @@ export function EstoqueLeite({
                 {p.nome}
               </option>
             ))}
-          </select>
+          </SelectCampo>
         </label>
         <label>
           Dia da produção / retirada
@@ -280,7 +268,7 @@ export function EstoqueLeite({
                             NAO_INFORMADA: "A declarar",
                             COMERCIAL: "Comercial",
                             COLOSTRO: "Colostro",
-                            NAO_COMERCIAL: "Não comercial",
+                            NAO_COMERCIAL: "Descarte",
                           } as Record<string, string>
                         )[o.natureza] ?? "A declarar"}
                       </TableCell>
@@ -388,14 +376,14 @@ export function EstoqueLeite({
                     </p>
                     <label>
                       Natureza
-                      <select
+                      <SelectCampo disabled={ocupado}
                         value={natureza}
-                        onChange={(e) => setNatureza(e.target.value)}
+                        onValueChange={(valor) => setNatureza(valor)}
                       >
                         <option value="COMERCIAL">Comercial</option>
                         <option value="COLOSTRO">Colostro</option>
-                        <option value="NAO_COMERCIAL">Não comercial</option>
-                      </select>
+                        <option value="NAO_COMERCIAL">Descarte</option>
+                      </SelectCampo>
                     </label>
                   </>
                 ) : (
@@ -504,153 +492,40 @@ export function EstoqueLeite({
               </fieldset>
             </form>
           )}
-          {podeFinanceiro && (
-            <SecaoDetalhesLeite  titulo={<>Registrar retirada e venda</>}>
 
-              {!estoque.comercial.confiavel && (
-                <p role="status">{estoque.comercial.motivoNaoAferivel}</p>
-              )}
-              <p>
-                O preço definitivo já deve estar acordado. Esta confirmação
-                baixa o volume e registra a venda no Financeiro. Confira os
-                dados. Correções comerciais preservam a saída física e exigem
-                conciliação explícita quando já houve recebimento.
-              </p>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void executar(
-                    "/estoque/vendas",
-                    {
-                      produtoId: produto,
-                      quantidadeLitros: Number(litros),
-                      data,
-                      descricao: "Retirada de leite",
-                      parceiroId: parceiro,
-                      valorTotal: Number(preco),
-                      financeiro:
-                        condicao === "A_VISTA"
-                          ? { condicao, contaId: conta }
-                          : {
-                              condicao,
-                              parcelas: [
-                                {
-                                  valor: Number(preco),
-                                  dataVencimento: vencimento,
-                                },
-                              ],
-                            },
-                    },
-                    "Retirada e venda registradas. Acompanhe o recebimento no Financeiro.",
-                  );
-                }}
-              >
-                <fieldset disabled={ocupado || !podeLancar}>
-                  <legend>Dados da retirada</legend>
-                  <div className="leite-form-inline">
-                    <label>
-                      Comprador
-                      <select
-                        required
-                        value={parceiro}
-                        onChange={(e) => setParceiro(e.target.value)}
-                      >
-                        <option value="">Selecione</option>
-                        {config?.parceiros
-                          .filter((p) => p.ativo)
-                          .map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.nome}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                    <label>
-                      Litros retirados
-                      <input
-                        type="number"
-                        required
-                        min="0.001"
-                        max={estoque.comercial.quantidadeLitros ?? undefined}
-                        step="0.001"
-                        value={litros}
-                        onChange={(e) => setLitros(e.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Valor total acordado (R$)
-                      <input
-                        type="number"
-                        required
-                        min="0.01"
-                        step="0.01"
-                        value={preco}
-                        onChange={(e) => setPreco(e.target.value)}
-                      />
-                    </label>
-                  </div>
-                  <div className="leite-form-inline">
-                    <label>
-                      Recebimento
-                      <select
-                        value={condicao}
-                        onChange={(e) => setCondicao(e.target.value)}
-                      >
-                        <option value="A_PRAZO">A receber</option>
-                        <option value="A_VISTA">Recebido agora</option>
-                      </select>
-                    </label>
-                    {condicao === "A_PRAZO" ? (
-                      <label>
-                        Vencimento
-                        <input
-                          type="date"
-                          required
-                          value={vencimento}
-                          onChange={(e) => setVencimento(e.target.value)}
-                        />
-                      </label>
-                    ) : (
-                      <label>
-                        Conta de recebimento
-                        <select
-                          value={conta}
-                          required
-                          onChange={(e) => setConta(e.target.value)}
-                        >
-                          <option value="">Selecione</option>
-                          {config?.contas
-                            .filter((c) => c.ativo)
-                            .map((c) => (
-                              <option key={c.id} value={c.id}>
-                                {c.nome}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                    )}
-                    <Button disabled={!config || !estoque.comercial.confiavel}>
-                      Confirmar retirada e venda
-                    </Button>
-                  </div>
-                </fieldset>
-              </form>
-            </SecaoDetalhesLeite>
-          )}
         </>
       )}
       {produto && estoque && <ConferenciaSaldoLeite key={`${produto}:${data}:${sitio}`} produtoId={produto} data={data} propriedadeId={folha?.propriedadeId ?? sitio} podeLancar={podeLancar} />}
-      {podeFinanceiro && (
-        <HistoricoVendasLeite
-          produtoId={produto}
-          data={data}
-          propriedadeId={folha?.propriedadeId ?? sitio}
-          config={config}
-          podeLancar={podeLancar}
-          revisao={revisao}
-          onMudou={() => setRevisao((r) => r + 1)}
-        />
-      )}
+
     </section>
   );
+}
+
+interface ItemResumoEstoque { produtoId: string; nome: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; descarteLitros: string | null; colostroLitros: string | null; estadoValor: string; valorTotal: string | null; confiavel: boolean }
+interface ResumoEstoque { resumo: { classificacaoPendenteLitros?: string | null; custoPendenteLitros?: string | null; estadoValor?: string; quantidadeLitros: string | null; comercial: { quantidadeLitros: string | null }; descarteLitros: string | null; colostroLitros: string | null; produtosSemLastro: number }; itens: ItemResumoEstoque[]; total: number; pagina: number; porPagina: number }
+const litrosResumo = (v: string | null) => formatarLitros(v === null ? null : Number(v));
+export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolean; podeFinanceiro: boolean }) {
+  const sitio = getPropriedadeAtiva();
+  const [dados, setDados] = useState<ResumoEstoque | null>(null), [erro, setErro] = useState("");
+  const [busca, setBusca] = useState(""), [pagina, setPagina] = useState(1), [revisao, setRevisao] = useState(0);
+  const [selecionado, setSelecionado] = useState<ItemResumoEstoque | null>(null);
+  const [confirmacao, setConfirmacao] = useState(false);
+  useEffect(() => { let ativo = true; setDados(null); setErro(""); void consultarLeite<ResumoEstoque>(`/estoque/resumo?${new URLSearchParams({ busca, pagina: String(pagina), porPagina: "20" })}`, sitio).then(r => { if (ativo) setDados(r); }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar o estoque."); }); return () => { ativo = false; }; }, [sitio, busca, pagina, revisao]);
+  return <section className="leite-operacoes leite-consultas"><PageHeader titulo="Estoque de leite" descricao="Saldo das origens confirmadas, por produto." acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}>Confirmar produção individual</Button> : undefined} />
+    <BarraConsulta><BuscaLista rotulo="Buscar produto" placeholder="Buscar produto de leite" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} /></BarraConsulta>
+    {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
+      <dl className="leite-consulta-resumo"><div><dt>Saldo físico</dt><dd>{litrosResumo(dados.resumo.quantidadeLitros)}</dd></div><div><dt>Comercial</dt><dd>{litrosResumo(dados.resumo.comercial.quantidadeLitros)}</dd></div><div><dt>Descarte</dt><dd>{litrosResumo(dados.resumo.descarteLitros)}</dd></div><div><dt>Colostro</dt><dd>{litrosResumo(dados.resumo.colostroLitros)}</dd></div></dl>
+      <p className="leite-consulta-nota">Classificação pendente: {litrosResumo(dados.resumo.classificacaoPendenteLitros ?? null)} · Custo pendente: {dados.resumo.estadoValor === "OCULTO" ? "Restrito" : litrosResumo(dados.resumo.custoPendenteLitros ?? null)}</p>
+      {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
+      <TabelaFinanceira rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+        { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
+        { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
+        { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },
+        { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: i => i.estadoValor === "OCULTO" ? "Restrito" : i.valorTotal === null ? "A apurar" : Number(i.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
+        { chave: "acao", titulo: "Ações", celula: i => <Button variant="outline" onClick={() => setSelecionado(i)}>Ver origens</Button> },
+      ]} />
+      <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} total={dados.total} porPagina={dados.porPagina} rotulo="Paginação do estoque de leite" substantivo="produtos" idSelect="pagina-estoque-leite" onPagina={setPagina} />
+    </>}
+    <Dialog open={!!selecionado || confirmacao} onOpenChange={v => { if (!v) { setSelecionado(null); setConfirmacao(false); setRevisao(r => r + 1); } }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>{confirmacao ? "Confirmar produção individual" : `${selecionado?.nome} · origens e operações`}</DialogTitle></DialogHeader>{(selecionado || confirmacao) && <DetalheEstoqueLeite key={selecionado?.produtoId ?? "confirmar"} produtoInicial={selecionado?.produtoId ?? ""} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} />}</DialogContent></Dialog>
+  </section>;
 }

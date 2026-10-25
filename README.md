@@ -44,11 +44,10 @@ A interface abre em `http://localhost:41875`; a API usa `http://localhost:41873`
 | `pnpm prisma:generate` | Gerar Prisma Client |
 | `pnpm prisma:migrate` | Criar migration em desenvolvimento |
 | `pnpm --filter rionovo-server exec prisma migrate deploy` | Aplicar migrations existentes |
-| `pnpm --filter rionovo-server run seed` | Cenário unificado local até V3 |
-| `pnpm --filter rionovo-server run seedatev3 --verificar` | Conferir o cenário sem escrever |
-| `pnpm --filter rionovo-server run seedatev4` | Acrescentar demonstração V4 completa ao mesmo banco, preservando a V3 |
-| `pnpm --filter rionovo-server run seedatev4 --verificar` | Conferir a V4 sem gravar ou desfazer simulações |
-| `pnpm --filter rionovo-server run seedatev3:typecheck` | Conferir tipos do seed |
+| `pnpm --filter rionovo-server run seed` | Cenário integrado V5: três sítios, rebanho, financeiro, estoque e leite |
+| `pnpm --filter rionovo-server run seed --preflight` | Conferir destino e baseline sem escrever |
+| `pnpm --filter rionovo-server run seed --verificar` | Conferir o cenário sem escrever |
+| `pnpm --filter rionovo-server run seed:typecheck` | Conferir tipos da seed única |
 | `pnpm --filter rionovo-server run test` | Testes do servidor |
 | `pnpm --filter rionovo-client run test` | Testes da interface |
 | `node --test scripts/*.test.mjs` | Testes da transformação da carga IDEAGRI |

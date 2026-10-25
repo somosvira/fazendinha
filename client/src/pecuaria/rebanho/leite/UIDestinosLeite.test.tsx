@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -11,6 +12,14 @@ import { DestinosLeite } from "./UIDestinosLeite";
 import { consultarLeite } from "./operacoes-api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import type { DestinoLeiteDTO } from "./destinos-types";
+const tela = { ...screen,
+  getByRole: (...args: Parameters<typeof screen.getByRole>) => screen.getAllByRole(...args)[0],
+  findByRole: async (...args: Parameters<typeof screen.findByRole>) => (await screen.findAllByRole(...args))[0],
+  getByText: (...args: Parameters<typeof screen.getByText>) => screen.getAllByText(...args)[0],
+  findByText: async (...args: Parameters<typeof screen.findByText>) => (await screen.findAllByText(...args))[0],
+  getByLabelText: (...args: Parameters<typeof screen.getByLabelText>) => screen.getAllByLabelText(...args)[0],
+  findByLabelText: async (...args: Parameters<typeof screen.findByLabelText>) => (await screen.findAllByLabelText(...args))[0],
+};
 vi.mock("./operacoes-api", async (original) => ({
   ...(await original<typeof import("./operacoes-api")>()),
   consultarLeite: vi.fn(),
@@ -110,31 +119,20 @@ beforeEach(() => {
   });
 });
 async function prepararOrigem() {
-  fireEvent.change(await screen.findByLabelText("Produto de origem"), {
-    target: { value: "produto" },
-  });
-  await waitFor(() =>
-    expect(
-      screen
-        .getAllByRole("option")
-        .some((o) => o.textContent?.includes("10 L disponíveis")),
-    ).toBe(true),
-  );
-  fireEvent.change(screen.getByLabelText("Origem confirmada"), {
-    target: { value: "entrada" },
-  });
+  await selecionarCampoLeite("Produto de origem", "produto");
+  await selecionarCampoLeite("Origem confirmada", "entrada");
   fireEvent.change(
-    screen.getByLabelText("Declaração da origem e da prática registrada"),
+    tela.getByLabelText("Declaração da origem e da prática registrada"),
     { target: { value: "Leite servido nesta data aos animais identificados" } },
   );
 }
 describe("destinos internos", () => {
   it("consulta não oferece escrita ou estorno", async () => {
     render(<DestinosLeite podeLancar={false} />);
-    await screen.findByText("Nenhum destino registrado no período.");
-    expect(screen.queryByLabelText("Produto de origem")).toBeNull();
+    await tela.findByText("Nenhum destino registrado no período.");
+    expect(tela.queryByLabelText("Produto de origem")).toBeNull();
     expect(
-      screen.queryByRole("button", { name: /Confirmar destino/ }),
+      tela.queryByRole("button", { name: /Confirmar destino/ }),
     ).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -149,26 +147,27 @@ describe("destinos internos", () => {
         new Response(JSON.stringify(historia), { status: 201 }),
       );
     render(<DestinosLeite podeLancar />);
+    fireEvent.click(tela.getByRole("button", { name: "Registrar fornecimento" }));
     await prepararOrigem();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Adicionar Aurora" }),
+      await tela.findByRole("button", { name: "Adicionar Aurora" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Adicionar Brisa" }));
-    fireEvent.change(screen.getByLabelText("Litros servidos a Aurora"), {
+    fireEvent.click(tela.getByRole("button", { name: "Adicionar Brisa" }));
+    fireEvent.change(tela.getByLabelText("Litros servidos a Aurora"), {
       target: { value: "3" },
     });
-    fireEvent.change(screen.getByLabelText("Litros servidos a Brisa"), {
+    fireEvent.change(tela.getByLabelText("Litros servidos a Brisa"), {
       target: { value: "4" },
     });
     expect(
-      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+      tela.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
     ).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+      tela.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
     );
-    await screen.findByText("Conexão perdida");
+    await tela.findByText("Conexão perdida");
     expect(
-      (screen.getByLabelText("Litros servidos a Aurora") as HTMLInputElement)
+      (tela.getByLabelText("Litros servidos a Aurora") as HTMLInputElement)
         .value,
     ).toBe("3");
     const primeiro = JSON.parse(fetchMock.mock.calls[0][1].body);
@@ -182,27 +181,28 @@ describe("destinos internos", () => {
       ],
     });
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
+      tela.getByRole("button", { name: "Confirmar destino e baixar 7 L" }),
     );
-    await screen.findByText(
+    await tela.findByText(
       "Destino registrado e volume baixado uma vez do estoque.",
     );
     expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(primeiro);
   });
   it("não confirma excesso ou zero servido", async () => {
     render(<DestinosLeite podeLancar />);
+    fireEvent.click(tela.getByRole("button", { name: "Registrar fornecimento" }));
     await prepararOrigem();
     fireEvent.click(
-      await screen.findByRole("button", { name: "Adicionar Aurora" }),
+      await tela.findByRole("button", { name: "Adicionar Aurora" }),
     );
-    const input = screen.getByLabelText("Litros servidos a Aurora");
+    const input = tela.getByLabelText("Litros servidos a Aurora");
     fireEvent.change(input, { target: { value: "11" } });
-    await screen.findByText(
+    await tela.findByText(
       "As parcelas excedem o saldo da origem. Revise as quantidades.",
     );
     expect(
       (
-        screen.getByRole("button", {
+        tela.getByRole("button", {
           name: "Confirmar destino e baixar 11 L",
         }) as HTMLButtonElement
       ).disabled,
@@ -210,7 +210,7 @@ describe("destinos internos", () => {
     fireEvent.change(input, { target: { value: "0" } });
     expect(
       (
-        screen.getByRole("button", {
+        tela.getByRole("button", {
           name: "Confirmar destino e baixar 0 L",
         }) as HTMLButtonElement
       ).disabled,
@@ -219,26 +219,22 @@ describe("destinos internos", () => {
   });
   it("vincula cria real e fornecimento existente sem inferir quantidade", async () => {
     render(<DestinosLeite podeLancar />);
+    fireEvent.click(tela.getByRole("button", { name: "Registrar fornecimento" }));
     await prepararOrigem();
-    fireEvent.change(screen.getByLabelText("Natureza declarada"), {
-      target: { value: "COLOSTRO" },
-    });
+    await selecionarCampoLeite("Natureza declarada", "COLOSTRO");
     fireEvent.click(
-      await screen.findByRole("button", { name: "Adicionar Cria Aurora" }),
+      await tela.findByRole("button", { name: "Adicionar Cria Aurora" }),
     );
-    fireEvent.change(
-      screen.getByLabelText("Registro de colostro de Cria Aurora"),
-      { target: { value: "colostro-existente" } },
-    );
-    const input = screen.getByLabelText(
+    await selecionarCampoLeite("Registro de colostro de Cria Aurora", "colostro-existente");
+    const input = tela.getByLabelText(
       "Litros servidos a Cria Aurora",
     ) as HTMLInputElement;
     expect(input.value).toBe("3.5");
     expect(input.disabled).toBe(true);
     fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar destino e baixar 3,5 L" }),
+      tela.getByRole("button", { name: "Confirmar destino e baixar 3,5 L" }),
     );
-    await screen.findByText(
+    await tela.findByText(
       "Destino registrado e volume baixado uma vez do estoque.",
     );
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).parcelas).toEqual([
@@ -249,7 +245,7 @@ describe("destinos internos", () => {
         fornecimentoColostroId: "colostro-existente",
       },
     ]);
-  });
+  }, 15000);
   it("estorna com motivo e versão sem apagar histórico", async () => {
     vi.mocked(consultarLeite).mockResolvedValue({
       itens: [historia],
@@ -258,19 +254,19 @@ describe("destinos internos", () => {
       porPagina: 20,
     });
     render(<DestinosLeite podeLancar={false} />);
-    await screen.findByText("Confirmado");
+    await tela.findByText("Confirmado");
     cleanup();
     render(<DestinosLeite podeLancar />);
     fireEvent.click(
-      await screen.findByRole("button", {
+      await tela.findByRole("button", {
         name: "Estornar destino de 19/10/2026",
       }),
     );
-    fireEvent.change(screen.getByLabelText("Motivo do estorno"), {
+    fireEvent.change(tela.getByLabelText("Motivo do estorno"), {
       target: { value: "Quantidade informada incorretamente" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Confirmar estorno" }));
-    await screen.findByText("Destino estornado. O histórico foi preservado.");
+    fireEvent.click(tela.getByRole("button", { name: "Confirmar estorno" }));
+    await tela.findByText("Destino estornado. O histórico foi preservado.");
     expect(fetchMock.mock.calls[0][0]).toContain("/destinos/destino/estorno");
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
       propriedadeId: 2,

@@ -1,5 +1,12 @@
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { DialogConsultaLeite } from "./DialogConsultaLeite";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { CampoFiltro } from "../../../financeiro/PainelFiltros";
+import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
-import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -23,6 +30,7 @@ interface Descarte {
 }
 export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
   const sitio = getPropriedadeAtiva();
+  const [novo, setNovo] = useState(false);
   const [produtos, setProdutos] = useState<ProdutoDTO[]>([]),
     [produto, setProduto] = useState("");
   const [data, setData] = useState(hojeOperacional),
@@ -38,6 +46,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
     } | null>(null),
     [pagina, setPagina] = useState(1),
     [revisao, setRevisao] = useState(0);
+  const filtros = useRascunhoConsulta({ data }, { data: hojeOperacional() }, v => { setData(v.data); setPagina(1); });
   const [estorno, setEstorno] = useState<Descarte | null>(null),
     [motivoEstorno, setMotivoEstorno] = useState("");
   const [erro, setErro] = useState(""),
@@ -135,41 +144,23 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
     : null;
   return (
     <section className="leite-operacoes" aria-label="Descarte físico de leite">
-      <h2>Descarte físico</h2>
-      <p>
-        Registre somente leite efetivamente descartado. Alimentação de animais
-        usa o destino acima. Uma carência ou uma análise não informa
-        automaticamente quantos litros foram descartados.
-      </p>
-      <div className="leite-form-inline">
-        <label>
-          Data do descarte
-          <input
-            type="date"
-            required
-            max={hojeOperacional()}
-            value={data}
-            onChange={(e) => {
-              setData(e.target.value);
-              setPagina(1);
-            }}
-          />
-        </label>
-        <label>
+      <PageHeader titulo="Descarte físico" descricao="Saídas efetivas com origem, motivo e histórico preservado." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar descarte</Button> : undefined} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data do descarte"><input type="date" required max={hojeOperacional()} value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} resumo={`Mês até ${data.split("-").reverse().join("/")}`} />
+      {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
+      {aviso && <p role="status">{aviso}</p>}
+      {podeLancar && novo && <Dialog open onOpenChange={v => { setNovo(v); if (!v) { setProduto(""); setEntradaId(""); setLitros(""); setMotivo(""); } }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar descarte físico</DialogTitle></DialogHeader>{erro && <p role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}        <label>
           Produto para descarte
-          <select value={produto} onChange={(e) => setProduto(e.target.value)}>
+          <SelectCampo disabled={ocupado} value={produto} onValueChange={(valor) => setProduto(valor)}>
             <option value="">Selecione o produto</option>
             {produtos.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.nome}
               </option>
             ))}
-          </select>
+          </SelectCampo>
         </label>
-      </div>
-      {erro && <p role="alert">{erro}</p>}
-      {aviso && <p role="status">{aviso}</p>}
-      {podeLancar && produto && (
+
+      {produto && (
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -194,10 +185,10 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
             <div className="leite-form-inline">
               <label>
                 Origem descartada
-                <select
+                <SelectCampo disabled={ocupado}
                   required
                   value={entradaId}
-                  onChange={(e) => setEntradaId(e.target.value)}
+                  onValueChange={(valor) => setEntradaId(valor)}
                 >
                   <option value="">Selecione a origem</option>
                   {origens.map((o) => (
@@ -206,7 +197,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
                       {formatarLitros(Number(o.quantidadeDisponivelLitros))}
                     </option>
                   ))}
-                </select>
+                </SelectCampo>
               </label>
               <label>
                 Litros descartados
@@ -249,72 +240,21 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
             </Button>
           </fieldset>
         </form>
-      )}
+      )}</DialogContent></Dialog>}
       {lista && (
         <>
-          <div className="leite-tabela-scroll">
-            <Table semContainer>
-              <TableCaption>Descartes do mês até a data selecionada</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data e origem</TableHead>
-                  <TableHead>Litros</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {lista.itens.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell>
-                      {d.data} · {d.nomeOrdenha}
-                      <small>{d.produtoNome}</small>
-                    </TableCell>
-                    <TableCell>{formatarLitros(d.quantidadeLitros)}</TableCell>
-                    <TableCell>{d.motivo}</TableCell>
-                    <TableCell>
-                      {d.status === "CONFIRMADO" ? "Confirmado" : "Estornado"}
-                      {d.motivoEstorno && <small>{d.motivoEstorno}</small>}
-                    </TableCell>
-                    <TableCell>
-                      {podeLancar && d.status === "CONFIRMADO" && (
-                        <Button variant="outline"
-                          className="leite-secondary"
-                          onClick={() => {
-                            setEstorno(d);
-                            setMotivoEstorno("");
-                          }}
-                        >
-                          Corrigir descarte de {d.data}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <TabelaFinanceira compacta rotulo="Descartes registrados" itens={lista.itens} chaveDe={d => d.id} colunas={[
+            { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
+            { chave: "produto", titulo: "Produto", celula: d => d.produtoNome },
+            { chave: "ordenha", titulo: "Ordenha", celula: d => d.nomeOrdenha },
+            { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
+            { chave: "situacao", titulo: "Situação", celula: d => d.status === "CONFIRMADO" ? "Confirmado" : "Estornado" },
+            { chave: "acoes", titulo: "Ações", acoes: true, celula: d => <div className="leite-consulta-acoes"><DialogConsultaLeite titulo="Ver descarte"><p>Motivo: {d.motivo}</p><p>Saldo da origem: {formatarLitros(d.saldoOrigemAntes)} → {formatarLitros(d.saldoOrigemDepois)}</p><p>Versão {d.versao}</p>{d.motivoEstorno && <p>Motivo do estorno: {d.motivoEstorno}</p>}</DialogConsultaLeite>{podeLancar && d.status === "CONFIRMADO" && <Button variant="outline" aria-label={`Corrigir descarte de ${d.data}`} onClick={() => { setEstorno(d); setMotivoEstorno(""); }}>Corrigir</Button>}</div> },
+          ]} />
           {!lista.itens.length && (
             <p>Nenhum descarte registrado neste período.</p>
           )}
-          <div className="leite-form-inline">
-            <Button variant="outline"
-              className="leite-secondary"
-              disabled={pagina === 1}
-              onClick={() => setPagina((p) => p - 1)}
-            >
-              Descartes anteriores
-            </Button>
-            <span>Página {pagina}</span>
-            <Button variant="outline"
-              className="leite-secondary"
-              disabled={pagina * lista.tamanho >= lista.total}
-              onClick={() => setPagina((p) => p + 1)}
-            >
-              Próximos descartes
-            </Button>
-          </div>
+          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.tamanho))} total={lista.total} porPagina={lista.tamanho} rotulo="Paginação dos descartes" substantivo="descartes" idSelect="pagina-descartes-leite" onPagina={setPagina} />
         </>
       )}
       {estorno && (

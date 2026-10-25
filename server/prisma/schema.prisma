@@ -281,6 +281,7 @@ model Produto {
 }
 
 model Parceiro {
+  ReferenciaGerencialLeite   ReferenciaGerencialLeite[]
   operacoesComerciaisLeite OperacaoComercialLeite[]
   entregasLeite EntregaLeite[]
   demonstrativosLeite DemonstrativoLeite[]
@@ -377,6 +378,7 @@ model PeriodoFinanceiro {
 }
 
 model Operacao {
+  TentativaReprodutiva     TentativaReprodutiva[]
   manejosPecuaria ManejoAnimal[]
   composicaoComercial Json?
   categoriaNome               String?
@@ -473,9 +475,9 @@ model RelatorioFinanceiro {
   snapshot      Json?
   storageKey    String?                   @unique
   erro          String?
-  propriedade   Propriedade               @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade   Propriedade               @relation(fields: [propriedadeId], references: [id])
   propriedadeId Int
-  autor         Usuario?                  @relation(fields: [autorId], references: [id], onDelete: SetNull)
+  autor         Usuario?                  @relation(fields: [autorId], references: [id])
   autorId       Int?
   autorNome     String
   geradoEm      DateTime                  @default(now())
@@ -492,7 +494,7 @@ model ItemOperacao {
   classificacao     ClassificacaoCategoria?
   // Centro de custo do item. Null = herda Operacao.centroCustoId. Nome congelado
   // como snapshot, igual a categoriaNome.
-  centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id], onDelete: SetNull)
+  centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id])
   centroCustoId     String?
   centroCustoNome   String?
   id                String                  @id @default(uuid())
@@ -656,6 +658,17 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  VisitaVeterinaria            VisitaVeterinaria[]
+  TentativaReprodutiva         TentativaReprodutiva[]
+  SituacaoInicialReprodutiva   SituacaoInicialReprodutiva[]
+  RestricaoReprodutiva         RestricaoReprodutiva[]
+  RegraSanitariaReprodutiva    RegraSanitariaReprodutiva[]
+  PeriodoReprodutivoAnimal     PeriodoReprodutivoAnimal[]
+  PartoAnimal                  PartoAnimal[]
+  LactacaoAnimal               LactacaoAnimal[]
+  GestacaoAnimal               GestacaoAnimal[]
+  FornecimentoNutricionalLeite FornecimentoNutricionalLeite[]
+  ExposicaoTouro               ExposicaoTouro[]
   operacoesComerciaisLeite OperacaoComercialLeite[]
   conferenciasSaldoLeite ConferenciaSaldoLeite[]
   entregasLeite EntregaLeite[]
@@ -752,6 +765,8 @@ enum StatusMovimentoEstoque {
 }
 
 model MovimentoEstoque {
+  TentativaReprodutiva                  TentativaReprodutiva?
+  MovimentoFornecimentoNutricionalLeite MovimentoFornecimentoNutricionalLeite?
   descarteLeite DescarteLeite? @relation("DescarteLeiteMovimento")
   estornoDescarteLeite DescarteLeite? @relation("DescarteLeiteEstorno")
   entregaLeite EntregaLeite?
@@ -893,6 +908,30 @@ enum TipoToken {
 }
 
 model Usuario {
+  VisitaVeterinaria                VisitaVeterinaria[]
+  VinculoTarefaProtocolo           VinculoTarefaProtocolo[]
+  VinculoPoliticaCiclo             VinculoPoliticaCiclo[]
+  TentativaReprodutiva             TentativaReprodutiva[]
+  SnapshotRelatorioReprodutivo     SnapshotRelatorioReprodutivo[]
+  SituacaoInicialReprodutiva       SituacaoInicialReprodutiva[]
+  ResultadoExame                   ResultadoExame[]
+  RestricaoReprodutiva             RestricaoReprodutiva[]
+  RegraSanitariaReprodutiva        RegraSanitariaReprodutiva[]
+  ReferenciaGerencialLeite         ReferenciaGerencialLeite[]
+  Protocolo                        Protocolo[]
+  ProgramacaoProtocolo             ProgramacaoProtocolo[]
+  PoliticaElegibilidadeReprodutiva PoliticaElegibilidadeReprodutiva[]
+  PeriodoReprodutivoAnimal         PeriodoReprodutivoAnimal[]
+  PartoAnimal                      PartoAnimal[]
+  ParticipacaoProtocolo            ParticipacaoProtocolo[]
+  LactacaoAnimal                   LactacaoAnimal[]
+  ImpressaoVisita                  ImpressaoVisita[]
+  HistoricoPrevisaoParto           HistoricoPrevisaoParto[]
+  GestacaoAnimal                   GestacaoAnimal[]
+  FornecimentoNutricionalLeite     FornecimentoNutricionalLeite[]
+  ExposicaoTouro                   ExposicaoTouro[]
+  ExameAnimal                      ExameAnimal[]
+  DecisaoElegibilidadeCiclo        DecisaoElegibilidadeCiclo[]
   manejosProtocolos ManejoAnimal[] @relation("ManejoCriadoPor")
   pecEventosTarefaRegistrados EventoTarefaProtocolo[]
   id                       Int                           @id @default(autoincrement())
@@ -1070,6 +1109,17 @@ enum OrigemComposicao {
 // Quem o animal é: identidade estável. Onde está, para que serve e se teve baixa
 // vivem em tabelas de histórico próprias (Localizacao/Destino/Baixa).
 model Animal {
+  TentativaReprodutiva_TentativaReprodutiva_touroIdToAnimal  TentativaReprodutiva[]                @relation("TentativaReprodutiva_touroIdToAnimal")
+  TentativaReprodutiva_TentativaReprodutiva_animalIdToAnimal TentativaReprodutiva[]                @relation("TentativaReprodutiva_animalIdToAnimal")
+  SituacaoInicialReprodutiva                                 SituacaoInicialReprodutiva[]
+  RestricaoReprodutiva                                       RestricaoReprodutiva[]
+  ParticipanteVisita                                         ParticipanteVisita[]
+  ParticipacaoExposicao                                      ParticipacaoExposicao[]
+  ParcelaFornecimentoNutricionalLeite                        ParcelaFornecimentoNutricionalLeite[]
+  LactacaoAnimal                                             LactacaoAnimal[]
+  GestacaoAnimal                                             GestacaoAnimal[]
+  ExposicaoTouro                                             ExposicaoTouro[]
+  CriaParto                                                  CriaParto?
   parcelasDestinoLeite ParcelaDestinoLeite[]
   participacoesProducaoLeite ParticipanteProducaoLeite[]
   demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
@@ -1151,6 +1201,8 @@ enum TipoSemen {
 // Genitor que não é animal da fazenda: touro de central (M) ou doadora de outra fazenda (F).
 // Só dado genético — sem brinco, lote, peso ou baixa. Animal nosso é genitor pela própria ficha.
 model GenitorExterno {
+  TentativaReprodutiva TentativaReprodutiva[]
+  ExposicaoTouro       ExposicaoTouro[]
   id                 String     @id @default(uuid())
   ideagriId          Int?       @unique
   sexo               SexoBovino
@@ -1158,7 +1210,7 @@ model GenitorExterno {
   codigo             String?
   fornecedor         String?
   fornecedorId       String?
-  fornecedorParceiro Parceiro?  @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  fornecedorParceiro Parceiro?  @relation(fields: [fornecedorId], references: [id])
   ativo              Boolean    @default(true)
   observacao         String?
   criadoEm           DateTime   @default(now())
@@ -1183,7 +1235,7 @@ model ComposicaoGenitorExterno {
   genitorId String
   genitor   GenitorExterno @relation(fields: [genitorId], references: [id], onDelete: Cascade)
   racaId    String
-  raca      Raca           @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  raca      Raca           @relation(fields: [racaId], references: [id])
   fracao64  Int
 
   @@unique([genitorId, racaId])
@@ -1194,6 +1246,7 @@ model ComposicaoGenitorExterno {
 // Identidade genética de um produto do estoque (sêmen ou embrião). O produto diz quanto
 // tem, quanto custou e onde está; esta linha diz de quem é. Consumo (IA/TE) entra na v4.
 model MaterialGenetico {
+  TentativaReprodutiva TentativaReprodutiva[]
   etapasProtocolos EtapaProtocolo[]
   id               String               @id @default(uuid())
   tipo             TipoMaterialGenetico
@@ -1207,7 +1260,7 @@ model MaterialGenetico {
   doadoraExternaId String?
   doadoraExterna   GenitorExterno?      @relation("MaterialDoadoraExterna", fields: [doadoraExternaId], references: [id], onDelete: Restrict)
   produtoId        String               @unique
-  produto          Produto              @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto          Produto              @relation(fields: [produtoId], references: [id])
   observacao       String?
   criadoEm         DateTime             @default(now())
   criadoPorId      Int?
@@ -1255,9 +1308,9 @@ model CategoriaAnimal {
 model CategoriaManualAnimal {
   id                 String          @id @default(uuid())
   animalId           String
-  animal             Animal          @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal             Animal          @relation(fields: [animalId], references: [id])
   categoriaId        String
-  categoria          CategoriaAnimal @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  categoria          CategoriaAnimal @relation(fields: [categoriaId], references: [id])
   desde              DateTime        @db.Date
   ate                DateTime?       @db.Date
   motivo             String
@@ -1296,9 +1349,9 @@ model Raca {
 model ComposicaoRacial {
   id                String           @id @default(uuid())
   animalId          String
-  animal            Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal            Animal           @relation(fields: [animalId], references: [id])
   racaId            String
-  raca              Raca             @relation(fields: [racaId], references: [id], onDelete: Restrict)
+  raca              Raca             @relation(fields: [racaId], references: [id])
   fracao64          Int
   // Parcela herdada dos genitores dentro de fracao64; o restante foi informado.
   fracaoCalculada64 Int              @default(0)
@@ -1315,11 +1368,12 @@ model ComposicaoRacial {
 
 // Cadastro do lote (GRUPOANIMAL do IDEAGRI). Pertence a um sítio.
 model Lote {
+  ExposicaoTouro     ExposicaoTouro[]
   id            String       @id @default(uuid())
   ideagriId     Int?         @unique
   nome          String
   propriedadeId Int
-  propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade   Propriedade  @relation(fields: [propriedadeId], references: [id])
   centroCustoId String?
   centroCusto   CentroCusto? @relation(fields: [centroCustoId], references: [id], onDelete: Restrict)
   ativo         Boolean      @default(true)
@@ -1345,9 +1399,9 @@ model LocalizacaoAnimal {
   participacoesProducaoLeite ParticipanteProducaoLeite[]
   id                String              @id @default(uuid())
   animalId          String
-  animal            Animal              @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal            Animal              @relation(fields: [animalId], references: [id])
   propriedadeId     Int
-  propriedade       Propriedade         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade       Propriedade         @relation(fields: [propriedadeId], references: [id])
   loteId            String?
   lote              Lote?               @relation(fields: [loteId], references: [id], onDelete: Restrict)
   desde             DateTime            @db.Date
@@ -1376,7 +1430,7 @@ model Movimentacao {
   id                   String      @id @default(uuid())
   data                 DateTime    @db.Date
   propriedadeDestinoId Int
-  propriedadeDestino   Propriedade @relation(fields: [propriedadeDestinoId], references: [id], onDelete: Restrict)
+  propriedadeDestino   Propriedade @relation(fields: [propriedadeDestinoId], references: [id])
   loteDestinoId        String?
   loteDestino          Lote?       @relation(fields: [loteDestinoId], references: [id], onDelete: Restrict)
   motivo               String?
@@ -1404,15 +1458,15 @@ model Movimentacao {
 model MovimentacaoAnimal {
   id                  String             @id @default(uuid())
   movimentacaoId      String
-  movimentacao        Movimentacao       @relation(fields: [movimentacaoId], references: [id], onDelete: Restrict)
+  movimentacao        Movimentacao       @relation(fields: [movimentacaoId], references: [id])
   animalId            String
-  animal              Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal              Animal             @relation(fields: [animalId], references: [id])
   origemPropriedadeId Int?
   origemPropriedade   Propriedade?       @relation(fields: [origemPropriedadeId], references: [id], onDelete: Restrict)
   origemLoteId        String?
   origemLote          Lote?              @relation(fields: [origemLoteId], references: [id], onDelete: Restrict)
   localizacaoId       String?            @unique
-  localizacao         LocalizacaoAnimal? @relation(fields: [localizacaoId], references: [id], onDelete: SetNull)
+  localizacao         LocalizacaoAnimal? @relation(fields: [localizacaoId], references: [id])
   desfeitoEm          DateTime?
   criadoEm            DateTime           @default(now())
 
@@ -1428,7 +1482,7 @@ model MovimentacaoAnimal {
 model FinalidadeAnimal {
   id               String           @id @default(uuid())
   animalId         String
-  animal           Animal           @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal           Animal           @relation(fields: [animalId], references: [id])
   aptidao          AptidaoAnimal
   desde            DateTime         @db.Date
   ate              DateTime?        @db.Date
@@ -1449,7 +1503,7 @@ model BaixaAnimal {
   id                      String             @id @default(uuid())
   ideagriId               Int?               @unique
   animalId                String
-  animal                  Animal             @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal                  Animal             @relation(fields: [animalId], references: [id])
   data                    DateTime           @db.Date
   tipo                    TipoBaixa
   motivoId                String?
@@ -1463,9 +1517,9 @@ model BaixaAnimal {
   // SetNull: a baixa ativa é protegida pelo app (desfazer recusa); a estornada perde o vínculo
   // quando a linha é apagada por um desfazer posterior (a auditoria guarda o antes).
   localizacaoFechadaId    String?
-  localizacaoFechada      LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id], onDelete: SetNull)
+  localizacaoFechada      LocalizacaoAnimal? @relation("BaixaLocalizacaoFechada", fields: [localizacaoFechadaId], references: [id])
   destinoFechadoId        String?
-  destinoFechado          FinalidadeAnimal?  @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id], onDelete: SetNull)
+  destinoFechado          FinalidadeAnimal?  @relation("BaixaDestinoFechado", fields: [destinoFechadoId], references: [id])
   criadoEm                DateTime           @default(now())
   criadoPorId             Int?
   criadoPor               Usuario?           @relation("BaixaAnimalCriadoPor", fields: [criadoPorId], references: [id])
@@ -1502,7 +1556,7 @@ model Pesagem {
   id           String              @id @default(uuid())
   ideagriId    Int?                @unique
   animalId     String
-  animal       Animal              @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal       Animal              @relation(fields: [animalId], references: [id])
   data         DateTime            @db.Date
   pesoKg       Decimal             @db.Decimal(7, 2)
   tipo         TipoPesagem
@@ -1553,9 +1607,10 @@ model AuditoriaPecuaria {
 // V3: o catálogo de produtos continua único. Partidas refinam o saldo físico;
 // aplicações com insumo fornecido pelo veterinário guardam o nome sem criar Produto.
 model PartidaProduto {
+  TentativaReprodutiva TentativaReprodutiva[]
   id              String                   @id @default(uuid())
   produtoId       String
-  produto         Produto                  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto         Produto                  @relation(fields: [produtoId], references: [id])
   codigo          String
   nome            String?
   validade        DateTime?                @db.Date
@@ -1576,9 +1631,9 @@ model PartidaProduto {
 model AlocacaoPartidaEstoque {
   id                 String           @id @default(uuid())
   movimentoEstoqueId String
-  movimentoEstoque   MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  movimentoEstoque   MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id])
   partidaId          String
-  partida            PartidaProduto   @relation(fields: [partidaId], references: [id], onDelete: Restrict)
+  partida            PartidaProduto   @relation(fields: [partidaId], references: [id])
   quantidade         Decimal          @db.Decimal(12, 3)
 
   @@unique([movimentoEstoqueId, partidaId])
@@ -1592,7 +1647,7 @@ model PerfilSanitarioProduto {
   tipoAplicacao TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
   id                 String   @id @default(uuid())
   produtoId          String   @unique
-  produto            Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto            Produto  @relation(fields: [produtoId], references: [id])
   carenciaLeiteHoras Int?
   carenciaCarneHoras Int?
   viaPadrao          String?
@@ -1605,7 +1660,7 @@ model PerfilSanitarioProduto {
 model PerfilNutricionalProduto {
   id                    String   @id @default(uuid())
   produtoId             String   @unique
-  produto               Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto               Produto  @relation(fields: [produtoId], references: [id])
   materiaSecaPercentual Decimal? @db.Decimal(5, 2)
   atualizadoEm          DateTime @updatedAt
 
@@ -1638,6 +1693,7 @@ enum FinalidadeAplicacao {
 }
 
 model Doenca {
+  RegraSanitariaReprodutiva RegraSanitariaReprodutiva[]
   id                    String                @id @default(uuid())
   nome                  String                @unique
   ativo                 Boolean               @default(true)
@@ -1655,11 +1711,11 @@ model OcorrenciaSanitaria {
   partoRetencaoPlacenta PartoAnimal? @relation(fields: [partoRetencaoPlacentaId], references: [id], onDelete: Restrict)
   id                 String                       @id @default(uuid())
   animalId           String
-  animal             Animal                       @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal             Animal                       @relation(fields: [animalId], references: [id])
   propriedadeId      Int?
   propriedade        Propriedade?                 @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   doencaId           String
-  doenca             Doenca                       @relation(fields: [doencaId], references: [id], onDelete: Restrict)
+  doenca             Doenca                       @relation(fields: [doencaId], references: [id])
   doencaNomeSnapshot String?
   inicio             DateTime                     @db.Date
   fim                DateTime?                    @db.Date
@@ -1689,7 +1745,7 @@ model TipoAplicacaoSanitaria {
   aplicacoes   AplicacaoProduto[]
   etapas       EtapaProtocolo[]
   criadoEm     DateTime                  @default(now())
-  atualizadoEm DateTime                  @updatedAt
+  atualizadoEm DateTime                  @default(now()) @updatedAt
 
   @@schema("pecuaria")
 }
@@ -1705,7 +1761,7 @@ model AplicacaoProduto {
   desvioProtocoloSnapshot    Json?
   id                         String                  @id @default(uuid())
   animalId                   String
-  animal                     Animal                  @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal                     Animal                  @relation(fields: [animalId], references: [id])
   propriedadeId              Int?
   propriedade                Propriedade?            @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   produtoId                  String?
@@ -1721,7 +1777,7 @@ model AplicacaoProduto {
   precisaoTemporal           String                  @default("HORA")
   finalidade                 FinalidadeAplicacao?
   tipoAplicacaoId            String?
-  tipoAplicacao              TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacao              TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   tipoAplicacaoNomeSnapshot  String?
   responsavel                String?
   estadoCarenciaLeite        String                  @default("NAO_INFORMADO")
@@ -1804,6 +1860,7 @@ enum FinalidadeProtocolo {
 }
 
 model Protocolo {
+  Usuario           Usuario?                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   finalidade FinalidadeProtocolo?
   momentos MomentoProtocolo[]
   referenciaTecnica Json?
@@ -1812,7 +1869,7 @@ model Protocolo {
   publicado Boolean @default(false)
   criadoPorId Int?
   rodadas      ProgramacaoProtocolo[]
-  id           String                       @id @default(uuid())
+  id           String                       @id(map: "ProtocoloSanitario_pkey") @default(uuid())
   nome         String
   versao       Int                          @default(1)
   descricao    String?
@@ -1832,7 +1889,7 @@ model MomentoProtocolo {
   modoAtendimento String?
   id String @id @default(uuid())
   protocoloId String
-  protocolo Protocolo @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
+  protocolo Protocolo @relation(fields: [protocoloId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   nome String
   ordem Int
   etapas EtapaProtocolo[]
@@ -1850,52 +1907,54 @@ model EtapaProtocolo {
   configuracao Json @default("{}")
   materialId String?
   material MaterialGenetico? @relation(fields: [materialId], references: [id], onDelete: Restrict)
-  id                        String                  @id @default(uuid())
+  id                        String                  @id(map: "EtapaProtocoloSanitario_pkey") @default(uuid())
   protocoloId               String
   protocolo                 Protocolo      @relation(fields: [protocoloId], references: [id], onDelete: Cascade)
   ordem                     Int
   diaRelativo               Float @map("intervalo")
   tipo                      String
   produtoId                 String?
-  produto                   Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto                   Produto?                @relation(fields: [produtoId], references: [id], onDelete: Restrict, map: "EtapaProtocoloSanitario_produtoId_fkey")
   tipoExameId               String?
-  tipoExame                 TipoExame?              @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  tipoExame                 TipoExame?              @relation(fields: [tipoExameId], references: [id], onDelete: Restrict, map: "EtapaProtocoloSanitario_tipoExameId_fkey")
   finalidade                FinalidadeAplicacao?
   tipoAplicacaoId           String?
-  tipoAplicacao             TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict)
+  tipoAplicacao             TipoAplicacaoSanitaria? @relation(fields: [tipoAplicacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction, map: "EtapaProtocoloSanitario_tipoAplicacaoId_fkey")
   tipoAplicacaoNomeSnapshot String?
   dose                      Decimal?                @db.Decimal(12, 3)
   unidade                   String?
   via                       String?
   tarefas                   TarefaProtocolo[]
 
-  @@unique([protocoloId, ordem])
+  @@unique([protocoloId, ordem], map: "EtapaProtocoloSanitario_protocoloId_ordem_key")
   @@schema("pecuaria")
 }
 
 model ProgramacaoProtocolo {
+  Usuario           Usuario?                    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   legadoIatfId String? @unique
   referenciaExterna String? @unique
   precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
   status String @default("ABERTA")
   criadoPorId Int?
-  id               String                       @id @default(uuid())
+  id               String                       @id(map: "RodadaProtocoloSanitario_pkey") @default(uuid())
   nome             String
   protocoloId      String
-  protocolo        Protocolo           @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo        Protocolo           @relation(fields: [protocoloId], references: [id], map: "RodadaProtocoloSanitario_protocoloId_fkey")
   propriedadeId    Int
-  propriedade      Propriedade                  @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade      Propriedade                  @relation(fields: [propriedadeId], references: [id], map: "RodadaProtocoloSanitario_propriedadeId_fkey")
   inicioReferencia DateTime
   execucoes        ParticipacaoProtocolo[]
   criadoEm         DateTime                     @default(now())
   atualizadoEm     DateTime                     @updatedAt
 
-  @@index([propriedadeId, inicioReferencia])
-  @@index([protocoloId])
+  @@index([propriedadeId, inicioReferencia], map: "RodadaProtocoloSanitario_propriedadeId_inicioReferencia_idx")
+  @@index([protocoloId], map: "RodadaProtocoloSanitario_protocoloId_idx")
   @@schema("pecuaria")
 }
 
 model ParticipacaoProtocolo {
+  Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   origemCalendario OrigemCalendarioProtocolo @default(REFERENCIA_PROGRAMADA)
   destinosPreparoCusto VinculoPreparoTentativa[]
 
@@ -1908,32 +1967,33 @@ model ParticipacaoProtocolo {
   inicioEfetivo DateTime?
   criadoPorId Int?
   rodadaId              String? @map("programacaoId")
-  rodada                ProgramacaoProtocolo? @relation(fields: [rodadaId], references: [id], onDelete: Restrict)
-  id                    String                    @id @default(uuid())
+  rodada                ProgramacaoProtocolo? @relation(fields: [rodadaId], references: [id], onDelete: Restrict, map: "ExecucaoProtocoloSanitario_rodadaId_fkey")
+  id                    String                    @id(map: "ExecucaoProtocoloSanitario_pkey") @default(uuid())
   protocoloId           String
-  protocolo             Protocolo        @relation(fields: [protocoloId], references: [id], onDelete: Restrict)
+  protocolo             Protocolo        @relation(fields: [protocoloId], references: [id], map: "ExecucaoProtocoloSanitario_protocoloId_fkey")
   animalId              String
-  animal                Animal                    @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal                Animal                    @relation(fields: [animalId], references: [id], map: "ExecucaoProtocoloSanitario_animalId_fkey")
   propriedadeId         Int?
-  propriedade           Propriedade?              @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade           Propriedade?              @relation(fields: [propriedadeId], references: [id], onDelete: Restrict, map: "ExecucaoProtocoloSanitario_propriedadeId_fkey")
   inicio                DateTime @map("inicioReferencia")
   ocorrenciaId          String?
-  ocorrencia            OcorrenciaSanitaria?      @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
+  ocorrencia            OcorrenciaSanitaria?      @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict, map: "ExecucaoProtocoloSanitario_ocorrenciaId_fkey")
   operacaoServicoId     String?
-  operacaoServico       Operacao?                 @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  operacaoServico       Operacao?                 @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict, map: "ExecucaoProtocoloSanitario_operacaoServicoId_fkey")
   canceladaEm           DateTime?
   motivoCancelamento    String?
   valorServicoAtribuido Decimal?                  @db.Decimal(14, 2)
   tarefas               TarefaProtocolo[]
   criadoEm              DateTime                  @default(now())
 
-  @@index([animalId, inicio])
-  @@index([rodadaId])
-  @@index([operacaoServicoId])
+  @@index([animalId, inicio], map: "ExecucaoProtocoloSanitario_animalId_inicio_idx")
+  @@index([rodadaId], map: "ExecucaoProtocoloSanitario_rodadaId_idx")
+  @@index([operacaoServicoId], map: "ExecucaoProtocoloSanitario_operacaoServicoId_idx")
   @@schema("pecuaria")
 }
 
 model TarefaProtocolo {
+  ParticipanteVisita     ParticipanteVisita[]
   manejos ManejoAnimal[]
   momentoSnapshot Json?
   eventos EventoTarefaProtocolo[]
@@ -1952,11 +2012,11 @@ model TarefaProtocolo {
   regularizacaoPendente Boolean @default(false)
   historicoRegularizacao Json @default("[]")
   tentativas TentativaReprodutiva[]
-  id             String                     @id @default(uuid())
+  id             String                     @id(map: "TarefaSanitaria_pkey") @default(uuid())
   execucaoId     String @map("participacaoId")
-  execucao       ParticipacaoProtocolo @relation(fields: [execucaoId], references: [id], onDelete: Restrict)
+  execucao       ParticipacaoProtocolo @relation(fields: [execucaoId], references: [id], map: "TarefaSanitaria_execucaoId_fkey")
   etapaId        String
-  etapa          EtapaProtocolo    @relation(fields: [etapaId], references: [id], onDelete: Restrict)
+  etapa          EtapaProtocolo    @relation(fields: [etapaId], references: [id], map: "TarefaSanitaria_etapaId_fkey")
   previstaPara   DateTime @map("previstaEm")
   parametros     Json? @map("planejadoSnapshot")
   dispensadaEm   DateTime?
@@ -1964,15 +2024,15 @@ model TarefaProtocolo {
   aplicacoes     AplicacaoProduto[]
   exames         ExameAnimal[]
 
-  @@unique([execucaoId, etapaId])
-  @@index([previstaPara])
+  @@unique([execucaoId, etapaId], map: "TarefaSanitaria_execucaoId_etapaId_key")
+  @@index([previstaPara], map: "TarefaSanitaria_previstaPara_idx")
   @@schema("pecuaria")
 }
 
 model EventoTarefaProtocolo {
   id String @id @default(uuid())
   tarefaId String
-  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onUpdate: NoAction)
   tipo TipoEventoTarefaProtocolo
   ocorridaEm DateTime
   motivo String
@@ -1981,11 +2041,11 @@ model EventoTarefaProtocolo {
   precisaoAnterior PrecisaoCalendarioProtocolo?
   precisaoNova PrecisaoCalendarioProtocolo?
   eventoCorrigidoId String?
-  eventoCorrigido EventoTarefaProtocolo? @relation("RetificacaoEvento", fields: [eventoCorrigidoId], references: [id], onDelete: Restrict)
+  eventoCorrigido EventoTarefaProtocolo? @relation("RetificacaoEvento", fields: [eventoCorrigidoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   retificacoes EventoTarefaProtocolo[] @relation("RetificacaoEvento")
   registradoEm DateTime @default(now())
   registradoPorId Int?
-  registradoPor Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
+  registradoPor Usuario? @relation(fields: [registradoPorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([tarefaId, registradoEm, id])
   @@index([eventoCorrigidoId])
@@ -1994,11 +2054,12 @@ model EventoTarefaProtocolo {
 }
 
 model VinculoTarefaProtocolo {
+  Usuario         Usuario?              @relation(fields: [registradoPorId], references: [id], onDelete: Restrict)
   manejoId String? @unique
-  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict)
+  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   id String @id @default(uuid())
   tarefaId String
-  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tarefa TarefaProtocolo @relation(fields: [tarefaId], references: [id])
   ordem Int
   aplicacaoId String?
   aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict)
@@ -2041,9 +2102,10 @@ model TipoExame {
 }
 
 model ExameAnimal {
+  Usuario                 Usuario?                           @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   amostraQualidadeLeite AmostraQualidadeLeite?
   demandaAcompanhamentoId String?
-  demandaAcompanhamento DemandaAcompanhamentoReprodutivo? @relation("ExamesDaDemanda",fields:[demandaAcompanhamentoId],references:[id],onDelete:Restrict)
+  demandaAcompanhamento DemandaAcompanhamentoReprodutivo? @relation("ExamesDaDemanda", fields: [demandaAcompanhamentoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   demandasOriginadas DemandaAcompanhamentoReprodutivo[] @relation("OrigemDemanda")
   demandaResolvida DemandaAcompanhamentoReprodutivo? @relation("ResolucaoDemanda")
   destinosPreparoCusto VinculoPreparoTentativa[]
@@ -2064,11 +2126,11 @@ model ExameAnimal {
   desvioProtocoloSnapshot Json?
   id                      String               @id @default(uuid())
   animalId                String
-  animal                  Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal                  Animal               @relation(fields: [animalId], references: [id])
   propriedadeId           Int?
   propriedade             Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   tipoExameId             String
-  tipoExame               TipoExame            @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  tipoExame               TipoExame            @relation(fields: [tipoExameId], references: [id])
   ocorrenciaId            String?
   ocorrencia              OcorrenciaSanitaria? @relation(fields: [ocorrenciaId], references: [id], onDelete: Restrict)
   // Unicidade somente para fatos válidos, definida por índice parcial na migration.
@@ -2098,6 +2160,7 @@ model ExameAnimal {
 }
 
 model ResultadoExame {
+  Usuario       Usuario?    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id         String      @id @default(uuid())
   exameId    String
   exame      ExameAnimal @relation(fields: [exameId], references: [id], onDelete: Cascade)
@@ -2115,12 +2178,15 @@ model ResultadoExame {
 }
 
 model InterpretacaoReprodutiva {
-  id                String      @id @default(uuid())
+  TentativaReprodutiva TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_tentativaId_fkey")
+  RestricaoReprodutiva RestricaoReprodutiva? @relation(fields: [restricaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_restricaoId_fkey")
+  GestacaoAnimal       GestacaoAnimal?       @relation(fields: [gestacaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_gestacaoId_fkey")
+  id                String      @id(map: "AvaliacaoReprodutiva_pkey") @default(uuid())
   exameId           String      @unique
-  exame             ExameAnimal @relation(fields: [exameId], references: [id], onDelete: Restrict)
-  referenciaExterna String?     @unique
+  exame             ExameAnimal @relation(fields: [exameId], references: [id])
+  referenciaExterna String?     @unique(map: "AvaliacaoReprodutiva_referenciaExterna_key")
   gestacaoCriada    Boolean     @default(false)
-  restricaoId       String?     @unique
+  restricaoId       String?     @unique(map: "AvaliacaoReprodutiva_restricaoId_key")
   tentativaId       String?
   gestacaoId        String?
   conduta           String?
@@ -2132,22 +2198,22 @@ model InterpretacaoReprodutiva {
 
 model ManejoAnimal {
   tarefaId String?
-  tarefa TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  tarefa TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   realizadaEm DateTime?
   precisaoTemporal PrecisaoCalendarioProtocolo @default(DIA)
   criadoPorId Int?
-  criadoPor Usuario? @relation("ManejoCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  criadoPor Usuario? @relation("ManejoCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   insercaoAplicacaoId String?
-  insercaoAplicacao AplicacaoProduto? @relation("InsercaoDispositivo", fields: [insercaoAplicacaoId], references: [id], onDelete: Restrict)
+  insercaoAplicacao AplicacaoProduto? @relation("InsercaoDispositivo", fields: [insercaoAplicacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   operacaoServicoId String?
-  operacaoServico Operacao? @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  operacaoServico Operacao? @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   valorServicoAtribuido Decimal? @db.Decimal(14,2)
   realizacaoMantida Boolean @default(false)
   vinculosTarefa VinculoTarefaProtocolo[]
   classificacaoCusto ClassificacaoCustoPecuaria?
   id             String               @id @default(uuid())
   animalId       String
-  animal         Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal         Animal               @relation(fields: [animalId], references: [id])
   propriedadeId  Int?
   propriedade    Propriedade?         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
   tipo           String
@@ -2185,9 +2251,9 @@ model Dieta {
 model ItemDieta {
   id                            String   @id @default(uuid())
   dietaId                       String
-  dieta                         Dieta    @relation(fields: [dietaId], references: [id], onDelete: Restrict)
+  dieta                         Dieta    @relation(fields: [dietaId], references: [id])
   produtoId                     String
-  produto                       Produto  @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto                       Produto  @relation(fields: [produtoId], references: [id])
   quantidadeCabecaDia           Decimal  @db.Decimal(12, 3)
   unidade                       String
   materiaSecaPercentualSnapshot Decimal? @db.Decimal(5, 2)
@@ -2199,9 +2265,9 @@ model ItemDieta {
 model VigenciaDietaLote {
   id          String              @id @default(uuid())
   loteId      String
-  lote        Lote                @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  lote        Lote                @relation(fields: [loteId], references: [id])
   dietaId     String
-  dieta       Dieta               @relation(fields: [dietaId], references: [id], onDelete: Restrict)
+  dieta       Dieta               @relation(fields: [dietaId], references: [id])
   desde       DateTime            @db.Date
   ate         DateTime?           @db.Date
   fechamentos FechamentoConsumo[]
@@ -2221,15 +2287,15 @@ enum StatusFechamentoConsumo {
 model FechamentoConsumo {
   id            String                      @id @default(uuid())
   loteId        String
-  lote          Lote                        @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  lote          Lote                        @relation(fields: [loteId], references: [id])
   propriedadeId Int
-  propriedade   Propriedade                 @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade   Propriedade                 @relation(fields: [propriedadeId], references: [id])
   vigenciaId    String
-  vigencia      VigenciaDietaLote           @relation(fields: [vigenciaId], references: [id], onDelete: Restrict)
+  vigencia      VigenciaDietaLote           @relation(fields: [vigenciaId], references: [id])
   inicio        DateTime                    @db.Date
   fim           DateTime                    @db.Date
   centroCustoId String
-  centroCusto   CentroCusto                 @relation(fields: [centroCustoId], references: [id], onDelete: Restrict)
+  centroCusto   CentroCusto                 @relation(fields: [centroCustoId], references: [id])
   animalDias    Int
   confirmadoEm  DateTime                    @default(now())
   status        StatusFechamentoConsumo     @default(CONFIRMADO)
@@ -2243,11 +2309,12 @@ model FechamentoConsumo {
 }
 
 model ItemFechamentoConsumo {
+  FornecimentoNutricionalLeite FornecimentoNutricionalLeite?
   id                    String            @id @default(uuid())
   fechamentoId          String
-  fechamento            FechamentoConsumo @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  fechamento            FechamentoConsumo @relation(fields: [fechamentoId], references: [id])
   produtoId             String
-  produto               Produto           @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto               Produto           @relation(fields: [produtoId], references: [id])
   quantidadePrevista    Decimal           @db.Decimal(12, 3)
   quantidadeConfirmada  Decimal           @db.Decimal(12, 3)
   baseQuantidade        String
@@ -2264,12 +2331,14 @@ model ItemFechamentoConsumo {
 }
 
 model ParticipacaoConsumoAnimal {
+  SegmentoConsumoAnimal SegmentoConsumoAnimal[]
+  metodoPresenca        String?
   classificacaoCusto ClassificacaoCustoPecuaria?
   id           String            @id @default(uuid())
   fechamentoId String
-  fechamento   FechamentoConsumo @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  fechamento   FechamentoConsumo @relation(fields: [fechamentoId], references: [id])
   animalId     String
-  animal       Animal            @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal       Animal            @relation(fields: [animalId], references: [id])
   dias         Int
 
   @@unique([fechamentoId, animalId])
@@ -2279,9 +2348,9 @@ model ParticipacaoConsumoAnimal {
 model RequisicaoPecuaria {
   chave              String              @id @default(uuid())
   propriedadeId      Int
-  propriedade        Propriedade         @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade        Propriedade         @relation(fields: [propriedadeId], references: [id])
   usuarioId          Int?
-  usuario            Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  usuario            Usuario?            @relation(fields: [usuarioId], references: [id])
   operacao           String
   hashPayload        String
   resultadoIds       Json
@@ -2307,6 +2376,9 @@ model VinculoImportacaoPecuaria {
 }
 
 model SituacaoInicialReprodutiva {
+  Propriedade         Propriedade?           @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  Usuario             Usuario?               @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  Animal              Animal                 @relation(fields: [animalId], references: [id])
   ciclosElegibilidade VinculoPoliticaCiclo[]
   id                String               @id @default(uuid())
   referenciaExterna String?              @unique
@@ -2328,6 +2400,10 @@ model SituacaoInicialReprodutiva {
 }
 
 model RestricaoReprodutiva {
+  Propriedade              Propriedade?              @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  Usuario                  Usuario?                  @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  Animal                   Animal                    @relation(fields: [animalId], references: [id])
+  InterpretacaoReprodutiva InterpretacaoReprodutiva?
   id                 String               @id @default(uuid())
   referenciaExterna  String?              @unique
   animalId           String
@@ -2350,6 +2426,9 @@ model RestricaoReprodutiva {
 }
 
 model RegraSanitariaReprodutiva {
+  Propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
+  Doenca        Doenca      @relation(fields: [doencaId], references: [id])
+  Usuario       Usuario?    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id            String   @id @default(uuid())
   propriedadeId Int
   doencaId      String
@@ -2366,6 +2445,17 @@ model RegraSanitariaReprodutiva {
 }
 
 model TentativaReprodutiva {
+  Animal_TentativaReprodutiva_touroIdToAnimal  Animal?                            @relation("TentativaReprodutiva_touroIdToAnimal", fields: [touroId], references: [id], onDelete: Restrict)
+  GenitorExterno                               GenitorExterno?                    @relation(fields: [touroExternoId], references: [id], onDelete: Restrict)
+  Propriedade                                  Propriedade?                       @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  PartidaProduto                               PartidaProduto?                    @relation(fields: [partidaId], references: [id], onDelete: Restrict)
+  Operacao                                     Operacao?                          @relation(fields: [operacaoServicoId], references: [id], onDelete: Restrict)
+  MovimentoEstoque                             MovimentoEstoque?                  @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  MaterialGenetico                             MaterialGenetico?                  @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  Usuario                                      Usuario?                           @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  Animal_TentativaReprodutiva_animalIdToAnimal Animal                             @relation("TentativaReprodutiva_animalIdToAnimal", fields: [animalId], references: [id])
+  InterpretacaoReprodutiva                     InterpretacaoReprodutiva[]
+  GestacaoAnimal                               GestacaoAnimal?
   demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   preparatoriosCusto VinculoPreparoTentativa[]
 
@@ -2404,10 +2494,18 @@ model TentativaReprodutiva {
   observacao            String?
 
   @@index([animalId])
+  @@unique([animalId, ciclo, ordem], map: "TentativaReprodutiva_ordem_ciclo")
   @@schema("pecuaria")
 }
 
 model GestacaoAnimal {
+  PartoAnimal              PartoAnimal?
+  InterpretacaoReprodutiva InterpretacaoReprodutiva[]
+  HistoricoPrevisaoParto   HistoricoPrevisaoParto[]
+  TentativaReprodutiva     TentativaReprodutiva?              @relation(fields: [tentativaId], references: [id], onDelete: Restrict)
+  Propriedade              Propriedade?                       @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  Usuario                  Usuario?                           @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  Animal                   Animal                             @relation(fields: [animalId], references: [id])
   tipoEncerramento String?
   causaClinica Json?
   demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
@@ -2434,7 +2532,7 @@ model GestacaoAnimal {
 // Compatibilidade de leitura: evidência canônica em ExameAnimal; esta view não admite gravações.
 view AvaliacaoReprodutiva {
   id                String               @unique
-  referenciaExterna String?              @unique
+  referenciaExterna String?
   animalId          String
   propriedadeId     Int?
   data              DateTime             @db.Date
@@ -2445,7 +2543,7 @@ view AvaliacaoReprodutiva {
   criadoEm          DateTime
   criadoPorId       Int?
   gestacaoCriada    Boolean
-  restricaoId       String?              @unique
+  restricaoId       String?
   resultado         String
   tentativaId       String?
   gestacaoId        String?
@@ -2460,6 +2558,11 @@ view AvaliacaoReprodutiva {
 }
 
 model PartoAnimal {
+  Propriedade                 Propriedade?          @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  GestacaoAnimal              GestacaoAnimal?       @relation(fields: [gestacaoId], references: [id], onDelete: Restrict)
+  Usuario                     Usuario?              @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  LactacaoAnimal              LactacaoAnimal?
+  CriaParto                   CriaParto[]
   cicloElegibilidade VinculoPoliticaCiclo?
   examesPosParto ExameAnimal[]
   desfecho String?
@@ -2475,7 +2578,7 @@ model PartoAnimal {
   id                    String               @id @default(uuid())
   referenciaExterna     String?              @unique
   incluidoSaldoAnterior Boolean              @default(false)
-  animal                Animal               @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal                Animal               @relation(fields: [animalId], references: [id])
   animalId              String
   propriedadeId         Int?
   data                  DateTime             @db.Date
@@ -2495,6 +2598,8 @@ model PartoAnimal {
 }
 
 model CriaParto {
+  PartoAnimal           PartoAnimal            @relation(fields: [partoId], references: [id])
+  Animal                Animal?                @relation(fields: [animalId], references: [id], onDelete: Restrict)
   fornecimentosColostro FornecimentoColostro[]
   vinculosPesagem VinculoPesagemParto[]
   id               String         @id @default(uuid())
@@ -2515,9 +2620,9 @@ model FornecimentoColostro {
   parcelasDestinoLeite ParcelaDestinoLeite[]
   id String @id @default(uuid())
   criaId String
-  cria CriaParto @relation(fields: [criaId], references: [id], onDelete: Restrict)
+  cria CriaParto @relation(fields: [criaId], references: [id])
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   data DateTime @db.Date
   ocorridoEm DateTime? @db.Timestamptz(3)
   horarioEstimado Boolean @default(false)
@@ -2544,6 +2649,10 @@ model FornecimentoColostro {
 }
 
 model LactacaoAnimal {
+  Propriedade                Propriedade?                @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  PartoAnimal                PartoAnimal?                @relation(fields: [partoId], references: [id], onDelete: Restrict)
+  Usuario                    Usuario?                    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  Animal                     Animal                      @relation(fields: [animalId], references: [id])
   participacoesProducaoLeite ParticipanteProducaoLeite[]
   versao Int @default(1)
   id                 String    @id @default(uuid())
@@ -2567,9 +2676,9 @@ model LactacaoAnimal {
 model VinculoPesagemParto {
   id String @id @default(uuid())
   partoId String
-  parto PartoAnimal @relation(fields: [partoId], references: [id], onDelete: Restrict)
+  parto PartoAnimal @relation(fields: [partoId], references: [id])
   pesagemId String
-  pesagem Pesagem @relation(fields: [pesagemId], references: [id], onDelete: Restrict)
+  pesagem Pesagem @relation(fields: [pesagemId], references: [id])
   criaId String?
   cria CriaParto? @relation(fields: [criaId], references: [id], onDelete: Restrict)
   sujeito String
@@ -2590,7 +2699,7 @@ model VinculoPesagemParto {
 model SelecaoVisita {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   nome String
   ativo Boolean @default(true)
   criadoEm DateTime @default(now())
@@ -2606,7 +2715,7 @@ model SelecaoVisita {
 model VersaoSelecaoVisita {
   id String @id @default(uuid())
   selecaoId String
-  selecao SelecaoVisita @relation(fields: [selecaoId], references: [id], onDelete: Restrict)
+  selecao SelecaoVisita @relation(fields: [selecaoId], references: [id])
   numero Int
   criterios Json
   versaoContrato Int @default(1)
@@ -2619,6 +2728,12 @@ model VersaoSelecaoVisita {
 }
 
 model ExposicaoTouro {
+  ParticipacaoExposicao ParticipacaoExposicao[]
+  Animal                Animal?                 @relation(fields: [touroId], references: [id], onDelete: Restrict)
+  GenitorExterno        GenitorExterno?         @relation(fields: [touroExternoId], references: [id], onDelete: Restrict)
+  Propriedade           Propriedade             @relation(fields: [propriedadeId], references: [id])
+  Lote                  Lote                    @relation(fields: [loteId], references: [id])
+  Usuario               Usuario?                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id                String    @id @default(uuid())
   referenciaExterna String?   @unique
   propriedadeId     Int
@@ -2635,6 +2750,8 @@ model ExposicaoTouro {
 }
 
 model ParticipacaoExposicao {
+  ExposicaoTouro ExposicaoTouro @relation(fields: [exposicaoId], references: [id])
+  Animal         Animal         @relation(fields: [animalId], references: [id])
   id          String    @id @default(uuid())
   exposicaoId String
   animalId    String
@@ -2721,6 +2838,10 @@ view TarefaIatf {
 }
 
 model VisitaVeterinaria {
+  Propriedade     Propriedade       @relation(fields: [propriedadeId], references: [id])
+  Usuario         Usuario?          @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
+  ImpressaoVisita ImpressaoVisita[]
+  AtividadeVisita AtividadeVisita[]
   id            String    @id @default(uuid())
   propriedadeId Int
   data          DateTime  @db.Date
@@ -2735,6 +2856,8 @@ model VisitaVeterinaria {
 }
 
 model AtividadeVisita {
+  ParticipanteVisita ParticipanteVisita[]
+  VisitaVeterinaria  VisitaVeterinaria    @relation(fields: [visitaId], references: [id])
   id       String   @id @default(uuid())
   visitaId String
   tipo     String
@@ -2749,6 +2872,9 @@ model AtividadeVisita {
 }
 
 model ParticipanteVisita {
+  TarefaProtocolo        TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict)
+  AtividadeVisita        AtividadeVisita  @relation(fields: [atividadeId], references: [id])
+  Animal                 Animal           @relation(fields: [animalId], references: [id])
   id                     String   @id @default(uuid())
   atividadeId            String
   animalId               String
@@ -2768,10 +2894,13 @@ model ParticipanteVisita {
   @@unique([atividadeId, animalId])
   @@unique([atividadeId, ordem])
   @@index([animalId])
+  @@index([tarefaId])
   @@schema("pecuaria")
 }
 
 model ImpressaoVisita {
+  VisitaVeterinaria VisitaVeterinaria @relation(fields: [visitaId], references: [id])
+  Usuario           Usuario?          @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id          String   @id @default(uuid())
   visitaId    String
   versao      Int
@@ -2784,9 +2913,11 @@ model ImpressaoVisita {
 }
 
 model PeriodoReprodutivoAnimal {
+  Propriedade           Propriedade? @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  Usuario               Usuario?     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id                String    @id @default(uuid())
   referenciaExterna String?   @unique
-  animal            Animal    @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal            Animal    @relation(fields: [animalId], references: [id])
   destinoOrigemId    String?   @unique
   encerradoPorDestinoId String?
   fimAntesDaMudanca DateTime? @db.Date
@@ -2807,6 +2938,8 @@ model PeriodoReprodutivoAnimal {
 }
 
 model HistoricoPrevisaoParto {
+  GestacaoAnimal   GestacaoAnimal @relation(fields: [gestacaoId], references: [id])
+  Usuario          Usuario?       @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id               String    @id @default(uuid())
   gestacaoId       String
   previsaoAnterior DateTime? @db.Date
@@ -2821,44 +2954,47 @@ model HistoricoPrevisaoParto {
 }
 
 model PoliticaElegibilidadeReprodutiva {
+  Usuario       Usuario?               @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields:[propriedadeId],references:[id],onDelete:Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   versao Int
   vigenteDesde DateTime @db.Date
   parametros Json
   criadoEm DateTime @default(now())
   criadoPorId Int?
   ciclos VinculoPoliticaCiclo[]
-  @@unique([propriedadeId,versao])
-  @@unique([propriedadeId,vigenteDesde])
+  @@unique([propriedadeId, versao])
+  @@unique([propriedadeId, vigenteDesde])
   @@schema("pecuaria")
 }
 model VinculoPoliticaCiclo {
+  Usuario           Usuario?                          @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id String @id @default(uuid())
   animalId String
-  animal Animal @relation(fields:[animalId],references:[id],onDelete:Restrict)
+  animal Animal @relation(fields: [animalId], references: [id])
   propriedadeId Int
-  propriedade Propriedade @relation(fields:[propriedadeId],references:[id],onDelete:Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   chaveCiclo String
   partoId String? @unique
-  parto PartoAnimal? @relation(fields:[partoId],references:[id],onDelete:Restrict)
+  parto PartoAnimal? @relation(fields: [partoId], references: [id], onDelete: Restrict)
   situacaoInicialId String?
-  situacaoInicial SituacaoInicialReprodutiva? @relation(fields:[situacaoInicialId],references:[id],onDelete:Restrict)
+  situacaoInicial SituacaoInicialReprodutiva? @relation(fields: [situacaoInicialId], references: [id], onDelete: Restrict)
   inicioCiclo DateTime @db.Date
   politicaId String?
-  politica PoliticaElegibilidadeReprodutiva? @relation(fields:[politicaId],references:[id],onDelete:Restrict)
+  politica PoliticaElegibilidadeReprodutiva? @relation(fields: [politicaId], references: [id], onDelete: Restrict)
   criadoEm DateTime @default(now())
   criadoPorId Int?
   decisoes DecisaoElegibilidadeCiclo[]
-  @@unique([animalId,chaveCiclo])
-  @@index([propriedadeId,inicioCiclo])
+  @@unique([animalId, chaveCiclo])
+  @@index([propriedadeId, inicioCiclo])
   @@schema("pecuaria")
 }
 model DecisaoElegibilidadeCiclo {
+  Usuario        Usuario?             @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   id String @id @default(uuid())
   vinculoCicloId String
-  vinculoCiclo VinculoPoliticaCiclo @relation(fields:[vinculoCicloId],references:[id],onDelete:Restrict)
+  vinculoCiclo VinculoPoliticaCiclo @relation(fields: [vinculoCicloId], references: [id])
   data DateTime @db.Date
   tipo String
   aptaDesde DateTime? @db.Date
@@ -2868,21 +3004,22 @@ model DecisaoElegibilidadeCiclo {
   status StatusFatoPecuariaV3 @default(VALIDO)
   anuladoEm DateTime?
   motivoAnulacao String?
-  @@index([vinculoCicloId,data])
+  @@index([vinculoCicloId, data])
   @@schema("pecuaria")
 }
 
 model SnapshotRelatorioReprodutivo {
+  Usuario       Usuario?    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
  id String @id @default(uuid())
  propriedadeId Int
- propriedade Propriedade @relation(fields:[propriedadeId],references:[id],onDelete:Restrict)
+ propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
  tipo String
  filtros Json
  snapshot Json
  versao Int @default(1)
  criadoEm DateTime @default(now())
  criadoPorId Int?
- @@index([propriedadeId,tipo,criadoEm])
+  @@index([propriedadeId, tipo, criadoEm])
  @@schema("pecuaria")
 }
 
@@ -2890,16 +3027,16 @@ model SnapshotRelatorioReprodutivo {
 model BaseValorizacaoEstoque {
   id String @id @default(uuid())
   produtoId String
-  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto Produto @relation(fields: [produtoId], references: [id], onUpdate: NoAction)
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onUpdate: NoAction)
   partidaId String?
-  partida PartidaProduto? @relation(fields: [partidaId], references: [id], onDelete: Restrict)
+  partida PartidaProduto? @relation(fields: [partidaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   baseOrigemId String?
-  baseOrigem BaseValorizacaoEstoque? @relation("DerivacaoBaseValor", fields: [baseOrigemId], references: [id], onDelete: Restrict)
+  baseOrigem BaseValorizacaoEstoque? @relation("DerivacaoBaseValor", fields: [baseOrigemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   derivadas BaseValorizacaoEstoque[] @relation("DerivacaoBaseValor")
   origemMovimentoId String?
-  origemMovimento MovimentoEstoque? @relation("OrigemBaseValorizacao", fields: [origemMovimentoId], references: [id], onDelete: Restrict)
+  origemMovimento MovimentoEstoque? @relation("OrigemBaseValorizacao", fields: [origemMovimentoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   metodo String
   disponivelDesde DateTime @db.Date
   corteAbertura DateTime? @db.Date
@@ -2918,9 +3055,9 @@ model BaseValorizacaoEstoque {
 model ParcelaValorizacaoEstoque {
   id String @id @default(uuid())
   movimentoEstoqueId String
-  movimentoEstoque MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id], onDelete: Restrict)
+  movimentoEstoque MovimentoEstoque @relation(fields: [movimentoEstoqueId], references: [id], onUpdate: NoAction)
   baseId String
-  base BaseValorizacaoEstoque @relation(fields: [baseId], references: [id], onDelete: Restrict)
+  base BaseValorizacaoEstoque @relation(fields: [baseId], references: [id], onUpdate: NoAction)
   ordem Int
   quantidade Decimal @db.Decimal(12, 3)
   valorTotal Decimal @db.Decimal(14, 2)
@@ -2935,19 +3072,19 @@ model ParcelaValorizacaoEstoque {
 // Classificação gerencial e prova documental não alteram o valor do fato original.
 model ClassificacaoCustoPecuaria {
   manejoId String? @unique
-  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict)
+  manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   participacaoConsumoId String? @unique
-  participacaoConsumo ParticipacaoConsumoAnimal? @relation(fields: [participacaoConsumoId], references: [id], onDelete: Restrict)
+  participacaoConsumo ParticipacaoConsumoAnimal? @relation(fields: [participacaoConsumoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   id String @id @default(uuid())
   tentativaId String? @unique
-  tentativa TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict)
+  tentativa TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   aplicacaoId String? @unique
-  aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict)
+  aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   exameId String? @unique
-  exame ExameAnimal? @relation(fields: [exameId], references: [id], onDelete: Restrict)
+  exame ExameAnimal? @relation(fields: [exameId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   participacaoId String? @unique
-  participacao ParticipacaoProtocolo? @relation(fields: [participacaoId], references: [id], onDelete: Restrict)
+  participacao ParticipacaoProtocolo? @relation(fields: [participacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   finalidade String?
   materialNaoAplicavel Boolean @default(false)
   servicoNaoAplicavel Boolean @default(false)
@@ -2963,13 +3100,13 @@ model ClassificacaoCustoPecuaria {
 model VinculoPreparoTentativa {
   id String @id @default(uuid())
   tentativaId String
-  tentativa TentativaReprodutiva @relation(fields: [tentativaId], references: [id], onDelete: Restrict)
+  tentativa TentativaReprodutiva @relation(fields: [tentativaId], references: [id], onUpdate: NoAction)
   aplicacaoId String?
-  aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict)
+  aplicacao AplicacaoProduto? @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   exameId String?
-  exame ExameAnimal? @relation(fields: [exameId], references: [id], onDelete: Restrict)
+  exame ExameAnimal? @relation(fields: [exameId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   participacaoId String?
-  participacao ParticipacaoProtocolo? @relation(fields: [participacaoId], references: [id], onDelete: Restrict)
+  participacao ParticipacaoProtocolo? @relation(fields: [participacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   modo String
   valorMaterial Decimal? @db.Decimal(14,2)
   valorServico Decimal? @db.Decimal(14,2)
@@ -2989,15 +3126,15 @@ model VinculoPreparoTentativa {
 model PoliticaAcompanhamentoReprodutivo {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields:[propriedadeId],references:[id],onDelete:Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onUpdate: NoAction)
   versao Int
   vigenteDesde DateTime @db.Date
   parametros Json
   criadoEm DateTime @default(now())
   criadoPorId Int?
   demandas DemandaAcompanhamentoReprodutivo[]
-  @@unique([propriedadeId,versao])
-  @@unique([propriedadeId,vigenteDesde])
+  @@unique([propriedadeId, versao])
+  @@unique([propriedadeId, vigenteDesde], map: "PoliticaAcompanhamentoReprodutiv_propriedadeId_vigenteDesde_key")
   @@schema("pecuaria")
 }
 
@@ -3005,29 +3142,29 @@ model PoliticaAcompanhamentoReprodutivo {
 model DemandaAcompanhamentoReprodutivo {
   id String @id @default(uuid())
   animalId String
-  animal Animal @relation(fields:[animalId],references:[id],onDelete:Restrict)
+  animal Animal @relation(fields: [animalId], references: [id], onUpdate: NoAction)
   propriedadeOrigemId Int
-  propriedadeOrigem Propriedade @relation(fields:[propriedadeOrigemId],references:[id],onDelete:Restrict)
+  propriedadeOrigem Propriedade @relation(fields: [propriedadeOrigemId], references: [id], onUpdate: NoAction)
   finalidade String
   tentativaId String?
-  tentativa TentativaReprodutiva? @relation(fields:[tentativaId],references:[id],onDelete:Restrict)
+  tentativa TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   gestacaoId String?
-  gestacao GestacaoAnimal? @relation(fields:[gestacaoId],references:[id],onDelete:Restrict)
+  gestacao GestacaoAnimal? @relation(fields: [gestacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   ocorrencia Int @default(1)
   politicaId String?
-  politica PoliticaAcompanhamentoReprodutivo? @relation(fields:[politicaId],references:[id],onDelete:Restrict)
+  politica PoliticaAcompanhamentoReprodutivo? @relation(fields: [politicaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   dataReferencia DateTime @db.Date
   previstaPara DateTime? @db.Date
   regraSnapshot Json
   origemAdocao String @default("FATO_NOVO")
   estado String @default("PENDENTE")
   tarefaId String? @unique
-  tarefa TarefaProtocolo? @relation(fields:[tarefaId],references:[id],onDelete:Restrict)
+  tarefa TarefaProtocolo? @relation(fields: [tarefaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   exameOrigemId String?
-  exameOrigem ExameAnimal? @relation("OrigemDemanda",fields:[exameOrigemId],references:[id],onDelete:Restrict)
+  exameOrigem ExameAnimal? @relation("OrigemDemanda", fields: [exameOrigemId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   exames ExameAnimal[] @relation("ExamesDaDemanda")
   exameResolucaoId String? @unique
-  exameResolucao ExameAnimal? @relation("ResolucaoDemanda",fields:[exameResolucaoId],references:[id],onDelete:Restrict)
+  exameResolucao ExameAnimal? @relation("ResolucaoDemanda", fields: [exameResolucaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   resolucaoSnapshot Json?
   resolvidaEm DateTime? @db.Date
   encerradaEm DateTime?
@@ -3036,10 +3173,10 @@ model DemandaAcompanhamentoReprodutivo {
   criadoEm DateTime @default(now())
   criadoPorId Int?
   atualizadoEm DateTime @updatedAt
-  @@index([animalId,estado,previstaPara])
-  @@index([propriedadeOrigemId,estado])
-  @@index([tentativaId])
-  @@index([gestacaoId])
+  @@index([animalId, estado, previstaPara], map: "DemandaAcompanhamento_animal_estado_data")
+  @@index([propriedadeOrigemId, estado], map: "DemandaAcompanhamento_origem_estado")
+  @@index([tentativaId], map: "DemandaAcompanhamento_tentativa")
+  @@index([gestacaoId], map: "DemandaAcompanhamento_gestacao")
   @@schema("pecuaria")
 }
 
@@ -3047,7 +3184,7 @@ model DemandaAcompanhamentoReprodutivo {
 model ConfiguracaoOrdenha {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   vigenteDesde DateTime @db.Date
   inicial Boolean @default(false)
   criadoEm DateTime @default(now())
@@ -3055,6 +3192,7 @@ model ConfiguracaoOrdenha {
   fonteProducao String @default("INDIVIDUAL")
   intervaloIndividualQuantidade Int @default(1)
   intervaloIndividualUnidade String @default("MESES")
+  criterioColostro Json?
   ordenhas PosicaoOrdenha[]
   dias DiaProducaoLeite[]
 
@@ -3066,7 +3204,7 @@ model ConfiguracaoOrdenha {
 model PosicaoOrdenha {
   id String @id @default(uuid())
   configuracaoId String
-  configuracao ConfiguracaoOrdenha @relation(fields: [configuracaoId], references: [id], onDelete: Restrict)
+  configuracao ConfiguracaoOrdenha @relation(fields: [configuracaoId], references: [id])
   // Identidade da posição entre versões; ordem/nome não são identidade.
   posicaoId String
   nome String
@@ -3081,10 +3219,10 @@ model PosicaoOrdenha {
 model DiaProducaoLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   dataOperacional DateTime @db.Date
   configuracaoId String
-  configuracao ConfiguracaoOrdenha @relation(fields: [configuracaoId, propriedadeId], references: [id, propriedadeId], onDelete: Restrict)
+  configuracao ConfiguracaoOrdenha @relation(fields: [configuracaoId, propriedadeId], references: [id, propriedadeId])
   versao Int @default(1)
   criadoEm DateTime @default(now())
   criadoPorId Int?
@@ -3100,7 +3238,7 @@ model SessaoOrdenha {
   id String @id @default(uuid())
   versao Int @default(1)
   diaId String
-  dia DiaProducaoLeite @relation(fields: [diaId], references: [id], onDelete: Restrict)
+  dia DiaProducaoLeite @relation(fields: [diaId], references: [id])
   posicaoId String
   nome String
   ordem Int
@@ -3121,11 +3259,11 @@ model ParticipanteProducaoLeite {
   finalidadeSnapshot Json?
   id String @id @default(uuid())
   diaId String
-  dia DiaProducaoLeite @relation(fields: [diaId], references: [id], onDelete: Restrict)
+  dia DiaProducaoLeite @relation(fields: [diaId], references: [id])
   animalId String
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal Animal @relation(fields: [animalId], references: [id])
   localizacaoId String
-  localizacao LocalizacaoAnimal @relation(fields: [localizacaoId], references: [id], onDelete: Restrict)
+  localizacao LocalizacaoAnimal @relation(fields: [localizacaoId], references: [id])
   lactacaoId String?
   lactacao LactacaoAnimal? @relation(fields: [lactacaoId], references: [id], onDelete: Restrict)
   brinco String
@@ -3151,9 +3289,9 @@ model MedicaoLeite {
   id String @id @default(uuid())
   diaId String
   sessaoId String
-  sessao SessaoOrdenha @relation(fields: [sessaoId, diaId], references: [id, diaId], onDelete: Restrict)
+  sessao SessaoOrdenha @relation(fields: [sessaoId, diaId], references: [id, diaId])
   participanteId String
-  participante ParticipanteProducaoLeite @relation(fields: [participanteId, diaId], references: [id, diaId], onDelete: Restrict)
+  participante ParticipanteProducaoLeite @relation(fields: [participanteId, diaId], references: [id, diaId])
   estado String @default("PENDENTE")
   litros Decimal? @db.Decimal(14, 3)
   motivo String?
@@ -3171,6 +3309,7 @@ model MedicaoLeite {
 // O único efeito físico é MovimentoEstoque; estas entidades preservam a origem
 // por ordenha e o valor conhecido posteriormente, sem outro saldo de litros.
 model EntradaProducaoLeite {
+  MovimentoFornecimentoNutricionalLeite MovimentoFornecimentoNutricionalLeite[]
   medicaoGeralId String?
   medicaoGeral MedicaoGeralLeite? @relation(fields: [medicaoGeralId], references: [id], onDelete: Restrict)
   descartes DescarteLeite[]
@@ -3179,10 +3318,10 @@ model EntradaProducaoLeite {
   destinosInternos DestinoInternoLeite[]
   id String @id @default(uuid())
   sessaoId String
-  sessao SessaoOrdenha @relation(fields: [sessaoId], references: [id], onDelete: Restrict)
+  sessao SessaoOrdenha @relation(fields: [sessaoId], references: [id])
   versaoSessao Int
   movimentoId String @unique
-  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id], onDelete: Restrict)
+  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id])
   status String @default("CONFIRMADA")
   chave String @unique
   hash String
@@ -3200,14 +3339,14 @@ model EntradaProducaoLeite {
 model AlocacaoLeiteEstoque {
   id String @id @default(uuid())
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   movimentoId String
-  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id], onDelete: Restrict)
+  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id])
   quantidade Decimal @db.Decimal(12, 3)
   valorTotal Decimal? @db.Decimal(14, 2)
   finalidade String
   classificacaoId String
-  classificacao ClassificacaoEntradaLeite @relation(fields: [classificacaoId, entradaId], references: [id, entradaId], onDelete: Restrict)
+  classificacao ClassificacaoEntradaLeite @relation(fields: [classificacaoId, entradaId], references: [id, entradaId])
   apropriacoes ApropriacaoValorLeite[]
 
   @@unique([entradaId, movimentoId])
@@ -3218,7 +3357,7 @@ model AlocacaoLeiteEstoque {
 model ClassificacaoEntradaLeite {
   id String @id @default(uuid())
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   versao Int
   natureza String
   motivo String
@@ -3236,9 +3375,9 @@ model VersaoComercialVendaLeite {
   alocacoesDemonstrativo AlocacaoDemonstrativoLeite[]
   id String @id @default(uuid())
   operacaoId String @unique
-  operacao Operacao @relation(fields: [operacaoId], references: [id], onDelete: Restrict)
+  operacao Operacao @relation(fields: [operacaoId], references: [id])
   retiradaId String
-  retirada MovimentoEstoque @relation(fields: [retiradaId], references: [id], onDelete: Restrict)
+  retirada MovimentoEstoque @relation(fields: [retiradaId], references: [id])
   versao Int
   chave String? @unique
   hash String?
@@ -3253,7 +3392,7 @@ model VersaoComercialVendaLeite {
 model ApuracaoValorLeite {
   id String @id @default(uuid())
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   versao Int
   valorTotal Decimal @db.Decimal(14, 2)
   referencia String
@@ -3272,9 +3411,9 @@ model ApuracaoValorLeite {
 model ApropriacaoValorLeite {
   id String @id @default(uuid())
   apuracaoId String
-  apuracao ApuracaoValorLeite @relation(fields: [apuracaoId], references: [id], onDelete: Restrict)
+  apuracao ApuracaoValorLeite @relation(fields: [apuracaoId], references: [id])
   alocacaoId String
-  alocacao AlocacaoLeiteEstoque @relation(fields: [alocacaoId], references: [id], onDelete: Restrict)
+  alocacao AlocacaoLeiteEstoque @relation(fields: [alocacaoId], references: [id])
   valorTotal Decimal @db.Decimal(14, 2)
 
   @@unique([apuracaoId, alocacaoId])
@@ -3287,11 +3426,11 @@ model DestinoInternoLeite {
   id String @id @default(uuid())
   chave String @unique
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   movimentoId String @unique
-  movimento MovimentoEstoque @relation("DestinoLeiteMovimento", fields: [movimentoId], references: [id], onDelete: Restrict)
+  movimento MovimentoEstoque @relation("DestinoLeiteMovimento", fields: [movimentoId], references: [id])
   data DateTime @db.Date
   natureza String
   declaracaoOrigem String
@@ -3319,9 +3458,9 @@ model DestinoInternoLeite {
 model ParcelaDestinoLeite {
   id String @id @default(uuid())
   destinoId String
-  destino DestinoInternoLeite @relation(fields: [destinoId], references: [id], onDelete: Restrict)
+  destino DestinoInternoLeite @relation(fields: [destinoId], references: [id])
   animalId String
-  animal Animal @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  animal Animal @relation(fields: [animalId], references: [id])
   quantidadeLitros Decimal @db.Decimal(14, 3)
   fornecimentoColostroId String?
   fornecimentoColostro FornecimentoColostro? @relation(fields: [fornecimentoColostroId], references: [id], onDelete: Restrict)
@@ -3338,7 +3477,7 @@ model ParcelaDestinoLeite {
 model ProgramacaoRetiradaLeite {
   id String @id @default(uuid()) @db.Uuid
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   vigenteDesde DateTime @db.Date
   tipo String
   diaSemana Int?
@@ -3360,9 +3499,9 @@ model ProgramacaoRetiradaLeite {
 model VinculoMedicaoEntradaLeite {
   id String @id @default(uuid())
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   medicaoId String
-  medicao MedicaoLeite @relation(fields: [medicaoId], references: [id], onDelete: Restrict)
+  medicao MedicaoLeite @relation(fields: [medicaoId], references: [id])
   quantidade Decimal @db.Decimal(14, 3)
   versaoMedicao Int
   ativo Boolean @default(true)
@@ -3379,7 +3518,7 @@ model FormatoQualidadeLeite {
   chave String @unique
   hashPayload String
   tipoExameId String @id
-  tipoExame TipoExame @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  tipoExame TipoExame @relation(fields: [tipoExameId], references: [id])
   criadoEm DateTime @default(now())
   criadoPorId Int?
   amostras AmostraQualidadeLeite[]
@@ -3389,13 +3528,13 @@ model FormatoQualidadeLeite {
 model AmostraQualidadeLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   data DateTime @db.Date
   dataResultadoLaboratorial DateTime? @db.Date
   dataRecebimentoLaudo DateTime? @db.Date
   sujeito String
   tipoExameId String
-  formato FormatoQualidadeLeite @relation(fields: [tipoExameId], references: [tipoExameId], onDelete: Restrict)
+  formato FormatoQualidadeLeite @relation(fields: [tipoExameId], references: [tipoExameId])
   exameAnimalId String? @unique
   exameAnimal ExameAnimal? @relation(fields: [exameAnimalId], references: [id], onDelete: Restrict)
   origemColetiva String?
@@ -3424,7 +3563,7 @@ model AmostraQualidadeLeite {
 model ResultadoQualidadeLeite {
   id String @id @default(uuid())
   amostraId String
-  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id], onDelete: Restrict)
+  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id])
   campo String
   valor Json
   unidade String?
@@ -3439,7 +3578,7 @@ model ResultadoQualidadeLeite {
 model LaudoQualidadeLeite {
   id String @id @default(uuid())
   amostraId String
-  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id], onDelete: Restrict)
+  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id])
   nome String
   mimeType String
   tamanhoBytes Int
@@ -3458,11 +3597,11 @@ model LaudoQualidadeLeite {
 model EntregaLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   parceiroId String
-  parceiro Parceiro @relation(fields: [parceiroId], references: [id], onDelete: Restrict)
+  parceiro Parceiro @relation(fields: [parceiroId], references: [id])
   retiradaId String @unique
-  retirada MovimentoEstoque @relation(fields: [retiradaId], references: [id], onDelete: Restrict)
+  retirada MovimentoEstoque @relation(fields: [retiradaId], references: [id])
   pontoColeta String?
   horarioColeta String?
   referencia String
@@ -3478,7 +3617,7 @@ model EntregaLeite {
 model ConferenciaEntregaLeite {
   id String @id @default(uuid())
   entregaId String
-  entrega EntregaLeite @relation(fields: [entregaId], references: [id], onDelete: Restrict)
+  entrega EntregaLeite @relation(fields: [entregaId], references: [id])
   versao Int
   volumeAceito Decimal? @db.Decimal(12,3)
   situacao String
@@ -3486,16 +3625,16 @@ model ConferenciaEntregaLeite {
   motivo String
   criadoPorId Int?
   criadoEm DateTime @default(now())
-  @@unique([entregaId,versao])
+  @@unique([entregaId, versao])
   @@schema("pecuaria")
 }
 
 model DemonstrativoLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   parceiroId String
-  parceiro Parceiro @relation(fields: [parceiroId], references: [id], onDelete: Restrict)
+  parceiro Parceiro @relation(fields: [parceiroId], references: [id])
   inicio DateTime @db.Date
   fim DateTime @db.Date
   referencia String
@@ -3511,31 +3650,31 @@ model DemonstrativoLeite {
   criadoPorId Int?
   criadoEm DateTime @default(now())
   alocacoes AlocacaoDemonstrativoLeite[]
-  @@index([propriedadeId,inicio,fim])
+  @@index([propriedadeId, inicio, fim])
   @@schema("pecuaria")
 }
 
 model AlocacaoDemonstrativoLeite {
   id String @id @default(uuid())
   demonstrativoId String
-  demonstrativo DemonstrativoLeite @relation(fields: [demonstrativoId], references: [id], onDelete: Restrict)
+  demonstrativo DemonstrativoLeite @relation(fields: [demonstrativoId], references: [id])
   entregaId String
-  entrega EntregaLeite @relation(fields: [entregaId], references: [id], onDelete: Restrict)
+  entrega EntregaLeite @relation(fields: [entregaId], references: [id])
   versaoVendaId String
-  versaoVenda VersaoComercialVendaLeite @relation(fields: [versaoVendaId], references: [id], onDelete: Restrict)
+  versaoVenda VersaoComercialVendaLeite @relation(fields: [versaoVendaId], references: [id])
   quantidade Decimal @db.Decimal(12,3)
   valor Decimal @db.Decimal(14,2)
   motivoAceitePendente String?
   ativo Boolean @default(true)
-  @@unique([demonstrativoId,entregaId])
-  @@index([entregaId,ativo])
+  @@unique([demonstrativoId, entregaId])
+  @@index([entregaId, ativo])
   @@schema("pecuaria")
 }
 
 model ComprovanteEntregaLeite {
   id String @id @default(uuid())
   entregaId String
-  entrega EntregaLeite @relation(fields: [entregaId], references: [id], onDelete: Restrict)
+  entrega EntregaLeite @relation(fields: [entregaId], references: [id])
   nome String
   mimeType String
   tamanhoBytes Int
@@ -3543,7 +3682,7 @@ model ComprovanteEntregaLeite {
   storageKey String @unique
   criadoPorId Int?
   criadoEm DateTime @default(now())
-  @@unique([entregaId,sha256])
+  @@unique([entregaId, sha256])
   @@schema("pecuaria")
 }
 
@@ -3551,11 +3690,11 @@ model ComprovanteEntregaLeite {
 model DescarteLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   entradaId String
-  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id], onDelete: Restrict)
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
   movimentoId String @unique
-  movimento MovimentoEstoque @relation("DescarteLeiteMovimento", fields: [movimentoId], references: [id], onDelete: Restrict)
+  movimento MovimentoEstoque @relation("DescarteLeiteMovimento", fields: [movimentoId], references: [id])
   data DateTime @db.Date
   quantidadeLitros Decimal @db.Decimal(14,3)
   saldoOrigemAntes Decimal @db.Decimal(14,3)
@@ -3570,14 +3709,14 @@ model DescarteLeite {
   motivoEstorno String?
   movimentoEstornoId String? @unique
   movimentoEstorno MovimentoEstoque? @relation("DescarteLeiteEstorno", fields: [movimentoEstornoId], references: [id], onDelete: Restrict)
-  @@index([propriedadeId,data])
+  @@index([propriedadeId, data])
   @@schema("pecuaria")
 }
 
 model EmissaoRelatorioLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   inicio DateTime @db.Date
   fim DateTime @db.Date
   corteEm DateTime
@@ -3587,16 +3726,16 @@ model EmissaoRelatorioLeite {
   valoresIncluidos Boolean
   criadoEm DateTime @default(now())
   criadoPorId Int?
-  @@index([propriedadeId,criadoEm])
+  @@index([propriedadeId, criadoEm])
   @@schema("pecuaria")
 }
 
 model ConferenciaSaldoLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   produtoId String
-  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  produto Produto @relation(fields: [produtoId], references: [id])
   data DateTime @db.Date
   litrosObservados Decimal @db.Decimal(14,3)
   referencia String
@@ -3605,8 +3744,8 @@ model ConferenciaSaldoLeite {
   motivoCorrecao String?
   criadoEm DateTime @default(now())
   criadoPorId Int?
-  @@unique([propriedadeId,produtoId,data,versao])
-  @@index([propriedadeId,data])
+  @@unique([propriedadeId, produtoId, data, versao])
+  @@index([propriedadeId, data])
   @@schema("pecuaria")
 }
 
@@ -3614,9 +3753,9 @@ model ConferenciaSaldoLeite {
 model OperacaoComercialLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   parceiroId String
-  parceiro Parceiro @relation(fields: [parceiroId], references: [id], onDelete: Restrict)
+  parceiro Parceiro @relation(fields: [parceiroId], references: [id])
   inicio DateTime @db.Date
   fim DateTime @db.Date
   referencia String
@@ -3633,9 +3772,9 @@ model OperacaoComercialLeite {
 model RetiradaOperacaoLeite {
   id String @id @default(uuid())
   comercialId String
-  comercial OperacaoComercialLeite @relation(fields: [comercialId], references: [id], onDelete: Restrict)
+  comercial OperacaoComercialLeite @relation(fields: [comercialId], references: [id])
   movimentoId String @unique
-  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id], onDelete: Restrict)
+  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id])
   referencia String
   pontoColeta String?
   horarioColeta String?
@@ -3647,11 +3786,12 @@ model RetiradaOperacaoLeite {
   @@schema("pecuaria")
 }
 model FechamentoOperacaoLeite {
+  ReferenciaGerencialLeite ReferenciaGerencialLeite[]
   id String @id @default(uuid())
   comercialId String
-  comercial OperacaoComercialLeite @relation(fields: [comercialId], references: [id], onDelete: Restrict)
+  comercial OperacaoComercialLeite @relation(fields: [comercialId], references: [id])
   operacaoId String @unique
-  operacao Operacao @relation(fields: [operacaoId], references: [id], onDelete: Restrict)
+  operacao Operacao @relation(fields: [operacaoId], references: [id])
   versao Int
   precoUnitario Decimal @db.Decimal(14, 4)
   volumeReconhecido Decimal @db.Decimal(12, 3)
@@ -3668,9 +3808,9 @@ model FechamentoOperacaoLeite {
 model DetalheFechamentoLeite {
   id String @id @default(uuid())
   fechamentoId String
-  fechamento FechamentoOperacaoLeite @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  fechamento FechamentoOperacaoLeite @relation(fields: [fechamentoId], references: [id])
   retiradaId String
-  retirada RetiradaOperacaoLeite @relation(fields: [retiradaId], references: [id], onDelete: Restrict)
+  retirada RetiradaOperacaoLeite @relation(fields: [retiradaId], references: [id])
   quantidadeReconhecida Decimal @db.Decimal(12, 3)
   motivoDiferenca String?
   @@unique([fechamentoId, retiradaId])
@@ -3679,7 +3819,7 @@ model DetalheFechamentoLeite {
 model ComprovanteRetiradaOperacaoLeite {
   id String @id @default(uuid())
   retiradaId String
-  retirada RetiradaOperacaoLeite @relation(fields: [retiradaId], references: [id], onDelete: Restrict)
+  retirada RetiradaOperacaoLeite @relation(fields: [retiradaId], references: [id])
   nome String
   mimeType String
   tamanhoBytes Int
@@ -3693,6 +3833,9 @@ model ComprovanteRetiradaOperacaoLeite {
 
 // IM06–08: efeito físico da dieta e referência gerencial são medidas independentes.
 model FornecimentoNutricionalLeite {
+  Propriedade           Propriedade                             @relation(fields: [propriedadeId], references: [id], onUpdate: NoAction)
+  ItemFechamentoConsumo ItemFechamentoConsumo                   @relation(fields: [itemId], references: [id], onUpdate: NoAction)
+  Usuario               Usuario?                                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   id String @id @default(uuid())
   itemId String @unique
   propriedadeId Int
@@ -3704,13 +3847,15 @@ model FornecimentoNutricionalLeite {
   movimentos MovimentoFornecimentoNutricionalLeite[]
   parcelas ParcelaFornecimentoNutricionalLeite[]
   referencias ReferenciaGerencialLeite[]
-  @@index([propriedadeId,data])
+  @@index([propriedadeId, data])
   @@schema("pecuaria")
 }
 model MovimentoFornecimentoNutricionalLeite {
+  MovimentoEstoque     MovimentoEstoque             @relation(fields: [movimentoId], references: [id], onUpdate: NoAction)
+  EntradaProducaoLeite EntradaProducaoLeite         @relation(fields: [entradaId], references: [id], onUpdate: NoAction)
   id String @id @default(uuid())
   fornecimentoId String
-  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onDelete: Restrict)
+  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onUpdate: NoAction)
   movimentoId String @unique
   entradaId String
   natureza String
@@ -3718,20 +3863,24 @@ model MovimentoFornecimentoNutricionalLeite {
   @@schema("pecuaria")
 }
 model ParcelaFornecimentoNutricionalLeite {
+  Animal           Animal                       @relation(fields: [animalId], references: [id], onUpdate: NoAction)
   id String @id @default(uuid())
   fornecimentoId String
-  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onDelete: Restrict)
+  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onUpdate: NoAction)
   animalId String
   dias Int
   baseQuantidade String @default("ATRIBUIDA")
   quantidadeLitros Decimal @db.Decimal(12,3)
-  @@unique([fornecimentoId,animalId])
+  @@unique([fornecimentoId, animalId])
   @@schema("pecuaria")
 }
 model ReferenciaGerencialLeite {
+  Parceiro                Parceiro                     @relation(fields: [parceiroId], references: [id], onUpdate: NoAction)
+  FechamentoOperacaoLeite FechamentoOperacaoLeite      @relation(fields: [fechamentoId], references: [id], onUpdate: NoAction)
+  Usuario                 Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   id String @id @default(uuid())
   fornecimentoId String
-  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onDelete: Restrict)
+  fornecimento FornecimentoNutricionalLeite @relation(fields: [fornecimentoId], references: [id], onUpdate: NoAction)
   fechamentoId String
   versao Int
   periodoInicio DateTime @db.Date
@@ -3743,17 +3892,17 @@ model ReferenciaGerencialLeite {
   motivo String
   criadoPorId Int?
   criadoEm DateTime @default(now())
-  @@unique([fornecimentoId,versao])
-  @@unique([fornecimentoId,fechamentoId])
+  @@unique([fornecimentoId, versao])
+  @@unique([fornecimentoId, fechamentoId])
   @@schema("pecuaria")
 }
 
 // Vínculo documental opcional: conserva a versão vista no fechamento.
 model VinculoQualidadeFechamentoLeite {
   fechamentoId String
-  fechamento FechamentoOperacaoLeite @relation(fields: [fechamentoId], references: [id], onDelete: Restrict)
+  fechamento FechamentoOperacaoLeite @relation(fields: [fechamentoId], references: [id], onUpdate: NoAction)
   amostraId String
-  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id], onDelete: Restrict)
+  amostra AmostraQualidadeLeite @relation(fields: [amostraId], references: [id], onUpdate: NoAction)
   versaoAmostra Int
   snapshot Json
   criadoEm DateTime @default(now())
@@ -3768,7 +3917,7 @@ model VinculoQualidadeFechamentoLeite {
 model TanqueLeite {
   id String @id @default(uuid())
   propriedadeId Int
-  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
   identidadeId String
   versao Int
   nome String
@@ -3783,9 +3932,9 @@ model TanqueLeite {
   criadoPorId Int?
   criadoEm DateTime @default(now())
   medicoes MedicaoGeralLeite[]
-  @@unique([propriedadeId,identidadeId,versao])
-  @@unique([propriedadeId,identidadeId,vigenteDesde])
-  @@index([propriedadeId,vigenteDesde])
+  @@unique([propriedadeId, identidadeId, versao])
+  @@unique([propriedadeId, identidadeId, vigenteDesde])
+  @@index([propriedadeId, vigenteDesde])
   @@schema("pecuaria")
 }
 
@@ -3793,9 +3942,13 @@ model TanqueLeite {
 model MedicaoGeralLeite {
   id String @id @default(uuid())
   sessaoId String
-  sessao SessaoOrdenha @relation(fields: [sessaoId], references: [id], onDelete: Restrict)
-  tanqueId String
-  tanque TanqueLeite @relation(fields: [tanqueId], references: [id], onDelete: Restrict)
+  sessao SessaoOrdenha @relation(fields: [sessaoId], references: [id])
+  tanqueId String?
+  tanque TanqueLeite? @relation(fields: [tanqueId], references: [id], onDelete: Restrict)
+  recipiente String?
+  declaracaoDireta Json?
+  primeiraOrdenhaColostro Boolean?
+  criterioColostroSnapshot Json?
   litros Decimal @db.Decimal(14,3)
   reguaMm Decimal? @db.Decimal(10,3)
   origemLitros String
@@ -3808,6 +3961,21 @@ model MedicaoGeralLeite {
   criadoEm DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   entradasEstoque EntradaProducaoLeite[]
-  @@unique([sessaoId,tanqueId])
+  @@unique([sessaoId, tanqueId])
+  @@index([animaisOrigem(ops: JsonbPathOps)], map: "MedicaoGeralLeite_animaisOrigem_gin", type: Gin)
+  @@schema("pecuaria")
+}
+
+model SegmentoConsumoAnimal {
+  id                        String                    @id
+  participacaoId            String
+  desde                     DateTime                  @db.Date
+  ate                       DateTime                  @db.Date
+  vaca                      Boolean?
+  metodo                    String
+  prova                     Json
+  ParticipacaoConsumoAnimal ParticipacaoConsumoAnimal @relation(fields: [participacaoId], references: [id], onUpdate: NoAction)
+
+  @@unique([participacaoId, desde])
   @@schema("pecuaria")
 }

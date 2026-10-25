@@ -1,94 +1,60 @@
-import { Button } from "@/components/ui/button";
-import { SelectCampo } from "../../../financeiro/SelectCampo";
-import { TabelaFinanceira, Pill } from "../../../financeiro/financeiro-ui";
+import { PeriodoFinanceiroControl } from "../../../financeiro/PeriodoFinanceiroControl";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { CampoFiltro } from "../../../financeiro/PainelFiltros";
+import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
 import { formatarLitros, hojeOperacional } from "./modelo";
-import { RitmoLeite, type DiaRitmoLeite } from "./RitmoLeite";
-import type { EvidenciaFinalidadeLeite } from "./types";
-const finalidadeNome = (f: EvidenciaFinalidadeLeite | null | undefined) => f?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar";
-interface Linha { fonte?: "GERAL" | "INDIVIDUAL"; finalidade: EvidenciaFinalidadeLeite | null; data: string; animalId: string | null; brinco: string; nome: string | null; ordenha: string; natureza: string; estado: string; litros: number | null; confirmada: boolean }
-interface Consulta {
-  itens: Linha[]; total: number; tamanho: number; pagina: number; mesEmAndamento: boolean;
-  periodo: { inicio: string; fim: string }; coberturaCompleta: boolean;
-  totais: { litros: number | null; pendentes: number }; ritmo: DiaRitmoLeite[];
-  porNatureza: { id: string; litros: number | null }[];
-}
-const dataUrl = () => {
-  const valor = new URLSearchParams(location.search).get("producaoData");
-  if (!valor || !/^\d{4}-\d{2}-\d{2}$/.test(valor)) return hojeOperacional();
-  const data = new Date(`${valor}T00:00:00Z`);
-  return Number.isFinite(data.getTime()) && data.toISOString().slice(0, 10) === valor ? valor : hojeOperacional();
-};
-const naturezaNome = (n: string) => n === "A_CLASSIFICAR" ? "A classificar" : n === "NAO_COMERCIAL" ? "Não comercial" : n === "COLOSTRO" ? "Colostro" : n === "COMERCIAL" ? "Comercial" : n;
-export function ConsultasProducaoLeite({ podeExportar = false }: { podeExportar?: boolean }) {
-  const [visao, setVisao] = useState(() => new URLSearchParams(location.search).get("producaoVisao") === "dia" ? "dia" : "mes");
-  const [data, setData] = useState(dataUrl);
-  const [natureza, setNatureza] = useState(() => new URLSearchParams(location.search).get("natureza") ?? "");
+import { CustosLeite } from "./CustosLeite";
+import "./consultas-leite.css";
+interface Grupo { periodo: string; litros: number | null; completa: boolean; turnos: { posicaoId: string; litros: number | null }[] }
+interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[]; coberturaCompleta: boolean; mesEmAndamento: boolean }
+const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ? data : `${data.slice(0, 7)}-01`, fim: visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10) });
+const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "dia" ? "dia" : "mes"; const periodo = datasVisao(data, visao); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
+
+export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: { podeExportar?: boolean }) {
+  const [filtros, setFiltros] = useState(iniciais);
+  const [dados, setDados] = useState<Consulta | null>(null), [erro, setErro] = useState(""), [revisao, setRevisao] = useState(0);
   const [pagina, setPagina] = useState(1);
-  const [dados, setDados] = useState<Consulta | null>(null), [erro, setErro] = useState(""), [carregando, setCarregando] = useState(false), [exportando, setExportando] = useState(false);
-  useEffect(() => {
-    const atualizar = () => {
-      const parametros = new URLSearchParams(location.search);
-      setVisao(parametros.get("producaoVisao") === "dia" ? "dia" : "mes");
-      setData(dataUrl()); setNatureza(parametros.get("natureza") ?? ""); setPagina(1);
-    };
-    window.addEventListener("popstate", atualizar);
-    return () => window.removeEventListener("popstate", atualizar);
-  }, []);
+  const aplicar = (v: typeof filtros) => { setFiltros(v); setPagina(1); };
+  const draft = useRascunhoConsulta(filtros, { visao: "mes", data: hojeOperacional(), natureza: "", ...datasVisao(hojeOperacional(), "mes") }, aplicar);
   const sitio = getPropriedadeAtiva();
-  const inicio = visao === "dia" ? data : `${data.slice(0, 7)}-01`;
-  const fim = visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10);
-  const query = new URLSearchParams({ inicio, fim, ...(natureza ? { natureza } : {}), pagina: String(pagina), tamanho: "30" }).toString();
+  const { data, visao, natureza, inicio, fim } = filtros;
+  const periodoInvalido = !inicio || !fim || inicio > fim || !Number.isFinite(Date.parse(inicio)) || !Number.isFinite(Date.parse(fim)) || (Date.parse(fim) - Date.parse(inicio)) / 86400000 >= 366;
+  const grupos = dados?.grupos ?? [];
+  const totalPaginas = Math.max(1, Math.ceil(grupos.length / 15));
+  const paginaAtual = Math.min(pagina, totalPaginas);
+  useEffect(() => { const atualizar = () => setFiltros(iniciais()); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
   useEffect(() => {
-    let ativa = true;
-    setDados(null); setErro(""); setCarregando(true);
-    const url = new URL(location.href);
-    url.searchParams.set("producaoVisao", visao); url.searchParams.set("producaoData", data);
-    if (natureza) url.searchParams.set("natureza", natureza); else url.searchParams.delete("natureza");
-    history.replaceState(null, "", url);
-    void consultarLeite<Consulta>(`/consultas-producao?${query}`, sitio).then(r => { if (ativa) setDados(r); }).catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Falha na consulta"); }).finally(() => { if (ativa) setCarregando(false); });
+    let ativa = true; setDados(null); setErro("");
+    if (periodoInvalido) { setErro("Consulte até 366 dias, com início anterior ao fim."); return; }
+    const url = new URL(location.href); url.searchParams.set("producaoVisao", visao); url.searchParams.set("producaoData", data); url.searchParams.set("inicio", inicio); url.searchParams.set("fim", fim); if (natureza) url.searchParams.set("natureza", natureza); else url.searchParams.delete("natureza"); history.replaceState(null, "", url);
+    const query = new URLSearchParams({ inicio, fim, agrupamento: visao === "dia" ? "DIA" : "MES", ...(natureza ? { natureza } : {}) });
+    void consultarLeite<Consulta>(`/consultas-producao?${query}`, sitio).then(r => { if (ativa) setDados(r); }).catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível consultar a produção."); });
     return () => { ativa = false; };
-  }, [query, sitio, visao, data, natureza]);
-  async function exportar() {
-    setExportando(true); setErro("");
-    try {
-      const r = await consultarLeite<Consulta>(`/consultas-producao/exportacao?${query}`, sitio);
-      const celula = (v: unknown) => { const texto = v === null ? "Não informado" : String(v); return `"${(/^\s*[=+@-]/.test(texto) ? "'" : "") + texto.replace(/"/g, '""')}"`; };
-      const csv = [["Data produção", "Animal ou tanque", "Nome", "Ordenha", "Natureza", "Estado", "Litros medidos", "Confirmada no estoque", "Finalidade na produção", "Data da finalidade", "Regra da finalidade"], ...r.itens.map(l => [l.data, l.brinco, l.nome, l.ordenha, naturezaNome(l.natureza), l.estado, l.litros, l.confirmada ? "Sim" : "Não", (l.fonte === "GERAL" ? "Aferição geral do tanque" : finalidadeNome(l.finalidade)), l.finalidade?.dataOperacional ?? l.data, l.finalidade?.regra ?? null])].map(l => l.map(celula).join(";")).join("\r\n");
-      const url = URL.createObjectURL(new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" }));
-      const link = document.createElement("a"); link.href = url; link.download = `producao-${inicio}-${fim}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) { setErro(e instanceof Error ? e.message : "Falha na exportação"); } finally { setExportando(false); }
-  }
-  return <section className="leite-operacoes">
-    <h2 className="leite-titulo-secao">Produção por dia e mês</h2>
-    <p>Litros medidos na data da ordenha. Coleta, venda e recebimento possuem suas próprias datas.</p>
-    <div className="leite-form-inline">
-      <label>Consultar produção por<SelectCampo value={visao} onValueChange={valor => { setVisao(valor); setPagina(1); }}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></label>
-      <label>{visao === "dia" ? "Dia de produção" : "Mês de produção"}<input required type={visao === "dia" ? "date" : "month"} value={visao === "dia" ? data : data.slice(0, 7)} onChange={e => { if (e.target.value) { setData(visao === "dia" ? e.target.value : `${e.target.value}-01`); setPagina(1); } }} /></label>
-      <label>Natureza da produção<SelectCampo value={natureza} onValueChange={valor => { setNatureza(valor); setPagina(1); }}><option value="">Todas</option>{["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO", "A_CLASSIFICAR"].map(n => <option key={n} value={n}>{naturezaNome(n)}</option>)}</SelectCampo></label>
-    </div>
-    {carregando && <p role="status">Consultando produção…</p>}{erro && <p role="alert">{erro}</p>}
-    {dados && <>
-      <h2>{formatarLitros(dados.totais.litros)} medidos no período</h2>
-      {dados.mesEmAndamento && <p>Mês em andamento: o total pode mudar com novas ordenhas.</p>}
-      {!dados.coberturaCompleta && <p role="status">Produção parcial: há dias ou aferições sem registro. O volume conhecido não representa uma produção completa.</p>}
-      <p>Finalidade histórica a conciliar mantém os litros registrados e não comprova elegibilidade na data.</p>
-      <p>A produção usa a fonte configurada na data: aferições gerais ou medições individuais completas. O controle individual não é somado novamente ao volume dos tanques.</p>
-      {podeExportar && <Button type="button" disabled={exportando} onClick={() => void exportar()}>{exportando ? "Exportando…" : "Exportar produção do período"}</Button>}
-      <RitmoLeite dias={dados.ritmo} />
-      <TabelaFinanceira rotulo="Produção por origem e ordenha" itens={dados.itens.map((linha, indice) => ({ ...linha, chave: `${linha.data}-${linha.animalId ?? "tanque"}-${indice}` }))} chaveDe={l => l.chave} colunas={[
-        { chave: "data", titulo: "Dia", larguraMinima: 105, celula: l => l.data.split("-").reverse().join("/") },
-        { chave: "origem", titulo: "Animal ou tanque", principal: true, larguraMinima: 160, celula: l => <strong>{l.brinco}{l.nome && l.nome !== l.brinco ? ` · ${l.nome}` : ""}</strong> },
-        { chave: "ordenha", titulo: "Ordenha", larguraMinima: 100, celula: l => l.ordenha },
-        { chave: "litros", titulo: "Litros medidos", alinhamento: "direita", larguraMinima: 115, celula: l => formatarLitros(l.litros) },
-        { chave: "natureza", titulo: "Natureza", larguraMinima: 130, celula: l => naturezaNome(l.natureza) },
-        { chave: "finalidade", titulo: "Finalidade na produção", larguraMinima: 180, celula: l => l.fonte === "GERAL" ? "Aferição geral do tanque" : finalidadeNome(l.finalidade) },
-        { chave: "estado", titulo: "Medição", larguraMinima: 120, celula: l => <Pill tone={l.estado === "MEDIDO" ? "green" : l.estado === "PENDENTE" ? "amber" : "neutral"}>{l.estado === "MEDIDO" ? "Medida" : l.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Pendente"}</Pill> },
+  }, [inicio, fim, natureza, visao, data, sitio, revisao, periodoInvalido]);
+  return <section className="leite-operacoes leite-consultas"><PageHeader titulo="Produção" descricao="Volumes registrados e custos no mesmo período." />
+    <BarraConsulta resumo={`${inicio.split("-").reverse().join("/")} a ${fim.split("-").reverse().join("/")}`} edicaoFiltros={draft} adicionais={<>
+      <CampoFiltro rotulo="Consultar produção por"><SelectCampo value={draft.rascunho.visao} onValueChange={v => draft.editar("visao", v)}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></CampoFiltro>
+      <CampoFiltro rotulo="Data de produção"><input type="date" value={draft.rascunho.data} onChange={e => { if(e.target.value) { draft.editar("data", e.target.value); const periodo = datasVisao(e.target.value, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
+      <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Descarte</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
+      <CampoFiltro rotulo="Classificação"><span className="leite-checkbox"><input type="checkbox" checked={draft.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => draft.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Sem classificação</span></CampoFiltro>
+    </>}><PeriodoFinanceiroControl inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
+    {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando produção…</p> : <>
+      {!dados.coberturaCompleta && <p role="status">Produção parcial: há registros ausentes no período.</p>}
+      {dados.mesEmAndamento && <p className="leite-consulta-nota">Mês em andamento.</p>}
+      <TabelaFinanceira rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
+        { chave: "periodo", titulo: visao === "dia" ? "Dia" : "Mês", principal: true, celula: g => g.periodo.split("-").reverse().join("/") },
+        ...(dados.ordenhas ?? []).map(o => ({ chave: o.posicaoId, titulo: o.nome, alinhamento: "direita" as const, celula: (g: Grupo) => formatarLitros(g.turnos.find(t => t.posicaoId === o.posicaoId)?.litros ?? null) })),
+        { chave: "total", titulo: "Total", alinhamento: "direita", celula: g => <strong>{formatarLitros(g.litros)}</strong> },
+        { chave: "cobertura", titulo: "Situação", celula: g => g.completa ? "Completa" : "Parcial" },
       ]} />
-      {!dados.itens.length && <p>Nenhuma medição no recorte selecionado.</p>}
-      <div className="leite-form-inline"><Button variant="outline" type="button" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Produção anterior</Button><span>Página {pagina}</span><Button variant="outline" type="button" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próxima produção</Button></div>
+      <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={grupos.length} porPagina={15} rotulo="Paginação da produção" substantivo="períodos" idSelect="pagina-producao-leite" onPagina={setPagina} />
     </>}
+    {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}
   </section>;
 }

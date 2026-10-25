@@ -12,7 +12,7 @@ vi.mock("../../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), p
 
 vi.mock("./producao.js", async original => ({ ...await original<typeof import("./producao.js")>(), conferirAnimaisOrigemGeralTx: vi.fn(async () => []) }));
 import { travarValorizacaoTx } from "../../estoque/valorizacao.js";
-import { correcaoVendaLeiteSchema, consultaVendasLeiteSchema, anularEntradaProducaoLeite, apurarValorProducaoLeite, classificarEntradaLeiteSchema, confirmarProducaoLeite, confirmarProducaoGeral, confirmarSessaoProducaoLeite, confirmarSessaoProducaoLeiteSchema, exigirSessaoLeiteEditavelTx, confirmarProducaoLeiteSchema, apuracaoValorLeiteSchema } from "./estoque.js";
+import { correcaoVendaLeiteSchema, consultaVendasLeiteSchema, anularEntradaProducaoLeite, apurarValorProducaoLeite, classificarEntradaLeiteSchema, confirmarProducaoLeite, confirmarProducaoGeral, confirmarParcelasOrdenha, confirmarSessaoProducaoLeite, confirmarSessaoProducaoLeiteSchema, exigirSessaoLeiteEditavelTx, confirmarProducaoLeiteSchema, apuracaoValorLeiteSchema } from "./estoque.js";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const contexto = { propriedadeId: 7, usuarioId: 9 };
@@ -285,7 +285,7 @@ it("a baixa no dia preserva confirmação single e coletiva da finalidade que el
 
 it("confirma litros gerais uma vez, sem vínculos individuais ou custo inventado", async () => {
   const medicao = { id: id(70), sessaoId: input.sessaoId, tanqueId: id(71), versao: 1, litros: new Prisma.Decimal(800), reguaMm: null, origemLitros: "LITROS_INFORMADOS", animaisOrigem: [], natureza: "NAO_COMERCIAL", tanque: { nome: "Tanque" }, sessao: { id: input.sessaoId, nome: "Manhã", horario: null, versao: 3, dia: { dataOperacional: new Date("2026-10-18"), configuracao: { fonteProducao: "GERAL" } } }, entradasEstoque: [] as {id: string}[] };
-  const medicoes = { findFirst: vi.fn(async () => medicao), findFirstOrThrow: vi.fn(async () => medicao) };
+  const medicoes = { findMany: vi.fn(async () => [medicao]), findFirst: vi.fn(async () => medicao), findFirstOrThrow: vi.fn(async () => medicao) };
   Object.assign(tx, { medicaoGeralLeite: medicoes });
   const comando = { chave: id(72), medicaoId: medicao.id, versaoEsperada: 1, produtoId: input.produtoId, motivoNatureza: "Leite separado para alimentação" };
   const r = await confirmarProducaoGeral(comando, contexto);
@@ -347,5 +347,54 @@ describe("ordem das travas ao anular origem geral", () => {
     await expect(anularEntradaProducaoLeite({ entradaId: entrada.id, motivo }, contexto)).resolves.toEqual(inverso);
     expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
     expect(tx.entradaProducaoLeite.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("confirmação geral por conjunto", () => {
+  const comando = { chave: id(920), parcelas: [1, 2, 3].map(n => ({ chave: id(920 + n), medicaoId: id(930 + n), versaoEsperada: 1, produtoId: input.produtoId, motivoNatureza: "Leite segregado na origem física" })) };
+  function preparar() {
+    const medicoes = comando.parcelas.map((p, i) => ({ id: p.medicaoId, sessaoId: input.sessaoId, tanqueId: id(950 + i), recipiente: null, versao: 1,
+      litros: new Prisma.Decimal([40, 10, 5][i]), reguaMm: null, origemLitros: "LITROS_INFORMADOS", animaisOrigem: [], natureza: ["NAO_COMERCIAL", "COLOSTRO", "NAO_COMERCIAL"][i],
+      tanque: { nome: `Tanque ${i}` }, sessao: { id: input.sessaoId, nome: "Manhã", horario: null, versao: 3, dia: { dataOperacional: new Date("2026-10-18"), configuracao: { fonteProducao: "GERAL" } } }, entradasEstoque: [] }));
+    const medicoesTx = { findMany: vi.fn(async () => medicoes), findFirstOrThrow: vi.fn(async ({ where }: { where: { id: string } }) => medicoes.find(m => m.id === where.id)) };
+    Object.assign(tx, { medicaoGeralLeite: medicoesTx });
+    tx.entradaProducaoLeite.create.mockImplementation(async ({ data }) => ({ ...data, id: id(970 + tx.entradaProducaoLeite.create.mock.calls.length) }));
+    return { medicoes, medicoesTx };
+  }
+  it("confirma todas as parcelas na mesma transação e recupera reenvio integral sem nova entrada", async () => {
+    preparar();
+    const r = await confirmarParcelasOrdenha(comando, contexto);
+    expect(r.entradas.map(e => e.quantidadeLitros)).toEqual(["40", "10", "5"]);
+    expect(f.transacao).toHaveBeenCalledTimes(1);
+    expect(tx.movimentoEstoque.create).toHaveBeenCalledTimes(3);
+    const requisicao = tx.requisicaoPecuaria.create.mock.calls.at(-1)![0].data;
+    tx.requisicaoPecuaria.findUnique.mockResolvedValueOnce(requisicao as never);
+    expect(await confirmarParcelasOrdenha(comando, contexto)).toEqual(r);
+    expect(tx.movimentoEstoque.create).toHaveBeenCalledTimes(3);
+    expect(tx.$executeRaw.mock.calls[0][1]).toEqual(expect.arrayContaining([`pec-requisicao:${comando.chave}`, `pec-requisicao:${comando.parcelas[0].chave}`]));
+  });
+  it("falha de uma parcela recusa o callback do conjunto sem registrar sucesso do lote", async () => {
+    preparar();
+    f.classificar.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error("Falha na segunda parcela"));
+    await expect(confirmarParcelasOrdenha(comando, contexto)).rejects.toThrow("Falha na segunda parcela");
+    expect(f.transacao).toHaveBeenCalledTimes(1);
+    expect(tx.requisicaoPecuaria.create.mock.calls.some(c => (c[0].data as { chave: string }).chave === comando.chave)).toBe(false);
+    // A rejeição prova o limite transacional. Rollback e disputa real dependem do PostgreSQL autorizado.
+  });
+  it("confere todos os IDs no sítio e a identidade de sessão antes de mover estoque", async () => {
+    const { medicoes, medicoesTx } = preparar();
+    medicoesTx.findMany.mockResolvedValueOnce(medicoes.slice(0, 2));
+    await expect(confirmarParcelasOrdenha(comando, contexto)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+    medicoesTx.findMany.mockResolvedValueOnce([{ ...medicoes[0], sessaoId: id(999) }, ...medicoes.slice(1)]);
+    await expect(confirmarParcelasOrdenha(comando, contexto)).rejects.toMatchObject({ code: "VALIDACAO" });
+    expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
+  });
+  it("carência comercial continua recusada e parcela zero não gera origem", async () => {
+    const { medicoes } = preparar();
+    medicoes[0].natureza = "COMERCIAL";
+    await expect(confirmarParcelasOrdenha(comando, contexto)).rejects.toThrow("carências");
+    medicoes[0].natureza = "NAO_COMERCIAL"; medicoes[0].litros = new Prisma.Decimal(0);
+    await expect(confirmarParcelasOrdenha(comando, contexto)).rejects.toThrow("zero");
+    expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
   });
 });

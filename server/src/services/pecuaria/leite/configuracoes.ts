@@ -4,7 +4,7 @@ import { auditar, RebanhoError, type DbPecuaria } from "../rebanho/regras.js";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { ORDENHAS_INICIAIS } from "./producao.calc.js";
-import { configuracaoOrdenhaSchema, type ConfiguracaoOrdenhaInput } from "./schemas.js";
+import { criterioColostroSchema, configuracaoOrdenhaSchema, type ConfiguracaoOrdenhaInput } from "./schemas.js";
 import type { ConfiguracaoOrdenhaDTO } from "./contratos.js";
 
 const incluirOrdenhas = { ordenhas: { orderBy: { ordem: "asc" as const } } };
@@ -14,8 +14,9 @@ export function configuracaoDTO(configuracao: Configuracao | null, propriedadeId
     fonteProducao: configuracao.fonteProducao === "GERAL" ? "GERAL" : "INDIVIDUAL",
     intervaloIndividualQuantidade: configuracao.intervaloIndividualQuantidade ?? 1,
     intervaloIndividualUnidade: configuracao.intervaloIndividualUnidade === "DIAS" ? "DIAS" : "MESES",
+    criterioColostro: configuracao.criterioColostro == null ? null : criterioColostroSchema.parse(configuracao.criterioColostro),
     inicial: configuracao.inicial, ordenhas: configuracao.ordenhas.map(({ posicaoId, nome, ordem, horario }) => ({ posicaoId, nome, ordem, horario })) }
-    : { id: null, propriedadeId, vigenteDesde: "1900-01-01", inicial: true, fonteProducao: "GERAL", intervaloIndividualQuantidade: 1, intervaloIndividualUnidade: "MESES", ordenhas: ORDENHAS_INICIAIS.map(o => ({ ...o })) };
+    : { id: null, propriedadeId, vigenteDesde: "1900-01-01", inicial: true, criterioColostro: null, fonteProducao: "GERAL", intervaloIndividualQuantidade: 1, intervaloIndividualUnidade: "MESES", ordenhas: ORDENHAS_INICIAIS.map(o => ({ ...o })) };
 }
 export async function travarRotinaLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-leite-sitio:${propriedadeId}`}))`;
@@ -58,6 +59,7 @@ export async function criarConfiguracao(input: ConfiguracaoOrdenhaInput, usuario
       if (await tx.diaProducaoLeite.count({ where: { propriedadeId: input.propriedadeId, dataOperacional: { gte: vigenteDesde } } }))
         throw new RebanhoError("CONFLITO", "A vigência alcança folhas já guardadas; escolha uma data posterior");
       const configuracao = await tx.configuracaoOrdenha.create({ data: { propriedadeId: input.propriedadeId, vigenteDesde, criadoPorId: usuarioId,
+        ...(input.criterioColostro ? { criterioColostro: input.criterioColostro } : {}),
         fonteProducao: input.fonteProducao, intervaloIndividualQuantidade: input.intervaloIndividualQuantidade, intervaloIndividualUnidade: input.intervaloIndividualUnidade,
         ordenhas: { create: input.ordenhas.map(o => ({ ...o, horario: o.horario ?? null })) } }, include: incluirOrdenhas });
       const dto = configuracaoDTO(configuracao, input.propriedadeId);

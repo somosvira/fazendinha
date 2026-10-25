@@ -31,6 +31,7 @@ import { leiteConsultasComerciaisRouter } from "./leite-consultas-comerciais.js"
 import { leiteComercialRouter } from "./leite-comercial.js";
 import { leiteConferenciasSaldoRouter } from "./leite-conferencias-saldo.js";
 import { leiteRouter } from "./leite.js";
+import { leiteConsultasV5Router } from "./leite-consultas-v5.js";
 import { leiteConsultasProducaoRouter } from "./leite-consultas-producao.js";
 import { leiteCustosRouter } from "./leite-custos.js";
 import { leiteEstoqueRouter } from "./leite-estoque.js";
@@ -441,6 +442,7 @@ rebanhoRouter.route("/leite/comercial/consultas", leiteConsultasComerciaisRouter
 rebanhoRouter.route("/leite/comercial", leiteComercialRouter);
 rebanhoRouter.route("/leite", leiteConferenciasSaldoRouter);
 rebanhoRouter.route("/leite/painel", leitePainelRouter);
+rebanhoRouter.route("/leite", leiteConsultasV5Router);
 rebanhoRouter.route("/leite/estoque", leiteEstoqueRouter);
 rebanhoRouter.route("/leite/programacao", leiteProgramacaoRouter);
 rebanhoRouter.route("/leite", leiteDestinosRouter);

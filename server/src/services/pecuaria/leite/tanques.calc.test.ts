@@ -12,24 +12,15 @@ describe("aferição do tanque e periodicidade individual", () => {
       { mm: 100, litros: 336.7 },
     ],
   };
-  it("preserva o zero da régua como ponto da tabela, sem transformar em tanque vazio", () => {
-    expect(conferirConversaoTanque({ litros: 22.5, reguaMm: 0 }, tanque)).toBe(
-      "TABELA_TANQUE",
-    );
-    expect(() =>
-      conferirConversaoTanque({ litros: 0, reguaMm: 0 }, tanque),
-    ).toThrow("22.5");
+  it("mantém litros e régua independentes, inclusive zero e pontos ausentes na tabela", () => {
+    expect(conferirConversaoTanque({ litros: 22.5, reguaMm: 0 }, tanque)).toBe("LITROS_INFORMADOS");
+    expect(conferirConversaoTanque({ litros: 0, reguaMm: 0 }, tanque)).toBe("LITROS_INFORMADOS");
+    expect(conferirConversaoTanque({ litros: 338, reguaMm: 100.5 }, tanque)).toBe("LITROS_INFORMADOS");
+    expect(conferirConversaoTanque({ litros: 4000, reguaMm: 100 }, null)).toBe("LITROS_INFORMADOS");
   });
-  it("recusa extrapolação e interpolação e permite litros medidos sem régua", () => {
-    expect(() =>
-      conferirConversaoTanque({ litros: 338, reguaMm: 100.5 }, tanque),
-    ).toThrow("não consta");
-    expect(() => conferirConversaoTanque({ litros: 3001 }, tanque)).toThrow(
-      "capacidade",
-    );
-    expect(conferirConversaoTanque({ litros: 0 }, tanque)).toBe(
-      "LITROS_INFORMADOS",
-    );
+  it("recusa apenas volume acima da capacidade cadastrada e permite zero explícito", () => {
+    expect(() => conferirConversaoTanque({ litros: 3001 }, tanque)).toThrow("capacidade");
+    expect(conferirConversaoTanque({ litros: 0 }, tanque)).toBe("LITROS_INFORMADOS");
   });
   it("diferencia mês civil de 30 dias e respeita fevereiro", () => {
     expect(proximaAfericaoIndividual("2026-01-31", 1, "MESES")).toBe(

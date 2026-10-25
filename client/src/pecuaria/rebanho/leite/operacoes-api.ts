@@ -1,3 +1,4 @@
+import { getUsuario } from "../../../lib/auth";
 import { comPropriedade } from "../../../propriedadeScope";
 export async function consultarLeite<T>(
   caminho: string,
@@ -24,6 +25,7 @@ async function requisitar<T>(
     throw new Error(dados.error ?? "Não foi possível concluir a operação");
   return dados as T;
 }
+const tentativasEmMemoria = new Map<string, { payload: string; chave: string }>();
 /** Mantém a chave após resposta perdida; trocar os dados inicia outra tentativa. */
 export async function registrarLeite<T>(
   caminho: string,
@@ -31,24 +33,29 @@ export async function registrarLeite<T>(
   dados: Record<string, unknown>,
   comChave = true,
 ): Promise<T> {
-  const armazenamento = `terrano:leite:operacao:${sitio}:${caminho}`;
+  const armazenamento = `terrano:leite:operacao:${getUsuario()?.id ?? "transicao"}:${sitio}:${caminho}`;
   const payload = JSON.stringify(dados);
-  let anterior: { payload: string; chave: string } | null = null;
+  let anterior: { payload: string; chave: string } | null = tentativasEmMemoria.get(armazenamento) ?? null;
   try {
-    anterior = JSON.parse(sessionStorage.getItem(armazenamento) ?? "null");
+    anterior = JSON.parse(sessionStorage.getItem(armazenamento) ?? "null") ?? anterior;
   } catch {
     /* armazenamento indisponível */
   }
   const chave =
     anterior?.payload === payload ? anterior.chave : crypto.randomUUID();
-  if (comChave)
-    sessionStorage.setItem(armazenamento, JSON.stringify({ payload, chave }));
+  if (comChave) {
+    tentativasEmMemoria.set(armazenamento, { payload, chave });
+    try { sessionStorage.setItem(armazenamento, JSON.stringify({ payload, chave })); } catch { /* Reenvio preservado em memória. */ }
+  }
   const resultado = await requisitar<T>(
     caminho,
     sitio,
     comChave ? { ...dados, chave } : dados,
   );
-  if (comChave) sessionStorage.removeItem(armazenamento);
+  if (comChave) {
+    tentativasEmMemoria.delete(armazenamento);
+    try { sessionStorage.removeItem(armazenamento); } catch { /* Sem persistência local disponível. */ }
+  }
   return resultado;
 }
 export interface EstoqueLeiteDTO {

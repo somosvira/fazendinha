@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 const m = vi.hoisted(() => ({ sitio: vi.fn(), coletas: vi.fn(), vendas: vi.fn() }));
 vi.mock("../../db.js", () => ({ prisma: {} }));
 vi.mock("../../services/propriedade.js", () => ({ resolverEscopoLeitura: m.sitio }));
-vi.mock("../../services/pecuaria/leite/comercial.consultas-operacionais.js", () => ({ consultarColetasOperacoesLeite: m.coletas, consultarVendasOperacoesLeite: m.vendas }));
+vi.mock("../../services/pecuaria/leite/comercial.consultas-operacionais.js", async original => ({ ...(await original<typeof import("../../services/pecuaria/leite/comercial.consultas-operacionais.js")>()), consultarColetasOperacoesLeite: m.coletas, consultarVendasOperacoesLeite: m.vendas }));
 import { leiteConsultasComerciaisRouter } from "./leite-consultas-comerciais.js";
 function app(areas = ["pecuaria"], flags: string[] = [], sessao = true) { return new Hono().use("*", async (c, next) => { if (sessao) c.set("usuario" as never, { id: 7, dono: false, areas, flags, abas: [] } as never); await next(); }).route("/", leiteConsultasComerciaisRouter); }
 beforeEach(() => { vi.resetAllMocks(); m.sitio.mockResolvedValue(2); m.coletas.mockResolvedValue({ itens: [] }); m.vendas.mockResolvedValue({ itens: [] }); });
@@ -22,4 +22,11 @@ it("requer sessão/área/sítio e valida recorte antes de consultar", async () =
   m.sitio.mockResolvedValue(null);
   expect((await app().request("/vendas")).status).toBe(422);
   expect(m.vendas).not.toHaveBeenCalled();
+});
+
+
+it("coletas aplica busca e situação na consulta paginada do servidor", async () => {
+  expect((await app().request("/coletas?busca=leite&situacao=PRECO_PENDENTE&pagina=2")).status).toBe(200);
+  expect(m.coletas).toHaveBeenLastCalledWith(2, { busca: "leite", situacao: "PRECO_PENDENTE", pagina: 2, porPagina: 20 });
+  expect((await app().request("/coletas?situacao=INVÁLIDA")).status).toBe(422);
 });

@@ -19,3 +19,12 @@ it("venda seleciona comprador/período e mascara preço/total sem esconder volum
   const permitido = await consultarVendasOperacoesLeite(2, {}, true);
   expect(permitido.itens[0].fechamento?.valorTotal).toBe("20.00");
 });
+
+
+it("coletas filtra busca e situação no banco antes da página", async () => {
+  m.retiradas.findMany.mockResolvedValue([]); m.retiradas.count.mockResolvedValue(0);
+  await consultarColetasOperacoesLeite(2, { busca: "leite", situacao: "PRECO_PENDENTE", pagina: 2 });
+  expect(m.retiradas.findMany).toHaveBeenCalledWith(expect.objectContaining({ skip: 20, where: expect.objectContaining({
+    comercial: { propriedadeId: 2, status: "ABERTA" }, OR: expect.arrayContaining([{ referencia: { contains: "leite", mode: "insensitive" } }]),
+  }) }));
+});

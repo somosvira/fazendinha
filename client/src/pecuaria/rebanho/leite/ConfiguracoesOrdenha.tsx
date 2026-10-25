@@ -32,6 +32,8 @@ export function ConfiguracoesOrdenha({
     configuracao.intervaloIndividualUnidade ?? "MESES",
   );
   const [vigencia, setVigencia] = useState(data);
+  const [criterio, setCriterio] = useState(configuracao.criterioColostro?.tipo ?? "");
+  const [diasColostro, setDiasColostro] = useState(configuracao.criterioColostro?.tipo === "JANELA_DIAS" ? configuracao.criterioColostro.dias : 3);
   const formId = useId();
   const [erro, setErro] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -59,6 +61,10 @@ export function ConfiguracoesOrdenha({
       setErro("Dê um nome a cada ordenha.");
       return;
     }
+    if (criterio === "JANELA_DIAS" && (!Number.isInteger(diasColostro) || diasColostro < 1)) {
+      setErro("Informe uma janela de colostro em dias inteiros, maior que zero.");
+      return;
+    }
     setSalvando(true);
     setErro("");
     const base = {
@@ -67,6 +73,7 @@ export function ConfiguracoesOrdenha({
       fonteProducao: fonte,
       intervaloIndividualQuantidade: intervalo,
       intervaloIndividualUnidade: unidade,
+      criterioColostro: criterio === "PRIMEIRA_ORDENHA" ? { tipo: "PRIMEIRA_ORDENHA" as const } : criterio === "JANELA_DIAS" ? { tipo: "JANELA_DIAS" as const, dias: diasColostro, incluiD0: true as const } : null,
       ordenhas: ordenhas.map((o, i) => ({
         ...o,
         nome: o.nome.trim(),
@@ -103,7 +110,10 @@ export function ConfiguracoesOrdenha({
         vigencia !== data ||
         JSON.stringify(ordenhas) !== JSON.stringify(configuracao.ordenhas) ||
         fonte !== (configuracao.fonteProducao ?? "INDIVIDUAL") ||
-        unidade !== (configuracao.intervaloIndividualUnidade ?? "MESES")
+        unidade !== (configuracao.intervaloIndividualUnidade ?? "MESES") ||
+        intervalo !== (configuracao.intervaloIndividualQuantidade ?? 1) ||
+        criterio !== (configuracao.criterioColostro?.tipo ?? "") ||
+        (criterio === "JANELA_DIAS" && diasColostro !== (configuracao.criterioColostro?.tipo === "JANELA_DIAS" ? configuracao.criterioColostro.dias : 3))
       }
       rodape={(fechar) => (
         <>
@@ -125,10 +135,6 @@ export function ConfiguracoesOrdenha({
           void salvar();
         }}
       >
-        <p className="leite-ajuste-ajuda">
-          Defina a rotina do sítio. Dias já registrados conservam sua
-          configuração.
-        </p>
         <fieldset disabled={salvando} className="leite-ajuste-secao">
           <label>
             Vigente desde
@@ -160,6 +166,19 @@ export function ConfiguracoesOrdenha({
             O controle individual permanece disponível nos dois modos. Somente a
             fonte escolhida compõe a produção diária e pode confirmar estoque.
           </p>
+        </fieldset>
+        <fieldset disabled={salvando} className="leite-ajuste-secao">
+          <legend>Critério de colostro</legend>
+          <label>Regra da nova vigência
+            <SelectCampo aria-label="Critério de colostro" value={criterio} onValueChange={setCriterio}>
+              <option value="">Não informado</option>
+              <option value="PRIMEIRA_ORDENHA">Primeira ordenha após o parto</option>
+              <option value="JANELA_DIAS">Janela pós-parto em dias</option>
+            </SelectCampo>
+          </label>
+          {criterio === "JANELA_DIAS" && <><label>Dias da janela<input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
+          {criterio === "PRIMEIRA_ORDENHA" && <p>Exige declaração explícita da primeira ordenha dos animais após o parto.</p>}
+          <p>Nova vigência preserva os registros históricos. Ausência de regra permanece não informada.</p>
         </fieldset>
         <fieldset disabled={salvando} className="leite-ajuste-secao">
           <legend>Controle individual dos animais</legend>

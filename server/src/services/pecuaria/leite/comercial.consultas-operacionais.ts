@@ -3,13 +3,23 @@ import { z } from "zod";
 import { prisma } from "../../../db.js";
 import { consultaComercialLeiteSchema } from "./comercial.schemas.js";
 type Filtro = z.input<typeof consultaComercialLeiteSchema>;
+export const consultaColetasOperacoesLeiteSchema = consultaComercialLeiteSchema.innerType().extend({
+  busca: z.string().trim().max(100).optional(),
+  situacao: z.enum(["PRECO_PENDENTE", "FECHADA"]).optional(),
+}).strict().refine(v => !v.de || !v.ate || v.de <= v.ate, { message: "Fim anterior ao início", path: ["ate"] });
 const data = (v: string) => new Date(`${v}T00:00:00Z`);
 const texto = (v: Date) => v.toISOString().slice(0, 10);
 /** Coleta usa movimento físico; venda usa comprador/período, nunca data do recebimento. */
-export async function consultarColetasOperacoesLeite(propriedadeId: number, raw: Filtro) {
-  const f = consultaComercialLeiteSchema.parse(raw);
+export async function consultarColetasOperacoesLeite(propriedadeId: number, raw: z.input<typeof consultaColetasOperacoesLeiteSchema>) {
+  const f = consultaColetasOperacoesLeiteSchema.parse(raw);
   const where: Prisma.RetiradaOperacaoLeiteWhereInput = {
-    comercial: { propriedadeId, ...(f.parceiroId ? { parceiroId: f.parceiroId } : {}) },
+    comercial: { propriedadeId, ...(f.parceiroId ? { parceiroId: f.parceiroId } : {}),
+      ...(f.situacao ? { status: f.situacao === "PRECO_PENDENTE" ? "ABERTA" : "FECHADA" } : {}) },
+    ...(f.busca ? { OR: [
+      { referencia: { contains: f.busca, mode: "insensitive" } },
+      { comercial: { parceiro: { nome: { contains: f.busca, mode: "insensitive" } } } },
+      { movimento: { produto: { nome: { contains: f.busca, mode: "insensitive" } } } },
+    ] } : {}),
     movimento: { status: "CONFIRMADO", ...(f.de || f.ate ? { data: { ...(f.de ? { gte: data(f.de) } : {}), ...(f.ate ? { lte: data(f.ate) } : {}) } } : {}) },
   };
   return prisma.$transaction(async tx => {

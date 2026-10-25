@@ -31,7 +31,7 @@ suite("SQL real do histórico de origens gerais", () => {
       await db.query(`INSERT INTO pecuaria."DiaProducaoLeite" (id,"propriedadeId","dataOperacional","configuracaoId","atualizadoEm") VALUES ($1,$2,'2026-10-20',$3,now())`, [dia, sitio, config]);
       await db.query(`INSERT INTO pecuaria."SessaoOrdenha" (id,"diaId","posicaoId",nome,ordem) VALUES ($1,$2,$3,'Manhã',1)`, [sessao, dia, posicao]);
       await db.query(`INSERT INTO pecuaria."TanqueLeite" (id,"propriedadeId","identidadeId",versao,nome,"capacidadeLitros","vigenteDesde","tabelaConversao") VALUES ($1,$2,$1,1,'Tanque privado',1000,'2026-01-01','[]')`, [tanque, sitio]);
-      await db.query(`INSERT INTO pecuaria."MedicaoGeralLeite" (id,"sessaoId","tanqueId",litros,"origemLitros",natureza,"animaisOrigem",responsavel,"atualizadoEm") VALUES ($1,$2,$3,20,'LITROS_INFORMADOS','COMERCIAL',$4::jsonb,'Fixture privada',now())`, [geral, sessao, tanque, JSON.stringify([animal])]);
+      await db.query(`INSERT INTO pecuaria."MedicaoGeralLeite" (id,"sessaoId","tanqueId",litros,"origemLitros",natureza,"animaisOrigem","criterioColostroSnapshot",responsavel,"atualizadoEm") VALUES ($1,$2,$3,20,'LITROS_INFORMADOS','COMERCIAL',$4::jsonb,$5::jsonb,'Fixture privada',now())`, [geral, sessao, tanque, JSON.stringify([animal]), JSON.stringify({ configuracaoId: config, criterio: null, partos: [], primeiraOrdenhaColostro: null })]);
       await db.query("SET CONSTRAINTS ALL IMMEDIATE");
       await db.query("SET CONSTRAINTS ALL DEFERRED");
 

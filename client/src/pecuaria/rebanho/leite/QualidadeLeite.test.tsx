@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
@@ -10,6 +11,14 @@ import {
 } from "@testing-library/react";
 import { QualidadeLeite } from "./QualidadeLeite";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
+const tela = { ...screen,
+  getByRole: (...args: Parameters<typeof screen.getByRole>) => screen.getAllByRole(...args)[0],
+  findByRole: async (...args: Parameters<typeof screen.findByRole>) => (await screen.findAllByRole(...args))[0],
+  getByText: (...args: Parameters<typeof screen.getByText>) => screen.getAllByText(...args)[0],
+  findByText: async (...args: Parameters<typeof screen.findByText>) => (await screen.findAllByText(...args))[0],
+  getByLabelText: (...args: Parameters<typeof screen.getByLabelText>) => screen.getAllByLabelText(...args)[0],
+  findByLabelText: async (...args: Parameters<typeof screen.findByLabelText>) => (await screen.findAllByLabelText(...args))[0],
+};
 vi.mock("./operacoes-api", () => ({
   consultarLeite: vi.fn(),
   registrarLeite: vi.fn(),
@@ -76,25 +85,23 @@ beforeEach(() => {
 });
 it("mostra zero e falso do laudo sem converter em ausência", async () => {
   render(<QualidadeLeite podeLancar={false} />);
-  await screen.findByText("Tanque A");
-  expect(screen.getByText("0 %")).toBeTruthy();
-  expect(screen.getByText("Não")).toBeTruthy();
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  expect(await tela.findByText("0 %")).toBeTruthy();
+  expect(tela.getByText("Não")).toBeTruthy();
   expect(
-    screen.queryByRole("button", { name: "Registrar amostra" }),
+    tela.queryByRole("button", { name: "Registrar amostra" }),
   ).toBeNull();
-  expect(screen.queryByText("Resultado ainda não informado.")).toBeNull();
+  expect(tela.queryByText("Resultado ainda não informado.")).toBeNull();
 });
 it("coleta coletiva pendente envia origem explícita e hash do formato sem inventar resultados", async () => {
+  vi.mocked(registrarLeite).mockImplementationOnce(() => new Promise(() => {}));
   render(<QualidadeLeite podeLancar />);
-  await screen.findByText("Tanque A");
-  fireEvent.click(screen.getByRole("button", { name: "Registrar amostra" }));
-  fireEvent.change(screen.getByLabelText("Formato do laudo"), {
-    target: { value: "formato" },
-  });
-  fireEvent.change(screen.getByLabelText("Origem da amostra"), {
-    target: { value: "COLETIVO" },
-  });
-  fireEvent.change(screen.getByLabelText("Identificação da origem coletiva"), {
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Registrar amostra" }));
+  await selecionarCampoLeite("Formato do laudo", "formato");
+  await selecionarCampoLeite("Origem da amostra", "COLETIVO");
+  fireEvent.change(tela.getByLabelText("Identificação da origem coletiva"), {
     target: { value: "Tanque B — laudo 23" },
   });
   const form = screen
@@ -112,24 +119,26 @@ it("coleta coletiva pendente envia origem explícita e hash do formato sem inven
       }),
     ),
   );
+  expect((tela.getByRole("combobox", { name: "Formato do laudo" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((tela.getByRole("combobox", { name: "Origem da amostra" }) as HTMLButtonElement).disabled).toBe(true);
 });
 it("falha na correção conserva valores e motivo para reenvio, sem confirmar sucesso", async () => {
   vi.mocked(registrarLeite).mockRejectedValue(
     new Error("Conflito: atualize a amostra"),
   );
   render(<QualidadeLeite podeLancar />);
-  await screen.findByText("Tanque A");
-  fireEvent.click(screen.getByRole("button", { name: "Abrir amostra" }));
-  const detalhe = screen.getByRole("region", { name: "Detalhe da amostra" });
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  const detalhe = tela.getByRole("region", { name: "Detalhe da amostra" });
   fireEvent.change(within(detalhe).getByLabelText("Motivo da atualização"), {
     target: { value: "Conferido com laboratório" },
   });
   fireEvent.click(
     within(detalhe).getByRole("button", { name: "Confirmar atualização" }),
   );
-  await screen.findByText("Conflito: atualize a amostra");
+  await tela.findByText("Conflito: atualize a amostra");
   expect(
-    (screen.getByLabelText("Motivo da atualização") as HTMLTextAreaElement)
+    (tela.getByLabelText("Motivo da atualização") as HTMLTextAreaElement)
       .value,
   ).toBe("Conferido com laboratório");
   expect(registrarLeite).toHaveBeenCalledWith(
@@ -141,36 +150,36 @@ it("falha na correção conserva valores e motivo para reenvio, sem confirmar su
     }),
   );
   expect(
-    screen.queryByText("Amostra atualizada com histórico preservado."),
+    tela.queryByText("Amostra atualizada com histórico preservado."),
   ).toBeNull();
 });
 
 
 it("registra datas conhecidas independentemente dos resultados da coleta", async () => {
   render(<QualidadeLeite podeLancar />);
-  await screen.findByText("Tanque A");
-  fireEvent.click(screen.getByRole("button", { name: "Registrar amostra" }));
-  fireEvent.change(screen.getByLabelText("Formato do laudo"), { target: { value: "formato" } });
-  fireEvent.change(screen.getByLabelText("Origem da amostra"), { target: { value: "COLETIVO" } });
-  fireEvent.change(screen.getByLabelText("Identificação da origem coletiva"), { target: { value: "Tanque B" } });
-  fireEvent.change(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-10" } });
-  fireEvent.change(screen.getByLabelText("Data do resultado laboratorial (opcional)"), { target: { value: "2026-10-15" } });
-  fireEvent.change(screen.getByLabelText("Data de recebimento do laudo (opcional)"), { target: { value: "2026-10-16" } });
-  fireEvent.submit(screen.getByRole("group", { name: "Registrar amostra de leite" }).closest("form")!);
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Registrar amostra" }));
+  await selecionarCampoLeite("Formato do laudo", "formato");
+  await selecionarCampoLeite("Origem da amostra", "COLETIVO");
+  fireEvent.change(tela.getByLabelText("Identificação da origem coletiva"), { target: { value: "Tanque B" } });
+  fireEvent.change(tela.getByLabelText("Data da coleta"), { target: { value: "2026-10-10" } });
+  fireEvent.change(tela.getByLabelText("Data do resultado laboratorial (opcional)"), { target: { value: "2026-10-15" } });
+  fireEvent.change(tela.getByLabelText("Data de recebimento do laudo (opcional)"), { target: { value: "2026-10-16" } });
+  fireEvent.submit(tela.getByRole("group", { name: "Registrar amostra de leite" }).closest("form")!);
   await waitFor(() => expect(registrarLeite).toHaveBeenCalledWith("/qualidade/amostras", 2, expect.objectContaining({ data: "2026-10-10", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", resultados: [] })));
 });
 it("correção só de datas de coleta pendente omite resultados e mantém motivo após falha", async () => {
   vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.includes("/formatos") ? [formato] : caminho.includes("/historico") ? { itens: [], total: 0, pagina: 1, tamanho: 20 } : { propriedadeId: 2, itens: [{ ...amostra, resultados: [], realizacao: "COLETA_REGISTRADA" }], total: 1, pagina: 1, tamanho: 20 });
   vi.mocked(registrarLeite).mockRejectedValue(new Error("Falha ao salvar datas"));
   render(<QualidadeLeite podeLancar />);
-  await screen.findByText("Tanque A");
-  fireEvent.click(screen.getByRole("button", { name: "Abrir amostra" }));
-  const detalhe = within(screen.getByRole("region", { name: "Detalhe da amostra" }));
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  const detalhe = within(tela.getByRole("region", { name: "Detalhe da amostra" }));
   fireEvent.change(detalhe.getByLabelText("Data de recebimento do laudo (opcional)"), { target: { value: "2026-10-16" } });
   fireEvent.change(detalhe.getByLabelText("Motivo da atualização"), { target: { value: "Conferido no laudo" } });
   expect((detalhe.getByRole("button", { name: "Confirmar atualização" }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(detalhe.getByRole("button", { name: "Confirmar atualização" }));
-  await screen.findByText("Falha ao salvar datas");
+  await tela.findByText("Falha ao salvar datas");
   const payload = vi.mocked(registrarLeite).mock.calls[0][2];
   expect(payload).toMatchObject({ versaoEsperada: 2, motivo: "Conferido no laudo", dataRecebimentoLaudo: "2026-10-16" });
   expect(payload).not.toHaveProperty("resultados");
@@ -181,11 +190,12 @@ it("limpa explicitamente uma data, preserva a outra e mostra datas do histórico
   const item = { ...amostra, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z" };
   vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.includes("/formatos") ? [formato] : caminho.includes("/historico") ? { itens: [{ id: "h", acao: "DATAS_CORRIGIDAS", em: "2026-10-23T12:00:00Z", antes: { dataResultadoLaboratorial: null }, depois: { dataResultadoLaboratorial: "2026-10-15" }, motivo: "Conferido" }], total: 1, pagina: 1, tamanho: 20 } : { propriedadeId: 2, itens: [item], total: 1, pagina: 1, tamanho: 20 });
   render(<QualidadeLeite podeLancar />);
-  expect(await screen.findByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
-  expect(screen.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
-  expect(screen.getByText(/Cadastro da amostra: 23\/10\/2026/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Abrir amostra" }));
-  const detalhe = within(screen.getByRole("region", { name: "Detalhe da amostra" }));
+  await tela.findByText("Tanque A");
+  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  expect(await tela.findByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
+  expect(tela.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
+  expect(tela.getByText(/Cadastro da amostra: 23\/10\/2026/)).toBeTruthy();
+  const detalhe = within(tela.getByRole("region", { name: "Detalhe da amostra" }));
   await detalhe.findByText(/Datas corrigidas/);
   expect(detalhe.getByText("Resultado laboratorial: Não informado")).toBeTruthy();
   fireEvent.change(detalhe.getByLabelText("Data do resultado laboratorial (opcional)"), { target: { value: "" } });

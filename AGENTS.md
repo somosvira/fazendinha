@@ -37,7 +37,7 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 ## Dados e validação
 
 - Preserve alterações locais de outras tarefas. Não faça reset do checkout, limpeza de bancos, remoção de volumes ou reexecução de cargas para validar uma mudança comum.
-- Use sempre e somente o PostgreSQL local `fazendinha_seedatev3` no desenvolvimento e na validação local. Não crie outro banco, clone ou cópia temporária para testes ou ensaio de migration. O seed é `seedatev3`; preserve seus dados e manifesto. Leia [desenvolvimento](docs/desenvolvimento.md).
+- Use sempre e somente o PostgreSQL local `fazendinha_seedatev3` no desenvolvimento e na validação local. Não crie outro banco, clone ou cópia temporária para testes ou ensaio de migration. O seed único é `seed`; preserve os dados e o manifesto `server/.seed/`. Substituição da base exige autorização explícita, backup e manutenção separada da carga normal. Leia [desenvolvimento](docs/desenvolvimento.md).
 - As flags `AUTH_DB_INTEGRATION`, `PECUARIA_DB_INTEGRATION` e `FINANCE_DB_INTEGRATION` habilitam escritas reais. Antes de executar integração local, confira que cada teste cria/remove apenas suas próprias fixtures e usa `fazendinha_seedatev3`; não rode rotinas de reset, limpeza global ou criação de bancos. Casos que exigem recriar estrutura ou banco ficam restritos ao CI externo.
 - Rode os testes e builds proporcionais ao que mudou. Separe evidência automatizada de homologação manual e informe o que não foi executado. Não aprove nem resete marcações de roteiros pela atualização documental.
 - Commits seguem `tipo(escopo): descrição` em PT-BR. Não publique, faça deploy ou altere ambientes como efeito colateral de uma tarefa local.

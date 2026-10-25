@@ -1,5 +1,6 @@
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { ExportacaoProducaoLeite } from "./ExportacaoProducaoLeite";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva, comPropriedade } from "../../../propriedadeScope";
@@ -295,7 +296,8 @@ export function RelatoriosLeite({
     }
   }
   return (
-    <section className="leite-operacoes">
+    <section className="leite-operacoes leite-comercial-consulta">
+      <ExportacaoProducaoLeite podeExportar={podeExportar} />
       <h2 className="leite-titulo-secao">Relatórios preservados de leite</h2>
       <p>
         Uma emissão conserva os dados consultados e a cobertura daquele momento.

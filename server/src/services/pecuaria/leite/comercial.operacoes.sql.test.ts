@@ -1,19 +1,16 @@
+import { contemSql } from "../../../test/sql-baseline.js";
 import { readFileSync } from "node:fs";
 import { expect, it } from "vitest";
 const sql = readFileSync(
   new URL(
-    "../../../../prisma/migrations/20261021120000_operacao_comercial_leite/migration.sql",
+    "../../../../prisma/migrations/20261025000000_base_unificada/migration.sql",
     import.meta.url,
   ),
   "utf8",
 );
-it("expande sem converter vendas ou refaturar histórico; SQL estrutural não comprova PostgreSQL", () => {
-  expect(sql).toContain(
-    "ALTER TYPE public.\"OrigemMovimentoEstoque\" ADD VALUE 'RETIRADA_LEITE'",
-  );
-  expect(sql).toContain(
-    '"OperacaoComercialLeite_propriedadeId_parceiroId_inicio_fim_key"',
-  );
+it("instala o estado final sem faturar histórico; SQL estrutural não comprova PostgreSQL", () => {
+  expect(contemSql(sql, "'RETIRADA_LEITE'")).toBe(true);
+  expect(contemSql(sql, '"OperacaoComercialLeite_propriedadeId_parceiroId_inicio_fim_key"')).toBe(true);
   expect(sql).not.toMatch(
     /INSERT INTO public\."(Operacao|MovimentoEstoque|TransacaoFinanceira)"/,
   );
@@ -23,19 +20,13 @@ it("expande sem converter vendas ou refaturar histórico; SQL estrutural não co
     "DetalheFechamentoLeite",
     "ComprovanteRetiradaOperacaoLeite",
   ])
-    expect(sql).toContain(`"${t}_imutavel" BEFORE UPDATE OR DELETE`);
-  expect(sql).toContain('"RetiradaOperacaoLeite_aberta" BEFORE INSERT');
-  expect(sql).toContain("FOR NO KEY UPDATE");
-  expect(sql).toContain('q IS DISTINCT FROM f."volumeReconhecido"');
-  expect(sql).toContain(
-    'f."valorTotal"<>round(f."volumeReconhecido"*f."precoUnitario",2)+f.ajuste',
-  );
-  expect(sql).toContain('f."corrigeOperacaoId" IS DISTINCT FROM anterior');
-  expect(sql).toContain(
-    '"Operacao_fechamentoLeite_conferir" AFTER INSERT OR UPDATE',
-  );
-  expect(sql).toContain(
-    '"Movimento_retiradaComercialLeite_conferir" AFTER INSERT OR UPDATE',
-  );
-  expect(sql).toContain("DEFERRABLE INITIALLY DEFERRED");
+    expect(contemSql(sql, `"${t}_imutavel" BEFORE UPDATE OR DELETE`)).toBe(true);
+  expect(contemSql(sql, '"RetiradaOperacaoLeite_aberta" BEFORE INSERT')).toBe(true);
+  expect(contemSql(sql, "FOR NO KEY UPDATE")).toBe(true);
+  expect(contemSql(sql, 'q IS DISTINCT FROM f."volumeReconhecido"')).toBe(true);
+  expect(contemSql(sql, 'f."valorTotal"<>round(f."volumeReconhecido"*f."precoUnitario",2)+f.ajuste')).toBe(true);
+  expect(contemSql(sql, 'f."corrigeOperacaoId" IS DISTINCT FROM anterior')).toBe(true);
+  expect(contemSql(sql, '"Operacao_fechamentoLeite_conferir" AFTER INSERT OR UPDATE')).toBe(true);
+  expect(contemSql(sql, '"Movimento_retiradaComercialLeite_conferir" AFTER INSERT OR UPDATE')).toBe(true);
+  expect(contemSql(sql, "DEFERRABLE INITIALLY DEFERRED")).toBe(true);
 });

@@ -46,14 +46,21 @@ export async function linhasProducaoGeralTx(
       animaisOrigem: Array.isArray(m?.animaisOrigem) ? m.animaisOrigem.filter((id): id is string => typeof id === "string") : [],
       fonte: "GERAL" as const,
       tanqueId: m?.tanqueId ?? null,
+      medicaoGeralId: m?.id ?? null,
+      recipiente: m?.recipiente ?? null,
+      sessaoId: s.id,
       data: d.dataOperacional.toISOString().slice(0, 10),
       animalId: null,
-      brinco: m ? porTanque.get(m.tanqueId)?.nome ?? "Tanque da aferição" : "Ordenha sem aferição",
-      nome: m ? porTanque.get(m.tanqueId)?.nome ?? "Tanque da aferição" : "Ordenha sem aferição",
+      brinco: m ? (m.tanqueId ? porTanque.get(m.tanqueId)?.nome : null) ?? m.recipiente ?? "Recipiente da aferição" : "Ordenha sem aferição",
+      nome: m ? (m.tanqueId ? porTanque.get(m.tanqueId)?.nome : null) ?? m.recipiente ?? "Recipiente da aferição" : "Ordenha sem aferição",
       finalidade: null,
       posicaoId: s.posicaoId,
       ordenha: s.nome,
-      natureza: m?.entradasEstoque[0]?.classificacoes[0]?.natureza ?? m?.natureza ?? "A_CLASSIFICAR",
+      natureza: (() => {
+        const naturezas = new Set(m?.entradasEstoque.map(e => e.classificacoes[0]?.natureza ?? "NAO_INFORMADA") ?? []);
+        const natureza = naturezas.size === 1 ? [...naturezas][0] : naturezas.size > 1 ? "NAO_INFORMADA" : m?.natureza;
+        return !natureza || natureza === "NAO_INFORMADA" ? "A_CLASSIFICAR" : natureza;
+      })(),
       estado: m ? "MEDIDO" : "PENDENTE",
       litros: m?.litros.toNumber() ?? null,
       confirmada: !!m?.entradasEstoque.length,

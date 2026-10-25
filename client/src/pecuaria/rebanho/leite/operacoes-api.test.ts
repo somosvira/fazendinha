@@ -9,7 +9,7 @@ beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockReset();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it("reenvia a mesma chave e o mesmo payload após resposta perdida", async () => {
   fetchMock.mockRejectedValueOnce(new Error("Conexão perdida"));
   await expect(
@@ -57,4 +57,18 @@ it("propaga rejeição de domínio sem mascará-la como sucesso", async () => {
   expect(await consultarLeite("/estoque?produtoId=p", 2)).toEqual({
     quantidadeLitros: "10",
   });
+});
+it("preserva o reenvio sem armazenamento do navegador e renova depois do sucesso", async () => {
+  vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new Error("Storage bloqueado"); });
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("Storage bloqueado"); });
+  vi.spyOn(Storage.prototype, "removeItem").mockImplementation(() => { throw new Error("Storage bloqueado"); });
+  fetchMock.mockRejectedValueOnce(new Error("Resposta perdida")).mockResolvedValue(new Response(JSON.stringify({ id: "nova" })));
+  await expect(registrarLeite("/estoque/teste-storage", 2, { litros: 15 })).rejects.toThrow("Resposta perdida");
+  await registrarLeite("/estoque/teste-storage", 2, { litros: 15 });
+  const chave = JSON.parse(fetchMock.mock.calls[0][1].body).chave;
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body).chave).toBe(chave);
+  // Outra resposta independente permite verificar uma nova operação com o mesmo payload.
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: "outra" })));
+  await registrarLeite("/estoque/teste-storage", 2, { litros: 15 });
+  expect(JSON.parse(fetchMock.mock.calls[2][1].body).chave).not.toBe(chave);
 });

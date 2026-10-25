@@ -197,3 +197,19 @@
   .leite-navegacao > .abas-navegacao { flex-basis: 100%; }
   .leite-navegacao > .leite-mais-rotinas { margin-left: auto; }
 }
+
+.leite-cabecalho-acoes, .leite-ferramentas { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.leite-ferramentas { justify-content: flex-end; margin-top: 20px; }
+.leite-sete-rotinas > .abas-navegacao { width: 100%; }
+.leite-sete-rotinas [role="tablist"] { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); }
+.leite-sete-rotinas [role="tab"] { grid-column: span 3; white-space: normal; justify-content: center; }
+.leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 4; }
+@media (max-width: 640px) {
+  .leite-sete-rotinas [role="tab"] { grid-column: span 6; }
+  .leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 6; }
+  .leite-sete-rotinas [role="tab"]:last-child { grid-column: span 12; }
+}
+
+/* O tablist compartilhado tem altura de uma linha; sete rotinas usam duas. */
+:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: grid; height: auto; min-height: 44px; width: 100%; align-items: stretch; }
+:root .app-main .leite-sete-rotinas [role="tab"] { min-width: 0; }

@@ -51,3 +51,12 @@ it("dia geral sem tanques não é completo mesmo sem animais elegíveis", async 
   expect(r.coberturaCompleta).toBe(false);
   expect(r.totais.litros).toBeNull();
 });
+
+
+it("agrupa por mês com turnos dinâmicos e total conhecido de todo o recorte", async () => {
+  const r = await consultarProducaoLeite(2, { ...filtro, agrupamento: "MES" });
+  expect(r.agrupamento).toBe("MES");
+  expect(r.grupos.map(g => [g.periodo, g.litros])).toEqual([["2026-10", 10], ["2026-11", 20]]);
+  expect(r.grupos[0].turnos[0]).toMatchObject({ posicaoId: "manhã", nome: "Manhã", litros: 10 });
+  expect(r.total).toBe(4); expect(r.itens).toHaveLength(1);
+});

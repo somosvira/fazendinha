@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -47,14 +48,9 @@ it("descarta uma quantidade explícita da origem sem atribuir destinatário ou r
       : { propriedadeId: 2, itens: [], total: 0, tamanho: 20 },
   );
   render(<DescarteLeite podeLancar />);
-  await screen.findByRole("option", { name: "Leite" });
-  fireEvent.change(screen.getByLabelText("Produto para descarte"), {
-    target: { value: "leite" },
-  });
-  await screen.findByRole("option", { name: /Tarde/ });
-  fireEvent.change(screen.getByLabelText("Origem descartada"), {
-    target: { value: "origem" },
-  });
+  fireEvent.click(screen.getByRole("button", { name: "Registrar descarte" }));
+  await selecionarCampoLeite("Produto para descarte", "leite");
+  await selecionarCampoLeite("Origem descartada", "origem");
   fireEvent.change(screen.getByLabelText("Litros descartados"), {
     target: { value: "3,5" },
   });

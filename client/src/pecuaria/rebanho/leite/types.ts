@@ -28,6 +28,9 @@ export interface PosicaoOrdenha {
   ordem: number;
   horario?: string | null;
 }
+export type CriterioColostro =
+  | { tipo: "PRIMEIRA_ORDENHA" }
+  | { tipo: "JANELA_DIAS"; dias: number; incluiD0: true };
 export interface ConfiguracaoOrdenha {
   id: string | null;
   propriedadeId: number;
@@ -36,6 +39,7 @@ export interface ConfiguracaoOrdenha {
   fonteProducao?: "INDIVIDUAL" | "GERAL";
   intervaloIndividualQuantidade?: number;
   intervaloIndividualUnidade?: "DIAS" | "MESES";
+  criterioColostro?: CriterioColostro | null;
   ordenhas: PosicaoOrdenha[];
 }
 export interface MedicaoLeite {
@@ -107,6 +111,7 @@ export interface SalvarFolhaInput {
   motivoCorrecao?: string | null;
 }
 export interface ConfiguracaoInput {
+  criterioColostro?: CriterioColostro | null;
   fonteProducao?: "INDIVIDUAL" | "GERAL";
   intervaloIndividualQuantidade?: number;
   intervaloIndividualUnidade?: "DIAS" | "MESES";

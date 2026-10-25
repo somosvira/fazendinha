@@ -1,6 +1,6 @@
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { registrarLeite } from "./operacoes-api";
@@ -127,7 +127,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Conferência do histórico</h2>
+      <h2 className="leite-titulo-secao">Conferir importação de leite</h2>
       <p>
         Prepare o lote a partir dos registros reais da fazenda. Esta prévia
         compara animais, ordenhas, datas e medições existentes. Não importa
@@ -219,7 +219,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
               !linhas.length ||
               referencia.trim().length < 5
             }>
-            {ocupado ? "Conferindo lote…" : "Conferir sem importar"}
+            {ocupado ? "Conferindo lote…" : "Conferir arquivo sem importar"}
           </Button>
         </fieldset>
       </form>

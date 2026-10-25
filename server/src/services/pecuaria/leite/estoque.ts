@@ -1,4 +1,5 @@
-import { confirmarMedicaoGeralSchema } from "./tanques.schemas.js";
+import { confirmarMedicaoGeralSchema, confirmarParcelasOrdenhaSchema } from "./tanques.schemas.js";
+import { conferirContextoParcelaTx, conferirSegregacaoParcelas } from "./parcelas-contexto.js";
 import { conferirAnimaisOrigemGeralTx } from "./producao.js";
 import { evidenciaFinalidadeLeite, exigirFinalidadeLeite } from "./finalidade.calc.js";
 import { travarAnimais } from "../rebanho/regras.js";
@@ -332,35 +333,73 @@ export async function consultarEstoqueLeite(produtoId: string, contexto: Context
       versaoApuracao: b.entrada.apuracoes[0]?.versao ?? 0 })) };
 }
 
-/** Confirma a aferição inteira de um tanque; os controles individuais permanecem independentes. */
+/** Confirma uma parcela inteira, preservando a chave e o retorno do endpoint legado. */
 export async function confirmarProducaoGeral(input: z.infer<typeof confirmarMedicaoGeralSchema>, contexto: Contexto) {
- const dados = confirmarMedicaoGeralSchema.parse(input);
- return transacaoEstoque(tx => operacaoIdempotenteTx(tx, { ...dados, propriedadeId: contexto.propriedadeId }, contexto.usuarioId, "CONFIRMAR_PRODUCAO_GERAL", async () => {
+  const dados = confirmarMedicaoGeralSchema.parse(input);
+  return transacaoEstoque(tx => confirmarProducaoGeralTx(tx, dados, contexto));
+}
+export async function confirmarProducaoGeralTx(tx: Prisma.TransactionClient, dados: z.infer<typeof confirmarMedicaoGeralSchema>, contexto: Contexto,
+  referenciaTravada?: { sessaoId: string; animaisOrigem: Prisma.JsonValue }) {
+ return operacaoIdempotenteTx(tx, { ...dados, propriedadeId: contexto.propriedadeId }, contexto.usuarioId, "CONFIRMAR_PRODUCAO_GERAL", async () => {
   const where = { id: dados.medicaoId, sessao: { dia: { propriedadeId: contexto.propriedadeId } } };
-  const ref = await tx.medicaoGeralLeite.findFirst({ where });
+  const ref = referenciaTravada ?? await tx.medicaoGeralLeite.findFirst({ where });
   if (!ref) throw new RebanhoError("NAO_ENCONTRADO", "Aferição não encontrada neste sítio");
   const animais = z.array(z.string().uuid()).parse(ref.animaisOrigem);
-  await travarAnimais(tx, animais);
-  await tx.$queryRaw`SELECT id FROM pecuaria."SessaoOrdenha" WHERE id=${ref.sessaoId} FOR NO KEY UPDATE`;
+  if (!referenciaTravada) {
+    await travarAnimais(tx, animais);
+    await tx.$queryRaw`SELECT id FROM pecuaria."SessaoOrdenha" WHERE id=${ref.sessaoId} FOR NO KEY UPDATE`;
+  }
   const m = await tx.medicaoGeralLeite.findFirstOrThrow({ where, include: { tanque: true, sessao: { include: { dia: { include: { configuracao: true } } } }, entradasEstoque: { where: { status: "CONFIRMADA" } } } });
-  if (m.versao !== dados.versaoEsperada || JSON.stringify(ref.animaisOrigem) !== JSON.stringify(m.animaisOrigem)) throw new RebanhoError("CONFLITO", "A aferição mudou; recarregue antes de confirmar");
+  if (m.versao !== dados.versaoEsperada || ref.sessaoId !== m.sessaoId || JSON.stringify(ref.animaisOrigem) !== JSON.stringify(m.animaisOrigem)) throw new RebanhoError("CONFLITO", "A aferição mudou; recarregue antes de confirmar");
   if (m.entradasEstoque.length) throw new RebanhoError("CONFLITO", "Esta aferição já gerou entrada de estoque");
   if (m.sessao.dia.configuracao.fonteProducao !== "GERAL") throw new RebanhoError("CONFLITO", "A data não está configurada para produção geral");
   if (!m.litros.gt(0)) throw new RebanhoError("VALIDACAO", "Uma aferição zero é preservada, mas não gera entrada de estoque");
   const data = m.sessao.dia.dataOperacional;
   if (data > hojeFazendaDate()) throw new RebanhoError("VALIDACAO", "Não confirme produção futura");
-  const origens = await conferirAnimaisOrigemGeralTx(tx, contexto.propriedadeId, data, animais);
-  const carencia = await conferirCarenciaProducaoTx(tx, { data, horario: m.sessao.horario, animalIds: animais });
-  if (m.natureza === "COMERCIAL" && (!animais.length || carencia.animais.some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA"))) throw new RebanhoError("CONFLITO", "Identifique os animais que compõem o tanque e confira suas carências antes da confirmação comercial. Não é necessário informar litros por animal.");
+  // Registros anteriores à configuração de colostro não recebem regra ou declaração presumida.
+  const contextoParcela = m.criterioColostroSnapshot == null ? null : await conferirContextoParcelaTx(tx, contexto.propriedadeId, data, m.sessao.horario,
+    m.sessao.dia.configuracao, { natureza: z.enum(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"]).parse(m.natureza), animaisOrigem: animais,
+      declaracaoDireta: m.declaracaoDireta == null ? null : z.object({ justificativa: z.string().min(5) }).parse(m.declaracaoDireta), primeiraOrdenhaColostro: m.primeiraOrdenhaColostro }, m.id);
+  const origens = contextoParcela?.origens ?? await conferirAnimaisOrigemGeralTx(tx, contexto.propriedadeId, data, animais);
+  const carencia = contextoParcela?.carencia ?? await conferirCarenciaProducaoTx(tx, { data, horario: m.sessao.horario, animalIds: animais });
+  if (m.natureza === "COMERCIAL" && (!animais.length || carencia.animais.some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA"))) throw new RebanhoError("CONFLITO", "Identifique os animais que compõem a parcela e confira suas carências antes da confirmação comercial. Não é necessário informar litros por animal.");
+  const parcelasDaSessao = await tx.medicaoGeralLeite.findMany({ where: { sessaoId: m.sessaoId }, select: { tanqueId: true, recipiente: true, natureza: true } });
+  conferirSegregacaoParcelas(parcelasDaSessao);
   await exigirProdutoLeiteTx(tx, dados.produtoId);
   await travarValorizacaoTx(tx, [dados.produtoId]);
   await exigirPeriodoAberto(tx, contexto.propriedadeId, data);
   await conferirCronologiaTx(tx, dados.produtoId, contexto.propriedadeId, data);
   if (await tx.movimentoEstoque.count({ where: { produtoId: dados.produtoId, metodoValorizacao: { not: METODO_LEITE } } })) throw new RebanhoError("CONFLITO", "Produto possui movimentos de outra valorização; regularize as origens antes de confirmar");
-  const movimento = await tx.movimentoEstoque.create({ data: { produtoId: dados.produtoId, propriedadeId: contexto.propriedadeId, tipo: "ENTRADA", origem: "PRODUCAO", data, quantidade: m.litros, custoUnitario: null, valorTotal: null, metodoValorizacao: METODO_LEITE, criadoPorId: autor(contexto.usuarioId), observacao: `Ordenha ${m.sessao.nome} · ${m.tanque.nome}` } });
-  const entrada = await tx.entradaProducaoLeite.create({ data: { sessaoId: m.sessaoId, medicaoGeralId: m.id, versaoSessao: m.sessao.versao, movimentoId: movimento.id, chave: dados.chave, hash: hashConfirmacao({ ...dados, propriedadeId: contexto.propriedadeId }), criadoPorId: autor(contexto.usuarioId), snapshot: { versao: 5, fonte: "GERAL", medicaoGeralId: m.id, versaoMedicaoGeral: m.versao, litros: m.litros.toString(), tanqueId: m.tanqueId, reguaMm: m.reguaMm?.toString() ?? null, origemLitros: m.origemLitros, animaisOrigem: origens, carencia, natureza: m.natureza, motivoNatureza: dados.motivoNatureza }, classificacoes: { create: { versao: 1, natureza: "NAO_INFORMADA", motivo: "Aferição geral aguardando declaração da natureza", criadoPorId: autor(contexto.usuarioId) } } } });
+  const movimento = await tx.movimentoEstoque.create({ data: { produtoId: dados.produtoId, propriedadeId: contexto.propriedadeId, tipo: "ENTRADA", origem: "PRODUCAO", data, quantidade: m.litros, custoUnitario: null, valorTotal: null, metodoValorizacao: METODO_LEITE, criadoPorId: autor(contexto.usuarioId), observacao: `Ordenha ${m.sessao.nome} · ${m.tanque?.nome ?? m.recipiente}` } });
+  const entrada = await tx.entradaProducaoLeite.create({ data: { sessaoId: m.sessaoId, medicaoGeralId: m.id, versaoSessao: m.sessao.versao, movimentoId: movimento.id, chave: dados.chave, hash: hashConfirmacao({ ...dados, propriedadeId: contexto.propriedadeId }), criadoPorId: autor(contexto.usuarioId), snapshot: { versao: 6, fonte: "GERAL", medicaoGeralId: m.id, versaoMedicaoGeral: m.versao, litros: m.litros.toString(), tanqueId: m.tanqueId, recipiente: m.recipiente ?? null, reguaMm: m.reguaMm?.toString() ?? null, origemLitros: m.origemLitros, animaisOrigem: origens, carencia, natureza: m.natureza, motivoNatureza: dados.motivoNatureza,
+    declaracaoDireta: m.declaracaoDireta ?? null, primeiraOrdenhaColostro: m.primeiraOrdenhaColostro ?? null, criterioColostroSnapshot: m.criterioColostroSnapshot ?? null }, classificacoes: { create: { versao: 1, natureza: "NAO_INFORMADA", motivo: "Aferição geral aguardando declaração da natureza", criadoPorId: autor(contexto.usuarioId) } } } });
   await classificarEntradaLeiteTx(tx, { entradaId: entrada.id, natureza: z.enum(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"]).parse(m.natureza), motivo: dados.motivoNatureza, versaoEsperada: 1 }, contexto);
   await auditar(tx, { entidade: "EntradaProducaoLeite", entidadeId: entrada.id, acao: "CONFIRMADA", usuarioId: contexto.usuarioId, depois: entrada });
   return { id: entrada.id, quantidadeLitros: m.litros.toString() };
- }));
+ });
+}
+
+/** Um conjunto selecionado confirma por inteiro. A ordem das travas é animais, sessões, produtos. */
+export async function confirmarParcelasOrdenha(input: z.infer<typeof confirmarParcelasOrdenhaSchema>, contexto: Contexto) {
+  const dados = confirmarParcelasOrdenhaSchema.parse(input);
+  return transacaoEstoque(async tx => {
+    // Reserva todas as chaves antes de animais/sessão/produtos, inclusive as usadas pelo adaptador individual.
+    const chaves = [dados.chave, ...dados.parcelas.map(p => p.chave)].map(chave => `pec-requisicao:${chave}`);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${chaves}::text[]) AS k) AS chaves ORDER BY h`;
+    return operacaoIdempotenteTx(tx, { ...dados, propriedadeId: contexto.propriedadeId }, contexto.usuarioId, "CONFIRMAR_PARCELAS_ORDENHA", async () => {
+    const refs = await tx.medicaoGeralLeite.findMany({ where: { id: { in: dados.parcelas.map(p => p.medicaoId) }, sessao: { dia: { propriedadeId: contexto.propriedadeId } } } });
+    if (refs.length !== dados.parcelas.length) throw new RebanhoError("NAO_ENCONTRADO", "Confira as parcelas selecionadas neste sítio");
+    if (new Set(refs.map(r => r.sessaoId)).size !== 1) throw new RebanhoError("VALIDACAO", "Selecione parcelas de uma única ordenha");
+    await travarAnimais(tx, [...new Set(refs.flatMap(r => z.array(z.string()).parse(r.animaisOrigem)))]);
+    const sessaoId = refs[0].sessaoId;
+    await tx.$queryRaw`SELECT id FROM pecuaria."SessaoOrdenha" WHERE id=${sessaoId} FOR NO KEY UPDATE`;
+    await travarValorizacaoTx(tx, [...new Set(dados.parcelas.map(p => p.produtoId))].sort());
+    const entradas = [];
+    for (const p of dados.parcelas) {
+      const ref = refs.find(r => r.id === p.medicaoId)!;
+      entradas.push({ ...await confirmarProducaoGeralTx(tx, p, contexto, ref), medicaoId: p.medicaoId });
+    }
+    return { entradas };
+    });
+  });
 }

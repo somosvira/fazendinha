@@ -1,3 +1,6 @@
+import { ConfiguracoesProducaoLeite } from "../pecuaria/rebanho/leite/ConfiguracoesProducaoLeite";
+import { ProgramacaoRetirada } from "../pecuaria/rebanho/leite/UIProgramacaoRetirada";
+import "../pecuaria/rebanho/leite/operacoes.css";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { PaginaCadastroProtocolo } from "../pecuaria/rebanho/protocolos/PaginaCadastroProtocolo";
 import { ConfiguracaoReprodutiva } from "../pecuaria/rebanho/reproducao/ConfiguracaoReprodutiva";
@@ -5,7 +8,7 @@ import { ConsultaPorSitio } from "../pecuaria/rebanho/reproducao/ConsultaPorSiti
 import { Iatf } from "../pecuaria/rebanho/reproducao/Iatf";
 import { RegrasSanitarias } from "../pecuaria/rebanho/reproducao/RegrasSanitarias";
 import { useEffect, useRef, useState } from "react";
-import { Beef, Dna, HeartPulse, Leaf, ChevronRight } from "lucide-react";
+import { Beef, Dna, HeartPulse, Leaf, ChevronRight, Milk } from "lucide-react";
 import { navegarPara } from "../router";
 import { Cadastros, type AbaCadastroRebanho } from "../pecuaria/rebanho/telas/Cadastros";
 import { CadastrosSanitarios, type AbaCadastroSanitario } from "../pecuaria/rebanho/sanidade/CadastrosSanitarios";
@@ -14,6 +17,7 @@ import { BuscaLista } from "./BuscaLista";
 const DESCRICOES: Record<string, string> = { rebanho: "Organize a classificação dos animais e os motivos das saídas.", genetica: "Mantenha raças, filiação externa e identidade dos materiais.", sanidade: "Prepare protocolos e catálogos para os registros sanitários." };
 
 const GRUPOS = [
+  { id: "producao", nome: "Produção de leite", icon: Milk, itens: [{ id: "leite", nome: "Ordenhas, controle individual e tanques", href: "/configuracoes/pecuaria/producao/leite" }, { id: "coleta", nome: "Rotina de coleta", href: "/configuracoes/pecuaria/producao/coleta" }] },
   { id: "rebanho", nome: "Rebanho", icon: Beef, itens: [{ id: "categorias", nome: "Categorias de animais", rebanho: "categorias" }, { id: "motivos", nome: "Motivos de baixa", rebanho: "motivos" }] },
   { id: "genetica", nome: "Genética", icon: Dna, itens: [{ id: "racas", nome: "Raças", rebanho: "racas" }, { id: "genitores", nome: "Genitores externos", rebanho: "genitores" }, { id: "material-genetico", nome: "Materiais genéticos", rebanho: "material-genetico" }] },
   { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
@@ -41,6 +45,7 @@ export function ConfiguracoesPecuaria({ podeLancar }: { podeLancar: boolean }) {
    window.addEventListener("popstate", sync);
    return () => window.removeEventListener("popstate", sync);
  }, []);
+ if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);
  const item = grupo?.itens.find(i => i.id === partes[3]);

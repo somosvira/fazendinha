@@ -1,6 +1,14 @@
-import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { SubTabs } from "../../../components/SubTabs";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { CampoFiltro } from "../../../financeiro/PainelFiltros";
+import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
+import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import {
@@ -27,6 +35,7 @@ const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
 export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   const sitio = getPropriedadeAtiva();
+  const [aba, setAba] = useState<"amostras" | "resultados">("amostras");
   const [propriedadeResolvida, setPropriedadeResolvida] = useState<
     number | null
   >(sitio);
@@ -37,6 +46,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
     propriedadeId: number;
   } | null>(null);
   const [data, setData] = useState(hojeOperacional);
+  const filtros = useRascunhoConsulta({ data }, { data: hojeOperacional() }, v => { setData(v.data); setPagina(1); setSelecionada(null); });
   const [pagina, setPagina] = useState(1),
     [revisao, setRevisao] = useState(0);
   const [erro, setErro] = useState(""),
@@ -62,7 +72,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
         total: number;
         propriedadeId: number;
       }>(
-        `/qualidade/amostras?inicio=${data.slice(0, 7)}-01&fim=${data}&pagina=${pagina}&tamanho=20`,
+        `/qualidade/amostras?fim=${data}&pagina=${pagina}&tamanho=20`,
         sitio,
       ),
     ])
@@ -104,25 +114,9 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Qualidade do leite</h2>
-      <p>
-        Registre a coleta individual ou a origem coletiva e transcreva o laudo
-        no formato e na unidade informados pelo laboratório.
-      </p>
-      <div className="leite-form-inline">
-        <label>
-          Consultar até
-          <input
-            type="date"
-            required
-            value={data}
-            onChange={(e) => {
-              setData(e.target.value);
-              setPagina(1);
-              setSelecionada(null);
-            }}
-          />
-        </label>
+      <PageHeader titulo="Qualidade do leite" descricao="Amostras individuais e coletivas, com o histórico de cada laudo." />
+      <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
+      {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><input type="date" required value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
           <Button disabled={!propriedadeResolvida}
             onClick={() => {
@@ -141,13 +135,13 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
             Criar formato de laudo
           </Button>
         )}
-      </div>
-      <HistoricoParametrosQualidade sitio={sitio} formatos={formatos} data={data} revisao={revisao} />
-      {erro && <p role="alert">{erro}</p>}
+      </>} />}
+      {aba === "resultados" && <HistoricoParametrosQualidade sitio={sitio} formatos={formatos} data={data} revisao={revisao} />}
+      {erro && <p role="alert">{erro} <Button type="button" variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
       {carregando && <p role="status">Consultando laudos…</p>}
       {(novoFormato || derivar) && (
-        <EditorFormato
+        <Dialog open onOpenChange={v => { if (!v) { setNovoFormato(false); setDerivar(null); } }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Formato do laudo</DialogTitle></DialogHeader><EditorFormato
           key={derivar?.id ?? "novo"}
           anterior={derivar}
           sitio={sitio}
@@ -160,20 +154,20 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               "Formato de laudo salvo. As amostras anteriores conservam a versão original.",
             )
           }
-        />
+        /></DialogContent></Dialog>
       )}
       {nova && (
-        <NovaAmostra
+        <Dialog open onOpenChange={v => { if (!v) setNova(false); }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar amostra</DialogTitle></DialogHeader><NovaAmostra
           formatos={formatos.filter((f) => f.ativo)}
           sitio={propriedadeResolvida}
           onCancelar={() => setNova(false)}
           onSalvo={() => salvo("Amostra registrada.")}
-        />
+        /></DialogContent></Dialog>
       )}
-      {amostras && (
+      {aba === "amostras" && amostras && (
         <>
           <p>
-            Laudos de {data.slice(0, 7)}-01 até {data} · {amostras.total}{" "}
+            Amostras até {data} · {amostras.total}{" "}
             registro(s).
           </p>
           {!amostras.itens.length && (
@@ -182,82 +176,26 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               resultado ainda não chegou.
             </p>
           )}
-          <div
-            className="leite-tabela-scroll"
-            tabIndex={0}
-            aria-label="Tabela de laudos, com rolagem horizontal"
-          >
-            <Table semContainer className="leite-laudos-tabela">
-              <TableCaption>Amostras e resultados</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data e origem</TableHead>
-                  <TableHead>Laudo e resultados</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {amostras.itens.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell>
-                      {a.data.slice(0, 10).split("-").reverse().join("/")}
-                      <small>
-                        {a.sujeito.tipo === "ANIMAL"
-                          ? `${a.animal?.brinco ?? "Sem brinco"} · ${a.animal?.nome ?? "Sem nome"}`
-                          : a.sujeito.origem}
-                      </small>
-                    </TableCell>
-                    <TableCell>
-                      {a.formatoSnapshot.nome}
-                      <Resultados amostra={a} />
-                      <DatasQualidade {...a} />
-                    </TableCell>
-                    <TableCell>
-                      {a.status === "ANULADO"
-                        ? "Anulada"
-                        : a.realizacao === "COLETA_REGISTRADA"
-                          ? "Aguardando resultado"
-                          : "Resultado informado"}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outline" className="leite-secondary"
-                        onClick={() => {
-                          setSelecionada(a);
-                          setNova(false);
-                        }}>
-                        Abrir amostra
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          <div className="leite-form-inline">
-            <Button variant="outline" className="leite-secondary"
-              disabled={pagina === 1 || carregando}
-              onClick={() => setPagina((p) => p - 1)}>
-              Página anterior
-            </Button>
-            <span>Página {pagina}</span>
-            <Button variant="outline" className="leite-secondary"
-              disabled={pagina * 20 >= amostras.total || carregando}
-              onClick={() => setPagina((p) => p + 1)}>
-              Próxima página
-            </Button>
-          </div>
+          <TabelaFinanceira compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
+            { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
+            { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
+            { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },
+            { chave: "formato", titulo: "Formato", celula: a => a.formatoSnapshot.nome },
+            { chave: "situacao", titulo: "Situação", celula: a => a.status === "ANULADO" ? "Anulada" : a.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado" },
+            { chave: "acoes", titulo: "Ações", acoes: true, celula: a => <Button variant="outline" onClick={() => { setSelecionada(a); setNova(false); }}>Abrir amostra</Button> },
+          ]} />
+          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(amostras.total / 20))} total={amostras.total} porPagina={20} rotulo="Paginação das amostras" substantivo="amostras" idSelect="pagina-amostras-leite" onPagina={setPagina} />
         </>
       )}
       {selecionada && (
-        <DetalheAmostra
+        <Dialog open onOpenChange={v => { if (!v) setSelecionada(null); }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Detalhes da amostra</DialogTitle></DialogHeader><DetalheAmostra
           key={selecionada.id}
           inicial={selecionada}
           sitio={selecionada.propriedadeId}
           podeLancar={podeLancar}
           onFechar={() => setSelecionada(null)}
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
-        />
+        /></DialogContent></Dialog>
       )}
       <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>}>
 
@@ -482,11 +420,11 @@ export function NovaAmostra({
           </label>
           <label>
             Formato do laudo
-            <select
+            <SelectCampo disabled={ocupado}
               required
               value={tipoId}
-              onChange={(e) => {
-                setTipoId(e.target.value);
+              onValueChange={(valor) => {
+                setTipoId(valor);
                 setValores([]);
               }}
             >
@@ -496,17 +434,17 @@ export function NovaAmostra({
                   {f.nome} · v{f.versaoFormato}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Origem da amostra
-            <select
+            <SelectCampo disabled={ocupado}
               value={sujeito}
-              onChange={(e) => setSujeito(e.target.value)}
+              onValueChange={(valor) => setSujeito(valor)}
             >
               <option value="ANIMAL">Individual — um animal</option>
               <option value="COLETIVO">Coletiva — origem identificada</option>
-            </select>
+            </SelectCampo>
           </label>
         </div>
         {sujeito === "ANIMAL" ? (
@@ -811,7 +749,7 @@ function DetalheAmostra({
         podeLancar={podeLancar}
       />
       {erro && <p role="alert">{erro}</p>}
-      <SecaoDetalhesLeite  titulo={<>Histórico da amostra</>}>
+      <SecaoHistoricoLeite inicialmenteAberto titulo={<>Histórico da amostra</>}>
 
         {historico ? (
           <ol>
@@ -864,7 +802,7 @@ function DetalheAmostra({
             </Button>
           </div>
         )}
-      </SecaoDetalhesLeite>
+      </SecaoHistoricoLeite>
       <Button variant="outline" type="button" className="leite-secondary" onClick={onFechar}>
         Fechar amostra
       </Button>

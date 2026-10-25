@@ -1,257 +1,61 @@
 import { Button } from "@/components/ui/button";
-import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
+import { CabecalhoTabela, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { formatarLitros } from "./modelo";
-import {
-  lerValorCorrecao,
-  nomeEstadoVenda,
-  type VendaLeiteHistorico,
-  type VendasLeiteHistorico,
-} from "./vendas-types";
+import { DialogComercialLeite } from "./ComercialConsultaLeite";
+import { lerValorCorrecao, nomeEstadoVenda, type VendaLeiteHistorico, type VendasLeiteHistorico } from "./vendas-types";
 import "./operacoes.css";
 interface Props {
-  produtoId: string;
-  data: string;
-  propriedadeId: number | null;
-  config: ConfiguracoesFinanceiras | null;
-  podeLancar: boolean;
-  revisao: number;
-  onMudou: () => void;
+  produtoId: string; data: string; de?: string; operacaoInicial?: string;
+  propriedadeId: number | null; config: ConfiguracoesFinanceiras | null;
+  podeLancar: boolean; revisao: number; onMudou: () => void;
 }
-const dinheiro = (valor: string) =>
-  Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const corrigivel = (v: VendaLeiteHistorico) =>
-  v.podeCorrigir &&
-  Number(v.valorRecebidoConfirmado) === 0 &&
-  !["RECEBIDA", "PARCIAL", "SUBSTITUIDA"].includes(v.estadoFinanceiro);
+const dinheiro = (valor: string) => Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+export const corrigivel = (v: VendaLeiteHistorico) => v.podeCorrigir && Number(v.valorRecebidoConfirmado) === 0 && !["RECEBIDA", "PARCIAL", "SUBSTITUIDA"].includes(v.estadoFinanceiro);
 const dataPt = (data: string) => data.split("-").reverse().join("/");
-export function HistoricoVendasLeite({
-  produtoId,
-  data,
-  propriedadeId,
-  config,
-  podeLancar,
-  revisao,
-  onMudou,
-}: Props) {
-  const [pagina, setPagina] = useState(1);
-  const [historico, setHistorico] = useState<VendasLeiteHistorico | null>(null);
-  const [erro, setErro] = useState("");
-  const [carregando, setCarregando] = useState(false);
-  const [atualizacao, setAtualizacao] = useState(0);
-  const [selecionada, setSelecionada] = useState<VendaLeiteHistorico | null>(
-    null,
-  );
-  const [aviso, setAviso] = useState("");
-  const geracao = useRef(0);
-  const identidade = `${propriedadeId}:${produtoId}:${data}`;
-  const ultimaIdentidade = useRef(identidade);
+export function HistoricoVendasLeite({ produtoId, data, de, operacaoInicial, propriedadeId, config, podeLancar, revisao, onMudou }: Props) {
+  const [pagina, setPagina] = useState(1), [historico, setHistorico] = useState<VendasLeiteHistorico | null>(null), [erro, setErro] = useState(""), [atualizacao, setAtualizacao] = useState(0), [aviso, setAviso] = useState("");
+  const [selecionada, setSelecionada] = useState<VendaLeiteHistorico | null>(null), [corrigir, setCorrigir] = useState(false);
+  const inicio = de ?? `${data.slice(0, 7)}-01`;
+  useEffect(() => { setPagina(1); setSelecionada(null); setCorrigir(false); setAviso(""); }, [produtoId, data, inicio, propriedadeId]);
   useEffect(() => {
-    if (ultimaIdentidade.current !== identidade) {
-      ultimaIdentidade.current = identidade;
-      setPagina(1);
-      setSelecionada(null);
-      setAviso("");
-    }
-  }, [identidade]);
-  useEffect(() => {
-    const atual = ++geracao.current;
-    setHistorico(null);
-    setErro("");
-    setCarregando(true);
-    void consultarLeite<VendasLeiteHistorico>(
-      `/estoque/vendas?${new URLSearchParams({ ...(produtoId ? { produtoId } : {}), de: `${data.slice(0, 7)}-01`, ate: data, pagina: String(pagina) })}`,
-      propriedadeId,
-    )
-      .then((r) => {
-        if (atual !== geracao.current) return;
-        setHistorico(r);
-        setSelecionada((v) =>
-          v
-            ? (r.itens.find(
-                (i) => i.operacaoId === v.operacaoId && corrigivel(i),
-              ) ?? null)
-            : null,
-        );
-      })
-      .catch((e) => {
-        if (atual === geracao.current)
-          setErro(
-            e instanceof Error
-              ? e.message
-              : "Não foi possível consultar as vendas.",
-          );
-      })
-      .finally(() => {
-        if (atual === geracao.current) setCarregando(false);
-      });
-    return () => {
-      geracao.current++;
-    };
-  }, [produtoId, data, propriedadeId, pagina, revisao, atualizacao]);
-  return (
-    <section
-      className="leite-operacoes"
-      aria-label="Histórico comercial do leite"
-    >
-      <h2>
-        {produtoId ? "Vendas e versões comerciais" : "Vendas de leite do sítio"}
-      </h2>
-      {!produtoId && (
-        <p>
-          Todos os produtos de leite do sítio, inclusive produtos inativos ou
-          arquivados.
-        </p>
-      )}
-      <p>
-        Período de {dataPt(`${data.slice(0, 7)}-01`)} a {dataPt(data)}. A
-        correção preserva os litros e a saída física original.
-      </p>
-      <Button variant="outline"
-        type="button"
-        className="leite-secondary"
-        disabled={carregando}
-        onClick={() => setAtualizacao((r) => r + 1)}
-      >
-        Atualizar vendas
-      </Button>
-      {carregando && <p role="status">Consultando vendas e versões…</p>}
-      {erro && <p role="alert">{erro}</p>}
-      {aviso && <p role="status">{aviso}</p>}
-      {historico && (
-        <>
-          <div className="leite-tabela-scroll">
-            <Table semContainer>
-              <TableCaption>
-                Histórico comercial · versões vigentes e substituídas
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Venda</TableHead>
-                  <TableHead>Comprador</TableHead>
-                  <TableHead>Volume e valor</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Correção</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {historico.itens.map((v) => (
-                  <TableRow key={v.operacaoId}>
-                    <TableCell>
-                      #{v.numero}
-                      <small>
-                        {dataPt(v.data)} · versão {v.versaoComercial}
-                      </small>
-                    </TableCell>
-                    <TableCell>{v.parceiroNome ?? "Comprador não informado"}</TableCell>
-                    <TableCell>
-                      {formatarLitros(Number(v.quantidadeLitros))}
-                      <br />
-                      {dinheiro(v.valorTotal)}
-                    </TableCell>
-                    <TableCell>
-                      {nomeEstadoVenda(v.estadoFinanceiro)}
-                      <small>
-                        Recebido confirmado:{" "}
-                        {dinheiro(v.valorRecebidoConfirmado)}
-                      </small>
-                    </TableCell>
-                    <TableCell>
-                      {v.motivoCorrecao && (
-                        <p>Motivo registrado: {v.motivoCorrecao}</p>
-                      )}
-                      {v.motivoBloqueio && <p>{v.motivoBloqueio}</p>}
-                      {(v.estadoFinanceiro === "RECEBIDA" ||
-                        v.estadoFinanceiro === "PARCIAL") &&
-                        !v.podeCorrigir && (
-                          <small>
-                            A regularização dos recebimentos deve ser feita
-                            explicitamente no Financeiro. Esta tela não devolve
-                            dinheiro nem litros automaticamente.
-                          </small>
-                        )}
-                      {podeLancar && corrigivel(v) && (
-                        <Button variant="outline"
-                          type="button"
-                          className="leite-secondary"
-                          disabled={!config || carregando}
-                          onClick={() => {
-                            setSelecionada(v);
-                            setAviso("");
-                          }}
-                        >
-                          Corrigir venda #{v.numero}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          {!historico.itens.length && (
-            <p>Nenhuma venda registrada para o filtro no período.</p>
-          )}
-          <div className="leite-form-inline">
-            <Button variant="outline"
-              type="button"
-              className="leite-secondary"
-              disabled={pagina <= 1 || carregando}
-              onClick={() => {
-                setSelecionada(null);
-                setPagina((p) => p - 1);
-              }}
-            >
-              Vendas anteriores
-            </Button>
-            <span>
-              Página {pagina} · {historico.total} versões
-            </span>
-            <Button variant="outline"
-              type="button"
-              className="leite-secondary"
-              disabled={
-                pagina * historico.porPagina >= historico.total || carregando
-              }
-              onClick={() => {
-                setSelecionada(null);
-                setPagina((p) => p + 1);
-              }}
-            >
-              Próxima página de vendas
-            </Button>
-          </div>
-        </>
-      )}
-      {podeLancar && !config && (
-        <p>
-          Os cadastros financeiros precisam estar disponíveis para corrigir uma
-          venda.
-        </p>
-      )}
-      {podeLancar && config && selecionada && !carregando && (
-        <FormularioCorrecao
-          key={`${identidade}:${selecionada.operacaoId}:${selecionada.versaoComercial}`}
-          venda={selecionada}
-          propriedadeId={propriedadeId}
-          config={config}
-          aoCancelar={() => setSelecionada(null)}
-          aoSalvar={() => {
-            setSelecionada(null);
-            setAviso(
-              "Correção comercial confirmada. Os litros e a saída física única foram preservados.",
-            );
-            setAtualizacao((r) => r + 1);
-            onMudou();
-          }}
-        />
-      )}
-    </section>
-  );
+    let ativa = true; setHistorico(null); setErro("");
+    void consultarLeite<VendasLeiteHistorico>(`/estoque/vendas?${new URLSearchParams({ ...(produtoId ? { produtoId } : {}), de: inicio, ate: data, pagina: String(pagina) })}`, propriedadeId)
+      .then(r => { if (ativa) { setHistorico(r); setSelecionada(v => v ? r.itens.find(i => i.operacaoId === v.operacaoId) ?? null : null); } })
+      .catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível consultar as vendas."); });
+    return () => { ativa = false; };
+  }, [produtoId, inicio, data, propriedadeId, pagina, revisao, atualizacao]);
+  const linhas = historico?.itens ?? [];
+  return <section className="leite-operacoes leite-comercial-consulta" aria-label="Histórico comercial do leite">
+    <CabecalhoTabela titulo={produtoId ? "Vendas e versões comerciais" : "Vendas de leite do sítio"} descricao={`Versões de ${dataPt(inicio)} a ${dataPt(data)}.`} />
+    {operacaoInicial && <p>Venda selecionada: {linhas.find(v => v.operacaoId === operacaoInicial)?.numero ? `#${linhas.find(v => v.operacaoId === operacaoInicial)!.numero}` : "consulte as versões abaixo"}. As versões anteriores permanecem neste histórico.</p>}
+    {erro ? <p role="alert">{erro}<Button variant="outline" onClick={() => setAtualizacao(r => r + 1)}>Tentar novamente</Button></p> : !historico ? <p role="status">Consultando vendas e versões…</p> : <>
+      <TabelaFinanceira rotulo="Histórico comercial · versões vigentes e substituídas" itens={linhas} chaveDe={v => v.operacaoId} colunas={[
+        { chave: "venda", titulo: "Venda", principal: true, celula: v => <strong>#{v.numero} · versão {v.versaoComercial}</strong> },
+        { chave: "data", titulo: "Data", celula: v => dataPt(v.data) },
+        { chave: "comprador", titulo: "Comprador", celula: v => v.parceiroNome ?? "Comprador não informado" },
+        { chave: "volume", titulo: "Retirado", alinhamento: "direita", celula: v => formatarLitros(Number(v.quantidadeLitros)) },
+        { chave: "estado", titulo: "Situação", celula: v => nomeEstadoVenda(v.estadoFinanceiro) },
+        { chave: "acoes", titulo: "Ações", acoes: true, celula: v => <><Button variant="outline" onClick={() => { setSelecionada(v); setCorrigir(false); }}>Ver venda #{v.numero}</Button>{podeLancar && corrigivel(v) && <Button variant="outline" disabled={!config} onClick={() => { setSelecionada(v); setCorrigir(true); }}>Corrigir venda #{v.numero}</Button>}</> },
+      ]} />
+      {!linhas.length && <p>Nenhuma venda registrada para o filtro no período.</p>}
+      <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação de versões comerciais" substantivo="versões" idSelect="pagina-versoes-leite" onPagina={setPagina} />
+    </>}
+    {aviso && <p role="status">{aviso}</p>}
+    <DialogComercialLeite titulo={corrigir ? `Corrigir venda #${selecionada?.numero}` : `Venda #${selecionada?.numero}`} aberto={!!selecionada} onFechar={() => setSelecionada(null)}>
+      {selecionada && <>{corrigir && podeLancar && config && corrigivel(selecionada) ? <FormularioCorrecao key={`${selecionada.operacaoId}:${selecionada.versaoComercial}`} venda={selecionada} propriedadeId={propriedadeId} config={config} aoCancelar={() => setSelecionada(null)} aoSalvar={() => { setSelecionada(null); setAviso("Correção comercial confirmada. Os litros e a saída física única foram preservados."); setAtualizacao(r => r + 1); onMudou(); }} /> : <>
+        <dl className="leite-comercial-fatos"><div><dt>Valor total</dt><dd>{dinheiro(selecionada.valorTotal)}</dd></div><div><dt>Recebido confirmado</dt><dd>{dinheiro(selecionada.valorRecebidoConfirmado)}</dd></div><div><dt>Saída física preservada</dt><dd>{formatarLitros(Number(selecionada.quantidadeLitros))}</dd></div><div><dt>Estado financeiro</dt><dd>{nomeEstadoVenda(selecionada.estadoFinanceiro)}</dd></div></dl>
+        {selecionada.motivoCorrecao && <p>Motivo registrado: {selecionada.motivoCorrecao}</p>}{selecionada.motivoBloqueio && <p>{selecionada.motivoBloqueio}</p>}
+        {["RECEBIDA","PARCIAL"].includes(selecionada.estadoFinanceiro) && !selecionada.podeCorrigir && <p>A regularização dos recebimentos deve ser feita explicitamente no Financeiro. Esta tela não devolve dinheiro nem litros automaticamente.</p>}
+        <Button variant="outline" asChild><a href={`/financeiro/operacoes/${selecionada.operacaoId}`}>Abrir operação financeira #{selecionada.numero}</a></Button>
+      </>}</>}
+    </DialogComercialLeite>
+  </section>;
 }
-function FormularioCorrecao({
+export function FormularioCorrecao({
   venda,
   propriedadeId,
   config,
@@ -358,10 +162,10 @@ function FormularioCorrecao({
           </label>
           <label>
             Comprador
-            <select
+            <SelectCampo disabled={salvando}
               required
               value={parceiro}
-              onChange={(e) => setParceiro(e.target.value)}
+              onValueChange={setParceiro}
             >
               <option value="">Selecione</option>
               {venda.parceiroId &&
@@ -380,27 +184,27 @@ function FormularioCorrecao({
                     {p.nome}
                   </option>
                 ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Nova condição financeira
-            <select
+            <SelectCampo disabled={salvando}
               required
               value={condicao}
-              onChange={(e) => setCondicao(e.target.value)}
+              onValueChange={setCondicao}
             >
               <option value="">Escolha explicitamente</option>
               <option value="A_PRAZO">A receber</option>
               <option value="A_VISTA">Recebido agora</option>
-            </select>
+            </SelectCampo>
           </label>
           {condicao === "A_VISTA" && (
             <label>
               Conta de recebimento
-              <select
+              <SelectCampo disabled={salvando}
                 required
                 value={conta}
-                onChange={(e) => setConta(e.target.value)}
+                onValueChange={setConta}
               >
                 <option value="">Selecione uma conta ativa</option>
                 {config.contas
@@ -410,7 +214,7 @@ function FormularioCorrecao({
                       {c.nome}
                     </option>
                   ))}
-              </select>
+              </SelectCampo>
             </label>
           )}
           {condicao === "A_PRAZO" && (
@@ -434,9 +238,9 @@ function FormularioCorrecao({
         <div className="leite-form-inline">
           <label>
             Categoria (opcional)
-            <select
+            <SelectCampo disabled={salvando}
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              onValueChange={setCategoria}
             >
               <option value="">Manter categoria anterior</option>
               {config.categorias
@@ -446,11 +250,11 @@ function FormularioCorrecao({
                     {c.nome}
                   </option>
                 ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Centro de custo (opcional)
-            <select value={centro} onChange={(e) => setCentro(e.target.value)}>
+            <SelectCampo disabled={salvando} value={centro} onValueChange={setCentro}>
               <option value="">Manter centro anterior</option>
               {config.centrosCusto
                 .filter((c) => c.ativo)
@@ -459,7 +263,7 @@ function FormularioCorrecao({
                     {c.nome}
                   </option>
                 ))}
-            </select>
+            </SelectCampo>
           </label>
         </div>
         <label>

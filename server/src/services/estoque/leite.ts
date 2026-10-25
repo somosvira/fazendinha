@@ -120,7 +120,7 @@ export async function estornarBaixaLeiteTx(tx: Prisma.TransactionClient, input: 
   if (original.status === "REVERTIDO" || original.revertidoPor) throw new ValorizacaoError("CONFLITO", "A saída de leite já foi estornada");
   if (await tx.retiradaOperacaoLeite.findUnique({ where: { movimentoId: original.id }, select: { id: true } }))
     throw new ValorizacaoError("CONFLITO", "Retirada comercial exige devolução física comprovada pelo fluxo de leite; correção de preço não devolve litros");
-  const data = input.data ?? new Date();
+  const data = input.data ?? hojeFazendaDate();
   await exigirPeriodoAberto(tx, input.propriedadeId, original.data);
   await exigirPeriodoAberto(tx, input.propriedadeId, data);
   const inverso = await tx.movimentoEstoque.create({ data: { produtoId: original.produtoId, propriedadeId: input.propriedadeId,

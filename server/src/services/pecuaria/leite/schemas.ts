@@ -13,6 +13,11 @@ export const posicaoOrdenhaSchema = z.object({
   ordem: z.number().int().min(1).max(12),
   horario: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Horário inválido").nullish(),
 }).strict();
+export const criterioColostroSchema = z.discriminatedUnion("tipo", [
+  z.object({ tipo: z.literal("PRIMEIRA_ORDENHA") }).strict(),
+  z.object({ tipo: z.literal("JANELA_DIAS"), dias: z.number().int().min(1).max(365), incluiD0: z.literal(true).default(true) }).strict(),
+]);
+export type CriterioColostro = z.infer<typeof criterioColostroSchema>;
 export const configuracaoOrdenhaSchema = z.object({
   chave: uuid,
   propriedadeId: propriedadeLeiteSchema,
@@ -20,6 +25,7 @@ export const configuracaoOrdenhaSchema = z.object({
   fonteProducao: z.enum(["INDIVIDUAL", "GERAL"]).default("INDIVIDUAL"),
   intervaloIndividualQuantidade: z.number().int().min(1).max(365).default(1),
   intervaloIndividualUnidade: z.enum(["DIAS", "MESES"]).default("MESES"),
+  criterioColostro: criterioColostroSchema.nullish(),
   ordenhas: z.array(posicaoOrdenhaSchema).min(1).max(12),
 }).strict().superRefine((valor, ctx) => {
   for (const campo of ["posicaoId", "ordem"] as const) {

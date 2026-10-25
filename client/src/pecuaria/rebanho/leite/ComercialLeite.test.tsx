@@ -326,9 +326,9 @@ describe("comercial do leite", () => {
   });
   it("perfil sem Financeiro consulta volumes e não pede documentos ou cadastros financeiros", async () => {
     render(<ComercialLeite podeLancar={false} podeFinanceiro={false} />);
-    await screen.findByText("Coleta 19");
+    await screen.findAllByText("Coleta 19");
     expect(
-      screen.getByRole("cell", { name: /Aceito: Ainda não informado/ }),
+      screen.getByRole("cell", { name: "Não informado" }),
     ).toBeTruthy();
     expect(obterConfiguracoesFinanceiras).not.toHaveBeenCalled();
     expect(
@@ -347,7 +347,7 @@ describe("comercial do leite", () => {
   it("conferência parcial registra somente o aceite informado e a versão, sem retorno físico presumido", async () => {
     render(<ComercialLeite podeLancar podeFinanceiro={false} />);
     fireEvent.click(
-      await screen.findByRole("button", { name: "Conferir Coleta 19" }),
+      (await screen.findAllByRole("button", { name: "Conferir Coleta 19" }))[0],
     );
     fireEvent.change(screen.getByLabelText("Situação do aceite"), {
       target: { value: "DIVERGENCIA" },
@@ -651,6 +651,7 @@ describe("comercial do leite", () => {
           } as never),
     );
     render(<ComercialLeite podeLancar podeFinanceiro />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "Ver demonstrativo" }))[0]);
     fireEvent.click(
       await screen.findByRole("button", {
         name: "Anular Demonstrativo parcial",
@@ -729,4 +730,11 @@ describe("comercial do leite", () => {
     ).toBe("VENDA_EXISTENTE");
     expect(fetchMock).not.toHaveBeenCalled();
   });
+});
+
+it("documentos abertos no detalhe usam comprador e período da operação", async () => {
+  render(<ComercialLeite podeLancar={false} podeFinanceiro contexto={{ de: "2026-09-01", ate: "2026-09-30", parceiroId: "p", parceiroNome: "Comprador real" }} />);
+  await waitFor(() => expect(consultarLeite).toHaveBeenCalledWith("/comercial/entregas?de=2026-09-01&ate=2026-09-30&pagina=1&parceiroId=p", 2));
+  expect(consultarLeite).toHaveBeenCalledWith("/comercial/demonstrativos?de=2026-09-01&ate=2026-09-30&pagina=1&parceiroId=p", 2);
+  expect(fetchMock).not.toHaveBeenCalled();
 });

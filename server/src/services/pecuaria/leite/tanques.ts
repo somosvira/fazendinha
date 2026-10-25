@@ -18,15 +18,18 @@ import {
   garantirConfiguracaoLeiteTx,
   travarRotinaLeiteTx,
 } from "./configuracoes.js";
-import { conferirAnimaisOrigemGeralTx, consultarFolha, consultarOrigensAutomaticasGeraisTx } from "./producao.js";
+import { consultarFolha, consultarOrigensAutomaticasGeraisTx } from "./producao.js";
 import { conferirConversaoTanque } from "./tanques.calc.js";
 import {
   pontoConversaoSchema,
   tanqueLeiteSchema,
   medicaoGeralLeiteSchema,
+  salvarParcelasOrdenhaSchema,
+  type SalvarParcelasOrdenhaInput,
   type TanqueLeiteInput,
   type MedicaoGeralLeiteInput,
 } from "./tanques.schemas.js";
+import { conferirContextoParcelaTx, conferirSegregacaoParcelas, consultarContextoParcelasTx } from "./parcelas-contexto.js";
 const dia = (data: string) => new Date(`${data}T00:00:00Z`);
 export function tanqueDTO(t: TanqueLeite) {
   return {
@@ -47,14 +50,18 @@ export function tanqueDTO(t: TanqueLeite) {
 }
 export function medicaoGeralDTO(
   m: MedicaoGeralLeite & {
-    tanque: TanqueLeite;
+    tanque: TanqueLeite | null;
     entradasEstoque: { id: string; status: string }[];
   },
 ) {
   return {
     id: m.id,
     sessaoId: m.sessaoId,
-    tanque: tanqueDTO(m.tanque),
+    tanque: m.tanque ? tanqueDTO(m.tanque) : null,
+    recipiente: m.recipiente ?? null,
+    declaracaoDireta: m.declaracaoDireta ?? null,
+    primeiraOrdenhaColostro: m.primeiraOrdenhaColostro ?? null,
+    criterioColostroSnapshot: m.criterioColostroSnapshot ?? null,
     litros: m.litros.toNumber(),
     reguaMm: m.reguaMm?.toNumber() ?? null,
     origemLitros: m.origemLitros,
@@ -184,6 +191,7 @@ export async function consultarOrdenhasGerais(
       return {
         tanques: tanques.map(tanqueDTO),
         medicoes: medicoes.map(medicaoGeralDTO),
+        contexto: await consultarContextoParcelasTx(tx, propriedadeId, dia(dataOperacional), folha.configuracao),
         origensAutomaticas: await consultarOrigensAutomaticasGeraisTx(tx, propriedadeId, dia(dataOperacional)),
       };
     },
@@ -205,172 +213,89 @@ export async function consultarOrdenhasGerais(
     })),
   };
 }
-export async function salvarMedicaoGeral(
-  input: MedicaoGeralLeiteInput,
-  usuarioId: number | null,
-) {
+const incluirMedicao = { tanque: true, entradasEstoque: { select: { id: true, status: true } } };
+async function salvarParcelasTx(tx: Prisma.TransactionClient, dados: SalvarParcelasOrdenhaInput,
+  usuarioId: number | null, legado = false) {
+  const data = dia(dados.dataOperacional);
+  if (data > hojeFazendaDate()) throw new RebanhoError("VALIDACAO", "A ordenha deve ter data até hoje");
+  const escopo = { sessao: { posicaoId: dados.posicaoId, dia: { propriedadeId: dados.propriedadeId, dataOperacional: data } } };
+  // A composição lida antes das travas serve apenas de referência. Relida sob a trava da sessão.
+  const referencias = await tx.medicaoGeralLeite.findMany({ where: escopo, include: incluirMedicao });
+  const parcelas = dados.parcelas.map(p => {
+    if (!legado || p.id || p.versaoEsperada === 0) return p;
+    const encontradas = referencias.filter(r => r.tanqueId === p.tanqueId);
+    if (encontradas.length !== 1) throw new RebanhoError("CONFLITO", "Identifique a parcela que deseja corrigir e recarregue a ordenha");
+    return { ...p, id: encontradas[0].id };
+  });
+  const alteradas = new Set(parcelas.flatMap(p => p.id ? [p.id] : []));
+  const anteriores = referencias.filter(r => alteradas.has(r.id));
+  await travarAnimais(tx, [...new Set([...anteriores.flatMap(r => z.array(z.string()).parse(r.animaisOrigem)), ...parcelas.flatMap(p => p.animaisOrigem)])]);
+  await travarRotinaLeiteTx(tx, dados.propriedadeId);
+  await conferirSitioLeiteTx(tx, dados.propriedadeId, true);
+  const identidade = { propriedadeId: dados.propriedadeId, dataOperacional: data };
+  let registroDia = await tx.diaProducaoLeite.findUnique({ where: { propriedadeId_dataOperacional: identidade }, include: { configuracao: true } });
+  const configuracao = registroDia?.configuracao ?? await garantirConfiguracaoLeiteTx(tx, dados.propriedadeId, data, usuarioId);
+  if (configuracao.fonteProducao !== "GERAL") throw new RebanhoError("CONFLITO", "A configuração desta data usa produção individual. Publique a vigência da aferição geral antes de registrar.");
+  if (!registroDia) {
+    const completa = await garantirConfiguracaoLeiteTx(tx, dados.propriedadeId, data, usuarioId);
+    registroDia = await tx.diaProducaoLeite.create({ data: { ...identidade, configuracaoId: completa.id, criadoPorId: usuarioId,
+      sessoes: { create: completa.ordenhas.map(o => ({ posicaoId: o.posicaoId, nome: o.nome, ordem: o.ordem, horario: o.horario })) } }, include: { configuracao: true } });
+  }
+  const sessao = await tx.sessaoOrdenha.findUnique({ where: { diaId_posicaoId: { diaId: registroDia.id, posicaoId: dados.posicaoId } } });
+  if (!sessao) throw new RebanhoError("VALIDACAO", "Ordenha não pertence à rotina desta data");
+  await tx.$queryRaw`SELECT id FROM pecuaria."SessaoOrdenha" WHERE id=${sessao.id} FOR NO KEY UPDATE`;
+  const atuais = await tx.medicaoGeralLeite.findMany({ where: { sessaoId: sessao.id }, include: incluirMedicao });
+  const tanques = await listarTanquesTx(tx, dados.propriedadeId, data);
+  conferirSegregacaoParcelas([...atuais.filter(r => !alteradas.has(r.id)), ...parcelas]);
+  // Todas as parcelas são conferidas antes da primeira escrita. A transação também protege falhas de SQL.
+  const preparadas = [];
+  for (const p of parcelas) {
+    const anterior = p.id ? atuais.find(r => r.id === p.id) : undefined;
+    const ref = p.id ? referencias.find(r => r.id === p.id) : undefined;
+    if (p.id && (!ref || !anterior || JSON.stringify(ref.animaisOrigem) !== JSON.stringify(anterior.animaisOrigem)))
+      throw new RebanhoError("CONFLITO", "Os animais de origem mudaram; recarregue antes de salvar");
+    if ((anterior?.versao ?? 0) !== p.versaoEsperada) throw new RebanhoError("CONFLITO", "A aferição mudou; recarregue antes de salvar");
+    if (anterior?.entradasEstoque.some(e => e.status === "CONFIRMADA")) throw new RebanhoError("CONFLITO", "Regularize a entrada de estoque antes de corrigir a aferição");
+    if (anterior && !p.motivoCorrecao) throw new RebanhoError("VALIDACAO", "Informe o motivo da correção");
+    if (anterior && anterior.tanqueId !== (p.tanqueId ?? null)) throw new RebanhoError("CONFLITO", "Preserve o tanque histórico da parcela ao corrigir");
+    const tanque = p.tanqueId ? tanques.find(t => t.id === p.tanqueId && t.ativo) : null;
+    if (p.tanqueId && !tanque) throw new RebanhoError("VALIDACAO", "Tanque indisponível nesta data e sítio");
+    const origemLitros = conferirConversaoTanque(p, tanque ? { capacidadeLitros: tanque.capacidadeLitros } : null);
+    const contexto = await conferirContextoParcelaTx(tx, dados.propriedadeId, data, sessao.horario, configuracao, p, p.id);
+    preparadas.push({ p, anterior, contexto, origemLitros });
+  }
+  const primeirasDoConjunto = new Set<string>();
+  for (const { p, contexto } of preparadas) {
+    if (p.primeiraOrdenhaColostro !== true) continue;
+    for (const parto of contexto.snapshot.partos) {
+      const identidadeParto = `${parto.animalId}:${parto.id}`;
+      if (primeirasDoConjunto.has(identidadeParto)) throw new RebanhoError("CONFLITO", "A primeira ordenha do parto só pode ser declarada em uma parcela do conjunto", "primeiraOrdenhaColostro");
+      primeirasDoConjunto.add(identidadeParto);
+    }
+  }
+  const salvas = [];
+  for (const { p, anterior, contexto, origemLitros } of preparadas) {
+    const valores = { litros: new Prisma.Decimal(p.litros), reguaMm: p.reguaMm == null ? null : new Prisma.Decimal(p.reguaMm), origemLitros,
+      natureza: p.natureza, animaisOrigem: p.animaisOrigem, recipiente: p.recipiente ?? null, responsavel: p.responsavel, observacao: p.observacao ?? null,
+      declaracaoDireta: p.declaracaoDireta ?? Prisma.DbNull, primeiraOrdenhaColostro: p.primeiraOrdenhaColostro ?? null,
+      criterioColostroSnapshot: contexto.snapshot };
+    const salva = anterior
+      ? await tx.medicaoGeralLeite.update({ where: { id: anterior.id, versao: p.versaoEsperada }, data: { ...valores, versao: { increment: 1 } }, include: incluirMedicao })
+      : await tx.medicaoGeralLeite.create({ data: { ...valores, sessaoId: sessao.id, tanqueId: p.tanqueId ?? null, criadoPorId: usuarioId }, include: incluirMedicao });
+    await auditar(tx, { entidade: "MedicaoGeralLeite", entidadeId: salva.id, propriedadeId: dados.propriedadeId, usuarioId,
+      acao: anterior ? "CORRECAO" : "MEDICAO", antes: anterior, depois: { ...salva, motivoCorrecao: p.motivoCorrecao } });
+    salvas.push(medicaoGeralDTO(salva));
+  }
+  return { sessaoId: sessao.id, parcelas: salvas };
+}
+export async function salvarParcelasOrdenha(input: SalvarParcelasOrdenhaInput, usuarioId: number | null) {
+  const dados = salvarParcelasOrdenhaSchema.parse(input);
+  return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, dados, usuarioId, "PARCELAS_ORDENHA_LEITE", () => salvarParcelasTx(tx, dados, usuarioId)));
+}
+export async function salvarMedicaoGeral(input: MedicaoGeralLeiteInput, usuarioId: number | null) {
   const dados = medicaoGeralLeiteSchema.parse(input);
-  return transacaoPecuaria((tx) =>
-    operacaoIdempotenteTx(
-      tx,
-      dados,
-      usuarioId,
-      "MEDICAO_GERAL_LEITE",
-      async () => {
-        const data = dia(dados.dataOperacional);
-        if (data > hojeFazendaDate())
-          throw new RebanhoError(
-            "VALIDACAO",
-            "A ordenha deve ter data até hoje",
-          );
-        // A leitura é apenas uma referência para travar todas as origens antes da sessão.
-        // Após a trava, a versão e a lista são conferidas novamente antes da escrita.
-        const referencia = await tx.medicaoGeralLeite.findFirst({ where: {
-          tanqueId: dados.tanqueId, sessao: { posicaoId: dados.posicaoId, dia: { propriedadeId: dados.propriedadeId, dataOperacional: data } },
-        }, select: { id: true, animaisOrigem: true } });
-        const anteriores = referencia ? z.array(z.string()).parse(referencia.animaisOrigem) : [];
-        await travarAnimais(tx, [...new Set([...anteriores, ...dados.animaisOrigem])]);
-        await travarRotinaLeiteTx(tx, dados.propriedadeId);
-        await conferirSitioLeiteTx(tx, dados.propriedadeId, true);
-        await conferirAnimaisOrigemGeralTx(
-          tx,
-          dados.propriedadeId,
-          data,
-          dados.animaisOrigem,
-        );
-        const identidade = {
-          propriedadeId: dados.propriedadeId,
-          dataOperacional: data,
-        };
-        let registroDia = await tx.diaProducaoLeite.findUnique({
-          where: { propriedadeId_dataOperacional: identidade },
-          include: { configuracao: true },
-        });
-        const configuracao =
-          registroDia?.configuracao ??
-          (await garantirConfiguracaoLeiteTx(
-            tx,
-            dados.propriedadeId,
-            data,
-            usuarioId,
-          ));
-        if (configuracao.fonteProducao !== "GERAL")
-          throw new RebanhoError(
-            "CONFLITO",
-            "A configuração desta data usa produção individual. Publique a vigência da aferição geral antes de registrar.",
-          );
-        const tanque = (
-          await listarTanquesTx(tx, dados.propriedadeId, data)
-        ).find((t) => t.id === dados.tanqueId && t.ativo);
-        if (!tanque)
-          throw new RebanhoError(
-            "VALIDACAO",
-            "Tanque indisponível nesta data e sítio",
-          );
-        const origemLitros = conferirConversaoTanque(dados, {
-          capacidadeLitros: tanque.capacidadeLitros,
-          tabelaConversao: pontoConversaoSchema
-            .array()
-            .parse(tanque.tabelaConversao),
-        });
-        if (!registroDia) {
-          const completa = await garantirConfiguracaoLeiteTx(
-            tx,
-            dados.propriedadeId,
-            data,
-            usuarioId,
-          );
-          registroDia = await tx.diaProducaoLeite.create({
-            data: {
-              ...identidade,
-              configuracaoId: completa.id,
-              criadoPorId: usuarioId,
-              sessoes: {
-                create: completa.ordenhas.map((o) => ({
-                  posicaoId: o.posicaoId,
-                  nome: o.nome,
-                  ordem: o.ordem,
-                  horario: o.horario,
-                })),
-              },
-            },
-            include: { configuracao: true },
-          });
-        }
-        const sessao = await tx.sessaoOrdenha.findUnique({
-          where: {
-            diaId_posicaoId: {
-              diaId: registroDia.id,
-              posicaoId: dados.posicaoId,
-            },
-          },
-        });
-        if (!sessao)
-          throw new RebanhoError(
-            "VALIDACAO",
-            "Ordenha não pertence à rotina desta data",
-          );
-        await tx.$queryRaw`SELECT id FROM pecuaria."SessaoOrdenha" WHERE id=${sessao.id} FOR NO KEY UPDATE`;
-        const anterior = await tx.medicaoGeralLeite.findUnique({
-          where: {
-            sessaoId_tanqueId: { sessaoId: sessao.id, tanqueId: tanque.id },
-          },
-          include: { entradasEstoque: { where: { status: "CONFIRMADA" } } },
-        });
-        if (referencia && (anterior?.id !== referencia.id || JSON.stringify(anterior.animaisOrigem) !== JSON.stringify(referencia.animaisOrigem)))
-          throw new RebanhoError("CONFLITO", "Os animais de origem mudaram; recarregue antes de salvar");
-        if ((anterior?.versao ?? 0) !== dados.versaoEsperada)
-          throw new RebanhoError(
-            "CONFLITO",
-            "A aferição mudou; recarregue antes de salvar",
-          );
-        if (anterior?.entradasEstoque.length)
-          throw new RebanhoError(
-            "CONFLITO",
-            "Regularize a entrada de estoque antes de corrigir a aferição",
-          );
-        if (anterior && !dados.motivoCorrecao)
-          throw new RebanhoError("VALIDACAO", "Informe o motivo da correção");
-        const valores = {
-          litros: new Prisma.Decimal(dados.litros),
-          reguaMm:
-            dados.reguaMm == null ? null : new Prisma.Decimal(dados.reguaMm),
-          origemLitros,
-          natureza: dados.natureza,
-          animaisOrigem: dados.animaisOrigem,
-          responsavel: dados.responsavel,
-          observacao: dados.observacao ?? null,
-        };
-        const include = {
-          tanque: true,
-          entradasEstoque: { select: { id: true, status: true } },
-        };
-        const salva = anterior
-          ? await tx.medicaoGeralLeite.update({
-              where: { id: anterior.id, versao: dados.versaoEsperada },
-              data: { ...valores, versao: { increment: 1 } },
-              include,
-            })
-          : await tx.medicaoGeralLeite.create({
-              data: {
-                ...valores,
-                sessaoId: sessao.id,
-                tanqueId: tanque.id,
-                criadoPorId: usuarioId,
-              },
-              include,
-            });
-        await auditar(tx, {
-          entidade: "MedicaoGeralLeite",
-          entidadeId: salva.id,
-          propriedadeId: dados.propriedadeId,
-          usuarioId,
-          acao: anterior ? "CORRECAO" : "MEDICAO",
-          antes: anterior,
-          depois: { ...salva, motivoCorrecao: dados.motivoCorrecao },
-        });
-        return medicaoGeralDTO(salva);
-      },
-    ),
-  );
+  return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, dados, usuarioId, "MEDICAO_GERAL_LEITE", async () => {
+    const { chave, propriedadeId, dataOperacional, posicaoId, ...parcela } = dados;
+    return (await salvarParcelasTx(tx, { chave, propriedadeId, dataOperacional, posicaoId, parcelas: [parcela] }, usuarioId, true)).parcelas[0];
+  }));
 }

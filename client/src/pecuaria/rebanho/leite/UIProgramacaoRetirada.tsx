@@ -1,6 +1,7 @@
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { CalendarDays, Settings2 } from "lucide-react";
 import {
@@ -77,10 +78,10 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
   }, [data, sitio, revisao]);
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Programação de retirada</h2>
+      <h2 className="leite-titulo-secao">Rotina de coleta</h2>
       <p>
-        Preveja a rotina do comprador. A programação não confirma coleta, venda
-        ou recebimento.
+        Configure a frequência e consulte as próximas previsões. A rotina não cria
+        retirada, venda, alerta ou movimento automático.
       </p>
       <div className="leite-form-inline">
         <label>
@@ -99,7 +100,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
         {podeLancar && (
           <Button disabled={!dados || carregando}
             onClick={() => setConfig(true)}>
-            <Settings2 size={16} aria-hidden /> Configurar retirada
+            <Settings2 size={16} aria-hidden /> Configurar rotina de coleta
           </Button>
         )}
       </div>
@@ -156,7 +157,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           {dados.previsoes.length ? (
             <div className="leite-tabela-scroll">
               <Table semContainer>
-                <TableCaption>Datas previstas de retirada</TableCaption>
+                <TableCaption>Datas previstas de coleta</TableCaption>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
@@ -189,7 +190,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
             </p>
           )}
           <SecaoDetalhesLeite  titulo={<>
-              Histórico de programações ({dados.historico.length})
+              Histórico da rotina de coleta ({dados.historico.length})
             </>}>
 
             {dados.historico.length ? (
@@ -224,7 +225,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
               aoSalvar={() => {
                 setConfig(false);
                 setAviso(
-                  "Nova programação salva. As versões anteriores foram preservadas.",
+                  "Nova rotina de coleta salva. As versões anteriores foram preservadas.",
                 );
                 setRevisao((r) => r + 1);
               }}
@@ -347,7 +348,7 @@ function ConfigurarRetirada({
       }}
     >
       <DialogContent className="leite-config leite-operacoes">
-        <DialogTitle>Configurar retirada</DialogTitle>
+        <DialogTitle>Configurar rotina de coleta</DialogTitle>
         <DialogDescription>
           Escolha uma única regra. A nova vigência preserva as programações
           anteriores e não registra retirada física.
@@ -370,30 +371,30 @@ function ConfigurarRetirada({
               />
             </label>
             <label>
-              Tipo de programação
-              <select
+              Frequência da coleta
+              <SelectCampo disabled={salvando}
                 value={tipo}
-                onChange={(e) => setTipo(e.target.value as TipoProgramacao)}
+                onValueChange={valor => setTipo(valor as TipoProgramacao)}
               >
                 <option value="DIARIA">Diária</option>
                 <option value="SEMANAL">Semanal</option>
                 <option value="DIAS_ESCOLHIDOS">Dias escolhidos</option>
                 <option value="META_LITROS">Meta de litros</option>
-              </select>
+              </SelectCampo>
             </label>
             {tipo === "SEMANAL" && (
               <label>
                 Dia da semana
-                <select
+                <SelectCampo disabled={salvando}
                   value={dia}
-                  onChange={(e) => setDia(Number(e.target.value))}
+                  onValueChange={valor => setDia(Number(valor))}
                 >
                   {diasSemana.map((d, i) => (
                     <option key={d} value={i}>
                       {d}
                     </option>
                   ))}
-                </select>
+                </SelectCampo>
               </label>
             )}
             {tipo === "DIAS_ESCOLHIDOS" && (
@@ -430,10 +431,10 @@ function ConfigurarRetirada({
               <>
                 <label>
                   Produto de leite
-                  <select
+                  <SelectCampo disabled={salvando}
                     required
                     value={produto}
-                    onChange={(e) => setProduto(e.target.value)}
+                    onValueChange={setProduto}
                   >
                     <option value="">Selecione</option>
                     {produtos.map((p) => (
@@ -441,7 +442,7 @@ function ConfigurarRetirada({
                         {p.nome}
                       </option>
                     ))}
-                  </select>
+                  </SelectCampo>
                 </label>
                 {erroProdutos && (
                   <p role="alert">
@@ -475,7 +476,7 @@ function ConfigurarRetirada({
                 onClick={aoFechar}>
                 Cancelar
               </Button>
-              <Button >{salvando ? "Salvando…" : "Salvar programação"}</Button>
+              <Button >{salvando ? "Salvando…" : "Salvar rotina de coleta"}</Button>
             </div>
           </fieldset>
         </form>

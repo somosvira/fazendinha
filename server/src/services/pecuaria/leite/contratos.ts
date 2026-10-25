@@ -1,6 +1,6 @@
 import type { EvidenciaFinalidadeLeiteDTO } from "./finalidade.calc.js";
 import type { ResumoProducaoLeite } from "./producao.calc.js";
-import type { PosicaoOrdenhaDTO } from "./schemas.js";
+import type { CriterioColostro, PosicaoOrdenhaDTO } from "./schemas.js";
 
 export interface ConfiguracaoOrdenhaDTO {
   id: string | null;
@@ -11,6 +11,7 @@ export interface ConfiguracaoOrdenhaDTO {
   fonteProducao?: "INDIVIDUAL" | "GERAL";
   intervaloIndividualQuantidade?: number;
   intervaloIndividualUnidade?: "DIAS" | "MESES";
+  criterioColostro?: CriterioColostro | null;
   ordenhas: PosicaoOrdenhaDTO[];
 }
 export interface MedicaoLeiteDTO {

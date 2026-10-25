@@ -6,6 +6,8 @@ const f = vi.hoisted(() => ({
   origens: vi.fn(),
   folha: vi.fn(),
   automaticas: vi.fn(),
+  contexto: vi.fn(),
+  conferirContexto: vi.fn(),
 }));
 vi.mock("../../../db.js", () => ({ prisma: { $transaction: (fn: (tx: Prisma.TransactionClient) => unknown) => fn(f.tx) } }));
 vi.mock("../transacao.js", () => ({
@@ -37,8 +39,10 @@ vi.mock("./producao.js", () => ({
   consultarFolha: f.folha,
   consultarOrigensAutomaticasGeraisTx: f.automaticas,
 }));
+vi.mock("./parcelas-contexto.js", async original => ({ ...await original<typeof import("./parcelas-contexto.js")>(),
+  consultarContextoParcelasTx: f.contexto, conferirContextoParcelaTx: f.conferirContexto }));
 import { travarAnimais } from "../rebanho/regras.js";
-import { salvarMedicaoGeral, consultarOrdenhasGerais } from "./tanques.js";
+import { salvarMedicaoGeral, salvarParcelasOrdenha, consultarOrdenhasGerais } from "./tanques.js";
 const id = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const tanque = {
@@ -68,6 +72,7 @@ const input = {
   natureza: "NAO_COMERCIAL" as const,
   animaisOrigem: [],
   responsavel: "Equipe da ordenha",
+  declaracaoDireta: { justificativa: "Separado diretamente pela equipe" },
 };
 function banco() {
   return {
@@ -103,6 +108,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   tx = banco();
   f.tx = tx as unknown as Prisma.TransactionClient;
+  f.conferirContexto.mockResolvedValue({ snapshot: { configuracaoId: id(8), criterio: null, partos: [], primeiraOrdenhaColostro: null } });
+  f.contexto.mockResolvedValue({ criterioColostro: null, carencias: [], partos: [], origensColostro: [] });
   f.config.mockResolvedValue({
     id: id(8),
     fonteProducao: "GERAL",
@@ -114,7 +121,7 @@ it("registra volume só da ordenha sem criar litros ou participantes individuais
   expect(r).toMatchObject({
     litros: 22.5,
     reguaMm: 0,
-    origemLitros: "TABELA_TANQUE",
+    origemLitros: "LITROS_INFORMADOS",
     versao: 1,
   });
   expect(tx.participanteProducaoLeite.create).not.toHaveBeenCalled();
@@ -122,23 +129,11 @@ it("registra volume só da ordenha sem criar litros ou participantes individuais
   expect(tx.diaProducaoLeite.create).toHaveBeenCalledTimes(1);
 });
 it("recusa conflito de versão e correção de aferição já confirmada", async () => {
-  tx.medicaoGeralLeite.findUnique.mockResolvedValue({
-    versao: 2,
-    entradasEstoque: [],
-  });
-  await expect(salvarMedicaoGeral(input, 9)).rejects.toMatchObject({
-    code: "CONFLITO",
-  });
-  tx.medicaoGeralLeite.findUnique.mockResolvedValue({
-    versao: 1,
-    entradasEstoque: [{ id: "entrada" }],
-  });
-  await expect(
-    salvarMedicaoGeral(
-      { ...input, versaoEsperada: 1, motivoCorrecao: "Conferência" },
-      9,
-    ),
-  ).rejects.toMatchObject({ code: "CONFLITO" });
+  const anterior = { id: id(7), tanqueId: tanque.id, animaisOrigem: [], versao: 2, natureza: "NAO_COMERCIAL", entradasEstoque: [] };
+  tx.medicaoGeralLeite.findMany.mockResolvedValue([anterior] as never);
+  await expect(salvarMedicaoGeral({ ...input, id: anterior.id, versaoEsperada: 1, motivoCorrecao: "Conferência" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
+  tx.medicaoGeralLeite.findMany.mockResolvedValue([{ ...anterior, versao: 1, entradasEstoque: [{ id: "entrada", status: "CONFIRMADA" }] }] as never);
+  await expect(salvarMedicaoGeral({ ...input, id: anterior.id, versaoEsperada: 1, motivoCorrecao: "Conferência" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
   expect(tx.medicaoGeralLeite.create).not.toHaveBeenCalled();
   expect(tx.medicaoGeralLeite.update).not.toHaveBeenCalled();
 });
@@ -157,14 +152,13 @@ it("recusa tanque de outra vigência/sítio, fonte individual e data futura", as
 });
 
 it("correção trava animais anteriores e novos antes da sessão e rejeita referência obsoleta", async () => {
-  tx.medicaoGeralLeite.findFirst.mockResolvedValue({ id: id(7), animaisOrigem: [id(40)] });
-  tx.medicaoGeralLeite.findUnique.mockResolvedValue({ id: id(7), animaisOrigem: [id(50)], versao: 1, entradasEstoque: [] });
-  await expect(salvarMedicaoGeral({ ...input, animaisOrigem: [id(60)], versaoEsperada: 1, motivoCorrecao: "Origem conferida" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
+  tx.medicaoGeralLeite.findMany.mockResolvedValueOnce([{ id: id(7), animaisOrigem: [id(40)] }] as never)
+    .mockResolvedValueOnce([{ id: id(7), animaisOrigem: [id(50)], versao: 1, entradasEstoque: [] }] as never);
+  await expect(salvarMedicaoGeral({ ...input, id: id(7), animaisOrigem: [id(60)], versaoEsperada: 1, motivoCorrecao: "Origem conferida" }, 9)).rejects.toMatchObject({ code: "CONFLITO" });
   expect(travarAnimais).toHaveBeenCalledWith(tx, [id(40), id(60)]);
   expect(vi.mocked(travarAnimais).mock.invocationCallOrder[0]).toBeLessThan(tx.$queryRaw.mock.invocationCallOrder[0]);
   expect(tx.medicaoGeralLeite.update).not.toHaveBeenCalled();
 });
-
 it("expõe a pré-seleção na data sem substituí-la pela população antiga do controle individual", async () => {
   f.folha.mockResolvedValue({ configuracao: {}, sessoes: [], animais: [{ animalId: id(30), brinco: "Antiga", nome: null }] });
   const origens = [{ animalId: id(31), brinco: "103", nome: "Aurora", del: 12 }];
@@ -173,4 +167,26 @@ it("expõe a pré-seleção na data sem substituí-la pela população antiga do
   expect(f.automaticas).toHaveBeenCalledWith(tx, 1, new Date("2026-10-20T00:00:00Z"));
   expect(resultado.origensAutomaticas).toEqual(origens);
   expect(resultado.animais[0].animalId).toBe(id(30));
+});
+
+it("guarda conjunto com recipientes segregados, régua manual e sem capacidade presumida para recipiente livre", async () => {
+  const { chave, propriedadeId, dataOperacional, posicaoId, ...parcela } = input;
+  const resultado = await salvarParcelasOrdenha({ chave, propriedadeId, dataOperacional, posicaoId, parcelas: [parcela,
+    { ...parcela, tanqueId: null, recipiente: "Balde colostro", natureza: "COLOSTRO", litros: 4000, reguaMm: 17 }] }, 9);
+  expect(resultado.parcelas).toHaveLength(2);
+  expect(tx.medicaoGeralLeite.create).toHaveBeenCalledTimes(2);
+  expect(tx.medicaoGeralLeite.create.mock.calls[1][0].data).toMatchObject({ tanqueId: null, recipiente: "Balde colostro", origemLitros: "LITROS_INFORMADOS", litros: new Prisma.Decimal(4000), reguaMm: new Prisma.Decimal(17) });
+});
+it("recusa lote inteiro antes da escrita se a última parcela supera a capacidade", async () => {
+  const { chave, propriedadeId, dataOperacional, posicaoId, ...parcela } = input;
+  await expect(salvarParcelasOrdenha({ chave, propriedadeId, dataOperacional, posicaoId, parcelas: [
+    { ...parcela, tanqueId: null, recipiente: "Balde", litros: 10 }, { ...parcela, litros: 3001 }] }, 9)).rejects.toThrow("capacidade");
+  expect(tx.medicaoGeralLeite.create).not.toHaveBeenCalled();
+});
+it("não usa o mesmo tanque ou recipiente para duas parcelas nem entre requisições separadas", async () => {
+  const { chave, propriedadeId, dataOperacional, posicaoId, ...parcela } = input;
+  await expect(salvarParcelasOrdenha({ chave, propriedadeId, dataOperacional, posicaoId, parcelas: [parcela, parcela] }, 9)).rejects.toThrow("recipiente físico distinto");
+  tx.medicaoGeralLeite.findMany.mockResolvedValue([{ ...parcela, tanqueId: tanque.id, id: id(99) }] as never);
+  await expect(salvarParcelasOrdenha({ chave, propriedadeId, dataOperacional, posicaoId, parcelas: [{ ...parcela, natureza: "COLOSTRO" }] }, 9)).rejects.toThrow("recipiente físico distinto");
+  expect(tx.medicaoGeralLeite.create).not.toHaveBeenCalled();
 });

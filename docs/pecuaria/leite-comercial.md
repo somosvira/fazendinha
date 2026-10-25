@@ -1,6 +1,14 @@
-# Entregas e conciliação comercial do leite
+# Comercialização e conciliação do leite
 
 Contrato aditivo da V5. Migrations e testes isolados não comprovam banco aplicado, R2 real ou homologação da rotina. O [contrato de leite](leite.md) e o [Financeiro](../financeiro-rebuild-contrato.md) continuam responsáveis pelos demais efeitos.
+
+## Consulta e acesso às operações
+
+Pecuária → Leite → **Vendas** reúne operações abertas/fechadas por comprador e período e vendas avulsas. A consulta unificada usa `GET /comercial/vendas-unificadas`, com comprador, período, busca, modalidade, situação e paginação. Retorna o resumo do recorte autorizado completo antes de paginar; limites exigem refinar a consulta sem truncar os totais. Operações canceladas ficam identificadas, fora dos totais vigentes. A avulsa aparece pela última versão comercial de sua retirada; as versões substituídas permanecem no histórico, sem reaparecer como outra venda ou outro comprador.
+
+A listagem abre detalhes para negociação/fechamento, coletas físicas, qualidade vinculada, documentos, demonstrativos e operação financeira, preservando as permissões de cada ação. Nova operação por período e Venda avulsa usam os fluxos existentes. **Entregas e demonstrativos** fica acessível dentro de Vendas; o caminho antigo continua compatível. O resumo operacional mostra litros e preço pendente independentemente de acesso financeiro, enquanto dinheiro permanece mascarado no servidor.
+
+**Coletas** conserva consulta autônoma pela data física da saída, mesmo com preço pendente. A partir dela é possível registrar retirada/conferir aceite e abrir a operação relacionada. Coleta, aceitação, venda e recebimento são fatos diferentes: negociar, corrigir preço, faturar ou receber não repete a baixa física. Rotina de coleta é previsão configurável em Configurações de produção, sem execução ou alerta automático prometido.
 
 ## Entrega e venda
 
@@ -53,7 +61,7 @@ Testes focados cobrem limites e fechamento parcial, desconhecido/zero, versão e
 
 A expansão de outubro de 2026 acrescenta `OperacaoComercialLeite`, com identidade estável e unicidade por sítio, comprador e intervalo. A operação começa aberta, com preço desconhecido; ela não é uma `Operacao` financeira de valor zero nem o formulário `RascunhoOperacao`. `RetiradaOperacaoLeite` reúne as coletas do período. Cada coleta registra data real, produto, litros, referência, ponto/horário informados e comprovantes privados, baixando somente origens comerciais elegíveis pelo núcleo leiteiro. A saída usa `RETIRADA_LEITE`, preserva custo produtivo conhecido ou pendente e não cria compromisso ou caixa.
 
-A interface de operações permite abertura, consulta, retirada, anexos e conferência do fechamento; a lista usa o período comercial e o detalhe mostra a data real de cada coleta. O histórico de entregas/vendas anterior continua disponível, sem conversão automática ou refaturamento. Os novos serviços estão em `comercial.operacoes.ts`, com rotas em `/comercial/operacoes` (incluindo detalhe, retiradas, prévia e fechamentos). O catálogo operacional expõe somente identidade/nome de parceiros e produtos elegíveis, sem contas ou custos.
+O detalhe da operação, aberto pela lista unificada de Vendas, permite abertura, consulta, retirada, anexos e conferência do fechamento; a lista usa o período comercial e o detalhe mostra a data real de cada coleta. Entregas/demonstrativos e histórico de avulsas permanecem acessíveis em contexto, sem conversão automática ou refaturamento. Os novos serviços estão em `comercial.operacoes.ts`, com rotas em `/comercial/operacoes` (incluindo detalhe, retiradas, prévia e fechamentos). O catálogo operacional expõe somente identidade/nome de parceiros e produtos elegíveis, sem contas ou custos.
 
 `FechamentoOperacaoLeite` e seus detalhes imutáveis reconhecem explicitamente cada coleta, inclusive reconhecimento zero de uma coleta rejeitada quando houver outras reconhecidas. Diferença entre expedido e reconhecido exige motivo por coleta; não retorna litros, não gera descarte e não altera o fato físico. O acordo informa preço negociado e ajuste monetário separado, com motivo. O total é `arredondar(volume reconhecido × preço, 2) + ajuste`, em Decimal. Não exige laudo, fórmula de qualidade ou preço produtivo apurado.
 
@@ -63,10 +71,10 @@ Correção acrescenta outra versão de fechamento e uma operação financeira su
 
 Reenvios conferem chave, autor, sítio e payload. O formulário conserva a prévia da tentativa para conseguir repetir um fechamento cuja resposta se perdeu sem ser impedido pela própria versão já confirmada. Retirada e fechamento serializam o agregado; travas de produtos antecedem travas financeiras. A migration aditiva expande a elegibilidade SQL de VENDA somente para retirada pendente comprovada, mantém os vínculos antigos e protege identidade, imutabilidade, versões, total reconhecido, sítio/período, cadeia financeira e ausência de nova baixa. Sem `verValores`, preço, ajuste, total e justificativas comerciais são mascarados pelo servidor; litros e comprovantes permanecem operacionais. Escrita física exige Pecuária/lançar; fechamento exige também Financeiro/verValores.
 
-Testes unitários cobrem cálculo, abertura sem financeiro, retirada única, retry, versões, fechamento integral, correção bloqueada, mascaramento, permissões de rota, anexos privados e formulário. O contrato SQL tem verificação estrutural; aplicação da migration e concorrência em PostgreSQL, R2 real, inspeção desktop/celular, CI e homologação continuam validações separadas. Esta entrega local não aplicou migrations ou dados no `fazendinha_seedatev3`.
+Testes unitários cobrem cálculo, abertura sem financeiro, retirada única, retry, versões, fechamento integral, correção bloqueada, mascaramento, permissões de rota, anexos privados e formulário. O contrato SQL tem verificação estrutural; schema efetivo, concorrência em PostgreSQL, R2 real, inspeção desktop/celular, CI e homologação têm validações próprias. Esta atualização documental não verifica a aplicação histórica das migrations nem altera dados ou roteiros.
 
 ### Leituras e qualidade opcional no fechamento
 
-Coletas e Vendas possuem consultas diretas sob `/comercial/consultas`, conforme [o contrato de relatórios](leite-relatorios.md#coletas-e-vendas-independentes). Coleta usa a data real da saída e admite preço pendente; Venda usa comprador/período comercial. Financeiro/`verValores` protege preço e total, sem ocultar os litros operacionais.
+As consultas diretas de Coletas e Vendas sob `/comercial/consultas` continuam disponíveis, conforme [o contrato de relatórios](leite-relatorios.md#coletas-e-vendas-independentes); a entrada comum de Vendas usa a consulta unificada descrita acima. Coleta usa a data real da saída e admite preço pendente; Venda usa comprador/período comercial. Financeiro/`verValores` protege preço e total, sem ocultar os litros operacionais.
 
 O comando de fechamento aceita `amostras` opcional, com identidade e versão esperada. A conferência permite selecionar ou registrar uma amostra pelo fluxo existente, sem duplicar sua identidade ou exigir qualidade para fechar o acordo. Cada versão comercial conserva seu próprio vínculo/snapshot imutável. Correções na amostra não reescrevem o fechamento anterior; detalhes e guardas estão no [contrato de qualidade](leite-qualidade.md#vínculo-opcional-com-fechamento-comercial).

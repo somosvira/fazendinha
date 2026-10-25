@@ -3,11 +3,11 @@ import { exigeArea, getUsuario } from "../../middleware/permissao.js";
 import { resolverEscopoLeitura } from "../../services/propriedade.js";
 import { podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
 import { consultaComercialLeiteSchema } from "../../services/pecuaria/leite/comercial.schemas.js";
-import { consultarColetasOperacoesLeite, consultarVendasOperacoesLeite } from "../../services/pecuaria/leite/comercial.consultas-operacionais.js";
+import { consultaColetasOperacoesLeiteSchema, consultarColetasOperacoesLeite, consultarVendasOperacoesLeite } from "../../services/pecuaria/leite/comercial.consultas-operacionais.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import { falhaV4 } from "./reproducao.js";
 async function consultar(c: Context, tipo: "coletas" | "vendas") {
-  const filtro = consultaComercialLeiteSchema.safeParse(c.req.query());
+  const filtro = (tipo === "coletas" ? consultaColetasOperacoesLeiteSchema : consultaComercialLeiteSchema).safeParse(c.req.query());
   if (!filtro.success) return c.json({ error: filtro.error.issues[0].message, code: "VALIDACAO" }, 422);
   try {
     const sitio = await resolverEscopoLeitura(c);

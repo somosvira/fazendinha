@@ -37,6 +37,11 @@ beforeEach(() => {
   setPropriedadeAtiva(2);
   vi.mocked(consultarLeite).mockResolvedValue(dados);
 });
+async function escolher(rotulo: string, opcao: string) {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+  fireEvent.keyDown(screen.getByLabelText(rotulo), { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("option", { name: opcao }));
+}
 describe("Programação de retirada", () => {
   it("leitura não oferece configuração e não transforma meta em retirada", async () => {
     vi.mocked(consultarLeite).mockResolvedValue({
@@ -51,7 +56,7 @@ describe("Programação de retirada", () => {
     render(<ProgramacaoRetirada podeLancar={false} />);
     await screen.findByText("Meta não aferível");
     expect(
-      screen.queryByRole("button", { name: /Configurar retirada/ }),
+      screen.queryByRole("button", { name: /Configurar rotina de coleta/ }),
     ).toBeNull();
     expect(screen.getByText("Sem lastro físico confiável")).toBeTruthy();
     expect(registrarLeite).not.toHaveBeenCalled();
@@ -60,15 +65,11 @@ describe("Programação de retirada", () => {
     vi.mocked(registrarLeite).mockRejectedValue(new Error("Versão mudou"));
     render(<ProgramacaoRetirada podeLancar />);
     fireEvent.click(
-      await screen.findByRole("button", { name: /Configurar retirada/ }),
+      await screen.findByRole("button", { name: /Configurar rotina de coleta/ }),
     );
-    fireEvent.change(screen.getByLabelText("Tipo de programação"), {
-      target: { value: "SEMANAL" },
-    });
-    fireEvent.change(screen.getByLabelText("Dia da semana"), {
-      target: { value: "3" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar programação" }));
+    await escolher("Frequência da coleta", "Semanal");
+    await escolher("Dia da semana", "Quarta-feira");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rotina de coleta" }));
     await screen.findByText("Versão mudou");
     expect(registrarLeite).toHaveBeenCalledWith("/programacao", 2, {
       propriedadeId: 2,
@@ -78,24 +79,22 @@ describe("Programação de retirada", () => {
       diaSemana: 3,
     });
     expect(
-      (screen.getByLabelText("Dia da semana") as HTMLSelectElement).value,
-    ).toBe("3");
+      screen.getByLabelText("Dia da semana").textContent,
+    ).toContain("Quarta-feira");
     expect(screen.queryByLabelText("Meta de litros")).toBeNull();
   });
   it("dias escolhidos exigem seleção e não enviam meta", async () => {
     vi.mocked(registrarLeite).mockResolvedValue({});
     render(<ProgramacaoRetirada podeLancar />);
     fireEvent.click(
-      await screen.findByRole("button", { name: /Configurar retirada/ }),
+      await screen.findByRole("button", { name: /Configurar rotina de coleta/ }),
     );
-    fireEvent.change(screen.getByLabelText("Tipo de programação"), {
-      target: { value: "DIAS_ESCOLHIDOS" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Salvar programação" }));
+    await escolher("Frequência da coleta", "Dias escolhidos");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rotina de coleta" }));
     await screen.findByText("Escolha ao menos um dia da semana.");
     expect(registrarLeite).not.toHaveBeenCalled();
     fireEvent.click(screen.getByLabelText("Segunda-feira"));
-    fireEvent.click(screen.getByRole("button", { name: "Salvar programação" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar rotina de coleta" }));
     await waitFor(() => expect(registrarLeite).toHaveBeenCalled());
     expect(vi.mocked(registrarLeite).mock.calls[0][2]).toEqual({
       propriedadeId: 2,

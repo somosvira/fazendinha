@@ -1,286 +1,103 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import {
-  act,
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import { consultarLeite, registrarLeite } from "./operacoes-api";
-import { getPropriedadeAtiva } from "../../../propriedadeScope";
-import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
+import { beforeEach, afterEach, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { OrdenhasGerais } from "./OrdenhasGerais";
-import type { ConsultaOrdenhasGerais } from "./tanques-types";
-vi.mock("./operacoes-api", () => ({
-  consultarLeite: vi.fn(),
-  registrarLeite: vi.fn(),
-}));
-vi.mock("../../../estoque/api", () => ({
-  listarProdutos: vi.fn(async () => []),
-}));
-vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: vi.fn(() => 1) }));
-const dados: ConsultaOrdenhasGerais = {
-  origensAutomaticas: [],
-  configuracao: {
-    id: "config",
-    propriedadeId: 1,
-    vigenteDesde: "2026-10-01",
-    inicial: false,
-    fonteProducao: "GERAL",
-    intervaloIndividualQuantidade: 1,
-    intervaloIndividualUnidade: "MESES",
-    ordenhas: [],
-  },
-  tanques: [
-    {
-      id: "tanque",
-      identidadeId: "t",
-      propriedadeId: 1,
-      versao: 1,
-      nome: "Tanque 3000",
-      fabricante: null,
-      modelo: null,
-      numeroSerie: null,
-      capacidadeLitros: 3000,
-      vigenteDesde: "2026-10-01",
-      ativo: true,
-      tabelaConversao: [{ mm: 0, litros: 22.5 }],
-      referenciaTabela: "Fabricante",
-    },
-  ],
-  sessoes: [
-    { id: "manha", posicaoId: "manha", nome: "Manhã", ordem: 1 },
-    { id: "tarde", posicaoId: "tarde", nome: "Tarde", ordem: 2 },
-  ],
-  medicoes: [],
-  animais: [],
+import { consultarParcelas, contextoParcelas, salvarParcelas } from "./parcelas-api";
+import type { ConsultaParcelas, ContextoParcelas } from "./parcelas-types";
+import { chaveRascunhoOrdenha } from "./RegistroOrdenha";
+vi.mock("./parcelas-api", () => ({ consultarParcelas: vi.fn(), contextoParcelas: vi.fn(), salvarParcelas: vi.fn(), confirmarParcelas: vi.fn() }));
+vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: () => 1 }));
+vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn(async () => []) }));
+vi.mock("@/components/DatePicker", () => ({ DatePicker: ({ onChange, ...props }: { onChange: (v: string) => void }) => <input type="date" {...props} onChange={e => onChange(e.target.value)} /> }));
+const contexto: ContextoParcelas = {
+  configuracao: { id: "c", propriedadeId: 1, vigenteDesde: "2026-10-01", inicial: false, fonteProducao: "GERAL", ordenhas: [{ posicaoId: "manha", nome: "Manhã", ordem: 1 }] },
+  sessoes: [{ id: null, posicaoId: "manha", nome: "Manhã", ordem: 1 }], medicoes: [], tanques: [], animais: [], origensAutomaticas: [],
+  contexto: { carencias: [], partos: [], origensColostro: [], criterioColostro: null },
+};
+const lista: ConsultaParcelas = {
+  propriedadeId: 1, periodo: { inicio: "2026-10-01", fim: "2026-10-24" }, pagina: 1, porPagina: 20, total: 1,
+  itens: [{ id: "s1", diaId: "d1", dataOperacional: "2026-10-24", posicaoId: "manha", nome: "Manhã", ordem: 1, fonteProducao: "GERAL", litros: 0, situacao: "PENDENTE_ESTOQUE", porNatureza: [{ natureza: "COMERCIAL", litros: 0 }], parcelas: [] }],
+  resumo: { totalLitros: 0, sessoes: 1, semAfericao: 0, pendentesEstoque: 1, porNatureza: [] },
 };
 beforeEach(() => {
-  vi.mocked(getPropriedadeAtiva).mockReturnValue(1);
-  vi.mocked(listarProdutos).mockResolvedValue([]);
+  sessionStorage.clear(); localStorage.clear();
+  history.replaceState(null, "", "/pecuaria/rebanho/leite?leiteModo=geral&ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24");
+  vi.mocked(consultarParcelas).mockResolvedValue(lista);
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto);
   HTMLElement.prototype.scrollIntoView = vi.fn();
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLElement.prototype.releasePointerCapture = vi.fn();
-  sessionStorage.clear();
-  history.replaceState(null, "", "/?dataOperacional=2026-10-20");
-  vi.mocked(consultarLeite).mockResolvedValue(dados);
 });
-afterEach(() => {
-  cleanup();
-  vi.resetAllMocks();
-});
-it("recupera o rascunho de cada ordenha ao navegar e usa o ponto zero real da tabela", async () => {
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+it("abre na consulta, distingue zero de ausência e mantém o período ao abrir e voltar", async () => {
   render(<OrdenhasGerais podeLancar />);
-  const litros = await screen.findByLabelText("Litros desta ordenha");
-  fireEvent.change(screen.getByLabelText("Régua (mm)"), {
-    target: { value: "0" },
-  });
-  expect((litros as HTMLInputElement).value).toBe("22.5");
-  fireEvent.change(screen.getByLabelText("Responsável"), {
-    target: { value: "Maria" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Tarde" }));
-  expect(
-    (screen.getByLabelText("Litros desta ordenha") as HTMLInputElement).value,
-  ).toBe("");
-  fireEvent.click(screen.getByRole("button", { name: "Manhã" }));
-  expect(
-    (screen.getByLabelText("Litros desta ordenha") as HTMLInputElement).value,
-  ).toBe("22.5");
-  expect((screen.getByLabelText("Responsável") as HTMLInputElement).value).toBe(
-    "Maria",
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Salvar aferição" }));
-  await waitFor(() =>
-    expect(registrarLeite).toHaveBeenCalledWith(
-      "/geral",
-      1,
-      expect.objectContaining({
-        posicaoId: "manha",
-        litros: 22.5,
-        reguaMm: 0,
-        versaoEsperada: 0,
-      }),
-    ),
-  );
+  await screen.findAllByText("Manhã");
+  expect(screen.queryByLabelText("Data da ordenha")).toBeNull();
+  expect(screen.getAllByText("0 L").length).toBeGreaterThan(0);
+  fireEvent.click(screen.getAllByRole("button", { name: "Editar registro" })[0]);
+  await screen.findByLabelText("Data da ordenha");
+  expect(new URLSearchParams(location.search).get("registroId")).toBe("s1");
+  fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
+  await screen.findByText("Ordenhas registradas");
+  expect(new URLSearchParams(location.search).get("ordenhasInicio")).toBe("2026-10-01");
 });
-it("não oferece gravação a usuário só de leitura e distingue falta de aferição de zero", async () => {
-  render(<OrdenhasGerais podeLancar={false} />);
-  await screen.findByLabelText("Litros desta ordenha");
-  expect(screen.queryByRole("button", { name: "Salvar aferição" })).toBeNull();
-  expect(
-    (
-      screen
-        .getByLabelText("Litros desta ordenha")
-        .closest("fieldset") as HTMLFieldSetElement
-    ).disabled,
-  ).toBe(true);
-  expect(screen.getByText("Aferição não registrada")).toBeTruthy();
-});
-
-const produtoLeite: ProdutoDTO = { id: "leite", nome: "Leite cru", unidade: "L", ativo: true };
-function comMedicao(): ConsultaOrdenhasGerais {
-  return { ...dados, medicoes: [{
-    id: "medicao", sessaoId: "manha", tanque: dados.tanques[0], litros: 100,
-    reguaMm: null, origemLitros: "DIRETA", natureza: "COMERCIAL", animaisOrigem: [],
-    responsavel: "Maria", observacao: null, versao: 1, entradaId: null,
-  }] };
-}
-function promessaPendente<T>() {
-  let resolver!: (valor: T) => void;
-  let rejeitar!: (erro: Error) => void;
-  const promessa = new Promise<T>((resolve, reject) => { resolver = resolve; rejeitar = reject; });
-  return { promessa, resolver, rejeitar };
-}
-it("distingue carregamento, erro HTTP 500 e recuperação sem perder o preenchimento", async () => {
-  const primeira = promessaPendente<ProdutoDTO[]>();
-  vi.mocked(consultarLeite).mockResolvedValue(comMedicao());
-  vi.mocked(listarProdutos).mockReturnValueOnce(primeira.promessa).mockResolvedValue([produtoLeite]);
+it("régua não preenche litros e a mudança de data preserva o volume do rascunho", async () => {
+  history.replaceState(null, "", "/?leiteModo=registro&rascunhoOrdenha=r1&dataOperacional=2026-10-24");
   render(<OrdenhasGerais podeLancar />);
-  await screen.findByText("Carregando produtos para o estoque…");
-  expect(screen.queryByText(/Nenhum produto elegível/)).toBeNull();
-  expect((screen.getByRole("button", { name: "Confirmar entrada no estoque" }) as HTMLButtonElement).disabled).toBe(true);
-  await act(async () => primeira.rejeitar(new Error("HTTP 500")));
-  await screen.findByText(/Não foi possível carregar os produtos para o estoque/);
-  fireEvent.change(screen.getByLabelText("Motivo da correção ou declaração da natureza"), { target: { value: "Produção comercial conferida" } });
-  fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-  const seletor = screen.getByRole("combobox", { name: "Produto para o estoque" });
-  await waitFor(() => expect((seletor as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.keyDown(seletor, { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: "Leite cru" }));
-  expect((screen.getByLabelText("Motivo da correção ou declaração da natureza") as HTMLInputElement).value).toBe("Produção comercial conferida");
+  const litros = await screen.findByLabelText("Litros informados manualmente");
+  fireEvent.change(screen.getByLabelText("Régua (mm) · opcional"), { target: { value: "100" } });
+  expect((litros as HTMLInputElement).value).toBe("");
+  fireEvent.change(litros, { target: { value: "25" } });
+  fireEvent.change(screen.getByLabelText("Data da ordenha"), { target: { value: "2026-10-23" } });
+  await waitFor(() => expect(contextoParcelas).toHaveBeenLastCalledWith(1, "2026-10-23"));
+  expect((await screen.findByLabelText("Litros informados manualmente") as HTMLInputElement).value).toBe("25");
+  const salvo = JSON.parse(sessionStorage.getItem(chaveRascunhoOrdenha(1, "r1"))!);
+  expect(salvo).toMatchObject({ data: "2026-10-23", parcelas: [expect.objectContaining({ litros: "25", regua: "100" })] });
+});
+it("conflito de versão conserva os campos e não confirma estoque", async () => {
+  history.replaceState(null, "", "/?leiteModo=registro&rascunhoOrdenha=r1&dataOperacional=2026-10-24");
+  vi.mocked(salvarParcelas).mockRejectedValue(new Error("A parcela foi alterada por outra pessoa. Confira a versão."));
+  render(<OrdenhasGerais podeLancar />);
+  fireEvent.change(await screen.findByLabelText("Litros informados manualmente"), { target: { value: "25" } });
+  fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "Maria" } });
+  fireEvent.change(screen.getByLabelText("Identificação do recipiente"), { target: { value: "Balde segregado" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await screen.findByText("A parcela foi alterada por outra pessoa. Confira a versão.");
+  expect((screen.getByLabelText("Litros informados manualmente") as HTMLInputElement).value).toBe("25");
   expect((screen.getByLabelText("Responsável") as HTMLInputElement).value).toBe("Maria");
-  expect(registrarLeite).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar entrada no estoque" }));
-  await waitFor(() => expect(registrarLeite).toHaveBeenCalledWith("/geral/confirmacoes", 1, expect.objectContaining({ produtoId: "leite", motivoNatureza: "Produção comercial conferida" })));
 });
-it("explica uma lista vazia bem-sucedida e exclui produtos inelegíveis", async () => {
-  vi.mocked(consultarLeite).mockResolvedValue(comMedicao());
-  vi.mocked(listarProdutos).mockResolvedValue([
-    { ...produtoLeite, unidade: "KG" }, { ...produtoLeite, rastrearPartidas: true }, { ...produtoLeite, ativo: false },
-  ]);
+it("permite parcelas adicionais da mesma natureza e não abre restrições sem contexto", async () => {
+  history.replaceState(null, "", "/?leiteModo=registro&rascunhoOrdenha=r1&dataOperacional=2026-10-24");
   render(<OrdenhasGerais podeLancar />);
-  await screen.findByText(/Nenhum produto elegível/);
-  expect(screen.queryByRole("alert")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Tentar novamente" })).toBeNull();
-  expect((screen.getByRole("button", { name: "Confirmar entrada no estoque" }) as HTMLButtonElement).disabled).toBe(true);
+  await screen.findByLabelText("Litros informados manualmente");
+  expect(screen.queryByRole("region", { name: "Parcelas de Colostro" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Incluir outra origem" }));
+  expect(screen.getAllByLabelText("Litros informados manualmente")).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button", { name: "Colostro" }));
+  expect(screen.getByLabelText("Justificativa do registro direto")).toBeTruthy();
+  await act(async () => {});
 });
-it("ignora produtos de uma consulta anterior após troca de sítio", async () => {
-  const antiga = promessaPendente<ProdutoDTO[]>();
-  vi.mocked(consultarLeite).mockResolvedValue(comMedicao());
-  vi.mocked(listarProdutos).mockReturnValueOnce(antiga.promessa).mockResolvedValue([]);
-  const tela = render(<OrdenhasGerais podeLancar />);
-  await screen.findByText("Carregando produtos para o estoque…");
-  vi.mocked(getPropriedadeAtiva).mockReturnValue(2);
-  tela.rerender(<OrdenhasGerais podeLancar />);
-  await screen.findByText(/Nenhum produto elegível/);
-  await act(async () => antiga.resolver([produtoLeite]));
-  expect(screen.getByText(/Nenhum produto elegível/)).toBeTruthy();
-  expect(listarProdutos).toHaveBeenLastCalledWith({ ativo: true }, 2);
-  expect(registrarLeite).not.toHaveBeenCalled();
+it("consulta classificação pendente como estado separado das três naturezas", async () => {
+  render(<OrdenhasGerais podeLancar />);
+  await screen.findAllByText("Manhã");
+  fireEvent.click(screen.getByRole("button", { name: /Filtros/ }));
+  fireEvent.click(screen.getByLabelText("Somente classificação pendente"));
+  expect((screen.getByRole("combobox", { name: "Natureza do leite" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+  await waitFor(() => expect(consultarParcelas).toHaveBeenLastCalledWith(1, expect.any(URLSearchParams)));
+  await waitFor(() => expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("natureza")).toBe("A_CLASSIFICAR"));
 });
 
-it("pré-seleciona as origens calculadas no servidor, sem depender da folha individual", async () => {
-  vi.mocked(consultarLeite).mockResolvedValue({ ...dados, animais: [], origensAutomaticas: [{ animalId: "aurora", brinco: "103", nome: "Aurora", del: 10 }] });
+it("encaminha sessão individual ao controle individual preservando data, ordenha e filtros", async () => {
+  vi.mocked(consultarParcelas).mockResolvedValue({ ...lista, itens: [{ ...lista.itens[0], fonteProducao: "INDIVIDUAL", litros: 117 }] });
   render(<OrdenhasGerais podeLancar />);
-  await screen.findByText("Animais de origem · 1");
-  fireEvent.change(screen.getByLabelText("Litros desta ordenha"), { target: { value: "100" } });
-  fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "Maria" } });
-  fireEvent.click(screen.getByRole("button", { name: "Salvar aferição" }));
-  await waitFor(() => expect(registrarLeite).toHaveBeenCalledWith("/geral", 1, expect.objectContaining({ animaisOrigem: ["aurora"] })));
-});
-
-it("preserva origens salvas e uma seleção vazia intencional do rascunho", async () => {
-  const resultado = { ...comMedicao(), origensAutomaticas: [{ animalId: "aurora", brinco: "103", nome: "Aurora", del: 10 }] };
-  resultado.medicoes[0].animaisOrigem = ["origem-historica"];
-  vi.mocked(consultarLeite).mockResolvedValue(resultado);
-  sessionStorage.setItem("fazendinha:leite:geral:1:2026-10-20:manha:tanque", JSON.stringify({ versao: 1, litros: "123", regua: "", natureza: "COMERCIAL", origens: [], responsavel: "Maria", motivo: "Conferência de origem" }));
-  render(<OrdenhasGerais podeLancar />);
-  await screen.findByText("Animais de origem · 0");
-  fireEvent.click(screen.getByRole("button", { name: "Descartar rascunho" }));
-  expect(screen.getByText("Animais de origem · 1")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Conferir animais" }));
-  expect(screen.getByRole("checkbox", { name: /Origem salva · origem-historica/ }).getAttribute("aria-checked")).toBe("true");
-  expect(screen.getByRole("checkbox", { name: /103 · Aurora/ }).getAttribute("aria-checked")).toBe("false");
-  const historica = screen.getByRole("checkbox", { name: /Origem salva · origem-historica/ }) as HTMLButtonElement;
-  expect(historica.disabled).toBe(false);
-  fireEvent.click(historica);
-  expect(historica.disabled).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: "Aplicar seleção" }));
-  expect(screen.getByText("Animais de origem · 0")).toBeTruthy();
-});
-
-it("escolhe somente um tanque, conserva o rascunho ao trocar e não exige os demais", async () => {
-  vi.mocked(consultarLeite).mockResolvedValue({ ...dados, tanques: [...dados.tanques, { ...dados.tanques[0], id: "segundo", identidadeId: "t2", nome: "Tanque 2000", capacidadeLitros: 2000 }] });
-  render(<OrdenhasGerais podeLancar />);
-  const litros = await screen.findByLabelText("Litros desta ordenha");
-  fireEvent.change(litros, { target: { value: "155" } });
-  fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "Maria" } });
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Tanque desta aferição" }), { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: /Tanque 2000/ }));
-  expect(screen.getAllByLabelText("Litros desta ordenha")).toHaveLength(1);
-  expect((screen.getByLabelText("Litros desta ordenha") as HTMLInputElement).value).toBe("");
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Tanque desta aferição" }), { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: /Tanque 3000/ }));
-  expect((screen.getByLabelText("Litros desta ordenha") as HTMLInputElement).value).toBe("155");
-  fireEvent.click(screen.getByRole("button", { name: "Salvar aferição" }));
-  await waitFor(() => expect(registrarLeite).toHaveBeenCalledWith("/geral", 1, expect.objectContaining({ tanqueId: "tanque", litros: 155 })));
-  expect(screen.queryByText(/de 2 tanques/)).toBeNull();
-});
-
-it("conserva a versão histórica da aferição e abre os tanques com botões do padrão", async () => {
-  const resultado = comMedicao();
-  resultado.tanques = [{ ...dados.tanques[0], id: "nova-versao", versao: 2, capacidadeLitros: 3500 }];
-  vi.mocked(consultarLeite).mockResolvedValue(resultado);
-  render(<OrdenhasGerais podeLancar />);
-  await screen.findByText("Aferição salva · ainda não confirmada no estoque");
-  expect(screen.getByRole("combobox", { name: "Tanque desta aferição" }).textContent).toContain("3.000");
-  fireEvent.click(screen.getByRole("button", { name: "Gerenciar tanques" }));
-  expect(await screen.findByRole("dialog", { name: "Configuração dos tanques" })).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Nova versão de Tanque 3000" }).getAttribute("data-slot")).toBe("button");
-});
-
-it("preserva produto e justificativa da confirmação ao trocar o tanque, sem sujar a aferição salva", async () => {
-  const resultado = comMedicao();
-  resultado.tanques = [...dados.tanques, { ...dados.tanques[0], id: "segundo", identidadeId: "t2", nome: "Tanque 2000" }];
-  vi.mocked(consultarLeite).mockResolvedValue(resultado);
-  vi.mocked(listarProdutos).mockResolvedValue([produtoLeite]);
-  render(<OrdenhasGerais podeLancar />);
-  await screen.findByLabelText("Motivo da correção ou declaração da natureza");
-  fireEvent.change(screen.getByLabelText("Motivo da correção ou declaração da natureza"), { target: { value: "Origem comercial conferida" } });
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Produto para o estoque" }), { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: "Leite cru" }));
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Tanque desta aferição" }), { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: /Tanque 2000/ }));
-  fireEvent.keyDown(screen.getByRole("combobox", { name: "Tanque desta aferição" }), { key: "ArrowDown" });
-  fireEvent.click(await screen.findByRole("option", { name: /Tanque 3000/ }));
-  expect((screen.getByLabelText("Motivo da correção ou declaração da natureza") as HTMLInputElement).value).toBe("Origem comercial conferida");
-  expect(screen.getByRole("combobox", { name: "Produto para o estoque" }).textContent).toContain("Leite cru");
-  expect((screen.getByRole("button", { name: "Confirmar entrada no estoque" }) as HTMLButtonElement).disabled).toBe(false);
-});
-
-it("protege a seleção de origens no modal e mantém a edição ao continuar", async () => {
-  vi.mocked(consultarLeite).mockResolvedValue({ ...dados, origensAutomaticas: [{ animalId: "aurora", brinco: "103", nome: "Aurora", del: 10 }] });
-  render(<OrdenhasGerais podeLancar />);
-  fireEvent.click(await screen.findByRole("button", { name: "Conferir animais" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: /103 · Aurora/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-  expect(await screen.findByRole("dialog", { name: "Descartar alterações?" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
-  expect(screen.getByRole("checkbox", { name: /103 · Aurora/ }).getAttribute("aria-checked")).toBe("false");
-  fireEvent.click(screen.getByRole("button", { name: "Aplicar seleção" }));
-  expect(screen.getByText("Animais de origem · 0")).toBeTruthy();
-  expect(registrarLeite).not.toHaveBeenCalled();
-});
-
-it("não confirma com preparação local baseada em versão antiga da aferição", async () => {
-  vi.mocked(consultarLeite).mockResolvedValue(comMedicao());
-  vi.mocked(listarProdutos).mockResolvedValue([produtoLeite]);
-  sessionStorage.setItem("fazendinha:leite:geral:1:2026-10-20:manha:tanque", JSON.stringify({ versao: 0, litros: "100", regua: "", natureza: "COMERCIAL", origens: [], responsavel: "Maria", motivo: "Declaração da versão anterior", produto: "leite", alterado: false }));
-  render(<OrdenhasGerais podeLancar />);
-  await screen.findByText(/a versão no servidor mudou/);
-  expect((screen.getByRole("button", { name: "Confirmar entrada no estoque" }) as HTMLButtonElement).disabled).toBe(true);
-  expect(registrarLeite).not.toHaveBeenCalled();
+  fireEvent.click((await screen.findAllByRole("button", { name: "Editar registro" }))[0]);
+  const params = new URLSearchParams(location.search);
+  expect(params.get("leiteModo")).toBe("individual");
+  expect(params.get("dataOperacional")).toBe("2026-10-24");
+  expect(params.get("ordenha")).toBe("manha");
+  expect(params.get("ordenhasInicio")).toBe("2026-10-01");
+  expect(params.has("registroId")).toBe(false);
+  expect(params.has("rascunhoOrdenha")).toBe(false);
+  expect(contextoParcelas).not.toHaveBeenCalled();
 });

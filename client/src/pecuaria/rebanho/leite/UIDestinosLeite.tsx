@@ -1,6 +1,11 @@
-import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { CampoFiltro } from "../../../financeiro/PainelFiltros";
+import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
 import { Button } from "@/components/ui/button";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -47,11 +52,13 @@ const dataPt = (data: string) =>
   data.slice(0, 10).split("-").reverse().join("/");
 export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
   const sitio = getPropriedadeAtiva();
+  const [novo, setNovo] = useState(false);
   const [data, setData] = useState(hojeOperacional);
   const [historico, setHistorico] = useState<HistoricoDestinos | null>(null);
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
   const [pagina, setPagina] = useState(1);
+  const filtros = useRascunhoConsulta({ de, ate }, { de: "", ate: "" }, v => { setDe(v.de); setAte(v.ate); setPagina(1); });
   const [revisao, setRevisao] = useState(0);
   const [erro, setErro] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -126,14 +133,9 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Destinos internos do leite</h2>
-      <p>
-        Registre o volume servido a cada animal e sua origem no estoque.
-        Natureza e declaração descrevem a prática informada, sem certificar
-        aptidão sanitária.
-      </p>
-      {podeLancar ? (
-        <>
+      <PageHeader titulo="Destinos internos" descricao="Fornecimentos com origem e volume por animal." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar fornecimento</Button> : undefined} />
+      {podeLancar && novo ? (
+        <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
           <label>
             Data do fornecimento
             <input
@@ -153,74 +155,32 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                   "Destino registrado e volume baixado uma vez do estoque.",
                 );
                 setRevisao((r) => r + 1);
+                setNovo(false);
               }}
             />
           )}
-        </>
-      ) : (
+        </DialogContent></Dialog>
+      ) : !podeLancar ? (
         <p>
           Acesso de consulta. Os destinos registrados permanecem disponíveis no
           histórico.
         </p>
-      )}
+      ) : null}
       {aviso && <p role="status">{aviso}</p>}
       <h2>Histórico de fornecimentos</h2>
-      <div className="leite-form-inline">
-        <label>
-          Desde
-          <input
-            type="date"
-            value={de}
-            onChange={(e) => {
-              setDe(e.target.value);
-              setPagina(1);
-            }}
-          />
-        </label>
-        <label>
-          Até
-          <input
-            type="date"
-            value={ate}
-            min={de || undefined}
-            onChange={(e) => {
-              setAte(e.target.value);
-              setPagina(1);
-            }}
-          />
-        </label>
-        <Button variant="outline" className="leite-secondary"
-          disabled={ocupado || estornando}
-          onClick={() => setRevisao((r) => r + 1)}>
-          Atualizar histórico
-        </Button>
-      </div>
-      {erro && <p role="alert">{erro}</p>}
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><input type="date" value={filtros.rascunho.de} onChange={e => filtros.editar("de", e.target.value)} /></CampoFiltro><CampoFiltro rotulo="Até"><input type="date" value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={e => filtros.editar("ate", e.target.value)} /></CampoFiltro></>} />
+      {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <div className="leite-tabela-scroll">
-            <Table semContainer>
-              <TableCaption>Destinos registrados · histórico preservado</TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Natureza e volume</TableHead>
-                  <TableHead>Animais e parcelas</TableHead>
-                  <TableHead>Situação</TableHead>
-                  <TableHead>Detalhes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {historico.itens.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell>{dataPt(d.data)}</TableCell>
-                    <TableCell>
-                      {nomeNaturezaDestino(d.natureza)}
-                      <br />
-                      {formatarLitros(d.quantidadeLitros)}
-                    </TableCell>
-                    <TableCell>
+          <TabelaFinanceira compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+            { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
+            { chave: "natureza", titulo: "Natureza", celula: d => nomeNaturezaDestino(d.natureza) },
+            { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
+            { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: d => d.parcelas.length },
+            { chave: "situacao", titulo: "Situação", celula: d => d.status === "ESTORNADO" ? "Estornado" : "Confirmado" },
+            { chave: "acoes", titulo: "Ações", acoes: true, celula: d => <div className="leite-consulta-acoes">                      <SecaoDetalhesLeite  titulo={<>Ver detalhes</>}>
+
                       {d.parcelas.map((p) => (
                         <div key={p.id}>
                           {p.nome || p.brinco} ·{" "}
@@ -234,15 +194,9 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                           )}
                         </div>
                       ))}
-                    </TableCell>
-                    <TableCell>
-                      {d.status === "ESTORNADO" ? "Estornado" : "Confirmado"}
-                      <small>Versão {d.versao}</small>
-                    </TableCell>
-                    <TableCell>
-                      <SecaoDetalhesLeite  titulo={<>Ver detalhes</>}>
 
                         <p>{d.declaracaoOrigem}</p>
+                        <p>Versão {d.versao}</p>
                         <p>
                           Saldo da origem no ato:{" "}
                           {formatarLitros(d.saldoOrigemAntes)} →{" "}
@@ -256,43 +210,21 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                         )}
                       </SecaoDetalhesLeite>
                       {podeLancar && d.status !== "ESTORNADO" && (
-                        <Button variant="outline" className="leite-secondary"
+                        <Button variant="outline" className="leite-secondary" aria-label={`Estornar destino de ${dataPt(d.data)}`}
                           disabled={estornando}
                           onClick={() => {
                             setEstorno(d);
                             setMotivo("");
                           }}>
-                          Estornar destino de {dataPt(d.data)}
+                          Estornar
                         </Button>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+</div> },
+          ]} />
           {!historico.itens.length && (
             <p>Nenhum destino registrado no período.</p>
           )}
-          <div className="leite-form-inline">
-            <Button variant="outline" className="leite-secondary"
-              disabled={pagina <= 1 || ocupado || estornando}
-              onClick={() => setPagina((p) => p - 1)}>
-              Página anterior
-            </Button>
-            <span>
-              Página {pagina} · {historico.total} registros
-            </span>
-            <Button variant="outline" className="leite-secondary"
-              disabled={
-                pagina * historico.porPagina >= historico.total ||
-                ocupado ||
-                estornando
-              }
-              onClick={() => setPagina((p) => p + 1)}>
-              Próxima página
-            </Button>
-          </div>
+          <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação dos destinos" substantivo="fornecimentos" idSelect="pagina-destinos-leite" onPagina={setPagina} />
         </>
       )}
       {podeLancar && estorno && (
@@ -586,10 +518,10 @@ function FormularioDestino({
         <div className="leite-form-inline">
           <label>
             Produto de origem
-            <select
+            <SelectCampo disabled={salvando}
               required
               value={rascunho.produto}
-              onChange={(e) => mudar({ produto: e.target.value, origem: null })}
+              onValueChange={(valor) => mudar({ produto: valor, origem: null })}
             >
               <option value="">Selecione</option>
               {produtos.map((p) => (
@@ -597,15 +529,15 @@ function FormularioDestino({
                   {p.nome}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Natureza declarada
-            <select
+            <SelectCampo disabled={salvando}
               value={rascunho.natureza}
-              onChange={(e) => {
+              onValueChange={(valor) => {
                 mudar({
-                  natureza: e.target.value as NaturezaDestinoLeite,
+                  natureza: valor as NaturezaDestinoLeite,
                   parcelas: [],
                 });
                 setPagina(1);
@@ -614,7 +546,7 @@ function FormularioDestino({
               <option value="LEITE_COMUM">Leite comum</option>
               <option value="LEITE_NAO_COMERCIAL">Leite não comercial</option>
               <option value="COLOSTRO">Colostro</option>
-            </select>
+            </SelectCampo>
           </label>
         </div>
         {carregando && <p role="status">Consultando as origens do estoque…</p>}
@@ -622,13 +554,13 @@ function FormularioDestino({
         {rascunho.produto && (
           <label>
             Origem confirmada
-            <select
+            <SelectCampo disabled={salvando}
               value={origemEscolhida?.entradaId ?? ""}
               required
-              onChange={(e) =>
+              onValueChange={(valor) =>
                 mudar({
                   origem:
-                    origens.find((o) => o.entradaId === e.target.value) ?? null,
+                    origens.find((o) => o.entradaId === valor) ?? null,
                 })
               }
             >
@@ -650,7 +582,7 @@ function FormularioDestino({
                   ordenha {o.nomeOrdenha ?? "Ordenha sem nome informado"}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
         )}
         {rascunho.produto && !carregando && !erroOrigens && !origens.length && (
@@ -746,28 +678,10 @@ function FormularioDestino({
         {erroCandidatos && <p role="alert">{erroCandidatos}</p>}
         {candidatos && (
           <>
-            <div className="leite-tabela-scroll">
-              <Table semContainer>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Animal</TableHead>
-                    <TableHead>Seleção</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {candidatos.itens.map((a) => (
-                    <TableRow key={a.animalId}>
-                      <TableCell>
-                        {a.nome || a.brinco}
-                        <small>
-                          Brinco {a.brinco}
-                          {rascunho.natureza === "COLOSTRO"
-                            ? " · cria de parto registrada"
-                            : ""}
-                        </small>
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="outline" type="button"
+            <TabelaFinanceira compacta rotulo="Destinatários disponíveis" itens={candidatos.itens} chaveDe={a => a.animalId} colunas={[
+              { chave: "nome", titulo: "Animal", principal: true, celula: a => a.nome || a.brinco },
+              { chave: "brinco", titulo: "Brinco", celula: a => a.brinco },
+              { chave: "selecao", titulo: "Seleção", celula: a => (                        <Button variant="outline" type="button"
                           className="leite-secondary"
                           disabled={
                             rascunho.parcelas.some(
@@ -780,31 +694,12 @@ function FormularioDestino({
                           )
                             ? "Adicionado"
                             : `Adicionar ${a.nome || a.brinco}`}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        </Button>) },
+            ]} />
             {!candidatos.itens.length && (
               <p>Nenhum destinatário encontrado nesta busca e data.</p>
             )}
-            <div className="leite-form-inline">
-              <Button variant="outline" type="button"
-                className="leite-secondary"
-                disabled={pagina <= 1}
-                onClick={() => setPagina((p) => p - 1)}>
-                Destinatários anteriores
-              </Button>
-              <span>Página {pagina}</span>
-              <Button variant="outline" type="button"
-                className="leite-secondary"
-                disabled={pagina * candidatos.porPagina >= candidatos.total}
-                onClick={() => setPagina((p) => p + 1)}>
-                Próximos destinatários
-              </Button>
-            </div>
+            <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(candidatos.total / candidatos.porPagina))} total={candidatos.total} porPagina={candidatos.porPagina} rotulo="Paginação dos destinatários" substantivo="animais" idSelect="pagina-destinatarios-leite" onPagina={setPagina} />
           </>
         )}
         <h2>Litros por destinatário</h2>
@@ -818,24 +713,9 @@ function FormularioDestino({
             divisão automática.
           </p>
         ) : (
-          <div className="leite-tabela-scroll">
-            <Table semContainer>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Animal</TableHead>
-                  <TableHead>Litros servidos</TableHead>
-                  {rascunho.natureza === "COLOSTRO" && (
-                    <TableHead>Registro de colostro</TableHead>
-                  )}
-                  <TableHead>Ação</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rascunho.parcelas.map((p) => (
-                  <TableRow key={p.animalId}>
-                    <TableCell>{p.nome || p.brinco}</TableCell>
-                    <TableCell>
-                      <input
+          <TabelaFinanceira compacta rotulo="Parcelas por destinatário" itens={rascunho.parcelas} chaveDe={p => p.animalId} colunas={[
+            { chave: "animal", titulo: "Animal", principal: true, celula: p => p.nome || p.brinco },
+            { chave: "litros", titulo: "Litros servidos", celula: p => (                      <input
                         aria-label={`Litros servidos a ${p.nome || p.brinco}`}
                         aria-invalid={
                           p.litros !== "" &&
@@ -849,20 +729,17 @@ function FormularioDestino({
                         onChange={(e) =>
                           mudarParcela(p.animalId, { litros: e.target.value })
                         }
-                      />
-                    </TableCell>
-                    {rascunho.natureza === "COLOSTRO" && (
-                      <TableCell>
-                        <select
+                      />) },
+            { chave: "colostro", titulo: "Registro de colostro", celula: p => rascunho.natureza === "COLOSTRO" ? (                        <SelectCampo disabled={salvando}
                           aria-label={`Registro de colostro de ${p.nome || p.brinco}`}
                           value={p.fornecimentoColostroId ?? ""}
-                          onChange={(e) => {
+                          onValueChange={(valor) => {
                             const f = p.fornecimentos?.find(
-                              (f) => f.id === e.target.value,
+                              (f) => f.id === valor,
                             );
                             mudarParcela(p.animalId, {
                               fornecimentoColostroId:
-                                e.target.value || undefined,
+                                valor || undefined,
                               ...(f?.quantidadeLitros !== null &&
                               f?.quantidadeLitros !== undefined
                                 ? { litros: String(f.quantidadeLitros) }
@@ -886,11 +763,8 @@ function FormularioDestino({
                               {formatarLitros(f.quantidadeLitros)}
                             </option>
                           ))}
-                        </select>
-                      </TableCell>
-                    )}
-                    <TableCell>
-                      <Button variant="outline" type="button"
+                        </SelectCampo>) : "Não se aplica" },
+            { chave: "acao", titulo: "Ação", acoes: true, celula: p => (                      <Button variant="outline" type="button"
                         className="leite-secondary"
                         onClick={() =>
                           mudar({
@@ -900,13 +774,8 @@ function FormularioDestino({
                           })
                         }>
                         Remover {p.nome || p.brinco}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      </Button>) },
+          ]} />
         )}
         <dl className="leite-indicadores">
           <div>

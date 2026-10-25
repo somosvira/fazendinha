@@ -10,9 +10,11 @@ import { RebanhoError, hojeFazendaDate } from "../rebanho/regras.js";
 
 export const consultaProducaoLeiteSchema = z.object({
   inicio: dataLeiteSchema, fim: dataLeiteSchema,
+  propriedadeId: z.coerce.number().int().positive().max(2147483647).optional(),
   animalId: z.string().uuid().optional(), posicaoId: z.string().uuid().optional(),
   natureza: z.enum(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO", "A_CLASSIFICAR"]).optional(),
-  pagina: z.coerce.number().int().positive().default(1), tamanho: z.coerce.number().int().min(1).max(100).default(30),
+  agrupamento: z.enum(["DIA", "MES"]).optional(),
+  pagina: z.coerce.number().int().positive().max(100000).default(1), tamanho: z.coerce.number().int().min(1).max(100).default(30),
 }).strict().refine(v => v.inicio <= v.fim && (Date.parse(v.fim) - Date.parse(v.inicio)) / 86400000 < 366,
   "Consulte até 366 dias, com início anterior ao fim");
 export type ConsultaProducaoLeite = z.infer<typeof consultaProducaoLeiteSchema>;
@@ -59,10 +61,31 @@ export async function consultarProducaoLeite(propriedadeId: number, input: Consu
       for (const linha of linhas) { const id = chave(linha); const grupo = grupos.get(id) ?? []; grupo.push(linha); grupos.set(id, grupo); }
       return [...grupos].map(([id, grupo]) => ({ id, ...resumirProducao(grupo) }));
     };
+    // Posições e rótulos vêm de cada folha histórica. Nenhum turno é fixado no cliente.
+    const ordenhas = [...new Map(folhas.flatMap(f => f.sessoes.map(s => [s.posicaoId, {
+      posicaoId: s.posicaoId, nome: s.nome, ordem: s.ordem,
+    }] as const))).values()].sort((a, b) => a.ordem - b.ordem || a.posicaoId.localeCompare(b.posicaoId));
+    const gruposPorPeriodo = new Map<string, typeof ritmo>();
+    for (const dia of ritmo) {
+      const chave = filtro.agrupamento === "MES" ? dia.data.slice(0, 7) : dia.data;
+      const grupo = gruposPorPeriodo.get(chave) ?? [];
+      grupo.push(dia); gruposPorPeriodo.set(chave, grupo);
+    }
+    const grupos = [...gruposPorPeriodo].map(([periodo, diasGrupo]) => {
+      const datas = new Set(diasGrupo.map(d => d.data));
+      const selecionadas = linhas.filter(l => datas.has(l.data));
+      return { periodo, ...resumirProducao(selecionadas),
+        completa: diasGrupo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS"),
+        turnos: ordenhas.filter(o => !filtro.posicaoId || filtro.posicaoId === o.posicaoId).map(o => ({
+          ...o, ...resumirProducao(selecionadas.filter(l => l.posicaoId === o.posicaoId)),
+        })),
+      };
+    });
     const hoje = hojeFazendaDate().toISOString().slice(0, 10);
     return { propriedadeId, periodo: { inicio: filtro.inicio, fim: filtro.fim },
       mesEmAndamento: filtro.inicio.slice(0, 7) === hoje.slice(0, 7) || filtro.fim.slice(0, 7) === hoje.slice(0, 7),
       totais: resumirProducao(linhas), ritmo,
+      agrupamento: filtro.agrupamento ?? "DIA", ordenhas, grupos,
       coberturaCompleta: ritmo.length > 0 && ritmo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS"),
       porAnimal: agrupar(l => l.animalId ?? "").filter(g => g.id !== ""), porOrdenha: agrupar(l => l.posicaoId), porNatureza: agrupar(l => l.natureza),
       itens: exportacao ? linhas : linhas.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
