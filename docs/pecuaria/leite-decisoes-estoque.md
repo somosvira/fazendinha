@@ -102,7 +102,7 @@ Todas recebem sítio/usuário resolvidos pelo servidor. As rotas devem exigir se
 
 Adaptadores transacionais compartilhados ficam em `services/estoque/leite.ts`; cálculos puros em `leite.calc.ts`. O SQL versionado protege custo pendente, classificações imutáveis, vínculos das medições, soma exata, origem ativa única e coerência dos inversos. Migrations históricas preservam ou recusam vínculos ambíguos conforme suas próprias verificações; este contrato não presume sua aplicação no ambiente nem autoriza reconciliação automática.
 
-A nova migration `20261024200000_parcelas_ordenha_colostro` acrescenta recipientes, declarações e snapshots do contexto. Mantém unicidade por tanque/sessão e acrescenta unicidade do recipiente livre normalizado, guardas conjuntas de segregação e evidências de parto/lactação, sem preencher regra antiga. Ela não foi aplicada nesta rodada. A conferência estrutural não comprova execução ou concorrência PostgreSQL. Confirmação e edição usam `Serializable`; escritas manuais com snapshot `RepeatableRead` antigo não são percurso suportado.
+A baseline incorpora a antiga migration `20261024200000_parcelas_ordenha_colostro`, com recipientes, declarações e snapshots do contexto. Mantém unicidade por tanque/sessão e acrescenta unicidade do recipiente livre normalizado, guardas conjuntas de segregação e evidências de parto/lactação, sem preencher regra antiga. Ela não foi aplicada nesta rodada. A conferência estrutural não comprova execução ou concorrência PostgreSQL. Confirmação e edição usam `Serializable`; escritas manuais com snapshot `RepeatableRead` antigo não são percurso suportado.
 
 ## Consulta consolidada do estoque
 

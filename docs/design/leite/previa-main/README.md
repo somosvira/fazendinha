@@ -1,8 +1,8 @@
 # Prévia navegável da V5 e ajustes em revisão
 
-## Nova proposta de correção — 24/10/2026
+## Referência da revisão de produto — 24/10/2026
 
-A [prévia de revisão de produto](revisao-produto/index.html#ordenhas) apresenta a reorganização dos 18 comentários, configuração de colostro e estoque compartilhado, conforme o [plano de correção](../../../pecuaria/plano-v5-correcao-produto.md). Seu desenho aguarda aprovação; não corresponde a funcionalidades já aplicadas na interface real.
+A [prévia de revisão de produto](revisao-produto/index.html#ordenhas) apresenta a reorganização dos 18 comentários, configuração de colostro e estoque compartilhado, conforme o [contrato vigente](../../../pecuaria/leite.md#interface-de-produção). A referência foi incorporada à V5; este arquivo conserva a prévia ilustrativa e sua proveniência, não representa a aplicação conectada. O contrato vigente distingue o que foi implementado.
 
 Essa versão é independente e preserva os arquivos da prévia anterior abaixo. Dados e efeitos são ilustrativos, em memória; nenhuma chamada à API ou escrita no banco faz parte do protótipo. Os limites e fluxos da nova proposta ficam no [README próprio](revisao-produto/README.md).
 

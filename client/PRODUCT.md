@@ -12,7 +12,7 @@ O usuário confirmou dois percursos: trabalho diário do funcionário autorizado
 
 ## Product Purpose
 
-Gestão rural integrada de Financeiro, Estoque, Pecuária, Sítios e Contas/Acessos. A interface deve facilitar a leitura dos dados existentes e a passagem da análise para a consulta detalhada.
+Gestão rural integrada de Financeiro (Operações e Estoque compartilhado), Pecuária (Rebanho, Reprodução, Produção V5, Sanidade e Nutrição), Sítios e Contas/Acessos. A interface deve facilitar a leitura dos dados existentes e a passagem da análise para a consulta detalhada.
 
 ## Capabilities and Constraints
 
@@ -24,7 +24,7 @@ A marca Terrano e seu símbolo são preservados. A direção aprovada usa petró
 
 ## Evidence on Hand
 
-README.md, ARCHITECTURE.md, docs/README.md e contratos de domínio são as fontes funcionais. A implementação atual e a captura do Rebanho são evidências visuais; capturas isoladas não comprovam funcionamento.
+README.md, ARCHITECTURE.md, docs/system-design.md, docs/guia/README.md e contratos de domínio são as fontes funcionais. A implementação atual e a captura do Rebanho são evidências visuais; capturas isoladas não comprovam funcionamento.
 
 ## Product Principles
 
@@ -32,3 +32,5 @@ README.md, ARCHITECTURE.md, docs/README.md e contratos de domínio são as fonte
 - Aproximar rótulos, quantidades e contexto.
 - Evitar caminhos repetidos para a mesma consulta.
 - Distinguir ausência, falha, carregamento e dados ocultos por permissão.
+- Mostrar estados do animal por eixos independentes e com data/evidência; gestante e lactante podem coexistir.
+- Separar medição, estoque, coleta, venda, recebimento e custo produtivo; cada fato tem seus efeitos e cobertura.

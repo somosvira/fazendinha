@@ -1,6 +1,6 @@
 # Produção de leite — V5
 
-Este contrato descreve o comportamento implementado nesta branch V5. Disponibilidade em cada ambiente depende do código e do schema efetivamente implantados. A estrutura V5 integra a baseline `20261025000000_base_unificada`, instalada no PostgreSQL local `fazendinha_seedatev3` após substituição autorizada com backup. A cadeia anterior foi consolidada preservando suas garantias SQL; o histórico permanece no Git e nos backups locais. Isso não indica aplicação em outros ambientes. Testes sem banco não comprovam execução dos gatilhos, concorrência PostgreSQL ou operação da fazenda. A Reprodução V4 permanece no seu contrato.
+Este contrato descreve o comportamento implementado na V5 integrada à main. Disponibilidade em cada ambiente depende do código e do schema efetivamente implantados. A estrutura V5 integra a baseline `20261025000000_base_unificada`, instalada no PostgreSQL local `fazendinha_seedatev3` após substituição autorizada com backup. A cadeia anterior foi consolidada preservando suas garantias SQL; o histórico permanece no Git e nos backups locais. Isso não indica aplicação em outros ambientes. Testes sem banco não comprovam execução dos gatilhos, concorrência PostgreSQL ou operação da fazenda. A Reprodução V4 permanece no seu contrato.
 
 ## Finalidade do animal na produção
 
@@ -98,7 +98,7 @@ Preço comercial de referência é uma medida gerencial separada do custo de pro
 
 A revisão grava nova `ReferenciaGerencialLeite`, com preço, comprador, período, autor, motivo e versão. Não altera litros, movimentos, custo produtivo, compras, receita ou caixa. Para 60 L, referência R$ 2,50/L mostra R$ 150; revisão para R$ 2,70/L mostra R$ 162, mantendo, por exemplo, R$ 84 de custo produtivo. O resumo do lote exibe a referência separadamente dos custos: nunca soma esses valores como R$ 234 ou R$ 246 de gasto da fazenda. Preços, totais referenciais, valores por animal e justificativas comerciais são mascarados sem a permissão financeira `verValores`; a leitura dos custos operacionais conserva a política pecuária existente.
 
-As migrations aditivas incluem vínculos e verificações de conservação, imutabilidade e observação do estoque/fechamento. A implementação e os testes sem banco não comprovam execução desses gatilhos ou concorrência SQL real; verificação do schema efetivo, ensaios com PostgreSQL autorizado, CI e homologação operacional têm evidências próprias.
+As garantias SQL consolidadas na baseline (originadas nas migrations aditivas) incluem vínculos e verificações de conservação, imutabilidade e observação do estoque/fechamento. A implementação e os testes sem banco não comprovam execução desses gatilhos ou concorrência SQL real; verificação do schema efetivo, ensaios com PostgreSQL autorizado, CI e homologação operacional têm evidências próprias.
 
 ## Destinos internos
 
@@ -170,7 +170,7 @@ O [roteiro de homologação V5 da finalidade](artefatos/homologacao-v5-finalidad
 - Carga desde outubro: a prévia de conferência está implementada, mas faltam registros reais, unidade comprovada, sítio/ano/fim do lote e reconciliação com estoque/vendas anteriores. O executor da carga real será definido contra esse lote conferido; não há importação automática neste incremento. Importar medições antigas não pode aumentar saldo de leite já vendido.
 - A baseline `20261025000000_base_unificada` foi aplicada localmente. Restam validação de R2 e homologação com a fazenda; evidências de concorrência e commits independentes devem ser identificadas por cenário testado. Outros ambientes exigem autorização e conferência próprias. A substituição autorizada da base demonstrativa não autoriza reinicializações em tarefas comuns.
 
-As pendências operacionais acima permanecem separadas da implementação e da inspeção visual. Este contrato e os contratos específicos de estoque, qualidade e comercial descrevem o comportamento vigente na branch.
+As pendências operacionais acima permanecem separadas da implementação e da inspeção visual. Este contrato e os contratos específicos de estoque, qualidade e comercial descrevem o comportamento vigente na main.
 
 
 ### Compatibilidade com o resumo nutricional
