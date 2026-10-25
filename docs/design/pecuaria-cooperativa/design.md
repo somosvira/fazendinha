@@ -1,96 +1,39 @@
-# Pecuária V3 — Cooperativa contemporânea
+# Pecuária V1–V5 — Cooperativa contemporânea
 
-Implementação de 11/10/2026 na branch `codex/pecuaria-cooperativa-contemporanea`, criada da branch `codex/financeiro-cooperativa-contemporanea` com seu trabalho local preservado. A direção visual é a [Cooperativa aprovada no Financeiro](../financeiro-cooperativa/design.md). A organização operacional usa como referência o [PR #313](https://github.com/somosvira/fazendinha/pull/313), especialmente seus commits de navegação e Nutrição. O contrato da [Pecuária V1–V3](../../pecuaria/README.md), o schema e a API atual prevalecem sobre a proposta do PR.
+Pecuária compartilha identidade, navegação, consultas e primitivas com Financeiro e Estoque. Este guia descreve a composição atual; regras zootécnicas e efeitos pertencem aos [contratos pecuários](../../pecuaria/README.md). Tokens atuais estão no [design system](../../../client/DESIGN.md) e no [guia unificado](../cooperativa-unificada.md).
 
 ## Estrutura e navegação
 
-| Área | Endereço | Conteúdo |
-|---|---|---|
-| Rebanho | `/pecuaria/rebanho` | Visão geral, animais e lotes |
-| Animais | `/pecuaria/rebanho/animais` | Consulta, filtros, seleção e ações coletivas existentes |
-| Cadastro | `/pecuaria/rebanho/animais/novo` | Formulário e revisão do cadastro |
-| Ficha | `/pecuaria/rebanho/animais/:id` | Resumo, identificação/genética, sanidade, peso/manejo, nutrição e histórico |
-| Lotes | `/pecuaria/rebanho/lotes` e `/pecuaria/rebanho/lotes/:id` | Consulta e detalhe |
-| Sanidade | `/pecuaria/sanidade` | Agenda de ciclos/tarefas, ocorrências, aplicações, exames e carências |
-| Pesagem coletiva | `/pecuaria/rebanho/animais` | Ação da seleção de animais; o endereço antigo `/pecuaria/pesagem-manejo` redireciona preservando filtros |
-| Nutrição | `/pecuaria/nutricao` | Visão geral por lote, receitas e fechamentos |
-| Configurações | `/configuracoes/pecuaria` | Rebanho, genética e sanidade; receitas continuam na Nutrição |
+Rebanho, Reprodução, Visitas, Leite, Sanidade, Nutrição e Relatórios são entradas próprias. Configurações concentra catálogos e políticas. Aliases históricos e contratos de URL continuam preservados; pesagem coletiva é ação da seleção de Animais.
 
-Nutrição mantém o estado na query: `aba=receitas|fechamentos`, `loteId`, `fechamentoId`, `acao=atribuir|corrigir|consumo|estorno`, `vigenciaId`, `formReceita=nova|editar|versao|detalhe|publicar` e `receitaId`. Busca, paginação e filtros continuam na URL; o histórico do navegador restaura a consulta.
+O panorama do Rebanho mostra população e distribuições com denominador. Animais prioriza busca, filtros e consulta. Lotes oferece cartões e tabela, com composição/desempenho e cobertura. Ficha animal organiza Resumo, Cadastro, Histórico, Reprodução, Sanidade, Nutrição e Produção para fêmeas; ficha de lote conserva abas e fragmentos históricos.
 
-Links antigos de Sanidade e Nutrição sob `/pecuaria/rebanho` são normalizados sem perder query ou fragmento. Cadastros antigos levam ao grupo correspondente de Configurações, conservando parâmetros de consulta e links para materiais. A normalização inicial substitui a entrada atual do histórico; a navegação do usuário continua usando `pushState`.
+Reprodução separa acompanhamento, agenda, protocolos, partos e indicadores. Visitas oferece Agenda do dia e Seleção livre, seguidas de preparação/atendimento. Filtro, seleção de animais, programação e fato executado não recebem o mesmo tratamento de estado.
 
-A sidebar mantém o agrupamento visual Pecuária, com as três rotinas: Rebanho, Sanidade e Nutrição. A busca global conhece os mesmos destinos. Acesso às rotinas e às configurações exige a área Pecuária; alterações dependem de `lancar`. Os cadastros existentes recebem essa permissão e continuam em leitura quando ela está ausente.
+Leite tem sete consultas: Ordenhas, Produção, Estoque, Coletas, Qualidade, Vendas e Alimentação e descarte. Configurações, relatórios e prévia histórica têm caminhos próprios. O [contexto visual V5](../leite/PRODUCT.md) conserva decisões da captura geral/individual; o contrato define os efeitos.
 
-## Aplicação da referência
+## Consulta e composição
 
-Usar as primitivas existentes de `financeiro-ui.tsx`, os componentes shadcn-style/Radix e os formulários de domínio. Evitar uma biblioteca paralela ou campos ilustrativos sem suporte da API.
+Reutilize PageHeader, SubTabs, BarraConsulta, PainelFiltros, TabelaFinanceira e as primitivas de campos/diálogos. Cabeçalho e navegação ficam presentes durante carregamento. Falha não é apresentada como coleção vazia; um recorte sem resultados oferece revisão de filtros, sem sugerir cadastro a leitores.
 
-| Decisão visual | Padrão aplicado |
-|---|---|
-| Fundo | Sálvia clara `--background` / `#edf2ed` |
-| Sidebar | `--fin-sidebar` / `#e1e9e2`, paisagem discreta e marca Terrano original |
-| Ação principal | Verde floresta `--primary` / `#24493b`, texto branco |
-| Superfície | `--card`, branco |
-| Texto | `--foreground` e `--muted-foreground` |
-| Tipografia | DM Sans; título de página 28 px e 24 px no móvel |
-| Painéis / controles | Raios de 16 / 8 px; sombra discreta e borda sem saturação |
-| Tabelas | Cabeçalho sálvia, corpo branco, células 10 × 16 px e texto de 14 px |
-| Ícones de seções | Ícone existente em círculo sálvia de 36 px |
-| Modais / painéis laterais | Cabeçalho sálvia, conteúdo branco, rodapé e ações com contraste |
+Filtros adicionais/coluna usam rascunho até Aplicar. Paginação, ordenação e filtros mantêm contexto na URL quando previstos. Não ordenar apenas a página atual de uma coleção paginada no servidor. Cartões e tabelas compartilham dados, ações e permissão; documentos emitidos mantêm sua composição.
 
-A ficha do animal é um documento contínuo com superfícies separadas para resumo e seções, navegação interna fixa e gráficos de peso/composição racial. Os dados e ações de cada seção permanecem montados; os históricos não foram removidos. Ao abrir uma ficha, a interface posiciona seu início ou a âncora válida da URL; atualizar pesagens não reposiciona a leitura. Pesagem e movimentação ficam no cabeçalho; ações secundárias ficam em “Mais ações”, com fechamento por Escape e retorno de foco ao acionador.
+Seções principais da ficha são legíveis diretamente; evidências auxiliares podem expandir. Tabelas e valores exatos permanecem disponíveis quando existe alternativa gráfica. Não usar gráficos de uma página como total do rebanho nem juntar quantidades de unidades diferentes.
 
-Formulários de novo animal e Nutrição ocupam a largura disponível, com título dentro do formulário e revisão à direita. No novo animal, salvar/cancelar ficam na revisão; as receitas e operações nutricionais mantêm as ações no rodapé do formulário. A revisão empilha abaixo do formulário em telas menores. Os painéis laterais existentes continuam sendo usados para ações de manejo, pesagens e cadastros auxiliares.
+## Estados do animal e da operação
 
-Tabelas extensas mantêm rolagem horizontal dentro do contêiner. Navegação local pode rolar horizontalmente; isso não autoriza cortar botões fora de suas superfícies. A paginação quebra a linha no móvel. Filtros sanitários ocupam uma linha em telas largas e se reorganizam nas menores.
+Finalidade, papel, diagnóstico, elegibilidade, lactação, carência e atividade são eixos independentes. Uma vaca pode ser gestante/lactante e estar em carência. Rótulos devem indicar evidência, data e desconhecimento, conforme o [modelo de estados](../../pecuaria/estados-animal.md).
 
-## Ícones e tema compartilhado
+Progresso do protocolo representa tarefas, não eficácia clínica. Ocorrência encerrada não autoriza “saudável”. Consumo atribuído não é ingestão medida. Medição salva não é estoque confirmado. Coleta não é recebimento. Cor não deve ocultar essas diferenças.
 
-A geometria canônica dos ícones financeiros permanece em seu inventário existente. As novas entradas da Pecuária reutilizam Lucide: `Beef`, `HeartPulse` e `Leaf`; os grupos de cadastro usam `Beef`, `Dna`, `HeartPulse` e `Leaf`. Ícones de ação e da ficha são os mesmos já usados no domínio. Na sidebar, o traço é 1,7; no conteúdo, preservam-se os tamanhos 16–20 px e as propriedades dos componentes existentes. Não há um mockup raster específico da Pecuária para alegar identidade pixel a pixel.
+## Formulários e confirmação
 
-A paleta fica em `client/src/styles/cooperativa-theme.css`. A composição compartilhada é aplicada por `financeiro-theme.css` a `.financeiro-content` e `.pecuaria-content`; detalhes da Pecuária ficam em `pecuaria/pecuaria-theme.css`. O seletor no root alcança portais Radix e a sidebar. Ao sair dessas áreas, o escopo desaparece. Os tokens `--fin-*` foram conservados para compatibilidade com o Financeiro.
+Cadastros, fatos e correções usam rótulos explícitos, datas e motivos conforme o contrato. Ações frequentes ficam próximas do contexto; comandos irreversíveis/regularizações têm a confirmação existente. Cancelar, falha, gravação e reenvio preservam os campos e a identidade do trabalho.
 
-Essa organização centraliza as cores para uma futura feature de temas; a seleção de temas por usuário e sua persistência ainda não fazem parte desta implementação.
+No Leite, rascunho local, salvo e confirmado no estoque aparecem separadamente. Versão vencida exige conferência; não sobrescrever silenciosamente. Origens, tanques, natureza, produto e motivo não devem receber valores inventados para reproduzir um mockup.
 
-## Adaptação do PR à branch atual
+## Fontes visuais e validação
 
-Foram aproveitadas a separação operacional, a ficha por âncoras, as configurações da Pecuária e as consultas/formulários da Nutrição por lote. O Financeiro conserva suas rotas e seu redesign atual; não foi portado o deslocamento global das configurações financeiras proposto no PR.
+O acabamento comum está em `cooperativa-theme.css`, `identidade-rural.css`, `tabelas-operacionais.css` e `rebanho-layout.css`; módulos acrescentam composição específica. Capturas de `output/qa/` de outubro de 2026 eram locais, não estão versionadas nesta árvore e não são links de operação.
 
-A leitura de nutrição usa `GET /api/pecuaria/rebanho/nutricao/resumo`, opcionalmente com `loteId`, para o panorama e o resumo de um lote. O servidor consulta vigências atuais/programadas em conjunto e agrega todos os fechamentos confirmados no PostgreSQL, devolvendo uma linha por lote. O filtro `status=CONFIRMADO|ESTORNADO` de `/consumo/fechamentos` é aplicado antes de contar e paginar. O cliente conserva os endpoints detalhados/paginados para histórico, participantes e rastreabilidade; não baixa esse histórico para montar o panorama. Resolve também os sítios dos fechamentos e os lotes em uso de cada receita.
-
-Os valores continuam entregues e mascarados pela API. Resumos incluem apenas fechamentos confirmados, excluem estornos e distinguem custo desconhecido de zero. SQL soma os custos conhecidos com arredondamento por fechamento em duas casas, como o detalhe; a média usa `Prisma.Decimal`. Quantidade confirmada zero tem custo conhecido zero; itens sem base de custo conservam cobertura parcial/desconhecida. Sem fechamentos, o custo é zero; com fechamentos inteiramente desconhecidos, é `null`. `verValores` e a área financeira controlam o DTO no servidor, inclusive para o resumo vazio. Isso não gera fatos, baixa de estoque, movimentos financeiros ou regras contábeis.
-
-O panorama faz duas consultas HTTP, catálogo de lotes e resumo. O número de requests e o volume transferido não crescem com as páginas do histórico; a consulta agregada ao banco ainda depende dos registros existentes. O resumo mantém snapshot de leitura RepeatableRead e aplica o sítio também ao local dos fechamentos. A lista de receitas faz um único GET `/dietas`: o servidor agrega seus lotes em uso em duas consultas no mesmo snapshot, sem chamadas por lote nem leitura de custos/histórico. O payload cresce apenas com receitas/ingredientes e usos atuais, não com vigências encerradas. Não há cache compartilhado entre sítios.
-
-O resumo e o filtro de situação são extensões de leitura; schema, migrations e serviços de gravação permanecem com seus contratos. Reprodução e leite de versões futuras não foram reintroduzidos. A base IDEAGRI continua sendo fonte de carga inicial, não uma restrição de interface ou cadastro.
-
-## Verificação
-
-A [revisão visual](../../../design-qa.md) registra capturas reais, estados, larguras e limites da conferência. A [galeria de evidências](../../../output/qa/pecuaria-cooperativa-2026-10-11/index.html) reúne as páginas e os estados; os PNGs originais ficam ao lado.
-
-Os testes cobrem rotas/aliases, gates de área, paginação do adaptador, custos parciais/mascarados, estornos, receitas/vigências e os fluxos existentes de manejo/sanidade/seleção. A conferência no navegador usa as fixtures locais, com escritas de negócio bloqueadas. Não equivale à homologação integral da V3, teste de todas as combinações de dados ou auditoria completa de acessibilidade.
-
-## Refinamento com feedback de 11/10/2026
-
-- Rebanho, Sanidade, Nutrição e Ciclos/Tarefas usam a variante financeira de `SubTabs`, composta pelas mesmas primitivas `Tabs`, `TabsList` e `TabsTrigger` de Configurações financeiras e a classe compartilhada `fin-abas`. A variante antiga permanece para os outros consumidores.
-- Não repetir o nome do módulo acima dos títulos principais. Ações de gestão ficam no cabeçalho, usando o botão padrão.
-- A visão geral de Rebanho começa pela rosca e legenda clicável por categoria, sem quatro cards de indicadores. O efetivo aparece no centro da rosca; receptoras fica no rodapé da composição, com contagem e percentual das fêmeas. Categorias homônimas distinguem sexo. Barras por sítio, proporcionais ao total ativo, aparecem apenas no Consolidado; em sítio específico, a composição ocupa toda a largura e a legenda usa o espaço disponível. Os painéis têm altura conforme o conteúdo, sem forçar espaço vazio. Baixas por tipo reúnem gráfico, contagens e links em um único painel; os quatro últimos eventos mantêm marcadores por tipo em Atividade recente. As duas seções compartilham uma linha no desktop e empilham no celular. As regras dos agregados estão no [contrato atual](../../pecuaria/README.md#navegação-e-apresentação).
-- A classificação dos motivos e a participação de descarte voluntário ficam em detalhes expansíveis do painel de baixas, com numerador, denominador e exclusões explícitos. Mortes não são repetidas na classificação. Totais e consultas seguem a mesma janela selecionada; não representam taxa de mortalidade.
-- Sanidade usa seis filtros de largura e altura uniformes no desktop, três no tablet e um no celular. Novo ciclo fica no cabeçalho da tabela.
-- Animais mantém busca, botão Filtros e apenas os filtros ativos como chips removíveis. O diálogo permite alterar os critérios; Concluir fecha o diálogo. Filtros e paginação continuam na URL. A atualização não desmonta os controles em consultas vazias.
-- Seleção individual tem checkbox de 20 px em alvo mínimo de 44 × 44 px. O clique na área de seleção não abre a ficha.
-- A pesagem coletiva permanece na barra de seleção de Animais. A sidebar não repete uma página apenas para selecionar os mesmos animais; links antigos redirecionam preservando query e fragmento.
-
-Capturas desta rodada: [galeria dos refinamentos](../../../output/qa/pecuaria-refinamentos-2026-10-11/index.html).
-
-
-### Clareza dos cadastros
-
-O hub identifica a área Configurações antes da navegação. Categorias explicam que a primeira regra compatível prevalece e que a reordenação passa pela simulação de impacto. Genitores exibem também os nomes das raças, sem exigir interpretação de siglas. Protocolos têm ações textuais, orientação sobre versões publicadas e revisão conjunta das etapas no rascunho; salvar não publica nem executa o planejamento. Tipos de exame explicam o bloqueio de formato na lista e no formulário. Sítios usam diálogo compacto e conservam a validação local de UF com duas letras, normalizadas em maiúsculas, sem ampliar o contrato de gravação.
-
-### Tabelas sanitárias e navegação — segunda rodada de 11/10/2026
-
-Ciclos, Tarefas, Ocorrências, Aplicações, Exames e Carências reúnem título/ação, filtros e conteúdo no mesmo painel. A busca inicia a barra de filtros e a tabela ocupa as bordas do painel. Tarefas usam a tabela compartilhada, com Executar tarefa e menu de ações secundárias por linha; os fluxos e o sítio de cada ação são preservados. Carências passam a colunas Animal, Leite, Abate/carne e Orientação, mantendo revisão de finalidade, desconhecido, não aplicabilidade, prazo zero e atualização de expiração.
-
-O formulário de consumo não repete um link de voltar acima do título; Cancelar preserva o retorno e os parâmetros. Cadastros específicos não repetem o breadcrumb Caminho do cadastro nem o título geral de configurações. Ver [guia unificado](../cooperativa-unificada.md) e [evidências](../../../output/qa/feedbacks-tabelas-2026-10-11/index.html).
+As referências preservadas de [Reprodução](../reproducao/mockup-v1/README.md) e [Leite](../leite/PRODUCT.md) usam exemplos ilustrativos. [QA histórico](../../../design-qa.md) e [QA V5](../leite/design-qa.md) não comprovam automaticamente o banco atual, R2 ou homologação de campo. Atualizações de documentação não redefinem direção estética nem aprovam uma nova interface.

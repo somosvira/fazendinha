@@ -8,11 +8,15 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 
 - **Financeiro:** operações e rascunhos, compromissos, liquidações, contas/extratos, transferências, estornos, documentos, relatórios e cadastros gerenciais.
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
-- **Pecuária V1–V4:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
-- **Produção de leite V5:** ordenhas configuráveis por animal, origens e destinos do leite, qualidade, operações comerciais por período e custos. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
+- **Pecuária — Rebanho, Reprodução, Sanidade e Nutrição:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
+- **Produção de leite V5:** produção geral por parcela/recipiente e controle individual, origens e destinos do leite, qualidade versionada, coletas antes do preço, comercialização e custos com cobertura. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite evoluem na V5 separadamente da Reprodução V4. Laboratório/FIV continuam fora do escopo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com contratos próprios e vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+
+## Entender o produto
+
+O [manual por eixos](docs/guia/README.md) explica Financeiro (Operações e Estoque) e Pecuária (Rebanho, Reprodução, Produção, Sanidade e Nutrição). Abra o [HTML navegável](docs/guia/index.html) para ler o ciclo da vaca, estados simultâneos, exemplos, diagramas e lacunas. O [system design](docs/system-design.md) descreve a integração e o [modelo de estados do animal](docs/pecuaria/estados-animal.md) identifica fatos, transições e desconhecimento.
 
 ## Desenvolvimento local
 

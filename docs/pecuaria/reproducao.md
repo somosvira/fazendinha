@@ -4,13 +4,15 @@ Este contrato descreve a implementação em `server/src/services/pecuaria/reprod
 
 A padronização de protocolos, tarefas, exames e papéis está descrita no [contrato comum](protocolos-exames.md). Nomes IATF e avaliação permanecem em projeções de leitura/contratos HTTP; a escrita usa as entidades comuns.
 
+O [modelo de estados do animal](estados-animal.md) e o [guia do ciclo reprodutivo](../guia/05-pecuaria-reproducao.md) explicam coexistência e transições.
+
 ## Fatos individuais e acompanhamento
 
 Uma tentativa de reprodução tem identidade própria, animal, sítio na data do fato, tipo (IA, TE ou cobertura observada), data, responsável, origem do material e posição no ciclo. A confirmação da gestação é um fato diferente da tentativa. Várias avaliações podem acompanhar a mesma gestação.
 
 Categoria (vaca/novilha), finalidade (leite/corte/reprodução), papel por período (NENHUM/DOADORA/RECEPTORA), aptidão clínica, situação reprodutiva e restrição são dimensões diferentes. A interface apresenta a finalidade do animal como “Finalidade”, persistida em `FinalidadeAnimal` (anteriormente `DestinoAnimal`), preservando os identificadores técnicos `aptidao`, `aptidoes`, `AptidaoAnimal` e os contratos de URL. A renomeação estrutural não modifica dados ou proveniências; os dois nomes de entidade continuam legíveis na auditoria. A classificação pode ser alterada com histórico, autoria e auditoria, desfeita sem apagar o registro anterior e consultada por filtros; ela não altera automaticamente o papel reprodutivo nem classifica retroativamente fatos, tentativas, gestações, partos ou crias. Uma vaca marcada para descarte continua no rebanho e pode continuar no leite. A decisão impede novas intervenções reprodutivas, exige motivo e só termina com reversão explícita e auditada. Não gera baixa, secagem ou encerramento de lactação.
 
-Regra futura de produção leiteira: animais com finalidade Reprodução não serão considerados nem em produção nem como leite de descarte. Essa apuração deverá considerar a finalidade vigente na data de cada fato, preservando períodos anteriores; não deverá lançar produção zero nem presumir secagem. Produção e qualidade do leite continuam fora do escopo. Esta regra futura não é implementada pela entrega estrutural da finalidade.
+A V5 aplica a finalidade vigente na data à elegibilidade leiteira: apenas LEITE comprovada admite participação/origem individual. CORTE, REPRODUCAO, lacuna ou sobreposição não recebem produção zero nem secagem presumidas. Histórico anterior é preservado e as guardas de correção consideram origens já utilizadas. Veja [finalidade na produção](leite.md#finalidade-do-animal-na-produção). Qualidade, referência comercial e fatos independentes não recebem um filtro genérico pela finalidade atual.
 
 Restrições sanitárias são configuradas por sítio, doença e ação, com efeito de alerta ou bloqueio. Não existem bloqueios clínicos presumidos. A vigência da ocorrência determina sua aplicação; encerrar uma ocorrência não elimina outra restrição. O sistema registra ciência dos alertas e mantém a auditoria de configurações.
 
@@ -80,7 +82,7 @@ O total de partos soma o saldo anterior à entrada e os eventos válidos que ain
 
 Uma cria viva nasce no sistema junto com o parto, na mesma transação. Sexo, aptidão e sítio são conhecidos; brinco definitivo e peso podem ficar pendentes. Sem brinco, recebe identificação provisória explicitamente sinalizada. Completar a identificação preserva seu ID, filiação, histórico e vínculo com o parto. Natimorto não gera um animal ativo. Morte posterior ao nascimento usa o fluxo normal de baixa do animal.
 
-O parto pode iniciar a lactação mínima quando isso foi efetivamente informado. Aborto não abre uma lactação automaticamente. Há registro de início e encerramento; produção diária, qualidade do leite, laboratório/FIV e gestão avançada de coleta permanecem fora desta versão.
+O parto pode iniciar a lactação mínima quando isso foi efetivamente informado. Aborto não abre uma lactação automaticamente. Há registro de início e encerramento. Produção, qualidade e coletas são atendidas pelo [contrato V5](leite.md), ligado a essa lactação; laboratório/FIV continua fora do escopo.
 
 ## Visita veterinária
 
@@ -158,7 +160,7 @@ Aplicam-se sessão, área Pecuária, ação de lançamento e escopo de sítio ex
 
 Datas usam a localização na data do fato e respeitam nascimento, entrada e baixa. Movimentação ou correção retroativa não pode tornar incoerentes fatos já registrados. Migrations e transações protegem integridade, concorrência, autoria e histórico.
 
-Validação automatizada concluída: testes e builds de servidor e cliente passaram, assim como os typechecks de seed e importação. Integrações locais foram executadas em `fazendinha_seedatev3` com fixtures próprias e rollback. A aplicação das migrations foi confirmada nesse banco. Foi realizada uma conferência pontual no navegador local das páginas de planejamento, revisão com 120 animais, atendimento preparado e reimpressão, incluindo largura de celular. Paginação e retomada de uma exclusão após recarga foram conferidas sem executar procedimentos clínicos. Essa verificação não substitui a homologação integral com a fazenda, que continua pendente. O roteiro manual não foi marcado como aprovado e não houve deploy.
+Registro histórico de validação da entrega V4 (não reexecutado por esta revisão documental): testes e builds de servidor e cliente passaram, assim como os typechecks de seed e importação. Integrações locais foram executadas em `fazendinha_seedatev3` com fixtures próprias e rollback. A aplicação das migrations foi confirmada nesse banco. Foi realizada uma conferência pontual no navegador local das páginas de planejamento, revisão com 120 animais, atendimento preparado e reimpressão, incluindo largura de celular. Paginação e retomada de uma exclusão após recarga foram conferidas sem executar procedimentos clínicos. Essa verificação não substitui a homologação integral com a fazenda, que continua pendente. O roteiro manual não foi marcado como aprovado e não houve deploy.
 
 ## Rotas operacionais
 

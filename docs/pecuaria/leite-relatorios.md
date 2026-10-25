@@ -1,6 +1,6 @@
 # Leite — emissões preservadas e conferência física
 
-Este contrato complementa [Leite V5](leite.md) e [estoque/valor da produção](leite-decisoes-estoque.md). As migrations deste incremento não foram aplicadas na tarefa local. Sua existência no repositório não comprova disponibilidade em um ambiente.
+Este contrato complementa [Leite V5](leite.md) e [estoque/valor da produção](leite-decisoes-estoque.md). Sua estrutura integra a baseline V5 vigente. Disponibilidade e integridade em cada ambiente dependem da aplicação efetiva e da validação correspondente; a presença do SQL no repositório não substitui essa conferência.
 
 Novas emissões usam `LEITE_GERENCIAL_V5` e acrescentam operações comerciais por período integral, com o fechamento vigente no corte. A fonte geral por tanque/ordenha, incorporada na V4, conserva referências e versões das aferições e tanques. A fonte configurada na data impede somar controles individuais aos litros gerais. Emissões V1–V4 continuam sendo lidas pelo snapshot original, sem completar seções ou datas ausentes. O painel administrativo também distingue a cobertura de tanques da cobertura individual; não exige uma aferição por vaca nos dias gerais.
 

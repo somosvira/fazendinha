@@ -1,6 +1,6 @@
 # QA local do PR #322
 
-**Fixtures históricas retiradas.** O banco local foi consolidado nos dois sítios V4; os sítios QA322/QA322R e seus registros foram removidos por solicitação do dono. As instruções e evidências abaixo descrevem a execução anterior, não uma massa ainda disponível. Não retome esses scripts contra IDs antigos nem recrie os sítios: use a [demonstração V4 consolidada](../../docs/desenvolvimento.md#seed-v4-completa-para-simular-a-rotina). Os helpers de preparação antigos estão bloqueados após a consolidação. Casos, resultados e marcações de aceite manual permanecem como histórico.
+**Registro histórico de QA.** As fixtures QA322/QA322R e o cenário antigo de dois sítios não descrevem a base atual. A preparação vigente é a [seed única integrada](../../docs/desenvolvimento.md#seed-única-de-desenvolvimento). Não retome os scripts contra IDs antigos nem recrie sítios. Instruções abaixo são evidência da execução original, não comandos recomendados para a V5; casos, resultados e marcações manuais permanecem preservados.
 
 O roteiro entregue é [`../../docs/pecuaria/artefatos/testes-follow-up-v4.html`](../../docs/pecuaria/artefatos/testes-follow-up-v4.html): 164 casos do diff até `18fa8349`, com pré-condições, dados de borda, passos, resultados esperados, evidências automáticas e aceite manual independente. Abra o HTML diretamente; ele funciona offline, conserva marcações em `terrano:qa:pr322:manual:v1` e importa/exporta somente essas marcações. Não altera os guias V3/V4.
 

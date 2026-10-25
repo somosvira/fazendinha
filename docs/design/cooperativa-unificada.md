@@ -1,10 +1,10 @@
 # Cooperativa contemporânea — design unificado
 
-Consolidação de 11/10/2026 na branch `codex/redesign-unificado-cooperativa`.
+Guia da identidade e das interações compartilhadas na base integrada até a V5. Descreve o código atual; não transforma toda composição histórica em regra para novas telas.
 
 ## Base de integração
 
-Financeiro e Pecuária compartilhavam a base Git `f0907ce`; os redesigns estavam presentes como alterações locais no mesmo diretório. A branch unificada conserva ambos e inclui o redesign do Estoque. Nenhuma branch anterior foi apagada.
+Financeiro, Estoque e Pecuária usam tokens e primitivas comuns. Produção V5 reutiliza essa base; suas particularidades e referências estão no [contexto de Leite](leite/PRODUCT.md). O modelo funcional fica nos contratos e no [system design](../system-design.md).
 
 Direção visual: [Financeiro](financeiro-cooperativa/design.md) e [Pecuária](pecuaria-cooperativa/design.md). A paleta permanece em `client/src/styles/cooperativa-theme.css`; composição compartilhada em `financeiro-theme.css`. Estoque usa `estoque-theme.css` apenas para a composição específica de seus blocos.
 
@@ -15,7 +15,7 @@ Direção visual: [Financeiro](financeiro-cooperativa/design.md) e [Pecuária](p
 - Sidebar, menus, seletores e portais de modais recebem os mesmos tokens.
 - Painéis com raio de 16 px; controles com raio de 8 px e alvos de toque de 40–44 px.
 - Abas usam Tabs/TabsList/TabsTrigger existentes, através da variante financeira de SubTabs.
-- Tabelas de consulta usam o acabamento `styles/tabelas-operacionais.css`: cabeçalho cinza azulado claro de 48px, com rótulos de 14px em ardósia escura, células com 12 × 16px, texto de 14px, valores alinhados conforme o domínio e números tabulares. Linhas compartilhadas têm altura mínima de 64px e crescem quando necessário, sem cortar conteúdo. Hover e foco abrangem todas as células, inclusive ações fixadas. Somente linhas acionáveis recebem cursor de clique; tabelas de leitura não ganham ações artificiais.
+- Tabelas de consulta usam o acabamento `styles/tabelas-operacionais.css`: cabeçalho padrão de 36px, com rótulos de 12px em grafite, células com 12 × 16px, texto de 14px, valores alinhados conforme o domínio e números tabulares. Linhas compartilhadas têm altura mínima de 64px e crescem quando necessário, sem cortar conteúdo. Hover e foco abrangem todas as células, inclusive ações fixadas. Somente linhas acionáveis recebem cursor de clique; tabelas de leitura não ganham ações artificiais.
 - A aplicação autenticada conserva essa identidade também ao navegar para configurações gerais. A seleção e persistência de temas ainda não são uma feature implementada.
 
 ## Estoque
@@ -30,10 +30,10 @@ Preservados: escopo por sítio, permissões, mascaramento de custos, paginação
 
 ## Evidências locais
 
-[Galeria da unificação](../../output/qa/redesign-unificado-2026-10-11/index.html), com capturas antes/depois e estados responsivos. O [relatório de QA](../../design-qa.md) registra testes e limites da verificação. As imagens são artefatos locais de revisão.
+Galeria da unificação (artefato local histórico não versionado: `../../output/qa/redesign-unificado-2026-10-11/index.html`), com capturas antes/depois e estados responsivos. O [relatório de QA](../../design-qa.md) registra testes e limites da verificação. As imagens são artefatos locais de revisão.
 
 
-## Refinamento dos 18 comentários — 11/10/2026
+## Composição das consultas
 
 Nas consultas tabulares, busca e critérios frequentes ficam agrupados à esquerda, com ação principal e resumo útil à direita. O título da página ou da aba não é repetido em outra faixa acima da mesma tabela. Títulos de seções com conjuntos distintos na mesma página permanecem para identificar o contexto. Tabela e paginação ficam junto às bordas do mesmo painel, sem uma segunda margem interna. A borda superior da tabela separa suas colunas dos controles. Operações, Compromissos, Contas/Extrato geral e as listagens sanitárias reutilizam essa composição. Botões respeitam as variantes default, outline e destructive das primitivas locais.
 
@@ -47,7 +47,7 @@ Nutrição usa a saída Cancelar do formulário, sem o link superior redundante.
 
 Estoque usa o sítio da sidebar em saldos, entradas e histórico. O seletor paralelo foi removido; propriedadeId na URL é conservado somente para localizar um movimento histórico específico no consolidado. Com sítio selecionado, ele prevalece. Links Ver estorno/Ver movimento original ficam junto da origem/vínculo, separados da direção e situação. Cadastrar produto fica direto no topo; transferência, ajuste e perda ficam no menu Movimentar estoque com os gates existentes.
 
-[Capturas desta rodada](../../output/qa/feedbacks-tabelas-2026-10-11/index.html). Não houve alteração de API, schema, migrations, permissões ou cálculos financeiros.
+Capturas desta rodada (artefato local histórico não versionado: `../../output/qa/feedbacks-tabelas-2026-10-11/index.html`). Não houve alteração de API, schema, migrations, permissões ou cálculos financeiros.
 
 ## Componentes compartilhados
 
@@ -77,7 +77,7 @@ Ao entrar numa área, a lateral abre o grupo correspondente e recolhe os outros 
 
 No panorama do Rebanho, composição/baixas e sítios/atividade formam duas colunas consistentes, empilhadas em telas estreitas. Baixas reúne linhas proporcionais e motivos visíveis, sem gráfico cartesiano repetido nem acordeão. A visão geral financeira foi aprovada como referência visual pelo usuário e não faz parte desta revisão do panorama.
 
-A ficha animal organiza Resumo, Cadastro, Histórico, Reprodução, Sanidade e Nutrição com abas de largura natural. Identificação e genética pertencem ao Cadastro; a regra de categoria fica junto à identificação, sem um cartão isolado para uma frase. Baixas e auditoria pertencem ao Histórico. Indicadores sobre as mesmas duas pesagens compartilham um valor, com suas definições preservadas; bases diferentes permanecem distintas mesmo quando o resultado numérico coincide.
+A ficha animal organiza Resumo, Cadastro, Histórico, Reprodução, Sanidade, Nutrição e Produção (para fêmeas) com abas de largura natural. Identificação e genética pertencem ao Cadastro; a regra de categoria fica junto à identificação, sem um cartão isolado para uma frase. Baixas e auditoria pertencem ao Histórico. Indicadores sobre as mesmas duas pesagens compartilham um valor, com suas definições preservadas; bases diferentes permanecem distintas mesmo quando o resultado numérico coincide.
 
 Sanidade agrupa carências, protocolos, aplicações e acompanhamento em superfícies brancas. Aplicação, ocorrência, coleta e início de protocolo ficam diretamente disponíveis aos perfis autorizados. Nutrição concentra receitas, versões, dieta e consumo em seus fluxos próprios; a aba do lote oferece as ações cotidianas sem exigir uma visita intermediária à página completa. Tabelas mantêm os valores exatos, dispensando gráficos ou resumos que apenas os repetiam. Períodos de consumo individual formam superfícies brancas coesas. A revisão não autoriza alterações de dados operacionais ou dos contratos de escrita.
 
@@ -135,3 +135,8 @@ Ciclos usam sequência de etapas e progresso de tarefas; Tarefas usam semana com
 O seletor de apresentação é compartilhado entre Sanidade, Lotes, Fechamentos nutricionais e Produtos de estoque. Prioriza a leitura visual e mantém a tabela completa como alternativa, com preferência por usuário, parâmetros de URL e os controles de consulta existentes. A identidade e o menu do aplicativo permanecem os mesmos.
 
 Lotes usa composição por categoria e desempenho com cobertura explícita; fechamentos usa calendário dos registros e comparação por ingrediente; estoque usa reserva em relação ao mínimo, validade por produto e reposição. Gráficos não misturam unidades, não atribuem valor zero a desconhecidos e identificam quando representam uma página. O detalhamento operacional, escopo dos dados e validação de períodos estão nos contratos de Pecuária e Financeiro/Estoque.
+
+
+## Produção V5
+
+Leite usa as sete entradas Ordenhas, Produção, Estoque, Coletas, Qualidade, Vendas e Alimentação e descarte, com ferramentas de configuração, relatórios e prévia histórica. Reutiliza cabeçalhos, abas, consultas e diálogos; a ficha da fêmea inclui Produção. Rascunho, salvo e confirmado no estoque precisam de identificação distinta. Quantidade pendente não vira zero e ocultação monetária não esconde litros operacionais. Regras detalhadas ficam no [contrato de leite](../pecuaria/leite.md#interface-de-produção), sem manter uma cópia de regras clínicas neste guia visual.

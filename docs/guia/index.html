@@ -1,0 +1,1117 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Fazendinha · Guia dos eixos e estados · V5</title><meta name="description" content="Manual de Financeiro e Pecuária: operações, estoque, rebanho, reprodução, produção, sanidade e nutrição, com estados, exemplos e lacunas."><style>
+:root{--ink:#243b35;--muted:#586a64;--brand:#006f68;--paper:#fff;--back:#f5f6f2;--line:#d8e0da;--soft:#e8f0eb;--warn:#75521f}*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;color:var(--ink);background:var(--back);font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--brand);text-underline-offset:3px;overflow-wrap:anywhere}a:hover{color:#004b46}button,input,select{font:inherit}button,select{min-height:44px}button{cursor:pointer;border:1px solid #a4b8ae;border-radius:6px;background:white;padding:7px 14px;color:var(--ink)}button:hover{background:var(--soft)}:focus-visible{outline:3px solid #007c73;outline-offset:3px}.skip{position:fixed;left:15px;top:-100px;background:white;padding:12px;z-index:10}.skip:focus{top:10px}.sidebar{position:fixed;inset:0 auto 0 0;width:260px;background:#e8eeea;border-right:1px solid var(--line);padding:28px 22px;overflow-y:auto}.brand{font-weight:760;font-size:25px;letter-spacing:-1px;color:#234c42}.edition{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 0 24px}.nav-group{font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:1.4px;margin:24px 10px 7px;color:#526b61}nav a{display:block;padding:7px 11px;margin:1px 0;text-decoration:none;border-radius:5px;font-size:14px;line-height:1.5;color:#334f44}nav a:hover,nav a[aria-current]{background:#d4e3d9;color:#12473c}main{margin-left:260px;padding:44px clamp(28px,5vw,88px) 96px;max-width:1500px}.cover{border-bottom:2px solid #29594b;padding:4px 0 40px;margin-bottom:32px}.eyebrow{font-size:12px;letter-spacing:1.6px;text-transform:uppercase;font-weight:700;color:#597263;margin:0 0 12px}h1{font-family:Georgia,serif;font-weight:400;font-size:clamp(38px,4.5vw,68px);line-height:1.08;letter-spacing:-1.8px;margin:16px 0 22px;max-width:860px}.lead{max-width:800px;font-size:20px;line-height:1.6;color:#466154}.meta{display:flex;flex-wrap:wrap;gap:10px 24px;font-size:13px;color:var(--muted);margin:24px 0}.toolbar{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:24px 0 8px}.search-field{flex:1;min-width:200px}.search-field label,.cycle label{display:block;font-size:13px;font-weight:650;margin-bottom:5px}input,select{width:100%;background:white;border:1px solid #8ca699;border-radius:6px;padding:10px 12px;color:var(--ink)}#busca-status{font-size:13px;color:var(--muted)}#resultados{background:white;border-left:3px solid var(--brand);padding:18px 24px;max-height:460px;overflow:auto}#resultados[hidden]{display:none}#resultados a{display:block;font-weight:650}#resultados p{font-size:14px;margin:4px 0 18px}article{padding:32px 0 48px;border-bottom:1px solid #acbeb0;max-width:1060px}.chapter-head{padding:14px 0 10px}h2{font-family:Georgia,serif;font-weight:400;font-size:39px;line-height:1.2;letter-spacing:-1px;margin:8px 0 22px}h3{font-size:23px;line-height:1.3;margin:38px 0 14px;letter-spacing:-.4px}h4{font-size:19px;line-height:1.4;margin:28px 0 10px}p{max-width:86ch;margin:14px 0}li{margin:7px 0}ol,ul{padding-left:25px;max-width:86ch}strong{font-weight:700}code{font: .84em/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;background:#e7ece6;border-radius:3px;padding:1px 4px;overflow-wrap:anywhere}pre{white-space:pre-wrap;background:#e9eee7;padding:18px;overflow:auto}blockquote{margin:20px 0;border-left:3px solid #96b1a0;padding:4px 20px;color:#53655b}.table-scroll{overflow-x:auto;margin:24px 0;max-width:100%;border:1px solid var(--line);background:white;border-radius:5px}table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.55;min-width:590px}th{text-align:left;background:#e7eee8;font-size:12px;letter-spacing:.15px;font-weight:750}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}td+td,th+th{border-left:1px solid #e4e9e2}tr:last-child td{border-bottom:0}tbody tr:nth-child(even){background:#fafbf8}.diagram{margin:28px 0;background:white;border:1px solid var(--line);padding:18px;border-radius:7px}.diagram figcaption{font-size:14px;font-weight:650;margin-bottom:12px}.diagram-scroll{overflow:auto}.diagram svg{display:block;width:100%;min-width:660px}.edges{fill:none;stroke:#55756d;stroke-width:1.6}.nodes rect{fill:#edf3ed;stroke:#8da697}.nodes text{fill:#244438;font:16px -apple-system,BlinkMacSystemFont,sans-serif;text-anchor:middle;dominant-baseline:middle}.caption{font-size:13px;line-height:1.5;color:var(--muted)}.cycle{background:#e8f0e9;border:1px solid #b3c9ba;border-radius:7px;padding:24px;margin:36px 0}.cycle h3{margin:0 0 16px}.cycle select{max-width:640px}.cycle dl{display:grid;grid-template-columns:160px 1fr;gap:0;margin:22px 0}.cycle dt,.cycle dd{padding:9px 0;border-bottom:1px solid #c8d8cc;margin:0;font-size:15px}.cycle dt{font-weight:650}.cycle dd{padding-left:12px}.cycle .explanation{font-size:16px}.footer{font-size:13px;color:var(--muted);padding-top:32px}.mobile-index{display:none}mark{background:#f4e8ab;color:#243b35}.scope{font-size:14px;border-left:3px solid #749a80;padding:5px 16px;color:#49624f}h2:focus,h3:focus,h4:focus{outline:none}
+@media(max-width:1000px){.sidebar{width:215px;padding:22px 14px}main{margin-left:215px;padding:28px}body{font-size:16px}h2{font-size:34px}}@media(max-width:700px){.sidebar{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line);padding:18px 20px}.sidebar .edition{margin-bottom:12px}.sidebar nav{display:none}.sidebar nav.aberto{display:block}.mobile-index{display:block;width:100%;text-align:left}main{margin-left:0;padding:28px 20px 64px}h1{font-size:43px}h2{font-size:32px}h3{font-size:22px}.lead{font-size:18px}.toolbar{align-items:stretch}.toolbar button{flex:1}.meta{gap:6px 18px}.cycle{padding:18px}.cycle dl{grid-template-columns:112px 1fr}.cycle dt,.cycle dd{font-size:14px}.diagram{padding:12px}.table-scroll{margin-left:0;margin-right:0}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{@page{size:A4;margin:17mm}.sidebar,.toolbar,#busca-status,#resultados,.skip,.mobile-index,.cycle{display:none!important}body{font-size:10.5pt;line-height:1.5;background:white;color:#111}main{margin:0;padding:0;max-width:none}.cover{break-after:page}.cover h1{font-size:40pt}.lead{font-size:14pt}.meta{font-size:9pt}article{padding:0;border:0;break-before:page;max-width:none}h2{font-size:26pt}h3{font-size:16pt;margin-top:18pt;break-after:avoid}p,li{orphans:3;widows:3}.table-scroll,.diagram-scroll{overflow:visible;border:0}table{min-width:0;font-size:8.5pt}th,td{padding:6pt;overflow-wrap:anywhere}thead{display:table-header-group}tr{break-inside:avoid}.diagram{break-inside:avoid}.diagram svg{min-width:0;max-height:210mm}.nodes text{font-size:16px}a{color:#244438;text-decoration:none}code{font-size:8pt;background:none}}
+</style></head><body><a class="skip" href="#conteudo">Pular para o conteúdo</a><aside class="sidebar"><div class="brand">Fazendinha</div><p class="edition">Terrano · Manual do produto<br>Base integrada V5</p><button id="indice-movel" class="mobile-index" aria-expanded="false" aria-controls="indice">Índice dos capítulos</button><nav id="indice" aria-label="Capítulos do manual"><p class="nav-group">Visão do aplicativo</p><a href="#inicio">Comece por aqui</a><p class="nav-group">Financeiro</p><a href="#operacoes">Operações</a><a href="#estoque">Estoque</a><p class="nav-group">Pecuária</p><a href="#rebanho">Rebanho</a><a href="#reproducao">Reprodução</a><a href="#producao">Produção</a><a href="#sanidade">Sanidade</a><a href="#nutricao">Nutrição</a><p class="nav-group">Conectar e avaliar</p><a href="#integracao">Da fazenda ao resultado</a><a href="#estados">Estados do animal</a><a href="#sistema">System design</a><a href="#lacunas">Lacunas e decisões</a></nav></aside><main id="conteudo"><header class="cover"><p class="eyebrow">Guia de operação e entendimento</p><h1>Da rotina da fazenda<br>à história de cada fato.</h1><p class="lead">Como Financeiro e Pecuária se conectam — e o que os registros, os estados e os números realmente significam.</p><div class="meta"><span>V5 integrada · base b63931e4</span><span>7 eixos · 2 grupos de leitura</span><span>Revisão documental · 24/10/2026</span></div><p class="scope">Implementação, explicação biológica e lacunas são identificadas separadamente. Exemplos são didáticos; este documento não altera dados nem representa homologação da fazenda.</p><div class="toolbar"><div class="search-field"><label for="busca">Buscar no guia</label><input type="search" id="busca" placeholder="Ex.: gestante, custo por litro, coleta" autocomplete="off" aria-controls="resultados" aria-describedby="busca-status"></div><button id="limpar-busca">Limpar</button><button id="imprimir">Imprimir / salvar PDF</button></div><p id="busca-status" role="status">Busque um conceito, como carência, gestante, custo ou coleta.</p><div id="resultados" hidden></div></header><article data-chapter="inicio" aria-labelledby="inicio"><header class="chapter-head"><p class="eyebrow">Visão do aplicativo · 01</p><h2 id="inicio" tabindex="-1">O que o aplicativo organiza</h2></header><p id="inicio-p1" class="searchable">O Fazendinha, apresentado na interface com a marca Terrano, conecta o que aconteceu na fazenda ao rebanho, aos materiais e ao dinheiro. O ponto de partida é um fato identificado: uma compra, uma aplicação, um parto, uma ordenha ou um pagamento. Os saldos e estados são consequências desses fatos e de suas datas.</p>
+<p id="inicio-p2" class="searchable">Este guia descreve o código da V5 integrado à <code>main</code> em <code>b63931e4</code>. É uma explicação de produto apoiada em rotas, serviços, interface, schema, SQL e testes existentes. Não representa uma nova execução de todos os fluxos nem atesta o ambiente da fazenda. Exemplos numéricos são didáticos. As lacunas têm capítulo próprio; propostas não são funcionalidades disponíveis.</p>
+<h3 id="inicio-os-dois-grupos-de-leitura" tabindex="-1">Os dois grupos de leitura</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="inicio-p3" class="searchable">
+<th>Grupo</th>
+<th>Eixo</th>
+<th>Pergunta que responde</th>
+</tr>
+</thead>
+<tbody><tr id="inicio-p4" class="searchable">
+<td>Financeiro</td>
+<td>Operações</td>
+<td>O que compramos, vendemos, devemos, pagamos e recebemos?</td>
+</tr>
+<tr id="inicio-p5" class="searchable">
+<td>Financeiro</td>
+<td>Estoque</td>
+<td>O que temos, onde está, de onde veio e em que foi usado?</td>
+</tr>
+<tr id="inicio-p6" class="searchable">
+<td>Pecuária</td>
+<td>Rebanho</td>
+<td>Quem é cada animal, onde estava e qual é sua história?</td>
+</tr>
+<tr id="inicio-p7" class="searchable">
+<td>Pecuária</td>
+<td>Reprodução</td>
+<td>Quais tentativas, avaliações, gestações, partos e acompanhamentos existem?</td>
+</tr>
+<tr id="inicio-p8" class="searchable">
+<td>Pecuária</td>
+<td>Produção</td>
+<td>Quanto leite foi medido, confirmado, destinado, coletado e comercializado?</td>
+</tr>
+<tr id="inicio-p9" class="searchable">
+<td>Pecuária</td>
+<td>Sanidade</td>
+<td>Quais ocorrências, exames, aplicações, tarefas e carências foram registrados?</td>
+</tr>
+<tr id="inicio-p10" class="searchable">
+<td>Pecuária</td>
+<td>Nutrição</td>
+<td>Qual dieta foi planejada, qual consumo foi confirmado e como foi atribuído?</td>
+</tr>
+</tbody></table></div>
+<p id="inicio-p11" class="searchable">Estoque aparece sob Financeiro neste guia para organizar a leitura, mas é uma base compartilhada. Reprodução, Sanidade e Nutrição usam os mesmos produtos e movimentos. Produção é acessada pelo item <strong>Leite</strong> do menu. Visitas e protocolos conectam diferentes eixos; Sítios e Contas/Acessos são serviços transversais.</p>
+<h3 id="inicio-do-acontecimento-ao-indicador" tabindex="-1">Do acontecimento ao indicador</h3><ol>
+<li>Identifique o sítio, a data e o responsável pelo fato.</li>
+<li>Registre o objeto correto: compra, pagamento, movimentação, tentativa, exame, ordenha ou consumo.</li>
+<li>Confira a prévia quando o fluxo a oferece. Prévia e rascunho não confirmam efeitos.</li>
+<li>Confirme. O servidor valida permissão, contexto temporal, versões, dependências e disponibilidade.</li>
+<li>Consulte o resultado e seus vínculos. O mesmo fato pode aparecer na ficha, no protocolo e na visita sem existir três vezes.</li>
+<li>Corrija pelo fluxo do domínio, com motivo. Anulação ou estorno preserva o original e trata os efeitos dependentes.</li>
+</ol>
+<p id="inicio-p12" class="searchable">Uma compra de ração recebida a prazo aumenta o estoque e cria um compromisso. Seu pagamento afeta a conta. O consumo da ração afeta o estoque e compõe custo operacional atribuído. Somar compra, pagamento e consumo como três despesas contaria a mesma origem repetidamente.</p>
+<h3 id="inicio-como-interpretar-os-dados" tabindex="-1">Como interpretar os dados</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="inicio-p13" class="searchable">
+<th>Apresentação</th>
+<th>Significado</th>
+<th>Interpretação indevida</th>
+</tr>
+</thead>
+<tbody><tr id="inicio-p14" class="searchable">
+<td>Zero informado</td>
+<td>O valor foi medido ou declarado como zero</td>
+<td>Ausência de registro</td>
+</tr>
+<tr id="inicio-p15" class="searchable">
+<td>Pendente / desconhecido</td>
+<td>Falta evidência para concluir</td>
+<td>Zero, negativo ou saudável</td>
+</tr>
+<tr id="inicio-p16" class="searchable">
+<td>Oculto por permissão</td>
+<td>O usuário não pode consultar aquele valor</td>
+<td>Dado inexistente</td>
+</tr>
+<tr id="inicio-p17" class="searchable">
+<td>Não aplicável</td>
+<td>A regra não se aplica àquele contexto</td>
+<td>Falta de cadastro</td>
+</tr>
+<tr id="inicio-p18" class="searchable">
+<td>Parcial</td>
+<td>Só parte da população, período ou custo está comprovada</td>
+<td>Total completo</td>
+</tr>
+<tr id="inicio-p19" class="searchable">
+<td>Anulado / estornado</td>
+<td>Existe histórico de regularização</td>
+<td>Registro nunca existiu</td>
+</tr>
+<tr id="inicio-p20" class="searchable">
+<td>Previsto</td>
+<td>Existe planejamento</td>
+<td>Atividade executada</td>
+</tr>
+</tbody></table></div>
+<p id="inicio-p21" class="searchable">Cada consulta tem uma base temporal: data do fato, vencimento, pagamento, ordenha, coleta ou período comercial. Comparações precisam usar a mesma base. O consolidado respeita o escopo autorizado; escolher “Consolidado” não autoriza gravar fatos sem sítio.</p>
+<h3 id="inicio-o-que-fica-preservado" tabindex="-1">O que fica preservado</h3><p id="inicio-p22" class="searchable">Identidade do animal, autoria, origem dos materiais, local na data do fato e versões usadas permitem reconstruir a operação. Cadastros atuais não podem reescrever automaticamente um protocolo executado, a genética de uma tentativa, um formato de laudo ou um relatório emitido.</p>
+<p id="inicio-p23" class="searchable">Consultas vivas refletem fatos atualmente válidos, inclusive correções retroativas. Uma emissão preservada retrata as fontes e regras no momento em que foi gerada. Por isso duas emissões podem diferir legitimamente sem que a anterior seja apagada.</p>
+<h3 id="inicio-acesso-e-trabalho-diário" tabindex="-1">Acesso e trabalho diário</h3><p id="inicio-p24" class="searchable">A sessão identifica a pessoa. Área e ação autorizam consulta, lançamento, exportação e gestão de acessos. O servidor resolve o sítio e a visibilidade dos valores. Um funcionário pode registrar um fato operacional sem receber os documentos financeiros completos relacionados a ele. A política dos custos operacionais atribuídos da Pecuária é distinta do acesso a preço, receita e documentos do Financeiro.</p>
+<p id="inicio-p25" class="searchable">O assistente de consulta existente oferece ajuda e consultas financeiras de leitura. Não altera os fatos e não é um assistente operacional completo dos sete eixos. O bot anterior, <code>/ia</code> e WhatsApp permanecem suspensos. Agricultura, Cultivo, Equipe/Ponto e laboratório/FIV não são módulos operacionais atuais.</p>
+<h3 id="inicio-fontes-e-uso-deste-guia" tabindex="-1">Fontes e uso deste guia</h3><p id="inicio-p26" class="searchable">Os capítulos seguem conceito → rotina → interface → regras/efeitos → implementação. Os contratos detalhados continuam no <a href="../README.md">índice técnico</a>. O <a href="#sistema">system design</a> explica as relações entre os domínios. O <a href="#estados">modelo de estados</a> define a leitura temporal do animal. Para estudar possíveis evoluções, consulte <a href="#lacunas">lacunas</a>.</p>
+<p id="inicio-p27" class="searchable">O HTML é um documento local gerado destes capítulos, com navegação, busca, diagramas e exemplos. Não se conecta ao banco, não executa ações no aplicativo e não altera as marcações dos roteiros de homologação.</p>
+</article>
+<article data-chapter="operacoes" aria-labelledby="operacoes"><header class="chapter-head"><p class="eyebrow">Financeiro · 02</p><h2 id="operacoes" tabindex="-1">Financeiro · Operações</h2></header><h3 id="operacoes-conceito-negócio-obrigação-e-dinheiro" tabindex="-1">Conceito: negócio, obrigação e dinheiro</h3><p id="operacoes-p1" class="searchable">Uma <strong>operação</strong> registra o negócio. Um <strong>compromisso</strong> registra o restante a pagar ou receber. Uma <strong>transação</strong> registra dinheiro realizado. Um <strong>movimento de conta</strong> registra sua entrada ou saída numa conta. A <strong>liquidação</strong> liga o pagamento ou recebimento posterior à obrigação original.</p>
+<p id="operacoes-p2" class="searchable">Essas entidades são separadas porque suas datas e seus efeitos podem ser diferentes. Comprar hoje, receber amanhã e pagar no próximo mês é uma história coerente; o saldo bancário não deve mudar só porque existe uma obrigação.</p>
+<h3 id="operacoes-tipos-de-operação-e-efeitos" tabindex="-1">Tipos de operação e efeitos</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="operacoes-p3" class="searchable">
+<th>Tipo</th>
+<th>Uso</th>
+<th>Efeito a conferir</th>
+</tr>
+</thead>
+<tbody><tr id="operacoes-p4" class="searchable">
+<td>Compra para estoque</td>
+<td>Material que ficará disponível para uso posterior</td>
+<td>Entrada quando recebido; dinheiro/obrigação conforme condição</td>
+</tr>
+<tr id="operacoes-p5" class="searchable">
+<td>Compra para consumo direto</td>
+<td>Material comprado para destinação direta comprovada</td>
+<td>Origem para o consumo, sem inventar saldo armazenado</td>
+</tr>
+<tr id="operacoes-p6" class="searchable">
+<td>Serviço</td>
+<td>Trabalho contratado</td>
+<td>Valor e condição financeira; procedimentos podem ser vinculados</td>
+</tr>
+<tr id="operacoes-p7" class="searchable">
+<td>Venda</td>
+<td>Comercialização</td>
+<td>Receita/obrigação; quantidade física apenas quando o percurso exige</td>
+</tr>
+<tr id="operacoes-p8" class="searchable">
+<td>Aporte</td>
+<td>Entrada de recursos próprios</td>
+<td>Entrada em conta; não confundir com venda</td>
+</tr>
+<tr id="operacoes-p9" class="searchable">
+<td>Retirada</td>
+<td>Saída de recursos</td>
+<td>Saída em conta; não confundir com compra de material</td>
+</tr>
+<tr id="operacoes-p10" class="searchable">
+<td>Transferência financeira</td>
+<td>Circulação entre contas próprias</td>
+<td>Duas pontas equivalentes; não cria receita ou despesa consolidada</td>
+</tr>
+<tr id="operacoes-p11" class="searchable">
+<td>Inventário, bonificação e devolução</td>
+<td>Origens físicas específicas</td>
+<td>Conferir documentação, quantidade, valor e vínculo exigidos</td>
+</tr>
+<tr id="operacoes-p12" class="searchable">
+<td>Ajuste e transferência de estoque</td>
+<td>Regularização ou mudança física</td>
+<td>Fluxo próprio de Estoque; não usar para simular compra/pagamento</td>
+</tr>
+<tr id="operacoes-p13" class="searchable">
+<td>Produção de leite</td>
+<td>Fato produtivo da V5</td>
+<td>Entrada pela Pecuária; não criar operação financeira fictícia de valor zero</td>
+</tr>
+</tbody></table></div>
+<p id="operacoes-p14" class="searchable">A presença de um identificador no enum técnico não significa que exista um formulário livre para qualquer combinação. O motor valida os efeitos permitidos por tipo; Leite usa seus próprios comandos para preservar a origem produtiva.</p>
+<h3 id="operacoes-exemplo-completo-compra-com-pagamento-parcial" tabindex="-1">Exemplo completo: compra com pagamento parcial</h3><p id="operacoes-p15" class="searchable">Considere uma compra de R$ 1.000, recebida integralmente, com R$ 300 pagos no ato.</p>
+<ol>
+<li>Cadastre fornecedor, itens, quantidade/unidade, classificação, sítio e datas.</li>
+<li>Informe recebimento físico e condição financeira real.</li>
+<li>Confira a prévia: entrada física, transação de R$ 300 e compromisso de R$ 700.</li>
+<li>Confirme. A conta sofre apenas R$ 300 de saída; o recebimento físico não espera os R$ 700.</li>
+<li>Ao pagar R$ 200 depois, liquide essa parcela. O compromisso passa a parcial e resta R$ 500.</li>
+<li>O pagamento final de R$ 500 liquida o compromisso. O estoque não recebe o produto novamente.</li>
+</ol>
+<p id="operacoes-p16" class="searchable">Compra totalmente paga no ato não precisa criar compromisso para depois liquidá-lo artificialmente. Em pagamento a menor, o restante continua devido; a liquidação atual não possui abatimento automático do saldo.</p>
+<h3 id="operacoes-estados-e-transições" tabindex="-1">Estados e transições</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="operacoes-p17" class="searchable">
+<th>Objeto</th>
+<th>Estados</th>
+<th>Transição e significado</th>
+</tr>
+</thead>
+<tbody><tr id="operacoes-p18" class="searchable">
+<td>Operação</td>
+<td><code>RASCUNHO</code>, <code>CONFIRMADA</code>, <code>CANCELADA</code></td>
+<td>Preparar não produz efeitos; confirmar produz os efeitos validados; cancelar conserva histórico</td>
+</tr>
+<tr id="operacoes-p19" class="searchable">
+<td>Compromisso</td>
+<td><code>PENDENTE</code>, <code>PARCIAL</code>, <code>LIQUIDADO</code>, <code>CANCELADO</code></td>
+<td>Pagamentos/recebimentos alteram o saldo exigível; cancelado não é liquidado</td>
+</tr>
+<tr id="operacoes-p20" class="searchable">
+<td>Transação</td>
+<td><code>CONFIRMADA</code>, <code>REVERTIDA</code></td>
+<td>A reversão gera o efeito inverso e conserva o original</td>
+</tr>
+<tr id="operacoes-p21" class="searchable">
+<td>Período financeiro</td>
+<td><code>ABERTO</code>, <code>FECHADO</code></td>
+<td>Fechamento protege fatos; correção não pode contornar essa trava</td>
+</tr>
+</tbody></table></div>
+<p id="operacoes-p22" class="searchable">“Vencido” é uma condição da data e do saldo ainda devido, não prova de inadimplência definitiva nem um novo pagamento. Valor original e saldo pendente continuam separados. Um título cancelado pode mostrar saldo atual zero sem ter sido pago.</p>
+<h3 id="operacoes-cadastros-e-classificação-gerencial" tabindex="-1">Cadastros e classificação gerencial</h3><p id="operacoes-p23" class="searchable">Contas representam os lugares onde o dinheiro circula. Parceiros podem ter papéis compatíveis com os negócios. Categoria classifica a operação ou o item; grupo organiza categorias; centro de custo identifica a destinação gerencial; custeio/investimento é outra classificação.</p>
+<p id="operacoes-p24" class="searchable">O grupo vem da categoria, sem uma escolha independente na operação. Alterar o agrupamento atual pode mudar a organização de consultas futuras do histórico, mas não os valores dos fatos nem snapshots já emitidos. Campos ausentes não devem ser preenchidos por inferência do nome do fornecedor.</p>
+<p id="operacoes-p25" class="searchable">Desconto comercial reduz os itens elegíveis, com distribuição que conserva centavos. Logística do fornecedor é item próprio, sem estoque, e não entra automaticamente no custo da dose. Cobrança de terceiro tem operação própria.</p>
+<h3 id="operacoes-onde-trabalhar" tabindex="-1">Onde trabalhar</h3><p id="operacoes-p26" class="searchable"><strong>Operações</strong> consulta os fatos por tipo e impacto: movimentou estoque, gerou conta a pagar, gerou conta a receber ou movimentou dinheiro. Um registro pode ter vários impactos. O detalhe mostra itens, compromissos, documentos, histórico e movimentos vinculados.</p>
+<p id="operacoes-p27" class="searchable"><strong>Compromissos</strong> separa pagar/receber, saldo, vencimento e situação; lista e calendário são apresentações da mesma obrigação. <strong>Contas</strong> separa cadastro, extrato geral e análise. Transferências próprias são excluídas do fluxo consolidado de receita/despesa. <strong>Relatórios</strong> preservam a emissão; alternar Resumo, Análises, Itens e Documento não recalcula os fatos.</p>
+<p id="operacoes-p28" class="searchable">Busca, filtros e ordenação devem agir sobre o recorte completo autorizado antes de paginar. Abrir um filtro cria rascunho; Aplicar confirma o recorte, Cancelar preserva a consulta. Links para parceiro, compromisso e movimento abrem o registro exato.</p>
+<h3 id="operacoes-correções-e-documentos" tabindex="-1">Correções e documentos</h3><p id="operacoes-p29" class="searchable">Rascunhos permitem retomar o trabalho; sua exclusão é diferente de cancelar uma operação confirmada. A fila de gravação precisa terminar antes de descartar, para não recriar o rascunho. Correções de confirmados exigem motivo, análise das dependências e período aberto.</p>
+<p id="operacoes-p30" class="searchable">Estornar um pagamento pode reabrir o saldo devido; não significa devolver fisicamente um produto. Cancelar uma compra já consumida exige tratar os consumidores, e não apenas ocultar a operação. Comprovantes e PDFs são privados no R2, sujeitos a autorização também no download.</p>
+<h3 id="operacoes-como-interpretar-relatórios" tabindex="-1">Como interpretar relatórios</h3><p id="operacoes-p31" class="searchable"><strong>Caixa realizado</strong> usa pagamentos/recebimentos. <strong>Compras e serviços</strong> usam a data do negócio. <strong>Compromissos</strong> representam a posição pendente. <strong>Saldo</strong> inclui a abertura e os movimentos da conta. Esses valores não devem ser somados entre si.</p>
+<p id="operacoes-p32" class="searchable">Resultado de caixa não é lucro: pode incluir aporte e não contempla necessariamente depreciação, custos não registrados ou competência econômica completa. A linha acumulada do relatório é resultado de caixa acumulado, não uma série de saldos bancários mensais reconstruída.</p>
+<p id="operacoes-p33" class="searchable">Linhas truncadas de um relatório não recompõem seu total; o snapshot pode conter agregados de um recorte maior. Valores ocultos ou desconhecidos continuam indisponíveis. Novas correções pedem nova emissão para aparecer no documento.</p>
+<h3 id="operacoes-integração-com-pecuária" tabindex="-1">Integração com Pecuária</h3><p id="operacoes-p34" class="searchable">Um Serviço pode ser ligado a aplicações, exames, tentativas e procedimentos realizados, respeitando o total contratado e as atribuições explícitas. O vínculo não cria outro procedimento nem outra despesa. Custo de material e Serviço podem coexistir; material já incluído num pacote não deve ser contado de novo.</p>
+<p id="operacoes-p35" class="searchable">Na V5, uma coleta de leite com preço pendente pode reduzir estoque antes de existir venda financeira. O fechamento comercial cria a venda e a obrigação/recebimento normal, sem reduzir novamente os litros. O capítulo Produção detalha esse percurso.</p>
+<h3 id="operacoes-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="operacoes-p36" class="searchable">O fluxo HTTP principal está em <code>server/src/routes/financeiro.ts</code>; o motor em <code>server/src/services/financeiro/operacoes.ts</code>, as regras monetárias em <code>regras.ts</code> e a máscara de DTOs em <code>visibilidade.ts</code>. A interface está em <code>client/src/financeiro/</code>. O schema <code>public</code> contém Operacao, ItemOperacao, CompromissoFinanceiro, Liquidacao, TransacaoFinanceira, MovimentoConta, PeriodoFinanceiro e AuditoriaFinanceira.</p>
+<p id="operacoes-p37" class="searchable">Os testes próximos dos serviços e <code>server/tests/financeiro/invariantes.test.ts</code> verificam efeitos e invariantes; as rotas têm testes próprios de visibilidade e escrita. Sua existência não atesta execução nesta revisão. Detalhes: <a href="../financeiro-rebuild-contrato.md">contrato financeiro</a>.</p>
+</article>
+<article data-chapter="estoque" aria-labelledby="estoque"><header class="chapter-head"><p class="eyebrow">Financeiro · 03</p><h2 id="estoque" tabindex="-1">Financeiro · Estoque</h2></header><h3 id="estoque-conceito-um-estoque-compartilhado" tabindex="-1">Conceito: um estoque compartilhado</h3><p id="estoque-p1" class="searchable">Estoque acompanha quantidades por produto e sítio, com origem e destino justificáveis. O mesmo Produto pode ter uso sanitário, nutricional e genético; esses usos não criam estoques paralelos. Lote de animais agrupa o rebanho; partida/lote de produto identifica material e validade.</p>
+<p id="estoque-p2" class="searchable">Saldo físico responde “quanto existe”; valor do saldo responde “qual valor está comprovado no remanescente”. Preço de venda, valor da compra, custo do consumo e referência comercial têm propósitos diferentes.</p>
+<h3 id="estoque-rotina-de-entrada-e-saída" tabindex="-1">Rotina de entrada e saída</h3><ol>
+<li>Cadastre o produto, unidade, usos e rastreio aplicável.</li>
+<li>Registre a origem física: recebimento de compra, inventário documentado ou produção confirmada.</li>
+<li>Se rastreado, identifique partidas e validade conforme a evidência disponível.</li>
+<li>Consulte saldo no sítio e na data relevantes.</li>
+<li>Consuma pelo fluxo que originou o uso: aplicação, reprodução, fechamento de dieta ou destino leiteiro.</li>
+<li>Para diferença de contagem, perda ou transferência, use o comando específico com motivo.</li>
+</ol>
+<p id="estoque-p3" class="searchable">Uma aplicação não deve ser acompanhada de uma saída manual extra. Sua confirmação já produz o movimento vinculado quando a origem é estoque. Compra direta/documentada tem contrato próprio e não autoriza fabricar uma entrada fictícia para depois consumi-la.</p>
+<h3 id="estoque-movimentos-e-rastreabilidade" tabindex="-1">Movimentos e rastreabilidade</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="estoque-p4" class="searchable">
+<th>Fato</th>
+<th>Quantidade</th>
+<th>Dinheiro e história</th>
+</tr>
+</thead>
+<tbody><tr id="estoque-p5" class="searchable">
+<td>Recebimento</td>
+<td>Entrada no sítio</td>
+<td>Valor e vínculo à compra; pagamento pode ocorrer depois</td>
+</tr>
+<tr id="estoque-p6" class="searchable">
+<td>Consumo operacional</td>
+<td>Saída vinculada ao fato</td>
+<td>Atribui custo; não cria outra despesa</td>
+</tr>
+<tr id="estoque-p7" class="searchable">
+<td>Transferência</td>
+<td>Saída na origem e entrada no destino</td>
+<td>Conserva quantidade, unidade, parcelas e valor; anula-se no consolidado</td>
+</tr>
+<tr id="estoque-p8" class="searchable">
+<td>Perda</td>
+<td>Saída justificada</td>
+<td>Distingue material perdido de material administrado</td>
+</tr>
+<tr id="estoque-p9" class="searchable">
+<td>Ajuste de contagem</td>
+<td>Diferença documentada</td>
+<td>Não substitui comprovação de preço nem corrige todos os fatos passados</td>
+</tr>
+<tr id="estoque-p10" class="searchable">
+<td>Estorno</td>
+<td>Movimento inverso</td>
+<td>Mantém original e vínculos; depende da disponibilidade e dos consumidores</td>
+</tr>
+</tbody></table></div>
+<p id="estoque-p11" class="searchable">O saldo deve considerar corretamente o original e a reversão. Filtrar indiscriminadamente apenas registros confirmados pode eliminar uma ponta e produzir um saldo falso.</p>
+<h3 id="estoque-partidas-e-validade" tabindex="-1">Partidas e validade</h3><p id="estoque-p12" class="searchable">Produto rastreado exige alocação das saídas por partida, unidade compatível e tratamento explícito da validade na data. Vencida, desconhecida e conhecida são condições distintas. Um alias de partida resolve para o grupo canônico; não pode ser contado como outro estoque.</p>
+<p id="estoque-p13" class="searchable">Ativar rastreio sobre saldo existente tem prévia e identificação das partidas. Redistribui a identificação do histórico, sem criar quantidade/valor adicional. Não se desliga rastreio apenas para contornar uma validação.</p>
+<h3 id="estoque-valor-do-saldo-e-custo-utilizado" tabindex="-1">Valor do saldo e custo utilizado</h3><p id="estoque-p14" class="searchable">Produto rastreado usa média do saldo remanescente do grupo de produto/validade no sítio. Produto sem rastreio usa bases econômicas disponíveis em FIFO. Transferência conserva uma base de destino por parcela de origem; preços diferentes não são achatados numa média arbitrária.</p>
+<p id="estoque-p15" class="searchable">Exemplo: dez unidades a R$ 40 e dez a R$ 65 no mesmo grupo formam 20 unidades e R$ 1.050. Consumir duas atribui R$ 105, deixando 18 unidades e R$ 945. Uma compra posterior não altera os R$ 105 daquele uso.</p>
+<p id="estoque-p16" class="searchable">O total monetário é autoritativo; o custo unitário arredondado é apresentação. A última saída absorve o resíduo de centavos. A conservação precisa fechar: abertura + entradas + ajustes líquidos = saídas líquidas + saldo final, em quantidade e valor.</p>
+<p id="estoque-p17" class="searchable">Saldo histórico sem preço não recebe custo inventado. A abertura documentada exige quantidade correspondente, valor, referência, evidência, motivo e conferência de versão. Não cria compra, pagamento ou custo histórico novo. Quantidade zero, custo zero comprovado e custo desconhecido são diferentes.</p>
+<h3 id="estoque-a-exceção-leiteira-da-v5" tabindex="-1">A exceção leiteira da V5</h3><p id="estoque-p18" class="searchable">Leite pode entrar fisicamente com custo produtivo ainda pendente, pelo método restrito <code>LEITE_FIFO_V1</code>. Essa exceção exige origem leiteira e alocações comprovadas; não relaxa a regra para os demais produtos.</p>
+<p id="estoque-p19" class="searchable">Produzir 1.000 L, vender 600 L, fornecer 100 L e guardar 300 L conserva a quantidade. Uma apuração documentada posterior de R$ 1.500 atribui R$ 900 à venda, R$ 150 ao fornecimento e R$ 450 ao saldo. Não lança outra despesa ou recebimento. Histórico e versões da apuração permanecem consultáveis.</p>
+<p id="estoque-p20" class="searchable">No leite, o saldo comercial é uma parte do físico: 50 L comerciais + 10 L de colostro = 60 L físicos, mas apenas 50 L candidatos à venda. Encerrar a carência do animal hoje não torna comercial o leite produzido durante a restrição.</p>
+<h3 id="estoque-interface-e-interpretação" tabindex="-1">Interface e interpretação</h3><p id="estoque-p21" class="searchable">Produtos e Movimentações têm consultas próprias. Produtos oferece cartões/tabela, saldo, mínimo e valor conhecido; não soma kg, litros e unidades como uma única quantidade. Reposição compara saldo com mínimo cadastrado e não prevê dias até faltar sem uma base de consumo.</p>
+<p id="estoque-p22" class="searchable">Validades consideram grupos com saldo positivo. Ausência de grupos não prova validade conhecida. O detalhe abre as origens, movimentos e valorização; links para fatos de Pecuária conservam o contexto. Transferir, ajustar e perder são comandos distintos.</p>
+<p id="estoque-p23" class="searchable">Estoque Leite é um recorte da mesma base. Ordenhas ainda sem confirmação aparecem na produção, mas não no saldo disponível. O tanque registrado na ordenha identifica o recipiente de origem; o sistema não promete saber em qual tanque está cada sobra hoje.</p>
+<h3 id="estoque-limites-e-correções" tabindex="-1">Limites e correções</h3><p id="estoque-p24" class="searchable">Não existe motor geral de recálculo retroativo do estoque. Entrada com consumidores, período fechado e classificação restritiva exigem regularização explícita. Corrigir um lançamento não pode devolver material que foi realmente utilizado ou descartado.</p>
+<p id="estoque-p25" class="searchable">O produto leiteiro atual deve ser ativo, em litros, sem rastreio por partida e dedicado ao percurso leiteiro. Misturar métodos/históricos ou usar transferência/ajuste genérico para resolver um saldo leiteiro não reconciliado não é um percurso suportado automaticamente.</p>
+<h3 id="estoque-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="estoque-p26" class="searchable">Rotas: <code>server/src/routes/estoque.ts</code>; serviços: <code>server/src/services/estoque/estoque.ts</code> e <code>valorizacao.ts</code>; consumo pecuário: <code>server/src/services/pecuaria/consumo.ts</code>. Produto, MovimentoEstoque, PartidaProduto, AlocacaoPartidaEstoque, BaseValorizacaoEstoque e ParcelaValorizacaoEstoque ficam no schema <code>public</code>; origens/alocações lácteas ficam em <code>pecuaria</code> e apontam para os mesmos movimentos.</p>
+<p id="estoque-p27" class="searchable">Testes de valorização, perdas, transferências, integrações pecuárias e conservação leiteira acompanham os serviços. SQL protege compatibilidade, somas e histórico. Referências: <a href="../financeiro-rebuild-contrato.md">Financeiro/Estoque</a> e <a href="../pecuaria/leite-decisoes-estoque.md">estoque do leite</a>.</p>
+</article>
+<article data-chapter="rebanho" aria-labelledby="rebanho"><header class="chapter-head"><p class="eyebrow">Pecuária · 04</p><h2 id="rebanho" tabindex="-1">Pecuária · Rebanho</h2></header><h3 id="rebanho-conceito-identidade-estável-contexto-histórico" tabindex="-1">Conceito: identidade estável, contexto histórico</h3><p id="rebanho-p1" class="searchable">Animal é a identidade permanente. Categoria, finalidade, sítio, lote, papel reprodutivo e atividade são dimensões separadas. A ficha deve responder quem é o animal e o que era verdadeiro na data consultada, sem reclassificar todo o passado pela situação de hoje.</p>
+<p id="rebanho-p2" class="searchable">O brinco é identificação de uso; o ID preserva os vínculos. Uma cria sem brinco definitivo pode receber identificação provisória explícita e ser completada depois, conservando a mesma identidade e história.</p>
+<h3 id="rebanho-cadastro-entrada-e-nascimento" tabindex="-1">Cadastro, entrada e nascimento</h3><p id="rebanho-p3" class="searchable">Animal comprado registra entrada e origem; o cadastro zootécnico não deve ser presumido como pagamento financeiro. Animal nascido pode ser criado atomicamente pelo parto de sua mãe. Sexo, origem, datas, saldo de partos anteriores e filiação precisam refletir evidências.</p>
+<p id="rebanho-p4" class="searchable">Não invente datas para preencher lacunas. “Partos antes da entrada” é um saldo conhecido, não uma lista de partos com datas recuperadas. Para consultas anteriores à entrada, esse saldo não pode ser distribuído no tempo por suposição.</p>
+<h3 id="rebanho-categoria-finalidade-e-papel" tabindex="-1">Categoria, finalidade e papel</h3><p id="rebanho-p5" class="searchable">Categoria vem de regras configuráveis, avaliadas em ordem, com critérios como sexo, idade e partos. Uma exceção manual tem história própria. “Vaca” e “novilha” não são sinônimos de gestante e vazia. A contagem de partos usa o saldo anterior mais eventos válidos não incluídos naquele saldo; pela convenção operacional vigente, inclui aborto e natimorto.</p>
+<p id="rebanho-p6" class="searchable">Finalidade informa Leite, Corte ou Reprodução, por período. Papel informa NENHUM, DOADORA ou RECEPTORA, também por período. Uma receptora pode ter finalidade Leite e continuar produzindo. Finalidade Reprodução não prova papel de doadora, mérito genético ou aptidão clínica.</p>
+<p id="rebanho-p7" class="searchable">O nome interno <code>AptidaoAnimal</code>/<code>aptidao</code> ainda representa a finalidade por compatibilidade. Ele não é a elegibilidade clínica calculada para uma intervenção. Lacuna de período é desconhecimento; não vira automaticamente NENHUM.</p>
+<h3 id="rebanho-localização-e-movimentação" tabindex="-1">Localização e movimentação</h3><ol>
+<li>Consulte sítio/lote e data da movimentação.</li>
+<li>Selecione animais e destino, conservando a origem de cada item.</li>
+<li>Confira os efeitos históricos e conflitos.</li>
+<li>Confirme o conjunto atomicamente.</li>
+<li>Consulte o histórico. Desfazer é um ato rastreável, não exclusão do movimento anterior.</li>
+</ol>
+<p id="rebanho-p8" class="searchable">Os períodos usam início incluído e fim excluído. No dia da transferência, a participação nutricional conta no destino. Aplicação ou tentativa passada continua pertencendo ao sítio onde ocorreu. A condição reprodutiva pode acompanhar o animal transferido, sem conceder acesso aos valores de outro sítio.</p>
+<h3 id="rebanho-baixa-e-descarte" tabindex="-1">Baixa e descarte</h3><p id="rebanho-p9" class="searchable">Baixa registra a saída efetiva: venda, abate, morte, doação ou extravio. Cadastro indevido é fluxo interno de correção sujeito às guardas de fatos existentes. Motivo precisa ser compatível com o tipo; venda/abate/doação distinguem descarte voluntário/involuntário, morte tem sua classe própria.</p>
+<p id="rebanho-p10" class="searchable">Marcar uma matriz para descarte reprodutivo é uma decisão de não fazer novas intervenções reprodutivas. Ela continua ativa até ocorrer uma baixa real e pode continuar lactante. Essa decisão não vende o animal, não encerra lactação e não cria receita. Desfazer a decisão é explícito e auditado.</p>
+<p id="rebanho-p11" class="searchable">Baixa não apaga dados. O contexto da data deve ser revalidado, inclusive carências e ciência exigida. A V5 conserva uma exceção comprovada para a produção no próprio dia da baixa, usando o vínculo à finalidade que a baixa fechou; não é uma liberação genérica após a saída.</p>
+<h3 id="rebanho-genética" tabindex="-1">Genética</h3><p id="rebanho-p12" class="searchable">Cada lado da filiação aponta para animal interno ou genitor externo, de forma exclusiva. Na transferência de embrião, a doadora é a mãe genética e a receptora é a mãe gestacional. Doadora desconhecida permanece desconhecida.</p>
+<p id="rebanho-p13" class="searchable">Composição racial informada e composição calculada têm proveniências distintas. O cálculo dos genitores não sobrescreve uma composição informada sem aceite. MaterialGenetico associa sêmen ou embrião ao Produto do estoque; seu cadastro não cria doses disponíveis. A tentativa guarda um retrato da genética usada.</p>
+<h3 id="rebanho-peso-e-manejo" tabindex="-1">Peso e manejo</h3><p id="rebanho-p14" class="searchable">Pesagens têm data, tipo e origem; podem ser individuais ou coletivas. GMD é ganho médio diário entre pesos válidos com intervalo conhecido. Peso ausente não é zero; uma pesagem isolada não comprova tendência. Desmama e castração são fatos de manejo com autoria e histórico.</p>
+<p id="rebanho-p15" class="searchable">Peso de nascimento e peso ligado ao parto precisam conservar seus vínculos. Indicadores que usam bases diferentes não são equivalentes, mesmo que coincidam numericamente. A existência do enum BALANCA não significa integração automática com equipamento.</p>
+<h3 id="rebanho-onde-consultar" tabindex="-1">Onde consultar</h3><p id="rebanho-p16" class="searchable">Rebanho tem panorama, Animais e Lotes. A ficha animal organiza Resumo, Cadastro, Histórico, Reprodução, Sanidade, Nutrição e Produção para fêmeas. O resumo combina dimensões; as abas explicam a evidência. Lotes permite acompanhar seus animais, baixas, movimentos, sanidade, nutrição e alterações.</p>
+<p id="rebanho-p17" class="searchable">Gráficos devem declarar cobertura e recorte. Dados de uma página não representam o rebanho inteiro. Falha ao consultar sanidade não autoriza um selo de saudável; ausência de fechamento não prova ausência de dieta.</p>
+<h3 id="rebanho-modelo-de-estados-e-exemplos" tabindex="-1">Modelo de estados e exemplos</h3><p id="rebanho-p18" class="searchable">Uma fêmea pode ser simultaneamente ativa, no lote Lactantes, categoria Vaca, finalidade Leite, papel Receptora, gestante, lactante, em carência e participante de uma dieta. Nenhum desses rótulos substitui os outros. O <a href="#estados">modelo completo de estados</a> descreve origem, transições e restrições, e o capítulo Reprodução mostra o ciclo.</p>
+<h3 id="rebanho-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="rebanho-p19" class="searchable">Interface em <code>client/src/pecuaria/rebanho/telas/</code>; API em <code>server/src/routes/pecuaria/rebanho.ts</code>; regras em <code>server/src/services/pecuaria/rebanho/</code>. Animal se relaciona com LocalizacaoAnimal, FinalidadeAnimal, PeriodoReprodutivoAnimal, CategoriaManualAnimal, BaixaAnimal, Pesagem, Movimentacao/MovimentacaoAnimal e AuditoriaPecuaria.</p>
+<p id="rebanho-p20" class="searchable">Schema e baseline SQL preservam FKs, unicidade e exclusividade de filiação. Cálculos de categoria, partos, papel, peso e movimentação têm testes próprios. O <a href="../pecuaria/README.md">contrato pecuário</a> detalha as demais guardas.</p>
+</article>
+<article data-chapter="reproducao" aria-labelledby="reproducao"><header class="chapter-head"><p class="eyebrow">Pecuária · 05</p><h2 id="reproducao" tabindex="-1">Pecuária · Reprodução</h2></header><h3 id="reproducao-três-ciclos-que-precisam-ser-separados" tabindex="-1">Três ciclos que precisam ser separados</h3><p id="reproducao-p1" class="searchable">O <strong>ciclo estral biológico</strong> é o intervalo entre cios. Em bovinos, a referência média é cerca de 21 dias, com variação; envolve desenvolvimento folicular, cio/ovulação e fase lútea. Se houver concepção e manutenção da gestação, o animal segue gestante; se não houver, pode retornar à ciclicidade. A gestação tem duração aproximada de nove meses, variável por raça e indivíduo. Essas referências explicam a biologia; não são uma agenda clínica automática do app. Fonte: <a href="https://www.fda.gov/animal-veterinary/product-safety-information/cattle-estrous-cycle-and-fda-approved-animal-drugs-control-and-synchronize-estrus-resource-producers">FDA — ciclo estral bovino</a>.</p>
+<p id="reproducao-p2" class="searchable">O <strong>ciclo operacional de tentativas</strong> do aplicativo agrupa tentativas desde o último parto válido, ou desde a referência inicial. Pode conter várias tentativas e vários ciclos estrais. Aborto e natimorto registrados como parto iniciam outro ciclo operacional; uma perda gestacional que não é parto não o reinicia automaticamente.</p>
+<p id="reproducao-p3" class="searchable">O <strong>ciclo produtivo</strong> acompanha início/encerramento de lactação e medições. Ele se sobrepõe à reprodução: a vaca pode voltar a ser inseminada e ficar gestante enquanto ainda produz leite. Secagem encerra lactação; não encerra a gestação.</p>
+<h3 id="reproducao-da-novilha-ao-próximo-parto" tabindex="-1">Da novilha ao próximo parto</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="reproducao-p4" class="searchable">
+<th>Momento</th>
+<th>O que acontece</th>
+<th>O que registrar</th>
+<th>O que o app pode concluir</th>
+</tr>
+</thead>
+<tbody><tr id="reproducao-p5" class="searchable">
+<td>Entrada sem história suficiente</td>
+<td>Conhecimento incompleto</td>
+<td>Identidade, localização, finalidade e situação inicial comprovada</td>
+<td>Reprodução desconhecida; produção não informada</td>
+</tr>
+<tr id="reproducao-p6" class="searchable">
+<td>Avaliação e liberação</td>
+<td>Decisão clínica/operacional</td>
+<td>Situação inicial, política e/ou decisão individual, papel e restrições</td>
+<td>Elegível, não elegível ou pendente conforme a data</td>
+</tr>
+<tr id="reproducao-p7" class="searchable">
+<td>Cio ou preparação</td>
+<td>Oportunidade/planejamento</td>
+<td>Observações, exames e protocolo aplicável</td>
+<td>Não confirma concepção nem execução de tentativa</td>
+</tr>
+<tr id="reproducao-p8" class="searchable">
+<td>IA, TE ou cobertura observada</td>
+<td>Intervenção realizada</td>
+<td>Tentativa, responsável, material/origem e data</td>
+<td>Aguarda diagnóstico</td>
+</tr>
+<tr id="reproducao-p9" class="searchable">
+<td>Diagnóstico negativo</td>
+<td>Evidência conclusiva sem gestação</td>
+<td>Exame/interpretação</td>
+<td>Vazia; elegibilidade ainda precisa ser conferida</td>
+</tr>
+<tr id="reproducao-p10" class="searchable">
+<td>Diagnóstico positivo</td>
+<td>Gestação comprovada</td>
+<td>Exame, gestação e tentativa vinculada quando conhecida</td>
+<td>Gestante; vínculo desconhecido permanece explícito</td>
+</tr>
+<tr id="reproducao-p11" class="searchable">
+<td>Reconfirmação/sexagem</td>
+<td>Acompanhamento da mesma gestação</td>
+<td>Novas evidências</td>
+<td>Mantém gestação; não cria outra tentativa/gestação</td>
+</tr>
+<tr id="reproducao-p12" class="searchable">
+<td>Secagem</td>
+<td>Encerramento produtivo informado</td>
+<td>Encerramento da lactação</td>
+<td>Seca, podendo continuar gestante</td>
+</tr>
+<tr id="reproducao-p13" class="searchable">
+<td>Parto</td>
+<td>Nascimento/desfecho da gestação</td>
+<td>Um parto e os resultados de cada cria</td>
+<td>Encerra gestação e reinicia tentativas; lactação depende de registro</td>
+</tr>
+<tr id="reproducao-p14" class="searchable">
+<td>Pós-parto</td>
+<td>Recuperação e acompanhamento</td>
+<td>Ocorrências, exames, política/decisão de liberação</td>
+<td>Vazia não significa imediatamente elegível</td>
+</tr>
+</tbody></table></div>
+<p id="reproducao-p15" class="searchable">No pós-parto, retorno à atividade reprodutiva depende das condições do animal; o simples decurso do calendário não comprova recuperação ou aptidão. Referência de contexto: <a href="https://extension.oregonstate.edu/catalog/basics-reproductive-function-beef-cows">Oregon State University — função reprodutiva bovina</a>. Prazos de espera, diagnóstico e reconfirmação do software precisam de política explícita, sem copiar médias biológicas como prescrição.</p>
+<h3 id="reproducao-situação-reprodutiva" tabindex="-1">Situação reprodutiva</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="reproducao-p16" class="searchable">
+<th>Estado</th>
+<th>Evidência e motivo</th>
+<th>Próxima ação possível</th>
+</tr>
+</thead>
+<tbody><tr id="reproducao-p17" class="searchable">
+<td><code>DESCONHECIDA</code></td>
+<td>Não há conclusão válida suficiente; encerramento sem desfecho comprovado também pode exigir esclarecimento</td>
+<td>Completar história ou avaliar</td>
+</tr>
+<tr id="reproducao-p18" class="searchable">
+<td><code>VAZIA</code></td>
+<td>Conclusão negativa ou encerramento comprovado por parto/perda</td>
+<td>Conferir elegibilidade; não inseminar só pelo rótulo</td>
+</tr>
+<tr id="reproducao-p19" class="searchable">
+<td><code>APTA</code></td>
+<td>Situação inicial declarada, com data de aptidão quando informada</td>
+<td>Submeter às regras atuais de elegibilidade</td>
+</tr>
+<tr id="reproducao-p20" class="searchable">
+<td><code>AGUARDANDO_DIAGNOSTICO</code></td>
+<td>Existe tentativa válida mais recente sem desfecho conclusivo que a substitua</td>
+<td>Atender a demanda diagnóstica</td>
+</tr>
+<tr id="reproducao-p21" class="searchable">
+<td><code>GESTANTE</code></td>
+<td>Gestação confirmada válida, com acompanhamento preservado</td>
+<td>Acompanhar, reconfirmar, registrar desfecho</td>
+</tr>
+</tbody></table></div>
+<p id="reproducao-p22" class="searchable">O cálculo considera fatos válidos até a referência, cronologia e prioridade das evidências. Gestação operacional aberta não é desfeita por um cadastro inicial posterior. Inconclusivo e “aguardar” não equivalem a negativo. Anulação de uma evidência exige reavaliar seus dependentes.</p>
+<h3 id="reproducao-elegibilidade-uma-decisão-diferente-do-diagnóstico" tabindex="-1">Elegibilidade: uma decisão diferente do diagnóstico</h3><p id="reproducao-p23" class="searchable"><code>ELEGIVEL</code>, <code>NAO_ELEGIVEL</code> e <code>PENDENTE</code> respondem se o conjunto de regras está satisfeito naquela data. O cálculo usa sexo, baixa, localização, ciclo, política congelada, papel, descarte, restrições, liberação individual e situação reprodutiva.</p>
+<p id="reproducao-p24" class="searchable">PEV é período de espera voluntário configurado pela fazenda. Pode distinguir primíparas e multíparas e o tratamento após aborto. A política é vinculada ao início do ciclo para não mudar silenciosamente o passado. Uma decisão individual pode liberar ou bloquear com sua própria evidência.</p>
+<p id="reproducao-p25" class="searchable">Vazia durante o PEV pode ser não elegível. Aguardando diagnóstico pode ficar pendente. Sem política ou liberação suficiente, o sistema não fabrica aptidão. Gestante não é elegível a uma nova tentativa no cálculo. As guardas específicas do comando também verificam restrições sanitárias, material, estoque e período.</p>
+<h3 id="reproducao-tentativas-materiais-e-filiação" tabindex="-1">Tentativas, materiais e filiação</h3><p id="reproducao-p26" class="searchable">IA usa material de sêmen; TE usa embrião e conserva doadora e receptora com papéis distintos. Cobertura observada registra o evento conhecido. Exposição de touro a um lote registra intervalo e participantes históricos; não comprova data exata de concepção nem paternidade automática.</p>
+<p id="reproducao-p27" class="searchable">O material pode vir do estoque, de Serviço ou de origem documentada, conforme o contrato. Fato, consumo, custo e vínculos são confirmados de forma coordenada. A tentativa conserva um snapshot genético; editar o cadastro do material não reescreve o que foi utilizado.</p>
+<p id="reproducao-p28" class="searchable">Uma tentativa anulada não devolve automaticamente uma dose utilizada. A correção distingue devolução por erro de lançamento, material consumido e material descartado. O custo de um Serviço não é duplicado pelo vínculo com a tentativa.</p>
+<h3 id="reproducao-gestação-perda-aborto-e-parto" tabindex="-1">Gestação, perda, aborto e parto</h3><p id="reproducao-p29" class="searchable">O diagnóstico positivo cria ou confirma a gestação conforme o fluxo. Reconfirmação e sexagem acrescentam evidência à mesma gestação. Origem sem tentativa conhecida é registrada explicitamente, sem inventar IA anterior.</p>
+<p id="reproducao-p30" class="searchable">Perda precisa de explicação e pode ter causa desconhecida, suspeita ou confirmada. A autoria do lançamento não significa responsabilidade pela perda. Um negativo depois de positivo exige tratar a perda ou corrigir o diagnóstico; não pode apagar silenciosamente a gestação.</p>
+<p id="reproducao-p31" class="searchable">Aborto é um desfecho de parto no contrato atual e participa da análise de perdas sem duplicação. Natimorto é identificado no nascimento e não gera animal ativo. Morte depois de nascimento vivo usa a baixa normal da cria. Gêmeos são várias crias de um único parto.</p>
+<p id="reproducao-p32" class="searchable">Parto e criação de animais vivos são atômicos. Uma cria sem brinco definitivo permanece identificada provisoriamente. Filiação respeita genética/gestação; peso pode ser informado e vinculado. Início da lactação é explícito; aborto não abre lactação por suposição.</p>
+<h3 id="reproducao-lactação-e-contadores" tabindex="-1">Lactação e contadores</h3><p id="reproducao-p33" class="searchable"><code>LACTANTE</code> exige lactação vigente única com evidência válida. <code>SECA</code> exige encerramento comprovado sem lactação posterior vigente nem parto posterior sem resolução. Sem evidência suficiente, usa-se <code>NAO_INFORMADA</code>.</p>
+<p id="reproducao-p34" class="searchable">DEL conta dias desde o início da lactação, com D0 no início. Fica nulo após o encerramento, inclusive no dia da secagem. Dias pós-parto usa o parto; dias desde tentativa usa a tentativa do ciclo; dias desde confirmação usa o diagnóstico. São relógios distintos.</p>
+<p id="reproducao-p35" class="searchable">Idade gestacional desde IA/cobertura vinculada é uma referência operacional. TE precisa considerar idade embrionária; o contexto atual conserva essa pendência em vez de tratar a data da transferência como fecundação exata. A análise de indicadores possui suas regras próprias de deslocamento, que não completam a ficha individual automaticamente.</p>
+<h3 id="reproducao-protocolos-e-iatf" tabindex="-1">Protocolos e IATF</h3><p id="reproducao-p36" class="searchable">Protocolo é uma versão de planejamento. Momentos agrupam ações; participação liga animal e versão; tarefa representa o que deve ser realizado. Programação reúne participações num contexto coletivo. A mesma base atende sanitário/reprodutivo e individual/coletivo.</p>
+<p id="reproducao-p37" class="searchable">Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo usam os executores comuns. A confirmação revalida a prévia e é idempotente: repetir o mesmo pedido não cria outro fato. Adiar ou não atender não administra produto, não insemina e não diagnostica.</p>
+<p id="reproducao-p38" class="searchable">O executor HTTP comum atual aceita versão 1, até cem tarefas de animais distintos da mesma ação/contexto. A proposta antiga de atendimento por exceção de um momento inteiro com várias ações não está integralmente implementada. Visitas têm coordenação transacional própria entre grupos; isso não significa que o endpoint comum aceite um envelope v2.</p>
+<h3 id="reproducao-visitas-demandas-e-retorno" tabindex="-1">Visitas, demandas e retorno</h3><p id="reproducao-p39" class="searchable">Agenda do dia reúne demandas previstas; Seleção livre permite escolher animais por critérios. Ambos chegam à preparação, revisão, impressão e atendimento. A lista impressa é planejamento, não prova de realização. Transcrever o campo deve criar os mesmos fatos consultáveis na ficha/protocolo.</p>
+<p id="reproducao-p40" class="searchable">Políticas de acompanhamento definem DG após tentativa e reconfirmações após positivo. Uma demanda conserva âncora, regra e previsão. Inconclusivo pode concluir uma tarefa executada e manter a demanda clínica pendente. Demandas originadas por protocolo sem prazo comprovado mostram “Sem data definida”.</p>
+<p id="reproducao-p41" class="searchable">Anular a evidência de origem pode reabrir uma pendência e bloquear sua resolução até regularização. Atraso sinaliza trabalho pendente; não prova prenhez, vazio, perda ou culpa da equipe.</p>
+<h3 id="reproducao-indicadores-e-limites-de-leitura" tabindex="-1">Indicadores e limites de leitura</h3><p id="reproducao-p42" class="searchable">As consultas de partos e indicadores usam período e sítio explícitos. Taxas precisam de numerador, denominador e cobertura coerentes; contagem de tentativas não é contagem de animais únicos. Base elegível considera o histórico, PEV, políticas e pendências, não apenas o status atual.</p>
+<p id="reproducao-p43" class="searchable">A metodologia V2 de indicadores conserva estimativas declaradas e diagnósticos abertos separados dos resultados conhecidos. Não presuma que uma vaca sem diagnóstico está vazia para melhorar artificialmente o denominador. Perdas posteriores não apagam concepções comprovadas. Emissões preservadas conservam a metodologia e as fontes usadas.</p>
+<h3 id="reproducao-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="reproducao-p44" class="searchable">Rotas em <code>server/src/routes/pecuaria/reproducao.ts</code>, <code>visitas.ts</code> e <code>protocolos-operacao.ts</code>; serviços em <code>server/src/services/pecuaria/reproducao/</code> e <code>protocolos/</code>. <code>regras.calc.ts</code>, <code>contexto-animal.calc.ts</code>, <code>elegibilidade.calc.ts</code> e <code>indicadores.calc.ts</code> separam os cálculos da persistência.</p>
+<p id="reproducao-p45" class="searchable">TentativaReprodutiva, GestacaoAnimal, PartoAnimal, CriaParto, LactacaoAnimal, RestricaoReprodutiva, PoliticaElegibilidadeReprodutiva, VinculoPoliticaCiclo e DemandaAcompanhamentoReprodutivo conservam fatos e decisões. ExameAnimal/InterpretacaoReprodutiva são a base comum de avaliação; views antigas não recebem escrita paralela.</p>
+<p id="reproducao-p46" class="searchable">Testes próximos desses cálculos e integrações verificam cronologia, intervalos, estados, custos e efeitos. Referências completas: <a href="../pecuaria/reproducao.md">Reprodução</a>, <a href="../pecuaria/protocolos-exames.md">Protocolos</a> e <a href="#estados">estados do animal</a>.</p>
+<section class="cycle" aria-labelledby="explorar-ciclo"><p class="eyebrow">Exemplo didático · sem dados da fazenda</p><h3 id="explorar-ciclo">Uma vaca, vários estados simultâneos</h3><p>Selecione um momento de uma história fictícia. Cada linha representa um eixo independente; a passagem do tempo, sozinha, não registra o evento.</p><label for="momento-ciclo">Momento da história</label><select id="momento-ciclo"></select><div id="estado-ciclo" aria-live="polite"></div><p class="caption">Este exemplo não executa os cálculos do servidor nem define prazos clínicos. As regras completas estão no capítulo Estados do animal.</p></section></article>
+<article data-chapter="producao" aria-labelledby="producao"><header class="chapter-head"><p class="eyebrow">Pecuária · 06</p><h2 id="producao" tabindex="-1">Pecuária · Produção</h2></header><h3 id="producao-conceito-medir-guardar-destinar-e-vender" tabindex="-1">Conceito: medir, guardar, destinar e vender</h3><p id="producao-p1" class="searchable">A V5 acompanha leite por sítio, data operacional e ordenha. Medição, confirmação no estoque, natureza, destino, coleta, venda, demonstrativo e recebimento são fatos distintos. Uma medição salva não é saldo disponível; uma coleta não é pagamento; uma amostra de qualidade não libera automaticamente leite para venda.</p>
+<p id="producao-p2" class="searchable">O menu <strong>Leite</strong> tem sete entradas: Ordenhas, Produção, Estoque, Coletas, Qualidade, Vendas e Alimentação e descarte. Configurações, relatórios e conferência histórica têm acessos próprios.</p>
+<h3 id="producao-configurar-a-rotina" tabindex="-1">Configurar a rotina</h3><p id="producao-p3" class="searchable">A configuração tem vigência, fonte dos totais GERAL/INDIVIDUAL, posições da ordenha, horários opcionais, intervalo de aferição individual e critério de colostro. Admite de uma a doze posições. Nome e ordem não substituem a identidade da posição. Alterar a rotina não reescreve um dia já registrado.</p>
+<p id="producao-p4" class="searchable">Para sítio sem configuração, a rotina virtual inicia geral, mensal e Manhã/Tarde/Noite. Configurações históricas conservam sua fonte; clientes antigos que omitem fonte na criação mantêm a compatibilidade individual. “Mensal” não significa trinta dias fixos e não impede uma medição extra.</p>
+<p id="producao-p5" class="searchable">A operação relatada usa produção geral em cada ordenha e aferição individual periódica. O controle individual acompanha cada animal; não estima automaticamente os dias intermediários nem soma seus litros de novo ao tanque.</p>
+<h3 id="producao-produção-geral-cada-parcela-é-física" tabindex="-1">Produção geral: cada parcela é física</h3><ol>
+<li>Abra Ordenhas e escolha data e turno.</li>
+<li>Registre as parcelas segregadas: comercial, não comercial ou colostro.</li>
+<li>Identifique um tanque cadastrado/versionado ou outro recipiente segregado por descrição.</li>
+<li>Informe litros daquela ordenha e, se disponível, régua em milímetros. Não informe o saldo acumulado do tanque como nova produção.</li>
+<li>Confira os animais de origem e as justificativas exigidas.</li>
+<li>Salve as parcelas. Isso preserva a medição, sem movimentar estoque.</li>
+<li>Prepare produto/motivo e confirme o conjunto selecionado no estoque.</li>
+</ol>
+<p id="producao-p6" class="searchable">Cada recipiente aparece uma única vez na sessão. Leite misturado não é separado em naturezas por rateio fictício. Tanque cadastrado tem capacidade conferida; recipiente livre não recebe capacidade presumida. Régua e litros são campos manuais independentes: a régua não soma volume nem converte automaticamente pela tabela do tanque.</p>
+<p id="producao-p7" class="searchable">O cadastro do tanque preserva versões, capacidade, identificação e pontos de calibração conhecidos. Fotografias parciais não autorizam completar a tabela. Uma versão nova não altera aferições anteriores.</p>
+<h3 id="producao-quem-pode-ser-origem" tabindex="-1">Quem pode ser origem</h3><p id="producao-p8" class="searchable">Finalidade LEITE precisa estar comprovada na data. CORTE, REPRODUCAO, lacuna ou sobreposição impedem identificar o animal como participante leiteiro. Localização, sexo, entrada/baixa, lactação e carência continuam sendo verificações separadas.</p>
+<p id="producao-p9" class="searchable">Sugestões automáticas gerais usam lactação vigente única e DEL maior que zero. D0 pode participar do contexto de colostro quando existe parto/lactação compatível e declaração necessária. Ausência de lactação não é completada com parto inventado. A exceção explícita de lactação desconhecida mantém pendência e não comprova população de custo.</p>
+<p id="producao-p10" class="searchable">Registro direto de não comercial/colostro exige justificativa e pode conservar origens desconhecidas. Nesse caso o volume é conhecido, mas população e custo não ficam comprovados; não é autorização comercial.</p>
+<h3 id="producao-controle-individual" tabindex="-1">Controle individual</h3><p id="producao-p11" class="searchable">O dia congela configuração e população histórica na primeira gravação. Cada célula de animal/ordenha tem estado próprio:</p>
+<div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="producao-p12" class="searchable">
+<th>Estado</th>
+<th>O que informar</th>
+<th>Como entra nos totais</th>
+</tr>
+</thead>
+<tbody><tr id="producao-p13" class="searchable">
+<td><code>MEDIDO</code></td>
+<td>Litros, inclusive zero explícito</td>
+<td>Soma a quantidade medida</td>
+</tr>
+<tr id="producao-p14" class="searchable">
+<td><code>NAO_ORDENHADO</code></td>
+<td>Motivo</td>
+<td>Informa a ocorrência, sem presumir volume</td>
+</tr>
+<tr id="producao-p15" class="searchable">
+<td><code>PENDENTE</code></td>
+<td>Informação ainda ausente</td>
+<td>Reduz cobertura; não vira zero</td>
+</tr>
+</tbody></table></div>
+<p id="producao-p16" class="searchable">Salvar animal envia sua célula; salvar ordenha envia as demais alterações. Rascunhos conservam o contexto, a chave de reenvio e diferenças entre salvo, falha e edição local. Versão vencida impede sobrescrever outra aba silenciosamente. Inclusão/exclusão de participantes exige motivo e preserva o histórico.</p>
+<p id="producao-p17" class="searchable">Na fonte INDIVIDUAL, grupos de medições positivas inteiras da mesma sessão podem gerar origens segregadas. Uma medição não pode entrar em duas origens nem ser fracionada arbitrariamente. Na fonte GERAL, o controle individual não gera outra entrada.</p>
+<h3 id="producao-confirmação-e-natureza-do-leite" tabindex="-1">Confirmação e natureza do leite</h3><p id="producao-p18" class="searchable">Confirmar usa versão esperada, produto, motivo e chaves idempotentes. Falha de uma parcela do conjunto desfaz a confirmação inteira. Só volumes positivos geram entrada; zero medido continua registrado. Sessões/parcelas confirmadas têm proteção contra correção até regularizar entradas e consumidores.</p>
+<div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="producao-p19" class="searchable">
+<th>Natureza</th>
+<th>Significado operacional</th>
+<th>Consequência</th>
+</tr>
+</thead>
+<tbody><tr id="producao-p20" class="searchable">
+<td>Comercial</td>
+<td>Declaração explícita com origens e guardas satisfeitas</td>
+<td>Candidata a venda; custo pode estar pendente</td>
+</tr>
+<tr id="producao-p21" class="searchable">
+<td>Não comercial</td>
+<td>Leite segregado e restrito comercialmente</td>
+<td>Não pode ser vendido pelo fluxo comercial</td>
+</tr>
+<tr id="producao-p22" class="searchable">
+<td>Colostro</td>
+<td>Natureza explicitamente declarada</td>
+<td>Destinos próprios e vínculo de colostragem quando aplicável</td>
+</tr>
+<tr id="producao-p23" class="searchable">
+<td>Não informada</td>
+<td>Classificação ainda sem prova suficiente em contextos históricos</td>
+<td>Não equivale a comercial; cobertura permanece pendente</td>
+</tr>
+</tbody></table></div>
+<p id="producao-p24" class="searchable">No fluxo novo, a confirmação declara a natureza na mesma transação; o marco inicial não informado é preservado no histórico. COLOSTRO e NAO_COMERCIAL são restrições terminais na implementação atual. Estornar um fornecimento não transforma a sobra em leite comercial.</p>
+<p id="producao-p25" class="searchable">Carência ativa, prazo desconhecido e administração em revisão impedem a declaração comercial. A conferência considera a data/horário da produção e revalida nas novas vendas. Liberar o animal depois não libera retrospectivamente o leite produzido durante a restrição.</p>
+<h3 id="producao-colostro-alimentação-e-descarte" tabindex="-1">Colostro, alimentação e descarte</h3><p id="producao-p26" class="searchable">Critério de colostro pode ser primeira ordenha ou janela de dias por vigência. A janela inclui D0 e exclui a fronteira final. Primeira ordenha exige declaração explícita: a primeira medição registrada no software não prova que foi a primeira ordenha da vaca. A mesma declaração não pode se repetir para o mesmo parto/animal.</p>
+<p id="producao-p27" class="searchable">Destino interno informa origem e quantidades explícitas por animal. De 10 L, fornecer 3 L a uma cria e 4 L a outra deixa 3 L. Não há divisão igual automática nem saída adicional do restante. Colostro para cria de parto pode criar/vincular FornecimentoColostro sem duplicação; leite comum não cria esse fato.</p>
+<p id="producao-p28" class="searchable">Leite não comercial disponível para uso interno não significa leite fisicamente descartado. <strong>Descarte físico</strong> é outra saída, com origem, quantidade e justificativa. Alimentação não deve ser registrada novamente como descarte. Registrar a prática não certifica adequação clínica ou nutricional do uso.</p>
+<p id="producao-p29" class="searchable">Estornos conservam a origem e o inverso, respeitando dependências. Leite realmente eliminado não reaparece no tanque por uma correção documental.</p>
+<h3 id="producao-estoque-e-apuração-posterior" tabindex="-1">Estoque e apuração posterior</h3><p id="producao-p30" class="searchable">A entrada usa MovimentoEstoque compartilhado e pode ter valor pendente. Alocações identificam os litros de cada origem consumidos por saída, em FIFO ou seleção explícita suportada. Apuração documentada distribui valor entre saídas e remanescente, com versões, sem criar dinheiro ou outra despesa.</p>
+<p id="producao-p31" class="searchable">O saldo físico deve fechar: produção confirmada = saídas líquidas + remanescente. A consulta mostra cobertura de valor e quantidade comercial separadas. Tanque de origem não é um mapa de localização atual de todo o saldo.</p>
+<h3 id="producao-coletas-e-comercialização" tabindex="-1">Coletas e comercialização</h3><p id="producao-p32" class="searchable"><strong>Venda avulsa com preço conhecido:</strong> confirma uma retirada física e uma VENDA, com a condição financeira real. Entrega documenta a retirada existente; não a repete.</p>
+<p id="producao-p33" class="searchable"><strong>Operação por comprador/período:</strong> abre com preço desconhecido. Cada coleta baixa litros comerciais e preserva data, produto, referência e comprovantes. Não cria venda de R$ 0, obrigação ou caixa antes da negociação.</p>
+<p id="producao-p34" class="searchable">No fechamento, reconheça cada coleta, informe preço e ajuste monetário justificado. Duas coletas de 100 L e 150 L reconhecidas integralmente a R$ 2,50/L geram R$ 625, sem outra saída física. A fórmula usa Decimal: arredondar(litros reconhecidos × preço, 2) + ajuste. Reconhecimento integral zero ou total não positivo exige regularização, sem venda fictícia.</p>
+<p id="producao-p35" class="searchable">Receber depois usa os compromissos e liquidações do Financeiro. A coleta é física; aceite é conferência; venda é negociação; faturamento é documental; recebimento é dinheiro. Diferença no volume aceito não devolve litros automaticamente.</p>
+<p id="producao-p36" class="searchable">Correção comercial cria versão substituta preservando as coletas. Recebimento ativo, alocação documental dependente ou período fechado podem bloquear a correção. O usuário deve regularizar os vínculos antes, sem cancelar preço para recuperar estoque.</p>
+<h3 id="producao-demonstrativos-e-documentos" tabindex="-1">Demonstrativos e documentos</h3><p id="producao-p37" class="searchable">Demonstrativo registra período, comprador, referência, volumes/valores e componentes documentados. Bônus, desconto, retenção e adiantamento não são intercambiáveis. Retenção/adiantamento relatado não comprova pagamento nem vira desconto de receita automaticamente.</p>
+<p id="producao-p38" class="searchable">Alocações ligam demonstrativo, entrega e versão comercial, com limites de quantidade/valor. Aceite desconhecido continua pendente; a soma não pode se apropriar de mais volume do que o permitido. Anular demonstrativo libera suas alocações documentais sem devolver leite ou dinheiro. Comprovantes são privados e reautorizados no download.</p>
+<h3 id="producao-qualidade" tabindex="-1">Qualidade</h3><p id="producao-p39" class="searchable">Amostra individual usa o núcleo de exames; amostra coletiva identifica sua origem sem animal fictício. Resultado coletivo não é distribuído entre vacas. Formato versionado declara campos, tipos e unidades a partir do laudo: número, texto, opção e sim/não, conservando zero e falso.</p>
+<p id="producao-p40" class="searchable">Coleta, resultado laboratorial, recebimento do laudo e cadastro no sistema têm datas distintas. Ausência de data não é preenchida com outra. Uma coleta sem resultado continua aguardando laudo; corrigir resultados conserva histórico, formato e autoria.</p>
+<p id="producao-p41" class="searchable">CPP, gordura, proteína, NU, extrato seco e lactose dependem de código/unidade/método conhecidos. Rótulo igual não prova equivalência entre séries. Não há média automática de três amostras nem cálculo de preço por faixas de qualidade nesta consulta. Vincular amostras ao fechamento é opcional e congela sua versão; corrigir laudo depois não altera o acordo anterior.</p>
+<h3 id="producao-custos-e-cobertura" tabindex="-1">Custos e cobertura</h3><p id="producao-p42" class="searchable">Custo por litro usa custos e litros dos mesmos animais e período. No consolidado, soma custos e divide pela soma dos litros; não faz média simples dos custos/L individuais. Exemplo com base completa: R$ 900 / 600 L = R$ 1,50/L.</p>
+<p id="producao-p43" class="searchable">Cobertura incompleta, custo desconhecido, população sem comprovação, dia sem folha ou denominador sem volume positivo mantêm o indicador não apurado. Não dividir todo o custo mensal pelos poucos litros de um controle individual mensal; não extrapolar os dias ausentes.</p>
+<p id="producao-p44" class="searchable">Na fonte geral, exige-se cobertura de sessões e conciliação da união das origens com a população elegível. Filtrar uma natureza não cria vínculo monetário de cada componente com aquela parcela: o custo/L permanece não apurado com <code>NATUREZA_SEM_VINCULO</code>. Referência comercial R07 da Nutrição é separada e não entra outra vez no custo produtivo.</p>
+<h3 id="producao-conferência-física-e-relatórios" tabindex="-1">Conferência física e relatórios</h3><p id="producao-p45" class="searchable">Observar 10 L onde o razão mostra 12 L produz diferença de −2 L; a conferência não ajusta estoque automaticamente. Zero observado exige declaração. Uma observação antiga não vira saldo de abertura atual por suposição.</p>
+<p id="producao-p46" class="searchable">Produção diária/mensal soma volumes medidos e informa cobertura do calendário. Coletas usam data física; vendas usam comprador/período comercial. Relatórios emitidos preservam fontes, filtros, versão do cálculo e corte. CSV/exportação exige autorização e conserva lacunas e máscara monetária.</p>
+<p id="producao-p47" class="searchable">Prévia histórica confere dados de funcionários, brinco literal, unidade e conflitos. Não executa importação automática nem cria estoque retroativo de leite já vendido. IDEAGRI é referência para carga/reconciliação, não sincronização operacional.</p>
+<h3 id="producao-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="producao-p48" class="searchable">Prefixo HTTP: <code>/api/pecuaria/rebanho/leite</code>; rotas <code>server/src/routes/pecuaria/leite*.ts</code>; serviços <code>server/src/services/pecuaria/leite/</code>; interface <code>client/src/pecuaria/rebanho/leite/</code>. ConfiguracaoOrdenha → DiaProducaoLeite → SessaoOrdenha → MedicaoGeralLeite/MedicaoLeite organizam a produção. EntradaProducaoLeite e AlocacaoLeiteEstoque ligam a origem aos movimentos compartilhados. OperacaoComercialLeite, RetiradaOperacaoLeite e FechamentoOperacaoLeite conservam o percurso comercial.</p>
+<p id="producao-p49" class="searchable">Contratos especializados: <a href="../pecuaria/leite.md">produção</a>, <a href="../pecuaria/leite-decisoes-estoque.md">estoque</a>, <a href="../pecuaria/leite-comercial.md">comercial</a>, <a href="../pecuaria/leite-qualidade.md">qualidade</a> e <a href="../pecuaria/leite-relatorios.md">relatórios</a>. Testes de cálculos, serviços, rotas, componentes e SQL estrutural acompanham esses módulos; execução SQL real, R2 e homologação de campo são evidências próprias.</p>
+</article>
+<article data-chapter="sanidade" aria-labelledby="sanidade"><header class="chapter-head"><p class="eyebrow">Pecuária · 07</p><h2 id="sanidade" tabindex="-1">Pecuária · Sanidade</h2></header><h3 id="sanidade-conceito-ocorrência-tratamento-e-evidência" tabindex="-1">Conceito: ocorrência, tratamento e evidência</h3><p id="sanidade-p1" class="searchable">Ocorrência registra um problema acompanhado. Aplicação registra produto administrado. Exame registra coleta e resultados. Protocolo planeja ações; tarefa agenda uma realização. Carência representa uma restrição temporal associada à evidência de aplicação. Esses fatos podem se relacionar, mas um não prova automaticamente o outro.</p>
+<p id="sanidade-p2" class="searchable">Não existe um diagnóstico global de “saudável” por ausência de ocorrências. Encerrar um caso não comprova cura de todas as condições do animal. Uma aplicação pode ocorrer preventivamente; um exame pode ser inconclusivo.</p>
+<h3 id="sanidade-rotina-operacional" tabindex="-1">Rotina operacional</h3><ol>
+<li>Selecione animal e data no sítio do fato.</li>
+<li>Registre ocorrência com doença/classificação e observação disponíveis, quando houver um caso a acompanhar.</li>
+<li>Registre a aplicação real: produto, origem, quantidade/unidade, precisão da data/hora, responsável e carências informadas.</li>
+<li>Se houver exame, registre a coleta; informe resultados quando conhecidos, no formato original.</li>
+<li>Acompanhe retorno, tarefas e restrições. Não concluir pelo silêncio do histórico.</li>
+<li>Encerre/corrija/anule com motivo, preservando fatos e dependências.</li>
+</ol>
+<p id="sanidade-p3" class="searchable">Datas de aplicação são diferentes da data do lançamento. Perfil atual de um produto não substitui o snapshot usado numa aplicação passada. Alteração retroativa precisa considerar leite produzido/vendido e demais fatos afetados.</p>
+<h3 id="sanidade-origens-e-custos" tabindex="-1">Origens e custos</h3><p id="sanidade-p4" class="searchable">Estoque exige saldo/partida e gera saída vinculada. Compra direta destina material comprovado sem criar outro estoque nem despesa. Origem documentada e reconciliação preservam evidência e compatibilidade de unidade/produto. Equivalência de produto exige a confirmação prevista no fluxo, sem troca silenciosa.</p>
+<p id="sanidade-p5" class="searchable">Serviço financeiro pode reunir procedimentos realizados. Parcela monetária é opcional e zero difere de não informado. Material incluído em pacote não é somado de novo. O custo direto do animal reúne fontes identificadas, não soma repetidamente os resumos da aplicação, protocolo e visita.</p>
+<h3 id="sanidade-carência-de-leite-e-carne" tabindex="-1">Carência de leite e carne</h3><p id="sanidade-p6" class="searchable">Carências de leite e carne são calculadas separadamente. O prazo vem da aplicação histórica e da precisão disponível. Com apenas data, o cálculo adota uma referência conservadora no fim do dia local e identifica aproximação; não inventa horário exato.</p>
+<div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="sanidade-p7" class="searchable">
+<th>Estado/contexto</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody><tr id="sanidade-p8" class="searchable">
+<td>Prazo conhecido e ativo</td>
+<td>Existe restrição até o instante calculado</td>
+</tr>
+<tr id="sanidade-p9" class="searchable">
+<td>Prazo zero informado</td>
+<td>Evidência explícita de zero; diferente de campo vazio</td>
+</tr>
+<tr id="sanidade-p10" class="searchable">
+<td>Prazo conhecido encerrado</td>
+<td>Aquele prazo terminou; outras restrições continuam sendo consideradas</td>
+</tr>
+<tr id="sanidade-p11" class="searchable">
+<td><code>NAO_INFORMADO</code></td>
+<td>Falta prazo; não equivale a liberação</td>
+</tr>
+<tr id="sanidade-p12" class="searchable">
+<td><code>NAO_APLICAVEL</code></td>
+<td>A carência não se aplica ao destino conforme o registro</td>
+</tr>
+<tr id="sanidade-p13" class="searchable">
+<td><code>NENHUMA</code></td>
+<td>Nenhuma aplicação no conjunto consultado; não é certificado de saúde</td>
+</tr>
+<tr id="sanidade-p14" class="searchable">
+<td>Em revisão</td>
+<td>Administração/dados não confirmados exigem esclarecimento</td>
+</tr>
+</tbody></table></div>
+<p id="sanidade-p15" class="searchable">Na produção, essa evidência é apresentada como SEM_RESTRICAO_REGISTRADA, EM_CARENCIA ou NAO_AFERIVEL. Comercialização valida o contexto da produção; expiração posterior não torna comercial a origem restrita. Não há escolha de prazo clínico universal pelo software.</p>
+<h3 id="sanidade-correção-de-aplicação-com-material-já-usado" tabindex="-1">Correção de aplicação com material já usado</h3><p id="sanidade-p16" class="searchable">Anular o lançamento pode manter o consumo. Nesse caso é preciso distinguir administração confirmada, descarte sem administração e informação não confirmada. Administração confirmada conserva a evidência de carência; informação não confirmada deixa o contexto em revisão. Uma aplicação substituta válida pode assumir o vínculo clínico sem duplicar o consumo.</p>
+<p id="sanidade-p17" class="searchable">O sistema não devolve ao saldo utilizável uma dose realmente usada só porque o registro foi corrigido. Também não conserva um diagnóstico falso por conveniência contábil: fato clínico e efeito físico precisam de regularização coerente.</p>
+<h3 id="sanidade-exames-e-resultados" tabindex="-1">Exames e resultados</h3><p id="sanidade-p18" class="searchable">O tipo define campos, unidade e formato. Depois da primeira coleta, inclusive pendente/anulada, ou do uso em protocolo publicado, esse formato fica protegido; mudanças exigem versão nova. Coleta sem resultado não é negativo, zero ou falso.</p>
+<p id="sanidade-p19" class="searchable">Resultados e interpretações reprodutivas compartilham ExameAnimal, evitando dois exames para o mesmo atendimento. Várias observações podem existir no mesmo fato. Qualidade do leite reutiliza o núcleo para amostras individuais e tem suas guardas e anexos próprios.</p>
+<h3 id="sanidade-protocolos-individuais-e-coletivos" tabindex="-1">Protocolos individuais e coletivos</h3><p id="sanidade-p20" class="searchable">Versão publicada define ações e momentos. A programação/ciclo reúne participações; cada animal mantém suas tarefas, datas e fatos. Adicionar participante não recalcula os anteriores. Retirar exige motivo e encerra pendências; reentrada cria outra participação.</p>
+<p id="sanidade-p21" class="searchable">Prévia de execução mostra planejado, realizado, diferenças, carências e consumo. Data, dose, produto, unidade, via ou tipo divergentes exigem os motivos do contrato. Snapshot antigo ausente significa desvio não aferido, não execução conforme.</p>
+<p id="sanidade-p22" class="searchable">Não atendimento e adiamento são eventos de tarefa. Não administram produto e não geram resultado clínico. Tarefa concluída com exame inconclusivo pode deixar acompanhamento clínico em aberto. Listas paginadas não mudam o conjunto da confirmação.</p>
+<h3 id="sanidade-interface-e-leitura-dos-estados" tabindex="-1">Interface e leitura dos estados</h3><p id="sanidade-p23" class="searchable">Sanidade reúne ciclos, tarefas, ocorrências, aplicações e exames; a ficha oferece o contexto individual. Visões gráficas complementam tabelas e precisam declarar recorte. O progresso de tarefas é operacional, sem afirmar eficácia do tratamento.</p>
+<p id="sanidade-p24" class="searchable">Tags anunciam ocorrência vigente e participação comprovada. Programação futura é diferente de protocolo iniciado. Participação sem pendências pode deixar de aparecer como ativa; necessidade de regularização continua visível. Erro de leitura não significa ausência de doença.</p>
+<p id="sanidade-p25" class="searchable">Restrições reprodutivas por doença/ação dependem de configuração por sítio, podendo alertar ou bloquear. Não são inferidas de qualquer ocorrência. Encerrar uma ocorrência não remove outras restrições ou carências independentes.</p>
+<h3 id="sanidade-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="sanidade-p26" class="searchable">Rotas em <code>server/src/routes/pecuaria/sanidade.ts</code>, <code>rodadas.ts</code>, <code>execucao-etapas.ts</code> e protocolos comuns. Serviços em <code>server/src/services/pecuaria/sanidade/</code>, <code>exames/</code> e <code>protocolos/</code>. OcorrenciaSanitaria, AplicacaoProduto, ExameAnimal, ResultadoExame, InterpretacaoReprodutiva e o núcleo Protocolo/Participacao/Tarefa preservam fatos e snapshots.</p>
+<p id="sanidade-p27" class="searchable">Testes de carência, desvios, permissões, consumos, versões e execução atômica acompanham os serviços e rotas. Referências: <a href="../pecuaria/README.md">Pecuária</a> e <a href="../pecuaria/protocolos-exames.md">Protocolos e exames</a>.</p>
+</article>
+<article data-chapter="nutricao" aria-labelledby="nutricao"><header class="chapter-head"><p class="eyebrow">Pecuária · 08</p><h2 id="nutricao" tabindex="-1">Pecuária · Nutrição</h2></header><h3 id="nutricao-conceito-receita-vigência-e-consumo" tabindex="-1">Conceito: receita, vigência e consumo</h3><p id="nutricao-p1" class="searchable">Receita descreve ingredientes e quantidades planejadas. Sua versão preserva a composição usada. Vigência liga uma receita a um lote em determinado intervalo. Fechamento confirma consumo de um período. Participação atribui quantidade/custo aos animais presentes naquele intervalo.</p>
+<p id="nutricao-p2" class="searchable">Receita não baixa estoque. Dieta vigente não prova fornecimento. Fechamento não mede quanto cada animal efetivamente ingeriu: a atribuição individual usa permanência histórica no lote.</p>
+<h3 id="nutricao-rotina-de-trabalho" tabindex="-1">Rotina de trabalho</h3><ol>
+<li>Cadastre ingredientes e seus perfis/unidades no estoque compartilhado.</li>
+<li>Crie uma receita e publique/use a versão adequada conforme o fluxo.</li>
+<li>Atribua a dieta ao lote com início de vigência comprovado.</li>
+<li>Abra Conferir consumo para o lote/período.</li>
+<li>Confira permanências, quantidades sugeridas, alterações reais, origens e cobertura de custo.</li>
+<li>Confirme. O fechamento registra consumo, saídas e participações atomicamente.</li>
+<li>Consulte os detalhes por lote e animal; corrija pelo estorno/novo fechamento quando permitido.</li>
+</ol>
+<p id="nutricao-p3" class="searchable">Mudança de dieta cria outra vigência, sem editar retroativamente o consumo confirmado. Períodos e segmentações devem respeitar as vigências e os fechamentos existentes. Alteração retroativa de localização/dieta que afete consumo confirmado exige tratamento das dependências.</p>
+<h3 id="nutricao-animal-dias-e-rateio" tabindex="-1">Animal-dias e rateio</h3><p id="nutricao-p4" class="searchable">Animal-dias soma os dias de presença de cada animal no lote. O período solicitado tem início/fim inclusivos; a localização usa início incluído e fim excluído, contando o dia de transferência no destino.</p>
+<p id="nutricao-p5" class="searchable">Exemplo: A permaneceu dez dias e B cinco dias. São 15 animal-dias. Um consumo confirmado de 150 kg atribui 100 kg a A e 50 kg a B. Se o custo conhecido for R$ 300, as parcelas são R$ 200 e R$ 100. A explicação é permanência, não medição de ingestão.</p>
+<p id="nutricao-p6" class="searchable">O cálculo conserva unidades mínimas e centavos por maiores restos, com desempate estável. Não perde quantidades por arredondar cada animal isoladamente. Se parte dos ingredientes não tem custo, o conhecido pode ser apresentado com cobertura parcial; não se transforma o restante em zero.</p>
+<h3 id="nutricao-estados-que-devem-ser-lidos-separadamente" tabindex="-1">Estados que devem ser lidos separadamente</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="nutricao-p7" class="searchable">
+<th>Objeto</th>
+<th>Leitura</th>
+<th>Cuidado</th>
+</tr>
+</thead>
+<tbody><tr id="nutricao-p8" class="searchable">
+<td>Receita/versão</td>
+<td>Planejamento disponível e composição preservada</td>
+<td>Não representa consumo</td>
+</tr>
+<tr id="nutricao-p9" class="searchable">
+<td>Vigência no lote</td>
+<td>Receita aplicável na data</td>
+<td>Não prova que o fechamento foi feito</td>
+</tr>
+<tr id="nutricao-p10" class="searchable">
+<td>Fechamento</td>
+<td><code>CONFIRMADO</code> ou <code>ESTORNADO</code></td>
+<td>Estornado conserva história e inversos</td>
+</tr>
+<tr id="nutricao-p11" class="searchable">
+<td>Participação</td>
+<td>Dias, quantidades e custos atribuídos</td>
+<td>Não é ingestão medida</td>
+</tr>
+<tr id="nutricao-p12" class="searchable">
+<td>Custo</td>
+<td>Conhecido, parcial ou não apurado</td>
+<td>Não usar zero por falta de dados</td>
+</tr>
+<tr id="nutricao-p13" class="searchable">
+<td>Consulta vazia</td>
+<td>Nenhum consumo atribuído no recorte</td>
+<td>Não afirmar que o animal não tem dieta</td>
+</tr>
+</tbody></table></div>
+<p id="nutricao-p14" class="searchable">Não existe um único enum nutricional no Animal que resuma tudo isso. Se futuramente houver alertas como “consumo atrasado”, precisam de calendário/critério próprios; não se deduzem automaticamente de uma tela vazia.</p>
+<h3 id="nutricao-leite-na-dieta" tabindex="-1">Leite na dieta</h3><p id="nutricao-p15" class="searchable">A V5 permite consumo de leite por origens leiteiras comprovadas, conservando natureza, litros, parcelas por animal e estoque. Fechamentos são segmentados por mês/vigência quando exigido. Quantidades atribuídas são conservadas em mililitros; o leite não é comprado outra vez para aparecer como ingrediente.</p>
+<p id="nutricao-p16" class="searchable">Não comercial é natureza operacional; descarte físico é eliminação. Leite usado na alimentação não recebe uma segunda saída como descarte. Colostragem tem fato próprio e não deve ser duplicada pelo fechamento da dieta.</p>
+<p id="nutricao-p17" class="searchable">O custo produtivo acompanha a apuração das origens. Enquanto alguma parcela não tiver valor comprovado, o fornecimento permanece não apurado, mesmo que litros sejam conhecidos.</p>
+<h3 id="nutricao-referência-comercial-não-é-custo-produtivo" tabindex="-1">Referência comercial não é custo produtivo</h3><p id="nutricao-p18" class="searchable">R07 é uma referência gerencial do leite usado internamente. Pode vir de um fechamento comercial vigente comprovado; ausência ou multiplicidade deixa pendência. Revisões explícitas preservam fonte, versão, motivo e autoria, sem alterar litros ou dinheiro.</p>
+<p id="nutricao-p19" class="searchable">Para 60 L, referência de R$ 2,50/L representa R$ 150. Revisá-la para R$ 2,70/L mostra R$ 162. Se o custo produtivo for R$ 84, ele continua R$ 84: não se soma R$ 84 + R$ 162 como gasto. Referência, custo e receita têm significados distintos.</p>
+<p id="nutricao-p20" class="searchable">A consulta operacional de custos atribuídos segue a política pecuária. Referência comercial monetária exige acesso financeiro/valores. Ocultar valores no cliente não substitui a máscara do servidor.</p>
+<h3 id="nutricao-estorno-e-dependências" tabindex="-1">Estorno e dependências</h3><p id="nutricao-p21" class="searchable">Estornar um fechamento conserva o original e cria os movimentos inversos correspondentes uma vez. As origens exatas do leite são recompostas quando o estorno é permitido. Não altera colostragem independente nem remove restrição da natureza leiteira.</p>
+<p id="nutricao-p22" class="searchable">Consumos posteriores ainda confirmados, estoque utilizado e períodos fechados podem impedir regularização isolada. O sistema deve validar o conjunto antes de confirmar; reenvio idempotente não deve duplicar fechamento ou inverso.</p>
+<h3 id="nutricao-interface-e-indicadores" tabindex="-1">Interface e indicadores</h3><p id="nutricao-p23" class="searchable">Nutrição apresenta panorama, receitas, vigências e fechamentos; a ficha do lote oferece a rotina no contexto. A ficha animal apresenta sua participação atribuída. O resumo usa agregação do servidor e não baixa todo o histórico para calcular no navegador.</p>
+<p id="nutricao-p24" class="searchable">Calendário de fechamentos e comparação de ingredientes são alternativas à tabela. Quantidades mantêm unidade; custos mostram cobertura; estornados não entram no total atual. O volume conhecido não é um diagnóstico de adequação da dieta.</p>
+<p id="nutricao-p25" class="searchable">Não há formulação automática, recomendação nutricional, previsão de ganho ou balanço de nutrientes completos apenas por registrar o consumo. O aplicativo registra e reconcilia a prática; o planejamento técnico precisa de sua fonte profissional e dos dados adequados.</p>
+<h3 id="nutricao-implementação-e-verificações" tabindex="-1">Implementação e verificações</h3><p id="nutricao-p26" class="searchable">Rotas em <code>server/src/routes/pecuaria/nutricao.ts</code>; serviços <code>dietas.ts</code>, <code>consumo.ts</code>, <code>resumo.ts</code>, <code>animalDias.calc.ts</code> e <code>atribuicao.calc.ts</code> em <code>server/src/services/pecuaria/nutricao/</code>. A integração leiteira usa <code>server/src/services/pecuaria/leite/nutricao.ts</code>.</p>
+<p id="nutricao-p27" class="searchable">Dieta/ItemDieta → VigenciaDietaLote → FechamentoConsumo/ItemFechamentoConsumo → ParticipacaoConsumoAnimal organizam o domínio. FornecimentoNutricionalLeite, suas parcelas/movimentos e ReferenciaGerencialLeite conservam o leite fornecido e a referência separada.</p>
+<p id="nutricao-p28" class="searchable">Testes de permanência, atribuição, estorno, resumo e integrações verificam conservação e dependências. Fonte contratual: <a href="../pecuaria/README.md">Pecuária</a> e <a href="../pecuaria/leite.md#leite-na-dieta-e-referência-gerencial">leite na dieta</a>.</p>
+</article>
+<article data-chapter="integracao" aria-labelledby="integracao"><header class="chapter-head"><p class="eyebrow">Conectar e avaliar · 09</p><h2 id="integracao" tabindex="-1">Integração, estados e lacunas</h2></header><h3 id="integracao-uma-história-atravessando-os-eixos" tabindex="-1">Uma história atravessando os eixos</h3><p id="integracao-p1" class="searchable">Uma vaca entra no rebanho com identidade e localização comprovadas. A dieta do lote recebe vigência; o fechamento confirma consumo e atribui custo pelos dias de presença. Uma aplicação usa material do estoque e preserva carência. A tentativa reprodutiva registra a intervenção; o diagnóstico confirma gestação. O parto cria as crias vivas e pode abrir lactação quando informado.</p>
+<p id="integracao-p2" class="searchable">Cada ordenha mede leite; a confirmação cria origem física. A natureza e as carências limitam sua destinação. Uma coleta retira leite antes ou depois de negociar preço. O fechamento comercial cria venda e condição financeira. A liquidação registra o recebimento na conta. Relatórios reúnem os fatos pelo recorte correto, sem somar compra, consumo e pagamento como despesas diferentes.</p>
+<h3 id="integracao-as-quatro-perguntas-que-evitam-confusão" tabindex="-1">As quatro perguntas que evitam confusão</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="integracao-p3" class="searchable">
+<th>Pergunta</th>
+<th>Exemplo</th>
+<th>Fonte</th>
+</tr>
+</thead>
+<tbody><tr id="integracao-p4" class="searchable">
+<td>Como está o animal na data?</td>
+<td>Gestante e lactante</td>
+<td>Evidências reprodutivas e lactação</td>
+</tr>
+<tr id="integracao-p5" class="searchable">
+<td>Qual é o estado do registro?</td>
+<td>Aplicação válida ou anulada</td>
+<td>Histórico do fato</td>
+</tr>
+<tr id="integracao-p6" class="searchable">
+<td>Que leite existe e qual sua natureza?</td>
+<td>10 L de colostro disponíveis</td>
+<td>Origem, classificação e movimentos</td>
+</tr>
+<tr id="integracao-p7" class="searchable">
+<td>O que aconteceu com o dinheiro?</td>
+<td>R$ 500 ainda a receber</td>
+<td>Compromisso e liquidações</td>
+</tr>
+</tbody></table></div>
+<p id="integracao-p8" class="searchable">Uma resposta não substitui a outra. “Descarte” pode ser restrição reprodutiva da matriz, natureza não comercial do leite ou eliminação física, conforme o contexto. A documentação e os formulários precisam nomear o objeto.</p>
+<h3 id="integracao-modelo-detalhado-e-desenho-do-sistema" tabindex="-1">Modelo detalhado e desenho do sistema</h3><p id="integracao-p9" class="searchable">O HTML inclui, na sequência, a matriz completa de estados, o system design e as lacunas. Em Markdown, consulte <a href="#estados">estados do animal</a>, <a href="#sistema">system design</a> e <a href="#lacunas">lacunas</a>. São fontes complementares: manual explica o uso, contrato fixa regras, código/SQL implementam e testes/evidências verificam cenários.</p>
+<h3 id="integracao-o-que-ainda-precisa-ser-decidido-ou-comprovado" tabindex="-1">O que ainda precisa ser decidido ou comprovado</h3><p id="integracao-p10" class="searchable">As principais lacunas são atendimento protocolar multiação por momento, idade embrionária no contexto individual de TE, comprovação de nunca lactante, custo por natureza, produção individual entre controles, saldo atual por tanque e carga histórica de leite. Custo direto registrado não deve ser apresentado como rentabilidade integral.</p>
+<p id="integracao-p11" class="searchable">O código atual não entrega formulação automática de dieta, diagnóstico veterinário, laboratório/FIV, sincronização contínua IDEAGRI nem execução automática de todas as propostas dos mockups. Os números didáticos do guia não são recomendações clínicas ou dados da fazenda.</p>
+<h3 id="integracao-como-manter-esta-documentação" tabindex="-1">Como manter esta documentação</h3><p id="integracao-p12" class="searchable">Ao alterar uma regra, atualize seu contrato e o capítulo de usuário afetado. Ao criar um estado, defina fonte, data, transições, coexistência, evidência desconhecida e efeito nos demais eixos. Ao emitir um relatório, preserve o snapshot e sua metodologia. Ao concluir uma proposta, incorpore decisões ao contrato e retire o plano temporário.</p>
+<p id="integracao-p13" class="searchable">Regere o HTML pelos capítulos; não mantenha uma segunda cópia manual do conteúdo. A revisão documental verifica links, estrutura, diagramas e leitura do arquivo. Não concede aceite aos roteiros nem comprova deployment, banco ou operação rural.</p>
+</article>
+<article data-chapter="estados" aria-labelledby="estados"><header class="chapter-head"><p class="eyebrow">Conectar e avaliar · 10</p><h2 id="estados" tabindex="-1">Estados do animal: eixos, evidências e transições</h2></header><p id="estados-p1" class="searchable">O animal não tem um único status capaz de representar sua vida. O estado exibido é uma composição de dimensões na data de referência. Esta matriz descreve a V5 integrada e distingue valores persistidos, projeções calculadas e conceitos ainda sem estado próprio. A explicação para usuários está no <a href="#rebanho">guia do Rebanho</a> e no <a href="#reproducao">ciclo reprodutivo</a>.</p>
+<h3 id="estados-matriz-de-dimensões" tabindex="-1">Matriz de dimensões</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="estados-p2" class="searchable">
+<th>Eixo</th>
+<th>Estados/valores</th>
+<th>Fonte e por que existe</th>
+</tr>
+</thead>
+<tbody><tr id="estados-p3" class="searchable">
+<td>Identidade</td>
+<td>Sexo F/M; origem NASCIDO/COMPRADO; identificação definitiva/provisória quando aplicável</td>
+<td>Animal; conserva o indivíduo mesmo depois de trocar brinco/contexto</td>
+</tr>
+<tr id="estados-p4" class="searchable">
+<td>Atividade no rebanho</td>
+<td>Ativo no recorte ou baixado por VENDA, ABATE, MORTE, DOACAO, EXTRAVIO; CADASTRO_INDEVIDO é correção interna</td>
+<td>Entrada e BaixaAnimal; distingue decisão de descarte de saída efetiva</td>
+</tr>
+<tr id="estados-p5" class="searchable">
+<td>Localização</td>
+<td>Sítio e lote na data; ausência ou sobreposição explícitas</td>
+<td>LocalizacaoAnimal; determina escopo, consumo e atribuição histórica</td>
+</tr>
+<tr id="estados-p6" class="searchable">
+<td>Categoria</td>
+<td>Resultado das regras configuráveis ou exceção manual vigente</td>
+<td>CategoriaAnimal/CategoriaManualAnimal; não é gestação ou finalidade</td>
+</tr>
+<tr id="estados-p7" class="searchable">
+<td>Finalidade</td>
+<td>LEITE, CORTE, REPRODUCAO; evidência temporal pode faltar/conflitar</td>
+<td>FinalidadeAnimal; indica destinação operacional por período</td>
+</tr>
+<tr id="estados-p8" class="searchable">
+<td>Papel reprodutivo</td>
+<td>NENHUM, DOADORA, RECEPTORA; estado da resolução CONHECIDO, DESCONHECIDO, CONFLITO</td>
+<td>PeriodoReprodutivoAnimal; função naquele intervalo, sem substituir genética ou finalidade</td>
+</tr>
+<tr id="estados-p9" class="searchable">
+<td>Situação reprodutiva</td>
+<td>DESCONHECIDA, VAZIA, APTA, AGUARDANDO_DIAGNOSTICO, GESTANTE</td>
+<td>Projeção de situação inicial, tentativa, exame/interpretação, gestação e parto</td>
+</tr>
+<tr id="estados-p10" class="searchable">
+<td>Elegibilidade</td>
+<td>ELEGIVEL, NAO_ELEGIVEL, PENDENTE; motivos, política e decisão</td>
+<td>Cálculo temporal da aptidão operacional; diagnóstico não basta</td>
+</tr>
+<tr id="estados-p11" class="searchable">
+<td>Restrição reprodutiva</td>
+<td>Restrições vigentes e marcação DESCARTE; encerramento/reversão explícitos</td>
+<td>RestricaoReprodutiva e regras sanitárias; impede/alerta ações sem dar baixa</td>
+</tr>
+<tr id="estados-p12" class="searchable">
+<td>Produção biológica registrada</td>
+<td>LACTANTE, SECA, NAO_INFORMADA</td>
+<td>LactacaoAnimal e validade do parto; mede evidência produtiva, não volume</td>
+</tr>
+<tr id="estados-p13" class="searchable">
+<td>Sanidade</td>
+<td>Ocorrências vigentes/encerradas, aplicações, exames e revisões</td>
+<td>Conjunto de fatos; não existe conclusão global automática de saudável</td>
+</tr>
+<tr id="estados-p14" class="searchable">
+<td>Carência</td>
+<td>Leite e carne separadamente: nenhuma registrada, não informada, não aplicável ou prazo conhecido; revisão quando aplicável</td>
+<td>Snapshots de aplicações; não equivale à natureza de uma origem de leite</td>
+</tr>
+<tr id="estados-p15" class="searchable">
+<td>Nutrição</td>
+<td>Dieta vigente, fechamentos confirmados/estornados, participação e cobertura</td>
+<td>Relações com lote/período; não é um campo único nem prova de ingestão</td>
+</tr>
+<tr id="estados-p16" class="searchable">
+<td>Protocolos/acompanhamento</td>
+<td>Planejamento, participação, tarefas pendentes/realizadas/dispensadas e demandas clínicas</td>
+<td>Estado da tarefa e estado clínico podem divergir legitimamente</td>
+</tr>
+</tbody></table></div>
+<p id="estados-p17" class="searchable">Os nomes de leitura “ativo”, “baixado”, “ocorrência vigente” e “dieta vigente” não são apresentados aqui como um novo enum no Animal. São projeções das entidades existentes. Sexo/categoria também restringem a aplicabilidade: não se deve exibir fêmeas adultas como modelo universal de todo o rebanho.</p>
+<h3 id="estados-reprodução-transições-por-fatos" tabindex="-1">Reprodução: transições por fatos</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="estados-p18" class="searchable">
+<th>Origem</th>
+<th>Evento</th>
+<th>Resultado possível</th>
+<th>Eixos que não mudam por esse evento isolado</th>
+</tr>
+</thead>
+<tbody><tr id="estados-p19" class="searchable">
+<td>Desconhecida</td>
+<td>Situação inicial comprovada</td>
+<td>Vazia ou Apta inicial</td>
+<td>Lactação, carência, finalidade</td>
+</tr>
+<tr id="estados-p20" class="searchable">
+<td>Vazia/apta com guardas satisfeitas</td>
+<td>IA, TE ou cobertura observada</td>
+<td>Aguarda diagnóstico</td>
+<td>Não confirma gestação; não encerra lactação</td>
+</tr>
+<tr id="estados-p21" class="searchable">
+<td>Aguarda diagnóstico</td>
+<td>Negativo conclusivo</td>
+<td>Vazia</td>
+<td>Não prova liberação clínica</td>
+</tr>
+<tr id="estados-p22" class="searchable">
+<td>Aguarda diagnóstico</td>
+<td>Positivo</td>
+<td>Gestante</td>
+<td>Não muda finalidade/papel nem interrompe produção</td>
+</tr>
+<tr id="estados-p23" class="searchable">
+<td>Gestante</td>
+<td>Reconfirmação ou sexagem</td>
+<td>Mesma gestação acompanhada</td>
+<td>Não cria nova tentativa/cria</td>
+</tr>
+<tr id="estados-p24" class="searchable">
+<td>Gestante</td>
+<td>Perda comprovada</td>
+<td>Vazia após encerramento</td>
+<td>Não reinicia ciclo de tentativas como parto nem libera intervenção por si só</td>
+</tr>
+<tr id="estados-p25" class="searchable">
+<td>Gestante</td>
+<td>Parto, inclusive aborto/natimorto</td>
+<td>Encerra gestação; novo ciclo de tentativas</td>
+<td>Lactação só inicia quando informada; aborto não a presume</td>
+</tr>
+<tr id="estados-p26" class="searchable">
+<td>Qualquer contexto</td>
+<td>Exame inconclusivo/aguardar</td>
+<td>Mantém conclusão válida e/ou pendência</td>
+<td>Não presume vazio, prenhez ou perda</td>
+</tr>
+<tr id="estados-p27" class="searchable">
+<td>Qualquer contexto</td>
+<td>Anulação/correção</td>
+<td>Recalcula pelos fatos válidos e trata dependências</td>
+<td>Não apaga efeitos físicos já ocorridos</td>
+</tr>
+</tbody></table></div>
+<p id="estados-p28" class="searchable">O código prioriza gestação operacional aberta e, nos demais casos, a evidência conclusiva mais recente, com prioridades para desempate. Intervalos e sobreposições são validados separadamente. A simples passagem dos dias não produz parto, diagnóstico ou secagem.</p>
+<h3 id="estados-lactação-o-que-cada-rótulo-prova" tabindex="-1">Lactação: o que cada rótulo prova</h3><p id="estados-p29" class="searchable">LACTANTE exige uma lactação vigente única e vínculo de parto válido quando existente. SECA exige encerramento comprovado, sem lactação vigente e sem parto posterior que torne aquela conclusão insuficiente. NAO_INFORMADA cobre ausência de história e situações sem evidência única/confiável.</p>
+<p id="estados-p30" class="searchable"><code>SEM_LACTACAO</code> existe no tipo de contexto, mas o cálculo atual não o retorna por falta de histórico. Não apresentá-lo como status já inferido para todas as novilhas. Se for necessário comprovar “nunca lactou”, é preciso definir fonte/critério próprio e sua adoção; a ausência de registros não o comprova.</p>
+<p id="estados-p31" class="searchable">DEL é D0 no início da lactação e nulo após encerramento. Dias pós-parto, idade gestacional, dias desde tentativa e dias desde confirmação têm âncoras distintas. Uma transferência entre sítios não reinicia nenhum desses relógios.</p>
+<h3 id="estados-combinações-coerentes" tabindex="-1">Combinações coerentes</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="estados-p32" class="searchable">
+<th>Exemplo didático</th>
+<th>Combinação</th>
+<th>Explicação</th>
+</tr>
+</thead>
+<tbody><tr id="estados-p33" class="searchable">
+<td>Vaca após novo diagnóstico positivo</td>
+<td>Ativa + Leite + NENHUM conhecido + Gestante + Lactante</td>
+<td>Gestação e lactação se sobrepõem</td>
+</tr>
+<tr id="estados-p34" class="searchable">
+<td>Receptora produtora</td>
+<td>Ativa + Leite + Receptora + Gestante + Lactante</td>
+<td>Papel gestacional não muda finalidade nem mãe genética</td>
+</tr>
+<tr id="estados-p35" class="searchable">
+<td>Pré-parto com secagem registrada</td>
+<td>Ativa + Gestante + Seca</td>
+<td>Encerrar lactação não encerra prenhez</td>
+</tr>
+<tr id="estados-p36" class="searchable">
+<td>Vaca tratada durante lactação</td>
+<td>Lactante + ocorrência vigente + carência do leite</td>
+<td>Produzir volume não significa poder comercializá-lo</td>
+</tr>
+<tr id="estados-p37" class="searchable">
+<td>Matriz marcada para descarte</td>
+<td>Ativa + restrição DESCARTE + Lactante</td>
+<td>Continua no rebanho até baixa; não autoriza nova intervenção reprodutiva</td>
+</tr>
+<tr id="estados-p38" class="searchable">
+<td>Entrada sem documentos clínicos</td>
+<td>Ativa + reprodução desconhecida + produção não informada</td>
+<td>Cadastro não completa a história clínica</td>
+</tr>
+</tbody></table></div>
+<p id="estados-p39" class="searchable">Essas combinações são exemplos de coexistência, não presets gravados nem recomendações de tratamento.</p>
+<h3 id="estados-combinações-que-exigem-esclarecimento" tabindex="-1">Combinações que exigem esclarecimento</h3><p id="estados-p40" class="searchable">Lactações, localizações ou gestações sobrepostas não autorizam escolher arbitrariamente a primeira linha. Papel ausente não vira NENHUM. Finalidade atual não reclassifica uma produção antiga. Parto sem lactação informada não prova automaticamente LACTANTE; sem registro, também não prova SECA.</p>
+<p id="estados-p41" class="searchable">Uma origem leiteira não comercial não vira comercial quando a vaca sai da carência. Um animal sem exames/ocorrências não ganha o status SAUDAVEL. Leite de descarte não equivale a animal de descarte e não prova descarte físico do leite.</p>
+<h3 id="estados-por-que-não-criar-mais-um-status-global" tabindex="-1">Por que não criar mais um status global</h3><p id="estados-p42" class="searchable">“Em pós-parto”, “em PEV”, “em protocolo”, “aguardando DG” e “com custo pendente” respondem a perguntas diferentes. Pós-parto tem uma data; PEV depende da política; protocolo tem tarefas; DG depende de evidência; custo depende de cobertura. Fundi-los perde informação e gera transições erradas.</p>
+<p id="estados-p43" class="searchable">Se for necessário destacar anestro, cio observado, pré-parto, histórico nunca lactante ou adequação nutricional, primeiro definir fato de origem, responsável, data, condição de encerramento e tratamento do desconhecido. Esses rótulos não estão sendo implementados nesta documentação. Os requisitos em aberto estão em <a href="#lacunas">lacunas</a>.</p>
+<h3 id="estados-fontes-da-implementação" tabindex="-1">Fontes da implementação</h3><ul>
+<li><code>server/src/services/pecuaria/reproducao/regras.calc.ts</code>: situação e contadores.</li>
+<li><code>server/src/services/pecuaria/reproducao/contexto-animal.calc.ts</code>: lactação, DEL, localização, gestação e pendências na data.</li>
+<li><code>server/src/services/pecuaria/reproducao/elegibilidade.calc.ts</code>: política, decisão, restrição e elegibilidade.</li>
+<li><code>server/src/services/pecuaria/rebanho/papel-reprodutivo.calc.ts</code>: papel e evidências por período.</li>
+<li><code>server/src/services/pecuaria/leite/finalidade.calc.ts</code>: finalidade histórica e exceção comprovada da baixa.</li>
+<li><code>server/src/services/pecuaria/sanidade/carencia.calc.ts</code> e <code>leite/carencia-producao.ts</code>: prazos e elegibilidade comercial.</li>
+<li><code>server/src/services/pecuaria/nutricao/animalDias.calc.ts</code>: permanência histórica e animal-dias.</li>
+</ul>
+<p id="estados-p44" class="searchable">Os testes homônimos e os testes de rotas/integração próximos dessas fontes preservam os casos de fronteira. Schema e baseline SQL complementam as validações de serviço; essa inspeção não executa nem homologa todos os cenários.</p>
+</article>
+<article data-chapter="sistema" aria-labelledby="sistema"><header class="chapter-head"><p class="eyebrow">Conectar e avaliar · 11</p><h2 id="sistema" tabindex="-1">System design — integração dos domínios até a V5</h2></header><p id="sistema-p1" class="searchable">Este documento descreve o sistema implementado na <code>main</code> que integra a V5 (<code>b63931e4</code>). <a href="../../ARCHITECTURE.md">ARCHITECTURE.md</a> mantém runtime, organização e limites técnicos; os contratos de domínio detalham os comandos. Diagramas são modelos conceituais, não um catálogo completo de colunas ou prova do banco implantado.</p>
+<h3 id="sistema-contexto-e-infraestrutura" tabindex="-1">Contexto e infraestrutura</h3><figure class="diagram"><figcaption>Fluxo de relações e efeitos</figcaption><div class="diagram-scroll" tabindex="0" role="region" aria-label="Diagrama; deslize horizontalmente em telas estreitas"><svg viewBox="0 0 960 856" role="img" aria-labelledby="diagram-title-1 diagram-desc-1"><title id="diagram-title-1">Fluxo do sistema</title><desc id="diagram-desc-1">Funcionário ou gestor leva a React e History API. React e History API leva a Hono no mesmo Cloudflare Worker. Hono no mesmo Cloudflare Worker leva a Sessão, área, ação e sítio. Sessão, área, ação e sítio leva a Serviços de domínio. Serviços de domínio leva a Neon PostgreSQL. Serviços de domínio leva a Arquivos privados R2. Hono no mesmo Cloudflare Worker leva a Assistente de consulta autorizado. Assistente de consulta autorizado leva a OpenAI: interpretação. Assistente de consulta autorizado leva a Ferramentas de leitura. Ferramentas de leitura leva a Serviços de domínio</desc><defs><marker id="arrow-1" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#55756d"/></marker></defs><g class="edges" marker-end="url(#arrow-1)"><path d="M480 87 C480 117,480 121,480 137"/><path d="M480 205 C480 235,480 239,480 255"/><path d="M480 323 C480 353,240 357,240 373"/><path d="M240 441 C240 471,480 593,480 609"/><path d="M480 677 C480 707,240 711,240 727"/><path d="M480 677 C480 707,720 711,720 727"/><path d="M480 323 C480 353,720 357,720 373"/><path d="M720 441 C720 471,240 475,240 491"/><path d="M720 441 C720 471,720 475,720 491"/><path d="M720 559 C720 589,480 593,480 609"/></g><g class="nodes"><g><rect x="340" y="25" width="280" height="62" rx="6"/><text x="480" y="56"><tspan x="480" dy="0">Funcionário ou gestor</tspan></text></g><g><rect x="340" y="143" width="280" height="62" rx="6"/><text x="480" y="174"><tspan x="480" dy="0">React e History API</tspan></text></g><g><rect x="340" y="261" width="280" height="62" rx="6"/><text x="480" y="292"><tspan x="480" dy="0">Hono no mesmo Cloudflare Worker</tspan></text></g><g><rect x="100" y="379" width="280" height="62" rx="6"/><text x="240" y="410"><tspan x="240" dy="0">Sessão, área, ação e sítio</tspan></text></g><g><rect x="340" y="615" width="280" height="62" rx="6"/><text x="480" y="646"><tspan x="480" dy="0">Serviços de domínio</tspan></text></g><g><rect x="100" y="733" width="280" height="62" rx="6"/><text x="240" y="764"><tspan x="240" dy="0">Neon PostgreSQL</tspan></text></g><g><rect x="580" y="733" width="280" height="62" rx="6"/><text x="720" y="764"><tspan x="720" dy="0">Arquivos privados R2</tspan></text></g><g><rect x="580" y="379" width="280" height="62" rx="6"/><text x="720" y="400"><tspan x="720" dy="0">Assistente de consulta</tspan><tspan x="720" dy="20">autorizado</tspan></text></g><g><rect x="100" y="497" width="280" height="62" rx="6"/><text x="240" y="528"><tspan x="240" dy="0">OpenAI: interpretação</tspan></text></g><g><rect x="580" y="497" width="280" height="62" rx="6"/><text x="720" y="528"><tspan x="720" dy="0">Ferramentas de leitura</tspan></text></g></g></svg></div></figure><p id="sistema-p2" class="searchable">Node atende desenvolvimento/testes; produção usa exclusivamente Workers. O frontend usa <code>/api</code> relativo. <code>worker.ts</code> e <code>index.ts</code> compartilham <code>app.ts</code>, com adapters de banco apropriados. O assistente financeiro não envia resultados financeiros ao modelo nem executa escrita. Bot legado e WhatsApp estão suspensos.</p>
+<h3 id="sistema-fronteiras-funcionais" tabindex="-1">Fronteiras funcionais</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="sistema-p3" class="searchable">
+<th>Domínio</th>
+<th>Dono do fato</th>
+<th>Integrações permitidas</th>
+</tr>
+</thead>
+<tbody><tr id="sistema-p4" class="searchable">
+<td>Financeiro</td>
+<td>Operação, obrigação, transação, movimento de conta e período</td>
+<td>Compras/vendas originam efeitos físicos; Serviços podem atribuir custos a procedimentos</td>
+</tr>
+<tr id="sistema-p5" class="searchable">
+<td>Estoque</td>
+<td>Movimento físico, partida, base/parcelas de valor</td>
+<td>Núcleo usado por todos os consumos e pelo leite</td>
+</tr>
+<tr id="sistema-p6" class="searchable">
+<td>Rebanho</td>
+<td>Identidade, localização, finalidade, categoria, baixa, genética e peso</td>
+<td>Fornece contexto histórico para todos os fatos animais</td>
+</tr>
+<tr id="sistema-p7" class="searchable">
+<td>Reprodução</td>
+<td>Tentativa, gestação, parto, lactação, política e acompanhamento</td>
+<td>Consome material; gera crias; usa exames/protocolos comuns</td>
+</tr>
+<tr id="sistema-p8" class="searchable">
+<td>Sanidade/protocolos</td>
+<td>Ocorrência, aplicação, exame, versão, participação e tarefa</td>
+<td>Consumo, carência, restrição e interpretação reprodutiva</td>
+</tr>
+<tr id="sistema-p9" class="searchable">
+<td>Nutrição</td>
+<td>Receita, vigência, fechamento e participação por animal-dias</td>
+<td>Consome estoque e leite; conserva custo e referência comercial separados</td>
+</tr>
+<tr id="sistema-p10" class="searchable">
+<td>Produção</td>
+<td>Medição, origem leiteira, natureza, destino, qualidade e operação comercial</td>
+<td>Confirma estoque; fecha venda pelo motor financeiro; fornece leite à Nutrição</td>
+</tr>
+</tbody></table></div>
+<p id="sistema-p11" class="searchable">O agrupamento editorial “Financeiro → Estoque” não muda essa propriedade funcional. Não há sincronização contínua com IDEAGRI: carga inicial/reconciliação têm executores e validações próprios.</p>
+<h3 id="sistema-fatos-projeções-e-snapshots" tabindex="-1">Fatos, projeções e snapshots</h3><p id="sistema-p12" class="searchable">Fatos têm identidade, data operacional, autor e sítio na data. Projeções calculam estados a partir dos fatos válidos: categoria, situação reprodutiva, lactação, carência, saldo, cobertura e indicadores. Snapshots preservam a referência utilizada: versão de protocolo, perfil de produto, formato de exame, genética, evidência de origem e emissão de relatório.</p>
+<p id="sistema-p13" class="searchable">O sistema usa fatos e auditoria, mas não é descrito como uma arquitetura integral de event sourcing: há tabelas relacionais, atualizações controladas, versões e inversos conforme cada contrato. Consulta atual e retrato emitido têm semânticas distintas.</p>
+<figure class="diagram"><figcaption>Fluxo de relações e efeitos</figcaption><div class="diagram-scroll" tabindex="0" role="region" aria-label="Diagrama; deslize horizontalmente em telas estreitas"><svg viewBox="0 0 960 384" role="img" aria-labelledby="diagram-title-2 diagram-desc-2"><title id="diagram-title-2">Fluxo do sistema</title><desc id="diagram-desc-2">Animal: identidade leva a Contexto na data. Localização e finalidade por período leva a Contexto na data. Papel reprodutivo por período leva a Contexto na data. Tentativas, exames, gestação, parto e lactação leva a Contexto na data. Política do ciclo e decisões leva a Elegibilidade e motivos. Contexto na data leva a Elegibilidade e motivos. Contexto na data leva a População da produção. Aplicações e carências leva a População da produção. Contexto na data leva a Indicadores com cobertura</desc><defs><marker id="arrow-2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#55756d"/></marker></defs><g class="edges" marker-end="url(#arrow-2)"><path d="M80 87 C80 117,480 121,480 137"/><path d="M240 87 C240 117,480 121,480 137"/><path d="M400 87 C400 117,480 121,480 137"/><path d="M560 87 C560 117,480 121,480 137"/><path d="M720 87 C720 117,160 239,160 255"/><path d="M480 205 C480 235,160 239,160 255"/><path d="M480 205 C480 235,480 239,480 255"/><path d="M880 87 C880 117,480 239,480 255"/><path d="M480 205 C480 235,800 239,800 255"/></g><g class="nodes"><g><rect x="15.666666666666671" y="25" width="128.66666666666666" height="62" rx="6"/><text x="80" y="46"><tspan x="80" dy="0">Animal:</tspan><tspan x="80" dy="20">identidade</tspan></text></g><g><rect x="415.6666666666667" y="143" width="128.66666666666666" height="62" rx="6"/><text x="480" y="164"><tspan x="480" dy="0">Contexto na</tspan><tspan x="480" dy="20">data</tspan></text></g><g><rect x="175.66666666666669" y="25" width="128.66666666666666" height="62" rx="6"/><text x="240" y="36"><tspan x="240" dy="0">Localização e</tspan><tspan x="240" dy="20">finalidade por</tspan><tspan x="240" dy="20">período</tspan></text></g><g><rect x="335.6666666666667" y="25" width="128.66666666666666" height="62" rx="6"/><text x="400" y="36"><tspan x="400" dy="0">Papel</tspan><tspan x="400" dy="20">reprodutivo</tspan><tspan x="400" dy="20">por período</tspan></text></g><g><rect x="495.6666666666667" y="25" width="128.66666666666666" height="62" rx="6"/><text x="560" y="16"><tspan x="560" dy="0">Tentativas,</tspan><tspan x="560" dy="20">exames,</tspan><tspan x="560" dy="20">gestação,</tspan><tspan x="560" dy="20">parto e</tspan><tspan x="560" dy="20">lactação</tspan></text></g><g><rect x="655.6666666666666" y="25" width="128.66666666666666" height="62" rx="6"/><text x="720" y="36"><tspan x="720" dy="0">Política do</tspan><tspan x="720" dy="20">ciclo e</tspan><tspan x="720" dy="20">decisões</tspan></text></g><g><rect x="95.66666666666667" y="261" width="128.66666666666666" height="62" rx="6"/><text x="160" y="282"><tspan x="160" dy="0">Elegibilidade</tspan><tspan x="160" dy="20">e motivos</tspan></text></g><g><rect x="415.6666666666667" y="261" width="128.66666666666666" height="62" rx="6"/><text x="480" y="282"><tspan x="480" dy="0">População da</tspan><tspan x="480" dy="20">produção</tspan></text></g><g><rect x="815.6666666666666" y="25" width="128.66666666666666" height="62" rx="6"/><text x="880" y="46"><tspan x="880" dy="0">Aplicações e</tspan><tspan x="880" dy="20">carências</tspan></text></g><g><rect x="735.6666666666666" y="261" width="128.66666666666666" height="62" rx="6"/><text x="800" y="282"><tspan x="800" dy="0">Indicadores</tspan><tspan x="800" dy="20">com cobertura</tspan></text></g></g></svg></div></figure><h3 id="sistema-relações-principais" tabindex="-1">Relações principais</h3><figure class="diagram"><figcaption>Relações conceituais · entidades e vínculos</figcaption><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table><thead><tr id="sistema-p14" class="searchable"><th>Origem</th><th>Relação</th><th>Destino</th></tr></thead><tbody><tr id="sistema-p15" class="searchable"><td>Animal</td><td>localizacao</td><td>LocalizacaoAnimal</td></tr><tr id="sistema-p16" class="searchable"><td>Animal</td><td>finalidade</td><td>FinalidadeAnimal</td></tr><tr id="sistema-p17" class="searchable"><td>Animal</td><td>papel</td><td>PeriodoReprodutivoAnimal</td></tr><tr id="sistema-p18" class="searchable"><td>Animal</td><td>tentativa</td><td>TentativaReprodutiva</td></tr><tr id="sistema-p19" class="searchable"><td>TentativaReprodutiva</td><td>origem</td><td>GestacaoAnimal</td></tr><tr id="sistema-p20" class="searchable"><td>GestacaoAnimal</td><td>desfecho</td><td>PartoAnimal</td></tr><tr id="sistema-p21" class="searchable"><td>PartoAnimal</td><td>resultados</td><td>CriaParto</td></tr><tr id="sistema-p22" class="searchable"><td>Animal</td><td>producao</td><td>LactacaoAnimal</td></tr><tr id="sistema-p23" class="searchable"><td>Protocolo</td><td>versao adotada</td><td>ParticipacaoProtocolo</td></tr><tr id="sistema-p24" class="searchable"><td>ParticipacaoProtocolo</td><td>trabalho</td><td>TarefaProtocolo</td></tr><tr id="sistema-p25" class="searchable"><td>Operacao</td><td>itens</td><td>ItemOperacao</td></tr><tr id="sistema-p26" class="searchable"><td>Operacao</td><td>obrigacoes</td><td>CompromissoFinanceiro</td></tr><tr id="sistema-p27" class="searchable"><td>CompromissoFinanceiro</td><td>liquidacoes</td><td>Liquidacao</td></tr><tr id="sistema-p28" class="searchable"><td>TransacaoFinanceira</td><td>dinheiro</td><td>MovimentoConta</td></tr><tr id="sistema-p29" class="searchable"><td>Produto</td><td>quantidade</td><td>MovimentoEstoque</td></tr><tr id="sistema-p30" class="searchable"><td>FechamentoConsumo</td><td>atribuicao</td><td>ParticipacaoConsumoAnimal</td></tr></tbody></table></div><p class="caption">As cardinalidades e guardas exatas estão no schema e nas constraints SQL. Este mapa mostra as relações principais.</p></figure><p id="sistema-p31" class="searchable">As cardinalidades mostram vínculos conceituais possíveis; unicidade de fatos válidos/abertos depende das constraints parciais e das guardas do domínio. Uma cria sem vida não implica Animal ativo; gestação pode ter origem sem tentativa comprovada.</p>
+<h3 id="sistema-caminho-leiteiro-e-ausência-de-duplicação" tabindex="-1">Caminho leiteiro e ausência de duplicação</h3><figure class="diagram"><figcaption>Fluxo de relações e efeitos</figcaption><div class="diagram-scroll" tabindex="0" role="region" aria-label="Diagrama; deslize horizontalmente em telas estreitas"><svg viewBox="0 0 960 1092" role="img" aria-labelledby="diagram-title-4 diagram-desc-4"><title id="diagram-title-4">Fluxo do sistema</title><desc id="diagram-desc-4">Medição geral ou individual leva a Confirmação explícita. Confirmação explícita leva a EntradaProducaoLeite. EntradaProducaoLeite leva a MovimentoEstoque compartilhado. EntradaProducaoLeite leva a AlocacaoLeiteEstoque. AlocacaoLeiteEstoque leva a Retirada física. AlocacaoLeiteEstoque leva a Destino ou Nutrição. AlocacaoLeiteEstoque leva a Descarte físico. Retirada física leva a Fechamento comercial. Fechamento comercial leva a Operacao VENDA sem nova saída. Operacao VENDA sem nova saída leva a Compromisso ou recebimento. Compromisso ou recebimento leva a MovimentoConta. Apuração documentada de valor leva a EntradaProducaoLeite. Apuração documentada de valor leva a Apropriação aos consumidores</desc><defs><marker id="arrow-4" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="#55756d"/></marker></defs><g class="edges" marker-end="url(#arrow-4)"><path d="M240 87 C240 117,240 121,240 137"/><path d="M240 205 C240 235,480 239,480 255"/><path d="M480 323 C480 353,240 357,240 373"/><path d="M480 323 C480 353,720 357,720 373"/><path d="M720 441 C720 471,160 475,160 491"/><path d="M720 441 C720 471,480 475,480 491"/><path d="M720 441 C720 471,800 475,800 491"/><path d="M160 559 C160 589,480 593,480 609"/><path d="M480 677 C480 707,480 711,480 727"/><path d="M480 795 C480 825,480 829,480 845"/><path d="M480 913 C480 943,480 947,480 963"/><path d="M720 87 C720 117,480 239,480 255"/><path d="M720 87 C720 117,720 121,720 137"/></g><g class="nodes"><g><rect x="102.33333333333334" y="25" width="275.3333333333333" height="62" rx="6"/><text x="240" y="56"><tspan x="240" dy="0">Medição geral ou individual</tspan></text></g><g><rect x="102.33333333333334" y="143" width="275.3333333333333" height="62" rx="6"/><text x="240" y="174"><tspan x="240" dy="0">Confirmação explícita</tspan></text></g><g><rect x="342.33333333333337" y="261" width="275.3333333333333" height="62" rx="6"/><text x="480" y="292"><tspan x="480" dy="0">EntradaProducaoLeite</tspan></text></g><g><rect x="102.33333333333334" y="379" width="275.3333333333333" height="62" rx="6"/><text x="240" y="410"><tspan x="240" dy="0">MovimentoEstoque compartilhado</tspan></text></g><g><rect x="582.3333333333334" y="379" width="275.3333333333333" height="62" rx="6"/><text x="720" y="410"><tspan x="720" dy="0">AlocacaoLeiteEstoque</tspan></text></g><g><rect x="22.333333333333343" y="497" width="275.3333333333333" height="62" rx="6"/><text x="160" y="528"><tspan x="160" dy="0">Retirada física</tspan></text></g><g><rect x="342.33333333333337" y="497" width="275.3333333333333" height="62" rx="6"/><text x="480" y="528"><tspan x="480" dy="0">Destino ou Nutrição</tspan></text></g><g><rect x="662.3333333333334" y="497" width="275.3333333333333" height="62" rx="6"/><text x="800" y="528"><tspan x="800" dy="0">Descarte físico</tspan></text></g><g><rect x="342.33333333333337" y="615" width="275.3333333333333" height="62" rx="6"/><text x="480" y="646"><tspan x="480" dy="0">Fechamento comercial</tspan></text></g><g><rect x="342.33333333333337" y="733" width="275.3333333333333" height="62" rx="6"/><text x="480" y="764"><tspan x="480" dy="0">Operacao VENDA sem nova saída</tspan></text></g><g><rect x="342.33333333333337" y="851" width="275.3333333333333" height="62" rx="6"/><text x="480" y="882"><tspan x="480" dy="0">Compromisso ou recebimento</tspan></text></g><g><rect x="342.33333333333337" y="969" width="275.3333333333333" height="62" rx="6"/><text x="480" y="1000"><tspan x="480" dy="0">MovimentoConta</tspan></text></g><g><rect x="582.3333333333334" y="25" width="275.3333333333333" height="62" rx="6"/><text x="720" y="56"><tspan x="720" dy="0">Apuração documentada de valor</tspan></text></g><g><rect x="582.3333333333334" y="143" width="275.3333333333333" height="62" rx="6"/><text x="720" y="174"><tspan x="720" dy="0">Apropriação aos consumidores</tspan></text></g></g></svg></div></figure><p id="sistema-p32" class="searchable">Na fonte GERAL, o individual é acompanhamento e não outra origem física. Medições positivas confirmadas geram origens; classificação protege destinação; alocações ligam saídas aos litros de cada origem. Preço de venda e referência R07 não substituem apuração de custo.</p>
+<h3 id="sistema-escrita-e-consistência" tabindex="-1">Escrita e consistência</h3><p id="sistema-p33" class="searchable">Rotas Hono validam Zod e aplicam sessão/área/ação/escopo; serviços validam relações e coordenam transações; cálculos puros ficam em <code>*.calc.ts</code>. A confirmação repete as verificações da prévia porque saldo, versão e contexto podem mudar.</p>
+<p id="sistema-p34" class="searchable">Comandos sujeitos a reenvio preservam chave, conteúdo, autoria e sítio. Repetição idêntica recupera resultado; conteúdo divergente conflita. Versão esperada impede sobrescrita silenciosa. Locks de animais/produtos/agregados e transações serializáveis coordenam os caminhos implementados; não se presume que qualquer novo fluxo seja protegido sem examinar sua ordem de travas.</p>
+<p id="sistema-p35" class="searchable">Parto/crias, tentativa/consumo e confirmação de conjunto leiteiro mantêm atomicidade. O executor comum de protocolos v1 é por ação/contexto, com até cem animais distintos. Visitas coordenam grupos no seu próprio fluxo; não se deve encadear chamadas HTTP independentes e anunciar atomicidade global.</p>
+<h3 id="sistema-persistência-e-sql" tabindex="-1">Persistência e SQL</h3><p id="sistema-p36" class="searchable"><code>public</code> contém Financeiro, Estoque, Auth e Sítios; <code>pecuaria</code> contém fatos e vínculos animais/leiteiros. A estrutura instalada pelo repositório parte de <code>server/prisma/migrations/20261025000000_base_unificada/migration.sql</code>. A cadeia anterior foi consolidada no merge V5 e permanece no Git. Evoluções posteriores são migrations incrementais; não se reescreve a baseline aplicada.</p>
+<p id="sistema-p37" class="searchable">SQL complementa Prisma com CHECKs, FKs restritas, índices únicos parciais e triggers. Exemplos conferidos na baseline: proteção da identidade da sessão de leite; imutabilidade da entrada/emissão; validação da finalidade na origem; conservação de alocações e valor; proteção de versão de protocolo e snapshot de tarefa; vínculo imutável de qualidade no fechamento.</p>
+<p id="sistema-p38" class="searchable">Uma instalação com histórico da cadeia antiga exige reconciliação específica antes de aplicar a baseline. Não tratar <code>migrate deploy</code> como migração automática de um banco populado para uma baseline recriada. Views de compatibilidade, inclusive DestinoAnimal e projeções IATF, preservam contratos antigos e não criam fontes concorrentes de escrita.</p>
+<h3 id="sistema-autorização-e-arquivos" tabindex="-1">Autorização e arquivos</h3><p id="sistema-p39" class="searchable">Seleção de sítio na interface é preferência, não autorização. Relacionamentos e DTOs devem respeitar o sítio histórico. Monetário pode ser oculto, não apurado ou parcial; cada situação mantém sua semântica. Custos operacionais atribuídos têm política pecuária própria; edição/preço/documentos financeiros e referência comercial têm gates financeiros.</p>
+<p id="sistema-p40" class="searchable">R2 mantém objetos privados por namespace. Uploads diretos preservam intent/contexto, conteúdo e confirmação; download revalida vínculo e autorização. Arquivos já referenciados não recebem chave nova por uma reorganização documental.</p>
+<h3 id="sistema-verificação-e-limites" tabindex="-1">Verificação e limites</h3><p id="sistema-p41" class="searchable">Há testes puros, contratos HTTP/componentes, serviços com dependências simuladas, integrações PostgreSQL e verificações SQL estruturais. O CI define jobs de build/testes, invariantes financeiros e baseline/seed unificada; não faz deploy. R2 real, execução no Worker/Neon, concorrência por cenário e homologação da fazenda precisam de evidências próprias.</p>
+<p id="sistema-p42" class="searchable">Esta revisão confrontou arquivos e contratos. Não iniciou o servidor migratório, aplicou SQL, carregou seed, acessou produção ou executou uma homologação funcional completa. O <a href="#lacunas">registro de lacunas</a> explicita o que permanece desconhecido ou fora do escopo.</p>
+</article>
+<article data-chapter="lacunas" aria-labelledby="lacunas"><header class="chapter-head"><p class="eyebrow">Conectar e avaliar · 12</p><h2 id="lacunas" tabindex="-1">Lacunas e limites atuais</h2></header><p id="lacunas-p1" class="searchable">Base da análise: código da <code>main</code> em <code>b63931e4</code>, que integra Reprodução/consultas e Produção V5. Este documento reúne limitações verificáveis e perguntas de evolução; não cria roadmap aprovado nem indica falha de produção observada. Remover um plano antigo não significa aprovar todas as suas propostas.</p>
+<h3 id="lacunas-limitações-identificadas-no-código" tabindex="-1">Limitações identificadas no código</h3><div class="table-scroll" role="region" aria-label="Tabela de referência" tabindex="0"><table>
+<thead>
+<tr id="lacunas-p2" class="searchable">
+<th>Tema</th>
+<th>Estado atual e evidência</th>
+<th>Consequência / decisão necessária</th>
+</tr>
+</thead>
+<tbody><tr id="lacunas-p3" class="searchable">
+<td>Atendimento por exceção multiação</td>
+<td><code>protocolos/execucao.schemas.ts</code> aceita somente v1, até cem tarefas de animais distintos; <code>execucao.ts</code> exige mesma ação/contexto</td>
+<td>A proposta de envelope v2 por momento inteiro não está entregue; definir contrato, limites e validação antes de implementá-la. A coordenação da visita já existente é outro caminho</td>
+</tr>
+<tr id="lacunas-p4" class="searchable">
+<td>Nunca lactou</td>
+<td><code>SEM_LACTACAO</code> existe no tipo, mas <code>contexto-animal.calc.ts</code> retorna NAO_INFORMADA quando falta evidência</td>
+<td>Não rotular novilha sem histórico como nunca lactante sem fonte explícita</td>
+</tr>
+<tr id="lacunas-p5" class="searchable">
+<td>Idade gestacional de TE na ficha</td>
+<td>Contexto individual mantém idade embrionária pendente</td>
+<td>Não converter dias desde transferência em idade gestacional exata; distinguir das regras analíticas dos indicadores</td>
+</tr>
+<tr id="lacunas-p6" class="searchable">
+<td>Custo/L por natureza</td>
+<td><code>leite/custos.ts</code> e <code>custos.calc.ts</code> conservam pendência NATUREZA_SEM_VINCULO</td>
+<td>Falta vínculo monetário dos componentes à natureza física; não ratear automaticamente pelo volume</td>
+</tr>
+<tr id="lacunas-p7" class="searchable">
+<td>Controle individual periódico</td>
+<td>Fonte GERAL admite controles individuais, sem interpolação</td>
+<td>Não há produção individual completa entre aferições nem custo/L individual demonstrado nesses períodos</td>
+</tr>
+<tr id="lacunas-p8" class="searchable">
+<td>Saldo atual por tanque</td>
+<td>Tanque é evidência da parcela na ordenha; consulta de estoque é por produto/origem/sítio</td>
+<td>Não há rastreio completo de transferências/misturas/posição atual por tanque</td>
+</tr>
+<tr id="lacunas-p9" class="searchable">
+<td>Natureza restrita do leite</td>
+<td>COLOSTRO/NAO_COMERCIAL são terminais no contrato vigente</td>
+<td>Eventual liberação/reclassificação exigiria novo fluxo explícito e evidência; expiração de carência não basta</td>
+</tr>
+<tr id="lacunas-p10" class="searchable">
+<td>Custo produtivo da origem</td>
+<td>Apuração exige valor documentado; não deriva automaticamente do preço de venda/indicador</td>
+<td>Decidir cobertura de custos e fonte comprovada; não chamar custo direto parcial de custo total da fazenda</td>
+</tr>
+<tr id="lacunas-p11" class="searchable">
+<td>Qualidade e negociação</td>
+<td>Formatos manuais/versionados; sem média automática ou faixas universais de preço</td>
+<td>Equivalência de parâmetros/unidades e fórmula contratual precisam de especificação própria</td>
+</tr>
+<tr id="lacunas-p12" class="searchable">
+<td>Importação histórica de leite</td>
+<td><code>leite/previa.ts</code> confere; não executa carga operacional automática</td>
+<td>Faltam lote real conferido, unidades, corte e reconciliação com estoque/vendas; não repor saldo de leite já vendido</td>
+</tr>
+<tr id="lacunas-p13" class="searchable">
+<td>IDEAGRI sanitário/nutricional</td>
+<td>Carga inicial Rebanho/Genética e ferramenta técnica V4 existem; V3 histórica permanece sem entrega completa</td>
+<td>Mapeamento/validação próprios; sem sincronização contínua presumida</td>
+</tr>
+<tr id="lacunas-p14" class="searchable">
+<td>Liquidação com abatimento</td>
+<td>Pagamento menor conserva pendente; desconto comercial pertence à compra</td>
+<td>Abatimento posterior requer fato e regra próprios</td>
+</tr>
+<tr id="lacunas-p15" class="searchable">
+<td>Rentabilidade integral</td>
+<td>Caixa, compras, custo direto registrado e custo/L com cobertura têm contratos distintos</td>
+<td>Depreciação, mão de obra própria e despesas gerais não atribuídas não viram custo total ou lucro automaticamente</td>
+</tr>
+<tr id="lacunas-p16" class="searchable">
+<td>Assistente em todos os eixos</td>
+<td>Registro de ferramentas atual concentra leitura financeira e ajuda</td>
+<td>Estoque/Pecuária precisam de ferramentas autorizadas próprias; não estão disponíveis só porque há chat</td>
+</tr>
+</tbody></table></div>
+<h3 id="lacunas-perguntas-de-produto-sem-implementação-nesta-revisão" tabindex="-1">Perguntas de produto, sem implementação nesta revisão</h3><ul>
+<li>Precisamos de observação estruturada de cio/anestro ou basta exame/observação? Qual evidência, responsável e encerramento definiriam o rótulo?</li>
+<li>Como comprovar “nunca lactou” e distinguir desconhecimento de ausência histórica documentada?</li>
+<li>O custo desejado é direto registrado, custo completo da atividade ou margem? Qual fonte cobre cada componente e como evitar dupla contagem?</li>
+<li>É necessário rastrear posição atual do leite por tanque, incluindo mistura, limpeza e transferência? A identificação na ordenha não cobre esse processo.</li>
+<li>Qual política deve orientar preenchimento atrasado, fechamento nutricional pendente e conferência de qualidade? Hoje ausência de registro não cria diagnóstico/alerta arbitrário.</li>
+<li>Quais decisões do antigo mockup de atendimento por exceção continuam desejadas após a operação real? A proposta deve ser reavaliada contra o executor atual, sem reabrir automaticamente todo o plano.</li>
+</ul>
+<h3 id="lacunas-validações-que-não-se-inferem-do-merge" tabindex="-1">Validações que não se inferem do merge</h3><p id="lacunas-p17" class="searchable">Publicação em Workers/Neon, baseline efetivamente aplicada em cada ambiente, R2 real, entrega de e-mail, chamadas reais de IA, dispositivos/leitores de tela e rotina da fazenda exigem evidência do ambiente e do cenário. O merge e os testes com mocks não substituem essas verificações.</p>
+<p id="lacunas-p18" class="searchable">Concorrência PostgreSQL deve identificar os comandos e disputas exercitados; um teste estrutural SQL, uma transação revertida ou uma chamada sequencial não comprova todos os interleavings. A substituição histórica autorizada da base demonstrativa não autoriza reset ou nova carga nesta tarefa.</p>
+<p id="lacunas-p19" class="searchable">Roteiros V3/V4/V5 e evidências visuais históricas permanecem preservados. Seus resultados pertencem aos cenários/data originais; nenhuma marcação foi aprovada ou reiniciada pela atualização documental. Bases antigas de QA não devem ser recriadas para preencher a documentação.</p>
+<h3 id="lacunas-divergências-documentais-corrigidas" tabindex="-1">Divergências documentais corrigidas</h3><p id="lacunas-p20" class="searchable">Produção/qualidade V5 deixaram de ser descritas como futuras ou ausentes. A finalidade histórica LEITE passou a ser descrita como guarda implementada. Referências à antiga cadeia SQL foram identificadas como históricas e o deploy passou a apontar a baseline vigente. A navegação e a ficha passaram a incluir Leite/Produção. Instruções de seed V3/V4 separadas foram substituídas pela entrada única vigente. Planos concluídos/relatos redundantes foram retirados; pendências reais foram mantidas aqui e nos contratos.</p>
+</article><footer class="footer">Gerado a partir dos capítulos em docs/guia, do modelo de estados, do system design e das lacunas. O conteúdo principal, os diagramas e os exemplos funcionam offline; links técnicos locais precisam acompanhar o repositório. Fontes biológicas externas exigem conexão. Sem conexão ao banco ou à API.</footer></main><script>
+const chapters=[...document.querySelectorAll('article')];
+const navLinks=[...document.querySelectorAll('nav a')];
+const search=document.getElementById('busca'),results=document.getElementById('resultados'),status=document.getElementById('busca-status');
+const norm=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const entries=chapters.flatMap(a=>[...a.querySelectorAll('.searchable')].map(p=>({p,title:a.querySelector('h2').textContent})));
+search.addEventListener('input',()=>{results.replaceChildren();const q=norm(search.value.trim());if(q.length<2){results.hidden=true;status.textContent='Busque um conceito, como carência, gestante, custo ou coleta.';return;}const all=entries.filter(e=>norm(e.p.textContent).includes(q)),found=all.slice(0,30);status.textContent=all.length?all.length+' trechos encontrados'+(all.length>30?' · mostrando os primeiros 30':''):'Nenhum trecho encontrado. Tente outra palavra.';results.hidden=false;for(const e of found){const link=document.createElement('a');link.href='#'+e.p.id;link.textContent=e.title;const snippet=document.createElement('p');const text=e.p.textContent;const at=norm(text).indexOf(q);const start=Math.max(0,at-90);snippet.textContent=(start?'…':'')+text.slice(start,start+270)+(text.length>start+270?'…':'');results.append(link,snippet);}});
+document.getElementById('limpar-busca').addEventListener('click',()=>{search.value='';search.dispatchEvent(new Event('input'));search.focus();});
+document.getElementById('imprimir').addEventListener('click',()=>window.print());
+const menu=document.getElementById('indice-movel');menu.addEventListener('click',()=>{const expanded=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(expanded));document.getElementById('indice').classList.toggle('aberto',expanded);});
+for(const a of navLinks)a.addEventListener('click',()=>{if(innerWidth<=700){document.getElementById('indice').classList.remove('aberto');menu.setAttribute('aria-expanded','false');}const target=document.querySelector(a.hash);target?.focus({preventScroll:true});});
+if('IntersectionObserver' in window){const observer=new IntersectionObserver(items=>{for(const item of items)if(item.isIntersecting){for(const a of navLinks){if(a.hash==='#'+item.target.id)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');}}},{rootMargin:'0px 0px -65% 0px'});document.querySelectorAll('article h2').forEach(h=>observer.observe(h));}
+const moments=[
+ {label:'1 · Entrada sem história clínica',repro:'Desconhecida',prod:'Não informada',elig:'Pendente',care:'Sem evidência suficiente',note:'Identidade e entrada não comprovam prenhez, lactação ou aptidão. É preciso registrar a história conhecida.'},
+ {label:'2 · Após parto e início de lactação informado',repro:'Vazia',prod:'Lactante · início D0',elig:'Não elegível durante a espera configurada',care:'Conforme aplicações e evidências',note:'O parto reinicia as tentativas. Vazia não significa liberada para nova intervenção. Colostro precisa de regra/declaração própria.'},
+ {label:'3 · Após liberação e tentativa realizada',repro:'Aguardando diagnóstico',prod:'Lactante',elig:'Pendente pelo diagnóstico',care:'Conforme aplicações e evidências',note:'A inseminação é uma tentativa. Ela não comprova gestação e não interrompe a lactação.'},
+ {label:'4 · Diagnóstico positivo durante lactação',repro:'Gestante',prod:'Lactante',elig:'Não elegível a nova tentativa',care:'Conforme aplicações e evidências',note:'Gestante e lactante coexistem. São eixos diferentes, sustentados por fatos diferentes.'},
+ {label:'5 · Aplicação com carência ativa',repro:'Gestante',prod:'Lactante',elig:'Não elegível a nova tentativa',care:'Em carência do leite',note:'A vaca continua produzindo. O leite daquela produção exige segregação e não é liberado para venda pelo simples volume medido.'},
+ {label:'6 · Após secagem registrada',repro:'Gestante',prod:'Seca · DEL não se aplica',elig:'Não elegível a nova tentativa',care:'Reavaliada independentemente na data',note:'Secagem encerra a lactação, sem encerrar gestação ou apagar as aplicações. Não é produzida automaticamente por uma previsão.'},
+ {label:'7 · Próximo parto registrado',repro:'Vazia · novo ciclo de tentativas',prod:'Lactante somente se início informado',elig:'Conforme nova política/decisão do ciclo',care:'Reavaliada independentemente na data',note:'Um parto pode conter várias crias. Aborto e natimorto seguem seus desfechos e guardas; não criam automaticamente lactação ou animal vivo.'}
+];
+const select=document.getElementById('momento-ciclo'),output=document.getElementById('estado-ciclo');moments.forEach((m,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=m.label;select.append(o);});
+function showMoment(){const m=moments[Number(select.value)];output.replaceChildren();const dl=document.createElement('dl');for(const [label,value]of [['Rebanho','Ativa no exemplo'],['Finalidade','Leite'],['Reprodução',m.repro],['Produção',m.prod],['Elegibilidade',m.elig],['Carência',m.care]]){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=value;dl.append(dt,dd);}const p=document.createElement('p');p.className='explanation';p.textContent=m.note;output.append(dl,p);}select.value='3';select.addEventListener('change',showMoment);showMoment();
+</script></body></html>

@@ -2,17 +2,17 @@
 
 ## Leitura e fonte de contexto
 
-Antes de alterar o projeto, leia [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md) e o contrato relacionado à tarefa no [índice](docs/README.md). Em Pecuária, comece por [docs/pecuaria/README.md](docs/pecuaria/README.md); em Financeiro, por [seu contrato](docs/financeiro-rebuild-contrato.md).
+Antes de alterar o projeto, leia [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md) e o contrato relacionado à tarefa no [índice](docs/README.md). O mapa integrado fica em [system design](docs/system-design.md) e a leitura de usuário no [manual](docs/guia/README.md). Em Pecuária, comece por [docs/pecuaria/README.md](docs/pecuaria/README.md); em Financeiro, por [seu contrato](docs/financeiro-rebuild-contrato.md).
 
 Confira comportamento em rotas/serviços/interface, estrutura no schema e garantias SQL nas migrations, e invariantes nos testes. Investigue divergências entre essas fontes: documentação, seed, mock ou artefato visual isolado não prova que uma funcionalidade está disponível ou validada.
 
 ## Escopo atual
 
-- Domínios ativos: Financeiro, Estoque, Pecuária V1–V4, Sítios e Contas/Acessos.
+- Domínios ativos: Financeiro, Estoque, Pecuária V1–V5, Sítios e Contas/Acessos.
 - Deploy exclusivamente em Cloudflare Workers, com interface e API no mesmo Worker, Neon para o banco e R2 para arquivos. Node atende desenvolvimento local e testes; não introduza outro provedor como pressuposto de implementação.
 - Agricultura, Cultivo e Equipe/Ponto foram removidos. Não reintroduza seus módulos, rotas ou seeds como dependência de outra entrega. Categorias/centros financeiros e movimentos históricos dessas atividades podem permanecer.
 - A pecuária anterior no schema `public` foi substituída pela base no schema `pecuaria`. Preserve a implementação atual; não recupere o rebanho legado.
-- Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção de leite evolui separadamente na V5 em implementação, conforme `docs/pecuaria/leite.md`. Qualidade V5 usa formatos manuais versionados a partir do laudo, reutilizando exames comuns para animais e amostras próprias para origens coletivas; o mapeamento automático IDEAGRI continua pendente. Laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
+- Reprodução V4 inclui tentativas, avaliações, gestação, partos/crias, visitas e IATF. Confira `docs/pecuaria/reproducao.md`; produção de leite V5 está integrada com contrato próprio, conforme `docs/pecuaria/leite.md`. Qualidade V5 usa formatos manuais versionados a partir do laudo, reutilizando exames comuns para animais e amostras próprias para origens coletivas; o mapeamento automático IDEAGRI continua pendente. Laboratório/FIV permanecem fora do escopo. Partos, incluindo aborto e natimorto, reiniciam o ciclo de tentativas; genética da doadora não se confunde com a receptora.
 - Protocolos/tarefas e exames usam a base comum descrita em `docs/pecuaria/protocolos-exames.md`. As entidades IATF anteriores são views de leitura; escreva pelo núcleo comum. Papel por data vem de `PeriodoReprodutivoAnimal`, separado da aptidão.
 - O IDEAGRI serve à carga inicial e reconciliação. O Fazendinha é a fonte operacional após importar; não crie sincronização contínua por pressuposto.
 - O bot anterior, `/ia` e WhatsApp estão suspensos em `client/src/featureFlags.ts` e `server/src/featureFlags.ts`. Não os reative incidentalmente. O novo assistente de consulta é separado: siga [seu contrato](docs/assistente-consulta.md), os gates e o registro de ferramentas de leitura.

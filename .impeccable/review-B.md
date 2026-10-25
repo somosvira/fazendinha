@@ -1,3 +1,5 @@
+> Evidência histórica datada. Achados e notas não representam automaticamente a V5 atual; revalidar no código antes de abrir trabalho. O contrato vigente está no índice `docs/README.md`, e lacunas atuais em `docs/lacunas.md`.
+
 # Assessment B — technical audit (independent)
 
 Target: all `client/src`, with stable synthesis target `client/src/App.tsx`. Review only; no UI or domain changes. This assessment has not read Assessment A. Findings withheld from parent until A completion.

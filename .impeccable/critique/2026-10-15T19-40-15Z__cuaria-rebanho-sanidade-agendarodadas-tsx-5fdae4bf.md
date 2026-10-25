@@ -1,3 +1,5 @@
+> Evidência histórica datada. Achados e notas não representam automaticamente a V5 atual; revalidar no código antes de abrir trabalho. O contrato vigente está no índice `docs/README.md`, e lacunas atuais em `docs/lacunas.md`.
+
 ---
 target: Ciclo sanitário filtrado pelo animal Aurora
 total_score: 23

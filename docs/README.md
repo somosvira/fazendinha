@@ -1,35 +1,53 @@
 # Documentação do projeto
 
-A base documenta o código atual. Setup e comandos ficam no [README](../README.md); regras comuns de contribuição em [AGENTS.md](../AGENTS.md).
+A documentação vigente descreve a base integrada até a V5. Comece pelo manual para entender o produto; consulte os contratos para regras completas e o código/SQL para conferir a implementação. Merge, deploy, testes e homologação são evidências diferentes.
+
+## Entender e operar
+
+| Documento | Conteúdo |
+|---|---|
+| [Manual navegável HTML](guia/index.html) | Financeiro → Operações/Estoque; Pecuária → Rebanho/Reprodução/Produção/Sanidade/Nutrição; exemplos, estados, diagramas e lacunas |
+| [Fontes do manual](guia/README.md) | Capítulos editáveis e regeneração do HTML |
+| [Estados do animal](pecuaria/estados-animal.md) | Eixos independentes, evidências, transições e desconhecimento |
+| [Lacunas e limites](lacunas.md) | Limitações verificadas e perguntas sem implementação aprovada |
+
+## Contratos vigentes
 
 | Documento | Quando consultar |
 |---|---|
-| [Design unificado](design/cooperativa-unificada.md) | Direção Cooperativa contemporânea desta entrega, padrões compartilhados e guias por módulo |
-| [Arquitetura](../ARCHITECTURE.md) | Organização, runtimes, autenticação, escopo e testes |
-| [Assistente de consulta](assistente-consulta.md) | Chat de leitura, permissões, ajuda de uso, ferramentas e extensão por domínio |
-| [Financeiro e estoque](financeiro-rebuild-contrato.md) | Dinheiro, efeitos físicos, estornos, períodos e rastreabilidade |
-| [Painel gerencial](painel-gerencial.md) | Página de consulta: caixa, estoque existente, nutrição, cobertura, autorização e limites |
-| [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
-| [Reprodução V4](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, visitas, IATF e reconciliação técnica |
-| [Produção de leite V5](pecuaria/leite.md) | Ordenhas configuráveis, estoque com custo pendente, retirada, destinos, custos e limites da implementação |
-| [Homologação V5 — finalidade na produção](pecuaria/artefatos/homologacao-v5-finalidade.md) | Casos manuais de fronteira temporal, histórico, custos e efeitos; execução pendente |
-| [Follow-up V4 — produto e entidades](pecuaria/artefatos/follow-up-v4-entrega.html) | Valorização do saldo, custos diretos, acompanhamento e indicadores; diagramas das entidades, estado de validação e complementos adiados |
-| [Painel administrativo — entrega e funcionamento](gerencial/artefatos/painel-administrativo.html) | Página de consulta, fontes existentes, autorização, validação e pendências |
-| [Evolução do manejo reprodutivo](pecuaria/artefatos/plano-evolucao-manejo-reprodutivo.html) | Resumo da entrega por pacote, situação da validação e links para os contratos vigentes |
-| [Mockups do manejo reprodutivo](pecuaria/artefatos/mockups-manejo-reprodutivo.html) | Quatro referências visuais aprovadas com dados ilustrativos: planner, avaliação coletiva, parto e indicadores; controles desenhados, sem operação real |
-| [Separação entre agenda e seleção livre — plano](pecuaria/artefatos/plano-separacao-fluxos-visitas.html) | Plano incorporado ao contrato de reprodução: duas entradas independentes, critérios V2 e preparação comum |
-| [Correções do fluxo de visitas](pecuaria/artefatos/plano-correcao-visitas.html) | Encaminhamento do plano concluído para o contrato, a explicação das sete correções e o roteiro de homologação |
-| [Entrada de visitas — mockup](pecuaria/artefatos/mockup-selecao-livre.html#entrada) | Referência visual aprovada: entrada sem caminho pré-selecionado, agenda e seleção livre em percursos separados; dados fictícios, sem conexão com o app |
-| [Conceitos e interface V4](pecuaria/artefatos/conceitos-v4.html) | Explicação dos relacionamentos e dos fluxos de contexto, parto, colostro, visita, elegibilidade, indicadores e relatórios em relação às telas |
-| [Testes manuais da branch V4](pecuaria/artefatos/testes-manuais-branch-v4.html) | Execução humana do follow-up e alterações locais: consultas, ações de gravação, bordas e evidências; marcações próprias inicialmente pendentes |
-| [Guia manual V4](pecuaria/artefatos/testes-v4-guia.html) | Roteiro específico com pré-condições, resultados esperados e registro/exportação da execução; inicia pendente |
-| [Protocolos, exames e papéis](pecuaria/protocolos-exames.md) | Modelo comum implementado, versões, migração, compatibilidade e limites |
-| [Plano de protocolos individuais e coletivos](pecuaria/plano-protocolos-unificados.md) | Proposta comum sanitária/reprodutiva, pendências por animal, calendário, custos e paginação de até dez itens |
-| [Base documental dos protocolos](pecuaria/artefatos/protocolos/index.html) | Explicação, diagramas interativos, diagrama físico com catálogo SQL e mockup aprovado; estrutura atual e proposta separadas |
-| [Desenvolvimento](desenvolvimento.md) | Seed unificado, carga IDEAGRI e preparação do guia manual |
-| [Deploy](../DEPLOY.md) | Publicação exclusiva em Cloudflare Workers, configuração e migrations |
-| [Guia manual V3](pecuaria/artefatos/testes-v3-guia.html) | Homologação sequencial ainda em uso; marcações locais no navegador |
+| [Financeiro e Estoque](financeiro-rebuild-contrato.md) | Operações, obrigações, dinheiro, efeitos físicos, valores, estornos e autorização |
+| [Visão geral financeira](financeiro-dashboard-grid.md) | Bases dos indicadores e navegação para detalhes |
+| [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e integrações |
+| [Reprodução](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, lactação, visitas, políticas e indicadores |
+| [Protocolos e exames](pecuaria/protocolos-exames.md) | Núcleo comum, versões, momentos, tarefas, papéis e limites do executor |
+| [Produção V5](pecuaria/leite.md) | Aferição geral/individual, população, configuração e rotina leiteira |
+| [Estoque e valor do leite](pecuaria/leite-decisoes-estoque.md) | Natureza, origens, segregação, consumo e apropriação de custo |
+| [Comercialização do leite](pecuaria/leite-comercial.md) | Coletas, preço posterior, vendas, entregas e demonstrativos |
+| [Qualidade do leite](pecuaria/leite-qualidade.md) | Formatos, datas, versões, parâmetros e vínculo comercial |
+| [Relatórios do leite](pecuaria/leite-relatorios.md) | Consulta viva, conferência física e emissões preservadas |
+| [Referência IDEAGRI do leite](pecuaria/leite-ideagri-referencia.md) | Proveniência e limites do mapeamento, sem presumir importação automática |
+| [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |
+| [Assistente de consulta](assistente-consulta.md) | Ferramentas de leitura, ajuda, gates e política de custo |
 
-Propostas antigas não substituem os contratos operacionais; consulte o resumo de execução e os contratos vigentes para identificar o estado atual. A direção Cooperativa contemporânea está documentada para o escopo desta entrega; novas direções visuais precisam de definição própria. Para novas features, crie documentação focada na mudança e diferencie requisitos propostos, comportamento implementado e validação realizada. A existência de código ou de um roteiro não comprova homologação de um ambiente.
+## Arquitetura, design e desenvolvimento
 
-A V5 detalha [entregas e demonstrativos](pecuaria/leite-comercial.md) e [emissões preservadas/conferência física](pecuaria/leite-relatorios.md), complementando o contrato de leite.
+| Documento | Conteúdo |
+|---|---|
+| [README](../README.md) | Visão do projeto e comandos |
+| [Arquitetura](../ARCHITECTURE.md) | Organização, runtime, autorização, banco e testes |
+| [System design](system-design.md) | Fronteiras, relações, fatos/snapshots e fluxos entre domínios |
+| [Contexto de produto](../client/PRODUCT.md) | Usuários, propósito, princípios e limites |
+| [Design system](../client/DESIGN.md) | Tokens e componentes observados no código |
+| [Design unificado](design/cooperativa-unificada.md) | Composição e interação compartilhadas, com guias de Financeiro/Pecuária/Leite |
+| [Desenvolvimento](desenvolvimento.md) | Banco local único, seed integrada, dados e importadores |
+| [Guia da seed](../server/prisma/seed/README.md) | Preparação autorizada, retomada e conferência do cenário V5 |
+| [Deploy](../DEPLOY.md) | Cloudflare Workers/Neon/R2 e reconciliação da baseline |
+| [Orientações para agentes](../AGENTS.md) | Escopo, preservação, implementação e documentação |
+
+## Evidências e referências históricas
+
+[QA de interface](../design-qa.md), [QA do leite](design/leite/design-qa.md), [QA gerencial](gerencial/design-qa.md) e [validação operacional](design/validacao-refino-operacional.md) conservam suas datas, cenários e limites. Não substituem contratos atuais. Mockups aprovados continuam como referência visual com dados ilustrativos; não comprovam persistência ou disponibilidade.
+
+Os roteiros [V3](pecuaria/artefatos/testes-v3-guia.html), [V4](pecuaria/artefatos/testes-v4-guia.html), [follow-up V4](pecuaria/artefatos/testes-follow-up-v4.html) e [finalidade V5](pecuaria/artefatos/homologacao-v5-finalidade.md) preservam IDs, aceites e armazenamento próprios. A preparação histórica pode não existir na seed atual; registre o bloqueio sem recriá-la ou alterar o aceite pela revisão documental.
+
+O material conceitual de [protocolos](pecuaria/artefatos/protocolos/index.html), [V4](pecuaria/artefatos/conceitos-v4.html) e seus mockups conserva proveniência. Propostas antigas incorporadas aos contratos foram retiradas como planos; diferenças ainda não implementadas ficam em [lacunas](lacunas.md). O histórico completo permanece no Git. Skills em `.agents/skills/` são ferramentas e não contratos do produto; não se remove seu funcionamento numa limpeza documental.

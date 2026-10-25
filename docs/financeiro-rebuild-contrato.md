@@ -2,6 +2,8 @@
 
 Este contrato descreve a implementação atual, independente do financeiro anterior e do Excel. Estrutura em `server/prisma/schema.prisma`; regras em `server/src/services/financeiro/` e `services/estoque/`; rotas em `server/src/routes/financeiro.ts` e `estoque.ts`.
 
+Para entender a rotina e exemplos, leia [Operações](guia/02-financeiro-operacoes.md) e [Estoque](guia/03-financeiro-estoque.md); a integração está no [system design](system-design.md).
+
 ## Fatos e efeitos
 
 | Entidade | Significado |
@@ -152,7 +154,7 @@ Leituras por grupo devem usar as parcelas preservadas. Uma repartição feita no
 
 As garantias SQL conferem somas, sinais e compatibilidade das referências. O domínio não oferece edição/exclusão das parcelas ou bases confirmadas. A limpeza administrativa de fixtures inteiras em uma transação não é fluxo de negócio e deve permanecer restrita aos produtos criados pelo próprio teste, sem desabilitar triggers.
 
-## Permissões e documentos
+## Visibilidade de custos entre domínios
 
 Rotas exigem sessão, área/ação e escopo; custos e exportações do módulo financeiro respeitam a visibilidade financeira. A Pecuária permite consultar seus custos operacionais atribuídos com sessão, área Pecuária e sítio/animal autorizado, sem conceder edição financeira ou acesso a documentos e totais completos de compras/Serviços. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
 
@@ -202,4 +204,4 @@ O [contrato comercial do leite](pecuaria/leite-comercial.md) distingue expediç�
 
 A operação comercial de leite aberta é uma extensão de domínio com identidade própria por sítio/comprador/período, descrita em [leite comercial](pecuaria/leite-comercial.md). Retiradas físicas podem preceder o preço e não criam `Operacao` de valor zero, compromissos ou dinheiro. Ao fechar, `criarFechamentoPeriodoLeiteTx` reutiliza o executor normal para uma única VENDA com item agregado não estocável, centro de custo explícito e quantidade reconhecida; os detalhes conservam cada retirada. O fechamento não gera nova saída de estoque, mesmo em retry ou correção. Prévia e confirmação compartilham o cálculo Decimal do acordo.
 
-Recebimentos parciais/posteriores e seus estornos usam os serviços financeiros existentes. Corrigir o fechamento preserva suas versões e substitui a operação financeira, com data original, somente sem recebimentos ativos e com os períodos abertos; cancelamento genérico é bloqueado. Preço comercial e custo produtivo do leite permanecem medidas separadas. Histórico de VENDA/entregas anterior não é refaturado. Esta expansão foi validada por testes isolados e contrato SQL estrutural, sem aplicação de migration, escrita no banco local ou homologação financeira real.
+Recebimentos parciais/posteriores e seus estornos usam os serviços financeiros existentes. Corrigir o fechamento preserva suas versões e substitui a operação financeira, com data original, somente sem recebimentos ativos e com os períodos abertos; cancelamento genérico é bloqueado. Preço comercial e custo produtivo do leite permanecem medidas separadas. Histórico de VENDA/entregas anterior não é refaturado. A estrutura dessa expansão integra a baseline V5. Testes isolados e contrato SQL estrutural não comprovam aplicação/concorrência no ambiente nem homologação financeira real.
