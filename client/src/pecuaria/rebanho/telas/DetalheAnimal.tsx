@@ -31,6 +31,8 @@ import { navegarPara } from "../../../router";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { SecaoFicha } from "../components/SecaoRecolhivel";
+import { QualidadeAnimalLeite } from "../leite/QualidadeAnimalLeite";
+import { HistoricoProdutivoLeite } from "../leite/HistoricoProdutivoLeite";
 import { AuditoriaAnimal } from "../components/AuditoriaAnimal";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
@@ -43,11 +45,12 @@ import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
 import type { CarenciaAnimal } from "../sanidade/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
 
-const ABAS_FICHA = [["resumo", "Resumo"], ["cadastro", "Cadastro"], ["historico", "Histórico"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]] as const;
+const ABAS_FICHA = [["resumo", "Resumo"], ["cadastro", "Cadastro"], ["historico", "Histórico"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]] as const;
 function secaoDaUrl() {
   const hash = window.location.hash.slice(1);
   if (["identificacao-genetica", "categoria"].includes(hash)) return "cadastro";
   if (hash === "auditoria") return "historico";
+  if (hash === "producao-leite") return "producao";
   return ABAS_FICHA.some(([id]) => id === hash) ? hash : "resumo";
 }
 
@@ -177,7 +180,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
     }
   }, [id, periodoGmd, tocar, sitioConsulta]);
   useEffect(() => { void carregar(); }, [carregar]);
-  useEffect(() => { if (animal?.sexo === "M" && secaoAtiva === "reproducao") setSecaoAtiva("resumo"); }, [animal?.sexo, secaoAtiva]);
+  useEffect(() => { if (animal?.sexo === "M" && ["reproducao", "producao"].includes(secaoAtiva)) setSecaoAtiva("resumo"); }, [animal?.sexo, secaoAtiva]);
   useEffect(() => { obterCatalogos().then(setCatalogos).catch(() => undefined); }, []);
   useEffect(() => { listarCategorias().then((r) => setCategorias(r.itens)).catch(() => undefined); }, []);
   useEffect(() => {
@@ -292,7 +295,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
             <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
           </div>
     <nav aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas abas-pasta">
-      {ABAS_FICHA.filter(([ancora]) => ancora !== "reproducao" || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
+      {ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
         const abas = Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>("[role=tab]"));
@@ -428,10 +431,17 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </CardFicha>
 
       </div></SecaoFicha>
+
       <SecaoFicha id="auditoria" titulo="Auditoria" resumo="Quem alterou cada registro e quando">
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />
       </SecaoFicha>
       </div>
+      {animal.sexo === "F" && <section id="ficha-painel-producao" role="tabpanel" aria-labelledby="aba-producao" hidden={secaoAtiva !== "producao"}>
+        <SecaoFicha id="producao-leite" titulo="Produção individual" resumo="Controles nas datas aferidas; ausência de medição não é produção zero">
+          <HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />
+        </SecaoFicha>
+        {secaoAtiva === "producao" && <QualidadeAnimalLeite key={animal.id} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
+      </section>}
       {animal.sexo==="F"&&<section id="ficha-painel-reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} /></section>}
       <section id="ficha-painel-sanidade" role="tabpanel" aria-labelledby="aba-sanidade" hidden={secaoAtiva !== "sanidade"} className="scroll-mt-6">
       <SanidadeAnimal onCarencia={setCarenciaResumo} animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />

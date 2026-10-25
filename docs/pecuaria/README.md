@@ -14,8 +14,9 @@ O domínio atual usa o schema PostgreSQL `pecuaria` e as rotas `/api/pecuaria/re
 | Reprodução V4 | IA, cobertura/exposição, TE, avaliação/gestação, parto/crias, lactação mínima, colostro, visitas, planner e IATF |
 | Peso e manejo | Pesagem individual/coletiva, GMD, desmama e castração com histórico |
 | Nutrição | Receitas versionadas, vigências por lote, conferência/fechamento, participação animal e estorno |
+| Produção V5 em implementação | Ordenhas individuais configuráveis, entradas segregadas por animal, custo pendente, destinos, programação, qualidade por laudo e consulta de custo/L; [contrato e limites](leite.md) |
 
-Produção/qualidade do leite e laboratório/FIV não estão implementados. Lactação mínima e fornecimento de colostro não equivalem a controle leiteiro; papéis de doadora/receptora continuam distintos de situação reprodutiva. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
+A produção de leite evolui na frente V5, conforme o [contrato de leite](leite.md); qualidade individual/coletiva usa formatos manuais versionados e laudos privados. Laboratório/FIV continua fora do escopo. Lactação mínima e fornecimento de colostro não equivalem a controle leiteiro; papéis de doadora/receptora continuam distintos de situação reprodutiva. Formulação automática de dieta, prescrição clínica e integração com balança não fazem parte deste contrato.
 
 O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original cobre Rebanho/Genética; a ferramenta técnica V4 acrescenta prévia e reconciliação de reprodução. Executá-la em produção exige preparação própria; a entrega de código não significa carga realizada. Carga histórica V3 continua pendente. Não reintroduza o módulo anterior no schema `public`, sincronização contínua ou estruturas de estoque paralelo.
 
@@ -95,6 +96,8 @@ Pesagens/manejos conservam data, tipo, origem e auditoria. Coletivos não devem 
 Receitas publicadas e suas vigências definem consumo por lote/período. Participantes e animal-dias derivam da permanência histórica, considerando movimentações e baixas. Vigências não se sobrepõem; alterar limites precisa respeitar fechamentos existentes e ordem transacional segura.
 
 A conferência distingue quantidade, matéria seca desconhecida e custos permitidos. Fechamento identifica receita, intervalo, participantes, quantidades, origens/lotes dos produtos e atribuição por animal. Baixa física e gravação dos fatos são atômicas/idempotentes; estorno recompõe efeitos sem apagar o fechamento. Não deduza outra despesa financeira do consumo.
+
+O leite produzido V5 usa o fechamento nutricional existente, com seleção de origens, prioridade ao não comercial disponível e complemento comercial, sem baixa genérica duplicada. Custo produtivo pendente e referência comercial são medidas independentes; atribuição por animal conserva litros e identifica sua base. A referência do mês anterior é provisória, e sua revisão pelo preço do período é explícita, auditada e protegida pela permissão financeira. Veja [leite na dieta e referência gerencial](leite.md#leite-na-dieta-e-referência-gerencial).
 
 Serviços atuais: `services/pecuaria/manejo/`, `services/pecuaria/nutricao/`; cálculos de peso, animal-dias e atribuição têm testes próprios.
 
@@ -196,7 +199,7 @@ O hub de configurações oferece busca local por grupo/cadastro e descrições d
 
 As listagens tabulares de sítios, categorias, raças, motivos, genitores, materiais genéticos, cadastros sanitários, protocolos e nutrição por lote paginam localmente 15 registros do conjunto autorizado já carregado. Filtros reiniciam a página e reduções da coleção ajustam páginas fora do intervalo. Agregados e simulação/reordenação de categorias continuam usando a coleção completa; a paginação não limita regras, dados dos gráficos nem opções de formulários. Tabelas de itens de um único registro (composição, ingredientes e etapas) não são tratadas como catálogos paginados.
 
-Permanecem fora deste PR, com [tracking preservado](artefatos/follow-up-v4-entrega.html#backlog): ECC longitudinal, elegibilidade ampliada de novilhas e imunidade passiva da cria. Produção e qualidade do leite ficam para V5; produção de embriões/FIV não faz parte do escopo. Nenhuma proposta de estudo substitui o contrato operacional ou comprova homologação.
+Permanecem fora deste PR, com [tracking preservado](artefatos/follow-up-v4-entrega.html#backlog): ECC longitudinal, elegibilidade ampliada de novilhas e imunidade passiva da cria. Produção e qualidade do leite pertencem à frente [V5](leite.md), com pendências explícitas; produção de embriões/FIV não faz parte do escopo. Nenhuma proposta de estudo substitui o contrato operacional ou comprova homologação.
 
 
 ### Apresentação da ficha individual

@@ -24,7 +24,7 @@ describe("leitura resumida da nutrição", () => {
     { areas: ["pecuaria", "financeiro"] as UsuarioContexto["areas"], flags: ["verValores"] as UsuarioContexto["flags"], permitido: true },
   ])("resolve sítio e visibilidade no servidor: $permitido", async ({ areas, flags, permitido }) => {
     expect((await app({ areas, flags }).request("/resumo")).status).toBe(200);
-    expect(mocks.resumo).toHaveBeenCalledWith(undefined, 7, true);
+    expect(mocks.resumo).toHaveBeenCalledWith(undefined, 7, true, permitido);
   });
   it("valida lote e situação antes de consultar e entrega paginação ao serviço", async () => {
     expect((await app().request("/resumo?loteId=invalido")).status).toBe(422);
@@ -32,7 +32,7 @@ describe("leitura resumida da nutrição", () => {
     expect((await app().request("/consumo/fechamentos?status=INVALIDO")).status).toBe(422);
     expect(mocks.listar).not.toHaveBeenCalled();
     expect((await app().request("/consumo/fechamentos?status=ESTORNADO&pagina=3&limite=10")).status).toBe(200);
-    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, true, undefined, "ESTORNADO", { de: undefined, ate: undefined });
+    expect(mocks.listar).toHaveBeenCalledWith(undefined, 7, { pagina: 3, limite: 10 }, true, undefined, "ESTORNADO", { de: undefined, ate: undefined }, false);
   });
 });
 
@@ -41,5 +41,5 @@ it("valida datas reais e encaminha o intervalo dos fechamentos sem perder o esco
   expect((await app().request("/consumo/fechamentos?de=2026-10-31&ate=2026-10-01")).status).toBe(422);
   expect(mocks.listar).not.toHaveBeenCalled();
   expect((await app().request("/consumo/fechamentos?de=2026-10-01&ate=2026-10-31")).status).toBe(200);
-  expect(mocks.listar).toHaveBeenCalledWith(undefined,7,expect.any(Object),true,undefined,undefined,{de:"2026-10-01",ate:"2026-10-31"});
+  expect(mocks.listar).toHaveBeenCalledWith(undefined,7,expect.any(Object),true,undefined,undefined,{de:"2026-10-01",ate:"2026-10-31"},false);
 });

@@ -9,9 +9,10 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Financeiro:** operações e rascunhos, compromissos, liquidações, contas/extratos, transferências, estornos, documentos, relatórios e cadastros gerenciais.
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
 - **Pecuária V1–V4:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
+- **Produção de leite V5:** ordenhas configuráveis por animal, origens e destinos do leite, qualidade, operações comerciais por período e custos. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção/qualidade do leite e laboratório/FIV não fazem parte da implementação atual. A reprodução tem registro mínimo de lactação, sem controle leiteiro completo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite evoluem na V5 separadamente da Reprodução V4. Laboratório/FIV continuam fora do escopo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
 ## Desenvolvimento local
 
@@ -43,11 +44,10 @@ A interface abre em `http://localhost:41875`; a API usa `http://localhost:41873`
 | `pnpm prisma:generate` | Gerar Prisma Client |
 | `pnpm prisma:migrate` | Criar migration em desenvolvimento |
 | `pnpm --filter rionovo-server exec prisma migrate deploy` | Aplicar migrations existentes |
-| `pnpm --filter rionovo-server run seed` | Cenário unificado local até V3 |
-| `pnpm --filter rionovo-server run seedatev3 --verificar` | Conferir o cenário sem escrever |
-| `pnpm --filter rionovo-server run seedatev4` | Acrescentar demonstração V4 completa ao mesmo banco, preservando a V3 |
-| `pnpm --filter rionovo-server run seedatev4 --verificar` | Conferir a V4 sem gravar ou desfazer simulações |
-| `pnpm --filter rionovo-server run seedatev3:typecheck` | Conferir tipos do seed |
+| `pnpm --filter rionovo-server run seed` | Cenário integrado V5: três sítios, rebanho, financeiro, estoque e leite |
+| `pnpm --filter rionovo-server run seed --preflight` | Conferir destino e baseline sem escrever |
+| `pnpm --filter rionovo-server run seed --verificar` | Conferir o cenário sem escrever |
+| `pnpm --filter rionovo-server run seed:typecheck` | Conferir tipos da seed única |
 | `pnpm --filter rionovo-server run test` | Testes do servidor |
 | `pnpm --filter rionovo-client run test` | Testes da interface |
 | `node --test scripts/*.test.mjs` | Testes da transformação da carga IDEAGRI |

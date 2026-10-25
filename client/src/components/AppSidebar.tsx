@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { Baby, ClipboardList, HeartPulse, Leaf, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
+import { Baby, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -48,7 +48,7 @@ type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
 const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
-const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList, "pec-relatorios": FileText };
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
@@ -73,6 +73,7 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
       { id: "pec-rebanho", label: "Rebanho" },
       { id: "pec-sanidade", label: "Sanidade" },
       { id: "pec-nutricao", label: "Nutrição" },
+      { id: "pec-leite", label: "Leite" },
       { id: "pec-reproducao", label: "Reprodução" },
       { id: "pec-visitas", label: "Visitas veterinárias" },
       { id: "pec-relatorios", label: "Relatórios" },

@@ -1,0 +1,7 @@
+.leite-detalhes{margin:16px 0;min-width:0}
+.leite-detalhes-botao{width:100%;height:auto;min-height:40px;justify-content:space-between;gap:16px;white-space:normal;text-align:left}
+.leite-detalhes-botao>span{min-width:0;overflow-wrap:anywhere}
+.leite-detalhes-botao[aria-expanded="true"]>svg{transform:rotate(180deg)}
+.leite-detalhes-conteudo{padding:16px 0;min-width:0}
+.leite-detalhes-conteudo[hidden]{display:none}
+@media(max-width:600px){.leite-detalhes-botao{min-height:44px}}

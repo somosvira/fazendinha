@@ -1,0 +1,17 @@
+[
+  {
+    "antipattern": "border-accent-on-rounded",
+    "name": "Border accent on rounded element",
+    "description": "Thick accent border on a rounded card — the border clashes with the rounded corners. Remove the border or the border-radius.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/Users/montes/.codex/worktrees/v5-producao-leite/fazendinha/client/src/pecuaria/rebanho/leite/operacoes.css",
+    "line": 2,
+    "snippet": "border-bottom:3px solid",
+    "importedBy": [
+      "LeiteModulo.tsx",
+      "UIDestinosLeite.tsx",
+      "UIProgramacaoRetirada.tsx"
+    ]
+  }
+]

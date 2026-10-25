@@ -1,5 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  "compilerOptions": { "rootDir": ".", "noEmit": true },
-  "include": ["src/**/*.ts", "prisma/seedatev3.ts", "prisma/seedatev3-planner.ts", "prisma/seedatev3-qa.ts", "prisma/seedatev3/**/*.ts"]
-}

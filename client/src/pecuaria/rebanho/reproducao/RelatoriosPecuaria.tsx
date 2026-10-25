@@ -1,3 +1,4 @@
+import { Button } from "../../../components/ui/button";
 import { useEffect, useState } from "react";
 import { PageHeader, PaginaFinanceira } from "../../../financeiro/financeiro-ui";
 import { SubTabs } from "../../../components/SubTabs";
@@ -12,6 +13,7 @@ export function RelatoriosPecuaria({ podeLancar }: { podeLancar: boolean }) {
   useEffect(() => { const sync = () => setTipo(daUrl()); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
   return <PaginaFinanceira>
     <PageHeader titulo="Relatórios da Pecuária" descricao="Analise partos, pós-parto e indicadores reprodutivos por sítio e período." />
+    <div className="mb-4 flex flex-wrap gap-3"><Button variant="outline" onClick={() => navegarPara("/pecuaria/leite?leiteSecao=relatorios")}>Relatórios do leite</Button><Button variant="outline" onClick={() => navegarPara("/pecuaria/leite?leiteSecao=historico")}>Conferir importação do leite</Button></div>
     <SubTabs variant="financeiro" ariaLabel="Tipos de relatório pecuário" tabs={[...TIPOS]} active={tipo} onSelect={valor => { const url = new URL(window.location.href); url.searchParams.set("tipo", valor); navegarPara(url.pathname + url.search + url.hash); }}/>
     <div className="abas-superficie"><ConsultaPorSitio>{id => tipo === "partos" ? <RelatorioPartos key={`partos:${id}`} propriedadeId={id} podeLancar={podeLancar}/> : <IndicadoresReprodutivos key={`indicadores:${id}`} propriedadeId={id} podeLancar={podeLancar} modo="relatorio"/>}</ConsultaPorSitio></div>
   </PaginaFinanceira>;

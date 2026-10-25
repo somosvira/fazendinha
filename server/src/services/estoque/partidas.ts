@@ -39,14 +39,14 @@ async function obterOuCriarGrupoTx(tx: Prisma.TransactionClient, produtoId: stri
   return tx.partidaProduto.create({ data: { produtoId, validade, codigo: `LOTE-${crypto.randomUUID()}`, nome: escolha.nome?.trim() || nomeLotePadrao(produto.nome, validade) } });
 }
 
-function resumoAtivacao(movimentos: Array<{ id: string; seq: number; status: string; tipo: TipoMovimento; propriedadeId: number | null; quantidade: Prisma.Decimal; valorTotal: Prisma.Decimal }>, principal: number) {
+function resumoAtivacao(movimentos: Array<{ id: string; seq: number; status: string; tipo: TipoMovimento; propriedadeId: number | null; quantidade: Prisma.Decimal; valorTotal: Prisma.Decimal | null }>, principal: number) {
   const saldos = new Map<number, Prisma.Decimal>();
   for (const m of movimentos) {
     const propriedadeId = m.propriedadeId ?? principal;
     const saldo = saldos.get(propriedadeId) ?? decimal(0);
     saldos.set(propriedadeId, m.tipo === "SAIDA" ? saldo.minus(m.quantidade) : saldo.plus(m.quantidade));
   }
-  const revisao = crypto.createHash("sha256").update(JSON.stringify(movimentos.map((m) => [m.id, m.seq, m.status, m.tipo, m.propriedadeId, m.quantidade.toString(), m.valorTotal.toString()]))).digest("hex");
+  const revisao = crypto.createHash("sha256").update(JSON.stringify(movimentos.map((m) => [m.id, m.seq, m.status, m.tipo, m.propriedadeId, m.quantidade.toString(), m.valorTotal?.toString() ?? null]))).digest("hex");
   return { revisao, movimentosLegados: movimentos.length, saldos: [...saldos].map(([propriedadeId, saldo]) => ({ propriedadeId, quantidade: saldo.toString() })), saldosBrutos: saldos };
 }
 
@@ -55,6 +55,7 @@ export async function previaAtivacaoRastreio(produtoId: string) {
   if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto não encontrado");
   if (produto.rastrearPartidas) throw new EstoqueError("CONFLITO", "O Produto já controla lotes");
   const movimentos = await prisma.movimentoEstoque.findMany({ where: { produtoId, status: statusSaldoEstoque }, orderBy: { seq: "asc" }, select: { id: true, seq: true, status: true, tipo: true, propriedadeId: true, quantidade: true, valorTotal: true } });
+  if (movimentos.some(m => m.valorTotal == null)) throw new EstoqueError("CONFLITO", "Produção leiteira com valor pendente conserva suas origens por ordenha; rastreio por partida exige regularização própria");
   const resumo = resumoAtivacao(movimentos, await propriedadePrincipalId());
   return { produtoId, revisao: resumo.revisao, movimentosLegados: resumo.movimentosLegados, saldos: resumo.saldos, partidaTecnica: "LEGADO_NAO_IDENTIFICADO", alteracaoLiquidaQuantidade: "0", alteracaoLiquidaValor: "0" };
 }
@@ -134,6 +135,7 @@ export async function ativarRastreio(produtoId: string, usuarioId: number | null
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "Produto não encontrado");
     if (produto.rastrearPartidas) throw new EstoqueError("CONFLITO", "O Produto já controla lotes");
     const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: statusSaldoEstoque }, orderBy: { seq: "asc" } });
+    if (movimentos.some(m => m.metodoValorizacao === "LEITE_FIFO_V1")) throw new EstoqueError("CONFLITO", "O rastreio do leite é preservado por ordenha; não altere para partida sem uma transição específica");
     const resumo = resumoAtivacao(movimentos, await propriedadePrincipalId());
     if (revisaoConferida && revisaoConferida !== resumo.revisao) throw new EstoqueError("CONFLITO", "O estoque mudou desde a prévia. Confira novamente antes de ativar o rastreio.");
     if ([...resumo.saldosBrutos.values()].some((saldo) => saldo.lt(0))) throw new EstoqueError("CONFLITO", "Há saldo legado negativo; reconcilie o estoque antes de ativar lotes");

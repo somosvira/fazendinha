@@ -178,7 +178,7 @@ comBanco("lotes por Produto e validade — serviços PostgreSQL", () => {
     expect(lotes.find((p) => !p.validade)?.saldo).toBe("40"); expect(lotes.find((p) => p.validade)?.saldo).toBe("10");
     const ajustes = await prisma.movimentoEstoque.findMany({ where: { produtoId: produto.id, origem: "IDENTIFICACAO_PARTIDA" } });
     expect(ajustes.reduce((s, m) => s.plus(m.quantidade), new Prisma.Decimal(0)).toString()).toBe("0");
-    expect(ajustes.reduce((s, m) => s.plus(m.valorTotal), new Prisma.Decimal(0)).toString()).toBe("0");
+    expect(ajustes.reduce((s, m) => s.plus(m.valorTotal ?? NaN), new Prisma.Decimal(0)).toString()).toBe("0");
   });
 
   it("compra real distribui 50/30, filtra origem e reenvia a mesma confirmação uma única vez", async () => {

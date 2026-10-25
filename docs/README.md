@@ -11,6 +11,8 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Painel gerencial](painel-gerencial.md) | Página de consulta: caixa, estoque existente, nutrição, cobertura, autorização e limites |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e limites atuais |
 | [Reprodução V4](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, visitas, IATF e reconciliação técnica |
+| [Produção de leite V5](pecuaria/leite.md) | Ordenhas configuráveis, estoque com custo pendente, retirada, destinos, custos e limites da implementação |
+| [Homologação V5 — finalidade na produção](pecuaria/artefatos/homologacao-v5-finalidade.md) | Casos manuais de fronteira temporal, histórico, custos e efeitos; execução pendente |
 | [Follow-up V4 — produto e entidades](pecuaria/artefatos/follow-up-v4-entrega.html) | Valorização do saldo, custos diretos, acompanhamento e indicadores; diagramas das entidades, estado de validação e complementos adiados |
 | [Painel administrativo — entrega e funcionamento](gerencial/artefatos/painel-administrativo.html) | Página de consulta, fontes existentes, autorização, validação e pendências |
 | [Evolução do manejo reprodutivo](pecuaria/artefatos/plano-evolucao-manejo-reprodutivo.html) | Resumo da entrega por pacote, situação da validação e links para os contratos vigentes |
@@ -29,3 +31,5 @@ A base documenta o código atual. Setup e comandos ficam no [README](../README.m
 | [Guia manual V3](pecuaria/artefatos/testes-v3-guia.html) | Homologação sequencial ainda em uso; marcações locais no navegador |
 
 Propostas antigas não substituem os contratos operacionais; consulte o resumo de execução e os contratos vigentes para identificar o estado atual. A direção Cooperativa contemporânea está documentada para o escopo desta entrega; novas direções visuais precisam de definição própria. Para novas features, crie documentação focada na mudança e diferencie requisitos propostos, comportamento implementado e validação realizada. A existência de código ou de um roteiro não comprova homologação de um ambiente.
+
+A V5 detalha [entregas e demonstrativos](pecuaria/leite-comercial.md) e [emissões preservadas/conferência física](pecuaria/leite-relatorios.md), complementando o contrato de leite.

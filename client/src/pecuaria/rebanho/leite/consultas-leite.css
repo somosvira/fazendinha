@@ -1,0 +1,9 @@
+.leite-consultas { display: grid; gap: 18px; }
+.leite-consulta-custos { margin-top: 20px; display: grid; gap: 14px; }
+.leite-consulta-nota { color: var(--muted-foreground); font-size: 14px; }
+.leite-consulta-total { font-variant-numeric: tabular-nums; padding-block: 12px; }
+.leite-consulta-dialog { width: min(960px, calc(100vw - 32px)); max-width: 960px; max-height: 88vh; overflow-y: auto; }
+.leite-consulta-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.leite-consulta-resumo { display: flex; gap: 24px; flex-wrap: wrap; margin-block: 14px; font-variant-numeric: tabular-nums; }
+.leite-consulta-resumo dt { font-size: 13px; color: var(--muted-foreground); }
+.leite-consulta-resumo dd { margin: 4px 0 0; font-weight: 600; }

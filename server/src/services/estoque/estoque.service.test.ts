@@ -33,7 +33,7 @@ vi.mock("../../db.js", () => ({ prisma: {
 } }));
 vi.mock("../propriedade.js", () => ({ propriedadePrincipalId: mocks.propriedadePrincipalId, escopoPadraoLeitura: vi.fn().mockResolvedValue(1) }));
 
-import { ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
+import { obterCustosMedios, ajustarContagem, estornarMovimentoTx, listarMovimentos, listarSaldos, produtosComEstoque, produtoTemEstoque, registrarMovimento } from "./estoque.js";
 
 const tx = () => ({
   $executeRaw: vi.fn().mockResolvedValue(0),
@@ -163,6 +163,19 @@ describe("estornarMovimentoTx", () => {
     expect(mocks.movCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ tipo: "ENTRADA", reversaoDeId: uid(40), observacao: "Estorno: operação agrícola #9 excluída", criadoPorId: null }) });
     expect(r.inverso.id).toBe(uid(100));
     expect(mocks.movUpdate).toHaveBeenCalledWith({ where: { id: uid(40) }, data: { status: "REVERTIDO" } });
+  });
+  it("não devolve litros de retirada de leite por estorno genérico", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "RETIRADA_LEITE", operacaoId: null });
+    await expect(estornarMovimentoTx(tx() as never, uid(40))).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
+    expect(mocks.movCreate).not.toHaveBeenCalled();
+    expect(mocks.movUpdate).not.toHaveBeenCalled();
+  });
+  it("exige estorno pela Nutrição para leite atribuído ao fechamento", async () => {
+    mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "NUTRICAO", metodoValorizacao: "LEITE_FIFO_V1", operacaoId: null });
+    const db = { ...tx(), movimentoFornecimentoNutricionalLeite: { findUnique: vi.fn().mockResolvedValue({ id: uid(81) }) } };
+    await expect(estornarMovimentoTx(db as never, uid(40))).rejects.toMatchObject({ code: "ORIGEM_AUTOMATICA" });
+    expect(mocks.movCreate).not.toHaveBeenCalled();
+    expect(mocks.movUpdate).not.toHaveBeenCalled();
   });
   it("bloqueia consumo reprodutivo enquanto a tentativa permanece válida", async () => {
     mocks.movFindFirst.mockResolvedValue({ ...movBase, tipo: "SAIDA", origem: "REPRODUCAO", operacaoId: null });
@@ -398,4 +411,17 @@ describe("listarMovimentos — origem para navegação", () => {
     const busca = where.AND.find((c: any) => c.OR);
     expect(busca.OR).toHaveLength(2);
   });
+});
+
+
+it("custo médio não considera completa uma base com leite remanescente pendente — contrato SQL estrutural", async () => {
+  mocks.queryRaw.mockResolvedValueOnce([]);
+  const custos = await obterCustosMedios({ $queryRaw: mocks.queryRaw }, [uid(3)], 7);
+  expect(custos.has(uid(3))).toBe(false);
+  const sql = mocks.queryRaw.mock.calls[0][0].strings.join("?");
+  expect(sql).toContain('WHERE NOT EXISTS');
+  expect(sql).toContain('mp."produtoId"=valor_base."produtoId"');
+  expect(sql).toContain('mp."propriedadeId" =');
+  expect(sql).toContain('NOT EXISTS (SELECT 1 FROM pecuaria."ApuracaoValorLeite"');
+  expect(sql).toContain('mp.quantidade > COALESCE');
 });

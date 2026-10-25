@@ -45,6 +45,7 @@ const IA = lazy(() => import("./components/IA").then(m => ({ default: m.IA })));
 const FinanceiroContent = lazy(() => import("./financeiro/FinanceiroContent").then(m => ({ default: m.FinanceiroContent })));
 const RebanhoContent = lazy(() => import("./pecuaria/rebanho/RebanhoContent").then(m => ({ default: m.RebanhoContent })));
 const Sanidade = lazy(() => import("./pecuaria/rebanho/sanidade/Sanidade").then(m => ({ default: m.Sanidade })));
+const LeiteModulo = lazy(() => import("./pecuaria/rebanho/leite/LeiteModulo").then(m => ({ default: m.LeiteModulo })));
 const Nutricao = lazy(() => import("./pecuaria/rebanho/nutricao/Nutricao").then(m => ({ default: m.Nutricao })));
 const EstoqueContent = lazy(() => import("./estoque/EstoqueContent").then(m => ({ default: m.EstoqueContent })));
 const ProdutoEstoqueDetalhe = lazy(() => import("./estoque/ProdutoEstoqueDetalhe").then(m => ({ default: m.ProdutoEstoqueDetalhe })));
@@ -157,7 +158,7 @@ export function App() {
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(() => {
     const destino = pathToTab(window.location.pathname);
-    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "caixinha", "gastos"].includes(destino);
+    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "pec-leite", "caixinha", "gastos"].includes(destino);
     if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
     const raw=new URLSearchParams(window.location.search).get("propriedadeId");
     if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
@@ -554,6 +555,8 @@ export function App() {
     ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-leite"
+    ? <LeiteModulo podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"
     ? <PainelGerencial locationRevision={locationRevision} propriedadeId={propAtiva} onPeriodo={periodo=>setDeepLinkFiltros({tab:"gerencial",filtros:{...periodo,...(propAtiva==null?{}:{propriedadeId:String(propAtiva)})}})}/>
     : tab === "estoque"

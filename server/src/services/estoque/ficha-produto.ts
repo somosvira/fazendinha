@@ -5,6 +5,7 @@ import { EstoqueError, obterBaseCusto, statusSaldoEstoque } from "./estoque.js";
 import { custoMedioDaBase, valorSaidaDaBase } from "./estoque.calc.js";
 import { idsGrupoPartidaTx, listarPartidas } from "./partidas.js";
 import { includeProduto, produtoDTO } from "./produtos.js";
+import { METODO_LEITE, valoresMovimentosLeiteTx } from "./leite.js";
 
 async function escopo(propriedadeId: number | null): Promise<Prisma.MovimentoEstoqueWhereInput> {
   if (propriedadeId == null) return {};
@@ -47,7 +48,9 @@ export async function origensProduto(produtoId: string, propriedadeId: number | 
       include: { parcelasValorizacao: { include: { base: { select: { partidaId: true } } } }, operacao: { select: { id: true, numero: true, tipo: true, parceiro: { select: { id: true, nome: true } } } },
         alocacaoPartidaEstoques: { include: { partida: { select: { nome: true, codigo: true, validade: true, lotePrincipalId: true } } } } } }),
   ]);
-  return { itens: entradas.map((m) => {
+  const valoresLeite = verValores ? await valoresMovimentosLeiteTx(prisma, entradas.filter(m => m.metodoValorizacao === METODO_LEITE).map(m => m.id)) : new Map<string, { valorTotal: Prisma.Decimal | null; custoUnitario: Prisma.Decimal | null }>();
+  return { itens: entradas.map((original) => {
+    const m = valoresLeite.has(original.id) ? { ...original, ...valoresLeite.get(original.id)! } : original;
     const quantidadeConsulta = idsGrupo ? m.alocacaoPartidaEstoques.filter((a) => idsGrupo.includes(a.partidaId)).reduce((s, a) => s.plus(a.quantidade), new Prisma.Decimal(0)) : m.quantidade;
     // Recorte de exibição do valor original, sem novo método de custo por lote.
     const parcelasDoGrupo = idsGrupo ? (m.parcelasValorizacao ?? []).filter(p => p.base.partidaId != null && idsGrupo.includes(p.base.partidaId)) : [];
@@ -56,9 +59,9 @@ export async function origensProduto(produtoId: string, propriedadeId: number | 
     return { id: m.id, movimentoId: m.id, seq: m.seq, data: m.data.toISOString().slice(0, 10), propriedadeId: m.propriedadeId,
     origem: m.origem, status: m.status,
     quantidade: quantidadeConsulta.toString(),
-    quantidadeMovimento: m.quantidade.toString(), custoUnitario: verValores ? m.custoUnitario.toString() : null, valorTotal: verValores ? valorConsulta?.toString() ?? null : null,
+    quantidadeMovimento: m.quantidade.toString(), custoUnitario: verValores ? m.custoUnitario?.toString() ?? null : null, valorTotal: verValores ? valorConsulta?.toString() ?? null : null,
     metodoValorizacao: m.metodoValorizacao ?? "LEGADO",
-    valorTotalMovimento: verValores ? m.valorTotal.toString() : null,
+    valorTotalMovimento: verValores ? m.valorTotal?.toString() ?? null : null,
     fornecedor: m.operacao?.parceiro?.nome ?? null, fornecedorId: financeiro ? m.operacao?.parceiro?.id ?? null : null,
     operacaoId: financeiro ? m.operacao?.id ?? null : null, operacaoNumero: financeiro ? m.operacao?.numero ?? null : null,
     partidas: m.alocacaoPartidaEstoques.filter((a) => !idsGrupo || idsGrupo.includes(a.partidaId)).map((a) => ({ partidaId: a.partidaId, lotePrincipalId: a.partida.lotePrincipalId ?? a.partidaId, nome: a.partida.nome, codigo: a.partida.codigo, validade: a.partida.validade, quantidade: a.quantidade.toString() })) };
