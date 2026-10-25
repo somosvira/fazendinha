@@ -85,7 +85,7 @@ export function ReproducaoAnimal({
 const ROTINAS = [
   { id: "ciclos", label: "Animais e acompanhamentos" },
   { id: "agenda", label: "Agenda" },
-  { id: "programacoes", label: "Programações" },
+  { id: "programacoes", label: "Protocolos" },
   { id: "partos", label: "Partos e pós-parto" },
   { id: "indicadores", label: "Indicadores" },
 ] as const;
@@ -139,17 +139,17 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   if(detalheRota) {
     const [,tipo,id]=detalheRota;
     const voltar=()=>{const retorno=new URLSearchParams(window.location.search).get("retorno");navegarPara(retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`));};
-    return <PaginaFinanceira><PageHeader eyebrow="Pecuária" titulo={tipo==="partos"?"Parto e pós-parto":"Programação IATF"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
+    return <PaginaFinanceira><PageHeader titulo={tipo==="partos"?"Parto e pós-parto":"Programação IATF"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
   }
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
-      <PageHeader titulo="Reprodução" descricao="Acompanhe o manejo reprodutivo, os partos, as programações e os indicadores." />
+      <PageHeader titulo="Reprodução" descricao="Manejo, acompanhamentos e resultados do rebanho." />
       <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
         active={rotina} onSelect={selecionarRotina} />
 
       <div className="abas-superficie">{conteudoDaRotina()}</div>
-      <div className="mt-5 border-t border-border pt-4 flex flex-wrap gap-4 text-sm"><a className="font-semibold underline" href={urlConsultaComSitio("/pecuaria/relatorios")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/pecuaria/relatorios"); } }}>Relatórios da Pecuária</a><a className="underline" href={urlConsultaComSitio("/configuracoes/pecuaria/reproducao/politica")} onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarConsultaComSitio("/configuracoes/pecuaria/reproducao/politica"); } }}>Política reprodutiva</a></div>
+
     </div>
     </PaginaFinanceira>
   );

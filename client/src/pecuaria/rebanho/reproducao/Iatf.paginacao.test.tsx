@@ -19,7 +19,7 @@ it("lista, detalhe e gestão usam API comum paginada no sítio consultado, sem b
   await screen.findAllByRole("link", { name: "Grupo 1" });
   expect(screen.queryByRole("link", { name: "Grupo 11" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
-  fireEvent.click((await screen.findAllByRole("button", { name: "Ver IATF Grupo 11" }))[0]);
+  fireEvent.click((await screen.findAllByRole("link", { name: "Grupo 11" }))[0]);
   await waitFor(() => expect(obterCabecalhoProtocolo).toHaveBeenCalledWith({ programacaoId: "g11" }, 7));
   fireEvent.click(await screen.findByRole("button", { name: "Gestão das participações" }));
   expect(await screen.findByRole("link", { name: "Animal escolhido" })).toBeTruthy();

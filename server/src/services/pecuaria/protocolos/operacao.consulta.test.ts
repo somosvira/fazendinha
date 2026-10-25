@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const banco=vi.hoisted(()=>({tx:{
-  tentativaReprodutiva:{findFirst:vi.fn()},interpretacaoReprodutiva:{findFirst:vi.fn()},exameAnimal:{findFirst:vi.fn()},aplicacaoProduto:{findFirst:vi.fn()},programacaoProtocolo:{findFirst:vi.fn()},participacaoProtocolo:{count:vi.fn(),findMany:vi.fn()},tarefaProtocolo:{findMany:vi.fn()},$queryRaw:vi.fn(),
+  tentativaReprodutiva:{findFirst:vi.fn()},interpretacaoReprodutiva:{findFirst:vi.fn()},exameAnimal:{findFirst:vi.fn()},aplicacaoProduto:{findFirst:vi.fn()},programacaoProtocolo:{findFirst:vi.fn(),findMany:vi.fn(),count:vi.fn()},participacaoProtocolo:{count:vi.fn(),findMany:vi.fn()},tarefaProtocolo:{findMany:vi.fn()},$queryRaw:vi.fn(),
 }}));
 vi.mock("../../../db.js",()=>({prisma:{$transaction:(executar:(tx:typeof banco.tx)=>unknown)=>executar(banco.tx)}}));
-import { listarTarefasOperacao, listarParticipantesOperacao, obterCabecalhoOperacao, listarVinculosColetivosOperacao, listarOrigensFatoOperacao } from "./operacao.js";
-import { consultaOperacaoSchema, consultaVinculosColetivosOperacaoSchema, consultaOrigensFatoOperacaoSchema } from "./operacao.schemas.js";
+import { listarProgramacoesOperacao, listarTarefasOperacao, listarParticipantesOperacao, obterCabecalhoOperacao, listarVinculosColetivosOperacao, listarOrigensFatoOperacao } from "./operacao.js";
+import { listaOperacaoSchema, consultaOperacaoSchema, consultaVinculosColetivosOperacaoSchema, consultaOrigensFatoOperacaoSchema } from "./operacao.schemas.js";
 const id="00000000-0000-4000-8000-000000000001";
 const data=new Date("2026-10-01T00:00:00Z");
 const protocolo={id,nome:"Modelo",versao:1,tipo:"SANITARIO"};
@@ -108,4 +108,16 @@ describe("origens dos fatos na ficha",()=>{
     expect(banco.tx.participacaoProtocolo.count.mock.calls[0][0].where).toMatchObject({id,animalId:id,protocolo:{tipo:"REPRODUTIVO"},rodadaId:{not:null}});
     expect(JSON.stringify(banco.tx.participacaoProtocolo.count.mock.calls[0][0].where.AND)).toContain('"propriedadeId":2');
   });
+});
+
+
+it("filtra situação e ordena grupos no banco antes de paginar, preservando o escopo", async () => {
+  banco.tx.programacaoProtocolo.count.mockResolvedValue(21);
+  banco.tx.programacaoProtocolo.findMany.mockResolvedValue([]);
+  await listarProgramacoesOperacao(7, listaOperacaoSchema.parse({ tipo: "REPRODUTIVO", status: "ABERTA", ordem: "NOME", pagina: 2, busca: "Primavera" }));
+  const consulta=banco.tx.programacaoProtocolo.findMany.mock.calls[0][0];
+  expect(consulta).toMatchObject({where:{status:"ABERTA",protocolo:{tipo:"REPRODUTIVO"},OR:[{nome:{contains:"Primavera",mode:"insensitive"}},{protocolo:{nome:{contains:"Primavera",mode:"insensitive"}}}]},skip:10,take:10,orderBy:[{nome:"asc"},{id:"asc"}]});
+  expect(consulta.where).toEqual(banco.tx.programacaoProtocolo.count.mock.calls[0][0].where);
+  expect(JSON.stringify(consulta.where.AND)).toContain('"propriedadeId":7');
+  expect(()=>listaOperacaoSchema.parse({status:"INEXISTENTE"})).toThrow();
 });

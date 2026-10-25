@@ -58,7 +58,9 @@ export type TaxasIndicadores = {
   concepcao: number | null;
   prenhez: number | null;
 };
+export type BaseCalculoIndicadores = { animaisValidos: number; animaisPendentes: number; participacoesValidas: number; participacoesPendentes: number; parcial: boolean };
 export type DetalheAnimalIndicador = {
+  incluidaNaBase?: boolean;
   animalId: string;
   brinco: string | null;
   nome: string | null;
@@ -78,6 +80,7 @@ export type DetalheAnimalIndicador = {
   tentativas: TentativaDetalheIndicador[];
 };
 export type PeriodoIndicadores = {
+  baseCalculo?: BaseCalculoIndicadores;
   id: string;
   inicio: string;
   fim: string;
@@ -102,6 +105,7 @@ export type SnapshotIndicadoresReprodutivos = {
   sobraInicial: { inicio: string; fim: string; dias: number } | null;
   periodos: PeriodoIndicadores[];
   totais: {
+    baseCalculo?: BaseCalculoIndicadores;
     contagens: ContagensIndicadores;
     taxas: TaxasIndicadores;
     participacoesAnimalPeriodo: number;
@@ -211,6 +215,12 @@ export function exportarIndicadoresCsv(
     t.prenhez,
     snapshot.pendencias.join(" | "),
   ]);
+  if (snapshot.totais.baseCalculo) {
+    const base = snapshot.totais.baseCalculo;
+    linhas.push([], ["COBERTURA DA BASE"], ["Resultado parcial", base.parcial ? "SIM" : "NAO"],
+      ["Animais na base válida", base.animaisValidos], ["Animais com pendências de elegibilidade", base.animaisPendentes],
+      ["Participações válidas", base.participacoesValidas], ["Participações excluídas", base.participacoesPendentes]);
+  }
   linhas.push(
     [],
     ["Sítio", snapshot.filtros.propriedadeId],

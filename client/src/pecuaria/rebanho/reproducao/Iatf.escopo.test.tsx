@@ -17,7 +17,7 @@ vi.mock('../protocolos/api', async original => {
     obterCabecalhoProtocolo: vi.fn().mockResolvedValue({ id: 'programa', modo: 'COLETIVO', tipo: 'REPRODUTIVO', nome: 'Turma QA', propriedadeId: 7, inicioReferencia: '2026-10-01', precisaoTemporal: 'DIA', protocolo: { id: 'p', nome: 'Protocolo QA', versao: 1 }, contagens }),
     obterEtapasProtocolo: vi.fn().mockResolvedValue({ itens: [{ id: 'etapa', nome: 'Manejo', diaRelativo: 0, unidadeIntervalo: 'DIAS', previstaPara: '2026-10-01', precisaoTemporal: 'DIA', contagens }], total: 1, pagina: 1, porPagina: 10 }),
     obterTarefasProtocolo: vi.fn().mockResolvedValue({ itens: [{ id: 'tarefa', participacaoId: 'participacao', animal: { id: 'animal', brinco: 'QA', nome: null }, propriedadeId: 7, situacao: 'SEM_REGISTRO', previstaPara: '2026-10-01', precisaoTemporal: 'DIA', realizadaEm: null, acoes: { atender: true, regularizar: true }, tarefaOrigem: { id: 'tarefa', tipo: 'MANEJO', previstaEm: '2026-10-01', precisaoTemporal: 'DIA', historicoRegularizacao: [] } }], total: 1, pagina: 1, porPagina: 10 }),
-    reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/programacoes?") ? { itens: [{ id: "programa", nome: "Turma QA", status: "ABERTA", inicioReferencia: "2026-10-01", precisaoTemporal: "DIA", participantesTotal: 1 }], total: 1, pagina: 1, porPagina: 10 } : { exigeCiencia: false, modoLegado: false, itens: [], total: 0, pagina: 1, porPagina: 10 }),
+    reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/programacoes?") ? { itens: [{ id: "programa", nome: "Turma QA", status: "ABERTA", inicioReferencia: "2026-10-01", precisaoTemporal: "DIA", participantesTotal: 1, protocolo: { id: "p", nome: "Protocolo QA", versao: 1 }, contagens }], total: 1, pagina: 1, porPagina: 10 } : { exigeCiencia: false, modoLegado: false, itens: [], total: 0, pagina: 1, porPagina: 10 }),
   };
 });
 vi.mock('./RegularizarOrigem', () => ({ RegularizarOrigem: ({ propriedadeId }: { propriedadeId: number }) => <p data-testid="regularizacao-sitio">{propriedadeId}</p>, consumoMantidoUltimaAnulacao: () => false }));
@@ -51,20 +51,20 @@ it('cópia na montagem Iatf usa o sítio explícito mesmo com outro ativo', asyn
 it.each([99, null])('custos da programação inteira conservam sítio explícito com ativo %s', async ativo => {
   setPropriedadeAtiva(ativo);
   render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
+  fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
   expect(await screen.findByTestId('custos-programacao')).toHaveProperty('textContent', '7 · programa');
   expect(screen.queryByTestId('custos-participacao')).toBeNull();
 });
 
 it('regularização usa o mesmo sítio explícito dos custos e do programa', async () => {
   render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
+  fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
   expect(await screen.findByTestId('regularizacao-sitio')).toHaveProperty('textContent', '7');
 });
 
 it('atendimento comum recebe o sítio explícito da programação', async () => {
   render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click((await screen.findAllByRole('button', { name: /Turma QA/ }))[0]);
+  fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
   fireEvent.click(await screen.findByRole('button', { name: 'Atender' }));
   expect(await screen.findByRole('heading', { name: /Registrar manejo protocolar/i })).toBeTruthy();
   expect(screen.queryByRole('heading', { name: 'Executar Manejo' })).toBeNull();
