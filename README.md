@@ -10,7 +10,7 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Estoque:** produtos, usos genético/sanitário/nutricional, saldos por sítio, lotes do produto com validade, ajustes, transferências, perdas e rastreabilidade.
 - **Pecuária — Rebanho, Reprodução, Sanidade e Nutrição:** animais e lotes, movimentações, categorias, baixas, genética, pesagens/manejos, sanidade, nutrição, reprodução, visitas veterinárias e IATF.
 - **Produção de leite V5:** produção geral por parcela/recipiente e controle individual, origens e destinos do leite, qualidade versionada, coletas antes do preço, comercialização e custos com cobertura. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
-- **Administração:** sítios, usuários, sessões e permissões por área/ação.
+- **Administração:** sítios, usuários e permissões por área/ação; acesso pelo Google é autenticado pelo Clerk e vinculado ao e-mail já autorizado.
 
 Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com contratos próprios e vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
@@ -36,7 +36,7 @@ O servidor exige as quatro variáveis `R2_*` e `STORAGE_NAMESPACE` mesmo em dese
 pnpm dev
 ```
 
-A interface abre em `http://localhost:41875`; a API usa `http://localhost:41873`. `dev:server` aplica migrations antes de iniciar. O Vite encaminha `/api` para o servidor. O dono inicial é criado pelo comando manual `bootstrap:dono`, com `AUTH_BOOTSTRAP_EMAIL` configurado; iniciar o servidor não cria essa conta. Mantenha essa variável ausente quando não for usá-la: valor vazio não é um e-mail válido para o validador de ambiente.
+A interface abre em `http://localhost:41875`; a API usa `http://localhost:41873`. `dev:server` aplica migrations antes de iniciar. O Vite encaminha `/api` para o servidor. Para autenticar localmente, configure no `server/.env` as chaves `CLERK_SECRET_KEY` e `CLERK_JWT_KEY`, e em `client/.env.local` a chave pública `VITE_CLERK_PUBLISHABLE_KEY`; habilite Google na instância de desenvolvimento do Clerk. O e-mail Google precisa já existir em `Usuario` como ativo. O dono inicial pode ser criado pelo comando manual `bootstrap:dono`, com `AUTH_BOOTSTRAP_EMAIL` configurado; iniciar o servidor não cria essa conta.
 
 ## Comandos principais
 

@@ -9,8 +9,8 @@ A fonte é `server/src/env.ts`; exemplos em `server/.env.example`.
 - `DATABASE_URL`: conexão do runtime. Node aceita PostgreSQL local/Neon; Worker usa o adapter Neon.
 - `DIRECT_URL`: conexão usada pelo CLI Prisma. Em PostgreSQL local pode ser igual à de runtime; `migrate dev` exige suporte a shadow database.
 - R2 obrigatório: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NOTAS`, `STORAGE_NAMESPACE`. Namespace explícito por ambiente: `dev`, `staging`, `prod`, `test`. Não há driver local atual.
-- Sessões: `AUTH_SESSAO_DIAS`, `APP_BASE_URL`. `AUTH_BOOTSTRAP_EMAIL`/`AUTH_BOOTSTRAP_NOME` são consumidos pelo comando manual do dono. O e-mail opcional deve ficar ausente quando não usado, em vez de vazio. `SHARED_ACCESS_TOKEN` é uma ponte de dono sintético; não substitui contas reais. `JWT_SECRET` também assina intents de upload direto; configure um segredo próprio do ambiente.
-- Recuperação pública de senha: em produção, `AUTH_EMAIL_PROVIDER=resend` exige `AUTH_EMAIL_FROM`, `RESEND_API_KEY` e `APP_BASE_URL`. Provider `log` é rejeitado em produção.
+- Identidade: configure `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_JWT_KEY` e `CLERK_AUTHORIZED_PARTIES` no Worker. `CLERK_AUTHORIZED_PARTIES` contém as origens públicas permitidas, separadas por vírgula. Configure também `VITE_CLERK_PUBLISHABLE_KEY` no ambiente de build da interface; essa chave é pública, enquanto as demais ficam como secrets. Habilite a conexão Google na mesma instância Clerk. `JWT_SECRET` continua assinando intents de upload direto.
+- Autorização: o Clerk apenas autentica. Antes do primeiro login, a gestão deve criar um `Usuario` ativo com o e-mail Google da pessoa; o servidor o vincula ao `clerkUserId` na primeira sessão válida. Não há convite, senha local, reset de senha nem criação automática de usuários.
 - `CORS_ORIGIN`: lista de origens separadas por vírgula; vazio permite qualquer origem. Configure no ambiente publicado.
 - OpenAI: o assistente de consulta separado usa configuração e gates de `docs/assistente-consulta.md`. Bot legado, `/ia` e WhatsApp permanecem suspensos pelas flags; credenciais não os reativam.
 
@@ -36,7 +36,7 @@ pnpm --filter rionovo-server run backfill:cadastros-financeiros
 pnpm --filter rionovo-server run bootstrap:dono
 ```
 
-`bootstrap:dono` exige configuração do e-mail e tabela `Usuario` vazia; cria dono pendente e imprime link para definir senha. Sem usuários nem `SHARED_ACCESS_TOKEN`, produção responde 503 por autenticação não configurada, enquanto desenvolvimento permite acesso sintético. Esses comandos escrevem no banco configurado: use apenas no ambiente pretendido. Seeds demonstrativos locais não são bootstrap de produção.
+`bootstrap:dono` exige configuração do e-mail e tabela `Usuario` vazia; cria o dono ativo. Depois, o dono entra com a conta Google cujo e-mail foi configurado e o servidor registra o vínculo Clerk. Sem uma sessão Clerk válida de usuário autorizado, as rotas protegidas respondem 401. Esses comandos escrevem no banco configurado: use apenas no ambiente pretendido. Seeds demonstrativos locais não são bootstrap de produção.
 
 ## Cloudflare Worker com interface e API
 

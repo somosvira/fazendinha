@@ -45,13 +45,13 @@ O bot anterior, motor estruturado legado e WhatsApp conservam código. `ASSISTEN
 
 ## Sessão, permissões e sítio
 
-Login, recuperação e definição de senha bloqueiam submissões concorrentes por instância e preservam campos após falhas. Convite/reset aguardam a validação do link antes de oferecer senha: HTTP 404 significa inválido/expirado; rede ou outras falhas oferecem nova tentativa sem afirmar que o token é inválido. O cliente de autenticação conserva o status HTTP no erro. Respostas de validação ou de criação de sessão de um link anterior são ignoradas quando o contexto muda ou desmonta. Essa proteção visual não substitui os gates nem a validade/uso único garantidos pelo servidor.
+A autenticação é feita pelo Clerk com a conexão Google. O cliente inicia o OAuth e envia o cookie de sessão do Clerk nas chamadas relativas a `/api`. O middleware valida a request com `authenticateRequest`, usando a chave pública JWT e as origens autorizadas, e resolve o `Usuario` interno ativo pelo `clerkUserId`.
 
-`app.ts` monta health, WhatsApp e auth pública antes de `authMiddleware`; WhatsApp tem validação própria e também está sujeito à suspensão do assistente. Rotas protegidas resolvem sessão/usuário e aplicam gates. Áreas válidas: `financeiro` e `pecuaria`; estoque aceita qualquer uma delas. Flags e presets ficam em `services/auth/papeis.ts`.
+No primeiro login, o servidor aceita somente uma conta Google com e-mail primário verificado que já corresponda a um `Usuario` ativo. Ele vincula esse `clerkUserId` em transação com atualização condicional; não cria usuário, papel, área ou permissão a partir do Clerk. O vínculo é único no banco. Contas sem acesso previamente autorizado recebem 401; a tela informa como contatar a gestão.
 
-`SHARED_ACCESS_TOKEN` mantém um dono sintético de transição. Sem usuários e sem esse token, o middleware permite acesso com dono sintético somente fora de produção. Em `NODE_ENV=production`, esse caso responde 503 por bootstrap incompleto; quando há usuários e nenhuma sessão válida, responde 401.
+`app.ts` monta health e as rotas públicas de leitura antes de `authMiddleware`. As rotas protegidas resolvem o usuário interno e aplicam gates. Áreas válidas: `financeiro` e `pecuaria`; estoque aceita qualquer uma delas. Flags e presets ficam em `services/auth/papeis.ts`. O Clerk identifica a pessoa; servidor e banco continuam sendo a fonte das autorizações, áreas, flags e escopo por sítio.
 
-`comPropriedade()` inclui sessão e `X-Propriedade-Id`. A seleção visual/consolidada não autoriza escrita global: use os resolvedores existentes de escopo e, em fatos pecuários, o sítio na data do evento. Permissões precisam ser conferidas também nos links de retorno, DTOs, agregados e exportações.
+`comPropriedade()` inclui `X-Propriedade-Id`. A seleção visual/consolidada não autoriza escrita global: use os resolvedores existentes de escopo e, em fatos pecuários, o sítio na data do evento. Permissões precisam ser conferidas também nos links de retorno, DTOs, agregados e exportações.
 
 A seleção de sítio é uma preferência em `sessionStorage`, separada por usuário e aba, restaurada após recarregar a interface. Consolidado remove essa preferência; troca de conta não reutiliza o escopo da conta anterior. Sem armazenamento disponível, a seleção funciona em memória. A preferência não substitui a autorização do servidor nem o sítio histórico do fato.
 
@@ -61,7 +61,7 @@ Operações financeiras usam contratos explícitos de DTO para ocultar valores e
 
 `env.ts` valida configuração no carregamento. R2 é o armazenamento atual obrigatório: `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NOTAS` e `STORAGE_NAMESPACE` (`dev`, `staging`, `prod`, `test`). Não existe seleção atual por `STORAGE_DRIVER` nem fallback de disco local.
 
-Novos objetos são segregados por namespace; a leitura usa as chaves persistidas, incluindo arquivos anteriores. Preserve esses caminhos. Anexos e relatórios são objetos privados acessados pelos fluxos autorizados do servidor. Credenciais ficam fora do Git. `JWT_SECRET` também assina os intents de upload direto; as sessões de usuário são persistidas no banco, não JWTs. O exemplo completo está em `server/.env.example`.
+Novos objetos são segregados por namespace; a leitura usa as chaves persistidas, incluindo arquivos anteriores. Preserve esses caminhos. Anexos e relatórios são objetos privados acessados pelos fluxos autorizados do servidor. Credenciais ficam fora do Git. `JWT_SECRET` assina os intents de upload direto; as sessões de usuário são validadas pelo Clerk e o vínculo à autorização interna fica em `Usuario.clerkUserId`. O exemplo completo está em `server/.env.example`.
 
 ## Testes
 
@@ -87,7 +87,7 @@ Os seletores de opção única usam o popup compartilhado `components/ui/select`
 
 Acessos usa uma lista pesquisável por nome/e-mail e filtrável por situação, ao lado do editor no desktop e acima dele em telas estreitas. As contagens ficam no cabeçalho da lista. O editor apresenta áreas, permissão de registro e visibilidade de valores da pessoa selecionada, com estados pressionados acessíveis nos controles e revogação em seção própria. A busca é local aos usuários autorizados retornados pela API e não modifica permissões; alterações continuam usando os endpoints e a confirmação de revogação existentes.
 
-O editor de permissões aguarda a resposta do servidor antes de apresentar a alteração como salva, bloqueando novos comandos durante essa gravação. Falhas preservam o estado anterior. Copiar um convite só anuncia sucesso após a confirmação do clipboard; quando indisponível ou negado, oferece orientação de cópia manual. Convites e modais legados ativos usam a primitiva Radix compartilhada para foco protegido, Escape e devolução do foco ao acionador. Datas iniciais financeiras seguem o calendário local compartilhado, sem converter a data do usuário para UTC.
+O editor de permissões aguarda a resposta do servidor antes de apresentar a alteração como salva, bloqueando novos comandos durante essa gravação. Falhas preservam o estado anterior. O modal de autorização confirma que a pessoa entra pelo Google usando o e-mail cadastrado; ele não gera nem armazena links de senha. Os modais usam a primitiva Radix compartilhada para foco protegido, Escape e devolução do foco ao acionador. Datas iniciais financeiras seguem o calendário local compartilhado, sem converter a data do usuário para UTC.
 
 `DialogContent` e `SheetContent` também conservam o elemento que tinha foco antes da abertura quando o fluxo é controlado sem `Trigger` Radix. No fechamento, devolvem o foco a esse elemento se ainda estiver conectado/habilitado, respeitando um destino explícito do consumidor. Campos de texto e áreas de texto no conteúdo/diálogos usam 16px em larguras até 900px para leitura e prevenção de zoom de foco móvel; isso não substitui homologação em Safari/dispositivo físico.
 
