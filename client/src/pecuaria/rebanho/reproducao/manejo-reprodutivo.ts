@@ -1,5 +1,5 @@
 import { listarAnimais } from "../api";
-import type { AnimalResumo } from "../types";
+import type { AnimalResumo, CategoriaDTO } from "../types";
 import type { PainelReprodutivo } from "./api";
 import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
 
@@ -13,13 +13,13 @@ export type LinhaManejo = {
   dias: number | null;
   motivos: string[];
 };
-export type ConsultaManejo = { fila: FilaManejo | "todas"; busca: string; lote: string; ordem: string; pagina: number; tamanho: number };
+export type ConsultaManejo = { fila: FilaManejo | "todas" | "manejo"; busca: string; lote: string; ordem: string; pagina: number; tamanho: number };
 const numero = (v: string | null, padrao: number) => v && /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : padrao;
 export function lerConsultaManejo(): ConsultaManejo {
   const p = new URLSearchParams(window.location.search);
   const fila = p.get("fila");
   return {
-    fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" ? fila : "todas",
+    fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" || fila === "todas" ? fila : "manejo",
     busca: p.get("q") ?? "", lote: p.get("lote") ?? "",
     ordem: ["maior-espera", "menor-espera", "animal", "animal-desc"].includes(p.get("ordem") ?? "") ? p.get("ordem")! : "maior-espera",
     pagina: numero(p.get("pagina"), 1), tamanho: [4, 10, 25, 50].includes(numero(p.get("porPagina"), 4)) ? numero(p.get("porPagina"), 4) : 4,
@@ -43,7 +43,7 @@ export function diasManejo(data: string | null, hoje: string): number | null {
   const dias = (Date.parse(`${hoje}T00:00:00Z`) - Date.parse(`${data.slice(0, 10)}T00:00:00Z`)) / 86400000;
   return Number.isFinite(dias) ? dias : null;
 }
-export function montarFilasManejo(painel: PainelReprodutivo, acompanhamento: AcompanhamentoIndicadores, animais: AnimalResumo[], hoje: string): Record<FilaManejo, LinhaManejo[]> {
+export function montarFilasManejo(painel: PainelReprodutivo, acompanhamento: AcompanhamentoIndicadores, animais: AnimalResumo[], hoje: string, categorias: CategoriaDTO[] = []): Record<FilaManejo, LinhaManejo[]> {
   const porId = new Map(animais.map(a => [a.id, a]));
   const porIdPainel = new Map(painel.animais.map(a => [a.animalId, a]));
   const linha = (animalId: string, data: string | null, motivos: string[] = []): LinhaManejo | null => {
@@ -64,9 +64,24 @@ export function montarFilasManejo(painel: PainelReprodutivo, acompanhamento: Aco
     const r = linha(c.animalId, data);
     return r ? [r] : [];
   });
+  // Usa a classificação atual calculada pelo servidor, inclusive atribuição manual.
+  // O código 5 identifica a categoria padrão feminina; nome, lote e idade isolada não decidem.
+  const crescimento = new Set(categorias.filter(c => c.ativo && c.padrao && c.ideagriId === 5 && c.sexo === "F").map(c => c.id));
+  const foraDaFase = (id: string) => {
+    const animal = porId.get(id), estado = porIdPainel.get(id);
+    if (!animal?.categoria || !crescimento.has(animal.categoria.id) || !estado) return false;
+    // Evidência reprodutiva ou conflito prevalece sobre a categoria de crescimento.
+    return estado.temHistoricoReprodutivo === false && estado.situacao === "DESCONHECIDA" && estado.partos === 0 && estado.tentativasCiclo === 0
+      && !estado.ultimaTentativa && !estado.gestacao && !estado.resumoAcompanhamento?.referencia
+      && !estado.restricoes.length && !estado.pendenciasContexto?.length
+      && animal.papelReprodutivoEstado !== "CONFLITO"
+      && animal.papelReprodutivo !== "RECEPTORA" && animal.papelReprodutivo !== "DOADORA"
+      && !painel.avaliacoes.some(a => a.animalId === id && a.status === "VALIDO" && a.data.slice(0, 10) <= hoje);
+  };
   const pendentes = new Map<string, LinhaManejo>();
   const incluir = (id: string, motivo: string, data: string | null = null) => {
     if (idsDiagnostico.has(id) || liberadas.some(a => a.animalId === id)) return;
+    if (["INICIO_CICLO_NAO_COMPROVADO", "CICLO_DESCONHECIDO", "LIBERACAO_NAO_COMPROVADA"].includes(motivo) && foraDaFase(id)) return;
     const r = pendentes.get(id) ?? linha(id, data);
     if (r) { r.motivos = [...new Set([...r.motivos, motivo])]; pendentes.set(id, r); }
   };

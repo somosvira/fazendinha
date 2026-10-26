@@ -1261,6 +1261,13 @@ export async function painelReproducao(
         brinco: true,
         nome: true,
         partosAntesDaEntrada: true,
+        _count: { select: {
+          execucaoProtocolos: { where: { protocolo: { tipo: "REPRODUTIVO" } } },
+          ParticipacaoExposicao: true,
+          ciclosElegibilidade: true,
+          papeisReprodutivos: { where: { revogadoEm: null, tipo: { in: ["RECEPTORA", "DOADORA"] } } },
+          GestacaoAnimal: { where: { status: "VALIDO" } },
+        } },
       },
       orderBy: { brinco: "asc" },
     }),
@@ -1395,6 +1402,11 @@ export async function painelReproducao(
         idadeGestacionalDias: temporais.get(a.id)?.idadeGestacionalDias ?? null,
         retencaoPlacenta: estado.ultimoParto?.retencaoPlacenta ?? null,
         pendenciasContexto: temporais.get(a.id)?.pendencias ?? [],
+        // Sinal conservador para a triagem de crescimento: não declara aptidão.
+        // Preserva acompanhamento mesmo com categoria incompatível ou histórico em outro sítio.
+        temHistoricoReprodutivo: estado.partos > 0 || !!estado.ultimaTentativa || estado.avaliacoes.length > 0
+          || !!estado.resumoAcompanhamento.referencia || estado.restricoes.length > 0
+          || Object.values(a._count).some(total => total > 0),
         situacao: estado.situacao, partos: estado.partos, tentativasCiclo: estado.tentativasCiclo,
         resumoAcompanhamento: estado.resumoAcompanhamento,
         gestacao: estado.gestacao,
