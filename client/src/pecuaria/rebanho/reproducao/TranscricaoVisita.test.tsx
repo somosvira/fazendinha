@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "@/lib/controles.fixture";
 import {
   cleanup,
   fireEvent,
@@ -175,12 +176,12 @@ it("serializa formulário e autosave com versão e conserva edições enquanto a
   render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", {name: "Detalhes · 100"}));
   const anotacao = screen.getByRole("textbox", {name: "Anotação original · 100"});
-  fireEvent.change(anotacao, {target: {value: "Primeira edição"}});
+  await alterarControle(anotacao, {target: {value: "Primeira edição"}});
   fireEvent.blur(anotacao);
   await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", {name: "Preencher procedimento"}));
   fireEvent.click(screen.getByRole("button", {name: "Preparar aplicação teste"}));
-  fireEvent.change(anotacao, {target: {value: "Edição durante salvamento"}});
+  await alterarControle(anotacao, {target: {value: "Edição durante salvamento"}});
   fireEvent.blur(anotacao);
   expect(salvarRascunhoVisita).toHaveBeenCalledTimes(1);
   liberar({...atividade.participantes[0], versaoRascunho: 1});
@@ -193,14 +194,14 @@ it("a guarda de saída salva alterações ainda focadas e recusa conflito CAS", 
   const a = { ...atividade, tipo: "APLICACAO_SANITARIA" as const };
   render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Rascunho ainda focado" } });
+  await alterarControle(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Rascunho ainda focado" } });
   await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.any(Function)));
   const guarda = registrar.mock.calls.at(-1)![0] as () => Promise<boolean>;
   await expect(guarda()).resolves.toBe(true);
   expect(salvarRascunhoVisita).toHaveBeenCalledWith("v", "p", 1, expect.objectContaining({ anotacaoOriginal: "Rascunho ainda focado" }), 0);
 
   vi.mocked(salvarRascunhoVisita).mockRejectedValueOnce(new RebanhoApiError("Outra sessão alterou o rascunho", 409, "CONFLITO"));
-  fireEvent.change(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Nova edição concorrente" } });
+  await alterarControle(screen.getByRole("textbox", { name: "Anotação original · 100" }), { target: { value: "Nova edição concorrente" } });
   await expect(guarda()).resolves.toBe(false);
 });
 it("preserva rascunho em conflito quando confirmação de outro participante atualiza a visita", async () => {
@@ -217,7 +218,7 @@ it("preserva rascunho em conflito quando confirmação de outro participante atu
   rerender = tela.rerender;
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
   const anotacao = screen.getByRole("textbox", { name: "Anotação original · 100" });
-  fireEvent.change(anotacao, { target: { value: "Rascunho local em conflito" } });
+  await alterarControle(anotacao, { target: { value: "Rascunho local em conflito" } });
   fireEvent.blur(anotacao);
   await screen.findByText("Outra sessão alterou o rascunho");
 
@@ -253,8 +254,8 @@ it("a guarda concilia resposta perdida de ausência sem exigir fato clínico", a
   vi.mocked(confirmarVisita).mockRejectedValueOnce(new Error("Resposta perdida"));
   render(<Transcricao visita={visita} atividade={a} podeLancar registrarGuardaSaida={registrar} onMudou={vi.fn().mockResolvedValue(undefined)} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
-  fireEvent.change(screen.getByRole("combobox", { name: "Atendimento · 100" }), { target: { value: "NAO_ATENDIDO" } });
-  fireEvent.change(screen.getByRole("textbox", { name: "Motivo de perda, correção, descarte ou pendência · 100" }), { target: { value: "Animal não estava no curral" } });
+  await alterarControle(screen.getByRole("combobox", { name: "Atendimento · 100" }), { target: { value: "NAO_ATENDIDO" } });
+  await alterarControle(screen.getByRole("textbox", { name: "Motivo de perda, correção, descarte ou pendência · 100" }), { target: { value: "Animal não estava no curral" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir animal" }));
   expect(confirmarVisita).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
@@ -282,10 +283,10 @@ it("seleciona exame personalizado por animal e preserva zero e falso no rascunho
   vi.mocked(confirmarVisita).mockResolvedValue({});
   render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
-  await screen.findByRole("option", { name: "Ultrassom detalhado · v2" });
-  fireEvent.change(screen.getByLabelText("Tipo de exame · 100"), { target: { value: "tipo-custom" } });
-  fireEvent.change(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
-  fireEvent.change(screen.getByLabelText(/Achado/), { target: { value: "false" } });
+  await esperarOpcao("Ultrassom detalhado · v2");
+  await alterarControle(screen.getByLabelText("Tipo de exame · 100"), { target: { value: "tipo-custom" } });
+  await alterarControle(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
+  await alterarControle(screen.getByLabelText(/Achado/), { target: { value: "false" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
@@ -308,7 +309,7 @@ it("linha intocada permanece pendente e resultado não assume atendimento ou ví
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await screen.findByText("Revise as pendências individuais antes de confirmar.");
   expect(confirmarVisita).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: "POSITIVO" } });
+  await alterarControle(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: "POSITIVO" } });
   expect(screen.getByRole("textbox", { name: "Motivo da tentativa não comprovada · 100" })).toBeTruthy();
   await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalled());
   const r = vi.mocked(salvarRascunhoVisita).mock.calls.at(-1)![3];
@@ -321,7 +322,7 @@ it("ausência é uma ação explícita, exige motivo e não executa resultado cl
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
   fireEvent.click(screen.getByRole("button", { name: "Marcar ausente" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal não estava no curral" } });
+  await alterarControle(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal não estava no curral" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
   await waitFor(() => expect(confirmarVisita).toHaveBeenCalled());
@@ -350,15 +351,15 @@ it.each(["ADIADO", "NAO_ATENDIDO"] as const)("avaliação de tarefa aceita %s se
   }] };
   render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()} />);
   expect(within(screen.getAllByRole("row")[1]).getAllByRole("combobox")).toHaveLength(1);
-  fireEvent.change(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: status } });
+  await alterarControle(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: status } });
   expect(confirmarVisita).not.toHaveBeenCalled();
   const detalhes = screen.getByRole("button", { name: "Detalhes · 100" });
   expect(detalhes.getAttribute("aria-expanded")).toBe("true");
   fireEvent.click(detalhes);
   expect(screen.queryByRole("textbox", { name: "Motivo do atendimento pendente · 100" })).toBeNull();
   fireEvent.click(detalhes);
-  fireEvent.change(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal indisponível" } });
-  if (status === "ADIADO") fireEvent.change(screen.getByLabelText("Nova previsão · 100"), { target: { value: "2026-10-20" } });
+  await alterarControle(screen.getByRole("textbox", { name: "Motivo do atendimento pendente · 100" }), { target: { value: "Animal indisponível" } });
+  if (status === "ADIADO") await alterarControle(screen.getByLabelText("Nova previsão · 100"), { target: { value: "2026-10-20" } });
   fireEvent.click(screen.getByRole("checkbox", { name: "Selecionar 100" }));
   fireEvent.click(screen.getByRole("button", { name: "Revisar selecionados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
@@ -384,7 +385,7 @@ it("não divide automaticamente uma confirmação de 120 animais e preserva a se
 it("conflito do autosave impede sobrescrita e confirmação", async () => {
   vi.mocked(salvarRascunhoVisita).mockRejectedValueOnce(new RebanhoApiError("Outra sessão alterou o rascunho", 409, "CONFLITO"));
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn()} />);
-  fireEvent.change(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: "NEGATIVO" } });
+  await alterarControle(screen.getByRole("combobox", { name: "Resultado · 100" }), { target: { value: "NEGATIVO" } });
   await screen.findByText("Outra sessão alterou o rascunho");
   fireEvent.click(screen.getByRole("button", { name: "Conferir resultados (1)" }));
   fireEvent.click(screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }));
@@ -493,7 +494,7 @@ it.each([
   const escolha = await screen.findByRole("combobox", { name: "Participação IATF · 100" });
   expect((escolha as HTMLSelectElement).value).toBe("cancelada");
   expect((within(escolha).getByRole("option", { name: /Participação anterior indisponível/ }) as HTMLOptionElement).disabled).toBe(true);
-  fireEvent.change(escolha, { target: { value: destino } });
+  await alterarControle(escolha, { target: { value: destino } });
   fireEvent.blur(escolha);
   await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalled());
   expect(vi.mocked(salvarRascunhoVisita).mock.calls.at(-1)?.[3]).toMatchObject({ participanteIatfId: destino });
@@ -501,14 +502,14 @@ it.each([
 
 it("oferece conduta na avaliação coletiva, salva descarte e limpa IATF ao mudar conclusão", async () => {
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Resultado · 100"), {target:{value:"NEGATIVO"}});
+  await alterarControle(screen.getByLabelText("Resultado · 100"), {target:{value:"NEGATIVO"}});
   fireEvent.click(screen.getByRole("button", {name:"Detalhes · 100"}));
-  fireEvent.change(screen.getByLabelText("Conduta · 100"), {target:{value:"DESCARTE"}});
+  await alterarControle(screen.getByLabelText("Conduta · 100"), {target:{value:"DESCARTE"}});
   const motivo = screen.getByLabelText("Motivo do descarte · 100");
-  fireEvent.change(motivo, {target:{value:"Restrição reprodutiva documentada"}}); fireEvent.blur(motivo);
+  await alterarControle(motivo, {target:{value:"Restrição reprodutiva documentada"}}); fireEvent.blur(motivo);
   await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({conduta:"DESCARTE",motivo:"Restrição reprodutiva documentada"}),expect.anything()));
-  fireEvent.change(screen.getByLabelText("Conduta · 100"), {target:{value:"IATF"}});
-  fireEvent.change(screen.getByLabelText("Resultado · 100"), {target:{value:"INCONCLUSIVO"}});
+  await alterarControle(screen.getByLabelText("Conduta · 100"), {target:{value:"IATF"}});
+  await alterarControle(screen.getByLabelText("Resultado · 100"), {target:{value:"INCONCLUSIVO"}});
   await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({conduta:"",resultado:"INCONCLUSIVO"}),expect.anything()));
   expect(confirmarVisita).not.toHaveBeenCalled();
 });
@@ -519,7 +520,7 @@ it("conserva motivo do desvio sanitário ao preparar e salvar o procedimento da 
   render(<Transcricao visita={visita} atividade={a} podeLancar onMudou={vi.fn()}/>);
   fireEvent.click(screen.getByRole("button",{name:"Detalhes · 100"}));
   const campo=screen.getByLabelText("Motivo do desvio · 100");
-  fireEvent.change(campo,{target:{value:"Visita realizada no dia seguinte"}});fireEvent.blur(campo);
+  await alterarControle(campo,{target:{value:"Visita realizada no dia seguinte"}});fireEvent.blur(campo);
   fireEvent.click(screen.getByRole("button",{name:"Preencher procedimento"}));
   fireEvent.click(await screen.findByRole("button",{name:"Preparar aplicação teste"}));
   await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenLastCalledWith("v","p",1,expect.objectContaining({dados:{produtoId:"novo",desvio:{motivo:"Visita realizada no dia seguinte"}},status:"CONFIRMADO"}),expect.anything()));
@@ -603,7 +604,7 @@ it("consulta participantes por página no servidor e conserva seleção e rascun
   expect(listarParticipantesVisita).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("checkbox",{name:"Selecionar 110"})).toBeNull();
   fireEvent.click(screen.getByRole("checkbox",{name:"Selecionar 100"}));
-  fireEvent.change(screen.getByRole("combobox",{name:"Resultado · 100"}),{target:{value:"INCONCLUSIVO"}});
+  await alterarControle(screen.getByRole("combobox",{name:"Resultado · 100"}),{target:{value:"INCONCLUSIVO"}});
   fireEvent.blur(screen.getByRole("combobox",{name:"Resultado · 100"}));
   await waitFor(()=>expect(salvarRascunhoVisita).toHaveBeenCalled());
   const navegacao=screen.getByRole("navigation",{name:"Paginação dos participantes"});
@@ -628,3 +629,7 @@ it("pagina o recibo de onze confirmações sem repetir a operação",async()=>{
  const recibo=await screen.findByRole("region",{name:"Recibo da confirmação"});expect(within(recibo).getAllByRole("listitem")).toHaveLength(10);
  fireEvent.click(within(recibo).getByRole("button",{name:"Próximo recibo"}));await waitFor(()=>expect(within(recibo).getAllByRole("listitem")).toHaveLength(1));expect(confirmarVisita).toHaveBeenCalledTimes(1);
 });
+
+async function esperarOpcao(nome: string | RegExp) {
+    await waitFor(() => expect(Array.from(document.querySelectorAll("option")).some(o => typeof nome === "string" ? o.textContent === nome : nome.test(o.textContent ?? ""))).toBe(true));
+}

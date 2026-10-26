@@ -1,3 +1,6 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
+import { Input } from "../../../components/ui/input";
+import { Button } from "../../../components/ui/button";
 import type { ControleOrdenacao } from "../../../financeiro/OrdenarConsulta";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -7,7 +10,7 @@ import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { ClipboardList, Search, Stethoscope, TriangleAlert, Venus } from "lucide-react";
-import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { Paginacao } from "../ui";
@@ -26,6 +29,7 @@ type DadosManejo = { propriedadeId: number; hoje: string; filas: Record<FilaMane
 export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento, recarregarToken = 0 }: {
   propriedadeId?: number; podeLancar: boolean; onRegistrarEvento?: () => void; onConsultarHistorico?: () => void; recarregarToken?: number;
 }) {
+  const visual = useVisualizacaoConsulta("visualAnimaisReproducao", "reproducao");
   const [consulta, setConsulta] = useState(lerConsultaManejo);
   const [dados, setDados] = useState<DadosManejo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -79,7 +83,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     const edicaoFiltros = useRascunhoConsulta({fila:consulta.fila,busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{fila:"todas" as ConsultaManejo["fila"],busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
   const campos: CampoConsulta[] = [
     {chave:"situacao",ativo:consulta.fila!=="todas",limpar:()=>edicaoFiltros.editar("fila","todas"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="todas">Todas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
-    {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
+    {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><Input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
     {chave:"lote",ativo:!!consulta.lote,limpar:()=>edicaoFiltros.editar("lote",""),conteudo:<CampoFiltro rotulo="Lote"><SelectCampo aria-label="Filtrar lote" value={edicaoFiltros.rascunho.lote} onValueChange={v=>edicaoFiltros.editar("lote",v)}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote!=="sem-lote" && !lotes.some(l=>l.id===consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"ordem",colunas:[],ativo:consulta.ordem!=="maior-espera",limpar:()=>edicaoFiltros.editar("ordem","maior-espera"),conteudo:<CampoFiltro rotulo="Ordenar por"><SelectCampo aria-label="Ordenar animais" value={edicaoFiltros.rascunho.ordem} onValueChange={v=>edicaoFiltros.editar("ordem",v as ConsultaManejo["ordem"])}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal · A–Z</option><option value="animal-desc">Identificação do animal · Z–A</option></SelectCampo></CampoFiltro>},
   ];
@@ -87,23 +91,32 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   if (!propriedadeId) return <p className="rounded-xl border p-5">Selecione um sítio para consultar as filas de manejo.</p>;
   return <section className="manejo-v4 space-y-5" aria-label="Manejo reprodutivo">
     <ErrorBox erro={erro}/>
-    {erro && <Button secondary onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
-    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências</strong><p>Confira origem do ciclo, liberação e restrições.</p></div><Button secondary onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
+    {erro && <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
+    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências</strong><p>Confira origem do ciclo, liberação e restrições.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
     <Panel className="overflow-hidden">
       <header>
 
-        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="todas"?[{id:"fila",rotulo:atual?.titulo??"Todas",limpar:()=>mudar({fila:"todas"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
+        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="todas"?[{id:"fila",rotulo:atual?.titulo??"Todas",limpar:()=>mudar({fila:"todas"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
       </header>
       {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
       {visivel && <>
-        <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
+        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? "Liberadas, aguardando diagnóstico e pendências, sem duplicar animais."}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
+        {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
+          const fila = filaDe(a.animalId);
+          return <article className="reproducao-cartao" key={a.animalId}>
+            <header><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p>{a.lote?.nome ?? "Lote não informado"}</p></div><Pill tone={fila === "liberadas" ? "green" : "amber"}>{fila === "liberadas" ? "Liberada" : fila === "diagnostico" ? "Aguardando diagnóstico" : "Evidência pendente"}</Pill></header>
+            <dl><div><dt>Fila de manejo</dt><dd>{FILAS.find(f => f.id === fila)?.titulo ?? "Não informada"}</dd></div><div><dt>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
+            <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{a.dias ?? "—"} dias {fila === "diagnostico" ? "desde a tentativa" : "sem serviço"}</strong>}</div>
+            <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao></footer>
+          </article>;
+        })}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: a => <IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/> },
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-xs text-muted-foreground">{a.dias ?? "—"} dias {filaDe(a.animalId)==="diagnostico"?"desde a tentativa":"sem serviço"}</p></div> : "Não comprovada" },
           { chave: "situacao", titulo: consulta.fila === "pendencias" ? "Conferência necessária" : "Situação", celula: a => filaDe(a.animalId) === "pendencias" ? <ul className="max-w-sm space-y-1 text-sm">{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <Pill tone={filaDe(a.animalId)==="liberadas"?"green":"amber"}>{filaDe(a.animalId) === "liberadas" ? "Liberada" : "Aguardando diagnóstico"}</Pill> },
           { chave: "acao", titulo: "Ação", acoes: true, celula: a => <LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao> },
-        ]}/>
-        <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <select className="ml-2 rounded-lg border border-border bg-white px-3 py-2" aria-label="Animais por página" value={consulta.tamanho} onChange={e => mudar({ tamanho: Number(e.target.value) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</select></label></div>
+        ]}/>}
+        <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <SelectCampo className="ml-2" aria-label="Animais por página" value={String(consulta.tamanho)} onValueChange={v => mudar({ tamanho: Number(v) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</SelectCampo></label></div>
         <Paginacao paginaAtual={pagina} totalPaginas={paginas} totalItens={linhas.length} itensPorPagina={consulta.tamanho} onPaginaChange={pagina => mudar({ pagina })} rotulo="animais" idSelect="pagina-manejo"/>
       </>}
     </Panel>

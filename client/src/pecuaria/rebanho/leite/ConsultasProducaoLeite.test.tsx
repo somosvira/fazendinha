@@ -53,3 +53,15 @@ it("pagina os grupos completos sem refazer consulta do servidor", async () => {
   expect(screen.getByText("16–30 de 31 períodos")).toBeTruthy();
   expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
 });
+it("agrupamento direto Dia/Mês conserva o intervalo, os filtros e a leitura dos custos", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=producao&inicio=2026-10-01&fim=2026-10-26&natureza=COLOSTRO");
+  render(<ConsultasProducaoLeite />);
+  await screen.findByRole("table", { name: "Volumes de produção" });
+  expect(consultarLeite).toHaveBeenCalledWith("/consultas-producao?inicio=2026-10-01&fim=2026-10-26&agrupamento=DIA&natureza=COLOSTRO", 2);
+  const custosAntes = vi.mocked(consultarLeite).mock.calls.filter(([c]) => c.startsWith("/custos")).length;
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Mês" }), { button: 0, ctrlKey: false });
+  await waitFor(() => expect(consultarLeite).toHaveBeenCalledWith("/consultas-producao?inicio=2026-10-01&fim=2026-10-26&agrupamento=MES&natureza=COLOSTRO", 2));
+  expect(new URLSearchParams(location.search).get("inicio")).toBe("2026-10-01");
+  expect(new URLSearchParams(location.search).get("fim")).toBe("2026-10-26");
+  expect(vi.mocked(consultarLeite).mock.calls.filter(([c]) => c.startsWith("/custos")).length).toBe(custosAntes);
+});

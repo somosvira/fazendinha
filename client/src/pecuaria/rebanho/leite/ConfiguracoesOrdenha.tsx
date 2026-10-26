@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useId, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
@@ -176,7 +177,7 @@ export function ConfiguracoesOrdenha({
               <option value="JANELA_DIAS">Janela pós-parto em dias</option>
             </SelectCampo>
           </label>
-          {criterio === "JANELA_DIAS" && <><label>Dias da janela<input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
+          {criterio === "JANELA_DIAS" && <><label>Dias da janela<Input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
           {criterio === "PRIMEIRA_ORDENHA" && <p>Exige declaração explícita da primeira ordenha dos animais após o parto.</p>}
           <p>Nova vigência preserva os registros históricos. Ausência de regra permanece não informada.</p>
         </fieldset>
@@ -189,7 +190,7 @@ export function ConfiguracoesOrdenha({
           <div className="leite-ajuste-grade">
             <label>
               Aferir a cada
-              <input
+              <Input
                 className={classeInput}
                 type="number"
                 min="1"
@@ -228,7 +229,7 @@ export function ConfiguracoesOrdenha({
                 <span>{i + 1}</span>
                 <label>
                   Nome
-                  <input
+                  <Input
                     className={classeInput}
                     value={o.nome}
                     maxLength={60}
@@ -238,7 +239,7 @@ export function ConfiguracoesOrdenha({
                 </label>
                 <label>
                   Horário (opcional)
-                  <input
+                  <Input
                     className={classeInput}
                     type="time"
                     value={o.horario ?? ""}

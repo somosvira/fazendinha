@@ -1,6 +1,7 @@
+import { Button } from "../../../components/ui/button";
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
-import { Button, Modal, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Modal, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { descreverMotivo } from "./elegibilidade-api";
@@ -24,8 +25,9 @@ export function PainelIndicadores({ snapshot: s }: { snapshot: SnapshotIndicador
   const detalhes = consulta === "pendencias" ? s.periodos.flatMap(p => p.detalhamento.filter(pendente)) : periodo?.detalhamento.filter(a => !pendente(a) && (a.contribuicaoElegiveis !== 0 || a.servida)) ?? [];
   const animais = [...new Map(detalhes.map(a => [a.animalId, { ...a, motivos: [...new Set(detalhes.filter(d => d.animalId === a.animalId).flatMap(d => d.motivos))] }])).values()];
   const abrir = (id: string) => { setConsulta(id); setPaginaAnimais(1); };
-  return <Panel className="overflow-hidden">
-    {base?.parcial && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>Resultado parcial · {base.animaisPendentes} {base.animaisPendentes === 1 ? "animal com pendência" : "animais com pendências"}</strong><p>{base.animaisValidos} animais na base válida. Participações pendentes ficam fora dos numeradores e denominadores.</p></div><Button secondary onClick={() => abrir("pendencias")}>Revisar pendências</Button></aside>}
+  return <Panel className="repro-indicadores-painel overflow-hidden">
+    {base?.parcial && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>Resultado parcial · {base.animaisPendentes} {base.animaisPendentes === 1 ? "animal com pendência" : "animais com pendências"}</strong><p>{base.animaisValidos} animais na base válida. Participações pendentes ficam fora dos numeradores e denominadores.</p></div><Button variant="outline" onClick={() => abrir("pendencias")}>Revisar pendências</Button></aside>}
+    <header className="repro-consulta-titulo"><div><h2>Resultado do período consultado</h2><p>{formatBRDateISO(s.filtros.inicio)} – {formatBRDateISO(s.filtros.fim)} · corte em {formatBRDateISO(s.filtros.corte)}</p></div></header>
     <div className="indicadores-taxas">
       <section><h2>Taxa de serviço</h2><strong>{taxa(t.servico)}</strong><p>{c.matrizesServidas} serviços / {numero(c.elegiveis)} elegíveis ponderadas nos períodos</p></section>
       <section><h2>Taxa de concepção</h2><strong>{taxa(t.concepcao)}</strong><p>{c.positivas} positivas / {c.denominadorConcepcao} tentativas com resultado</p></section>
@@ -37,11 +39,12 @@ export function PainelIndicadores({ snapshot: s }: { snapshot: SnapshotIndicador
       {chave:"servico",titulo:"Serviço",celula:p=><div>{taxa(p.taxas.servico)}<p className="text-xs text-muted-foreground">{p.contagens.matrizesServidas} / {numero(p.contagens.elegiveis)} elegíveis</p></div>},
       {chave:"concepcao",titulo:"Concepção",celula:p=><div>{taxa(p.taxas.concepcao)}<p className="text-xs text-muted-foreground">{p.contagens.positivas} / {p.contagens.denominadorConcepcao} tentativas</p></div>},
       {chave:"prenhez",titulo:"Prenhez",celula:p=>taxa(p.taxas.prenhez)},
-      {chave:"acao",titulo:"Consulta",acoes:true,celula:p=><Button secondary onClick={()=>abrir(p.id)}>Ver animais</Button>},
+      {chave:"acao",titulo:"Consulta",acoes:true,celula:p=><Button variant="outline" onClick={()=>abrir(p.id)}>Ver animais</Button>},
     ]}/>
     {!periodos.length && <p role="status" className="p-5">Nenhum período completo de 21 dias. Amplie o intervalo para consultar o desempenho.</p>}
     {periodos.length>10 && <Paginacao paginaAtual={atual} totalPaginas={totalPaginas} totalItens={periodos.length} itensPorPagina={10} onPaginaChange={setPagina} rotulo="períodos" idSelect="pagina-periodos-indicadores"/>}
     {s.sobraInicial && <p role="status" className="px-4 py-3 text-xs text-muted-foreground">{s.sobraInicial.dias} dias iniciais fora das janelas completas de 21 dias.</p>}
+    <details className="repro-indicadores-metodo"><summary>Método e critérios do cálculo</summary><h3>{s.metodologia.rotulo}</h3><p>Versão {s.versaoMetodologia} · deslocamento TE: {s.metodologia.deslocamentoTeDias} dias · concepção estimada: {s.metodologia.concepcaoEstimada === null ? "não informada" : `${s.metodologia.concepcaoEstimada}%`}</p><ul>{s.metodologia.regras.map((regra, i) => <li key={i}>{regra}</li>)}</ul><p>Fontes: {s.metodologia.fontes.join("; ")}</p></details>
     {consulta && <Modal eyebrow="Indicadores reprodutivos" titulo={consulta === "pendencias" ? "Pendências fora da base de cálculo" : "Animais da base válida"} onClose={()=>setConsulta(null)}>
       <div className="p-4 space-y-4">{periodo && <p>{formatBRDateISO(periodo.inicio)} – {formatBRDateISO(periodo.fim)}</p>}
         <TabelaFinanceira rotulo={consulta === "pendencias" ? "Animais com pendências" : "Animais do período"} itens={animais.slice((paginaAnimais-1)*10,paginaAnimais*10)} chaveDe={a=>a.animalId} colunas={[

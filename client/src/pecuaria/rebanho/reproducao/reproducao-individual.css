@@ -97,3 +97,20 @@
 @media(max-width:540px){.pecuaria-content .pec-ficha.ficha-v4>.pec-ancoras{flex-wrap:wrap;overflow:visible}.pecuaria-content .ficha-v4 .pec-ancoras [role=tab]{flex:1 0 40%}}
 
 @container(max-width:450px){.ficha-v4 .ficha-resumo>div{padding:14px;gap:10px}.ficha-v4 .ficha-resumo dd:first-of-type{font-size:18px}}
+
+.repro-ficha-consultas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.repro-ficha-consultas>.secao-recolhivel{margin:0;min-width:0}
+.repro-ficha-consultas .secao-recolhivel-cabecalho{padding:16px}
+.repro-ficha-consultas .secao-recolhivel-conteudo{padding:16px}
+.repro-ficha-consultas .secao-recolhivel-resumo{font-size:12px;line-height:1.5}
+.repro-ficha-consultas .repro-intervalos dl>div{border:0;border-radius:0;border-bottom:1px solid var(--border);padding:8px 0}
+.repro-ficha-consultas .repro-intervalos dd{font-size:15px}
+.repro-individual .repro-resumo-acompanhamento{padding-block:16px;background:var(--card)}
+.repro-individual .repro-resumo-acompanhamento>div{gap:12px;padding-inline:18px}
+.repro-individual .repro-resumo-acompanhamento dt{font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.repro-individual .repro-resumo-acompanhamento dd{font-size:13px;font-weight:600;line-height:1.5}
+.repro-individual .repro-acoes-diretas{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:4px}
+.repro-individual .secao-recolhivel h2{font-size:18px;letter-spacing:-.02em}
+.repro-individual .protocolo-animal-cabecalho h3{font-size:16px}
+.repro-individual .protocolo-animal-resumo{grid-template-columns:repeat(2,minmax(0,1fr));font-size:13px;background:transparent;padding:12px 0 0}
+@media(max-width:1100px){.repro-ficha-consultas{grid-template-columns:1fr}.repro-individual .repro-resumo-acompanhamento{grid-template-columns:1fr;gap:12px}.repro-individual .repro-resumo-acompanhamento>div+div{border-left:0;border-top:1px solid var(--border);padding-top:12px}}

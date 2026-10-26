@@ -33,8 +33,8 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
   }, [sitio, data, revisao]);
   if (sitio == null) return <p className="p-5">Selecione um sítio para consultar as configurações.</p>;
   const criterio = dados?.contexto?.criterioColostro ?? dados?.configuracao.criterioColostro;
-  return <div className="leite-page">
-    <CabecalhoTabela titulo="Configurações de produção" acao={<DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} />} />
+  return <div className="leite-page leite-configuracoes-consulta">
+    <CabecalhoTabela titulo="Rotina de produção" acao={<DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} />} />
     {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="p-5">Carregando configurações…</p> : <>
       <div className="p-5 grid gap-5">
         <div className="flex items-center flex-wrap gap-3"><h3 className="mr-auto">Produção · desde {formatarDataBR(dados.configuracao.vigenteDesde)}</h3>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}>Nova configuração</Button>}</div>

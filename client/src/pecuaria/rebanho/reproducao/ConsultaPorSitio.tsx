@@ -1,3 +1,4 @@
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { listarPropriedades, type PropriedadeDTO } from "../../../api/propriedades";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -34,11 +35,11 @@ function SelecionarSitio({ children }: { children: (sitioId: number) => ReactNod
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <label className="flex flex-wrap items-center gap-3 text-sm font-medium">Sítio da consulta
-        <select aria-label="Sítio da consulta" aria-describedby={descricaoId} className="min-h-10 max-w-full rounded-lg border border-border bg-card px-3 text-sm sm:w-56" value={sitio?.id ?? ""} disabled={carregando || !!erro}
-          onChange={e => { const url = new URL(window.location.href); e.target.value ? url.searchParams.set("sitio", e.target.value) : url.searchParams.delete("sitio"); navegarPara(url.pathname + url.search + url.hash); }}>
+        <SelectCampo aria-label="Sítio da consulta" aria-describedby={descricaoId} className="min-h-10 max-w-full rounded-lg border border-border bg-card px-3 text-sm sm:w-56" value={sitio ? String(sitio.id) : ""} disabled={carregando || !!erro}
+          onValueChange={valor => { const url = new URL(window.location.href); valor ? url.searchParams.set("sitio", valor) : url.searchParams.delete("sitio"); navegarPara(url.pathname + url.search + url.hash); }}>
           <option value="">Escolha um sítio</option>
           {sitios.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
-        </select>
+        </SelectCampo>
       </label>
       <p id={descricaoId} className="sr-only">Seleção local · a visão geral continua em Consolidado.</p>
       </div>

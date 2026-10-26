@@ -214,13 +214,15 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, rodape, ordenacao }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, visualizacao = "automatica", rodape, ordenacao }: {
   ordenacao?: { campo: string; direcao: "asc" | "desc" };
   filtrosColunas?: FiltrosColunas;
   /** Totais já calculados pelo chamador, associados às chaves das colunas. */
   rodape?: Partial<Record<string, React.ReactNode>>;
   /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
   larguraMinimaParaTabela?: number;
+  /** Uma escolha explícita de tabela conserva as colunas com rolagem horizontal. */
+  visualizacao?: "automatica" | "tabela";
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -242,6 +244,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const consultaRef = useRef<HTMLDivElement>(null);
   const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const exibirCartoes = visualizacao === "automatica" && modoCartao;
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
@@ -284,9 +287,9 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
   };
 
-  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={modoCartao ? "cartoes" : "tabela"}>
+  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={exibirCartoes ? "cartoes" : "tabela"}>
     {/* A largura disponível determina se todas as colunas cabem. */}
-    {barraRolagemSuperior && temRolagem && !modoCartao && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+    {barraRolagemSuperior && temRolagem && !exibirCartoes && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
     <div ref={tabelaRef} className={`fin-tabela-desktop overflow-x-auto border-t border-border ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>

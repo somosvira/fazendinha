@@ -1,3 +1,7 @@
+import { DatePicker } from "@/components/DatePicker";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
@@ -420,13 +424,11 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
             aria-label="Dia anterior">
             <ChevronLeft />
           </Button>
-          <input
+          <DatePicker
+            className="leite-data-seletor"
             aria-label="Data operacional"
-            type="date"
             value={data}
-            onChange={(e) => {
-              if (dataValida(e.target.value)) navegar(e.target.value);
-            }}
+            onChange={valor => { if (dataValida(valor)) navegar(valor); }}
           />
           <Button className="leite-icon"
             onClick={() => dia(1)}
@@ -487,7 +489,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
               const Icon = i === 2 ? Moon : Sun;
               return (
                 <Button aria-pressed={s.posicaoId === posicao}
-                  className={`leite-sessao ${s.posicaoId === posicao ? "selecionada" : ""}`}
+                  className={`leite-sessao h-auto whitespace-normal ${s.posicaoId === posicao ? "selecionada" : ""}`}
                   key={s.posicaoId}
                   onClick={() => navegar(data, s.posicaoId)}>
                   <Icon size={28} />
@@ -520,7 +522,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                 )}
                 <div className="leite-busca-campo">
                   <label htmlFor="leite-busca">Buscar animal</label>
-                  <input
+                  <Input
                     id="leite-busca"
                     type="search"
                     value={busca}
@@ -605,7 +607,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                           </TableCell>
                           <TableCell>
                             <div className="leite-valor">
-                              <input
+                              <Input
                                 ref={(el) => {
                                   inputRefs.current[a.animalId] = el;
                                 }}
@@ -704,14 +706,13 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                           </TableCell>
                           <TableCell>
                             {podeLancar ? (
-                              <select
+                              <SelectCampo
                                 data-estado={c.estado}
                                 aria-label={`Situação de ${a.nome ? `${a.nome}, brinco ${a.brinco}` : `brinco ${a.brinco}`}`}
                                 value={c.estado}
                                 disabled={!podeEditar}
-                                onChange={(e) => {
-                                  const estado = e.target
-                                    .value as MedicaoInput["estado"];
+                                onValueChange={valor => {
+                                  const estado = valor as MedicaoInput["estado"];
                                   mudar(a.animalId, {
                                     estado,
                                     litros:
@@ -743,7 +744,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                 <option value="NAO_ORDENHADO">
                                   Não ordenhado
                                 </option>
-                              </select>
+                              </SelectCampo>
                             ) : (
                               <span className="leite-status" data-estado={c.estado}>
                                 {c.estado === "MEDIDO" ? (
@@ -775,7 +776,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               </Button>
                             )}
                             {c.estado === "NAO_ORDENHADO" && (
-                              <input
+                              <Input
                                 className="leite-motivo-animal"
                                 aria-label={`Motivo de ${a.nome ? `${a.nome}, brinco ${a.brinco}` : `brinco ${a.brinco}`}`}
                                 placeholder="Por que não foi ordenhado?"
@@ -835,7 +836,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                 <label className="leite-correcao">
                   Motivo da alteração (correção, inclusão ou exclusão de
                   população guardada)
-                  <textarea
+                  <Textarea
                     value={motivo}
                     maxLength={500}
                     disabled={!podeEditar}

@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -22,7 +23,7 @@ const lista: ConsultaParcelas = {
 beforeEach(() => {
   sessionStorage.clear(); localStorage.clear();
   history.replaceState(null, "", "/pecuaria/rebanho/leite?leiteModo=geral&ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24");
-  vi.mocked(consultarParcelas).mockResolvedValue(lista);
+  vi.mocked(consultarParcelas).mockImplementation(async (_sitio, q) => ({ ...lista, pagina: Number(q.get("pagina")), porPagina: Number(q.get("porPagina")) }));
   vi.mocked(contextoParcelas).mockResolvedValue(contexto);
   HTMLElement.prototype.scrollIntoView = vi.fn();
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
@@ -38,7 +39,7 @@ it("abre na consulta, distingue zero de ausência e mantém o período ao abrir 
   await screen.findByLabelText("Data da ordenha");
   expect(new URLSearchParams(location.search).get("registroId")).toBe("s1");
   fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
-  await screen.findByText("Ordenhas registradas");
+  await screen.findByText("Histórico de ordenhas");
   expect(new URLSearchParams(location.search).get("ordenhasInicio")).toBe("2026-10-01");
 });
 it("régua não preenche litros e a mudança de data preserva o volume do rascunho", async () => {
@@ -100,4 +101,69 @@ it("encaminha sessão individual ao controle individual preservando data, ordenh
   expect(params.has("registroId")).toBe(false);
   expect(params.has("rascunhoOrdenha")).toBe(false);
   expect(contextoParcelas).not.toHaveBeenCalled();
+});
+
+function paginarFixtures(total = 30) {
+  vi.mocked(consultarParcelas).mockImplementation(async (_sitio, q) => {
+    const pagina = Number(q.get("pagina")), porPagina = Number(q.get("porPagina"));
+    const todos = Array.from({ length: total }, (_, i) => ({ ...lista.itens[0], id: `s${i + 1}`, nome: `Ordenha ${i + 1}` }));
+    return { ...lista, total, pagina, porPagina, itens: todos.slice((pagina - 1) * porPagina, pagina * porPagina) };
+  });
+}
+it("consulta seis por padrão e muda tamanho explicitamente sem perder filtros ou alternância", async () => {
+  paginarFixtures();
+  history.replaceState(null, "", "/pecuaria/leite?ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24&ordenhasBusca=manhã&ordenhasNatureza=COMERCIAL");
+  render(<OrdenhasGerais podeLancar={false} />);
+  await screen.findByText("1–6 de 30 ordenhas");
+  expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("porPagina")).toBe("6");
+  expect(screen.getAllByRole("listitem")).toHaveLength(6);
+  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  await screen.findByText("7–12 de 30 ordenhas");
+  await selecionarCampoLeite("Ordenhas por página", "12");
+  await screen.findByText("1–12 de 30 ordenhas");
+  const query = vi.mocked(consultarParcelas).mock.lastCall?.[1];
+  expect(query?.get("pagina")).toBe("1");
+  expect(query?.get("porPagina")).toBe("12");
+  expect(query?.get("busca")).toBe("manhã");
+  expect(query?.get("natureza")).toBe("COMERCIAL");
+  expect(new URLSearchParams(location.search).get("ordenhasTamanho")).toBe("12");
+  expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBeNull();
+  const chamadas = vi.mocked(consultarParcelas).mock.calls.length;
+  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
+  expect(screen.getByRole("table", { name: "Ordenhas registradas" })).toBeTruthy();
+  expect(vi.mocked(consultarParcelas)).toHaveBeenCalledTimes(chamadas);
+  expect(new URLSearchParams(location.search).get("ordenhasTamanho")).toBe("12");
+  fireEvent.click(screen.getByRole("button", { name: "Cartões" }));
+  expect(screen.getAllByRole("listitem")).toHaveLength(12);
+});
+it.each(["6", "12", "20", "0", "7", "abc"])("valida tamanho vindo da URL: %s", async tamanho => {
+  paginarFixtures();
+  history.replaceState(null, "", `/?ordenhasTamanho=${tamanho}`);
+  render(<OrdenhasGerais podeLancar={false} />);
+  await screen.findByRole("list", { name: "Ordenhas registradas" });
+  const esperado = ["6", "12", "20"].includes(tamanho) ? tamanho : "6";
+  expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("porPagina")).toBe(esperado);
+  expect(screen.getByRole("combobox", { name: "Ordenhas por página" }).textContent).toContain(esperado);
+});
+it("retoma página e tamanho ao abrir e voltar de um registro", async () => {
+  paginarFixtures();
+  history.replaceState(null, "", "/?leiteModo=geral&ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24&ordenhasTamanho=12&paginaOrdenhas=2");
+  render(<OrdenhasGerais podeLancar />);
+  await screen.findByText("13–24 de 30 ordenhas");
+  fireEvent.click(screen.getAllByRole("button", { name: "Editar registro" })[0]);
+  await screen.findByLabelText("Data da ordenha");
+  fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
+  await screen.findByText("13–24 de 30 ordenhas");
+  expect(new URLSearchParams(location.search).get("ordenhasTamanho")).toBe("12");
+  expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBe("2");
+  expect(new URLSearchParams(location.search).get("ordenhasInicio")).toBe("2026-10-01");
+});
+it("reconsulta a última página válida quando a página da URL excede os resultados", async () => {
+  paginarFixtures(13);
+  history.replaceState(null, "", "/?ordenhasTamanho=6&paginaOrdenhas=9");
+  render(<OrdenhasGerais podeLancar={false} />);
+  await screen.findByText("13–13 de 13 ordenhas");
+  expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBe("3");
+  expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("pagina")).toBe("3");
+  expect(screen.getAllByRole("listitem")).toHaveLength(1);
 });

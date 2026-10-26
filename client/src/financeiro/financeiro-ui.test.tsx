@@ -100,3 +100,31 @@ it("preserva totais explícitos e seus rótulos na tabela e no cartão, sem abri
   expect(cartao.textContent).toContain("SaldoR$ 500,00");
   expect(cartao.textContent).toContain("Valor restrito—");
 });
+
+it("honra a escolha explícita de tabela em um painel estreito sem alterar os registros", () => {
+  let avisar = () => {};
+  const observerOriginal = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    constructor(callback: () => void) { avisar = callback; }
+    observe() {} unobserve() {} disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  try {
+    const abrir = vi.fn();
+    const { container, rerender } = render(<TabelaFinanceira visualizacao="tabela" rotulo="Modo escolhido" itens={[{ id: "1", nome: "Aurora" }]} chaveDe={item => item.id} onAbrir={abrir} colunas={[
+      { chave: "nome", titulo: "Animal", principal: true, larguraMinima: 500, celula: item => item.nome },
+      { chave: "origem", titulo: "Origem", larguraMinima: 400, celula: () => "Sítio principal" },
+    ]} />);
+    const consulta = container.querySelector<HTMLElement>(".fin-consulta-responsiva")!;
+    Object.defineProperty(consulta, "clientWidth", { get: () => 700 });
+    act(() => avisar());
+    expect(consulta.dataset.finVisualizacao).toBe("tabela");
+    fireEvent.keyDown(container.querySelector("tbody tr")!, { key: "Enter" });
+    expect(abrir).toHaveBeenCalledWith({ id: "1", nome: "Aurora" });
+    rerender(<TabelaFinanceira rotulo="Modo automático" itens={[{ id: "1", nome: "Aurora" }]} chaveDe={item => item.id} colunas={[
+      { chave: "nome", titulo: "Animal", principal: true, larguraMinima: 500, celula: item => item.nome },
+      { chave: "origem", titulo: "Origem", larguraMinima: 400, celula: () => "Sítio principal" },
+    ]} />);
+    act(() => avisar());
+    expect(consulta.dataset.finVisualizacao).toBe("cartoes");
+  } finally { globalThis.ResizeObserver = observerOriginal; }
+});

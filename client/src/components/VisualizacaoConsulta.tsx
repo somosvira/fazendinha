@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { CalendarDays, LayoutGrid, List } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import "./visualizacao-consulta.css";
 
 export type ModoConsulta = "visual" | "tabela";
@@ -24,5 +25,12 @@ export function useVisualizacaoConsulta(chave: string, dominio = "consultas") {
 }
 export function AlternarVisualizacaoConsulta({ modo, mudar, visual = "Cartões", rotulo }: { modo: ModoConsulta; mudar: (v: ModoConsulta) => void; visual?: "Cartões" | "Semana" | "Calendário" | "Linha do tempo" | "Prazos"; rotulo: string }) {
   const Icone = visual !== "Cartões" ? CalendarDays : LayoutGrid;
-  return <div role="group" aria-label={rotulo} className="consulta-visual-alternador"><button type="button" aria-pressed={modo === "visual"} onClick={() => mudar("visual")}><Icone size={16} aria-hidden />{visual}</button><button type="button" aria-pressed={modo === "tabela"} onClick={() => mudar("tabela")}><List size={16} aria-hidden />Tabela</button></div>;
+  return <ToggleGroup type="multiple" role="group" value={[modo]} onValueChange={valores => {
+    // Um modo sempre permanece selecionado; o grupo mantém a navegação por setas.
+    const proximo = valores.find(valor => valor !== modo);
+    if (proximo === "visual" || proximo === "tabela") mudar(proximo);
+  }} aria-label={rotulo} className="consulta-visual-alternador">
+    <ToggleGroupItem value="visual"><Icone size={16} aria-hidden />{visual}</ToggleGroupItem>
+    <ToggleGroupItem value="tabela"><List size={16} aria-hidden />Tabela</ToggleGroupItem>
+  </ToggleGroup>;
 }

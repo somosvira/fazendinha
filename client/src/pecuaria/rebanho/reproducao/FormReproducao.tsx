@@ -1,3 +1,7 @@
+import { Button } from "../../../components/ui/button";
+import { DatePicker } from "../../../components/DatePicker";
+import { Input } from "../../../components/ui/input";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { getUsuario } from "../../../lib/auth";
 import { podeAcessarArea } from "../../../estoque/navegacao";
@@ -7,7 +11,7 @@ import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposEx
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
   CampoFormulario,
   classeInput,
@@ -216,8 +220,8 @@ export function FormReproducao({
     inputType = "text",
   ) => (
     <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required}>
-      {(p) => (
-        <input
+      {(p) => inputType === "date" ? <DatePicker {...p} value={valor} onChange={setter} required={required}/> : (
+        <Input
           {...p}
           className={classeInput}
           value={valor}
@@ -239,11 +243,12 @@ export function FormReproducao({
   ) => (
     <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required}>
       {(p) => (
-        <select
+        <SelectCampo
+          key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
           {...p}
           className={classeInput}
           value={valor}
-          onChange={(e) => setter(e.target.value)}
+          onValueChange={valor => setter(valor)}
           required={required}
         >
           <option value="">Selecione</option>
@@ -252,7 +257,7 @@ export function FormReproducao({
               {r}
             </option>
           ))}
-        </select>
+        </SelectCampo>
       )}
     </CampoFormulario>
   );
@@ -363,7 +368,7 @@ export function FormReproducao({
       bloqueado={ocupado}
       rodape={
         <>
-          <Button secondary disabled={ocupado} onClick={onFechar}>
+          <Button variant="outline" disabled={ocupado} onClick={onFechar}>
             Cancelar
           </Button>
           <Button
@@ -534,7 +539,7 @@ export function FormReproducao({
               )}
             <p className="text-xs text-ink-3">A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente.</p>
             {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
-              {p => <><input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
+              {p => <><Input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
                 <small>Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.</small></>}
             </CampoFormulario>}
             {campo("responsavel", "Responsável", responsavel, setResponsavel)}

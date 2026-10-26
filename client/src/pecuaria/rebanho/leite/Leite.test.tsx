@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -423,4 +424,27 @@ it("identifica finalidade pendente preservando litros e modo consulta", async ()
   await screen.findByText("Finalidade histórica a conciliar; litros registrados preservados");
   expect(screen.getAllByText("12 L").length).toBeGreaterThan(0);
   expect(screen.queryByRole("button", { name: "Salvar ordenha" })).toBeNull();
+});
+it("situação no seletor compartilhado conserva motivo e rascunho após falha do salvamento individual", async () => {
+  vi.mocked(salvarFolha).mockRejectedValue(new Error("Falha na gravação individual"));
+  render(<Leite podeLancar />);
+  await screen.findByLabelText("Litros de Aurora, brinco 123");
+  await selecionarCampoLeite("Situação de Aurora, brinco 123", "NAO_ORDENHADO");
+  expect((screen.getByLabelText("Litros de Aurora, brinco 123") as HTMLInputElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Motivo de Aurora, brinco 123"), { target: { value: "Animal em descanso" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar animal · Aurora" }));
+  await screen.findByText(/Falha na gravação individual/);
+  expect(vi.mocked(salvarFolha).mock.calls[0][0].medicoes).toEqual([expect.objectContaining({ animalId: "a", estado: "NAO_ORDENHADO", litros: null, motivo: "Animal em descanso" })]);
+  expect((screen.getByLabelText("Motivo de Aurora, brinco 123") as HTMLInputElement).value).toBe("Animal em descanso");
+  expect(sessionStorage.getItem("terrano:leite:1:2026-10-19")).toContain("Animal em descanso");
+});
+it("seletor de situação mantém zero medido distinto de pendente", async () => {
+  render(<Leite podeLancar />);
+  await screen.findByLabelText("Litros de Aurora, brinco 123");
+  await selecionarCampoLeite("Situação de Aurora, brinco 123", "MEDIDO");
+  expect((screen.getByLabelText("Litros de Aurora, brinco 123") as HTMLInputElement).value).toBe("0");
+  expect(screen.getByRole("combobox", { name: "Situação de Aurora, brinco 123" }).textContent).toContain("0 litro medido");
+  await selecionarCampoLeite("Situação de Aurora, brinco 123", "PENDENTE");
+  expect((screen.getByLabelText("Litros de Aurora, brinco 123") as HTMLInputElement).value).toBe("");
+  expect(screen.getByRole("combobox", { name: "Situação de Aurora, brinco 123" }).textContent).toContain("Pendente");
 });

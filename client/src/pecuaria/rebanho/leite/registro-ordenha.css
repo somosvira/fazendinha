@@ -14,3 +14,23 @@
 .leite-registro-origens label,.leite-registro-check { display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; }
 .leite-registro-origens input,.leite-registro-check input { width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; }
 @media(max-width:900px) { .leite-registro-campos { grid-template-columns:1fr; } .leite-registro-corpo { padding:16px; } .leite-registro-rodape > button { flex:1; } }
+
+.leite-registro-corpo { gap: 20px; padding: 16px 0 0; }
+.leite-registro-campos { gap: 12px; }
+.leite-registro-natureza { gap: 12px; }
+.leite-registro-natureza h3 { font-size: 16px; }
+.leite-registro-parcela { gap: 12px; }
+.leite-registro-rodape { position: sticky; bottom: 12px; z-index: 2; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 6px 18px #203c3910; }
+@media(min-width: 1000px) { .leite-registro-campos { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
+@media(max-width: 640px) { .leite-registro-corpo { padding: 12px 0 0; } .leite-registro-rodape { bottom: 8px; padding: 10px; } }
+.leite-registro-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(230px, 1fr); gap: 28px; align-items: start; }
+.leite-registro-parcelas { display: grid; gap: 20px; min-width: 0; }
+.leite-registro-conferencia { min-width: 0; border-left: 1px solid var(--border); padding-left: 26px; }
+.leite-registro-conferencia h3 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+.leite-registro-conferencia .leite-registro-total { padding: 12px 0; border-top: 0; border-bottom: 1px solid var(--border); }
+.leite-registro-conferencia dl { margin: 0; font-size: 13px; }
+.leite-registro-conferencia dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.leite-registro-conferencia dt { color: var(--muted-foreground); }
+.leite-registro-conferencia dd { margin: 0; font-weight: 600; text-align: right; }
+.leite-registro-conferencia p { font-size: 13px; line-height: 1.65; color: var(--muted-foreground); margin: 18px 0 0; }
+@media(max-width: 1100px) { .leite-registro-layout { grid-template-columns: minmax(0,1fr); gap: 20px; } .leite-registro-conferencia { border-left: 0; border-top: 1px solid var(--border); padding: 20px 0 0; } }

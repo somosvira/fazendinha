@@ -1,6 +1,7 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CabecalhoTabela, Paginacao, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao, Pill } from "../../../financeiro/financeiro-ui";
 import { obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { OperacoesComerciaisLeite } from "./OperacoesComerciaisLeite";
@@ -51,7 +52,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
     {aviso && <p role="status">{aviso}</p>}
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : <>
       {!dados.itens.length && <p>Nenhuma venda encontrada neste recorte.</p>}
-      <TabelaFinanceira rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <ListaConsultaLeite preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },

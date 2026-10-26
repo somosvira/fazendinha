@@ -1,3 +1,5 @@
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { useId, useState } from "react";
 import { PainelCadastro, classeInput } from "@/financeiro/PainelCadastro";
 import { Button } from "@/components/ui/button";
@@ -120,7 +122,7 @@ export function ConfiguracaoTanques({
           <div className="leite-ajuste-grade">
             <label>
               Nome do tanque
-              <input
+              <Input
                 className={classeInput}
                 required
                 maxLength={100}
@@ -130,7 +132,7 @@ export function ConfiguracaoTanques({
             </label>
             <label>
               Capacidade (L)
-              <input
+              <Input
                 className={classeInput}
                 required
                 inputMode="decimal"
@@ -153,7 +155,7 @@ export function ConfiguracaoTanques({
           <div className="leite-ajuste-grade">
             <label>
               Fabricante
-              <input
+              <Input
                 className={classeInput}
                 maxLength={100}
                 value={fabricante}
@@ -162,7 +164,7 @@ export function ConfiguracaoTanques({
             </label>
             <label>
               Modelo
-              <input
+              <Input
                 className={classeInput}
                 maxLength={100}
                 value={modelo}
@@ -171,7 +173,7 @@ export function ConfiguracaoTanques({
             </label>
             <label>
               Número de série ou ordem
-              <input
+              <Input
                 className={classeInput}
                 maxLength={100}
                 value={serie}
@@ -180,7 +182,7 @@ export function ConfiguracaoTanques({
             </label>
           </div>
           <label>
-            <input
+            <Input
               type="checkbox"
               checked={ativo}
               onChange={(e) => setAtivo(e.target.checked)}
@@ -190,7 +192,7 @@ export function ConfiguracaoTanques({
           <h3 className="leite-ajuste-divisao">Conversão da régua</h3>
           <label>
             Referência da tabela
-            <input
+            <Input
               className={classeInput}
               maxLength={1000}
               value={referencia}
@@ -199,7 +201,7 @@ export function ConfiguracaoTanques({
           </label>
           <label>
             Tabela de conversão — milímetros;litros
-            <textarea
+            <Textarea
               className={classeInput}
               rows={7}
               value={tabela}

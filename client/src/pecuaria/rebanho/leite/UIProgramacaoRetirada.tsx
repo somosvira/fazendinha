@@ -1,3 +1,5 @@
+import { DatePicker } from "@/components/DatePicker";
+import { Input } from "@/components/ui/input";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -86,11 +88,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
       <div className="leite-form-inline">
         <label>
           Data de referência
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-          />
+          <DatePicker aria-label="Data de referência" value={data} onChange={setData} />
         </label>
         <Button variant="outline" className="leite-secondary"
           disabled={carregando}
@@ -362,13 +360,7 @@ function ConfigurarRetirada({
           <fieldset disabled={salvando}>
             <label>
               Vigente desde
-              <input
-                type="date"
-                required
-                min={minima}
-                value={vigencia}
-                onChange={(e) => setVigencia(e.target.value)}
-              />
+              <DatePicker aria-label="Vigente desde" required min={minima} disabled={salvando} value={vigencia} onChange={setVigencia} />
             </label>
             <label>
               Frequência da coleta
@@ -410,7 +402,7 @@ function ConfigurarRetirada({
                       gap: 10,
                     }}
                   >
-                    <input
+                    <Input
                       style={{ width: 20, minHeight: 20 }}
                       type="checkbox"
                       checked={dias.includes(i)}
@@ -456,7 +448,7 @@ function ConfigurarRetirada({
                 )}
                 <label>
                   Meta de litros
-                  <input
+                  <Input
                     inputMode="decimal"
                     required
                     value={meta}

@@ -1,10 +1,14 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
+import { Button } from "../../../components/ui/button";
+import { LinkReproducao } from "./ConsultaReproducaoUI";
+import { CalendarioAgenda } from "./CalendarioAgenda";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { horarioIatf, inputHorarioIatf } from "./CampoDataIatf";
 import { useEffect, useState } from "react";
-import { Button, dataBR, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { dataBR, Empty, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import {
   DateRangePicker,
   dateFromIso,
@@ -37,6 +41,7 @@ export function AcompanhamentoReprodutivo({
   propriedadeId?: number;
   podeLancar?: boolean;
 }) {
+  const visual = useVisualizacaoConsulta("visualAgendaReproducao", "reproducao");
   const [dados, setDados] = useState<SugestoesVisita | null>(null),
     [erro, setErro] = useState<string | null>(null),
     [carregando, setCarregando] = useState(true);
@@ -148,18 +153,18 @@ export function AcompanhamentoReprodutivo({
     });
   const totalPaginas = Math.max(1, Math.ceil(retornos.length / 10)),
     atual = Math.min(pagina, totalPaginas);
-  function abrir(r: NonNullable<SugestoesVisita["retornos"]>[number]) {
+  function destino(r: NonNullable<SugestoesVisita["retornos"]>[number]) {
+    const retorno = new URL(window.location.href);
+    for (const [chave, valor] of Object.entries({ agendaInicio: inicio, agendaFim: fim, agendaOrdem: crescente ? "" : "desc", agendaPagina: pagina > 1 ? String(pagina) : "" })) valor ? retorno.searchParams.set(chave, valor) : retorno.searchParams.delete(chave);
     const sitio = propriedadeId != null ? `&sitio=${propriedadeId}` : "";
-    navegarPara(
-      r.programacaoId
-        ? `/pecuaria/reproducao/programacoes/${encodeURIComponent(r.programacaoId)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}${sitio}`
+    return r.programacaoId
+        ? `/pecuaria/reproducao/programacoes/${encodeURIComponent(r.programacaoId)}?retorno=${encodeURIComponent(retorno.pathname + retorno.search + retorno.hash)}${sitio}`
         : r.origem === "PREVISAO_PARTO" && !podeLancar
           ? `/pecuaria/rebanho/animais/${r.animalId}#reproducao`
-          : `/pecuaria/reproducao?animalId=${encodeURIComponent(r.animalId)}${r.origem === "PREVISAO_PARTO" ? "&acao=parto" : r.origemConsultavel !== false && r.origemId ? `&fatoId=${encodeURIComponent(r.origemId)}` : ""}${sitio}`,
-    );
+          : `/pecuaria/reproducao?animalId=${encodeURIComponent(r.animalId)}${r.origem === "PREVISAO_PARTO" ? "&acao=parto" : r.origemConsultavel !== false && r.origemId ? `&fatoId=${encodeURIComponent(r.origemId)}` : ""}${sitio}`;
   }
   return (
-    <Panel>
+    <Panel className="repro-agenda-superficie">
 
       <div className="p-4 space-y-4">
         <p className="text-sm text-ink-3">
@@ -182,7 +187,7 @@ export function AcompanhamentoReprodutivo({
             }}
           />
           <Button
-            secondary
+            variant="outline"
             onClick={() => {
               setCrescente((v) => !v);
               setPagina(1);
@@ -192,7 +197,7 @@ export function AcompanhamentoReprodutivo({
           </Button>
           {(inicio || fim) && (
             <Button
-              secondary
+              variant="outline"
               onClick={() => {
                 setInicio("");
                 setFim("");
@@ -212,14 +217,18 @@ export function AcompanhamentoReprodutivo({
           }
         />
         {erro && (
-          <Button secondary onClick={() => setRevisao((v) => v + 1)}>
+          <Button variant="outline" onClick={() => setRevisao((v) => v + 1)}>
             Tentar novamente
           </Button>
         )}
         {carregando && <p role="status">Carregando acompanhamento…</p>}
         {!carregando && !erro && dados && (
           <>
-            <TabelaFinanceira filtrosColunas={consulta.colunas}
+            <div className="repro-consulta-titulo"><div><h2>Próximas atividades <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
+            {visual.modo === "visual" ? <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades"><ol className="repro-agenda-lista">{retornos.slice((atual - 1) * 10, atual * 10).map(r => {
+              const a = animais.find(a => a.animalId === r.animalId);
+              return <li key={`${r.animalId}:${r.origem}:${r.origemId}`}><time>{r.status === "PREVISAO_PENDENTE" ? "Previsão a definir" : r.data ? r.origem === "TAREFA_IATF" ? horarioIatf(r.data, r.precisaoTemporal) : dataBR(r.data) : "Sem data informada"}</time><div><h3>{origens[r.origem] ?? "Acompanhamento"}</h3><p>{a ? `${a.brinco ?? "Sem brinco"}${a.nome ? ` · ${a.nome}` : ""}` : "Animal não identificado"}</p><Pill tone={r.status === "ATRASADO" ? "red" : "amber"}>{situacoes[r.status] ?? "A conferir"}</Pill></div><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Ver ação</LinkReproducao></li>;
+            })}</ol></section><CalendarioAgenda itens={retornos} dataDe={referenciaRetorno} chaveDe={r => `${r.animalId}:${r.origem}:${r.origemId}`} render={r => <div><strong>{origens[r.origem] ?? "Acompanhamento"}</strong><p>{animais.find(a => a.animalId === r.animalId)?.brinco ?? "Animal não identificado"}</p><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Abrir origem</LinkReproducao></div>}/></div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}
               rotulo="Agenda reprodutiva"
               itens={retornos.slice((atual - 1) * 10, atual * 10)}
               chaveDe={(r) => `${r.animalId}:${r.origem}:${r.origemId}`}
@@ -268,13 +277,11 @@ export function AcompanhamentoReprodutivo({
                   acoes: true,
                   larguraMinima: 130,
                   celula: (r) => (
-                    <Button secondary onClick={() => abrir(r)}>
-                      Ver ação
-                    </Button>
+                    <LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Ver ação</LinkReproducao>
                   ),
                 },
               ]}
-            />
+            />}
             {!retornos.length && (
               <Empty>
                 Nenhum retorno ou previsão com os critérios atuais. Ajuste o
@@ -293,7 +300,7 @@ export function AcompanhamentoReprodutivo({
           </>
         )}
         {podeLancar && (
-          <Button secondary onClick={() => navegarPara("/pecuaria/visitas")}>
+          <Button variant="outline" onClick={() => navegarPara("/pecuaria/visitas")}>
             Preparar ou retomar visita
           </Button>
         )}

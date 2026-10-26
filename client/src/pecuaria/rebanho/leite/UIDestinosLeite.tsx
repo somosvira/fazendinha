@@ -1,9 +1,10 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
 import { Button } from "@/components/ui/button";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useEffect, useRef, useState } from "react";
@@ -133,7 +134,7 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <PageHeader titulo="Destinos internos" descricao="Fornecimentos com origem e volume por animal." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar fornecimento</Button> : undefined} />
+      <CabecalhoTabela titulo="Destinos internos" descricao="Fornecimentos com origem e volume por animal." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar fornecimento</Button> : undefined} />
       {podeLancar && novo ? (
         <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
           <label>
@@ -173,7 +174,7 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <TabelaFinanceira compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
             { chave: "natureza", titulo: "Natureza", celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },

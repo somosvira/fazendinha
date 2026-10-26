@@ -1,11 +1,10 @@
+import { Button } from "../../../components/ui/button";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useEffect, useState } from "react";
 import { Button as BotaoAcao } from "../../../components/ui/button";
-import { CalendarDays, HeartPulse, Users, Weight } from "lucide-react";
+import "./reproducao-consultas.css";
 import {
-  Button,
   ErrorBox,
-  Metric,
   Modal,
   Pill,
   TabelaFinanceira,
@@ -173,7 +172,7 @@ export function DetalheParto({
     return (
       <div className="space-y-4">
         <ErrorBox erro={erro} />
-        <Button secondary onClick={() => setRevisao((v) => v + 1)}>
+        <Button variant="outline" onClick={() => setRevisao((v) => v + 1)}>
           Tentar novamente
         </Button>
       </div>
@@ -206,8 +205,8 @@ export function DetalheParto({
     ),
   ];
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap justify-between items-center gap-3">
+    <div className="repro-parto-detalhe">
+      <div className="repro-parto-identidade flex flex-wrap justify-between items-center gap-3">
         <div>
           <h2 className="text-2xl font-semibold">Parto de {p.matriz.brinco}</h2>
           <p className="mt-2 text-sm text-ink-3">
@@ -219,108 +218,38 @@ export function DetalheParto({
           </p>
         </div>
         <Button
-          secondary
+          variant="outline"
           onClick={() =>
-            navegarPara(`/pecuaria/rebanho/animais/${p.matriz.id}#reproducao`)
+            navegarPara(`/pecuaria/rebanho/animais/${p.matriz.id}?sitio=${propriedadeId}#reproducao`)
           }
         >
           Ver ficha da matriz
         </Button>
       </div>
       {podeEditar && <div className="flex flex-wrap gap-3">
-        <Button secondary onClick={() => {setComplemento(undefined);setAcao("corrigir");}}>Corrigir / completar parto</Button>
-        <Button danger onClick={() => setAcao("anular")}>Conferir anulação</Button>
+        <Button variant="outline" onClick={() => {setComplemento(undefined);setAcao("corrigir");}}>Corrigir / completar parto</Button>
       </div>}
       {p.status !== "VALIDO" && (
         <Pill tone="amber">Registro anulado · preservado no histórico</Pill>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric
-          icon={CalendarDays}
-          label="Desfecho"
-          valor={texto(p.desfecho)}
-          detalhe={texto(p.tipo)}
-        />
-        <Metric
-          icon={Users}
-          label="Crias"
-          valor={String(p.crias.length)}
-          detalhe={`${p.crias.filter((c) => c.viva).length} vivas`}
-        />
-        <Metric
-          icon={HeartPulse}
-          label="Retenção de placenta"
-          valor={texto(p.retencaoPlacenta)}
-        />
-        <Metric
-          icon={Weight}
-          label="Dificuldade"
-          valor={texto(p.dificuldade)}
-          detalhe={p.assistenciaDescricao ?? "Assistência não informada"}
-        />
-      </div>
-      <SecaoFicha
-        titulo="Crias"
-        resumo="Identificação e situação de cada cria"
-      >
-        <Lista
-          rotulo="Crias do parto"
-          itens={p.crias}
-          colunas={[
-            {
-              chave: "cria",
-              titulo: "Cria",
-              principal: true,
-              celula: c => c.animalId ? <IdentificacaoReproducao id={c.animalId} brinco={texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)} sitio={propriedadeId}/> : <BotaoAcao variant="ghost" onClick={()=>setCriaAberta(c)}>{texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)}</BotaoAcao>,
-            },
-            { chave: "sexo", titulo: "Sexo", celula: (c) => texto(c.sexo) },
-            {
-              chave: "situacao",
-              titulo: "Situação",
-              celula: (c) => (
-                <Pill tone={c.viva ? "green" : "neutral"}>
-                  {c.viva ? "Viva" : "Sem vida"}
-                </Pill>
-              ),
-            },
-            {
-              chave: "mae",
-              titulo: "Mãe genética",
-              celula: (c) => c.filiacao?.mae ?? "Não informada",
-            },
-            {
-              chave: "pai",
-              titulo: "Pai",
-              celula: (c) => c.filiacao?.pai ?? "Não informado",
-            },
-            {
-              chave: "receptora",
-              titulo: "Receptora",
-              celula: (c) => c.filiacao?.receptora ?? "Não informada",
-            },
-            {
-              chave: "peso",
-              titulo: "Peso ao nascer",
-              celula: (c) =>
-                registro(c.filiacaoSnapshot).pesoKg == null
-                  ? "Não informado"
-                  : `${texto(registro(c.filiacaoSnapshot).pesoKg)} kg`,
-            },
-            {
-              chave: "acao",
-              titulo: "Ação",
-              acoes: true,
-              celula: (c) => <div className="flex flex-wrap gap-3">
-                {c.animalId ? <Button secondary onClick={() => navegarPara(`/pecuaria/rebanho/animais/${c.animalId}`)}>Ver ficha</Button> : <span>Sem cadastro de animal</span>}
-                {podeEditar && c.viva && <BotaoAcao variant="outline" aria-label={`Gerenciar colostro da cria ${c.ordem}`} onClick={() => setCriaColostro(c.id)}>Colostro</BotaoAcao>}
-              </div>,
-            },
-          ]}
-        />
+      <section className="repro-parto-clinica" aria-label="Desfecho e assistência"><h2>Desfecho e assistência</h2><dl className="repro-dados-grade">
+        <div><dt>Desfecho</dt><dd>{texto(p.desfecho)} · {texto(p.tipo)}</dd></div>
+        <div><dt>Crias</dt><dd>{p.crias.length} · {p.crias.filter(c => c.viva).length} vivas</dd></div>
+        <div><dt>Retenção de placenta</dt><dd>{texto(p.retencaoPlacenta)}</dd></div>
+        <div><dt>Dificuldade</dt><dd>{texto(p.dificuldade)}</dd></div>
+        <div><dt>Assistência</dt><dd>{p.assistenciaDescricao ?? "Não informada"}</dd></div>
+      </dl></section>
+      <SecaoFicha className="repro-parto-crias" titulo="Crias e colostro" resumo="Identificação, filiação e situação de cada cria">
+        <div className="repro-crias-grade">{p.crias.map(c => <article className="repro-cria" key={c.id}>
+          <header><h3>{c.animalId ? <IdentificacaoReproducao id={c.animalId} brinco={texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)} sitio={propriedadeId}/> : <BotaoAcao variant="ghost" onClick={() => setCriaAberta(c)}>{texto(registro(c.filiacaoSnapshot).brincoInformado ?? `Cria ${c.ordem}`)}</BotaoAcao>}</h3><Pill tone={c.viva ? "green" : "neutral"}>{c.viva ? "Viva" : "Sem vida"}</Pill></header>
+          <dl className="repro-dados-grade"><div><dt>Sexo</dt><dd>{texto(c.sexo)}</dd></div><div><dt>Peso ao nascer</dt><dd>{registro(c.filiacaoSnapshot).pesoKg == null ? "Não informado" : `${texto(registro(c.filiacaoSnapshot).pesoKg)} kg`}</dd></div><div><dt>Mãe genética</dt><dd>{c.filiacao?.mae ?? "Não informada"}</dd></div><div><dt>Pai</dt><dd>{c.filiacao?.pai ?? "Não informado"}</dd></div><div><dt>Receptora</dt><dd>{c.filiacao?.receptora ?? "Não informada"}</dd></div><div><dt>Colostro</dt><dd>{c.colostro.length ? `${c.colostro.length} fornecimento${c.colostro.length === 1 ? "" : "s"} registrado${c.colostro.length === 1 ? "" : "s"}` : "Nenhum fornecimento informado"}</dd></div></dl>
+          <footer>{c.animalId ? <LinkReproducao botao href={`/pecuaria/rebanho/animais/${c.animalId}`} sitio={propriedadeId}>Ver ficha</LinkReproducao> : <span>Sem cadastro de animal</span>}{podeEditar && c.viva && <BotaoAcao variant="outline" aria-label={`Gerenciar colostro da cria ${c.ordem}`} onClick={() => setCriaColostro(c.id)}>Colostro</BotaoAcao>}</footer>
+        </article>)}</div>{!p.crias.length && <p>Nenhuma cria informada.</p>}
       </SecaoFicha>
+      <div className="repro-parto-grade">
       <SecaoFicha
         titulo="Pesos vinculados"
-        acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("peso");setAcao("corrigir");}}>Registrar pesagem da matriz</Button> : undefined}
+        acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("peso");setAcao("corrigir");}}>Registrar pesagem da matriz</Button> : undefined}
         resumo="Pesagens da matriz e das crias associadas ao parto"
       >
         <Lista
@@ -445,7 +374,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar avaliação de escore</Button> : undefined}>
+      <SecaoFicha titulo="Avaliações pós-parto" acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("escore");setAcao("corrigir");}}>Registrar avaliação de escore</Button> : undefined}>
         <Lista
           rotulo="Avaliações vinculadas ao parto"
           itens={p.acompanhamentos ?? []}
@@ -475,7 +404,7 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
-      <SecaoFicha titulo="Retenção de placenta" acoes={podeEditar ? <Button secondary onClick={()=>{setComplemento("retencao");setAcao("corrigir");}}>Completar retenção de placenta</Button> : undefined}>
+      <SecaoFicha titulo="Retenção de placenta" acoes={podeEditar ? <Button variant="outline" onClick={()=>{setComplemento("retencao");setAcao("corrigir");}}>Completar retenção de placenta</Button> : undefined}>
         <Lista
           rotulo="Ocorrências pós-parto"
           itens={p.ocorrenciasRetencaoPlacenta}
@@ -494,13 +423,14 @@ export function DetalheParto({
           ]}
         />
       </SecaoFicha>
+      </div>
       {podeEditar && acao === "corrigir" && <CorrigirFato complementoInicial={complemento} tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="Registro do parto" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
       {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="Parto e pós-parto" onClose={() => setCriaColostro(null)}>
         <div className="p-5"><ColostroCria key={criaSelecionada.id} criaId={criaSelecionada.id} propriedadeId={propriedadeId} dataParto={p.data} podeLancar={podeLancar} onMudou={atualizar}/></div>
       </Modal>}
-      <SecaoRecolhivel titulo="Autoria e observações" abertaInicial={false}>
+      <SecaoRecolhivel titulo="Autoria e observações" abertaInicial={false} acoes={podeEditar ? <Button variant="ghost" onClick={() => setAcao("anular")}>Conferir anulação</Button> : undefined}>
         <dl className="grid gap-3 sm:grid-cols-2">
           <div>
             <dt>Responsável pelo parto</dt>

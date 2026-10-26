@@ -1,10 +1,11 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import "./consultas-leite.css";
 import { useEffect, useRef, useState } from "react";
@@ -511,13 +512,13 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
   const [selecionado, setSelecionado] = useState<ItemResumoEstoque | null>(null);
   const [confirmacao, setConfirmacao] = useState(false);
   useEffect(() => { let ativo = true; setDados(null); setErro(""); void consultarLeite<ResumoEstoque>(`/estoque/resumo?${new URLSearchParams({ busca, pagina: String(pagina), porPagina: "20" })}`, sitio).then(r => { if (ativo) setDados(r); }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar o estoque."); }); return () => { ativo = false; }; }, [sitio, busca, pagina, revisao]);
-  return <section className="leite-operacoes leite-consultas"><PageHeader titulo="Estoque de leite" descricao="Saldo das origens confirmadas, por produto." acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}>Confirmar produção individual</Button> : undefined} />
+  return <section className="leite-operacoes leite-consultas"><CabecalhoTabela titulo="Estoque de leite" descricao="Saldo das origens confirmadas, por produto." acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}>Confirmar produção individual</Button> : undefined} />
     <BarraConsulta><BuscaLista rotulo="Buscar produto" placeholder="Buscar produto de leite" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <dl className="leite-consulta-resumo"><div><dt>Saldo físico</dt><dd>{litrosResumo(dados.resumo.quantidadeLitros)}</dd></div><div><dt>Comercial</dt><dd>{litrosResumo(dados.resumo.comercial.quantidadeLitros)}</dd></div><div><dt>Descarte</dt><dd>{litrosResumo(dados.resumo.descarteLitros)}</dd></div><div><dt>Colostro</dt><dd>{litrosResumo(dados.resumo.colostroLitros)}</dd></div></dl>
       <p className="leite-consulta-nota">Classificação pendente: {litrosResumo(dados.resumo.classificacaoPendenteLitros ?? null)} · Custo pendente: {dados.resumo.estadoValor === "OCULTO" ? "Restrito" : litrosResumo(dados.resumo.custoPendenteLitros ?? null)}</p>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <TabelaFinanceira rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },
