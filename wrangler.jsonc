@@ -40,6 +40,11 @@
   // perder isso a cada deploy quebraria a produção silenciosamente.
   "keep_vars": true,
 
+  "env": {
+    "staging": { "name": "fazendinha-stg" },
+    "producao": { "name": "fazendinha-producao" }
+  },
+
   "observability": {
     "enabled": true
   }
