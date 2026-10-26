@@ -119,10 +119,12 @@ export async function abrirContexto(modo: ModoSeed = 'executar', interromperApos
     const aplicadas = new Map(ativas.map(m => [m.migration_name, m]));
     if (ativas.length !== pastas.length || pastas.some(pasta => {
       const migration = aplicadas.get(pasta);
-      return !migration || migration.checksum !== checksums.get(pasta) || !migration.finished_at;
+      return !migration?.finished_at || migration.checksum !== checksums.get(pasta);
     })) throw new Error('Baseline aplicada ausente, divergente ou incompleta.');
+    const baselineAplicada = aplicadas.get(nome);
+    if (!baselineAplicada?.finished_at) throw new Error('Baseline aplicada ausente, divergente ou incompleta.');
     const db = await cliente.query<{ identidade: string }>("SELECT oid::text || ':' || current_database() AS identidade FROM pg_database WHERE datname=current_database()");
-    const identidade = `${url.hostname}:${url.port || '5432'}:${db.rows[0].identidade}:${ativas[0].finished_at.toISOString()}`;
+    const identidade = `${url.hostname}:${url.port || '5432'}:${db.rows[0].identidade}:${baselineAplicada.finished_at.toISOString()}`;
     let manifesto: Manifesto;
     try { manifesto = schemaManifesto.parse(JSON.parse(await readFile(`${diretorio}/manifesto.json`, 'utf8'))); }
     catch (erro) {
