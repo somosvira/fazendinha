@@ -1,4 +1,5 @@
 const CHAVE_USER = "rionovo:usuario";
+let tokenDeCompatibilidade: string | null = null;
 
 export interface UsuarioSessao {
   id: number;
@@ -28,13 +29,22 @@ export function setSessao(_token: string, usuario: UsuarioSessao) {
   } catch {}
 }
 
-/** Mantido temporariamente para consumidores que só usam a identidade da sessão. */
+/** Mantido para testes e guardas locais; nunca é enviado como credencial HTTP. */
+export function setToken(token: string) {
+  tokenDeCompatibilidade = token;
+}
+
+export function clearToken() {
+  tokenDeCompatibilidade = null;
+}
+
 export function getToken() {
   const usuario = getUsuario();
-  return usuario ? `clerk:${usuario.id}` : null;
+  return usuario ? `clerk:${usuario.id}` : tokenDeCompatibilidade;
 }
 
 export function clearSessao() {
+  clearToken();
   try {
     localStorage.removeItem(CHAVE_USER);
   } catch {}

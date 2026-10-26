@@ -11,7 +11,9 @@ describe("instalação do estado final na baseline unificada", () => {
   });
 
   it("mantém uma cadeia única e não transporta histórico Prisma ou dados operacionais", () => {
-    expect(readdirSync(new URL("../../prisma/migrations/", import.meta.url)).filter(n => /^\d+_/.test(n))).toEqual(["20261025000000_base_unificada"]);
+    const migrations = readdirSync(new URL("../../prisma/migrations/", import.meta.url)).filter(n => /^\d+_/.test(n));
+    expect(migrations.filter(n => n.endsWith("_base_unificada"))).toEqual(["20261025000000_base_unificada"]);
+    expect(migrations).toContain("20261026000000_add_clerk_user_id");
     expect(sql).not.toMatch(/_prisma_migrations|OWNER TO|GRANT |REVOKE |^COPY |^UPDATE |^DELETE FROM|^TRUNCATE /m);
     const catalogos = [...sql.matchAll(/^INSERT INTO (.+?) \(/gm)].map(m => m[1]);
     expect(catalogos).toEqual(['"pecuaria"."CategoriaAnimal"', 'pecuaria."TipoAplicacaoSanitaria"', '"public"."Categoria"', 'pecuaria."TipoExame"', 'pecuaria."TipoExame"']);
