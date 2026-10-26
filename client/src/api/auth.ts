@@ -11,11 +11,6 @@ async function ler<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function login(email: string, senha: string) {
-  const res = await fetch("/api/auth/login", { method: "POST", headers: JSON_H, body: JSON.stringify({ email, senha }) });
-  return ler<{ token: string; usuario: UsuarioSessao }>(res);
-}
-
 export async function logout(): Promise<void> {
   await fetch("/api/auth/logout", { method: "POST", headers: comPropriedade() }).catch(() => {});
 }
@@ -27,35 +22,6 @@ export async function fetchMe(): Promise<UsuarioSessao | null> {
   return body.usuario;
 }
 
-export async function validarConvite(token: string) {
-  const res = await fetch(`/api/auth/convite/${encodeURIComponent(token)}`);
-  return ler<{ nome: string; email: string }>(res);
-}
-
-export async function solicitarRecuperacao(email: string): Promise<string> {
-  const res = await fetch("/api/auth/forgot-password", {
-    method: "POST",
-    headers: JSON_H,
-    body: JSON.stringify({ email }),
-  });
-  return (await ler<{ message: string }>(res)).message;
-}
-
-export async function validarReset(token: string): Promise<{ valido: true }> {
-  const res = await fetch(`/api/auth/reset-password/${encodeURIComponent(token)}`);
-  return ler<{ valido: true }>(res);
-}
-
-export async function aceitarConvite(token: string, senha: string) {
-  const res = await fetch("/api/auth/convite/aceitar", { method: "POST", headers: JSON_H, body: JSON.stringify({ token, senha }) });
-  return ler<{ token: string; usuario: UsuarioSessao }>(res);
-}
-
-export async function redefinirSenha(token: string, senha: string) {
-  const res = await fetch("/api/auth/reset-password", { method: "POST", headers: JSON_H, body: JSON.stringify({ token, senha }) });
-  return ler<{ token: string; usuario: UsuarioSessao }>(res);
-}
-
 export async function listarUsuarios(): Promise<UsuarioSessao[]> {
   const res = await fetch("/api/usuarios", { headers: comPropriedade() });
   const body = await ler<{ usuarios: UsuarioSessao[] }>(res);
@@ -64,7 +30,7 @@ export async function listarUsuarios(): Promise<UsuarioSessao[]> {
 
 export async function criarUsuario(nome: string, email: string, papel: string) {
   const res = await fetch("/api/usuarios", { method: "POST", headers: comPropriedade(JSON_H), body: JSON.stringify({ nome, email, papel }) });
-  return ler<{ usuario: UsuarioSessao; conviteLink: string }>(res);
+  return ler<{ usuario: UsuarioSessao }>(res);
 }
 
 export async function atualizarUsuario(id: number, patch: { papel?: string; abas?: string[]; areas?: string[]; flags?: string[]; status?: string }) {
@@ -76,14 +42,4 @@ export async function atualizarUsuario(id: number, patch: { papel?: string; abas
 export async function revogarUsuario(id: number): Promise<void> {
   const res = await fetch(`/api/usuarios/${id}`, { method: "DELETE", headers: comPropriedade() });
   await ler<{ ok: true }>(res);
-}
-
-export async function gerarConvite(id: number): Promise<string> {
-  const res = await fetch(`/api/usuarios/${id}/convite`, { method: "POST", headers: comPropriedade() });
-  return (await ler<{ conviteLink: string }>(res)).conviteLink;
-}
-
-export async function gerarReset(id: number): Promise<string> {
-  const res = await fetch(`/api/usuarios/${id}/reset`, { method: "POST", headers: comPropriedade() });
-  return (await ler<{ resetLink: string }>(res)).resetLink;
 }
