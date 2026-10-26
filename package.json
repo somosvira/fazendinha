@@ -16,7 +16,7 @@
     "db:local:down": "docker compose down",
     "cf:build": "pnpm --filter rionovo-client run build",
     "cf:dev": "pnpm cf:build && wrangler dev",
-    "cf:deploy": "pnpm cf:build && wrangler deploy"
+    "cf:deploy": "sh scripts/cf-deploy.sh"
   },
   "engines": {
     "node": ">=22"
