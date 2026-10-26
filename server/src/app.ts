@@ -12,9 +12,8 @@ import { exigeArea, exigeQualquerArea } from "./middleware/permissao.js";
 import { categoriasRouter } from "./routes/categorias.js";
 import { financeiroRouter } from "./routes/financeiro.js";
 import { healthRouter } from "./routes/health.js";
-import { authPublicoRouter, authPrivadoRouter } from "./routes/auth.js";
+import { authPrivadoRouter } from "./routes/auth.js";
 import { usuariosRouter } from "./routes/usuarios.js";
-import { canalRecuperacaoConfigurado } from "./services/auth/email.js";
 import { propriedadeRouter } from "./routes/propriedade.js";
 import { rebanhoRouter as pecuariaRebanhoRouter } from "./routes/pecuaria/rebanho.js";
 import { estoqueRouter } from "./routes/estoque.js";
@@ -42,12 +41,6 @@ const corsOrigins = env.CORS_ORIGIN?.split(",").map((s) => s.trim()).filter(Bool
 if (env.NODE_ENV === "production" && (!corsOrigins || corsOrigins.length === 0)) {
   console.warn("[cors] CORS_ORIGIN vazio em produção — API está permissiva a qualquer origem. Setar antes do teste com dono.");
 }
-if (env.NODE_ENV === "production" && !env.SHARED_ACCESS_TOKEN) {
-  console.warn("[auth] SHARED_ACCESS_TOKEN vazio em produção — API está aberta a qualquer requisição. Setar antes do teste com dono.");
-}
-if (env.NODE_ENV === "production" && !canalRecuperacaoConfigurado()) {
-  console.warn("[auth] recuperação de senha sem canal configurado — defina APP_BASE_URL, AUTH_EMAIL_PROVIDER, AUTH_EMAIL_FROM e RESEND_API_KEY.");
-}
 app.use(
   "/api/*",
   cors({
@@ -62,11 +55,9 @@ app.use("/api/*", async (c, next) => {
   }
   await next();
 });
-// Isentos de sessão (montados ANTES do gate): health, whatsapp (valida por HMAC
-// próprio) e as rotas públicas de auth (login/convite/reset).
+// Isentos de sessão: health e WhatsApp, que tem validação HMAC própria.
 app.route("/api", healthRouter);
 app.route("/api", whatsappRouter);
-app.route("/api", authPublicoRouter);
 
 app.use("/api/*", authMiddleware);
 

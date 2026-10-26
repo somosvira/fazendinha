@@ -1,61 +1,11 @@
-// Auth por sessão: resolve `Authorization: Bearer <token>` → Sessao → Usuario e
-// injeta em c.set("usuario"). Rotas isentas (health, whatsapp, auth públicas)
-// são montadas ANTES deste middleware no index.ts.
+// Autenticação da API: o Clerk valida a sessão Google, e o Fazendinha resolve
+// o usuário interno ativo que determina papel, áreas, flags e escopo.
 import type { MiddlewareHandler } from "hono";
-import crypto from "node:crypto";
-import { env } from "../env.js";
-import { prisma } from "../db.js";
-import { resolverSessao, type UsuarioContexto } from "../services/auth/sessao.js";
-import { aplicarPreset } from "../services/auth/papeis.js";
-
-function bearer(header: string | undefined): string | null {
-  if (!header) return null;
-  const m = /^Bearer\s+(.+)$/i.exec(header.trim());
-  return m ? m[1].trim() : null;
-}
-
-function timingSafeMatch(a: string, b: string): boolean {
-  const ab = Buffer.from(a);
-  const bb = Buffer.from(b);
-  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
-}
-
-// Dono sintético para a ponte da senha compartilhada (rollout). Acesso total.
-function donoSintetico(): UsuarioContexto {
-  const preset = aplicarPreset("proprietario");
-  return { id: 0, nome: "Proprietário", email: "", papel: "proprietario", abas: preset.abas, areas: preset.areas, flags: preset.flags, status: "ATIVO", dono: true };
-}
+import { autenticarRequestClerk } from "../services/auth/clerk.js";
 
 export const authMiddleware: MiddlewareHandler = async (c, next) => {
-  const recebido = bearer(c.req.header("authorization"));
-
-  // Ponte de transição: enquanto SHARED_ACCESS_TOKEN estiver setado, ele vale
-  // como acesso de dono. Remover quando as contas reais estiverem de pé.
-  if (env.SHARED_ACCESS_TOKEN && recebido && timingSafeMatch(recebido, env.SHARED_ACCESS_TOKEN)) {
-    c.set("usuario", donoSintetico());
-    return next();
-  }
-
-  if (recebido) {
-    const usuario = await resolverSessao(recebido);
-    if (usuario) {
-      c.set("usuario", usuario);
-      return next();
-    }
-  }
-
-  // Dev local porta aberta: sem SHARED_ACCESS_TOKEN e sem nenhum usuário no banco — nunca em
-  // produção (S4): lá, tabela vazia é bootstrap incompleto, não convite a entrar sem login.
-  if (!env.SHARED_ACCESS_TOKEN) {
-    const total = await prisma.usuario.count();
-    if (total === 0) {
-      if (env.NODE_ENV !== "production") {
-        c.set("usuario", donoSintetico());
-        return next();
-      }
-      return c.json({ error: "Autenticação não configurada: nenhum usuário cadastrado. Rode o bootstrap do dono ou defina SHARED_ACCESS_TOKEN." }, 503);
-    }
-  }
-
-  return c.json({ error: "não autenticado" }, 401);
+  const usuario = await autenticarRequestClerk(c.req.raw);
+  if (!usuario) return c.json({ error: "não autenticado" }, 401);
+  c.set("usuario", usuario);
+  return next();
 };
