@@ -2,6 +2,30 @@
 
 O único destino de deploy é **Cloudflare Workers**: interface e API no mesmo Worker, PostgreSQL no Neon e arquivos no R2. Node atende desenvolvimento local e testes; a ferramenta de build requer Node 22+. Este guia descreve a configuração do repositório; o commit e o schema aplicados em produção precisam ser conferidos no ambiente e nos logs de publicação.
 
+## Branches, ambientes e promoção
+
+| Branch GitHub | Environment GitHub | Worker / URL | Branch Neon | Namespace R2 |
+|---|---|---|---|---|
+| `staging` | `staging` | [`fazendinha-stg`](https://fazendinha-stg.somosvirasudo.workers.dev) | `stg` (`br-proud-wind-ac6m6hq8`) | `staging` |
+| `main` | `producao` | [`fazendinha-producao`](https://fazendinha-producao.somosvirasudo.workers.dev) | `producao` (`br-lively-forest-act9fg73`) | `prod` |
+
+A conta Cloudflare é `1148b69b1e1518155a8dd0cf91929ebf`; o projeto Neon é `lucky-wildflower-03608013`. Os bancos são independentes: promover código não copia dados, usuários nem arquivos. Ambos os Workers usam `NODE_ENV=production`, incluindo STG. O rótulo `Production` no painel Cloudflare identifica o slot publicado do Worker, não o ambiente de negócio.
+
+O fluxo é branch de trabalho → PR para `staging` → CI → deploy STG → homologação → PR de `staging` para `main` → CI → aprovação do environment `producao` → deploy produção. A aprovação humana atesta a homologação da versão promovida; mudanças posteriores exigem nova conferência. Correções urgentes na `main` devem voltar para `staging`. Prefira merge de promoção que preserve a ancestralidade entre as branches; não resete branches nem use force-push.
+
+O job `deploy` do workflow `.github/workflows/staging.yml` depende dos três jobs de teste e só publica em eventos `push` de `staging`/`main`. PRs e `workflow_dispatch` executam somente CI. Execuções em branches publicadas não são canceladas por novos pushes, para não interromper migrations/publicação. A fila pode substituir uma execução ainda pendente pela mais recente; a versão executada sempre passa por seus próprios testes.
+
+### Configuração administrativa necessária
+
+Antes de integrar/ativar o fluxo, configurar no repositório `somosvira/fazendinha`:
+
+- Proteger `main` e `staging`: exigir PR, resolver discussões, bloquear exclusão/force-push e exigir os checks `build + test`, `financeiro (bateria de invariantes, banco real)` e `baseline + seed unificada (retomada e idempotência)` antes do merge, com branch atualizada.
+- Criar environments `staging` (somente branch `staging`) e `producao` (somente branch `main`). Em `producao`, exigir revisor autorizado para atestar homologação e impedir bypass administrativo do gate.
+- Em **cada environment**, cadastrar secrets `CLOUDFLARE_API_TOKEN`, `DATABASE_URL` e `DIRECT_URL`. O token deve publicar Workers na conta acima; conexões são da respectiva branch Neon, com TLS. Nunca cadastrar os valores no código. O workflow não precisa de credenciais R2 ou JWT: os secrets existentes do runtime são preservados no Worker.
+- Desativar Workers Builds automáticos nos dois Workers antes de ativar o novo fluxo; o GitHub Actions será o único gatilho automático. Não reativar o projeto Pages legado `terranoapp`.
+
+Essas proteções e secrets vivem no GitHub/Cloudflare, não são criados pela presença do YAML. A alteração do código só está operacional após essa configuração e verificação de uma execução real. Sem secrets, o script falha antes das migrations.
+
 ## Configuração
 
 A fonte é `server/src/env.ts`; exemplos em `server/.env.example`.
@@ -46,15 +70,19 @@ pnpm --filter rionovo-server run bootstrap:dono
 pnpm cf:dev
 ```
 
-Esse comando compila a interface e inicia o Worker local. Para Workers Builds, configure o build com instalação das dependências, geração do Prisma Client e `pnpm cf:build`; o deploy command é `sh scripts/cf-deploy.sh`. O script aplica migrations, aborta se falharem e publica com commit/build ID. Quando encontra `APP_BASE_URL` ou a URL retornada pelo Wrangler, confere `/api/health`; sem ambas, informa que pulou essa conferência. Configure `DATABASE_URL`/`DIRECT_URL` também no escopo de build; variáveis de build e runtime são escopos distintos.
+Esse comando compila a interface e inicia o Worker local. A publicação automática é executada pelo GitHub Actions: instala dependências com lockfile, gera Prisma Client, compila a interface e executa `sh scripts/cf-deploy.sh staging` ou `sh scripts/cf-deploy.sh producao`. O script valida conta Cloudflare, branch/evento (no CI), SHA do checkout e hosts Neon antes de escrever. Hosts fixos devem ser revisados no script se o endpoint Neon for substituído.
+
+O script aplica migrations, aborta se falharem e publica via `wrangler deploy --env` no Worker definido em `wrangler.jsonc`, preservando secrets e variáveis existentes. Depois exige health com banco/configuração válidos, nenhuma migration interrompida e SHA exato. Uma falha no health marca a execução como falha, mas não desfaz código já publicado nem migrations. Recuperação exige análise de compatibilidade e ação explícita.
 
 A baseline contém `FinalidadeAnimal` e a view atualizável de compatibilidade `DestinoAnimal`; a renomeação e suas migrations aditivas são história da cadeia anterior. Não remover a view enquanto versões antigas puderem atender. Views IATF preservam leitura, mas não oferecem escrita paralela ao núcleo comum. Rollback exige verificar dados, valores de enum e compatibilidade das versões; não basta retornar o código após mudanças estruturais. A implantação de um banco anterior à baseline precisa do plano de reconciliação acima, não da execução isolada de nomes antigos.
 
-`pnpm cf:deploy` chama Wrangler diretamente depois do build do client e **não** executa o script de migrations/health. Não trate esses comandos como equivalentes. O repositório não seleciona sozinho a branch conectada ao provedor.
+`pnpm cf:deploy staging` e `pnpm cf:deploy producao` usam o mesmo script de migrations/publicação/health e exigem build prévio, credenciais do destino, `WORKERS_CI_COMMIT_SHA` igual a `git rev-parse HEAD` e identificador `WORKERS_CI_BUILD_UUID`. São operações manuais excepcionais autorizadas, não substituem o fluxo normal com gates. Não execute `wrangler deploy` sem ambiente: o nome base genérico serve ao desenvolvimento.
 
 ## CI e conferência após publicação
 
-`.github/workflows/staging.yml` faz build, testes do servidor e integração com PostgreSQL efêmero; não publica a aplicação. Seu nome não comprova um ambiente de staging ativo. O job principal executa também a suíte da interface e contratos de importação/seed; jobs separados cobrem invariantes financeiros e baseline/seed unificada.
+`.github/workflows/staging.yml` testa PRs e pushes de `main` e `staging`, além do acionamento manual. O job principal compila servidor/interface, executa testes de transformação, interface, servidor e carga técnica V4. Jobs separados cobrem invariantes financeiros e baseline/seed unificada em PostgreSQL efêmero do runner. O job de deploy usa somente migrations; não executa seed em STG nem produção.
+
+`node --test scripts/cf-deploy.test.mjs` verifica, com comandos simulados e sem banco/rede, a seleção dos ambientes, bloqueio de destino/SHA/credenciais incompatíveis, interrupção após falha de migration/deploy e exigência do health completo. Testes locais desse script não comprovam permissões do provedor nem publicação real.
 
 Após publicação autorizada, confira carregamento da interface, `/api/health`, login/sessão, proteção de rotas, escopo por sítio e anexos/relatórios no namespace correto. Preserve backups e histórico; a conferência não autoriza reset de dados nem execução de seeds.
 
