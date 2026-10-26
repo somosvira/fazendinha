@@ -27,7 +27,7 @@ export function ExportacaoProducaoLeite({ podeExportar }: { podeExportar: boolea
       const link = document.createElement("a"); link.href=url; link.download=`producao-${periodo.inicio}-${periodo.fim}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url),1000);
     } catch(e) { setErro(e instanceof Error ? e.message : "Não foi possível exportar a produção."); } finally { setOcupado(false); }
   }
-  return <section className="leite-comercial-consulta" aria-label="Exportar produção de leite"><CabecalhoTabela titulo="Produção em CSV" descricao="Medições atuais do período, por animal ou tanque e ordenha." />
+  return <section className="leite-comercial-consulta" aria-label="Exportar produção de leite"><CabecalhoTabela titulo="Produção em CSV" ajuda="Medições atuais do período, por animal ou tanque e ordenha." rotuloAjuda="Sobre produção em csv" />
     {podeExportar ? <div className="leite-comercial-acoes"><PeriodoFinanceiroControl inicio={periodo.inicio} fim={periodo.fim} onChange={setPeriodo} label="Período da exportação de produção" /><label>Natureza da produção<SelectCampo value={natureza} onValueChange={setNatureza}><option value="">Todas</option>{Object.entries(naturezas).map(([v,nome]) => <option key={v} value={v}>{nome}</option>)}</SelectCampo></label><Button variant="outline" disabled={ocupado || !periodo.inicio || !periodo.fim || periodo.inicio > periodo.fim} onClick={() => void exportar()}>{ocupado ? "Exportando…" : "Exportar produção do período"}</Button></div> : <p>Exportar produção exige permissão de exportação.</p>}{erro && <p role="alert">{erro}</p>}
   </section>;
 }

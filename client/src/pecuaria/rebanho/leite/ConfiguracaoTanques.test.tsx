@@ -43,7 +43,7 @@ it("mantém dados após erro, bloqueia fechamento ao enviar e conclui salvamento
   fireEvent.click(screen.getByRole("button", { name: "Salvar tanque" }));
   expect((screen.getByRole("button", { name: "Cancelar" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
-  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+  fireEvent.keyDown(screen.getByRole("dialog", { name: "Cadastrar tanque" }), { key: "Escape" });
   expect(aoFechar).not.toHaveBeenCalled();
   expect(screen.queryByText("Descartar alterações?")).toBeNull();
   resolver({});

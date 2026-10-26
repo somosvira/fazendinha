@@ -9,7 +9,6 @@ import { novaParcela, parcelaSalva } from "./registro-parcelas-modelo";
 import type { ContextoParcelas, ParcelaOrdenha } from "./parcelas-types";
 vi.mock("./parcelas-api", () => ({ contextoParcelas: vi.fn(), salvarParcelas: vi.fn(), confirmarParcelas: vi.fn() }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn() }));
-vi.mock("@/components/DatePicker", () => ({ DatePicker: ({ onChange, ...props }: { onChange: (v: string) => void }) => <input type="date" {...props} onChange={e => onChange(e.target.value)} /> }));
 vi.mock("@/financeiro/SelectCampo", () => ({ SelectCampo: ({ onValueChange, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { onValueChange: (v: string) => void }) => <select {...props} onChange={e => onValueChange(e.target.value)} /> }));
 const medicao: ParcelaOrdenha = { id: "m1", sessaoId: "s1", tanque: null, recipiente: "Balde segregado", litros: 25, reguaMm: 10, origemLitros: "MANUAL", natureza: "NAO_COMERCIAL", animaisOrigem: [], responsavel: "Maria", observacao: null, versao: 1, entradaId: null, declaracaoDireta: { justificativa: "Origem declarada diretamente em campo" }, primeiraOrdenhaColostro: null, criterioColostroSnapshot: null };
 function contexto(medicoes: ParcelaOrdenha[]): ContextoParcelas { return { configuracao: { id: "c1", propriedadeId: 1, vigenteDesde: "2026-10-01", inicial: false, fonteProducao: "GERAL", ordenhas: [{ posicaoId: "manha", nome: "Manhã", ordem: 1 }] }, sessoes: [{ id: "s1", posicaoId: "manha", nome: "Manhã", ordem: 1 }], medicoes, tanques: [], animais: [], origensAutomaticas: [], contexto: { carencias: [], partos: [], origensColostro: [], criterioColostro: null } }; }
@@ -185,4 +184,30 @@ it("corrige só a parcela alterada e não regrava após salvar ou mudar somente 
   fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
   await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
   expect(salvarParcelas).toHaveBeenCalledTimes(1);
+});
+
+for (const entrada of ["31/02/2026", "12/1", "31/12/2099", ""]) it(`bloqueia salvar e conferir com data digitada inválida (${entrada || "vazia"}), preservando parcelas até corrigir`, async () => {
+  const p = { ...novaParcela("NAO_COMERCIAL", [], true), recipiente: "Balde separado", litros: "30", responsavel: "Maria", justificativa: "Registro direto conferido em campo" };
+  armazenar([p], true, "novo");
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([]));
+  vi.mocked(salvarParcelas).mockResolvedValue({ sessaoId: "s1", parcelas: [{ ...medicao, litros: 30 }] });
+  abrir("novo");
+  await screen.findByLabelText("Litros informados manualmente");
+  const campo = screen.getByLabelText("Data da ordenha") as HTMLInputElement;
+  fireEvent.change(campo, { target: { value: entrada } });
+  fireEvent.blur(campo);
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  expect(salvarParcelas).not.toHaveBeenCalled();
+  expect(screen.queryByText("Ordenha salva. A entrada no estoque permanece pendente.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Conferir entrada no estoque" }));
+  expect(screen.queryByRole("dialog", { name: "Confirmar parcelas no estoque" })).toBeNull();
+  expect(confirmarParcelas).not.toHaveBeenCalled();
+  expect(campo.value).toBe(entrada);
+  expect(campo.checkValidity()).toBe(false);
+  expect((screen.getByLabelText("Litros informados manualmente") as HTMLInputElement).value).toBe("30");
+  fireEvent.change(campo, { target: { value: "23/10/2026" } });
+  await waitFor(() => expect(contextoParcelas).toHaveBeenLastCalledWith(1, "2026-10-23"));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
+  expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-23", "manha", [expect.objectContaining({ recipiente: "Balde separado", litros: 30 })]);
 });

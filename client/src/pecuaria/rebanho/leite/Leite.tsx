@@ -237,6 +237,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
     u.searchParams.set("ordenha", posicao);
     history.replaceState(history.state, "", u);
   }, [folha, data, posicao]);
+  const campoDataRef = useRef<HTMLDivElement>(null);
   function navegar(d: string, p = posicao) {
     const u = new URL(location.href);
     u.searchParams.set("dataOperacional", d);
@@ -274,7 +275,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
     setErro("");
   }
   async function salvar(animalId?: string) {
-    if (!folha || !podeEditar || invalidos.some(id => !animalId || id === `${animalId}:${posicao}`)) return;
+    if (!folha || !podeEditar || !campoDataRef.current?.querySelector("input")?.reportValidity() || invalidos.some(id => !animalId || id === `${animalId}:${posicao}`)) return;
     const noRecorte = (c: MedicaoInput) => !animalId || (c.animalId === animalId && c.posicaoId === posicao);
     const contexto = escopo.current;
     const atual = geracao.current;
@@ -418,7 +419,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
         </div>
         <div className="leite-header-acoes">
           {acoesContainer ? createPortal(acaoConfigurar, acoesContainer) : acaoConfigurar}
-        <div className="leite-data">
+        <div ref={campoDataRef} className="leite-data">
           <Button className="leite-icon"
             onClick={() => dia(-1)}
             aria-label="Dia anterior">
@@ -427,6 +428,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
           <DatePicker
             className="leite-data-seletor"
             aria-label="Data operacional"
+            required
             value={data}
             onChange={valor => { if (dataValida(valor)) navegar(valor); }}
           />

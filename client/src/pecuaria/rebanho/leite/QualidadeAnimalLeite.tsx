@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
 import "./ordenhas-gerais.css";
@@ -5,8 +6,10 @@ import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 import { DatasQualidade } from "./DatasQualidade";
+import { SecaoFicha } from "../components/SecaoRecolhivel";
 import type { AmostraQualidade } from "./qualidade-types";
 import "./operacoes.css";
+import "./historico-produtivo.css";
 
 type Consulta = {
   itens: AmostraQualidade[];
@@ -67,22 +70,11 @@ export function QualidadeAnimalLeite({
     };
   }, [animalId, propriedadeId, inicio, fim, pagina, revisao, recarregarToken]);
   return (
-    <section
+    <SecaoFicha
+      id="qualidade-individual-leite"
       className="leite-qualidade-animal"
-      aria-label="Qualidade individual do leite"
-    >
-      <h2>Qualidade individual do leite</h2>
-      <p>
-        Resultados das amostras deste animal, independentes da frequência da
-        medição de litros.
-      </p>
-      {propriedadeId == null ? (
-        <p>
-          Selecione o sítio autorizado para consultar as amostras individuais.
-        </p>
-      ) : (
-        <>
-          <div className="leite-form-inline">
+      titulo={<>Qualidade individual do leite <AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." /></>}
+      acoes={propriedadeId != null ? <div className="producao-ficha-filtros" role="group" aria-label="Período das amostras">
             <label>
               Amostras desde
               <DatePicker
@@ -105,7 +97,12 @@ export function QualidadeAnimalLeite({
                 }}
               />
             </label>
-          </div>
+          </div> : undefined}
+    >
+      {propriedadeId == null ? (
+        <p>Selecione o sítio autorizado para consultar as amostras individuais.</p>
+      ) : (
+        <>
           {erro ? (
             <div role="alert">
               {erro}{" "}
@@ -121,24 +118,24 @@ export function QualidadeAnimalLeite({
             <p role="status">Carregando análises individuais…</p>
           ) : (
             <>
-              <p>{dados.total} amostra(s) no período e sítio consultados.</p>
+              {dados.itens.length > 0 && <p className="producao-ficha-nota">{dados.total} amostra(s) deste animal no período e sítio consultados.</p>}
               {!dados.itens.length && (
-                <p>Nenhuma análise individual registrada neste recorte.</p>
+                <p className="producao-ficha-vazio">Nenhuma análise individual registrada neste recorte.</p>
               )}
               {dados.itens.map((a) => (
                 <article key={a.id} className="leite-qualidade-amostra">
-                  <h3>
+                  <header><h3>
                     {a.data.split("-").reverse().join("/")} ·{" "}
                     {a.formatoSnapshot.nome}
                   </h3>
-                  <p>
+                  <span>
                     {a.status === "ANULADO" || a.status === "ANULADA"
                       ? "Anulada — preservada no histórico"
                       : a.resultados.length
                         ? "Resultado registrado"
                         : "Aguardando laudo"}{" "}
                     · Versão {a.versao}
-                  </p>
+                  </span></header>
                   <DatasQualidade {...a} />
                   <dl>
                     {a.resultados.map((r) => {
@@ -163,7 +160,7 @@ export function QualidadeAnimalLeite({
                   {a.responsavel && <p>Responsável: {a.responsavel}</p>}
                 </article>
               ))}
-              <div className="leite-form-inline">
+              {dados.total > dados.tamanho && <nav className="historico-produtivo-paginas" aria-label="Páginas das análises individuais">
                 <Button
                   variant="outline"
                   type="button"
@@ -181,11 +178,11 @@ export function QualidadeAnimalLeite({
                 >
                   Próximas análises
                 </Button>
-              </div>
+              </nav>}
             </>
           )}
         </>
       )}
-    </section>
+    </SecaoFicha>
   );
 }

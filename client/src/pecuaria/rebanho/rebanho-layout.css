@@ -152,3 +152,41 @@
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo { padding: 16px 20px; margin: 0 0 16px; gap: 16px 40px; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo dd:first-of-type { font-size: 24px; font-weight: 600; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo dd + dd { font-size: 12px; font-weight: 400; }
+
+/* Ficha individual aprovada: ilustração genérica e espaço próprio por assunto. */
+.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-cabecalho {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 0;
+  margin-bottom: 24px;
+}
+.ficha-animal-ilustracao {
+  display: block;
+  flex: 0 0 110px;
+  width: 110px;
+  height: 110px;
+  object-fit: contain;
+  border-radius: 14px;
+}
+.ficha-animal-identidade { flex: 1; min-width: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-identidade .fin-cabecalho-integrado { padding: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-identidade .ficha-status { margin: 12px 0 0; }
+.ficha-animal-cabecalho > .ficha-baixa-resumo { flex-basis: 100%; margin-bottom: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { border-bottom: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 11px 17px; }
+.pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] {
+  padding: 24px;
+  background: var(--card);
+  border-radius: 0 12px 12px;
+}
+.pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta { margin: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 18px; }
+.pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-conteudo { padding: 0; }
+@media (max-width: 650px) {
+  .pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-cabecalho { gap: 14px; margin-bottom: 20px; }
+  .ficha-animal-ilustracao { flex-basis: 76px; width: 76px; height: 76px; align-self: flex-start; }
+  .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 10px 12px; }
+  .pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; }
+}

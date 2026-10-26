@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useId, useState } from "react";
@@ -114,22 +115,20 @@ export function ConfiguracaoTanques({
         className="leite-ajuste-form"
         onSubmit={(e) => void salvar(e)}
       >
-        <p className="leite-ajuste-ajuda">
-          Especificações e tabela própria do tanque. As aferições anteriores
-          conservam a versão utilizada.
-        </p>
+
         <fieldset disabled={ocupado} className="leite-ajuste-secao">
           <div className="leite-ajuste-grade">
-            <label>
-              Nome do tanque
+            <div className="grid gap-1.5">
+              <div className="flex items-center"><label htmlFor={`${formId}-nome`}>Nome do tanque</label><AjudaCampo rotulo="Sobre o cadastro do tanque" texto={"Especificações e tabela própria do tanque. As aferições anteriores conservam a versão utilizada."} /></div>
               <Input
+                id={`${formId}-nome`}
                 className={classeInput}
                 required
                 maxLength={100}
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
               />
-            </label>
+            </div>
             <label>
               Capacidade (L)
               <Input
@@ -199,21 +198,18 @@ export function ConfiguracaoTanques({
               onChange={(e) => setReferencia(e.target.value)}
             />
           </label>
-          <label>
-            Tabela de conversão — milímetros;litros
+          <div className="grid gap-1.5">
+            <div className="flex items-center"><label htmlFor={`${formId}-tabela`}>Tabela de conversão — milímetros;litros</label><AjudaCampo rotulo="Sobre a tabela de conversão" texto={"Um ponto por linha. Cadastre apenas valores conferidos na tabela deste tanque. Sem tabela, é possível registrar litros aferidos diretamente; conversões ausentes não serão estimadas."} /></div>
             <Textarea
+              id={`${formId}-tabela`}
               className={classeInput}
               rows={7}
               value={tabela}
               onChange={(e) => setTabela(e.target.value)}
               placeholder={"0;22,5\n100;336,7"}
             />
-          </label>
-          <p>
-            Um ponto por linha. Cadastre apenas valores conferidos na tabela
-            deste tanque. Sem tabela, é possível registrar litros aferidos
-            diretamente; conversões ausentes não serão estimadas.
-          </p>
+          </div>
+
           {erro && <p role="alert">{erro}</p>}
         </fieldset>
       </form>

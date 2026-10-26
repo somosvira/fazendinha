@@ -38,7 +38,7 @@ describe("histórico individual e contexto sanitário a partir dos fatos existen
     const excluido = { ...participante("excluido", "2026-10-03", 900), excluidoEm: dia("2026-10-19"), motivoExclusao: "Registro indevido" };
     m.tx.participanteProducaoLeite.findMany.mockResolvedValue([participante("um", "2026-10-01", 12), participante("dois", "2026-10-02", 10), excluido]);
     const r = await consultarHistoricoProdutivo(1, "animal", { ...filtro, pagina: 3, tamanho: 1 });
-    expect(r).toMatchObject({ total: 3, totaisPeriodo: { litros: 22 }, coberturaPeriodo: { diasComRegistro: 2, diasSemRegistro: 1 }, itens: [{ participanteId: "excluido", motivoExclusao: "Registro indevido" }] });
+    expect(r).toMatchObject({ seriePeriodo: [{ participanteId: "um", litros: 12, completa: false }, { participanteId: "dois", litros: 10 }, { participanteId: "excluido", excluido: true }], total: 3, totaisPeriodo: { litros: 22 }, coberturaPeriodo: { diasComRegistro: 2, diasSemRegistro: 1 }, itens: [{ participanteId: "excluido", motivoExclusao: "Registro indevido" }] });
   });
   it("ausência de registros permanece null, com todos os dias explicitamente sem registro", async () => {
     m.tx.participanteProducaoLeite.findMany.mockResolvedValue([]);

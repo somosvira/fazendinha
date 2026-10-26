@@ -33,7 +33,7 @@ it("oferece a primeira confirmação individual mesmo sem estoque leiteiro", asy
   render(<EstoqueLeite podeLancar podeFinanceiro={false} />);
   await screen.findByRole("list", { name: "Saldos de leite por produto" });
   fireEvent.click(screen.getByRole("button", { name: "Confirmar produção individual" }));
-  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect(screen.getByRole("dialog", { name: "Confirmar produção individual" })).toBeTruthy();
   expect(screen.getByLabelText("Dia da produção / retirada")).toBeTruthy();
   HTMLElement.prototype.scrollIntoView = vi.fn();
   fireEvent.click(screen.getByRole("combobox", { name: "Produto de leite" }));

@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { BuscaLista } from "../../../components/BuscaLista";
@@ -15,7 +16,7 @@ import { listarCadastrosProtocolos, type CadastroProtocoloMeta } from "../protoc
 import { CatalogoModelosProtocolos } from "../protocolos/CatalogoModelosProtocolos";
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
 import { GestaoParticipantes } from "../protocolos/GestaoParticipantes";
-import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
+import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
@@ -96,6 +97,8 @@ export type ProtocoloIatf = {
   etapas: EtapaIatf[];
 };
 export type TarefaIatf = {
+  situacaoOperacional?: TarefaOperacional["situacao"];
+  motivoOperacional?: string | null;
   precisaoTemporal?: "DIA" | "HORA";
   precisaoRealizacao?: "DIA" | "HORA" | null;
   previsaoPendente?: boolean;
@@ -845,5 +848,5 @@ export function PlanoEtapa({
 }
 export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});
- return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa</legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}<p className="text-sm">Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas.</p></>}</fieldset>;
+ return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa <AjudaCampo rotulo="Ajuda sobre orientação temporal" texto="Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas."/></legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}</>}</fieldset>;
 }

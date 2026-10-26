@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { Paginacao } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
@@ -53,13 +54,13 @@ export function VinculosPreparatorios({ dados, aoMudarPaginaVinculos,visivel, pr
         <option value="">Selecione um fato realizado</option>{candidatos.map(f => <option key={`${f.tipo}:${f.id}`} value={`${f.tipo}:${f.id}`}>{f.data} · {f.descricao}</option>)}
       </select></label>
       <Paginacao paginaAtual={paginada.pagina} totalPaginas={Math.max(1,Math.ceil(paginada.total/10))} totalItens={paginada.total} itensPorPagina={10} onPaginaChange={p=>void carregarPreparos(p)} rotulo="candidatos" idSelect="custos-candidatos-preparo"/>
-      <label>Atribuição<select className={classeInput} value={modo} onChange={e => setModo(e.target.value)}>
+      <label className="relative">Atribuição<select className={classeInput} value={modo} onChange={e => setModo(e.target.value)}>
         <option value="INTEGRAL">Integral, exclusiva desta tentativa</option><option value="PARCELA">Parcelas explícitas compartilhadas</option>
-      </select></label>
+      </select><span className="absolute right-0 top-0"> <AjudaCampo rotulo="Ajuda sobre atribuição de preparatórios" texto="O restante fica a atribuir no protocolo. Nenhuma despesa ou consumo é criado."/></span></label>
       {modo === "PARCELA" && <>
         <label>Parcela do material (R$)<input className={classeInput} type="number" min="0" step="0.01" value={material} onChange={e => setMaterial(e.target.value)} /></label>
         <label>Parcela do Serviço (R$)<input className={classeInput} type="number" min="0" step="0.01" value={servico} onChange={e => setServico(e.target.value)} /></label>
-        <p className="text-xs">O restante fica a atribuir no protocolo. Nenhuma despesa ou consumo é criado.</p>
+
       </>}
       <label>Motivo do vínculo<textarea className={classeInput} required minLength={5} maxLength={500} value={motivo} onChange={e => aoMudarMotivo(e.target.value)} /></label>
       <Button type="submit">Confirmar vínculo</Button>

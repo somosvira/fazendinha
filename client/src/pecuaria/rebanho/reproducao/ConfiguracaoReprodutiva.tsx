@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
@@ -106,11 +107,8 @@ export function ConfiguracaoReprodutiva({
   return (
     <section className="space-y-5">
       <div>
-        <h2 className="text-xl font-semibold">Elegibilidade reprodutiva</h2>
-        <p className="text-muted-foreground">
-          Defina o período de espera voluntário (PEV) e as regras da fazenda. Os
-          valores devem ser escolhidos com o responsável pelo manejo.
-        </p>
+        <h2 className="text-xl font-semibold">Elegibilidade reprodutiva <AjudaCampo rotulo="Ajuda sobre elegibilidade reprodutiva" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
+
       </div>
       {erro && (
         <p role="alert" className="rounded border border-destructive p-3">
@@ -123,12 +121,8 @@ export function ConfiguracaoReprodutiva({
           onSubmit={salvar}
           className="space-y-4 rounded-xl border bg-card p-5"
         >
-          <h3 className="font-semibold">Registrar nova versão</h3>
-          <p className="text-sm text-muted-foreground">
-            Cada ciclo conserva a versão aplicável ao seu início. Consultar um
-            animal não cria vínculos. Ciclos antigos exigem associação explícita
-            na ficha do animal.
-          </p>
+          <h3 className="font-semibold">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. Ciclos antigos exigem associação explícita na ficha do animal."/></h3>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
               Vigente desde
@@ -212,7 +206,7 @@ export function ConfiguracaoReprodutiva({
             />
           </div>
           <fieldset>
-            <legend className="mb-2">Papéis incluídos na elegibilidade</legend>
+            <legend className="mb-2">Papéis incluídos na elegibilidade <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Novilhas dependem da situação inicial com “apta desde” ou de liberação individual. Idade e DEL não liberam automaticamente."/></legend>
             {(
               [
                 ["NENHUM", "Nenhum"],
@@ -236,10 +230,7 @@ export function ConfiguracaoReprodutiva({
               </label>
             ))}
           </fieldset>
-          <p className="text-sm">
-            Novilhas dependem da situação inicial com “apta desde” ou de
-            liberação individual. Idade e DEL não liberam automaticamente.
-          </p>
+
           <Button disabled={ocupado} type="submit">
             {ocupado ? "Registrando…" : "Registrar versão da política"}
           </Button>

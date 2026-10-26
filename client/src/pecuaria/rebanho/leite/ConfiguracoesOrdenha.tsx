@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { PainelCadastro, classeInput } from "@/financeiro/PainelCadastro";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ export function ConfiguracoesOrdenha({
     configuracao.intervaloIndividualUnidade ?? "MESES",
   );
   const [vigencia, setVigencia] = useState(data);
+  const campoVigenciaRef = useRef<HTMLLabelElement>(null);
   const [criterio, setCriterio] = useState(configuracao.criterioColostro?.tipo ?? "");
   const [diasColostro, setDiasColostro] = useState(configuracao.criterioColostro?.tipo === "JANELA_DIAS" ? configuracao.criterioColostro.dias : 3);
   const formId = useId();
@@ -58,6 +59,7 @@ export function ConfiguracoesOrdenha({
     });
   }
   async function salvar() {
+    if (!campoVigenciaRef.current?.querySelector("input")?.reportValidity()) return;
     if (ordenhas.some((o) => !o.nome.trim())) {
       setErro("Dê um nome a cada ordenha.");
       return;
@@ -137,7 +139,7 @@ export function ConfiguracoesOrdenha({
         }}
       >
         <fieldset disabled={salvando} className="leite-ajuste-secao">
-          <label>
+          <label ref={campoVigenciaRef}>
             Vigente desde
             <DatePicker
               aria-label="Vigente desde"

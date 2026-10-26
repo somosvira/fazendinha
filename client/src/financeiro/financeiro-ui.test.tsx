@@ -128,3 +128,34 @@ it("honra a escolha explícita de tabela em um painel estreito sem alterar os re
     expect(consulta.dataset.finVisualizacao).toBe("cartoes");
   } finally { globalThis.ResizeObserver = observerOriginal; }
 });
+
+it("permite focar e rolar as colunas de uma tabela explícita estreita pelo teclado", () => {
+  let avisar = () => {};
+  const observerOriginal = globalThis.ResizeObserver;
+  globalThis.ResizeObserver = class {
+    constructor(callback: () => void) { avisar = callback; }
+    observe() {} unobserve() {} disconnect() {}
+  } as unknown as typeof ResizeObserver;
+  try {
+    const { container } = render(<TabelaFinanceira visualizacao="tabela" rotulo="Volumes" itens={[{ id: "1" }]} chaveDe={item => item.id} colunas={[
+      { chave: "dia", titulo: "Dia", larguraMinima: 400, celula: () => "26/10/2026" },
+      { chave: "volume", titulo: "Total", larguraMinima: 400, celula: () => "100 L" },
+    ]} />);
+    const consulta = container.querySelector<HTMLElement>(".fin-consulta-responsiva")!;
+    const tabela = container.querySelector<HTMLElement>(".fin-tabela-desktop")!;
+    Object.defineProperty(consulta, "clientWidth", { get: () => 320 });
+    Object.defineProperty(tabela, "clientWidth", { get: () => 320 });
+    Object.defineProperty(tabela, "scrollWidth", { get: () => 800 });
+    act(() => avisar());
+    const regiao = screen.getByRole("region", { name: "Rolagem horizontal: Volumes" });
+    regiao.focus();
+    expect(document.activeElement).toBe(regiao);
+    fireEvent.keyDown(regiao, { key: "ArrowRight" });
+    expect(regiao.scrollLeft).toBe(96);
+    fireEvent.keyDown(regiao, { key: "ArrowLeft" });
+    expect(regiao.scrollLeft).toBe(0);
+    expect(screen.getByText("Role horizontalmente para ver todas as colunas.")).toBeTruthy();
+    expect(regiao.className).not.toContain("scrollbar-width:none");
+    expect(regiao.className).not.toContain("webkit-scrollbar");
+  } finally { globalThis.ResizeObserver = observerOriginal; }
+});

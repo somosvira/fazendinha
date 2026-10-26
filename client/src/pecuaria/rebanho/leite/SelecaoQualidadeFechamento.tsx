@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
@@ -18,8 +19,8 @@ export function SelecaoQualidadeFechamento({ sitio, inicio, fim, selecionadas, o
     return () => { ativa = false; };
   }, [sitio, inicio, fim, pagina, revisao]);
   return <section aria-label="Qualidade opcional do fechamento">
-    <h2>Laudos do acordo (opcional)</h2>
-    <p>Selecione amostras já registradas ou registre uma nova. O fechamento funciona sem amostra, resultado ou fórmula de qualidade. Cada vínculo conserva a versão selecionada.</p>
+    <h2>Laudos do acordo (opcional) <AjudaCampo rotulo="Sobre os laudos do acordo" texto={"Selecione amostras já registradas ou registre uma nova. O fechamento funciona sem amostra, resultado ou fórmula de qualidade. Cada vínculo conserva a versão selecionada."} /></h2>
+
     {erro && <p role="alert">{erro}. Você pode fechar sem vincular amostras.</p>}
     {!dados && !erro && <p role="status">Consultando amostras do período…</p>}
     <fieldset disabled={ocupado}><legend>Amostras de {inicio} até {fim}</legend>

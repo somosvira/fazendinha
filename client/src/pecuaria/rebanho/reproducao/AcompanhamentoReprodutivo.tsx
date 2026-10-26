@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Button } from "../../../components/ui/button";
 import { LinkReproducao } from "./ConsultaReproducaoUI";
@@ -167,10 +168,7 @@ export function AcompanhamentoReprodutivo({
     <Panel className="repro-agenda-superficie">
 
       <div className="p-4 space-y-4">
-        <p className="text-sm text-ink-3">
-          Datas registradas e ações pendentes. Registros sem previsão ficam ao
-          final; ausência de diagnóstico não significa resultado negativo.
-        </p>
+
         <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios}>
           <BuscaLista rotulo="Buscar animal na agenda" placeholder="Brinco ou nome" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
           <DateRangePicker
@@ -224,7 +222,7 @@ export function AcompanhamentoReprodutivo({
         {carregando && <p role="status">Carregando acompanhamento…</p>}
         {!carregando && !erro && dados && (
           <>
-            <div className="repro-consulta-titulo"><div><h2>Próximas atividades <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
+            <div className="repro-consulta-titulo"><div><h2>Próximas atividades <AjudaCampo rotulo="Ajuda sobre a agenda reprodutiva" texto="Datas registradas e ações pendentes. Registros sem previsão ficam ao final; ausência de diagnóstico não significa resultado negativo."/> <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
             {visual.modo === "visual" ? <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades"><ol className="repro-agenda-lista">{retornos.slice((atual - 1) * 10, atual * 10).map(r => {
               const a = animais.find(a => a.animalId === r.animalId);
               return <li key={`${r.animalId}:${r.origem}:${r.origemId}`}><time>{r.status === "PREVISAO_PENDENTE" ? "Previsão a definir" : r.data ? r.origem === "TAREFA_IATF" ? horarioIatf(r.data, r.precisaoTemporal) : dataBR(r.data) : "Sem data informada"}</time><div><h3>{origens[r.origem] ?? "Acompanhamento"}</h3><p>{a ? `${a.brinco ?? "Sem brinco"}${a.nome ? ` · ${a.nome}` : ""}` : "Animal não identificado"}</p><Pill tone={r.status === "ATRASADO" ? "red" : "amber"}>{situacoes[r.status] ?? "A conferir"}</Pill></div><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Ver ação</LinkReproducao></li>;

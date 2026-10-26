@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { DatePicker } from "@/components/DatePicker";
 import { Input } from "@/components/ui/input";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -80,11 +81,8 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
   }, [data, sitio, revisao]);
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Rotina de coleta</h2>
-      <p>
-        Configure a frequência e consulte as próximas previsões. A rotina não cria
-        retirada, venda, alerta ou movimento automático.
-      </p>
+      <h2 className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></h2>
+
       <div className="leite-form-inline">
         <label>
           Data de referência
@@ -119,7 +117,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           )}
           {dados.meta && (
             <div>
-              <h2>Conferência da meta</h2>
+              <h2>Conferência da meta <AjudaCampo rotulo="Sobre a conferência da meta" texto={"A conferência usa o produto configurado neste sítio. Uma retirada parcial altera o saldo na próxima consulta. Não há alerta persistente ou retirada automática."} /></h2>
               <p>
                 {dados.meta.estado === "NAO_AFERIVEL"
                   ? "Meta não aferível"
@@ -142,11 +140,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 </div>
               </dl>
               {dados.meta.motivo && <p>{dados.meta.motivo}</p>}
-              <small>
-                A conferência usa o produto configurado neste sítio. Uma
-                retirada parcial altera o saldo na próxima consulta. Não há
-                alerta persistente ou retirada automática.
-              </small>
+
             </div>
           )}
           <h2>

@@ -1,3 +1,6 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
+import type { GrupoProducaoLeite } from "./resumo-producao";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GraficoProducaoLeite } from "./GraficoProducaoLeite";
 import { PeriodoFinanceiroControl } from "../../../financeiro/PeriodoFinanceiroControl";
@@ -13,12 +16,13 @@ import { consultarLeite } from "./operacoes-api";
 import { formatarLitros, hojeOperacional } from "./modelo";
 import { CustosLeite } from "./CustosLeite";
 import "./consultas-leite.css";
-interface Grupo { periodo: string; litros: number | null; completa: boolean; turnos: { posicaoId: string; litros: number | null }[] }
+type Grupo = GrupoProducaoLeite;
 interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[]; coberturaCompleta: boolean; mesEmAndamento: boolean }
 const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ? data : `${data.slice(0, 7)}-01`, fim: visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10) });
 const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "mes" ? "mes" : "dia"; const periodo = datasVisao(data, q.has("producaoVisao") ? visao : "mes"); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
 
 export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: { podeExportar?: boolean }) {
+  const visualizacao = useVisualizacaoConsulta("producaoVisualizacao", "leite");
   const [filtros, setFiltros] = useState(iniciais);
   const [dados, setDados] = useState<Consulta | null>(null), [erro, setErro] = useState(""), [revisao, setRevisao] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -51,6 +55,8 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       {dados.mesEmAndamento && <p className="leite-consulta-nota">Mês em andamento.</p>}
       <div className="leite-agrupamento-producao"><span>Agrupar volumes por</span><Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}><TabsList variant="default" aria-label="Agrupamento da produção"><TabsTrigger value="dia">Dia</TabsTrigger><TabsTrigger value="mes">Mês</TabsTrigger></TabsList></Tabs></div>
       <GraficoProducaoLeite grupos={grupos} />
+      <div className="producao-registro-cabecalho"><h3>Registro da produção</h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da produção" /></div>
+      {visualizacao.modo === "visual" ? <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} /> : <>
       <TabelaFinanceira visualizacao="tabela" barraRolagemSuperior rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
         { chave: "periodo", titulo: visao === "dia" ? "Dia" : "Mês", principal: true, celula: g => g.periodo.split("-").reverse().join("/") },
         ...(dados.ordenhas ?? []).map(o => ({ chave: o.posicaoId, titulo: o.nome, alinhamento: "direita" as const, celula: (g: Grupo) => formatarLitros(g.turnos.find(t => t.posicaoId === o.posicaoId)?.litros ?? null) })),
@@ -58,6 +64,7 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
         { chave: "cobertura", titulo: "Situação", celula: g => g.completa ? "Completa" : "Parcial" },
       ]} />
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={grupos.length} porPagina={15} rotulo="Paginação da produção" substantivo="períodos" idSelect="pagina-producao-leite" onPagina={setPagina} />
+      </>}
     </>}
     {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}
   </section>;

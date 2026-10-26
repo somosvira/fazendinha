@@ -6,7 +6,7 @@ import { consultarLeite } from "./operacoes-api";
 vi.mock("./operacoes-api", () => ({ consultarLeite: vi.fn() }));
 vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: () => 2 }));
 const producao = { grupos: [{ periodo: "2026-10", litros: 10, completa: false, turnos: [{ posicaoId: "t", litros: 10 }, { posicaoId: "n", litros: null }] }], ordenhas: [{ posicaoId: "t", nome: "Tarde" }, { posicaoId: "n", nome: "Noturna" }], coberturaCompleta: false, mesEmAndamento: true };
-beforeEach(() => { HTMLElement.prototype.scrollIntoView = vi.fn(); HTMLElement.prototype.hasPointerCapture = vi.fn(() => false); HTMLElement.prototype.releasePointerCapture = vi.fn(); vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] }, porClassificacao: [] } : producao); });
+beforeEach(() => { localStorage.clear(); localStorage.setItem("terrano:leite:sessao:producaoVisualizacao", "tabela"); HTMLElement.prototype.scrollIntoView = vi.fn(); HTMLElement.prototype.hasPointerCapture = vi.fn(() => false); HTMLElement.prototype.releasePointerCapture = vi.fn(); vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] }, porClassificacao: [] } : producao); });
 afterEach(() => { cleanup(); vi.resetAllMocks(); history.replaceState(null, "", "/"); });
 it("consulta produção e custos no mesmo recorte com turnos históricos e ausência distinta de zero", async () => {
   history.replaceState(null, "", "/?leiteSecao=producao&producaoData=2026-10-31&producaoVisao=mes");

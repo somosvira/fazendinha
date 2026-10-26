@@ -21,3 +21,14 @@ it("consulta timeline somente ao expandir e percorre todas as páginas da partic
   expect(screen.getByText("Previsto: 05/10/2026 · horário não informado")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Ficha do animal" }).getAttribute("href")).toContain("sitio=7");
 });
+
+it.each([['NAO_ATENDIDO', 'Não atendido'], ['ADIADO', 'Adiado']] as const)("preserva situação administrativa %s na timeline individual", async (situacao, rotulo) => {
+  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "p", animalId: "a", inicioPrevisto: "2020-01-01", inicioEfetivo: "2020-01-01", precisaoInicioEfetivo: "DIA", animal: { brinco: "Matriz 1" } }], pagina: 1, total: 1, porPagina: 10 });
+  vi.mocked(obterTarefasProtocolo).mockResolvedValue({ itens: [{ id: "t", situacao, previstaPara: "2020-01-02", precisaoTemporal: "DIA", realizadaEm: null, previsaoPendente: false, ultimoEvento: { motivo: "Animal indisponível para o manejo" }, tarefaOrigem: { id: "t", nome: "Inseminação", tipo: "TENTATIVA", previstaEm: "2020-01-02", status: "PENDENTE" } } as TarefaOperacional], pagina: 1, total: 1, porPagina: 10 });
+  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
+  fireEvent.click(await screen.findByRole("button", { name: "Consultar etapas individuais" }));
+  expect(await screen.findByText(rotulo)).toBeTruthy();
+  expect(screen.queryByText("Atrasada")).toBeNull();
+  expect(screen.getByText("Animal indisponível para o manejo")).toBeTruthy();
+  expect(screen.getByText("Previsto: 02/01/2020 · horário não informado")).toBeTruthy();
+});

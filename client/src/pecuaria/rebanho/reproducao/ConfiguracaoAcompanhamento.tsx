@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
@@ -65,8 +66,8 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
   }
 
   return <section className="space-y-4 border-t pt-5">
-    <h2 className="text-xl font-semibold">Diagnóstico e reconfirmações</h2>
-    <p className="text-sm">Escolha os prazos com o responsável pelo manejo. As regras geram alertas e conservam sua versão em cada demanda. Não há prazo clínico padrão.</p>
+    <h2 className="text-xl font-semibold">Diagnóstico e reconfirmações <AjudaCampo rotulo="Ajuda sobre prazos de acompanhamento" texto="Escolha os prazos com o responsável pelo manejo. As regras geram alertas e conservam sua versão em cada demanda. Não há prazo clínico padrão."/></h2>
+
     <ErrorBox erro={erro} />
     {carregando && <p role="status">Carregando políticas…</p>}
     {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}

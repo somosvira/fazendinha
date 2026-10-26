@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import type { LucideIcon } from "lucide-react";
 import { ChevronDown, ChevronRight, Landmark, ClipboardCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -38,7 +39,7 @@ export function ContasDisponibilidade({ contas, onAbrir, onAbrirConta }: { conta
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
   const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
   return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
-    <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-serif text-xl">Contas e disponibilidade</h2><p className="mt-1 text-sm text-muted-foreground">Saldos atuais das contas incluídas</p></div></div>
+    <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-serif text-xl">Contas e disponibilidade<AjudaCampo rotulo="Ajuda: saldo disponível" texto="Saldos atuais das contas incluídas" /></h2></div></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
     {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
     {!!excluidas.length && <Collapsible className="border-t border-border">

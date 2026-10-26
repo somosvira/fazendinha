@@ -1,0 +1,20 @@
+.custos-diretos-filtros{display:flex;flex-wrap:wrap;align-items:end;gap:12px}
+.custos-diretos-filtros>label{flex:1;min-width:200px;font-size:13px;color:var(--muted-foreground)}
+.custos-cobertura{display:grid;gap:5px;font-size:13px;padding:12px 0;border-bottom:1px solid var(--border)}
+.custos-cobertura>p{margin:0;line-height:1.5}
+.custos-limitacoes{display:flex;flex-wrap:wrap;gap:4px 20px;list-style:disc;padding-left:16px;color:var(--muted-foreground);font-size:12px;line-height:1.5}
+.custos-classificacao{padding-top:18px;border-top:1px solid var(--border)}
+.custos-classificacao>header,.custos-preparos>header{display:flex;align-items:center;justify-content:space-between;gap:12px}.custos-classificacao h4,.custos-preparos h4{font-size:14px;font-weight:650}.custos-classificacao>header>span,.custos-preparos>header>span,.custos-contagem{font-size:12px;color:var(--muted-foreground)}
+.custos-classificacao-campos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.custos-classificacao-campos>label{display:grid;gap:4px;font-size:13px;min-width:0}
+.custos-classificacao-campos>label:first-child,.custos-classificacao-campos>nav,.custos-classificacao-campos>.custos-ajuda{grid-column:1/-1}
+.custos-classificacao-campos>label:has([data-slot=checkbox]){display:flex;align-items:center;gap:8px}
+.custos-classificacao-campos>label:has(textarea){grid-column:1/-1}
+.custos-classificacao-campos>button{justify-self:start;grid-column:1/-1}
+.custos-ajuda{font-size:12px;color:var(--muted-foreground);line-height:1.5}
+@media(max-width:640px){.custos-classificacao-campos{grid-template-columns:1fr}.custos-diretos-filtros>label{min-width:0;flex-basis:100%}}
+
+.custos-preparos{display:grid;gap:10px;padding-top:16px;border-top:1px solid var(--border)}
+.custos-preparos-linhas>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}
+.custos-preparos-linhas dd{text-align:right}
+@media(max-width:640px){.custos-preparos-linhas>div{grid-template-columns:1fr;gap:4px}.custos-preparos-linhas dd{text-align:left}}

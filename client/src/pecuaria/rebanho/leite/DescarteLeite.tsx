@@ -145,7 +145,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
     : null;
   return (
     <section className="leite-operacoes" aria-label="Descarte físico de leite">
-      <CabecalhoTabela titulo="Descarte físico" descricao="Saídas efetivas com origem, motivo e histórico preservado." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar descarte</Button> : undefined} />
+      <CabecalhoTabela titulo="Descarte físico" ajuda="Saídas efetivas com origem, motivo e histórico preservado." rotuloAjuda="Sobre descarte físico" acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar descarte</Button> : undefined} />
       <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data do descarte"><input type="date" required max={hojeOperacional()} value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} resumo={`Mês até ${data.split("-").reverse().join("/")}`} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}

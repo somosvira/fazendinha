@@ -36,6 +36,8 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const [revisao, setRevisao] = useState(0);
   const [ocupado, setOcupado] = useState(false);
   const salvandoRef = useRef(false);
+  const campoDataRef = useRef<HTMLLabelElement>(null);
+  const validarData = () => campoDataRef.current?.querySelector("input")?.reportValidity() ?? false;
   const [origens, setOrigens] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [conferido, setConferido] = useState(false);
@@ -99,7 +101,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     setRascunho(r => ({ ...r, alterado: true, parcelas: [...r.parcelas, novaParcela(natureza, ids, direta)] }));
   }
   async function salvar(confirmar = false) {
-    if (!contexto || salvandoRef.current) return;
+    if (!contexto || salvandoRef.current || !validarData()) return;
     salvandoRef.current = true;
     setErro(""); setOcupado(true);
     try {
@@ -131,7 +133,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     finally { salvandoRef.current = false; setOcupado(false); }
   }
   function abrirConfirmacao() {
-    if (!contexto) return;
+    if (!contexto || !validarData()) return;
     setErro("");
     if (emConflito) { setErro("Confira as alterações do servidor antes de confirmar. Seus campos continuam preservados."); return; }
     try { prepararParcelas(rascunho.parcelas, contexto, rascunho.posicao, true); setConferido(false); setConfirmando(true); }
@@ -146,7 +148,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       <div className="leite-registro-campos">
-        <label>Data da ordenha<DatePicker aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
+        <label ref={campoDataRef}>Data da ordenha<DatePicker required aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
         <label>Ordenha<SelectCampo aria-label="Ordenha" disabled={travado || !!rascunho.registroId || !contexto} value={rascunho.posicao} onValueChange={posicao => setRascunho(r => ({ ...r, posicao, alterado: true }))}><option value="">Selecione</option>{contexto?.sessoes.map(s => <option key={s.posicaoId} value={s.posicaoId}>{s.nome}</option>)}</SelectCampo></label>
       </div>
       {erroContexto ? <div role="alert">{erroContexto}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !contexto ? <p role="status">Consultando contexto da ordenha…</p> : <>

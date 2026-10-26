@@ -50,7 +50,7 @@ function EtapasParticipacao({ participante, propriedadeId }: { participante: Par
       const primeira = await obterTarefasProtocolo(contexto, { pagina: 1 }, propriedadeId);
       const itens = [...primeira.itens];
       for (let pagina = 2; vigente && pagina <= Math.ceil(primeira.total / primeira.porPagina); pagina++) itens.push(...(await obterTarefasProtocolo(contexto, { pagina }, propriedadeId)).itens);
-      if (vigente) setTarefas(itens.map((t, i) => ({ ...t.tarefaOrigem, etapa: i, previstaEm: t.previstaPara ?? "", previsaoPendente: t.previsaoPendente || !t.previstaPara, precisaoTemporal: t.precisaoTemporal, realizadaEm: t.realizadaEm, precisaoRealizacao: t.precisaoRealizacao })));
+      if (vigente) setTarefas(itens.map((t, i) => ({ ...t.tarefaOrigem, situacaoOperacional: t.situacao, motivoOperacional: t.ultimoEvento?.motivo, etapa: i, previstaEm: t.previstaPara ?? "", previsaoPendente: t.previsaoPendente || !t.previstaPara, precisaoTemporal: t.precisaoTemporal, realizadaEm: t.realizadaEm, precisaoRealizacao: t.precisaoRealizacao })));
     }
     void carregar().catch(e => { if (vigente) setErro(e instanceof Error ? e.message : "Não foi possível consultar as etapas individuais."); });
     return () => { vigente = false; };

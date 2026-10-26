@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import {
   act,
   cleanup,
@@ -139,13 +140,13 @@ it("consulta automaticamente hoje e mantém a decisão independente do filtro hi
   expect(consultarElegibilidade).toHaveBeenCalledWith("a", 1, hoje);
   expect(screen.getByLabelText("Data da decisão").closest("[hidden]")).not.toBeNull();
   expect(decidirElegibilidade).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Consultar na data"), { target: { value: "2020-05-02" } });
+  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2020-05-02" } });
   await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2020-05-02"));
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   await screen.findByLabelText("Decisão");
   expect(screen.getByLabelText("Data da decisão")).toHaveProperty("value", hoje);
-  fireEvent.change(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
-  fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Decisão conferida na data do registro" } });
+  await alterarControle(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
+  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Decisão conferida na data do registro" } });
   fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
   await screen.findByText("Falha transitória da decisão");
   expect(decidirElegibilidade).toHaveBeenCalledWith(expect.objectContaining({ data: hoje, vinculoCicloId: `vinculo:${hoje}`, tipo: "BLOQUEAR", aptaDesde: null }));
@@ -162,15 +163,15 @@ it("mudar explicitamente a data da decisão confere o vínculo daquela data e co
   await screen.findByText("Não elegível");
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   await screen.findByLabelText("Motivo");
-  fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Motivo já conferido" } });
+  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Motivo já conferido" } });
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   await screen.findByLabelText("Motivo");
   expect(screen.getByLabelText("Motivo")).toHaveProperty("value", "Motivo já conferido");
-  fireEvent.change(screen.getByLabelText("Data da decisão"), { target: { value: "2025-01-02" } });
+  await alterarControle(screen.getByLabelText("Data da decisão"), { target: { value: "2025-01-02" } });
   await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2025-01-02"));
   await screen.findByLabelText("Decisão");
-  fireEvent.change(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
+  await alterarControle(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
   fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
   await waitFor(() => expect(decidirElegibilidade).toHaveBeenCalledWith(expect.objectContaining({ data: "2025-01-02", vinculoCicloId: "vinculo:2025-01-02", motivo: "Motivo já conferido" })));
 });
@@ -179,19 +180,19 @@ it("atualiza aptidão e contexto da decisão após novos fatos sem apagar filtro
   vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), estado: "ELEGIVEL", elegivel: true }));
   const { rerender } = render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
   await screen.findByText("Elegível");
-  fireEvent.change(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-01" } });
+  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-01" } });
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   await screen.findByLabelText("Motivo");
-  fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Rascunho preservado" } });
+  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Rascunho preservado" } });
   let resolver: (valor: ElegibilidadeNaData) => void = () => {};
   vi.mocked(consultarElegibilidade).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve; }));
-  fireEvent.change(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-02" } });
+  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-02" } });
   vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => elegibilidade(data));
   const antes = vi.mocked(consultarElegibilidade).mock.calls.length;
   rerender(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={{ ...painel }} podeLancar/>);
   await screen.findByText("Não elegível");
   expect(consultarElegibilidade).toHaveBeenCalledTimes(antes + 2);
-  expect(screen.getByLabelText("Consultar na data")).toHaveProperty("value", "2026-01-02");
+  expect(screen.getByLabelText("Consultar na data")).toHaveProperty("value", "02/01/2026");
   expect(screen.getByLabelText("Motivo")).toHaveProperty("value", "Rascunho preservado");
   await act(async () => resolver({ ...elegibilidade("2026-01-02"), estado: "ELEGIVEL", elegivel: true }));
   expect(screen.queryByText("Elegível")).toBeNull();
@@ -209,7 +210,7 @@ it("uma atualização dos fatos exige nova conferência da associação de polí
   vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), vinculoCicloId: null, ciclo: { chaveCiclo: "PARTO:novo", inicioCiclo: data, partoId: "novo" } }));
   rerender(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={{ ...painel }} podeLancar/>);
   await screen.findByText("Parto de origem comprovado: novo");
-  expect(screen.getByRole("checkbox")).toHaveProperty("checked", false);
+  expect(screen.getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
   expect(screen.getByRole("button", { name: "Associar política ao acompanhamento" })).toHaveProperty("disabled", true);
   expect(vincularPolitica).not.toHaveBeenCalled();
 });

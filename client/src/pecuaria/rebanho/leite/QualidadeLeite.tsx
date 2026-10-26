@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { SubTabs } from "../../../components/SubTabs";
@@ -115,7 +116,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Qualidade do leite" descricao="Amostras individuais e coletivas, com o histórico de cada laudo." />
+      <CabecalhoTabela titulo="Qualidade do leite" ajuda="Amostras individuais e coletivas, com o histórico de cada laudo." rotuloAjuda="Sobre qualidade do leite" />
       <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
       {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><input type="date" required value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
@@ -198,12 +199,9 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
         /></DialogContent></Dialog>
       )}
-      <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>}>
+      <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
 
-        <p>
-          Campos e unidades vêm do laudo. Alterar um formato já utilizado exige
-          nova versão; não altera amostras anteriores.
-        </p>
+
         {!formatos.length && <p>Nenhum formato configurado.</p>}
         {formatos.map((f) => (
           <div className="leite-form-inline" key={f.id}>

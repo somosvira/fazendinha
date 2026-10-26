@@ -1,0 +1,36 @@
+/* Detalhes sanitários: leitura direta, sem recolher os dados do fato. */
+.painel-detalhe-sanitario { font-size: 14px; }
+.painel-detalhe-sanitario .sanitario-painel-cabecalho { padding: 20px 48px 20px 24px; }
+.painel-detalhe-sanitario .sanitario-painel-conteudo { padding: 24px; }
+.pec-detalhe-sanitario { display: grid; gap: 24px; min-width: 0; font-size: 14px; line-height: 1.5; }
+.pec-detalhe-sanitario > * { min-width: 0; }
+.pec-detalhe-sanitario h3 { font-family: var(--font-heading, "Manrope", sans-serif); font-size: 16px; font-weight: 650; line-height: 1.4; margin: 0 0 12px; }
+.pec-detalhe-sanitario > p { max-width: 65ch; overflow-wrap: anywhere; }
+.pec-detalhe-sanitario .sanitario-dados { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 24px; margin: 0; }
+.pec-detalhe-sanitario .sanitario-dados > div { min-width: 0; }
+.pec-detalhe-sanitario .sanitario-dados dt { margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.pec-detalhe-sanitario .sanitario-dados dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.pec-detalhe-sanitario .sanitario-identidade { padding-bottom: 22px; border-bottom: 1px solid var(--border); }
+.pec-detalhe-sanitario .sanitario-resultado { padding: 18px; border-radius: 12px; background: var(--muted); }
+.pec-detalhe-sanitario .sanitario-resultado-valor { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pec-detalhe-sanitario .sanitario-observacoes { padding-top: 20px; border-top: 1px solid var(--border); }
+.pec-detalhe-sanitario .sanitario-observacoes p { max-width: 65ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pec-detalhe-sanitario .sanitario-autoria { padding-top: 18px; border-top: 1px solid var(--border); }
+@media(max-width:540px) {
+  .painel-detalhe-sanitario .sanitario-painel-cabecalho { padding-left: 18px; }
+  .painel-detalhe-sanitario .sanitario-painel-conteudo { padding: 18px; }
+  .pec-detalhe-sanitario .sanitario-dados { grid-template-columns: 1fr; gap: 14px; }
+}
+
+.sanitario-historico { display: grid; gap: 16px; min-width: 0; }
+.sanitario-historico > h3 { margin-bottom: 0; }
+.sanitario-historico-evento { padding: 16px 0; border-bottom: 1px solid var(--border); }
+.sanitario-historico-evento:first-of-type { padding-top: 0; }
+.sanitario-historico-evento > header { margin-bottom: 14px; }
+.sanitario-historico-evento h4 { font-size: 14px; font-weight: 600; line-height: 1.5; }
+.sanitario-historico-evento > header p,
+.sanitario-historico-motivo,
+.sanitario-historico-paginacao { color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.sanitario-historico-evento > header p { margin-top: 4px; }
+.sanitario-historico-motivo { max-width: 65ch; margin-top: 12px; overflow-wrap: anywhere; }
+.sanitario-historico-paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

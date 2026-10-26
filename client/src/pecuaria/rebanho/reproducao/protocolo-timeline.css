@@ -10,3 +10,17 @@
 .protocolo-timeline>li:only-child{align-items:flex-start;text-align:left}
 .protocolo-timeline:has(>li:only-child):before,.protocolo-timeline>li:before{display:none}
 @container(max-width:600px){.protocolo-timeline{min-width:0;display:flex;flex-direction:column;gap:0}.protocolo-timeline:before{top:17px;bottom:24px;left:16px;right:auto;border-top:0;border-left:2px solid var(--border)}.protocolo-timeline>li,.protocolo-timeline>li:first-child,.protocolo-timeline>li:last-child{position:relative;flex:auto;width:100%;align-items:flex-start;text-align:left;padding:0 0 24px 50px;min-height:70px}.protocolo-timeline>li:last-child{padding-bottom:0}.protocolo-timeline-marca{position:absolute;left:0;top:0}}
+
+/* Resumo de participação na ficha: origem e datas não competem com as etapas. */
+.ficha-v4 .protocolo-animal-card { padding: 20px; border-radius: 12px; }
+.ficha-v4 .protocolo-animal-cabecalho { align-items: flex-start; gap: 16px; }
+.ficha-v4 .protocolo-animal-cabecalho > div { align-items: flex-start; gap: 10px; }
+.ficha-v4 .protocolo-animal-cabecalho h3 { line-height: 1.5; overflow-wrap: anywhere; }
+.ficha-v4 .protocolo-animal-resumo { background: transparent; border-radius: 0; padding: 18px 0; margin-top: 0; gap: 24px; }
+.ficha-v4 .protocolo-animal-resumo > div { min-width: 0; }
+.ficha-v4 .protocolo-animal-resumo dt { margin-bottom: 7px; }
+.ficha-v4 .protocolo-animal-resumo dd { font-size: 13px; line-height: 1.6; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media(max-width:650px) {
+  .ficha-v4 .protocolo-animal-card { padding: 16px; }
+  .ficha-v4 .protocolo-animal-resumo { gap: 16px; }
+}

@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { TabelaConsultaLocal } from "@/financeiro/TabelaConsultaLocal";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import type { CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -357,7 +358,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
         {aba === "categorias" && <>
-          <p className="mb-4 max-w-3xl text-sm text-ink-3">A primeira regra compatível define a categoria; a escolha manual na ficha tem prioridade até ser desfeita. Evite sobrepor faixas de idade e parto do mesmo sexo. Reordenar pode reclassificar animais: confira a simulação antes de confirmar. “Padrão” identifica regras do IDEAGRI.</p>
+          <div className="mb-3 inline-flex items-center gap-1 text-sm font-medium">Regras de classificação<AjudaCampo rotulo="Sobre as regras de classificação" texto="A primeira regra compatível define a categoria; a escolha manual na ficha tem prioridade até ser desfeita. Evite sobrepor faixas de idade e parto do mesmo sexo. Reordenar pode reclassificar animais: confira a simulação antes de confirmar. “Padrão” identifica regras do IDEAGRI."/></div>
           {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             <strong>Regras sobrepostas:</strong> nesses casos só a primeira da ordem vale e a outra nunca é aplicada. Corrija a faixa de uma delas.
             <ul className="mt-1.5 list-disc pl-5">{sobrepostas.map((par) => <li key={`${par.a.id}-${par.b.id}`}>{par.mensagem}</li>)}</ul>

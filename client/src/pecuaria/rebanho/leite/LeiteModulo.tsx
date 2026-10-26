@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState } from "react";
 import { Box, ChartNoAxesCombined, FlaskConical, Milk, Truck, Wallet, Baby, Settings2, FileText, FileSearch } from "lucide-react";
 import { PageHeader } from "../../../financeiro/financeiro-ui";
@@ -65,7 +66,7 @@ export function LeiteModulo({ podeLancar, podeFinanceiro, podeExportar = false }
     programacao: "Organize as retiradas previstas e acompanhe seus registros.",
   };
   return <div className="leite-modulo">
-    <PageHeader titulo={secao === "configuracoes" ? "Configurações de produção" : secao === "relatorios" ? "Relatórios do leite" : secao === "historico" ? "Conferir importação" : "Leite"} descricao={descricoes[secao] ?? descricoes.ordenhas} acao={<div className="leite-cabecalho-acoes"><div ref={setAcoesContainer} className="leite-modulo-acoes" /><Button variant="outline" onClick={() => selecionar("configuracoes")} aria-label="Configurações de produção"><Settings2 size={16} aria-hidden />Configurações</Button></div>} />
+    <PageHeader titulo={<>{secao === "configuracoes" ? "Configurações de produção" : secao === "relatorios" ? "Relatórios do leite" : secao === "historico" ? "Conferir importação" : "Leite"} <AjudaCampo rotulo="Sobre esta rotina do leite" texto={descricoes[secao] ?? descricoes.ordenhas} /></>} acao={<div className="leite-cabecalho-acoes"><div ref={setAcoesContainer} className="leite-modulo-acoes" /><Button variant="outline" onClick={() => selecionar("configuracoes")} aria-label="Configurações de produção"><Settings2 size={16} aria-hidden />Configurações</Button></div>} />
     <nav aria-label="Produção de leite" className="leite-navegacao leite-sete-rotinas">
       <SubTabs variant="financeiro" ariaLabel="Rotinas do leite" tabs={consultas.map(({ id, nome, Icon }) => ({ id, label: nome, icon: Icon }))} active={secao} onSelect={id => selecionar(id)} />
     </nav>

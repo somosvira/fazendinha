@@ -241,7 +241,7 @@ export function FormReproducao({
     opcoes: [string, string][],
     required = true,
   ) => (
-    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required}>
+    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : undefined}>
       {(p) => (
         <SelectCampo
           key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
@@ -537,10 +537,10 @@ export function FormReproducao({
                   `#${s.numero} ${s.descricao ?? "Serviço"}`,
                 ]),
               )}
-            <p className="text-xs text-ink-3">A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente.</p>
-            {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
+
+            {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)" ajuda="Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.">
               {p => <><Input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
-                <small>Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.</small></>}
+                </>}
             </CampoFormulario>}
             {campo("responsavel", "Responsável", responsavel, setResponsavel)}
           </>

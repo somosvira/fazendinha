@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -189,10 +190,10 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
 export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapshot: SnapshotRelatorioPartos; operacional?: boolean }) {
   return <article className="space-y-5 text-sm print:text-xs">
     <header>
-      <h2 className="text-lg font-semibold">Ficha de partos e pós-parto</h2>
+      <h2 className="text-lg font-semibold">Ficha de partos e pós-parto <AjudaCampo rotulo="Ajuda sobre a ficha de partos" texto="RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período."/></h2>
       <p>Sítio {snapshot.propriedadeId} · {snapshot.periodo.inicio} a {snapshot.periodo.fim} (ambas inclusive) · {snapshot.totalPartos} partos</p>
       {!operacional && <p>Emissão: {snapshot.emitidoEm} · Versão do relatório: {snapshot.versao} · Ordem: data e ID do parto crescentes.</p>}
-      <p className="mt-2 text-xs">RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período.</p>
+
     </header>
     {snapshot.partos.length === 0 && <p>Nenhum parto válido neste período.</p>}
     {snapshot.partos.map(p => <section key={p.id} className="rounded-md border p-3 print:rounded-none">

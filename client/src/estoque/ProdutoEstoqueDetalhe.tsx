@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Button as BotaoMenu } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -94,9 +95,9 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   return <PaginaFinanceira>
     <nav className="fin-breadcrumb" aria-label="Navegação estrutural"><a href="/estoque" onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/estoque"); } }}>Estoque</a><span aria-hidden="true">/</span><span aria-current="page">{produto?.nome ?? "Ficha do produto"}</span></nav>
     <PageHeader eyebrow="" titulo={produto?.nome ?? "Ficha do produto"} acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />Editar produto</Button> : undefined} />
-    <div className="estoque-filtro-ficha"><label className="grid gap-1 text-sm">Sítio<SelectCampo aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { setSitioId(Number(valorSelecionado) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
+    <div className="estoque-filtro-ficha"><div className="grid min-w-0 w-full gap-1 text-sm sm:w-[280px]"><div className="flex items-center"><label htmlFor="sitio-ficha-produto">Sítio</label><AjudaCampo rotulo="Ajuda: sítio da ficha" texto="O sítio selecionado nesta ficha filtra somente esta consulta. A seleção geral da fazenda não é alterada." /></div><SelectCampo id="sitio-ficha-produto" aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { setSitioId(Number(valorSelecionado) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></div>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
     <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
-    <p className="mt-3 text-sm text-ink-3">O sítio selecionado nesta ficha filtra somente esta consulta. A seleção geral da fazenda não é alterada.</p>
+
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
     {carregando ? <p role="status" className="mt-5">Carregando produto…</p> : produto && dados && <>
       {aba === "resumo" && <Panel className="mt-5 overflow-hidden">
@@ -119,7 +120,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     </>}
     {produto && sitioId && podeAcessarArea("financeiro") && (!!usuario?.dono || !!usuario?.flags.includes("verValores")) && <ValorizacaoProduto produtoId={produtoId} propriedadeId={sitioId} podeEditar={podeEditar} onSalvo={() => setRevisao(r => r+1)} />}
     {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="Estoque" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
-      <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><label className="text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><p className="text-sm text-ink-3">A alteração ficará no histórico de auditoria.</p></form>
+      <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><AjudaCampo rotulo="Ajuda: renomear lote" texto="A alteração ficará no histórico de auditoria." /></div></form>
     </DialogFinanceiro>}
     {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
   </PaginaFinanceira>;

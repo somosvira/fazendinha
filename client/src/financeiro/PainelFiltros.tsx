@@ -29,15 +29,21 @@ export function PainelFiltros({ aberto, onAbertoChange, children, onLimpar, temF
   amplo?: boolean;
 }) {
   const tituloRef = useRef<HTMLHeadingElement>(null);
+  const conteudoRef = useRef<HTMLDivElement>(null);
+  const validarCampos = () => {
+    const campos = conteudoRef.current?.querySelectorAll<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>("input, select, textarea");
+    for (const campo of campos ?? []) if (!campo.reportValidity()) { campo.focus(); return false; }
+    return true;
+  };
   return <Dialog open={aberto} onOpenChange={onAbertoChange}>
-    <DialogContent onOpenAutoFocus={evento => { evento.preventDefault(); tituloRef.current?.focus({ preventScroll: true }); }} aria-describedby={undefined} overlayClassName="z-[1090]" data-amplo={amplo || undefined} className="financeiro-colorido filtros-modal gap-0 p-0">
+    <DialogContent ref={conteudoRef} onOpenAutoFocus={evento => { evento.preventDefault(); tituloRef.current?.focus({ preventScroll: true }); }} aria-describedby={undefined} overlayClassName="z-[1090]" data-amplo={amplo || undefined} className="financeiro-colorido filtros-modal gap-0 p-0">
       <DialogHeader className="filtros-modal-cabecalho"><DialogTitle ref={tituloRef} tabIndex={-1} className="flex items-center gap-3 outline-none"><Settings2 size={22} className="text-primary" aria-hidden />Filtros</DialogTitle></DialogHeader>
       <div className="filtros-modal-corpo"><div className="filtros-modal-campos">{children}{erro && <p role="alert" className="col-span-full text-sm text-destructive">{erro}</p>}</div></div>
       <DialogFooter className="filtros-modal-rodape">
         <Button type="button" variant="ghost" disabled={!temFiltros} onClick={onLimpar} aria-label="Limpar filtros">Limpar</Button>
         <div className="flex gap-2">
           {onAplicar && <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>}
-          {onAplicar ? <Button type="button" disabled={!!erro} onClick={onAplicar}>Aplicar filtros</Button> : <DialogClose asChild><Button type="button">Ver resultados</Button></DialogClose>}
+          {onAplicar ? <Button type="button" disabled={!!erro} onClick={() => { if (validarCampos()) onAplicar(); }}>Aplicar filtros</Button> : <DialogClose asChild><Button type="button" onClick={e => { if (!validarCampos()) e.preventDefault(); }}>Ver resultados</Button></DialogClose>}
         </div>
       </DialogFooter>
     </DialogContent>

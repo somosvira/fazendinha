@@ -425,6 +425,9 @@ describe("Ficha por domínio", () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
+    const ilustracao = screen.getByRole("img", { name: "Ilustração genérica de bovino" });
+    expect(ilustracao.getAttribute("src")).toBe("/images/pecuaria/vaca.png");
+    expect(ilustracao.getAttribute("width")).toBe("110");
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
     expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Resumo", "Cadastro", "Histórico", "Produção", "Reprodução", "Sanidade", "Nutrição"]);
     for (const id of ["resumo", "identificacao-genetica", "ficha-painel-sanidade", "peso-manejo", "ficha-painel-nutricao", "historico", "auditoria"]) expect(document.getElementById(id)).toBeTruthy();

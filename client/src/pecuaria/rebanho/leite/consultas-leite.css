@@ -29,7 +29,7 @@
 .leite-grafico-producao figcaption h2 { margin: 0; font-size: 16px; }
 .leite-grafico-producao figcaption > span { display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 12px; }
 .leite-grafico-producao i { width: 9px; height: 9px; display: inline-block; background: var(--primary); border-radius: 2px; }
-.leite-grafico-producao i.parcial { background: var(--leite-grafico-parcial, #8daea5); margin-left: 12px; }
+.leite-grafico-producao i.parcial { background: repeating-linear-gradient(135deg, var(--primary) 0 4px, var(--card) 4px 6px); outline: 1px solid var(--primary); outline-offset: -1px; margin-left: 12px; }
 .leite-grafico-area { min-width: 0; height: 240px; margin-top: 16px; }
 .leite-grafico-producao .leite-consulta-nota { font-size: 12px; margin-bottom: 0; }
 .leite-cartao-volume { display: flex; flex-direction: column; gap: 3px; padding: 0 0 12px; }

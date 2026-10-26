@@ -17,7 +17,7 @@ export function CustosLeite({ periodo, podeExportar: _podeExportar = false }: { 
   const [dados, setDados] = useState<Relatorio | null>(null), [erro, setErro] = useState(""), [revisao, setRevisao] = useState(0);
   useEffect(() => { let ativa = true; setDados(null); setErro(""); void consultarLeite<Relatorio>(`/custos?${new URLSearchParams({ inicio, fim, ...(natureza ? { natureza } : {}) })}`, sitio).then(r => { if (ativa) setDados(r); }).catch(e => { if (ativa) setErro(e instanceof Error ? e.message : "Não foi possível consultar os custos."); }); return () => { ativa = false; }; }, [inicio, fim, natureza, sitio, revisao]);
   const oculto = dados?.consolidado.situacao === "OCULTO";
-  return <section className="leite-consulta-custos"><CabecalhoTabela titulo="Custos da produção" descricao="Custos registrados no mesmo recorte, sem rateio entre naturezas." />
+  return <section className="leite-consulta-custos"><CabecalhoTabela titulo="Custos da produção" ajuda="Custos registrados no mesmo recorte, sem rateio entre naturezas." rotuloAjuda="Sobre custos da produção" />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando custos…</p> : <>
       {oculto ? <p>Sem acesso a valores.</p> : <>
         <TabelaFinanceira rotulo="Custos registrados por classificação" itens={dados.porClassificacao ?? []} chaveDe={l => l.finalidade} colunas={[

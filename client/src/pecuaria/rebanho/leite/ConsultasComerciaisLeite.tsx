@@ -46,7 +46,7 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
     return () => { ativa = false; };
   }, [registrar, sitio, de, ate, paginaOperacoes]);
   return <section className="leite-operacoes leite-comercial-consulta" aria-label={tipo === "coletas" ? "Consulta de coletas" : "Consulta de vendas"}>
-    <CabecalhoTabela titulo={tipo === "coletas" ? "Coletas físicas" : "Vendas de leite"} descricao={tipo === "coletas" ? "Retiradas pela data real, inclusive com preço pendente." : "Acordos por comprador e período comercial."} acao={tipo === "coletas" && podeLancar ? <Button onClick={() => { setOperacao(""); setPaginaOperacoes(1); setRegistrar(true); }}>Registrar retirada</Button> : undefined} />
+    <CabecalhoTabela titulo={tipo === "coletas" ? "Coletas físicas" : "Vendas de leite"} ajuda={tipo === "coletas" ? "Retiradas pela data real, inclusive com preço pendente." : "Acordos por comprador e período comercial."} rotuloAjuda="Sobre as consultas comerciais" acao={tipo === "coletas" && podeLancar ? <Button onClick={() => { setOperacao(""); setPaginaOperacoes(1); setRegistrar(true); }}>Registrar retirada</Button> : undefined} />
     <BarraComercialLeite filtros={filtros} parceiros={parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando {tipo}…</p> : <>
       {!dados.itens.length && <p>Nenhum registro neste recorte.</p>}

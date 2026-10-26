@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import {
@@ -31,12 +32,8 @@ export function RitmoLeite({ dias }: { dias: DiaRitmoLeite[] }) {
   if (!dias.length) return null;
   return (
     <section aria-label="Ritmo da produção">
-      <h2>Litros conhecidos por dia</h2>
-      <p>
-        Dias parciais são destacados no gráfico. Lacunas significam volume não
-        informado; zero aparece somente quando foi medido. Finalidade pendente
-        mantém os litros registrados e exige conciliação do histórico.
-      </p>
+      <h2>Litros conhecidos por dia <AjudaCampo rotulo="Sobre o ritmo da produção" texto={"Dias parciais são destacados no gráfico. Lacunas significam volume não informado; zero aparece somente quando foi medido. Finalidade pendente mantém os litros registrados e exige conciliação do histórico."} /></h2>
+
       <div style={{ height: 260, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={dias} accessibilityLayer>

@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { resumoAuditoriaLegivel } from "../lib/auditoriaRotulos";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Fragment, useEffect, useMemo, useState } from "react";
@@ -96,7 +97,7 @@ export function AuditoriaAnimal({ id, recarregarToken }: { id: string; recarrega
     {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-red-700">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
     {!carregando && !erro && !intervaloInvalido && resultado && <>
       <div className="overflow-x-auto rounded-b-lg border border-t-0 border-border"><table className="w-full min-w-[780px] text-left text-xs consulta-tabela"><caption className="sr-only">Auditoria dos registros do animal</caption>
-        <thead className="bg-surface-2 text-ink-3"><tr>{["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"].map((titulo) => <th scope="col" key={titulo} className="px-3 py-2 font-semibold">{titulo}</th>)}</tr></thead>
+        <thead className="bg-surface-2 text-ink-3"><tr>{["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"].map((titulo) => <th scope="col" key={titulo} className="px-3 py-2 font-semibold">{titulo}{titulo === "Responsável" && <AjudaCampo rotulo="Sobre a autoria e os detalhes de auditoria" texto="Responsável é a autoria registrada na auditoria. Registros coletivos aparecem quando há vínculo persistido com o animal; detalhes dependem dos snapshots disponíveis e das permissões."/>}</th>)}</tr></thead>
         <tbody className="divide-y divide-border">{resultado.itens.map((entrada, indice) => {
           const chave = entrada.id ?? `${entrada.entidadeId}-${entrada.em}-${indice}`;
           const aberto = expandidos.has(chave); const eixo = entrada.eixo ? EIXOS[entrada.eixo] : null;
@@ -108,6 +109,5 @@ export function AuditoriaAnimal({ id, recarregarToken }: { id: string; recarrega
       </table></div>
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-3"><span>{total ? `${(pagina - 1) * TAMANHO_PAGINA + 1}–${Math.min(pagina * TAMANHO_PAGINA, total)}` : "0"} de {total} registros</span><div className="flex items-center gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina - 1 }))}>Anterior</Button><label className="sr-only" htmlFor={`pagina-auditoria-${id}`}>Página da auditoria</label><SelectCampo id={`pagina-auditoria-${id}`} className="h-9 rounded-md border border-border bg-surface px-2 text-ink" value={pagina} onValueChange={(valorSelecionado) => setConsulta((q) => ({ ...q, pagina: Number(valorSelecionado) }))}>{Array.from({ length: paginas }, (_, i) => <option key={i + 1} value={i + 1}>Página {i + 1} de {paginas}</option>)}</SelectCampo><Button secondary disabled={pagina >= paginas} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina + 1 }))}>Próxima</Button></div></div>
     </>}
-    <p className="mt-3 text-xs text-ink-3">Responsável é a autoria registrada na auditoria. Registros coletivos aparecem quando há vínculo persistido com o animal; detalhes dependem dos snapshots disponíveis e das permissões.</p>
   </div>;
 }

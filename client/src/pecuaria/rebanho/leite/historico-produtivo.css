@@ -1,15 +1,96 @@
-.historico-produtivo-filtros { display: flex; flex-wrap: wrap; align-items: end; gap: 1rem; margin-bottom: 1.25rem; }
-.historico-produtivo-filtros label { display: grid; gap: .375rem; min-width: 10rem; flex: 1 1 11rem; }
-.historico-produtivo-resumo { display: flex; flex-wrap: wrap; gap: 1rem 2rem; margin-block: 1rem 1.5rem; }
-.historico-produtivo-resumo strong { font-size: 1.125rem; font-variant-numeric: tabular-nums; }
-.historico-produtivo-tabela { overflow-x: auto; margin-block: 1rem; }
-.historico-produtivo-tabela table { width: 100%; border-collapse: collapse; text-align: left; }
-.historico-produtivo-tabela th, .historico-produtivo-tabela td { padding: .875rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+/* Produção na ficha: rotina, fatos e contexto sanitário permanecem à vista. */
+.historico-produtivo,
+.leite-qualidade-animal.secao-ficha-direta { font-size: 14px; container-type: inline-size; }
+.historico-produtivo > .secao-recolhivel-cabecalho,
+.leite-qualidade-animal > .secao-recolhivel-cabecalho { flex-wrap: wrap; align-items: end; row-gap: 14px; }
+.historico-produtivo > .secao-recolhivel-cabecalho > h2,
+.leite-qualidade-animal > .secao-recolhivel-cabecalho > h2 { flex: 1 1 180px; }
+.historico-produtivo .secao-recolhivel-acoes,
+.leite-qualidade-animal .secao-recolhivel-acoes { margin-left: auto; min-width: 0; }
+.producao-ficha-filtros { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 0; min-width: 0; }
+.producao-ficha-filtros label { display: grid; gap: 5px; width: 160px; min-width: 0; font-size: 12px; color: var(--muted-foreground); }
+.producao-ficha-filtros label input { font-size: 14px; }
+.producao-ficha-rotina { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px; margin: 0; }
+.producao-ficha-rotina > div,
+.historico-produtivo-resumo > div { min-width: 0; }
+.producao-ficha-rotina dt,
+.historico-produtivo-resumo dt { color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.producao-ficha-rotina dd,
+.historico-produtivo-resumo dd { margin: 5px 0 0; color: var(--foreground); font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.producao-ficha-nota { margin: 12px 0 0; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; max-width: 80ch; }
+.historico-produtivo-resumo { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 18px 0 0; padding-top: 16px; border-top: 1px solid var(--border); }
+.historico-produtivo-resumo dd { font-size: 16px; }
+.historico-produtivo-tabela { overflow-x: auto; margin-block: 16px; }
+.historico-produtivo-tabela table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+.historico-produtivo-tabela th,
+.historico-produtivo-tabela td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
 .historico-produtivo-tabela th { font-weight: 600; white-space: nowrap; }
-.historico-produtivo-tabela summary { cursor: pointer; min-height: 2rem; }
-.historico-produtivo-tabela li { margin-block: .375rem; }
-.historico-produtivo-paginas { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-block: 1rem; }
-.historico-produtivo-carencia { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border); display: grid; gap: .625rem; }
-.historico-produtivo-carencia h3 { font-weight: 600; }
-.historico-produtivo-carencia button { justify-self: start; }
-.historico-produtivo :is(summary, [tabindex="0"]):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.historico-produtivo-ordenhas { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; min-width: 150px; }
+.historico-produtivo-ordenhas li { margin: 0; }
+.historico-produtivo-paginas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; font-size: 13px; }
+.producao-ficha-vazio { margin: 18px 0 0; padding: 24px 0; border-top: 1px solid var(--border); color: var(--muted-foreground); }
+.producao-ficha-vazio h3 { margin: 0; color: var(--foreground); font-size: 15px; font-weight: 600; }
+.producao-ficha-vazio p { margin: 6px 0 0; font-size: 13px; line-height: 1.5; }
+.historico-carencia-situacao { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap; }
+.historico-carencia-situacao p { margin: 0; font-size: 14px; }
+.historico-carencia-situacao span { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+.historico-produtivo [tabindex="0"]:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.leite-qualidade-animal.secao-ficha-direta { padding: 0; border: 0; border-radius: 0; background: transparent; }
+.leite-qualidade-animal.secao-ficha-direta h2 { margin: 0; }
+.leite-qualidade-animal .producao-ficha-nota { font-size: 12px; margin: 0; }
+.leite-qualidade-animal .producao-ficha-vazio { margin: 0; padding: 16px 0; border-top: 0; font-size: 13px; }
+.leite-qualidade-animal .leite-qualidade-amostra { padding: 18px 0; }
+.leite-qualidade-amostra > header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 10px; }
+.leite-qualidade-amostra > header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.leite-qualidade-amostra > header span { color: var(--muted-foreground); font-size: 12px; }
+.leite-qualidade-amostra > .grid { display: flex; flex-wrap: wrap; gap: 6px 20px; color: var(--muted-foreground); }
+.leite-qualidade-amostra > dl { display: flex; flex-wrap: wrap; gap: 16px 32px; margin: 14px 0 0; }
+.leite-qualidade-amostra > dl dt { color: var(--muted-foreground); font-size: 12px; }
+.leite-qualidade-amostra > dl dd { font-size: 14px; }
+@container (max-width: 600px) {
+  .producao-ficha-rotina { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}
+@media (max-width: 640px) {
+  .historico-produtivo .secao-recolhivel-acoes,
+  .leite-qualidade-animal .secao-recolhivel-acoes { width: 100%; padding: 0; }
+  .producao-ficha-filtros { width: 100%; }
+  .producao-ficha-filtros label { flex: 1 1 130px; }
+  .producao-ficha-filtros label input { font-size: 16px; }
+}
+/* Produção individual: composição aprovada, somente observações do animal. */
+.historico-produtivo .animal-indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+.historico-produtivo .animal-indicadores [data-slot="card"],
+.historico-produtivo .animal-curva-rotina [data-slot="card"] { padding: 16px; gap: 6px; box-shadow: none; min-width: 0; }
+.historico-produtivo .animal-indicadores section > span { color: var(--muted-foreground); font-size: 12px; }
+.historico-produtivo .animal-indicadores strong { font-size: 28px; letter-spacing: -.025em; font-weight: 650; font-variant-numeric: tabular-nums; }
+.historico-produtivo .animal-indicadores section > div { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--muted-foreground); }
+.historico-produtivo .variacao-negativa { color: var(--destructive); }
+.historico-produtivo .animal-curva-rotina { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr); gap: 14px; margin-bottom: 18px; }
+.historico-produtivo .animal-curva header { display: flex; align-items: center; gap: 8px; }
+.historico-produtivo .animal-curva h3,
+.historico-produtivo .animal-rotina h3,
+.historico-produtivo .animal-historico-cabecalho h3 { font-size: 14px; margin: 0; font-weight: 600; }
+.historico-produtivo .animal-curva-area { width: 100%; height: 230px; margin-top: 8px; aspect-ratio: auto; min-width: 0; }
+.historico-produtivo .animal-rotina .producao-ficha-rotina { grid-template-columns: 1fr; gap: 16px; margin-top: 16px; }
+.historico-produtivo .animal-historico-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 18px 14px; }
+.historico-produtivo .animal-afericoes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.historico-produtivo .animal-afericoes [data-slot="card"] { padding: 14px; gap: 10px; box-shadow: none; min-width: 0; }
+.historico-produtivo .animal-afericoes time { font-size: 12px; font-weight: 550; }
+.historico-produtivo .animal-afericoes article > strong { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.historico-produtivo .animal-afericoes dl { display: grid; gap: 12px; margin: 0; }
+.historico-produtivo .animal-afericoes dt { font-size: 11px; color: var(--muted-foreground); }
+.historico-produtivo .animal-afericoes dd { margin: 4px 0 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+.historico-produtivo .animal-afericoes p,
+.historico-produtivo .animal-afericoes article > span { margin: 0; font-size: 12px; color: var(--muted-foreground); }
+.historico-produtivo .animal-afericoes .historico-produtivo-ordenhas { min-width: 0; padding-top: 10px; border-top: 1px solid var(--border); font-size: 12px; }
+.historico-produtivo .historico-produtivo-tabela table { min-width: 760px; }
+@container (max-width: 1050px) { .historico-produtivo .animal-afericoes { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 800px) {
+  .historico-produtivo .animal-curva-rotina { grid-template-columns: 1fr; }
+  .historico-produtivo .animal-rotina .producao-ficha-rotina { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 560px) {
+  .historico-produtivo .animal-indicadores,
+  .historico-produtivo .animal-afericoes { grid-template-columns: 1fr; }
+  .historico-produtivo .animal-historico-cabecalho { flex-wrap: wrap; }
+}

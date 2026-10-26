@@ -448,3 +448,22 @@ it("seletor de situação mantém zero medido distinto de pendente", async () =>
   expect((screen.getByLabelText("Litros de Aurora, brinco 123") as HTMLInputElement).value).toBe("");
   expect(screen.getByRole("combobox", { name: "Situação de Aurora, brinco 123" }).textContent).toContain("Pendente");
 });
+
+for (const entrada of ["31/02/2026", "12/1", ""]) it(`não grava animal nem ordenha com data operacional digitada inválida (${entrada || "vazia"})`, async () => {
+  vi.mocked(salvarFolha).mockResolvedValue(folha(1));
+  render(<Leite podeLancar />);
+  const litros = await screen.findByLabelText("Litros de Aurora, brinco 123") as HTMLInputElement;
+  fireEvent.change(litros, { target: { value: "8" } });
+  const campo = screen.getByLabelText("Data operacional") as HTMLInputElement;
+  fireEvent.change(campo, { target: { value: entrada } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar animal · Aurora" }));
+  expect(salvarFolha).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  expect(salvarFolha).not.toHaveBeenCalled();
+  expect(campo.value).toBe(entrada);
+  expect(litros.value).toBe("8");
+  fireEvent.change(campo, { target: { value: "19/10/2026" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await waitFor(() => expect(salvarFolha).toHaveBeenCalledTimes(1));
+  expect(salvarFolha).toHaveBeenCalledWith(expect.objectContaining({ dataOperacional: "2026-10-19", medicoes: [expect.objectContaining({ animalId: "a", litros: 8 })] }));
+});
