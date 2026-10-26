@@ -376,8 +376,9 @@ export function App() {
     fetchMe()
       .then((u) => {
         if (u) {
+          const sessao = `clerk:${u.id}`;
           setUsuario(u);
-          setSessao(token, u);
+          setSessao(sessao, u);
         } else {
           clearSessao();
           setTokenState(null);
@@ -479,12 +480,12 @@ export function App() {
   );
 
   const excluirTrabalho = async (tipo: TipoTrabalhoAtivo) => {
-    if (token !== getToken() || propAtiva !== getPropriedadeAtiva()) throw new Error("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.");
+    if (usuarioId == null || usuarioId !== getUsuario()?.id || propAtiva !== getPropriedadeAtiva()) throw new Error("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.");
     const origem = window.location.pathname;
     await descartarTrabalhoAtivo(tipo, validar => tipo === "operacao"
       ? enfileirarSalvamentoRascunho(() => { validar(); return descartarRascunhoOperacao(); })
       : enfileirarSalvamentoRascunhoRelatorio(() => { validar(); return descartarRascunhoRelatorioFinanceiro(); }));
-    if (token !== getToken() || propAtiva !== getPropriedadeAtiva() || origem !== window.location.pathname) return;
+    if (usuarioId == null || usuarioId !== getUsuario()?.id || propAtiva !== getPropriedadeAtiva() || origem !== window.location.pathname) return;
     if (tipo === "operacao" && isNovaOperacaoFinanceira(origem)) navegarPara("/financeiro/operacoes");
     if (tipo === "relatorio" && isNovoRelatorioFinanceiro(origem)) navegarPara("/financeiro/relatorios");
   };
