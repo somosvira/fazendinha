@@ -1,22 +1,39 @@
 #!/bin/sh
+# Publicação explícita por ambiente; nunca executar seed ou reset neste fluxo.
+set -u
+DEPLOY_TARGET="${1:-}"
+export DEPLOY_TARGET
+case "$DEPLOY_TARGET" in
+  staging) BASE_URL="https://fazendinha-stg.somosvirasudo.workers.dev" ;;
+  producao) BASE_URL="https://fazendinha-producao.somosvirasudo.workers.dev" ;;
+  *) echo "Uso: sh scripts/cf-deploy.sh staging|producao" >&2; exit 1 ;;
+esac
 
-# Roda como "Deploy command" no Cloudflare Workers Builds (Settings > Builds),
-# substituindo o default `npx wrangler deploy`. Schema e migrations vivem
-# em server/; interface e API são publicadas no mesmo Worker.
-#
-# Sem `set -e` de propósito: com `set -e`, `OUTPUT=$(cmd)` aborta o script na
-# hora se `cmd` falhar, antes de chegar no echo/case abaixo — perderia
-# justamente a mensagem de diagnóstico que este script existe pra mostrar.
-# Cada passo abaixo checa o próprio exit code manualmente.
-#
-# Pegadinha conhecida deste repo (ver DEPLOY.md, seção "Banco e bootstrap"):
-# as migrations foram consolidadas em 25/09/2026 numa baseline + a migration da
-# pecuária v1. Um banco com o histórico anterior (ou materializado por
-# `db push`) faz a baseline falhar com "already exists" e este script aborta
-# aqui, antes do `wrangler deploy`. Reconcilie o schema e o histórico antes
-# de repetir, verificando equivalência antes de registrar uma baseline como
-# aplicada. Preserve os dados; reset não é uma etapa deste deploy.
-OUTPUT=$(cd server && npx prisma migrate deploy 2>&1)
+# Valida o destino antes de qualquer escrita. Nunca imprimir as conexões.
+node --input-type=module <<'JS'
+import { execFileSync } from 'node:child_process';
+const fail = (message) => { console.error(message); process.exit(1); };
+const target = process.env.DEPLOY_TARGET;
+const branch = target === 'staging' ? 'staging' : 'main';
+const host = target === 'staging'
+  ? 'ep-green-recipe-acyjvbqp.sa-east-1.aws.neon.tech'
+  : 'ep-calm-frog-acks64ue.sa-east-1.aws.neon.tech';
+if (process.env.CLOUDFLARE_ACCOUNT_ID !== '1148b69b1e1518155a8dd0cf91929ebf') fail('Conta Cloudflare diferente do destino autorizado.');
+if (!process.env.CLOUDFLARE_API_TOKEN) fail('CLOUDFLARE_API_TOKEN ausente.');
+if (process.env.GITHUB_ACTIONS === 'true' && (process.env.GITHUB_REF !== `refs/heads/${branch}` || process.env.GITHUB_EVENT_NAME !== 'push')) fail('Branch/evento incompatível com o ambiente.');
+const sha = process.env.WORKERS_CI_COMMIT_SHA;
+if (!sha || !/^[a-f0-9]{40}$/.test(sha) || sha !== execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()) fail('SHA de publicação ausente ou diferente do checkout.');
+if (!process.env.WORKERS_CI_BUILD_UUID) fail('Identificador de publicação ausente.');
+for (const key of ['DATABASE_URL', 'DIRECT_URL']) {
+  let url;
+  try { url = new URL(process.env[key]); } catch { fail(`${key} ausente ou inválida.`); }
+  const allowed = key === 'DIRECT_URL' ? [host] : [host, host.replace('.', '-pooler.')];
+  if (!['postgres:', 'postgresql:'].includes(url.protocol) || !allowed.includes(url.hostname) || url.pathname !== '/neondb' || !url.username || !url.password || !['require', 'verify-full'].includes(url.searchParams.get('sslmode'))) fail(`${key} não corresponde ao banco ${target} com TLS obrigatório.`);
+}
+JS
+if [ "$?" -ne 0 ]; then exit 1; fi
+
+OUTPUT=$(cd server && pnpm exec prisma migrate deploy 2>&1)
 STATUS=$?
 echo "$OUTPUT"
 
@@ -42,18 +59,8 @@ case "$OUTPUT" in
     ;;
 esac
 
-# --var repassa as vars de build que a própria Cloudflare injeta
-# (WORKERS_CI_COMMIT_SHA/WORKERS_CI_BUILD_UUID, ver docs de Workers Builds)
-# pro runtime do Worker, sem precisar declará-las no wrangler.jsonc — é o
-# GET /api/health que devolve elas de volta, pra confirmar depois qual commit
-# está de fato no ar (server/src/routes/health.ts).
-#
-# Capturado (em vez de deixar correr direto pro terminal) porque a saída do
-# `wrangler deploy` imprime a URL workers.dev do Worker — serve de fallback
-# pra achar onde bater o health check no PRIMEIRO deploy, antes de existir
-# um APP_BASE_URL setado (ver abaixo). `echo` logo depois preserva a saída
-# nos logs do build normalmente.
-OUTPUT=$(npx wrangler deploy \
+# O workflow fornece o SHA exato e o identificador da execução ao runtime.
+OUTPUT=$(pnpm exec wrangler deploy --env "$DEPLOY_TARGET" \
   --var WORKERS_CI_COMMIT_SHA:"$WORKERS_CI_COMMIT_SHA" \
   --var WORKERS_CI_BUILD_UUID:"$WORKERS_CI_BUILD_UUID" 2>&1)
 DEPLOY_STATUS=$?
@@ -62,24 +69,6 @@ echo "$OUTPUT"
 if [ "$DEPLOY_STATUS" -ne 0 ]; then
   echo "--- wrangler deploy saiu com exit code $DEPLOY_STATUS. ---"
   exit 1
-fi
-
-# Prefere APP_BASE_URL (mesma env de server/src/env.ts, já usada pros links de
-# convite/reset — DEPLOY.md, seção "Configuração") em vez de inventar uma env só pra isso: no
-# Worker único, front e back são o mesmo host, então a URL pública do app já É
-# a base do health check. Setar em Build variables assim que souber a URL
-# definitiva do Worker (custom domain, se tiver um).
-#
-# Sem ela (tipicamente só no primeiro deploy, antes de existir uma URL pra
-# configurar), cai pro workers.dev que o próprio `wrangler deploy` acabou de
-# imprimir acima — assim o build já verifica envs/config mesmo nesse deploy
-# inicial, em vez de simplesmente pular a checagem.
-DEPLOYED_URL=$(printf '%s' "$OUTPUT" | grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' | head -1)
-BASE_URL="${APP_BASE_URL:-$DEPLOYED_URL}"
-
-if [ -z "$BASE_URL" ]; then
-  echo "--- Nem APP_BASE_URL setada nem uma URL workers.dev na saída do wrangler deploy (ex.: workers_dev desativado + sem custom domain) — pulando a checagem pós-deploy. ---"
-  exit 0
 fi
 
 WORKER_HEALTH_URL="${BASE_URL%/}/api/health"
@@ -98,16 +87,18 @@ while [ "$i" -le "$TENTATIVAS" ]; do
   CURL_STATUS=$?
 
   if [ "$CURL_STATUS" -eq 0 ]; then
-    COMMIT_NO_AR=$(printf '%s' "$BODY" | grep -o '"commit":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-    # Sem WORKERS_CI_COMMIT_SHA (ex.: rodando isso fora do Workers Builds) não
-    # há o que comparar — HTTP 200 sozinho já basta nesse caso.
-    if [ -z "$WORKERS_CI_COMMIT_SHA" ] || [ "$COMMIT_NO_AR" = "$WORKERS_CI_COMMIT_SHA" ]; then
-      echo "--- health ok. Commit no ar: ${COMMIT_NO_AR:-desconhecido} ---"
+    if printf '%s' "$BODY" | node --input-type=module -e '
+      let raw = "";
+      for await (const part of process.stdin) raw += part;
+      try {
+        const h = JSON.parse(raw);
+        process.exit(h.status === "ok" && h.database?.connected === true && h.config?.ok === true && h.migrations?.upToDate === true && h.commit === process.env.WORKERS_CI_COMMIT_SHA ? 0 : 1);
+      } catch { process.exit(1); }
+    '; then
+      echo "--- health ok. Commit no ar: $WORKERS_CI_COMMIT_SHA ---"
       exit 0
     fi
-
-    echo "--- health respondeu 200, mas o commit no ar ($COMMIT_NO_AR) ainda não é o que acabou de subir ($WORKERS_CI_COMMIT_SHA) — provavelmente propagação em andamento ---"
+    echo "--- health ainda não confirmou configuração, banco, migrations e SHA esperado ---"
   else
     echo "--- health check falhou (curl exit $CURL_STATUS): $BODY ---"
   fi

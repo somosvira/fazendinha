@@ -1,18 +1,22 @@
 name: CI
 
-# Build e testes são o gate da `main`. A publicação em Cloudflare Workers é
-# configurada separadamente deste workflow; aqui não há etapa de deploy.
+# Testes aprovados liberam a publicação: staging → STG; main → produção.
+# Produção depende também da aprovação do environment após homologação no STG.
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: staging-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}
+  # Nunca interromper migrations/publicação em andamento por um novo push.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -169,3 +173,33 @@ jobs:
           pnpm --filter rionovo-server run seed
           node --env-file=server/.env server/scripts/fingerprint-seed.mjs > /tmp/seed-depois.json
           diff -u /tmp/seed-antes.json /tmp/seed-depois.json
+
+  deploy:
+    name: deploy (${{ github.ref_name == 'main' && 'producao' || 'staging' }})
+    needs: [ci, financeiro-integration, seed-unificada]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: ${{ github.ref_name == 'main' && 'producao' || 'staging' }}
+      url: ${{ github.ref_name == 'main' && 'https://fazendinha-producao.somosvirasudo.workers.dev' || 'https://fazendinha-stg.somosvirasudo.workers.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter rionovo-server exec prisma generate
+      - run: pnpm cf:build
+      - name: Aplicar migrations, publicar e conferir versão
+        env:
+          DEPLOY_TARGET: ${{ github.ref_name == 'main' && 'producao' || 'staging' }}
+          CLOUDFLARE_ACCOUNT_ID: '1148b69b1e1518155a8dd0cf91929ebf'
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          WORKERS_CI_COMMIT_SHA: ${{ github.sha }}
+          WORKERS_CI_BUILD_UUID: github-${{ github.run_id }}-${{ github.run_attempt }}
+        run: sh scripts/cf-deploy.sh "$DEPLOY_TARGET"
