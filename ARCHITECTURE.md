@@ -1,5 +1,7 @@
 # Arquitetura
 
+O [system design](docs/system-design.md) complementa este documento com fronteiras, relações e fluxos transacionais até a V5; o [manual por eixos](docs/guia/README.md) explica seu uso.
+
 ## Organização
 
 Monorepo pnpm com `client` (React 18, Vite 6, TypeScript) e `server` (Hono, Prisma 6, Zod, TypeScript). Node 22+; versões exatas estão nos manifests e no `pnpm-lock.yaml`.
@@ -25,7 +27,7 @@ O deploy usa exclusivamente Cloudflare Workers: interface e API compartilham o m
 
 O schema usa `public` para Financeiro/Estoque/Auth/Sítios e `pecuaria` para os fatos pecuários. IDs e relações seguem o schema, sem inferir um tipo global único de identificador. SQL das migrations acrescenta constraints, índices parciais e catálogos que o Prisma não representa integralmente. `migrate deploy` aplica a cadeia; `db push` não é equivalente.
 
-O cadastro remanescente `RegistroChuva`, sem fluxo operacional, foi retirado do modelo atual. Sua migration de remoção recusa tabelas com dados; um ambiente com histórico exige preservação e destinação explícitas antes de prosseguir.
+A estrutura versionada parte da baseline `20261025000000_base_unificada`, consolidada na V5. A cadeia anterior permanece no Git; nomes de migrations antigas em evidências são proveniência histórica, não arquivos a executar nesta árvore. Uma instalação com dados da cadeia anterior precisa de reconciliação própria, conforme [deploy](DEPLOY.md#banco-e-bootstrap). Evoluções usam migrations incrementais, sem reescrever a baseline aplicada. `RegistroChuva` não integra o modelo atual.
 
 Nenhum entrypoint executa automaticamente os bootstraps de propriedade/dono. São comandos explícitos em `server/src/scripts/`. Aplicação de migrations em dev vem do script `dev` do servidor, não de `app.ts`.
 
@@ -33,7 +35,9 @@ Nenhum entrypoint executa automaticamente os bootstraps de propriedade/dono. Sã
 
 Financeiro separa operação, compromisso, transação, movimento de conta e efeito físico. Estoque é compartilhado com Pecuária; consumo operacional não cria uma segunda despesa. Confira [o contrato](docs/financeiro-rebuild-contrato.md).
 
-Pecuária V1–V4 reúne rebanho, genética, sanidade, peso/manejo, nutrição e reprodução, com auditoria e localização histórica. Reprodução usa fatos individuais, gestação, parto/crias, visitas com atividades e programações IATF; consumo de material e nascimento de crias são transacionais. Consulte também o [contrato V4](docs/pecuaria/reproducao.md). Confira [seu contrato](docs/pecuaria/README.md). Agricultura/Cultivo/Equipe não têm módulos operacionais atuais. Centros/categorias e origens físicas de atividades retiradas podem existir no histórico financeiro.
+Pecuária V1–V5 reúne rebanho, genética, sanidade, peso/manejo, nutrição e reprodução, com auditoria e localização histórica. Reprodução usa fatos individuais, gestação, parto/crias, visitas com atividades e programações IATF; consumo de material e nascimento de crias são transacionais. Consulte também o [contrato V4](docs/pecuaria/reproducao.md). Confira [seu contrato](docs/pecuaria/README.md). Agricultura/Cultivo/Equipe não têm módulos operacionais atuais. Centros/categorias e origens físicas de atividades retiradas podem existir no histórico financeiro.
+
+Produção V5 separa aferição geral/individual, confirmação no estoque, natureza, destinos, qualidade, coletas e fechamento comercial. Medição não cria saldo antes da confirmação; retirada com preço pendente não cria receita; fechamento usa o motor financeiro sem repetir a saída. `LEITE_FIFO_V1` admite custo pendente somente nas origens/alocações lácteas comprovadas. Veja [leite](docs/pecuaria/leite.md) e [seus fluxos integrados](docs/system-design.md#caminho-leiteiro-e-ausência-de-duplicação).
 
 O [assistente de consulta](docs/assistente-consulta.md) usa OpenAI para interpretar perguntas e um registro de ferramentas autorizadas para formatar respostas com dados dos serviços financeiros e artigos de ajuda revisados. O backend nunca envia os resultados financeiros ao modelo. O canal `/api/assistente/*` é separado, exige usuário real ativo e pode ser desativado com `ASSISTENTE_CONSULTA_ENABLED=false`. Guias e consultas rápidas funcionam sem chave de IA. Os agregados exigem as flags de valores, salários e investimento até haver mascaramento granular confiável.
 
@@ -61,13 +65,13 @@ Novos objetos são segregados por namespace; a leitura usa as chaves persistidas
 
 ## Testes
 
-Vitest em ambos os workspaces; teste perto do código. O servidor inclui `src/**/*.test.ts`, `prisma/seedatev3/**/*.test.ts` e `prisma/seedatev4/**/*.test.ts`. Seu setup fornece R2 inerte, sem acesso ao bucket; para unitários basta uma `DATABASE_URL` inerte. Testes de transformação IDEAGRI usam `node --test scripts/*.test.mjs`. O planejamento da manutenção local dos sítios usa `node --test server/scripts/consolidacao-sitios-local/modelo.test.mjs`, sem acesso ao banco.
+Vitest em ambos os workspaces; teste perto do código. O servidor inclui `src/**/*.test.ts`, `prisma/seed/**/*.test.ts` e os helpers históricos testados em `seedatev3`, `seedatev4` e `seedatev5`. Seu setup fornece R2 inerte, sem acesso ao bucket; para unitários basta uma `DATABASE_URL` inerte. Testes de transformação IDEAGRI usam `node --test scripts/*.test.mjs`. O planejamento da manutenção local dos sítios usa `node --test server/scripts/consolidacao-sitios-local/modelo.test.mjs`, sem acesso ao banco.
 
 As flags `AUTH_DB_INTEGRATION=1`, `PECUARIA_DB_INTEGRATION=1` e `FINANCE_DB_INTEGRATION=1` habilitam casos com PostgreSQL real. No desenvolvimento local, use somente `fazendinha_seedatev3`, com todas as migrations, após revisar se a suíte cria/remove apenas fixtures próprias. Não crie clones nem bancos auxiliares. `test:financeiro:integration` e os testes que recriam estrutura ficam restritos ao CI externo; não execute essa bateria no ambiente local. Seus tipos podem ser conferidos por `tsc -p server/tsconfig.financeiro.json`.
 
 Quando qualquer flag de integração está habilitada, o Vitest do servidor executa os arquivos em sequência: compartilham o banco e transações Serializable de cenários independentes podem conflitar mesmo com fixtures distintas. Os testes de concorrência mantêm suas operações simultâneas dentro de cada caso. Sem as flags, os arquivos unitários continuam paralelos. O cenário sanitário com 101 participantes tem limite próprio de 30 segundos para criar e consultar os fatos reais; os demais conservam o limite padrão.
 
-`.github/workflows/staging.yml` compila os dois workspaces, testa o transformador, a interface e o servidor com banco efêmero, além de executar a bateria financeira separada e conferir os contratos da carga V4. Testes unitários, integrações e homologação visual/manual são evidências distintas.
+`.github/workflows/staging.yml` compila os dois workspaces, testa o transformador, a interface e o servidor com banco efêmero, além de executar a bateria financeira separada e conferir os contratos da carga V4 e da seed única. O job `seed-unificada` verifica baseline, interrupção/retomada e reexecução idempotente no PostgreSQL efêmero do CI. Testes unitários, integrações e homologação visual/manual são evidências distintas.
 
 Configuração e fluxo de publicação em Cloudflare ficam em [DEPLOY.md](DEPLOY.md).
 
@@ -87,7 +91,7 @@ O editor de permissões aguarda a resposta do servidor antes de apresentar a alt
 
 `DialogContent` e `SheetContent` também conservam o elemento que tinha foco antes da abertura quando o fluxo é controlado sem `Trigger` Radix. No fechamento, devolvem o foco a esse elemento se ainda estiver conectado/habilitado, respeitando um destino explícito do consumidor. Campos de texto e áreas de texto no conteúdo/diálogos usam 16px em larguras até 900px para leitura e prevenção de zoom de foco móvel; isso não substitui homologação em Safari/dispositivo físico.
 
-A navegação de Pecuária mantém Rebanho, Reprodução, Visitas, Sanidade, Nutrição e Relatórios; pesagem coletiva é ação da seleção em Animais, e `/pecuaria/pesagem-manejo` permanece alias que conserva consulta e fragmento. Os resumos nutricionais usam o agregado de leitura `/api/pecuaria/rebanho/nutricao/resumo`: o banco soma o histórico confirmado por fechamento/lote e o servidor aplica escopo e mascaramento. O cliente não percorre mais páginas do histórico para montar o panorama; o histórico detalhado conserva paginação, com filtro de situação no servidor. As gravações de domínio não mudam; confira o [guia específico](docs/design/pecuaria-cooperativa/design.md).
+A navegação de Pecuária mantém Rebanho, Reprodução, Visitas, Sanidade, Nutrição, Leite e Relatórios; pesagem coletiva é ação da seleção em Animais, e `/pecuaria/pesagem-manejo` permanece alias que conserva consulta e fragmento. Os resumos nutricionais usam o agregado de leitura `/api/pecuaria/rebanho/nutricao/resumo`: o banco soma o histórico confirmado por fechamento/lote e o servidor aplica escopo e mascaramento. O cliente não percorre mais páginas do histórico para montar o panorama; o histórico detalhado conserva paginação, com filtro de situação no servidor. As gravações de domínio não mudam; confira o [guia específico](docs/design/pecuaria-cooperativa/design.md).
 
 O shell mantém tokens e navegação disponíveis durante o carregamento sob demanda de Financeiro, Rebanho, Sanidade, Nutrição, Estoque e Configurações. Os imports lazy ficam fora do componente App para conservar identidade; Suspense apresenta o carregamento sem mudar contratos de URL, gates ou a chave de remontagem por sítio.
 

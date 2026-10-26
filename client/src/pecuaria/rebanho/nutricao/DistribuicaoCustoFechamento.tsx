@@ -7,7 +7,7 @@ const CORES = ["#007f78", "#459e98", "#92c9be", "#567d94", "#b69a61"];
 /** Participação apenas dos valores conhecidos, sem converter quantidade em custo. */
 export function DistribuicaoCustoFechamento({ fechamento: f }: { fechamento: Fechamento }) {
   if (!f.verValores) return null;
-  const itens = f.itens.map(i => ({ id: i.produtoId, nome: i.produto.nome, valor: Number(i.quantidadeConfirmada) === 0 ? 0 : i.movimentoEstoque?.valorTotal == null ? null : Number(i.movimentoEstoque.valorTotal) }));
+  const itens = f.itens.map(i => ({ id: i.produtoId, nome: i.produto.nome, valor: Number(i.quantidadeConfirmada) === 0 ? 0 : (i.leite ? i.leite.custoProducao : i.movimentoEstoque?.valorTotal) == null ? null : Number(i.leite ? i.leite.custoProducao : i.movimentoEstoque?.valorTotal) }));
   if (itens.some(i => i.valor != null && (!Number.isFinite(i.valor) || i.valor < 0))) return null;
   const conhecidos = itens.filter((i): i is typeof i & { valor: number } => i.valor != null && i.valor > 0).sort((a, b) => b.valor - a.valor);
   const total = conhecidos.reduce((s, i) => s + Math.round(i.valor * 100), 0) / 100;

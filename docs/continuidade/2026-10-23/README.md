@@ -2,6 +2,8 @@
 
 Registro solicitado pelo usuário para retomar o trabalho em outra máquina. Data: 23/10/2026, America/Sao_Paulo. Branch: `codex/consultas-visuais-complementares`. PR: [#326](https://github.com/somosvira/fazendinha/pull/326). O ponto de partida desta sessão foi `0bae72b1`.
 
+> Estado vigente em 26/10/2026: a branch incorpora a main `88b1eb0c`, incluindo leite V5 e as consultas atuais de reprodução, preservando as apresentações visuais complementares. Para operar, siga [desenvolvimento](../../desenvolvimento.md) e o [seed unificado](../../../server/prisma/seed/README.md). As instruções V3/V4 abaixo são históricas: seus executores foram substituídos. Com autorização explícita, somente o banco local `fazendinha_seedatev3` foi substituído pelo cenário integrado V5; o banco anterior e seus manifestos permanecem no backup local ignorado `.backups/retomada-20261026/`. O novo manifesto e guia ficam em `server/.seed/`. Nenhum segredo ou backup é transportado por este documento.
+
 ## Objetivo e decisões aprovadas
 
 O usuário primeiro pediu para executar a branch localmente. Depois apontou excesso de espaço vazio nos cartões de Animais e Lotes e a aparência nativa dos checkboxes de seleção. Pediu uma redução simples, preservando a interface existente. Foram gerados e apresentados mockups com as skills `impeccable` e `frontend-design`; o usuário respondeu “perfeito, pode seguir”.

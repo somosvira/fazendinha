@@ -139,6 +139,14 @@ describe("estornarOperacao", () => {
     movimentosEstoque: [{ id: uid(30), status: "CONFIRMADO", tipo: "ENTRADA", produtoId: uid(4), quantidade: decimal("10"), custoUnitario: decimal("5"), valorTotal: decimal("50"), propriedadeId: 1, reversaoDeId: null, revertidoPor: null, alocacaoPartidaEstoques: [] }],
   };
 
+  it("bloqueia cancelamento genérico da substituta leiteira sem movimentos próprios", async () => {
+    mocks.operacaoFindFirst.mockResolvedValue({ ...operacaoBase, tipo: "VENDA", movimentosEstoque: [], versaoComercialLeite: { retiradaId: uid(99), versao: 2 } });
+    await expect(estornarOperacao(uid(5), "Correção de preço", { propriedadeId: 1, usuarioId: 1 })).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.transacaoCreate).not.toHaveBeenCalled();
+    expect(mocks.movimentoEstoqueCreate).not.toHaveBeenCalled();
+    expect(mocks.operacaoUpdate).not.toHaveBeenCalled();
+  });
+
   it("não cancela Serviço que financia tentativa reprodutiva válida", async () => {
     mocks.operacaoFindFirst.mockResolvedValue({ ...operacaoBase, tipo: "SERVICO" });
     mocks.tentativaFindFirst.mockResolvedValue({ id: uid(92) });

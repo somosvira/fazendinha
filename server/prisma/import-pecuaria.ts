@@ -25,10 +25,10 @@
 // seguro e completa a filiação de animais importados antes da v2.
 //
 // Ordem recomendada:
-//   1) `pnpm --filter rionovo-server run seed:pecuaria`   → Raca/MotivoBaixa (não cria Propriedade)
-//   2) `pnpm --filter rionovo-server run import:pecuaria` → importa server/prisma/pecuaria_v1.json
+//   1) `pnpm --filter rionovo-server run import:pecuaria` → importa server/prisma/pecuaria_v1.json
+//      (Raças e motivos recebidos no JSON são conciliados pelo próprio importador)
 //      (Propriedade é criada aqui mesmo, pelo nome que vem no JSON — ver bloco "Propriedades" abaixo)
-//   3) `pnpm --filter rionovo-server run validar:pecuaria`
+//   2) `pnpm --filter rionovo-server run validar:pecuaria`
 //
 // Regra de unicidade de brinco (ativos por sítio) é do app (services/pecuaria/rebanho), não
 // do banco: aqui NÃO bloqueamos brinco duplicado — só relatamos, porque é dado histórico do

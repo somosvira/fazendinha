@@ -1,5 +1,5 @@
 import { transacaoValidada } from "../../lib/transacao-validada.js";
-import { Prisma, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
+import { Prisma, type ItemOperacao, type DirecaoMovimentoConta, type TipoCompromisso, type TipoTransacaoFinanceira } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { auditar, dinheiro, exigirContaAtiva, exigirParceiroAtivo, exigirPeriodoAberto, exigirPositivo, FinanceiroError } from "./regras.js";
 import { gerarParcelasFinanceiras, totalItensFinanceiros } from "./parcelas.calc.js";
@@ -10,9 +10,10 @@ import { rotuloUnidade } from "../estoque/unidades.js";
 import { conferirSaldoEstornoPartidasTx, prepararPartidasTx } from "../estoque/partidas.js";
 import type { z } from "zod";
 import type { liquidacaoSchema, operacaoSchema, simulacaoParcelasSchema, transacaoAvulsaSchema, transferenciaSchema } from "./schemas.js";
-import { conferirReenvioOperacaoTx, hashConfirmacao } from "./idempotencia.js";
+import { conferirReenvioOperacaoTx, hashConfirmacao, includeOperacaoConfirmada, versaoComercialLeitePublica } from "./idempotencia.js";
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
 import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../pecuaria/reproducao/atribuicoes-servico.js";
+import { METODO_LEITE, registrarBaixaLeiteTx, valoresMovimentosLeiteTx, type PlanoBaixaLeite } from "../estoque/leite.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null; propriedadeId?: number };
@@ -80,14 +81,15 @@ async function criarTransacaoComMovimento(
 
 /** Uma consulta para todos os centros usados na operação (cabeçalho + itens).
  * Devolve id → nome só dos ativos; quem chamou decide o campo do erro. */
-async function resolverCentros(tx: Prisma.TransactionClient, ids: string[]) {
+async function resolverCentros(tx: Prisma.TransactionClient, ids: string[], historicos: string[] = []) {
   const unicos = [...new Set(ids)];
   if (!unicos.length) return new Map<string, string>();
-  const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ativo: true }, select: { id: true, nome: true } });
+  const centros = await tx.centroCusto.findMany({ where: { id: { in: unicos }, ...(historicos.length ? { OR: [{ ativo: true }, { id: { in: historicos } }] } : { ativo: true }) }, select: { id: true, nome: true } });
   return new Map(centros.map((centro) => [centro.id, centro.nome]));
 }
 
-async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput) {
+type EfeitoLeite = { modo: "RETIRAR"; produtoId: string; plano: PlanoBaixaLeite } | { modo: "RETIRADA_EXISTENTE"; produtoId: string; retiradaId: string } | { modo: "FECHAMENTO_PERIODO"; comercialId: string };
+async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput, leite?: EfeitoLeite) {
     if (input.tipo === "AJUSTE_ESTOQUE") throw new FinanceiroError("VALIDACAO", "Use a conferência de ajuste do Estoque para preservar a base de valor", "tipo");
     if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(input.tipo) && !input.documentacaoValor) throw new FinanceiroError("VALIDACAO", "Informe referência e evidência do valor disponibilizado, inclusive quando for zero", "documentacaoValor");
     const reenvio = await conferirReenvioOperacaoTx(tx, input);
@@ -95,14 +97,32 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
-      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId } });
+      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true } });
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
       if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
+      if (original.fechamentoComercialLeite && leite?.modo !== "FECHAMENTO_PERIODO") throw new FinanceiroError("CONFLITO", "Corrija o fechamento pelo fluxo de leite, preservando todas as retiradas");
+      if (original.versaoComercialLeite && leite?.modo !== "RETIRADA_EXISTENTE") throw new FinanceiroError("CONFLITO", "Corrija esta venda pelo fluxo de leite, preservando a retirada original");
+    }
+    if (leite?.modo === "FECHAMENTO_PERIODO") {
+      const comercial = await tx.operacaoComercialLeite.findFirst({ where: { id: leite.comercialId, propriedadeId: input.propriedadeId }, include: { retiradas: true } });
+      if (!comercial || !comercial.retiradas.length || input.tipo !== "VENDA" || input.parceiroId !== comercial.parceiroId || input.itens.length !== 1 || input.itens.some(i => i.produtoId || i.estocavel) || !input.centroCustoId)
+        throw new FinanceiroError("CONFLITO", "O fechamento deve preservar sítio, comprador e retiradas existentes, com centro de custo explícito");
+      if (input.corrigeOperacaoId && !await tx.fechamentoOperacaoLeite.findFirst({ where: { comercialId: comercial.id, operacaoId: input.corrigeOperacaoId } }))
+        throw new FinanceiroError("CONFLITO", "A correção deve substituir o fechamento desta operação de leite");
+    }
+    let historicoComercial: { centroCustoId: string | null; item: ItemOperacao } | null = null;
+    if (leite?.modo === "RETIRADA_EXISTENTE") {
+      const anterior = input.corrigeOperacaoId ? await tx.versaoComercialVendaLeite.findFirst({ where: { operacaoId: input.corrigeOperacaoId, retiradaId: leite.retiradaId, operacao: { propriedadeId: input.propriedadeId, status: "CANCELADA" } }, include: { retirada: true, operacao: { include: { itens: true } } } }) : null;
+      const item = input.itens[0];
+      if (!anterior || input.tipo !== "VENDA" || input.itens.length !== 1 || item.produtoId !== leite.produtoId || item.produtoId !== anterior.retirada.produtoId || !anterior.retirada.quantidade.eq(item.quantidade) || anterior.retirada.propriedadeId !== input.propriedadeId || anterior.retirada.status !== "CONFIRMADO" || anterior.retirada.reversaoDeId || input.data.getTime() !== anterior.operacao.data.getTime())
+        throw new FinanceiroError("CONFLITO", "A correção comercial precisa conservar produto, litros, data e retirada confirmada");
+      if (anterior.operacao.itens.length !== 1) throw new FinanceiroError("CONFLITO", "Venda original sem item único comprovado");
+      historicoComercial = { centroCustoId: anterior.operacao.centroCustoId, item: anterior.operacao.itens[0] };
     }
     const produtosIds = input.itens.flatMap((item) => item.produtoId ? [item.produtoId] : []);
     await travarValorizacaoTx(tx, produtosIds);
     const produtos = produtosIds.length
-      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ativo: true }, include: { centrosCusto: { select: { centroCustoId: true } } } })
+      ? await tx.produto.findMany({ where: { id: { in: produtosIds }, ...(historicoComercial ? {} : { ativo: true }) }, include: { centrosCusto: { select: { centroCustoId: true } } } })
       : [];
     const produtosPorId = new Map(produtos.map((produto) => [produto.id, produto]));
     // Produto com exatamente um centro cadastrado o transmite ao item; com vários
@@ -127,7 +147,8 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (comEstoqueNoSitio && item.produtoId != null) return comEstoqueNoSitio.has(item.produtoId);
       return item.estocavel || item.produtoId != null;
     });
-    const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []));
+    const centros = await resolverCentros(tx, [input.centroCustoId ?? null, ...centrosItens].flatMap((id) => id ? [id] : []),
+      historicoComercial ? [historicoComercial.centroCustoId, historicoComercial.item.centroCustoId].flatMap(id => id ? [id] : []) : []);
     if (input.centroCustoId && !centros.has(input.centroCustoId)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", "centroCustoId");
     centrosItens.forEach((id, indice) => {
       if (id && !centros.has(id)) throw new FinanceiroError("VALIDACAO", "Selecione um centro de custo ativo", `itens.${indice}.centroCustoId`);
@@ -150,6 +171,10 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     });
 
     const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
+      if (historicoComercial && categoriaId === historicoComercial.item.categoriaId) {
+        const anterior = historicoComercial.item;
+        return { categoriaId: anterior.categoriaId, categoriaNome: anterior.categoriaNome, classificacao: anterior.classificacao };
+      }
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
       return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
@@ -158,7 +183,8 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       ordem: indice + 1,
       produtoId: item.produtoId,
       centroCustoId: centrosItens[indice],
-      centroCustoNome: centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
+      centroCustoNome: historicoComercial && centrosItens[indice] === historicoComercial.item.centroCustoId ? historicoComercial.item.centroCustoNome
+        : centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
       descricao: item.descricao,
       quantidade: new Prisma.Decimal(item.quantidade),
       unidade: item.unidade,
@@ -237,7 +263,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       include: { itens: true },
     });
 
-    if (temEfeitoEstoque) {
+    if (temEfeitoEstoque && leite?.modo !== "RETIRADA_EXISTENTE" && leite?.modo !== "FECHAMENTO_PERIODO") {
       const tipoMovimento = retiraEstoque.has(input.tipo) ? "SAIDA" : "ENTRADA";
       const origem = input.tipo === "COMPRA_ESTOQUE" ? "COMPRA" : input.tipo === "INVENTARIO_INICIAL" ? "INVENTARIO_INICIAL"
         : input.tipo === "BONIFICACAO" ? "BONIFICACAO" : input.tipo === "PRODUCAO" ? "PRODUCAO"
@@ -259,17 +285,20 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           }
           throw erro;
         });
-        const plano = tipoMovimento === "SAIDA" ? await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId: input.propriedadeId, data: input.data, quantidade: item.quantidade, partidas: distribuicao }) : null;
-        const valores = plano ? { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
+        const planoLeite = leite?.modo === "RETIRAR" && leite.produtoId === produto.id ? leite.plano : null;
+        const plano = tipoMovimento === "SAIDA" && !planoLeite ? await planejarSaidaTx(tx, { produtoId: produto.id, propriedadeId: input.propriedadeId, data: input.data, quantidade: item.quantidade, partidas: distribuicao }) : null;
+        const valores = planoLeite ? { custoUnitario: planoLeite.valorTotal?.div(item.quantidade).toDecimalPlaces(4) ?? null, valorTotal: planoLeite.valorTotal }
+          : plano ? { custoUnitario: plano.custoUnitario, valorTotal: plano.valorTotal } : { custoUnitario: item.valorUnitario, valorTotal: item.valorTotal };
         const movimento = await tx.movimentoEstoque.create({ data: {
           produtoId: item.produtoId!, tipo: tipoMovimento, origem, data: input.data, quantidade: item.quantidade,
-          ...valores, ...(input.documentacaoValor ? { evidenciaValor: { ...input.documentacaoValor, usuarioId: input.usuarioId ?? null, valorTotal: valores.valorTotal.toFixed(2) } } : {}), operacaoId: operacao.id, itemOperacaoId: item.id,
+          ...valores, ...(planoLeite ? { metodoValorizacao: METODO_LEITE } : {}), ...(input.documentacaoValor ? { evidenciaValor: { ...input.documentacaoValor, usuarioId: input.usuarioId ?? null, valorTotal: valores.valorTotal?.toFixed(2) ?? null } } : {}), operacaoId: operacao.id, itemOperacaoId: item.id,
           centroCustoId: item.centroCustoId ?? input.centroCustoId ?? null,
           propriedadeId: input.propriedadeId, criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
           observacao: input.descricao,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
-        if (plano) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
+        if (planoLeite) await registrarBaixaLeiteTx(tx, movimento.id, planoLeite);
+        else if (plano) await registrarSaidaValorizadaTx(tx, movimento.id, plano);
         else await registrarEntradaValorizadaTx(tx, movimento, distribuicao);
         if (distribuicao.length) await tx.itemOperacao.update({ where: { id: item.id }, data: {
           partidasSnapshot: distribuicao.map((p) => ({ partidaId: p.partidaId, codigo: p.codigo, nome: p.nome, validade: p.validade?.toISOString().slice(0, 10) ?? null, quantidade: p.quantidade.toString(), cienciaValidadeDesconhecida: p.cienciaValidadeDesconhecida })),
@@ -301,7 +330,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       depois: { chave: input.chave, hash: hashConfirmacao(input), propriedadeId: input.propriedadeId } });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
-      include: { itens: true, compromissos: true, transacoes: { include: { movimentos: true } }, movimentosEstoque: true, documentos: { select: documentoPublico }, parceiro: true },
+      include: includeOperacaoConfirmada,
     });
 }
 
@@ -329,6 +358,74 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 
 export async function criarOperacao(input: OperacaoInput) {
   return transacaoValidada((tx) => criarOperacaoTx(tx, input));
+}
+
+/** Somente a orquestração leiteira pode fornecer o plano conferido sob trava. */
+export async function criarVendaLeiteTx(tx: Prisma.TransactionClient, input: OperacaoInput, plano: PlanoBaixaLeite) {
+  const item = input.itens[0];
+  if (input.tipo !== "VENDA" || plano.finalidade !== "VENDA" || input.itens.length !== 1 || !item?.produtoId || !plano.quantidade.eq(item.quantidade))
+    throw new FinanceiroError("VALIDACAO", "Venda de leite exige um produto e a quantidade conferida no estoque");
+  if (!input.chave) throw new FinanceiroError("VALIDACAO", "Venda leiteira exige uma chave de confirmação");
+  const operacao = await criarOperacaoTx(tx, input, { modo: "RETIRAR", produtoId: item.produtoId, plano });
+  if (operacao.versaoComercialLeite) return operacao;
+  const retirada = operacao.movimentosEstoque.find(m => m.metodoValorizacao === METODO_LEITE && m.tipo === "SAIDA" && !m.reversaoDeId);
+  if (!retirada) throw new FinanceiroError("CONFLITO", "A venda não possui retirada leiteira confirmada");
+  const vinculo = await tx.versaoComercialVendaLeite.create({ data: { operacaoId: operacao.id, retiradaId: retirada.id, versao: 1,
+    chave: input.chave, hash: hashConfirmacao(input), motivo: "Venda original com retirada física confirmada", criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null }, select: versaoComercialLeitePublica });
+  return { ...operacao, versaoComercialLeite: vinculo };
+}
+
+/** Fechamento de retiradas prévias: o executor conserva compromissos, pagamentos e auditoria. */
+export function criarFechamentoPeriodoLeiteTx(tx: Prisma.TransactionClient, input: OperacaoInput, comercialId: string) {
+  return criarOperacaoTx(tx, input, { modo: "FECHAMENTO_PERIODO", comercialId });
+}
+
+export type CorrecaoVendaLeiteInput = {
+  operacaoId: string; versaoEsperada: number; chave: string; motivo: string; parceiroId: string; valorTotal: number;
+  financeiro: OperacaoInput["financeiro"]; categoriaId?: string | null; centroCustoId?: string;
+};
+
+export async function corrigirVendaLeiteTx(tx: Prisma.TransactionClient, input: CorrecaoVendaLeiteInput, contexto: ContextoEstorno) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-confirmacao:${input.chave}`}))`;
+  const hash = hashConfirmacao({ ...input, propriedadeId: contexto.propriedadeId });
+  const reenvio = await tx.versaoComercialVendaLeite.findUnique({ where: { chave: input.chave } });
+  if (reenvio) {
+    if (reenvio.hash !== hash || reenvio.criadoPorId !== (contexto.usuarioId && contexto.usuarioId > 0 ? contexto.usuarioId : null))
+      throw new FinanceiroError("CONFLITO", "Chave de correção usada com outros dados ou autor");
+    return tx.operacao.findUniqueOrThrow({ where: { id: reenvio.operacaoId }, include: includeOperacaoConfirmada });
+  }
+  const include = { retirada: true, operacao: { include: { itens: true, transacoes: true, compromissos: { include: { liquidacoes: { include: { transacao: true } } } } } } } as const;
+  const referencia = await tx.versaoComercialVendaLeite.findFirst({ where: { operacaoId: input.operacaoId, operacao: { propriedadeId: contexto.propriedadeId } }, include });
+  if (!referencia) throw new FinanceiroError("NAO_ENCONTRADO", "Venda de leite não encontrada neste sítio");
+  await travarValorizacaoTx(tx, [referencia.retirada.produtoId]);
+  if (!await bloquearOperacao(tx, input.operacaoId, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Venda não encontrada");
+  const versao = await tx.versaoComercialVendaLeite.findFirst({ where: { operacaoId: input.operacaoId, operacao: { propriedadeId: contexto.propriedadeId } }, include });
+  if (!versao || versao.versao !== input.versaoEsperada || versao.operacao.status !== "CONFIRMADA") throw new FinanceiroError("CONFLITO", "A venda já foi substituída ou mudou; atualize antes de corrigir");
+  const original = versao.operacao;
+  if (await tx.alocacaoDemonstrativoLeite.findFirst({ where: { versaoVendaId: versao.id, ativo: true }, select: { id: true } }))
+    throw new FinanceiroError("CONFLITO", "Anule explicitamente os demonstrativos ativos antes de corrigir esta venda");
+  if (original.transacoes.some(t => t.status === "CONFIRMADA" && t.tipo !== "REVERSAO") || original.compromissos.some(c => c.liquidacoes.some(l => l.transacao.status === "CONFIRMADA")))
+    throw new FinanceiroError("CONFLITO", "Há recebimento confirmado. Faça o estorno financeiro explícito pelo fluxo existente antes de corrigir a venda");
+  await exigirPeriodoAberto(tx, contexto.propriedadeId, original.data);
+  await exigirPeriodoAberto(tx, contexto.propriedadeId, versao.retirada.data);
+  await exigirPeriodoAberto(tx, contexto.propriedadeId, new Date());
+  if (original.itens.length !== 1 || original.itens[0].produtoId !== versao.retirada.produtoId || !original.itens[0].quantidade.eq(versao.retirada.quantidade))
+    throw new FinanceiroError("CONFLITO", "Itens da venda divergem da retirada; reconcilie antes da correção");
+  const item = original.itens[0];
+  const dados: OperacaoInput = { tipo: "VENDA", chave: input.chave, data: original.data, descricao: original.descricao ?? "Venda de leite",
+    propriedadeId: contexto.propriedadeId, usuarioId: contexto.usuarioId, corrigeOperacaoId: original.id, parceiroId: input.parceiroId,
+    centroCustoId: input.centroCustoId ?? original.centroCustoId ?? undefined, financeiro: input.financeiro,
+    itens: [{ produtoId: versao.retirada.produtoId, quantidade: Number(versao.retirada.quantidade), unidade: item.unidade, descricao: item.descricao,
+      valorTotal: input.valorTotal, categoriaId: input.categoriaId === undefined ? item.categoriaId : input.categoriaId,
+      classificacao: input.categoriaId === undefined || input.categoriaId === item.categoriaId ? item.classificacao : undefined, centroCustoId: input.centroCustoId ?? item.centroCustoId, estocavel: true }] };
+  await tx.compromissoFinanceiro.updateMany({ where: { operacaoId: original.id, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });
+  await tx.operacao.update({ where: { id: original.id }, data: { status: "CANCELADA" } });
+  const substituta = await criarOperacaoTx(tx, dados, { modo: "RETIRADA_EXISTENTE", produtoId: versao.retirada.produtoId, retiradaId: versao.retiradaId });
+  const vinculo = await tx.versaoComercialVendaLeite.create({ data: { operacaoId: substituta.id, retiradaId: versao.retiradaId, versao: versao.versao + 1,
+    chave: input.chave, hash, motivo: input.motivo, criadoPorId: contexto.usuarioId && contexto.usuarioId > 0 ? contexto.usuarioId : null }, select: versaoComercialLeitePublica });
+  await auditar(tx, { entidade: "Operacao", entidadeId: original.id, acao: "SUBSTITUIDA_COMERCIALMENTE", motivo: input.motivo, usuarioId: contexto.usuarioId,
+    antes: original, depois: { operacaoSubstitutaId: substituta.id, retiradaId: versao.retiradaId, versao: vinculo.versao } });
+  return { ...substituta, versaoComercialLeite: vinculo };
 }
 
 async function bloquearOperacao(tx: Prisma.TransactionClient, id: string, propriedadeId?: number) {
@@ -453,10 +550,12 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     const operacao = await tx.operacao.findFirst({
       where: { id, propriedadeId: contexto.propriedadeId },
-      include: { transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true, alocacaoPartidaEstoques: true } } },
+      include: { versaoComercialLeite: true, fechamentoComercialLeite: true, transacoes: true, compromissos: { include: { liquidacoes: true } }, movimentosEstoque: { include: { revertidoPor: true, alocacaoPartidaEstoques: true } } },
     });
     if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
     if (operacao.status === "CANCELADA") throw new FinanceiroError("JA_REVERTIDO", "A operação já foi cancelada");
+    if (operacao.fechamentoComercialLeite || operacao.versaoComercialLeite || operacao.movimentosEstoque.some(m => m.metodoValorizacao === METODO_LEITE))
+      throw new FinanceiroError("CONFLITO", "Esta venda possui retirada de leite. Regularize a retirada e o financeiro pelo fluxo de leite; cancelar preço não devolve litros ao tanque.");
     const [aplicacaoVinculada, exameVinculado, protocoloVinculado] = await Promise.all([
       tx.aplicacaoProduto.findFirst({ where: { AND: [aplicacaoComConsumoOuAtribuicao, { OR: [{ operacaoServicoId: id }, { itemCompraDireta: { operacaoId: id } }] }] }, select: { id: true } }),
       tx.exameAnimal.findFirst({ where: { status: "VALIDO", operacaoServicoId: id }, select: { id: true } }),
@@ -486,7 +585,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
         tipo: movimento.tipo === "ENTRADA" ? "SAIDA" : movimento.tipo === "SAIDA" ? "ENTRADA" : "AJUSTE",
         origem: "AJUSTE_INVENTARIO", data: new Date(),
         quantidade: movimento.tipo === "AJUSTE" ? movimento.quantidade.negated() : movimento.quantidade,
-        custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal.negated() : movimento.valorTotal,
+        custoUnitario: movimento.custoUnitario, valorTotal: movimento.tipo === "AJUSTE" ? movimento.valorTotal?.negated() ?? null : movimento.valorTotal,
         propriedadeId: movimento.propriedadeId, operacaoId: operacao.id, centroCustoId: movimento.centroCustoId,
         reversaoDeId: movimento.id, observacao: `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`,
         ...(movimento.alocacaoPartidaEstoques.length ? { alocacaoPartidaEstoques: { create: movimento.alocacaoPartidaEstoques.map((a) => ({ partidaId: a.partidaId, quantidade: movimento.tipo === "AJUSTE" ? a.quantidade.negated() : a.quantidade })) } } : {}),
@@ -502,6 +601,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
 }
 
 const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
+  versaoComercialLeite: { select: versaoComercialLeitePublica },
   parceiro: true,
   centroCusto: { select: { id: true, nome: true } },
   itens: { orderBy: { ordem: "asc" } },
@@ -556,7 +656,7 @@ function lotesMovimento(movimento: MovimentoDetalhe) {
 function detalheTransferencias(movimentos: MovimentoDetalhe[]) {
   const originais = movimentos.filter((m) => m.origem === "TRANSFERENCIA" && !m.reversaoDeId);
   const entradas = originais.filter((m) => m.tipo === "ENTRADA");
-  const chave = (m: MovimentoDetalhe) => JSON.stringify([m.produtoId, m.quantidade.toString(), m.custoUnitario.toString(), m.valorTotal.toString(), m.data.toISOString(), lotesMovimento(m).map((l) => [l.partidaId, l.quantidade.toString()]).sort()]);
+  const chave = (m: MovimentoDetalhe) => JSON.stringify([m.produtoId, m.quantidade.toString(), m.custoUnitario?.toString() ?? null, m.valorTotal?.toString() ?? null, m.data.toISOString(), lotesMovimento(m).map((l) => [l.partidaId, l.quantidade.toString()]).sort()]);
   const referencia = (m: MovimentoDetalhe) => ({ id: m.id, seq: m.seq, tipo: m.tipo, status: m.status, data: m.data, reversaoDeId: m.reversaoDeId });
   const ponta = (m: MovimentoDetalhe) => {
     const reversao = movimentos.find((r) => r.reversaoDeId === m.id);
@@ -616,6 +716,8 @@ function resumoCancelamento(operacao: Prisma.OperacaoGetPayload<{ include: typeo
 export async function obterOperacao(id: string, propriedadeId?: number | null) {
   const operacao = await prisma.operacao.findFirst({ where: { id, ...(propriedadeId ? { propriedadeId } : {}) }, include: includeOperacaoDetalhe });
   if (!operacao) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
+  const valoresLeite = await valoresMovimentosLeiteTx(prisma, operacao.movimentosEstoque.filter(m => m.metodoValorizacao === METODO_LEITE).map(m => m.id));
+  operacao.movimentosEstoque = operacao.movimentosEstoque.map(m => valoresLeite.has(m.id) ? { ...m, ...valoresLeite.get(m.id)! } : m);
   const perdas = operacao.movimentosEstoque.filter((m) => m.origem === "PERDA" && !m.reversaoDeId).map((m) => ({
     movimentoId: m.id, produtoId: m.produtoId, produtoNome: m.produto.nome,
     quantidade: m.quantidade, unidade: rotuloUnidade(m.produto.unidade), sitio: m.propriedade,
@@ -630,11 +732,13 @@ export async function obterOperacao(id: string, propriedadeId?: number | null) {
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
-  return prisma.operacao.findMany({
+  const operacoes = await prisma.operacao.findMany({
     where: { ...(propriedadeId ? { propriedadeId } : {}), ...(inicio || fim ? { data: { ...(inicio ? { gte: inicio } : {}), ...(fim ? { lte: fim } : {}) } } : {}) },
     include: includeOperacao,
     orderBy: [{ data: "desc" }, { numero: "desc" }],
   });
+  const valores = await valoresMovimentosLeiteTx(prisma, operacoes.flatMap(o => o.movimentosEstoque.filter(m => m.metodoValorizacao === METODO_LEITE).map(m => m.id)));
+  return operacoes.map(o => ({ ...o, movimentosEstoque: o.movimentosEstoque.map(m => valores.has(m.id) ? { ...m, ...valores.get(m.id)! } : m) }));
 }
 
 export async function listarCompromissos(propriedadeId?: number | null, periodo?: { inicio: Date; fim: Date }) {

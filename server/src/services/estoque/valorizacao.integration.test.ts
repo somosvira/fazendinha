@@ -111,7 +111,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     const parcela = await prisma.parcelaValorizacaoEstoque.findFirstOrThrow({ where: { movimentoEstoqueId: f.entrada.id } });
     await expect(transacaoValidada(tx=>tx.parcelaValorizacaoEstoque.update({ where: { id: parcela.id }, data: { valorTotal: 49 } }))).rejects.toThrow();
     await expect(transacaoValidada(tx=>tx.movimentoEstoque.update({ where: { id: f.entrada.id }, data: { metodoValorizacao: "LEGADO" } }))).rejects.toThrow();
-    expect((await prisma.movimentoEstoque.findUniqueOrThrow({ where: { id: f.entrada.id } })).valorTotal.toString()).toBe("50");
+    expect((await prisma.movimentoEstoque.findUniqueOrThrow({ where: { id: f.entrada.id } })).valorTotal?.toString()).toBe("50");
   });
 
   it("base não pode ficar com quantidade ou valor residual negativos", async () => {
@@ -187,7 +187,7 @@ comBanco("valorização — garantias SQL, transações e concorrência com fixt
     const proxima = await transferirEstoque({ chave: randomUUID(), produtoId: f.produtoId, origemId: destinoId, destinoId: f.propriedadeId,
       quantidade: "1", data: "2026-10-04", motivo: "Retorno físico de uma unidade" }, null);
     const saida = await prisma.movimentoEstoque.findFirstOrThrow({ where: { operacaoId: proxima.operacaoId, tipo: "SAIDA" } });
-    expect(saida.valorTotal.toFixed(2)).toBe("40.00");
+    expect(saida.valorTotal?.toFixed(2)).toBe("40.00");
   });
 
   it("ativar rastreio preserva valores FIFO históricos nos leitores filtrados pelo grupo técnico", async () => {

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { apresentarResumoCusto, consultarResumo } from "./resumo.js";
+import { apresentarResumoCusto, apresentarResumoReferenciaLeite, consultarResumo } from "./resumo.js";
 vi.mock("../../../db.js", () => ({ prisma: { $transaction: vi.fn(), $queryRaw: vi.fn(), lote: { findMany: vi.fn() }, vigenciaDietaLote: { findMany: vi.fn() } } }));
 const agregado = { loteId: "lote", fechamentos: 2n, animalDias: 4n, custoConhecido: new Prisma.Decimal("3.33"), coberturaCustoCompleta: false };
 beforeEach(() => {
@@ -35,5 +35,38 @@ describe("resumo nutricional autorizado", () => {
     await expect(consultarResumo("externo", 7, true)).rejects.toThrow("neste sítio");
     expect(await consultarResumo(undefined, 7, true)).toEqual({ lotes: [], verValores: true });
     expect(prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("compatibilidade do resumo da main com o leite V5", () => {
+  const referencia = { loteId: "lote", litros: new Prisma.Decimal("60"), valor: new Prisma.Decimal("150"), fornecimentos: 2n, conhecidos: 1n, provisorios: 1n };
+  it("preserva referência parcial e provisória sem somá-la ao custo produtivo", async () => {
+    vi.mocked(prisma.$queryRaw).mockResolvedValueOnce([{ ...agregado, custoConhecido: new Prisma.Decimal("84") }]).mockResolvedValueOnce([referencia]);
+    const r = await consultarResumo(undefined, 7, true, true);
+    expect(r.lotes[0].custos.custoConhecido).toBe("84.00");
+    expect(r.lotes[0].referenciaLeite).toEqual({ quantidadeLitros: "60.000", valorConhecido: "150.00", coberturaCompleta: false, pendentes: 1, provisorios: 1 });
+    const sql = vi.mocked(prisma.$queryRaw).mock.calls[1][0] as Prisma.Sql;
+    expect(sql.values).toEqual(["lote", 7]);
+    expect(sql.sql).toContain("fl.status = 'CONFIRMADO'");
+    expect(sql.sql).toContain('ORDER BY versao DESC LIMIT 1');
+    expect(sql.sql).toContain('fl."propriedadeId" = f."propriedadeId"');
+  });
+  it("não consulta nem entrega referências comerciais para leitor sem essa permissão", async () => {
+    const r = await consultarResumo(undefined, 7, true, false);
+    expect(r.lotes[0].custos.custoConhecido).toBe("3.33");
+    expect(r.lotes[0].referenciaLeite).toBeNull();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
+    expect(apresentarResumoReferenciaLeite(referencia, false)).toBeNull();
+    expect(apresentarResumoReferenciaLeite({ ...referencia, valor: null, conhecidos: 0n }, true)).toMatchObject({ valorConhecido: null, pendentes: 2, coberturaCompleta: false });
+  });
+  it("usa apuração vigente das origens leiteiras e conserva custo pendente na agregação", async () => {
+    await consultarResumo(undefined, 7, true);
+    const sql = (vi.mocked(prisma.$queryRaw).mock.calls[0][0] as Prisma.Sql).sql;
+    expect(sql).toContain('WHEN c."fornecimentoId" IS NOT NULL THEN leite.custo');
+    expect(sql).toContain('ORDER BY al.versao DESC LIMIT 1');
+    expect(sql).toContain('COALESCE(ap.valor, a."valorTotal")');
+    expect(sql).toContain('BOOL_AND(mov.custo IS NOT NULL)');
+    expect(sql).not.toContain('ReferenciaGerencialLeite');
   });
 });

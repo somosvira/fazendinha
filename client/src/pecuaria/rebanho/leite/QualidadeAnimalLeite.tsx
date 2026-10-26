@@ -1,0 +1,191 @@
+import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/DatePicker";
+import "./ordenhas-gerais.css";
+import { useEffect, useState } from "react";
+import { consultarLeite } from "./operacoes-api";
+import { hojeOperacional } from "./modelo";
+import { DatasQualidade } from "./DatasQualidade";
+import type { AmostraQualidade } from "./qualidade-types";
+import "./operacoes.css";
+
+type Consulta = {
+  itens: AmostraQualidade[];
+  total: number;
+  pagina: number;
+  tamanho: number;
+};
+/** A consulta é filtrada no servidor pelo animal, sem incorporar amostras de tanque. */
+export function QualidadeAnimalLeite({
+  animalId,
+  propriedadeId,
+  recarregarToken = 0,
+}: {
+  animalId: string;
+  propriedadeId: number | null;
+  recarregarToken?: number;
+}) {
+  const [inicio, setInicio] = useState("");
+  const [fim, setFim] = useState(hojeOperacional);
+  const [pagina, setPagina] = useState(1);
+  const [dados, setDados] = useState<Consulta | null>(null);
+  const [erro, setErro] = useState("");
+  const [revisao, setRevisao] = useState(0);
+  useEffect(() => {
+    setPagina(1);
+  }, [animalId, propriedadeId]);
+  useEffect(() => {
+    let vigente = true;
+    setDados(null);
+    setErro("");
+    if (propriedadeId == null) return;
+    if (inicio && fim && inicio > fim) {
+      setErro("O início deve ser anterior ou igual ao fim.");
+      return;
+    }
+    const query = new URLSearchParams({
+      animalId,
+      sujeito: "ANIMAL",
+      pagina: String(pagina),
+      tamanho: "20",
+      ...(inicio ? { inicio } : {}),
+      ...(fim ? { fim } : {}),
+    });
+    void consultarLeite<Consulta>(`/qualidade/amostras?${query}`, propriedadeId)
+      .then((r) => {
+        if (vigente) setDados(r);
+      })
+      .catch((e) => {
+        if (vigente)
+          setErro(
+            e instanceof Error
+              ? e.message
+              : "Não foi possível consultar a qualidade individual.",
+          );
+      });
+    return () => {
+      vigente = false;
+    };
+  }, [animalId, propriedadeId, inicio, fim, pagina, revisao, recarregarToken]);
+  return (
+    <section
+      className="leite-qualidade-animal"
+      aria-label="Qualidade individual do leite"
+    >
+      <h2>Qualidade individual do leite</h2>
+      <p>
+        Resultados das amostras deste animal, independentes da frequência da
+        medição de litros.
+      </p>
+      {propriedadeId == null ? (
+        <p>
+          Selecione o sítio autorizado para consultar as amostras individuais.
+        </p>
+      ) : (
+        <>
+          <div className="leite-form-inline">
+            <label>
+              Amostras desde
+              <DatePicker
+                aria-label="Amostras desde"
+                value={inicio}
+                onChange={(v) => {
+                  setInicio(v);
+                  setPagina(1);
+                }}
+              />
+            </label>
+            <label>
+              Amostras até
+              <DatePicker
+                aria-label="Amostras até"
+                value={fim}
+                onChange={(v) => {
+                  setFim(v);
+                  setPagina(1);
+                }}
+              />
+            </label>
+          </div>
+          {erro ? (
+            <div role="alert">
+              {erro}{" "}
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setRevisao((r) => r + 1)}
+              >
+                Tentar novamente
+              </Button>
+            </div>
+          ) : !dados ? (
+            <p role="status">Carregando análises individuais…</p>
+          ) : (
+            <>
+              <p>{dados.total} amostra(s) no período e sítio consultados.</p>
+              {!dados.itens.length && (
+                <p>Nenhuma análise individual registrada neste recorte.</p>
+              )}
+              {dados.itens.map((a) => (
+                <article key={a.id} className="leite-qualidade-amostra">
+                  <h3>
+                    {a.data.split("-").reverse().join("/")} ·{" "}
+                    {a.formatoSnapshot.nome}
+                  </h3>
+                  <p>
+                    {a.status === "ANULADO" || a.status === "ANULADA"
+                      ? "Anulada — preservada no histórico"
+                      : a.resultados.length
+                        ? "Resultado registrado"
+                        : "Aguardando laudo"}{" "}
+                    · Versão {a.versao}
+                  </p>
+                  <DatasQualidade {...a} />
+                  <dl>
+                    {a.resultados.map((r) => {
+                      const campo = a.formatoSnapshot.campos.find(
+                        (c) => c.codigo === r.campo,
+                      );
+                      return (
+                        <div key={r.campo}>
+                          <dt>{campo?.rotulo || r.campo}</dt>
+                          <dd>
+                            {typeof r.valor === "boolean"
+                              ? r.valor
+                                ? "Sim"
+                                : "Não"
+                              : r.valor}{" "}
+                            {campo?.unidade ?? ""}
+                          </dd>
+                        </div>
+                      );
+                    })}
+                  </dl>
+                  {a.responsavel && <p>Responsável: {a.responsavel}</p>}
+                </article>
+              ))}
+              <div className="leite-form-inline">
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={pagina === 1}
+                  onClick={() => setPagina((p) => p - 1)}
+                >
+                  Análises anteriores
+                </Button>
+                <span>Página {pagina}</span>
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={pagina * dados.tamanho >= dados.total}
+                  onClick={() => setPagina((p) => p + 1)}
+                >
+                  Próximas análises
+                </Button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </section>
+  );
+}

@@ -2,6 +2,8 @@
 
 A página em `/gerencial` expõe informações já registradas: caixa realizado, nutrição, estoque atual, custos diretos por finalidade e acompanhamentos pendentes. A página inicial dos perfis continua a mesma. A entrega acrescenta interface, navegação, API de leitura e cálculos de apresentação. Não altera schema, migrations, regras financeiras, valorização de estoque ou gravação de fechamentos. Não cria despesas, pagamentos, consumos, parâmetros persistidos ou centros de custo.
 
+A produção V5 também oferece leitura de litros medidos e cobertura por dia/sítio, com ligação ao detalhe do período, pelo serviço leiteiro próprio. A ausência de folhas não comprova produção zero; consulte [relatórios de leite](pecuaria/leite-relatorios.md).
+
 ## Consulta e fontes existentes
 
 `GET /api/gerencial/resumo?inicio=AAAA-MM-DD&fim=AAAA-MM-DD` aceita até 366 dias inclusivos, sem datas futuras. Sítio/consolidado seguem `resolverEscopoLeitura` e `X-Propriedade-Id`. A URL preserva início/fim e, quando selecionado, `propriedadeId`; recarga e voltar/avançar restauram o contexto. Respostas antigas não substituem consultas novas.
@@ -68,7 +70,7 @@ Bloco restrito devolve somente estado/motivo, sem consultar ou enviar valores, f
 
 O servidor concentra as consultas em `services/gerencial/`, com cálculos puros separados do acesso ao banco, e rota Hono/Zod em `routes/gerencial.ts`. A interface em `client/src/gerencial/` reaproveita a navegação existente. Testes cobrem contratos de permissões, período e sítio, erro, resposta fora de ordem, acessibilidade dos valores nos gráficos, estados vazios, mascaramento e URLs dos atalhos. Validação com dados reais deve usar somente `fazendinha_seedatev3`, sem reset ou recarga. Testes automatizados, inspeção visual e homologação pela fazenda são evidências diferentes. O [HTML explicativo](gerencial/artefatos/painel-administrativo.html) registra implementação e validação da entrega.
 
-Ficam fora do escopo alterações de banco ou motores financeiros, correções de operações de estoque, novas regras de fechamento, custo econômico completo/lucro, produção e qualidade do leite, FIV/laboratório, assistência automática, sincronização IDEAGRI, novas permissões e reativação da IA. Qualquer evolução operacional exige uma tarefa própria.
+Ficam fora do escopo alterações de banco ou motores financeiros, correções de operações de estoque, novas regras de fechamento, custo econômico completo/lucro, operação de produção/qualidade dentro deste painel (registradas no módulo Leite), FIV/laboratório, assistência automática, sincronização IDEAGRI, novas permissões e reativação da IA. Qualquer evolução operacional exige uma tarefa própria.
 
 
 ### Apresentação e prioridades

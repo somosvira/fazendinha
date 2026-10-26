@@ -12,7 +12,7 @@ A fonte é `server/src/env.ts`; exemplos em `server/.env.example`.
 - Sessões: `AUTH_SESSAO_DIAS`, `APP_BASE_URL`. `AUTH_BOOTSTRAP_EMAIL`/`AUTH_BOOTSTRAP_NOME` são consumidos pelo comando manual do dono. O e-mail opcional deve ficar ausente quando não usado, em vez de vazio. `SHARED_ACCESS_TOKEN` é uma ponte de dono sintético; não substitui contas reais. `JWT_SECRET` também assina intents de upload direto; configure um segredo próprio do ambiente.
 - Recuperação pública de senha: em produção, `AUTH_EMAIL_PROVIDER=resend` exige `AUTH_EMAIL_FROM`, `RESEND_API_KEY` e `APP_BASE_URL`. Provider `log` é rejeitado em produção.
 - `CORS_ORIGIN`: lista de origens separadas por vírgula; vazio permite qualquer origem. Configure no ambiente publicado.
-- OpenAI/WhatsApp: configuração permanece no schema de ambiente, porém os canais estão suspensos pelas flags da aplicação.
+- OpenAI: o assistente de consulta separado usa configuração e gates de `docs/assistente-consulta.md`. Bot legado, `/ia` e WhatsApp permanecem suspensos pelas flags; credenciais não os reativam.
 
 Use secrets para credenciais. Não copie `server/.env`, backups ou manifestos privados para o Git. Scripts Node/tsx que precisam de configuração usam `--env-file=.env`; arquivos de secrets do Worker são separados dos do Node.
 
@@ -26,7 +26,7 @@ pnpm --filter rionovo-server exec prisma migrate deploy
 
 `dev:server` faz isso antes do watch local. O comando Node `start:prod` apenas inicia `dist/index.js`; não faz parte do deploy em Cloudflare, não aplica migrations nem cria dono/propriedades. Constraints e índices SQL não podem ser substituídos por `db push`.
 
-A baseline de 25/09/2026 e as migrations seguintes permanecem integralmente no repositório. Banco com histórico anterior/materializado por `db push` precisa de reconciliação específica entre conteúdo e migrations. Não registre uma baseline como aplicada sem verificar equivalência e não apague schemas para resolver drift de um ambiente com dados.
+A árvore atual contém a baseline `20261025000000_base_unificada`, consolidada com a V5; a cadeia anterior está no histórico Git. Banco novo autorizado usa essa baseline. Banco existente com migrations antigas ou estrutura materializada por `db push` exige plano específico de reconciliação, preservação e recuperação antes de qualquer publicação que a aplique. Não marcar a baseline como aplicada sem comprovar equivalência, não tentar recriar tabelas sobre dados existentes e não apagar schemas para resolver drift. A substituição histórica autorizada da base demonstrativa local não autoriza repetição em outro ambiente.
 
 Para a primeira implantação, confira a necessidade dos bootstraps manuais:
 
@@ -48,13 +48,13 @@ pnpm cf:dev
 
 Esse comando compila a interface e inicia o Worker local. Para Workers Builds, configure o build com instalação das dependências, geração do Prisma Client e `pnpm cf:build`; o deploy command é `sh scripts/cf-deploy.sh`. O script aplica migrations, aborta se falharem e publica com commit/build ID. Quando encontra `APP_BASE_URL` ou a URL retornada pelo Wrangler, confere `/api/health`; sem ambas, informa que pulou essa conferência. Configure `DATABASE_URL`/`DIRECT_URL` também no escopo de build; variáveis de build e runtime são escopos distintos.
 
-A renomeação de `DestinoAnimal` para `FinalidadeAnimal` exige a cadeia completa, incluindo `20261021180000_compatibilidade_destino_animal`. Essa migration cria uma view atualizável com o nome antigo, permitindo que o Worker anterior continue consultando e gravando durante o upload ou se ele falhar. Como o rename e a view têm commits separados, planeje uma janela de manutenção para a primeira aplicação; não há garantia de ausência de interrupção nesse intervalo. Não remova a view enquanto versões antigas puderem atender requisições. Após a adoção de REPRODUCAO, retornar código com enum antigo requer avaliação própria; a view não resolve incompatibilidades de valores.
+A baseline contém `FinalidadeAnimal` e a view atualizável de compatibilidade `DestinoAnimal`; a renomeação e suas migrations aditivas são história da cadeia anterior. Não remover a view enquanto versões antigas puderem atender. Views IATF preservam leitura, mas não oferecem escrita paralela ao núcleo comum. Rollback exige verificar dados, valores de enum e compatibilidade das versões; não basta retornar o código após mudanças estruturais. A implantação de um banco anterior à baseline precisa do plano de reconciliação acima, não da execução isolada de nomes antigos.
 
 `pnpm cf:deploy` chama Wrangler diretamente depois do build do client e **não** executa o script de migrations/health. Não trate esses comandos como equivalentes. O repositório não seleciona sozinho a branch conectada ao provedor.
 
 ## CI e conferência após publicação
 
-`.github/workflows/staging.yml` faz build, testes do servidor e integração com PostgreSQL efêmero; não publica a aplicação. Seu nome não comprova um ambiente de staging ativo. O workflow não roda a suíte de testes da interface.
+`.github/workflows/staging.yml` faz build, testes do servidor e integração com PostgreSQL efêmero; não publica a aplicação. Seu nome não comprova um ambiente de staging ativo. O job principal executa também a suíte da interface e contratos de importação/seed; jobs separados cobrem invariantes financeiros e baseline/seed unificada.
 
 Após publicação autorizada, confira carregamento da interface, `/api/health`, login/sessão, proteção de rotas, escopo por sítio e anexos/relatórios no namespace correto. Preserve backups e histórico; a conferência não autoriza reset de dados nem execução de seeds.
 

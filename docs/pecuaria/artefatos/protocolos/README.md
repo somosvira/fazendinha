@@ -1,8 +1,8 @@
 # Base documental de protocolos
 
-[Entrada navegável](index.html) · [Registro da ampliação](../../plano-acoes-protocolos.md) · [Contrato vigente](../../protocolos-exames.md)
+[Entrada navegável](index.html) · [Registro da ampliação](../../protocolos-exames.md) · [Contrato vigente](../../protocolos-exames.md)
 
-Materiais de apoio do núcleo comum de protocolos. A implementação local está em validação; o contrato operacional registra o comportamento implementado e seus limites. O registro da entrega local aponta este contrato e mantém separadas as evidências e validações pendentes.
+Materiais de apoio do núcleo comum de protocolos. A implementação do núcleo comum está integrada à main; o contrato operacional registra o comportamento implementado e seus limites. Os diagramas e capturas preservam suas datas; a estrutura atual deve ser conferida na baseline V5.
 
 | Material | Fonte e alcance |
 |---|---|
@@ -11,7 +11,7 @@ Materiais de apoio do núcleo comum de protocolos. A implementação local está
 | [Catálogo SQL](db/schema.json) | Apenas metadados: colunas, constraints, índices, triggers e suas funções. Nenhum registro de animal, usuário ou atendimento. |
 | [Mockup aprovado](mockup/index.html#turma) | Referência conceitual simulada do coletivo reprodutivo. Não comprova a aparência das telas implementadas; inspeção real focal executada; contextos individuais seguem pendentes. |
 | [Ações e atendimentos: explicação e mockups](acoes-e-atendimentos.html) | Referência conceitual aprovada de 21/10/2026: ações por animal, registro individual/coletivo, consumo, pendências e gestação. Simulação em memória, com listas de até dez itens; não executa os serviços reais nem comprova a entrega da ampliação. |
-| [Registro local de ações e atendimentos](../../plano-acoes-protocolos.md) | Ampliação implementada localmente, decisões incorporadas ao contrato e evidências técnicas separadas dos gates humanos pendentes. |
+| [Registro local de ações e atendimentos](../../protocolos-exames.md) | Ampliação implementada localmente, decisões incorporadas ao contrato e evidências técnicas separadas dos gates humanos pendentes. |
 | [Gerador do diagrama](gerar-diagrama.py) | Constrói `db/index.html` a partir do catálogo versionado; não conecta ao banco. |
 
 ## Uso local

@@ -67,7 +67,7 @@ describe("serviço, concepção e diagnóstico comprovado", () => {
   });
   it("inclui tentativa na TC independentemente da aptidão inicial", () => {
     const d = dados(); matriz(d, "a", "2026-02-01"); tentativa(d, "t", "a"); positiva(d, "g", "t", "a");
-    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: 0, matrizesServidas: 1, tentativas: 1, positivas: 1 }, taxas: { servico: null, concepcao: 100, prenhez: null } });
+    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: 0, matrizesServidas: 0, tentativas: 1, positivas: 1 }, taxas: { servico: null, concepcao: 100, prenhez: null } });
   });
   it("diagnóstico tardio retorna ao período da tentativa e obedece o corte factual", () => {
     const d = dados(); matriz(d, "a"); tentativa(d, "t", "a"); positiva(d, "g", "t", "a", "2026-02-10");
@@ -104,11 +104,11 @@ describe("serviço, concepção e diagnóstico comprovado", () => {
 });
 
 describe("denominador histórico e proporcionalidade", () => {
-  it("decompõe V, N, U e torna E/TS/TP pendentes sem estimativa explícita", () => {
+  it("decompõe V, N, U e calcula a base válida sem estimativa explícita", () => {
     const d = dados(); for (const id of ["v", "n", "u"]) matriz(d, id);
     tentativa(d, "anteriorN", "n", "2025-12-15"); negativa(d, "n", "anteriorN", "n", "2026-02-01");
     tentativa(d, "anteriorU", "u", "2025-12-15"); tentativa(d, "atual", "v"); positiva(d, "g", "atual", "v");
-    expect(periodo(d)).toMatchObject({ contagens: { vaziasAptasInicio: 1, negativasAnteriores: 1, anterioresSemDiagnostico: 1, elegiveisConhecidas: 2, elegiveis: null }, taxas: { servico: null, concepcao: 100, prenhez: null } });
+    expect(periodo(d)).toMatchObject({ contagens: { vaziasAptasInicio: 1, negativasAnteriores: 1, anterioresSemDiagnostico: 1, elegiveisConhecidas: 2, elegiveis: 2 }, taxas: { servico: 50, concepcao: 100, prenhez: 50 }, baseCalculo: { parcial: true, animaisPendentes: 1 } });
     const r = periodo(d, { concepcaoEstimada: 25 });
     expect(r.contagens.elegiveis).toBe(2.75); expect(r.taxas.servico).toBeCloseTo(100 / 2.75, 10);
     expect(r.detalhamento.find(a => a.animalId === "u")).toMatchObject({ origemElegibilidade: "SEM_DIAGNOSTICO_ANTERIOR", contribuicaoElegiveis: 0.75 });
@@ -122,7 +122,7 @@ describe("denominador histórico e proporcionalidade", () => {
   });
   it("política ausente gera pendência, sem adotar outra ou assumir zero", () => {
     const d = dados(); matriz(d, "a"); d.elegibilidade.vinculos[0].politicaId = null;
-    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: null, animaisComPendenciaElegibilidade: 1 }, taxas: { servico: null } });
+    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: 0, animaisComPendenciaElegibilidade: 1 }, taxas: { servico: null } });
   });
   it("gestação confirmada exclui a matriz mesmo sem política ou ciclo, conservando as pendências no detalhe", () => {
     const d = dados(); for (const id of ["apta", "semPolitica", "semCiclo"]) matriz(d, id);
@@ -139,7 +139,8 @@ describe("denominador histórico e proporcionalidade", () => {
     expect(r.detalhamento.find(a => a.animalId === "semCiclo")?.motivos).toContain("CICLO_DESCONHECIDO");
     // A confirmação posterior ao início não pode resolver retroativamente a base desconhecida.
     d.elegibilidade.gestacoes[0].confirmadaEm = dia("2026-01-02");
-    expect(periodo(d).contagens.elegiveis).toBeNull();
+    expect(periodo(d).contagens.elegiveis).toBe(1);
+    expect(periodo(d).baseCalculo).toMatchObject({ parcial: true, animaisPendentes: 1 });
   });
   function liberacaoIndividual(d: DadosIndicadores, animalId: string, data = "2026-01-10", aptaDesde = data) {
     const vinculo = d.elegibilidade.vinculos.find(v => v.animalId === animalId)!;
@@ -156,7 +157,7 @@ describe("denominador histórico e proporcionalidade", () => {
     expect(r.detalhamento[0]).toMatchObject({ origemElegibilidade: "SAIDA_PEV", elegibilidadeInicio: { aptaDesde: null },
       elegibilidadeLiberacao: { dataReferencia: "2026-01-10", decisaoId: "liba2026-01-05" } });
     d.elegibilidade.decisoes[0].status = "ANULADO";
-    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: null });
+    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: 0 });
   });
   it("liberação após aborto entra uma vez e somente se ainda pertencer ao ciclo e estiver liberada na data", () => {
     const d = dados(); matriz(d, "a");
@@ -170,13 +171,13 @@ describe("denominador histórico e proporcionalidade", () => {
     // A decisão de 10/01 libera novamente; o bloqueio anterior não prevalece sobre ela.
     expect(periodo(d).contagens.saidasPev).toBe(1);
     d.elegibilidade.partos.push({ ...d.elegibilidade.partos[0], id: "outroCiclo", data: dia("2026-01-08") });
-    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: null });
+    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: 0 });
   });
   it("decisão não contorna política inválida, bloqueio posterior ou sítio na liberação", () => {
     const d = dados(); matriz(d, "a", "2026-02-01");
     liberacaoIndividual(d, "a", "2026-01-05", "2026-01-10");
     d.elegibilidade.politicas[0].parametros = {};
-    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: null });
+    expect(periodo(d).contagens).toMatchObject({ saidasPev: 0, elegiveis: 0 });
     d.elegibilidade.politicas = dados().elegibilidade.politicas;
     d.elegibilidade.decisoes.push({ id: "bloqueio", vinculoCicloId: "va", data: dia("2026-01-09"), aptaDesde: null,
       tipo: "BLOQUEAR", status: "VALIDO", criadoEm: dia("2026-01-09") });
@@ -191,12 +192,12 @@ describe("denominador histórico e proporcionalidade", () => {
     d.elegibilidade.iniciais[0].situacao = "DESCONHECIDA"; d.elegibilidade.iniciais[0].aptaDesde = null;
     liberacaoIndividual(d, "a");
     const r = periodo(d);
-    expect(r.contagens).toMatchObject({ saidasPev: 0, elegiveis: null, animaisComPendenciaElegibilidade: 1 });
+    expect(r.contagens).toMatchObject({ saidasPev: 0, elegiveis: 0, animaisComPendenciaElegibilidade: 1 });
     expect(r.detalhamento[0].motivos).toContain("SITUACAO_REPRODUTIVA_DESCONHECIDA");
   });
   it("falta de localização e conflito de papel nos filtros geram pendência identificada", () => {
     const d = dados(); matriz(d, "a"); d.elegibilidade.localizacoes[0].ate = dia("2025-12-31");
-    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: null, animaisComPendenciaElegibilidade: 1 }, pendencias: expect.arrayContaining(["LOCALIZACAO_DESCONHECIDA_NO_FILTRO"]) });
+    expect(periodo(d)).toMatchObject({ contagens: { elegiveis: 0, animaisComPendenciaElegibilidade: 1 }, pendencias: expect.arrayContaining(["LOCALIZACAO_DESCONHECIDA_NO_FILTRO"]) });
     d.elegibilidade.localizacoes[0].ate = null;
     d.elegibilidade.papeis.push({ id: "conflito", animalId: "a", tipo: "RECEPTORA", inicio: dia("2025-12-01"), fim: null });
     expect(periodo(d, { papeis: ["NENHUM"] }).pendencias).toContain("PAPEL_DESCONHECIDO_NO_FILTRO");
@@ -244,9 +245,30 @@ describe("denominador histórico e proporcionalidade", () => {
   it("CSV transporta valores reais, parâmetros e pendências sem zeros enganosos", () => {
     const d = dados(); matriz(d, "a"); tentativa(d, "t", "a");
     const csv = exportarIndicadoresCsv(calcularIndicadoresReprodutivos(d, filtros()));
-    expect(csv).toContain('"Base IDEAGRI/IILB — metodologia Fazendinha v1"');
+    expect(csv).toContain('"Base IDEAGRI/IILB — metodologia Fazendinha v2 (base válida)"');
     expect(csv).toContain('"2026-01-01";"2026-01-21";"1";"1";"1";"0";"0";"1";"100";"";""');
     expect(csv).toContain("TENTATIVAS_SEM_DIAGNOSTICO");
+    expect(csv).toContain("COBERTURA DA BASE");
     expect(csv).toContain('"DETALHAMENTO POR MATRIZ"'); expect(csv).toContain('"TENTATIVAS E EVIDÊNCIAS"');
+  });
+});
+
+
+describe("base válida e cobertura parcial", () => {
+  it("exclui a tentativa e a elegibilidade pendentes de ambos os lados sem bloquear a base conhecida", () => {
+    const d = dados(); matriz(d, "valida"); matriz(d, "pendente");
+    d.elegibilidade.vinculos[1].politicaId = null;
+    tentativa(d, "tv", "valida"); positiva(d, "gv", "tv", "valida");
+    tentativa(d, "tp", "pendente"); negativa(d, "np", "tp", "pendente");
+    const r = calcularIndicadoresReprodutivos(d, filtros());
+    expect(r.periodos[0]).toMatchObject({ contagens: { elegiveis: 1, matrizesServidas: 1, tentativas: 1, positivas: 1, negativas: 0 }, taxas: { servico: 100, concepcao: 100, prenhez: 100 } });
+    expect(r.totais.baseCalculo).toEqual({ animaisValidos: 1, animaisPendentes: 1, participacoesValidas: 1, participacoesPendentes: 1, parcial: true });
+    expect(r.periodos[0].detalhamento.find(a => a.animalId === "pendente")).toMatchObject({ incluidaNaBase: false, contribuicaoElegiveis: null, tentativas: [{ id: "tp" }] });
+    expect(r.versaoMetodologia).toBe("FAZENDINHA_IDEAGRI_IILB_V2_BASE_VALIDA");
+  });
+  it("não apresenta zero como taxa quando toda a população está pendente", () => {
+    const d = dados(); matriz(d, "a"); d.elegibilidade.vinculos[0].politicaId = null;
+    tentativa(d, "t", "a"); positiva(d, "g", "t", "a");
+    expect(periodo(d)).toMatchObject({ taxas: { servico: null, concepcao: null, prenhez: null }, baseCalculo: { parcial: true, animaisValidos: 0, animaisPendentes: 1 } });
   });
 });

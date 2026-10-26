@@ -1,3 +1,5 @@
+> Evidência histórica datada. Achados e notas não representam automaticamente a V5 atual; revalidar no código antes de abrir trabalho. O contrato vigente está no índice `docs/README.md`, e lacunas atuais em `docs/lacunas.md`.
+
 # Assessment A — revisão independente de design do cliente Terrano
 
 15/10/2026. Modo Operate. Avaliação de design concluída antes de acesso a qualquer saída da avaliação B. Nenhum detector foi executado/lido por A. Fonte principal: aplicação local com sessão de proprietário do seed, capturas novas desta execução e código atual. Não houve gravação de fatos, envio de e-mail, upload, convite, pagamento, uso da API de IA, alteração de permissões ou logout.

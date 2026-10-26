@@ -1,3 +1,4 @@
+import { getHojeISO } from "../../../lib/hoje";
 import { inputHorarioIatf } from "./CampoDataIatf";
 import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -6,8 +7,8 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { obterReproducao, reqV4, type PainelReprodutivo } from "./api";
 import { CamposTriEstado, PostParto, camposPartoPayload, dadosPartoVazios, validarDadosParto } from "./PartoCampos";
 
-export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicial, partoInicial, tipoPartoInicial, onFechar, onSalvo }: {
-  tipo: "parto" | "lactacao"; id: string; animalId: string; propriedadeId?: number | null; gestacaoInicial?: string | null; partoInicial?: string | null; tipoPartoInicial?: string; onFechar: () => void; onSalvo: () => void;
+export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicial, partoInicial, tipoPartoInicial, complementoInicial, onFechar, onSalvo }: {
+  complementoInicial?: "escore" | "peso" | "retencao"; tipo: "parto" | "lactacao"; id: string; animalId: string; propriedadeId?: number | null; gestacaoInicial?: string | null; partoInicial?: string | null; tipoPartoInicial?: string; onFechar: () => void; onSalvo: () => void;
 }) {
   const sitioDoFato = propriedadeId ?? getPropriedadeAtiva();
   const [escoreRevisao, setEscoreRevisao] = useState("");
@@ -31,12 +32,12 @@ export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicia
         const horario = fato.ocorridoEm ? new Date(fato.ocorridoEm) : null;
         const tri = (v: boolean | null | undefined) => v == null ? "" : v ? "SIM" : "NAO";
         const d = { ...dadosPartoVazios(), desfecho: fato.desfecho ?? (fato.tipo === "ABORTO" ? "ABORTO" : "NASCIMENTO") as "ABORTO" | "NASCIMENTO", hora: horario ? inputHorarioIatf(horario.toISOString()).slice(11,16) : "", horarioEstimado: fato.horarioEstimado ?? false, induzido: tri(fato.induzido), dificuldade: tri(fato.dificuldade), retencaoPlacenta: tri(fato.retencaoPlacenta), assistenciaDescricao: fato.assistenciaDescricao ?? "", responsavel: fato.responsavel ?? "", observacao: fato.observacao ?? "" };
-        inicial.current = d; setDados(d);
+        inicial.current = d; setDados({ ...d, ...(complementoInicial === "escore" ? { escoreAtivo: true, escoreData: getHojeISO() } : {}), ...(complementoInicial === "peso" ? { pesoAcao: "REGISTRAR", pesoData: getHojeISO() } : {}) });
       }
       const l = p.lactacoes?.find(l => l.id === id); if (tipo === "lactacao" && l) { setVinculo(l.partoId ?? ""); setInicio(l.inicio.slice(0, 10)); setFim(l.encerradaEm?.slice(0, 10) ?? ""); }
     }).catch(e => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
-  }, [animalId, id, tipo, sitioDoFato]);
+  }, [animalId, id, tipo, sitioDoFato, complementoInicial]);
   const fato = painel?.partos.find(f => f.id === id);
   async function salvar() {
     if (ocupado) return;

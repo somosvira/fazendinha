@@ -129,7 +129,7 @@ suite("integração local — elegibilidade e emissões com rollback", () => {
       expect(detalheLiberacao.origemElegibilidade).toBe("SAIDA_PEV");
       expect(detalheLiberacao.contribuicaoElegiveis).toBeCloseTo(12 / 21, 10);
       expect(periodo.contagens.contribuicaoPev).toBeCloseTo(12 / 21, 10);
-      expect(snapshot.metodologia).toMatchObject({ rotulo: "Base IDEAGRI/IILB — metodologia Fazendinha v1" });
+      expect(snapshot.metodologia).toMatchObject({ rotulo: "Base IDEAGRI/IILB — metodologia Fazendinha v2 (base válida)" });
     });
   });
 
@@ -165,7 +165,7 @@ suite("integração local — elegibilidade e emissões com rollback", () => {
       const reconfirmada = await criarEmissaoReprodutivaTx(tx, entradaIndicadores, null);
       expect(reconfirmada.id).toBe(emissaoIndicadores.id);
       expect(reconfirmada.snapshot).toEqual(emissaoIndicadores.snapshot);
-      expect(emissaoIndicadores.snapshot).toMatchObject({ versaoMetodologia: "FAZENDINHA_IDEAGRI_IILB_V1" });
+      expect(emissaoIndicadores.snapshot).toMatchObject({ versaoMetodologia: "FAZENDINHA_IDEAGRI_IILB_V2_BASE_VALIDA" });
     });
   });
 });

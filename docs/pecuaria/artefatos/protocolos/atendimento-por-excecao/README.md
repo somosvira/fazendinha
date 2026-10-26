@@ -14,7 +14,7 @@ Sintaxe JavaScript conferida com `node --check`. Navegação real verificou segu
 
 Essa evidência cobre o protótipo, não a aplicação, a atomicidade de banco ou a homologação de campo. A edição por ação dentro do mesmo animal, origens externas, múltiplos lotes por aplicação e impressão estão no plano; o protótipo simplifica esses casos.
 
-[Plano completo](../../../plano-atendimento-por-excecao.md)
+[Plano completo](../../../../lacunas.md)
 
 ## Revisão: cadastro independente
 

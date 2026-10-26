@@ -3,7 +3,7 @@ import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js"
 import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
 import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
 import crypto from "node:crypto";
-import { conferirAnimalNoFato, conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos } from "../fatos.js";
+import { conferirFinalidadesComProducaoTx, conferirAnimalNoFato, conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos, conferirLocalizacoesComProducaoTx } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -426,7 +426,7 @@ async function exigirOrdemNascimento(db: DbPecuaria, animal: { id: string; maeId
 export async function editar(id: string, input: EditarAnimalInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, id, escopo);
 
-  const atualizado = await prisma.$transaction(async (tx) => {
+  const atualizado = await transacaoPecuaria(async (tx) => {
     // datas e sexo são comparados com o histórico: trava o animal e relê tudo depois da trava
     await travarAnimais(tx, [id]);
     const animal = await exigirAnimal(tx, id);
@@ -555,6 +555,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
       if (ajuste.moverDestino) {
         await tx.finalidadeAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
+        await conferirFinalidadesComProducaoTx(tx, id, new Date(Math.min(animal.dataEntrada.getTime(), entradaNova.getTime())), new Date(Math.max(animal.dataEntrada.getTime(), entradaNova.getTime())));
         await tx.periodoReprodutivoAnimal.updateMany({ where: { destinoOrigemId: ajuste.moverDestino, revogadoEm: null }, data: { inicio: entradaNova } });
       }
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
@@ -1282,7 +1283,7 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
 export async function mudarDestino(input: MudarDestinoInput & { animalId: string }, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   const { id: animalId } = await exigirNoEscopo(prisma, input.animalId, escopo);
 
-  await prisma.$transaction(async (tx) => {
+  await transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     // receptora/doadora só se aplica a fêmeas (R1)
@@ -1312,6 +1313,7 @@ export async function mudarDestino(input: MudarDestinoInput & { animalId: string
       data: { animalId: input.animalId, aptidao: plano.abrir.aptidao, desde: new Date(plano.abrir.desde), criadoPorId: usuarioId },
     });
 
+    await conferirFinalidadesComProducaoTx(tx, animalId, new Date(input.data));
     if (input.papelReprodutivo && input.papelReprodutivo !== papel.papel) await registrarPapelReprodutivoTx(tx, { animalId: input.animalId, tipo: input.papelReprodutivo, inicio: new Date(plano.abrir.desde), destinoOrigemId: novo.id, usuarioId });
     await auditar(tx, { entidade: "FinalidadeAnimal", entidadeId: novo.id, animalId: input.animalId, acao: "MUDANCA_DESTINO", usuarioId, antes: atual, depois: novo });
   });
@@ -1353,8 +1355,10 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     await exigirBrincoLivre(tx, animal.brinco, anterior.propriedadeId, animalId, "no sítio anterior");
 
     // apaga antes de reabrir: o índice parcial não admite duas linhas abertas por animal
+    await conferirLocalizacoesComProducaoTx(tx, [removida.id]);
     exigirAfetadas(await tx.localizacaoAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
     exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
+    await conferirFinalidadesComProducaoTx(tx, animalId, removida.desde);
     const reaberta = { ...anterior, ate: null };
 
     await conferirHistoricoDosFatos(tx, [animalId]);
@@ -1461,6 +1465,7 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
     // apaga antes de reabrir: o índice parcial não admite duas linhas abertas por animal
     const remover = plano.passos.map((p) => p.remover);
     const reabrir = plano.passos.map((p) => p.reabrir);
+    await conferirLocalizacoesComProducaoTx(tx, remover);
     exigirAfetadas(await tx.localizacaoAnimal.deleteMany({ where: { id: { in: remover }, ate: null } }), remover.length);
     exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: { in: reabrir }, ate: { not: null } }, data: { ate: null } }), reabrir.length);
     const agora = new Date();
@@ -1486,7 +1491,7 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
 export async function desfazerDestino(animalId: string, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  await prisma.$transaction(async (tx) => {
+  await transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, [animalId]);
     await exigirAnimalAtivo(tx, animalId);
 
@@ -1500,9 +1505,12 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
     const removida = linhas.find((l) => l.id === plano.remover.id)!;
     const anterior = linhas.find((l) => l.id === plano.reabrir.id)!;
 
+    if (await tx.participanteProducaoLeite.count({ where: { finalidadeId: removida.id } }))
+      throw new RebanhoError("CONFLITO", "A finalidade tem histórico de ordenha e não pode ser apagada ao desfazer. Preserve a evidência e registre uma nova finalidade", "finalidade");
     await desfazerPapelDoDestinoTx(tx, animalId, removida.id, usuarioId);
     exigirAfetadas(await tx.finalidadeAnimal.deleteMany({ where: { id: removida.id, ate: null } }), 1);
     exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
+    await conferirFinalidadesComProducaoTx(tx, animalId, removida.desde);
     const reaberta = { ...anterior, ate: null };
 
     await auditar(tx, { entidade: "FinalidadeAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });

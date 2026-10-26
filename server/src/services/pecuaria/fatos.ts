@@ -1,5 +1,13 @@
 import { Prisma } from "@prisma/client";
+import { consultarOrigensGeraisTx } from "./leite/origens-gerais.js";
+import { resolverFinalidadeLeite } from "./leite/finalidade.calc.js";
 import { RebanhoError, hojeFazendaDate } from "./rebanho/regras.js";
+
+/** Mesmo uma inclusão depois excluída conserva a origem da folha guardada. */
+export async function conferirLocalizacoesComProducaoTx(tx: Prisma.TransactionClient, localizacaoIds: string[]) {
+  if (await tx.participanteProducaoLeite.count({ where: { localizacaoId: { in: localizacaoIds } } }))
+    throw new RebanhoError("CONFLITO", "A localização tem histórico de ordenha; não pode ser apagada ao desfazer a movimentação. Preserve a origem e registre uma nova movimentação");
+}
 
 export async function conferirAnimalNoFato(
   tx: Prisma.TransactionClient,
@@ -110,6 +118,12 @@ export async function conferirFatosNaBaixa(
     tx.fornecimentoColostro.count({
       where: { cria: { animalId }, status: "VALIDO", data: { gt: data } },
     }),
+    tx.participanteProducaoLeite.count({ where: { animalId, excluidoEm: null,
+      medicoes: { some: { estado: { in: ["MEDIDO", "NAO_ORDENHADO"] } } },
+      dia: { dataOperacional: { gt: data } },
+    } }),
+    tx.medicaoGeralLeite.count({ where: { animaisOrigem: { array_contains: [animalId] }, sessao: { dia: { dataOperacional: { gt: data } } } } }),
+    tx.parcelaDestinoLeite.count({ where: { animalId, ativo: true, destino: { status: "CONFIRMADO", data: { gt: data } } } }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(
@@ -205,6 +219,13 @@ export async function conferirHistoricoDosFatos(
     tx.gestacaoAnimal.findMany({ where }),
     tx.lactacaoAnimal.findMany({ where: { animalId: { in: animalIds } } }),
   ]);
+  const producoes = await tx.participanteProducaoLeite.findMany({ where: {
+    animalId: { in: animalIds }, excluidoEm: null,
+    medicoes: { some: { estado: { in: ["MEDIDO", "NAO_ORDENHADO"] } } },
+  }, select: { animalId: true, dia: { select: { propriedadeId: true, dataOperacional: true } } } });
+  const origensGerais = await consultarOrigensGeraisTx(tx, animalIds);
+  const destinosLeite = await tx.parcelaDestinoLeite.findMany({ where: { animalId: { in: animalIds }, ativo: true, destino: { status: "CONFIRMADO" } },
+    select: { animalId: true, destino: { select: { propriedadeId: true, data: true } } } });
   const reprodutivos = [
     ...tentativas,
     ...avaliacoes,
@@ -235,7 +256,7 @@ export async function conferirHistoricoDosFatos(
         "dataNascimento",
       );
   }
-  if (reprodutivos.some((r) => porId.get(r.animalId)?.sexo !== "F"))
+  if ([...reprodutivos, ...producoes, ...origensGerais].some((r) => porId.get(r.animalId)?.sexo !== "F"))
     throw new RebanhoError(
       "CONFLITO",
       "Animal com histórico reprodutivo válido não pode mudar para macho",
@@ -251,7 +272,16 @@ export async function conferirHistoricoDosFatos(
       "Animal com castração válida não pode mudar para fêmea",
       "sexo",
     );
+  for (const origem of origensGerais) {
+    if (origem.evidencias.some(e => !locais.some(l => l.id === e.localizacaoId && l.animalId === origem.animalId &&
+        l.propriedadeId === origem.propriedadeId && l.desde <= origem.data && (!l.ate || l.ate > origem.data ||
+          baixas.some(b => b.animalId === origem.animalId && b.localizacaoFechadaId === l.id && b.data.getTime() === origem.data.getTime())))))
+      throw new RebanhoError("CONFLITO", "A alteração retira a localização comprovada de uma origem geral; regularize a entrada antes");
+  }
   const fatos = [
+    ...origensGerais.map(p => ({ ...p, origem: "MANUAL" })),
+    ...destinosLeite.map(p => ({ animalId: p.animalId, propriedadeId: p.destino.propriedadeId, data: p.destino.data, origem: "MANUAL" })),
+    ...producoes.map(p => ({ animalId: p.animalId, propriedadeId: p.dia.propriedadeId, data: p.dia.dataOperacional, origem: "MANUAL" })),
     ...reprodutivos,
     ...aplicacoes,
     ...exames,
@@ -312,10 +342,32 @@ export async function conferirCadastroIndevidoSemFatosTx(
     tx.participanteVisita.count({ where: { animalId } }),
     tx.participacaoExposicao.count({ where: { animalId } }),
     tx.periodoReprodutivoAnimal.count({ where: { animalId, destinoOrigemId: null, origem: "IDEAGRI" } }),
+    tx.participanteProducaoLeite.count({ where: { animalId } }),
+    tx.medicaoGeralLeite.count({ where: { animaisOrigem: { array_contains: [animalId] } } }),
+    tx.parcelaDestinoLeite.count({ where: { animalId } }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(
       "CONFLITO",
       "Animal possui histórico reprodutivo ou nascimento vinculado; cadastro indevido não pode ocultar esses fatos",
     );
+}
+
+/** Chamador mantém a trava do animal; nunca reclassifica nem remove uma medição. */
+export async function conferirFinalidadesComProducaoTx(tx: Prisma.TransactionClient, animalId: string, desde?: Date, ate?: Date) {
+  const participantes = await tx.participanteProducaoLeite.findMany({ where: { animalId, excluidoEm: null, ...(desde || ate ? { dia: { dataOperacional: { ...(desde ? { gte: desde } : {}), ...(ate ? { lt: ate } : {}) } } } : {}) }, include: { dia: { select: { dataOperacional: true } } } });
+  const origensGerais = await consultarOrigensGeraisTx(tx, [animalId], desde, ate);
+  if (!participantes.length && !origensGerais.length) return;
+  const finalidades = await tx.finalidadeAnimal.findMany({ where: { animalId } });
+  const baixas = await tx.baixaAnimal.findMany({ where: { animalId, estornadaEm: null } });
+  for (const p of participantes) {
+    const f = resolverFinalidadeLeite(finalidades, p.dia.dataOperacional, baixas);
+    if (!f.elegivel || p.finalidadeId && p.finalidadeId !== f.finalidade.id)
+      throw new RebanhoError("CONFLITO", "A alteração da finalidade atinge uma ordenha guardada. Concilie explicitamente a folha e regularize suas confirmações antes de alterar o cadastro", "finalidade");
+  }
+  for (const origem of origensGerais) {
+    const f = resolverFinalidadeLeite(finalidades, origem.data, baixas);
+    if (!f.elegivel || origem.evidencias.some(e => e.finalidadeId !== f.finalidade.id))
+      throw new RebanhoError("CONFLITO", "A alteração da finalidade atinge uma aferição geral guardada. Regularize suas confirmações e corrija explicitamente os animais de origem antes de alterar o cadastro", "finalidade");
+  }
 }

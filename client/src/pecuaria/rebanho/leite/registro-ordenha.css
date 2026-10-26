@@ -1,0 +1,16 @@
+.leite-registro-corpo { display:grid; gap:24px; padding:20px; }
+.leite-registro-campos { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.leite-registro label { display:grid; gap:6px; font-size:14px; min-width:0; }
+.leite-registro-natureza { display:grid; gap:16px; }
+.leite-registro-natureza h3 { margin:0; font-size:18px; font-weight:700; }
+.leite-registro-linha,.leite-registro-sugestao,.leite-registro-rodape { display:flex; align-items:center; flex-wrap:wrap; gap:12px; }
+.leite-registro-linha > h3,.leite-registro-sugestao > span { margin-right:auto; }
+.leite-registro-parcela { border:0; border-top:1px solid var(--border); padding:16px 0 0; margin:0; display:grid; gap:16px; min-width:0; }
+.leite-registro-parcela legend { font-size:14px; font-weight:600; padding-right:12px; }
+.leite-registro-total { border-top:1px solid var(--border); padding-top:20px; justify-content:space-between; font-variant-numeric:tabular-nums; }
+.leite-registro-rodape { justify-content:flex-end; }
+.leite-registro-dialog { max-width:760px; }
+.leite-registro-origens,.leite-registro-confirmacao { display:grid; gap:16px; max-height:60vh; overflow:auto; }
+.leite-registro-origens label,.leite-registro-check { display:flex; align-items:center; gap:10px; min-height:44px; font-size:14px; }
+.leite-registro-origens input,.leite-registro-check input { width:18px; height:18px; accent-color:var(--primary); flex-shrink:0; }
+@media(max-width:900px) { .leite-registro-campos { grid-template-columns:1fr; } .leite-registro-corpo { padding:16px; } .leite-registro-rodape > button { flex:1; } }

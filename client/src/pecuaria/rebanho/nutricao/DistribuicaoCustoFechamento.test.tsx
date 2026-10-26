@@ -23,3 +23,17 @@ it("não expõe valores sem permissão nem representa ajustes negativos como fat
   rerender(<DistribuicaoCustoFechamento fechamento={{ ...dados, itens: [{ ...dados.itens[0], movimentoEstoque: { ...dados.itens[0].movimentoEstoque!, valorTotal: "-90" } }] }} />);
   expect(container.textContent).toBe("");
 });
+it("inclui custo produtivo do leite sem usar seu preço comercial ou transformar pendência em zero", () => {
+  const leite: NonNullable<Fechamento["itens"][number]["leite"]> = {
+    id: "fornecimento", status: "CONFIRMADO", quantidadeLitros: "60", custoProducao: "100.00",
+    referencia: {id:"ref",versao:1,fechamentoId:"venda",precoUnitario:"5",valorTotal:"300",provisoria:true,periodoInicio:"2026-09-01",periodoFim:"2026-09-30",motivo:"Referência anterior",criadoEm:"2026-10-01",criadoPorId:1},
+    referencias: [], movimentos: [], parcelas: [],
+  };
+  const item = { ...dados.itens[0], produtoId: "leite", produto: {nome:"Leite produzido"}, movimentoEstoque: null, leite };
+  const {rerender} = render(<DistribuicaoCustoFechamento fechamento={{...dados,itens:[...dados.itens,item]}} />);
+  expect(screen.getByText("50%")).toBeTruthy();
+  expect(screen.getByText("Leite produzido")).toBeTruthy();
+  rerender(<DistribuicaoCustoFechamento fechamento={{...dados,itens:[...dados.itens,{...item,leite:{...leite,custoProducao:null}}]}} />);
+  expect(screen.queryByText("Leite produzido")).toBeNull();
+  expect(screen.getByText("90%")).toBeTruthy();
+});

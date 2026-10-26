@@ -25,6 +25,14 @@ import {
 } from "./router";
 import { uid } from "./lib/uid.fixture";
 
+describe("roteamento da produção de leite", () => {
+  it("abre o módulo e seus percursos sem cair no rebanho legado", () => {
+    expect(tabToPath("pec-leite")).toBe("/pecuaria/leite");
+    expect(pathToTab("/pecuaria/leite")).toBe("pec-leite");
+    expect(pathToTab("/pecuaria/leite/configuracoes")).toBe("pec-leite");
+  });
+});
+
 describe("roteamento do estoque", () => {
   it("abre a ficha do produto sob o Estoque e preserva a identidade", () => {
     expect(parseProdutoEstoqueId(`/estoque/produtos/${uid(3)}`)).toBe(uid(3));

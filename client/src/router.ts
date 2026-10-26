@@ -31,6 +31,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   "pec-rebanho": "/pecuaria/rebanho",
   "pec-sanidade": "/pecuaria/sanidade",
   "pec-nutricao": "/pecuaria/nutricao",
+  "pec-leite": "/pecuaria/leite",
   "pec-reproducao": "/pecuaria/reproducao",
   "pec-visitas": "/pecuaria/visitas",
   "pec-relatorios": "/pecuaria/relatorios",
@@ -87,7 +88,7 @@ export function normalizarLocalizacaoPecuaria(): void {
   if (destino !== atual) window.history.replaceState(window.history.state, "", destino);
 }
 export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
-  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios"].includes(tab) && pathToTab(pathname) === tab
+  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios", "pec-leite"].includes(tab) && pathToTab(pathname) === tab
     || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
 }
 
@@ -255,6 +256,7 @@ export function pathToTab(pathname: string): Tab | null {
   if (path.startsWith("/pecuaria/sanidade/")) return "pec-sanidade";
   if (path.startsWith("/pecuaria/reproducao/")) return "pec-reproducao";
   if (path.startsWith("/pecuaria/visitas/")) return "pec-visitas";
+  if (path.startsWith("/pecuaria/leite/")) return "pec-leite";
   if (parseProdutoEstoqueId(path) != null) return "estoque";
   if (parseContaFinanceiraId(path) != null) return "caixinha";
   if (parseOperacaoFinanceiraId(path) != null) return "lancar";

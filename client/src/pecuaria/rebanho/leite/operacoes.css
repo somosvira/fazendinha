@@ -1,0 +1,215 @@
+.leite-modulo {
+  padding: 24px;
+  min-width: 0;
+  color: var(--foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.leite-modulo-acoes { flex-shrink: 0; }
+
+.leite-menu-rotinas { max-width: calc(100vw - 32px); }
+.leite-menu-rotinas [role="menuitem"] { min-height: 44px; padding: 10px 16px; }
+.leite-menu-rotinas [aria-current="page"] { background: var(--fin-filter-bg); color: var(--primary); }
+.leite-superficie { min-width: 0; background: var(--card); padding: 20px; border-radius: 0 12px 12px 12px; box-shadow: var(--fin-panel-shadow); }
+.leite-superficie > .leite-operacoes + .leite-operacoes { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.leite-modulo :is(h2, h3, legend) { font-family: var(--font-display); color: var(--fin-heading); letter-spacing: -.02em; }
+.leite-modulo .leite-titulo-secao { font-size: 18px; font-weight: 750; line-height: 1.4; margin: 0 0 6px; }
+.leite-operacoes {
+  font-size: 14px;
+  color: var(--foreground);
+  min-width: 0;
+}
+.leite-operacoes h2 {
+  font-size: 18px;
+  font-weight: 650;
+  margin: 26px 0 12px;
+}
+.leite-operacoes p {
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.leite-operacoes label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--foreground);
+}
+.leite-operacoes input,
+.leite-operacoes select,
+.leite-operacoes textarea {
+  border: 1px solid var(--fin-control-border);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background: var(--card);
+  color: var(--foreground);
+  min-height: 42px;
+  font-size: 16px;
+  max-width: 100%;
+  width: 100%;
+}
+.leite-form-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 16px;
+  margin: 20px 0;
+}
+.leite-form-inline label {
+  flex: 1 1 160px;
+  max-width: 360px;
+}
+
+.leite-operacoes button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.leite-operacoes :is(input, select, textarea):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.leite-indicadores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 32px;
+  margin: 20px 0;
+  padding: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+.leite-indicadores dt {
+  font-size: 14px;
+  color: var(--muted-foreground);
+}
+.leite-indicadores dd {
+  margin: 5px 0 0;
+  font-size: 26px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.leite-operacoes table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.leite-operacoes caption {
+  text-align: left;
+  font-size: 17px;
+  padding: 14px 0;
+  font-weight: 600;
+}
+.leite-operacoes [role="alert"] {
+  color: var(--destructive);
+}
+.leite-operacoes fieldset {
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 20px 0;
+  margin-top: 20px;
+}
+.leite-operacoes legend {
+  font-size: 20px;
+  font-weight: 600;
+  padding-right: 14px;
+}
+.leite-operacoes .leite-secondary {
+  color: var(--primary);
+  background: var(--card);
+}
+.leite-tabela-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+.leite-operacoes small {
+  display: block;
+  color: var(--muted-foreground);
+  margin-top: 8px;
+}
+.leite-operacoes a:not([data-slot="button"]) {
+  color: var(--primary);
+  text-decoration: underline;
+}
+@media (max-width: 640px) {
+    .leite-form-inline label {
+    max-width: 100%;
+  }
+  .leite-indicadores {
+    gap: 20px;
+  }
+
+}
+
+.leite-operacoes .leite-checkbox {
+  flex-direction: row;
+  align-items: center;
+  margin: 16px 0;
+}
+.leite-operacoes input[type="checkbox"] {
+  width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+}
+.leite-operacoes dl dd {
+  margin-inline-start: 0;
+}
+
+.leite-laudos-tabela {
+  min-width: 720px;
+}
+
+.leite-operacoes .leite-secondary:hover:enabled { background: var(--fin-table-hover); }
+.leite-operacoes :is(button, input, select, textarea) { font-family: var(--sans); }
+.leite-operacoes table { font-size: 14px; }
+
+.leite-operacoes :is(input, textarea)::placeholder { color: var(--muted-foreground); opacity: 1; }
+.leite-modulo :is(a, [tabindex="0"]):focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.leite-modulo ::selection { background: var(--fin-nav-selected); }
+@media (max-width: 900px) {
+  .leite-modulo { padding: 56px 16px 32px; }
+
+
+  .leite-modulo-acoes .leite-configurar { width: 44px; min-height: 44px; padding: 10px; }
+  .leite-modulo-acoes .leite-configurar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+
+  .leite-superficie { padding: 16px; }
+  .leite-operacoes :is(button, input, select, textarea) { min-height: 44px; }
+  .leite-operacoes :is(input, select, textarea) { font-size: 16px; }
+  .leite-operacoes input[type="checkbox"] { min-height: 20px; }
+}
+@media print {
+
+  .leite-modulo, .leite-superficie { padding: 0; box-shadow: none; }
+}
+
+.leite-modulo-acoes .leite-configurar:disabled { cursor: default; opacity: .5; }
+.leite-modulo-acoes .leite-configurar:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+/* Cabeçalho, abas e consultas seguem os componentes usados por Rebanho e Nutrição. */
+.leite-navegacao { display: flex; flex-wrap: wrap; align-items: end; gap: 8px 16px; }
+.leite-navegacao > .abas-navegacao { flex: 1; }
+.leite-navegacao > .leite-mais-rotinas { margin-bottom: 8px; }
+.leite-navegacao > .leite-mais-rotinas[data-selecionada="true"] { background: var(--fin-filter-bg); color: var(--primary); }
+.leite-operacoes [data-slot="table"] { caption-side: top; }
+.leite-operacoes :is([data-slot="table-head"], [data-slot="table-cell"]) { white-space: normal; }
+.leite-operacoes [data-slot="table-caption"] { color: var(--foreground); }
+.leite-operacoes .secao-recolhivel-cabecalho > h2 { margin: 0; }
+.leite-operacoes .secao-recolhivel-cabecalho button { background: transparent; border: 0; color: inherit; }
+
+@media (max-width: 900px) {
+  .leite-navegacao > .abas-navegacao { flex-basis: 100%; }
+  .leite-navegacao > .leite-mais-rotinas { margin-left: auto; }
+}
+
+.leite-cabecalho-acoes, .leite-ferramentas { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.leite-ferramentas { justify-content: flex-end; margin-top: 20px; }
+.leite-sete-rotinas > .abas-navegacao { width: 100%; }
+.leite-sete-rotinas [role="tablist"] { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); }
+.leite-sete-rotinas [role="tab"] { grid-column: span 3; white-space: normal; justify-content: center; }
+.leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 4; }
+@media (max-width: 640px) {
+  .leite-sete-rotinas [role="tab"] { grid-column: span 6; }
+  .leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 6; }
+  .leite-sete-rotinas [role="tab"]:last-child { grid-column: span 12; }
+}
+
+/* O tablist compartilhado tem altura de uma linha; sete rotinas usam duas. */
+:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: grid; height: auto; min-height: 44px; width: 100%; align-items: stretch; }
+:root .app-main .leite-sete-rotinas [role="tab"] { min-width: 0; }

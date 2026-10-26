@@ -113,3 +113,21 @@ it("mascara finanças preservando resultados clínicos estruturados no detalhe e
     expect(ocultarCustosDetalhe({ itens: [{ antes: exame, depois: exame }] }, leituraOperacional)).toEqual({ itens: [{ antes: esperado, depois: esperado }] });
   }
 });
+
+describe("integração com qualidade do leite", () => {
+  it("bloqueia formato após coleta coletiva mesmo sem ExameAnimal", async () => {
+    mocks.tx.tipoExame.findUnique.mockResolvedValue({ ...tipo, tipoResultado: "MULTIPLO", campos: [{ codigo: "DADO", tipo: "NUMERO", obrigatorio: false }], formatoQualidadeLeite: { _count: { amostras: 1 } } });
+    await expect(editarTipoExame(tipo.id, { unidade: "outra unidade" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.tx.tipoExame.update).not.toHaveBeenCalled();
+  });
+  it("recusa criar exame de qualidade pelo executor sanitário genérico", async () => {
+    mocks.tx.tipoExame.findFirst.mockResolvedValue({ ...tipo, formatoQualidadeLeite: { tipoExameId: tipo.id } });
+    await expect(registrarExame(coleta, 7)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.tx.exameAnimal.create).not.toHaveBeenCalled();
+  });
+  it("recusa contornar versão da amostra pelo endpoint sanitário de correção", async () => {
+    mocks.tx.exameAnimal.findFirst.mockResolvedValueOnce({ animalId: "animal" }).mockResolvedValueOnce({ id: "e", animalId: "animal", amostraQualidadeLeite: { id: "amostra" }, formatoSnapshot: { tipoResultado: "NUMERO" } });
+    await expect(corrigirExame("e", 2, { resultadoNumero: 0, motivo: "Revisão" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  });
+});

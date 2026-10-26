@@ -62,6 +62,15 @@ describe("conferência nutricional dividida", () => {
     await waitFor(() => expect(onSalvo).toHaveBeenCalledOnce());
     expect(confirmarPeriodos).toHaveBeenCalledWith(expect.objectContaining({ chave: expect.any(String), revisao: "r".repeat(64), periodos: [expect.objectContaining({ inicio: "2026-09-01", fim: "2026-09-10", itens: [expect.objectContaining({ quantidadeConfirmada: 0, motivoAjuste: "Consumo real conferido em zero" })] })] }));
   });
+  it("confirma a dieta com origens distintas e quantidade efetiva, sem segundo ingrediente leiteiro", async () => {
+    vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), lacunas: [], periodos: [{...previa,animalDias:6,itens:[{...previa.itens[0],produtoId:"leite",nome:"Leite",unidade:"L",quantidadePrevista:"60",saldo:"100",leite:{quantidadePrevistaLitros:"60.000",quantidadeDisponivelLitros:"100.000",quantidadeAtendivelLitros:"60.000",custoPrevisto:null,composicaoPrevista:[],origens:[{entradaId:"nc",produtoId:"leite-nc",produtoNome:"Leite restrito",natureza:"NAO_COMERCIAL",data:"2026-09-01",quantidadeDisponivelLitros:"40.000"},{entradaId:"com",produtoId:"leite-com",produtoNome:"Leite comercial",natureza:"COMERCIAL",data:"2026-09-01",quantidadeDisponivelLitros:"60.000"}]}}]}] });
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByText("Conferir período"));await screen.findByText("Leite: previsto 60 L");
+    expect(screen.getByLabelText(/Leite restrito · Não comercial/)).toHaveProperty("checked",true);
+    expect(screen.getByLabelText(/Leite comercial · Comercial/)).toHaveProperty("checked",true);
+    fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
+    await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledWith(expect.objectContaining({periodos:[expect.objectContaining({itens:[expect.objectContaining({produtoId:"leite",quantidadeConfirmada:60,origensLeite:["nc","com"]})]})]})));
+  });
   it("informa lacuna sem dieta e bloqueia a confirmação do conjunto", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [previa], lacunas: [{ inicio: "2026-08-30", fim: "2026-08-31" }] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);

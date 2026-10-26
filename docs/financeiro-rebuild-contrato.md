@@ -2,6 +2,8 @@
 
 Este contrato descreve a implementação atual, independente do financeiro anterior e do Excel. Estrutura em `server/prisma/schema.prisma`; regras em `server/src/services/financeiro/` e `services/estoque/`; rotas em `server/src/routes/financeiro.ts` e `estoque.ts`.
 
+Para entender a rotina e exemplos, leia [Operações](guia/02-financeiro-operacoes.md) e [Estoque](guia/03-financeiro-estoque.md); a integração está no [system design](system-design.md).
+
 ## Fatos e efeitos
 
 | Entidade | Significado |
@@ -152,7 +154,7 @@ Leituras por grupo devem usar as parcelas preservadas. Uma repartição feita no
 
 As garantias SQL conferem somas, sinais e compatibilidade das referências. O domínio não oferece edição/exclusão das parcelas ou bases confirmadas. A limpeza administrativa de fixtures inteiras em uma transação não é fluxo de negócio e deve permanecer restrita aos produtos criados pelo próprio teste, sem desabilitar triggers.
 
-## Permissões e documentos
+## Visibilidade de custos entre domínios
 
 Rotas exigem sessão, área/ação e escopo; custos e exportações do módulo financeiro respeitam a visibilidade financeira. A Pecuária permite consultar seus custos operacionais atribuídos com sessão, área Pecuária e sítio/animal autorizado, sem conceder edição financeira ou acesso a documentos e totais completos de compras/Serviços. `apresentarOperacao()` mascara valores em todas as operações quando não há acesso financeiro com `verValores`, incluindo a composição comercial. Listagem, detalhe, criação, confirmação de rascunho e resposta de estorno utilizam esse apresentador. A abertura de valorização exige a mesma visibilidade no servidor. Esses ajustes não constituem homologação de todas as rotas financeiras; cada DTO e relatório continua responsável por conferir sua permissão.
 
@@ -199,3 +201,14 @@ Operações, contas e central de relatórios oferecem Cartões/Tabela; Extrato g
 Cartões de operação distinguem tipo, situação, parceiro, valor autorizado e impactos registrados. Os impactos de uma operação cancelada são históricos; um pagamento estornado não cancela automaticamente a operação. Contas apresenta o último movimento e se participa do saldo geral. A distribuição do saldo usa apenas contas ativas incluídas, independentemente dos filtros da lista; não desenha proporções quando há saldo negativo ou total não positivo. Relatórios preservam nome, período, autor, recorte, status, falha e download disponível, sem acrescentar totais financeiros à biblioteca.
 
 A cronologia do extrato agrupa somente datas consecutivas da ordenação recebida. Original e estorno permanecem movimentos separados nas próprias datas. Transferências identificam explicitamente os lados de entrada/saída nas contas, sem apresentá-los como receita ou consolidá-los em renda. O documento e o extrato individual conservam os contratos anteriores.
+## Integração da produção de leite V5
+
+A frente V5 acrescenta entrada física de produção com valor pendente e apropriação posterior. A exceção é restrita ao método `LEITE_FIFO_V1` e aos vínculos comprovados de origem/alocação; não permite custo desconhecido nos movimentos V1 existentes. Valores pendentes permanecem nulos nas consultas, inclusive no painel gerencial e na ficha do produto. A venda confirma uma retirada única com preço conhecido. Correções comerciais preservam essa retirada e criam versões substitutas das operações e dos compromissos, com motivo e condição financeira explícita. Recebimentos confirmados exigem regularização financeira antes da correção; nenhuma troca de preço devolve litros fictícios ao estoque. Referências históricas inativas podem ser preservadas nessa correção comprovada, enquanto novas referências e novas retiradas exigem cadastros ativos. Consulte o [contrato de leite](pecuaria/leite.md) para classificação, autorização e validação.
+
+O [contrato comercial do leite](pecuaria/leite-comercial.md) distingue expedição, aceite, faturamento documental e recebimento. Entrega com nova venda é atômica; vínculo a venda comprovada e demonstrativo não repetem saída nem obrigação. Retenções/adiantamentos informados não são descontos automáticos de receita nem pagamentos confirmados. Alocações documentais ativas precisam ser regularizadas antes de corrigir sua venda.
+
+### Leite com retirada anterior ao preço
+
+A operação comercial de leite aberta é uma extensão de domínio com identidade própria por sítio/comprador/período, descrita em [leite comercial](pecuaria/leite-comercial.md). Retiradas físicas podem preceder o preço e não criam `Operacao` de valor zero, compromissos ou dinheiro. Ao fechar, `criarFechamentoPeriodoLeiteTx` reutiliza o executor normal para uma única VENDA com item agregado não estocável, centro de custo explícito e quantidade reconhecida; os detalhes conservam cada retirada. O fechamento não gera nova saída de estoque, mesmo em retry ou correção. Prévia e confirmação compartilham o cálculo Decimal do acordo.
+
+Recebimentos parciais/posteriores e seus estornos usam os serviços financeiros existentes. Corrigir o fechamento preserva suas versões e substitui a operação financeira, com data original, somente sem recebimentos ativos e com os períodos abertos; cancelamento genérico é bloqueado. Preço comercial e custo produtivo do leite permanecem medidas separadas. Histórico de VENDA/entregas anterior não é refaturado. A estrutura dessa expansão integra a baseline V5. Testes isolados e contrato SQL estrutural não comprovam aplicação/concorrência no ambiente nem homologação financeira real.

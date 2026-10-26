@@ -52,11 +52,10 @@ jobs:
         run: pnpm -r run build
       - name: Testes do transformador da carga da pecuária (scripts/*.test.mjs)
         run: node --test scripts/*.test.mjs server/scripts/consolidacao-sitios-local/modelo.test.mjs
-      - name: Verificar contratos da carga V4 e seed existente
+      - name: Verificar contratos da carga e seed unificada
         run: |
           pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
-          pnpm --filter rionovo-server run seedatev3:typecheck
-          pnpm --filter rionovo-server run seedatev4:typecheck
+          pnpm --filter rionovo-server run seed:typecheck
       - name: Testes da interface
         run: pnpm --filter rionovo-client exec vitest run --fileParallelism=false
       # migrate deploy (e não db push): os índices únicos parciais da pecuária ("uma linha
@@ -107,3 +106,66 @@ jobs:
       # temporário que ele mesmo cria antes de rodar a bateria.
       - name: Bateria de invariantes do financeiro (banco real)
         run: pnpm --filter rionovo-server run test:financeiro:integration
+
+  seed-unificada:
+    name: baseline + seed unificada (retomada e idempotência)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: fazendinha_seedatev3
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d fazendinha_seedatev3"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/fazendinha_seedatev3
+      DIRECT_URL: postgresql://ci:ci@localhost:5432/fazendinha_seedatev3
+      NODE_ENV: test
+      R2_ACCOUNT_ID: seed-ci-inerte
+      R2_ACCESS_KEY_ID: seed-ci-inerte
+      R2_SECRET_ACCESS_KEY: seed-ci-inerte
+      R2_BUCKET_NOTAS: seed-ci-inerte
+      STORAGE_NAMESPACE: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter rionovo-server exec prisma generate
+      - run: printf 'DATABASE_URL=%s\nDIRECT_URL=%s\n' "$DATABASE_URL" "$DIRECT_URL" > server/.env
+      - run: pnpm --filter rionovo-server exec prisma migrate deploy
+      - run: pnpm --filter rionovo-server run seed --preflight
+      - name: Interromper após estoque e retomar
+        run: |
+          node --test server/scripts/substituir-base-local.test.mjs
+          if pnpm --filter rionovo-server run seed --interromper-apos=estoque > /tmp/seed-interrupcao.log 2>&1; then
+            cat /tmp/seed-interrupcao.log
+            echo "A interrupção esperada não ocorreu"; exit 1
+          fi
+          cat /tmp/seed-interrupcao.log
+          grep --fixed-strings --line-regexp '[seed] Interrupção de teste após estoque; execute novamente para retomar.' /tmp/seed-interrupcao.log
+          node --input-type=module - <<'JS'
+          import { readFileSync } from 'node:fs';
+          const manifesto = JSON.parse(readFileSync('server/.seed/manifesto.json', 'utf8'));
+          if (!Array.isArray(manifesto.etapas) || !manifesto.etapas.includes('estoque')) {
+            throw new Error('A interrupção não concluiu a etapa estoque no manifesto.');
+          }
+          JS
+          pnpm --filter rionovo-server run seed
+      - name: Verificar e reexecutar sem duplicação
+        run: |
+          pnpm --filter rionovo-server run seed --verificar
+          node --env-file=server/.env server/scripts/fingerprint-seed.mjs > /tmp/seed-antes.json
+          pnpm --filter rionovo-server run seed
+          node --env-file=server/.env server/scripts/fingerprint-seed.mjs > /tmp/seed-depois.json
+          diff -u /tmp/seed-antes.json /tmp/seed-depois.json
