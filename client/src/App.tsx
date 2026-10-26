@@ -28,7 +28,7 @@ import { AssistenteConsulta } from "./components/AssistenteConsulta";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
-import { fetchMe, logout } from "./api/auth";
+import { fetchMe } from "./api/auth";
 import { interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
@@ -196,7 +196,6 @@ export function App() {
   const onSair = token
     ? () => {
         void executarComGuardaNavegacao(() => {
-          void logout();
           window.dispatchEvent(new Event("terrano:logout"));
           clearSessao();
           setTokenState(null);

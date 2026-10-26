@@ -11,10 +11,6 @@ async function ler<T>(res: Response): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function logout(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST", headers: comPropriedade() }).catch(() => {});
-}
-
 export async function fetchMe(): Promise<UsuarioSessao | null> {
   const res = await fetch("/api/auth/me", { headers: comPropriedade() });
   if (res.status === 401) return null;
