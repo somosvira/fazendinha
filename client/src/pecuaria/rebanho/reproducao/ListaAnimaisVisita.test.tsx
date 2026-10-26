@@ -24,9 +24,9 @@ describe("Lista individual da seleção livre", () => {
     const onAbrir = vi.fn();
     render(<ListaAnimaisVisita animais={[...animais, { ...animais[0], id: "p3", status: "CONFIRMADO", temRascunho: false }]}
       busca="" onBusca={vi.fn()} onAbrir={onAbrir} selecionadoId="p3" />);
-    expect(screen.getAllByRole("button")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: /^Abrir atendimento de / })).toHaveLength(2);
     expect(screen.getByText("2 de 2 animais")).toBeTruthy();
-    const abrir = screen.getAllByRole("button")[0];
+    const abrir = screen.getByRole("button", { name: "Abrir atendimento de 023 · Ágata" });
     expect(abrir.getAttribute("aria-current")).toBe("true");
     expect(abrir.textContent).toContain("Pendente · Atendimento confirmado");
     expect(abrir.textContent).toContain("2 registros na visita");
@@ -40,8 +40,8 @@ describe("Lista individual da seleção livre", () => {
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "agata" } });
     expect(onBusca).toHaveBeenCalledWith("agata");
     rerender(<ListaAnimaisVisita {...props} busca="agata" />);
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    expect(screen.getByRole("button").getAttribute("aria-current")).toBe("true");
+    expect(screen.getAllByRole("button", { name: /^Abrir atendimento de / })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Abrir atendimento de 023 · Ágata" }).getAttribute("aria-current")).toBe("true");
     rerender(<ListaAnimaisVisita {...props} />);
     expect(within(screen.getByRole("list")).getAllByRole("button").map(b => b.textContent?.slice(0, 3))).toEqual(["023", "005"]);
   });

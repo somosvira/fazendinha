@@ -628,3 +628,17 @@
 @media print {
   .leite-footer, .leite-header-acoes button { display: none; }
 }
+
+/* Aferição individual: foco na sessão e na próxima linha, com densidade de consulta. */
+.leite-page .leite-header { margin-bottom: 18px; gap: 16px; }
+.leite-page .leite-sessoes { gap: 12px; margin-bottom: 18px; }
+.leite-page .leite-sessao { min-height: 76px; padding: 12px 16px; }
+.leite-page .leite-sessao.selecionada { padding: 11px 15px; }
+.leite-page .leite-corpo { gap: 20px; }
+.leite-page .leite-filtro { gap: 12px; }
+.leite-data > .leite-data-seletor { min-width: 0; width: 168px; }
+.leite-data > .leite-data-seletor input { padding-right: 40px; }
+.leite-table [data-slot="select-trigger"] { max-width: 190px; width: 100%; font-size: 12px; white-space: normal; }
+.leite-page [data-estado="MEDIDO"][data-slot="select-trigger"] { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
+.leite-page [data-estado="PENDENTE"][data-slot="select-trigger"] { background: var(--fin-warning-bg); color: var(--warn); }
+.leite-page [data-estado="NAO_ORDENHADO"][data-slot="select-trigger"] { background: var(--fin-tag-bg); color: var(--fin-tag-text); }

@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -159,7 +160,7 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
  });
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
  fireEvent.click(await screen.findByText("Planejar acompanhamentos faltantes"));
- fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"),{target:{value:"regra"}});
+ await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"),{target:{value:"regra"}});
  fireEvent.click(screen.getByRole("button",{name:"Ver prévia"}));
  await screen.findByRole("button",{name:"Confirmar criação conferida"});
  fireEvent.change(screen.getByLabelText("Motivo obrigatório"),{target:{value:"Acompanhamento explicitamente adotado"}});

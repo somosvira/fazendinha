@@ -61,6 +61,7 @@ export async function consultarHistoricoProdutivoTx(tx: Prisma.TransactionClient
       revisaoLeitePendente: c.revisaoLeitePendente, revisaoAdministracaoPendente: c.revisaoAdministracaoPendente };
   }
   return { propriedadeId, animal, controleIndividual, periodo: { inicio, fim }, itens: dias.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
+    seriePeriodo: dias.map(d => ({ participanteId: d.participanteId, data: d.dataOperacional, litros: d.totais.litros, completa: d.totais.completa, excluido: d.excluidoEm !== null, lactacaoId: d.lactacao?.id ?? null, comparabilidade: d.medicoes.map(m => `${m.posicaoId}:${m.estado}`).sort().join("|"), finalidade: d.finalidade.estado })),
     total: dias.length, pagina: filtro.pagina, tamanho: filtro.tamanho, totaisPeriodo: resumirProducao(ativos.flatMap(d => d.medicoes)),
     coberturaPeriodo: { diasCalendario, diasComRegistro, diasSemRegistro: Math.max(0, diasCalendario - diasComRegistro) }, carenciaLeite };
 }

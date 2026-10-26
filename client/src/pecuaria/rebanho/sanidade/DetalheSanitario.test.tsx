@@ -2,6 +2,7 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { DetalheSanitario } from "./DetalheSanitario";
+vi.mock("./HistoricoExame", () => ({ HistoricoExame: () => <section>Histórico preservado</section> }));
 vi.mock("../../../estoque/navegacao", () => ({ podeAcessarArea: () => true }));
 afterEach(cleanup);
 it("exibe nomes históricos no desvio e oculta IDs legados sem nome preservado", () => {
@@ -46,4 +47,21 @@ it("distingue o Produto vinculado do nome preservado da aplicação", () => {
   render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ produto: { id: "p1", nome: "Nome cadastrado" }, nomeProdutoAplicado: "Nome usado no campo" }} />);
   expect(screen.getByRole("link", { name: "Nome cadastrado" }).getAttribute("href")).toBe("/estoque/produtos/p1");
   expect(screen.getByText(/Nome histórico do medicamento/).parentElement?.textContent).toContain("Nome usado no campo");
+});
+
+it("organiza o exame sem recolher resultado, observações e autoria", () => {
+  render(<DetalheSanitario tipo="exame" abrir={vi.fn()} valor={{ id: "exame-1", data: "2026-10-26", animal: { id: "a", brinco: "RN01" }, propriedade: { nome: "Sede" }, tipoExame: { nome: "Exame de referência" }, status: "VALIDO", formatoSnapshot: { tipoResultado: "NUMERO", unidade: "mg" }, resultadoNumero: "0", responsavel: "Veterinária", observacao: "Conferir amostra preservada.", criadoEm: "2026-10-26T13:00:00Z", criadoPor: { nome: "Ana" } }} />);
+  expect(screen.getByRole("region", { name: "Resultado do exame" }).textContent).toContain("0 mg");
+  expect(screen.getByText("Válido")).toBeTruthy();
+  expect(screen.getByText("Conferir amostra preservada.")).toBeTruthy();
+  expect(screen.getByText("Ana")).toBeTruthy();
+  expect(screen.getByText("Histórico preservado")).toBeTruthy();
+  expect(document.querySelector("details")).toBeNull();
+});
+it("mantém zero, falso e JSON composto nos resultados múltiplos", () => {
+  render(<DetalheSanitario tipo="exame" abrir={vi.fn()} valor={{ id: "exame-2", formatoSnapshot: { tipoResultado: "MULTIPLO", campos: [{ codigo: "contagem", nome: "Contagem" }, { codigo: "reagente", nome: "Reagente" }, { codigo: "dados", nome: "Dados da amostra" }] }, resultados: [{ campo: "contagem", valor: 0 }, { campo: "reagente", valor: false }, { campo: "dados", valor: { lote: "A", valor: 0, reagente: false } }] }} />);
+  expect(screen.getByText("0")).toBeTruthy();
+  expect(screen.getByText("Não")).toBeTruthy();
+  expect(screen.getByText('{"lote":"A","valor":0,"reagente":false}')).toBeTruthy();
+  expect(screen.queryByText("[object Object]")).toBeNull();
 });

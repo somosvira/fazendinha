@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { ExportacaoProducaoLeite } from "./ExportacaoProducaoLeite";
@@ -298,11 +299,8 @@ export function RelatoriosLeite({
   return (
     <section className="leite-operacoes leite-comercial-consulta">
       <ExportacaoProducaoLeite podeExportar={podeExportar} />
-      <h2 className="leite-titulo-secao">Relatórios preservados de leite</h2>
-      <p>
-        Uma emissão conserva os dados consultados e a cobertura daquele momento.
-        Abrir novamente não recalcula os números após correções.
-      </p>
+      <h2 className="leite-titulo-secao">Relatórios preservados de leite <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h2>
+
       {podeExportar ? (
         <form
           className="leite-form-inline"
@@ -660,8 +658,8 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         onChange={setPaginaSaida}
       />
       {!!s.dados.comercial?.length && <section aria-label="Retiradas comerciais preservadas">
-        <h2>Retiradas comerciais</h2>
-        <p>A retirada física conserva sua data mesmo com preço pendente; não representa recebimento.</p>
+        <h2>Retiradas comerciais <AjudaCampo rotulo="Sobre as retiradas físicas" texto={"A retirada física conserva sua data mesmo com preço pendente; não representa recebimento."} /></h2>
+
         <div className="leite-tabela-scroll" tabIndex={0} aria-label="Retiradas preservadas, com rolagem horizontal"><Table semContainer>
           <TableCaption>Retiradas comerciais e inversos no período</TableCaption><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Produto</TableHead><TableHead>Litros</TableHead><TableHead>Movimento</TableHead><TableHead>Venda</TableHead></TableRow></TableHeader>
           <TableBody>{s.dados.comercial.map(r => <TableRow key={r.movimentoId}><TableCell>{dataPt(r.data)}</TableCell><TableCell>{r.produtoNome}</TableCell><TableCell>{formatarLitros(Number(r.quantidadeLitros))}</TableCell><TableCell>{r.tipo === "ENTRADA" ? "Inverso" : "Retirada"}</TableCell><TableCell>{r.numeroOperacao === null ? "Preço não inferido" : `Nº ${r.numeroOperacao}`}</TableCell></TableRow>)}</TableBody>
@@ -676,7 +674,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
       )}
       {s.valores ? (
         <>
-          <h2>Valores preservados</h2>
+          <h2>Valores preservados <AjudaCampo rotulo="Sobre os valores preservados" texto={"Os valores são os conhecidos no corte da emissão. Custo direto não representa custo total nem lucro."} /></h2>
           <dl className="leite-indicadores">
             <div>
               <dt>Custo direto registrado</dt>
@@ -689,10 +687,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
               <dd>{dinheiro(s.valores.custos.consolidado.custoPorLitro)}</dd>
             </div>
           </dl>
-          <p>
-            Os valores são os conhecidos no corte da emissão. Custo direto não
-            representa custo total nem lucro.
-          </p>
+
         </>
       ) : (
         <p>
@@ -752,12 +747,8 @@ function ComercialPreservado({
   const total = Math.max(dados.entregas.length, dados.demonstrativos.length);
   return (
     <section aria-label="Comercial preservado no relatório">
-      <h2>Expedição, aceite e faturamento</h2>
-      <p>
-        As parcelas consideradas pertencem às entregas do período consultado.
-        Cabeçalhos e componentes dos demonstrativos conservam o período integral
-        declarado pelo comprador.
-      </p>
+      <h2>Expedição, aceite e faturamento  <AjudaCampo rotulo="Sobre o recorte dos documentos" texto={"Faturamento documentado, preço da venda e recebimento são referências distintas. O demonstrativo não confirma entrada de dinheiro. As parcelas consideradas pertencem às entregas do período consultado. Cabeçalhos e componentes dos demonstrativos conservam o período integral declarado pelo comprador."} /></h2>
+
       <div className="leite-tabela-scroll">
         <Table semContainer>
           <TableCaption>Entregas e volumes preservados</TableCaption>
@@ -882,10 +873,7 @@ function ComercialPreservado({
         total={total}
         onChange={setPagina}
       />
-      <p>
-        Faturamento documentado, preço da venda e recebimento são referências
-        distintas. O demonstrativo não confirma entrada de dinheiro.
-      </p>
+
     </section>
   );
 }
@@ -895,9 +883,9 @@ function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriod
   const [pagina, setPagina] = useState(1);
   const linhas = dados.slice((pagina - 1) * 50, pagina * 50);
   return <section aria-label="Operações comerciais preservadas">
-    <h2>Operações comerciais por período integral</h2>
-    <p>Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento.</p>
-    <p>Vendas legadas por data da retirada e faturamento documental têm recortes próprios. Seus valores não compõem um total combinado com estes acordos.</p>
+    <h2>Operações comerciais por período integral  <AjudaCampo rotulo="Sobre o período comercial integral" texto={"Vendas legadas por data da retirada e faturamento documental têm recortes próprios. Seus valores não compõem um total combinado com estes acordos. Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento."} /></h2>
+
+
     {!dados.length ? <p>Nenhuma operação comercial com período sobreposto ao filtro.</p> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Operações por período integral, com rolagem horizontal">
       <Table semContainer>
         <TableCaption>Operações e última versão de fechamento no corte da emissão</TableCaption>
@@ -919,7 +907,7 @@ function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriod
     </div>}
     {linhas.filter(o => o.fechamento?.amostras.length).map(o => <SecaoDetalhesLeite key={o.id} titulo={<>Amostras vinculadas ao fechamento · {o.referencia} · versão {o.fechamento!.versao}</>}>
 
-      <p>Datas preservadas no acordo; correções posteriores da amostra não alteram esta versão.</p>
+      <div className="flex items-center gap-1"><span>Datas da versão preservada</span><AjudaCampo rotulo="Sobre as datas das amostras preservadas" texto="Datas preservadas no acordo; correções posteriores da amostra não alteram esta versão." /></div>
       {o.fechamento!.amostras.map(a => <div key={a.amostraId}>
         <p>Amostra {a.amostraId} · versão {a.versaoAmostra}{a.data ? ` · coleta em ${dataPt(a.data)}` : ""}</p>
         <DatasQualidade {...a} />

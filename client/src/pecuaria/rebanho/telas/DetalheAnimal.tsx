@@ -1,3 +1,5 @@
+import { HistoricoAnimalVisual } from "./HistoricoAnimalVisual";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Ficha por domínio; os painéis permanecem montados para preservar rascunhos.
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
@@ -84,6 +86,7 @@ function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon;
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = "Animais" }: { id: string; onVoltar: () => void; podeLancar?: boolean; rotuloVoltar?: string }) {
   const [situacaoReprodutiva, setSituacaoReprodutiva] = useState<string | null>(null);
+  const visualHistorico = useVisualizacaoConsulta("visualHistoricoAnimal", "rebanho");
   const [carenciaResumo, setCarenciaResumo] = useState<CarenciaAnimal | null>(null);
   useEffect(() => { setSituacaoReprodutiva(null); setCarenciaResumo(null); }, [id]);
   const [identificandoCria,setIdentificandoCria]=useState(false);
@@ -249,6 +252,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
     {erro && <div className="mt-3"><ErrorBox erro={erro} /></div>}
     <article className="pec-ficha ficha-v4">
     <div className="ficha-animal-cabecalho">
+      <img className="ficha-animal-ilustracao" src="/images/pecuaria/vaca.png" width={110} height={110} alt="Ilustração genérica de bovino" />
+      <div className="ficha-animal-identidade">
       <PageHeader integrado
         titulo={<>{animal.brinco}{animal.nome && <> · <span>{animal.nome}</span></>}</>}
         descricao={`${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
@@ -277,14 +282,6 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
         </div>}
       >          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-xs text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}</PageHeader>
 
-      {!ativo && animal.baixa && <div role="status" className="ficha-baixa-resumo">
-        <ArchiveX size={18} aria-hidden="true" />
-        <div><strong>Animal baixado · {rotuloTipoBaixa(animal.baixa.tipo)} em {formatarDataBR(animal.baixa.data)}</strong>
-          <p>Dados referentes à baixa; registros posteriores indisponíveis. Motivo, observações e autoria em <button type="button" onClick={() => selecionarSecao("historico")}>Histórico</button>.</p>
-        </div>
-      </div>}
-
-    </div>
     <div className="ficha-status">
             {ativo && <Pill tone="green">{rotuloSituacao(animal.situacao)}</Pill>}
             {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
@@ -294,6 +291,15 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
             <StatusOperacionaisAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} revisao={refreshToken}/>
             <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
           </div>
+      </div>
+      {!ativo && animal.baixa && <div role="status" className="ficha-baixa-resumo">
+        <ArchiveX size={18} aria-hidden="true" />
+        <div><strong>Animal baixado · {rotuloTipoBaixa(animal.baixa.tipo)} em {formatarDataBR(animal.baixa.data)}</strong>
+          <p>Dados referentes à baixa; registros posteriores indisponíveis. Motivo, observações e autoria em <button type="button" onClick={() => selecionarSecao("historico")}>Histórico</button>.</p>
+        </div>
+      </div>}
+
+    </div>
     <nav aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas abas-pasta">
       {ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
@@ -399,6 +405,9 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
 
       </div>
       <div id="ficha-painel-historico" role="tabpanel" aria-labelledby="aba-historico" hidden={secaoAtiva !== "historico"}>
+      <div className="consulta-visual-barra mt-4"><h2 className="h3">Histórico do animal</h2><AlternarVisualizacaoConsulta {...visualHistorico} visual="Linha do tempo" rotulo="Visualização do histórico do animal" /></div>
+      {visualHistorico.modo === "visual" && <HistoricoAnimalVisual animal={animal} ativo={secaoAtiva === "historico"} revisao={refreshToken} />}
+      <div hidden={visualHistorico.modo !== "tabela"}>
       <SecaoFicha id="historico" className="ficha-historico-sem-titulo" titulo="Histórico de manejo e movimentações" resumo="Fatos do animal · Consultar registros" abertaInicial={false}><div className="grid gap-5 lg:grid-cols-2">
       <CardFicha icon={MapPin} titulo="Localização" acao={podeLancar && ativo && animal.historicoLocalizacoes.length >= 2 ? <button className="text-xs font-semibold text-green-800" onClick={() => { setErroAcao(null); setDesfazendoLocalizacao(true); }}>Desfazer última movimentação</button> : undefined}>
 
@@ -431,6 +440,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </CardFicha>
 
       </div></SecaoFicha>
+      </div>
 
       <SecaoFicha id="auditoria" titulo="Auditoria" resumo="Quem alterou cada registro e quando">
         <AuditoriaAnimal id={animal.id} recarregarToken={refreshToken} />

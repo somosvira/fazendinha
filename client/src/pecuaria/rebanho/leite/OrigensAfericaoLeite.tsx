@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useState } from "react";
 import { ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,11 +35,11 @@ export function OrigensAfericaoLeite({
   return (
     <section className="leite-origens-painel" aria-label="Animais de origem">
       <div>
-        <h4>Animais de origem · {selecionados.length}</h4>
+        <h4>Animais de origem · {selecionados.length} <AjudaCampo rotulo="Sobre a população de origem" texto={"Identifica a população de origem sem atribuir litros por animal."} /></h4>
         <p>{salva
           ? "Seleção preservada desta aferição."
           : "Pré-seleção: finalidade Leite e DEL > 0 na data da ordenha."}</p>
-        <p>Identifica a população de origem sem atribuir litros por animal.</p>
+
       </div>
       <Button
         type="button"
@@ -76,11 +77,8 @@ export function OrigensAfericaoLeite({
             </>
           )}
         >
-          <div className="leite-origens-modal">
-            <p>
-              Animais com finalidade Leite e DEL maior que zero na data da ordenha.
-              Origens já salvas não são recalculadas automaticamente.
-            </p>
+          <div className="leite-origens-modal"><div className="flex items-center gap-1"><span>Critérios de seleção</span><AjudaCampo rotulo="Sobre os critérios das origens" texto={"Animais com finalidade Leite e DEL maior que zero na data da ordenha. Origens já salvas não são recalculadas automaticamente. DEL zero ou desconhecido não entra na pré-seleção. A conferência sanitária continua independente."} /></div>
+
             {ids.length === 0 ? (
               <p>Nenhum animal atende ao critério comprovado nesta data.</p>
             ) : ids.map(id => {
@@ -108,10 +106,7 @@ export function OrigensAfericaoLeite({
                 </label>
               );
             })}
-            <p>
-              DEL zero ou desconhecido não entra na pré-seleção.
-              A conferência sanitária continua independente.
-            </p>
+
           </div>
         </PainelCadastro>
       )}

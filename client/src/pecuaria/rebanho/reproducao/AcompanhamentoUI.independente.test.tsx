@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ req: vi.fn() }));
@@ -26,7 +27,7 @@ const padrao = async (url: string, body?: object) => {
 const posts = () => mocks.req.mock.calls.filter(([, body]) => body !== undefined);
 beforeEach(() => { vi.resetAllMocks(); mocks.req.mockImplementation(padrao); });
 afterEach(() => cleanup());
-async function conferirAdocao() { await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes")); fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await screen.findByLabelText("Motivo obrigatório"); }
+async function conferirAdocao() { await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes")); await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await screen.findByLabelText("Motivo obrigatório"); }
 function preencherPolitica() { fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } }); fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa")); fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } }); }
 function preencherCopia(nome = "Rascunho da fazenda", versao = "1") { fireEvent.change(screen.getByLabelText("Nome do novo rascunho"), { target: { value: nome } }); fireEvent.change(screen.getByLabelText("Versão do novo rascunho"), { target: { value: versao } }); }
 describe("UI acompanhamento — contraprovas independentes", () => {
@@ -58,7 +59,7 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  });
  it("abrir faz somente leitura e adoção exige prévia e explicação", async () => {
   render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>);
-  await screen.findByRole("option", { name: /Versão 1/ }); expect(posts()).toHaveLength(0); expect(screen.queryByRole("button", { name: "Confirmar criação conferida" })).toBeNull();
+  await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" }); expect(posts()).toHaveLength(0); expect(screen.queryByRole("button", { name: "Confirmar criação conferida" })).toBeNull();
   await conferirAdocao(); expect(screen.getByRole("button", { name: "Confirmar criação conferida" })).toHaveProperty("disabled", true);
   fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção explicitamente conferida" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar criação conferida" }));
   await waitFor(() => expect(posts()).toHaveLength(2)); expect(posts()[1]).toEqual(["/reproducao/acompanhamento/adocao", expect.objectContaining({ propriedadeId: 1, politicaId: "p1", tentativaIds: ["t-a"], motivo: "Adoção explicitamente conferida", revisao: "a".repeat(64), chave: expect.any(String) }), "POST", 1]);
@@ -78,14 +79,14 @@ describe("UI acompanhamento — contraprovas independentes", () => {
   const escrita = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/adocao") ? escrita.promise : padrao(url, body));
   const { rerender } = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await conferirAdocao();
   fireEvent.change(screen.getByLabelText("Motivo obrigatório"), { target: { value: "Adoção conferida para alvoA" } }); fireEvent.click(screen.getByRole("button", { name: "Confirmar criação conferida" }));
-  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("option", { name: /Versão 1/ });
-  fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); expect(screen.getByRole("button", { name: "Ver prévia" })).toHaveProperty("disabled", false);
+  rerender(<DemandasAcompanhamento animalId="b" propriedadeId={2} painel={painel("b")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" });
+  await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); expect(screen.getByRole("button", { name: "Ver prévia" })).toHaveProperty("disabled", false);
   await act(async () => escrita.resolve({})); expect(screen.queryByLabelText("Motivo obrigatório")).toBeNull();
  });
  it("trocar versão durante prévia invalida resposta da versão anterior", async () => {
   const resposta = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") ? Promise.resolve([politica(), politica("p2", 2)]) : url.endsWith("/previa") ? resposta.promise : padrao(url, body));
-  render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("option", { name: /Versão 1/ }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes"));
-  fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); fireEvent.change(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p2" } });
+  render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes"));
+  await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p2" } });
   await act(async () => resposta.resolve(previa())); expect(screen.queryByRole("button", { name: "Confirmar criação conferida" })).toBeNull(); expect(screen.getByRole("button", { name: "Ver prévia" })).toHaveProperty("disabled", false);
  });
  it("escrita de política pendente não mantém mensagem ou bloqueio no novo sítio", async () => {

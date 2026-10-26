@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
 import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { Button } from "@/components/ui/button";
@@ -40,8 +41,8 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
     return () => { ativa = false; };
   }, [sitio, campo, inicio, fim, sujeito, pagina, revisao, tentativa]);
   return <section aria-label="Histórico por parâmetro">
-    <h2>Histórico por parâmetro</h2>
-    <p>Consulte CPP, gordura, proteína, NU, extrato seco e lactose conforme os campos cadastrados no laudo. Unidades e métodos não são presumidos.</p>
+    <h2>Histórico por parâmetro <AjudaCampo rotulo="Sobre os parâmetros de qualidade" texto={"Consulte CPP, gordura, proteína, NU, extrato seco e lactose conforme os campos cadastrados no laudo. Unidades e métodos não são presumidos."} /></h2>
+
     <div className="leite-form-inline">
       <label>Parâmetro do laudo<select value={campo} onChange={e => { setCampo(e.target.value); setPagina(1); }}>
         <option value="">Selecione um parâmetro</option>
@@ -57,7 +58,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
     {carregando && <p role="status">Consultando histórico do parâmetro…</p>}
     {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button></p>}
     {dados && <>
-      <p>{dados.total} resultado(s). Cada origem e versão de formato conserva sua própria série; não calculamos médias ou preço automaticamente.</p>
+      <p>{dados.total} resultado(s). <AjudaCampo rotulo="Sobre as séries de resultados" texto="Cada origem e versão de formato conserva sua própria série; não calculamos médias ou preço automaticamente." /></p>
       {!dados.itens.length ? <p>Nenhum resultado informado para este parâmetro no período.</p> : <TabelaFinanceira compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
         { chave: "data", titulo: "Amostra", principal: true, celula: r => r.dataAmostra.split("-").reverse().join("/") },
         { chave: "origem", titulo: "Origem", celula: r => r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco ?? "Sem brinco" },

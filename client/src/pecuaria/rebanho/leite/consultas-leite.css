@@ -7,3 +7,34 @@
 .leite-consulta-resumo { display: flex; gap: 24px; flex-wrap: wrap; margin-block: 14px; font-variant-numeric: tabular-nums; }
 .leite-consulta-resumo dt { font-size: 13px; color: var(--muted-foreground); }
 .leite-consulta-resumo dd { margin: 4px 0 0; font-weight: 600; }
+
+/* Consultas do leite: leitura compacta e os mesmos fatos em cartões e tabela. */
+.leite-lista-consulta { min-width: 0; }
+.leite-lista-opcoes { display: flex; justify-content: flex-end; margin: 0 0 14px; }
+.leite-cartoes-consulta { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr)); gap: 16px; align-items: start; }
+.leite-cartoes-consulta .consulta-entidade { margin: 0; padding: 16px; border-radius: 12px; box-shadow: none; height: 100%; }
+.leite-cartoes-consulta > [role="listitem"] { height: 100%; min-width: 0; }
+.leite-cartoes-consulta .consulta-entidade > header { margin-bottom: 12px; }
+.leite-cartoes-consulta .consulta-entidade h3 { font-size: 15px; margin: 0; }
+.leite-cartoes-consulta .consulta-entidade-conteudo { display: grid; grid-template-columns: 1fr; gap: 0; }
+.leite-cartoes-consulta .consulta-fato { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 6px 0; font-size: 13px; }
+.leite-cartoes-consulta .consulta-fato > span { color: var(--muted-foreground); }
+.leite-cartoes-consulta .consulta-fato > div { text-align: right; font-weight: 600; }
+.leite-cartoes-consulta .consulta-entidade-acao { display: flex; flex-wrap: wrap; gap: 8px; }
+.leite-cartoes-consulta .consulta-entidade > footer { margin-top: 12px; }
+.leite-cartoes-consulta .consulta-entidade > footer > span { flex: 1; }
+.leite-cartoes-consulta .consulta-entidade > footer :is(button, a) { width: 100%; }
+.leite-grafico-producao { margin: 0; padding: 8px 0 18px; border-bottom: 1px solid var(--border); min-width: 0; }
+.leite-grafico-producao figcaption { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.leite-grafico-producao figcaption h2 { margin: 0; font-size: 16px; }
+.leite-grafico-producao figcaption > span { display: flex; align-items: center; gap: 8px; color: var(--muted-foreground); font-size: 12px; }
+.leite-grafico-producao i { width: 9px; height: 9px; display: inline-block; background: var(--primary); border-radius: 2px; }
+.leite-grafico-producao i.parcial { background: repeating-linear-gradient(135deg, var(--primary) 0 4px, var(--card) 4px 6px); outline: 1px solid var(--primary); outline-offset: -1px; margin-left: 12px; }
+.leite-grafico-area { min-width: 0; height: 240px; margin-top: 16px; }
+.leite-grafico-producao .leite-consulta-nota { font-size: 12px; margin-bottom: 0; }
+.leite-cartao-volume { display: flex; flex-direction: column; gap: 3px; padding: 0 0 12px; }
+.leite-cartao-volume strong { font-family: var(--font-display); font-size: 26px; font-weight: 750; letter-spacing: -.025em; }
+.leite-cartao-volume > span { color: var(--muted-foreground); font-size: 12px; }
+.leite-agrupamento-producao { display: flex; align-items: center; justify-content: flex-end; gap: 12px; font-size: 13px; color: var(--muted-foreground); }
+.leite-ordenhas-tamanho { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+.leite-ordenhas-tamanho > [data-slot="select-trigger"] { width: 76px; }

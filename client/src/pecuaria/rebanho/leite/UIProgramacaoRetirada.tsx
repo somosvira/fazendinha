@@ -1,3 +1,6 @@
+import { AjudaCampo } from "@/components/Dica";
+import { DatePicker } from "@/components/DatePicker";
+import { Input } from "@/components/ui/input";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -78,19 +81,12 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
   }, [data, sitio, revisao]);
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Rotina de coleta</h2>
-      <p>
-        Configure a frequência e consulte as próximas previsões. A rotina não cria
-        retirada, venda, alerta ou movimento automático.
-      </p>
+      <h2 className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></h2>
+
       <div className="leite-form-inline">
         <label>
           Data de referência
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-          />
+          <DatePicker aria-label="Data de referência" value={data} onChange={setData} />
         </label>
         <Button variant="outline" className="leite-secondary"
           disabled={carregando}
@@ -121,7 +117,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           )}
           {dados.meta && (
             <div>
-              <h2>Conferência da meta</h2>
+              <h2>Conferência da meta <AjudaCampo rotulo="Sobre a conferência da meta" texto={"A conferência usa o produto configurado neste sítio. Uma retirada parcial altera o saldo na próxima consulta. Não há alerta persistente ou retirada automática."} /></h2>
               <p>
                 {dados.meta.estado === "NAO_AFERIVEL"
                   ? "Meta não aferível"
@@ -144,11 +140,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 </div>
               </dl>
               {dados.meta.motivo && <p>{dados.meta.motivo}</p>}
-              <small>
-                A conferência usa o produto configurado neste sítio. Uma
-                retirada parcial altera o saldo na próxima consulta. Não há
-                alerta persistente ou retirada automática.
-              </small>
+
             </div>
           )}
           <h2>
@@ -362,13 +354,7 @@ function ConfigurarRetirada({
           <fieldset disabled={salvando}>
             <label>
               Vigente desde
-              <input
-                type="date"
-                required
-                min={minima}
-                value={vigencia}
-                onChange={(e) => setVigencia(e.target.value)}
-              />
+              <DatePicker aria-label="Vigente desde" required min={minima} disabled={salvando} value={vigencia} onChange={setVigencia} />
             </label>
             <label>
               Frequência da coleta
@@ -410,7 +396,7 @@ function ConfigurarRetirada({
                       gap: 10,
                     }}
                   >
-                    <input
+                    <Input
                       style={{ width: 20, minHeight: 20 }}
                       type="checkbox"
                       checked={dias.includes(i)}
@@ -456,7 +442,7 @@ function ConfigurarRetirada({
                 )}
                 <label>
                   Meta de litros
-                  <input
+                  <Input
                     inputMode="decimal"
                     required
                     value={meta}

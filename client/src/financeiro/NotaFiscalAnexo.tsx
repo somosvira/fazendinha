@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useRef, useState } from "react";
 import { FileText, Paperclip, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ export function NotaFiscalAnexo({ arquivo, salvo, disabled, onArquivo }: {
     onArquivo(novo);
   };
   return <section className="mt-5 space-y-2" aria-label="Nota fiscal">
-    <h3 className="flex items-center gap-2 text-sm font-medium"><span className="fin-section-icon fin-form-icon"><Paperclip aria-hidden /></span>Nota fiscal <span className="font-normal text-muted-foreground">(opcional)</span></h3>
+    <h3 className="flex items-center gap-2 text-sm font-medium"><span className="fin-section-icon fin-form-icon"><Paperclip aria-hidden /></span>Nota fiscal <span className="font-normal text-muted-foreground">(opcional)</span><AjudaCampo rotulo="Ajuda: documentos da operação" texto={<>O anexo fica nos documentos da operação, inclusive se a liquidação precisar ser tentada novamente.</>} /></h3>
     <div onDragOver={event => { event.preventDefault(); if (!bloqueado) setArrastando(true); }} onDragLeave={() => setArrastando(false)} onDrop={event => { event.preventDefault(); setArrastando(false); selecionar(Array.from(event.dataTransfer.files)); }}
       data-arrastando={arrastando} className="fin-dropzone rounded-lg border border-dashed border-input bg-muted/30 p-4 text-center text-sm">
       <Input ref={input} type="file" aria-label="Anexar nota fiscal" accept=".pdf,.xml,.jpg,.jpeg,.png,.webp" disabled={bloqueado} className="hidden" onChange={event => { selecionar(Array.from(event.target.files ?? [])); event.target.value = ""; }} />
@@ -28,6 +29,6 @@ export function NotaFiscalAnexo({ arquivo, salvo, disabled, onArquivo }: {
         : <><Upload className="mx-auto mb-2 size-5 text-muted-foreground" aria-hidden="true" /><p>Arraste a nota fiscal aqui ou</p><Button variant="link" disabled={bloqueado} onClick={() => input.current?.click()}>Selecionar arquivo</Button><p className="text-muted-foreground">PDF, XML, JPG, PNG ou WEBP · até 10 MB</p></>}
     </div>
     {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
-    <p className="text-sm text-muted-foreground">O anexo fica nos documentos da operação, inclusive se a liquidação precisar ser tentada novamente.</p>
+
   </section>;
 }

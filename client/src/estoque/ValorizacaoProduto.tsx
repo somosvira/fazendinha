@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { abrirValorEstoque, consultarValorizacao, type DiagnosticoValorizacao } from "./api";
 import { Button, brl, ErrorBox } from "../financeiro/financeiro-ui";
@@ -33,8 +34,8 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
   return <section className="mt-4 rounded-lg border border-border p-4" aria-label="Valorização do estoque">
-    <h3 className="font-semibold">Valor do saldo e abertura documentada</h3>
-    <p className="mt-2 text-sm text-ink-3">Custos anteriores são preservados. Saldo sem valor comprovado exige evidência; zero comprovado pode ser informado explicitamente.</p>
+    <h3 className="font-semibold">Valor do saldo e abertura documentada<AjudaCampo rotulo="Ajuda: valor do saldo" texto="Custos anteriores são preservados. Saldo sem valor comprovado exige evidência; zero comprovado pode ser informado explicitamente. A abertura documenta o valor disponível. Não altera quantidade, compras, pagamentos ou custos antigos. Em produto sem rastreio, as origens serão consumidas pela data e ordem comprovadas." /></h3>
+
     <label className="mt-3 block text-sm">Data de corte<input className={classeInput} type="date" max={hoje()} value={data} disabled={ocupado} onChange={e => setData(e.target.value)} /></label>
     <ErrorBox erro={erro} />
     {!dados && !erro && <p role="status" className="text-sm">Conferindo a valorização…</p>}
@@ -58,7 +59,7 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
       </fieldset>}
       <label className="text-sm">Evidência do valor<textarea required minLength={5} maxLength={2000} className={classeInput} value={evidencia} disabled={ocupado} onChange={e => setEvidencia(e.target.value)} /></label>
       <label className="text-sm">Explicação da abertura<textarea required minLength={5} maxLength={500} className={classeInput} value={motivo} disabled={ocupado} onChange={e => setMotivo(e.target.value)} /></label>
-      <p className="text-sm text-ink-3">A abertura documenta o valor disponível. Não altera quantidade, compras, pagamentos ou custos antigos. Em produto sem rastreio, as origens serão consumidas pela data e ordem comprovadas.</p>
+
       <Button type="submit" carregando={ocupado} disabled={ocupado || !selecionado || !dados?.retroatividade.permitido}>Confirmar abertura documentada</Button>
     </form>}
   </section>;

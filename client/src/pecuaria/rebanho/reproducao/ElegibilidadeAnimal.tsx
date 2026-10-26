@@ -1,7 +1,11 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
 import { Button } from "../../../components/ui/button";
+import { Checkbox } from "../../../components/ui/checkbox";
 import { Input } from "../../../components/ui/input";
+import { DatePicker } from "../../../components/DatePicker";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { Pill } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import type { PainelReprodutivo } from "./api";
@@ -117,22 +121,22 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
       {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
       {r.alertas.map(m => <p key={m}>Atenção: {descreverMotivo(m)}</p>)}
     </div>}
-    <label className="repro-aptidao-data">Consultar na data<Input type="date" value={data} onChange={e => setData(e.target.value)}/></label>
+    <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>
     {podeLancar && <div id={editorId} hidden={!editando} className="repro-aptidao-editor space-y-3">
-      <h3>Decisão individual</h3>
-      <p className="text-sm text-muted-foreground">Informe a data do registro. A consulta acima é independente; restrições, papel e situação gestacional continuam sendo considerados.</p>
+      <h3>Decisão individual <AjudaCampo rotulo="Ajuda sobre decisão individual" texto="Informe a data do registro. A consulta acima é independente; restrições, papel e situação gestacional continuam sendo considerados."/></h3>
+
       <label>Data da decisão<Input type="date" value={dataDecisao} disabled={ocupado} onChange={e => setDataDecisao(e.target.value)}/></label>
       {carregandoDecisao && <p role="status">Conferindo acompanhamento na data da decisão…</p>}
       {erroEdicao && <p role="alert">{erroEdicao}</p>}
       {decisao && !decisao.ciclo && <p>Não há parto ou situação inicial que comprove o início do acompanhamento nesta data.</p>}
       {decisao?.ciclo && !decisao.vinculoCicloId && <div className="space-y-3">
         <p>Associar a política vigente no início deste acompanhamento ({formatBRDateISO(decisao.ciclo.inicioCiclo)}). Esta ação preserva a versão aplicável; sem política naquela data, será necessária liberação individual.</p>
-        {decisao.ciclo.partoId ? <p>Parto de origem comprovado: {decisao.ciclo.partoId}</p> : <label>Situação inicial que comprova o início do acompanhamento<select value={origem} onChange={e => setOrigem(e.target.value)} className="h-10 w-full rounded border bg-background px-3"><option value="">Selecione a evidência</option>{iniciais.map(i => <option key={i.id} value={i.id}>{formatBRDateISO(i.data)} · {i.situacao}</option>)}</select></label>}
-        <label className="flex gap-2"><input type="checkbox" checked={confirmacao} onChange={e => setConfirmacao(e.target.checked)}/>Revisei a origem e confirmo a associação deste acompanhamento.</label>
+        {decisao.ciclo.partoId ? <p>Parto de origem comprovado: {decisao.ciclo.partoId}</p> : <label>Situação inicial que comprova o início do acompanhamento<SelectCampo value={origem} onValueChange={setOrigem} className="h-10 w-full rounded border bg-background px-3"><option value="">Selecione a evidência</option>{iniciais.map(i => <option key={i.id} value={i.id}>{formatBRDateISO(i.data)} · {i.situacao}</option>)}</SelectCampo></label>}
+        <label className="flex gap-2"><Checkbox checked={confirmacao} onCheckedChange={valor => setConfirmacao(valor === true)}/>Revisei a origem e confirmo a associação deste acompanhamento.</label>
         <Button disabled={ocupado || !confirmacao || (!decisao.ciclo.partoId && !origem)} onClick={vincular}>Associar política ao acompanhamento</Button>
       </div>}
       {decisao?.vinculoCicloId && <>
-        <label>Decisão<select className="h-10 w-full rounded border bg-background px-3" value={tipo} onChange={e => setTipo(e.target.value as typeof tipo)}><option value="LIBERAR">Liberar desde uma data</option><option value="BLOQUEAR">Bloquear</option><option value="RETOMAR_POLITICA">Retomar regras da política</option></select></label>
+        <label>Decisão<SelectCampo className="h-10 w-full rounded border bg-background px-3" value={tipo} onValueChange={valorSelecionado => setTipo(valorSelecionado as typeof tipo)}><option value="LIBERAR">Liberar desde uma data</option><option value="BLOQUEAR">Bloquear</option><option value="RETOMAR_POLITICA">Retomar regras da política</option></SelectCampo></label>
         {tipo === "LIBERAR" && <label>Apta desde<Input type="date" min={dataDecisao} value={apta} onChange={e => setApta(e.target.value)}/></label>}
         <label>Motivo<Input minLength={5} maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)}/></label>
         <div className="flex flex-wrap gap-2"><Button disabled={ocupado || motivo.trim().length < 5 || !dataDecisao} onClick={decidir}>Confirmar decisão</Button>

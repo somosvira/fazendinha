@@ -1,3 +1,4 @@
+import { Button } from "../../../components/ui/button";
 import type { MouseEvent, ReactNode } from "react";
 import { Pill } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
@@ -16,7 +17,7 @@ export function LinkReproducao({ href, sitio, children, botao = false, aoAbrir }
     e.preventDefault();
     if (aoAbrir) aoAbrir(); else navegarConsultaComSitio(href, sitio);
   }
-  return <a href={destino} onClick={abrir} className={botao ? "reproducao-link-botao" : "reproducao-identificacao"}>{children}</a>;
+  return botao ? <Button asChild variant="outline" className="reproducao-link-botao"><a href={destino} onClick={abrir}>{children}</a></Button> : <a href={destino} onClick={abrir} className="reproducao-identificacao">{children}</a>;
 }
 export function IdentificacaoReproducao({ id, brinco, nome, sitio }: { id: string; brinco: string | null; nome?: string | null; sitio: number }) {
   return <LinkReproducao href={`/pecuaria/rebanho/animais/${id}#reproducao`} sitio={sitio}><strong>{brinco ?? "Sem brinco"}</strong>{nome && <span>{nome}</span>}</LinkReproducao>;

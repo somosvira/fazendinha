@@ -201,7 +201,7 @@ export function ComercialLeite({
     }
   }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Comercial do leite">
-    <CabecalhoTabela titulo="Documentos comerciais" descricao={contexto ? `${contexto.parceiroNome} · aceite, comprovantes e demonstrativos.` : "Aceite, comprovantes e demonstrativos das entregas."} acao={<>{podeLancar && <Button disabled={resolvido === null || !entregas || carregando} onClick={() => setNovaEntrega(true)}>Registrar entrega</Button>}{podeLancar && podeFinanceiro && <Button disabled={!config || resolvido === null || !entregas || carregando} onClick={() => setNovoDoc(true)}>Registrar demonstrativo</Button>}</>} />
+    <CabecalhoTabela titulo="Documentos comerciais" descricao={contexto?.parceiroNome} ajuda={contexto ? "Aceite, comprovantes e demonstrativos." : "Aceite, comprovantes e demonstrativos das entregas."} rotuloAjuda="Sobre os documentos comerciais" acao={<>{podeLancar && <Button disabled={resolvido === null || !entregas || carregando} onClick={() => setNovaEntrega(true)}>Registrar entrega</Button>}{podeLancar && podeFinanceiro && <Button disabled={!config || resolvido === null || !entregas || carregando} onClick={() => setNovoDoc(true)}>Registrar demonstrativo</Button>}</>} />
     <PeriodoFinanceiroControl inicio={de} fim={ate} label="Período das entregas e documentos" onChange={({inicio,fim}) => { alterarPeriodo("de", inicio); alterarPeriodo("ate", fim); }} />
     {carregando && <p role="status">Consultando documentos comerciais…</p>}{erro && <p role="alert">{erro}</p>}{erroConfig && podeFinanceiro && <p role="alert">{erroConfig}</p>}{aviso && <p role="status">{aviso}</p>}
     <CabecalhoTabela titulo="Entregas e conferências" />
@@ -218,7 +218,7 @@ export function ComercialLeite({
       {!entregas.itens.length && <p>Nenhuma entrega registrada no período.</p>}
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(entregas.total/entregas.porPagina))} total={entregas.total} porPagina={entregas.porPagina} rotulo="Paginação de entregas" substantivo="entregas" idSelect="pagina-entregas-leite" onPagina={setPagina} />
     </>}
-    {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" descricao="Composição documental e alocações das entregas." />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
+    {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" ajuda="Composição documental e alocações das entregas." rotuloAjuda="Sobre demonstrativos do comprador" />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
       <TabelaFinanceira rotulo="Demonstrativos e anulações preservados" itens={docs.itens} chaveDe={d => d.id} colunas={[
         {chave:"referencia",titulo:"Documento",principal:true,celula:d => <strong>{d.referencia}</strong>},
         {chave:"comprador",titulo:"Comprador",celula:d => config?.parceiros.find(p => p.id === d.parceiroId)?.nome ?? "Comprador do documento"},

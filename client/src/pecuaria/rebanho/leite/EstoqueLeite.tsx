@@ -1,10 +1,12 @@
+import { AjudaCampo } from "@/components/Dica";
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import "./consultas-leite.css";
 import { useEffect, useRef, useState } from "react";
@@ -128,12 +130,8 @@ function DetalheEstoqueLeite({
   const alvo = estoque?.origens.find((o) => o.entradaId === operacaoOrigem?.id);
   return (
     <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Da ordenha ao estoque</h2>
-      <p>
-        Salvar a folha registra as medições. A confirmação de cada grupo dá
-        entrada apenas nas medições selecionadas, uma única vez, com custo a
-        apurar.
-      </p>
+      <h2 className="leite-titulo-secao">Da ordenha ao estoque <AjudaCampo rotulo="Sobre a confirmação de estoque" texto={"Salvar a folha registra as medições. A confirmação de cada grupo dá entrada apenas nas medições selecionadas, uma única vez, com custo a apurar."} /></h2>
+
       <div className="leite-form-inline">
         <label>
           Produto de leite
@@ -235,11 +233,8 @@ function DetalheEstoqueLeite({
               />
             </>
           )}
-          <h2>Origens, natureza e apuração</h2>
-          <p>
-            O custo pode ser documentado depois da retirada. Apurar não altera
-            os litros e não cria outra despesa.
-          </p>
+          <h2>Origens, natureza e apuração <AjudaCampo rotulo="Sobre a apuração do custo" texto={"O custo pode ser documentado depois da retirada. Apurar não altera os litros e não cria outra despesa."} /></h2>
+
           {!estoque.origens.length ? (
             <p>Nenhuma produção confirmada para este produto neste sítio.</p>
           ) : (
@@ -511,13 +506,13 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
   const [selecionado, setSelecionado] = useState<ItemResumoEstoque | null>(null);
   const [confirmacao, setConfirmacao] = useState(false);
   useEffect(() => { let ativo = true; setDados(null); setErro(""); void consultarLeite<ResumoEstoque>(`/estoque/resumo?${new URLSearchParams({ busca, pagina: String(pagina), porPagina: "20" })}`, sitio).then(r => { if (ativo) setDados(r); }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar o estoque."); }); return () => { ativo = false; }; }, [sitio, busca, pagina, revisao]);
-  return <section className="leite-operacoes leite-consultas"><PageHeader titulo="Estoque de leite" descricao="Saldo das origens confirmadas, por produto." acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}>Confirmar produção individual</Button> : undefined} />
+  return <section className="leite-operacoes leite-consultas"><CabecalhoTabela titulo="Estoque de leite" ajuda="Saldo das origens confirmadas, por produto." rotuloAjuda="Sobre estoque de leite" acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}>Confirmar produção individual</Button> : undefined} />
     <BarraConsulta><BuscaLista rotulo="Buscar produto" placeholder="Buscar produto de leite" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <dl className="leite-consulta-resumo"><div><dt>Saldo físico</dt><dd>{litrosResumo(dados.resumo.quantidadeLitros)}</dd></div><div><dt>Comercial</dt><dd>{litrosResumo(dados.resumo.comercial.quantidadeLitros)}</dd></div><div><dt>Descarte</dt><dd>{litrosResumo(dados.resumo.descarteLitros)}</dd></div><div><dt>Colostro</dt><dd>{litrosResumo(dados.resumo.colostroLitros)}</dd></div></dl>
       <p className="leite-consulta-nota">Classificação pendente: {litrosResumo(dados.resumo.classificacaoPendenteLitros ?? null)} · Custo pendente: {dados.resumo.estadoValor === "OCULTO" ? "Restrito" : litrosResumo(dados.resumo.custoPendenteLitros ?? null)}</p>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <TabelaFinanceira rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },

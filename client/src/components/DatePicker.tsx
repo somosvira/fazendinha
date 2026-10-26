@@ -4,12 +4,13 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
  * para saltar longe (data de nascimento de anos atrás). Substitui o <input type="date">
  * nativo, que muda de cara a cada navegador. Valor sempre "aaaa-mm-dd" (ou "" vazio). */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { getHoje } from "../lib/hoje";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { Input } from "./ui/input";
 import { CalendarMonth, dateFromIso, isoDate, PT_MONTHS } from "./DateRangePicker";
 
 /** "2026-05-01" → "01/05/2026"; "" → "". */
@@ -58,6 +59,32 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
   const selecionada = dateFromIso(value);
   const [vista, setVista] = useState(() => selecionada ?? getHoje());
   const inputRef = useRef<HTMLInputElement>(null);
+  const erroId = useId();
+  const [conferido, setConferido] = useState(false);
+  const validar = (digitado: string) => {
+    if (!digitado.trim()) return "";
+    const iso = interpretarDataDigitada(digitado);
+    if (!iso) return "Informe uma data válida no formato dd/mm/aaaa.";
+    if (min && iso < min) return `Informe uma data a partir de ${formatarDataDigitada(min)}.`;
+    if (max && iso > max) return `Informe uma data até ${formatarDataDigitada(max)}.`;
+    return "";
+  };
+  const erro = validar(texto);
+  useEffect(() => { inputRef.current?.setCustomValidity(erro); }, [erro]);
+  useEffect(() => {
+    const campo = inputRef.current;
+    const formulario = campo?.form;
+    if (!campo || !formulario || !erro || disabled) return;
+    // Formulários com validação própria também precisam conferir a entrada digitada.
+    const conferir = (evento: Event) => {
+      evento.preventDefault();
+      evento.stopPropagation();
+      campo.reportValidity();
+      campo.focus();
+    };
+    formulario.addEventListener("submit", conferir, true);
+    return () => formulario.removeEventListener("submit", conferir, true);
+  }, [erro, disabled]);
   const minDate = min ? dateFromIso(min) ?? undefined : undefined;
   const maxDate = max ? dateFromIso(max) ?? undefined : undefined;
 
@@ -72,7 +99,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
     const mascarado = mascarar(bruto);
     const iso = interpretarDataDigitada(mascarado);
     setTexto(iso && /^\d{4}-/.test(mascarado) ? formatarDataDigitada(iso) : mascarado);
-    if (iso) onChange(iso);
+    if (iso && !validar(mascarado)) onChange(iso);
     else if (!mascarado) onChange("");
   };
 
@@ -100,7 +127,8 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
   const hojePermitido = !(minDate && isoDate(hoje) < isoDate(minDate)) && !(maxDate && isoDate(hoje) > isoDate(maxDate));
 
   return <div className={cn("relative", className)}>
-    <input
+    <div className="relative">
+    <Input
       ref={inputRef}
       id={id}
       type="text"
@@ -111,9 +139,12 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
       disabled={disabled}
       value={texto}
       onChange={(e) => digitar(e.target.value)}
-      onBlur={() => { if (!interpretarDataDigitada(texto)) setTexto(formatarDataDigitada(value)); }}
+      onBlur={() => setConferido(true)}
+      onInvalid={() => setConferido(true)}
       className="block w-full rounded-lg border border-border bg-white p-2.5 pr-11 font-normal tabular-nums disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-red-700"
       {...aria}
+      aria-invalid={conferido && erro ? true : aria["aria-invalid"]}
+      aria-describedby={[aria["aria-describedby"], conferido && erro ? erroId : null].filter(Boolean).join(" ") || undefined}
     />
     <Popover open={aberto} onOpenChange={abrir}>
       <PopoverTrigger asChild>
@@ -152,5 +183,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
         </div>
       </PopoverContent>
     </Popover>
+    </div>
+    {conferido && erro && <p id={erroId} className="mt-1 text-xs text-destructive" role="status">{erro}</p>}
   </div>;
 }

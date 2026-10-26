@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import "./operacao-detalhe.css";
 import { PageHeader, TabelaFinanceira } from "./financeiro-ui";
 import { podeVerValoresFinanceiros } from "./permissoes";
@@ -120,7 +121,7 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
   return <PaginaFinanceira colorida>
     {breadcrumb}
     <ErrorBox erro={erro} />
-    {transferencia && <p className="mb-4 text-sm text-ink-3">Movimenta estoque entre sítios, conservando seu valor. Não gera pagamento nem nova despesa financeira.</p>}
+
     <div className="fin-ficha-operacao">
       <PageHeader titulo={operacao.descricao || TIPO_OPERACAO[operacao.tipo]} contexto={<div className="fin-ficha-identificacao"><span>{codigoOperacao(operacao.numero)}</span><StatusDetalhe status={operacao.status} /><time dateTime={operacao.data} className="fin-operacao-data"><CalendarDays size={15} aria-hidden /><span className="sr-only">Data da operação: </span>{dataBR(operacao.data)}</time></div>} acao={<>
         {podeLancar && operacao.status === "CONFIRMADA" && <Button variant="outline" className="fin-ficha-cancelar" onClick={() => setCancelando(true)}><CircleAlert size={16} aria-hidden />Cancelar operação</Button>}
@@ -137,11 +138,11 @@ export function OperacaoFinanceiraDetalhe({ operacaoId, onVoltar, onAbrir, onCor
           <div><dt>Categoria</dt><dd><Tag size={18} aria-hidden />{operacao.categoriaNome ?? "Sem categoria"}</dd></div>
           {operacao.classificacao && <div><dt>Classificação</dt><dd>{operacao.classificacao === "INVESTIMENTO" ? "Investimento" : "Custeio"}</dd></div>}
         </dl>
-        <div className="fin-ficha-total"><h2>{transferencia ? "Valor do estoque transferido" : perdas.length ? "Custo da perda" : "Valor da operação"}</h2><strong>{brl(operacao.valorTotal)}</strong></div>
+        <div className="fin-ficha-total"><h2>{transferencia ? "Valor do estoque transferido" : perdas.length ? "Custo da perda" : "Valor da operação"}{transferencia && <AjudaCampo rotulo="Ajuda: transferência de estoque" texto="Movimenta estoque entre sítios, conservando seu valor. Não gera pagamento nem nova despesa financeira." />}{perdas.length > 0 && <AjudaCampo rotulo="Ajuda: custo da perda" texto="Baixa física do estoque. Não gera nova despesa financeira." />}</h2><strong>{brl(operacao.valorTotal)}</strong></div>
       </div>
       {!podeVerValoresFinanceiros() && <p role="status" className="px-5 pb-4 text-sm text-muted-foreground">Valores financeiros ocultos pelo seu perfil. Quantidades, vínculos e histórico operacional continuam disponíveis.</p>}
       {operacao.status === "CANCELADA" && perdas.length > 0 && <p className="px-4 pb-3 text-xs text-ink-3">Para lançar uma nova perda, abra <a className="font-semibold underline" href="/estoque">Estoque</a> e escolha Registrar perda.</p>}
-      {perdas.length > 0 && <p className="px-5 py-2 text-xs text-ink-3">Baixa física do estoque. Não gera nova despesa financeira.</p>}
+
     <div className="fin-ficha-grid">
         {transferencia && <div id="estoque-operacao" tabIndex={-1} className="lg:col-span-2">{transferencias.length ? <Transferencias transferencias={transferencias} /> : <p className="p-6 text-sm text-ink-3">Transferência sem movimentos originais identificados.</p>}</div>}
         {!transferencia && (perdas.length > 0 || operacao.itens.length > 0) && <section className="fin-operacao-secao fin-ficha-itens min-w-0"><h2 className="flex items-center gap-3 text-base font-semibold text-ink"><span className="fin-section-icon"><Package aria-hidden /></span>{perdas.length ? "Perda de estoque" : "Itens da operação"}<span className="fin-ficha-contagem" aria-hidden>{perdas.length || operacao.itens.length} {(perdas.length || operacao.itens.length) === 1 ? "item" : "itens"}</span></h2><div className="fin-operacao-itens mt-3 grid gap-3">{perdas.length ? perdas.map((perda) => <div key={perda.movimentoId} className="space-y-2 break-words text-sm">

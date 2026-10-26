@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { FiltroColunaConsulta, type FiltrosColunas } from "./FiltroColunaConsulta";
 import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
@@ -86,8 +87,8 @@ export const Button = forwardRef<HTMLButtonElement, { children: React.ReactNode;
 );
 Button.displayName = "Button";
 
-export function CabecalhoTabela({ titulo, descricao, acao, icon: Icon }: { titulo: string; descricao?: string; acao?: React.ReactNode; icon?: LucideIcon }) {
-  return <header className="fin-tabela-cabecalho"><div className="min-w-0"><h2 className="h3 flex items-center gap-3 font-semibold">{Icon && <span className="fin-section-icon"><Icon aria-hidden size={18} /></span>}{titulo}</h2>{descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}</div>{acao && <div className="fin-tabela-acoes">{acao}</div>}</header>;
+export function CabecalhoTabela({ titulo, descricao, ajuda, rotuloAjuda, acao, icon: Icon }: { titulo: string; descricao?: string; ajuda?: React.ReactNode; rotuloAjuda?: string; acao?: React.ReactNode; icon?: LucideIcon }) {
+  return <header className="fin-tabela-cabecalho"><div className="min-w-0"><h2 className="h3 flex items-center gap-3 font-semibold">{Icon && <span className="fin-section-icon"><Icon aria-hidden size={18} /></span>}{titulo}{ajuda && <AjudaCampo texto={ajuda} rotulo={rotuloAjuda ?? `Sobre ${titulo.toLocaleLowerCase("pt-BR")}`} />}</h2>{descricao && <p className="mt-1 text-sm text-muted-foreground">{descricao}</p>}</div>{acao && <div className="fin-tabela-acoes">{acao}</div>}</header>;
 }
 
 export function Panel({ children, className = "", tom }: { children: React.ReactNode; className?: string; tom?: TomFinanceiro }) {
@@ -214,13 +215,15 @@ export type ColunaTabela<T> = {
 
 const alinhaCelula = (alinhamento?: "esquerda" | "centro" | "direita") => alinhamento === "direita" ? "text-right" : alinhamento === "centro" ? "text-center" : "text-left";
 
-export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, rodape, ordenacao }: {
+export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLinha, rotulo, ancoraDe, barraRolagemSuperior = false, compacta = false, cartaoComLinks = false, filtrosColunas, larguraMinimaParaTabela = 640, visualizacao = "automatica", rodape, ordenacao }: {
   ordenacao?: { campo: string; direcao: "asc" | "desc" };
   filtrosColunas?: FiltrosColunas;
   /** Totais já calculados pelo chamador, associados às chaves das colunas. */
   rodape?: Partial<Record<string, React.ReactNode>>;
   /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
   larguraMinimaParaTabela?: number;
+  /** Uma escolha explícita de tabela conserva as colunas com rolagem horizontal. */
+  visualizacao?: "automatica" | "tabela";
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -242,6 +245,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const consultaRef = useRef<HTMLDivElement>(null);
   const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
+  const exibirCartoes = visualizacao === "automatica" && modoCartao;
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);
@@ -256,7 +260,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     if (!consulta || !tabela) return;
     const atualizar = () => {
       if (consulta.clientWidth > 0) setModoCartao(consulta.clientWidth < Math.max(larguraMinimaParaTabela, larguraMinima));
-      setTemRolagem(barraRolagemSuperior && tabela.scrollWidth > tabela.clientWidth + 1);
+      setTemRolagem(tabela.scrollWidth > tabela.clientWidth + 1);
       setLarguraRolagem(tabela.scrollWidth);
     };
     atualizar();
@@ -278,18 +282,19 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
     if (origem === "barra" && tabela.scrollLeft !== barra.scrollLeft) tabela.scrollLeft = barra.scrollLeft;
   };
   const roladaPorTeclado = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const barra = barraRef.current;
-    if (!barra) return;
-    if (e.key === "ArrowRight") { barra.scrollLeft += 96; e.preventDefault(); }
-    else if (e.key === "ArrowLeft") { barra.scrollLeft -= 96; e.preventDefault(); }
+    if (e.target !== e.currentTarget) return;
+    if (e.key === "ArrowRight") { e.currentTarget.scrollLeft += 96; e.preventDefault(); }
+    else if (e.key === "ArrowLeft") { e.currentTarget.scrollLeft -= 96; e.preventDefault(); }
   };
+  const tabelaRolavel = visualizacao === "tabela" && temRolagem;
 
-  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={modoCartao ? "cartoes" : "tabela"}>
+  return <div ref={consultaRef} className="fin-consulta-responsiva" data-fin-visualizacao={exibirCartoes ? "cartoes" : "tabela"}>
     {/* A largura disponível determina se todas as colunas cabem. */}
-    {barraRolagemSuperior && temRolagem && !modoCartao && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
+    {barraRolagemSuperior && temRolagem && !exibirCartoes && <div ref={barraRef} role="group" aria-label={`Rolagem horizontal: ${rotulo}`} tabIndex={0} onKeyDown={roladaPorTeclado} className="sticky top-0 z-10 hidden overflow-x-auto border-b border-border bg-surface-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6f7d68]/40 md:block" onScroll={() => sincronizarRolagem("barra")}>
       <div style={{ width: larguraRolagem, height: 1 }} />
     </div>}
-    <div ref={tabelaRef} className={`fin-tabela-desktop overflow-x-auto border-t border-border ${barraRolagemSuperior && temRolagem ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
+    {tabelaRolavel && <p id={`${idCartao}-rolagem`} className="py-2 text-xs text-muted-foreground">Role horizontalmente para ver todas as colunas.</p>}
+    <div ref={tabelaRef} role={tabelaRolavel ? "region" : undefined} aria-label={tabelaRolavel ? `Rolagem horizontal: ${rotulo}` : undefined} aria-describedby={tabelaRolavel ? `${idCartao}-rolagem` : undefined} tabIndex={tabelaRolavel ? 0 : undefined} onKeyDown={tabelaRolavel ? roladaPorTeclado : undefined} className={`fin-tabela-desktop overflow-x-auto border-t border-border focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 ${barraRolagemSuperior && temRolagem && visualizacao !== "tabela" ? "[scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : ""}`} onScroll={() => sincronizarRolagem("tabela")}>
       <Table semContainer data-fin-compacta={compacta || undefined} className="fin-tabela w-full text-left text-sm" style={{ minWidth: larguraMinima }}>
         <TableCaption className="sr-only">{rotulo}</TableCaption>
         <colgroup>{colunas.map((coluna) => <col key={coluna.chave} style={{ "--fin-coluna-largura": coluna === (flexivel ?? principal) ? undefined : `${coluna.larguraMinima ?? 120}px`, "--fin-coluna-proporcao": flexivel ? undefined : `${(coluna.larguraMinima ?? 120) / larguraMinima * 100}%` } as CSSProperties} />)}</colgroup>

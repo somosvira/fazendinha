@@ -1,6 +1,7 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CabecalhoTabela, Paginacao, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao, Pill } from "../../../financeiro/financeiro-ui";
 import { obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { OperacoesComerciaisLeite } from "./OperacoesComerciaisLeite";
@@ -46,12 +47,12 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   function fecharDetalhe() { setSelecionada(null); setNova(false); const url = new URL(location.href); url.searchParams.delete("operacaoLeiteId"); url.searchParams.delete("novaOperacaoLeite"); history.replaceState(null, "", url); }
   function abrir(v: VendaUnificada) { if (v.comercialId) { setSelecionada(v.comercialId); const url = new URL(location.href); url.searchParams.set("operacaoLeiteId", v.comercialId); history.replaceState(null,"",url); } else setHistorico(v); }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Vendas do leite">
-    <CabecalhoTabela titulo="Vendas de leite" descricao="Operações por período e vendas avulsas." acao={<><Button variant="outline" onClick={() => setDocumentos(true)}>Entregas e demonstrativos</Button>{podeLancar && <Button variant="outline" onClick={() => setNova(true)}>Nova operação por período</Button>}{podeLancar && podeFinanceiro && <Button onClick={() => setAvulsa(true)}>Venda avulsa</Button>}</>} />
+    <CabecalhoTabela titulo="Vendas de leite" ajuda="Operações por período e vendas avulsas." rotuloAjuda="Sobre vendas de leite" acao={<><Button variant="outline" onClick={() => setDocumentos(true)}>Entregas e demonstrativos</Button>{podeLancar && <Button variant="outline" onClick={() => setNova(true)}>Nova operação por período</Button>}{podeLancar && podeFinanceiro && <Button onClick={() => setAvulsa(true)}>Venda avulsa</Button>}</>} />
     <BarraComercialLeite vendas filtros={filtros} parceiros={cadastros.parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {aviso && <p role="status">{aviso}</p>}
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : <>
       {!dados.itens.length && <p>Nenhuma venda encontrada neste recorte.</p>}
-      <TabelaFinanceira rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <ListaConsultaLeite preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },

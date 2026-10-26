@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
@@ -78,11 +79,11 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
               <p className="text-sm">Saldo {i.saldo} {i.unidade}{!mostrarValores ? "" : ` · custo previsto ${i.custoPrevisto == null ? "não apurado" : fmtMoneyExact(Number(i.custoPrevisto))}`}</p>
               <p className="text-sm">MS prevista: {i.materiaSecaKg == null ? "não informada / unidade sem conversão para massa" : `${i.materiaSecaKg} kg`} · MS conferida: {v.ms == null ? "não apurada" : `≈ ${v.ms} kg`}</p>
               {mostrarValores && <p className="text-sm">Custo conferido estimado: {v.custo == null ? (e.modo === "SEM_BAIXA_JUSTIFICADA" ? "não apurado — sem baixa de estoque" : "não apurado — sem base de custo") : `≈ ${fmtMoneyExact(Number(v.custo))}`}</p>}
-              {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta</legend>
+              {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta <AjudaCampo rotulo="Sobre a atribuição do leite na dieta" texto="A quantidade por animal será atribuída pelos dias no lote. Custo de produção e preço de referência podem ficar pendentes; os litros comprovados continuam registráveis." /></legend>
                 <p className="text-sm">Previsto {formatarLitros(Number(i.leite.quantidadePrevistaLitros))} · disponível {formatarLitros(Number(i.leite.quantidadeDisponivelLitros))} · atendível {formatarLitros(Number(i.leite.quantidadeAtendivelLitros))}. Selecione as origens autorizadas; o fornecimento usa primeiro o não comercial e completa com o comercial.</p>
                 {i.leite.origens.length === 0 && <p role="status">Sem origem disponível. Registre apenas os litros efetivamente fornecidos e justifique a diferença.</p>}
                 {i.leite.origens.map(o => <label key={o.entradaId} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={e.origensLeite.includes(o.entradaId)} onChange={ev => mudar(k, { origensLeite: ev.target.checked ? [...e.origensLeite,o.entradaId] : e.origensLeite.filter(id => id !== o.entradaId) })} /><span>{o.produtoNome} · {o.natureza === "NAO_COMERCIAL" ? "Não comercial" : "Comercial"} · {formatarDataBR(o.data)} · {formatarLitros(Number(o.quantidadeDisponivelLitros))}</span></label>)}
-                <p className="text-sm">A quantidade por animal será atribuída pelos dias no lote. Custo de produção e preço de referência podem ficar pendentes; os litros comprovados continuam registráveis.</p>
+
               </fieldset>}
               <div className="grid gap-3 sm:grid-cols-2">
                 <label>Quantidade conferida ({i.unidade})<input type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>

@@ -1,3 +1,7 @@
+import "./detalhe-sanitario.css";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { nomeCampoExame } from "./CamposExame";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { CustosDiretos } from "../custos/CustosDiretos";
 import { getUsuario } from "../../../lib/auth";
@@ -67,17 +71,31 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
       if (vinculo.id) links.push([`${nome} · ${vinculo.aplicadaEm ? dataHoraSanitaria(String(vinculo.aplicadaEm)) : dataSanitaria(String(vinculo.data ?? vinculo.inicio ?? ""))}`, destino, String(vinculo.id)]);
     }
   }
-  return <div className="pec-detalhe-sanitario space-y-4 text-sm">
-    {!!propriedade.nome && <p><strong>Sítio do fato:</strong> {String(propriedade.nome)}</p>}
-    <p><strong>Animal:</strong> {animal.id ? <LinkInterno area="pecuaria" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</LinkInterno> : "Não informado"}</p>
-    {!!doenca.nome && <p><strong>Doença:</strong> {String(doenca.nome)}</p>}
-    {!!tipoExame.nome && <p><strong>Tipo de exame:</strong> {String(tipoExame.nome)}</p>}
-    {!!protocolo.nome && <p><strong>Protocolo:</strong> {String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</p>}
+  return <div className="pec-detalhe-sanitario">
+    <dl className="sanitario-dados sanitario-identidade">
+      {!!propriedade.nome && <div><dt>Sítio do fato</dt><dd>{String(propriedade.nome)}</dd></div>}
+      <div><dt>Animal</dt><dd>{animal.id ? <LinkInterno area="pecuaria" href={`/pecuaria/rebanho/animais/${encodeURIComponent(String(animal.id))}`}>{textoDetalhe(animal.brinco)}{animal.nome ? ` · ${String(animal.nome)}` : ""}</LinkInterno> : "Não informado"}</dd></div>
+      {!!doenca.nome && <div><dt>Doença</dt><dd>{String(doenca.nome)}</dd></div>}
+      {!!tipoExame.nome && <div><dt>Tipo de exame</dt><dd>{String(tipoExame.nome)}</dd></div>}
+      {!!protocolo.nome && <div><dt>Protocolo</dt><dd>{String(protocolo.nome)} · versão {textoDetalhe(protocolo.versao)}</dd></div>}
+      {tipo === "exame" && fato.status != null && <div><dt>Situação do registro</dt><dd><Badge variant="secondary">{fato.status === "ANULADO" ? "Anulado" : fato.status === "VALIDO" ? "Válido" : textoDetalhe(fato.status)}</Badge></dd></div>}
+    </dl>
     {!!fato.justificativaSemOrigem && <p><strong>Justificativa original da origem:</strong> {String(fato.justificativaSemOrigem)}</p>}
     {(tipo === "aplicacao" || tipo === "exame") && (!!fato.tarefaId || !!tarefa.id || fato.desvioProtocoloSnapshot != null) && <DesvioProtocolo valor={fato.desvioProtocoloSnapshot} />}
     {tipo === "aplicacao" && <><p><strong>Produto vinculado:</strong> {produto.id ? <LinkInterno area="estoque" href={`/estoque/produtos/${encodeURIComponent(String(produto.id))}`}>{textoDetalhe(produto.nome)}</LinkInterno> : "Não vinculado"}</p><p><strong>Nome histórico do medicamento:</strong> {textoDetalhe(fato.nomeProdutoAplicado)}</p></>}
-    <dl className="grid gap-2 sm:grid-cols-2">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave} className="rounded-lg bg-card p-2"><dt className="text-ink-3">{rotulo}</dt><dd>{formatarCampo(chave, fato)}</dd></div>)}</dl>
-    {tipo === "exame" && !!fato.formatoSnapshot && <><p><strong>Resultado:</strong> {resultadoExameSanitario(fato as unknown as ExameResultado)}</p>{fato.status === "ANULADO" && <span className="rounded bg-card px-2 py-1">Anulado</span>}<HistoricoExame key={String(fato.id)} exameId={String(fato.id)} propriedadeId={typeof fato.propriedadeId === "number" ? fato.propriedadeId : undefined} formato={(fato as unknown as ExameResultado).formatoSnapshot} /></>}
+    <dl className="sanitario-dados">{(dadosDetalhe[tipo] ?? []).map(([rotulo, chave]) => <div key={chave}><dt className="text-ink-3">{rotulo}</dt><dd>{formatarCampo(chave, fato)}</dd></div>)}</dl>
+    {tipo === "exame" && !!fato.formatoSnapshot && <>
+      <section className="sanitario-resultado" aria-label="Resultado do exame"><h3>Resultado</h3>
+        {registro(fato.formatoSnapshot).tipoResultado === "MULTIPLO" && Array.isArray(fato.resultados) && fato.resultados.length > 0 ? <dl className="sanitario-dados">{(fato as unknown as ExameResultado).resultados!.map((item, indice) => {
+          const campo = (fato as unknown as ExameResultado).formatoSnapshot.campos?.find(c => c.codigo === item.campo) ?? { codigo: item.campo };
+          const resultado = typeof item.valor === "boolean" ? item.valor ? "Sim" : "Não" : typeof item.valor === "object" && item.valor !== null ? JSON.stringify(item.valor) : textoDetalhe(item.valor);
+          return <div key={`${item.campo}-${indice}`}><dt>{nomeCampoExame(campo)}</dt><dd>{resultado}</dd></div>;
+        })}</dl> : <p className="sanitario-resultado-valor">{resultadoExameSanitario(fato as unknown as ExameResultado)}</p>}
+      </section>
+      <HistoricoExame key={String(fato.id)} exameId={String(fato.id)} propriedadeId={typeof fato.propriedadeId === "number" ? fato.propriedadeId : undefined} formato={(fato as unknown as ExameResultado).formatoSnapshot} />
+    </>}
+    {(fato.observacao != null || fato.motivoAnulacao != null) && <section className="sanitario-observacoes"><h3>Observações</h3>{fato.observacao != null && <p>{textoDetalhe(fato.observacao)}</p>}{fato.motivoAnulacao != null && <p><strong>Motivo da anulação:</strong> {textoDetalhe(fato.motivoAnulacao)}</p>}</section>}
+    {fato.criadoEm != null && <dl className="sanitario-dados sanitario-autoria"><div><dt>Registrado em</dt><dd>{dataHoraSanitaria(String(fato.criadoEm))}</dd></div>{!!registro(fato.criadoPor).nome && <div><dt>Registrado por</dt><dd>{String(registro(fato.criadoPor).nome)}</dd></div>}</dl>}
     {!!fato.loteNome && typeof fato.partidaCodigoSnapshot === "string" && fato.partidaCodigoSnapshot !== fato.loteNome && !/^LOTE-[0-9a-f-]{36}$/i.test(fato.partidaCodigoSnapshot) && <p className="text-ink-3">Referência histórica do lote: {fato.partidaCodigoSnapshot}</p>}
     {!!movimento.id && <p><strong>Saída do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</LinkInterno></p>}
     {!!estorno.id && <p><strong>Estorno do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(estorno.id))}&propriedadeId=${encodeURIComponent(String(fato.propriedadeId ?? ""))}`}>Ver movimento de estorno</LinkInterno></p>}
@@ -86,7 +104,7 @@ export function DetalheSanitario({ tipo, valor, abrir }: { tipo: string; valor: 
     {fato.valorProdutoAtribuido != null && <p><strong>Custo atribuído do medicamento:</strong> {fmtMoneyExact(Number(fato.valorProdutoAtribuido))}</p>}
     {fato.valorServicoAtribuido != null && <p><strong>Rateio atribuído do Serviço:</strong> {fmtMoneyExact(Number(fato.valorServicoAtribuido))}</p>}
     {typeof fato.propriedadeId === "number" && typeof fato.id === "string" && ["aplicacao","exame","execucao"].includes(tipo) && <CustosDiretos fatoEmConsulta={{ tipoFonte: tipo === "aplicacao" ? "APLICACAO" : tipo === "exame" ? "EXAME" : "PARTICIPACAO", fonteId: fato.id }} linksJaExibidos={linksJaExibidos} {...(tipo === "aplicacao" ? {aplicacaoId:fato.id} : tipo === "exame" ? {exameId:fato.id} : {participacaoId:fato.id})} propriedadeId={fato.propriedadeId} podeLancar={!!getUsuario()?.dono || !!getUsuario()?.flags.includes("lancar")} />}
-    {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <button key={`${destino}-${id}`} type="button" className="rounded-lg border border-border px-3 py-2 underline" onClick={() => abrir(destino, id)}>{rotulo}</button>)}</div></section>}
+    {links.length > 0 && <section><h3 className="font-semibold">Fatos relacionados</h3><div className="mt-2 flex flex-wrap gap-2">{links.map(([rotulo, destino, id]) => <Button key={`${destino}-${id}`} type="button" variant="outline" onClick={() => abrir(destino, id)}>{rotulo}</Button>)}</div></section>}
     {Array.isArray(fato.tarefas) && <section><h3 className="font-semibold">Tarefas</h3><div className="mt-2 space-y-2">{fato.tarefas.map((item) => { const t = registro(item); return <p key={String(t.id)} className="rounded-lg border border-border p-2">{dataSanitaria(String(t.previstaPara ?? ""))} · {rotuloSituacaoTarefa(String(t.situacao ?? (t.regularizacaoPendente ? "REGULARIZACAO_PENDENTE" : t.dispensadaEm ? "DISPENSADA" : "PENDENTE")))}</p>; })}</div></section>}
   </div>;
 }

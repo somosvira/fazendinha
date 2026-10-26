@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { useState } from "react";
 import { Paginacao } from "../ui";
 import {
@@ -295,15 +296,11 @@ export function IndicadoresAcompanhamento({
             ))}
           </section>
         )}
-      <p className="text-sm">
-        Dias corridos; as restrições intermediárias permanecem visíveis e não
-        são descontadas da espera. Coorte: ciclos iniciados no período, com
-        sítio, lote e papel daquela data. A fila usa a disponibilidade no corte.
-      </p>
+
       {desempenho && (
         <section className="space-y-2">
           <h3 className="font-semibold">
-            Coorte de ciclos iniciados no período
+            Coorte de ciclos iniciados no período <AjudaCampo rotulo="Ajuda sobre a metodologia dos intervalos" texto="Dias corridos; as restrições intermediárias permanecem visíveis e não são descontadas da espera. Coorte: ciclos iniciados no período, com sítio, lote e papel daquela data. A fila usa a disponibilidade no corte."/>
           </h3>
           <p>
             {d.espera.resumoCoorte.ciclos} ciclos ·{" "}

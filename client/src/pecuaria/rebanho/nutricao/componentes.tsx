@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import type { ReactNode } from "react";
 import { Button, ErrorBox, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { fmtMoneyExact } from "../../../components/charts";
@@ -38,7 +39,7 @@ export function CustosLote({ resumo: r }: { resumo: ResumoNutricional }) {
   return <Panel className={`nutricao-consumo-resumo${r.custos.fechamentos === 0 ? " nutricao-consumo-vazio" : ""}`}><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo confirmado</h2><p>{r.custos.animalDias} animal-dias · {r.custos.fechamentos} fechamento(s) · todo o histórico, estornos excluídos</p></div></div>
     {r.verValores && <><dl className="nutricao-fatos">
       <div><dt>Custo conhecido da nutrição</dt><dd>{custoTexto(r.custos.custoConhecido)}</dd><p>{r.custos.custoConhecido == null ? "Sem custo conhecido nos fechamentos confirmados" : r.custos.coberturaCustoCompleta ? "Custo integralmente apurado" : "Valor parcial · há consumo sem custo apurado"}</p></div>
-      <div><dt>Custo médio por animal-dia</dt><dd>{custoTexto(r.custos.custoPorAnimalDia)}</dd><p>{r.custos.custoPorAnimalDia == null ? "Sem base para a média" : `Média ponderada${r.custos.coberturaCustoCompleta ? "" : " · parcial"}`}</p></div>
-    </dl><p className="nutricao-nota nutricao-fatos-nota">A média divide o custo conhecido pelos animal-dias dos mesmos fechamentos.</p></>}
+      <div><dt>Custo médio por animal-dia <AjudaCampo rotulo="Sobre o custo médio por animal-dia" texto={"A média divide o custo conhecido pelos animal-dias dos mesmos fechamentos."} /></dt><dd>{custoTexto(r.custos.custoPorAnimalDia)}</dd><p>{r.custos.custoPorAnimalDia == null ? "Sem base para a média" : `Média ponderada${r.custos.coberturaCustoCompleta ? "" : " · parcial"}`}</p></div>
+    </dl></>}
   </Panel>;
 }

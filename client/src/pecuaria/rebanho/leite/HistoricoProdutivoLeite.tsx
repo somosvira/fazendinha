@@ -1,10 +1,14 @@
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
+import { Card } from "@/components/ui/card";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { EvolucaoProducaoIndividual } from "./EvolucaoProducaoIndividual";
+import { resumirAfericoesIndividuais } from "./producao-individual.calc";
+import { DatePicker } from "@/components/DatePicker";
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useId, useState, type FormEvent } from "react";
-import { Milk } from "lucide-react";
-import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
-import { classeInput } from "../../../financeiro/PainelCadastro";
-import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import { Button } from "@/components/ui/button";
+import { ErrorBox } from "../../../financeiro/financeiro-ui";
+import { SecaoFicha } from "../components/SecaoRecolhivel";
 import { dataHoraSanitaria, dataSanitaria } from "../sanidade/rotulos";
 import { navegarPara } from "../../../router";
 import { consultarLeite } from "./operacoes-api";
@@ -23,15 +27,13 @@ function ContextoCarencia({ contexto, animalId }: { contexto: ContextoCarenciaLe
       : prazo.estado === "CONHECIDO" ? prazo.prazoZero ? "Prazo zero confirmado no registro sanitário."
       : `Prazo registrado até ${dataHoraSanitaria(prazo.ate)}${prazo.precisaoAproximada ? " (data aproximada)" : ""}.` : "Carência não informada.";
   }
-  return <aside className="historico-produtivo-carencia" aria-label="Contexto de carência do leite">
-    <div><h3>Carência do leite</h3><p className="text-sm text-ink-3">Referência em {dataSanitaria(contexto.dataReferencia)}</p></div>
-    <p>{texto}</p>
-    <p className="text-sm text-ink-3">O destino do leite é registrado separadamente. Este contexto não confirma descarte nem aptidão sanitária.</p>
-    <Button secondary onClick={() => navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Conferir Sanidade</Button>
-  </aside>;
+  return <SecaoFicha id="carencia-producao-leite" className="historico-produtivo-carencia" titulo="Carência do leite" acoes={<><AjudaCampo rotulo="Sobre carência do leite" texto="Destino registrado separadamente; esta consulta não confirma descarte nem aptidão sanitária."/><Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Conferir Sanidade</Button></>}>
+    <div className="historico-carencia-situacao"><p>{texto}</p><span>Referência: {dataSanitaria(contexto.dataReferencia)}</span></div>
+  </SecaoFicha>;
 }
 export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarToken = 0 }: { animalId: string; propriedadeId: number | null; recarregarToken?: number }) {
   const id = useId();
+  const visualizacao = useVisualizacaoConsulta("animalProducaoVisualizacao", "leite");
   const [periodo, setPeriodo] = useState(periodoInicial), [edicao, setEdicao] = useState(periodoInicial);
   const [pagina, setPagina] = useState(1), [revisao, setRevisao] = useState(0);
   const [dados, setDados] = useState<HistoricoProdutivo | null>(null), [erro, setErro] = useState<string | null>(null), [carregando, setCarregando] = useState(true);
@@ -48,34 +50,54 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
     if (!dataValida(edicao.inicio) || !dataValida(edicao.fim) || edicao.inicio > edicao.fim) { setErro("Informe um período válido, com o fim posterior ao início."); return; }
     setPagina(1); setPeriodo({ ...edicao });
   }
-  return <SecaoRecolhivel id="historico-produtivo-leite" className="historico-produtivo" titulo={<span className="ficha-titulo-com-icone"><Milk size={20} aria-hidden />Histórico produtivo</span>} resumo="Litros registrados por ordenha e dia, com a lactação conhecida em cada data.">
-    <form onSubmit={consultar} className="historico-produtivo-filtros">
-      <label htmlFor={`${id}-inicio`}>Produção desde<input id={`${id}-inicio`} className={classeInput} type="date" required max={hojeOperacional()} value={edicao.inicio} onChange={e => setEdicao(v => ({ ...v, inicio: e.target.value }))} /></label>
-      <label htmlFor={`${id}-fim`}>Produção até<input id={`${id}-fim`} className={classeInput} type="date" required max={hojeOperacional()} value={edicao.fim} onChange={e => setEdicao(v => ({ ...v, fim: e.target.value }))} /></label>
+  const serie = dados?.seriePeriodo ?? (dados && dados.total <= dados.itens.length ? dados.itens.map(d => ({ participanteId: d.participanteId, data: d.dataOperacional, litros: d.totais.litros, completa: d.totais.completa, excluido: d.excluidoEm !== null, lactacaoId: d.lactacao?.id ?? null, comparabilidade: d.medicoes.map(m => `${m.posicaoId}:${m.estado}`).sort().join("|"), finalidade: d.finalidade.estado })) : []);
+  const resumo = resumirAfericoesIndividuais(serie);
+  const sinal = resumo.variacao !== null && resumo.variacao < 0 ? "−" : "+";
+  return <><SecaoFicha id="historico-produtivo-leite" className="historico-produtivo" titulo="Histórico produtivo" acoes={<form onSubmit={consultar} className="historico-produtivo-filtros producao-ficha-filtros" aria-label="Período do histórico produtivo">
+      <label htmlFor={`${id}-inicio`}>Produção desde<DatePicker id={`${id}-inicio`} aria-label="Produção desde" required max={hojeOperacional()} value={edicao.inicio} onChange={inicio => setEdicao(v => ({ ...v, inicio }))} /></label>
+      <label htmlFor={`${id}-fim`}>Produção até<DatePicker id={`${id}-fim`} aria-label="Produção até" required max={hojeOperacional()} value={edicao.fim} onChange={fim => setEdicao(v => ({ ...v, fim }))} /></label>
       <Button type="submit" disabled={carregando}>Consultar período</Button>
-    </form>
-    <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
+    </form>}>
+    <ErrorBox erro={erro} />{erro && <Button variant="outline" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Consultando histórico produtivo…</p>}
     {!carregando && !erro && dados && <>
-      {dados.controleIndividual && <aside aria-label="Periodicidade do controle individual"><p>Controle individual a cada {dados.controleIndividual.quantidade} {dados.controleIndividual.unidade === "MESES" ? "mês(es)" : "dia(s)"}.</p><p>Última aferição até {dataSanitaria(dados.periodo.fim)}: {dados.controleIndividual.ultimaAfericao ? dataSanitaria(dados.controleIndividual.ultimaAfericao) : "não registrada"}. Próxima referência: {dados.controleIndividual.proximaAfericao ? dataSanitaria(dados.controleIndividual.proximaAfericao) : "aguarda a primeira aferição"}.</p><p>É possível registrar controles extras. Dias entre aferições não são estimados.</p></aside>}
-      <div className="historico-produtivo-resumo"><p><strong>{formatarLitros(dados.totaisPeriodo.litros)}</strong><br /><span className="text-sm text-ink-3">Litros registrados no período</span></p>
-        <p>{dados.coberturaPeriodo.diasComRegistro} de {dados.coberturaPeriodo.diasCalendario} dias com participação registrada.<br /><span className="text-sm text-ink-3">Dias sem registro não foram preenchidos com zero.</span></p>
-        {dados.totaisPeriodo.pendentes > 0 && <p role="status">Produção parcial: {dados.totaisPeriodo.pendentes} ordenha(s) aguardando medição.</p>}
-      </div>
-      {dados.itens.length ? <div className="historico-produtivo-tabela" role="region" aria-label="Produção diária com rolagem horizontal" tabIndex={0}>
+      {resumo.ultima && <div className="animal-indicadores">
+        <Card asChild><section aria-label="Última aferição"><span>Última aferição<AjudaCampo rotulo="Sobre a última aferição" texto="Último volume medido no período, sem participações excluídas. Parcial indica ordenhas pendentes, nunca produção zero."/></span><strong>{formatarLitros(resumo.ultima.litros)}</strong><div>{dataSanitaria(resumo.ultima.data)}{!resumo.ultima.completa && " · Parcial"}</div><div className={resumo.variacao !== null && resumo.variacao < 0 ? "variacao-negativa" : ""}>{resumo.variacao === null ? "Sem comparação equivalente" : `${sinal}${formatarLitros(Math.abs(resumo.variacao))} frente à anterior`}<AjudaCampo rotulo="Sobre a variação da produção" texto={resumo.variacao === null ? "Exige duas aferições completas consecutivas, na mesma lactação conhecida e com as mesmas ordenhas e estados. Parciais e mudanças de rotina não são comparadas." : `Compara ${dataSanitaria(resumo.ultima.data)} com ${dataSanitaria(resumo.anterior!.data)}.${resumo.percentual === null ? " Percentual não calculado porque a anterior é zero." : ` Variação de ${resumo.percentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%.`}`}/></div></section></Card>
+        <Card asChild><section aria-label="Média dos dias medidos"><span>Média dos dias medidos<AjudaCampo rotulo="Sobre a média das aferições" texto="Média dos volumes conhecidos somente nos dias aferidos, incluindo subtotais parciais identificados. Não representa média do calendário nem estima intervalos sem controle."/></span><strong>{formatarLitros(resumo.media)}</strong><div>{resumo.pontos.length} dia(s) aferido(s){resumo.pontos.some(p => !p.completa) && " · Inclui parciais"}</div></section></Card>
+        <Card asChild><section aria-label="Maior aferição"><span>Maior aferição<AjudaCampo rotulo="Sobre a maior aferição" texto="Maior volume observado em uma data do período completo, sem exclusões. Um subtotal parcial continua identificado e não estima as ordenhas pendentes."/></span><strong>{formatarLitros(resumo.maior?.litros ?? null)}</strong><div>{resumo.maior && dataSanitaria(resumo.maior.data)}{resumo.maior && !resumo.maior.completa && " · Parcial"}</div></section></Card>
+      </div>}
+      <div className="animal-curva-rotina"><EvolucaoProducaoIndividual pontos={resumo.pontos}/><Card asChild className="animal-rotina"><section><h3>Controle individual</h3>
+      <dl className="producao-ficha-rotina" role="group" aria-label="Rotina e cobertura do controle individual">
+        {dados.controleIndividual && <>
+          <div><dt>Intervalo individual<AjudaCampo rotulo="Sobre o intervalo individual" texto="Controles extras são permitidos. Dias entre aferições não são estimados."/></dt><dd>A cada {dados.controleIndividual.quantidade} {dados.controleIndividual.unidade === "MESES" ? dados.controleIndividual.quantidade === 1 ? "mês" : "meses" : dados.controleIndividual.quantidade === 1 ? "dia" : "dias"}</dd></div>
+          <div><dt>Última aferição até {dataSanitaria(dados.periodo.fim)}<AjudaCampo rotulo="Sobre a última aferição da rotina" texto="Último controle individual conhecido até o fim do filtro, mesmo anterior ao início do período, sem participações excluídas."/></dt><dd>{dados.controleIndividual.ultimaAfericao ? dataSanitaria(dados.controleIndividual.ultimaAfericao) : "Não registrada"}</dd></div>
+          <div><dt>Próxima referência<AjudaCampo rotulo="Sobre a próxima referência" texto="Data de referência calculada pelo intervalo configurado a partir do último controle, sem criar aferição ou estimar litros."/></dt><dd>{dados.controleIndividual.proximaAfericao ? dataSanitaria(dados.controleIndividual.proximaAfericao) : "Aguarda a primeira aferição"}</dd></div>
+        </>}
+        <div><dt>Dias com participação registrada<AjudaCampo rotulo="Sobre a cobertura do período" texto="Dias com participação ativa em todo o recorte, inclusive pendentes. Não certifica volume conhecido para todas as ordenhas."/></dt><dd>{dados.coberturaPeriodo.diasComRegistro} de {dados.coberturaPeriodo.diasCalendario} dias</dd></div>
+      </dl></section></Card></div>
+      {dados.itens.length > 0 && <dl className="historico-produtivo-resumo">
+        <div><dt>Litros registrados no período<AjudaCampo rotulo="Sobre o volume individual do período" texto="Soma somente os litros individuais medidos em todo o recorte, antes da paginação, sem exclusões. Pendências e dias sem registro não recebem volume presumido."/></dt><dd>{formatarLitros(dados.totaisPeriodo.litros)}</dd></div>
+        {dados.totaisPeriodo.pendentes > 0 && <div><dt>Medições pendentes<AjudaCampo rotulo="Sobre medições pendentes" texto="Ordenhas ainda sem aferição resolvida. O volume conhecido é parcial, sem zeros presumidos para essas ordenhas."/></dt><dd role="status">{dados.totaisPeriodo.pendentes} ordenha(s) · Produção parcial</dd></div>}
+      </dl>}
+      {dados.itens.length > 0 && <header className="animal-historico-cabecalho"><h3>Aferições do animal<AjudaCampo rotulo="Sobre as aferições do animal" texto="Os cartões e a tabela mostram os mesmos registros da página. Indicadores e gráfico consideram todo o período, antes da paginação, sem rateio da produção geral."/></h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Apresentação das aferições do animal"/></header>}
+      {dados.itens.length && visualizacao.modo === "visual" ? <div className="animal-afericoes">{dados.itens.map(d => <Card asChild key={d.participanteId}><article>
+        <time dateTime={d.dataOperacional}>{dataSanitaria(d.dataOperacional)}</time><strong>{formatarLitros(d.totais.litros)}</strong>
+        {d.excluidoEm && <p>Excluído dos totais{d.motivoExclusao ? ` · ${d.motivoExclusao}` : ""}</p>}{!d.totais.completa && <span>Parcial</span>}
+        <dl><div><dt>Finalidade<AjudaCampo rotulo={`Sobre a finalidade em ${dataSanitaria(d.dataOperacional)}`} texto="Finalidade histórica na data da aferição; conciliação pendente preserva o volume medido."/></dt><dd>{d.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar"}</dd>{d.finalidade?.estado !== "COMPROVADA" && <p>Litros registrados preservados; finalidade ainda não comprovada.</p>}</div>
+        <div><dt>Lactação e DEL<AjudaCampo rotulo={`Sobre a lactação em ${dataSanitaria(d.dataOperacional)}`} texto="DEL usa D0 no início da lactação; lactação ausente permanece não informada."/></dt><dd>{d.del === null ? "DEL não informado" : `${d.del} dias em lactação`}</dd><dd>{d.lactacao ? `Início em ${dataSanitaria(d.lactacao.inicio)}` : "Lactação não informada"}</dd></div></dl>
+        <ul className="historico-produtivo-ordenhas" aria-label="Ordenhas registradas">{d.medicoes.map(m => <li key={m.posicaoId}><strong>{m.nomeOrdenha}:</strong> {m.estado === "MEDIDO" ? formatarLitros(m.litros) : m.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Medição pendente"}{m.motivo ? ` · ${m.motivo}` : ""}</li>)}</ul>
+      </article></Card>)}</div> : dados.itens.length ? <div className="historico-produtivo-tabela" role="region" aria-label="Produção diária com rolagem horizontal" tabIndex={0}>
         <Table semContainer><TableCaption className="sr-only">Produção diária do animal entre {dataSanitaria(dados.periodo.inicio)} e {dataSanitaria(dados.periodo.fim)}</TableCaption>
-          <TableHeader><TableRow><TableHead scope="col">Dia</TableHead><TableHead scope="col">Produção registrada</TableHead><TableHead scope="col">Finalidade na produção</TableHead><TableHead scope="col">Lactação e DEL</TableHead><TableHead scope="col">Ordenhas</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead scope="col">Dia</TableHead><TableHead scope="col">Produção registrada<AjudaCampo rotulo="Sobre a produção registrada" texto="Ausências não são preenchidas com zero."/></TableHead><TableHead scope="col">Finalidade na produção</TableHead><TableHead scope="col">Lactação e DEL<AjudaCampo rotulo="Sobre lactação e DEL" texto="DEL usa D0 no início da lactação; lactação ausente permanece não informada."/></TableHead><TableHead scope="col">Ordenhas</TableHead></TableRow></TableHeader>
           <TableBody>{dados.itens.map(d => <TableRow key={d.participanteId}>
             <TableCell>{dataSanitaria(d.dataOperacional)}{d.excluidoEm && <p className="text-sm">Excluído dos totais{d.motivoExclusao ? ` · ${d.motivoExclusao}` : ""}</p>}</TableCell>
             <TableCell className="tabular-nums">{formatarLitros(d.totais.litros)}{!d.totais.completa && <p className="text-sm text-ink-3">Parcial</p>}</TableCell>
             <TableCell>{d.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar"}{d.finalidade?.estado !== "COMPROVADA" && <p className="text-sm text-ink-3">Litros registrados preservados; finalidade ainda não comprovada.</p>}</TableCell>
             <TableCell>{d.del === null ? "DEL não informado" : `${d.del} dias em lactação`}<p className="text-sm text-ink-3">{d.lactacao ? `Início em ${dataSanitaria(d.lactacao.inicio)}` : "Lactação não informada"}</p></TableCell>
-            <TableCell><SecaoDetalhesLeite  titulo={<>Ver {d.medicoes.length} ordenha(s)</>}><ul>{d.medicoes.map(m => <li key={m.posicaoId}><strong>{m.nomeOrdenha}:</strong> {m.estado === "MEDIDO" ? formatarLitros(m.litros) : m.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Medição pendente"}{m.motivo ? ` · ${m.motivo}` : ""}</li>)}</ul></SecaoDetalhesLeite></TableCell>
+            <TableCell><ul className="historico-produtivo-ordenhas" aria-label="Ordenhas registradas">{d.medicoes.map(m => <li key={m.posicaoId}><strong>{m.nomeOrdenha}:</strong> {m.estado === "MEDIDO" ? formatarLitros(m.litros) : m.estado === "NAO_ORDENHADO" ? "Não ordenhado" : "Medição pendente"}{m.motivo ? ` · ${m.motivo}` : ""}</li>)}</ul></TableCell>
           </TableRow>)}</TableBody></Table>
-      </div> : <p role="status">Nenhum registro de produção neste período. A ausência de registros não confirma produção zero nem secagem.</p>}
-      {dados.total > dados.tamanho && <nav aria-label="Páginas do histórico produtivo" className="historico-produtivo-paginas"><Button secondary disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</Button><span>Página {pagina} · {dados.total} registros</span><Button secondary disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próxima</Button></nav>}
-      <p className="text-xs text-ink-3">DEL usa D0 no início da lactação e a data de cada registro. Lactação ausente permanece não informada.</p>
-      <ContextoCarencia contexto={dados.carenciaLeite} animalId={animalId} />
+      </div> : <div className="producao-ficha-vazio" role="status"><h3 className="inline-flex items-center gap-1">Nenhuma aferição no período<AjudaCampo rotulo="Sobre ausência de aferições" texto="Sem registros não significa produção zero nem secagem."/></h3></div>}
+      {dados.total > dados.tamanho && <nav aria-label="Páginas do histórico produtivo" className="historico-produtivo-paginas"><Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</Button><span>Página {pagina} · {dados.total} registros</span><Button variant="outline" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próxima</Button></nav>}
     </>}
-  </SecaoRecolhivel>;
+  </SecaoFicha>{!carregando && !erro && dados && <ContextoCarencia contexto={dados.carenciaLeite} animalId={animalId} />}</>;
 }

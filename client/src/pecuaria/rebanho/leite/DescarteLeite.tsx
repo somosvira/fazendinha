@@ -1,10 +1,11 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { PageHeader, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
 import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
@@ -144,7 +145,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
     : null;
   return (
     <section className="leite-operacoes" aria-label="Descarte físico de leite">
-      <PageHeader titulo="Descarte físico" descricao="Saídas efetivas com origem, motivo e histórico preservado." acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar descarte</Button> : undefined} />
+      <CabecalhoTabela titulo="Descarte físico" ajuda="Saídas efetivas com origem, motivo e histórico preservado." rotuloAjuda="Sobre descarte físico" acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar descarte</Button> : undefined} />
       <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data do descarte"><input type="date" required max={hojeOperacional()} value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} resumo={`Mês até ${data.split("-").reverse().join("/")}`} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
@@ -243,7 +244,7 @@ export function DescarteLeite({ podeLancar }: { podeLancar: boolean }) {
       )}</DialogContent></Dialog>}
       {lista && (
         <>
-          <TabelaFinanceira compacta rotulo="Descartes registrados" itens={lista.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite preferencia="descartesLeiteVisualizacao" compacta rotulo="Descartes registrados" itens={lista.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
             { chave: "produto", titulo: "Produto", celula: d => d.produtoNome },
             { chave: "ordenha", titulo: "Ordenha", celula: d => d.nomeOrdenha },

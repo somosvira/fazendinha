@@ -1,7 +1,11 @@
 // Seção "Peso e ganho" da ficha do animal: indicadores de peso/GMD (com o seletor de
-// período), o gráfico de evolução do peso e a tabela de pesagens já existente
+// período), o gráfico de evolução do peso e os cartões de pesagens
 // (GMD desde a anterior, observação, editar/excluir).
 
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pencil, Scale, Trash2, Weight } from "lucide-react";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
@@ -12,8 +16,11 @@ import { hoje } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
 import type { AnimalFicha, PeriodoGmd, Pesagem } from "../types";
 
+const avisoDemonstracao = "Cenário sintético de desenvolvimento. Animais, doses, resultados e intervalos fictícios; não são recomendação clínica.";
+function observacaoVisivel(texto: string | null | undefined) { return texto?.replaceAll(avisoDemonstracao, "").trim() ?? ""; }
+
 /** GMD entre uma pesagem e a imediatamente anterior (lista mais recente primeiro) — usado só na
- *  coluna "GMD desde a anterior" da tabela; o cálculo de verdade (recente/período/entrada) vem do
+ *  campo "GMD desde a anterior" dos cartões; o cálculo de verdade (recente/período/entrada) vem do
  *  servidor em `animal.peso`. */
 function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: number; data: string } | undefined): string {
   if (!anterior) return "—";
@@ -52,8 +59,8 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       <dl className="ficha-gmd-leitura">
         <div><dt>GMD do período</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{detalhePeriodo}</small></dd></div>
         {mesmaBase ? <div><dt><span>GMD recente</span> e <span>GMD desde a entrada</span></dt><dd className="text-sm">Mesmas duas pesagens do período.</dd></div> : <>
-          <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<small>Duas últimas pesagens</small></dd></div>
-          <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<small>Primeira × última pesagem</small></dd></div>
+          <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens."/></dd></div>
+          <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem."/></dd></div>
         </>}
 
       </dl>
@@ -62,29 +69,26 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     <div className="ficha-peso-distribuicao">
       <CardFicha icon={Scale} titulo="Evolução do peso"><GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/></CardFicha>
       <CardFicha icon={Weight} titulo="Últimas pesagens">
-      {historicoPesagens.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm consulta-tabela">
-        <thead className="text-xs text-ink-3"><tr>
-          <th className="py-1.5 pr-3 font-semibold">Data</th>
-          <th className="py-1.5 pr-3 font-semibold">Peso</th>
-          <th className="py-1.5 pr-3 font-semibold">Tipo</th>
-          <th className="py-1.5 pr-3 font-semibold">GMD desde a anterior</th>
-          <th className="py-1.5 pr-3 font-semibold">Origem</th>
-          <th className="py-1.5 pr-3 font-semibold" />
-        </tr></thead>
-        <tbody className="divide-y divide-border">
-          {historicoPesagens.slice((paginaAtual-1)*5,paginaAtual*5).map((pesagem, indice) => <tr key={pesagem.id}>
-            <td className="whitespace-nowrap py-2 pr-3">{formatarDataBR(pesagem.data)}</td>
-            <td className="whitespace-nowrap py-2 pr-3">{pesagem.pesoKg.toLocaleString("pt-BR")} kg</td>
-            <td className="py-2 pr-3">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}{pesagem.observacao && <div className="mt-0.5 break-words text-xs text-ink-3">{pesagem.observacao}</div>}</td>
-            <td className="whitespace-nowrap py-2 pr-3">{gmdEntre(pesagem, historicoPesagens[(paginaAtual-1)*5 + indice + 1])}</td>
-            <td className="py-2 pr-3">{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</td>
-            <td className="py-2 pr-3 text-right">{podeLancar && <div className="flex justify-end gap-1">
-              <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} title="Editar pesagem" onClick={() => onEditarPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao })}><Pencil size={16} /></button>
-              <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-red-50 hover:text-red-800" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} title="Excluir pesagem" onClick={() => onExcluirPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] })}><Trash2 size={16} /></button>
-            </div>}</td>
-          </tr>)}
-        </tbody>
-      </table></div> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
+      {historicoPesagens.length ? <ul className="grid grid-cols-1 gap-3 min-[600px]:grid-cols-2" aria-label="Últimas pesagens">
+        {historicoPesagens.slice((paginaAtual-1)*5,paginaAtual*5).map((pesagem, indice) => <li key={pesagem.id} className="min-w-0">
+          <Card asChild className="h-full gap-0 p-4 shadow-none"><article aria-label={`Pesagem de ${formatarDataBR(pesagem.data)}`}>
+            <header className="flex flex-wrap items-center justify-between gap-2">
+              <time dateTime={pesagem.data.slice(0, 10)} className="text-sm font-semibold tabular-nums">{formatarDataBR(pesagem.data)}</time>
+              <Badge variant="secondary">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}</Badge>
+            </header>
+            <p className="mt-3 text-2xl font-semibold tabular-nums">{pesagem.pesoKg.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
+            <dl className="mt-3 grid gap-2 text-xs">
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">GMD desde a anterior</dt><dd className="whitespace-nowrap font-medium tabular-nums">{gmdEntre(pesagem, historicoPesagens[(paginaAtual-1)*5 + indice + 1])}</dd></div>
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Origem</dt><dd>{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</dd></div>
+            </dl>
+            {observacaoVisivel(pesagem.observacao) && <p className="mt-3 border-t border-border pt-3 text-sm break-words">{observacaoVisivel(pesagem.observacao)}</p>}
+            {podeLancar && <footer className="mt-3 flex justify-end gap-2 border-t border-border pt-2">
+              <Button variant="ghost" size="icon" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onEditarPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao })}><Pencil size={16} /></Button>
+              <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onExcluirPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] })}><Trash2 size={16} /></Button>
+            </footer>}
+          </article></Card>
+        </li>)}
+      </ul> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
       {historicoPesagens.length > 5 && <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={historicoPesagens.length} itensPorPagina={5} onPaginaChange={setPagina} rotulo="pesagens" idSelect="pagina-pesagens-animal"/>}
       </CardFicha>
     </div>

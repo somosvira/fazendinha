@@ -1,5 +1,6 @@
+import { Input } from "@/components/ui/input";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { PainelCadastro, classeInput } from "@/financeiro/PainelCadastro";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ export function ConfiguracoesOrdenha({
     configuracao.intervaloIndividualUnidade ?? "MESES",
   );
   const [vigencia, setVigencia] = useState(data);
+  const campoVigenciaRef = useRef<HTMLLabelElement>(null);
   const [criterio, setCriterio] = useState(configuracao.criterioColostro?.tipo ?? "");
   const [diasColostro, setDiasColostro] = useState(configuracao.criterioColostro?.tipo === "JANELA_DIAS" ? configuracao.criterioColostro.dias : 3);
   const formId = useId();
@@ -57,6 +59,7 @@ export function ConfiguracoesOrdenha({
     });
   }
   async function salvar() {
+    if (!campoVigenciaRef.current?.querySelector("input")?.reportValidity()) return;
     if (ordenhas.some((o) => !o.nome.trim())) {
       setErro("Dê um nome a cada ordenha.");
       return;
@@ -136,7 +139,7 @@ export function ConfiguracoesOrdenha({
         }}
       >
         <fieldset disabled={salvando} className="leite-ajuste-secao">
-          <label>
+          <label ref={campoVigenciaRef}>
             Vigente desde
             <DatePicker
               aria-label="Vigente desde"
@@ -176,7 +179,7 @@ export function ConfiguracoesOrdenha({
               <option value="JANELA_DIAS">Janela pós-parto em dias</option>
             </SelectCampo>
           </label>
-          {criterio === "JANELA_DIAS" && <><label>Dias da janela<input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
+          {criterio === "JANELA_DIAS" && <><label>Dias da janela<Input className={classeInput} type="number" min="1" step="1" value={diasColostro} onChange={e => setDiasColostro(Number(e.target.value))} /></label><p>Inclui o dia do parto (D0). Uma janela de {diasColostro || "N"} dias abrange D0 até D{Math.max(0, diasColostro - 1)}.</p></>}
           {criterio === "PRIMEIRA_ORDENHA" && <p>Exige declaração explícita da primeira ordenha dos animais após o parto.</p>}
           <p>Nova vigência preserva os registros históricos. Ausência de regra permanece não informada.</p>
         </fieldset>
@@ -189,7 +192,7 @@ export function ConfiguracoesOrdenha({
           <div className="leite-ajuste-grade">
             <label>
               Aferir a cada
-              <input
+              <Input
                 className={classeInput}
                 type="number"
                 min="1"
@@ -228,7 +231,7 @@ export function ConfiguracoesOrdenha({
                 <span>{i + 1}</span>
                 <label>
                   Nome
-                  <input
+                  <Input
                     className={classeInput}
                     value={o.nome}
                     maxLength={60}
@@ -238,7 +241,7 @@ export function ConfiguracoesOrdenha({
                 </label>
                 <label>
                   Horário (opcional)
-                  <input
+                  <Input
                     className={classeInput}
                     type="time"
                     value={o.horario ?? ""}

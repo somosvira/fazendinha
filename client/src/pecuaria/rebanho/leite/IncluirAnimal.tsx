@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import {
@@ -66,7 +67,7 @@ export function IncluirAnimal({
         </DialogDescription>
         <label>
           Nome ou brinco
-          <input
+          <Input
             value={busca}
             onChange={(e) => {
               setBusca(e.target.value);

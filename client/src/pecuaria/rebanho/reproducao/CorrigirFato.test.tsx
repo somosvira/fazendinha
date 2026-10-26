@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "@/lib/controles.fixture";
 import {
   cleanup,
   fireEvent,
@@ -41,14 +42,14 @@ it("desvincula parto somente por escolha explícita e conserva período físico 
       onSalvo={vi.fn()}
     />,
   );
-  await screen.findByRole("option", { name: "2026-10-13 · NORMAL" });
+  await esperarOpcao("2026-10-13 · NORMAL");
   expect(
     (screen.getByLabelText("Parto vinculado") as HTMLSelectElement).value,
   ).toBe("p");
-  fireEvent.change(screen.getByLabelText("Parto vinculado"), {
+  await alterarControle(screen.getByLabelText("Parto vinculado"), {
     target: { value: "" },
   });
-  fireEvent.change(screen.getByLabelText("Motivo da correção"), {
+  await alterarControle(screen.getByLabelText("Motivo da correção"), {
     target: { value: "Parto duplicado; lactação real permanece" },
   });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
@@ -68,8 +69,8 @@ it("complementa parto com CAS e não apaga campos intactos no retry", async()=>{
   vi.mocked(reqV4).mockReset().mockRejectedValueOnce(new Error("Versão em conferência")).mockResolvedValueOnce({});
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
   await waitFor(()=>expect((screen.getByLabelText("Responsável pelo parto (opcional)") as HTMLInputElement).value).toBe("Maria"));
-  fireEvent.change(screen.getByLabelText("Retenção de placenta"),{target:{value:"NAO"}});
-  fireEvent.change(screen.getByLabelText("Motivo da correção"),{target:{value:"Avaliação posterior do pós-parto"}});
+  await alterarControle(screen.getByLabelText("Retenção de placenta"),{target:{value:"NAO"}});
+  await alterarControle(screen.getByLabelText("Motivo da correção"),{target:{value:"Avaliação posterior do pós-parto"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar correção"}));
   await screen.findByText("Versão em conferência");
   const corpo=vi.mocked(reqV4).mock.calls[0][1];
@@ -84,11 +85,11 @@ it("substitui escore explicitamente mantendo escala declarada e histórico do ex
   vi.mocked(obterReproducao).mockResolvedValue({animais:[],tentativas:[],avaliacoes:[],restricoes:[],partos:[{id:"p",animalId:"a",data:"2026-10-13",tipo:"NORMAL",status:"VALIDO",versao:5,examesPosParto:[{id:"e",data:"2026-10-14",status:"VALIDO",resultados:[{campo:"ESCORE",valor:3},{campo:"ESCALA_MIN",valor:1},{campo:"ESCALA_MAX",valor:5}]}]}]});
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
-  await screen.findByRole("option",{name:"Substituir escore de 2026-10-14"});
-  fireEvent.change(screen.getByLabelText("Revisão do escore corporal"),{target:{value:"SUBSTITUIR:e"}});
+  await esperarOpcao("Substituir escore de 2026-10-14");
+  await alterarControle(screen.getByLabelText("Revisão do escore corporal"),{target:{value:"SUBSTITUIR:e"}});
   expect((screen.getByLabelText("Mínimo da escala") as HTMLInputElement).value).toBe("1");
-  fireEvent.change(screen.getByLabelText("Valor do escore"),{target:{value:"3.5"}});
-  fireEvent.change(screen.getByLabelText("Motivo da correção"),{target:{value:"Conferência da leitura original"}});
+  await alterarControle(screen.getByLabelText("Valor do escore"),{target:{value:"3.5"}});
+  await alterarControle(screen.getByLabelText("Motivo da correção"),{target:{value:"Conferência da leitura original"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar correção"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalled());
   expect(vi.mocked(reqV4).mock.calls[0][1]).toMatchObject({versaoEsperada:5,escoreMatriz:{acao:"SUBSTITUIR",exameId:"e",data:"2026-10-14",valor:3.5,escalaMin:1,escalaMax:5,motivo:"Conferência da leitura original"}});
@@ -104,16 +105,16 @@ it("carrega correção e complementos pelo sítio do fato com outro sítio ativo
     : path === "/animais/a" ? { historicoPesagens: [{ id: "peso7", data: "2026-10-13", pesoKg: "450" }] } : {});
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(obterReproducao).toHaveBeenCalledWith("a", 7));
-  fireEvent.change(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
-  fireEvent.change(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "VINCULAR" } });
-  await screen.findByRole("option", { name: /Retenção no sítio do parto/ });
-  fireEvent.change(screen.getByLabelText("Ocorrência existente"), { target: { value: "rp7" } });
-  fireEvent.change(screen.getByLabelText("Peso da matriz"), { target: { value: "VINCULAR" } });
-  await screen.findByRole("option", { name: "2026-10-13 · 450 kg" });
-  fireEvent.change(screen.getByLabelText("Pesagem existente"), { target: { value: "peso7" } });
+  await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
+  await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "VINCULAR" } });
+  await esperarOpcao(/Retenção no sítio do parto/);
+  await alterarControle(screen.getByLabelText("Ocorrência existente"), { target: { value: "rp7" } });
+  await alterarControle(screen.getByLabelText("Peso da matriz"), { target: { value: "VINCULAR" } });
+  await esperarOpcao("2026-10-13 · 450 kg");
+  await alterarControle(screen.getByLabelText("Pesagem existente"), { target: { value: "peso7" } });
   expect(reqV4).toHaveBeenCalledWith("/sanidade/ocorrencias?animalId=a", undefined, "GET", 7);
   expect(reqV4).toHaveBeenCalledWith("/animais/a", undefined, "GET", 7);
-  fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência dos complementos do parto" } });
+  await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência dos complementos do parto" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/partos/p/correcao", expect.objectContaining({
     propriedadeId: 7, pesoMatriz: { acao: "VINCULAR", pesagemId: "peso7" },
@@ -127,13 +128,13 @@ async function abrirCorrecaoAborto(alteracoes: Partial<FatoReprodutivo> = {}) {
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByRole("button", { name: "Salvar correção" })).toHaveProperty("disabled", false));
-  fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência do registro histórico" } });
+  await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência do registro histórico" } });
 }
 
 it("corrige outro campo do aborto legado sem inventar observação nem reenviar campos intactos", async () => {
   await abrirCorrecaoAborto();
-  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
-  fireEvent.change(screen.getByLabelText("Responsável pelo parto (opcional)"), { target: { value: "Maria" } });
+  await alterarControle(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  await alterarControle(screen.getByLabelText("Responsável pelo parto (opcional)"), { target: { value: "Maria" } });
   expect(screen.getByLabelText("Observação")).toHaveProperty("required", false);
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalled());
@@ -149,9 +150,13 @@ it.each([
   { tipo: "ABORTO", anterior: "Explicação comprovada", observacao: "" },
 ])("exige explicação ao converter $tipo ou alterar a observação para '$observacao'", async ({ tipo, anterior, observacao }) => {
   await abrirCorrecaoAborto({ tipo, observacao: anterior });
-  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
-  fireEvent.change(screen.getByLabelText("Observação"), { target: { value: observacao } });
+  await alterarControle(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  await alterarControle(screen.getByLabelText("Observação"), { target: { value: observacao } });
   fireEvent.submit(document.getElementById("corrigir-fato-v4")!);
   await screen.findByText("Informe a explicação do aborto com pelo menos 5 caracteres.");
   expect(reqV4).not.toHaveBeenCalled();
 });
+
+async function esperarOpcao(nome: string | RegExp) {
+    await waitFor(() => expect(Array.from(document.querySelectorAll("option")).some(o => typeof nome === "string" ? o.textContent === nome : nome.test(o.textContent ?? ""))).toBe(true));
+}

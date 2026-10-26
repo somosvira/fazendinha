@@ -1,7 +1,9 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { Paginacao } from "../ui";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
-import { Button, brl } from "../../../financeiro/financeiro-ui";
+import { brl } from "../../../financeiro/financeiro-ui";
+import { Button } from "../../../components/ui/button";
 import { descricaoCusto } from "./apresentacao";
 import type { Componente, CustosDTO } from "./api";
 
@@ -47,11 +49,13 @@ export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos, propriedadeI
   const temAcoes = dados.componentes.some(c => mostrarFato(c) || mostrarOrigem(c));
   const vazio = dados.totalComponentes === 0 && dados.situacao !== "OCULTO";
   return <>
-    <div className={vazio ? "text-sm" : `rounded-lg border p-4 ${dados.situacao === "OCULTO" ? "border-amber-200 bg-amber-50/50" : "border-border bg-muted/30"}`}>
+    <section className="custos-cobertura" aria-label="Cobertura dos custos">
       {vazio ? <p><strong>Nenhum custo neste recorte</strong></p> : <p><strong>{rotulos[dados.situacao] ?? dados.situacao}</strong>{dados.situacao !== "OCULTO" && <> · {dados.totalConhecido == null ? "Valor ainda não comprovado" : `${brl(Number(dados.totalConhecido))}${dados.cobertura !== "COMPLETO" ? " de parcelas conhecidas" : ""}`}</>}</p>}
+      <span className="custos-contagem">{dados.totalComponentes} {dados.totalComponentes === 1 ? "componente" : "componentes"}</span>
       {dados.situacao === "OCULTO" && <p className="mt-1 text-sm text-ink-3">Você não tem permissão para visualizar os valores deste item.</p>}
-      <p className="mt-1 text-sm text-ink-3">{porAnimal ? "Recorte pela data do fato operacional." : "Total da tentativa ou protocolo. Estas visões consultam os mesmos fatos e não devem ser somadas."} {dados.componentesPendentes > 0 ? `${dados.componentesPendentes} componente(s) com valor pendente.` : ""}</p>
-    </div>
+      <span className="custos-contagem">Cobertura <AjudaCampo rotulo="Ajuda sobre cobertura dos custos" texto={<><p>{porAnimal ? "Período pela data do fato." : "Mesmos fatos da tentativa ou protocolo; não somar visões."}</p>{dados.limitacoes.map((limitacao, indice) => <p key={indice}>{limitacao}</p>)}</>}/></span>
+      {dados.componentesPendentes > 0 && <p>{dados.componentesPendentes} componente(s) com valor pendente.</p>}
+    </section>
     {dados.totalIntegral && comRecorte && <p className="text-sm">Tentativa/protocolo inteiro, sem recorte: {dados.totalIntegral.situacao === "OCULTO" ? "Valores ocultos" : dados.totalIntegral.totalConhecido == null ? "Valor ainda não comprovado" : brl(Number(dados.totalIntegral.totalConhecido))}. O valor acima é o recorte consultado.</p>}
     {!!dados.componentes.length && <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[780px] text-left text-sm consulta-tabela">
@@ -72,21 +76,19 @@ export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos, propriedadeI
       </table>
     </div>}
     {!dados.componentes.length && dados.totalComponentes > 0 && <p>Nenhum componente nesta página.</p>}
-    {dados.totalComponentes > 0 && <nav className="flex items-center gap-3" aria-label="Páginas dos componentes">
-      <Button secondary disabled={pagina === 1} onClick={() => aoMudarPagina(pagina - 1)}>Anterior</Button>
+    {dados.totalComponentes > dados.limite && <nav className="flex items-center gap-3" aria-label="Páginas dos componentes">
+      <Button variant="outline" disabled={pagina === 1} onClick={() => aoMudarPagina(pagina - 1)}>Anterior</Button>
       <span>Página {pagina} · {dados.totalComponentes} componentes</span>
-      <Button secondary disabled={pagina * dados.limite >= dados.totalComponentes} onClick={() => aoMudarPagina(pagina + 1)}>Próxima</Button>
+      <Button variant="outline" disabled={pagina * dados.limite >= dados.totalComponentes} onClick={() => aoMudarPagina(pagina + 1)}>Próxima</Button>
     </nav>}
-    {(dados.atribuicoesPaginadas?.total || dados.atribuicoesPreparos.some(a => a.aAtribuir)) && !tentativaId && <section className="space-y-2 rounded-lg border border-border p-3" aria-label="Preparatórios a atribuir">
-      <h4 className="font-semibold">Preparatórios a atribuir</h4>
-      <p className="text-xs text-ink-3">O custo permanece nesta visão do protocolo/animal até a atribuição.</p>
-      <dl className="divide-y divide-border">{dados.atribuicoesPreparos.filter(a => a.aAtribuir).map(a => <div key={`${a.tipo}:${a.fonteId}`} className="grid gap-1 py-2 text-sm sm:grid-cols-2">
+    {(dados.atribuicoesPaginadas?.total || dados.atribuicoesPreparos.some(a => a.aAtribuir)) && !tentativaId && <section className="custos-preparos" aria-label="Preparatórios a atribuir">
+      <header><h4>Preparatórios a atribuir <AjudaCampo rotulo="Ajuda sobre preparatórios a atribuir" texto="Incluídos no animal/protocolo até a atribuição; não somar novamente."/></h4><span>{dados.atribuicoesPaginadas?.total ?? dados.atribuicoesPreparos.filter(a => a.aAtribuir).length} registros</span></header>
+      <dl className="custos-preparos-linhas">{dados.atribuicoesPreparos.filter(a => a.aAtribuir).map(a => <div key={`${a.tipo}:${a.fonteId}`}>
         <dt>{descricaoCusto(a.descricao)}</dt>
         <dd>{dados.situacao === "OCULTO" ? "Valores ocultos" : a.parcelas.filter(p => p.restante != null && Number(p.restante) > 0).map(p => `${p.natureza === "MATERIAL" ? "Material" : "Serviço"}: ${brl(Number(p.restante))} a atribuir`).join(" · ") || "Valor pendente de comprovação ou atribuição"}</dd>
       </div>)}</dl>
       {!dados.atribuicoesPreparos.some(a=>a.aAtribuir)&&<p>Nenhum preparatório pendente nesta página.</p>}
-      {dados.atribuicoesPaginadas&&aoMudarPaginaPreparos&&<Paginacao paginaAtual={dados.atribuicoesPaginadas.pagina} totalPaginas={Math.max(1,Math.ceil(dados.atribuicoesPaginadas.total/10))} totalItens={dados.atribuicoesPaginadas.total} itensPorPagina={10} onPaginaChange={aoMudarPaginaPreparos} rotulo="preparatórios" idSelect="custos-preparos-pagina"/>}
+      {dados.atribuicoesPaginadas&&dados.atribuicoesPaginadas.total>10&&aoMudarPaginaPreparos&&<Paginacao paginaAtual={dados.atribuicoesPaginadas.pagina} totalPaginas={Math.max(1,Math.ceil(dados.atribuicoesPaginadas.total/10))} totalItens={dados.atribuicoesPaginadas.total} itensPorPagina={10} onPaginaChange={aoMudarPaginaPreparos} rotulo="preparatórios" idSelect="custos-preparos-pagina"/>}
     </section>}
-    <p className="text-xs text-ink-3">{dados.limitacoes.join(". ")}</p>
   </>;
 }

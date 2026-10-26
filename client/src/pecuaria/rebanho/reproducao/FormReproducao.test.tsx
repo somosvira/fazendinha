@@ -1,3 +1,4 @@
+import { alterarControle } from "@/lib/controles.fixture";
 // @vitest-environment jsdom
 import {
   cleanup,
@@ -71,16 +72,16 @@ describe("registros reprodutivos", () => {
         onSalvo={salvo}
       />,
     );
-    await screen.findByRole("option", { name: "Exame reprodutivo · v1" });
-    fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
-    fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "NEGATIVO" } });
+    await esperarOpcao("Exame reprodutivo · v1");
+    await alterarControle(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
+    await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "NEGATIVO" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await screen.findByText(/Registre a perda gestacional/);
     expect(registrarAvaliacao).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Finalidade do exame"), { target: { value: "RECONFIRMACAO" } });
-    fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "POSITIVO" } });
-    fireEvent.change(screen.getByLabelText("Sexo fetal (se observado)"), { target: { value: "F" } });
-    fireEvent.change(screen.getByLabelText("Motivo / observação"), {
+    await alterarControle(screen.getByLabelText("Finalidade do exame"), { target: { value: "RECONFIRMACAO" } });
+    await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "POSITIVO" } });
+    await alterarControle(screen.getByLabelText("Sexo fetal (se observado)"), { target: { value: "F" } });
+    await alterarControle(screen.getByLabelText("Motivo / observação"), {
       target: { value: "Reavaliação pelo veterinário" },
     });
     fireEvent.submit(document.getElementById("form-reproducao")!);
@@ -107,7 +108,7 @@ describe("registros reprodutivos", () => {
   it("envia finalidade Reprodução na cria", async () => {
     vi.mocked(registrarParto).mockResolvedValue({ id: "p", animalId: "a", data: "2026-10-13" });
     render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
+    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "REPRODUCAO" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(1));
     expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([{ viva: true, sexo: "F", aptidao: "REPRODUCAO" }]);
@@ -144,10 +145,10 @@ describe("registros reprodutivos", () => {
         onSalvo={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Desfecho"), {
+    await alterarControle(screen.getByLabelText("Desfecho"), {
       target: { value: "ABORTO" },
     });
-    fireEvent.change(screen.getByLabelText(/^Explicação do aborto/), {
+    await alterarControle(screen.getByLabelText(/^Explicação do aborto/), {
       target: { value: "Aborto observado no manejo" },
     });
     fireEvent.submit(document.getElementById("form-reproducao")!);
@@ -161,11 +162,11 @@ describe("registros reprodutivos", () => {
 
 it.each(["", "abc", "     "])("novo aborto exige explicação mesmo no submit programático: '%s'", async observacao => {
   render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
+  await alterarControle(screen.getByLabelText("Desfecho"), { target: { value: "ABORTO" } });
   const explicacao = screen.getByLabelText(/^Explicação do aborto/);
   expect(explicacao).toHaveProperty("required", true);
   expect(explicacao).toHaveProperty("minLength", 5);
-  fireEvent.change(explicacao, { target: { value: observacao } });
+  await alterarControle(explicacao, { target: { value: observacao } });
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await screen.findByText("Informe a explicação do aborto com pelo menos 5 caracteres.");
   expect(registrarParto).not.toHaveBeenCalled();
@@ -175,9 +176,9 @@ it("perda no mesmo dia permite negativo, preservando fronteira inclusiva para re
   const p = {...painel, gestacoes: [{id:"g",animalId:"a",status:"VALIDO",confirmadaEm:"2026-10-01",encerradaEm:"2026-10-13"}], animais: painel.animais.map(a=>({...a,gestacao:null}))};
   vi.mocked(registrarAvaliacao).mockResolvedValue({id:"av",animalId:"a",data:"2026-10-13"});
   render(<FormReproducao acao="avaliacao" painel={p} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByRole("option", { name: "Exame reprodutivo · v1" });
-  fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
-  fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
+  await esperarOpcao("Exame reprodutivo · v1");
+  await alterarControle(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
+  await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrarAvaliacao).toHaveBeenCalled());
   expect(vi.mocked(registrarAvaliacao).mock.calls[0][0].gestacaoId).toBeUndefined();
@@ -189,12 +190,12 @@ it("execução usa o tipo e a finalidade planejados e mantém o formato ao confi
   ]);
   const registrar = vi.fn().mockResolvedValue(undefined);
   render(<FormReproducao acao="avaliacao" painel={painel} animalInicial="a" tipoExameInicial="custom" finalidadeInicial="RECONFIRMACAO" onFechar={vi.fn()} onSalvo={vi.fn()} onRegistrar={registrar} />);
-  await screen.findByRole("option", { name: "Ultrassom · v3" });
-  expect((screen.getByLabelText("Tipo de exame") as HTMLSelectElement).value).toBe("custom");
-  fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
-  expect((screen.getByLabelText("Finalidade do exame") as HTMLSelectElement).value).toBe("RECONFIRMACAO");
-  fireEvent.change(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "POSITIVO" } });
-  fireEvent.change(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
+  await esperarOpcao("Ultrassom · v3");
+  expect(screen.getByLabelText("Tipo de exame").textContent).toContain("Ultrassom · v3");
+  await alterarControle(screen.getByLabelText("Atendimento"), { target: { value: "REALIZADO" } });
+  expect(screen.getByLabelText("Finalidade do exame").textContent).toContain("Reconfirmação");
+  await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"), { target: { value: "POSITIVO" } });
+  await alterarControle(screen.getByLabelText(/Medida · mm/), { target: { value: "0" } });
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(() => expect(registrar).toHaveBeenCalled());
   expect(registrar.mock.calls[0][0]).toMatchObject({ tipoExameId: "custom", finalidade: "RECONFIRMACAO", formatoExameHash: "d".repeat(64), resultado: "RECONFIRMACAO", resultados: [{ campo: "MEDIDA", valor: "0" }] });
@@ -203,15 +204,15 @@ it("execução usa o tipo e a finalidade planejados e mantém o formato ao confi
 it("preserva desconhecidos e envia complementos reais com chave estável no reenvio", async () => {
   vi.mocked(registrarParto).mockRejectedValueOnce(new Error("Conferir registro"));
   render(<FormReproducao acao="parto" painel={painel} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()}/>);
-  fireEvent.change(screen.getByLabelText("Hora (opcional)"),{target:{value:"05:40"}});
+  await alterarControle(screen.getByLabelText("Hora (opcional)"),{target:{value:"05:40"}});
   fireEvent.click(screen.getByLabelText("Horário estimado"));
-  fireEvent.change(screen.getByLabelText(/Responsável pelo parto/),{target:{value:"Maria"}});
-  fireEvent.change(screen.getByLabelText("Peso ao nascer (kg)"),{target:{value:"39"}});
+  await alterarControle(screen.getByLabelText(/Responsável pelo parto/),{target:{value:"Maria"}});
+  await alterarControle(screen.getByLabelText("Peso ao nascer (kg)"),{target:{value:"39"}});
   fireEvent.click(screen.getByRole("button",{name:"Pós-parto"}));
-  fireEvent.change(screen.getByLabelText("Retenção de placenta"),{target:{value:"NAO"}});
-  fireEvent.change(screen.getByLabelText("Peso da matriz"),{target:{value:"REGISTRAR"}});
-  fireEvent.change(screen.getByLabelText("Data real da pesagem"),{target:{value:"2026-10-15"}});
-  fireEvent.change(screen.getByLabelText("Peso da matriz (kg)"),{target:{value:"520"}});
+  await alterarControle(screen.getByLabelText("Retenção de placenta"),{target:{value:"NAO"}});
+  await alterarControle(screen.getByLabelText("Peso da matriz"),{target:{value:"REGISTRAR"}});
+  await alterarControle(screen.getByLabelText("Data real da pesagem"),{target:{value:"2026-10-15"}});
+  await alterarControle(screen.getByLabelText("Peso da matriz (kg)"),{target:{value:"520"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await screen.findByText("Conferir registro");
   const primeiro=vi.mocked(registrarParto).mock.calls[0][0];
@@ -230,8 +231,8 @@ it.each([null, 99])("prepara avaliação no sítio explícito mesmo com sítio a
   const registrar = vi.fn().mockResolvedValue(undefined);
   render(<FormReproducao acao="avaliacao" painel={painel} animalInicial="a" propriedadeId={7}
     onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByRole("option", { name: "Exame reprodutivo · v1" });
-  fireEvent.change(screen.getByLabelText("Atendimento"), { target: { value: "NAO_REALIZADO" } });
+  await esperarOpcao("Exame reprodutivo · v1");
+  await alterarControle(screen.getByLabelText("Atendimento"), { target: { value: "NAO_REALIZADO" } });
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, resultado: "NAO_AVALIADO" })));
   expect(reqV4).toHaveBeenCalledWith("/reproducao/tipos-exame?incluirInativos=true", undefined, "GET", 7);
@@ -249,11 +250,11 @@ it("consulta complementos pós-parto no sítio explícito com outro sítio ativo
     : path === "/animais/a" ? { historicoPesagens: [{ id: "peso7", data: "2026-10-13", pesoKg: "450" }] } : []);
   render(<FormReproducao acao="parto" painel={painel} animalInicial="a" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   fireEvent.click(screen.getByRole("button", { name: "Pós-parto" }));
-  fireEvent.change(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
-  fireEvent.change(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } });
-  await screen.findByRole("option", { name: "Retenção de placenta" });
-  fireEvent.change(screen.getByLabelText("Peso da matriz"), { target: { value: "VINCULAR" } });
-  await screen.findByRole("option", { name: "2026-10-13 · 450 kg" });
+  await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
+  await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } });
+  await esperarOpcao("Retenção de placenta");
+  await alterarControle(screen.getByLabelText("Peso da matriz"), { target: { value: "VINCULAR" } });
+  await esperarOpcao("2026-10-13 · 450 kg");
   expect(reqV4).toHaveBeenCalledWith("/sanidade/doencas", undefined, "GET", 7);
   expect(reqV4).toHaveBeenCalledWith("/animais/a", undefined, "GET", 7);
 });
@@ -264,22 +265,22 @@ it("atribui Serviço sem perder centavos e mantém contratação independente da
   const registrar = vi.fn().mockResolvedValue(undefined);
   const props = { acao: "tentativa" as const, painel, animalInicial: "a", onFechar: vi.fn(), onSalvo: vi.fn(), onRegistrar: registrar };
   const {unmount} = render(<FormReproducao {...props} />);
-  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
-  await screen.findByRole("option", {name:"#10 Veterinário"});
-  fireEvent.change(screen.getByLabelText("Serviço financeiro"), {target:{value:"s"}});
-  fireEvent.change(screen.getByLabelText("Valor atribuído ao Serviço (R$)"), {target:{value:"123.45"}});
+  await alterarControle(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
+  await esperarOpcao("#10 Veterinário");
+  await alterarControle(screen.getByLabelText("Serviço financeiro"), {target:{value:"s"}});
+  await alterarControle(screen.getByLabelText("Valor atribuído ao Serviço (R$)"), {target:{value:"123.45"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(1));
   expect(registrar.mock.calls[0][0]).toMatchObject({operacaoServicoId:"s",valorServicoAtribuido:"123.45"});
-  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"DOCUMENTADA"}});
-  fireEvent.change(screen.getByLabelText("Motivo / observação"), {target:{value:"Origem documentada para teste"}});
+  await alterarControle(screen.getByLabelText("Origem do material"), {target:{value:"DOCUMENTADA"}});
+  await alterarControle(screen.getByLabelText("Motivo / observação"), {target:{value:"Origem documentada para teste"}});
   fireEvent.submit(document.getElementById("form-reproducao")!);
   await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(2));
   expect(registrar.mock.calls[1][0]).toMatchObject({origem:"DOCUMENTADA",operacaoServicoId:"s",valorServicoAtribuido:"123.45"});
   unmount();
   localStorage.setItem("rionovo:usuario", JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));
   render(<FormReproducao {...props}/>);
-  fireEvent.change(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
+  await alterarControle(screen.getByLabelText("Origem do material"), {target:{value:"SERVICO"}});
   expect(screen.queryByLabelText("Valor atribuído ao Serviço (R$)")).toBeNull();
   localStorage.removeItem("rionovo:usuario");
 });
@@ -291,12 +292,12 @@ it("registra material do estoque e Serviço no mesmo envio sem mudar a origem",a
  vi.mocked(listarServicos).mockResolvedValue([{id:"servico-1",numero:20,descricao:"Inseminador"}] as never);
  const registrar=vi.fn().mockResolvedValue(undefined);
  render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} onRegistrar={registrar}/>);
- fireEvent.change(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
- await screen.findByRole("option",{name:/Sêmen comprovado/});
- fireEvent.change(screen.getByLabelText("Material genético"),{target:{value:"material-1"}});
- await screen.findByRole("option",{name:"#20 Inseminador"});
- fireEvent.change(screen.getByLabelText("Serviço financeiro"),{target:{value:"servico-1"}});
- fireEvent.change(screen.getByLabelText("Valor atribuído ao Serviço (R$)"),{target:{value:"20.00"}});
+ await alterarControle(screen.getByLabelText("Origem do material"),{target:{value:"ESTOQUE"}});
+ await esperarOpcao(/Sêmen comprovado/);
+ await alterarControle(screen.getByLabelText("Material genético"),{target:{value:"material-1"}});
+ await esperarOpcao("#20 Inseminador");
+ await alterarControle(screen.getByLabelText("Serviço financeiro"),{target:{value:"servico-1"}});
+ await alterarControle(screen.getByLabelText("Valor atribuído ao Serviço (R$)"),{target:{value:"20.00"}});
  fireEvent.submit(document.getElementById("form-reproducao")!);
  await waitFor(()=>expect(registrar).toHaveBeenCalledTimes(1));
  expect(registrar.mock.calls[0][0]).toMatchObject({origem:"ESTOQUE",materialId:"material-1",quantidade:1,operacaoServicoId:"servico-1",valorServicoAtribuido:"20.00"});
@@ -311,6 +312,10 @@ it("inicia o fato no dia local mesmo depois da virada UTC", () => {
   const esperado = `${local.getFullYear()}-${String(local.getMonth() + 1).padStart(2, "0")}-${String(local.getDate()).padStart(2, "0")}`;
   try {
     render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" onFechar={() => {}} onSalvo={() => {}} />);
-    expect((screen.getByLabelText("Data do fato") as HTMLInputElement).value).toBe(esperado);
+    expect((screen.getByLabelText("Data do fato") as HTMLInputElement).value).toBe(esperado.split("-").reverse().join("/"));
   } finally { cleanup(); vi.useRealTimers(); }
 });
+
+async function esperarOpcao(nome: string | RegExp) {
+  await waitFor(() => expect(Array.from(document.querySelectorAll("option")).some(o => typeof nome === "string" ? o.textContent === nome : nome.test(o.textContent ?? ""))).toBe(true));
+}

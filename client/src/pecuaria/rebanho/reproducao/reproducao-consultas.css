@@ -29,3 +29,99 @@
 .indicadores-taxas p { font-size: 12px; color: var(--muted-foreground); }
 @media(min-width:1550px) { .reproducao-cartoes { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 @media(max-width:900px) { .reproducao-cartoes { grid-template-columns: 1fr; padding: 14px; gap: 14px; } .reproducao-link-botao { min-height: 44px; } .reproducao-pendencias > button { width: 100%; } .indicadores-taxas { grid-template-columns: 1fr; } .indicadores-taxas > section + section { border-left: 0; border-top: 1px solid var(--border); } }
+
+/* Consultas operacionais: superfícies compactas, datas e fatos preservados. */
+.repro-consulta-titulo{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px 16px;flex-wrap:wrap}
+.repro-consulta-titulo h2{font-size:18px;font-weight:650;line-height:1.4;letter-spacing:-.02em}
+.repro-consulta-titulo h2>span{font-size:12px;font-weight:500;color:var(--muted-foreground);margin-left:12px;letter-spacing:0}
+.repro-consulta-titulo p{font-size:13px;color:var(--muted-foreground);margin-top:4px;max-width:70ch;line-height:1.5}
+.reproducao-cartoes{gap:16px;padding:0 20px 20px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.reproducao-cartao{background:var(--card);transition:background-color .15s,border-color .15s}
+.reproducao-cartao:hover{background:var(--muted);border-color:var(--ring)}
+.reproducao-cartao>header{padding:16px 18px 12px;flex-wrap:wrap}
+.reproducao-cartao>header>div:first-child{flex:1;min-width:120px}
+.reproducao-cartao .reproducao-identificacao{padding:0}
+.reproducao-cartao .reproducao-identificacao strong{font-size:16px;line-height:1.4}
+.reproducao-cartao .reproducao-identificacao span{font-size:15px;color:var(--foreground);font-weight:600}
+.reproducao-cartao>dl{display:grid;grid-template-columns:1fr;gap:10px;padding:6px 18px 16px}
+.reproducao-cartao>dl>div{display:flex;justify-content:space-between;gap:16px;align-items:baseline}
+.reproducao-cartao dt{font-size:12px}
+.reproducao-cartao dd{font-size:13px;text-align:right;margin:0;line-height:1.45}
+.reproducao-cartao-acompanhamento{font-size:12px;background:transparent;margin-inline:18px;padding:12px 0;border-color:var(--border)}
+.reproducao-cartao-acompanhamento ul{display:grid;gap:5px}
+.reproducao-cartao footer{display:flex;justify-content:flex-end;padding:0 18px 16px;border:0}
+.reproducao-cartao footer a{width:100%;justify-content:space-between}
+.reproducao-pendencias{background:color-mix(in srgb,var(--fin-warning-bg) 60%,var(--card));border:1px solid var(--border);border-radius:8px;padding:12px 16px;color:var(--warn);font-size:13px}
+.reproducao-pendencias strong{font-size:13px;font-weight:600}
+.reproducao-pendencias p{font-size:12px;line-height:1.45;margin-top:3px}
+.reproducao-pendencias button{font-size:12px}
+.repro-agenda-grade{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,1fr);gap:28px;align-items:start}
+.repro-agenda-superficie .repro-consulta-titulo{padding-inline:0}
+.repro-agenda-lista{list-style:none;padding:0;margin:0}
+.repro-agenda-lista>li{display:grid;grid-template-columns:105px minmax(0,1fr) auto;align-items:center;gap:16px;padding:18px 0;border-bottom:1px solid var(--border)}
+.repro-agenda-lista time{font-size:12px;font-weight:600;color:var(--muted-foreground);font-variant-numeric:tabular-nums;overflow-wrap:anywhere;line-height:1.6}
+.repro-agenda-lista h3{font-size:14px;font-weight:650;line-height:1.4}
+.repro-agenda-lista p{font-size:12px;color:var(--muted-foreground);margin:4px 0 8px}
+.repro-agenda-lista .reproducao-link-botao{font-size:12px;padding:7px 10px}
+.repro-agenda-calendario{border-left:1px solid var(--border);padding-left:24px;min-width:0}
+.repro-agenda-calendario>header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.repro-agenda-calendario h2{font-size:16px;font-weight:650;text-transform:capitalize}
+.repro-agenda-calendario>header>div{display:flex}
+.repro-agenda-dias{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:12px 0}
+.repro-agenda-dias>span{font-size:12px;color:var(--muted-foreground);width:100%;margin-bottom:3px}
+.repro-agenda-dias p,.repro-agenda-dia p{font-size:12px;color:var(--muted-foreground);line-height:1.6}
+.repro-agenda-dia{padding:16px;background:var(--muted);border-radius:8px;margin-top:16px}
+.repro-agenda-dia h3{font-size:14px;font-weight:650;margin-bottom:10px}
+.repro-agenda-dia li+li{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.repro-agenda-dia strong{font-size:13px;font-weight:600}
+.repro-agenda-dia .reproducao-link-botao{margin-top:10px;font-size:12px;background:var(--card)}
+.repro-agenda-nota{font-size:12px;color:var(--muted-foreground);line-height:1.6;margin-top:14px;max-width:65ch}
+.repro-parto-detalhe{display:grid;gap:24px;font-size:14px}
+.repro-parto-identidade{padding-bottom:18px;border-bottom:1px solid var(--border)}
+.repro-parto-detalhe h2{font-size:18px;font-weight:650}
+.repro-parto-clinica{padding:4px 0 20px;border-bottom:1px solid var(--border)}
+.repro-dados-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 24px;margin-top:16px}
+.repro-dados-grade dt{font-size:12px;color:var(--muted-foreground);line-height:1.5}
+.repro-dados-grade dd{font-size:13px;font-weight:600;line-height:1.5;margin-top:4px;overflow-wrap:anywhere}
+.repro-crias-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.repro-cria{min-width:0;padding:0 0 8px}
+.repro-cria+ .repro-cria{border-left:1px solid var(--border);padding-left:24px}
+.repro-cria header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.repro-cria h3{font-size:15px;font-weight:650}
+.repro-cria footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:18px;font-size:12px;color:var(--muted-foreground)}
+.repro-parto-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.repro-parto-grade>.secao-recolhivel{margin:0;min-width:0}
+.repro-parto-grade>.secao-recolhivel:nth-child(3){grid-column:1/-1}
+.repro-parto-detalhe .secao-recolhivel-cabecalho{padding:14px 16px}
+.repro-parto-detalhe .secao-recolhivel-conteudo{padding:16px}
+.repro-indicadores-painel>.indicadores-taxas{margin:0 20px;border:1px solid var(--border);border-radius:10px}
+.repro-indicadores-painel>.reproducao-pendencias{margin:16px 20px 0}
+.repro-indicadores-painel .indicadores-taxas strong{font-size:28px;font-variant-numeric:tabular-nums}
+.repro-indicadores-metodo{border-top:1px solid var(--border);padding:16px 20px;font-size:13px;line-height:1.6}
+.repro-indicadores-metodo summary{cursor:pointer;color:var(--primary);font-weight:600;outline-offset:4px}
+.repro-indicadores-metodo h3{font-size:14px;font-weight:650;margin:16px 0 8px}
+.repro-indicadores-metodo ul{list-style:disc;padding-left:20px;margin:12px 0;max-width:75ch}
+.repro-indicadores-metodo li+li{margin-top:6px}
+.repro-participacoes{margin-bottom:28px}
+.repro-participacoes>.repro-consulta-titulo{padding-inline:0}
+.repro-participacoes>input{max-width:360px;margin-bottom:16px}
+.repro-participacao{border:1px solid var(--border);border-radius:10px;background:var(--card);padding:18px;margin-bottom:12px}
+.repro-participacao header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.repro-participacao h3{font-size:15px;font-weight:650}
+.repro-participacao p{font-size:12px;color:var(--muted-foreground);line-height:1.5;margin-top:5px}
+.repro-participacao-acoes{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px}
+.repro-participacao-acoes button,.repro-participacao-acoes a{font-size:12px}
+.repro-participacao-etapas{border-top:1px solid var(--border);margin-top:16px;padding-top:8px}
+.repro-programacao-detalhe>.protocolo-conteudo{border-top:1px solid var(--border);padding-top:24px}
+@media(min-width:1600px){.reproducao-manejo-cartoes{grid-template-columns:repeat(4,minmax(0,1fr))}.reproducao-manejo-cartoes>article>dl>div{display:block}.reproducao-manejo-cartoes dd{text-align:left;margin-top:4px}}
+@media(max-width:1100px){.repro-agenda-grade{grid-template-columns:minmax(0,1fr) 300px;gap:18px}.repro-agenda-calendario{padding-left:18px}.repro-agenda-lista>li{grid-template-columns:85px minmax(0,1fr)}.repro-agenda-lista>li>a{grid-column:2;justify-self:start}.repro-parto-grade{grid-template-columns:1fr}.repro-parto-grade>.secao-recolhivel:nth-child(3){grid-column:auto}}
+@media(max-width:800px){.repro-agenda-grade{grid-template-columns:1fr}.repro-agenda-calendario{border-left:0;border-top:1px solid var(--border);padding:20px 0 0;max-width:460px}.reproducao-cartoes{grid-template-columns:1fr}.repro-crias-grade{grid-template-columns:1fr}.repro-cria+.repro-cria{border-left:0;border-top:1px solid var(--border);padding:20px 0 0}.repro-consulta-titulo{padding:16px}.repro-consulta-titulo h2>span{display:block;margin:4px 0 0}.reproducao-cartoes{padding-inline:16px}.reproducao-pendencias>button{width:auto}}
+@media(max-width:500px){.repro-dados-grade{grid-template-columns:1fr}.repro-agenda-lista>li{gap:10px}.repro-parto-detalhe .secao-recolhivel-conteudo{padding:12px}.repro-participacao{padding:14px}}
+.repro-programacao-identidade{display:flex;flex-wrap:wrap;align-items:start;justify-content:space-between;gap:16px;border-bottom:1px solid var(--border);padding-bottom:18px}
+.repro-programacao-identidade h2{font-size:22px;font-weight:650;letter-spacing:-.02em}
+.repro-programacao-identidade p{font-size:13px;color:var(--muted-foreground);line-height:1.5;margin-top:6px}
+.repro-programacao-resumo{display:flex;gap:28px;flex-wrap:wrap;padding:18px 0;border-bottom:1px solid var(--border);margin-bottom:8px}
+.repro-programacao-resumo>div{display:flex;flex-direction:column-reverse;gap:4px}
+.repro-programacao-resumo dt{font-size:12px;color:var(--muted-foreground)}
+.repro-programacao-resumo dd{font-size:18px;font-weight:650;font-variant-numeric:tabular-nums}
+.repro-programacao-detalhe>.protocolo-conteudo>header:first-child{display:none}

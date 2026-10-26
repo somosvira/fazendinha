@@ -1,3 +1,5 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { BarraConsulta, type CriterioConsulta } from "@/financeiro/BarraConsulta";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -12,7 +14,7 @@ import { podeVerValoresFinanceiros } from "./permissoes";
 import { normalizarBuscaFinanceira } from "./ListaCadastroFinanceiro";
 import { AtualizandoFinanceiro } from "./CarregamentoFinanceiro";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { MoreHorizontal, FilePenLine, Plus, Search, Settings2 } from "lucide-react";
+import { CalendarDays, ShoppingCart, ArrowUpRight, Wrench, MoreHorizontal, FilePenLine, Plus, Search, Settings2 } from "lucide-react";
 import { PeriodoFinanceiroControl } from "./PeriodoFinanceiroControl";
 import { periodoInicial } from "./lib/periodo";
 import { entradaDeNovaOperacao, isNovaOperacaoFinanceira, parseOperacaoFinanceiraId, URL_NOVA_OPERACAO } from "../router";
@@ -60,6 +62,7 @@ const COLUNAS: ColunaTabela<Operacao>[] = [
 ];
 
 export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boolean }) {
+  const visual = useVisualizacaoConsulta("visualOperacoes");
   const podeRascunho = podeVerValoresFinanceiros();
   const [carregou, setCarregou] = useState(false);
   const [itens, setItens] = useState<Operacao[]>([]); const [config, setConfig] = useState<ConfiguracoesFinanceiras | null>(null); const { rascunho, recuperacao } = useRascunhoAtivo(); const [form, setForm] = useState(() => typeof window !== "undefined" && isNovaOperacaoFinanceira(window.location.pathname)); const [operacaoBase, setOperacaoBase] = useState<Operacao | null>(null); const [loading, setLoading] = useState(true); const [erro, setErro] = useState<string | null>(null);
@@ -171,7 +174,8 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
         <UiButton type="button" variant="outline" className="consulta-mais-filtros operacoes-todos-filtros" aria-haspopup="dialog" aria-expanded={modalFiltros} onClick={() => { edicaoFiltros.iniciar(); setModalFiltros(true); }}><Settings2 size={17} aria-hidden />Filtros{criterios.length > 0 && <span className="operacoes-filtros-contagem">{criterios.length}</span>}</UiButton>
       </BarraConsulta>
-      <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <><TabelaFinanceira ordenacao={ordem.controle} rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} cartaoComLinks chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />
+      <div className="consulta-visual-barra"><span>{filtradas.length} operações na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização das operações" /></div>
+      <div aria-busy={loading} {...(loading ? { inert: "" } : {})}>{erro ? <Empty>Não foi possível carregar as operações.</Empty> : filtradas.length ? <>{visual.modo === "visual" ? <div className="consulta-entidades">{operacoesDaPagina.map(op => <CartaoConsulta key={op.id} titulo={op.descricao || TIPO_OPERACAO[op.tipo]} detalhe={`${codigoOperacao(op.numero)} · ${TIPO_OPERACAO[op.tipo] ?? op.tipo}`} icon={op.tipo === "VENDA" ? ArrowUpRight : op.tipo === "SERVICO" ? Wrench : ShoppingCart} onAbrir={() => abrirDetalhe(op.id)} status={<StatusPill status={op.status} />} acoes={colunas.find(c => c.chave === "acoes")?.celula(op)}><div className="consulta-fatos"><FatoConsulta rotulo="Data"><span className="inline-flex items-center gap-2"><CalendarDays size={15} aria-hidden />{dataBR(op.data)}</span></FatoConsulta><FatoConsulta rotulo="Parceiro"><div className="consulta-entidade-acao"><ParceiroOperacao parceiro={op.parceiro} /></div></FatoConsulta><FatoConsulta rotulo="Valor"><strong>{op.valorTotal == null ? "—" : brl(op.valorTotal)}</strong></FatoConsulta></div><div className="consulta-impactos consulta-impactos-diagrama"><span>{op.status === "CANCELADA" ? "Impactos da operação cancelada" : "Impactos da operação"}</span><div className="consulta-entidade-acao"><ImpactosOperacao operacao={op} /></div></div></CartaoConsulta>)}</div> : <TabelaFinanceira ordenacao={ordem.controle} rotulo="Operações do período" itens={operacoesDaPagina} colunas={colunas} cartaoComLinks chaveDe={(operacao) => operacao.id} onAbrir={(operacao) => abrirDetalhe(operacao.id)} compacta barraRolagemSuperior />}
         <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={filtradas.length} porPagina={ITENS_POR_PAGINA} rotulo="Paginação de operações" substantivo="operações" idSelect="pagina-operacoes" onPagina={setPagina} /></> : <Empty>Nenhuma operação encontrada no período e filtros selecionados.</Empty>}
     </div></Panel>
     <PainelFiltros aberto={modalFiltros} onAbertoChange={setModalFiltros} temFiltros onLimpar={edicaoFiltros.limpar} onAplicar={() => { if (!erroFiltros) { edicaoFiltros.aplicar(); setModalFiltros(false); } }}>

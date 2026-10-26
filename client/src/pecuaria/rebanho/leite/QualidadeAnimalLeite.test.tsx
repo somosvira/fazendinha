@@ -59,3 +59,13 @@ it("falha de consulta não é apresentada como ausência de exames", async () =>
   await screen.findByRole("alert");
   expect(screen.queryByText(/Nenhuma análise/)).toBeNull();
 });
+it("apresenta a qualidade como seção direta e um único estado vazio sem paginação inútil", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({ total: 0, tamanho: 20, pagina: 1, itens: [] });
+  const { container } = render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
+  await screen.findByText("Nenhuma análise individual registrada neste recorte.");
+  expect(screen.getByRole("region", { name: "Qualidade individual do leite" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Qualidade individual do leite" })).toBeNull();
+  expect(container.querySelector("details")).toBeNull();
+  expect(screen.queryByText("0 amostra(s) no período e sítio consultados.")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Próximas análises" })).toBeNull();
+});

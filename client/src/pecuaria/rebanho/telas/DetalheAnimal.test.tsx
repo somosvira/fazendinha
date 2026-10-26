@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -424,6 +425,9 @@ describe("Ficha por domínio", () => {
     vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
+    const ilustracao = screen.getByRole("img", { name: "Ilustração genérica de bovino" });
+    expect(ilustracao.getAttribute("src")).toBe("/images/pecuaria/vaca.png");
+    expect(ilustracao.getAttribute("width")).toBe("110");
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
     expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Resumo", "Cadastro", "Histórico", "Produção", "Reprodução", "Sanidade", "Nutrição"]);
     for (const id of ["resumo", "identificacao-genetica", "ficha-painel-sanidade", "peso-manejo", "ficha-painel-nutricao", "historico", "auditoria"]) expect(document.getElementById(id)).toBeTruthy();
@@ -529,6 +533,8 @@ it("falha técnica não é apresentada como animal ausente", async () => {
   expect(screen.queryByRole("heading", { name: /Animal não/ })).toBeNull();
 });
 
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);
 it("link do protocolo conserva hash, sítio explícito e retorno na ficha", async () => {
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1?participacaoId=p1&programacaoId=g1&sitio=7&retorno=%2Fpecuaria%2Freproducao%2Fprogramacoes%2Fg1%3Fsitio%3D7#reproducao");
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);

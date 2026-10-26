@@ -36,6 +36,8 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const [revisao, setRevisao] = useState(0);
   const [ocupado, setOcupado] = useState(false);
   const salvandoRef = useRef(false);
+  const campoDataRef = useRef<HTMLLabelElement>(null);
+  const validarData = () => campoDataRef.current?.querySelector("input")?.reportValidity() ?? false;
   const [origens, setOrigens] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [conferido, setConferido] = useState(false);
@@ -99,7 +101,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     setRascunho(r => ({ ...r, alterado: true, parcelas: [...r.parcelas, novaParcela(natureza, ids, direta)] }));
   }
   async function salvar(confirmar = false) {
-    if (!contexto || salvandoRef.current) return;
+    if (!contexto || salvandoRef.current || !validarData()) return;
     salvandoRef.current = true;
     setErro(""); setOcupado(true);
     try {
@@ -131,7 +133,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     finally { salvandoRef.current = false; setOcupado(false); }
   }
   function abrirConfirmacao() {
-    if (!contexto) return;
+    if (!contexto || !validarData()) return;
     setErro("");
     if (emConflito) { setErro("Confira as alterações do servidor antes de confirmar. Seus campos continuam preservados."); return; }
     try { prepararParcelas(rascunho.parcelas, contexto, rascunho.posicao, true); setConferido(false); setConfirmando(true); }
@@ -146,13 +148,14 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       <div className="leite-registro-campos">
-        <label>Data da ordenha<DatePicker aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
+        <label ref={campoDataRef}>Data da ordenha<DatePicker required aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
         <label>Ordenha<SelectCampo aria-label="Ordenha" disabled={travado || !!rascunho.registroId || !contexto} value={rascunho.posicao} onValueChange={posicao => setRascunho(r => ({ ...r, posicao, alterado: true }))}><option value="">Selecione</option>{contexto?.sessoes.map(s => <option key={s.posicaoId} value={s.posicaoId}>{s.nome}</option>)}</SelectCampo></label>
       </div>
       {erroContexto ? <div role="alert">{erroContexto}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !contexto ? <p role="status">Consultando contexto da ordenha…</p> : <>
         {emConflito && <section role="alert"><h3>Alterações no servidor</h3>{rascunho.conflitos?.map(c => <p key={c}>{c}</p>)}<div className="leite-registro-linha"><Button variant="outline" disabled={ocupado} onClick={() => setRevisao(r => r + 1)}>Reconsultar versões</Button>{registroDisponivel && <Button variant="outline" disabled={ocupado} onClick={() => setSubstituindoRascunho(true)}>Usar versão do servidor</Button>}</div></section>}
         {rascunho.parcelas.some(p => p.classificacaoPendente) && <section><h3>Classificação pendente</h3>{rascunho.parcelas.filter(p => p.classificacaoPendente).map(p => <p key={p.chave}>{formatarLitros(Number(p.litros))} · Natureza histórica não comprovada. Consulte a regularização em Estoque.</p>)}</section>}
         {rascunho.contextoData && rascunho.contextoData !== rascunho.data && <p role="status">Data alterada. Confira as origens preservadas e justifique as parcelas sem contexto compatível.</p>}
+        <div className="leite-registro-layout"><div className="leite-registro-parcelas">
         {(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(natureza => {
           const grupo = rascunho.parcelas.filter(p => !p.classificacaoPendente && p.natureza === natureza);
           const sugestao = natureza === "NAO_COMERCIAL" ? carenciasSessao(contexto, rascunho.posicao).some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA") : natureza === "COLOSTRO" && !!contexto.contexto?.origensColostro.length;
@@ -178,7 +181,15 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
             })}</section>;
         })}
         {!travado && <div className="leite-registro-linha"><span>Registrar diretamente com justificativa</span><Button variant="outline" onClick={() => adicionar("NAO_COMERCIAL", true)}>Descarte</Button><Button variant="outline" onClick={() => adicionar("COLOSTRO", true)}>Colostro</Button></div>}
-        <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
+        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3>Conferência</h3>
+          <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
+          <dl>{(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(n => {
+            const parcelas = soma.filter(p => !p.classificacaoPendente && p.natureza === n);
+            const volumes = parcelas.map(p => Number(p.litros.replace(",", ".")));
+            return <div key={n}><dt>{nomesNatureza[n]}</dt><dd>{volumes.length && volumes.every(v => Number.isFinite(v) && v >= 0) ? formatarLitros(volumes.reduce((a, b) => a + b, 0)) : "Não informado"}</dd></div>;
+          })}</dl>
+          <p>Salvar a medição não movimenta o estoque. Confira as origens, a segregação e os produtos antes de confirmar a entrada.</p>
+        </aside></div>
         {mensagem && <p role="status">{mensagem}</p>}{erro && <p role="alert" className="leite-erro">{erro}</p>}
         {!confirmada && podeLancar && <div className="leite-registro-rodape"><Button variant="outline" disabled={ocupado || emConflito} onClick={() => void salvar()}>Salvar ordenha</Button><Button disabled={ocupado || emConflito} onClick={abrirConfirmacao}>Conferir entrada no estoque</Button></div>}
       </>}

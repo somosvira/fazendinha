@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -22,8 +23,8 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
   return <div className="grid gap-3 py-3">
     <p><strong>{formatarLitros(Number(leite.quantidadeLitros))} fornecidos</strong> · {leite.movimentos.map(m => `${formatarLitros(Number(m.quantidadeLitros))} ${m.natureza === "NAO_COMERCIAL" ? "não comerciais" : "comerciais"}`).join(" + ")}</p>
     {verValores && <p>Custo de produção: <strong>{custoTexto(leite.custoProducao)}</strong></p>}
-    {verReferenciasComerciais && <><p>Referência gerencial: <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>{leite.referencia && <> ({leite.referencia.provisoria ? "provisória, mês anterior" : "preço do período"} · versão {leite.referencia.versao})</>}</p>
-      <p className="text-sm">A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna.</p>
+    {verReferenciasComerciais && <><p>Referência gerencial: <AjudaCampo rotulo="Sobre a referência gerencial" texto={"A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna."} /> <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>{leite.referencia && <> ({leite.referencia.provisoria ? "provisória, mês anterior" : "preço do período"} · versão {leite.referencia.versao})</>}</p>
+
       {!!leite.referencias.length && <details><summary className="cursor-pointer">Histórico das referências</summary>{leite.referencias.map(r => <p key={r.id} className="mt-2 text-sm">Versão {r.versao} · {r.provisoria ? "provisória" : "do período"} · {formatarDataBR(r.periodoInicio)} a {formatarDataBR(r.periodoFim)} · {custoTexto(r.precoUnitario)}/L · {custoTexto(r.valorTotal)} · {r.motivo}</p>)}</details>}
       {podeLancar && leite.status === "CONFIRMADO" && <>
         <Button secondary disabled={ocupado} onClick={() => void consultar()}>{ocupado ? "Consultando referências…" : "Conferir preço de referência"}</Button>

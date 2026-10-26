@@ -20,6 +20,7 @@ export interface HistoricoProdutivoLeiteDTO {
   controleIndividual?: { quantidade: number; unidade: "DIAS" | "MESES"; ultimaAfericao: string | null; proximaAfericao: string | null };
   propriedadeId: number; animal: { id: string; brinco: string; nome: string | null };
   periodo: { inicio: string; fim: string }; itens: DiaHistoricoProdutivoDTO[];
+  seriePeriodo: { participanteId: string; data: string; litros: number | null; completa: boolean; excluido: boolean; lactacaoId: string | null; comparabilidade: string; finalidade: string }[];
   total: number; pagina: number; tamanho: number; totaisPeriodo: ResumoProducaoLeite;
   coberturaPeriodo: { diasCalendario: number; diasComRegistro: number; diasSemRegistro: number };
   carenciaLeite: ContextoCarenciaLeiteDTO;
