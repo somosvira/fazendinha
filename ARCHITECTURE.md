@@ -73,7 +73,7 @@ Quando qualquer flag de integração está habilitada, o Vitest do servidor exec
 
 `.github/workflows/staging.yml` compila os dois workspaces, testa o transformador, a interface e o servidor com banco efêmero, além de executar a bateria financeira separada e conferir os contratos da carga V4 e da seed única. O job `seed-unificada` verifica baseline, interrupção/retomada e reexecução idempotente no PostgreSQL efêmero do CI. Testes unitários, integrações e homologação visual/manual são evidências distintas.
 
-Configuração e fluxo de publicação em Cloudflare ficam em [DEPLOY.md](DEPLOY.md).
+Após os três jobs de CI, pushes em `staging` publicam no STG e pushes em `main` publicam em produção, sujeitos aos gates dos environments. PRs e acionamentos manuais executam apenas CI. Configuração e promoção após homologação ficam em [DEPLOY.md](DEPLOY.md).
 
 ## Interface unificada
 
