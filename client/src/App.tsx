@@ -27,11 +27,9 @@ import { CommandPalette } from "./components/CommandPalette";
 import { AssistenteConsulta } from "./components/AssistenteConsulta";
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
-import { DefinirSenha } from "./components/DefinirSenha";
-import { RecuperarSenha } from "./components/RecuperarSenha";
 import { getToken, getUsuario, setSessao, clearSessao, type UsuarioSessao } from "./lib/auth";
-import { fetchMe, logout } from "./api/auth";
-import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
+import { fetchMe } from "./api/auth";
+import { interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
 import { BootSplash, Loader } from "./components/Loading";
@@ -119,7 +117,7 @@ export function App() {
   // mataria a "sticky activation" do documento e o navegador voltaria a bloquear
   // o áudio da abertura Terrano, ancorado no clique de "Entrar".
   const [token, setTokenState] = useState<string | null>(() =>
-    typeof window === "undefined" ? null : getToken(),
+    typeof window === "undefined" ? null : "clerk:carregando",
   );
   const [usuario, setUsuario] = useState<UsuarioSessao | null>(() =>
     typeof window === "undefined" ? null : getUsuario(),
@@ -195,29 +193,10 @@ export function App() {
     return t ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null;
   });
 
-  const entrar = (novoToken: string, u: UsuarioSessao, returnTo?: string | null) => {
-    const destino = destinoDepoisDoLogin(returnTo, u);
-    const url = new URL(destino, window.location.origin);
-    const tabDestino = pathToTab(url.pathname) ?? DEFAULT_TAB;
-    setSessao(novoToken, u);
-    setTokenState(novoToken);
-    setUsuario(u);
-    setTab(tabDestino);
-    const parametros = url.searchParams;
-    setDeepLinkFiltros(
-      [...parametros.keys()].length && !isNovaOperacaoFinanceira(url.pathname)
-        ? { tab: tabDestino, filtros: Object.fromEntries(parametros.entries()) }
-        : null,
-    );
-    setShowIntro(deveTocarIntro(tabDestino));
-    window.history.replaceState(null, "", destino);
-    setLocationRevision((valor) => valor + 1);
-  };
-
   const onSair = token
     ? () => {
         void executarComGuardaNavegacao(() => {
-          void logout();
+          window.dispatchEvent(new Event("terrano:logout"));
           clearSessao();
           setTokenState(null);
           setUsuario(null);
@@ -320,13 +299,6 @@ export function App() {
   }, [mobileOpen]);
 
   useEffect(() => {
-    if (!authRoute || !("alias" in authRoute) || !authRoute.alias) return;
-    const base = authRoute.kind === "invite" ? "/invite/" : "/reset-password/";
-    window.history.replaceState(null, "", `${base}${encodeURIComponent(authRoute.token)}`);
-    setLocationRevision((valor) => valor + 1);
-  }, [authRoute]);
-
-  useEffect(() => {
     if (token && usuario) return;
     // A rota vem da barra de endereço, não de `authRoute`: o memo é do render
     // anterior e este efeito escreve na mesma URL que lê. Sem reler aqui, uma
@@ -404,8 +376,9 @@ export function App() {
     fetchMe()
       .then((u) => {
         if (u) {
+          const sessao = `clerk:${u.id}`;
           setUsuario(u);
-          setSessao(token, u);
+          setSessao(sessao, u);
         } else {
           clearSessao();
           setTokenState(null);
@@ -507,38 +480,24 @@ export function App() {
   );
 
   const excluirTrabalho = async (tipo: TipoTrabalhoAtivo) => {
-    if (token !== getToken() || propAtiva !== getPropriedadeAtiva()) throw new Error("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.");
+    if (usuarioId == null || usuarioId !== getUsuario()?.id || propAtiva !== getPropriedadeAtiva()) throw new Error("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.");
     const origem = window.location.pathname;
     await descartarTrabalhoAtivo(tipo, validar => tipo === "operacao"
       ? enfileirarSalvamentoRascunho(() => { validar(); return descartarRascunhoOperacao(); })
       : enfileirarSalvamentoRascunhoRelatorio(() => { validar(); return descartarRascunhoRelatorioFinanceiro(); }));
-    if (token !== getToken() || propAtiva !== getPropriedadeAtiva() || origem !== window.location.pathname) return;
+    if (usuarioId == null || usuarioId !== getUsuario()?.id || propAtiva !== getPropriedadeAtiva() || origem !== window.location.pathname) return;
     if (tipo === "operacao" && isNovaOperacaoFinanceira(origem)) navegarPara("/financeiro/operacoes");
     if (tipo === "relatorio" && isNovoRelatorioFinanceiro(origem)) navegarPara("/financeiro/relatorios");
   };
 
   const canSee = (id: Tab) => visibleTabs.some((t) => t.id === id);
 
-  if (authRoute?.kind === "invite" || authRoute?.kind === "reset-password") {
-    return (
-      <DefinirSenha
-        modo={authRoute.kind === "invite" ? "convite" : "senha"}
-        token={authRoute.token}
-        onPronto={(t, u) => {
-          entrar(t, u);
-        }}
-      />
-    );
-  }
-  if (authRoute?.kind === "forgot-password") return <RecuperarSenha />;
   if (authRoute?.kind === "signin") {
-    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u, authRoute.returnTo)} />;
+    return <Login />;
   }
-  // Sem sessão válida (token + usuário), só a tela de login. `entrar` recebe o
-  // gesto do clique e transiciona em estado — a intro monta no MESMO documento,
-  // liberando o play() da música da abertura.
+  // Sem sessão válida (token + usuário), só a tela de acesso Google.
   if (!token || !usuario || !effectiveUser) {
-    return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
+    return <Login />;
   }
 
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)

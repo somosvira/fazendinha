@@ -1,19 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Hono } from "hono";
 
-// "Porta aberta" (S4): sem SHARED_ACCESS_TOKEN e sem usuário no banco, o middleware libera um
-// dono sintético em dev — mas nunca em produção, onde isso seria uma tabela vazia por bootstrap
-// incompleto, não um convite a entrar sem login. `prisma`/`resolverSessao`/`env` mockados: o
-// teste não depende de banco nem do parse real de `process.env`.
-const mocks = vi.hoisted(() => ({
-  count: vi.fn(),
-  resolverSessao: vi.fn(),
-  env: { SHARED_ACCESS_TOKEN: undefined as string | undefined, NODE_ENV: "development" as string },
-}));
-
-vi.mock("../db.js", () => ({ prisma: { usuario: { count: mocks.count } } }));
-vi.mock("../services/auth/sessao.js", () => ({ resolverSessao: mocks.resolverSessao }));
-vi.mock("../env.js", () => ({ env: mocks.env }));
+const mocks = vi.hoisted(() => ({ autenticarRequestClerk: vi.fn() }));
+vi.mock("../services/auth/clerk.js", () => ({ autenticarRequestClerk: mocks.autenticarRequestClerk }));
 
 import { authMiddleware } from "./auth.js";
 
@@ -23,60 +12,29 @@ function app() {
     .get("/x", (c) => c.json({ usuario: c.get("usuario" as never) }));
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mocks.env.SHARED_ACCESS_TOKEN = undefined;
-  mocks.env.NODE_ENV = "development";
-  mocks.count.mockResolvedValue(0);
-  mocks.resolverSessao.mockResolvedValue(null);
-});
+beforeEach(() => vi.clearAllMocks());
 
-describe("authMiddleware — porta aberta só fora de produção (S4)", () => {
-  it("dev, sem token e sem usuários cadastrados: libera acesso como dono sintético", async () => {
-    const res = await app().request("/x");
+describe("authMiddleware — Clerk", () => {
+  it("injeta o usuário interno ativo resolvido por uma sessão Clerk válida", async () => {
+    mocks.autenticarRequestClerk.mockResolvedValue({ id: 1, nome: "Ana", email: "ana@example.com", papel: "gestor", abas: [], areas: [], flags: [], status: "ATIVO", dono: false });
+
+    const res = await app().request("/x", { headers: { cookie: "__session=token-clerk" } });
+
     expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({ usuario: { id: 1, email: "ana@example.com" } });
+    expect(mocks.autenticarRequestClerk).toHaveBeenCalledWith(expect.any(Request));
   });
 
-  it("produção, sem token e sem usuários cadastrados: NÃO libera — responde com erro claro", async () => {
-    mocks.env.NODE_ENV = "production";
-    const res = await app().request("/x");
-    expect(res.status).not.toBe(200);
-    expect([401, 503]).toContain(res.status);
-    const body = await res.json();
-    expect(typeof body.error).toBe("string");
-    expect(body.error.length).toBeGreaterThan(0);
-  });
+  it.each([
+    ["sem sessão", {}],
+    ["bearer local legado", { authorization: "Bearer sessao-local-antiga" }],
+    ["token compartilhado legado", { authorization: "Bearer 0123456789abcdef" }],
+  ])("rejeita %s", async (_cenario, headers) => {
+    mocks.autenticarRequestClerk.mockResolvedValue(null);
 
-  it("produção, sem token e sem usuários: 503 (não confunde com credencial errada)", async () => {
-    mocks.env.NODE_ENV = "production";
-    const res = await app().request("/x");
-    expect(res.status).toBe(503);
-  });
+    const res = await app().request("/x", { headers });
 
-  it("dev, com usuários já cadastrados: não libera porta aberta mesmo sem bearer", async () => {
-    mocks.count.mockResolvedValue(3);
-    const res = await app().request("/x");
     expect(res.status).toBe(401);
-  });
-
-  it("produção, com usuários cadastrados: 401 padrão (não 503) sem bearer", async () => {
-    mocks.env.NODE_ENV = "production";
-    mocks.count.mockResolvedValue(3);
-    const res = await app().request("/x");
-    expect(res.status).toBe(401);
-  });
-
-  it("bearer válido continua funcionando em produção mesmo sem SHARED_ACCESS_TOKEN", async () => {
-    mocks.env.NODE_ENV = "production";
-    mocks.resolverSessao.mockResolvedValue({ id: 1, nome: "x", email: "x@x", papel: "consulta", abas: [], areas: [], flags: [], status: "ATIVO", dono: false });
-    const res = await app().request("/x", { headers: { authorization: "Bearer tok" } });
-    expect(res.status).toBe(200);
-  });
-
-  it("SHARED_ACCESS_TOKEN configurado: bearer correto vale como dono, mesmo em produção", async () => {
-    mocks.env.NODE_ENV = "production";
-    mocks.env.SHARED_ACCESS_TOKEN = "0123456789abcdef";
-    const res = await app().request("/x", { headers: { authorization: "Bearer 0123456789abcdef" } });
-    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual({ error: "não autenticado" });
   });
 });

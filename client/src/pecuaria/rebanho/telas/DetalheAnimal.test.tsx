@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -529,6 +530,8 @@ it("falha técnica não é apresentada como animal ausente", async () => {
   expect(screen.queryByRole("heading", { name: /Animal não/ })).toBeNull();
 });
 
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);
 it("link do protocolo conserva hash, sítio explícito e retorno na ficha", async () => {
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1?participacaoId=p1&programacaoId=g1&sitio=7&retorno=%2Fpecuaria%2Freproducao%2Fprogramacoes%2Fg1%3Fsitio%3D7#reproducao");
   vi.mocked(buscarFichaAnimal).mockResolvedValue(base);

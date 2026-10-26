@@ -1,3 +1,5 @@
+import { beforeEach } from "vitest";
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 /* Invariantes de layout das telas financeiras (issue #247).
  *
@@ -249,3 +251,5 @@ it("mantém links de origem fora do botão que abre o cartão", () => {
   expect(container.querySelector("ul button a")).toBeNull();
   expect(container.querySelector("ul a")?.getAttribute("href")).toBe("/financeiro/operacoes/1");
 });
+
+beforeEach(preferirTabelas);

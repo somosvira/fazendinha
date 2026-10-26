@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -296,3 +297,6 @@ describe("OperacoesFinanceiras — filtros das colunas e painel completo", () =>
     expect(screen.queryByLabelText("Valor mínimo")).toBeNull();
   });
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

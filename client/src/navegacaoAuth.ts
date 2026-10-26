@@ -4,33 +4,14 @@ import type { UsuarioSessao } from "./lib/auth";
 import { areaDaTab, temAcessoArea, temAcessoEstoque } from "./lib/areas";
 import { pathToTab, tabToPath, normalizarRotaPecuaria } from "./router";
 
-export type RotaAuth =
-  | { kind: "signin"; returnTo: string | null }
-  | { kind: "forgot-password" }
-  | { kind: "invite"; token: string; alias: boolean }
-  | { kind: "reset-password"; token: string; alias: boolean };
+export type RotaAuth = { kind: "signin"; returnTo: string | null };
 
-const PUBLIC_PATHS = new Set(["/signin", "/forgot-password"]);
+const PUBLIC_PATHS = new Set(["/signin"]);
 
 export function interpretarRotaAuth(pathname: string, search = ""): RotaAuth | null {
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
-  if (path === "/signin") {
-    return { kind: "signin", returnTo: new URLSearchParams(search).get("returnTo") };
-  }
-  if (path === "/forgot-password") return { kind: "forgot-password" };
-
-  const match = /^\/(invite|convite|reset-password|senha)\/([^/]+)\/?$/.exec(pathname);
-  if (!match) return null;
-  let token: string;
-  try {
-    token = decodeURIComponent(match[2]);
-  } catch {
-    return null;
-  }
-  if (match[1] === "invite" || match[1] === "convite") {
-    return { kind: "invite", token, alias: match[1] === "convite" };
-  }
-  return { kind: "reset-password", token, alias: match[1] === "senha" };
+  if (path !== "/signin") return null;
+  return { kind: "signin", returnTo: new URLSearchParams(search).get("returnTo") };
 }
 
 /** Aceita somente um caminho da própria aplicação e nunca uma URL absoluta/protocol-relative. */

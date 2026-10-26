@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -92,3 +93,6 @@ it("link da participação abre seu detalhe sanitário na ficha, usando sítio e
   await screen.findByText(/Protocolo escolhido/);
   expect(reqSanidade).toHaveBeenCalledWith("/execucoes/participacao1?propriedadeId=7", undefined, 7);
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

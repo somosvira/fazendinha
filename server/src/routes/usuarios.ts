@@ -4,7 +4,6 @@ import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { exigePermissao } from "../middleware/permissao.js";
 import { listarUsuarios, criarUsuario, atualizarUsuario, revogarUsuario, UsuarioError } from "../services/auth/usuarios.js";
-import { gerarLinkConvite, gerarLinkReset, LinkAcessoError } from "../services/auth/contas.js";
 
 const criarSchema = z.object({ nome: z.string().min(1), email: z.string().email(), papel: z.string().min(1) });
 const patchSchema = z.object({
@@ -32,8 +31,7 @@ export const usuariosRouter = new Hono()
   .post("/usuarios", zValidator("json", criarSchema), async (c) => {
     try {
       const usuario = await criarUsuario(c.req.valid("json"));
-      const conviteLink = await gerarLinkConvite(usuario.id);
-      return c.json({ usuario, conviteLink }, 201);
+      return c.json({ usuario }, 201);
     } catch (e) {
       return erro(c, e);
     }
@@ -54,19 +52,4 @@ export const usuariosRouter = new Hono()
       return erro(c, e);
     }
   })
-  .post("/usuarios/:id/convite", async (c) => {
-    try {
-      return c.json({ conviteLink: await gerarLinkConvite(Number(c.req.param("id"))) });
-    } catch (error) {
-      if (error instanceof LinkAcessoError) return c.json({ error: error.message }, 422);
-      throw error;
-    }
-  })
-  .post("/usuarios/:id/reset", async (c) => {
-    try {
-      return c.json({ resetLink: await gerarLinkReset(Number(c.req.param("id"))) });
-    } catch (error) {
-      if (error instanceof LinkAcessoError) return c.json({ error: error.message }, 422);
-      throw error;
-    }
-  });
+;

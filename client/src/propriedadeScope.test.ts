@@ -15,13 +15,12 @@ afterEach(() => vi.restoreAllMocks());
 describe("sítio ativo na aba", () => {
   it("restaura a seleção e o header após recarregar os módulos", async () => {
     usuario(1);
-    localStorage.setItem("rionovo:auth-token", "sessao-teste");
     const escopo = await import("./propriedadeScope");
     escopo.setPropriedadeAtiva(2);
     vi.resetModules();
     const recarregado = await import("./propriedadeScope");
     expect(recarregado.getPropriedadeAtiva()).toBe(2);
-    expect(recarregado.comPropriedade()).toEqual({ authorization: "Bearer sessao-teste", "X-Propriedade-Id": "2" });
+    expect(recarregado.comPropriedade()).toEqual({ "X-Propriedade-Id": "2" });
     recarregado.setPropriedadeAtiva(null);
     vi.resetModules();
     expect((await import("./propriedadeScope")).getPropriedadeAtiva()).toBeNull();

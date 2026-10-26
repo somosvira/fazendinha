@@ -20,16 +20,14 @@ const usuarioFinanceiro: UsuarioSessao = {
   areas: ["financeiro"],
 };
 
-describe("rotas públicas de autenticação", () => {
-  it("reconhece rotas canônicas e aliases temporários", () => {
+describe("rota de autenticação", () => {
+  it("reconhece somente a rota de entrada Google", () => {
     expect(interpretarRotaAuth("/signin", "?returnTo=%2Ffinanceiro%2Foperacoes")).toEqual({
       kind: "signin",
       returnTo: "/financeiro/operacoes",
     });
-    expect(interpretarRotaAuth("/forgot-password")).toEqual({ kind: "forgot-password" });
-    expect(interpretarRotaAuth("/invite/abc")).toEqual({ kind: "invite", token: "abc", alias: false });
-    expect(interpretarRotaAuth("/convite/abc")).toEqual({ kind: "invite", token: "abc", alias: true });
-    expect(interpretarRotaAuth("/senha/abc")).toEqual({ kind: "reset-password", token: "abc", alias: true });
+    expect(interpretarRotaAuth("/forgot-password")).toBeNull();
+    expect(interpretarRotaAuth("/invite/abc")).toBeNull();
   });
 
   it("preserva caminho e query ao montar o redirecionamento anônimo", () => {
@@ -40,7 +38,7 @@ describe("rotas públicas de autenticação", () => {
 });
 
 describe("returnTo", () => {
-  it.each(["https://site-externo.example", "//site-externo.example/x", "/%2Fsite-externo.example", "\\site-externo.example", "/signin", "/forgot-password"])(
+  it.each(["https://site-externo.example", "//site-externo.example/x", "/%2Fsite-externo.example", "\\site-externo.example", "/signin"])(
     "rejeita destino inseguro ou público: %s",
     (destino) => expect(returnToInterna(destino)).toBeNull(),
   );
@@ -72,7 +70,7 @@ describe("returnTo", () => {
 
 describe("aba Estoque", () => {
   const base: UsuarioSessao = { ...usuarioPecuaria, areas: [] };
-  it("libera para dono e para quem tem pecuária, agricultura ou financeiro", () => {
+  it("libera para dono e para quem tem pecuária ou financeiro", () => {
     expect(podeAcessarTab({ ...base, dono: true }, "estoque")).toBe(true);
     expect(podeAcessarTab({ ...base, areas: ["pecuaria"] }, "estoque")).toBe(true);
     expect(podeAcessarTab({ ...base, areas: ["agricultura"] }, "estoque")).toBe(false);

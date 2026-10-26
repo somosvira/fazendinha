@@ -33,9 +33,24 @@ describe('preflight sem alterações e sem conexão operacional', () => {
     expect(mocks.query.mock.calls.every(([consulta]) => String(consulta).startsWith('SELECT'))).toBe(true);
     expect(mocks.writeFile).not.toHaveBeenCalled(); await aberto.fechar(); expect(mocks.end).toHaveBeenCalledOnce();
   });
-  it('recusa várias migrations antes de qualquer carga', async () => {
-    mocks.readdir.mockResolvedValue([nome, '20261001000000_antiga']);
-    await expect(abrirContexto('preflight')).rejects.toThrow('uma baseline'); expect(mocks.end).toHaveBeenCalledOnce();
+  it('aceita migration incremental aplicada depois da baseline', async () => {
+    const extensao = '20261026000000_add_clerk_user_id';
+    mocks.readdir.mockResolvedValue([nome, extensao]);
+    mocks.readFile.mockImplementation(async (path: URL | string) => {
+      if (String(path).includes(extensao)) return 'ALTER TABLE exemplo ADD COLUMN clerk_user_id text;';
+      if (String(path).endsWith('migration.sql')) return sql;
+      throw Object.assign(new Error('inexistente'), { code: 'ENOENT' });
+    });
+    const checksumExtensao = createHash('sha256').update('ALTER TABLE exemplo ADD COLUMN clerk_user_id text;').digest('hex');
+    const original = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations')
+      ? { rows: [
+        { migration_name: nome, checksum, finished_at: new Date('2026-10-24T12:00:00Z'), rolled_back_at: null },
+        { migration_name: extensao, checksum: checksumExtensao, finished_at: new Date('2026-10-25T12:00:00Z'), rolled_back_at: null },
+      ] }
+      : original(consulta));
+    const aberto = await abrirContexto('preflight');
+    await aberto.fechar();
   });
   it('recusa checksum de baseline divergente', async () => {
     const original = mocks.query.getMockImplementation()!;

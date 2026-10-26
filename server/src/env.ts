@@ -30,6 +30,14 @@ const envSchema = z
     // quando escalar além do piloto. Mínimo 16 chars para evitar brute force trivial.
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
+    // Clerk confirma a identidade; o Fazendinha mantém autorização e escopo.
+    CLERK_PUBLISHABLE_KEY: z.string().trim().min(1).optional(),
+    CLERK_SECRET_KEY: z.string().trim().min(1).optional(),
+    CLERK_JWT_KEY: z.string().trim().min(1).optional(),
+    CLERK_AUTHORIZED_PARTIES: z.string().default("").transform((valor) =>
+      valor.split(",").map((item) => item.trim()).filter(Boolean),
+    ),
+
     // --- OpenAI (provider único do app) ---
     // Interpretação das perguntas do assistente de consulta. Sem a chave,
     // consultas rápidas e guias seguem reais; pergunta livre fica indisponível.
@@ -86,6 +94,14 @@ const envSchema = z
         ctx.addIssue({ code: "custom", path: ["AUTH_EMAIL_FROM"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
       if (!v.APP_BASE_URL)
         ctx.addIssue({ code: "custom", path: ["APP_BASE_URL"], message: "obrigatório quando AUTH_EMAIL_PROVIDER=resend" });
+    }
+    if (v.NODE_ENV === "production") {
+      for (const chave of ["CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY", "CLERK_JWT_KEY"] as const) {
+        if (!v[chave]) ctx.addIssue({ code: "custom", path: [chave], message: `${chave} é obrigatório em produção` });
+      }
+      if (v.CLERK_AUTHORIZED_PARTIES.length === 0) {
+        ctx.addIssue({ code: "custom", path: ["CLERK_AUTHORIZED_PARTIES"], message: "CLERK_AUTHORIZED_PARTIES é obrigatório em produção" });
+      }
     }
     if (v.NODE_ENV === "production" && v.AUTH_EMAIL_PROVIDER === "log") {
       ctx.addIssue({ code: "custom", path: ["AUTH_EMAIL_PROVIDER"], message: "log não pode ser usado em produção" });

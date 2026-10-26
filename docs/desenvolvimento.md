@@ -23,14 +23,16 @@ Compras e entradas abastecem o estoque antes dos consumos. Rebanho, localizaçã
 
 ## Acessos demonstrativos
 
-A seed cria somente os dois usuários abaixo, ativos e como donos, com o maior permissionamento vigente, Financeiro/Pecuária, valores, lançamentos, exportação e gestão de acessos. Senhas são armazenadas por `hashSenha`; a preparação não envia e-mails.
+A seed cria somente os dois usuários abaixo, ativos e como donos, com o maior permissionamento vigente, Financeiro/Pecuária, valores, lançamentos, exportação e gestão de acessos. Esses registros são autorizações internas; não há senha local nem envio de e-mail.
 
-| E-mail | Senha inicial local |
+| E-mail | Uso na autenticação |
 |---|---|
-| `fellipe@test.com` | `test1234` |
-| `rafael@test.com` | `test1234` |
+| `fellipe@test.com` | Fixture de autorização interna |
+| `rafael@test.com` | Fixture de autorização interna |
 
-Perfis restritos são fixtures temporárias de testes, sem outros usuários persistentes na seed. Valide as permissões também na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios. Consulte o [contrato financeiro](financeiro-rebuild-contrato.md#permissões-e-documentos).
+Para homologar o login, use uma instância Clerk Development com Google habilitado e crie ou autorize no Terrano um usuário ativo cujo e-mail Google seja verificável. Configure `CLERK_SECRET_KEY`, `CLERK_JWT_KEY`, `CLERK_PUBLISHABLE_KEY` e `CLERK_AUTHORIZED_PARTIES` no servidor; em `client/.env.local`, use somente `VITE_CLERK_PUBLISHABLE_KEY`. Aplique a migration incremental no mesmo banco local com `pnpm --filter rionovo-server exec prisma migrate deploy`; não use `db push`, reset, seed adicional ou outro banco.
+
+Depois de entrar pelo Google, o servidor associa o `clerkUserId` apenas ao `Usuario` ativo de e-mail correspondente. Conta Google sem autorização interna, usuário inativo, e-mail não verificado ou sessão fora da origem permitida são negados sem criar usuário. Valide também as permissões na API: visibilidade de botão não comprova autorização e `verValores` precisa ser respeitado em DTOs, custos e relatórios.
 
 ## Retomada, arquivos e verificação
 

@@ -7,8 +7,10 @@ Este documento descreve o sistema implementado na `main` que integra a V5 (`b639
 ```mermaid
 flowchart LR
   Pessoa[Funcionário ou gestor] --> UI[React e History API]
+  Pessoa --> Clerk[Clerk: Google OAuth]
+  Clerk --> UI
   UI --> API[Hono no mesmo Cloudflare Worker]
-  API --> Auth[Sessão, área, ação e sítio]
+  API --> Auth[Sessão Clerk, área, ação e sítio]
   Auth --> Servicos[Serviços de domínio]
   Servicos --> Neon[(Neon PostgreSQL)]
   Servicos --> R2[(Arquivos privados R2)]
@@ -18,7 +20,7 @@ flowchart LR
   Leitura --> Servicos
 ```
 
-Node atende desenvolvimento/testes; produção usa exclusivamente Workers. O frontend usa `/api` relativo. `worker.ts` e `index.ts` compartilham `app.ts`, com adapters de banco apropriados. O assistente financeiro não envia resultados financeiros ao modelo nem executa escrita. Bot legado e WhatsApp estão suspensos.
+Node atende desenvolvimento/testes; produção usa exclusivamente Workers. O frontend usa `/api` relativo. `worker.ts` e `index.ts` compartilham `app.ts`, com adapters de banco apropriados. O Clerk autentica o OAuth Google; `Usuario.clerkUserId` vincula uma identidade autenticada a um usuário interno já ativo, que continua sendo a fonte de papéis, áreas, flags e sítios. O assistente financeiro não envia resultados financeiros ao modelo nem executa escrita. Bot legado e WhatsApp estão suspensos.
 
 ## Fronteiras funcionais
 

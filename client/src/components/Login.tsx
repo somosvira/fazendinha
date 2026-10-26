@@ -1,189 +1,69 @@
-/* Autenticação alinhada à identidade Cooperativa contemporânea.
- *
- * A tela mantém o fluxo de sessão em estado, sem recarregar o documento depois
- * do login. O painel de contexto só aparece em telas largas; no celular a marca
- * e o formulário permanecem em uma única superfície, sem informação perdida.
- */
-
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { login } from "../api/auth";
-import type { UsuarioSessao } from "../lib/auth";
+import { useRef, useState } from "react";
+import { useSignIn } from "@clerk/react/legacy";
 import { TerranoSymbol } from "./TerranoLogo";
-import { CampoSenha } from "./CampoSenha";
 
-function IconeEmail() {
+function GoogleMark() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M21.35 12.23c0-.71-.06-1.4-.18-2.05H12v3.88h5.24a4.48 4.48 0 0 1-1.94 2.94v2.52h3.15c1.84-1.7 2.9-4.2 2.9-7.29Z" />
+      <path fill="#34A853" d="M12 21.75c2.62 0 4.82-.87 6.43-2.35L15.28 17c-.87.58-1.98.92-3.28.92-2.52 0-4.66-1.7-5.42-4v2.6H3.33A9.72 9.72 0 0 0 12 21.75Z" />
+      <path fill="#FBBC05" d="M6.58 13.92A5.85 5.85 0 0 1 6.28 12c0-.67.12-1.32.3-1.92V7.48H3.33A9.72 9.72 0 0 0 2.25 12c0 1.57.38 3.05 1.08 4.52l3.25-2.6Z" />
+      <path fill="#EA4335" d="M12 6.08c1.42 0 2.69.49 3.69 1.44l2.76-2.76C16.81 3.23 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.67 5.23l3.25 2.6c.76-2.3 2.9-4 5.42-4Z" />
     </svg>
   );
 }
 
-function IconeSenha() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function IconeSeta() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden>
-      <path d="M5 12h14m-6-6 6 6-6 6" />
-    </svg>
-  );
-}
-
-export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: UsuarioSessao) => void }) {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [validando, setValidando] = useState(false);
+export function Login() {
+  const { isLoaded, signIn } = useSignIn();
   const [erro, setErro] = useState<string | null>(null);
   const emCurso = useRef(false);
-  const erroRef = useRef<HTMLParagraphElement>(null);
-  useEffect(() => { if (erro) erroRef.current?.focus(); }, [erro]);
 
-  const submeter = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!email.trim() || !senha || emCurso.current) return;
-
+  const entrar = async () => {
+    if (!isLoaded || !signIn || emCurso.current) return;
     emCurso.current = true;
-    setValidando(true);
     setErro(null);
     try {
-      const { token, usuario } = await login(email.trim().toLowerCase(), senha);
-      onEntrar?.(token, usuario);
-    } catch (error) {
-      setErro(error instanceof Error ? error.message : "Falha de rede.");
+      await signIn.authenticateWithRedirect({
+        strategy: "oauth_google",
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/",
+      });
+    } catch {
       emCurso.current = false;
-      setValidando(false);
+      setErro("Não foi possível iniciar o acesso com Google. Tente novamente.");
     }
   };
 
-  const campoInput =
-    "h-11 rounded-lg border-[#c7d4ca] bg-white px-3 text-[15px] text-[#283c31] shadow-none placeholder:text-[#718178] focus-visible:border-[#24493b] focus-visible:ring-2 focus-visible:ring-[#24493b]/15 focus-visible:ring-offset-0";
-
   return (
-    <main className="login-cooperativa min-h-[100dvh] bg-[#edf2ed] p-4 font-[family-name:var(--sans)] sm:p-6 lg:p-8">
-      <div className="login-cooperativa__frame mx-auto grid min-h-[calc(100dvh-2rem)] max-w-[1240px] overflow-hidden rounded-2xl border border-[#d8e2da] bg-white shadow-[0_18px_48px_rgba(34,53,44,0.10)] sm:min-h-[calc(100dvh-3rem)] lg:grid-cols-[minmax(380px,0.9fr)_minmax(480px,1.1fr)] lg:rounded-[20px]">
-        <aside className="login-cooperativa__context relative hidden overflow-hidden bg-[#24493b] p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
-          <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-            <div className="absolute -left-24 top-28 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/30" />
-            <div className="absolute -left-20 top-40 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/25" />
-            <div className="absolute -left-14 top-52 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/20" />
-            <div className="absolute -right-28 -bottom-36 h-80 w-80 rounded-full bg-[#91af95]/20 blur-3xl" />
+    <main className="login-cooperativa min-h-[100dvh] bg-[#edf2ed] p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto grid min-h-[calc(100dvh-2rem)] max-w-[1240px] overflow-hidden rounded-2xl border border-[#d8e2da] bg-white shadow-[0_18px_48px_rgba(34,53,44,.10)] lg:grid-cols-[.9fr_1.1fr]">
+        <aside className="hidden bg-[#24493b] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+          <div className="flex items-center gap-3"><TerranoSymbol size={30} tone="dark" strokeWidth={4} /><b>Terrano</b></div>
+          <div>
+            <p className="text-sm font-bold tracking-[.14em] text-[#c8dacb]">GESTÃO DA FAZENDA</p>
+            <h1 className="mt-5 max-w-md text-5xl font-semibold leading-tight">O trabalho da fazenda, no mesmo lugar.</h1>
+            <p className="mt-5 max-w-md text-lg text-[#d9e6dc]">Financeiro, estoque e pecuária organizados para a rotina da operação.</p>
           </div>
-
-          <div className="relative flex items-center gap-2.5">
-            <TerranoSymbol size={30} tone="dark" strokeWidth={4.2} />
-            <span className="text-[19px] font-semibold tracking-[-0.02em]">Terrano</span>
-          </div>
-
-          <div className="relative max-w-[440px]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c8dacb]">Gestão da fazenda</p>
-            <h1 className="mt-5 text-[42px] font-semibold leading-[1.08] tracking-[-0.035em] xl:text-[50px]">
-              Uma visão clara para decidir melhor, todos os dias.
-            </h1>
-            <p className="mt-5 max-w-[38ch] text-[16px] leading-7 text-[#d9e6dc]">
-              Financeiro, estoque e pecuária trabalhando juntos no ritmo da sua operação.
-            </p>
-          </div>
-
-          <div className="relative grid grid-cols-3 gap-3 border-t border-white/20 pt-6 text-[#e8f0e9]">
-            {[
-              ["Financeiro", "resultado"],
-              ["Estoque", "controle"],
-              ["Pecuária", "manejo"],
-            ].map(([titulo, descricao]) => (
-              <div key={titulo}>
-                <p className="text-[13px] font-semibold">{titulo}</p>
-                <p className="mt-1 text-[12px] text-[#c8dacb]">{descricao}</p>
-              </div>
-            ))}
-          </div>
+          <small className="text-[#c8dacb]">Acesso protegido para pessoas autorizadas.</small>
         </aside>
-
-        <section className="login-cooperativa__form-panel flex min-h-full items-center justify-center bg-white px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
-          <form onSubmit={submeter} className="login-cooperativa__form w-full max-w-[408px]">
-            <div className="mb-12 flex items-center gap-2.5 lg:hidden">
-              <TerranoSymbol size={28} tone="light" strokeWidth={4.2} />
-              <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#283c31]">Terrano</span>
+        <section className="flex items-center justify-center px-7 py-12 sm:px-14">
+          <div className="w-full max-w-[408px]">
+            <div className="mb-12 flex items-center gap-3 lg:hidden"><TerranoSymbol size={28} tone="light" strokeWidth={4} /><b className="text-xl">Terrano</b></div>
+            <p className="text-sm font-bold text-[#006f68]">Acesso ao Terrano</p>
+            <h2 className="mt-3 text-4xl font-semibold tracking-tight text-[#203c39]">Entre com sua conta Google</h2>
+            <p className="mt-4 leading-6 text-[#526863]">Use o e-mail que a gestão cadastrou para você. Seus acessos continuam definidos dentro do Terrano.</p>
+            <button type="button" disabled={!isLoaded} onClick={() => void entrar()} className="mt-8 flex h-12 w-full items-center justify-center gap-3 rounded-lg border border-[#7a928d] bg-white font-semibold text-[#203c39] hover:bg-[#f1f5f4] disabled:opacity-60">
+              <GoogleMark />
+              Continuar com Google
+            </button>
+            {erro && <p role="alert" className="mt-4 text-sm text-[#8d3931]">{erro}</p>}
+            <div className="mt-7 border-t pt-5 text-sm leading-5 text-[#526863]">
+              Não encontrou acesso? Peça à gestão para cadastrar seu e-mail antes de entrar.
+              <a className="mt-3 block font-semibold text-[#006f68] hover:underline" href="https://wa.me/5532984043943?text=Ol%C3%A1%2C%20preciso%20de%20ajuda%20para%20acessar%20o%20Terrano." target="_blank" rel="noreferrer">
+                Entrar em contato com a gestão
+              </a>
             </div>
-
-            <div>
-              <p className="login-cooperativa__eyebrow text-[11px] font-bold uppercase tracking-[0.14em] text-[#55715e]">Acesse sua conta</p>
-              <h2 className="login-cooperativa__title mt-3 text-[32px] font-semibold tracking-[-0.035em] text-[#283c31] sm:text-[36px]">Bem-vindo de volta</h2>
-              <p className="login-cooperativa__subtitle mt-3 text-[15px] leading-6 text-[#56665f]">Entre com seus dados para acompanhar a operação.</p>
-            </div>
-
-            <div className="mt-9">
-              <label htmlFor="login-email" className="mb-2 block text-[13px] font-semibold text-[#384b40]">E-mail</label>
-              <div className="relative flex items-center">
-                <span className="pointer-events-none absolute left-3 flex h-[18px] w-[18px] text-[#718178]">
-                  <IconeEmail />
-                </span>
-                <Input
-                  id="login-email"
-                  type="email"
-                  required
-                  maxLength={254}
-                  autoFocus
-                  autoComplete="username"
-                  placeholder="voce@fazenda.com.br"
-                  value={email}
-                  disabled={validando}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={`${campoInput} pl-10`}
-                />
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label htmlFor="login-senha" className="block text-[13px] font-semibold text-[#384b40]">Senha</label>
-                <a href="/forgot-password" className="text-[13px] font-semibold text-[#315b49] transition-colors hover:text-[#173a2c] hover:underline">Esqueci a senha</a>
-              </div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-3 flex h-[18px] w-[18px] text-[#718178]">
-                  <IconeSenha />
-                </span>
-                <CampoSenha
-                  id="login-senha"
-                  autoComplete="current-password"
-                  required
-                  placeholder="Sua senha"
-                  value={senha}
-                  disabled={validando}
-                  onChange={(event) => setSenha(event.target.value)}
-                  className={`${campoInput} pl-10`}
-                />
-              </div>
-            </div>
-
-            {erro && (
-              <p ref={erroRef} tabIndex={-1} role="alert" className="mt-5 rounded-lg border border-[#e7c4bf] bg-[#fbefec] px-3 py-2.5 text-[13px] leading-5 text-[#8d3931]">
-                {erro}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              disabled={!email || !senha || validando}
-              className="login-cooperativa__submit group mt-7 h-11 w-full gap-2 rounded-lg bg-[#24493b] text-[15px] font-semibold text-white shadow-none transition-colors hover:bg-[#1b3a2e]"
-            >
-              {validando ? "Entrando…" : "Entrar"}
-              {!validando && <IconeSeta />}
-            </Button>
-
-            <p className="login-cooperativa__footer mt-7 border-t border-[#e3ebe4] pt-5 text-center text-[13px] leading-5 text-[#64746b]">
-              Ainda não tem acesso? <span className="font-semibold text-[#384b40]">Fale com o administrador.</span>
-            </p>
-          </form>
+          </div>
         </section>
       </div>
     </main>

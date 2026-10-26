@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -463,3 +464,6 @@ describe("rascunho dos filtros de animais", () => {
     expect(new URLSearchParams(window.location.search).has("idadeMinMeses")).toBe(false);
   });
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

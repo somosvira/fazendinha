@@ -938,6 +938,7 @@ model Usuario {
   nome                     String
   email                    String                        @unique
   senhaHash                String?
+  clerkUserId              String?                       @unique
   papel                    String
   abas                     String[]
   areas                    String[]                      @default(["financeiro", "pecuaria"])

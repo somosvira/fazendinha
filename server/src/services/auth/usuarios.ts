@@ -2,7 +2,6 @@ import { prisma } from "../../db.js";
 import { env } from "../../env.js";
 import { aplicarPreset, normalizarAreas } from "./papeis.js";
 import { revogarSessoesDoUsuario } from "./sessao.js";
-import { gerarLinkConvite } from "./contas.js";
 
 export type UsuarioDTO = {
   id: number;
@@ -43,7 +42,7 @@ export async function criarUsuario(input: { nome: string; email: string; papel: 
     throw new UsuarioError("EMAIL_DUPLICADO", `já existe um acesso com o e-mail ${email}`);
   const preset = aplicarPreset(input.papel);
   const u = await prisma.usuario.create({
-    data: { nome: input.nome.trim(), email, papel: input.papel, abas: preset.abas, areas: preset.areas, flags: preset.flags, status: "PENDENTE" },
+    data: { nome: input.nome.trim(), email, papel: input.papel, abas: preset.abas, areas: preset.areas, flags: preset.flags, status: "ATIVO" },
   });
   return usuarioDTO(u);
 }
@@ -93,10 +92,9 @@ export async function garantirDonoBootstrap(): Promise<void> {
       abas: preset.abas,
       areas: preset.areas,
       flags: preset.flags,
-      status: "PENDENTE",
+      status: "ATIVO",
       dono: true,
     },
   });
-  const link = await gerarLinkConvite(dono.id);
-  console.log(`\n[auth] Dono criado (${dono.email}). Link único para definir a senha:\n  ${link}\n`);
+  console.log(`\n[auth] Dono criado (${dono.email}). Autorize este mesmo e-mail no Clerk para entrar com Google.\n`);
 }

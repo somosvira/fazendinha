@@ -1,8 +1,7 @@
 /* Rio Novo — Acessos (controle de permissões, admin).
  * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
- * mudança via PATCH. O convite devolve um link copiável, mostrado no próprio
- * modal e na ficha de quem está pendente; a recuperação pública
- * de senha envia o link pelo canal configurado no backend.
+ * mudança via PATCH. A pessoa autorizada entra com a conta Google cujo e-mail
+ * foi cadastrado; papéis e permissões continuam no Terrano.
  * As CONSTANTES de UI (ABAS/FLAGS/PAPEIS) continuam vindo de data/acessos. */
 
 import { useEffect, useState } from "react";
@@ -13,8 +12,7 @@ import {
   listarUsuarios,
   criarUsuario,
   atualizarUsuario,
-  revogarUsuario,
-  gerarConvite,
+  revogarUsuario
 } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
@@ -41,7 +39,7 @@ const STATUS_BADGE_BASE =
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     ATIVO: { label: "Ativo", cls: "text-[color:var(--pos)]" },
-    PENDENTE: { label: "Convite pendente", cls: "text-[color:var(--warn)]" },
+    PENDENTE: { label: "Pendente", cls: "text-[color:var(--warn)]" },
     INATIVO: { label: "Inativo", cls: "text-[color:var(--ink-mute)]" },
   };
   const s = map[status] || map.ATIVO;
@@ -54,53 +52,13 @@ const DONO_TAG =
 const ADMIN_TAG =
   "ml-2 inline-block border border-[color:var(--neg)] px-[5px] py-px align-middle text-[9px] uppercase tracking-[0.14em] text-[color:var(--neg)]";
 
-/* Campo somente-leitura com o link de acesso e botão de copiar. O token cru só
- * existe em memória: o backend guarda apenas o hash, então o mesmo link não
- * pode ser recuperado depois. */
-export function LinkAcesso({ link }: { link: string }) {
-  const [copiado, setCopiado] = useState(false);
-  const [erro, setErro] = useState("");
-  const [copiando, setCopiando] = useState(false);
-
-  const copiar = async () => {
-    setErro(""); setCopiado(false); setCopiando(true);
-    try {
-      if (!navigator.clipboard?.writeText) throw new Error("Indisponível");
-      await navigator.clipboard.writeText(link);
-      setCopiado(true);
-    } catch {
-      setErro("Não foi possível copiar. Selecione o link e copie manualmente.");
-    } finally { setCopiando(false); }
-  };
-  useEffect(() => { if (!copiado) return; const id = setTimeout(() => setCopiado(false), 1800); return () => clearTimeout(id); }, [copiado]);
-
-  return (
-    <div>
-    <div className="flex gap-2 max-[560px]:flex-col">
-      <input
-        readOnly
-        value={link}
-        aria-label="Link de acesso"
-        className="field-input min-w-0 flex-1 text-[13px]"
-        onFocus={(e) => e.currentTarget.select()}
-      />
-      <button className="btn-secondary whitespace-nowrap" disabled={copiando} onClick={copiar}>
-        {copiando ? "Copiando…" : copiado ? "Copiado" : "Copiar"}
-      </button>
-    </div>
-    <span className="sr-only" role="status">{copiado ? "Link copiado" : ""}</span>
-    {erro && <p role="alert" className="mt-2 text-sm text-destructive">{erro}</p>}
-    </div>
-  );
-}
-
 function InviteModal({
   onClose,
   onInvite,
   existingEmails,
 }: {
   onClose: () => void;
-  onInvite: (v: { nome: string; email: string; papel: string }) => Promise<{ nome: string; link: string }>;
+  onInvite: (v: { nome: string; email: string; papel: string }) => Promise<{ nome: string }>;
   existingEmails: string[];
 }) {
   const [nome, setNome] = useState("");
@@ -109,7 +67,7 @@ function InviteModal({
   const [touched, setTouched] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
-  const [criado, setCriado] = useState<{ nome: string; link: string } | null>(null);
+  const [criado, setCriado] = useState<{ nome: string } | null>(null);
 
   const emailNorm = email.trim().toLowerCase();
   const emailJaExiste = !!emailNorm && existingEmails.includes(emailNorm);
@@ -131,28 +89,22 @@ function InviteModal({
     try {
       setCriado(await onInvite({ nome: nome.trim(), email: emailNorm, papel }));
     } catch (e) {
-      setErro(e instanceof Error ? e.message : "Não foi possível criar o convite.");
+      setErro(e instanceof Error ? e.message : "Não foi possível autorizar o acesso.");
     } finally {
       setEnviando(false);
     }
   };
 
-  // Depois de criar, o mesmo modal passa a mostrar só o link — ele aparece uma
-  // única vez e some ao fechar, então nada de formulário competindo por atenção.
+  // Depois de autorizar, o modal confirma o e-mail que poderá entrar pelo Google.
   if (criado) {
     return (
-      <Modal titulo="Convite criado" eyebrow="Acessos" onClose={onClose}>
+      <Modal titulo="Acesso autorizado" eyebrow="Acessos" onClose={onClose}>
           <div className="modal-body">
             <p className="m-0 mb-5 text-[15px] leading-[1.6] text-ink-3">
-              Envie este link para <strong className="text-[color:var(--ink)]">{criado.nome}</strong>. Ele vale por 7 dias,
-              serve uma vez só e é a única forma de a pessoa criar a senha.
+              <strong className="text-[color:var(--ink)]">{criado.nome}</strong> já pode entrar com Google usando o e-mail cadastrado.
             </p>
-            <div className="field">
-              <label className="field-label">Link de acesso</label>
-              <LinkAcesso link={criado.link} />
-            </div>
             <div className="caption" style={{ fontStyle: "italic" }}>
-              Guarde agora: por segurança o link não pode ser consultado depois. Se perder, gere um novo pela ficha da pessoa.
+              O Terrano mantém papéis e permissões; o Google apenas confirma a identidade.
             </div>
           </div>
           <div className="modal-foot sticky bottom-0 bg-card">
@@ -165,7 +117,7 @@ function InviteModal({
   }
 
   return (
-    <Modal titulo="Convidar pessoa" eyebrow="Acessos" onClose={onClose}>
+    <Modal titulo="Autorizar pessoa" eyebrow="Acessos" onClose={onClose}>
         <div className="modal-body">
           <div className="field">
             <label className="field-label" htmlFor="inv-nome">Nome</label>
@@ -218,7 +170,7 @@ function InviteModal({
             </div>
           </div>
           <div className="caption" style={{ fontStyle: "italic" }}>
-            Você vai receber um link para enviar à pessoa. Você pode ajustar exatamente o que ela vê depois de convidar.
+            A pessoa entrará com a conta Google vinculada a este e-mail. Você pode ajustar exatamente o que ela vê depois de autorizar.
           </div>
           {erro && <span className="field-error">{erro}</span>}
         </div>
@@ -227,7 +179,7 @@ function InviteModal({
             Cancelar
           </button>
           <button className="btn-primary" disabled={!podeEnviar || enviando} onClick={submeter}>
-            {enviando ? "Criando…" : "Criar convite →"}
+            {enviando ? "Autorizando…" : "Autorizar acesso"}
           </button>
         </div>
     </Modal>
@@ -236,17 +188,11 @@ function InviteModal({
 
 function PermissionEditor({
   user,
-  linkConvite,
   onChange,
-  onResendInvite,
   onRevoke,
 }: {
   user: UsuarioSessao;
-  /** Link gerado nesta sessão. O backend só guarda o hash, então um convite
-   *  emitido antes não tem link recuperável — resta gerar outro. */
-  linkConvite?: string | null;
   onChange: (u: UsuarioSessao) => void;
-  onResendInvite: (u: UsuarioSessao) => void;
   onRevoke: (u: UsuarioSessao) => void;
 }) {
   const applyPreset = (papelId: string) => {
@@ -296,40 +242,7 @@ function PermissionEditor({
       </div>
       {!user.dono && <div className="acessos-perfil-resumo"><ShieldCheck size={18} aria-hidden="true" /><div><strong>{papelNome}</strong><p>{user.areas.map(id => AREAS.find(area => area.id === id)?.label ?? id).join(" · ") || "Nenhuma área habilitada"} · {user.flags.includes("lancar") ? "Pode registrar operações" : "Sem registro de operações"} · {user.flags.includes("verValores") ? "Valores visíveis" : "Valores ocultos"}</p></div><small>Permissões salvas automaticamente</small></div>}
 
-      {user.status === "PENDENTE" && (
-        <div className="border-b border-[color:var(--rule-soft)] bg-[color:var(--bg-card-2)] px-[26px] py-[22px]">
-          <div className="mb-3 text-[12px] uppercase tracking-[0.16em] text-[color:var(--warn)]">
-            Convite pendente
-          </div>
-          {linkConvite ? (
-            <>
-              <div className="mb-2 text-[13px] text-ink-3">Link de acesso</div>
-              <LinkAcesso link={linkConvite} />
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="caption" style={{ fontStyle: "italic" }}>
-                  Válido por 7 dias e utilizável uma única vez.
-                </span>
-                <button
-                  className="cursor-pointer border-0 bg-transparent p-0 text-[12px] text-ink-3 underline underline-offset-2 hover:text-[color:var(--ink)]"
-                  onClick={() => onResendInvite(user)}
-                >
-                  Gerar novo link
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-              <p className="m-0 max-w-[56ch] text-[14px] leading-[1.55] text-ink-3">
-                {user.nome.split(" ")[0]} ainda não criou a senha. O link aparece uma única vez, no momento em que é
-                gerado, e não fica guardado. Gere um novo para reenviar — o anterior deixa de valer.
-              </p>
-              <button className="btn-secondary" onClick={() => onResendInvite(user)}>
-                Gerar link de acesso
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+
 
       {user.dono ? (
         <div className="px-[26px] py-[30px]">
@@ -465,9 +378,6 @@ export function Acessos() {
   const [revisao, setRevisao] = useState(0);
   const [revoking, setRevoking] = useState<UsuarioSessao | null>(null);
   const [salvando, setSalvando] = useState(false);
-  // Links emitidos nesta sessão, por usuário. O backend guarda só o hash do
-  // token, então nada aqui pode ser reconstruído depois de recarregar a página.
-  const [linksConvite, setLinksConvite] = useState<Record<number, string>>({});
 
   useEffect(() => {
     let atual = true;
@@ -486,7 +396,6 @@ export function Acessos() {
 
   const sel = users.find((u) => u.id === selId) ?? users[0] ?? null;
   const ativos = users.filter((u) => u.status === "ATIVO").length;
-  const pendentes = users.filter((u) => u.status === "PENDENTE").length;
 
   const updateUser = async (next: UsuarioSessao) => {
     if (salvando) return;
@@ -499,24 +408,11 @@ export function Acessos() {
     } finally { setSalvando(false); }
   };
 
-  // O modal fica aberto e assume a exibição do link; por isso devolvemos, em vez
-  // de guardar num painel fixo da página.
   const invite = async ({ nome, email, papel }: { nome: string; email: string; papel: string }) => {
-    const { usuario, conviteLink: link } = await criarUsuario(nome, email, papel);
+    const { usuario } = await criarUsuario(nome, email, papel);
     setUsers((us) => [...us, usuario]);
     setSelId(usuario.id);
-    setLinksConvite((atual) => ({ ...atual, [usuario.id]: link }));
-    return { nome: usuario.nome, link };
-  };
-
-  const resendInvite = async (u: UsuarioSessao) => {
-    try {
-      const link = await gerarConvite(u.id);
-      setLinksConvite((atual) => ({ ...atual, [u.id]: link }));
-      toast.info("Novo link gerado", "O link anterior deixou de valer.");
-    } catch (e) {
-      toast.error("Falha ao gerar link", e instanceof Error ? e.message : "");
-    }
+    return { nome: usuario.nome };
   };
 
   const confirmRevoke = (u: UsuarioSessao) => {
@@ -549,19 +445,19 @@ export function Acessos() {
     <PaginaFinanceira>
       <PageHeader
         titulo="Acessos"
-        descricao="Convide pessoas e defina quais áreas e informações cada perfil pode consultar ou operar."
-        acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
+        descricao="Autorize pessoas e defina quais áreas e informações cada perfil pode consultar ou operar."
+        acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Autorizar pessoa</Button>}
       />
       <div className="acessos-layout mt-5">
-        <section className="acessos-equipe" aria-label="Equipe e convidados">
+        <section className="acessos-equipe" aria-label="Equipe autorizada">
           <div className="acessos-equipe-cabecalho">
-            <h2><Users size={18} aria-hidden="true" />Equipe e convidados</h2>
-            <p>{carregando ? "Consultando acessos…" : `${ativos} ativos · ${pendentes} convites pendentes`}</p>
+            <h2><Users size={18} aria-hidden="true" />Equipe autorizada</h2>
+            <p>{carregando ? "Consultando acessos…" : `${ativos} ativos`}</p>
             <label className="acessos-busca"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar pessoa" placeholder="Buscar nome ou e-mail" value={busca} onChange={e => setBusca(e.target.value)} /></label>
             <div className="acessos-status-filtros" aria-label="Filtrar pessoas por situação">{[["", "Todos"], ["ATIVO", "Ativos"], ["PENDENTE", "Pendentes"], ["INATIVO", "Inativos"]].map(([valor, texto]) => <button type="button" key={valor} aria-pressed={statusFiltro === valor} onClick={() => setStatusFiltro(valor)}>{texto}</button>)}</div>
           </div>
           {carregando ? <div className="p-5 text-sm text-ink-3" role="status">Carregando pessoas…</div> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
-            <div className="px-[18px] py-[22px] text-[13px] text-ink-3">{users.length ? "Nenhuma pessoa encontrada. Ajuste a busca ou a situação." : "Ninguém por aqui ainda. Convide a primeira pessoa."}</div>
+            <div className="px-[18px] py-[22px] text-[13px] text-ink-3">{users.length ? "Nenhuma pessoa encontrada. Ajuste a busca ou a situação." : "Ninguém por aqui ainda. Autorize a primeira pessoa."}</div>
           ) : (
             <div className="acessos-pessoas" aria-label="Selecionar pessoa">
               {usersVisiveis.map((u) => (
@@ -600,9 +496,7 @@ export function Acessos() {
           <span role="status" className={salvando ? "block mb-2 text-sm text-muted-foreground" : "sr-only"}>{salvando ? "Salvando permissões…" : ""}</span>
           <PermissionEditor
             user={sel}
-            linkConvite={linksConvite[sel.id] ?? null}
             onChange={updateUser}
-            onResendInvite={resendInvite}
             onRevoke={confirmRevoke}
           />
           </fieldset>

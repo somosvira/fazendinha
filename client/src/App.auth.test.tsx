@@ -2,6 +2,10 @@
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
+vi.mock("@clerk/react/legacy", () => ({
+  useSignIn: () => ({ isLoaded: true, signIn: { authenticateWithRedirect: vi.fn() } }),
+}));
+
 import { App } from "./App";
 
 beforeEach(() => {
@@ -20,7 +24,7 @@ describe("App — gate de autenticação", () => {
     history.replaceState(null, "", "/financeiro/operacoes?status=aberta");
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Bem-vindo de volta" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Entre com sua conta Google" })).not.toBeNull();
     await waitFor(() => {
       expect(location.pathname).toBe("/signin");
       expect(new URLSearchParams(location.search).get("returnTo")).toBe("/financeiro/operacoes?status=aberta");
@@ -43,16 +47,12 @@ describe("App — gate de autenticação", () => {
     expect(new URLSearchParams(location.search).get("returnTo")).toBe("/financeiro/operacoes?status=aberta");
   });
 
-  it("não normaliza rota pública e converte o alias antigo para a URL canônica", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ valido: true }) });
-    vi.stubGlobal("fetch", fetchMock);
+  it("redireciona links legados de senha para a entrada Google", async () => {
     history.replaceState(null, "", "/senha/token-fixture");
     render(<App />);
 
-    expect(screen.getByRole("status").textContent).toContain("Verificando seu link");
-    expect(screen.queryByLabelText("Nova senha")).toBeNull();
-    expect(await screen.findByText("Redefinir senha")).not.toBeNull();
-    await waitFor(() => expect(location.pathname).toBe("/reset-password/token-fixture"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/auth/reset-password/token-fixture");
+    await waitFor(() => expect(location.pathname).toBe("/signin"));
+    expect(screen.getByRole("heading", { name: "Entre com sua conta Google" })).not.toBeNull();
   });
+
 });

@@ -200,3 +200,8 @@
 .nutricao-dietas-panorama > div:first-child { flex: 0 0 auto; }
 .nutricao-dietas-panorama .nutricao-dietas-distribuicao { flex: 1 1 260px; }
 .nutricao-dietas-panorama .nutricao-dietas-efetivo { flex: 0 1 220px; font-size: 14px; }
+
+@media(min-width:1100px){.nutricao-lote-visual{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:stretch}.nutricao-lote-visual > :nth-child(n+3){grid-column:1 / -1}}
+.nutricao-lote-visual .nutricao-dieta-vigente .nutricao-card-corpo{padding-top:12px}.nutricao-lote-visual .nutricao-dieta-vigente .font-serif{font-family:inherit;font-weight:600}
+
+.dietas-linha-tempo{padding:20px}.dietas-linha-eixo{display:flex;justify-content:space-between;gap:12px;font-size:12px;color:var(--muted-foreground);padding-bottom:12px;border-bottom:1px solid var(--border)}.dietas-linha-registro{padding:16px 0;border-bottom:1px solid var(--border)}.dietas-linha-registro:last-child{border:0}.dietas-linha-registro>header{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dietas-linha-registro h3{font-size:15px;font-weight:600;flex:1}.dietas-linha-registro h3 span{font-weight:400;color:var(--muted-foreground)}.dietas-linha-trilho{height:12px;background:var(--accent);border-radius:6px;margin:18px 0;overflow:hidden}.dietas-linha-trilho>span{display:block;height:100%;background:var(--primary);border-radius:6px;min-width:3px}.dietas-linha-trilho>span[data-futura=true]{background:var(--muted-foreground)}.dietas-linha-registro footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px}
