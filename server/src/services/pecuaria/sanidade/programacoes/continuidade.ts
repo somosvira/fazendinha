@@ -3,20 +3,29 @@ import { auditar } from "../../rebanho/regras.js";
 import { publicarEstadoProgramacaoTx } from "./atendimento.js";
 import { elegivelProgramacao } from "./elegibilidade.calc.js";
 import type { AutorAlerta } from "../../../alertas/contratos.js";
+import { tentarTravarAnimaisAlertasTx, tentarTravarConfiguracaoAlertaTx } from "../alertas/concorrencia.js";
 async function reconciliarNecessidade(tx: Prisma.TransactionClient, n: { id:string; alertaId:string|null; situacao:string; sujeitoTipo:string; sujeitoId:string; propriedadeId:number; programacao:{ativo:boolean; produtoId:string|null; tipoExameId:string|null; publico:Prisma.JsonValue} }, hoje:Date, autor:AutorAlerta, mudanca?:string) {
-  if (["REALIZADO","DISPENSADO","INVALIDADO"].includes(n.situacao) || !n.alertaId || n.sujeitoTipo!=="ANIMAL") return;
+  if (!n.alertaId || n.sujeitoTipo!=="ANIMAL") return;
   const a = await tx.alerta.findUniqueOrThrow({where:{id:n.alertaId}});
   const encerradaPelaBaixa=n.situacao==="ENCERRADO"&&a.motivo.startsWith("Baixa do animal:");
-  if(n.situacao==="ENCERRADO"&&!(mudanca==="ESTORNO_BAIXA"&&encerradaPelaBaixa))return;
+  const animal = await tx.animal.findUnique({where:{id:n.sujeitoId},include:{localizacoes:{where:{ate:null}},baixas:{where:{estornadaEm:null}}}});
+  const local=animal?.localizacoes[0];
+  const reabrirBaixa=mudanca==="ESTORNO_BAIXA"&&encerradaPelaBaixa;
+  if ((["REALIZADO","DISPENSADO","ENCERRADO","INVALIDADO"].includes(n.situacao) || a.ciclo&&a.ciclo!=="ABERTO")&&!reabrirBaixa) {
+    if (local&&local.propriedadeId!==n.propriedadeId) {
+      await tx.necessidadeProgramacaoSanitaria.update({where:{id:n.id},data:{propriedadeId:local.propriedadeId,revisao:{increment:1}}});
+      await publicarEstadoProgramacaoTx(tx,n.id,autor,a.ciclo==="INVALIDADO"?"INVALIDAR":"ENCERRAR");
+      await auditar(tx,{entidade:"NecessidadeProgramacaoSanitaria",entidadeId:n.id,animalId:n.sujeitoId,propriedadeId:local.propriedadeId,acao:"CONTINUIDADE",usuarioId:autor.usuarioId??null,antes:n,depois:{situacao:n.situacao,mudanca,propriedadeId:local.propriedadeId}});
+    }
+    return;
+  }
   const snapshot=(a.resumo as Prisma.JsonObject).programacaoSnapshot;
   const p=snapshot&&typeof snapshot==="object"&&!Array.isArray(snapshot)?snapshot:null;
   const publico=p?.publico??n.programacao.publico;
   const produtoId=p?(typeof p.produtoId==="string"?p.produtoId:null):n.programacao.produtoId;
   const tipoExameId=p?(typeof p.tipoExameId==="string"?p.tipoExameId:null):n.programacao.tipoExameId;
-  const animal = await tx.animal.findUnique({where:{id:n.sujeitoId},include:{localizacoes:{where:{ate:null}},baixas:{where:{estornadaEm:null}}}});
   const produto=produtoId ? await tx.produto.findUnique({where:{id:produtoId},select:{ativo:true,usoSanitario:true}}):null;
   const exame=tipoExameId ? await tx.tipoExame.findUnique({where:{id:tipoExameId},select:{ativo:true}}):null;
-  const local=animal?.localizacoes[0];
   const baixa=!!animal?.baixas.length;
   const fora=!animal||!local||!elegivelProgramacao(publico,animal,hoje);
   const destinoInativo=!!produtoId&&(!produto?.ativo||!produto.usoSanitario)||!!tipoExameId&&!exame?.ativo;
@@ -34,7 +43,11 @@ export async function reavaliarContinuidadeProgramaAnimalTx(tx:Prisma.Transactio
   for(const n of itens)await reconciliarNecessidade(tx,n,hoje,autor,mudanca);
 }
 export async function reconciliarProgramacaoTx(tx:Prisma.TransactionClient,id:string,hoje:Date,autor:AutorAlerta,cursorNecessidadeId?:string) {
-  const itens=await tx.necessidadeProgramacaoSanitaria.findMany({where:{programacaoId:id,regraNecessidadeId:null,...(cursorNecessidadeId?{id:{gt:cursorNecessidadeId}}:{})},orderBy:{id:"asc"},take:50,include:{programacao:true}});
+  await tentarTravarConfiguracaoAlertaTx(tx,"programacao",id);
+  const candidatas=await tx.necessidadeProgramacaoSanitaria.findMany({where:{programacaoId:id,regraNecessidadeId:null,...(cursorNecessidadeId?{id:{gt:cursorNecessidadeId}}:{})},orderBy:{id:"asc"},take:50,select:{id:true,sujeitoId:true,sujeitoTipo:true}});
+  await tentarTravarAnimaisAlertasTx(tx,candidatas.filter(n=>n.sujeitoTipo==="ANIMAL").map(n=>n.sujeitoId));
+  // A projeção acima só escolhe o lote; decisões e fatos são relidos depois da trava do animal.
+  const itens=candidatas.length?await tx.necessidadeProgramacaoSanitaria.findMany({where:{programacaoId:id,regraNecessidadeId:null,id:{in:candidatas.map(n=>n.id)}},orderBy:{id:"asc"},include:{programacao:true}}):[];
   for(const n of itens)await reconciliarNecessidade(tx,n,hoje,autor);
-  return {cursorNecessidadeId:itens.at(-1)?.id??null,concluido:itens.length<50};
+  return {cursorNecessidadeId:candidatas.at(-1)?.id??null,concluido:candidatas.length<50};
 }

@@ -1,3 +1,4 @@
+import { travarConfiguracaoAlertaTx } from "./concorrencia.js";
 import { marcarReavaliacaoSanitariaTx } from "./cobertura.js";
 import { idadeEmMeses, idadeNaFaixa } from "../../rebanho/categoria.calc.js";
 import { z } from "zod";
@@ -32,7 +33,7 @@ export async function basePreviaTx(tx:Prisma.TransactionClient,id:string,hoje:Da
 export async function previaRegra(id:string,pagina=1,tamanho=20,agora=new Date()) {return prisma.$transaction(async tx=>{const p=await basePreviaTx(tx,id,dataCivil(diaCivil(agora)));return{regra:p.regra,base:p.base,revisao:p.regra.revisao,itens:p.itens.slice((pagina-1)*tamanho,pagina*tamanho),total:p.itens.length,pagina,tamanho,totais:p.itens.reduce<Record<string,number>>((a,i)=>(a[i.situacao]=(a[i.situacao]??0)+1,a),{})};});}
 export async function ativarRegraTx(tx:Prisma.TransactionClient,id:string,input:{base:string;revisao:number},autorId:number,agora=new Date()) {
  const hoje=dataCivil(diaCivil(agora));
- await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`regra:${id}`},0))`;
+ await travarConfiguracaoAlertaTx(tx, "regra", id);
  const p=await basePreviaTx(tx,id,hoje);
  if(p.regra.ativo){if(p.regra.revisao===input.revisao&&p.regra.baseAtivacao===input.base)return p.regra;throw new RebanhoError("CONFLITO","Regra já ativada em outra revisão");}
  if(p.regra.revisao!==input.revisao||p.base!==input.base)throw new RebanhoError("CONFLITO","O público ou a regra mudou. Confira uma nova prévia");
@@ -46,21 +47,21 @@ export async function ativarRegra(id:string,input:{base:string;revisao:number},a
  return prisma.$transaction(tx=>ativarRegraTx(tx,id,input,autorId,agora),{isolationLevel:"Serializable"});
 }
 export async function inativarRegra(id:string,input:{revisao:number;destinoAbertas:"MANTER"|"ENCERRAR";motivo:string},autorId:number) {
- return prisma.$transaction(async tx=>{await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`regra:${id}`},0))`;const r=await tx.regraAlertaSanitario.findUniqueOrThrow({where:{id}});if(r.revisao!==input.revisao)throw new RebanhoError("CONFLITO","Regra alterada. Reconsulte");const regra=await tx.regraAlertaSanitario.update({where:{id},data:{ativo:false,revisao:{increment:1}}});await tx.revisaoRegraAlertaSanitario.create({data:{regraId:id,revisao:regra.revisao,dados:JSON.parse(JSON.stringify(regra)) as Prisma.InputJsonObject,motivo:input.motivo,autorId}});
- if(input.destinoAbertas==="ENCERRAR"){const abertas=await tx.necessidadeSanitaria.findMany({where:{regraId:id,alerta:{ciclo:"ABERTO"}}});for(const n of abertas){await tx.necessidadeSanitaria.update({where:{id:n.id},data:{situacao:"ENCERRADO",motivo:input.motivo,revisao:{increment:1},decisaoEm:new Date(),decisaoPorId:autorId}});await publicarNecessidadeTx(tx,n.id,{usuarioId:autorId},"ENCERRAR");}}
+ return prisma.$transaction(async tx=>{await travarConfiguracaoAlertaTx(tx, "regra", id);const r=await tx.regraAlertaSanitario.findUniqueOrThrow({where:{id}});if(r.revisao!==input.revisao)throw new RebanhoError("CONFLITO","Regra alterada. Reconsulte");const regra=await tx.regraAlertaSanitario.update({where:{id},data:{ativo:false,revisao:{increment:1}}});await tx.revisaoRegraAlertaSanitario.create({data:{regraId:id,revisao:regra.revisao,dados:JSON.parse(JSON.stringify(regra)) as Prisma.InputJsonObject,motivo:input.motivo,autorId}});
+ if(input.destinoAbertas==="ENCERRAR"){const abertas=await tx.necessidadeSanitaria.findMany({where:{regraId:id,alerta:{ciclo:"ABERTO"}}});for(const n of abertas){const alterada=await tx.necessidadeSanitaria.updateMany({where:{id:n.id,revisao:n.revisao},data:{situacao:"ENCERRADO",motivo:input.motivo,revisao:{increment:1},decisaoEm:new Date(),decisaoPorId:autorId}});if(alterada.count!==1)throw new RebanhoError("CONFLITO","A necessidade mudou durante o encerramento. Confira novamente");await publicarNecessidadeTx(tx,n.id,{usuarioId:autorId},"ENCERRAR");}}
  return regra;});
 }
 export { avaliarRegraAnimalTx };
 /** Revisão conserva identidades e exige destino das abertas; concluídas nunca reiniciam. */
 export async function revisarRegra(id:string,input:RegraAlertaInput,decisao:{revisao:number;destinoAbertas:"MANTER"|"ENCERRAR";motivo:string},autorId:number) {
  return prisma.$transaction(async tx=>{
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`regra:${id}`},0))`;
+  await travarConfiguracaoAlertaTx(tx, "regra", id);
   const anterior=await tx.regraAlertaSanitario.findUniqueOrThrow({where:{id}});
   if(anterior.revisao!==decisao.revisao)throw new RebanhoError("CONFLITO","Regra alterada. Confira novamente");
   await validarDestino(tx,input);
   if(decisao.destinoAbertas==="ENCERRAR"){
    const abertas=await tx.necessidadeSanitaria.findMany({where:{regraId:id,alerta:{ciclo:"ABERTO"}}});
-   for(const n of abertas){await tx.necessidadeSanitaria.update({where:{id:n.id},data:{situacao:"ENCERRADO",motivo:decisao.motivo,revisao:{increment:1},decisaoEm:new Date(),decisaoPorId:autorId}});await publicarNecessidadeTx(tx,n.id,{usuarioId:autorId},"ENCERRAR");}
+   for(const n of abertas){const alterada=await tx.necessidadeSanitaria.updateMany({where:{id:n.id,revisao:n.revisao},data:{situacao:"ENCERRADO",motivo:decisao.motivo,revisao:{increment:1},decisaoEm:new Date(),decisaoPorId:autorId}});if(alterada.count!==1)throw new RebanhoError("CONFLITO","A necessidade mudou durante o encerramento. Confira novamente");await publicarNecessidadeTx(tx,n.id,{usuarioId:autorId},"ENCERRAR");}
   }
   const regra=await tx.regraAlertaSanitario.update({where:{id},data:{...input,dataFixa:input.dataFixa?dataCivil(input.dataFixa):null,vigencia:dataCivil(input.vigencia),ativo:false,revisao:{increment:1},adocao:null,baseAtivacao:null}});
   await tx.revisaoRegraAlertaSanitario.create({data:{regraId:id,revisao:regra.revisao,dados:JSON.parse(JSON.stringify(regra)) as Prisma.InputJsonObject,motivo:decisao.motivo,autorId}});

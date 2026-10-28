@@ -7,7 +7,7 @@ import { avaliarProgramacaoTx } from "./produtor.js";
 const p = { id: "p", propriedadeId: 1, nome: "Fictícia", tipo: "VACINACAO", meses: [1,2], ano: null, vigenciaInicio: new Date("2030-01-01Z"), vigenciaFim: null, precisao: "MES", dia: null, recorrencia: "JANELA_ELEGIBILIDADE", produtoId: "produto", procedimento: null, publico: {}, publicoConferido: true, fonte: null, executor: "APLICACAO", tipoExameId: null, sujeitoTipo: "ANIMAL", antecedenciaDias: 0, ativo: true, revisao: 2, ativadoEm: new Date("2030-01-01Z"), regraEquivalenteId: null };
 function fixture(programa: Omit<typeof p, "regraEquivalenteId"> & { regraEquivalenteId: string | null } = p) {
   const criadas = new Map<string, unknown>();
-  const fake = { $executeRaw: vi.fn(), programacaoSanitaria: { findUnique: vi.fn().mockResolvedValue(programa) }, regraAlertaSanitario: { findUnique: vi.fn().mockResolvedValue({ ativo: true, propriedadeIds: [1], produtoId: "produto" }) },
+  const fake = { $executeRaw: vi.fn(), $queryRaw: vi.fn().mockResolvedValue([{ adquirido: true }]), programacaoSanitaria: { findUnique: vi.fn().mockResolvedValue(programa) }, regraAlertaSanitario: { findUnique: vi.fn().mockResolvedValue({ ativo: true, propriedadeIds: [1], produtoId: "produto" }) },
     animal: { findMany: vi.fn().mockResolvedValue([{ id: "a", sexo: "F", dataNascimento: new Date("2029-01-01Z"), nascimentoEstimado: false, brinco: "FICTICIO", nome: null, localizacoes: [] }]) }, produto: { findUnique: vi.fn().mockResolvedValue({ ativo: true, usoSanitario: true, nome: "Produto fictício" }) },
     necessidadeSanitaria: { findUnique: vi.fn().mockResolvedValue({ id: "necessidade-regra", alertaId: "alerta-regra", propriedadeId: 1, situacao: "REALIZADO" }) },
     necessidadeProgramacaoSanitaria: { findUnique: vi.fn().mockImplementation(({ where }) => criadas.get(JSON.stringify(where.programacaoId_periodo_sujeitoTipo_sujeitoId)) ?? null),
@@ -16,6 +16,14 @@ function fixture(programa: Omit<typeof p, "regraEquivalenteId"> & { regraEquival
 }
 beforeEach(() => { publicar.mockReset(); publicar.mockResolvedValue({ alertaId: "alerta" }); });
 describe("produtor temporal programado", () => {
+  it("releitura após travar exclui animal transferido sem perder avanço do cursor", async () => {
+    const {tx,fake}=fixture();
+    const candidato=await fake.animal.findMany();
+    fake.animal.findMany.mockResolvedValueOnce(candidato).mockResolvedValueOnce([]);
+    const resultado=await avaliarProgramacaoTx(tx,"p",new Date("2030-01-10Z"),{tecnico:"teste"});
+    expect(resultado).toMatchObject({publicados:0,cursorAnimalId:"a",concluido:true});
+    expect(publicar).not.toHaveBeenCalled();
+  });
   it("replay e troca de mês não publicam dose nova em janela de elegibilidade", async () => {
     const { tx, fake } = fixture();
     await avaliarProgramacaoTx(tx, "p", new Date("2030-01-10Z"), { tecnico: "teste" });

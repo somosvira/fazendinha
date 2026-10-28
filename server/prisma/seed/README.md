@@ -4,7 +4,7 @@
 
 ## Ambiente e execução
 
-Aceita exclusivamente PostgreSQL de loopback `fazendinha_seedatev3`, fora de produção, com namespace `dev`/`test`, baseline aplicada e checksum idêntico. Não aplica migrations, reinicializa banco ou apaga dados. Configurações de serviços vêm do ambiente normal; o preflight não depende de R2.
+Aceita exclusivamente PostgreSQL de loopback `fazendinha_seedatev3`, fora de produção, com namespace `dev`/`test`, baseline inicial única e migrations aditivas posteriores aplicadas, com checksums idênticos aos arquivos versionados. Não aplica migrations, reinicializa banco ou apaga dados. Configurações de serviços vêm do ambiente normal; o preflight não depende de R2.
 
 ```sh
 pnpm --filter rionovo-server run seed --preflight

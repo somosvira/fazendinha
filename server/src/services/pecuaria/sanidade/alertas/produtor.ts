@@ -1,3 +1,4 @@
+import { tentarTravarAnimaisAlertasTx, tentarTravarConfiguracaoAlertaTx } from "./concorrencia.js";
 import { reconciliarParticipacaoAlertaTx } from "./protocolos.js";
 import { idadeEmMeses, idadeNaFaixa } from "../../rebanho/categoria.calc.js";
 import { RebanhoError } from "../../rebanho/regras.js";
@@ -16,6 +17,8 @@ export async function publicarNecessidadeTx(tx:Prisma.TransactionClient, necessi
   return resultado;
 }
 export async function avaliarRegraAnimalTx(tx:Prisma.TransactionClient,regraId:string,animalId:string,hoje:Date,autor:AutorAlerta) {
+  await tentarTravarAnimaisAlertasTx(tx, [animalId]);
+  await tentarTravarConfiguracaoAlertaTx(tx, "regra", regraId);
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`necessidade:${regraId}:${animalId}`},0))`;
   const [regra,animal,existente]=await Promise.all([tx.regraAlertaSanitario.findUniqueOrThrow({where:{id:regraId}}),tx.animal.findUniqueOrThrow({where:{id:animalId},include:{localizacoes:{where:{ate:null}},baixas:{where:{estornadaEm:null}}}}),tx.necessidadeSanitaria.findUnique({where:{regraId_animalId:{regraId,animalId}}})]);
   const configuracao=existente?await configuracaoNecessidadeTx(tx,{...existente,regra}):regra;

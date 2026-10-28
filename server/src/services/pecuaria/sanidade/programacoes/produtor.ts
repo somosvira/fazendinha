@@ -1,3 +1,4 @@
+import { tentarTravarAnimaisAlertasTx, tentarTravarConfiguracaoAlertaTx } from "../alertas/concorrencia.js";
 import type { Prisma } from "@prisma/client";
 import { hashConteudo, publicarAlertaTx } from "../../../alertas/publicacao.js";
 import type { AutorAlerta } from "../../../alertas/contratos.js";
@@ -7,6 +8,7 @@ import { elegivelProgramacao, janelaPublicavel } from "./elegibilidade.calc.js";
 import { chaveNecessidadeProgramacao } from "./calendario.calc.js";
 /** Cursor por ID, até 50 animais. Chamador confirma checkpoint junto da transação. */
 export async function avaliarProgramacaoTx(tx: Prisma.TransactionClient, id: string, hoje: Date, autor: AutorAlerta, cursorAnimalId?: string) {
+  await tentarTravarConfiguracaoAlertaTx(tx, "programacao", id);
   const p = await tx.programacaoSanitaria.findUnique({ where: { id } });
   if (!p || !p.ativo) return { publicados: 0, cursorAnimalId: null, concluido: true };
   if (pendenciasAtivacao(p).length) throw new RebanhoError("VALIDACAO", "Programação exige conferência de executor ou equivalência");
@@ -14,10 +16,14 @@ export async function avaliarProgramacaoTx(tx: Prisma.TransactionClient, id: str
   if (p.regraEquivalenteId && (!regraEquivalente?.ativo || !regraEquivalente.propriedadeIds.includes(p.propriedadeId) || regraEquivalente.produtoId !== p.produtoId || p.recorrencia === "CAMPANHA_ANUAL")) return { publicados: 0, cursorAnimalId: null, concluido: true };
   const janelas = janelaPublicavel(p, hoje);
   if (!janelas.length) return { publicados: 0, cursorAnimalId: null, concluido: true };
-  const animais = await tx.animal.findMany({ where: { ...(cursorAnimalId ? { id: { gt: cursorAnimalId } } : {}),
+  const consultaAnimais = { where: { ...(cursorAnimalId ? { id: { gt: cursorAnimalId } } : {}),
     localizacoes: { some: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] } },
     baixas: { none: { estornadaEm: null, data: { lte: hoje } } } }, orderBy: { id: "asc" }, take: 50,
-    select: { id: true, sexo: true, dataNascimento: true, nascimentoEstimado: true, brinco: true, nome: true, localizacoes: { where: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] }, select: { loteId: true }, take: 1 } } });
+    select: { id: true, sexo: true, dataNascimento: true, nascimentoEstimado: true, brinco: true, nome: true, localizacoes: { where: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] }, select: { loteId: true }, take: 1 } } } as const;
+  const candidatos = await tx.animal.findMany(consultaAnimais);
+  await tentarTravarAnimaisAlertasTx(tx, candidatos.map(a => a.id));
+  // Releitura em ReadCommitted: seleção anterior serve somente ao cursor e às travas.
+  const animais = candidatos.length ? await tx.animal.findMany({ ...consultaAnimais, where: { ...consultaAnimais.where, id: { in: candidatos.map(a => a.id) } } }) : [];
   let publicados = 0;
   const produto = p.produtoId ? await tx.produto.findUnique({ where: { id: p.produtoId }, select: { nome: true, ativo: true, usoSanitario: true } }) : null;
   if (p.produtoId && (!produto?.ativo || !produto.usoSanitario)) return { publicados: 0, cursorAnimalId: null, concluido: true };
@@ -51,6 +57,6 @@ export async function avaliarProgramacaoTx(tx: Prisma.TransactionClient, id: str
       await tx.necessidadeProgramacaoSanitaria.update({ where: { id: n.id }, data: { alertaId: resultado.alertaId } }); publicados++;
     }
   }
-  return { publicados, cursorAnimalId: animais.at(-1)?.id ?? null, concluido: animais.length < 50 };
+  return { publicados, cursorAnimalId: candidatos.at(-1)?.id ?? null, concluido: candidatos.length < 50 };
 }
 export { hashConteudo };

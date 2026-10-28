@@ -1,3 +1,4 @@
+import { travarConfiguracaoAlertaTx } from "../alertas/concorrencia.js";
 import { marcarReavaliacaoSanitariaTx } from "../alertas/cobertura.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../../db.js";
@@ -28,6 +29,7 @@ export async function previaAtivacaoProgramacao(id: string, propriedadeId: numbe
 export async function ativarProgramacao(id: string, propriedadeId: number, input: { revisao: number; chavePrevia: string }, usuarioId:number, agora = new Date()) {
   if(!Number.isInteger(usuarioId)||usuarioId<1)throw new RebanhoError("VALIDACAO","A ativação exige uma pessoa autenticada");
   return prisma.$transaction(async tx => {
+    await travarConfiguracaoAlertaTx(tx, "programacao", id);
     const hoje = dataCivil(diaCivil(agora)); const previa = await previaTx(tx, id, propriedadeId, hoje);
     if (previa.revisao !== input.revisao || previa.chavePrevia !== input.chavePrevia) throw new RebanhoError("CONFLITO", "Os dados mudaram. Confira uma nova prévia");
     if (previa.pendencias.length) throw new RebanhoError("VALIDACAO", previa.pendencias.join("; "));

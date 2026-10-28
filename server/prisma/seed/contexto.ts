@@ -105,15 +105,18 @@ export async function abrirContexto(modo: ModoSeed = 'executar', interromperApos
   try {
     const trava = await cliente.query<{ livre: boolean }>("SELECT pg_try_advisory_lock(hashtext('seed-unificada-v1')) AS livre");
     if (!trava.rows[0]?.livre) throw new Error('Outra execução da seed única está em andamento.');
-    const pastas = (await readdir(new URL('../migrations/', import.meta.url))).filter(n => /^\d/.test(n));
-    if (pastas.length !== 1) throw new Error('Seed única exige exatamente uma baseline ativa; conclua a consolidação antes da carga.');
-    const nome = pastas[0];
-    const checksum = createHash('sha256').update(await readFile(new URL(`../migrations/${nome}/migration.sql`, import.meta.url))).digest('hex');
+    const pastas = (await readdir(new URL('../migrations/', import.meta.url))).filter(n => /^\d/.test(n)).sort();
+    const baselines = pastas.filter(n => n.endsWith('_base_unificada'));
+    if (baselines.length !== 1 || pastas[0] !== baselines[0]) throw new Error('Seed única exige uma baseline inicial, sem histórico anterior; conclua a consolidação antes da carga.');
+    const nome = baselines[0];
+    const esperadas = new Map(await Promise.all(pastas.map(async pasta => [pasta, createHash('sha256').update(await readFile(new URL(`../migrations/${pasta}/migration.sql`, import.meta.url))).digest('hex')] as const)));
+    const checksum = esperadas.get(nome)!;
     const migrations = await cliente.query<{ migration_name: string; checksum: string; finished_at: Date | null; rolled_back_at: Date | null }>('SELECT migration_name, checksum, finished_at, rolled_back_at FROM public._prisma_migrations');
     const ativas = migrations.rows.filter(m => !m.rolled_back_at);
-    if (ativas.length !== 1 || ativas[0].migration_name !== nome || ativas[0].checksum !== checksum || !ativas[0].finished_at) throw new Error('Baseline aplicada ausente, divergente ou incompleta.');
+    const baselineAplicada = ativas.find(m => m.migration_name === nome);
+    if (!baselineAplicada?.finished_at || ativas.length !== pastas.length || new Set(ativas.map(m => m.migration_name)).size !== pastas.length || ativas.some(m => !m.finished_at || esperadas.get(m.migration_name) !== m.checksum)) throw new Error('Baseline aplicada ou cadeia de migrations ausente, divergente ou incompleta.');
     const db = await cliente.query<{ identidade: string }>("SELECT oid::text || ':' || current_database() AS identidade FROM pg_database WHERE datname=current_database()");
-    const identidade = `${url.hostname}:${url.port || '5432'}:${db.rows[0].identidade}:${ativas[0].finished_at.toISOString()}`;
+    const identidade = `${url.hostname}:${url.port || '5432'}:${db.rows[0].identidade}:${baselineAplicada.finished_at.toISOString()}`;
     let manifesto: Manifesto;
     try { manifesto = schemaManifesto.parse(JSON.parse(await readFile(`${diretorio}/manifesto.json`, 'utf8'))); }
     catch (erro) {

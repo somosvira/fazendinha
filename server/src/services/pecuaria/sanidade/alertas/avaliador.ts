@@ -1,3 +1,5 @@
+import { ConflitoAvaliacaoSanitaria } from "./concorrencia.js";
+import { conflitoTransacaoPecuaria } from "../../transacao.js";
 import { marcarReavaliacaoSanitariaTx } from "./cobertura.js";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient, Prisma } from "@prisma/client";
@@ -10,12 +12,18 @@ type Cursor = { dia:string; fase:"REGRAS"|"RECONCILIAR_PROGRAMACOES"|"PROGRAMACO
 const TAMANHO_LOTE=50;
 const LEASE_MS=60000;
 export function novoCursor(dia:string):Cursor{return{dia,fase:"REGRAS",origemId:null,animalId:null};}
+async function confirmarLoteComRetentativa<T>(db:PrismaClient, executar:(tx:Prisma.TransactionClient)=>Promise<T>) {
+ for(let tentativa=1;;tentativa++) {
+  try { return await db.$transaction(executar,{timeout:55000,isolationLevel:"ReadCommitted"}); }
+  catch(erro) { if(tentativa>=3 || !(erro instanceof ConflitoAvaliacaoSanitaria || conflitoTransacaoPecuaria(erro))) throw erro; }
+ }
+}
 /** Cada lote confirma fatos + checkpoint juntos; cliente pertence à invocação, não ao proxy HTTP. */
 export async function avaliarAlertasTemporais(db:PrismaClient,agora=new Date(),maxLotes=20) {
  const posse=randomUUID();const hoje=dataCivil(diaCivil(agora));let lotes=0;
  try {
   while(lotes<maxLotes){
-   const resultado=await db.$transaction(async tx=>{
+   const resultado=await confirmarLoteComRetentativa(db,async tx=>{
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended('avaliacao-alertas-sanidade',0))`;
     const controle=await tx.avaliacaoAlertas.upsert({where:{id:"sanidade"},create:{id:"sanidade",produtor:"sanidade"},update:{}});
     if(controle.posse&&controle.posse!==posse&&controle.posseAte&&controle.posseAte>new Date())return"OCUPADO";
@@ -52,7 +60,7 @@ export async function avaliarAlertasTemporais(db:PrismaClient,agora=new Date(),m
     const alterado=await tx.avaliacaoAlertas.updateMany({where:{id:"sanidade",posse},data:{cursor:JSON.stringify(cursor),posseAte:new Date(Date.now()+LEASE_MS)}});
     if(alterado.count!==1)throw new RebanhoError("CONFLITO","A avaliação perdeu sua posse");
     return"CONTINUAR";
-   },{timeout:55000});
+   });
    lotes++;
    if(resultado==="OCUPADO"||resultado==="CONCLUIDO")return{estado:resultado,lotes};
   }
