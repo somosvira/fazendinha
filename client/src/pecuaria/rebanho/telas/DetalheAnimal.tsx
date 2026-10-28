@@ -1,4 +1,7 @@
 import { ResumoAlertas } from "../alertas/ResumoAlertas";
+import { AcompanhamentoBezerreiro } from "../bezerreiro/AcompanhamentoBezerreiro";
+import { useConsultaBezerreiro } from "../bezerreiro/ui";
+import type { AcompanhamentoAnimal } from "../bezerreiro/types";
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Ficha por domínio; os painéis permanecem montados para preservar rascunhos.
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
@@ -46,7 +49,7 @@ import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
 import type { CarenciaAnimal } from "../sanidade/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
 
-const ABAS_FICHA = [["resumo", "Resumo"], ["cadastro", "Cadastro"], ["historico", "Histórico"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]] as const;
+const ABAS_FICHA = [["resumo", "Resumo"], ["cadastro", "Cadastro"], ["historico", "Histórico"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["bezerreiro", "Bezerreiro"]] as const;
 function secaoDaUrl() {
   const hash = window.location.hash.slice(1);
   if (["identificacao-genetica", "categoria"].includes(hash)) return "cadastro";
@@ -210,6 +213,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   };
   const carregarMovimentacoes = useCallback((pagina: number) => listarMovimentacoes({ animalId: id, incluirDesfeitas: true, page: pagina, pageSize: 20 }), [id]);
 
+  const sitioBezerreiro = sitioConsulta ?? getPropriedadeAtiva() ?? animal?.historicoLocalizacoes.find(l => l.ate == null)?.propriedade?.id ?? animal?.historicoLocalizacoes[0]?.propriedade?.id ?? null;
+  const bezerreiro = useConsultaBezerreiro<AcompanhamentoAnimal>(animal ? `/animais/${id}/acompanhamento` : null, sitioBezerreiro, refreshToken);
+  useEffect(() => { if (secaoAtiva === "bezerreiro" && bezerreiro.dados?.temHistorico === false) setSecaoAtiva("resumo"); }, [secaoAtiva, bezerreiro.dados]);
+
   if (!animal) return <PaginaFinanceira><nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={onVoltar}>{rotuloVoltar}</button></nav><PageHeader titulo="Animal" /><div className="rebanho-carregamento">
     {indisponivel ? <section className="mt-6 space-y-3 rounded-xl border border-border bg-card p-5" aria-labelledby="animal-indisponivel">
       <h1 id="animal-indisponivel" className="text-xl font-semibold">{getPropriedadeAtiva() == null ? "Animal não encontrado" : "Animal não disponível no sítio selecionado"}</h1>
@@ -297,7 +304,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
           </div>
     <ResumoAlertas animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id} revisao={refreshToken} />
     <nav aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas abas-pasta">
-      {ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
+      {ABAS_FICHA.filter(([ancora]) => (ancora !== "bezerreiro" || bezerreiro.dados?.temHistorico) && (!["reproducao", "producao"].includes(ancora) || animal.sexo === "F")).map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
         event.preventDefault();
         const abas = Array.from(event.currentTarget.parentElement!.querySelectorAll<HTMLButtonElement>("[role=tab]"));
@@ -306,6 +313,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
         abas[proxima].focus(); abas[proxima].click();
       }} tabIndex={secaoAtiva === ancora ? 0 : -1} className={`shrink-0 border-b-2 px-3 py-3 text-sm ${secaoAtiva === ancora ? "border-mast font-semibold text-ink" : "border-transparent text-ink-3"}`}>{rotulo}</button>)}
     </nav>
+    {secaoAtiva === "bezerreiro" && !bezerreiro.dados && <div className="p-5" role={bezerreiro.erro ? "alert" : "status"}>{bezerreiro.erro || "Consultando acompanhamento do bezerreiro…"}{bezerreiro.erro && <Button secondary onClick={bezerreiro.tentar}>Tentar novamente</Button>}</div>}
+    {bezerreiro.dados?.temHistorico && sitioBezerreiro != null && <section id="ficha-painel-bezerreiro" role="tabpanel" aria-labelledby="aba-bezerreiro" hidden={secaoAtiva !== "bezerreiro"}>{<AcompanhamentoBezerreiro animalId={animal.id} sitio={sitioBezerreiro} podeLancar={podeLancar} revisao={refreshToken} embutido dadosIniciais={bezerreiro.dados}/>}</section>}
     <div id="ficha-painel-resumo" role="tabpanel" aria-labelledby="aba-resumo" hidden={secaoAtiva !== "resumo"}>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
       <h2 className="sr-only">Resumo do animal</h2>

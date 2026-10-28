@@ -248,3 +248,7 @@ Fechamentos da Nutrição oferece Calendário/Tabela. O calendário começa no m
 Selecionar um fechamento apresenta receita, sítio, animal-dias e comparação prevista/conferida por ingrediente, com escala própria e unidade explícita; quantidades de ingredientes diferentes não são somadas. Custos continuam condicionados a `verValores`, com cobertura parcial e desconhecidos separados. Estornados são identificados como histórico. Dias sem registros não comprovam consumo pendente. A conferência, o detalhe e o estorno mantêm os fluxos existentes.
 
 `visualLotes` e `visualFechamentos` aceitam `visual`/`tabela`; a preferência por usuário usa o controle comum de apresentação. Alternar conserva o recorte e a paginação, sem gravar fatos operacionais.
+
+## Bezerreiro e colostragem
+
+O [contrato do Bezerreiro](bezerreiro.md) descreve participação, coleiras, aleitamento coletivo, retirada vinculada ao parto, Brix, banco/enriquecimento e acompanhamento. Código e migration aditiva são separados da aplicação/homologação no ambiente.

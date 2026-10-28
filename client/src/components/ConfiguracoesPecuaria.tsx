@@ -1,3 +1,4 @@
+import { ConfiguracoesBezerreiro } from "../pecuaria/rebanho/bezerreiro/ConfiguracoesBezerreiro";
 import { ConfiguracoesProducaoLeite } from "../pecuaria/rebanho/leite/ConfiguracoesProducaoLeite";
 import { ProgramacaoRetirada } from "../pecuaria/rebanho/leite/UIProgramacaoRetirada";
 import "../pecuaria/rebanho/leite/operacoes.css";
@@ -19,7 +20,7 @@ import { BuscaLista } from "./BuscaLista";
 const DESCRICOES: Record<string, string> = { rebanho: "Organize a classificação dos animais e os motivos das saídas.", genetica: "Mantenha raças, filiação externa e identidade dos materiais.", sanidade: "Prepare protocolos e catálogos para os registros sanitários." };
 
 const GRUPOS = [
-  { id: "producao", nome: "Produção de leite", icon: Milk, itens: [{ id: "leite", nome: "Ordenhas, controle individual e tanques", href: "/configuracoes/pecuaria/producao/leite" }, { id: "coleta", nome: "Rotina de coleta", href: "/configuracoes/pecuaria/producao/coleta" }] },
+  { id: "producao", nome: "Produção de leite", icon: Milk, itens: [{ id: "leite", nome: "Ordenhas, controle individual e tanques", href: "/configuracoes/pecuaria/producao/leite" }, { id: "coleta", nome: "Rotina de coleta", href: "/configuracoes/pecuaria/producao/coleta" }, { id: "bezerreiro", nome: "Bezerreiro e colostro", href: "/configuracoes/pecuaria/producao/bezerreiro" }] },
   { id: "rebanho", nome: "Rebanho", icon: Beef, itens: [{ id: "categorias", nome: "Categorias de animais", rebanho: "categorias" }, { id: "motivos", nome: "Motivos de baixa", rebanho: "motivos" }] },
   { id: "genetica", nome: "Genética", icon: Dna, itens: [{ id: "racas", nome: "Raças", rebanho: "racas" }, { id: "genitores", nome: "Genitores externos", rebanho: "genitores" }, { id: "material-genetico", nome: "Materiais genéticos", rebanho: "material-genetico" }] },
   { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "alertas", nome: "Alertas", href: "/configuracoes/pecuaria/sanidade/alertas" }, { id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
@@ -47,6 +48,7 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
    window.addEventListener("popstate", sync);
    return () => window.removeEventListener("popstate", sync);
  }, []);
+ if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <ConfiguracoesBezerreiro podeLancar={podeLancar} />;
  if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);

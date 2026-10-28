@@ -160,11 +160,11 @@ export async function ativarRastreio(produtoId: string, usuarioId: number | null
   });
 }
 
-export async function listarPartidas(produtoId: string, propriedadeId: number | null) {
+export async function listarPartidas(produtoId: string, propriedadeId: number | null, data?: Date) {
   const partidas = await prisma.partidaProduto.findMany({ where: { produtoId }, orderBy: [{ validade: "asc" }, { codigo: "asc" }] });
   const principal = await propriedadePrincipalId();
   const alocacoes = await prisma.alocacaoPartidaEstoque.findMany({ where: {
-    partidaId: { in: partidas.map((p) => p.id) }, movimentoEstoque: { status: statusSaldoEstoque,
+    partidaId: { in: partidas.map((p) => p.id) }, movimentoEstoque: { status: statusSaldoEstoque, ...(data ? { data: { lte: data } } : {}),
       ...(propriedadeId == null ? {} : propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId }) },
   }, select: { partidaId: true, quantidade: true, movimentoEstoque: { select: { tipo: true } } } });
   const saldos = new Map<string, Prisma.Decimal>();

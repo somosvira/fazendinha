@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ animal: vi.fn(),
   tx: { $executeRaw: vi.fn(), fornecimentoColostro: { findFirst: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
     criaParto: { findUnique: vi.fn(), findUniqueOrThrow: vi.fn() }, partoAnimal: { findUnique: vi.fn() },
-    parcelaDestinoLeite: { findFirst: vi.fn() }, auditoriaPecuaria: { create: vi.fn() } } }));
+    parcelaDestinoLeite: { findFirst: vi.fn() }, alocacaoFornecimentoColostro: { findFirst: vi.fn() }, auditoriaPecuaria: { create: vi.fn() } } }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.animal }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: (executar: (tx: typeof mocks.tx) => unknown) => executar(mocks.tx) }));
@@ -22,6 +22,7 @@ beforeEach(() => {
   mocks.tx.criaParto.findUnique.mockResolvedValue({ id: "cria", animalId: "animal", viva: true, partoId: "parto" });
   mocks.tx.partoAnimal.findUnique.mockResolvedValue({ id: "parto", status: "VALIDO", data: dia("2026-09-30"), ocorridoEm: null });
   mocks.tx.parcelaDestinoLeite.findFirst.mockResolvedValue({ id: "vinculoAtivo" }); mocks.animal.mockResolvedValue({ id: "animal" });
+  mocks.tx.alocacaoFornecimentoColostro.findFirst.mockResolvedValue(null);
 });
 describe("fornecimento V4 vinculado ao estoque", () => {
   it.each([{ anular: true }, { quantidade: 4, unidade: "L" as const }, { data: "2026-10-02" }])("impede alteração física independente de um destino ativo: %o", async alteracao => {
@@ -37,5 +38,11 @@ describe("fornecimento V4 vinculado ao estoque", () => {
     mocks.tx.parcelaDestinoLeite.findFirst.mockResolvedValue(null);
     await expect(corrigirColostro("fornecimento", { ...base, anular: true }, 7)).resolves.toMatchObject({ id: "fornecimento" });
     expect(mocks.tx.auditoriaPecuaria.create).toHaveBeenCalled();
+  });
+  it("protege também a origem do Bezerreiro contra correção física pelo fluxo V4", async () => {
+    mocks.tx.parcelaDestinoLeite.findFirst.mockResolvedValue(null);
+    mocks.tx.alocacaoFornecimentoColostro.findFirst.mockResolvedValue({ id: "origemBezerreiro" });
+    await expect(corrigirColostro("fornecimento", { ...base, anular: true }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(mocks.tx.fornecimentoColostro.update).not.toHaveBeenCalled();
   });
 });

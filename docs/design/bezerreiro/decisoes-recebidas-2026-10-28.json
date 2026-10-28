@@ -1,0 +1,32 @@
+{
+  "artefato": "Bezerreiro e colostro",
+  "versao": 1,
+  "exportadoEm": "2026-10-28T14:05:43.309Z",
+  "decisoes": {
+    "coleiras": {
+      "note": "por enquanto pode colocar vermelha, verde e amarela mas poderemos trocar depois.\nColoque 4 litros, 2 litros e 0 litros "
+    },
+    "transicao": {
+      "note": "Deve ser configuravel por peso e idade, sendo opcional a escolha de qualquer um desses e tambem pode ser manual."
+    },
+    "temporal": {
+      "note": "se ja tiver tido oferta no dia, vale para o proximo. se trocou antes, vale para o dia"
+    },
+    "brix": {
+      "choice": "Sim, maior ou igual"
+    },
+    "excecao": {
+      "choice": "Exceção com motivo e responsável"
+    },
+    "exame": {
+      "note": "por enquanto nao temos base para isso, o que importa é que é feito o exame e medido a imonoglobulina, pode pesquisar a respeito de exame de sangue pos dada de colostro a bezerros para ter mais precisao na implementacao"
+    },
+    "medicao": {
+      "choice": "Conferência individual",
+      "note": "é dado um valor x por animal, mas nao devemos prever isso no nosso sistema.\nO controle nao é feito individualmente, na pratica, a coleira determina a quantidade e todos com aquela coleira receberao a quantidade indicada.\nOu seja, o controle é feito por coletivo de acordo com a quantidade de animais e suas coleiras."
+    },
+    "rateio": {
+      "note": "Alimentacao do bezerreiro e sanidade usada somente em bezerros."
+    }
+  }
+}

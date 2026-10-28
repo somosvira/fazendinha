@@ -1,17 +1,26 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { navegarPara } from "./router";
+import { registrarGuardaNavegacao } from "./navegacaoGuardada";
 import { App } from "./App";
 import { getPropriedadeAtiva, setPropriedadeAtiva } from "./propriedadeScope";
 import { setSessao, type UsuarioSessao } from "./lib/auth";
 
 vi.mock("./components/AppSidebar", () => ({
-  AppSidebar: (props: { propAtiva: number | null; onNav: (tab: "gerencial" | "config") => void }) => <aside>
+  AppSidebar: (props: { propAtiva: number | null; onTrocarProp: (id:number|null) => void; onNav: (tab: "gerencial" | "config") => void }) => <aside>
     <span>Sítio ativo: {props.propAtiva ?? "consolidado"}</span>
+    <button onClick={() => props.onTrocarProp(2)}>Selecionar sítio 2</button>
+    <button onClick={() => props.onTrocarProp(null)}>Selecionar consolidado</button>
     <button onClick={() => props.onNav("gerencial")}>Abrir painel</button>
     <button onClick={() => props.onNav("config")}>Abrir configurações</button>
   </aside>,
 }));
+vi.mock("./pecuaria/rebanho/nutricao/Nutricao", () => ({ Nutricao: () => <div>
+  <p>Nutrição de origem</p>
+  <button onClick={() => navegarPara('/pecuaria/bezerreiro?aba=alimentacao&propriedadeId=1&data=2026-10-26&animalId=cria-1')}>Abrir oferta no Bezerreiro</button>
+</div> }));
+vi.mock("./pecuaria/rebanho/bezerreiro/BezerreiroModulo", () => ({ BezerreiroModulo: () => <p>Bezerreiro sítio: {getPropriedadeAtiva() ?? 'consolidado'}</p> }));
 vi.mock("./gerencial/PainelGerencial", () => ({
   PainelGerencial: ({ propriedadeId }: { propriedadeId: number | null }) => <p>Painel sítio: {propriedadeId ?? "consolidado"}</p>,
 }));
@@ -100,5 +109,56 @@ describe("App — contexto do painel administrativo", () => {
     expect(screen.getByText("Sítio ativo: 1")).toBeTruthy();
     expect(new URLSearchParams(location.search).get("situacao")).toBe("pagar");
     expect(new URLSearchParams(location.search).get("propriedadeId")).toBe("1");
+  });
+});
+
+
+describe("App — sítio do atalho Nutrição → Bezerreiro", () => {
+  it("adota o sítio explícito ao abrir a oferta por SPA a partir do consolidado e conserva filtros", async () => {
+    setPropriedadeAtiva(null);
+    window.history.replaceState(null, '', '/pecuaria/nutricao');
+    render(<App/>);
+    await screen.findByText('Nutrição de origem');
+    expect(screen.getByText('Sítio ativo: consolidado')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', {name:'Abrir oferta no Bezerreiro'}));
+    await screen.findByText('Bezerreiro sítio: 1');
+    expect(screen.getByText('Sítio ativo: 1')).toBeTruthy(); expect(getPropriedadeAtiva()).toBe(1);
+    expect(Object.fromEntries(new URLSearchParams(location.search))).toEqual({aba:'alimentacao',propriedadeId:'1',data:'2026-10-26',animalId:'cria-1'});
+  });
+  it.each(['', '?propriedadeId=invalido', '?propriedadeId=0', '?propriedadeId=-1', '?propriedadeId=2147483648'])("preserva o sítio selecionado quando o destino não especifica sítio válido: %s", async query => {
+    window.history.replaceState(null, '', '/pecuaria/nutricao'); render(<App/>); await screen.findByText('Nutrição de origem');
+    act(() => navegarPara('/pecuaria/bezerreiro'+query));
+    await screen.findByText('Bezerreiro sítio: 2'); expect(getPropriedadeAtiva()).toBe(2);
+  });
+  it("aguarda a guarda antes de adotar o sítio e mantém o contexto quando a saída é recusada", async () => {
+    setPropriedadeAtiva(null); window.history.replaceState(null, '', '/pecuaria/nutricao'); render(<App/>); await screen.findByText('Nutrição de origem');
+    let concluir!: (ok:boolean) => void;
+    const guarda=vi.fn(()=>new Promise<boolean>(resolve=>{concluir=resolve;})), remover=registrarGuardaNavegacao(guarda);
+    try {
+      fireEvent.click(screen.getByRole('button',{name:'Abrir oferta no Bezerreiro'}));
+      await waitFor(()=>expect(guarda).toHaveBeenCalledOnce());
+      expect(getPropriedadeAtiva()).toBeNull(); expect(screen.getByText('Nutrição de origem')).toBeTruthy();
+      await act(async()=>{concluir(false);});
+      expect(getPropriedadeAtiva()).toBeNull(); expect(screen.getByText('Sítio ativo: consolidado')).toBeTruthy();
+    } finally {remover();}
+  });
+  it("sincroniza o sítio do link quando o shell muda a seleção sem perder os demais filtros", async () => {
+    window.history.replaceState(null, '', '/pecuaria/bezerreiro?aba=alimentacao&propriedadeId=1&data=2026-10-26&animalId=cria-1'); render(<App/>); await screen.findByText('Bezerreiro sítio: 1');
+    fireEvent.click(screen.getByRole('button',{name:'Selecionar sítio 2'})); await screen.findByText('Bezerreiro sítio: 2');
+    expect(Object.fromEntries(new URLSearchParams(location.search))).toEqual({aba:'alimentacao',propriedadeId:'2',data:'2026-10-26',animalId:'cria-1'});
+    act(()=>navegarPara(location.pathname+location.search+'&pagina=2')); await screen.findByText('Bezerreiro sítio: 2'); expect(getPropriedadeAtiva()).toBe(2);
+    fireEvent.click(screen.getByRole('button',{name:'Selecionar consolidado'})); await screen.findByText('Bezerreiro sítio: consolidado');
+    expect(new URLSearchParams(location.search).has('propriedadeId')).toBe(false); expect(new URLSearchParams(location.search).get('data')).toBe('2026-10-26');
+  });
+  it("também aguarda a guarda em troca de sítio por URL dentro da própria aba Bezerreiro", async () => {
+    window.history.replaceState(null, '', '/pecuaria/bezerreiro?propriedadeId=1'); render(<App/>); await screen.findByText('Bezerreiro sítio: 1');
+    let concluir!: (ok:boolean) => void;
+    const guarda=vi.fn(()=>new Promise<boolean>(resolve=>{concluir=resolve;})), remover=registrarGuardaNavegacao(guarda);
+    try {
+      act(()=>navegarPara('/pecuaria/bezerreiro?aba=alimentacao&propriedadeId=2&data=2026-10-26'));
+      await waitFor(()=>expect(guarda).toHaveBeenCalledOnce()); expect(getPropriedadeAtiva()).toBe(1);
+      await act(async()=>{concluir(true);});
+      await screen.findByText('Bezerreiro sítio: 2'); expect(screen.getByText('Sítio ativo: 2')).toBeTruthy();
+    } finally {remover();}
   });
 });
