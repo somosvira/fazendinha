@@ -9,7 +9,6 @@ vi.mock('../rebanho/regras.js', async original => ({ ...await original<typeof im
 vi.mock('../leite/nutricao.js', () => ({ origensNutricionaisLeiteTx: f.origens, baixarLeiteNutricionalTx: f.baixa, ingredienteLeiteProducaoTx: f.ingrediente, registrarFornecimentoNutricionalTx: f.registrar, estornarLeiteNutricionalTx: vi.fn(), consultarFornecimentosNutricionaisTx: vi.fn(), previaLeiteNutricionalTx: vi.fn() }));
 vi.mock('../leite/referencias.js', () => ({ aplicarReferenciaProvisoriaTx: f.referencia }));
 vi.mock('../../estoque/leite.js', () => ({ estornarBaixaLeiteTx: f.estorno, valoresMovimentosLeiteTx: f.valores }));
-vi.mock('../reproducao/partos.js', () => ({ normalizarDetalhesParto: (v: { ocorridoEm?: string | null; horarioEstimado?: boolean }) => ({ ocorridoEm: v.ocorridoEm ? new Date(v.ocorridoEm) : null, horarioEstimado: v.horarioEstimado ?? false }) }));
 vi.mock('./gestao.js', async original => ({ ...await original<typeof import('./gestao.js')>(), configuracaoTx: f.config, obterPerfilTx: f.perfil, participantesNaDataTx: f.participantes, travarPerfil: f.lock }));
 vi.mock('../../estoque/valorizacao.js', () => ({ travarValorizacaoTx: f.valorizacao, planejarSaidaTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn() }));
 import { confirmarConsumo } from '../nutricao/consumo.js';
@@ -62,6 +61,29 @@ describe('alimentação coletiva do bezerreiro', () => {
     expect(parcelas.every(p => p.dias === null && p.baseQuantidade === 'ATRIBUIDA' && p.criterioAtribuicao === 'ATRIBUIDA_POR_OFERTA')).toBe(true);
     expect(parcelas.reduce((n, p) => n.plus(p.quantidadeLitros), D(0)).toFixed(3)).toBe('4.000');
     expect(f.baixa).toHaveBeenCalledWith(f.tx, expect.objectContaining({ produtoId: id(73) }));
+  });
+  it.each([
+    { ocorridoEm: undefined, horarioEstimado: false, esperado: null },
+    { ocorridoEm: null, horarioEstimado: false, esperado: null },
+    { ocorridoEm: '2026-10-28T01:30:00-03:00', horarioEstimado: false, esperado: new Date('2026-10-28T04:30:00Z') },
+    { ocorridoEm: '2026-10-28T06:00:00-03:00', horarioEstimado: true, esperado: new Date('2026-10-28T09:00:00Z') },
+  ])('projeta somente os campos da oferta com o normalizador real: $ocorridoEm, estimado=$horarioEstimado', async horario => {
+    const entrada = await confirmar(1, { ocorridoEm: horario.ocorridoEm, horarioEstimado: horario.horarioEstimado });
+    await confirmarOferta(entrada, 7);
+    const payload = m.ofertaBezerreiro.create.mock.calls[0][0].data;
+    expect(Object.keys(payload).sort()).toEqual([
+      'perfilId', 'propriedadeId', 'data', 'ocorridoEm', 'horarioEstimado', 'ofertaProgramadaId',
+      'configuracaoId', 'configuracaoSnapshot', 'chave', 'hash', 'responsavel', 'observacao', 'criadoPorId',
+    ].sort());
+    expect(payload).toMatchObject({ data, ocorridoEm: horario.esperado, horarioEstimado: horario.horarioEstimado });
+    const original = await confirmarOferta(entrada, 7);
+    expect(original).toMatchObject({ status: 'CONFIRMADO' });
+    expect(m.ofertaBezerreiro.create).toHaveBeenCalledOnce(); expect(f.baixa).toHaveBeenCalledOnce();
+  });
+  it('valida o dia civil real e não fabrica instante quando o horário estimado está ausente', async () => {
+    await expect(confirmarOferta(await confirmar(1, { ocorridoEm: '2026-10-28T01:00:00Z' }), 7)).rejects.toMatchObject({ code: 'VALIDACAO', campo: 'ocorridoEm' });
+    await expect(confirmarOferta(await confirmar(2, { ocorridoEm: null, horarioEstimado: true }), 7)).rejects.toMatchObject({ code: 'VALIDACAO', campo: 'horarioEstimado' });
+    expect(m.ofertaBezerreiro.create).not.toHaveBeenCalled(); expect(f.baixa).not.toHaveBeenCalled();
   });
   it('usa programação da oferta para atribuir litros entre fases de mesma coleira', async () => {
     f.participantes.mockResolvedValue([participante(1, '4', ['25', '75']), participante(2, '4', ['75', '25'])]);

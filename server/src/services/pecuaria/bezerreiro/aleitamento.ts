@@ -101,7 +101,7 @@ export async function confirmarOfertaTx(tx: Prisma.TransactionClient, input: Con
     await exigirPeriodoAberto(tx, input.propriedadeId, data);
     if (new Set(input.grupos.map(g => g.coleiraId ?? '')).size !== input.grupos.length) throw new RebanhoError('VALIDACAO', 'Coleira repetida no fornecimento');
     if (!input.grupos.some(g => D(g.quantidadeLitros).gt(0))) throw new RebanhoError('VALIDACAO', 'Informe um volume positivo');
-    const horario = normalizarDetalhesParto({ ocorridoEm: input.ocorridoEm, horarioEstimado: input.horarioEstimado }, input.data);
+    const { ocorridoEm, horarioEstimado } = normalizarDetalhesParto({ ocorridoEm: input.ocorridoEm, horarioEstimado: input.horarioEstimado }, input.data);
     const previa = await previsaoTx(tx, input.propriedadeId, data, input.perfilId);
     if (previa.contextoToken !== input.contextoToken) throw new RebanhoError('CONFLITO', 'Participantes, permanências ou programação mudaram desde a previsão. Atualize o contexto e confira novamente.', 'contextoToken');
     const sobreposicoes = await fechamentosSobrepostosTx(tx, input.propriedadeId, data, previa.grupos.flatMap(g => g.participantes.map(p => p.animalId)));
@@ -116,8 +116,9 @@ export async function confirmarOfertaTx(tx: Prisma.TransactionClient, input: Con
       identidade = o.identidadeId;
     }
     const config = await configuracaoTx(tx, input.propriedadeId);
-    const oferta = await tx.ofertaBezerreiro.create({ data: { perfilId: input.perfilId, propriedadeId: input.propriedadeId, data, ...horario, ofertaProgramadaId: input.ofertaProgramadaId,
-      configuracaoId: config?.id, configuracaoSnapshot: config ? JSON.parse(JSON.stringify(config)) : Prisma.JsonNull, chave: input.chave, hash: hashDados(input), responsavel: input.responsavel, observacao: input.observacao, criadoPorId: usuarioId } });
+    const dadosOferta = { perfilId: input.perfilId, propriedadeId: input.propriedadeId, data, ocorridoEm, horarioEstimado, ofertaProgramadaId: input.ofertaProgramadaId,
+      configuracaoId: config?.id, configuracaoSnapshot: config ? JSON.parse(JSON.stringify(config)) : Prisma.JsonNull, chave: input.chave, hash: hashDados(input), responsavel: input.responsavel, observacao: input.observacao, criadoPorId: usuarioId } satisfies Prisma.OfertaBezerreiroUncheckedCreateInput;
+    const oferta = await tx.ofertaBezerreiro.create({ data: dadosOferta });
     for (const g of input.grupos) {
       const esperado = previa.grupos.find(x => x.coleiraId === (g.coleiraId ?? null));
       if (!esperado) throw new RebanhoError('CONFLITO', 'Coleira sem participantes comprovados nesta data');
