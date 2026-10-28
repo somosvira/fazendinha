@@ -1,6 +1,6 @@
 # Bezerreiro — prévia e planejamento
 
-Prévia estática revisada em 28/10/2026, com dados fictícios e sem conexão com API/banco. A implementação React/API está em `client/src/pecuaria/rebanho/bezerreiro` e `server/src/services/pecuaria/bezerreiro`; comportamento e limites estão no [contrato](../../pecuaria/bezerreiro.md). A migration nova foi entregue, sem aplicação nesta etapa.
+Prévia estática revisada em 28/10/2026, com dados fictícios e sem conexão com API/banco. A implementação React/API está em `client/src/pecuaria/rebanho/bezerreiro` e `server/src/services/pecuaria/bezerreiro`; comportamento e limites estão no [contrato](../../pecuaria/bezerreiro.md). As migrations aditivas foram entregues, sem aplicação local nesta etapa.
 
 ## Artefatos
 
