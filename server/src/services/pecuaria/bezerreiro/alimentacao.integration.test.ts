@@ -6,6 +6,9 @@ import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integ
 import { confirmarOfertaTx, previsaoTx } from './aleitamento.js';
 import { confirmarConsumoTx } from '../nutricao/consumo.js';
 import { confirmarOfertaSchema } from './schemas.js';
+import { confirmarProducaoGeralTx } from '../leite/estoque.js';
+import { confirmarMedicaoGeralSchema } from '../leite/tanques.schemas.js';
+import { saldosOrigensLeiteTx } from '../../estoque/leite.js';
 import { travarAlimentacaoLeiteTx } from './alimentacao-compartilhada.js';
 
 const suite = process.env.PECUARIA_DB_INTEGRATION === '1' ? describe : describe.skip;
@@ -16,9 +19,10 @@ const rollback = new Error('ROLLBACK_EXCLUSIVO_FIXTURE_ALIMENTACAO');
  * remove fatos do seed, desabilita triggers ou deixa registros commitados. */
 async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<ReturnType<typeof preparar>>) => Promise<void>) {
   exigirBancoIntegracaoPecuaria();
+  const nome = `Alimentação R01 ${randomUUID()}`;
   try {
     await prisma.$transaction(async tx => {
-      const fixture = await preparar(tx);
+      const fixture = await preparar(tx, nome);
       await conferir(tx);
       await teste(tx, fixture);
       await conferir(tx);
@@ -26,13 +30,13 @@ async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<Retur
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
     throw new Error('A transação de fixture deveria ter sido desfeita');
   } catch (erro) { if (erro !== rollback) throw erro; }
+  finally { expect(await prisma.propriedade.count({ where: { nome } })).toBe(0); }
 }
 async function conferir(tx: Prisma.TransactionClient) {
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
 }
-async function preparar(tx: Prisma.TransactionClient) {
-  const nome = `Alimentação R01 ${randomUUID()}`;
+async function preparar(tx: Prisma.TransactionClient, nome: string) {
   const sitio = await tx.propriedade.create({ data: { nome } });
   const centro = await tx.centroCusto.create({ data: { nome } });
   const lote = await tx.lote.create({ data: { propriedadeId: sitio.id, nome, centroCustoId: centro.id } });
@@ -48,20 +52,34 @@ async function preparar(tx: Prisma.TransactionClient) {
     { produtoId: leite.id, unidade: 'L', quantidadeCabecaDia: 4 }, { produtoId: racao.id, unidade: 'KG', quantidadeCabecaDia: 1 },
   ] } } });
   await tx.vigenciaDietaLote.create({ data: { loteId: lote.id, dietaId: dieta.id, desde } });
+  // O produtor é adulto, tem finalidade/lactação comprovadas e não ocupa o
+  // lote do Bezerreiro: não altera os participantes nem os animal-dias da dieta.
+  const matriz = await tx.animal.create({ data: { brinco: randomUUID(), sexo: 'F', dataNascimento: new Date('2020-01-01'), dataEntrada: desde, origem: 'COMPRADO' } });
+  await tx.localizacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: sitio.id, desde } });
+  await tx.finalidadeAnimal.create({ data: { animalId: matriz.id, aptidao: 'LEITE', desde } });
+  await tx.lactacaoAnimal.create({ data: { animalId: matriz.id, propriedadeId: sitio.id, inicio: desde } });
   const config = await tx.configuracaoOrdenha.create({ data: { propriedadeId: sitio.id, vigenteDesde: desde, fonteProducao: 'GERAL', ordenhas: { create: { posicaoId: randomUUID(), nome: 'Fixture', ordem: 1 } } }, include: { ordenhas: true } });
   const dia = await tx.diaProducaoLeite.create({ data: { propriedadeId: sitio.id, dataOperacional: data, configuracaoId: config.id } });
   const sessao = await tx.sessaoOrdenha.create({ data: { diaId: dia.id, posicaoId: config.ordenhas[0].posicaoId, nome: 'Fixture', ordem: 1 } });
   const criterio = { configuracaoId: config.id, criterio: null, partos: [], primeiraOrdenhaColostro: null };
-  const medicao = await tx.medicaoGeralLeite.create({ data: { sessaoId: sessao.id, recipiente: nome, litros: 100, origemLitros: 'LITROS_INFORMADOS', natureza: 'COMERCIAL', animaisOrigem: [], criterioColostroSnapshot: criterio, responsavel: 'Fixture R01' } });
-  const movimento = await tx.movimentoEstoque.create({ data: { propriedadeId: sitio.id, produtoId: leite.id, tipo: 'ENTRADA', origem: 'PRODUCAO', data, quantidade: 100, metodoValorizacao: 'LEITE_FIFO_V1' } });
-  const entrada = await tx.entradaProducaoLeite.create({ data: { sessaoId: sessao.id, versaoSessao: 1, medicaoGeralId: medicao.id, movimentoId: movimento.id, chave: randomUUID(), hash: 'fixture',
-    snapshot: { fonte: 'GERAL', medicaoGeralId: medicao.id, litros: '100.000', versaoMedicaoGeral: 1, recipiente: nome, tanqueId: null, natureza: 'COMERCIAL', declaracaoDireta: null, criterioColostroSnapshot: criterio, primeiraOrdenhaColostro: null } } });
-  await tx.classificacaoEntradaLeite.create({ data: { entradaId: entrada.id, versao: 1, natureza: 'NAO_INFORMADA', motivo: 'Natureza inicial da fixture' } });
-  await tx.classificacaoEntradaLeite.create({ data: { entradaId: entrada.id, versao: 2, natureza: 'COMERCIAL', motivo: 'Natureza comercial explicitamente comprovada na fixture' } });
+  const medicao = await tx.medicaoGeralLeite.create({ data: { sessaoId: sessao.id, recipiente: nome, litros: 100, origemLitros: 'LITROS_INFORMADOS', natureza: 'COMERCIAL', animaisOrigem: [matriz.id], criterioColostroSnapshot: criterio, responsavel: 'Fixture R01' } });
+  // O mesmo núcleo usado pela produção gera movimento, hash canônico,
+  // snapshot de origem/carência, classificações e registro idempotente.
+  const confirmacao = confirmarMedicaoGeralSchema.parse({ chave: randomUUID(), medicaoId: medicao.id, versaoEsperada: medicao.versao,
+    produtoId: leite.id, motivoNatureza: 'Leite comercial da matriz identificada e sem carências nesta fixture' });
+  const entrada = await confirmarProducaoGeralTx(tx, confirmacao, { propriedadeId: sitio.id, usuarioId: null });
+  expect(await confirmarProducaoGeralTx(tx, confirmacao, { propriedadeId: sitio.id, usuarioId: null })).toEqual(entrada);
+  const origem = await tx.entradaProducaoLeite.findUniqueOrThrow({ where: { id: entrada.id }, include: { movimento: true, classificacoes: { orderBy: { versao: 'asc' } } } });
+  expect(origem).toMatchObject({ status: 'CONFIRMADA', versaoSessao: sessao.versao, hash: expect.stringMatching(/^[a-f0-9]{64}$/) });
+  expect(origem.movimento.quantidade.toFixed(3)).toBe('100.000');
+  expect(origem.classificacoes.map(c => [c.versao, c.natureza])).toEqual([[1, 'NAO_INFORMADA'], [2, 'COMERCIAL']]);
+  expect(origem.snapshot).toMatchObject({ fonte: 'GERAL', animaisOrigem: [expect.objectContaining({ animalId: matriz.id })], carencia: { animais: [expect.objectContaining({ animalId: matriz.id, estado: 'SEM_RESTRICAO_REGISTRADA' })] } });
+  expect(await tx.movimentoEstoque.count({ where: { propriedadeId: sitio.id, produtoId: leite.id, tipo: 'ENTRADA' } })).toBe(1);
   return { sitio, centro, lote, animal, perfil, fase, participacao, leite, racao, entrada };
 }
 async function oferta(tx: Prisma.TransactionClient, f: Awaited<ReturnType<typeof preparar>>) {
   const previa = await previsaoTx(tx, f.sitio.id, data, f.perfil.id);
+  expect(previa.grupos.flatMap(g => g.participantes.map(p => p.animalId))).toEqual([f.animal.id]);
   return { ...confirmarOfertaSchema.parse({ chave: randomUUID(), contextoToken: previa.contextoToken, perfilId: f.perfil.id, data: '2026-10-26', ofertaProgramadaId: f.fase.ofertas[0].id, responsavel: 'Fixture R01', grupos: [{ quantidadeLitros: '4', entradaIds: [f.entrada.id] }] }), propriedadeId: f.sitio.id };
 }
 function fechamento(f: Awaited<ReturnType<typeof preparar>>, leite = 4) {
@@ -82,18 +100,24 @@ suite('alimentação íntegra com PostgreSQL real', () => {
     await expect(confirmarOfertaTx(tx, entrada, null)).rejects.toMatchObject({ code: 'CONFLITO', campo: 'contextoToken' });
     expect(await tx.ofertaBezerreiro.count({ where: { propriedadeId: f.sitio.id } })).toBe(0);
     expect(await tx.movimentoEstoque.count({ where: { produtoId: f.leite.id, tipo: 'SAIDA' } })).toBe(0);
-  }));
+    expect((await saldosOrigensLeiteTx(tx, f.leite.id, f.sitio.id))[0]?.quantidade.toFixed(3)).toBe('100.000');
+  }), 35_000);
   it('oferta → fechamento impede outra baixa e permite zero justificado com os outros ingredientes', async () => comFixture(async (tx, f) => {
     const entrada = await oferta(tx, f), original = await confirmarOfertaTx(tx, entrada, null); await conferir(tx);
     await expect(confirmarConsumoTx(tx, fechamento(f), null)).rejects.toMatchObject({ code: 'CONFLITO' });
     expect(await tx.fechamentoConsumo.count({ where: { propriedadeId: f.sitio.id } })).toBe(0);
     const salvo = await confirmarConsumoTx(tx, fechamento(f, 0), null); await conferir(tx);
-    expect(salvo.itens.map(i => i.quantidadeConfirmada.toString())).toEqual(['0', '1']);
+    expect(salvo.itens.find(i => i.produtoId === f.leite.id)?.quantidadeConfirmada.toString()).toBe('0');
+    expect(salvo.itens.find(i => i.produtoId === f.racao.id)?.quantidadeConfirmada.toString()).toBe('1');
+    expect(salvo.animalDias).toBe(1);
     expect(await confirmarOfertaTx(tx, entrada, null)).toEqual(original);
     expect(await tx.movimentoEstoque.count({ where: { produtoId: f.leite.id, tipo: 'SAIDA' } })).toBe(1);
-  }));
+    expect((await saldosOrigensLeiteTx(tx, f.leite.id, f.sitio.id))[0]?.quantidade.toFixed(3)).toBe('96.000');
+  }), 35_000);
   it('fechamento → oferta impede baixa repetida e aceita adicional explícito com conservação SQL', async () => comFixture(async (tx, f) => {
-    await confirmarConsumoTx(tx, fechamento(f), null); await conferir(tx);
+    const primeiro = await confirmarConsumoTx(tx, fechamento(f), null); await conferir(tx);
+    expect(primeiro.animalDias).toBe(1);
+    expect(primeiro.itens.find(i => i.produtoId === f.leite.id)?.quantidadePrevista.toFixed(3)).toBe('4.000');
     const entrada = await oferta(tx, f);
     await expect(confirmarOfertaTx(tx, entrada, null)).rejects.toMatchObject({ code: 'CONFLITO' });
     expect(await tx.ofertaBezerreiro.count({ where: { propriedadeId: f.sitio.id } })).toBe(0);
@@ -102,7 +126,8 @@ suite('alimentação íntegra com PostgreSQL real', () => {
     const totais = await tx.fornecimentoNutricionalLeite.aggregate({ where: { propriedadeId: f.sitio.id }, _sum: { quantidadeLitros: true } });
     expect(totais._sum.quantidadeLitros?.toFixed(3)).toBe('8.000');
     expect(await tx.movimentoEstoque.count({ where: { produtoId: f.leite.id, tipo: 'SAIDA' } })).toBe(2);
-  }));
+    expect((await saldosOrigensLeiteTx(tx, f.leite.id, f.sitio.id))[0]?.quantidade.toFixed(3)).toBe('92.000');
+  }), 35_000);
   it('a primitiva comum serializa duas conexões e libera a disputa após rollback', async () => {
     exigirBancoIntegracaoPecuaria(); const sitio = -Math.floor(Math.random() * 1_000_000_000) - 1;
     let liberar!: () => void, adquirido!: () => void;
