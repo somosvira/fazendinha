@@ -1,3 +1,4 @@
+import { listarCategorias } from "../api";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
@@ -23,7 +24,7 @@ import { carregarAnimaisManejo, filtrarManejo, lerConsultaManejo, montarFilasMan
 const FILAS = [
   { id: "liberadas", titulo: "Liberadas sem serviço", descricao: "Matrizes com liberação comprovada até hoje.", Icone: Venus },
   { id: "diagnostico", titulo: "Aguardando diagnóstico", descricao: "Tentativas aguardando diagnóstico, sem presumir resultado ou prazo clínico.", Icone: Stethoscope },
-  { id: "pendencias", titulo: "Pendências", descricao: "Confira origem do ciclo, liberação, restrições e dados de escopo antes do manejo.", Icone: ClipboardList },
+  { id: "pendencias", titulo: "Pendências de cadastro e liberação", descricao: "Confira origem do ciclo, liberação, restrições e dados de escopo antes do manejo.", Icone: ClipboardList },
 ] as const;
 type DadosManejo = { propriedadeId: number; hoje: string; filas: Record<FilaManejo, LinhaManejo[]> };
 export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento, recarregarToken = 0 }: {
@@ -49,10 +50,11 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
       obterReproducao(undefined, propriedadeId),
       consultarIndicadores({ propriedadeId, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 }),
       carregarAnimaisManejo(propriedadeId, () => ativo),
-    ]).then(([painel, snapshot, animais]) => {
+      listarCategorias(),
+    ]).then(([painel, snapshot, animais, categorias]) => {
       if (!ativo) return;
       if (!snapshot.acompanhamento) throw new Error("A consulta não trouxe a fila de manejo. Tente novamente ou consulte os animais e ciclos.");
-      setDados({ propriedadeId, hoje, filas: montarFilasManejo(painel, snapshot.acompanhamento, animais, hoje) });
+      setDados({ propriedadeId, hoje, filas: montarFilasManejo(painel, snapshot.acompanhamento, animais, hoje, categorias.itens) });
     }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível carregar o manejo."); })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
@@ -66,7 +68,9 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   };
   const atual = FILAS.find(f => f.id === consulta.fila);
   const todas = [...new Map(Object.values(filtradas).flat().map(a => [a.animalId, a])).values()];
-  const linhas = consulta.fila === "todas" ? filtrarManejo(todas, consulta) : filtradas[consulta.fila];
+  const linhas = consulta.fila === "todas" ? filtrarManejo(todas, consulta)
+    : consulta.fila === "manejo" ? filtrarManejo([...filtradas.liberadas, ...filtradas.diagnostico], consulta)
+    : filtradas[consulta.fila];
   const filaDe = (id: string) => FILAS.find(f => filas?.[f.id].some(a => a.animalId === id))?.id;
   const paginas = Math.max(1, Math.ceil(linhas.length / consulta.tamanho));
   const pagina = Math.min(consulta.pagina, paginas);
@@ -80,9 +84,9 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
     setConsulta(proxima);
   }
-    const edicaoFiltros = useRascunhoConsulta({fila:consulta.fila,busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{fila:"todas" as ConsultaManejo["fila"],busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
+    const edicaoFiltros = useRascunhoConsulta({fila:consulta.fila,busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{fila:"manejo" as ConsultaManejo["fila"],busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
   const campos: CampoConsulta[] = [
-    {chave:"situacao",ativo:consulta.fila!=="todas",limpar:()=>edicaoFiltros.editar("fila","todas"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="todas">Todas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
+    {chave:"situacao",ativo:consulta.fila!=="manejo",limpar:()=>edicaoFiltros.editar("fila","manejo"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="manejo">Manejo: liberadas e diagnóstico</option><option value="todas">Todas as filas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><Input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
     {chave:"lote",ativo:!!consulta.lote,limpar:()=>edicaoFiltros.editar("lote",""),conteudo:<CampoFiltro rotulo="Lote"><SelectCampo aria-label="Filtrar lote" value={edicaoFiltros.rascunho.lote} onValueChange={v=>edicaoFiltros.editar("lote",v)}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote!=="sem-lote" && !lotes.some(l=>l.id===consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"ordem",colunas:[],ativo:consulta.ordem!=="maior-espera",limpar:()=>edicaoFiltros.editar("ordem","maior-espera"),conteudo:<CampoFiltro rotulo="Ordenar por"><SelectCampo aria-label="Ordenar animais" value={edicaoFiltros.rascunho.ordem} onValueChange={v=>edicaoFiltros.editar("ordem",v as ConsultaManejo["ordem"])}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal · A–Z</option><option value="animal-desc">Identificação do animal · Z–A</option></SelectCampo></CampoFiltro>},
@@ -92,15 +96,15 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   return <section className="manejo-v4 space-y-5" aria-label="Manejo reprodutivo">
     <ErrorBox erro={erro}/>
     {erro && <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
-    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências</strong><p>Confira origem do ciclo, liberação e restrições.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
+    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de cadastro e liberação</strong><p>Esta contagem não inclui os {filtradas.diagnostico.length} animais aguardando diagnóstico.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
     <Panel className="overflow-hidden">
       <header>
 
-        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="todas"?[{id:"fila",rotulo:atual?.titulo??"Todas",limpar:()=>mudar({fila:"todas"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
+        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="manejo"?[{id:"fila",rotulo:atual?.titulo??"Todas as filas",limpar:()=>mudar({fila:"manejo"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
       </header>
       {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
       {visivel && <>
-        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? "Liberadas, aguardando diagnóstico e pendências, sem duplicar animais."}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
+        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Liberadas sem serviço e aguardando diagnóstico. Pendências de cadastro são consultadas separadamente." : "Todas as filas, incluindo pendências de cadastro e liberação.")}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
         {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
           const fila = filaDe(a.animalId);
           return <article className="reproducao-cartao" key={a.animalId}>

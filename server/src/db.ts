@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { neonConfig } from "@neondatabase/serverless";
 import { PrismaNeon } from "@prisma/adapter-neon";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -5,12 +6,8 @@ import { PrismaClient } from "@prisma/client";
 import { env } from "./env.js";
 import { isCloudflareWorkers } from "./lib/runtime.js";
 
-// Workers bloqueia socket TCP cru, então dentro dele o Prisma só pode falar
-// com o banco via HTTP/WebSocket (driver do Neon). Fora do Worker (dev local,
-// testes, o processo Node tradicional) usa TCP normal (`pg`) — funciona tanto
-// contra o Neon (aceita o protocolo Postgres padrão) quanto contra um Postgres
-// local (docker-compose), sem precisar de nenhuma env extra: é a mesma
-// DATABASE_URL, só o valor muda por ambiente.
+// O Worker usa HTTP/WebSocket pelo adapter Neon; Node usa TCP pelo adapter pg.
+// Ambos recebem a conexão validada em env.DATABASE_URL.
 neonConfig.poolQueryViaFetch = true;
 if (typeof WebSocket !== "undefined") {
   neonConfig.webSocketConstructor = WebSocket;
@@ -26,29 +23,37 @@ function criarPrismaClient(): PrismaClient {
 // TCP de vida longa, sem problema em reusar entre chamadas.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-// Dentro do Worker o singleton acima quebra: um isolate NÃO reinicia a cada
-// requisição (é reaproveitado entre muitas, é assim que o modelo de isolate
-// ganha performance) — só reinicia em cold start. Um PrismaClient criado uma
-// vez no module scope, então, fica compartilhado entre requisições diferentes,
-// e o I/O do adapter do Neon (fetch/WebSocket) fica atrelado à requisição em
-// que foi originado. O runtime do Cloudflare detecta esse reuso entre
-// requisições e cancela a promise ("A promise was resolved or rejected from a
-// different request context...") — reproduzido em produção em várias rotas
-// (/api/auth/me, /api/rebanho/parametros), sempre como pendurar/500 ("Worker's
-// code had hung"). Por isso, dentro do Worker, cada requisição usa seu próprio
-// PrismaClient — `resetPrismaPorRequisicao()` é chamado por um middleware logo
-// no topo de app.ts, antes de qualquer rota (inclusive as isentas de auth).
-let prismaDaRequisicaoAtual: PrismaClient | undefined;
+// Requisições concorrentes compartilham o isolate, mas não podem compartilhar
+// I/O do Neon. Uma variável global de "requisição atual" troca o cliente de A
+// quando B começa durante um await. O contexto assíncrono conserva o cliente
+// de cada chamada até a resposta, inclusive dentro de transações.
+const contextoPrisma = new AsyncLocalStorage<{ cliente?: PrismaClient }>();
 
-export function resetPrismaPorRequisicao(): void {
-  if (isCloudflareWorkers()) prismaDaRequisicaoAtual = criarPrismaClient();
+export async function comPrismaPorRequisicao<T>(executar: () => Promise<T>): Promise<T> {
+  if (!isCloudflareWorkers()) return executar();
+  const contexto: { cliente?: PrismaClient } = {};
+  return contextoPrisma.run(contexto, async () => {
+    try {
+      return await executar();
+    } finally {
+      try {
+        await contexto.cliente?.$disconnect();
+      } catch {
+        // Falha de limpeza não deve substituir a resposta ou o erro original,
+        // nem expor detalhes da conexão nos logs.
+        console.warn("[db] Falha ao encerrar conexão da requisição");
+      }
+    }
+  });
 }
 
 function criarPrismaProxyPorRequisicao(): PrismaClient {
   return new Proxy({} as PrismaClient, {
     get(_target, prop) {
-      if (!prismaDaRequisicaoAtual) prismaDaRequisicaoAtual = criarPrismaClient();
-      return Reflect.get(prismaDaRequisicaoAtual, prop, prismaDaRequisicaoAtual);
+      const contexto = contextoPrisma.getStore();
+      if (!contexto) throw new Error("Acesso ao banco no Worker exige contexto de requisição");
+      const cliente = contexto.cliente ??= criarPrismaClient();
+      return Reflect.get(cliente, prop, cliente);
     },
   });
 }

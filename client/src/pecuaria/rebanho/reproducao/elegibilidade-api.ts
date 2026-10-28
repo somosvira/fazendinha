@@ -109,6 +109,10 @@ export const anularDecisao = (
     input.propriedadeId,
   );
 const motivos: Record<string, string> = {
+  INICIO_CICLO_NAO_COMPROVADO: "Não há parto ou situação inicial que comprove o início do acompanhamento.",
+  LIBERACAO_NAO_COMPROVADA: "Liberação reprodutiva ainda não comprovada.",
+  DISPONIBILIDADE_NO_CORTE_NAO_COMPROVADA: "Disponibilidade para reprodução não comprovada na data consultada.",
+  RESTRICAO_NO_CORTE: "Há impedimento de elegibilidade na data consultada.",
   POLITICA_CICLO_NAO_CONGELADA:
     "O acompanhamento precisa de vínculo explícito com a política.",
   POLITICA_AUSENTE_NO_INICIO_CICLO:

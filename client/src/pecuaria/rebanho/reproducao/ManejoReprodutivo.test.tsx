@@ -5,12 +5,12 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ManejoReprodutivo } from "./ManejoReprodutivo";
 import { obterReproducao, type AnimalReprodutivo, type PainelReprodutivo } from "./api";
 import { consultarIndicadores, type FiltrosIndicadores, type SnapshotIndicadoresReprodutivos } from "./indicadores-api";
-import { listarAnimais } from "../api";
+import { listarAnimais, listarCategorias } from "../api";
 import type { AnimalResumo, ListarResultado } from "../types";
 import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
 import { navegarConsultaComSitio } from "./contexto-consulta";
 vi.mock("./api", () => ({ obterReproducao: vi.fn() }));
-vi.mock("../api", () => ({ listarAnimais: vi.fn() }));
+vi.mock("../api", () => ({ listarAnimais: vi.fn(), listarCategorias: vi.fn() }));
 vi.mock("./indicadores-api", () => ({ consultarIndicadores: vi.fn() }));
 vi.mock("./contexto-consulta", async original => ({ ...await original<typeof import("./contexto-consulta")>(), navegarConsultaComSitio: vi.fn() }));
 vi.mock("../../../lib/hoje", async original => ({ ...await original<typeof import("../../../lib/hoje")>(), getHojeISO: () => "2026-10-17" }));
@@ -37,6 +37,7 @@ let painel: PainelReprodutivo;
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
   painel = { animais: [estado("1"), estado("2"), estado("3"), estado("4", "AGUARDANDO_DIAGNOSTICO"), estado("9", "DESCONHECIDA")], tentativas: [], avaliacoes: [], partos: [], restricoes: [] };
+  vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
   vi.mocked(obterReproducao).mockResolvedValue(painel);
   vi.mocked(consultarIndicadores).mockImplementation(async f => snapshot(f));
   vi.mocked(listarAnimais).mockResolvedValue(resultado([animal("1"), animal("2", "l2"), animal("3"), animal("4"), animal("9")]));
@@ -47,6 +48,8 @@ it("separa liberação comprovada de diagnóstico e pendências, sem projetar da
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false} onConsultarHistorico={historico} onRegistrarEvento={registrar}/>);
   await screen.findAllByText("V4-1");
   expect(screen.queryByRole("button", { name: /^Liberadas sem serviço/ })).toBeNull();
+  expect(screen.queryByText("V4-9")).toBeNull();
+  expect(screen.getByText("Esta contagem não inclui os 1 animais aguardando diagnóstico.")).toBeTruthy();
   expect(screen.queryByText("V4-3")).toBeNull(); expect(screen.getAllByText("V4-4")[0]).toBeTruthy();
   expect(screen.getAllByText("0 dias sem serviço")[0]).toBeTruthy(); expect(screen.queryByText("Registrar evento")).toBeNull();
   expect(consultarIndicadores).toHaveBeenCalledWith({ propriedadeId: 7, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 });
@@ -153,4 +156,59 @@ it("alterna cartões e tabela preservando recorte, ordem, página e lista autori
   expect(screen.queryByRole("table")).toBeNull();
   expect(screen.getAllByRole("link", { name: "Abrir ficha" })).toHaveLength(1);
   expect(obterReproducao).toHaveBeenCalledTimes(1);
+});
+
+function configurarCrescimento() {
+  vi.mocked(listarCategorias).mockResolvedValue({ semCategoria: 0, itens: [{
+    id: "crescimento", nome: "Bezerras da fazenda", sexo: "F", automatica: true, ativo: true,
+    ordem: 20, idadeMinMeses: null, idadeMaxMeses: 12, partos: "SEM", ideagriId: 5,
+    padrao: true, regra: "Regra configurada", animaisAtivos: 1, manuaisAbertas: 0,
+  }] });
+  painel.animais = [estado("4", "AGUARDANDO_DIAGNOSTICO"), {
+    ...estado("9", "DESCONHECIDA"), partos: 0, temHistoricoReprodutivo: false,
+  }];
+  vi.mocked(listarAnimais).mockResolvedValue(resultado([{ ...animal("4"), categoria: { id: "crescimento", nome: "Bezerras da fazenda" } }, {
+    ...animal("9"), categoria: { id: "crescimento", nome: "Bezerras da fazenda" },
+    categoriaOrigem: "MANUAL", idadeMeses: 20,
+  }]));
+}
+it("retira crescimento sem histórico das pendências usando a categoria vigente, mesmo renomeada ou manual", async () => {
+  configurarCrescimento();
+  window.history.replaceState(null, "", "/pecuaria/reproducao?fila=todas");
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findAllByText("V4-4");
+  expect(screen.queryByText("V4-9")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Revisar pendências" })).toBeNull();
+  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
+});
+it.each(["historico", "desconhecido", "receptora", "conflito", "categoriaPersonalizada", "escopo"])("preserva conferência de crescimento com %s", async caso => {
+  configurarCrescimento();
+  if (caso === "historico") painel.animais[1].temHistoricoReprodutivo = true;
+  if (caso === "desconhecido") delete painel.animais[1].temHistoricoReprodutivo;
+  if (caso === "receptora" || caso === "conflito") {
+    vi.mocked(listarAnimais).mockResolvedValue(resultado([animal("4"), {
+      ...animal("9"), categoria: { id: "crescimento", nome: "Bezerras da fazenda" },
+      papelReprodutivo: caso === "receptora" ? "RECEPTORA" : null,
+      papelReprodutivoEstado: caso === "conflito" ? "CONFLITO" : "CONHECIDO",
+    }]));
+  }
+  if (caso === "categoriaPersonalizada") vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
+  if (caso === "escopo") vi.mocked(consultarIndicadores).mockImplementation(async f => {
+    const s = snapshot(f);
+    s.acompanhamento!.exclusoesEscopo = [{ animalId: "9", populacao: "FILA_ATUAL", referenciaId: "c9", motivos: ["PAPEL_DESCONHECIDO"] }];
+    return s;
+  });
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findAllByText("V4-4");
+  expect(screen.queryByText("V4-9")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Revisar pendências" }));
+  expect(screen.getAllByText("V4-9").length).toBeGreaterThan(0);
+  expect(screen.queryByText("V4-4")).toBeNull();
+});
+it("conserva a URL Todas como consulta explícita das filas, sem misturar as pendências na abertura padrão", async () => {
+  window.history.replaceState(null, "", "/pecuaria/reproducao?fila=todas&porPagina=10");
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findAllByText("V4-9");
+  expect(screen.getAllByText("V4-4").length).toBeGreaterThan(0);
+  expect(screen.getByText("1–4 de 4 animais")).toBeTruthy();
 });

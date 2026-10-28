@@ -23,7 +23,7 @@ Rotas validam entradas e coordenam serviços; serviços orquestram banco e regra
 
 O deploy usa exclusivamente Cloudflare Workers: interface e API compartilham o mesmo Worker, com Neon para banco e R2 para arquivos. `server/src/app.ts` constrói o Hono compartilhado. `index.ts` atende o desenvolvimento local em Node; `worker.ts` é o entrypoint de produção com assets do Vite definidos em `wrangler.jsonc`. O frontend usa `/api` relativo; o Vite faz proxy para 41873 em desenvolvimento.
 
-`db.ts` usa `PrismaPg` em Node, compatível com PostgreSQL local ou Neon, e `PrismaNeon` no Worker. Em Node o client é reutilizado; no Worker `resetPrismaPorRequisicao()` prepara o client para a requisição antes das rotas. Preserve essa ordem e o tratamento do contexto de I/O.
+`db.ts` usa `PrismaPg` em Node, compatível com PostgreSQL local ou Neon, e `PrismaNeon` no Worker. Em Node o client é reutilizado; no Worker o primeiro middleware envolve as rotas em `comPrismaPorRequisicao()`. `AsyncLocalStorage` isola o cliente de cada requisição, inclusive após `await` e durante transações concorrentes. O cliente é criado no primeiro acesso e desconectado ao concluir a requisição, também em erro. Acesso fora desse contexto falha explicitamente, sem criar um singleton de fallback. Preserve essa ordem e o isolamento de I/O; uma variável global de requisição atual não isola chamadas sobrepostas.
 
 O schema usa `public` para Financeiro/Estoque/Auth/Sítios e `pecuaria` para os fatos pecuários. IDs e relações seguem o schema, sem inferir um tipo global único de identificador. SQL das migrations acrescenta constraints, índices parciais e catálogos que o Prisma não representa integralmente. `migrate deploy` aplica a cadeia; `db push` não é equivalente.
 

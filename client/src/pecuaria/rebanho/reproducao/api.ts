@@ -66,6 +66,8 @@ export type CamposParto = {
   observacao?: string | null;
 };
 export type AnimalReprodutivo = ContextoTemporalAnimal & {
+  /** Presença de fatos, papéis, protocolos ou vínculos reprodutivos; não é liberação clínica. */
+  temHistoricoReprodutivo?: boolean;
   animalId: string;
   brinco: string;
   nome: string | null;
