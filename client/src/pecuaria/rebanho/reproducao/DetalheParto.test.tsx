@@ -53,6 +53,7 @@ it.each([false,true])("oculta escritas para leitor ou parto anulado (anulado=%s)
  await screen.findByRole("heading",{name:"Parto de V4-011"});
  expect(screen.queryByRole("button",{name:"Corrigir / completar parto"})).toBeNull();
  expect(screen.queryByRole("button",{name:"Conferir anulação"})).toBeNull();
+ expect(screen.queryByRole("button",{name:"Registrar retirada de colostro"})).toBeNull();
  expect(screen.queryByRole("button",{name:/Gerenciar colostro/})).toBeNull();
 });
 
@@ -61,5 +62,13 @@ it("avaliação de escore conserva parto e sítio mesmo sem avaliações anterio
  render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
  fireEvent.click(await screen.findByRole("button",{name:"Registrar avaliação de escore"}));
  expect(screen.getByRole("dialog",{name:"Correção do parto"}).textContent).toContain("p · sítio 1 · complemento escore");
+ expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
+});
+
+it("inicia retirada no bezerreiro conservando o parto e sem gravar produção",async()=>{
+ vi.mocked(reqV4).mockResolvedValue(parto);render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
+ fireEvent.click(await screen.findByRole("button",{name:"Registrar retirada de colostro"}));
+ expect(location.pathname).toBe("/pecuaria/bezerreiro");
+ const params=new URLSearchParams(location.search);expect(params.get("aba")).toBe("colostragem");expect(params.get("partoId")).toBe("p");expect(params.get("novaRetirada")).toBe("1");
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });

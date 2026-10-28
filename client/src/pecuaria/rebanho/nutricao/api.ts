@@ -20,7 +20,8 @@ export type FornecimentoLeiteNutricional = { id: string; status: string; quantid
  movimentos: { movimentoId: string; entradaId: string; natureza: string; quantidadeLitros: string }[];
  parcelas: { animalId: string; dias: number; baseQuantidade: string; quantidadeLitros: string; valorGerencial: string | null }[] };
 export type CandidatoReferenciaLeite = { fechamentoId: string; versao: number; comprador: string; periodoInicio: string; periodoFim: string; precoUnitario: string; provisoria: boolean };
-export type Previa = { loteId: string; vigenciaId: string; dieta: { nome: string; versao: number }; inicio: string; fim: string;
+export type OfertaBezerreiroNoPeriodo = { ofertaId: string; fornecimentoId: string; data: string; quantidadeLitros: string; animalIds: string[] };
+export type Previa = { ofertasBezerreiro?: OfertaBezerreiroNoPeriodo[]; orientacaoLeiteBezerreiro?: string | null; loteId: string; vigenciaId: string; dieta: { nome: string; versao: number }; inicio: string; fim: string;
   verValores?: boolean;
   centroCustoId: string; animalDias: number; participantes: Array<{ animalId: string; dias: number; brinco: string }>;
   materiaSecaConhecidaKg: string; coberturaMateriaSecaCompleta: boolean;

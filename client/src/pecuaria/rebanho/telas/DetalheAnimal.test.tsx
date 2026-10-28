@@ -6,6 +6,8 @@ import { ToastProvider } from "@/components/Toast";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { DetalheAnimal } from "./DetalheAnimal";
+import { consultarBezerreiro } from "../bezerreiro/api";
+vi.mock("../bezerreiro/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("../bezerreiro/api")>()), consultarBezerreiro: vi.fn() }));
 import {
   RebanhoApiError, buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, desfazerMovimentacao, editarAnimal, editarPesagem, listarCategorias,
   listarFilhosAnimal, listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
@@ -41,6 +43,7 @@ afterEach(cleanup);
 beforeEach(() => {
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1");
   vi.clearAllMocks();
+  vi.mocked(consultarBezerreiro).mockResolvedValue({ temHistorico: false });
   window.history.replaceState(null, "", window.location.pathname);
   vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
@@ -539,4 +542,22 @@ it("link do protocolo conserva hash, sítio explícito e retorno na ficha", asyn
   expect(buscarFichaAnimal).toHaveBeenCalledWith("animal-1", { periodoDias: "entrada" }, 7);
   expect(vi.mocked(ReproducaoAnimal).mock.calls.at(-1)?.[0].propriedadeId).toBe(7);
   expect(screen.getByRole("link", { name: "Voltar ao protocolo" }).getAttribute("href")).toBe("/pecuaria/reproducao/programacoes/g1?sitio=7");
+});
+
+
+describe("Ficha contextual do bezerreiro", () => {
+  it("não cria aba de bezerreiro para animal sem participação ou acompanhamento", async () => {
+    await montar(base);
+    await waitFor(() => expect(consultarBezerreiro).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: "Bezerreiro" })).toBeNull();
+  });
+  it("oferece a aba quando há acompanhamento real mesmo sem participação atual", async () => {
+    vi.mocked(consultarBezerreiro).mockImplementation(async path => path === "/configuracoes" ? {vigente:null,coleiras:[],fases:[],perfis:[]} : {animal:{id:base.id,brinco:base.brinco,nome:base.nome},participacoes:[],acompanhamento:{id:"acompanhamento",exames:[],fornecimentos:[]},colostro:[],exames:[],temHistorico:true});
+    await montar(base);
+    const aba = await screen.findByRole("tab", { name: "Bezerreiro" });
+    fireEvent.click(aba);
+    expect(screen.getByText("Histórico do bezerreiro")).toBeTruthy();
+    expect(screen.getByText("Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.")).toBeTruthy();
+    expect(location.hash).toBe("#bezerreiro");
+  });
 });

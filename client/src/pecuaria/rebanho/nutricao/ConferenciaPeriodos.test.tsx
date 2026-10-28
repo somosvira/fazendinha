@@ -3,7 +3,9 @@ import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
+import { navegarPara } from "../../../router";
 import { previaPeriodos, confirmarPeriodos, type Previa } from "./api";
+vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
 vi.mock("./api", () => ({ previaPeriodos: vi.fn(), confirmarPeriodos: vi.fn() }));
 vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => <input type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
 vi.mock("../../../estoque/SelecaoPartidas", () => ({ SelecaoPartidas: () => <p>Distribuição por partida</p> }));
@@ -70,6 +72,64 @@ describe("conferência nutricional dividida", () => {
     expect(screen.getByLabelText(/Leite comercial · Comercial/)).toHaveProperty("checked",true);
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
     await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledWith(expect.objectContaining({periodos:[expect.objectContaining({itens:[expect.objectContaining({produtoId:"leite",quantidadeConfirmada:60,origensLeite:["nc","com"]})]})]})));
+  });
+  function comLeiteRegistrado(): Previa {
+    return {...previa,ofertasBezerreiro:[{ofertaId:'oferta',fornecimentoId:'fornecimento',data:'2026-09-03',quantidadeLitros:'4.000',animalIds:['animal/1']}],orientacaoLeiteBezerreiro:'Concilie as ofertas antes de confirmar o leite no fechamento.',itens:[previa.itens[0],{...previa.itens[0],produtoId:'leite',nome:'Leite',unidade:'L',quantidadePrevista:'60',saldo:'100',materiaSecaKg:null,leite:{quantidadePrevistaLitros:'60.000',quantidadeDisponivelLitros:'100.000',quantidadeAtendivelLitros:'60.000',custoPrevisto:null,composicaoPrevista:[],origens:[]}}]};
+  }
+  it("apresenta data e volume do fato existente e abre o Bezerreiro no mesmo contexto",async()=>{
+    vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[comLeiteRegistrado()],lacunas:[]});
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
+    fireEvent.click(screen.getByText('Conferir período'));
+    await screen.findByRole('region',{name:'Leite já registrado no Bezerreiro'});
+    expect(screen.getByText(/03\/09\/2026 · 4 L já fornecidos/)).toBeTruthy();
+    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','60');
+    expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
+    fireEvent.click(screen.getByRole('button',{name:'Abrir no Bezerreiro'}));
+    expect(navegarPara).toHaveBeenCalledWith('/pecuaria/bezerreiro?aba=alimentacao&propriedadeId=1&data=2026-09-03&animalId=animal%2F1');
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("concilia apenas após ação explícita de zerar leite e conserva os demais ingredientes",async()=>{
+    vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[comLeiteRegistrado()],lacunas:[]});
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite: previsto 60 L');
+    await alterarControle(screen.getByLabelText('Quantidade conferida (KG)'),{target:{value:'320'}});
+    fireEvent.change(screen.getAllByLabelText('Motivo da diferença')[0],{target:{value:'Quantidade real da ração conferida'}});
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));
+    expect(confirmarPeriodos).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','60');
+    fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
+    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','0');
+    expect(screen.getByLabelText('Quantidade conferida (KG)')).toHaveProperty('value','320');
+    expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',false);
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));
+    await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledOnce());
+    expect(vi.mocked(confirmarPeriodos).mock.calls[0][0].periodos[0].itens).toEqual([
+      expect.objectContaining({produtoId:'produto',quantidadeConfirmada:320,motivoAjuste:'Quantidade real da ração conferida'}),
+      expect.objectContaining({produtoId:'leite',quantidadeConfirmada:0,motivoAjuste:'Leite já registrado nas ofertas do Bezerreiro; sem novo fornecimento neste fechamento.'}),
+    ]);
+    expect(vi.mocked(confirmarPeriodos).mock.calls[0][0].periodos[0].itens[1].origensLeite).toBeUndefined();
+  });
+  it("voltar a informar leite positivo ou apagar o motivo bloqueia outra vez, inclusive sem baixa",async()=>{
+    vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[comLeiteRegistrado()],lacunas:[]});
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite: previsto 60 L');
+    fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
+    fireEvent.change(screen.getByLabelText('Motivo da diferença'),{target:{value:''}});
+    expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
+    fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
+    await alterarControle(screen.getByLabelText('Quantidade conferida (L)'),{target:{value:'56'}});
+    await alterarControle(screen.getAllByLabelText('Origem')[1],{target:{value:'SEM_BAIXA_JUSTIFICADA'}});
+    expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));expect(confirmarPeriodos).not.toHaveBeenCalled();
+  });
+  it("ofertas históricas não impedem confirmar ingredientes sem leite",async()=>{
+    const p=comLeiteRegistrado();p.itens=[previa.itens[0]];
+    vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[p],lacunas:[]});
+    render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Ração V3: previsto 330 KG');
+    expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',false);
+    expect(screen.queryByRole('button',{name:'Usar ofertas já registradas · zerar leite'})).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledOnce());
   });
   it("informa lacuna sem dieta e bloqueia a confirmação do conjunto", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [previa], lacunas: [{ inicio: "2026-08-30", fim: "2026-08-31" }] });

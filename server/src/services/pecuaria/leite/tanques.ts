@@ -214,7 +214,7 @@ export async function consultarOrdenhasGerais(
   };
 }
 const incluirMedicao = { tanque: true, entradasEstoque: { select: { id: true, status: true } } };
-async function salvarParcelasTx(tx: Prisma.TransactionClient, dados: SalvarParcelasOrdenhaInput,
+export async function salvarParcelasTx(tx: Prisma.TransactionClient, dados: SalvarParcelasOrdenhaInput,
   usuarioId: number | null, legado = false) {
   const data = dia(dados.dataOperacional);
   if (data > hojeFazendaDate()) throw new RebanhoError("VALIDACAO", "A ordenha deve ter data até hoje");

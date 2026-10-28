@@ -24,6 +24,8 @@ beforeEach(() => {
  m.tx.requisicaoPecuaria.findUnique.mockImplementation(async ({where}) => m.requisicoes.get(where.chave) ?? null);
  m.tx.requisicaoPecuaria.create.mockImplementation(async ({data}) => { m.requisicoes.set(data.chave,data); return data; });
  m.tx.lote.findFirst.mockResolvedValue({ id: "lote", nome: "Bezerreiro", centroCustoId: "centro" });
+ // Esta fixture não possui ofertas prévias do Bezerreiro para conciliar.
+ m.tx.fornecimentoNutricionalLeite.findMany.mockResolvedValue([]);
  m.tx.centroCusto.findFirst.mockResolvedValue({ id: "centro" });
  m.tx.vigenciaDietaLote.findFirst.mockResolvedValue({ id: "vigencia", dieta: { nome: "Leite 10L", publicadaEm: new Date(), itens: [{ produtoId: produtos[0], quantidadeCabecaDia: d(10), unidade: "L", materiaSecaPercentualSnapshot: null, produto: { nome: "Leite", rastrearPartidas: false } }] } });
  m.tx.localizacaoAnimal.findMany.mockResolvedValue(Array.from({length:6}, (_,i) => ({ animalId: `animal${i}`, desde: new Date("2026-09-01"), ate: null })));
@@ -41,6 +43,8 @@ describe("dieta confirmada com leite V5", () => {
   await confirmarConsumo(input, 1);
   expect(resposta.itens[0]).toMatchObject({ quantidadeConfirmada: d(60), quantidadePrevista: d(60), movimentoEstoqueId: null, situacaoCusto: "CONHECIDO" });
   expect(m.baixar).toHaveBeenCalledTimes(2);
+  expect(m.tx.fornecimentoNutricionalLeite.findMany).toHaveBeenCalledOnce();
+  expect(m.tx.fornecimentoNutricionalLeite.create).toHaveBeenCalledOnce();
   expect(m.baixar.mock.calls.map(c => [c[1].produtoId,c[1].quantidade.toString(),c[1].entradaIds])).toEqual([["leite-nc","40",["nc"]],["leite-com","20",["com"]]]);
   expect(m.generico).not.toHaveBeenCalled();
   const salvo = m.tx.fornecimentoNutricionalLeite.create.mock.calls[0][0].data;

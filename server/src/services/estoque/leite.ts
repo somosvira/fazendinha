@@ -40,7 +40,7 @@ export async function saldosOrigensLeiteTx(tx: Prisma.TransactionClient, produto
   });
 }
 
-export async function planejarBaixaLeiteTx(tx: Prisma.TransactionClient, input: { produtoId: string; propriedadeId: number; data: Date; quantidade: Prisma.Decimal.Value; entradaIds?: string[]; finalidade: FinalidadeLeite }): Promise<PlanoBaixaLeite> {
+export async function planejarBaixaLeiteTx(tx: Prisma.TransactionClient, input: { produtoId: string; propriedadeId: number; data: Date; quantidade: Prisma.Decimal.Value; entradaIds?: string[]; finalidade: FinalidadeLeite; permitirOrigemColostro?: boolean }): Promise<PlanoBaixaLeite> {
   const bases = await saldosOrigensLeiteTx(tx, input.produtoId, input.propriedadeId, input.data);
   // Leite de outras origens não pode ser consumido como se tivesse lastro V5.
   const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId: input.produtoId, propriedadeId: input.propriedadeId,
@@ -50,7 +50,14 @@ export async function planejarBaixaLeiteTx(tx: Prisma.TransactionClient, input: 
     throw new ValorizacaoError("SEM_LASTRO", "O saldo de leite diverge das ordenhas confirmadas; regularize as origens antes de retirar");
   if (input.entradaIds?.some(id => !bases.some(b => b.entradaId === id)))
     throw new ValorizacaoError("VALIDACAO", "Origem de leite não pertence a este produto, sítio ou data");
-  const selecionadas = input.entradaIds ? bases.filter(b => input.entradaIds!.includes(b.entradaId)) : bases;
+  const geridas = await tx.loteColostro.findMany({ where: { propriedadeId: input.propriedadeId, status: "CONFIRMADO", entradaId: { in: bases.map(b => b.entradaId) } }, select: { entradaId: true } });
+  const reservadas = new Set(geridas.map(l => l.entradaId));
+  if (!input.permitirOrigemColostro && input.entradaIds?.some(id => reservadas.has(id)))
+    throw new ValorizacaoError("CONFLITO", "Esta origem é gerida pelo Bezerreiro; use sua destinação de colostro");
+  if (input.permitirOrigemColostro && (!input.entradaIds?.length || input.entradaIds.some(id => !reservadas.has(id))))
+    throw new ValorizacaoError("CONFLITO", "O adaptador de colostro exige somente origens confirmadas do Bezerreiro");
+  const selecionadas = (input.entradaIds ? bases.filter(b => input.entradaIds!.includes(b.entradaId)) : bases)
+    .filter(b => input.permitirOrigemColostro || !reservadas.has(b.entradaId));
   const elegiveis = selecionarOrigensLeite(selecionadas, input.finalidade);
   const plano = planejarBaixaLeite({ quantidade: input.quantidade, bases: elegiveis satisfies SaldoOrigemLeite[] });
   if (input.finalidade === "VENDA") await conferirCarenciaOrigensVendaTx(tx, plano.parcelas.map(p => p.entradaId));
@@ -93,6 +100,7 @@ export async function classificarEntradaLeiteTx(tx: Prisma.TransactionClient, in
 export async function baixarLeiteTx(tx: Prisma.TransactionClient, input: {
   produtoId: string; propriedadeId: number; data: Date; quantidade: Prisma.Decimal.Value; entradaIds?: string[];
   origem: "NUTRICAO" | "PERDA"; observacao: string; usuarioId: number | null;
+  permitirOrigemColostro?: boolean;
 }) {
   if (input.data > hojeFazendaDate()) throw new ValorizacaoError("VALIDACAO", "Não confirme consumo futuro de leite");
   await travarValorizacaoTx(tx, [input.produtoId]);
@@ -110,6 +118,7 @@ export async function baixarLeiteTx(tx: Prisma.TransactionClient, input: {
 
 export async function estornarBaixaLeiteTx(tx: Prisma.TransactionClient, input: {
   movimentoId: string; propriedadeId: number; usuarioId: number | null; motivo: string; data?: Date;
+  permitirOrigemColostro?: boolean;
 }) {
   const referencia = await tx.movimentoEstoque.findFirst({ where: { id: input.movimentoId, propriedadeId: input.propriedadeId }, select: { produtoId: true } });
   if (!referencia) throw new ValorizacaoError("VALIDACAO", "Saída de leite não encontrada neste sítio");
@@ -117,6 +126,10 @@ export async function estornarBaixaLeiteTx(tx: Prisma.TransactionClient, input: 
   const original = await tx.movimentoEstoque.findUniqueOrThrow({ where: { id: input.movimentoId }, include: { revertidoPor: true } });
   if (original.metodoValorizacao !== METODO_LEITE || original.tipo !== "SAIDA" || original.operacaoId != null || original.reversaoDeId)
     throw new ValorizacaoError("VALIDACAO", "Use o fato de origem para regularizar esta retirada");
+  if (!input.permitirOrigemColostro && (
+    await tx.alocacaoFornecimentoColostro.findFirst({ where: { movimentoId: original.id, ativo: true }, select: { id: true } }) ||
+    await tx.origemPreparoColostro.findFirst({ where: { movimentoId: original.id, ativo: true }, select: { id: true } })
+  )) throw new ValorizacaoError("CONFLITO", "Use o estorno da destinação ou enriquecimento do Bezerreiro para regularizar esta saída");
   if (original.status === "REVERTIDO" || original.revertidoPor) throw new ValorizacaoError("CONFLITO", "A saída de leite já foi estornada");
   if (await tx.retiradaOperacaoLeite.findUnique({ where: { movimentoId: original.id }, select: { id: true } }))
     throw new ValorizacaoError("CONFLITO", "Retirada comercial exige devolução física comprovada pelo fluxo de leite; correção de preço não devolve litros");

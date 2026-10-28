@@ -23,7 +23,7 @@ describe("data civil do estorno físico do leite", () => {
   const preparar = () => {
     const original = { id: "saida", produtoId: "leite", metodoValorizacao: "LEITE_FIFO_V1", tipo: "SAIDA", origem: "NUTRICAO", operacaoId: null,
       reversaoDeId: null, revertidoPor: null, status: "CONFIRMADO", data: new Date("2026-10-23T00:00:00Z"), quantidade: new Prisma.Decimal(3), custoUnitario: null, valorTotal: null };
-    const tx = { $executeRaw: vi.fn(async () => 1), movimentoEstoque: {
+    const tx = { alocacaoFornecimentoColostro: { findFirst: vi.fn(async () => null) }, origemPreparoColostro: { findFirst: vi.fn(async () => null) }, $executeRaw: vi.fn(async () => 1), movimentoEstoque: {
       findFirst: vi.fn(async () => ({ produtoId: original.produtoId })), findUniqueOrThrow: vi.fn(async () => original),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "inverso", ...data })), update: vi.fn(async () => ({ id: original.id })),
     }, retiradaOperacaoLeite: { findUnique: vi.fn(async () => null) }, periodoFinanceiro: { findUnique: vi.fn(async () => null) }, auditoriaFinanceira: { create: vi.fn() } };

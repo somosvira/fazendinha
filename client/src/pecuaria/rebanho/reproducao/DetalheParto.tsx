@@ -228,6 +228,7 @@ export function DetalheParto({
         </Button>
       </div>
       {podeEditar && <div className="flex flex-wrap gap-3">
+        <Button secondary onClick={() => navegarPara(`/pecuaria/bezerreiro?aba=colostragem&partoId=${encodeURIComponent(p.id)}&novaRetirada=1`)}>Registrar retirada de colostro</Button>
         <Button secondary onClick={() => {setComplemento(undefined);setAcao("corrigir");}}>Corrigir / completar parto</Button>
         <Button danger onClick={() => setAcao("anular")}>Conferir anulação</Button>
       </div>}

@@ -48,7 +48,7 @@ type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
 const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
-const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-alertas": Bell, "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-alertas": Bell, "pec-rebanho": VacaIcon, "pec-bezerreiro": Baby, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": Baby, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };
@@ -72,6 +72,7 @@ const AREAS_TRABALHO: AreaTrabalho[] = [
     principais: [
       { id: "pec-rebanho", label: "Rebanho" },
       { id: "pec-alertas", label: "Alertas" },
+      { id: "pec-bezerreiro", label: "Bezerreiro" },
       { id: "pec-sanidade", label: "Sanidade" },
       { id: "pec-nutricao", label: "Nutrição" },
       { id: "pec-leite", label: "Leite" },
