@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../pecuaria/sanidade/alertas/avaliador.js",()=>({marcarReavaliacaoDestinoTx:vi.fn()}));
 
 const mocks = vi.hoisted(() => ({
   protocoloIatfCount: vi.fn(),

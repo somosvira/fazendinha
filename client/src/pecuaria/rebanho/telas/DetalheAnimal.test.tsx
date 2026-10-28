@@ -425,6 +425,7 @@ describe("Ficha por domínio", () => {
     render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
     await screen.findByRole("heading", { name: "1234 · Mimosa" });
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
+    expect(nav.contains(screen.getByRole("heading", { name: "Demandam atenção" }))).toBe(false);
     expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Resumo", "Cadastro", "Histórico", "Produção", "Reprodução", "Sanidade", "Nutrição"]);
     for (const id of ["resumo", "identificacao-genetica", "ficha-painel-sanidade", "peso-manejo", "ficha-painel-nutricao", "historico", "auditoria"]) expect(document.getElementById(id)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Identificação e genética/ })).toBeNull();

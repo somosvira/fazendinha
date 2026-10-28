@@ -4,7 +4,7 @@
 
 `server/prisma/seed.ts` é a única entrada demonstrativa e o comando configurado no Prisma. Seus módulos internos ficam em `server/prisma/seed/`; o [guia da seed](../server/prisma/seed/README.md) descreve os cenários e as chaves para navegação. O código está preparado para o cenário integrado; o resultado de cada ambiente depende da baseline aplicada e da conferência efetivamente executada. A existência do gerador não comprova carga completa, arquivos R2 ou homologação pela fazenda.
 
-O destino permitido é exclusivamente o PostgreSQL local **`fazendinha_seedatev3`**, fora de produção, com `STORAGE_NAMESPACE=dev` ou `test`. `DATABASE_URL` e `DIRECT_URL`, quando fornecida, devem apontar para esse mesmo banco. O preflight confere identidade, baseline única/checksum, migrations concluídas, manifesto e exclusão mútua antes de importar os serviços que escrevem. O executor não cria banco, limpa dados ou aplica migrations.
+O destino permitido é exclusivamente o PostgreSQL local **`fazendinha_seedatev3`**, fora de produção, com `STORAGE_NAMESPACE=dev` ou `test`. `DATABASE_URL` e `DIRECT_URL`, quando fornecida, devem apontar para esse mesmo banco. O preflight confere identidade, baseline inicial única e checksum de toda a cadeia de migrations concluídas (incluindo as aditivas posteriores), manifesto e exclusão mútua antes de importar os serviços que escrevem. O executor não cria banco, limpa dados ou aplica migrations.
 
 Após configurar `server/.env` conforme o [README](../README.md), use:
 

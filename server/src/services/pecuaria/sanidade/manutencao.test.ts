@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("./alertas/protocolos.js",()=>({reconciliarParticipacaoAlertaTx:vi.fn(),vincularParticipacaoAlertaTx:vi.fn()}));
+vi.mock("./alertas/avaliador.js",()=>({marcarReavaliacaoDestinoTx:vi.fn()}));
 import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({

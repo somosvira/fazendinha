@@ -1,3 +1,4 @@
+import { reconciliarParticipacaoAlertaTx } from "../sanidade/alertas/protocolos.js";
 import { registrarInicioNaExecucaoTx } from "./calendario.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
@@ -32,5 +33,7 @@ export async function vincularFatoTarefaTx(tx: Prisma.TransactionClient, tarefaI
   if (modo === "EXECUCAO") await registrarInicioNaExecucaoTx(tx, tarefa.execucaoId,
     "aplicadaEm" in fato && fato.aplicadaEm ? fato.aplicadaEm : "realizadaEm" in fato && fato.realizadaEm ? fato.realizadaEm : fato.data,
     ("aplicadaEm" in fato && fato.aplicadaEm || "realizadaEm" in fato && fato.realizadaEm) ? "HORA" : "DIA", usuarioId);
-  return tx.vinculoTarefaProtocolo.create({ data: { tarefaId, ordem: Math.max(0, ...tarefa.vinculos.map(v => v.ordem)) + 1, ...dados, origem: modo, registradoPorId: usuarioId, motivo } });
+  const criado = await tx.vinculoTarefaProtocolo.create({ data: { tarefaId, ordem: Math.max(0, ...tarefa.vinculos.map(v => v.ordem)) + 1, ...dados, origem: modo, registradoPorId: usuarioId, motivo } });
+  await reconciliarParticipacaoAlertaTx(tx, tarefa.execucaoId, usuarioId);
+  return criado;
 }

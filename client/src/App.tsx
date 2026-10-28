@@ -543,7 +543,7 @@ export function App() {
 
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
-    : tab === "pec-rebanho"
+    : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
     ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
@@ -575,6 +575,7 @@ export function App() {
             podeCategorias={canSee("plano")}
             podePecuaria={canAccessTab("pec-rebanho")}
             podeLancarPecuaria={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
+            podeGerenciarAlertas={!!effectiveUser.dono || (effectiveUser.flags.includes("lancar") && effectiveUser.abas.includes("cadastros"))}
           />
         )}
       </>

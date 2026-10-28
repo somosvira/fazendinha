@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("./alertas/avaliador.js",()=>({marcarReavaliacaoDestinoTx:vi.fn()}));
 
 const mocks = vi.hoisted(() => ({
   tx: {
+    avaliacaoAlertas: { upsert: vi.fn() },
+    tarefaProtocolo: { findUnique: vi.fn() },
+    vinculoTarefaProtocolo: { findMany: vi.fn() },
+    necessidadeProgramacaoSanitaria: { findMany: vi.fn() },
     etapaProtocolo: { findFirst: vi.fn() },
     tipoExame: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
     exameAnimal: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
@@ -21,6 +26,9 @@ const tipo = { id: "tipo", nome: "Exame", tipoResultado: "NUMERO", unidade: "mg"
 const coleta = { animalId: "animal", propriedadeId: 2, tipoExameId: tipo.id, data: "2026-09-01" };
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.tx.necessidadeProgramacaoSanitaria.findMany.mockResolvedValue([]);
+  mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue(null);
+  mocks.tx.vinculoTarefaProtocolo.findMany.mockResolvedValue([]);
   mocks.tx.tipoExame.findUnique.mockResolvedValue(tipo);
   mocks.tx.tipoExame.findFirst.mockResolvedValue(tipo);
   mocks.tx.tipoExame.update.mockImplementation(async ({ data }) => ({ ...tipo, ...data }));

@@ -67,7 +67,8 @@ describe("VisaoGeral do rebanho", () => {
     render(<VisaoGeral />);
     expect(screen.getByRole("tablist", { name: "Rebanho" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Animais" })).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toContain("Carregando rebanho");
+    expect(screen.getByText("Carregando rebanho…").getAttribute("role")).toBe("status");
+    expect(screen.getByRole("tab", { name: "Alertas" })).toBeTruthy();
   });
   it("mostra gráficos e participação no total, com quantidade real de receptoras", async () => {
     await montar();
