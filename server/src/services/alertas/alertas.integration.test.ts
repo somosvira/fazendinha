@@ -5,6 +5,7 @@ import { avaliarRegraAnimalTx } from "../pecuaria/sanidade/alertas/produtor.js";
 import { beforeAll,afterAll,describe,it,expect,vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { prisma } from "../../db.js";
+import { exigirBancoIntegracaoPecuaria } from "../../lib/banco-pecuaria-integration.fixture.js";
 import { publicarAlertaTx } from "./publicacao.js";
 import { consultaAlertasSchema,consultarAlertas,consultarParticipantes } from "../pecuaria/sanidade/alertas/consulta-alertas.js";
 import type { PublicacaoAlerta } from "./contratos.js";
@@ -17,12 +18,13 @@ function entrada(chave:string,revisao=1,extra:Partial<PublicacaoAlerta>={}):Publ
 /** Escritas só em IDs criados pelo próprio arquivo. Não altera seed, saldos ou fatos preexistentes. */
 describe.skipIf(!habilitado)("alertas persistidos — integração restrita",()=>{
  beforeAll(async()=>{
+  const bancoEsperado=exigirBancoIntegracaoPecuaria();
   for(const variavel of ["DATABASE_URL","DIRECT_URL"]){
    const url=new URL(process.env[variavel]??"");
-   if(url.pathname!=="/fazendinha_seedatev3"||!["localhost","127.0.0.1","[::1]","::1"].includes(url.hostname))throw new Error("Integração permitida somente no PostgreSQL local fazendinha_seedatev3");
+   if(url.pathname!==`/${bancoEsperado}`||!["localhost","127.0.0.1","[::1]"].includes(url.hostname))throw new Error(`Integração exige PostgreSQL ${bancoEsperado} neste ambiente`);
   }
   const banco=await prisma.$queryRaw<Array<{nome:string}>>`SELECT current_database()::text nome`;
-  if(banco[0]?.nome!=="fazendinha_seedatev3")throw new Error("Banco efetivo inesperado");
+  if(banco[0]?.nome!==bancoEsperado)throw new Error("Banco efetivo inesperado");
   const u=await prisma.usuario.create({data:{nome:marca,email:`${marca}@example.invalid`,papel:"proprietario",abas:["cadastros"],areas:["pecuaria"],flags:["lancar"],status:"ATIVO"}});usuarioId=u.id;
   const s=await prisma.propriedade.create({data:{nome:marca}});sitioId=s.id;
   const p=await prisma.produto.create({data:{nome:marca,usoSanitario:true}});produtoId=p.id;

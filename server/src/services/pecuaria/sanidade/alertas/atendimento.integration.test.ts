@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import {afterAll,describe,expect,it} from "vitest";
 import {prisma} from "../../../../db.js";
+import {exigirBancoIntegracaoPecuaria} from "../../../../lib/banco-pecuaria-integration.fixture.js";
 import {movimentar,desfazerMovimentacao,darBaixa,estornarBaixa} from "../../rebanho/animais.js";
 import {criarAplicacao,anularAplicacao} from "../aplicacoes.js";
 import {decidirNecessidade} from "./decisoes.js";
@@ -48,15 +49,14 @@ async function regra(animalId:string){
 }
 suite('aplicação e decisão vinculadas com fixtures próprias',()=>{
  it('reenvio não duplica; anulação mantém vínculo e reabre para revisão; o fato anulado não atende outra regra',async()=>{
-  // Falha antes de escrever quando uma execução local aponta para outra base.
-  if(process.env.CI!=='true') {
-    for(const valor of [process.env.DATABASE_URL,process.env.DIRECT_URL].filter((v):v is string=>!!v)){
-      const url=new URL(valor);
-      if(url.pathname!=='/fazendinha_seedatev3'||!['localhost','127.0.0.1','[::1]','::1'].includes(url.hostname))throw new Error('Integração local exige host local e fazendinha_seedatev3');
-    }
-    const atual=await prisma.$queryRaw<Array<{banco:string}>>`SELECT current_database()::text AS banco`;
-    if(atual[0]?.banco!=='fazendinha_seedatev3')throw new Error('Conexão efetiva fora de fazendinha_seedatev3');
+  // Só o CI externo admite sua base efêmera; CI genérico não libera outra base local.
+  const bancoEsperado=exigirBancoIntegracaoPecuaria();
+  for(const valor of [process.env.DATABASE_URL,process.env.DIRECT_URL].filter((v):v is string=>!!v)){
+    const url=new URL(valor);
+    if(url.pathname!==`/${bancoEsperado}`||!['localhost','127.0.0.1','[::1]'].includes(url.hostname))throw new Error(`Integração exige PostgreSQL ${bancoEsperado} neste ambiente`);
   }
+  const atual=await prisma.$queryRaw<Array<{banco:string}>>`SELECT current_database()::text AS banco`;
+  if(atual[0]?.banco!==bancoEsperado)throw new Error('Conexão efetiva fora da base autorizada');
   sitio=(await prisma.propriedade.create({data:{nome:`Alerta teste ${run}`}})).id;
   usuario=(await prisma.usuario.create({data:{nome:`Operador ${run}`,email:`alerta-${run}@example.test`,papel:'DONO',abas:[],flags:[],dono:true,status:'ATIVO'}})).id;
   tipo=(await prisma.tipoAplicacaoSanitaria.create({data:{nome:`Tipo fictício ${run}`}})).id;
