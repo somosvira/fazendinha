@@ -251,3 +251,15 @@ it("conserva a aba de participantes do ciclo ao sincronizar a URL", async () => 
   render(<Sanidade podeLancar={false} />);
   await waitFor(() => expect(new URLSearchParams(window.location.search).get("abaCiclo")).toBe("participantes"));
 });
+
+it('abre Todos os cuidados pela URL sem substituir o calendário ou o contrato de Tarefas',async()=>{
+ mocks.req.mockImplementation(async(path:string)=>path.startsWith('/programacoes/agenda-unificada')?{itens:[],total:0,pagina:1,tamanho:50}:[]);
+ window.history.replaceState(null,'','/pecuaria/sanidade?aba=agenda&visaoAgenda=cuidados&de=2026-10-01&ate=2026-10-31');
+ render(<Sanidade podeLancar={false}/>);
+ await screen.findByText('Nenhum cuidado neste recorte.');
+ expect(mocks.req.mock.calls.some(([path])=>String(path).startsWith('/programacoes/agenda-unificada?')&&String(path).includes('de=2026-10-01'))).toBe(true);
+ expect(new URLSearchParams(window.location.search).get('visaoAgenda')).toBe('cuidados');
+ fireEvent.click(screen.getByRole('tab',{name:'Tarefas'}));
+ await waitFor(()=>expect(new URLSearchParams(window.location.search).get('visaoAgenda')).toBe('tarefas'));
+ expect(screen.getByRole('button',{name:'Calendário sanitário'})).toBeTruthy();
+});

@@ -1,0 +1,14 @@
+import { z } from "zod";
+import { AlertaError } from "./erros.js";
+const tipos = new Set(["sanidade:IDADE", "sanidade:DATA_FIXA", "sanidade:PROGRAMACAO"]);
+export function exigirTipoRegistrado(produtor: string, tipo: string, versao: number) {
+  if (versao !== 1 || !tipos.has(`${produtor}:${tipo}`)) throw new AlertaError("VALIDACAO", "Tipo ou contrato de alerta não registrado");
+}
+const texto=z.string().max(500).nullable();
+const resumoRegra=z.object({regraId:z.string(),revisaoRegra:z.number().int(),produtoId:texto,produtoNome:texto,protocoloId:texto,animalId:z.string(),brinco:z.string().max(160),nome:texto,nascimentoEstimado:z.boolean(),dataNascimento:z.string().date(),cuidado:texto.optional(),tipoAplicacaoId:texto.optional()}).strict();
+const publicoProgramacao=z.object({sexo:z.enum(["F","M"]).optional(),idadeMinimaMeses:z.number().int().min(0).optional(),idadeMaximaMeses:z.number().int().min(0).optional(),criterioPendente:z.string().max(1000).optional()}).strict();
+export const programacaoSnapshotSchema=z.object({id:z.string(),propriedadeId:z.number().int().positive(),nome:z.string().max(160),tipo:z.enum(["VACINACAO","VERIFICACAO","VERMIFUGACAO"]),meses:z.array(z.number().int().min(1).max(12)),ano:z.number().int().nullable(),vigenciaInicio:z.string().datetime().nullable(),vigenciaFim:z.string().datetime().nullable(),precisao:z.enum(["MES","DIA"]),dia:z.number().int().nullable(),recorrencia:z.enum(["JANELA_ELEGIBILIDADE","CAMPANHA_ANUAL","SEM_REPETICAO"]),produtoId:texto,procedimento:z.string().max(500).nullable(),publico:publicoProgramacao,publicoConferido:z.boolean(),fonte:z.string().max(1000).nullable(),observacao:z.string().max(2000).nullable(),executor:z.enum(["APLICACAO","EXAME_ANIMAL"]).nullable(),tipoExameId:texto,sujeitoTipo:z.enum(["ANIMAL","LOTE","SITIO"]),antecedenciaDias:z.number().int(),ativo:z.boolean(),revisao:z.number().int().positive(),ativadoEm:z.string().datetime().nullable(),criadoPorId:z.number().int().positive(),regraEquivalenteId:texto,criadoEm:z.string().datetime(),atualizadoEm:z.string().datetime()}).strict();
+const resumoProgramacao=z.object({programacaoSnapshot:programacaoSnapshotSchema,necessidadeId:z.string(),programacaoId:z.string(),animalId:z.string(),brinco:z.string().max(160),nome:texto,loteId:texto,produtoId:texto,produtoNome:texto,periodo:z.string(),precisao:z.enum(["MES","DIA"]),inicioJanela:z.string().date(),fimJanela:z.string().date(),nascimentoEstimado:z.boolean()}).strict();
+/** O resumo publicado contém só dados operacionais autorizáveis, sem custos ou payload livre. */
+export function validarResumoRegistrado(tipo:string,resumo:unknown){const resultado=(tipo==="PROGRAMACAO"?resumoProgramacao:resumoRegra).safeParse(resumo);if(!resultado.success)throw new AlertaError("VALIDACAO","Resumo do alerta incompatível com o tipo registrado");}
+export const tiposDisponiveis = ["IDADE", "DATA_FIXA", "PROGRAMACAO"];

@@ -3979,3 +3979,197 @@ model SegmentoConsumoAnimal {
   @@unique([participacaoId, desde])
   @@schema("pecuaria")
 }
+
+// Núcleo comum: proprietário estável da instalação, separado do sítio operacional.
+model Alerta {
+  id String @id @default(uuid())
+  proprietario String
+  produtor String
+  tipo String
+  chaveOcorrencia String
+  revisao Int
+  ciclo String @default("ABERTO")
+  situacao String
+  propriedadeId Int?
+  origemId String
+  sujeitoTipo String
+  sujeitoId String
+  chaveAgrupamento String
+  titulo String
+  motivo String
+  resumo Json
+  snapshotInicial Json
+  dataReferencia DateTime? @db.Date
+  visivelDesde DateTime? @db.Date
+  prazo DateTime? @db.Date
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  eventos EventoAlerta[]
+  necessidade NecessidadeSanitaria?
+  @@unique([proprietario, produtor, tipo, chaveOcorrencia])
+  @@index([produtor, propriedadeId, ciclo, prazo])
+  @@index([sujeitoTipo, sujeitoId])
+  @@index([chaveAgrupamento])
+  @@schema("public")
+}
+model EventoAlerta {
+  id String @id @default(uuid())
+  alertaId String
+  alerta Alerta @relation(fields: [alertaId], references: [id], onDelete: Restrict)
+  revisao Int
+  eventoId String
+  comando String
+  hash String
+  payload Json
+  autorUsuarioId Int?
+  autorTecnico String?
+  criadoEm DateTime @default(now())
+  @@unique([alertaId, revisao])
+  @@unique([alertaId, eventoId])
+  @@schema("public")
+}
+model AvaliacaoAlertas {
+  id String @id
+  produtor String
+  estado String @default("NAO_AVALIADO")
+  diaCoberto DateTime? @db.Date
+  ultimaConclusao DateTime?
+  erro String?
+  cursor String?
+  posse String?
+  posseAte DateTime?
+  versao Int @default(0)
+  atualizadoEm DateTime @updatedAt
+  @@schema("public")
+}
+model RegraAlertaSanitario {
+  idadeMinimaMeses Int?
+  idadeMaximaMeses Int?
+  baseAtivacao String?
+  tipoAplicacaoId String?
+  cuidado String?
+  id String @id @default(uuid())
+  nome String
+  ativo Boolean @default(false)
+  revisao Int @default(1)
+  produtoId String?
+  protocoloId String?
+  gatilho String
+  idadeMeses Int?
+  dataFixa DateTime? @db.Date
+  propriedadeIds Int[]
+  sexo String?
+  antecedenciaDias Int @default(0)
+  prazoDias Int @default(0)
+  vigencia DateTime @db.Date
+  adocao DateTime? @db.Date
+  orientacao String?
+  criadoPorId Int
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  revisoes RevisaoRegraAlertaSanitario[]
+  necessidades NecessidadeSanitaria[]
+  @@schema("pecuaria")
+}
+model RevisaoRegraAlertaSanitario {
+  id String @id @default(uuid())
+  regraId String
+  regra RegraAlertaSanitario @relation(fields: [regraId], references: [id], onDelete: Restrict)
+  revisao Int
+  dados Json
+  motivo String
+  autorId Int
+  criadoEm DateTime @default(now())
+  @@unique([regraId, revisao])
+  @@schema("pecuaria")
+}
+model NecessidadeSanitaria {
+  id String @id @default(uuid())
+  regraId String
+  regra RegraAlertaSanitario @relation(fields: [regraId], references: [id], onDelete: Restrict)
+  animalId String
+  alertaId String? @unique
+  alerta Alerta? @relation(fields: [alertaId], references: [id], onDelete: Restrict)
+  revisaoRegra Int
+  revisao Int @default(1)
+  propriedadeId Int
+  situacao String
+  dataTeorica DateTime? @db.Date
+  dataAtencao DateTime? @db.Date
+  adocao DateTime @db.Date
+  aplicacaoId String? @unique
+  participacaoId String? @unique
+  motivo String?
+  decisaoEm DateTime?
+  decisaoPorId Int?
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@unique([regraId, animalId])
+  @@index([animalId])
+  @@index([propriedadeId, situacao])
+  @@schema("pecuaria")
+}
+
+model ProgramacaoSanitaria {
+  id String @id @default(uuid())
+  propriedadeId Int
+  nome String
+  tipo String
+  meses Int[]
+  ano Int?
+  vigenciaInicio DateTime? @db.Date
+  vigenciaFim DateTime? @db.Date
+  precisao String @default("MES")
+  dia Int?
+  recorrencia String
+  produtoId String?
+  procedimento String?
+  publico Json
+  publicoConferido Boolean @default(false)
+  fonte String?
+  observacao String?
+  executor String?
+  tipoExameId String?
+  sujeitoTipo String @default("ANIMAL")
+  antecedenciaDias Int @default(0)
+  ativo Boolean @default(false)
+  revisao Int @default(1)
+  ativadoEm DateTime? @db.Date
+  criadoPorId Int
+  regraEquivalenteId String? @unique
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  necessidades NecessidadeProgramacaoSanitaria[]
+  @@index([propriedadeId, ativo])
+  @@schema("pecuaria")
+}
+model NecessidadeProgramacaoSanitaria {
+  id String @id @default(uuid())
+  programacaoId String
+  programacao ProgramacaoSanitaria @relation(fields: [programacaoId], references: [id], onDelete: Restrict)
+  sujeitoTipo String
+  sujeitoId String
+  propriedadeId Int
+  periodo String
+  alertaId String? @unique
+  situacao String
+  revisao Int @default(1)
+  aplicacaoId String? @unique
+  exameId String? @unique
+  regraNecessidadeId String? @unique
+  criadoEm DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+  @@unique([programacaoId, periodo, sujeitoTipo, sujeitoId])
+  @@schema("pecuaria")
+}
+
+model VinculoAtendimentoAlerta {
+ id String @id @default(uuid())
+ aplicacaoId String? @unique
+ exameId String? @unique
+ necessidadeRegraId String? @unique
+ necessidadeProgramaId String? @unique
+ criadoEm DateTime @default(now())
+ criadoPorId Int
+ @@schema("pecuaria")
+}

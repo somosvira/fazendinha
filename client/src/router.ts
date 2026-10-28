@@ -29,6 +29,7 @@ const PATH_BY_TAB: Record<Tab, string> = {
   sitios: "/configuracoes/sitios",
   cadastros: "/financeiro/configuracoes",
   "pec-rebanho": "/pecuaria/rebanho",
+  "pec-alertas": "/pecuaria/rebanho/alertas",
   "pec-sanidade": "/pecuaria/sanidade",
   "pec-nutricao": "/pecuaria/nutricao",
   "pec-leite": "/pecuaria/leite",
@@ -71,6 +72,7 @@ export function normalizarRotaPecuaria(caminho: string): string {
   }
   if (path === "/pecuaria/pesagem-manejo") url.pathname = "/pecuaria/rebanho/animais";
   if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
+  if (path === "/pecuaria/rebanho/sanidade/calendario") url.pathname = "/pecuaria/sanidade/calendario";
   if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
   if (path === "/pecuaria/rebanho/cadastros") {
     const rebanho: Record<string, string> = { categorias: "rebanho/categorias", motivos: "rebanho/motivos", racas: "genetica/racas", genitores: "genetica/genitores", "material-genetico": "genetica/material-genetico" };
@@ -88,7 +90,7 @@ export function normalizarLocalizacaoPecuaria(): void {
   if (destino !== atual) window.history.replaceState(window.history.state, "", destino);
 }
 export function isSubrotaPecuaria(tab: Tab, pathname: string): boolean {
-  return ["pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios", "pec-leite"].includes(tab) && pathToTab(pathname) === tab
+  return ["pec-alertas", "pec-sanidade", "pec-nutricao", "pec-reproducao", "pec-visitas", "pec-relatorios", "pec-leite"].includes(tab) && pathToTab(pathname) === tab
     || tab === "config" && pathname.startsWith("/configuracoes/pecuaria");
 }
 
@@ -204,7 +206,7 @@ export function isSubrotaRebanho(tab: Tab, pathname: string): boolean {
   if (tab !== "pec-rebanho") return false;
   return isListaAnimaisRebanho(pathname) || isNovoAnimalRebanho(pathname) || isCadastrosRebanho(pathname)
     || isListaLotesRebanho(pathname) || parseAnimalId(pathname) != null || parseLoteId(pathname) != null
-    || pathname === "/pecuaria/rebanho/sanidade" || pathname === "/pecuaria/rebanho/nutricao";
+    || pathname.startsWith("/pecuaria/rebanho/alertas") || pathname === "/pecuaria/rebanho/sanidade" || pathname === "/pecuaria/rebanho/nutricao";
 }
 
 export const URL_NOVA_OPERACAO = "/financeiro/operacoes/nova";
@@ -250,9 +252,10 @@ export function pathToTab(pathname: string): Tab | null {
 
   if (path === "/" || path === "") return DEFAULT_TAB;
   if (path === "/ia" && !ASSISTENTE_ATIVO) return DEFAULT_TAB;
-  if (path === "/pecuaria/rebanho/sanidade") return "pec-sanidade";
+  if (path === "/pecuaria/rebanho/sanidade" || path === "/pecuaria/rebanho/sanidade/calendario") return "pec-sanidade";
   if (path === "/pecuaria/rebanho/nutricao") return "pec-nutricao";
   if (path === "/pecuaria/rebanho/cadastros" || path.startsWith("/configuracoes/pecuaria")) return "config";
+  if (path.startsWith("/pecuaria/rebanho/alertas/")) return "pec-alertas";
   if (path.startsWith("/pecuaria/sanidade/")) return "pec-sanidade";
   if (path.startsWith("/pecuaria/reproducao/")) return "pec-reproducao";
   if (path.startsWith("/pecuaria/visitas/")) return "pec-visitas";

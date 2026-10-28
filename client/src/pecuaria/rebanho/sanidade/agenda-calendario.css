@@ -1,0 +1,15 @@
+.agenda-calendario-meses{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px;margin-block:20px}
+.agenda-calendario-meses button{padding-inline:4px}
+.agenda-calendario-layout{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;margin-top:20px}
+.agenda-calendario-anual{display:block}
+.agenda-calendario-evento{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;padding:20px;border-top:1px solid var(--border);background:var(--card)}
+.agenda-calendario-evento:hover,.agenda-calendario-evento.selecionado{background:var(--accent)}
+.agenda-calendario-evento strong,.agenda-calendario-evento small{display:block}
+.agenda-calendario-evento small{font-size:12px;color:var(--muted-foreground)}
+.agenda-calendario-evento>span:last-child{flex-shrink:0;text-align:right;font-size:13px}
+.agenda-calendario-detalhe{min-width:0;padding:8px}
+.agenda-calendario-scroll{overflow:auto}.agenda-calendario-scroll table{min-width:1050px}.agenda-calendario-scroll th:first-child{min-width:230px}.agenda-calendario-scroll td{text-align:center}
+.agenda-calendario-scroll th small{display:block;margin-top:4px;font-weight:400;color:var(--muted-foreground)}
+.agenda-marcacao{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;color:var(--primary)}
+.agenda-ajuda{position:relative}.agenda-ajuda [role=tooltip]{position:absolute;z-index:4;right:0;top:44px;width:260px;max-width:70vw;padding:12px;border-radius:6px;background:var(--foreground);color:var(--background);font-size:12px;box-shadow:0 5px 16px #203c3926}
+@media(max-width:900px){.agenda-calendario-layout{grid-template-columns:1fr}.agenda-calendario-meses{grid-template-columns:repeat(6,minmax(0,1fr))}.agenda-calendario-evento{padding:16px}}

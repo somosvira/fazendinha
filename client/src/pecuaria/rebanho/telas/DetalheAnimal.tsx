@@ -1,3 +1,4 @@
+import { ResumoAlertas } from "../alertas/ResumoAlertas";
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Ficha por domínio; os painéis permanecem montados para preservar rascunhos.
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
@@ -294,6 +295,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
             <StatusOperacionaisAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} revisao={refreshToken}/>
             <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
           </div>
+    <ResumoAlertas animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id} revisao={refreshToken} />
     <nav aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas abas-pasta">
       {ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
