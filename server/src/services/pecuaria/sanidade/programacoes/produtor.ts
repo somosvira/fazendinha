@@ -19,7 +19,7 @@ export async function avaliarProgramacaoTx(tx: Prisma.TransactionClient, id: str
   const consultaAnimais = { where: { ...(cursorAnimalId ? { id: { gt: cursorAnimalId } } : {}),
     localizacoes: { some: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] } },
     baixas: { none: { estornadaEm: null, data: { lte: hoje } } } }, orderBy: { id: "asc" }, take: 50,
-    select: { id: true, sexo: true, dataNascimento: true, nascimentoEstimado: true, brinco: true, nome: true, localizacoes: { where: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] }, select: { loteId: true }, take: 1 } } } as const;
+    select: { id: true, sexo: true, dataNascimento: true, nascimentoEstimado: true, brinco: true, nome: true, localizacoes: { where: { propriedadeId: p.propriedadeId, desde: { lte: hoje }, OR: [{ ate: null }, { ate: { gt: hoje } }] }, select: { loteId: true }, take: 1 } } } satisfies Prisma.AnimalFindManyArgs;
   const candidatos = await tx.animal.findMany(consultaAnimais);
   await tentarTravarAnimaisAlertasTx(tx, candidatos.map(a => a.id));
   // Releitura em ReadCommitted: seleção anterior serve somente ao cursor e às travas.

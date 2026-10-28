@@ -35,12 +35,21 @@ describe("contexto da agenda unificada", () => {
     const sql=mock.query.mock.calls[0][0];
     expect(sql.text).toContain('LEFT JOIN pecuaria."NecessidadeSanitaria" ns ON ns."alertaId"=a.id');
     expect(sql.text).toContain(`CASE WHEN a.situacao='ADIADO' THEN 'DIA' ELSE COALESCE(a.resumo->>'precisao','DIA') END AS precisao`);
-    const dataAdiada='COALESCE(ns."dataAtencao",a."prazo")';
+    const dataOperacional='CASE WHEN a.situacao=\'ADIADO\' THEN COALESCE(ns."dataAtencao",a."prazo") ELSE COALESCE(ns."dataAtencao",COALESCE(a."dataReferencia",NULLIF(a.resumo->>\'inicioJanela\',\'\')::date)) END';
     // Referência, início e fim da janela devem acompanhar o mesmo dia operacional.
-    expect(sql.text).toContain(`THEN ${dataAdiada} ELSE a."dataReferencia" END AS "dataReferencia"`);
-    expect(sql.text).toContain(`WHEN a.situacao='ADIADO' THEN ${dataAdiada} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'inicioJanela','')::date) END AS "inicioJanela"`);
-    expect(sql.text).toContain(`WHEN a.situacao='ADIADO' THEN ${dataAdiada} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'fimJanela','')::date) END AS "fimJanela"`);
+    expect(sql.text).toContain(`ELSE ${dataOperacional} END AS "dataReferencia"`);
+    expect(sql.text).toContain(`WHEN a.situacao='ADIADO' OR ns."dataAtencao" IS NOT NULL THEN ${dataOperacional} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'inicioJanela','')::date) END AS "inicioJanela"`);
+    expect(sql.text).toContain(`WHEN a.situacao='ADIADO' OR ns."dataAtencao" IS NOT NULL THEN ${dataOperacional} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'fimJanela','')::date) END AS "fimJanela"`);
     expect(sql.text).toContain("THEN 'ATRASADO' ELSE 'PENDENTE' END ELSE a.situacao END AS situacao");
     expect(sql.values).toContainEqual(new Date("2030-11-10T00:00:00Z"));
+  });
+  it("projeta próximos vencidos e pendentes pela data de atenção, preservando mês sem dia", async () => {
+    mock.query.mockClear();mock.transaction.mockResolvedValue([[],[{total:0n}]]);
+    await consultarAgendaUnificada(consultaAgendaUnificadaSchema.parse({de:"2030-11-01",ate:"2030-11-30"}),9,new Date("2030-11-10T12:00:00Z"));
+    const sql=mock.query.mock.calls[0][0];
+    expect(sql.text).toContain("CASE WHEN a.situacao IN ('PROXIMO','PENDENTE','ADIADO') AND CASE WHEN a.situacao='ADIADO' THEN COALESCE(ns.\"dataAtencao\",a.\"prazo\") ELSE COALESCE(ns.\"dataAtencao\",COALESCE(a.\"dataReferencia\",NULLIF(a.resumo->>'inicioJanela','')::date)) END<=");
+    expect(sql.text).toContain("WHEN COALESCE(a.resumo->>'precisao','DIA')='MES' AND a.situacao<>'ADIADO' THEN NULL");
+    expect(sql.text).toContain(`WHEN a.situacao='ADIADO' OR ns."dataAtencao" IS NOT NULL THEN CASE`);
+    expect(sql.text).not.toMatch(/UPDATE|INSERT|DELETE/);
   });
 });

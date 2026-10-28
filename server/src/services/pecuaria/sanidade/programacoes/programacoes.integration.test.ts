@@ -81,5 +81,8 @@ describe.skipIf(!executar)("programações — SQL com fixtures próprias", () =
     const previa=await previaRevisaoProgramacao(programa!,sitio!);
     await revisarProgramacao(programa!,sitio!,{revisao:previa.revisao,chavePrevia:previa.chavePrevia,motivo:"Inativação isolada de fixture",destinoAbertas:"MANTER"},usuario!);
     await expect(revisarProgramacao(programa!,sitio!,{revisao:previa.revisao,chavePrevia:previa.chavePrevia,motivo:"Prévia antiga não reutilizável",destinoAbertas:"ENCERRAR"},usuario!)).rejects.toMatchObject({code:"CONFLITO"});
+    const previaEncerramento=await previaRevisaoProgramacao(programa!,sitio!);
+    await revisarProgramacao(programa!,sitio!,{revisao:previaEncerramento.revisao,chavePrevia:previaEncerramento.chavePrevia,motivo:"Encerramento isolado das necessidades da fixture",destinoAbertas:"ENCERRAR"},usuario!);
+    expect((await consultarProgramacoes(consultaProgramacoesSchema.parse({ano:hoje.getUTCFullYear()}),sitio!)).itens[0]).toMatchObject({previstos:2,atendidos:0,pendentes:0});
   },30000);
 });

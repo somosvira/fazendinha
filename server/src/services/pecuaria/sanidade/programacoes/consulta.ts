@@ -51,7 +51,7 @@ export async function consultarProgramacoes(filtro: ConsultaProgramacoes, propri
       const atendidos = participantes.filter(n => situacao(n) === "REALIZADO").length;
       return [{ ...janela, nome: p.nome, tipo: p.tipo, propriedadeId: p.propriedadeId, ativo: p.ativo, produtoId: p.produtoId, produtoNome: p.produtoId ? nomes.get(p.produtoId) ?? null : null,
         procedimento: p.procedimento, sujeitoTipo: p.sujeitoTipo, recorrencia: p.recorrencia, publico: p.publico, fonte: p.fonte, observacao: p.observacao, revisao: p.revisao,
-        pendenciasAtivacao: pendenciasAtivacao(p), previstos: participantes.length, atendidos, pendentes: participantes.filter(n => !["REALIZADO", "DISPENSADO", "INVALIDADO"].includes(situacao(n))).length }];
+        pendenciasAtivacao: pendenciasAtivacao(p), previstos: participantes.length, atendidos, pendentes: participantes.filter(n => !["REALIZADO", "DISPENSADO", "ENCERRADO", "INVALIDADO"].includes(situacao(n))).length }];
     });
     return { mes, eventos, total: eventos.length };
   });

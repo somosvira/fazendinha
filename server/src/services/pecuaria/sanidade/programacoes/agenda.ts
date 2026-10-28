@@ -7,6 +7,8 @@ export const consultaAgendaUnificadaSchema = z.object({ de: z.string().date().op
 export type ItemAgendaUnificada = { id: string; origem: "TAREFA" | "ALERTA"; origemId: string; alertaId: string | null; propriedadeId: number | null; participacaoId: string | null; animalId: string; brinco: string; nome: string | null; titulo: string; situacao: string; dataReferencia: Date | null; precisao: string; inicioJanela: Date | null; fimJanela: Date | null };
 export async function consultarAgendaUnificada(f: z.infer<typeof consultaAgendaUnificadaSchema>, propriedadeId: number | null, agora = new Date()) {
   const hoje = dataCivil(diaCivil(agora));
+  const referencia = Prisma.sql`COALESCE(a."dataReferencia",NULLIF(a.resumo->>'inicioJanela','')::date)`;
+  const operacional = Prisma.sql`CASE WHEN a.situacao='ADIADO' THEN COALESCE(ns."dataAtencao",a."prazo") ELSE COALESCE(ns."dataAtencao",${referencia}) END`;
   const base = Prisma.sql`WITH tarefas AS (
     SELECT 'tarefa:'||t.id AS id, 'TAREFA'::text AS origem, t.id AS "origemId", n."alertaId", p."propriedadeId", p.id AS "participacaoId", p."animalId", an.brinco, an.nome,
       COALESCE(t."nomeSnapshot", pr.nome) AS titulo,
@@ -20,10 +22,10 @@ export async function consultarAgendaUnificada(f: z.infer<typeof consultaAgendaU
     LEFT JOIN pecuaria."NecessidadeSanitaria" n ON n."participacaoId"=p.id
   ), avisos AS (
     SELECT 'alerta:'||a.id AS id, 'ALERTA'::text AS origem, a.id AS "origemId", a.id AS "alertaId", a."propriedadeId", NULL::text AS "participacaoId", a."sujeitoId" AS "animalId", an.brinco, an.nome, a.titulo,
-      CASE WHEN a.situacao='ADIADO' AND COALESCE(ns."dataAtencao",a."prazo")<=${hoje} THEN CASE WHEN a."prazo"<${hoje} THEN 'ATRASADO' ELSE 'PENDENTE' END ELSE a.situacao END AS situacao,
-      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN a.situacao='ADIADO' THEN COALESCE(ns."dataAtencao",a."prazo") ELSE a."dataReferencia" END AS "dataReferencia", CASE WHEN a.situacao='ADIADO' THEN 'DIA' ELSE COALESCE(a.resumo->>'precisao','DIA') END AS precisao,
-      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN a.situacao='ADIADO' THEN COALESCE(ns."dataAtencao",a."prazo") ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'inicioJanela','')::date) END AS "inicioJanela",
-      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN a.situacao='ADIADO' THEN COALESCE(ns."dataAtencao",a."prazo") ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'fimJanela','')::date) END AS "fimJanela", l."propriedadeId" AS "propriedadeAtualId", l."loteId"
+      CASE WHEN a.situacao IN ('PROXIMO','PENDENTE','ADIADO') AND ${operacional}<=${hoje} THEN CASE WHEN a."prazo"<${hoje} THEN 'ATRASADO' ELSE 'PENDENTE' END ELSE a.situacao END AS situacao,
+      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN COALESCE(a.resumo->>'precisao','DIA')='MES' AND a.situacao<>'ADIADO' THEN NULL ELSE ${operacional} END AS "dataReferencia", CASE WHEN a.situacao='ADIADO' THEN 'DIA' ELSE COALESCE(a.resumo->>'precisao','DIA') END AS precisao,
+      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN a.situacao='ADIADO' OR ns."dataAtencao" IS NOT NULL THEN ${operacional} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'inicioJanela','')::date) END AS "inicioJanela",
+      CASE WHEN a.situacao IN ('CONFERENCIA_INICIAL','NECESSITA_REVISAO','DADOS_INSUFICIENTES') THEN NULL WHEN a.situacao='ADIADO' OR ns."dataAtencao" IS NOT NULL THEN ${operacional} ELSE COALESCE(a."dataReferencia", NULLIF(a.resumo->>'fimJanela','')::date) END AS "fimJanela", l."propriedadeId" AS "propriedadeAtualId", l."loteId"
     FROM public."Alerta" a JOIN pecuaria."Animal" an ON a."sujeitoTipo"='ANIMAL' AND an.id=a."sujeitoId"
     LEFT JOIN pecuaria."LocalizacaoAnimal" l ON l."animalId"=an.id AND l.ate IS NULL
     LEFT JOIN pecuaria."NecessidadeSanitaria" ns ON ns."alertaId"=a.id

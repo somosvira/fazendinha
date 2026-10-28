@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ programas: vi.fn(), produtos: vi.fn(), necessidades: vi.fn() }));
-vi.mock("../../../../db.js", () => ({ prisma: { programacaoSanitaria: { findMany: mocks.programas }, produto: { findMany: mocks.produtos }, necessidadeProgramacaoSanitaria: { findMany: mocks.necessidades } } }));
+const mocks = vi.hoisted(() => ({ programas: vi.fn(), produtos: vi.fn(), necessidades: vi.fn(), necessidadesRegra: vi.fn() }));
+vi.mock("../../../../db.js", () => ({ prisma: { programacaoSanitaria: { findMany: mocks.programas }, produto: { findMany: mocks.produtos }, necessidadeProgramacaoSanitaria: { findMany: mocks.necessidades }, necessidadeSanitaria: { findMany: mocks.necessidadesRegra } } }));
 import { consultarProgramacoes, pendenciasAtivacao } from "./consulta.js";
 import { consultaProgramacoesSchema } from "./schemas.js";
 const p = { id: "p", propriedadeId: 7, nome: "Fictícia", tipo: "VACINACAO", meses: [1,2], ano: null, vigenciaInicio: null, vigenciaFim: null, precisao: "MES", dia: null, recorrencia: "JANELA_ELEGIBILIDADE", produtoId: null, procedimento: "Conferir atividade", publico: {}, publicoConferido: false, fonte: null, observacao: null, executor: null, tipoExameId: null, sujeitoTipo: "ANIMAL", antecedenciaDias: 0, ativo: false, revisao: 1, ativadoEm: null, criadoPorId: 1, regraEquivalenteId: null, criadoEm: new Date(), atualizadoEm: new Date() };
-beforeEach(() => { vi.clearAllMocks(); mocks.programas.mockResolvedValue([p]); mocks.produtos.mockResolvedValue([]); mocks.necessidades.mockResolvedValue([]); });
+beforeEach(() => { vi.clearAllMocks(); mocks.programas.mockResolvedValue([p]); mocks.produtos.mockResolvedValue([]); mocks.necessidades.mockResolvedValue([]); mocks.necessidadesRegra.mockResolvedValue([]); });
 describe("consulta planejamento mensal/anual", () => {
   it("mês e anual conservam evento e não preenchem atendimentos ausentes", async () => {
     const anual = await consultarProgramacoes(consultaProgramacoesSchema.parse({ ano: 2031 }), 7);
@@ -23,5 +23,16 @@ describe("consulta planejamento mensal/anual", () => {
   it("não declara executor inexistente ou conferência pendente habilitados", () => {
     expect(pendenciasAtivacao({ ...p, sujeitoTipo: "SITIO" })).toContain("Executor de verificação por lote/sítio ainda indisponível");
     expect(pendenciasAtivacao(p)).toContain("Conferir critérios factuais do público");
+  });
+  it("mantém encerrados no total previsto e histórico sem contar como atendimento ou pendência", async () => {
+    mocks.necessidades.mockResolvedValue(["REALIZADO", "DISPENSADO", "ENCERRADO", "INVALIDADO", "NECESSITA_REVISAO", "PENDENTE"].map(situacao => ({ programacaoId: "p", periodo: "ELEGIBILIDADE", situacao })));
+    const r = await consultarProgramacoes(consultaProgramacoesSchema.parse({ ano: 2031 }), 7);
+    expect(r.itens[0]).toMatchObject({ previstos: 6, atendidos: 1, pendentes: 2 });
+  });
+  it("usa encerramento da regra equivalente sem perpetuar a pendência copiada na programação", async () => {
+    mocks.necessidades.mockResolvedValue([{ programacaoId: "p", periodo: "ELEGIBILIDADE", situacao: "PENDENTE", regraNecessidadeId: "necessidade-regra" }]);
+    mocks.necessidadesRegra.mockResolvedValue([{ id: "necessidade-regra", situacao: "ENCERRADO" }]);
+    const r = await consultarProgramacoes(consultaProgramacoesSchema.parse({ ano: 2031 }), 7);
+    expect(r.itens[0]).toMatchObject({ previstos: 1, atendidos: 0, pendentes: 0 });
   });
 });

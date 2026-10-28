@@ -37,3 +37,15 @@ it("resultado corrigido reavalia participação por tarefa e vínculo sem duplic
  await reconciliarExameProtocoladoTx(tx(),"exame","tarefa",7);
  expect(m.tx.participacaoProtocolo.findUnique).toHaveBeenCalledOnce();expect(m.publicar).toHaveBeenCalledWith(m.tx,n.id,{usuarioId:7},"ENCERRAR");
 });
+it.each([false,true])("preserva revisão de contexto ao reconciliar protocolo com conclusão=%s",async concluido=>{
+ m.tx.necessidadeSanitaria.findMany.mockResolvedValue([{...n,situacao:"NECESSITA_REVISAO",motivo:"Animal transferido; conferir o contexto do cuidado no sítio atual"}]);
+ m.tx.participacaoProtocolo.findUnique.mockResolvedValue({id:"participacao",canceladaEm:null,tarefas:[{dispensadaEm:null,regularizacaoPendente:false,previsaoPendente:false,previstaPara:new Date("2099-01-01"),aplicacoes:concluido?[{status:"VALIDO"}]:[],exames:[],tentativas:[],manejos:[],vinculos:[]}]});
+ await reconciliarParticipacaoAlertaTx(tx(),"participacao",7);
+ expect(m.tx.necessidadeSanitaria.update).not.toHaveBeenCalled();expect(m.publicar).not.toHaveBeenCalled();expect(m.auditar).not.toHaveBeenCalled();
+});
+it("regularização factual corrigida pode concluir quando não há revisão de contexto",async()=>{
+ m.tx.necessidadeSanitaria.findMany.mockResolvedValue([{...n,situacao:"NECESSITA_REVISAO",motivo:"Protocolo com evidência anulada exige regularização"}]);
+ m.tx.participacaoProtocolo.findUnique.mockResolvedValue({id:"participacao",canceladaEm:null,tarefas:[{dispensadaEm:null,regularizacaoPendente:false,aplicacoes:[],exames:[{status:"VALIDO",realizacao:"REALIZADO"}],tentativas:[],manejos:[],vinculos:[]}]});
+ await reconciliarParticipacaoAlertaTx(tx(),"participacao",7);
+ expect(m.tx.necessidadeSanitaria.update).toHaveBeenCalledWith({where:{id:n.id},data:expect.objectContaining({situacao:"REALIZADO"})});expect(m.publicar).toHaveBeenCalledWith(m.tx,n.id,{usuarioId:7},"ENCERRAR");
+});

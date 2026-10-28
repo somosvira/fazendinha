@@ -3,6 +3,15 @@ import { RebanhoError, auditar, hojeFazendaDate } from "../../rebanho/regras.js"
 import { conferirDestinoAtivoTx, exigirAutorDecisao, obterNecessidadeAtendimentoTx, type OrigemAlertaAplicacao } from "./atendimento.js";
 import { publicarNecessidadeTx } from "./produtor.js";
 
+// Valores persistidos: mudanças de redação precisam reconhecer os motivos anteriores.
+// Só o reconciliador pode resolver suas próprias revisões factuais; as de contexto
+// (transferência, cadastro, destino) exigem conferência na origem e permanecem intactas.
+const motivosRevisaoProtocolar = {
+  regularizar: "Protocolo com evidência anulada exige regularização",
+  semExecucao: "Protocolo cancelado ou encerrado sem execução integral",
+  atrasado: "Protocolo com tarefa atrasada",
+} as const;
+
 export async function vincularParticipacaoAlertaTx(tx: Prisma.TransactionClient, input: OrigemAlertaAplicacao, participacao: { id: string; animalId: string; propriedadeId: number | null; protocoloId: string }, usuarioId: number | null) {
   if (!input.alertaId) return;
   exigirAutorDecisao(usuarioId);
@@ -29,8 +38,9 @@ export async function reconciliarParticipacaoAlertaTx(tx: Prisma.TransactionClie
   const concluiu = p.tarefas.length > 0 && p.tarefas.every(atendida);
   const atrasado = p.tarefas.some(t => !atendida(t) && !t.previsaoPendente && t.previstaPara < hoje);
   const situacao = regularizar || semExecucao || atrasado ? "NECESSITA_REVISAO" : concluiu ? "REALIZADO" : "PROGRAMADO";
-  const motivo = regularizar ? "Protocolo com evidência anulada exige regularização" : semExecucao ? "Protocolo cancelado ou encerrado sem execução integral" : atrasado ? "Protocolo com tarefa atrasada" : concluiu ? "Todas as tarefas possuem fatos válidos vinculados" : "Atendimento assumido pelo protocolo vinculado";
+  const motivo = regularizar ? motivosRevisaoProtocolar.regularizar : semExecucao ? motivosRevisaoProtocolar.semExecucao : atrasado ? motivosRevisaoProtocolar.atrasado : concluiu ? "Todas as tarefas possuem fatos válidos vinculados" : "Atendimento assumido pelo protocolo vinculado";
   for (const n of necessidades) {
+    if (n.situacao === "NECESSITA_REVISAO" && !Object.values(motivosRevisaoProtocolar).some(m => m === n.motivo)) continue;
     if (n.situacao === "ENCERRADO" || n.situacao === "DISPENSADO" || n.situacao === situacao && n.motivo === motivo) continue;
     await tx.necessidadeSanitaria.update({ where: { id: n.id }, data: { situacao, motivo, revisao: { increment: 1 } } });
     const comando = situacao === "REALIZADO" ? "ENCERRAR" : n.alerta?.ciclo && n.alerta.ciclo !== "ABERTO" ? "REABRIR" : "PUBLICAR";
