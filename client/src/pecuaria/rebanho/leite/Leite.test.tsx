@@ -410,7 +410,10 @@ it("explica finalidade impeditiva sem interromper a folha dos elegíveis", async
   ] });
   render(<Leite podeLancar />);
   await screen.findByLabelText("Litros de Aurora, brinco 123");
-  expect(screen.getByText(/Lua · Brinco 456: Animal com finalidade Reprodução/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:"Ver animais"}));
+  expect(screen.getByRole("dialog", {name:"Animais fora da ordenha"})).toBeTruthy();
+  expect(screen.getByText("Lua")).toBeTruthy();
+  expect(screen.getByText("Brinco 456")).toBeTruthy();
   expect(screen.getByText(/Há finalidades sobrepostas na data/)).toBeTruthy();
   expect(screen.queryByLabelText("Litros de Lua, brinco 456")).toBeNull();
 });

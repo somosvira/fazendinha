@@ -1,3 +1,10 @@
+import {Badge} from "@/components/ui/badge";
+import {ResumoRelatorioLeite} from "../../relatorios/ResumoRelatorioLeite";
+import {Dialog,DialogContent,DialogHeader,DialogTitle} from "@/components/ui/dialog";
+import {Input} from "@/components/ui/input";
+import {History,Archive,SlidersHorizontal} from "lucide-react";
+import { BalancoPreservadoVisual } from "./BalancoPreservadoVisual";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -182,11 +189,15 @@ const dataPt = (data: string) =>
 export function RelatoriosLeite({
   podeExportar,
   podeFinanceiro,
+  propriedadeId,
 }: {
   podeExportar: boolean;
   podeFinanceiro: boolean;
+  propriedadeId?: number;
 }) {
-  const sitio = getPropriedadeAtiva();
+  const sitio = propriedadeId ?? getPropriedadeAtiva();
+  const [historicoAberto,setHistoricoAberto]=useState(false),[filtrosAbertos,setFiltrosAbertos]=useState(false);
+
   const [inicio, setInicio] = useState(
     () =>
       new URLSearchParams(location.search).get("inicio") ??
@@ -195,6 +206,7 @@ export function RelatoriosLeite({
   const [fim, setFim] = useState(
     () => new URLSearchParams(location.search).get("fim") ?? hojeOperacional(),
   );
+  const [periodoAtual,setPeriodoAtual]=useState(() => ({inicio,fim}));
   const [incluirValores, setIncluirValores] = useState(false);
   const [lista, setLista] = useState<ListaEmissoes | null>(null),
     [pagina, setPagina] = useState(1),
@@ -227,7 +239,7 @@ export function RelatoriosLeite({
     };
   }, [sitio, pagina, revisao]);
   async function emitir() {
-    if (trava.current) return;
+    if (!podeExportar || trava.current) return;
     trava.current = true;
     setOcupado(true);
     setErro("");
@@ -239,7 +251,7 @@ export function RelatoriosLeite({
         { inicio, fim, incluirValores: podeFinanceiro && incluirValores },
       );
       if (atual === geracao.current) {
-        setEmissao(r);
+        setEmissao(r);setFiltrosAbertos(false);
       }
     } catch (e) {
       if (atual === geracao.current)
@@ -258,7 +270,7 @@ export function RelatoriosLeite({
         `/relatorios/emissoes/${id}`,
         lista?.propriedadeId ?? sitio,
       );
-      if (atual === geracao.current) setEmissao(r);
+      if (atual === geracao.current) {setEmissao(r);setHistoricoAberto(false);}
     } catch (e) {
       if (atual === geracao.current)
         setErro(e instanceof Error ? e.message : "Falha ao abrir emissão");
@@ -297,21 +309,23 @@ export function RelatoriosLeite({
     }
   }
   return (
-    <section className="leite-operacoes leite-comercial-consulta">
-      <ExportacaoProducaoLeite podeExportar={podeExportar} />
+    <section className="leite-operacoes leite-comercial-consulta rel-leite">
+      <div className="rel-periodo"><div><strong>{dataPt(emissao?.snapshot.filtros.inicio ?? periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim ?? periodoAtual.fim)}</strong><Badge variant="outline">{emissao ? "Emissão preservada" : "Consulta atual"}</Badge></div><div><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button><Button variant="outline" size="sm" onClick={()=>setHistoricoAberto(true)}><History size={15}/>Emissões anteriores</Button></div></div>
+      {!emissao && sitio!=null && <ResumoRelatorioLeite key={`${sitio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
+      <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período e emissão de leite</DialogTitle></DialogHeader><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} />
       <h2 className="leite-titulo-secao">Relatórios preservados de leite <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h2>
 
-      {podeExportar ? (
-        <form
+      <form
           className="leite-form-inline"
           onSubmit={(e) => {
             e.preventDefault();
-            void emitir();
+            if (podeExportar) void emitir();
+            else {setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false);}
           }}
         >
           <label>
             Início do relatório
-            <input
+            <Input
               type="date"
               required
               value={inicio}
@@ -321,7 +335,7 @@ export function RelatoriosLeite({
           </label>
           <label>
             Fim do relatório
-            <input
+            <Input
               type="date"
               required
               value={fim}
@@ -330,9 +344,9 @@ export function RelatoriosLeite({
               onChange={(e) => setFim(e.target.value)}
             />
           </label>
-          {podeFinanceiro && (
+          {podeFinanceiro && podeExportar && (
             <label className="leite-checkbox">
-              <input
+              <Input
                 type="checkbox"
                 checked={incluirValores}
                 onChange={(e) => setIncluirValores(e.target.checked)}
@@ -340,19 +354,14 @@ export function RelatoriosLeite({
               Incluir valores financeiros
             </label>
           )}
-          <Button disabled={ocupado || !lista}>
+          {podeExportar && <Button disabled={ocupado || !lista}>
             Emitir relatório preservado
-          </Button>
+          </Button>}
         </form>
-      ) : (
-        <p>
-          Seu acesso permite consultar as emissões. Criar e exportar exige
-          permissão de exportação.
-        </p>
-      )}
+      <Button variant="outline" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button></DialogContent></Dialog>
       {erro && <p role="alert">{erro}</p>}
-      {lista && (
-        <SecaoDetalhesLeite inicialmenteAberto titulo={<>Emissões disponíveis</>}>
+      <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões preservadas de leite</DialogTitle></DialogHeader>{lista && (
+        <section aria-label="Emissões disponíveis">
 
           {lista.itens.length ? (
             <div className="leite-tabela-scroll">
@@ -409,11 +418,12 @@ export function RelatoriosLeite({
               Atualizar lista de emissões
             </Button>
           </div>
-        </SecaoDetalhesLeite>
-      )}
+        </section>
+      )}</DialogContent></Dialog>
       {emissao && (
         <>
           <div className="leite-form-inline">
+            <Button variant="outline" onClick={()=>setEmissao(null)}>Voltar à consulta atual</Button>
             {podeExportar && (
               <Button disabled={ocupado} onClick={() => void baixar()}>
                 Exportar esta emissão em CSV
@@ -427,6 +437,8 @@ export function RelatoriosLeite({
   );
 }
 function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFinanceiro: boolean }) {
+  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite");
+  const ancora = (secao: string) => `leite-relatorio-${emissao.id}-${secao}`;
   const s = { ...emissao.snapshot, valores: podeFinanceiro ? emissao.snapshot.valores : null };
   const [paginaAnimal, setPaginaAnimal] = useState(1),
     [paginaQualidade, setPaginaQualidade] = useState(1),
@@ -441,7 +453,8 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         Consulta preservada em {new Date(s.corteEm).toLocaleString("pt-BR")} ·
         metodologia {s.versaoCalculo}.
       </p>
-      <dl className="leite-indicadores">
+      <nav aria-label="Seções da emissão" className="leite-sumario-emissao">{[["producao","Produção"],["estoque","Estoque"],["qualidade","Qualidade"],["destinos","Destinos"],["comercial","Comercial"]].map(([id,nome])=><a key={id} href={`#${ancora(id)}`}>{nome}</a>)}</nav>
+      <dl id={ancora("producao")} className="leite-indicadores">
         <div>
           <dt>Litros medidos</dt>
           <dd>{formatarLitros(s.dados.producao.consolidado.litros)}</dd>
@@ -487,6 +500,8 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         total={s.dados.producao.animais.length}
         onChange={setPaginaAnimal}
       />
+      <div className="leite-secao-visual-cab" id={ancora("estoque")}><h2>Balanço do estoque</h2><AlternarVisualizacaoConsulta modo={visualizacaoBalanco.modo} mudar={visualizacaoBalanco.mudar} rotulo="Visualização do balanço preservado"/></div>
+      {visualizacaoBalanco.modo === "visual" ? <BalancoPreservadoVisual itens={s.dados.balanco}/> : (
       <div className="leite-tabela-scroll">
         <Table semContainer>
           <TableCaption>Balanço do razão de estoque</TableCaption>
@@ -541,18 +556,9 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
           </TableBody>
         </Table>
       </div>
-      <p>
-        O encerramento é calculado dos movimentos. Não comprova medição física
-        do tanque nem conciliação de campo. Produção medida ainda não
-        confirmada:{" "}
-        {formatarLitros(
-          s.cobertura.producaoNaoConfirmadaLitros === null
-            ? null
-            : Number(s.cobertura.producaoNaoConfirmadaLitros),
-        )}
-        .
-      </p>
-      <h2>Qualidade nas amostras</h2>
+      )}
+      <div className="leite-balanco-cobertura">Produção medida não confirmada: {formatarLitros(s.cobertura.producaoNaoConfirmadaLitros===null?null:Number(s.cobertura.producaoNaoConfirmadaLitros))}<AjudaCampo rotulo="Sobre encerramento e cobertura" texto="O encerramento vem dos movimentos preservados. Não comprova medição física nem conciliação de campo. Produção medida ainda não confirmada não aumenta o saldo."/></div>
+      <h2 id={ancora("qualidade")}>Qualidade nas amostras</h2>
       {!s.dados.qualidade.length && (
         <p>
           Nenhuma análise registrada neste período. Isso não comprova qualidade
@@ -609,7 +615,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         total={s.dados.qualidade.length}
         onChange={setPaginaQualidade}
       />
-      <h2>Alimentação e descarte</h2>
+      <h2 id={ancora("destinos")}>Consumo interno e descarte</h2>
       <div className="leite-tabela-scroll">
         <Table semContainer>
           <TableCaption>Saídas internas preservadas</TableCaption>
@@ -628,7 +634,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
                 <TableRow key={d.id}>
                   <TableCell>{dataPt(d.data)}</TableCell>
                   <TableCell>
-                    {d.natureza === "COLOSTRO"
+                    {d.natureza === "CASA" ? "Retirada para Casa" : d.natureza === "FUNCIONARIOS" ? "Retirada para Funcionários" : d.natureza === "COLOSTRO"
                       ? "Colostro aos animais"
                       : ["LEITE_NAO_COMERCIAL", "NAO_COMERCIAL"].includes(d.natureza)
                         ? "Leite não comercial aos animais"
@@ -657,6 +663,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         total={Math.max(s.dados.destinos.length, s.dados.descartes.length)}
         onChange={setPaginaSaida}
       />
+      <div id={ancora("comercial")}/>
       {!!s.dados.comercial?.length && <section aria-label="Retiradas comerciais preservadas">
         <h2>Retiradas comerciais <AjudaCampo rotulo="Sobre as retiradas físicas" texto={"A retirada física conserva sua data mesmo com preço pendente; não representa recebimento."} /></h2>
 

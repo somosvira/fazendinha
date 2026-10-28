@@ -1,3 +1,8 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Info, ArrowUpRight } from "lucide-react";
+import { navegarPara } from "../../../router";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { DatePicker } from "@/components/DatePicker";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +84,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
   const [sujo, setSujo] = useState(false);
   const [falhasAnimais, setFalhasAnimais] = useState<string[]>([]);
   const [config, setConfig] = useState(false);
+  const [verImpedimentos, setVerImpedimentos] = useState(false);
   const [incluir, setIncluir] = useState(false);
   const [adicionais, setAdicionais] = useState<
     import("./types").AnimalFolhaLeite[]
@@ -473,11 +479,8 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
       )}
       {folha && (
         <>
-          {folha.impedimentos?.length > 0 && <SecaoDetalhesLeite className="leite-aviso" titulo={<>Animais fora da ordenha nesta data ({folha.impedimentos.length})</>}>
-
-            <p>A finalidade e os demais requisitos são conferidos pelo servidor na data da produção. Confira o cadastro antes de tentar incluir.</p>
-            <ul>{folha.impedimentos.map(a => <li key={a.animalId}>{a.nome || a.brinco} · Brinco {a.brinco}: {a.motivo}</li>)}</ul>
-          </SecaoDetalhesLeite>}
+          {folha.impedimentos?.length > 0 && <><div className="leite-impedimentos-faixa"><Info size={18} aria-hidden/><div><strong>{folha.impedimentos.length} animais fora da ordenha</strong><span>Consulte os motivos e abra o cadastro para conferir.</span></div><Button variant="outline" onClick={()=>setVerImpedimentos(true)}>Ver animais<ArrowUpRight size={14} aria-hidden/></Button></div>
+          <Dialog open={verImpedimentos} onOpenChange={setVerImpedimentos}><DialogContent className="leite-consulta-dialog leite-impedimentos-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Animais fora da ordenha</DialogTitle></DialogHeader><div className="leite-impedimentos-contexto"><Badge variant="outline">{folha.impedimentos.length} animais</Badge><span>Ordenha de {data.split("-").reverse().join("/")}</span></div><div className="leite-impedimentos-lista">{folha.impedimentos.map(a=><article key={a.animalId}><Milk size={18} aria-hidden/><div><strong>{a.nome||a.brinco}</strong><span>Brinco {a.brinco}</span></div><p>{a.motivo}</p><Button variant="outline" onClick={()=>void executarComGuardaNavegacao(()=>navegarPara(`/pecuaria/rebanho/animais/${encodeURIComponent(a.animalId)}?retorno=${encodeURIComponent(location.pathname+location.search)}`))}>Abrir cadastro<ArrowUpRight size={14} aria-hidden/></Button></article>)}</div><Button variant="outline" onClick={()=>setVerImpedimentos(false)}>Voltar à ordenha</Button></DialogContent></Dialog></>}
           <div
             className="leite-sessoes"
             ref={sessoesRef}
@@ -581,7 +584,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               </span>
                             </div>
                             {podeLancar && folha.congelada && (
-                              <Button className="leite-excluir"
+                              <Button variant="outline" size="sm" className="leite-excluir"
                                 disabled={!podeEditar}
                                 onClick={() => {
                                   if (
@@ -603,7 +606,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                     setExcluir((ids) => [...ids, a.animalId]);
                                   setSujo(true);
                                 }}>
-                                Excluir do dia
+                                <CircleMinus size={14} aria-hidden />Excluir do dia
                               </Button>
                             )}
                           </TableCell>

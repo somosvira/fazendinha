@@ -312,3 +312,10 @@ A agenda usa tabela ordenada por data crescente, com datas desconhecidas ao fina
 Na consulta das participações, as etapas preservam a situação operacional e a justificativa fornecidas pela API, incluindo Adiado e Não atendido, sem reduzi-las a uma inferência de prazo. Gravações no executor, inclusive justificativas, adiamentos, retificações e regularizações, invalidam também o resumo e as participações externas; falhas e simples recarregamentos não são tratados como gravações.
 
 A ficha apresenta o planejamento administrativo e a classificação gerencial em seções fixas, sem resumo nativo de abrir/fechar. Filtros, prévias, motivos e confirmações permanecem necessários; dados clínicos não são substituídos por indicadores decorativos. Custos agrupam cobertura e limitações junto ao total, preservando valores ocultos, desconhecidos, preparatórios e a distinção entre bases sobrepostas.
+
+
+### Visualização do desempenho por período
+
+O painel de indicadores alterna cartões e tabela com `indicadoresVisualizacao`, preservando os mesmos períodos paginados, taxas, contagens e denominadores do snapshot. A escolha fica na URL e na preferência de visualização por usuário. Trocar a apresentação não reconsulta nem recalcula o indicador, muda filtros ou emite relatório. Os cartões mantêm a consulta dos animais da janela e distinguem taxa zero de base insuficiente; a barra de serviço é apenas representação da taxa já calculada, limitada visualmente a 0–100%, sem substituir o valor exato exibido. Emissões preservadas conservam metodologia e conteúdo próprios.
+
+A apresentação unificada de relatórios, o builder e a revisão de novas variáveis seguem [Relatórios da Pecuária](relatorios.md). O desenho não muda o cálculo dos indicadores nem o conteúdo de emissões já preservadas.

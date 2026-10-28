@@ -550,13 +550,13 @@ export function App() {
     : tab === "pec-reproducao"
     ? <Reproducao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-relatorios"
-    ? <RelatoriosPecuaria podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    ? <RelatoriosPecuaria podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-visitas"
     ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-leite"
-    ? <LeiteModulo podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
+    ? <LeiteModulo onSelecionarSitio={trocarPropriedade} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"
     ? <PainelGerencial locationRevision={locationRevision} propriedadeId={propAtiva} onPeriodo={periodo=>setDeepLinkFiltros({tab:"gerencial",filtros:{...periodo,...(propAtiva==null?{}:{propriedadeId:String(propAtiva)})}})}/>
     : tab === "estoque"

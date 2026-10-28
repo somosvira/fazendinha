@@ -1,3 +1,7 @@
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { formatarDataBR } from "../lib/rotulos";
+import { CartaoAmostraVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -37,6 +41,7 @@ const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
 export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   const sitio = getPropriedadeAtiva();
+  const tituloAmostra = useRef<HTMLHeadingElement>(null);
   const [aba, setAba] = useState<"amostras" | "resultados">("amostras");
   const [propriedadeResolvida, setPropriedadeResolvida] = useState<
     number | null
@@ -143,7 +148,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       {aviso && <p role="status">{aviso}</p>}
       {carregando && <p role="status">Consultando laudos…</p>}
       {(novoFormato || derivar) && (
-        <Dialog open onOpenChange={v => { if (!v) { setNovoFormato(false); setDerivar(null); } }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Formato do laudo</DialogTitle></DialogHeader><EditorFormato
+        <Dialog open onOpenChange={v => { if (!v) { setNovoFormato(false); setDerivar(null); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Formato do laudo</DialogTitle></DialogHeader><EditorFormato
           key={derivar?.id ?? "novo"}
           anterior={derivar}
           sitio={sitio}
@@ -159,7 +164,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
         /></DialogContent></Dialog>
       )}
       {nova && (
-        <Dialog open onOpenChange={v => { if (!v) setNova(false); }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar amostra</DialogTitle></DialogHeader><NovaAmostra
+        <Dialog open onOpenChange={v => { if (!v) setNova(false); }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar amostra</DialogTitle></DialogHeader><NovaAmostra
           formatos={formatos.filter((f) => f.ativo)}
           sitio={propriedadeResolvida}
           onCancelar={() => setNova(false)}
@@ -178,7 +183,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               resultado ainda não chegou.
             </p>
           )}
-          <ListaConsultaLeite preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
+          <ListaConsultaLeite layout="grade" renderizarVisual={a => <CartaoAmostraVisual amostra={a} abrir={() => { setSelecionada(a); setNova(false); }}/>} preferencia="qualidadeLeiteVisualizacao" compacta rotulo="Amostras e resultados" itens={amostras.itens} chaveDe={a => a.id} colunas={[
             { chave: "data", titulo: "Coleta", principal: true, celula: a => a.data.slice(0, 10).split("-").reverse().join("/") },
             { chave: "tipo", titulo: "Tipo", celula: a => a.sujeito.tipo === "ANIMAL" ? "Individual" : "Coletiva" },
             { chave: "origem", titulo: "Origem", celula: a => a.sujeito.tipo === "ANIMAL" ? a.animal?.brinco ?? "Sem brinco" : a.sujeito.origem },
@@ -190,7 +195,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
         </>
       )}
       {selecionada && (
-        <Dialog open onOpenChange={v => { if (!v) setSelecionada(null); }}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Detalhes da amostra</DialogTitle></DialogHeader><DetalheAmostra
+        <Dialog open onOpenChange={v => { if (!v) setSelecionada(null); }}><DialogContent className="leite-consulta-dialog leite-laudo-dialog" data-fin-scroll="conteudo" aria-describedby={undefined} onOpenAutoFocus={e=>{e.preventDefault();tituloAmostra.current?.focus()}}><DialogHeader><DialogTitle ref={tituloAmostra} tabIndex={-1}>Detalhes da amostra</DialogTitle></DialogHeader><DetalheAmostra
           key={selecionada.id}
           inicial={selecionada}
           sitio={selecionada.propriedadeId}
@@ -234,13 +239,13 @@ function Resultados({ amostra }: { amostra: AmostraQualidade }) {
   if (!amostra.resultados.length)
     return <small>Resultado ainda não informado.</small>;
   return (
-    <dl>
+    <dl className="leite-laudo-resultados">
       {amostra.resultados.map((r) => {
         const campo = amostra.formatoSnapshot.campos.find(
           (c) => c.codigo === r.campo,
         );
         return (
-          <div key={r.campo}>
+          <div key={r.campo} data-tipo={campo?.tipo}>
             <dt>{campo?.rotulo ?? r.campo}</dt>
             <dd>
               {typeof r.valor === "boolean"
@@ -631,6 +636,7 @@ function DetalheAmostra({
   onFechar: () => void;
   onSalvo: () => void;
 }) {
+  const [abaDetalhe,setAbaDetalhe] = useState(inicial.resultados.length ? "resultado" : podeLancar && inicial.status !== "ANULADO" ? "corrigir" : "resultado");
   const [paginaHistorico, setPaginaHistorico] = useState(1);
   const [dataResultado, setDataResultado] = useState(inicial.dataResultadoLaboratorial ?? "");
   const [dataRecebimento, setDataRecebimento] = useState(inicial.dataRecebimentoLaudo ?? "");
@@ -690,15 +696,12 @@ function DetalheAmostra({
     }
   }
   return (
-    <section aria-label="Detalhe da amostra">
-      <h2>{inicial.formatoSnapshot.nome}</h2>
-      <p>
-        Coleta de {inicial.data.slice(0, 10)} · versão{" "}
-        {inicial.formatoSnapshot.versao ?? 1}. O formato utilizado na coleta
-        permanece preservado.
-      </p>
-      <DatasQualidade {...inicial} />
-      {inicial.anotacaoOriginal && <p>{inicial.anotacaoOriginal}</p>}
+    <section className="leite-operacoes" aria-label="Detalhe da amostra">
+      <header className="leite-laudo-identidade"><div><h2>{inicial.sujeito.tipo === "COLETIVO" ? inicial.sujeito.origem : [inicial.animal?.brinco,inicial.animal?.nome].filter(Boolean).join(" · ")}</h2><span>{inicial.formatoSnapshot.nome}</span></div><Badge variant="outline">{inicial.status === "ANULADO" ? "Anulada" : inicial.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado"}</Badge></header>
+      <dl className="leite-laudo-metadados"><div><dt>Coleta</dt><dd>{formatarDataBR(inicial.data.slice(0,10))}</dd></div><div><dt>Resultado</dt><dd>{inicial.dataResultadoLaboratorial ? formatarDataBR(inicial.dataResultadoLaboratorial) : "Não informado"}</dd></div><div><dt>Recebimento</dt><dd>{inicial.dataRecebimentoLaudo ? formatarDataBR(inicial.dataRecebimentoLaudo) : "Não informado"}</dd></div><div><dt>Formato</dt><dd>Versão {inicial.formatoSnapshot.versao ?? 1}<AjudaCampo rotulo="Sobre o formato preservado" texto="O formato utilizado na coleta permanece preservado; alterações posteriores não reescrevem o laudo."/></dd></div>{inicial.criadoEm&&<div><dt>Cadastro da amostra</dt><dd>{new Date(inicial.criadoEm).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}</dd></div>}</dl>
+      <SubTabs variant="financeiro" ariaLabel="Detalhes da amostra" tabs={[{id:"resultado",label:"Resultados"},...(podeLancar&&inicial.status!=="ANULADO"?[{id:"corrigir",label:"Informar ou corrigir"}]:[]),{id:"arquivos",label:"Arquivos"},{id:"historico",label:"Histórico"}]} active={abaDetalhe} onSelect={setAbaDetalhe}/>
+      <div hidden={abaDetalhe!=="resultado"}><Resultados amostra={inicial}/>{inicial.anotacaoOriginal&&<section className="leite-laudo-observacao"><h3>Observação</h3><p>{inicial.anotacaoOriginal}</p></section>}</div>
+      <div hidden={abaDetalhe!=="corrigir"}>
       {podeLancar && inicial.status !== "ANULADO" ? (
         <form
           onSubmit={(e) => {
@@ -718,7 +721,7 @@ function DetalheAmostra({
             </label>
             {!anular && <>
               <CamposDatasQualidade resultado={dataResultado} recebimento={dataRecebimento} onResultado={setDataResultado} onRecebimento={setDataRecebimento} />
-              <CamposResultadoExame
+              <CamposResultadoExame usarShadcn
                 campos={inicial.formatoSnapshot.campos}
                 valores={valores}
                 onChange={setValores}
@@ -726,7 +729,7 @@ function DetalheAmostra({
             </>}
             <label>
               Motivo da atualização
-              <textarea
+              <Textarea
                 required
                 minLength={5}
                 maxLength={1000}
@@ -742,13 +745,16 @@ function DetalheAmostra({
       ) : (
         <Resultados amostra={inicial} />
       )}
-      <LaudosQualidade
+      </div>
+      <div hidden={abaDetalhe!=="arquivos"}><LaudosQualidade
         amostra={inicial}
         sitio={sitio}
         podeLancar={podeLancar}
       />
+      </div>
       {erro && <p role="alert">{erro}</p>}
-      <SecaoHistoricoLeite inicialmenteAberto titulo={<>Histórico da amostra</>}>
+      <div hidden={abaDetalhe!=="historico"}>
+      <section className="leite-laudo-historico" aria-label="Histórico da amostra"><h3>Histórico da amostra</h3>
 
         {historico ? (
           <ol>
@@ -801,7 +807,8 @@ function DetalheAmostra({
             </Button>
           </div>
         )}
-      </SecaoHistoricoLeite>
+      </section>
+      </div>
       <Button variant="outline" type="button" className="leite-secondary" onClick={onFechar}>
         Fechar amostra
       </Button>

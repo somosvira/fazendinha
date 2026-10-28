@@ -24,6 +24,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Estoque e valor do leite](pecuaria/leite-decisoes-estoque.md) | Natureza, origens, segregação, consumo e apropriação de custo |
 | [Comercialização do leite](pecuaria/leite-comercial.md) | Coletas, preço posterior, vendas, entregas e demonstrativos |
 | [Qualidade do leite](pecuaria/leite-qualidade.md) | Formatos, datas, versões, parâmetros e vínculo comercial |
+| [Relatórios da Pecuária e builder](pecuaria/relatorios.md) | Consulta, emissões e seleção de variáveis |
 | [Relatórios do leite](pecuaria/leite-relatorios.md) | Consulta viva, conferência física e emissões preservadas |
 | [Referência IDEAGRI do leite](pecuaria/leite-ideagri-referencia.md) | Proveniência e limites do mapeamento, sem presumir importação automática |
 | [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |

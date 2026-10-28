@@ -1,3 +1,6 @@
+import {ControleRelatorio} from "../../relatorios/ControlesRelatorio";
+import {SelectCampo} from "@/financeiro/SelectCampo";
+import {AjudaCampo} from "@/components/Dica";
 import { ConsultaIndicadoresOperacionais } from "./ConsultaIndicadoresOperacionais";
 import { DateRangePicker } from "../../../components/DateRangePicker";
 import { getHojeISO } from "../../../lib/hoje";
@@ -193,7 +196,7 @@ function RelatorioIndicadores({
     });
   }
   useEffect(() => {
-    if (modo === "painel") {
+    if (modo === "painel" || modo === "relatorio") {
       const consulta = {
         ...(criteriosAplicados.current ?? {
           deslocamentoTeDias: 7,
@@ -275,7 +278,7 @@ function RelatorioIndicadores({
     valores.includes(v) ? valores.filter((x) => x !== v) : [...valores, v];
   const filtrosAlterados = modo === "relatorio" && !!visivel && assinaturaFiltros(filtros()) !== assinaturaFiltros(visivel.filtros);
   return (
-    <section className="space-y-5">
+    <section className="rel-indicadores space-y-5">
       <div className="space-y-5 print:hidden">
         {modo === "painel" && <div className="flex flex-wrap items-center justify-end gap-4">
           {modo === "painel" && (
@@ -293,7 +296,7 @@ function RelatorioIndicadores({
             {periodoConsulta.aviso}
           </p>
         )}
-        <form
+        <ControleRelatorio tipo="filtros" ativo={modo === "relatorio"}><form
           onSubmit={aplicar}
           className={
             modo === "painel"
@@ -342,10 +345,10 @@ function RelatorioIndicadores({
               </label>
               <label>
                 Intervalo entre partos
-                <select
+                <SelectCampo
                   className="h-10 w-full min-w-0 rounded-md border bg-card px-3"
                   value={iepModo}
-                  onChange={(e) => setIepModo(e.target.value as typeof iepModo)}
+                  onValueChange={(v) => setIepModo(v as typeof iepModo)}
                 >
                   <option value="VIVOS_NATIMORTOS">
                     Vivos e natimortos comprovados
@@ -353,7 +356,7 @@ function RelatorioIndicadores({
                   <option value="TODOS_PARTOS">
                     Todos os partos (alternativa)
                   </option>
-                </select>
+                </SelectCampo>
               </label>
               {modo === "relatorio" && (
                 <label>
@@ -392,10 +395,10 @@ function RelatorioIndicadores({
               </label>
               <label>
                 Lote
-                <select
+                <SelectCampo
                   className="h-10 w-full rounded-md border bg-background px-3"
                   value={lote}
-                  onChange={(e) => setLote(e.target.value)}
+                  onValueChange={setLote}
                 >
                   <option value="">Todos os lotes</option>
                   {lotes.map((l) => (
@@ -403,7 +406,7 @@ function RelatorioIndicadores({
                       {l.nome}
                     </option>
                   ))}
-                </select>
+                </SelectCampo>
               </label>
               <fieldset>
                 <legend>Tentativas (sem seleção: todas)</legend>
@@ -438,14 +441,10 @@ function RelatorioIndicadores({
               <Button disabled={ocupado} type="submit">
                 {ocupado ? "Consultando…" : "Aplicar"}
               </Button>
-              <p className="text-sm text-muted-foreground sm:col-span-3">
-                A estimativa é uma escolha explícita para ponderar tentativas
-                anteriores sem diagnóstico. Deixá-la em branco conserva essa
-                pendência.
-              </p>
+              <AjudaCampo rotulo="Sobre a estimativa de concepção" texto="A estimativa é uma escolha explícita para ponderar tentativas anteriores sem diagnóstico. Deixá-la em branco conserva essa pendência."/>
             </div>
           </GrupoFiltrosIndicadores>
-        </form>
+        </form></ControleRelatorio>
         {ocupado && <p role="status">Carregando indicadores…</p>}
         {erro && (
           <Button variant="outline" onClick={() => ultimaOperacao.current?.()}>
@@ -463,20 +462,19 @@ function RelatorioIndicadores({
           </p>
         )}
         {modo === "relatorio" && (
-          <Panel className="space-y-3 p-5 print:hidden">
+          <ControleRelatorio tipo="emissoes"><Panel className="space-y-3 p-5 print:hidden">
             <div><h3 className="font-semibold">Histórico de emissões e exportação</h3><p className="text-sm text-muted-foreground">Emissões preservadas mantêm os dados e critérios originais, sem recalcular os fatos atuais.</p></div>
             {carregandoEmissoes && <p role="status" className="text-sm text-muted-foreground">Carregando emissões…</p>}
             {erroEmissoes && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{erroEmissoes}</p><Button variant="outline" onClick={() => void carregarEmissoes()}>Tentar carregar emissões</Button></div>}
           <div className="flex flex-wrap items-end gap-3">
             <label>
               Emissões preservadas{" "}
-              <select
+              <SelectCampo
                 aria-label="Emissões preservadas"
                 className="mt-1 block w-full rounded border bg-card p-2"
                 value={emissao?.id ?? ""}
                 disabled={ocupado}
-                onChange={(e) => {
-                  const id = e.target.value;
+                onValueChange={(id) => {
                   if (id) abrirEmissao(id);
                 }}
               >
@@ -486,7 +484,7 @@ function RelatorioIndicadores({
                     {new Date(e.criadoEm).toLocaleString("pt-BR")}
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             {modo === "relatorio" && visivel && (
               <>
@@ -508,7 +506,7 @@ function RelatorioIndicadores({
               </>
             )}
           </div>
-          </Panel>
+          </Panel></ControleRelatorio>
         )}
         {modo === "painel" && visivel && (
           <PainelIndicadores
@@ -518,25 +516,7 @@ function RelatorioIndicadores({
         )}
         {modo === "relatorio" && visivel && (
           <>
-            <Panel className="space-y-3 p-5">
-            <h3 className="font-semibold">Resultado exibido</h3>
-            <p className="text-sm">
-              {emissao
-                ? `Emissão preservada em ${new Date(emissao.criadoEm).toLocaleString("pt-BR")}`
-                : "Consulta atual — preserve uma emissão para reimprimir estes resultados."}{" "}
-              · Corte: {data(visivel.filtros.corte)}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Filtros aplicados: {data(visivel.filtros.inicio)} a{" "}
-              {data(visivel.filtros.fim)} · Concepção estimada:{" "}
-              {visivel.metodologia.concepcaoEstimada === null
-                ? "Não informada"
-                : `${visivel.metodologia.concepcaoEstimada}%`}{" "}
-              · Deslocamento TE: {visivel.metodologia.deslocamentoTeDias} dias.
-            </p>
-            {filtrosAlterados && <p className="rounded-lg border bg-muted p-3 text-sm">Os filtros editados ainda não foram aplicados. O resultado e as exportações mantêm os critérios exibidos; use Aplicar para atualizar a consulta.</p>}
-            </Panel>
-            {visivel.acompanhamento && <Panel className="min-w-0 p-5"><IndicadoresAcompanhamento dados={visivel.acompanhamento} propriedadeId={propriedadeId}/></Panel>}
+            <div className="rel-periodo"><strong>{data(visivel.filtros.inicio)} a {data(visivel.filtros.fim)}</strong><span>{emissao ? `Emissão preservada em ${new Date(emissao.criadoEm).toLocaleString("pt-BR")}` : "Consulta atual"}</span><AjudaCampo rotulo="Sobre os critérios aplicados" texto={`Corte: ${data(visivel.filtros.corte)}. Concepção estimada: ${visivel.metodologia.concepcaoEstimada ?? "não informada"}. Deslocamento TE: ${visivel.metodologia.deslocamentoTeDias} dias.`}/>{filtrosAlterados && <span role="status">Há filtros editados ainda não aplicados.</span>}</div>
             <div
               role="tablist"
               aria-label="Conteúdo do relatório"
@@ -544,6 +524,8 @@ function RelatorioIndicadores({
             >
               {[
                 ["resumo", "Resumo por período"],
+                ["bases", "Bases e contagens"],
+                ...(visivel.acompanhamento ? [["acompanhamento", "Acompanhamento"]] : []),
                 ["animais", "Animais considerados"],
                 ["criterios", "Critérios de cálculo"],
               ].map(([id, nome]) => (
@@ -576,7 +558,7 @@ function RelatorioIndicadores({
                 ))}
               </div>
             )}
-            {aba === "criterios" ? (
+            {aba === "acompanhamento" && visivel.acompanhamento ? <Panel className="min-w-0 p-5"><IndicadoresAcompanhamento dados={visivel.acompanhamento} propriedadeId={propriedadeId}/></Panel> : aba === "resumo" ? <PainelIndicadores key={JSON.stringify(visivel.filtros)} snapshot={visivel} mostrarMetodo={false}/> : aba === "criterios" ? (
               <div className="rounded-xl border bg-card p-5">
                 <h3 className="font-semibold">{visivel.metodologia.rotulo}</h3>
                 <p>{visivel.versaoMetodologia}</p>

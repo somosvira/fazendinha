@@ -32,13 +32,14 @@ export async function consultarResumoOperacionalProducaoLeite(propriedadeId: num
     };
     // Conta também os filhos antes dos joins; o teto vale para todo o conjunto materializado.
     const contagens = await Promise.all([
-      tx.destinoInternoLeite.count({ where: fatoWhere }), tx.fornecimentoNutricionalLeite.count({ where: nutricaoWhere }),
+      tx.retiradaInternaLeite.count({ where: fatoWhere }), tx.destinoInternoLeite.count({ where: fatoWhere }), tx.fornecimentoNutricionalLeite.count({ where: nutricaoWhere }),
       tx.descarteLeite.count({ where: fatoWhere }), tx.movimentoEstoque.count({ where: vendaWhere }),
       tx.movimentoFornecimentoNutricionalLeite.count({ where: { fornecimento: nutricaoWhere } }),
       tx.alocacaoLeiteEstoque.count({ where: { movimento: { descarteLeite: fatoWhere } } }),
     ]);
     if (contagens.reduce((s, n) => s + n, 0) > MAX_FATOS) throw new RebanhoError("VALIDACAO", "Consulte um período menor: limite de 50 mil fatos");
-    const [destinos, fornecimentos, descartes, vendas] = await Promise.all([
+    const [retiradas, destinos, fornecimentos, descartes, vendas] = await Promise.all([
+      tx.retiradaInternaLeite.findMany({ where: fatoWhere, select: { data: true, destino: true, quantidadeLitros: true } }),
       tx.destinoInternoLeite.findMany({ where: fatoWhere, select: { data: true, movimentoId: true, natureza: true, quantidadeLitros: true } }),
       tx.fornecimentoNutricionalLeite.findMany({ where: nutricaoWhere, select: { data: true, quantidadeLitros: true,
         movimentos: { where: { MovimentoEstoque: { propriedadeId, status: "CONFIRMADO" } }, select: { movimentoId: true, natureza: true, quantidadeLitros: true } } } }),
@@ -51,9 +52,9 @@ export async function consultarResumoOperacionalProducaoLeite(propriedadeId: num
         operacao: { select: { parceiro: { select: { id: true, nome: true } } } },
       } }),
     ]);
-    const dias = new Map<string, { consumo: { presente: boolean; total: Prisma.Decimal; comum: Prisma.Decimal; naoComercial: Prisma.Decimal; colostro: Prisma.Decimal; nutricao: Prisma.Decimal }; descarte: { presente: boolean; total: Prisma.Decimal; comercial: Prisma.Decimal; naoComercial: Prisma.Decimal; colostro: Prisma.Decimal; semClassificacao: Prisma.Decimal }; vendas: { presente: boolean; total: Prisma.Decimal; compradores: Map<string, { id: string | null; nome: string; litros: Prisma.Decimal }>; coletasSemPreco: number } }>();
+    const dias = new Map<string, { consumo: { presente: boolean; animaisPresente: boolean; casa: Prisma.Decimal | null; funcionarios: Prisma.Decimal | null; total: Prisma.Decimal; comum: Prisma.Decimal; naoComercial: Prisma.Decimal; colostro: Prisma.Decimal; nutricao: Prisma.Decimal }; descarte: { presente: boolean; total: Prisma.Decimal; comercial: Prisma.Decimal; naoComercial: Prisma.Decimal; colostro: Prisma.Decimal; semClassificacao: Prisma.Decimal }; vendas: { presente: boolean; total: Prisma.Decimal; compradores: Map<string, { id: string | null; nome: string; litros: Prisma.Decimal }>; coletasSemPreco: number } }>();
     for (let t = Date.parse(f.inicio); t <= Date.parse(f.fim); t += 86400000) dias.set(texto(new Date(t)), {
-      consumo: { presente: false, total: zero(), comum: zero(), naoComercial: zero(), colostro: zero(), nutricao: zero() },
+      consumo: { presente: false, animaisPresente: false, casa: null, funcionarios: null, total: zero(), comum: zero(), naoComercial: zero(), colostro: zero(), nutricao: zero() },
       descarte: { presente: false, total: zero(), comercial: zero(), naoComercial: zero(), colostro: zero(), semClassificacao: zero() },
       vendas: { presente: false, total: zero(), compradores: new Map(), coletasSemPreco: 0 },
     });
@@ -62,11 +63,17 @@ export async function consultarResumoOperacionalProducaoLeite(propriedadeId: num
       if (movimentosConsumidos.has(movimentoId)) return;
       movimentosConsumidos.add(movimentoId);
       const c = dias.get(texto(data))!.consumo;
-      c.presente = true; c.total = c.total.plus(quantidade);
+      c.presente = true; c.animaisPresente = true; c.total = c.total.plus(quantidade);
       if (nutricional) c.nutricao = c.nutricao.plus(quantidade);
       if (["LEITE_COMUM", "COMERCIAL"].includes(natureza)) c.comum = c.comum.plus(quantidade);
       else if (["LEITE_NAO_COMERCIAL", "NAO_COMERCIAL"].includes(natureza)) c.naoComercial = c.naoComercial.plus(quantidade);
       else if (natureza === "COLOSTRO") c.colostro = c.colostro.plus(quantidade);
+    }
+    for (const r of retiradas) {
+      const c = dias.get(texto(r.data))!.consumo;
+      c.presente = true; c.total = c.total.plus(r.quantidadeLitros);
+      if (r.destino === "CASA") c.casa = (c.casa ?? zero()).plus(r.quantidadeLitros);
+      else c.funcionarios = (c.funcionarios ?? zero()).plus(r.quantidadeLitros);
     }
     for (const d of destinos) consumir(d.data, d.movimentoId, d.natureza, d.quantidadeLitros, false);
     for (const n of fornecimentos) for (const m of n.movimentos) consumir(n.data, m.movimentoId, m.natureza, m.quantidadeLitros, true);
@@ -99,7 +106,7 @@ export async function consultarResumoOperacionalProducaoLeite(propriedadeId: num
       const c = d.consumo, x = d.descarte, v = d.vendas;
       const valor = (presente: boolean, n: Prisma.Decimal) => presente ? n.toString() : null;
       return { data,
-        consumo: { totalLitros: valor(c.presente, c.total), comumLitros: valor(c.presente, c.comum), naoComercialLitros: valor(c.presente, c.naoComercial), colostroLitros: valor(c.presente, c.colostro), nutricaoLitros: valor(c.presente, c.nutricao), funcionariosLitros: null, casaLitros: null },
+        consumo: { totalLitros: valor(c.presente, c.total), comumLitros: valor(c.animaisPresente, c.comum), naoComercialLitros: valor(c.animaisPresente, c.naoComercial), colostroLitros: valor(c.animaisPresente, c.colostro), nutricaoLitros: valor(c.animaisPresente, c.nutricao), funcionariosLitros: c.funcionarios?.toString() ?? null, casaLitros: c.casa?.toString() ?? null },
         descarte: { totalLitros: valor(x.presente, x.total), comercialLitros: valor(x.presente, x.comercial), naoComercialLitros: valor(x.presente, x.naoComercial), colostroLitros: valor(x.presente, x.colostro), semClassificacaoLitros: valor(x.presente, x.semClassificacao) },
         vendas: { totalLitros: valor(v.presente, v.total), compradores: [...v.compradores.values()].map(p => ({ ...p, litros: p.litros.toString() })), coletasSemPreco: v.coletasSemPreco },
       };

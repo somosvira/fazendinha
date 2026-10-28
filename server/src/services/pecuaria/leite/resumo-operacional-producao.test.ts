@@ -1,15 +1,15 @@
 import { Prisma } from "@prisma/client";
 import { beforeEach, expect, it, vi } from "vitest";
-const m = vi.hoisted(() => ({ destinos: { count: vi.fn(), findMany: vi.fn() }, nutricao: { count: vi.fn(), findMany: vi.fn() }, descartes: { count: vi.fn(), findMany: vi.fn() }, movimentos: { count: vi.fn(), findMany: vi.fn() }, origens: { count: vi.fn() }, alocacoes: { count: vi.fn() }, transacao: vi.fn() }));
+const m = vi.hoisted(() => ({ retiradas: { count: vi.fn(), findMany: vi.fn() }, destinos: { count: vi.fn(), findMany: vi.fn() }, nutricao: { count: vi.fn(), findMany: vi.fn() }, descartes: { count: vi.fn(), findMany: vi.fn() }, movimentos: { count: vi.fn(), findMany: vi.fn() }, origens: { count: vi.fn() }, alocacoes: { count: vi.fn() }, transacao: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { $transaction: m.transacao } }));
 import { consultarResumoOperacionalProducaoLeite, consultaResumoOperacionalProducaoSchema } from "./resumo-operacional-producao.js";
 const filtro = { inicio: "2026-10-01", fim: "2026-10-02" };
 const data = new Date(filtro.inicio), litros = (n: string) => new Prisma.Decimal(n);
 beforeEach(() => {
   vi.resetAllMocks();
-  for (const d of [m.destinos, m.nutricao, m.descartes, m.movimentos]) { d.count.mockResolvedValue(0); d.findMany.mockResolvedValue([]); }
+  for (const d of [m.retiradas, m.destinos, m.nutricao, m.descartes, m.movimentos]) { d.count.mockResolvedValue(0); d.findMany.mockResolvedValue([]); }
   m.origens.count.mockResolvedValue(0); m.alocacoes.count.mockResolvedValue(0);
-  m.transacao.mockImplementation(async f => f({ destinoInternoLeite: m.destinos, fornecimentoNutricionalLeite: m.nutricao, descarteLeite: m.descartes, movimentoEstoque: m.movimentos, movimentoFornecimentoNutricionalLeite: m.origens, alocacaoLeiteEstoque: m.alocacoes }));
+  m.transacao.mockImplementation(async f => f({ retiradaInternaLeite: m.retiradas, destinoInternoLeite: m.destinos, fornecimentoNutricionalLeite: m.nutricao, descarteLeite: m.descartes, movimentoEstoque: m.movimentos, movimentoFornecimentoNutricionalLeite: m.origens, alocacaoLeiteEstoque: m.alocacoes }));
 });
 it("agrega consumo preciso sem duplicar movimento nutricional e deixa Casa/Funcionários abertos", async () => {
   m.destinos.findMany.mockResolvedValue([{ data, movimentoId: "d", natureza: "LEITE_COMUM", quantidadeLitros: litros("1.125") }]);
@@ -60,3 +60,5 @@ it("filtra estornos nas fontes, conserva colostro separado e soma teto entre fon
   await expect(consultarResumoOperacionalProducaoLeite(2, filtro)).rejects.toMatchObject({ code: "VALIDACAO" });
   expect(m.destinos.findMany).not.toHaveBeenCalled();
 });
+
+it("soma Casa e Funcionários ao consumo, sem somar às naturezas da alimentação ou descarte",async()=>{m.retiradas.findMany.mockResolvedValue([{data,destino:"CASA",quantidadeLitros:litros("2.125")},{data,destino:"FUNCIONARIOS",quantidadeLitros:litros("3")}]);const r=await consultarResumoOperacionalProducaoLeite(2,filtro);expect(r.dias[0].consumo).toMatchObject({totalLitros:"5.125",casaLitros:"2.125",funcionariosLitros:"3",comumLitros:null,naoComercialLitros:null,colostroLitros:null});expect(r.dias[0].descarte.totalLitros).toBeNull();expect(m.retiradas.findMany.mock.calls[0][0].where).toMatchObject({propriedadeId:2,status:"CONFIRMADO",movimento:{propriedadeId:2,status:"CONFIRMADO"}})});

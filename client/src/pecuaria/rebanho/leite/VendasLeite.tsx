@@ -1,3 +1,5 @@
+import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
+import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -52,11 +54,14 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
     {aviso && <p role="status">{aviso}</p>}
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : <>
       {!dados.itens.length && <p>Nenhuma venda encontrada neste recorte.</p>}
-      <ListaConsultaLeite preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
+      <dl className="leite-consulta-resumo"><div><dt>Operações no recorte</dt><dd>{dados.resumo.vendas}</dd></div><div><dt>Volume do recorte<AjudaCampo rotulo="Sobre o volume comercial do recorte" texto="Soma retornada pelo servidor: volume físico de operações abertas/avulsas e volume reconhecido dos fechamentos, considerando o período integral dos acordos. Não é produção dos dias filtrados."/></dt><dd>{formatarLitros(Number(dados.resumo.totalLitros))}</dd></div><div><dt>Preço pendente</dt><dd>{dados.resumo.precoPendente}</dd></div><div><dt>Total comercial conhecido<AjudaCampo rotulo="Sobre valores conhecidos" texto="Valores conhecidos no recorte; operações com preço pendente não recebem valor zero presumido. Não equivale a dinheiro recebido."/></dt><dd>{!podeFinanceiro ? "Restrito" : dados.resumo.valorTotal === null ? "A apurar" : Number(dados.resumo.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</dd></div></dl>
+      <ListaConsultaLeite layout="grade" renderizarVisual={v => <CartaoVendaVisual item={v} podeVerValores={podeFinanceiro} acao={<Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button>}/>} preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
         { chave: "comprador", titulo: "Comprador", larguraMinima: 150, celula: v => v.parceiroNome ?? "Não informado" },
         { chave: "periodo", titulo: "Período", larguraMinima: 185, celula: v => v.modalidade === "AVULSA" ? dataPt(v.data) : `${dataPt(v.inicio)} a ${dataPt(v.fim)}` },
         { chave: "modalidade", titulo: "Modalidade", larguraMinima: 115, celula: v => v.modalidade === "PERIODO" ? "Por período" : "Avulsa" },
+        { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: v => formatarLitros(Number(v.quantidadeLitros)) },
+        { chave: "valor", titulo: "Total comercial", alinhamento: "direita", celula: v => !podeFinanceiro ? "Restrito" : v.valorTotal === null ? "Preço pendente" : Number(v.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) },
         { chave: "situacao", titulo: "Situação", larguraMinima: 130, celula: v => <Pill tone={v.situacao === "ABERTA" ? "amber" : v.situacao === "CANCELADA" ? "red" : "green"}>{situacoes[v.situacao] ?? v.situacao}</Pill> },
         { chave: "acao", titulo: "Ação", acoes: true, larguraMinima: 150, celula: v => <Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button> },
       ]} />

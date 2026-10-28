@@ -63,6 +63,7 @@ export const consultarParametrosQualidadeSchema = z.object({
   inicio: dataLeiteSchema, fim: dataLeiteSchema,
   tipoExameId: z.string().uuid().optional(),
   sujeito: z.enum(["ANIMAL", "COLETIVO"]).optional(),
+  incluirSerie: z.union([z.boolean(), z.enum(["true", "false"]).transform(v => v === "true")]).optional(),
   pagina: z.coerce.number().int().positive().default(1),
   tamanho: z.coerce.number().int().min(1).max(100).default(20),
 }).strict().refine(v => v.inicio <= v.fim, { path: ["fim"], message: "Fim anterior ao início" });

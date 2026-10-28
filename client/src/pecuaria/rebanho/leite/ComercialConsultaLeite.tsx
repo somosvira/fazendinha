@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Search } from "lucide-react";
+import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
@@ -33,7 +33,7 @@ export function BarraComercialLeite({ filtros, onChange, parceiros, vendas = fal
       <CampoFiltro rotulo="Comprador"><SelectCampo value={draft.rascunho.comprador} onValueChange={v => draft.editar("comprador", v)}><option value="">Todos os compradores</option>{parceiros.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></CampoFiltro>
       <CampoFiltro rotulo={vendas ? "Situação" : "Preço"}><SelectCampo value={draft.rascunho.situacao} onValueChange={v => draft.editar("situacao", v)}><option value="">Todas</option>{(vendas ? ["Aberta", "Fechada", "Confirmada", "Cancelada"] : ["Preço pendente", "Preço definido"]).map(v => <option key={v} value={v}>{v}</option>)}</SelectCampo></CampoFiltro>
       {vendas && <CampoFiltro rotulo="Modalidade"><SelectCampo value={draft.rascunho.modalidade} onValueChange={v => draft.editar("modalidade", v)}><option value="">Todas</option><option value="periodo">Por período</option><option value="avulsa">Avulsa</option></SelectCampo></CampoFiltro>}</>}
-  ><label className="leite-comercial-busca"><Search size={18} aria-hidden /><span className="sr-only">{vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"}</span><input type="search" maxLength={100} value={filtros.busca} placeholder={vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"} onChange={e => onChange({ ...filtros, busca: e.target.value })} /></label>
+  > <BuscaLista rotulo={vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"} placeholder={vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"} valor={filtros.busca} onChange={busca => onChange({ ...filtros, busca: busca.slice(0, 100) })} />
     <PeriodoFinanceiroControl inicio={filtros.de} fim={filtros.ate} label={vendas ? "Período comercial" : "Período das coletas"} onChange={({ inicio, fim }) => onChange({ ...filtros, de: inicio, ate: fim })} />
   </BarraConsulta>;
 }

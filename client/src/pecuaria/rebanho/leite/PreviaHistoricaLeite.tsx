@@ -129,6 +129,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
     <section className="leite-operacoes">
       <h2 className="leite-titulo-secao">Conferir importação de leite <AjudaCampo rotulo="Sobre a prévia da importação" texto={"Prepare o lote a partir dos registros reais da fazenda. Esta prévia compara animais, ordenhas, datas e medições existentes. Não importa registros nem movimenta leite, vendas ou dinheiro."} /></h2>
 
+      <ol className="leite-etapas-importacao" aria-label="Etapas da conferência"><li><b>1</b>Arquivo e origem</li><li><b>2</b>Validação de unidades</li><li><b>3</b>Prévia e pendências</li></ol>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -180,7 +181,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           <p>
             {arquivo
               ? `${arquivo} · ${linhas.length} linha(s) lida(s)`
-              : "Nenhum arquivo selecionado. Preserve os registros originais e prepare uma linha por animal, dia e ordenha."}
+              : "Nenhum arquivo selecionado."}
           </p>
           <label className="leite-checkbox">
             <input

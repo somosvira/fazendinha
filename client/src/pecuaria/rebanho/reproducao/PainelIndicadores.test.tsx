@@ -99,3 +99,13 @@ it("orienta ampliar intervalos menores que 21 dias sem inventar taxa zero",()=>{
  expect(screen.getByText(/Nenhum período completo de 21 dias/)).toBeTruthy();
  expect(screen.getAllByText("Sem base suficiente").length).toBeGreaterThan(0);
 });
+it('alterna cartões e tabela mantendo janela, taxas e consulta dos animais',()=>{
+ history.replaceState(null,'','/pecuaria/reproducao?rotina=indicadores&inicio=2026-01-01');localStorage.clear();
+ const s=snapshot();s.periodos[0].taxas={servico:0,concepcao:null,prenhez:null};render(<PainelIndicadores snapshot={s}/>);
+ expect(screen.getByRole('group',{name:'Visualização do desempenho'})).toBeTruthy();
+ expect(screen.queryByRole('table',{name:'Indicadores na base válida'})).toBeNull();
+ fireEvent.click(screen.getByRole('button',{name:'Tabela'}));
+ expect(screen.getByRole('table',{name:'Indicadores na base válida'})).toBeTruthy();
+ expect(new URLSearchParams(location.search).get('inicio')).toBe('2026-01-01');
+ fireEvent.click(screen.getAllByRole('button',{name:'Ver animais'})[0]);expect(screen.getByRole('dialog',{name:'Animais da base válida'})).toBeTruthy();
+});

@@ -1,3 +1,6 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
+import { Card } from "@/components/ui/card";
+import { Milk } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
@@ -38,10 +41,10 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
     {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="p-5">Carregando configurações…</p> : <>
       <div className="p-5 grid gap-5">
         <div className="flex items-center flex-wrap gap-3"><h3 className="mr-auto">Produção · desde {formatarDataBR(dados.configuracao.vigenteDesde)}</h3>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}>Nova configuração</Button>}</div>
-        <dl className="grid gap-4"><div><dt>Ordenhas do dia</dt><dd>{dados.configuracao.ordenhas.map(o => o.nome).join(" · ")}</dd></div><div><dt>Controle individual</dt><dd>A cada {dados.configuracao.intervaloIndividualQuantidade ?? 1} {dados.configuracao.intervaloIndividualUnidade === "DIAS" ? "dia(s)" : "mês(es)"} · Fonte {dados.configuracao.fonteProducao === "GERAL" ? "geral" : "individual"}</dd></div><div><dt>Critério de colostro</dt><dd>{criterio?.tipo === "PRIMEIRA_ORDENHA" ? "Primeira ordenha após o parto" : criterio?.tipo === "JANELA_DIAS" ? `Janela pós-parto de ${criterio.dias} dias, incluindo D0` : "Não informado"}</dd></div></dl>
+        <dl className="grid gap-4 leite-configuracao-fatos"><div><dt>Ordenhas do dia</dt><dd>{dados.configuracao.ordenhas.map(o => o.nome).join(" · ")}</dd></div><div><dt>Controle individual</dt><dd>A cada {dados.configuracao.intervaloIndividualQuantidade ?? 1} {dados.configuracao.intervaloIndividualUnidade === "DIAS" ? "dia(s)" : "mês(es)"} · Fonte {dados.configuracao.fonteProducao === "GERAL" ? "geral" : "individual"}</dd></div><div><dt>Critério de colostro</dt><dd>{criterio?.tipo === "PRIMEIRA_ORDENHA" ? "Primeira ordenha após o parto" : criterio?.tipo === "JANELA_DIAS" ? `Janela pós-parto de ${criterio.dias} dias, incluindo D0` : "Não informado"}</dd></div></dl>
       </div>
       <CabecalhoTabela titulo="Tanques e calibração" acao={podeLancar && <Button onClick={() => setTanque(null)}>Cadastrar tanque</Button>} />
-      {!dados.tanques.length ? <p className="p-5">Nenhum tanque cadastrado.</p> : <TabelaFinanceira rotulo="Tanques cadastrados" itens={dados.tanques} chaveDe={t => t.id} onAbrir={setDetalhe} colunas={[
+      {!dados.tanques.length ? <p className="p-5">Nenhum tanque cadastrado.</p> : <ListaConsultaLeite preferencia="tanquesLeiteVisualizacao" layout="grade" renderizarVisual={t => <Card className="leite-card-visual leite-equipamento"><header><Milk size={20} aria-hidden/><h3>{t.nome}</h3></header><strong>{formatarLitros(t.capacidadeLitros)}</strong><span>Capacidade nominal</span><dl><div><dt>Modelo / série</dt><dd>{[t.modelo,t.numeroSerie].filter(Boolean).join(" · ") || "Não informado"}</dd></div><div><dt>Versão</dt><dd>v{t.versao} · {t.ativo ? "Ativo" : "Inativo"}</dd></div></dl><Button variant="outline" onClick={() => setDetalhe(t)}>Equipamento e tabela</Button></Card>} rotulo="Tanques cadastrados" itens={dados.tanques} chaveDe={t => t.id} onAbrir={setDetalhe} colunas={[
         { chave: "nome", titulo: "Tanque", principal: true, celula: t => t.nome },
         { chave: "capacidade", titulo: "Capacidade", alinhamento: "direita", celula: t => formatarLitros(t.capacidadeLitros) },
         { chave: "modelo", titulo: "Modelo / série", celula: t => [t.modelo, t.numeroSerie].filter(Boolean).join(" · ") || "Não informado" },

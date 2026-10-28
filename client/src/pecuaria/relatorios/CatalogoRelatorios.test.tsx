@@ -1,0 +1,12 @@
+// @vitest-environment jsdom
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {CatalogoRelatorios} from './CatalogoRelatorios';
+import {consultarFonte,type ResultadoBuilder} from './fontes';
+vi.mock('./fontes',()=>({consultarFonte:vi.fn()}));
+vi.mock('./ContextoRelatorio',()=>({ContextoRelatorio:({onChange}:{onChange:(v:string)=>void})=><button onClick={()=>onChange('animal-a')}>Escolher animal de teste</button>}));
+const r:ResultadoBuilder={linhas:[{id:'a',animal:'Camila',brinco:'1036',nome:'Camila',situacao:'Ativo'}],total:30,pagina:1,porPagina:12,paginado:true,consultadoEm:''};
+beforeEach(()=>{vi.mocked(consultarFonte).mockResolvedValue(r)});afterEach(()=>{cleanup();vi.clearAllMocks()});
+it('posição atual não apresenta seletor de período e CSV é explicitamente da página',async()=>{render(<CatalogoRelatorios propriedadeId={1} fonte="animais" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar/>);await screen.findByText('Posição atual');expect(screen.queryByLabelText('Início')).toBeNull();expect(await screen.findByRole('button',{name:'Exportar página CSV'})).toBeTruthy();fireEvent.click(screen.getByRole('button',{name:'Próxima'}));await waitFor(()=>expect(consultarFonte).toHaveBeenLastCalledWith('animais',1,expect.any(String),expect.any(String),2,expect.any(Object)))});
+it('fonte com contexto obrigatório só consulta após seleção',async()=>{render(<CatalogoRelatorios propriedadeId={1} fonte="custos" selecionar={vi.fn()} personalizar={vi.fn()} podeExportar={false}/>);expect(consultarFonte).not.toHaveBeenCalled();expect(screen.queryByRole('button',{name:/Exportar/})).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Escolher animal de teste'}));await waitFor(()=>expect(consultarFonte).toHaveBeenCalledWith('custos',1,expect.any(String),expect.any(String),1,expect.objectContaining({animalId:'animal-a'})))});
+it('troca de fonte não mostra dados atrasados da consulta anterior',async()=>{let resolver!:(v:ResultadoBuilder)=>void;vi.mocked(consultarFonte).mockImplementationOnce(()=>new Promise(r=>resolver=r)).mockResolvedValue({...r,linhas:[]});const props={propriedadeId:1,selecionar:vi.fn(),personalizar:vi.fn(),podeExportar:false};const {rerender}=render(<CatalogoRelatorios {...props} fonte="animais"/>);rerender(<CatalogoRelatorios {...props} fonte="lotes"/>);await screen.findByText('Nenhum registro neste recorte');resolver(r);await waitFor(()=>expect(screen.queryByText('Camila')).toBeNull())});

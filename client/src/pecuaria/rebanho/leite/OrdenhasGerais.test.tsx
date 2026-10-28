@@ -35,7 +35,7 @@ it("abre na consulta, distingue zero de ausência e mantém o período ao abrir 
   await screen.findAllByText("Manhã");
   expect(screen.queryByLabelText("Data da ordenha")).toBeNull();
   expect(screen.getAllByText("0 L").length).toBeGreaterThan(0);
-  fireEvent.click(screen.getAllByRole("button", { name: "Editar registro" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Continuar confirmação" })[0]);
   await screen.findByLabelText("Data da ordenha");
   expect(new URLSearchParams(location.search).get("registroId")).toBe("s1");
   fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
@@ -92,7 +92,7 @@ it("consulta classificação pendente como estado separado das três naturezas",
 it("encaminha sessão individual ao controle individual preservando data, ordenha e filtros", async () => {
   vi.mocked(consultarParcelas).mockResolvedValue({ ...lista, itens: [{ ...lista.itens[0], fonteProducao: "INDIVIDUAL", litros: 117 }] });
   render(<OrdenhasGerais podeLancar />);
-  fireEvent.click((await screen.findAllByRole("button", { name: "Editar registro" }))[0]);
+  fireEvent.click((await screen.findAllByRole("button", { name: "Continuar confirmação" }))[0]);
   const params = new URLSearchParams(location.search);
   expect(params.get("leiteModo")).toBe("individual");
   expect(params.get("dataOperacional")).toBe("2026-10-24");
@@ -150,7 +150,7 @@ it("retoma página e tamanho ao abrir e voltar de um registro", async () => {
   history.replaceState(null, "", "/?leiteModo=geral&ordenhasInicio=2026-10-01&ordenhasFim=2026-10-24&ordenhasTamanho=12&paginaOrdenhas=2");
   render(<OrdenhasGerais podeLancar />);
   await screen.findByText("13–24 de 30 ordenhas");
-  fireEvent.click(screen.getAllByRole("button", { name: "Editar registro" })[0]);
+  fireEvent.click(screen.getAllByRole("button", { name: "Continuar confirmação" })[0]);
   await screen.findByLabelText("Data da ordenha");
   fireEvent.click(screen.getByRole("button", { name: "Voltar à consulta" }));
   await screen.findByText("13–24 de 30 ordenhas");
@@ -166,4 +166,20 @@ it("reconsulta a última página válida quando a página da URL excede os resul
   expect(new URLSearchParams(location.search).get("paginaOrdenhas")).toBe("3");
   expect(vi.mocked(consultarParcelas).mock.lastCall?.[1].get("pagina")).toBe("3");
   expect(screen.getAllByRole("listitem")).toHaveLength(1);
+});
+
+it("mostra o mês atual como período padrão sem fingir que é um filtro removível", async () => {
+  history.replaceState(null, "", "/?leiteSecao=ordenhas");
+  render(<OrdenhasGerais podeLancar={false} />);
+  await screen.findAllByText("Manhã");
+  expect(screen.queryByRole("button", { name: /^Remover filtro:/ })).toBeNull();
+  expect(screen.getByText(/^Mês atual ·/)).toBeTruthy();
+});
+it("remover período personalizado volta ao mês atual e retira o chip", async () => {
+  render(<OrdenhasGerais podeLancar={false} />);
+  await screen.findAllByText("Manhã");
+  fireEvent.click(screen.getByRole("button", { name: "Remover filtro: 01/10/2026 a 24/10/2026" }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: /^Remover filtro:/ })).toBeNull());
+  expect(screen.getByText(/^Mês atual ·/)).toBeTruthy();
+  expect(new URLSearchParams(location.search).has("ordenhasInicio")).toBe(false);
 });

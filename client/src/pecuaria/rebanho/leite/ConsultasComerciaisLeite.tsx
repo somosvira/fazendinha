@@ -1,3 +1,4 @@
+import { ColetaVisual } from "./VisuaisConsultaLeite";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { Button } from "@/components/ui/button";
 import { CabecalhoTabela, Pill, Paginacao } from "../../../financeiro/financeiro-ui";
@@ -50,7 +51,7 @@ export function ConsultasComerciaisLeite({ tipo, podeLancar = false }: { tipo: "
     <BarraComercialLeite filtros={filtros} parceiros={parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando {tipo}…</p> : <>
       {!dados.itens.length && <p>Nenhum registro neste recorte.</p>}
-      <ListaConsultaLeite preferencia={tipo === "coletas" ? "coletasVisualizacao" : "vendasConsultaVisualizacao"} rotulo={tipo === "coletas" ? "Coletas pela data real" : "Vendas pelo período comercial"} itens={dados.itens} chaveDe={r => r.id} colunas={[
+      <ListaConsultaLeite layout={tipo === "coletas" ? "linhas" : undefined} renderizarVisual={tipo === "coletas" ? r => <ColetaVisual item={r} acao={<Button variant="outline" asChild><a href={`/pecuaria/leite?leiteSecao=vendas&operacaoLeiteId=${encodeURIComponent(r.comercialId)}&operacoesDe=${r.inicio}&operacoesAte=${r.fim}`}>Abrir operação e coletas</a></Button>}/> : undefined} preferencia={tipo === "coletas" ? "coletasVisualizacao" : "vendasConsultaVisualizacao"} rotulo={tipo === "coletas" ? "Coletas pela data real" : "Vendas pelo período comercial"} itens={dados.itens} chaveDe={r => r.id} colunas={[
         { chave: "periodo", titulo: tipo === "coletas" ? "Data física" : "Período", larguraMinima: 130, celula: r => tipo === "coletas" ? r.data ? dataPt(r.data) : "Data não informada" : `${dataPt(r.inicio)} a ${dataPt(r.fim)}` },
         { chave: "referencia", titulo: "Coleta", larguraMinima: 160, celula: r => r.referencia },
         { chave: "comprador", titulo: "Comprador", principal: true, larguraMinima: 160, celula: r => <strong>{r.parceiroNome}</strong> },

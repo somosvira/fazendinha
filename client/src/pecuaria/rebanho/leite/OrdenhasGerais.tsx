@@ -1,4 +1,7 @@
+import { CartaoOrdenhaVisual } from "./VisuaisConsultaLeite";
+import { situacaoOrdenha } from "./visuais-leite";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { TabelaOrdenhasPorDia } from "./TabelaOrdenhasPorDia";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -38,6 +41,7 @@ export function OrdenhasGerais({ podeLancar }: { podeLancar: boolean; acoesConta
   const hoje = hojeOperacional();
   const inicio = dataValida(params.get("ordenhasInicio")) ? params.get("ordenhasInicio")! : `${hoje.slice(0, 7)}-01`;
   const fim = dataValida(params.get("ordenhasFim")) ? params.get("ordenhasFim")! : hoje;
+  const periodoPersonalizado = inicio !== `${hoje.slice(0, 7)}-01` || fim !== hoje;
   const busca = params.get("ordenhasBusca") ?? "";
   const situacao = params.get("ordenhasSituacao") ?? "";
   const natureza = params.get("ordenhasNatureza") ?? "";
@@ -75,21 +79,22 @@ export function OrdenhasGerais({ podeLancar }: { podeLancar: boolean; acoesConta
       <CampoFiltro rotulo="Data inicial"><DatePicker aria-label="Data inicial das ordenhas" value={filtros.rascunho.inicio} onChange={v => filtros.editar("inicio", v)} /></CampoFiltro>
       <CampoFiltro rotulo="Data final"><DatePicker aria-label="Data final das ordenhas" value={filtros.rascunho.fim} onChange={v => filtros.editar("fim", v)} /></CampoFiltro>
       <CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação da ordenha" value={filtros.rascunho.situacao} onValueChange={v => filtros.editar("situacao", v)}><option value="">Todas</option>{Object.entries(situacoes).map(([id, texto]) => <option key={id} value={id}>{texto}</option>)}</SelectCampo></CampoFiltro>
-      <CampoFiltro rotulo="Natureza"><SelectCampo aria-label="Natureza do leite" disabled={filtros.rascunho.natureza === "A_CLASSIFICAR"} value={filtros.rascunho.natureza === "A_CLASSIFICAR" ? "" : filtros.rascunho.natureza} onValueChange={v => filtros.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Descarte</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
+      <CampoFiltro rotulo="Natureza"><SelectCampo aria-label="Natureza do leite" disabled={filtros.rascunho.natureza === "A_CLASSIFICAR"} value={filtros.rascunho.natureza === "A_CLASSIFICAR" ? "" : filtros.rascunho.natureza} onValueChange={v => filtros.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Não comercial</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
       <label className="flex items-center gap-2"><input type="checkbox" checked={filtros.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => filtros.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Somente classificação pendente</label>
-    </>} criterios={[{ id: "periodo", rotulo: `${formatarDataBR(inicio)} a ${formatarDataBR(fim)}`, limpar: () => atualizar({ ordenhasInicio: null, ordenhasFim: null, paginaOrdenhas: null }) }, ...(situacao ? [{ id: "situacao", rotulo: situacoes[situacao] ?? situacao, limpar: () => atualizar({ ordenhasSituacao: null, paginaOrdenhas: null }) }] : []), ...(natureza ? [{ id: "natureza", rotulo: natureza === "A_CLASSIFICAR" ? "Classificação pendente" : natureza === "NAO_COMERCIAL" ? "Descarte" : natureza === "COLOSTRO" ? "Colostro" : "Comercial", limpar: () => atualizar({ ordenhasNatureza: null, paginaOrdenhas: null }) }] : [])]}>
+    </>} criterios={[...(periodoPersonalizado ? [{ id: "periodo", rotulo: `${formatarDataBR(inicio)} a ${formatarDataBR(fim)}`, limpar: () => atualizar({ ordenhasInicio: null, ordenhasFim: null, paginaOrdenhas: null }) }] : []), ...(situacao ? [{ id: "situacao", rotulo: situacoes[situacao] ?? situacao, limpar: () => atualizar({ ordenhasSituacao: null, paginaOrdenhas: null }) }] : []), ...(natureza ? [{ id: "natureza", rotulo: natureza === "A_CLASSIFICAR" ? "Classificação pendente" : natureza === "NAO_COMERCIAL" ? "Não comercial" : natureza === "COLOSTRO" ? "Colostro" : "Comercial", limpar: () => atualizar({ ordenhasNatureza: null, paginaOrdenhas: null }) }] : [])]}>
+      {!periodoPersonalizado && <span className="leite-periodo-padrao">Mês atual · {formatarDataBR(inicio)} a {formatarDataBR(fim)}</span>}
       <BuscaLista rotulo="Buscar ordenhas" placeholder="Buscar data, ordenha ou registro" valor={busca} onChange={valor => atualizar({ ordenhasBusca: valor, paginaOrdenhas: null })} />
     </BarraConsulta>
     {carregando ? <p role="status" className="p-5">Carregando ordenhas…</p> : erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : lista && <>
       <dl className="leite-consulta-resumo"><div><dt>Volume conhecido no período</dt><dd>{formatarLitros(lista.resumo.totalLitros)}</dd></div><div><dt>Ordenhas no período</dt><dd>{lista.resumo.sessoes}</dd></div><div><dt>Sem aferição</dt><dd>{lista.resumo.semAfericao}</dd></div><div><dt>Pendentes de estoque</dt><dd>{lista.resumo.pendentesEstoque}</dd></div></dl>
-      {!lista.itens.length ? <p className="p-5">Nenhuma ordenha encontrada neste período.</p> : <ListaConsultaLeite visualizacao={visualizacao} preferencia="ordenhasVisualizacao" tituloDe={r => r.nome} detalheDe={r => `${formatarDataBR(r.dataOperacional)} · Fonte ${r.fonteProducao === "INDIVIDUAL" ? "individual" : "geral"}`} destaque="total" rotulo="Ordenhas registradas" itens={lista.itens} chaveDe={r => r.id} onAbrir={abrir} colunas={[
+      {!lista.itens.length ? <p className="p-5">Nenhuma ordenha encontrada neste período.</p> : visualizacao.modo === "tabela" ? <TabelaOrdenhasPorDia itens={lista.itens} abrir={abrir} podeLancar={podeLancar}/> : <ListaConsultaLeite layout="grade" renderizarVisual={r => <CartaoOrdenhaVisual registro={r} abrir={() => abrir(r)} podeLancar={podeLancar}/>} visualizacao={visualizacao} preferencia="ordenhasVisualizacao" tituloDe={r => r.nome} detalheDe={r => `${formatarDataBR(r.dataOperacional)} · Fonte ${r.fonteProducao === "INDIVIDUAL" ? "individual" : "geral"}`} destaque="total" rotulo="Ordenhas registradas" itens={lista.itens} chaveDe={r => r.id} onAbrir={abrir} colunas={[
         { chave: "data", titulo: "Data", principal: true, larguraMinima: 120, celula: r => formatarDataBR(r.dataOperacional) },
         { chave: "ordenha", titulo: "Ordenha", ocultarNoCartao: true, larguraMinima: 130, celula: r => r.nome },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "COMERCIAL") },
-        { chave: "descarte", titulo: "Descarte", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "NAO_COMERCIAL") },
+        { chave: "descarte", titulo: "Não comercial", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "NAO_COMERCIAL") },
         { chave: "colostro", titulo: "Colostro", alinhamento: "direita", larguraMinima: 120, celula: r => litrosNatureza(r, "COLOSTRO") },
         { chave: "total", titulo: "Total", alinhamento: "direita", larguraMinima: 120, celula: r => r.litros == null ? "Não aferido" : formatarLitros(r.litros) },
-        { chave: "situacao", titulo: "Situação", larguraMinima: 160, celula: r => r.porNatureza.some(n => n.natureza === "A_CLASSIFICAR") ? "Classificação pendente" : situacoes[r.situacao] ?? r.situacao },
+        { chave: "situacao", titulo: "Situação", larguraMinima: 160, celula: r => situacaoOrdenha(r) },
         { chave: "acoes", titulo: "Ação", acoes: true, larguraMinima: 150, celula: r => <Button variant="outline" onClick={() => abrir(r)}>{r.situacao === "CONFIRMADA" || !podeLancar ? "Consultar" : "Editar registro"}</Button> },
       ]} />}
       <Paginacao pagina={lista.pagina} totalPaginas={Math.max(1, Math.ceil(lista.total / lista.porPagina))} total={lista.total} porPagina={lista.porPagina} rotulo="Paginação de ordenhas" substantivo="ordenhas" idSelect="pagina-ordenhas" onPagina={p => atualizar({ paginaOrdenhas: String(p) })} />

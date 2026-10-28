@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { LeiteModulo } from "./LeiteModulo";
 
+const {escopoModulo}=vi.hoisted(()=>({escopoModulo:{id:1 as number|null}}));
+vi.mock("../../../propriedadeScope", () => ({getPropriedadeAtiva:()=>escopoModulo.id}));
+vi.mock("../../../api/propriedades",()=>({listarPropriedades:vi.fn(async()=>[{id:7,nome:"Principal",principal:true,ativo:true}])}));
 vi.mock("./Leite", () => ({ Leite: () => <h1>Folha de ordenha</h1> }));
 vi.mock("./ConsultasProducaoLeite", () => ({
   ConsultasProducaoLeite: ({ podeExportar }: { podeExportar: boolean }) =>
@@ -22,7 +25,7 @@ vi.mock("./DescarteLeite", () => ({ DescarteLeite: () => null }));
 vi.mock("./UIDestinosLeite", () => ({ DestinosLeite: () => null }));
 vi.mock("./PreviaHistoricaLeite", () => ({ PreviaHistoricaLeite: () => null }));
 
-beforeEach(() => history.replaceState(null, "", "/pecuaria/leite?leiteSecao=producao&producaoVisao=mes&producaoData=2026-10-01"));
+beforeEach(() => {escopoModulo.id=1;history.replaceState(null, "", "/pecuaria/leite?leiteSecao=producao&producaoVisao=mes&producaoData=2026-10-01");});
 afterEach(cleanup);
 
 describe("Consultas independentes no módulo Leite", () => {
@@ -64,4 +67,10 @@ describe("Consultas independentes no módulo Leite", () => {
     fireEvent(window, new PopStateEvent("popstate"));
     expect(screen.getByRole("heading", { name: "Consulta de produção com exportação" })).toBeTruthy();
   });
+});
+
+it("no consolidado oferece escolha direta e não monta consultas de leite sem sítio",async()=>{
+ escopoModulo.id=null;const selecionar=vi.fn();render(<LeiteModulo podeLancar podeFinanceiro onSelecionarSitio={selecionar}/>);
+ expect(screen.queryByText(/Consulta de produção com/)).toBeNull();expect(screen.getByRole("heading",{name:"Em qual sítio você quer trabalhar?"})).toBeTruthy();
+ fireEvent.click(await screen.findByRole("button",{name:/Principal/}));expect(selecionar).toHaveBeenCalledWith(7);expect(screen.queryByRole("alert")).toBeNull();
 });

@@ -1,0 +1,74 @@
+# Relatórios da Pecuária e builder
+
+A entrada `/pecuaria/relatorios` reúne Partos e pós-parto, Indicadores reprodutivos, Leite, Relatórios reprodutivos e Catálogo de relatórios, com sítio explícito e seleção por `tipo`. `tipo=builder` abre a configuração personalizada. URLs anteriores dos relatórios de leite continuam válidas. A seleção local em Consolidado não modifica a propriedade global; cada request mantém escopo autorizado no servidor.
+
+## Relatórios reprodutivos complementares
+
+`tipo=acompanhamento` oferece quatro relatórios escolhidos por `relatorio=iep|perdas|espera|concepcoes`. Todos consultam `/reproducao/indicadores` com sítio, período e corte no fim do período, usando o envelope de acompanhamento V2 existente. Resumos e valores vêm do servidor, sem novo cálculo no cliente. O período inicial cobre os últimos doze meses até hoje e usa os parâmetros `inicio`/`fim` e a normalização temporal das consultas operacionais. Editar filtros não substitui o resultado antes de consultar.
+
+- **Intervalo entre partos:** um par qualificante por linha; o segundo parto define o período. Média, pendências e ausência de parto anterior conservam a origem. O filtro permite vivos/natimortos ou todos os partos, sem alterar o padrão do motor.
+- **Perdas gestacionais:** uma gestação da população pelo primeiro DG positivo por linha, com seguimento, desfecho, datas, evidências e lacunas. Janela opcional de 1–1000 dias é uma escolha explícita, sem duração clínica presumida. Sem janela, somente contagens; não apresentar percentual. O tipo principal do encerramento prevalece sobre subtipo genérico: parto não vira perda por rótulo do envelope.
+- **Espera até o primeiro serviço:** um ciclo iniciado no período por linha. Não mistura a fila atual. Conserva liberação, primeiro serviço, dias corridos, espera observada, restrições, antecipações e pendências.
+- **Tentativas por concepção:** uma concepção comprovada por linha, selecionada pela data factual do serviço conceptivo. Contagem acumulada e média são as do motor, com referências e provas preservadas.
+
+A superfície usa o catálogo único de campos para seleção, cartões e tabela. Busca filtra animais; paginação local exibe até doze registros. Indicadores continuam relativos ao período inteiro; busca não recalcula suas médias. CSV explícito inclui os campos selecionados e todos os registros correspondentes à busca, respeitando `exportar`; não cria emissão preservada. Ausência do envelope V2 ou metodologia de concepções indisponível aparece como falha consultável novamente, sem lista vazia fictícia. Respostas de outra fonte, período ou sítio não substituem a consulta atual.
+
+## Leitura e histórico
+
+Partos abre a consulta atual do período padrão. Cartões e tabela usam o mesmo snapshot; detalhes separam parto/pós-parto, crias/colostro e autoria/origem. Contagens de crias vivas/sem vida não são contagens de partos; um parto pode ter várias crias. A impressão conserva a ficha completa. Filtros e histórico ficam em diálogos, sem apagar o resultado quando as datas são editadas. Aplicar consulta explicitamente; reabrir uma emissão lê o snapshot original sem recálculo. Emissão continua explícita, idempotente e auditada no servidor existente.
+
+Indicadores abre o resultado atual e oferece cartões/tabela do painel, com taxas/bases calculadas pelo motor existente. Bases/contagens, animais e critérios detalhados permanecem acessíveis. Filtros completos e emissões ficam em diálogos. Leite oferece gráfico de volume conhecido e composição/cobertura da consulta atual; emissões preservadas e CSV continuam separados dessa leitura viva. Não inferir zero para lacunas nem atribuir produção geral e individual duas vezes.
+
+## Builder
+
+O catálogo único em `client/src/pecuaria/relatorios/catalogo.ts` relaciona os relatórios navegáveis, suas fontes e variáveis. Fontes iniciais implementadas:
+
+- Partos: um parto por linha, com identificação, desfecho, crias, indução/dificuldade, assistência, retenção de placenta, contagem de eventos de colostro, responsável e origem.
+- Tentativas: uma tentativa por linha, com tipo/data, situação, ciclo/ordem, origem e responsável. Não infere diagnóstico a partir da situação reprodutiva atual.
+- Indicadores: uma janela por linha, com taxas, numeradores/denominadores e pendências, sem média ou soma de taxas.
+- Leite/ordenhas: uma ordenha por linha, com data, turno, fonte, situação, natureza e litros. A fonte é paginada; filtros de situação e exportação do builder referem-se à página exibida, explicitamente rotulada. O export completo de produção continua no relatório de leite.
+- IEP, perdas, espera e concepções: as mesmas granularidades, campos e referências dos relatórios complementares. `fonte=iep|perdas|espera|concepcoes` inicia o builder na fonte correspondente. No builder, perdas usam contagens sem janela e IEP usa o critério principal do motor; filtros metodológicos especializados ficam na consulta pronta. Resumos de média/base pertencem ao período, não são campos repetidos de cada registro. Fila atual, exclusões e pendências sem linha correspondente permanecem na consulta completa de Indicadores, porque têm outra população/granularidade.
+
+O builder seleciona/reordena campos, apresenta tabela ou cartões e aplica período pela API de cada fonte. Ao abrir de uma consulta pronta, conserva `inicio`/`fim` válidos da URL; fontes complementares sem datas explícitas usam o mesmo período inicial de doze meses. A prévia descarta respostas de outra fonte, período ou sítio. Campos desconhecidos permanecem “Não informado”, distintos de zero e falso. Unidades acompanham os valores. A exportação CSV neutraliza fórmulas e usa somente os campos/linhas exibidos; impressão segue o mesmo recorte. Ações de exportação/impressão exigem a permissão visual `exportar`; consultas continuam autorizadas pelas rotas existentes, sem acesso direto ao banco.
+
+Modelos guardam somente nome, fonte e ordem dos campos em `localStorage`, separados por usuário e sítio, no navegador atual. Não guardam resultados, não são compartilhados entre dispositivos e não equivalem a emissões preservadas. Falha de armazenamento é informada; modelos inválidos/obsoletos são saneados ou recusados. Nenhuma migration é necessária para configurações locais.
+
+Qualidade dinâmica, comercial e custos diretos também possuem fontes operacionais no builder, com as granularidades descritas abaixo. Os relatórios completos e snapshots próprios continuam disponíveis; o catálogo não afirma cobrir todos os DTOs internos ou metadados.
+
+## Catálogo operacional
+
+`tipo=catalogo&relatorio=<fonte>` reúne 27 consultas prontas por área. Vinte e seis fontes usam a leitura `/api/pecuaria/relatorios/consulta`; Tentativas reutiliza o painel reprodutivo autorizado existente. Todas estão disponíveis no mesmo catálogo de variáveis do builder, sem nova carga ou coleta de dados.
+
+- **Rebanho:** cadastro e situação atual, último peso/GMD, histórico de pesagens, lotes/efetivo atual, movimentos por animal, baixas, genitores externos e materiais genéticos. Cadastro, peso e efetivo representam posição atual. Genitores e materiais são cadastros compartilhados, sem afirmar disponibilidade em estoque. Pesagens usam localização histórica inequívoca; baixas usam a localização fechada preservada.
+- **Reprodução:** gestações, lactações, tarefas de protocolos por participante e tentativas. Tarefas com hora usam a data de São Paulo; tarefas de dia preservam a data civil. Escrita continua pelo núcleo comum, sem escrever nas views IATF.
+- **Sanidade:** ocorrências, aplicações, exames e carências. Carências exige um animal e uma data de referência; o acesso segue o sítio atual, sem representar liberação clínica. Exames e qualidade preservam uma observação por campo, formato, versão e unidade, incluindo resultado pendente.
+- **Leite:** qualidade, coletas, vendas, estoque atual, fornecimentos, descartes e retiradas internas. Comercial por período respeita a sobreposição dos serviços existentes; venda não significa recebimento. Não comercial não significa descarte físico. Saldo atual mantém lastro, classificação e custo pendentes.
+- **Nutrição e custos:** composição versionada das dietas compartilhadas, atribuições, fechamentos e componentes de custos diretos. Vigências têm fim exclusivo; fechamentos sobrepostos são exibidos inteiros, sem rateio artificial. Estornos continuam identificados. Custos exigem animal e permissão própria; valores/origens monetárias respeitam `verValores`. Custo parcial não representa custo integral ou lucro.
+
+A interface distingue posição atual, período e data de referência. O servidor resolve o sítio autorizado e recusa seleção divergente ou Consolidado sem sítio local. Custos usam a localização histórica: o seletor consulta `/api/pecuaria/relatorios/animais-historicos` por sítio e busca textual, com até vinte identificações mínimas por busca, incluindo animais transferidos. Carências conserva a busca atual. Nenhuma dessas consultas escreve dados.
+
+Cada fonte possui variáveis, granularidade, critérios e unidades compartilhados entre tabela, cartões, CSV e builder. Avisos de cobertura ficam em ajuda contextual. Busca e CSV das fontes paginadas usam apenas a página carregada, com rótulo explícito; Tentativas mantém a consulta completa e paginação local. Fontes que expandem fatos para observações recusam mais de dez mil fatos antes da expansão, pedindo um período menor, sem truncar silenciosamente. Permissões de área, sítio, custos e valores permanecem no servidor; a exportação da leitura já autorizada exige a ação visual `exportar`.
+
+Validação automatizada cobre catálogo/variáveis, adaptação factual e histórico, autorização do endpoint, mascaramento monetário, busca histórica, contextos obrigatórios, navegação, paginação e descarte de respostas obsoletas. A homologação local usa a base existente, sem seed, migration ou alteração de registros.
+
+## Filtros e templates de critérios
+
+Catálogo, relatórios reprodutivos complementares e builder compartilham o painel shadcn de filtros. As páginas nativas de Partos, Indicadores e Leite conservam seus filtros, emissões e detalhes próprios; as respectivas fontes no builder também usam o painel novo. Seleções ficam em rascunho até aplicar, com limpar/cancelar e chips removíveis. Apenas os operadores compatíveis com os campos autorizados da fonte são oferecidos. O período principal continua explícito na consulta.
+
+`GET /api/pecuaria/relatorios/filtros` fornece metadados autorizados por fonte e sítio. A consulta tabular aceita `filtros`, um JSON de até vinte regras com campo, operador e valores. Texto permite igualdade/diferença/conteúdo/seleção; números e datas permitem limites ou intervalo inclusivo; booleanos usam Sim/Não. Informado/não informado é explícito e não converte zero ou falso em ausência. Critérios são combinados por AND; a seleção de vários valores de um critério usa OR. IDs e evidências estruturadas não são comparadores numéricos. Resultados dinâmicos de exames e qualidade permanecem texto quando não há tipo e unidade única comprovados, sem limites clínicos presumidos.
+
+O servidor valida fonte, campo, operador, tipo, limites e permissões antes de consultar os serviços. Filtrar dinheiro e campos correlatos requer `verValores`, inclusive quando o filtro permitiria inferir contagens. Comparações monetárias usam `Prisma.Decimal`, sem converter os valores persistidos para ponto flutuante. Fontes já paginadas são lidas em páginas limitadas para refinar o conjunto autorizado inteiro antes da paginação final, com limite explícito de dez mil registros e falha em vez de truncamento; alteração de total durante a coleta pede nova consulta. Não há N+1 de fichas no cliente.
+
+População reprodutiva usa lote e papel históricos antes do motor. Tipo de tentativa é oferecido em Indicadores, Espera e Concepções, onde afeta o cálculo; não é oferecido nem aceito em IEP ou Perdas. Corte, estimativa de concepção, deslocamento analítico de TE, modo IEP e janela de perdas conservam os limites e fontes nos quais o motor os utiliza. Resumos são identificados como **Resumo da população**; refinamento dos registros não reinterpreta médias/taxas como indicadores da lista filtrada. Fontes anteriores têm adapters de leitura no servidor reutilizando os motores atuais, sem criar uma emissão preservada.
+
+Os filtros aplicados são preservados em `filtroFonte`/`filtrosRelatorio` na URL. Abrir no builder mantém esses critérios; respostas obsoletas são descartadas pela assinatura de fonte/sítio/período/contexto/filtros/página. Cartões, tabela e CSV usam a mesma resposta. O CSV de uma fonte paginada continua explicitamente da página; não é uma exportação integral. A busca local é separada dos filtros da consulta.
+
+Templates nomeados guardam somente critérios, sem resultados ou dados dos animais, em `localStorage`, separados por usuário, sítio e fonte. Usam o período atual da consulta; o corte explícito, quando salvo, continua um critério e deve ser compatível com esse período. Os três primeiros aparecem como atalhos aplicáveis com um clique; os demais ficam na aba Salvos, com renomear e excluir. Salvar com o mesmo nome substitui a combinação local anterior. Há limite de trinta templates por fonte e saneamento de campos/regras obsoletos. Falhas de armazenamento são apresentadas sem afirmar que houve gravação. Templates não sincronizam entre navegadores/dispositivos e são separados dos modelos de colunas e das emissões preservadas.
+
+Testes cobrem tipos, operadores, Decimal, ausência/zero/falso, datas, gates e fontes, refinamento antes da paginação, limites de leitura, parâmetros nativos, contexto, respostas atrasadas e salvar/aplicar/renomear/excluir templates. A verificação manual usa a base local existente, sem carga, migration ou alteração de fatos.
+
+## Regra para novas variáveis e relatórios
+
+Ao criar ou ampliar um relatório, conferir **na mesma alteração** se suas variáveis de consulta devem estar disponíveis no builder. Registrar a fonte, granularidade, rótulo, tipo/unidade, desconhecimento, filtros e permissão; atualizar adapters e testes do catálogo. Se um campo ficar fora, documentar o motivo (por exemplo, incompatibilidade de granularidade, dados sensíveis ou resultado dinâmico ainda sem adapter). Não acrescentar opções fictícias nem fazer joins no cliente para aparentar cobertura.
+
+Os contratos de [Reprodução](reproducao.md) e [Leite preservado](leite-relatorios.md) continuam sendo a autoridade para cálculos, cortes e permissões. Os testes do catálogo verificam que cada relatório navegável tenha fontes/variáveis válidas; adapters e UI cobrem escopo, obsolescência, estados vazios e respostas atrasadas. Mockups permanecem apenas propostas, sem dados operacionais.

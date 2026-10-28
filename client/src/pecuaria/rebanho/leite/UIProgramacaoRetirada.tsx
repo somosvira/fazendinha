@@ -1,3 +1,4 @@
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { AjudaCampo } from "@/components/Dica";
 import { DatePicker } from "@/components/DatePicker";
 import { Input } from "@/components/ui/input";
@@ -39,6 +40,7 @@ const dataPt = (data: string) =>
     year: "numeric",
   });
 export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
+  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite");
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
   const [dados, setDados] = useState<ConsultaProgramacaoDTO | null>(null);
@@ -146,7 +148,8 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           <h2>
             <CalendarDays size={20} aria-hidden /> Próximos 14 dias · previsão
           </h2>
-          {dados.previsoes.length ? (
+          <div className="leite-lista-opcoes"><AlternarVisualizacaoConsulta modo={visualizacao.modo} mudar={visualizacao.mudar} rotulo="Visualização das previsões de coleta"/></div>
+          {dados.previsoes.length ? (visualizacao.modo === "visual" ? <ol className="leite-previsoes-grade" aria-label="Datas previstas de coleta">{dados.previsoes.map(p=><li key={p.data}><time dateTime={p.data}>{dataPt(p.data)}</time><span>{nomeProgramacao(dados.historico.find(h=>h.id===p.programacaoId)!)}</span><span>Previsão</span></li>)}</ol> : (
             <div className="leite-tabela-scroll">
               <Table semContainer>
                 <TableCaption>Datas previstas de coleta</TableCaption>
@@ -174,7 +177,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          )) : (
             <p>
               {dados.vigente?.tipo === "META_LITROS"
                 ? "A meta de litros não determina uma data de retirada."

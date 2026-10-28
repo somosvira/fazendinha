@@ -7,7 +7,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
   IndicadoresReprodutivos,
   numeroIndicador,
@@ -20,6 +20,9 @@ import {
   abrirEmissaoIndicadores,
   type SnapshotIndicadoresReprodutivos,
 } from "./indicadores-api";
+vi.mock("../../relatorios/ControlesRelatorio",()=>({ControleRelatorio:({children}:{children:import('react').ReactNode})=><>{children}</>}));
+vi.mock("@/financeiro/SelectCampo",()=>({SelectCampo:({children,value,onValueChange,...props}:{children:import('react').ReactNode;value:string;onValueChange:(v:string)=>void})=><select {...props} value={value} onChange={e=>onValueChange(e.target.value)}>{children}</select>}));
+beforeEach(()=>{vi.mocked(consultarIndicadores).mockResolvedValue(snapshot());vi.mocked(listarEmissoesIndicadores).mockResolvedValue([])});
 vi.mock("./api", () => ({ reqV4: vi.fn().mockResolvedValue([]) }));
 vi.mock("./indicadores-api", async (original) => ({
   ...(await original<typeof import("./indicadores-api")>()),
@@ -114,7 +117,9 @@ it("consulta sem inventar concepção estimada e mostra pendências em vez de ze
   fireEvent.change(screen.getByLabelText("Corte dos resultados"), {
     target: { value: "2026-09-22" },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Aplicar" }));
+  await screen.findByRole("tab",{name:"Bases e contagens"});
+  fireEvent.click(screen.getByRole("tab",{name:"Bases e contagens"}));
   await screen.findByText("Total recalculado");
   expect(consultarIndicadores).toHaveBeenCalledWith({
     propriedadeId: 1,
@@ -157,7 +162,7 @@ it("abre a emissão preservada sem reprocessar os fatos atuais e limpa ao trocar
     "2026-09-22",
   );
   expect(abrirEmissaoIndicadores).toHaveBeenCalledWith("antiga", 1);
-  expect(consultarIndicadores).not.toHaveBeenCalled();
+  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
   rerender(<IndicadoresReprodutivos propriedadeId={2} podeLancar={true} />);
   expect(screen.queryByText("Total recalculado")).toBeNull();
 });
@@ -181,7 +186,7 @@ it("retry de abertura repete a mesma emissão e não consulta fatos atuais", asy
   await screen.findByText(/Emissão preservada em/);
   expect(abrirEmissaoIndicadores).toHaveBeenNthCalledWith(1, "antiga", 1);
   expect(abrirEmissaoIndicadores).toHaveBeenNthCalledWith(2, "antiga", 1);
-  expect(consultarIndicadores).not.toHaveBeenCalled();
+  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
 });
 it("retry da listagem não inicia consulta live e invalida abertura ao trocar sítio", async () => {
   const e = {
@@ -206,7 +211,7 @@ it("retry da listagem não inicia consulta live e invalida abertura ao trocar s�
   fireEvent.click(screen.getByRole("button", { name: "Tentar carregar emissões" }));
   await screen.findByRole("option", { name: /23\/09\/2026/ });
   expect(listarEmissoesIndicadores).toHaveBeenCalledTimes(2);
-  expect(consultarIndicadores).not.toHaveBeenCalled();
+  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), {
     target: { value: "antiga" },
   });
@@ -228,7 +233,9 @@ it("retry de preservar repete a mesma chave idempotente e filtros", async () => 
     .mockRejectedValueOnce(new Error("Falha ao preservar"))
     .mockResolvedValueOnce(e);
   render(<IndicadoresReprodutivos propriedadeId={1} podeLancar />);
-  fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Aplicar" }));
+  await screen.findByRole("tab",{name:"Bases e contagens"});
+  fireEvent.click(screen.getByRole("tab",{name:"Bases e contagens"}));
   await screen.findByText("Total recalculado");
   fireEvent.click(screen.getByRole("button", { name: "Preservar emissão" }));
   await screen.findByRole("alert");
@@ -238,25 +245,25 @@ it("retry de preservar repete a mesma chave idempotente e filtros", async () => 
   expect(chamadas).toHaveLength(2);
   expect(chamadas[1]).toEqual(chamadas[0]);
   expect(chamadas[0][0]).toEqual(s.filtros);
-  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
+  expect(consultarIndicadores).toHaveBeenCalledTimes(2);
 });
 it("separa filtros editados da emissão preservada e mantém seus dados sem nova consulta", async () => {
   const e = { id: "antiga", criadoEm: "2026-09-23T12:00:00Z", snapshot: snapshot() };
   vi.mocked(listarEmissoesIndicadores).mockResolvedValue([e]);
   vi.mocked(abrirEmissaoIndicadores).mockResolvedValue(e);
   render(<IndicadoresReprodutivos propriedadeId={1} podeLancar={false}/>);
-  expect(screen.getByRole("button", { name: "Aplicar" })).toBeTruthy();
+  expect(await screen.findByRole("button", { name: "Aplicar" })).toBeTruthy();
   expect(screen.queryByText(/O período inicial já está preenchido/)).toBeNull();
   await screen.findByRole("option", { name: /23\/09\/2026/ });
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "antiga" } });
   await screen.findByText(/Emissão preservada em/);
   expect(screen.queryByText(/Os filtros editados ainda/)).toBeNull();
   fireEvent.change(screen.getByLabelText("Início"), { target: { value: "2026-08-01" } });
-  expect(screen.getByText(/Os filtros editados ainda não foram aplicados/)).toBeTruthy();
-  expect(screen.getByText(/Filtros aplicados: 01\/09\/2026 a 21\/09\/2026/)).toBeTruthy();
+  expect(screen.getByText(/Há filtros editados ainda não aplicados/)).toBeTruthy();
+  expect(screen.getAllByText(/01\/09\/2026 a 21\/09\/2026/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Emissão preservada em/)).toBeTruthy();
-  expect(screen.getAllByText("Total recalculado").length).toBeGreaterThan(0);
-  expect(consultarIndicadores).not.toHaveBeenCalled();
+  expect(screen.getByRole("heading",{name:"Resultado do período consultado"})).toBeTruthy();
+  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
   expect(emitirIndicadores).not.toHaveBeenCalled();
 });
 it("conserva o histórico que termina depois da consulta explícita", async () => {
@@ -266,12 +273,14 @@ it("conserva o histórico que termina depois da consulta explícita", async () =
   vi.mocked(consultarIndicadores).mockResolvedValue(snapshot());
   render(<IndicadoresReprodutivos propriedadeId={1} podeLancar={false}/>);
   await waitFor(() => expect(resolver).toBeTypeOf("function"));
-  fireEvent.click(screen.getByRole("button", { name: "Aplicar" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Aplicar" }));
+  await screen.findByRole("tab",{name:"Bases e contagens"});
+  fireEvent.click(screen.getByRole("tab",{name:"Bases e contagens"}));
   await screen.findByText("Total recalculado");
   await act(async () => { resolver([e]); });
   await screen.findByRole("option", { name: /23\/09\/2026/ });
-  expect(consultarIndicadores).toHaveBeenCalledTimes(1);
-  expect(screen.getAllByText("Total recalculado").length).toBeGreaterThan(0);
+  expect(consultarIndicadores).toHaveBeenCalledTimes(2);
+  expect(screen.getByText("Total recalculado")).toBeTruthy();
 });
 it("ignora histórico atrasado de outro sítio sem perder a lista do sítio atual", async () => {
   const e = { id: "anterior", criadoEm: "2026-09-23T12:00:00Z", snapshot: snapshot() };

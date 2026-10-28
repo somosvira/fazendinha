@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ req: vi.fn(), consultar: vi.fn(), listar: vi.fn(), abrir: vi.fn(), emitir: vi.fn() }));
 vi.mock("./api", () => ({ reqV4: mocks.req }));
 vi.mock("./indicadores-api", async original => ({ ...await original<typeof import("./indicadores-api")>(), consultarIndicadores: mocks.consultar, listarEmissoesIndicadores: mocks.listar, abrirEmissaoIndicadores: mocks.abrir, emitirIndicadores: mocks.emitir }));
+// A compatibilidade dos snapshots é testada separadamente dos diálogos de navegação.
+vi.mock("../../relatorios/ControlesRelatorio",()=>({ControleRelatorio:({children}:{children:import('react').ReactNode})=><>{children}</>}));
+vi.mock("@/financeiro/SelectCampo",()=>({SelectCampo:({children,value,onValueChange,...props}:{children:import('react').ReactNode;value:string;onValueChange:(v:string)=>void})=><select {...props} value={value} onChange={e=>onValueChange(e.target.value)}>{children}</select>}));
 import { IndicadoresReprodutivos } from "./IndicadoresReprodutivos";
 import { exportarIndicadoresCsv, type SnapshotIndicadoresReprodutivos } from "./indicadores-api";
 import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
@@ -16,18 +19,18 @@ function acompanhamento(): AcompanhamentoIndicadores { return { versao: 2, versa
  perdas: { janelaDias: null, numerador: null, denominador: null, percentual: null, contagens: { gestacoes: 0, perdasAteCorte: 0, perdasRegistradas: 0, abortos: 0, incompletos: 0, semPrimeiroDg: 0, encerramentosNaoIdentificados: 0 }, composicaoNumerador: { perdasRegistradas: 0, abortos: 0 }, coorte: [] },
  iep: { modo: "VIVOS_NATIMORTOS", mediaDias: null, pares: [], abortos: [], pendencias: [], semAnterior: [] }, tentativasPorConcepcao: { estado: "NAO_CARREGADO" } }; }
 const emissao = (id: string, v2 = false) => ({ id, criadoEm: id === "v1" ? "2026-01-22T12:00:00Z" : "2026-01-23T12:00:00Z", snapshot: { ...snapshot(), ...(v2 ? { versao: 2 as const, acompanhamento: acompanhamento() } : {}) } });
-beforeEach(() => { vi.resetAllMocks(); mocks.req.mockResolvedValue([]); mocks.listar.mockResolvedValue([emissao("v1"), emissao("v2", true)]); mocks.abrir.mockImplementation(async id => emissao(id, id === "v2")); });
+beforeEach(() => { vi.resetAllMocks(); mocks.req.mockResolvedValue([]); mocks.consultar.mockResolvedValue(snapshot()); mocks.listar.mockResolvedValue([emissao("v1"), emissao("v2", true)]); mocks.abrir.mockImplementation(async id => emissao(id, id === "v2")); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("indicadores preservados — compatibilidade independente V1/V2", () => {
  it("abrir emissão V1 conserva snapshot sem recalcular ou inventar bloco novo", async () => {
-  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /22\/01\/2026/ });
+  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /22\/01\/2026/ }); await waitFor(()=>expect(mocks.consultar).toHaveBeenCalled()); mocks.consultar.mockClear();
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v1" } }); await screen.findByText(/Emissão preservada em/);
   expect(mocks.abrir).toHaveBeenCalledWith("v1", 7); expect(mocks.consultar).not.toHaveBeenCalled(); expect(mocks.emitir).not.toHaveBeenCalled();
-  expect(screen.queryByRole("heading", { name: "Espera, perdas e intervalos" })).toBeNull(); expect(screen.getAllByText(/METODOLOGIA_PRESERVADA_V1/).length).toBeGreaterThan(0);
+  expect(screen.queryByRole("heading", { name: "Espera, perdas e intervalos" })).toBeNull(); fireEvent.click(screen.getByRole("tab",{name:"Critérios de cálculo"})); expect(screen.getAllByText(/METODOLOGIA_PRESERVADA_V1/).length).toBeGreaterThan(0);
  });
  it("emissão V2 mostra bloco preservado e voltar à V1 o remove sem consulta atual", async () => {
-  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /23\/01\/2026/ });
-  fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v2" } }); await screen.findAllByRole("heading", { name: "Espera, perdas e intervalos" });
+  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /23\/01\/2026/ }); await waitFor(()=>expect(mocks.consultar).toHaveBeenCalled()); mocks.consultar.mockClear();
+  fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v2" } }); await screen.findByRole("tab", {name:"Acompanhamento"}); fireEvent.click(screen.getByRole("tab", {name:"Acompanhamento"})); await screen.findAllByRole("heading", { name: "Espera, perdas e intervalos" });
   await waitFor(() => expect(screen.getByLabelText("Emissões preservadas")).toHaveProperty("disabled", false));
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v1" } }); await waitFor(() => expect(screen.queryByRole("heading", { name: "Espera, perdas e intervalos" })).toBeNull());
   expect(mocks.consultar).not.toHaveBeenCalled(); expect(mocks.emitir).not.toHaveBeenCalled(); expect(mocks.abrir).toHaveBeenCalledTimes(2);
@@ -45,8 +48,8 @@ describe("indicadores preservados — compatibilidade independente V1/V2", () =>
   const URLoriginal = URL;
   vi.stubGlobal("URL", class extends URLoriginal { static createObjectURL = vi.fn((b: Blob | MediaSource) => { if (b instanceof Blob) blob = b; return "blob:exportacao-preservada"; }); static revokeObjectURL = vi.fn(); });
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /23\/01\/2026/ });
-  fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v2" } }); await screen.findAllByRole("heading", { name: "Espera, perdas e intervalos" });
+  render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /23\/01\/2026/ }); await waitFor(()=>expect(mocks.consultar).toHaveBeenCalled()); mocks.consultar.mockClear();
+  fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v2" } }); await screen.findByRole("tab", {name:"Acompanhamento"}); fireEvent.click(screen.getByRole("tab", {name:"Acompanhamento"})); await screen.findAllByRole("heading", { name: "Espera, perdas e intervalos" });
   fireEvent.click(screen.getByRole("button", { name: "Exportar CSV" })); expect(blob).toBeDefined();
   const csv = await new Promise<string>((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = () => reject(reader.error); reader.readAsText(blob!); });
   expect(csv).toContain('"Acompanhamento gerencial";"ACOMPANHAMENTO_PRESERVADO_V1"');

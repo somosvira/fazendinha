@@ -13,10 +13,10 @@ export function csvProducaoLeite(linhas: LinhaProducao[]) {
   const celula = (v: unknown) => { const texto = v === null || v === undefined ? "Não informado" : String(v); return `"${(/^\s*[=+@-]/.test(texto) ? "'" : "") + texto.replace(/"/g, '""')}"`; };
   return [["Data produção", "Animal ou tanque", "Nome", "Ordenha", "Natureza", "Estado", "Litros medidos", "Confirmada no estoque", "Finalidade na produção", "Data da finalidade", "Regra da finalidade"], ...linhas.map(l => [l.data,l.brinco,l.nome,l.ordenha,naturezas[l.natureza] ?? l.natureza,l.estado,l.litros,l.confirmada ? "Sim" : "Não",l.fonte === "GERAL" ? "Aferição geral do tanque" : l.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar",l.finalidade?.dataOperacional ?? l.data,l.finalidade?.regra ?? null])].map(l => l.map(celula).join(";")).join("\r\n");
 }
-export function ExportacaoProducaoLeite({ podeExportar }: { podeExportar: boolean }) {
+export function ExportacaoProducaoLeite({ podeExportar, propriedadeId }: { podeExportar: boolean; propriedadeId?: number | null }) {
   const [periodo,setPeriodo] = useState({ inicio: `${hojeOperacional().slice(0,7)}-01`, fim: hojeOperacional() }), [natureza,setNatureza] = useState("");
   const [ocupado,setOcupado] = useState(false), [erro,setErro] = useState("");
-  const sitio = getPropriedadeAtiva();
+  const sitio = propriedadeId ?? getPropriedadeAtiva();
   async function exportar() {
     if (!podeExportar || ocupado) return;
     setOcupado(true); setErro("");

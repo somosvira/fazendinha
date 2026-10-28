@@ -23,6 +23,8 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 
 ## Implementação
 
+- Ao criar ou ampliar relatórios, confira as variáveis no builder na mesma alteração: atualize catálogo, adapters e testes, ou documente o motivo de exclusão. Siga [o contrato dos relatórios](docs/pecuaria/relatorios.md).
+
 - Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.
 - Rotas Hono validam entradas com Zod e delegam aos serviços; cálculos puros ficam separados do acesso ao banco. Imports relativos do backend usam `.js`.
 - Configuração de runtime vem de `server/src/env.ts`. Novas variáveis precisam de validação e exemplo sem segredo.

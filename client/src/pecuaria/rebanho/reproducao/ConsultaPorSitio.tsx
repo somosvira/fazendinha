@@ -31,7 +31,7 @@ function SelecionarSitio({ children }: { children: (sitioId: number) => ReactNod
     return () => window.removeEventListener("popstate", sync);
   }, []);
   const sitio = sitios.find(s => String(s.id) === selecionado) ?? (!selecionado && sitios.length === 1 ? sitios[0] : null);
-  return <div className="space-y-5">
+  return <div className="consulta-por-sitio space-y-5">
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <label className="flex flex-wrap items-center gap-3 text-sm font-medium">Sítio da consulta
