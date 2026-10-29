@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../lib/useBuscaUrl";
 /* Rio Novo — Acessos (controle de permissões, admin).
  * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
  * mudança via PATCH. O convite devolve um link copiável, mostrado no próprio
@@ -456,9 +457,10 @@ function PermissionEditor({
 export function Acessos() {
   const toast = useToast();
   const [users, setUsers] = useState<UsuarioSessao[]>([]);
-  const [selId, setSelId] = useState<number | null>(null);
+  const [selId, setSelId] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("usuario")) || null);
+  useEffect(() => { const restaurar = () => setSelId(Number(new URLSearchParams(location.search).get("usuario")) || null); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   const [showInvite, setShowInvite] = useState(false);
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useBuscaUrl("busca");
   const [statusFiltro, setStatusFiltro] = useState("");
   const [carregando, setCarregando] = useState(true);
   const [erroCarga, setErroCarga] = useState<string | null>(null);

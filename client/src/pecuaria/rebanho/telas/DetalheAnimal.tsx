@@ -6,7 +6,7 @@ import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Finalidade representa FinalidadeAnimal; o papel reprodutivo tem histórico próprio.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Plus, ArchiveX, ArrowLeft, ArrowLeftRight, Baby, CalendarDays, Dna, Hash, Home, IdCard, LogIn, MapPin, Mars, Nfc, Scale, Target, Venus, type LucideIcon } from "lucide-react";
+import { Plus, ArchiveX, ArrowLeft, ArrowLeftRight, Baby, CalendarDays, Dna, Hash, Home, IdCard, LogIn, MapPin, Mars, Nfc, Scale, Target, Venus } from "lucide-react";
 import { fracaoReduzida } from "../lib/composicao";
 import {
   buscarComposicaoSugerida, buscarFichaAnimal, darBaixaAnimal, desfazerDestinoAnimal, desfazerLocalizacaoAnimal,
@@ -73,16 +73,7 @@ function LinkLote({ id, nome }: { id: string; nome: string }) {
   return <button type="button" onClick={() => navegarPara(linkFichaLote(id))} className="break-words font-semibold text-mast hover:underline">{nome}</button>;
 }
 
-function ResumoFicha({ icon: Icon, rotulo, valor, detalhe }: { icon: LucideIcon; rotulo: string; valor: string; detalhe: string }) {
-  return <div className="pec-resumo-ficha flex min-w-0 items-start gap-3 p-5">
-    <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-2 text-mast"><Icon size={17} /></span>
-    <div className="min-w-0">
-      <dt className="text-xs text-ink-3">{rotulo}</dt>
-      <dd className="mt-1 break-words font-serif text-xl leading-tight text-ink">{valor}</dd>
-      <dd className="mt-1 break-words text-xs text-ink-3">{detalhe}</dd>
-    </div>
-  </div>;
-}
+
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = "Animais" }: { id: string; onVoltar: () => void; podeLancar?: boolean; rotuloVoltar?: string }) {
   const [situacaoReprodutiva, setSituacaoReprodutiva] = useState<string | null>(null);
@@ -290,6 +281,13 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
             {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
             <StatusOperacionaisAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} revisao={refreshToken}/>
             <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
+            <div className="ficha-animal-medidas">
+              <dl id="resumo" className="ficha-animal-metricas">
+                <div className="ficha-animal-metrica" title={animal.idadeNaBaixa ? "Idade na data da baixa" : undefined}><dt>{animal.idadeNaBaixa ? "Idade na baixa" : "Idade"}</dt><dd>{formatarIdade(animal.idadeMeses)}</dd></div>
+                <div className="ficha-animal-metrica"><dt>{ativo ? "Peso atual" : "Último peso"}</dt><dd>{animal.peso.ultimo ? formatarKg(animal.peso.ultimo.kg) : <span className="ficha-animal-sem-pesagem">Sem pesagem</span>}</dd></div>
+              </dl>
+              {animal.peso.ultimo && <span className="ficha-animal-data-peso" title="Data da última pesagem"><CalendarDays size={15} aria-hidden="true" /><time dateTime={animal.peso.ultimo.data.slice(0, 10)} aria-label={`Data da última pesagem: ${formatarDataBR(animal.peso.ultimo.data)}`}>{formatarDataBR(animal.peso.ultimo.data)}</time></span>}
+            </div>
           </div>
       </div>
       {!ativo && animal.baixa && <div role="status" className="ficha-baixa-resumo">
@@ -313,12 +311,6 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
     <div id="ficha-painel-resumo" role="tabpanel" aria-labelledby="aba-resumo" hidden={secaoAtiva !== "resumo"}>
       {/* resumo de leitura rápida: o que se procura primeiro ao abrir a ficha */}
       <h2 className="sr-only">Resumo do animal</h2>
-      <dl id="resumo" className="ficha-resumo scroll-mt-6 grid grid-cols-2 divide-border lg:grid-cols-4 lg:divide-x">
-        <ResumoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"} valor={formatarIdade(animal.idadeMeses)} detalhe={animal.idadeNaBaixa ? "Na data da baixa" : ""} />
-        <ResumoFicha icon={Scale} rotulo={ativo ? "Peso atual" : "Último peso"} valor={animal.peso.ultimo ? formatarKg(animal.peso.ultimo.kg) : "—"} detalhe={animal.peso.ultimo ? `${formatarDataBR(animal.peso.ultimo.data)}` : "Sem pesagem"} />
-
-      </dl>
-
       <SecaoFicha id="peso-manejo" titulo="Peso e manejo" resumo="Acompanhamento de peso e principais manejos">
       <PesoEGanho
         animal={animal}

@@ -21,6 +21,7 @@ vi.mock("../../api/propriedades", () => ({
 const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(role, { name })[0];
 
 beforeEach(() => {
+  history.replaceState(null, "", "/configuracoes/sitios");
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(usePropriedades).mockReturnValue({ data: sitiosMock, loading: false, recarregar: vi.fn() });
@@ -84,4 +85,11 @@ describe("Configurações > Sítios", () => {
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     await waitFor(() => expect(editarPropriedade).toHaveBeenCalledWith(1, { nome: "Principal", ativo: false }));
   });
+});
+
+it("recebe busca de sítio inativo sem precisar remontar a consulta", async () => {
+  render(<Sitios />);
+  history.pushState(null, "", "/configuracoes/sitios?busca=Mexicana"); fireEvent.popState(window);
+  await waitFor(() => expect(usePropriedades).toHaveBeenLastCalledWith({ incluirInativos: true }));
+  expect(screen.getByRole("searchbox", { name: "Buscar sítio" })).toHaveProperty("value", "Mexicana");
 });

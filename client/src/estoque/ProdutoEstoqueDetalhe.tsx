@@ -27,9 +27,13 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const [sitioId, setSitioId] = useState<number | undefined>(() => getPropriedadeAtiva() ?? undefined);
   const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
   const [dados, setDados] = useState<ProdutoEstoqueDTO | null>(null);
-  const [aba, setAba] = useState<Aba>("resumo");
+  const [aba, setAba] = useState<Aba>(() => new URLSearchParams(location.search).has("partidaId") ? "movimentos" : "resumo");
   const [pagina, setPagina] = useState(1);
-  const [partidaId, setPartidaId] = useState("");
+  const [partidaId, setPartidaId] = useState(() => new URLSearchParams(location.search).get("partidaId") ?? "");
+  useEffect(() => {
+    const restaurar = () => { const id = new URLSearchParams(location.search).get("partidaId") ?? ""; setPartidaId(id); setPagina(1); if (id) setAba("movimentos"); };
+    window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
+  }, []);
   const [lotes, setLotes] = useState<PaginaLotesProduto | null>(null);
   const [movimentos, setMovimentos] = useState<PaginaMovimentos | null>(null);
   const [origens, setOrigens] = useState<PaginaOrigensProduto | null>(null);

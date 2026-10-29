@@ -223,3 +223,12 @@ it('não repete a anotação original quando o mesmo conteúdo já está nos res
  vi.mocked(consultarLeite).mockImplementation(async caminho=>caminho.includes('/formatos')?[formato]:caminho.includes('/historico')?{itens:[],total:0,pagina:1,tamanho:20}:{propriedadeId:2,itens:[{...amostra,anotacaoOriginal:texto,resultados:[...amostra.resultados,{campo:'NOTA',valor:texto}]}],total:1,pagina:1,tamanho:20});
  render(<QualidadeLeite podeLancar={false}/>);await tela.findByText('Tanque A');fireEvent.click(tela.getByRole('button',{name:/Abrir (amostra|laudo e histórico)/}));const dialog=await screen.findByRole('dialog');expect(within(dialog).getAllByText(texto).filter(el=>!el.closest('[hidden]'))).toHaveLength(1);expect(within(dialog).queryByRole('heading',{name:'Observação'})).toBeNull();
 });
+
+it("abre uma amostra por ID recebido da busca mesmo fora da página listada", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=qualidade&amostraId=amostra");
+  vi.mocked(consultarLeite).mockImplementation(async caminho => caminho === "/qualidade/amostras/amostra" ? amostra : caminho.includes("formatos") ? [formato] : caminho.includes("historico") ? { itens: [], total: 0 } : { propriedadeId: 2, itens: [], total: 0 });
+  render(<QualidadeLeite podeLancar={false} />);
+  expect(await screen.findByRole("dialog", { name: "Detalhes da amostra" })).toBeTruthy();
+  expect(consultarLeite).toHaveBeenCalledWith("/qualidade/amostras/amostra", null);
+  cleanup(); history.replaceState(null, "", "/");
+});

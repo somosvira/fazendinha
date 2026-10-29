@@ -626,10 +626,23 @@ export function App() {
         </div>
       </main>
       <CommandPalette
+        key={`busca:${usuario.id}:${propAtiva ?? "all"}`}
+        escopo={propAtiva == null ? "Consolidado · Todos os sítios" : "Sítio selecionado"}
+        podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
+        podeVerValores={podeVerValores}
+        podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
-        onNav={(t) => {
-          navegarTab(t);
+        onNav={(t, _entidadeId, caminho) => {
+          if (!caminho) { navegarTab(t); return; }
+          void executarComGuardaNavegacao(() => {
+            if (!podeAcessarCaminho(usuario, caminho)) return;
+            const destino = new URL(caminho, window.location.origin);
+            const sitio = Number(destino.searchParams.get("propriedadeId"));
+            if (Number.isInteger(sitio) && sitio > 0 && sitio <= 2147483647) { setPropriedadeAtiva(sitio); setPropAtiva(sitio); }
+            setDeepLinkFiltros(null);
+            navegarPara(caminho);
+          });
         }}
         podeVer={(t) => {
           return canAccessTab(t);

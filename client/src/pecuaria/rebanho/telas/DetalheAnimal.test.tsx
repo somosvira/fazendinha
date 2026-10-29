@@ -341,6 +341,19 @@ describe("DetalheAnimal — peso e GMD no cabeçalho", () => {
     expect(screen.getByText("+0,510 kg/dia")).toBeTruthy();
   });
 
+  it("mantém idade e peso compactos no cabeçalho e a data separada ao trocar de aba", async () => {
+    await montar({ ...base, peso: { ultimo: { kg: 262, data: "2026-09-01" }, gmdRecente: null, gmdDesdeEntrada: null, gmdPeriodo: { dias: null, valor: null, pesagens: 0 } } });
+    const cabecalho = document.querySelector<HTMLElement>(".ficha-animal-cabecalho")!;
+    expect(within(cabecalho).getByText("Idade")).toBeTruthy();
+    const peso = within(cabecalho).getByText("Peso atual").parentElement!;
+    expect(peso.textContent).toContain("262 kg");
+    expect(peso.textContent).not.toContain("01/09/2026");
+    expect(cabecalho.querySelector("time")?.getAttribute("datetime")).toBe("2026-09-01");
+    fireEvent.click(screen.getByRole("tab", { name: "Cadastro" }));
+    expect(within(cabecalho).getByText("Peso atual")).toBeTruthy();
+    expect(cabecalho.closest("[hidden]")).toBeNull();
+  });
+
   it("sem pesagem, mostra 'Sem pesagem' no lugar do peso", async () => {
     await montar(base);
     expect(screen.getByText("Peso atual").parentElement!.textContent).toContain("Sem pesagem");

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { createElement as h } from "react";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { CommandPalette } from "./CommandPalette";
 import type { Tab } from "./Shell";
 import type { ResultadoBusca } from "../lib/searchIndex";
@@ -32,7 +32,7 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-const PLACEHOLDER = "Pesquisar páginas, ações e recursos…";
+const PLACEHOLDER = "Buscar em tudo…";
 
 afterEach(() => {
   cleanup();
@@ -80,6 +80,7 @@ describe("CommandPalette", () => {
 
   it("dispara /api/busca com ≥2 chars, ~200ms de debounce, com os headers de comPropriedade(), e renderiza as entidades", async () => {
     const entidade: ResultadoBusca = {
+      caminho: "/financeiro/configuracoes?aba=categorias&busca=Categoria",
       tipo: "categoria",
       entidadeId: "42",
       label: "Talhão da Serra",
@@ -119,6 +120,7 @@ describe("CommandPalette", () => {
 
   it("selecionar uma linha de entidade chama onNav(tab, entidadeId) e fecha", async () => {
     const entidade: ResultadoBusca = {
+      caminho: "/financeiro/configuracoes?aba=categorias&busca=Categoria",
       tipo: "categoria",
       entidadeId: "789",
       label: "Categoria 789",
@@ -137,12 +139,13 @@ describe("CommandPalette", () => {
 
     fireEvent.click(screen.getByText("Categoria 789"));
 
-    expect(props.onNav).toHaveBeenCalledWith("plano", "789");
+    expect(props.onNav).toHaveBeenCalledWith("plano", "789", "/financeiro/configuracoes?aba=categorias&busca=Categoria");
     expect(props.onFechar).toHaveBeenCalledTimes(1);
   });
 
   it("filtra as ENTIDADES do backend por podeVer (não renderiza entidade de aba bloqueada)", async () => {
     const entidade: ResultadoBusca = {
+      caminho: "/financeiro/configuracoes?aba=categorias&busca=Categoria",
       tipo: "categoria",
       entidadeId: "789",
       label: "Categoria 789",
@@ -167,4 +170,45 @@ describe("CommandPalette", () => {
     expect(document.querySelector('[data-slot="dialog-content"]')).toBeNull();
     expect(screen.queryByPlaceholderText(PLACEHOLDER)).toBeNull();
   });
+});
+
+
+describe("busca global integrada", () => {
+  it("distingue erro de ausência e oferece nova tentativa", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false })); vi.useFakeTimers();
+    render(h(CommandPalette, baseProps()));
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "inexistente" } });
+    await vi.advanceTimersByTimeAsync(300);
+    expect(screen.getByText("Não foi possível buscar os registros")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeTruthy();
+    expect(screen.queryByText(/Nenhum resultado para/)).toBeNull();
+  });
+  it("remove entidades antigas imediatamente ao mudar a busca", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [{ tipo: "animal", entidadeId: "184", label: "Estrela 184", sublabel: "Rebanho", tab: "pec-rebanho", grupo: "Animais", caminho: "/pecuaria/rebanho/animais/184" }] }));
+    vi.useFakeTimers(); render(h(CommandPalette, baseProps()));
+    const input = screen.getByPlaceholderText(PLACEHOLDER);
+    fireEvent.change(input, { target: { value: "184" } }); await vi.advanceTimersByTimeAsync(300);
+    expect(screen.getByText("Estrela 184")).toBeTruthy();
+    fireEvent.change(input, { target: { value: "outro" } });
+    expect(screen.queryByText("Estrela 184")).toBeNull();
+  });
+  it("troca entre registros e páginas sem perder a consulta", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [{ tipo: "produto", entidadeId: "1", label: "Leite cru", sublabel: "Estoque", tab: "estoque", grupo: "Produtos", caminho: "/estoque/produtos/1" }] }));
+    vi.useFakeTimers(); render(h(CommandPalette, baseProps()));
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "leite" } }); await vi.advanceTimersByTimeAsync(300);
+    fireEvent.click(screen.getByRole("button", { name: "Registros" }));
+    expect(screen.getByText("Leite cru")).toBeTruthy(); expect(screen.queryByText("Produção de leite")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Páginas" }));
+    expect(screen.queryByText("Leite cru")).toBeNull(); expect(screen.getByText("Produção de leite")).toBeTruthy();
+  });
+});
+
+it("Enter prioriza o registro encontrado quando a resposta chega depois das páginas", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => [{ tipo: "produto", entidadeId: "p", label: "Leite cru", sublabel: "Estoque", tab: "estoque", grupo: "Produtos", caminho: "/estoque/produtos/p" }] }));
+  vi.useFakeTimers(); const props = baseProps(); render(h(CommandPalette, props));
+  const input = screen.getByPlaceholderText(PLACEHOLDER);
+  fireEvent.change(input, { target: { value: "leite" } }); await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+  expect(screen.getByText("Leite cru").closest("[cmdk-item]")?.getAttribute("data-selected")).toBe("true");
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(props.onNav).toHaveBeenCalledWith("estoque", "p", "/estoque/produtos/p");
 });

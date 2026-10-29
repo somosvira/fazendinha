@@ -47,6 +47,7 @@ const config: Config = {
 const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(role, { name })[0];
 
 beforeEach(() => {
+  history.replaceState(null, "", "/financeiro/configuracoes");
   vi.clearAllMocks();
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });

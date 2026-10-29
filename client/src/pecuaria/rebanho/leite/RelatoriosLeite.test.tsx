@@ -209,3 +209,13 @@ it.each([true, false])("operações integrais e datas de qualidade preservam o r
 it('leitor pode editar o período da consulta atual sem permissão de exportar',async()=>{vi.mocked(consultarLeite).mockResolvedValue(lista);render(<RelatoriosLeite propriedadeId={2} podeExportar={false} podeFinanceiro={false}/>);fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));expect(await screen.findByLabelText('Início do relatório')).toBeTruthy();expect(screen.getByLabelText('Fim do relatório')).toBeTruthy();expect(screen.queryByRole('button',{name:'Emitir relatório preservado'})).toBeNull()});
 
 it('editar e fechar filtros não altera o período aplicado da consulta',async()=>{vi.mocked(consultarLeite).mockResolvedValue(lista);render(<RelatoriosLeite propriedadeId={2} podeExportar={false} podeFinanceiro={false}/>);const anterior=screen.getByText(/Consulta viva:/).textContent;fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));fireEvent.change(screen.getByLabelText('Início do relatório'),{target:{value:'2026-09-01'}});fireEvent.click(screen.getByRole('button',{name:'Fechar'}));expect(screen.getByText(/Consulta viva:/).textContent).toBe(anterior);fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));fireEvent.click(screen.getByRole('button',{name:'Consultar produção atual'}));expect(screen.getByText(/Consulta viva:/).textContent).toContain('2026-09-01')});
+
+it("abre emissão por link de busca sem criar nova emissão", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=relatorios&emissaoId=emissao");
+  vi.mocked(consultarLeite).mockImplementation(async p => p.endsWith("/emissao") ? emissao : lista);
+  render(<RelatoriosLeite podeExportar={false} podeFinanceiro={false} />);
+  await screen.findByText("Emissão preservada");
+  expect(consultarLeite).toHaveBeenCalledWith("/relatorios/emissoes/emissao", null);
+  expect(registrarLeite).not.toHaveBeenCalled();
+  cleanup(); history.replaceState(null, "", "/");
+});

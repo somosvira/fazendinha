@@ -1,0 +1,33 @@
+.busca-global[data-slot="dialog-content"]{top:8vh;left:50%;translate:-50% 0;transform:none;animation:none;display:flex;width:min(780px,calc(100vw - 32px));max-width:780px;max-height:84dvh;padding:0;gap:0;overflow:hidden;border-radius:12px;background:var(--bg-card);color:var(--ink);box-shadow:var(--fin-dialog-shadow)}
+.busca-global-comando[data-slot="command"]{height:auto;min-height:0;max-height:84dvh;background:var(--bg-card);color:var(--ink)}
+.busca-global-entrada{position:relative;padding:8px 20px 0}
+.busca-global-entrada [cmdk-input-wrapper]{padding:0;border:0}
+.busca-global-entrada [cmdk-input-wrapper]>svg{width:22px;height:22px;opacity:1;color:var(--primary)}
+.busca-global-entrada [cmdk-input]{height:56px;padding:12px 40px 12px 0;font-size:19px;color:var(--ink);caret-color:var(--primary)}
+.busca-global-entrada [cmdk-input]::placeholder{color:var(--ink-3)}
+.busca-global-fechar{position:absolute;right:12px;top:15px;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:8px;color:var(--ink-3);background:transparent}
+.busca-global-fechar:hover{background:var(--bg-card-2)}
+.busca-global-escopo{display:flex;align-items:center;gap:6px;padding:0 22px 16px;color:var(--ink-3);font-size:12px}
+.busca-global-filtros{display:flex;flex-shrink:0;gap:24px;padding:0 22px;border-bottom:1px solid var(--rule-soft)}
+.busca-global-filtros button{min-height:44px;padding:10px 0;border:0;border-bottom:2px solid transparent;background:transparent;color:var(--ink-3);font-size:14px}
+.busca-global-filtros button[aria-pressed="true"]{border-bottom-color:var(--primary);color:var(--primary);font-weight:700}
+.busca-global button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.busca-global-lista[data-slot="command-list"]{flex:1;min-height:180px;max-height:min(480px,calc(84dvh - 190px));overflow-y:auto;overflow-x:hidden;padding:6px 10px 12px;scrollbar-color:var(--ink-3) var(--bg-card)}
+.busca-global [cmdk-group]{padding:0;color:var(--ink)}
+.busca-global [cmdk-group-heading]{padding:14px 12px 8px;font-size:12px;font-weight:650;color:var(--ink-3)}
+.busca-global-linha[data-slot="command-item"]{gap:14px;min-height:62px;padding:12px;border-radius:8px;color:var(--ink);cursor:pointer}
+.busca-global-linha[data-selected="true"]{background:var(--nav-selected,#edf5f3);color:var(--ink)}
+.busca-global-linha>svg{flex-shrink:0;color:var(--ink-3)}
+.busca-global-texto{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px;line-height:1.4;overflow-wrap:anywhere}
+.busca-global-texto>span{font-size:14px;font-weight:650}
+.busca-global-texto>small{font-size:12px;color:var(--ink-3)}
+.busca-global-tipo{max-width:150px;flex-shrink:0;font-size:11px;color:var(--ink-3);text-align:right}
+.busca-global-estado,.busca-global-dica{padding:8px 12px;font-size:12px;color:var(--ink-3)}
+.busca-global-vazio,.busca-global-falha{padding:28px 20px;text-align:center;font-size:14px;color:var(--ink-3)}
+.busca-global-vazio strong,.busca-global-falha strong{color:var(--ink);font-size:16px;font-weight:650}
+.busca-global-falha p,.busca-global-vazio p{margin-top:8px}
+.busca-global-falha button{margin-top:14px;padding:8px 14px;min-height:40px;background:var(--primary);color:var(--primary-foreground);border:0;border-radius:8px}
+.busca-global-rodape{display:flex;flex-shrink:0;gap:18px;padding:12px 22px;border-top:1px solid var(--rule-soft);background:var(--bg-card-2);color:var(--ink-3);font-size:11px}
+.busca-global-rodape span:last-child{margin-left:auto}
+.busca-global-rodape kbd{margin-right:4px;padding:1px 4px;border:1px solid var(--rule);border-radius:6px;background:var(--bg-card);font:inherit}
+@media(max-width:600px){.busca-global[data-slot="dialog-content"]{top:16px;width:calc(100vw - 20px);max-height:calc(100dvh - 32px)}.busca-global-entrada{padding-inline:16px}.busca-global-entrada [cmdk-input]{font-size:16px}.busca-global-escopo{padding-inline:16px}.busca-global-filtros{padding-inline:16px;gap:20px}.busca-global-tipo{display:none}.busca-global-linha[data-slot="command-item"]{gap:10px}.busca-global-rodape{gap:12px;padding-inline:16px}.busca-global-rodape span:last-child{display:none}.busca-global-lista[data-slot="command-list"]{max-height:calc(100dvh - 232px)}}

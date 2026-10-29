@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import {BarraRelatorio,AcoesRelatorio} from "../../relatorios/ConsultaRelatorioUI";
 import {Card} from "@/components/ui/card";
 import {CalendarDays} from "lucide-react";
@@ -242,6 +243,8 @@ export function RelatoriosLeite({
       geracao.current++;
     };
   }, [sitio, pagina, revisao]);
+  const [emissaoConsultaId] = useBuscaUrl("emissaoId");
+  useEffect(() => { if (emissaoConsultaId) void abrir(emissaoConsultaId); }, [emissaoConsultaId, sitio]);
   async function emitir() {
     if (!podeExportar || trava.current) return;
     trava.current = true;

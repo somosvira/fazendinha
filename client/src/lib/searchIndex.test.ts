@@ -79,3 +79,16 @@ describe("buscar()", () => {
     expect(buscar(COMANDOS, "a").length).toBeLessThanOrEqual(24);
   });
 });
+
+describe("destinos atuais da busca", () => {
+  it.each(["leite", "reproducao", "visitas", "painel administrativo", "qualidade", "tanques", "genitores", "protocolos", "categorias", "centros de custo"])("localiza %s com destino explícito", termo => {
+    const encontrados = buscar(COMANDOS, termo);
+    expect(encontrados.length).toBeGreaterThan(0);
+    expect(encontrados.every(c => typeof c.caminho === "string" && c.caminho.startsWith("/"))).toBe(true);
+  });
+  it("ações de cadastro apontam ao formulário e declaram a permissão de escrita", () => {
+    const novo = COMANDOS.find(c => c.id === "acao-novo-animal");
+    expect(novo?.caminho).toBe("/pecuaria/rebanho/animais/novo");
+    expect(novo?.exigeLancamento).toBe(true);
+  });
+});

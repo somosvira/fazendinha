@@ -28,6 +28,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Relatórios do leite](pecuaria/leite-relatorios.md) | Consulta viva, conferência física e emissões preservadas |
 | [Referência IDEAGRI do leite](pecuaria/leite-ideagri-referencia.md) | Proveniência e limites do mapeamento, sem presumir importação automática |
 | [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |
+| [Busca global](busca-global.md) | Registros, páginas, ações, destinos, escopo, permissões e manutenção do catálogo |
 | [Assistente de consulta](assistente-consulta.md) | Ferramentas de leitura, ajuda, gates e política de custo |
 
 ## Arquitetura, design e desenvolvimento

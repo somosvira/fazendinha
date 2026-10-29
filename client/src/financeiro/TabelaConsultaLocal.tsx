@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../lib/useBuscaUrl";
 import { useOrdenacaoTabela, type DefinicaoOrdenacao } from "./OrdenarConsulta";
 import type { ReactNode } from "react";
 import { filtrosDasColunas, type CampoConsulta, type EdicaoConsulta } from "./FiltroColunaConsulta";
@@ -9,6 +10,7 @@ import { Paginacao, TabelaFinanceira } from "./financeiro-ui";
 import { useFiltrosTabelaLocal, type DefinicaoFiltroLocal } from "./useFiltrosTabelaLocal";
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0] & {
+  parametroBusca?: string;
   camposOrdenaveis?: DefinicaoOrdenacao<T>[];
   acao?: ReactNode;
   camposExternos?: CampoConsulta[];
@@ -19,10 +21,10 @@ type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0] & {
   porPagina?: number;
 };
 /** Lista de registros já carregada integralmente. Nunca recebe uma página da API. */
-export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], buscarPor, porPagina = 15, itens, acao, camposExternos = [], criteriosExternos = [], edicaoExterna, ...tabela }: Props<T>) {
+export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], buscarPor, porPagina = 15, itens, acao, camposExternos = [], criteriosExternos = [], edicaoExterna, parametroBusca, ...tabela }: Props<T>) {
   const id = useId();
   const camposOrdenacao: DefinicaoOrdenacao<T>[] = [...camposOrdenaveis, ...definicoes.filter(d => d.tipo !== "opcoes" && !camposOrdenaveis.some(c => c.chave === d.chave)).map<DefinicaoOrdenacao<T>>(d => ({ chave: d.chave, rotulo: d.rotulo, tipo: d.tipo === "valor" ? "numero" : d.tipo === "data" ? "data" : "texto", obter: item => { const v = d.obter(item); return Array.isArray(v) ? null : v; } }))];
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useBuscaUrl(parametroBusca);
   const [pagina, setPagina] = useState(1);
   const ordem = useOrdenacaoTabela(camposOrdenacao, `ordem-${tabela.rotulo.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").toLowerCase()}`, () => setPagina(1));
   const principal = tabela.colunas.find(c => c.principal)?.chave ?? tabela.colunas[0]?.chave;

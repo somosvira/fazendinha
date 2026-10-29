@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -9,7 +10,7 @@ import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // PainelCadastro (FormSitio) para criar e editar. Nada é apagado: desativar
 // esconde o sítio do seletor e de novos cadastros.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
@@ -30,8 +31,9 @@ const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeD
 ];
 
 export function Sitios() {
-  const [mostrarInativos, setMostrarInativos] = useState(false);
-  const [busca, setBusca] = useState("");
+  const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).has("busca"));
+  const [busca, setBusca] = useBuscaUrl("busca");
+  useEffect(() => { const restaurar = () => { if (new URLSearchParams(location.search).has("busca")) setMostrarInativos(true); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   const sitios = usePropriedades({ incluirInativos: mostrarInativos });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<PropriedadeDTO | null>(null);

@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +65,16 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   const [derivar, setDerivar] = useState<FormatoQualidade | null>(null);
   const [selecionada, setSelecionada] = useState<AmostraQualidade | null>(null);
   const [carregando, setCarregando] = useState(false);
+  const [amostraId] = useBuscaUrl("amostraId");
+  useEffect(() => {
+    if (!amostraId) return;
+    let vigente = true;
+    setSelecionada(null);
+    void consultarLeite<AmostraQualidade>(`/qualidade/amostras/${encodeURIComponent(amostraId)}`, sitio)
+      .then(a => { if (vigente) { setSelecionada(a); setNova(false); } })
+      .catch(e => { if (vigente) setErro(mensagem(e)); });
+    return () => { vigente = false; };
+  }, [amostraId, sitio]);
   const geracao = useRef(0);
   useEffect(() => {
     const atual = ++geracao.current;

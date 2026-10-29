@@ -28,6 +28,11 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
   const [tanque, setTanque] = useState<TanqueLeite | null | undefined>();
   const [detalhe, setDetalhe] = useState<TanqueLeite | null>(null);
   useEffect(() => {
+    const abrir = () => { const id = new URLSearchParams(location.search).get("tanqueId"); if (id && dados) setDetalhe(dados.tanques.find(t => t.id === id) ?? null); };
+    abrir(); window.addEventListener("popstate", abrir); return () => window.removeEventListener("popstate", abrir);
+  }, [dados]);
+
+  useEffect(() => {
     if (sitio == null) return;
     let ativo = true;
     setDados(null); setErro("");

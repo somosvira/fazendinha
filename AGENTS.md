@@ -23,6 +23,8 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 
 ## Implementação
 
+- Sempre que criar, remover ou alterar páginas, registros, fluxos, URLs/filtros ou permissões, confira a busca global na mesma alteração: atualize o catálogo de páginas/ações, as fontes de registros, os destinos navegáveis, os gates e os testes afetados. Um resultado deve abrir a ficha exata ou a consulta já filtrada, respeitando o sítio e as permissões; não basta encontrar a aba. Quando algo não for pesquisável, documente a limitação e o motivo no [contrato da busca](docs/busca-global.md).
+
 - Ao criar ou ampliar relatórios, confira as variáveis no builder na mesma alteração: atualize catálogo, adapters e testes, ou documente o motivo de exclusão. Siga [o contrato dos relatórios](docs/pecuaria/relatorios.md).
 
 - Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.
