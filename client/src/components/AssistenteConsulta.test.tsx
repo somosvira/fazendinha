@@ -13,23 +13,33 @@ const resposta: RespostaAssistente = { modo: "dados", resposta: "Entradas: R$ 10
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(obterConfiguracaoAssistente).mockResolvedValue({ ...config, consultas: [...config.consultas] }); vi.mocked(consultarAssistente).mockResolvedValue(resposta); });
 afterEach(cleanup);
 async function abrir() { fireEvent.click(screen.getByRole("button", { name: "Abrir assistente do Terrano" })); await screen.findByRole("button", { name: "Resumo do mês" }); }
-it("começa com duas consultas, permite expandir demais e mantém ajuda disponível", async () => {
+function clicarAcao(nome: string) {
+  if (!screen.queryByRole("button", { name: nome })) fireEvent.click(screen.getByText("Consultas e guias"));
+  fireEvent.click(screen.getByRole("button", { name: nome }));
+}
+it("prioriza a conversa e mantém consultas e guias em um catálogo recolhido", async () => {
   vi.mocked(obterConfiguracaoAssistente).mockResolvedValue({ ...config, consultas: ["resumo", "saldo", "pagar", "receber", "despesas_categoria"] });
   render(<AssistenteConsulta />); await abrir();
-  const mais = screen.getByText("Mais consultas financeiras").closest("details")!;
-  expect(mais.open).toBe(false);
-  expect(screen.getByText("Guias de uso").closest("details")!.open).toBe(true);
-  expect(screen.getByText(/somente dados permitidos ao seu perfil/)).toBeTruthy();
-  fireEvent.click(mais.querySelector("summary")!);
-  expect(mais.open).toBe(true);
+  const catalogo = screen.getByRole("button", { name: "Consultas e guias" });
+  expect(catalogo.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByRole("button", { name: "Registrar uma compra a prazo" })).toBeNull();
+  fireEvent.click(catalogo);
+  expect(catalogo.getAttribute("aria-expanded")).toBe("true");
   expect(screen.getByRole("button", { name: "A pagar no mês" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Registrar uma compra a prazo" })).toBeTruthy();
   expect(consultarAssistente).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "A pagar no mês" }));
+  await screen.findByText("Entradas: R$ 100,00");
+  expect(catalogo.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(catalogo);
 });
 it("consulta rápida usa os dados reais e a fonte conserva período", async () => {
   render(<AssistenteConsulta />); await abrir();
   fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));
   await screen.findByText("Entradas: R$ 100,00");
   expect(consultarAssistente).toHaveBeenCalledWith({ consulta: { visao: "resumo", inicio: null, fim: null } }, expect.any(AbortSignal));
+  expect(screen.getByText("Conferir fontes").closest("details")!.open).toBe(false);
+  fireEvent.click(screen.getByText("Conferir fontes"));
   fireEvent.click(screen.getByRole("button", { name: "Conferir setembro" }));
   expect(navegarPara).toHaveBeenCalledWith(resposta.fontes[0].url);
 });
@@ -38,7 +48,7 @@ it("funciona sem chave com guias e consultas, mas informa indisponibilidade da c
   render(<AssistenteConsulta />); await abrir();
   expect((screen.getByRole("textbox") as HTMLTextAreaElement).disabled).toBe(true);
   expect(screen.getByText(/conversa com IA ainda não está configurada/)).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Registrar uma compra a prazo" }));
+  clicarAcao("Registrar uma compra a prazo");
   await waitFor(() => expect(consultarAssistente).toHaveBeenCalledWith({ artigoId: "financeiro-compra-prazo" }, expect.any(AbortSignal)));
 });
 it("não envia respostas ou números do assistente no histórico e preserva follow-up", async () => {
@@ -57,7 +67,7 @@ it("falha fica explícita e permite uma nova consulta", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Consulta indisponível");
   expect(screen.queryByText("Entradas: R$ 100,00")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Saldo atual" }));
+  clicarAcao("Saldo atual");
   await screen.findByText("Entradas: R$ 100,00");
 });
 it("trocar contexto desmonta, aborta a consulta anterior e não mistura respostas", async () => {
@@ -77,7 +87,7 @@ it("uma negação limpa dados anteriores da conversa", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));
   await screen.findByText("Entradas: R$ 100,00");
   vi.mocked(consultarAssistente).mockResolvedValueOnce({ ...resposta, modo: "acesso_negado", resposta: "Acesso restrito", fontes: [] });
-  fireEvent.click(screen.getByRole("button", { name: "Saldo atual" }));
+  clicarAcao("Saldo atual");
   await screen.findByText("Acesso restrito");
   expect(screen.queryByText("Entradas: R$ 100,00")).toBeNull();
 });
@@ -119,9 +129,19 @@ it("revogação da sessão também remove respostas já exibidas", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));
   await screen.findByText("Entradas: R$ 100,00");
   vi.mocked(consultarAssistente).mockRejectedValueOnce(Object.assign(new Error("Autentique-se novamente"), { status: 401 }));
-  fireEvent.click(screen.getByRole("button", { name: "Saldo atual" }));
+  clicarAcao("Saldo atual");
   await screen.findByText("Autentique-se novamente");
   expect(screen.queryByText("Entradas: R$ 100,00")).toBeNull();
+});
+it("mostra o modo de voz sem configuração, com início bloqueado e motivo explícito", async () => {
+  vi.mocked(obterConfiguracaoAssistente).mockResolvedValue({ ...config, conversaDisponivel: false, consultas: [...config.consultas] });
+  render(<AssistenteConsulta />); await abrir();
+  const modo = screen.getByRole("button", { name: "Conversar por voz" }) as HTMLButtonElement;
+  expect(modo.disabled).toBe(false);
+  fireEvent.click(modo);
+  expect(screen.getByText(/conversa por voz ainda não está configurada/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Iniciar conversa" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(consultarAssistente).not.toHaveBeenCalled();
 });
 it("conversa ativa permite silenciar e encerrar sem confundir com ditado", async () => {
   const stop = vi.fn(); const close = vi.fn(async () => {});

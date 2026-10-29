@@ -1,3 +1,4 @@
+:root body .financeiro-colorido.assistente-consulta[data-slot="sheet-content"] { top: auto; bottom: 24px; right: 24px; width: min(700px, calc(100vw - 48px)); max-width: 700px; height: min(780px, calc(100dvh - 48px)); border-radius: 16px; overflow: hidden; }
 .assistente-consulta .assistente-cabecalho { padding: 24px 56px 16px 24px; border-bottom: 1px solid var(--border); gap: 0; }
 .assistente-titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .assistente-consulta .assistente-titulo h2 { font-family: Manrope, sans-serif; font-size: 22px; font-weight: 750; letter-spacing: -.025em; }
@@ -8,7 +9,22 @@
 .assistente-boas-vindas { margin-bottom: 24px; }
 .assistente-boas-vindas h3, .assistente-voz h3 { font: 750 24px/1.3 Manrope, sans-serif; letter-spacing: -.02em; }
 .assistente-boas-vindas p { margin-top: 10px; max-width: 58ch; color: var(--muted-foreground); line-height: 1.65; font-size: 14px; }
-.assistente-guias { padding: 12px 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.assistente-sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.assistente-apoio { margin-bottom: 24px; }
+.assistente-apoio-toggle { display: flex; align-items: center; gap: 8px; width: fit-content; padding: 8px 0; font-size: 13px; color: var(--muted-foreground); cursor: pointer; background: transparent; border: 0; }
+.assistente-apoio-toggle:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+.assistente-apoio-toggle[aria-expanded="true"] > svg:last-child { transform: rotate(180deg); }
+.assistente-catalogo { padding: 12px 0; }
+.assistente-catalogo > p { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.assistente-catalogo section { margin-top: 20px; }
+.assistente-catalogo h4 { font-size: 14px; font-weight: 600; }
+.assistente-catalogo .assistente-sugestoes { margin-top: 10px; }
+.assistente-lista-guias { display: grid; gap: 4px; margin-top: 8px; }
+.assistente-lista-guias button { justify-content: flex-start; text-align: left; white-space: normal; height: auto; }
+.assistente-fontes { margin-top: 16px; color: var(--primary); font-size: 13px; }
+.assistente-fontes > summary { cursor: pointer; padding: 6px 0; }
+.assistente-fontes > div { display: grid; gap: 4px; margin-top: 4px; }
+.assistente-fontes button { justify-content: space-between; white-space: normal; text-align: left; height: auto; }
 .assistente-pergunta { margin-left: auto; width: fit-content; max-width: 85%; padding: 12px 16px; border-radius: 16px 16px 6px 16px; background: var(--accent); font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
 .assistente-resposta { padding: 4px 0 16px; }
 .assistente-resposta > p:first-of-type { line-height: 1.8; max-width: 65ch; }
@@ -29,6 +45,7 @@
 .assistente-voz > .assistente-privacidade { margin-top: 20px; font-size: 12px; max-width: 58ch; }
 .assistente-voz > p[role="alert"] { color: var(--destructive); }
 @media (max-width: 600px) {
+  :root body .financeiro-colorido.assistente-consulta[data-slot="sheet-content"] { top: 0; bottom: 0; right: 0; width: 100%; max-width: 100%; height: 100dvh; border-radius: 0; }
   .assistente-consulta .assistente-cabecalho { padding: 20px 48px 14px 16px; }
   .assistente-titulo { gap: 10px; }
   .assistente-consulta .assistente-titulo h2 { font-size: 20px; }
