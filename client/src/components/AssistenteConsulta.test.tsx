@@ -103,3 +103,55 @@ it("recusa print inválido sem enviar requisição de IA", async () => {
   expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Print inválido");
   expect(consultarAssistente).not.toHaveBeenCalled();
 });
+it("separa conversa por voz de ditado e informa o processamento da resposta falada", async () => {
+  render(<AssistenteConsulta />); await abrir();
+  expect(screen.getByRole("button", { name: "Gravar áudio" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Conversar por voz" }));
+  expect(screen.getByText("Vamos conversar?")).toBeTruthy();
+  expect(screen.getByText(/respostas faladas.*OpenAI/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Iniciar conversa" })).toBeTruthy();
+  expect(consultarAssistente).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Conversa por texto" }));
+  expect(screen.getByRole("textbox")).toBeTruthy();
+});
+it("revogação da sessão também remove respostas já exibidas", async () => {
+  render(<AssistenteConsulta />); await abrir();
+  fireEvent.click(screen.getByRole("button", { name: "Resumo do mês" }));
+  await screen.findByText("Entradas: R$ 100,00");
+  vi.mocked(consultarAssistente).mockRejectedValueOnce(Object.assign(new Error("Autentique-se novamente"), { status: 401 }));
+  fireEvent.click(screen.getByRole("button", { name: "Saldo atual" }));
+  await screen.findByText("Autentique-se novamente");
+  expect(screen.queryByText("Entradas: R$ 100,00")).toBeNull();
+});
+it("conversa ativa permite silenciar e encerrar sem confundir com ditado", async () => {
+  const stop = vi.fn(); const close = vi.fn(async () => {});
+  const track = { stop, enabled: true };
+  const anterior = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
+  Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia: vi.fn(async () => ({ getTracks: () => [track] })) } });
+  vi.stubGlobal("MediaRecorder", class {
+    static isTypeSupported() { return true; }
+    state = "inactive"; mimeType = "audio/webm"; start() { this.state = "recording"; } stop() { this.state = "inactive"; }
+  });
+  vi.stubGlobal("AudioContext", class {
+    resume() { return Promise.resolve(); } close = close;
+    createMediaStreamSource() { return { connect() {} }; }
+    createAnalyser() { return { fftSize: 512, getFloatTimeDomainData(b: Float32Array) { b.fill(0); } }; }
+  });
+  try {
+    render(<AssistenteConsulta />); await abrir();
+    fireEvent.click(screen.getByRole("button", { name: "Conversar por voz" }));
+    fireEvent.click(screen.getByRole("button", { name: "Iniciar conversa" }));
+    await screen.findByText("Pode falar");
+    fireEvent.click(screen.getByRole("button", { name: "Silenciar microfone" }));
+    expect(track.enabled).toBe(false);
+    expect(screen.getByRole("button", { name: "Ativar microfone" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Encerrar" }));
+    await screen.findByRole("button", { name: "Iniciar conversa" });
+    expect(stop).toHaveBeenCalled(); expect(close).toHaveBeenCalled();
+    expect(consultarAssistente).not.toHaveBeenCalled();
+  } finally {
+    cleanup(); vi.unstubAllGlobals();
+    if (anterior) Object.defineProperty(navigator, "mediaDevices", anterior);
+    else Reflect.deleteProperty(navigator, "mediaDevices");
+  }
+});

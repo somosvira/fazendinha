@@ -1,0 +1,39 @@
+.assistente-consulta .assistente-cabecalho { padding: 24px 56px 16px 24px; border-bottom: 1px solid var(--border); gap: 0; }
+.assistente-titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.assistente-consulta .assistente-titulo h2 { font-family: Manrope, sans-serif; font-size: 22px; font-weight: 750; letter-spacing: -.025em; }
+.assistente-contexto { color: var(--muted-foreground); font-size: 13px; margin-top: 8px; }
+.assistente-modos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.assistente-modos button[aria-pressed="true"] { background: var(--accent); color: var(--primary); }
+.assistente-corpo { padding: 24px 28px; }
+.assistente-boas-vindas { margin-bottom: 24px; }
+.assistente-boas-vindas h3, .assistente-voz h3 { font: 750 24px/1.3 Manrope, sans-serif; letter-spacing: -.02em; }
+.assistente-boas-vindas p { margin-top: 10px; max-width: 58ch; color: var(--muted-foreground); line-height: 1.65; font-size: 14px; }
+.assistente-guias { padding: 12px 0 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.assistente-pergunta { margin-left: auto; width: fit-content; max-width: 85%; padding: 12px 16px; border-radius: 16px 16px 6px 16px; background: var(--accent); font-size: 14px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistente-resposta { padding: 4px 0 16px; }
+.assistente-resposta > p:first-of-type { line-height: 1.8; max-width: 65ch; }
+.assistente-autor { display: flex; align-items: center; gap: 8px; color: var(--primary); font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.assistente-rodape { padding: 16px 24px 20px; background: var(--card); border-top: 1px solid var(--border); }
+.assistente-consulta textarea { caret-color: var(--primary); font-size: 14px; padding: 14px; }
+.assistente-compositor { border: 1px solid var(--input); border-radius: 12px; padding: 6px; }
+.assistente-consulta .assistente-compositor textarea { border: 0; }
+.assistente-ferramentas { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.assistente-ferramentas .assistente-enviar { margin-left: auto; }
+.assistente-voz { padding: 8px 0 28px; text-align: center; }
+.assistente-voz > p { margin: 12px auto 0; color: var(--muted-foreground); max-width: 46ch; line-height: 1.65; font-size: 14px; }
+.assistente-onda { height: 96px; display: flex; align-items: center; justify-content: center; gap: 7px; margin: 4px 0 24px; color: var(--primary); }
+.assistente-onda span { width: 9px; border-radius: 8px; background: currentColor; }
+.assistente-onda[data-estado="inativa"] span, .assistente-onda[data-estado="conectando"] span { opacity: .45; }
+.assistente-voz-controles { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.assistente-consulta .assistente-encerrar { color: var(--destructive); }
+.assistente-voz > .assistente-privacidade { margin-top: 20px; font-size: 12px; max-width: 58ch; }
+.assistente-voz > p[role="alert"] { color: var(--destructive); }
+@media (max-width: 600px) {
+  .assistente-consulta .assistente-cabecalho { padding: 20px 48px 14px 16px; }
+  .assistente-titulo { gap: 10px; }
+  .assistente-consulta .assistente-titulo h2 { font-size: 20px; }
+  .assistente-corpo { padding: 24px 18px; }
+  .assistente-rodape { padding: 14px 16px 18px; }
+  .assistente-consulta textarea { font-size: 16px; }
+  .assistente-voz-controles button { min-height: 44px; }
+}
