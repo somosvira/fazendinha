@@ -1,3 +1,4 @@
+import { rotuloLactacao } from "../lib/lactacao";
 import type { ReactNode } from "react";
 
 /** Campos opcionais presentes nas prévias do planner e em snapshots de visita. */
@@ -30,6 +31,12 @@ export const contarColunasContextoVisita = () => 9;
 
 function conhecido(valor: string | number | null | undefined): string {
   return valor == null || valor === "" ? "—" : String(valor);
+}
+
+function delPreservado(c: ContextoTabelaVisitaProps): string {
+  if (c.situacaoProdutiva === "SECA" || !c.situacaoProdutiva && c.seca === true) return "Seca";
+  if (c.situacaoProdutiva && c.situacaoProdutiva !== "LACTANTE") return rotuloLactacao(c.situacaoProdutiva);
+  return conhecido(c.del);
 }
 
 function situacao(c: ContextoTabelaVisitaProps): string {
@@ -90,7 +97,7 @@ export function CelulasContextoVisita({ contexto: c, dataReferencia, animalStick
     <td className="contexto-visita-lote" title={c.lote?.nome ?? undefined}>{conhecido(c.lote?.nome)}</td>
     <td>{conhecido(c.categoria?.nome)}</td>
     <td>{compacto ? <span className={`visita-badge ${c.situacao === "GESTANTE" ? "verde" : c.situacao === "VAZIA" ? "" : "azul"}`}>{situacao(c)}</span> : situacao(c)}</td>
-    <td className="text-right tabular-nums">{c.situacaoProdutiva === "SECA" || c.seca === true ? "Seca" : conhecido(c.del)}</td>
+    <td className="text-right tabular-nums">{delPreservado(c)}</td>
     <td className="text-right tabular-nums">{conhecido(c.tentativasCiclo)}</td>
     <td className="text-right tabular-nums" title={detalheDias} aria-label={`${rotuloDias}: ${conhecido(diasTentativa)}${tipo ? ` (${tipo})` : ""}`}>{conhecido(diasTentativa)}</td>
     <td className="text-right tabular-nums">{conhecido(c.partos)}</td>
@@ -105,7 +112,7 @@ export function ContextoInlineVisita({ contexto: c, dataReferencia }: { contexto
     <div><dt>Lote</dt><dd>{conhecido(c.lote?.nome)}</dd></div>
     <div><dt>Categoria</dt><dd>{conhecido(c.categoria?.nome)}</dd></div>
     <div><dt>Situação</dt><dd>{situacao(c)}</dd></div>
-    <div><dt>DEL</dt><dd>{c.situacaoProdutiva === "SECA" || c.seca === true ? "Seca" : conhecido(c.del)}</dd></div>
+    <div><dt>DEL</dt><dd>{delPreservado(c)}</dd></div>
     <div><dt>Tentativas</dt><dd>{conhecido(c.tentativasCiclo)}</dd></div>
     <div><dt>Dias desde tentativa</dt><dd>{conhecido(dias)}</dd></div>
     <div><dt>Partos</dt><dd>{conhecido(c.partos)}</dd></div>

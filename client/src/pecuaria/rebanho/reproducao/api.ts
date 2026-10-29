@@ -2,6 +2,25 @@ import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 import type { Aptidao } from "../types";
 
+export type PrecisaoPesoSecagem = "MEDIDO" | "ESTIMADO" | "INFORMADO" | "NAO_INFORMADO";
+export type NovoPesoSecagem = { acao: "REGISTRAR"; data: string; pesoKg: number; origem: "MANUAL" | "BALANCA"; precisao: PrecisaoPesoSecagem; observacao?: string | null };
+export type EscolhaPesoSecagem = NovoPesoSecagem | { acao: "VINCULAR"; pesagemId: string };
+export type PesoSecagemInput = EscolhaPesoSecagem | { acao: "NAO_INFORMAR" }
+  | { acao: "CORRIGIR"; vinculoId: string; data: string; pesoKg: number; origem?: "MANUAL" | "BALANCA"; precisao?: PrecisaoPesoSecagem; observacao?: string | null; motivo: string }
+  | { acao: "DESVINCULAR"; vinculoId: string; motivo: string }
+  | { acao: "SUBSTITUIR"; vinculoId: string; motivo: string; pesagem: EscolhaPesoSecagem };
+export type PesagemSecagem = Omit<import("../types").HistoricoPesagem, "pesoKg"> & { pesoKg: number | string; animalId?: string };
+export type VinculoPesagemSecagem = {
+  id: string; lactacaoId: string; pesagemId: string; propriedadeId: number;
+  criadoEm: string; criadoPorId: number | null; revogadoEm: string | null; revogadoPorId: number | null;
+  motivoRevogacao: string | null; evidenciaSnapshot: unknown; pesagem: PesagemSecagem;
+};
+export type LactacaoReprodutiva = {
+  id: string; versao?: number; animalId: string; propriedadeId: number | null;
+  inicio: string; encerradaEm: string | null; partoId?: string | null; motivoEncerramento?: string | null;
+  vinculosPesagemSecagem?: VinculoPesagemSecagem[];
+};
+
 export type Gestacao = {
   animal?: { id: string; brinco: string | null; nome: string | null };
   animalId?: string;
@@ -153,16 +172,7 @@ export type PainelReprodutivo = {
   avaliacoes: FatoReprodutivo[];
   partos: FatoReprodutivo[];
   restricoes: Restricao[];
-  lactacoes?: Array<{
-    id: string;
-    versao?: number;
-    animalId: string;
-    propriedadeId: number | null;
-    inicio: string;
-    encerradaEm: string | null;
-    partoId?: string | null;
-    motivoEncerramento?: string | null;
-  }>;
+  lactacoes?: LactacaoReprodutiva[];
   gestacoes?: Gestacao[];
   situacoesIniciais?: Array<
     FatoReprodutivo & { situacao: string; aptaDesde?: string | null }

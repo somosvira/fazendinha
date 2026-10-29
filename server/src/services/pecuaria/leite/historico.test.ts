@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-const m = vi.hoisted(() => ({ tx: { configuracaoOrdenha: { findFirst: vi.fn() }, medicaoLeite: { findFirst: vi.fn() }, propriedade: { findUnique: vi.fn() }, animal: { findFirst: vi.fn() }, participanteProducaoLeite: { findMany: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() } }, carencia: vi.fn() }));
+const m = vi.hoisted(() => ({ tx: { controleHistoricoLeite: { findMany: vi.fn() }, configuracaoOrdenha: { findFirst: vi.fn() }, medicaoLeite: { findFirst: vi.fn() }, propriedade: { findUnique: vi.fn() }, animal: { findFirst: vi.fn() }, participanteProducaoLeite: { findMany: vi.fn() }, localizacaoAnimal: { findFirst: vi.fn() } }, carencia: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...m.tx, $transaction: async (f: (tx: typeof m.tx) => unknown) => f(m.tx) } }));
 vi.mock("../sanidade/aplicacoes.js", () => ({ carenciaAnimalTx: m.carencia }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), hojeFazendaDate: () => new Date("2026-10-19") }));
@@ -12,7 +12,13 @@ function participante(id: string, data = "2026-10-01", litros: number | null = 1
     medicoes: [{ id: "medicao", sessaoId: "manha", estado: litros === null ? "PENDENTE" : "MEDIDO", litros: litros === null ? null : new Prisma.Decimal(litros), motivo: null }], excluidoEm: null, motivoExclusao: null };
 }
 const filtro = { inicio: "2026-10-01", fim: "2026-10-03", pagina: 1, tamanho: 20 };
-beforeEach(() => { vi.resetAllMocks(); m.tx.configuracaoOrdenha.findFirst.mockResolvedValue(null); m.tx.medicaoLeite.findFirst.mockResolvedValue(null); m.tx.propriedade.findUnique.mockResolvedValue({ id: 1, ativo: true }); m.tx.animal.findFirst.mockResolvedValue({ id: "animal", brinco: "123", nome: "Aurora" }); m.tx.participanteProducaoLeite.findMany.mockResolvedValue([participante("p")]); m.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 1 }); m.carencia.mockResolvedValue({ leite: { estado: "NAO_INFORMADO" }, revisaoLeitePendente: true, revisaoAdministracaoPendente: true }); });
+beforeEach(() => { vi.resetAllMocks(); m.tx.controleHistoricoLeite.findMany.mockResolvedValue([]); m.tx.configuracaoOrdenha.findFirst.mockResolvedValue(null); m.tx.medicaoLeite.findFirst.mockResolvedValue(null); m.tx.propriedade.findUnique.mockResolvedValue({ id: 1, ativo: true }); m.tx.animal.findFirst.mockResolvedValue({ id: "animal", brinco: "123", nome: "Aurora" }); m.tx.participanteProducaoLeite.findMany.mockResolvedValue([participante("p")]); m.tx.localizacaoAnimal.findFirst.mockResolvedValue({ propriedadeId: 1 }); m.carencia.mockResolvedValue({ leite: { estado: "NAO_INFORMADO" }, revisaoLeitePendente: true, revisaoAdministracaoPendente: true }); });
+it("controle documental não vira série diária nem altera os litros operacionais", async()=>{
+ m.tx.controleHistoricoLeite.findMany.mockResolvedValue([{id:"documento",tipo:"CONTROLE_PERIODICO",inicio:dia("2026-10-01"),fim:dia("2026-10-01"),total:new Prisma.Decimal(25),unidade:"KG",referenciaUnidade:"Peso informado no arquivo",parcelas:[],lactacaoId:null,versao:1,contextoHistorico:"INTERNO"}]);
+ const r=await consultarHistoricoProdutivo(1,"animal",filtro);
+ expect(r.controlesDocumentais).toMatchObject([{id:"documento",total:"25",unidade:"KG",semEfeitoEstoqueFinanceiro:true}]);
+ expect(r.seriePeriodo).toHaveLength(1);expect(r.seriePeriodo[0].litros).toBe(12);
+});
 describe("histórico individual e contexto sanitário a partir dos fatos existentes", () => {
   it("calcula a próxima referência mensal a partir da última medição, mesmo fora do filtro", async () => {
     m.tx.medicaoLeite.findFirst.mockResolvedValue({ sessao: { dia: { dataOperacional: dia("2026-09-01") } } });

@@ -42,7 +42,7 @@ function lerEstado(visita: Visita, modo: "agenda" | "livre"): EstadoCompacto | n
     if (!bruto) return null;
     const valor = JSON.parse(bruto) as EstadoCompacto;
     if (![1,2].includes(valor?.versao) || !Array.isArray(valor.grupos)) return null;
-    const pertence = (r: ReferenciaPrevia) => modo === "agenda" ? ["PROTOCOLO", "RETORNO"].includes(r.grupo.origem) : ["LIVRE", "SELECAO", "EXTRA"].includes(r.grupo.origem);
+    const pertence = (r: ReferenciaPrevia) => modo === "agenda" ? ["PROTOCOLO", "RETORNO", "APTIDAO"].includes(r.grupo.origem) : ["LIVRE", "SELECAO", "EXTRA"].includes(r.grupo.origem);
     return { ...valor, grupos: valor.grupos.filter(pertence), revisao: valor.revisao && pertence(valor.revisao) ? valor.revisao : undefined, revisoesPendentes: valor.revisoesPendentes?.filter(pertence), desatualizados: valor.desatualizados?.filter(pertence) };
   } catch { return null; }
 }

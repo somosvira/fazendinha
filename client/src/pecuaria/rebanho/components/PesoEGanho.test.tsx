@@ -92,3 +92,32 @@ describe("PesoEGanho", () => {
   });
 
 });
+
+it("mantém pesos históricos visíveis, identifica precisão/contexto e não calcula ganho com estimativa ou fato externo", () => {
+  montar({ ...base, historicoPesagens: [
+    { ...pesagem, precisao: "MEDIDO", contextoHistorico: "INTERNO" },
+    { ...pesagem, id: "estimado", data: "2026-09-01", pesoKg: 470, precisao: "ESTIMADO", contextoHistorico: "INTERNO" },
+    { ...pesagem, id: "informado", data: "2026-08-01", pesoKg: 450, precisao: "INFORMADO", contextoHistorico: "EXTERNO", referenciaHistorica: "IDEAGRI:1" },
+    { ...pesagem, id: "medido", data: "2026-07-01", pesoKg: 440, precisao: "MEDIDO", contextoHistorico: "INTERNO" },
+  ] });
+  const estimado = screen.getByRole("article", { name: "Pesagem de 01/09/2026" });
+  expect(estimado.textContent).toContain("470 kg");
+  expect(estimado.textContent).toContain("Estimado");
+  const informado = screen.getByRole("article", { name: "Pesagem de 01/08/2026" });
+  expect(informado.textContent).toContain("Informado");
+  expect(informado.textContent).toContain("Externo");
+  expect(screen.getByRole("article", { name: "Pesagem de 01/10/2026" }).textContent).not.toContain("kg/dia");
+  expect(estimado.textContent).not.toContain("kg/dia");
+  expect(informado.textContent).not.toContain("kg/dia");
+  expect(screen.queryByRole("button", { name: "Editar pesagem de 01/08/2026" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Excluir pesagem de 01/08/2026" })).toBeNull();
+  expect(informado.textContent).toContain("Reconciliação auditada");
+  expect(screen.getByRole("button", { name: "Editar pesagem de 01/10/2026" })).toBeTruthy();
+});
+it("não transforma precisão ausente em medida e preserva a comparação compatível do legado", () => {
+  montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }] });
+  const atual = screen.getByRole("article", { name: "Pesagem de 01/10/2026" });
+  expect(atual.textContent).toContain("Precisão não informada");
+  expect(atual.textContent).toContain("Contexto não informado");
+  expect(atual.textContent).toContain("+0,633 kg/dia");
+});

@@ -27,6 +27,7 @@ const db = {
   ocorrenciaSanitaria: { count: vi.fn(), findMany: vi.fn() },
   fornecimentoColostro: { count: vi.fn(), findMany: vi.fn() },
   vinculoPesagemParto: { findMany: vi.fn() },
+  vinculoPesagemSecagem: { findMany: vi.fn() },
   finalidadeAnimal: { findMany: vi.fn() },
   medicaoGeralLeite: { count: vi.fn() },
   $queryRaw: vi.fn(),
@@ -44,6 +45,7 @@ beforeEach(() => {
   db.baixaAnimal.findFirst.mockResolvedValue(null);
   db.baixaAnimal.findMany.mockResolvedValue([]);
   db.vinculoPesagemParto.findMany.mockResolvedValue([]);
+  db.vinculoPesagemSecagem.findMany.mockResolvedValue([]);
   db.participanteProducaoLeite.count.mockResolvedValue(0);
   db.participanteProducaoLeite.findMany.mockResolvedValue([]);
   db.medicaoGeralLeite.count.mockResolvedValue(0);
@@ -211,4 +213,11 @@ describe("origens identificadas da produção geral", () => {
     db.$queryRaw.mockResolvedValue([geral([animal.id], "2026-10-20", 2)]);
     await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/sítio de fatos/);
   });
+});
+it("vínculo ativo de secagem conserva o sítio histórico ao revisar localização/entrada", async () => {
+  db.animal.findMany.mockResolvedValue([{...animal,sexo:"F"}]);
+  db.vinculoPesagemSecagem.findMany.mockResolvedValue([{propriedadeId:1,pesagem:{animalId:animal.id,data:dia("2026-09-15")}}]);
+  await expect(conferirHistoricoDosFatos(tx,[animal.id])).resolves.toBeUndefined();
+  db.localizacaoAnimal.findMany.mockResolvedValue([{...local,propriedadeId:2}]);
+  await expect(conferirHistoricoDosFatos(tx,[animal.id])).rejects.toThrow(/sítio de fatos/);
 });

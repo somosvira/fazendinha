@@ -1,3 +1,4 @@
+import { ContextoTentativaParticipacao, type ContextoTentativaParticipacaoDTO } from "../protocolos/ContextoTentativaParticipacao";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -10,7 +11,7 @@ import { horarioIatf } from "./CampoDataIatf";
 import { LinkReproducao } from "./ConsultaReproducaoUI";
 import { ProtocoloTimeline } from "./ProtocoloTimeline";
 
-type Participacao = Omit<ParticipanteIatf, "tarefas">;
+type Participacao = Omit<ParticipanteIatf, "tarefas"> & { contextoTentativa?: ContextoTentativaParticipacaoDTO };
 /** Consulta individual explícita: nenhuma data coletiva substitui a participação. */
 export function ParticipacoesProgramacao({ id, propriedadeId, revisao }: { id: string; propriedadeId?: number; revisao: number }) {
   const [pagina, setPagina] = useState(1);
@@ -30,8 +31,9 @@ export function ParticipacoesProgramacao({ id, propriedadeId, revisao }: { id: s
     <Input aria-label="Buscar animal nas participações" placeholder="Buscar animal nas participações" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }}/>
     <ErrorBox erro={erro}/>{erro ? <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Atualizar participações individuais</Button> : !dados ? <p role="status">Consultando participações individuais…</p> : <>
       {dados.itens.map(p => <article key={p.id} className="repro-participacao"><header><div><h3>{p.animal?.brinco ?? "Animal"}{p.animal?.nome ? ` · ${p.animal.nome}` : ""}</h3><p>Início efetivo: {p.inicioEfetivo ? horarioIatf(p.inicioEfetivo, p.precisaoInicioEfetivo ?? p.precisaoTemporal) : "Não confirmado"}</p></div><Pill>{p.encerradoEm ? "Participação encerrada" : p.inicioEfetivo ? "Em acompanhamento" : "Início previsto"}</Pill></header>
+        <ContextoTentativaParticipacao contexto={p.contextoTentativa}/>
         {p.motivoEncerramento && <p>{p.motivoEncerramento}</p>}
-        <div className="repro-participacao-acoes"><Button variant="outline" aria-expanded={aberta === p.id} onClick={() => setAberta(aberta === p.id ? null : p.id)}>{aberta === p.id ? "Recolher etapas" : "Consultar etapas individuais"}</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?participacaoId=${encodeURIComponent(p.id)}&programacaoId=${encodeURIComponent(id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}#reproducao`}>Ficha do animal</LinkReproducao></div>
+        <div className="repro-participacao-acoes"><Button variant="outline" aria-expanded={aberta === p.id} onClick={() => setAberta(aberta === p.id ? null : p.id)}>{aberta === p.id ? "Recolher etapas" : "Consultar etapas individuais"}</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?participacaoId=${encodeURIComponent(p.id)}&programacaoId=${encodeURIComponent(id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}#reproducao`}>Ficha do animal</LinkReproducao></div>
         {aberta === p.id && <EtapasParticipacao key={`${p.id}:${propriedadeId}:${revisao}`} participante={p} propriedadeId={propriedadeId}/>}
       </article>)}
       {!dados.total && <p>Nenhuma participação corresponde à busca.</p>}

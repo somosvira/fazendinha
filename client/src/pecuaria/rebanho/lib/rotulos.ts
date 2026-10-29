@@ -24,6 +24,7 @@ export const ROTULO_TIPO_BAIXA: Record<TipoBaixa, string> = {
   MORTE: "Morte",
   DOACAO: "Doação",
   EXTRAVIO: "Extravio",
+  NAO_DETERMINADO: "Tipo não determinado na origem",
   CADASTRO_INDEVIDO: "Cadastro indevido",
 };
 
@@ -43,6 +44,7 @@ export const CLASSES_POR_TIPO: Record<TipoBaixa, ClasseMotivoBaixa[]> = {
   DOACAO: ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO"],
   MORTE: ["MORTE"],
   EXTRAVIO: [],
+  NAO_DETERMINADO: [],
   CADASTRO_INDEVIDO: [],
 };
 

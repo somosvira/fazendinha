@@ -15,6 +15,34 @@ import { Package } from "lucide-react";
 
 const TIPOS = [{ campo: "usoGenetico", nome: "Genético" }, { campo: "usoSanitario", nome: "Sanitário" }, { campo: "usoNutricional", nome: "Nutricional" }] as const;
 
+type EscolhaCarencia = "" | "SEM" | "COM" | "DESCONHECIDA";
+function escolhaInicialCarencia(horas: number | null | undefined, legado: boolean): EscolhaCarencia {
+  return horas == null ? (legado ? "DESCONHECIDA" : "") : horas === 0 ? "SEM" : "COM";
+}
+
+function CampoCarenciaProduto({ destino, escolha, prazo, permiteDesconhecida, erro, onEscolha, onPrazo }: {
+  destino: "leite" | "carne"; escolha: EscolhaCarencia; prazo: string; permiteDesconhecida: boolean; erro?: string;
+  onEscolha: (escolha: EscolhaCarencia) => void; onPrazo: (prazo: string) => void;
+}) {
+  const id = `produto-carencia-${destino}`;
+  return <fieldset className="grid min-w-0 gap-2 border-0 p-0">
+    <legend className="mb-2 text-sm font-semibold">{destino === "leite" ? "Leite" : "Carne"}{!permiteDesconhecida && <span aria-hidden="true"> *</span>}</legend>
+    <div className="grid gap-1">
+      {([
+        ["SEM", "Sem carência (0 horas)", `Sem carência de ${destino} (0 horas)`],
+        ["COM", "Com carência", `Com carência de ${destino}`],
+        ...(permiteDesconhecida ? [["DESCONHECIDA", "Não informado (legado)", `Não informado para ${destino} (legado)`]] : []),
+      ] as [EscolhaCarencia, string, string][]).map(([valor, texto, acessivel]) => <label key={valor} className="flex min-h-10 cursor-pointer items-center gap-2 text-sm">
+        <input type="radio" name={id} value={valor} checked={escolha === valor} onChange={() => onEscolha(valor)} aria-label={acessivel}
+          required={!permiteDesconhecida} aria-invalid={!!erro && escolha !== "COM"} aria-describedby={erro ? `${id}-erro` : undefined}
+          className="size-4 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary" />{texto}
+      </label>)}
+    </div>
+    {escolha === "COM" ? <CampoFormulario id={id} rotulo={`Prazo de ${destino} (horas)`} obrigatorio erro={erro}>{(p) => <Input {...p} type="number" min="1" step="1" value={prazo} onChange={(e) => onPrazo(e.target.value)} className={classeInput} />}</CampoFormulario>
+      : erro && <p id={`${id}-erro`} role="alert" className="text-xs text-destructive">{erro}</p>}
+  </fieldset>;
+}
+
 /* `parceiros`/`categorias`/`centros` são opcionais: quando quem abre o painel já
  * tem essas listas em mãos (ex.: `ConfiguracoesFinanceiras`), passa-as direto;
  * caso contrário (cadastro rápido a partir do estoque), o formulário
@@ -58,6 +86,10 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const [categoriaId, setCategoriaId] = useState(produto?.categoriaId ? produto.categoriaId : "");
   const [leite, setLeite] = useState(produto?.perfilSanitario?.carenciaLeiteHoras?.toString() ?? "");
   const [carne, setCarne] = useState(produto?.perfilSanitario?.carenciaCarneHoras?.toString() ?? "");
+  const legadoLeiteDesconhecido = !!produto?.usoSanitario && produto.perfilSanitario?.carenciaLeiteHoras == null;
+  const legadoCarneDesconhecido = !!produto?.usoSanitario && produto.perfilSanitario?.carenciaCarneHoras == null;
+  const [escolhaLeite, setEscolhaLeite] = useState<EscolhaCarencia>(() => escolhaInicialCarencia(produto?.perfilSanitario?.carenciaLeiteHoras, legadoLeiteDesconhecido));
+  const [escolhaCarne, setEscolhaCarne] = useState<EscolhaCarencia>(() => escolhaInicialCarencia(produto?.perfilSanitario?.carenciaCarneHoras, legadoCarneDesconhecido));
   const [via, setVia] = useState(produto?.perfilSanitario?.viaPadrao ?? "");
   const [orientacaoUso, setOrientacaoUso] = useState(produto?.perfilSanitario?.orientacaoUso ?? "");
   const [tipoAplicacaoId, setTipoAplicacaoId] = useState(produto?.perfilSanitario?.tipoAplicacaoId ?? "");
@@ -88,8 +120,12 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
     if (!categoriaId) novosErros.categoriaId = "Produto precisa de uma categoria";
     const ms = materiaSeca.trim().replace(",", ".");
     if (usos.usoNutricional && ms && (!/^\d+(\.\d{1,2})?$/.test(ms) || Number(ms) < 0 || Number(ms) > 100)) novosErros.materiaSecaPercentual = "Informe a matéria seca entre 0% e 100%.";
-    if (usos.usoSanitario) for (const [campo, valor] of [["carenciaLeiteHoras", leite], ["carenciaCarneHoras", carne]]) {
-      if (valor !== "" && (!Number.isInteger(Number(valor)) || Number(valor) < 0)) novosErros[campo] = "Informe um número inteiro de horas, igual ou maior que zero.";
+    if (usos.usoSanitario) for (const [campo, destino, escolha, valor, permiteDesconhecida] of [
+      ["carenciaLeiteHoras", "leite", escolhaLeite, leite, legadoLeiteDesconhecido],
+      ["carenciaCarneHoras", "carne", escolhaCarne, carne, legadoCarneDesconhecido],
+    ] as const) {
+      if (!escolha || (escolha === "DESCONHECIDA" && !permiteDesconhecida)) novosErros[campo] = `Escolha a carência de ${destino}.`;
+      else if (escolha === "COM" && (!valor.trim() || !Number.isInteger(Number(valor)) || Number(valor) <= 0)) novosErros[campo] = `Informe um prazo de ${destino} em horas inteiras, maior que zero.`;
     }
     if (usos.usoSanitario && orientacaoUso.trim().length > 2000) novosErros.orientacaoUso = "Informe uma orientação com até 2.000 caracteres.";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) {
@@ -100,7 +136,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId,
       centroCustoIds, fornecedorIds,
       ...usos, ...(!produto ? { rastrearPartidas } : {}),
-      ...(usos.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), viaPadrao: via || null, orientacaoUso: orientacaoUso.trim() || null, tipoAplicacaoId: tipoAplicacaoId || null } } : {}),
+      ...(usos.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: escolhaLeite === "SEM" ? 0 : escolhaLeite === "COM" ? Number(leite) : null, carenciaCarneHoras: escolhaCarne === "SEM" ? 0 : escolhaCarne === "COM" ? Number(carne) : null, viaPadrao: via || null, orientacaoUso: orientacaoUso.trim() || null, tipoAplicacaoId: tipoAplicacaoId || null } } : {}),
       ...(usos.usoNutricional ? { perfilNutricional: { materiaSecaPercentual: ms === "" ? null : Number(ms) } } : {}),
     };
     emCurso.current = true; setSalvando(true); setErroGeral("");
@@ -132,7 +168,16 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => setUnidade(valor as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
         <CampoFormulario id="produto-minimo" rotulo="Estoque mínimo" ajuda="Abaixo dessa quantidade o produto aparece com alerta na tela de Estoque." erro={erros.minimoEstoque}>{(p) => <Input {...p} type="number" min="0" step="0.01" value={minimo} onChange={(e) => setMinimo(e.target.value)} className={classeInput} />}</CampoFormulario>
       </div>
-      {usos.usoSanitario && <fieldset className="grid gap-3 rounded-lg border border-border p-3"><legend>Perfil sanitário — sugestões para revisão<AjudaCampo rotulo="Ajuda: perfil sanitário" texto={<>Sem tipo padrão, o atendimento exige classificação manual. O cadastro do produto não define indicação clínica.</>} /></legend><CampoFormulario id="produto-leite" rotulo="Carência sugerida de leite (horas)" erro={erros.carenciaLeiteHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={leite} onChange={(e) => setLeite(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-carne" rotulo="Carência sugerida de carne (horas)" erro={erros.carenciaCarneHoras}>{(p) => <Input {...p} type="number" min="0" step="1" value={carne} onChange={(e) => setCarne(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario>
+      {usos.usoSanitario && <fieldset className="grid gap-4 rounded-lg border border-border p-3 sm:col-span-2">
+        <legend className="px-1 text-sm font-semibold">Perfil sanitário — sugestões para revisão<AjudaCampo rotulo="Ajuda: perfil sanitário" texto={<>Sem tipo padrão, o atendimento exige classificação manual. O cadastro do produto não define indicação clínica.</>} /></legend>
+        <p className="text-sm text-ink-3">Informe a carência sugerida separadamente para leite e carne. A aplicação conserva a carência confirmada na data do atendimento.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CampoCarenciaProduto destino="leite" escolha={escolhaLeite} prazo={leite} permiteDesconhecida={legadoLeiteDesconhecido} erro={erros.carenciaLeiteHoras} onEscolha={setEscolhaLeite} onPrazo={setLeite} />
+          <CampoCarenciaProduto destino="carne" escolha={escolhaCarne} prazo={carne} permiteDesconhecida={legadoCarneDesconhecido} erro={erros.carenciaCarneHoras} onEscolha={setEscolhaCarne} onPrazo={setCarne} />
+        </div>
+        {(legadoLeiteDesconhecido || legadoCarneDesconhecido) && <p className="text-sm text-ink-3">Prazos antigos não informados permanecem desconhecidos até serem conferidos.</p>}
+        <p className="text-sm text-ink-3">Alterar o produto não modifica as aplicações anteriores.</p>
+        <CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario>
         <SeletorCatalogoProtocolo opcao="TIPO_APLICACAO" origem="SANITARIO" rotulo="Tipo de aplicação padrão (opcional)" valor={tipoAplicacaoId} onChange={setTipoAplicacaoId} listarOpcoes={listarTiposAplicacaoSanitarios} erroCampo={erros.tipoAplicacaoId} />
 
         <CampoFormulario id="produto-orientacao" rotulo="Orientação de uso (opcional)" erro={erros.orientacaoUso} ajuda="Instrução do cadastro do produto, independente da referência técnica histórica.">{(p) => <textarea {...p} maxLength={2000} value={orientacaoUso} onChange={e => setOrientacaoUso(e.target.value)} className={classeInput} />}</CampoFormulario>

@@ -57,7 +57,7 @@ describe("vínculo imutável da política no ciclo", () => {
 describe("histórico em lote", () => {
   it("carrega uma consulta por fonte para vários animais, sem escrita ou consulta por dia", async () => {
     const nomes = ["animal", "partoAnimal", "tentativaReprodutiva", "lactacaoAnimal", "gestacaoAnimal", "localizacaoAnimal", "avaliacaoReprodutiva",
-      "situacaoInicialReprodutiva", "vinculoPoliticaCiclo", "restricaoReprodutiva", "periodoReprodutivoAnimal", "baixaAnimal", "politicaElegibilidadeReprodutiva", "decisaoElegibilidadeCiclo"];
+      "situacaoInicialReprodutiva", "vinculoPoliticaCiclo", "restricaoReprodutiva", "periodoReprodutivoAnimal", "baixaAnimal", "politicaElegibilidadeReprodutiva", "decisaoElegibilidadeCiclo", "pesagem", "exameAnimal"];
     const mock = Object.fromEntries(nomes.map(nome => [nome, { findMany: vi.fn().mockResolvedValue([]) }]));
     const dados = await carregarDadosElegibilidadeTx(mock as unknown as Prisma.TransactionClient, ["a", "b", "a"], dia("2026-03-01"));
     expect(dados.animais).toEqual([]);

@@ -121,3 +121,15 @@ it("filtra situação e ordena grupos no banco antes de paginar, preservando o e
   expect(JSON.stringify(consulta.where.AND)).toContain('"propriedadeId":7');
   expect(()=>listaOperacaoSchema.parse({status:"INEXISTENTE"})).toThrow();
 });
+
+
+it("resumo da participação usa a versão e apenas vínculos explícitos do sítio", async () => {
+  banco.tx.participacaoProtocolo.count.mockResolvedValue(1);
+  banco.tx.participacaoProtocolo.findMany.mockResolvedValue([{ id, animalId: id, animal: { id, brinco: "1", nome: null }, protocolo: { ...protocolo, tipo: "REPRODUTIVO", etapas: [{ tipo: "TENTATIVA", configuracao: { tentativaTipo: "TE" } }] }, rodada: { id, nome: "Grupo" }, inicio: data, inicioEfetivo: data, canceladaEm: null, motivoCancelamento: null, _count: { tarefas: 0 } }]);
+  const r = await listarVinculosColetivosOperacao(2, consultaVinculosColetivosOperacaoSchema.parse({ animalId: id, tipo: "REPRODUTIVO" }));
+  expect(r.itens[0]).toHaveProperty("contextoTentativa", { iaPrevista: false, possuiTentativaVinculada: false });
+  expect(r.itens[0].protocolo).not.toHaveProperty("etapas");
+  const selecionado = banco.tx.participacaoProtocolo.findMany.mock.calls[0][0].select;
+  expect(selecionado._count.select.tarefas.where.OR).toEqual([{ tentativas: { some: { propriedadeId: 2 } } }, { vinculos: { some: { tentativa: { is: { propriedadeId: 2 } } } } }]);
+  expect(JSON.stringify(selecionado._count)).not.toContain("data");
+});

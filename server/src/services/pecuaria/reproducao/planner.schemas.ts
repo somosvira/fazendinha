@@ -8,6 +8,7 @@ export const grupoLivreSchema = z.object({ origem: z.literal("LIVRE"), nome: z.s
 export const grupoPlannerSchema = z.discriminatedUnion("origem", [
   grupoLivreSchema,
   z.object({ origem: z.literal("PROTOCOLO"), identidade: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
+  z.object({ origem: z.literal("APTIDAO"), identidade: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ origem: z.literal("RETORNO"), identidade: z.string().regex(/^[a-f0-9]{64}$/) }).strict(),
   z.object({ origem: z.literal("SELECAO"), selecaoVersaoId: z.string().uuid() }).strict(),
   z.object({ origem: z.literal("EXTRA"), nome: z.string().trim().min(2).max(120), criterios: criteriosSelecaoSchema,

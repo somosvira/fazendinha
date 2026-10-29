@@ -1,3 +1,6 @@
+import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
+import type { PesoSecagemInput } from "./peso-secagem.schemas.js";
+import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
 import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
@@ -81,6 +84,7 @@ export async function conferirDisponibilidadeTx(
   cienciaSanitaria = false,
 ) {
   const animal = await conferirMatrizTx(tx, animalId, propriedadeId, data);
+  if (["IA", "TE", "IATF"].includes(acao)) await conferirAptidaoParaAcaoTx(tx, animalId, propriedadeId, data, acao === "IATF" ? "PROTOCOLO" : acao as "IA" | "TE");
   const restricoes = await tx.restricaoReprodutiva.findMany({
     where: {
       animalId,
@@ -1076,42 +1080,34 @@ export async function encerrarRestricao(
   });
 }
 export async function encerrarLactacao(
-  id: string,
-  propriedadeId: number,
-  data: string,
-  motivo: string,
-  usuarioId: number | null,
+  id: string, propriedadeId: number, data: string, motivo: string, usuarioId: number | null,
+  opcoes: { chave?: string; pesoSecagem?: PesoSecagemInput } = {},
 ) {
-  return transacaoPecuaria(async (tx) => {
-    const antes = await tx.lactacaoAnimal.findFirst({
-      where: { id, propriedadeId, encerradaEm: null },
-    });
-    if (!antes)
-      throw new RebanhoError(
-        "NAO_ENCONTRADO",
-        "Lactação aberta não encontrada neste sítio",
-      );
-    await travarAnimais(tx, [antes.animalId]);
-    await conferirMatrizTx(tx, antes.animalId, propriedadeId, dia(data));
-    if (dia(data) < antes.inicio) erro("Encerramento antecede início", "data");
-    await conferirLactacaoComProducaoTx(tx, antes.animalId, id, antes.inicio, dia(data));
-    const fato = await tx.lactacaoAnimal.update({
-      where: { id },
-      data: { encerradaEm: dia(data), motivoEncerramento: motivo, versao: { increment: 1 } },
-    });
-    await auditar(tx, {
-      entidade: "LactacaoAnimal",
-      entidadeId: id,
-      animalId: antes.animalId,
-      propriedadeId,
-      acao: "ENCERRAMENTO",
-      usuarioId,
-      antes,
-      depois: fato,
-    });
-    return fato;
+  return transacaoPecuaria(async tx => {
+    const referencia = await tx.lactacaoAnimal.findFirst({ where: { id, propriedadeId } });
+    if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Lactação não encontrada neste sítio");
+    await travarAnimais(tx, [referencia.animalId]);
+    if (opcoes.pesoSecagem && opcoes.pesoSecagem.acao !== "NAO_INFORMAR") {
+      if (!opcoes.chave) erro("Peso na secagem exige chave de reenvio", "chave");
+      await exigirAutorRealSecagemTx(tx, usuarioId);
+    }
+    const executar = async () => {
+      // O encerramento/versão pode ter mudado enquanto aguardávamos a trava do animal.
+      const antes = await tx.lactacaoAnimal.findFirst({ where: { id, propriedadeId, encerradaEm: null } });
+      if (!antes) throw new RebanhoError("CONFLITO", "Lactação já encerrada ou alterada; atualize o histórico");
+      await conferirMatrizTx(tx, antes.animalId, propriedadeId, dia(data));
+      if (dia(data) < antes.inicio) erro("Encerramento antecede início", "data");
+      await conferirLactacaoComProducaoTx(tx, antes.animalId, id, antes.inicio, dia(data));
+      const fato = await tx.lactacaoAnimal.update({ where: { id }, data: { encerradaEm: dia(data), motivoEncerramento: motivo, versao: { increment: 1 } } });
+      await aplicarPesoSecagemTx(tx, fato, opcoes.pesoSecagem, usuarioId, propriedadeId, motivo);
+      await auditar(tx, { entidade: "LactacaoAnimal", entidadeId: id, animalId: antes.animalId, propriedadeId,
+        acao: "ENCERRAMENTO", usuarioId, antes, depois: fato });
+      return lerLactacaoComPesoSecagemTx(tx, id);
+    };
+    return opcoes.chave ? operacaoIdempotenteTx(tx, { id, propriedadeId, data, motivo, ...opcoes, chave: opcoes.chave }, usuarioId, "ENCERRAMENTO_LACTACAO", executar) : executar();
   });
 }
+
 export async function configurarRegraSanitaria(
   input: z.infer<typeof regraSanitariaSchema>,
   usuarioId: number | null,
@@ -1299,6 +1295,7 @@ export async function painelReproducao(
     prisma.lactacaoAnimal.findMany({
       where: fatos,
       orderBy: { inicio: "desc" },
+      include: { vinculosPesagemSecagem: { include: { pesagem: true }, orderBy: { criadoEm: "asc" } } },
     }),
     prisma.regraSanitariaReprodutiva.findMany({ where: scope }),
     prisma.exposicaoTouro.findMany({
@@ -1434,7 +1431,7 @@ export async function painelReproducao(
       ),
     })),
     situacoesIniciais,
-    lactacoes,
+    lactacoes: lactacoes.map(l => ({ ...l, vinculosPesagemSecagem: l.vinculosPesagemSecagem.map(v => ({ ...v, pesagem: { ...v.pesagem, pesoKg: Number(v.pesagem.pesoKg) } })) })),
     regrasSanitarias,
     periodosReprodutivos,
     exposicoes: exposicoes.map((e) => ({
@@ -1803,20 +1800,30 @@ export async function corrigirLactacao(
     inicio?: string;
     encerradaEm?: string | null;
     motivo: string;
+    pesoSecagem?: PesoSecagemInput;
   },
   usuarioId: number | null,
 ) {
   return transacaoPecuaria(async (tx) => {
-    const referencia = await tx.lactacaoAnimal.findFirst({
+    const identidade = await tx.lactacaoAnimal.findFirst({
       where: { id, propriedadeId: input.propriedadeId },
     });
-    if (!referencia)
+    if (!identidade)
       throw new RebanhoError(
         "NAO_ENCONTRADO",
         "Lactação não encontrada neste sítio",
       );
-    await travarAnimais(tx, [referencia.animalId]);
+    await travarAnimais(tx, [identidade.animalId]);
+    const historicoPeso = await tx.vinculoPesagemSecagem.findFirst({ where: { lactacaoId: id } });
+    if ((input.pesoSecagem && input.pesoSecagem.acao !== "NAO_INFORMAR") || (input.encerradaEm !== undefined && historicoPeso))
+      await exigirAutorRealSecagemTx(tx, usuarioId);
     const executar = async () => {
+    const referencia = await tx.lactacaoAnimal.findFirst({ where: { id, propriedadeId: input.propriedadeId } });
+    if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Lactação não encontrada neste sítio");
+    if (input.pesoSecagem && input.pesoSecagem.acao !== "NAO_INFORMAR") {
+      if (!input.chave) erro("Revisão de peso de secagem exige chave de reenvio", "chave");
+      await exigirAutorRealSecagemTx(tx, usuarioId);
+    }
     if (input.versaoEsperada != null && referencia.versao !== input.versaoEsperada)
       throw new RebanhoError("CONFLITO", "A lactação mudou; atualize os dados antes de corrigir", "versaoEsperada");
     const inicio = input.inicio ? dia(input.inicio) : referencia.inicio,
@@ -1850,6 +1857,10 @@ export async function corrigirLactacao(
     }
     await conferirIntervaloLactacaoTx(tx, referencia.animalId, inicio, fim, id);
     await conferirLactacaoComProducaoTx(tx, referencia.animalId, id, inicio, fim);
+    const pesoAtivo = await tx.vinculoPesagemSecagem.findFirst({ where: { lactacaoId: id, revogadoEm: null } });
+    if (pesoAtivo && !input.chave && (fim?.getTime() !== referencia.encerradaEm?.getTime() || input.pesoSecagem)) erro("Revisão com peso vinculado exige chave de reenvio", "chave");
+    if (fim && (pesoAtivo || input.pesoSecagem)) await conferirAnimalNoFato(tx, referencia.animalId, input.propriedadeId, fim);
+    await conferirPesoSecagemNaRevisaoTx(tx, referencia, fim, input.pesoSecagem, input.propriedadeId, input.motivo, usuarioId);
     const salva = await tx.lactacaoAnimal.update({
       where: { id },
       data: {
@@ -1860,6 +1871,7 @@ export async function corrigirLactacao(
         motivoEncerramento: fim ? input.motivo : null,
       },
     });
+    if (fim) await aplicarPesoSecagemTx(tx, salva, input.pesoSecagem, usuarioId, input.propriedadeId, input.motivo);
     await auditar(tx, {
       entidade: "LactacaoAnimal",
       entidadeId: id,
@@ -1870,7 +1882,7 @@ export async function corrigirLactacao(
       antes: referencia,
       depois: { ...salva, motivo: input.motivo },
     });
-    return salva;
+    return lerLactacaoComPesoSecagemTx(tx, id);
     };
     return input.chave ? operacaoIdempotenteTx(tx, { ...input, chave: input.chave, id }, usuarioId, "CORRECAO_LACTACAO", executar) : executar();
   });

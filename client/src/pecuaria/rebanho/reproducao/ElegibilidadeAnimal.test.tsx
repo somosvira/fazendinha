@@ -214,3 +214,18 @@ it("uma atualização dos fatos exige nova conferência da associação de polí
   expect(screen.getByRole("button", { name: "Associar política ao acompanhamento" })).toHaveProperty("disabled", true);
   expect(vincularPolitica).not.toHaveBeenCalled();
 });
+
+it("não apresenta elegibilidade calculada como aptidão clínica e exige evidência para liberar", async () => {
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), estado: "ELEGIVEL", elegivel: true }));
+  render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
+  await screen.findByText("Elegível");
+  expect(screen.getByText("Não determinada")).toBeTruthy();
+  expect(screen.queryByText("Apta", { selector: "strong" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
+  await screen.findByLabelText("Apta desde");
+  await alterarControle(screen.getByLabelText("Apta desde"), { target: { value: new Intl.DateTimeFormat("en-CA").format(new Date()) } });
+  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Conferir liberação sem laudo" } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
+  await screen.findByText("Registre e confira um toque apto antes de liberar.");
+  expect(decidirElegibilidade).not.toHaveBeenCalled();
+});

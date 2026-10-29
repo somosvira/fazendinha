@@ -1,6 +1,6 @@
 # Produção de leite — V5
 
-Este contrato descreve o comportamento implementado na V5 integrada à main. Disponibilidade em cada ambiente depende do código e do schema efetivamente implantados. A estrutura V5 integra a baseline `20261025000000_base_unificada`, instalada no PostgreSQL local `fazendinha_seedatev3` após substituição autorizada com backup. A cadeia anterior foi consolidada preservando suas garantias SQL; o histórico permanece no Git e nos backups locais. Isso não indica aplicação em outros ambientes. Testes sem banco não comprovam execução dos gatilhos, concorrência PostgreSQL ou operação da fazenda. A Reprodução V4 permanece no seu contrato.
+Este contrato descreve a V5 e suas extensões implementadas neste código. Disponibilidade em cada ambiente depende do código e do schema efetivamente implantados. A estrutura V5 integra a baseline `20261025000000_base_unificada`, instalada no PostgreSQL local `fazendinha_seedatev3` após substituição autorizada com backup. A cadeia anterior foi consolidada preservando suas garantias SQL; o histórico permanece no Git e nos backups locais. Isso não indica aplicação em outros ambientes. Testes sem banco não comprovam execução dos gatilhos, concorrência PostgreSQL ou operação da fazenda. A Reprodução V4 permanece no seu contrato.
 
 ## Finalidade do animal na produção
 
@@ -156,6 +156,24 @@ Conferência histórica recebe o arquivo de preparação com brinco literal, dat
 
 A assinatura identifica o conteúdo recebido; não certifica a fonte nem executa a carga. A preparação e execução da importação real dependem dos registros dos funcionários e da aprovação de seu mapa/corte/reconciliação. O arquivo original e o responsável indicado na fonte precisam ser preservados, sem inventar funcionários ou datas ausentes.
 
+### Incorporação documental e clínica
+
+A ferramenta técnica `import:pecuaria:stg` usa os handlers de `services/pecuaria/importacao/historico.ts`, com origem única, prévia, candidatos a duplicidade, confirmação de manifesto e recibo. Sua operação e recuperação estão em [desenvolvimento](../desenvolvimento.md). A página **Conferir importação** continua sendo somente uma prévia; não executa esse CLI. Não há sincronização contínua nem mapeamento automático do arquivo IDEAGRI.
+
+`ControleHistoricoLeite` representa o controle periódico individual e o agregado mensal coletivo comprovado. Conserva total declarado, parcelas opcionais, horário desconhecido, unidade original `L` ou `KG`, referência que comprova a unidade e proveniência. Total ausente permanece `null`, distinto de zero; soma das parcelas e diferença do total são informações separadas. Não cria ordenhas, medições diárias, estoque, saldo inicial, venda ou financeiro e não converte massa em volume. O agregado mensal exige o mês completo e não recebe animal/lactação por inferência. O controle individual confere fêmea, localização histórica e eventual lactação indicada; ausência de lactação comprovada fica explícita.
+
+A consulta individual do histórico produtivo devolve os documentos internos em `controlesDocumentais`, separados da série operacional, seus totais em litros e a paginação das medições. O DTO conserva unidade e parcelas. A interface operacional ainda não apresenta essa coleção documental; não há distribuição do total mensal por dia. Documentos externos não são atribuídos a um sítio interno nessa consulta. Correção documental exige origem e versão atuais, motivo e auditoria antes/depois; mantém sujeito, sítio, tipo e período, sem sobrescrever a identidade por suposição.
+
+ECC exige formato numérico versionado, escala comprovada `1_A_5` ou `1_A_9` e resultado dentro dela. Usa `ExameAnimal` e conserva a escala na anotação original estruturada, lida pelos critérios de aptidão. Qualidade conserva campos/unidades do formato versionado e a referência da fonte; ausência de arquivo de laudo não impede resultado estruturado válido. Amostra interna individual/coletiva reutiliza o núcleo de qualidade; exame individual externo usa o núcleo comum com sítio nulo. Qualidade coletiva externa é recusada enquanto não houver representação/localização comprovada, sem atribuição à fazenda ou a um animal fictício.
+
+Mastite reutiliza `OcorrenciaSanitaria`, com doença mapeada, início, encerramento quando comprovado e desfecho opcional. Achados por teto e descrições originais de produto/dose/via/período ficam estruturados na observação e na proveniência. São tratamentos documentais: não criam aplicações operacionais, consumo de estoque ou prazos de carência calculados. Eventuais aplicações que precisem produzir esses efeitos exigem conciliação própria com produto, administração e carência comprovados.
+
+Vincular um fato existente não o corrige: pesagem exige identidade, quantidade, origem, precisão e contexto iguais; ECC exige também escala, finalidade e sítio compatíveis; mastite exige encerramento, achados e tratamentos compatíveis; qualidade confere sujeito/formato/resultados. Divergências bloqueiam para revisão. Correções clínicas/pesagens não são habilitadas pelo envelope genérico; `CORRIGIR` atende somente o documento de leite. Fatos externos individuais conservam sítio nulo e evidência, sem deslocar a entrada do animal nem usar sua localização atual.
+
+As migrations incrementais de metadados de peso e de `ControleHistoricoLeite` precisam estar aplicadas antes da carga. Testes sem banco cobrem representação, validação, reenvio e persistência com dependências controladas; não comprovam constraints, concorrência PostgreSQL ou reconciliação dos arquivos reais. Nenhum lote é considerado executado pela disponibilidade dos handlers.
+
+**Peso na secagem:** o encerramento manual aceita peso opcional novo ou existente, e a associação pode ser mantida depois, conforme o [contrato de reprodução](reproducao.md#peso-da-matriz-no-encerramento-da-lactação). Usa a mesma `Pesagem`, com histórico de vínculos e proteção na correção/reabertura. O tipo `SECAGEM` isolado não encerra lactação nem comprova associação. A conciliação dos 100 registros identificados no IDEAGRI exige encerramento comprovado; sem ele, preserva a pesagem e informa pendência. Entrega do código não significa execução desses dados.
+
 ## Autorização e validação
 
 As rotas exigem sessão e área Pecuária; escritas operacionais exigem `lancar`. Emissões e exportações exigem `exportar`; incluir dinheiro também exige acesso financeiro com `verValores`. Venda e apuração monetária também exigem área Financeiro e `verValores`. Consultas de estoque/custos mascaram dinheiro no servidor. Confirmação física não devolve hashes, snapshots internos ou valores financeiros. Sítio é resolvido no servidor e fatos são conferidos nesse escopo.
@@ -167,7 +185,7 @@ O [roteiro de homologação V5 da finalidade](artefatos/homologacao-v5-finalidad
 ## Entregas ainda abertas
 
 - O mapeamento automático de qualidade do IDEAGRI depende de comprovar unidades e vínculos coletivos; o cadastro manual a partir do laudo já tem contrato próprio.
-- Carga desde outubro: a prévia de conferência está implementada, mas faltam registros reais, unidade comprovada, sítio/ano/fim do lote e reconciliação com estoque/vendas anteriores. O executor da carga real será definido contra esse lote conferido; não há importação automática neste incremento. Importar medições antigas não pode aumentar saldo de leite já vendido.
+- Carga desde outubro: a prévia e o executor documental técnico estão implementados, mas faltam registros reais, unidade comprovada, sítio/ano/fim do lote e reconciliação com estoque/vendas anteriores. A carga depende desse lote conferido e de execução explícita. Importar documentos antigos não aumenta saldo de leite já vendido; convertê-los em medições operacionais não está habilitado.
 - A baseline `20261025000000_base_unificada` foi aplicada localmente. Restam validação de R2 e homologação com a fazenda; evidências de concorrência e commits independentes devem ser identificadas por cenário testado. Outros ambientes exigem autorização e conferência próprias. A substituição autorizada da base demonstrativa não autoriza reinicializações em tarefas comuns.
 
 As pendências operacionais acima permanecem separadas da implementação e da inspeção visual. Este contrato e os contratos específicos de estoque, qualidade e comercial descrevem o comportamento vigente na main.

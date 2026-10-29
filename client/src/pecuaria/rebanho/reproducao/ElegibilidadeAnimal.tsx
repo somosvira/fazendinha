@@ -1,3 +1,5 @@
+import { RevisarToqueAptidao } from "./RevisarToqueAptidao";
+import { ToqueAptidaoFormulario } from "./ToqueAptidaoFormulario";
 import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays } from "lucide-react";
@@ -40,6 +42,8 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
   const [confirmacao, setConfirmacao] = useState(false);
   const [origem, setOrigem] = useState("");
   const [tipo, setTipo] = useState<"LIBERAR" | "BLOQUEAR" | "RETOMAR_POLITICA">("LIBERAR");
+  const [acaoLiberada, setAcaoLiberada] = useState<"PROTOCOLO" | "IA" | "TE">("PROTOCOLO");
+  const [anteciparPev, setAnteciparPev] = useState(false);
   const [apta, setApta] = useState("");
   const [motivo, setMotivo] = useState("");
   const editorId = useId();
@@ -53,7 +57,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
   };
   useEffect(() => {
     setEditando(false); setData(getHojeISO()); setDataDecisao(getHojeISO());
-    setOcupado(false); setConfirmacao(false); setOrigem(""); setMotivo(""); setApta(""); setErroEdicao("");
+    setOcupado(false); setConfirmacao(false); setAnteciparPev(false); setOrigem(""); setMotivo(""); setApta(""); setErroEdicao("");
   }, [animalId, propriedadeId]);
   useEffect(() => {
     let ativo = true;
@@ -104,24 +108,38 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     if (!decisao?.vinculoCicloId) return;
     if (motivo.trim().length < 5) { setErroEdicao("Descreva o motivo com pelo menos 5 caracteres."); return; }
     if (tipo === "LIBERAR" && (!apta || apta < dataDecisao)) { setErroEdicao("Informe apta desde a data da decisão ou depois."); return; }
-    const input = { propriedadeId, vinculoCicloId: decisao.vinculoCicloId, data: dataDecisao, tipo, aptaDesde: tipo === "LIBERAR" ? apta : null, motivo };
+    if (tipo === "LIBERAR" && (decisao.aptidaoClinica?.estado !== "APTA" || !decisao.aptidaoClinica.exameId)) { setErroEdicao("Registre e confira um toque apto antes de liberar."); return; }
+    if (tipo === "LIBERAR" && decisao.pevOriginalAte && apta < decisao.pevOriginalAte && !anteciparPev) { setErroEdicao("Confirme explicitamente a antecipação do PEV com base no exame apto."); return; }
+    const input = { propriedadeId, vinculoCicloId: decisao.vinculoCicloId, data: dataDecisao, tipo,
+      ...(tipo === "LIBERAR" ? { exameAptidaoId: decisao.aptidaoClinica!.exameId!, acaoLiberada, anteciparPev } : {}), aptaDesde: tipo === "LIBERAR" ? apta : null, motivo };
     void executar(() => decidirElegibilidade({ ...input, chave: idempotencia(JSON.stringify(input)) }));
   }
   return <div className="repro-aptidao space-y-3">
     <div className="repro-aptidao-resumo">
       <CalendarDays size={21} aria-hidden="true"/>
       <strong>{data === getHojeISO() ? "Hoje · " : "Em "}{data ? formatBRDateISO(data) : "data não informada"}</strong>
+      {r && <span className="text-sm text-muted-foreground">Disponibilidade operacional</span>}
       {r && <Pill tone={r.estado === "ELEGIVEL" ? "green" : "amber"}>{r.estado === "ELEGIVEL" ? "Elegível" : r.estado === "NAO_ELEGIVEL" ? "Não elegível" : "Pendente de informação"}</Pill>}
       {podeLancar && <Button variant="outline" className="repro-aptidao-acao" aria-expanded={editando} aria-controls={editorId} onClick={() => setEditando(v => !v)}>Registrar decisão</Button>}
     </div>
     {carregando && <p role="status">Consultando aptidão…</p>}
     {erroConsulta && <p role="alert">{erroConsulta}</p>}
+    {r && <div className="grid gap-4 border-y py-4 sm:grid-cols-3" aria-label="Avaliação e disponibilidade">
+      <div><p className="text-sm text-muted-foreground">Aptidão clínica</p><strong>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</strong><p className="text-sm">{r.aptidaoClinica?.data ? `Toque de ${formatBRDateISO(r.aptidaoClinica.data)}` : "Sem toque de aptidão comprovado."}</p></div>
+      <div><p className="text-sm text-muted-foreground">Acompanhamento</p><strong>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Agendamento manual"}</strong>{r.necessidadeAptidao?.politicaVersao && <p className="text-sm">Política de avaliação: versão {r.necessidadeAptidao.politicaVersao}</p>}{r.necessidadeAptidao?.devidaDesde && <p className="text-sm">Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</p>}</div>
+      <div><p className="text-sm text-muted-foreground">PEV original</p><strong>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</strong><p className="text-sm">A avaliação devida não libera protocolo nem IA/TE.</p></div>
+    </div>}
+    {r?.acompanhamentoAptidao?.visitasAbertas.map(v => <p key={v.id}><a className="underline" href={`/pecuaria/visitas/${v.id}`}>{v.nome}</a></p>)}
+    {r?.necessidadeAptidao?.pendencias.map(p => <p key={p}>{descreverMotivo(p)}</p>)}
+    {r?.aptidaoClinica?.retornoEm && <p>Retorno informado: {formatBRDateISO(r.aptidaoClinica.retornoEm)}</p>}
     {r && <div className="repro-aptidao-contexto">
-      <p>Apta desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>
+      <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>
       {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
       {r.alertas.map(m => <p key={m}>Atenção: {descreverMotivo(m)}</p>)}
     </div>}
     <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>
+    {podeLancar && r?.aptidaoClinica?.exameId && <RevisarToqueAptidao key={`${contexto}:${r.aptidaoClinica.exameId}`} exameId={r.aptidaoClinica.exameId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
+    {podeLancar && <ToqueAptidaoFormulario key={contexto} animalId={animalId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
     {podeLancar && <div id={editorId} hidden={!editando} className="repro-aptidao-editor space-y-3">
       <h3>Decisão individual <AjudaCampo rotulo="Ajuda sobre decisão individual" texto="Informe a data do registro. A consulta acima é independente; restrições, papel e situação gestacional continuam sendo considerados."/></h3>
 
@@ -137,7 +155,12 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
       </div>}
       {decisao?.vinculoCicloId && <>
         <label>Decisão<SelectCampo className="h-10 w-full rounded border bg-background px-3" value={tipo} onValueChange={valorSelecionado => setTipo(valorSelecionado as typeof tipo)}><option value="LIBERAR">Liberar desde uma data</option><option value="BLOQUEAR">Bloquear</option><option value="RETOMAR_POLITICA">Retomar regras da política</option></SelectCampo></label>
-        {tipo === "LIBERAR" && <label>Apta desde<Input type="date" min={dataDecisao} value={apta} onChange={e => setApta(e.target.value)}/></label>}
+        {tipo === "LIBERAR" && <div className="space-y-3">
+          {decisao.aptidaoClinica?.estado === "APTA" ? <p>Exame apto vinculado: {decisao.aptidaoClinica.exameId} · {decisao.aptidaoClinica.data && formatBRDateISO(decisao.aptidaoClinica.data)}</p> : <p role="status">É necessário toque de aptidão apto neste ciclo para registrar liberação.</p>}
+          <label>Ação avaliada<SelectCampo value={acaoLiberada} onValueChange={v => setAcaoLiberada(v as typeof acaoLiberada)}><option value="PROTOCOLO">Iniciar protocolo reprodutivo</option><option value="IA">Registrar IA</option><option value="TE">Registrar TE</option></SelectCampo></label>
+          <label>Apta desde<Input type="date" min={dataDecisao} value={apta} onChange={e => { setApta(e.target.value); setAnteciparPev(false); }}/></label>
+          {decisao.pevOriginalAte && apta && apta < decisao.pevOriginalAte && <label className="flex gap-2"><Checkbox checked={anteciparPev} onCheckedChange={v => setAnteciparPev(v === true)}/>Solicitar antecipação do PEV com base neste exame apto. O prazo original permanece preservado.</label>}
+        </div>}
         <label>Motivo<Input minLength={5} maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)}/></label>
         <div className="flex flex-wrap gap-2"><Button disabled={ocupado || motivo.trim().length < 5 || !dataDecisao} onClick={decidir}>Confirmar decisão</Button>
           {decisao.decisaoId && <Button variant="outline" disabled={ocupado || motivo.trim().length < 5} onClick={() => {

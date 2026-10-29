@@ -1,3 +1,4 @@
+import { rotuloLactacao } from "../lib/lactacao";
 import { camposNumericos, camposValores } from "./planner-api";
 /** A folha só interpreta dados preservados na emissão; não consulta contexto atual. */
 export const LEGENDA_FOLHA = "DEL: dias em lactação; D0 é o dia de início da lactação. Partos: fatos realizados, incluindo aborto e natimorto; não é previsão do próximo parto. RP: retenção de placenta do último parto conhecido (Sim / Não / Não informado), independente de acompanhamento sanitário atual. —: informação não preservada ou desconhecida; zero é um valor conhecido. Motivos comuns aparecem uma vez no cabeçalho da atividade; diferenças individuais aparecem na linha do animal.";
@@ -19,11 +20,11 @@ const CAMPOS: Record<string, string> = {
   DIAS_CONFIRMACAO: "Dias desde confirmação", IDADE_GESTACIONAL: "Idade gestacional",
   DIAS_ATE_RETORNO: "Dias até retorno", PARTOS: "Partos realizados", TENTATIVAS_CICLO: "Tentativas no ciclo",
   CATEGORIA: "Categoria", LOTE: "Lote", RP: "RP do último parto", SITUACAO: "Situação reprodutiva",
-  PAPEL_REPRODUTIVO: "Papel reprodutivo", SITUACAO_PRODUTIVA: "Situação produtiva",
+  PAPEL_REPRODUTIVO: "Papel reprodutivo", SITUACAO_PRODUTIVA: "Situação de lactação",
   DESCARTE: "Descarte", RETORNO_INFORMADO: "Retorno informado", BRINCO: "Brinco", NOME: "Nome",
 };
 const SITUACOES: Record<string, string> = { VAZIA: "Vazia", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico" };
-const PRODUTIVAS: Record<string, string> = { LACTANTE: "Lactante", SECA: "Seca", SEM_LACTACAO: "Sem lactação", NAO_INFORMADA: "Não informada" };
+const PRODUTIVAS: Record<string, string> = { LACTANTE: "Lactante", SECA: "Seca", SEM_LACTACAO: rotuloLactacao("SEM_LACTACAO"), NAO_INFORMADA: rotuloLactacao("NAO_INFORMADA") };
 const PAPEIS: Record<string, string> = { NENHUM: "Sem papel reprodutivo", DOADORA: "Doadora", RECEPTORA: "Receptora", MATRIZ: "Matriz" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const VALORES_LEGIVEIS: Record<string, Record<string, string>> = {

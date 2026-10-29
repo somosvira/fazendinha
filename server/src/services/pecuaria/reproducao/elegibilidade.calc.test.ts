@@ -133,3 +133,43 @@ describe("contratos sem defaults clínicos", () => {
     expect(decidirElegibilidadeCicloSchema.safeParse({ ...v, tipo: "BLOQUEAR", aptaDesde: null }).success).toBe(true);
   });
 });
+
+describe("política v2 de avaliação e aptidão explícitas", () => {
+  const grupo = { idadeMinimaMeses: null, percentualPesoAdulto: null, pesoMinimoKg: null, eccMinimo: null, pesoAdultoReferenciaKg: null, validadePesoDias: null, precisaoPesoAceita: ["MEDIDO"] as ("MEDIDO")[], escalaEcc: null, validadeEccDias: null };
+  function v2() {
+    const v = entrada();
+    v.politica!.parametros = parametrosElegibilidadeSchema.parse({ ...parametros(), versao: 2, criteriosAptidao: { vacas: grupo, novilhas: grupo, diasAvaliacaoPosParto: 30 } });
+    return v;
+  }
+  it("critérios e PEV atingidos nunca liberam automaticamente", () => {
+    expect(calcularElegibilidadeNaData(v2())).toMatchObject({ estado: "PENDENTE", elegivel: null, aptidaoClinica: { estado: "NAO_DETERMINADA" }, necessidadeAptidao: { estado: "AVALIACAO_DEVIDA" } });
+  });
+  it("antecipação conserva PEV original e decisão depende do exame preservado", () => {
+    const v = v2(); v.referencia = dia("2026-02-15");
+    const exame = { id: "e", animalId: "animal", propriedadeId: 1, data: dia("2026-02-10"), atualizadoEm: dia("2026-02-10"), status: "VALIDO", finalidadePrincipal: "APTIDAO_REPRODUTIVA", resultadoOpcao: "APTO", retornoEm: null };
+    v.toques = [exame];
+    v.decisoes = [{ ...decisao("LIBERAR", "2026-02-11", "2026-02-11"), exameAptidaoId: "e", exameAptidaoSnapshot: { id: "e", data: "2026-02-10", atualizadoEm: exame.atualizadoEm.toISOString(), resultado: "APTO" } }];
+    expect(calcularElegibilidadeNaData(v)).toMatchObject({ elegivel: true, aptaDesde: "2026-02-11", pevOriginalAte: "2026-03-01", aptidaoClinica: { estado: "APTA" } });
+    v.toques = [{ ...exame, resultadoOpcao: "NAO_APTO", atualizadoEm: dia("2026-02-12") }];
+    expect(calcularElegibilidadeNaData(v)).toMatchObject({ elegivel: false, revisaoDecisaoNecessaria: true, aptaDesde: "2026-03-01", aptidaoClinica: { estado: "NAO_APTA" } });
+    expect(calcularElegibilidadeNaData(v).motivos).toContain("EXAME_ALTERADO_REVISAR_DECISAO");
+  });
+  it("resultado não apto posterior exige revisão da decisão anterior", () => {
+    const v = v2(); const exame = { id: "e", animalId: "animal", propriedadeId: 1, data: dia("2026-02-10"), atualizadoEm: dia("2026-02-10"), status: "VALIDO", finalidadePrincipal: "APTIDAO_REPRODUTIVA", resultadoOpcao: "APTO", retornoEm: null };
+    v.toques = [exame, { ...exame, id: "novo", data: dia("2026-02-20"), resultadoOpcao: "NAO_APTO" }];
+    v.decisoes = [{ ...decisao("LIBERAR", "2026-02-11", "2026-02-11"), exameAptidaoId: "e", exameAptidaoSnapshot: { id: "e", data: "2026-02-10", atualizadoEm: exame.atualizadoEm.toISOString(), resultado: "APTO" } }];
+    expect(calcularElegibilidadeNaData(v)).toMatchObject({ elegivel: null, revisaoDecisaoNecessaria: true });
+  });
+});
+
+it("saldo de partos positivo identifica vaca e não usa critérios de novilha quando falta a data do parto", () => {
+  const dados = conjunto();
+  dados.animais[0] = { ...dados.animais[0], partosAntesDaEntrada: 3, dataNascimento: dia("2020-01-01") };
+  dados.partos = []; dados.gestacoes = [];
+  dados.iniciais = [{ id: "inicial", animalId: "animal", data: dia("2026-01-01"), criadoEm: dia("2026-01-01"), situacao: "VAZIA", status: "VALIDO", aptaDesde: null }];
+  dados.vinculos[0] = { ...dados.vinculos[0], chaveCiclo: "INICIAL", situacaoInicialId: "inicial" };
+  const grupo = { idadeMinimaMeses: null, percentualPesoAdulto: null, pesoMinimoKg: null, eccMinimo: null, pesoAdultoReferenciaKg: null, validadePesoDias: null, precisaoPesoAceita: ["MEDIDO"], escalaEcc: null, validadeEccDias: null };
+  dados.politicas[0].parametros = { ...parametros(), versao: 2, criteriosAptidao: { vacas: grupo, novilhas: { ...grupo, idadeMinimaMeses: 15 }, diasAvaliacaoPosParto: 45 } };
+  expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-03-01")).get("animal")?.necessidadeAptidao)
+    .toMatchObject({ estado: "PENDENCIA_DADOS", pendencias: ["DATA_PARTO_NAO_COMPROVADA"], criteriosNaoAtingidos: [] });
+});

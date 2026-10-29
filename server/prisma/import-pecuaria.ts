@@ -35,7 +35,9 @@
 // IDEAGRI (que não tinha essa regra).
 
 import { readFileSync } from "node:fs";
-import { Prisma, type TipoBaixa, type ClasseMotivoBaixa } from "@prisma/client";
+import { mapBaixaIdeagri, tipoRepetidoPeloNome } from "../src/services/pecuaria/rebanho/classificacao-baixa-origem.js";
+export { mapBaixaIdeagri } from "../src/services/pecuaria/rebanho/classificacao-baixa-origem.js";
+import { Prisma, type ClasseMotivoBaixa } from "@prisma/client";
 import { prisma } from "../src/db.js";
 import { parseGrauSangue, normalizarComposicao, type FracaoRaca } from "../src/services/pecuaria/rebanho/composicao.calc.js";
 import { avaliarCategoria } from "../src/services/pecuaria/rebanho/categoria.calc.js";
@@ -135,34 +137,6 @@ function mapTipoPesagem(tipoIdeagri: string | null): "NASCIMENTO" | "ENTRADA" | 
   return "ROTINA";
 }
 
-const semAcento = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-
-// Nomes de MOTIVOBAIXA que só repetem o tipo da baixa (não informam causa/destino além do óbvio) —
-// não viram MotivoBaixa no catálogo e nunca são linkados a uma baixa (mapBaixaIdeagri já cobre o tipo).
-function tipoRepetidoPeloNome(motivoNome: string | null): TipoBaixa | null {
-  const n = semAcento(motivoNome ?? "");
-  if (n.includes("venda")) return "VENDA";
-  if (n.includes("abate")) return "ABATE";
-  if (n.includes("doacao")) return "DOACAO";
-  if (n.includes("cadastro indevido")) return "CADASTRO_INDEVIDO";
-  return null;
-}
-
-/**
- * Deriva o `TipoBaixa` e se o motivo do catálogo deve ser usado, a partir do nome do motivo
- * (ANIMAL.CDMOTIVOBAIXA → MOTIVOBAIXA.DESCRICAO) e do tipo do IDEAGRI (ANIMAL.CDTIPOBAIXA,
- * independente do motivo). Quando o nome já repete o tipo (venda/abate/doação/cadastro indevido),
- * o motivo não agrega nada — `usarMotivo: false`. Nos demais casos o tipo vem do CDTIPOBAIXA:
- * 3 = morte, 1 ou 2 = descarte (tratado como venda), null = sem informação (catálogo do IDEAGRI
- * é majoritariamente causas de morte) — e o motivo é usado como causa/observação.
- */
-export function mapBaixaIdeagri(motivoNome: string | null, tipoIdeagri: number | null): { tipo: TipoBaixa; usarMotivo: boolean } {
-  const repetido = tipoRepetidoPeloNome(motivoNome);
-  if (repetido) return { tipo: repetido, usarMotivo: false };
-  if (tipoIdeagri === 3) return { tipo: "MORTE", usarMotivo: true };
-  if (tipoIdeagri === 1 || tipoIdeagri === 2) return { tipo: "VENDA", usarMotivo: true };
-  return { tipo: "MORTE", usarMotivo: true };
-}
 
 const d = (s: string): Date => new Date(`${s}T00:00:00Z`);
 

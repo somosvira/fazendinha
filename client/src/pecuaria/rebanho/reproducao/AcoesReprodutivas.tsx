@@ -1,3 +1,7 @@
+import { FormEncerrarLactacao } from "./FormEncerrarLactacao";
+import { FormPesoSecagem } from "./FormPesoSecagem";
+import { PesoSecagemLactacao } from "./PesoSecagemLactacao";
+import { rotuloLactacao } from "../lib/lactacao";
 import { CorrigirFato } from "./CorrigirFato";
 import { FormLactacao } from "./FormLactacao";
 import { useState } from "react";
@@ -14,12 +18,11 @@ import {
   PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
-import { reqV4, type AnimalReprodutivo, type PainelReprodutivo } from "./api";
+import { reqV4, type LactacaoReprodutiva, type AnimalReprodutivo, type PainelReprodutivo } from "./api";
 type Acao = {
   tipo:
     | "perda"
     | "restricao"
-    | "lactacao"
     | "previsao"
     | "vinculo"
     | "identificacao";
@@ -40,6 +43,8 @@ export function AcoesReprodutivas({
   onMudou: () => Promise<void>;
   propriedadeId?: number;
 }) {
+  const [lactacaoEncerrando, setLactacaoEncerrando] = useState<LactacaoReprodutiva | null>(null);
+  const [pesoSecagemMantido, setPesoSecagemMantido] = useState<LactacaoReprodutiva | null>(null);
   const [lactacaoCorrigida, setLactacaoCorrigida] = useState<
     NonNullable<PainelReprodutivo["lactacoes"]>[number] | null
   >(null);
@@ -83,9 +88,8 @@ export function AcoesReprodutivas({
               <h3 className="font-semibold">{a.brinco}</h3>
               <div className="flex flex-wrap items-center gap-3">
                 <span>{a.situacaoProdutiva === "LACTANTE" && a.del != null
-                  ? `Em lactação · DEL ${a.del} (D0)`
-                  : a.situacaoProdutiva === "SECA" ? "Seca"
-                    : "Situação produtiva não informada"}</span>
+                  ? `Lactante · DEL ${a.del} (D0)`
+                  : rotuloLactacao(a.situacaoProdutiva)}</span>
                 {a.diasPosParto != null && <span>{a.diasPosParto} dias após o último parto</span>}
                 {podeLancar && <Button secondary onClick={() => setHistoricoLactacao(a.animalId)}>Informar lactação histórica</Button>}
               </div>
@@ -196,24 +200,18 @@ export function AcoesReprodutivas({
               </span>
               {podeLancar && (
                 <Button secondary onClick={() => setLactacaoCorrigida(l)}>
-                  Corrigir vínculo do parto
+                  Corrigir lactação
                 </Button>
               )}
               {podeLancar && !l.encerradaEm && (
                 <Button
                   secondary
-                  onClick={() =>
-                    abrir({
-                      tipo: "lactacao",
-                      id: l.id,
-                      animalId: l.animalId,
-                      propriedadeId: l.propriedadeId,
-                    })
-                  }
+                  onClick={() => setLactacaoEncerrando(l)}
                 >
                   Encerrar lactação
                 </Button>
               )}
+              <PesoSecagemLactacao lactacao={l} podeLancar={podeLancar} onGerenciar={() => setPesoSecagemMantido(l)} />
             </div>
           ))}
         {painel.partos
@@ -249,6 +247,8 @@ export function AcoesReprodutivas({
               )),
           )}
       </div>
+      {lactacaoEncerrando && <FormEncerrarLactacao key={`${lactacaoEncerrando.id}:${lactacaoEncerrando.propriedadeId ?? propriedadeContexto ?? ""}`} lactacao={lactacaoEncerrando} animalRotulo={nome(lactacaoEncerrando.animalId)} propriedadeId={lactacaoEncerrando.propriedadeId ?? propriedadeContexto} onFechar={() => setLactacaoEncerrando(null)} onSalvo={async () => { await onMudou(); setLactacaoEncerrando(null); }} />}
+      {pesoSecagemMantido && <FormPesoSecagem key={`${pesoSecagemMantido.id}:${pesoSecagemMantido.propriedadeId ?? propriedadeContexto ?? ""}`} lactacao={pesoSecagemMantido} propriedadeId={pesoSecagemMantido.propriedadeId ?? propriedadeContexto} onFechar={() => setPesoSecagemMantido(null)} onSalvo={async () => { await onMudou(); setPesoSecagemMantido(null); }} />}
       {historicoLactacao && <FormLactacao animalId={historicoLactacao} partos={painel.partos} propriedadeId={propriedadeContexto}
         onFechar={() => setHistoricoLactacao(null)}
         onSalvo={() => { setHistoricoLactacao(null); void onMudou(); }} />}
@@ -273,7 +273,6 @@ export function AcoesReprodutivas({
             {
               perda: "Registrar perda gestacional",
               restricao: "Encerrar restrição",
-              lactacao: "Encerrar lactação",
               previsao: "Editar previsão de parto",
               vinculo: "Corrigir vínculo da tentativa",
               identificacao: "Completar identificação da cria",
@@ -355,7 +354,7 @@ export function AcoesReprodutivas({
               Animal {nome(acao.animalId)}. O histórico e os fatos anteriores
               serão preservados.
             </p>
-            {["perda", "restricao", "lactacao"].includes(acao.tipo) && (
+            {["perda", "restricao"].includes(acao.tipo) && (
               <label>
                 Data
                 <input

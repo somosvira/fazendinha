@@ -32,7 +32,7 @@ export const enumerados: Partial<Record<CampoValor, Opcao[]>> = {
   PROTOCOLO_ATIVO: [{id:"QUALQUER",nome:"Qualquer domínio"},{id:"REPRODUTIVO",nome:"Reprodutivo"},{id:"SANITARIO",nome:"Sanitário"},{id:"AMBOS",nome:"Ambos os domínios"},{id:"NENHUM",nome:"Sem protocolo ativo"}],
   SITUACAO: [["VAZIA","Vazia"],["GESTANTE","Gestante"],["APTA","Apta"],["AGUARDANDO_DIAGNOSTICO","Aguardando diagnóstico"],["DESCONHECIDA","Desconhecida"]].map(([id,nome]) => ({id,nome})),
   PAPEL_REPRODUTIVO: [["NENHUM","Nenhum"],["DOADORA","Doadora"],["RECEPTORA","Receptora"],["CONFLITO","Conflito"]].map(([id,nome]) => ({id,nome})),
-  SITUACAO_PRODUTIVA: [["LACTANTE","Lactante"],["SECA","Seca"],["SEM_LACTACAO","Sem lactação"],["NAO_INFORMADA","Não informada"]].map(([id,nome]) => ({id,nome})),
+  SITUACAO_PRODUTIVA: [["LACTANTE","Lactante"],["SECA","Seca"],["SEM_LACTACAO","Não informada (sem lactação registrada)"],["NAO_INFORMADA","Não informada"]].map(([id,nome]) => ({id,nome})),
   RETORNO_INFORMADO: [{id:"SIM",nome:"Sim"},{id:"NAO",nome:"Não"}],
   RP: [{id:"SIM",nome:"Sim"},{id:"NAO",nome:"Não"}], DESCARTE: [{id:"SIM",nome:"Sim"},{id:"NAO",nome:"Não"}],
 };

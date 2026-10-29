@@ -17,6 +17,7 @@ export interface DiaHistoricoProdutivoDTO {
   totais: ResumoProducaoLeite;
 }
 export interface HistoricoProdutivoLeiteDTO {
+  controlesDocumentais?: { id: string; tipo: string; inicio: string; fim: string; total: string | null; unidade: string; referenciaUnidade: string; parcelas: unknown; lactacaoId: string | null; versao: number; contexto: string; semEfeitoEstoqueFinanceiro: true }[];
   controleIndividual?: { quantidade: number; unidade: "DIAS" | "MESES"; ultimaAfericao: string | null; proximaAfericao: string | null };
   propriedadeId: number; animal: { id: string; brinco: string; nome: string | null };
   periodo: { inicio: string; fim: string }; itens: DiaHistoricoProdutivoDTO[];
