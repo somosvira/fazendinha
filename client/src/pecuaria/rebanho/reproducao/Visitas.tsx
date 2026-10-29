@@ -158,7 +158,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visita…</p>}
 
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
-        <label>Nome da visita<input readOnly value={visita.nome}/></label><label>Data da visita<input type="date" readOnly value={visita.data.slice(0,10)}/></label><label>Sítio<input readOnly value={rotuloSitio}/></label><label>Responsável (opcional)<input readOnly value={visita.responsavel??"Não informado"}/></label>
+        <dl><div><dt>Nome da visita</dt><dd>{visita.nome}</dd></div><div><dt>Data da visita</dt><dd>{dataBR(visita.data)}</dd></div><div><dt>Sítio</dt><dd>{rotuloSitio}</dd></div><div><dt>Responsável</dt><dd>{visita.responsavel??"Não informado"}</dd></div></dl>
       </>}/>}
       {mostraPlanner && visita && rota.tipo === "visita" && <PlannerVisita key={`${getUsuario()?.id ?? "sessao"}:${visita.propriedadeId}:${visita.id}:${modo}:${revisaoPreparada ? `preparado:${rota.grupo}` : "rascunho"}`} visita={visita} podeLancar={podeLancar} propriedadeNome={propriedades.find(p=>p.id===visita.propriedadeId)?.nome} modo={modo} etapa={rota.etapa??"planejamento"} grupo={rota.grupo} onEtapa={irEtapa} onMudou={carregar}/>}
       {visita && rota.etapa === "atendimento" && <>

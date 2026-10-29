@@ -2,13 +2,6 @@
 .leite-superficie .fin-tabela-cabecalho{padding:12px 0;min-height:60px;margin:0;gap:12px}
 .leite-superficie .fin-tabela-cabecalho h2{margin:0;line-height:1.4;font-size:16px}
 .leite-superficie .fin-tabela-cabecalho .fin-tabela-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.leite-selecionar-sitio{display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center;padding:36px 20px;min-height:320px}
-.leite-selecionar-sitio h2{font-size:21px;margin:0}.leite-selecionar-sitio p{max-width:520px;line-height:1.6;margin:8px 0 0;color:var(--muted-foreground);font-size:14px}
-.leite-sitio-simbolo{height:52px;width:52px;display:grid;place-items:center;background:var(--muted);color:var(--muted-foreground);border-radius:12px}
-.leite-sitios-escolhas{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:6px;width:100%}
-.leite-sitios-escolhas>button{width:280px;min-height:80px;height:auto;gap:14px;padding:16px;text-align:left;background:var(--card)}
-.leite-sitios-escolhas>button>span{flex:1;min-width:0;white-space:normal}.leite-sitios-escolhas strong{display:block;font-weight:600}.leite-sitios-escolhas small{display:block;font-size:12px;color:var(--muted-foreground);margin-top:5px}
-.leite-selecionar-sitio [role=alert]{display:grid;justify-items:center;gap:14px}
 .leite-page .leite-impedimentos-faixa{display:flex;align-items:center;gap:12px;background:var(--muted);border:1px solid var(--border);border-radius:9px;padding:12px 16px;margin:16px 0}
 .leite-impedimentos-faixa>div{flex:1}.leite-impedimentos-faixa strong{font-size:13px}.leite-impedimentos-faixa span{display:block;font-size:12px;color:var(--muted-foreground);margin-top:5px}.leite-impedimentos-faixa>button{font-size:12px}
 .leite-impedimentos-contexto{display:flex;align-items:center;gap:14px;color:var(--muted-foreground);font-size:12px}
@@ -37,7 +30,7 @@
 .leite-laudo-dialog fieldset.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.leite-laudo-dialog fieldset.grid legend{font-size:16px;margin-bottom:14px}.leite-laudo-dialog fieldset label{font-size:12px;line-height:1.5}.leite-laudo-dialog fieldset>label:has(textarea){margin:16px 0}.leite-laudo-dialog fieldset legend{font-size:16px}
 .leite-laudo-historico>ol{list-style:none;padding:0;margin:18px 0}.leite-laudo-historico>ol>li{border-bottom:1px solid var(--border);padding:16px 0}.leite-laudo-historico>ol>li>div{padding:12px;background:var(--muted);border-radius:8px;margin-top:12px}.leite-laudo-historico h3{font-size:16px;margin:0 0 16px}
 @media(max-width:1050px){.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:1fr 1fr}.leite-resumo-destinos .consumo-retiradas{grid-column:1/-1;padding:18px 0 0;border-left:0;border-top:1px solid var(--border)}.leite-resumo-destinos .consumo-retiradas>div{grid-template-columns:1fr 1fr}.leite-impedimentos-lista>article{flex-wrap:wrap}.leite-impedimentos-lista p{max-width:none;flex:1 1 180px}}
-@media(max-width:700px){.leite-selecionar-sitio{padding:26px 8px}.leite-selecionar-sitio h2{font-size:19px}.leite-impedimentos-faixa{flex-wrap:wrap}.leite-impedimentos-faixa>div{flex-basis:70%}.leite-impedimentos-faixa>button{margin-left:30px}.leite-laudo-dialog>.leite-operacoes{padding:18px 16px}.leite-laudo-dialog>[data-slot=dialog-header]{padding:18px 50px 16px 16px}.leite-laudo-identidade{flex-wrap:wrap}.leite-laudo-metadados{grid-template-columns:1fr 1fr}.leite-laudo-resultados{grid-template-columns:1fr 1fr}.leite-laudo-dialog fieldset.grid{grid-template-columns:1fr}.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:1fr}.leite-resumo-destinos .consumo-descarte{border-left:0;padding:18px 0 0;border-top:1px solid var(--border)}.leite-resumo-destinos .consumo-retiradas{grid-column:auto}.leite-impedimentos-lista>article>div{flex-basis:60%}.leite-impedimentos-lista button{margin-left:auto}}
+@media(max-width:700px){.leite-impedimentos-faixa{flex-wrap:wrap}.leite-impedimentos-faixa>div{flex-basis:70%}.leite-impedimentos-faixa>button{margin-left:30px}.leite-laudo-dialog>.leite-operacoes{padding:18px 16px}.leite-laudo-dialog>[data-slot=dialog-header]{padding:18px 50px 16px 16px}.leite-laudo-identidade{flex-wrap:wrap}.leite-laudo-metadados{grid-template-columns:1fr 1fr}.leite-laudo-resultados{grid-template-columns:1fr 1fr}.leite-laudo-dialog fieldset.grid{grid-template-columns:1fr}.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:1fr}.leite-resumo-destinos .consumo-descarte{border-left:0;padding:18px 0 0;border-top:1px solid var(--border)}.leite-resumo-destinos .consumo-retiradas{grid-column:auto}.leite-impedimentos-lista>article>div{flex-basis:60%}.leite-impedimentos-lista button{margin-left:auto}}
 .leite-laudo-dialog [data-slot=dialog-title]:focus{outline:none}
 .leite-laudo-metadados{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
 .leite-laudo-dialog .abas-navegacao [role=tablist]{display:flex;flex-wrap:nowrap;width:100%;height:auto;overflow-x:auto;justify-content:flex-start;gap:4px;padding:4px}
@@ -45,3 +38,11 @@
 .leite-laudo-resultados>div[data-tipo=TEXTO]{grid-column:1/-1}.leite-laudo-resultados>div[data-tipo=TEXTO] dt{min-height:0}.leite-laudo-resultados>div[data-tipo=TEXTO] dd{font-size:13px;font-weight:400;line-height:1.6}
 .leite-laudo-resultados>div[data-tipo=OPCAO] dd{font-size:15px}.leite-laudo-dialog .leite-campo-rotulo{display:flex;align-items:center;gap:5px;min-height:36px}.leite-laudo-dialog fieldset.grid label[data-tipo=TEXTO]{grid-column:1/-1}
 @media(max-width:700px){.leite-laudo-metadados{grid-template-columns:1fr 1fr}}
+
+.leite-laudo-resultados>div{padding:12px 14px;min-height:0}
+.leite-laudo-resultados dt{min-height:0;margin-bottom:8px}
+.leite-laudo-resultados dd{font-size:20px;margin:0}
+.leite-laudo-resultados>div[data-tipo=OPCAO],.leite-laudo-resultados>div[data-tipo=BOOLEANO]{background:transparent;border:1px solid var(--border)}
+.leite-laudo-resultados>div[data-tipo=OPCAO] dd,.leite-laudo-resultados>div[data-tipo=BOOLEANO] dd{font-size:14px;font-weight:500}
+.leite-resumo-destinos .consumo-distribuicao header>strong{font-size:19px}
+.leite-resumo-destinos .consumo-legenda dd{font-size:17px}

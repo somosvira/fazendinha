@@ -109,8 +109,8 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
           const fila = filaDe(a.animalId);
           return <article className="reproducao-cartao" key={a.animalId}>
             <header><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p>{a.lote?.nome ?? "Lote não informado"}</p></div><Pill tone={fila === "liberadas" ? "green" : "amber"}>{fila === "liberadas" ? "Liberada" : fila === "diagnostico" ? "Aguardando diagnóstico" : "Evidência pendente"}</Pill></header>
-            <dl><div><dt>Fila de manejo</dt><dd>{FILAS.find(f => f.id === fila)?.titulo ?? "Não informada"}</dd></div><div><dt>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
             <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{a.dias ?? "—"} dias {fila === "diagnostico" ? "desde a tentativa" : "sem serviço"}</strong>}</div>
+            <dl><div><dt>Fila de manejo</dt><dd>{FILAS.find(f => f.id === fila)?.titulo ?? "Não informada"}</dd></div><div><dt>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
             <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao></footer>
           </article>;
         })}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[

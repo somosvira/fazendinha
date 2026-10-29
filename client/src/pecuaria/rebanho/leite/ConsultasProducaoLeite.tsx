@@ -1,3 +1,5 @@
+import { Badge } from '@/components/ui/badge';
+import { AjudaCampo } from '@/components/Dica';
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
 import type { GrupoProducaoLeite } from "./resumo-producao";
@@ -47,13 +49,12 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
     <BarraConsulta resumo={`${inicio.split("-").reverse().join("/")} a ${fim.split("-").reverse().join("/")}`} edicaoFiltros={draft} adicionais={<>
       <CampoFiltro rotulo="Consultar produção por"><SelectCampo value={draft.rascunho.visao} onValueChange={v => draft.editar("visao", v)}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Data de produção"><input type="date" value={draft.rascunho.data} onChange={e => { if(e.target.value) { draft.editar("data", e.target.value); const periodo = datasVisao(e.target.value, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
-      <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Descarte</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
+      <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Não comercial</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Classificação"><span className="leite-checkbox"><input type="checkbox" checked={draft.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => draft.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Sem classificação</span></CampoFiltro>
     </>}><PeriodoFinanceiroControl inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando produção…</p> : <>
-      {!dados.coberturaCompleta && <p role="status">Produção parcial: há registros ausentes no período.</p>}
-      {dados.mesEmAndamento && <p className="leite-consulta-nota">Mês em andamento.</p>}
-      <div className="leite-agrupamento-producao"><span>Agrupar volumes por</span><Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}><TabsList variant="default" aria-label="Agrupamento da produção"><TabsTrigger value="dia">Dia</TabsTrigger><TabsTrigger value="mes">Mês</TabsTrigger></TabsList></Tabs></div>
+      <div className="leite-producao-controles"><div className="leite-producao-cobertura">{!dados.coberturaCompleta && <Badge variant="outline" role="status">Produção parcial<AjudaCampo rotulo="Sobre a cobertura da produção" texto="Há registros ausentes no período. Ausência não significa produção zero."/></Badge>}{dados.mesEmAndamento && <Badge variant="outline">Mês em andamento</Badge>}</div>
+      <div className="leite-agrupamento-producao"><span>Agrupar volumes por</span><Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}><TabsList variant="default" aria-label="Agrupamento da produção"><TabsTrigger value="dia">Dia</TabsTrigger><TabsTrigger value="mes">Mês</TabsTrigger></TabsList></Tabs></div></div>
       <GraficoProducaoLeite grupos={grupos} />
       <div className="producao-registro-cabecalho"><h3>Registro da produção</h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da produção" /></div>
       {visualizacao.modo === "visual" ? <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} /> : <>

@@ -19,7 +19,7 @@ vi.mock("./FolhaVisita", () => ({ FolhaVisita: () => null }));
 vi.mock("./FormAtividadeVisita", () => ({ FormAtividade: () => null }));
 const atividades: AtividadeVisita[] = ["a1", "a2"].map(id => ({ id, tipo: "AVALIACAO_REPRODUTIVA", nome: `Grupo ${id}`, extra: false, participantes: [] }));
 const visita: Visita = { id: "visita", nome: "Atendimento do dia", propriedadeId: 1, data: "2026-10-15", status: "ABERTA", atividades, impressoes: [] };
-beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear(); mocks.guarda.mockResolvedValue(true); vi.mocked(obterVisita).mockResolvedValue(visita); window.history.replaceState({}, "", "/pecuaria/visitas/visita?etapa=atendimento&atividade=a1"); });
+beforeEach(() => { vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} }); vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear(); mocks.guarda.mockResolvedValue(true); vi.mocked(obterVisita).mockResolvedValue(visita); window.history.replaceState({}, "", "/pecuaria/visitas/visita?etapa=atendimento&atividade=a1"); });
 afterEach(cleanup);
 function pendente() { let resolver!: (value: boolean) => void; const promessa = new Promise<boolean>(resolve => { resolver = resolve; }); return { promessa, resolver }; }
 describe("páginas de visita e guarda de rascunho", () => {

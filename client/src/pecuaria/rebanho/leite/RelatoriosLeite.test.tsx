@@ -1,3 +1,4 @@
+import {acionarMenuRelatorio} from "../../relatorios/consulta-relatorio.fixture";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -72,13 +73,14 @@ it("abre os números preservados sem chamar produção viva nem emitir novamente
     p.endsWith("/emissao") ? emissao : lista,
   );
   render(<RelatoriosLeite podeExportar={false} podeFinanceiro={false} />);
-  fireEvent.click(screen.getByRole("button", {name:"Emissões anteriores"}));
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(
     await screen.findByRole("button", {
       name: "Abrir relatório de 01/10/2026",
     }),
   );
   await screen.findByText("54 L");
+  expect(screen.getByText(/Fazenda A · 01\/10\/2026 a 01\/10\/2026/).closest(".rel-identificacao-impressao")).toBeTruthy();
   expect(
     screen.getByText(
       "Valores financeiros não incluídos ou ocultos pela permissão atual.",
@@ -160,7 +162,7 @@ it("separa expedição, aceite e faturamento documentado na emissão", async () 
     p.endsWith("/emissao") ? cf : lista,
   );
   render(<RelatoriosLeite podeExportar={false} podeFinanceiro />);
-  fireEvent.click(screen.getByRole("button", {name:"Emissões anteriores"}));
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(
     await screen.findByRole("button", {
       name: "Abrir relatório de 01/10/2026",
@@ -183,7 +185,7 @@ it.each([true, false])("operações integrais e datas de qualidade preservam o r
     valores: autorizado ? { custos: { consolidado: { custoPorLitro: null, custos: { totalConhecido: null } } }, comercial: [], operacoesComerciais: [{ comercialId: "comercial", fechamentoId: "fechamento", precoUnitario: "2.0000", ajuste: "0.00", valorTotal: "20.00" }] } : null } };
   vi.mocked(consultarLeite).mockImplementation(async p => p.endsWith("/emissao") ? cf : lista);
   const { rerender } = render(<RelatoriosLeite podeExportar={false} podeFinanceiro={autorizado} />);
-  fireEvent.click(screen.getByRole("button", {name:"Emissões anteriores"}));
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(await screen.findByRole("button", { name: "Abrir relatório de 01/10/2026" }));
   await screen.findByRole("heading", { name: "Operações comerciais por período integral" });
   expect(screen.getAllByText("Abrange datas fora do filtro").length).toBe(3);

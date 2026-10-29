@@ -23,6 +23,7 @@ it('editar datas mantém a consulta até aplicar e a troca de fonte ignora respo
  await screen.findByText('Nenhum registro neste recorte');
  resolver(resultado);await waitFor(()=>expect(screen.queryByText('Camila')).toBeNull());
  const chamadas=vi.mocked(consultarFonte).mock.calls.length;
+ fireEvent.click(screen.getByRole('button',{name:'Período e filtros'}));
  fireEvent.change(screen.getByLabelText('Início'),{target:{value:'2026-01-01'}});
  expect(consultarFonte).toHaveBeenCalledTimes(chamadas);
  fireEvent.click(screen.getByRole('button',{name:'Consultar período'}));

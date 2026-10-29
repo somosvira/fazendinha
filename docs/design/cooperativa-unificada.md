@@ -10,6 +10,8 @@ Direção visual: [Financeiro](financeiro-cooperativa/design.md) e [Pecuária](p
 
 ## Identidade compartilhada
 
+Descrições auxiliares, instruções de uso e ressalvas complementares ficam em ajuda contextual shadcn (`AjudaCampo`), sem rodapés explicativos ou textos pequenos soltos sob cartões e títulos. Títulos, rótulos de campos, valores, estados, unidades, datas e ações continuam diretamente visíveis; erros e impedimentos necessários para agir também permanecem explícitos. O rodapé de ações é preservado quando faz parte do fluxo.
+
 - Canvas neutro quase branco (#f7f8fa) com gradiente turquesa muito suave concentrado no topo direito, lateral cinza esverdeada (#dce8e5), painéis brancos e ação principal petróleo (#006f68). A página selecionada na lateral usa petróleo (#2f7570) com texto branco. O gradiente estático pertence ao fundo compartilhado da aplicação; tabelas, campos e cards permanecem opacos para leitura consistente. Superfícies secundárias e divisórias são cinzas discretos. Cabeçalhos de diálogos e rodapés de receitas usam branco; cores de estado conservam sua função, com vermelho reservado a erros e ações destrutivas como anulação.
 - Manrope variável nos títulos e na marca textual; DM Sans em textos, tabelas e controles. A fonte Manrope é hospedada na aplicação sob SIL OFL. Títulos de página de 32px (26px no celular), sem ampliar a densidade das tabelas. Petróleo #006f68 nas ações e turquesa #009c91 em detalhes de identidade. Distribuições mantêm cores distintas por categoria; verde de resultado positivo, vermelho de erro e âmbar de atenção conservam seu significado.
 - Sidebar, menus, seletores e portais de modais recebem os mesmos tokens.

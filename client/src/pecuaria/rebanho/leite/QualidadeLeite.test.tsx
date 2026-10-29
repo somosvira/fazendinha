@@ -217,3 +217,9 @@ it("as abas mantêm o rascunho da correção e não executam escrita ao alternar
  fireEvent.click(tela.getByRole("tab",{name:"Arquivos"}));expect(tela.getByRole("region",{name:"Arquivos do laudo"})).toBeTruthy();
  fireEvent.click(tela.getByRole("tab",{name:"Informar ou corrigir"}));expect((tela.getByLabelText("Motivo da atualização") as HTMLTextAreaElement).value).toBe("Conferência ainda em edição");expect(registrarLeite).not.toHaveBeenCalled();
 });
+
+it('não repete a anotação original quando o mesmo conteúdo já está nos resultados',async()=>{
+ const texto='Observação preservada do laboratório';
+ vi.mocked(consultarLeite).mockImplementation(async caminho=>caminho.includes('/formatos')?[formato]:caminho.includes('/historico')?{itens:[],total:0,pagina:1,tamanho:20}:{propriedadeId:2,itens:[{...amostra,anotacaoOriginal:texto,resultados:[...amostra.resultados,{campo:'NOTA',valor:texto}]}],total:1,pagina:1,tamanho:20});
+ render(<QualidadeLeite podeLancar={false}/>);await tela.findByText('Tanque A');fireEvent.click(tela.getByRole('button',{name:/Abrir (amostra|laudo e histórico)/}));const dialog=await screen.findByRole('dialog');expect(within(dialog).getAllByText(texto).filter(el=>!el.closest('[hidden]'))).toHaveLength(1);expect(within(dialog).queryByRole('heading',{name:'Observação'})).toBeNull();
+});

@@ -26,7 +26,7 @@ describe("indicadores preservados — compatibilidade independente V1/V2", () =>
   render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /22\/01\/2026/ }); await waitFor(()=>expect(mocks.consultar).toHaveBeenCalled()); mocks.consultar.mockClear();
   fireEvent.change(screen.getByLabelText("Emissões preservadas"), { target: { value: "v1" } }); await screen.findByText(/Emissão preservada em/);
   expect(mocks.abrir).toHaveBeenCalledWith("v1", 7); expect(mocks.consultar).not.toHaveBeenCalled(); expect(mocks.emitir).not.toHaveBeenCalled();
-  expect(screen.queryByRole("heading", { name: "Espera, perdas e intervalos" })).toBeNull(); fireEvent.click(screen.getByRole("tab",{name:"Critérios de cálculo"})); expect(screen.getAllByText(/METODOLOGIA_PRESERVADA_V1/).length).toBeGreaterThan(0);
+  expect(screen.queryByRole("heading", { name: "Espera, perdas e intervalos" })).toBeNull(); expect(screen.queryByRole("tab",{name:"Critérios de cálculo"})).toBeNull(); expect(exportarIndicadoresCsv((await mocks.abrir.mock.results[0].value).snapshot)).toContain("Metodologia preservada");
  });
  it("emissão V2 mostra bloco preservado e voltar à V1 o remove sem consulta atual", async () => {
   render(<IndicadoresReprodutivos propriedadeId={7} podeLancar/>); await screen.findByRole("option", { name: /23\/01\/2026/ }); await waitFor(()=>expect(mocks.consultar).toHaveBeenCalled()); mocks.consultar.mockClear();

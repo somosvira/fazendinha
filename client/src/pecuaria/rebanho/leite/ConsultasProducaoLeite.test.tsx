@@ -42,7 +42,7 @@ it("separa classificação pendente das três naturezas e envia o contrato legad
   fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
   fireEvent.click(screen.getByRole("combobox", { name: "Natureza" }));
   expect(screen.queryByRole("option", { name: "A classificar" })).toBeNull();
-  fireEvent.click(await screen.findByRole("option", { name: "Descarte" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Não comercial" }));
   expect((screen.getByRole("checkbox", { name: /Classificação/ }) as HTMLInputElement).checked).toBe(false);
 });
 it("pagina os grupos completos sem refazer consulta do servidor", async () => {

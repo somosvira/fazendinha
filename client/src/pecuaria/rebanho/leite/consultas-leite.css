@@ -101,3 +101,18 @@
   justify-content: flex-start;
   line-height: 1.5;
 }
+
+/* Mais registros no primeiro quadro, mantendo a legibilidade dos controles. */
+.leite-superficie .leite-consulta-resumo{padding:14px 18px;margin:12px 0;gap:16px}
+.leite-superficie .leite-consulta-resumo>div{grid-template-rows:auto auto;gap:6px}
+.leite-superficie .leite-consulta-resumo dt{min-height:0}
+.leite-superficie .leite-consulta-resumo dd{margin-top:0;font-size:22px}
+.leite-superficie .leite-lista-opcoes{margin-bottom:10px}
+.leite-superficie .leite-ordenhas-consulta .fin-tabela-cabecalho{min-height:48px;padding:8px 0}
+.leite-producao-cobertura{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.leite-producao-cobertura [data-slot=badge]{gap:6px;font-weight:500}
+.leite-producao-cobertura:empty{display:none}
+.leite-superficie .leite-agrupamento-producao{margin:8px 0}
+.leite-superficie .producao-registro-cabecalho{margin:16px 0 10px}
+.leite-superficie .leite-grafico-area{height:210px;margin-top:10px}
+.leite-superficie .leite-consultas{gap:12px}.leite-producao-controles{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.leite-producao-controles .leite-producao-cobertura,.leite-superficie .leite-producao-controles .leite-agrupamento-producao{margin:0}.leite-superficie .leite-grafico-producao figcaption h2{margin:0}.leite-superficie .leite-producao-cobertura>[data-slot=badge]{border-radius:6px;min-height:28px}.leite-resumo-destinos .consumo-retiradas>div>div>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}

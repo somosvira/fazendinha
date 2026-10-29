@@ -129,10 +129,11 @@ it("consulta sem inventar concepção estimada e mostra pendências em vez de ze
     deslocamentoTeDias: 7,
     iepModo: "VIVOS_NATIMORTOS",
   });
+  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
   expect(screen.getAllByText("Não calculável").length).toBeGreaterThan(1);
-  expect(screen.getByRole("status").textContent).toContain(
-    "concepção estimada",
-  );
+  fireEvent.click(screen.getByRole("button", {name:"Sobre a base parcial"}));
+  expect(screen.getByRole("dialog").textContent).toContain("concepção estimada");
+  fireEvent.keyDown(screen.getByRole("dialog"), {key:"Escape"});
   expect(
     screen.queryByRole("button", { name: "Preservar emissão" }),
   ).toBeNull();
@@ -155,11 +156,11 @@ it("abre a emissão preservada sem reprocessar os fatos atuais e limpa ao trocar
     target: { value: "antiga" },
   });
   await screen.findByText(/Emissão preservada em/);
-  expect(screen.getByLabelText("Início")).toHaveProperty("value", "2026-09-01");
-  expect(screen.getByLabelText("Fim")).toHaveProperty("value", "2026-09-21");
+  expect(screen.getByLabelText("Início")).toHaveProperty("value", "01/09/2026");
+  expect(screen.getByLabelText("Fim")).toHaveProperty("value", "21/09/2026");
   expect(screen.getByLabelText("Corte dos resultados")).toHaveProperty(
     "value",
-    "2026-09-22",
+    "22/09/2026",
   );
   expect(abrirEmissaoIndicadores).toHaveBeenCalledWith("antiga", 1);
   expect(consultarIndicadores).toHaveBeenCalledTimes(1);
@@ -259,7 +260,9 @@ it("separa filtros editados da emissão preservada e mantém seus dados sem nova
   await screen.findByText(/Emissão preservada em/);
   expect(screen.queryByText(/Os filtros editados ainda/)).toBeNull();
   fireEvent.change(screen.getByLabelText("Início"), { target: { value: "2026-08-01" } });
-  expect(screen.getByText(/Há filtros editados ainda não aplicados/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:"Filtros ainda não aplicados"}));
+  expect(screen.getByRole("dialog").textContent).toContain("Há filtros editados ainda não aplicados");
+  fireEvent.keyDown(screen.getByRole("dialog"), {key:"Escape"});
   expect(screen.getAllByText(/01\/09\/2026 a 21\/09\/2026/).length).toBeGreaterThan(0);
   expect(screen.getByText(/Emissão preservada em/)).toBeTruthy();
   expect(screen.getByRole("heading",{name:"Resultado do período consultado"})).toBeTruthy();
@@ -294,4 +297,15 @@ it("ignora histórico atrasado de outro sítio sem perder a lista do sítio atua
   await act(async () => { resolver([e]); });
   await waitFor(() => expect(screen.queryByRole("option", { name: /23\/09\/2026/ })).toBeNull());
   expect(screen.getByRole("option", { name: /24\/09\/2026/ })).toBeTruthy();
+});
+it("mantém o resultado consolidado antes das abas ao consultar bases e acompanhamento", async()=>{
+ render(<IndicadoresReprodutivos propriedadeId={1} podeLancar={false}/>);
+ const resultado=await screen.findByRole('heading',{name:'Resultado do período consultado'});
+ const abas=screen.getByRole('tablist',{name:'Conteúdo do relatório'});
+ expect(resultado.compareDocumentPosition(abas)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+ fireEvent.click(screen.getByRole('tab',{name:'Bases e contagens'}));
+ expect(screen.getAllByRole('heading',{name:'Resultado do período consultado'})).toHaveLength(1);
+ expect(screen.getByRole('button',{name:'Sobre a base parcial'})).toBeTruthy();
+ expect(screen.queryByText(/dias fora das janelas/)).toBeNull();
+ expect(consultarIndicadores).toHaveBeenCalledTimes(1);
 });

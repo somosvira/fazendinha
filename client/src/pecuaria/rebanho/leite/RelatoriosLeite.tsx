@@ -1,3 +1,7 @@
+import {BarraRelatorio,AcoesRelatorio} from "../../relatorios/ConsultaRelatorioUI";
+import {Card} from "@/components/ui/card";
+import {CalendarDays} from "lucide-react";
+import {DatePicker} from "@/components/DatePicker";
 import {Badge} from "@/components/ui/badge";
 import {ResumoRelatorioLeite} from "../../relatorios/ResumoRelatorioLeite";
 import {Dialog,DialogContent,DialogHeader,DialogTitle} from "@/components/ui/dialog";
@@ -310,7 +314,12 @@ export function RelatoriosLeite({
   }
   return (
     <section className="leite-operacoes leite-comercial-consulta rel-leite">
-      <div className="rel-periodo"><div><strong>{dataPt(emissao?.snapshot.filtros.inicio ?? periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim ?? periodoAtual.fim)}</strong><Badge variant="outline">{emissao ? "Emissão preservada" : "Consulta atual"}</Badge></div><div><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button><Button variant="outline" size="sm" onClick={()=>setHistoricoAberto(true)}><History size={15}/>Emissões anteriores</Button></div></div>
+      <BarraRelatorio acoes={<AcoesRelatorio imprimir={emissao?()=>window.print():undefined} impressaoDesabilitada={ocupado} acoes={[
+        ...(podeExportar?[{rotulo:'Exportar esta emissão em CSV',executar:()=>{void baixar()},desabilitado:!emissao||ocupado}]:[]),
+        ...(podeExportar?[{rotulo:'Emitir relatório preservado',executar:()=>setFiltrosAbertos(true),desabilitado:ocupado||!lista}]:[]),
+        {rotulo:'Emissões anteriores',executar:()=>setHistoricoAberto(true),icone:<History size={16}/>},
+        ...(emissao?[{rotulo:'Voltar à consulta atual',executar:()=>setEmissao(null)}]:[]),
+      ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{dataPt(emissao?.snapshot.filtros.inicio??periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim??periodoAtual.fim)}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button></Card>{emissao&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
       {!emissao && sitio!=null && <ResumoRelatorioLeite key={`${sitio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
       <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período e emissão de leite</DialogTitle></DialogHeader><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} />
       <h2 className="leite-titulo-secao">Relatórios preservados de leite <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h2>
@@ -325,24 +334,20 @@ export function RelatoriosLeite({
         >
           <label>
             Início do relatório
-            <Input
-              type="date"
+            <DatePicker
               required
               value={inicio}
               max={fim}
-              onChange={(e) => setInicio(e.target.value)}
-            />
+              onChange={setInicio}/>
           </label>
           <label>
             Fim do relatório
-            <Input
-              type="date"
+            <DatePicker
               required
               value={fim}
               min={inicio}
               max={hojeOperacional()}
-              onChange={(e) => setFim(e.target.value)}
-            />
+              onChange={setFim}/>
           </label>
           {podeFinanceiro && podeExportar && (
             <label className="leite-checkbox">
@@ -422,14 +427,6 @@ export function RelatoriosLeite({
       )}</DialogContent></Dialog>
       {emissao && (
         <>
-          <div className="leite-form-inline">
-            <Button variant="outline" onClick={()=>setEmissao(null)}>Voltar à consulta atual</Button>
-            {podeExportar && (
-              <Button disabled={ocupado} onClick={() => void baixar()}>
-                Exportar esta emissão em CSV
-              </Button>
-            )}
-          </div>
           <ConteudoEmissao key={emissao.id} emissao={emissao} podeFinanceiro={podeFinanceiro} />
         </>
       )}
@@ -445,15 +442,8 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
     [paginaSaida, setPaginaSaida] = useState(1);
   return (
     <article aria-label="Relatório de leite preservado">
-      <h2>
-        {s.propriedade.nome} · {dataPt(s.filtros.inicio)} a{" "}
-        {dataPt(s.filtros.fim)}
-      </h2>
-      <p>
-        Consulta preservada em {new Date(s.corteEm).toLocaleString("pt-BR")} ·
-        metodologia {s.versaoCalculo}.
-      </p>
-      <nav aria-label="Seções da emissão" className="leite-sumario-emissao">{[["producao","Produção"],["estoque","Estoque"],["qualidade","Qualidade"],["destinos","Destinos"],["comercial","Comercial"]].map(([id,nome])=><a key={id} href={`#${ancora(id)}`}>{nome}</a>)}</nav>
+      <div className="hidden print:block rel-identificacao-impressao"><h2>{s.propriedade.nome} · {dataPt(s.filtros.inicio)} a {dataPt(s.filtros.fim)}</h2><p>Consulta preservada em {new Date(s.corteEm).toLocaleString('pt-BR')} · metodologia {s.versaoCalculo}.</p></div>
+      <header className="rel-resultado-topo"><h2>Produção preservada<AjudaCampo rotulo="Sobre esta emissão" texto={`${s.propriedade.nome}. Consulta preservada em ${new Date(s.corteEm).toLocaleString('pt-BR')}. Metodologia ${s.versaoCalculo}.`}/></h2></header>
       <dl id={ancora("producao")} className="leite-indicadores">
         <div>
           <dt>Litros medidos</dt>
@@ -468,6 +458,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
           <dd>{s.cobertura.producao.diasParciais.length}</dd>
         </div>
       </dl>
+      <nav aria-label="Seções da emissão" className="leite-sumario-emissao">{[["producao","Produção"],["estoque","Estoque"],["qualidade","Qualidade"],["destinos","Destinos"],["comercial","Comercial"]].map(([id,nome])=><a key={id} href={`#${ancora(id)}`}>{nome}</a>)}</nav>
       <RitmoLeite dias={s.dados.producao.ritmo} />
       <div className="leite-tabela-scroll">
         <Table semContainer>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { AjudaCampo } from '@/components/Dica';
 import { Milk, Sun, Sunset, Moon, ArrowUpRight, Truck, FlaskConical, Wallet, Check, Clock } from 'lucide-react';
 import { formatarLitros } from './modelo';
+import { valorResultadoQualidade } from './resultado-qualidade';
 import { formatarDataBR } from '../lib/rotulos';
 import type { RegistroOrdenhaConsulta } from './parcelas-types';
 import type { AmostraQualidade } from './qualidade-types';
@@ -51,7 +52,7 @@ export function ColetaVisual({item,acao}:{item:{parceiroNome:string;data?:string
   const data=item.data?.slice(0,10);
   return <Card asChild className="leite-card-visual leite-coleta-visual"><article>
     <time dateTime={data}><strong>{data?.slice(8)||'—'}</strong><span>{data?new Date(`${data}T12:00:00`).toLocaleDateString('pt-BR',{month:'short'}):'Sem data'}</span></time><Truck size={19} aria-hidden/>
-    <div className="leite-coleta-origem"><h3>{item.parceiroNome}</h3><span>{data?formatarDataBR(data):'Data não informada'} · {item.referencia}</span></div>
+    <div className="leite-coleta-origem"><h3>{item.parceiroNome}</h3><span>{data?formatarDataBR(data):'Data não informada'} {item.referencia&&<AjudaCampo rotulo="Referência da coleta" texto={item.referencia}/>}</span></div>
     <strong className="leite-coleta-litros">{formatarLitros(item.quantidadeLitros===undefined?null:Number(item.quantidadeLitros))}</strong><EstadoLeite texto={item.situacao==='PRECO_PENDENTE'?'Preço pendente':'Preço definido'} pendente={item.situacao==='PRECO_PENDENTE'}/>{acao}
   </article></Card>;
 }
@@ -60,7 +61,7 @@ export function CartaoVendaVisual({item:v,acao,podeVerValores}:{item:VendaVisual
   const aberta=v.situacao==='ABERTA',cancelada=v.situacao==='CANCELADA';
   const etapas=v.modalidade==='PERIODO'?['Operação','Coletas','Fechamento']:['Retirada','Venda','Confirmação'];
   return <Card asChild className="leite-card-visual leite-venda-visual"><article><header><span><Wallet size={16} aria-hidden/>{v.modalidade==='PERIODO'?'Por período':'Avulsa'}</span><EstadoLeite texto={({ABERTA:'Aberta',FECHADA:'Fechada',CONFIRMADA:'Confirmada',CANCELADA:'Cancelada'} as Record<string,string>)[v.situacao]??v.situacao} pendente={aberta} anulado={cancelada}/></header>
-    <h3>{v.parceiroNome??'Comprador não informado'}</h3><div className="leite-venda-referencia">{v.referencia}</div><time>{v.modalidade==='AVULSA'?formatarDataBR(v.data):`${formatarDataBR(v.inicio)} – ${formatarDataBR(v.fim)}`}</time>
+    <h3>{v.parceiroNome??'Comprador não informado'}</h3><div className="leite-venda-referencia">{v.referencia&&<AjudaCampo rotulo="Referência da venda" texto={v.referencia}/>}</div><time>{v.modalidade==='AVULSA'?formatarDataBR(v.data):`${formatarDataBR(v.inicio)} – ${formatarDataBR(v.fim)}`}</time>
     <dl><div><dt>{v.modalidade==='AVULSA'?'Volume retirado':aberta?'Retirado até agora':'Volume reconhecido'}<AjudaCampo rotulo="Sobre o volume da venda" texto="Operações abertas e vendas avulsas exibem retirada física; o fechamento exibe o volume reconhecido comercialmente. O período do acordo é integral, sem rateio diário."/></dt><dd>{formatarLitros(Number(v.quantidadeLitros))}</dd></div><div><dt>Total comercial<AjudaCampo rotulo="Sobre o total comercial" texto="Valor da venda; não representa recebimento financeiro. Preço pendente permanece sem valor presumido."/></dt><dd>{!podeVerValores?'Restrito':v.valorTotal===null?'Preço pendente':Number(v.valorTotal).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</dd></div></dl>
     {!cancelada&&<ol className="leite-venda-etapas" aria-label="Andamento comercial">{etapas.map((etapa,i)=><li key={etapa} className={aberta&&i===2?'pendente':''}>{aberta&&i===2?<Clock size={15} aria-hidden/>:<Check size={15} aria-hidden/>}{etapa}</li>)}</ol>}<footer>{acao}</footer>
   </article></Card>;
@@ -69,7 +70,7 @@ export function CartaoAmostraVisual({amostra:a,abrir}:{amostra:AmostraQualidade;
   const pendente=a.realizacao==='COLETA_REGISTRADA',anulada=a.status==='ANULADO';
   return <Card asChild className="leite-card-visual leite-amostra-visual"><article><header><span><FlaskConical size={17} aria-hidden/>{a.sujeito.tipo==='ANIMAL'?'Individual':'Coletiva'}</span><EstadoLeite texto={anulada?'Anulada':pendente?'Aguardando resultado':'Resultado informado'} pendente={pendente} anulado={anulada}/></header>
     <h3>{a.sujeito.tipo==='ANIMAL'?[a.animal?.brinco??'Sem brinco',a.animal?.nome].filter(Boolean).join(' · '):a.sujeito.origem}</h3><span className="leite-amostra-formato">Coleta {formatarDataBR(a.data)} · {a.formatoSnapshot.nome} · v{a.formatoSnapshot.versao??1}</span>
-    {a.resultados.length?<dl className="leite-laudo-valores">{a.resultados.slice(0,4).map(r=>{const campo=a.formatoSnapshot.campos.find(c=>c.codigo===r.campo);return <div key={r.campo}><dt>{campo?.rotulo??r.campo}</dt><dd>{typeof r.valor==='boolean'?r.valor?'Sim':'Não':typeof r.valor==='number'?r.valor.toLocaleString('pt-BR',{maximumFractionDigits:12}):String(r.valor)} {campo?.unidade??''}</dd></div>})}</dl>:<div className="leite-laudo-pendente"><Clock size={17} aria-hidden/>Resultado ainda não informado</div>}
+    {a.resultados.length?<dl className="leite-laudo-valores">{a.resultados.slice(0,4).map(r=>{const campo=a.formatoSnapshot.campos.find(c=>c.codigo===r.campo);return <div key={r.campo}><dt>{campo?.rotulo??r.campo}</dt><dd>{valorResultadoQualidade(r.valor,campo?.tipo)} {campo?.unidade??''}</dd></div>})}</dl>:<div className="leite-laudo-pendente"><Clock size={17} aria-hidden/>Resultado ainda não informado</div>}
     <footer><Button variant="outline" onClick={abrir}>{a.resultados.length?'Abrir laudo e histórico':'Abrir amostra'}<ArrowUpRight size={14}/></Button>{a.resultados.length>4&&<span>+{a.resultados.length-4} resultados no laudo</span>}</footer>
   </article></Card>;
 }

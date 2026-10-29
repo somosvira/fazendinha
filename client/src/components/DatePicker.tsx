@@ -152,7 +152,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
           <CalendarDays size={17} />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(300px,calc(100vw-24px))] bg-background p-4">
+      <PopoverContent align="end" collisionPadding={12} className="max-h-[var(--radix-popover-content-available-height)] w-[min(300px,calc(100vw-24px))] overflow-y-auto bg-background p-4">
         <div className="mb-3 flex items-center gap-1.5">
           <Button type="button" variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarVista(vista.getFullYear(), vista.getMonth() - 1)}><ChevronLeft size={16} /></Button>
           <SelectCampo aria-label="Mês" value={vista.getMonth()} onValueChange={(valorSelecionado) => mudarVista(vista.getFullYear(), Number(valorSelecionado))} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px]">

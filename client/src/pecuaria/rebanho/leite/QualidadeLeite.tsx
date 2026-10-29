@@ -1,3 +1,4 @@
+import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { formatarDataBR } from "../lib/rotulos";
@@ -248,15 +249,7 @@ function Resultados({ amostra }: { amostra: AmostraQualidade }) {
           <div key={r.campo} data-tipo={campo?.tipo}>
             <dt>{campo?.rotulo ?? r.campo}</dt>
             <dd>
-              {typeof r.valor === "boolean"
-                ? r.valor
-                  ? "Sim"
-                  : "Não"
-                : typeof r.valor === "number"
-                  ? r.valor.toLocaleString("pt-BR", {
-                      maximumFractionDigits: 12,
-                    })
-                  : String(r.valor)}{" "}
+              {valorResultadoQualidade(r.valor,campo?.tipo)}{" "}
               {campo?.unidade ?? ""}
             </dd>
           </div>
@@ -700,7 +693,7 @@ function DetalheAmostra({
       <header className="leite-laudo-identidade"><div><h2>{inicial.sujeito.tipo === "COLETIVO" ? inicial.sujeito.origem : [inicial.animal?.brinco,inicial.animal?.nome].filter(Boolean).join(" · ")}</h2><span>{inicial.formatoSnapshot.nome}</span></div><Badge variant="outline">{inicial.status === "ANULADO" ? "Anulada" : inicial.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado"}</Badge></header>
       <dl className="leite-laudo-metadados"><div><dt>Coleta</dt><dd>{formatarDataBR(inicial.data.slice(0,10))}</dd></div><div><dt>Resultado</dt><dd>{inicial.dataResultadoLaboratorial ? formatarDataBR(inicial.dataResultadoLaboratorial) : "Não informado"}</dd></div><div><dt>Recebimento</dt><dd>{inicial.dataRecebimentoLaudo ? formatarDataBR(inicial.dataRecebimentoLaudo) : "Não informado"}</dd></div><div><dt>Formato</dt><dd>Versão {inicial.formatoSnapshot.versao ?? 1}<AjudaCampo rotulo="Sobre o formato preservado" texto="O formato utilizado na coleta permanece preservado; alterações posteriores não reescrevem o laudo."/></dd></div>{inicial.criadoEm&&<div><dt>Cadastro da amostra</dt><dd>{new Date(inicial.criadoEm).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}</dd></div>}</dl>
       <SubTabs variant="financeiro" ariaLabel="Detalhes da amostra" tabs={[{id:"resultado",label:"Resultados"},...(podeLancar&&inicial.status!=="ANULADO"?[{id:"corrigir",label:"Informar ou corrigir"}]:[]),{id:"arquivos",label:"Arquivos"},{id:"historico",label:"Histórico"}]} active={abaDetalhe} onSelect={setAbaDetalhe}/>
-      <div hidden={abaDetalhe!=="resultado"}><Resultados amostra={inicial}/>{inicial.anotacaoOriginal&&<section className="leite-laudo-observacao"><h3>Observação</h3><p>{inicial.anotacaoOriginal}</p></section>}</div>
+      <div hidden={abaDetalhe!=="resultado"}><Resultados amostra={inicial}/>{inicial.anotacaoOriginal&&!inicial.resultados.some(r=>typeof r.valor==='string'&&r.valor.trim()===inicial.anotacaoOriginal?.trim())&&<section className="leite-laudo-observacao"><h3>Observação</h3><p>{inicial.anotacaoOriginal}</p></section>}</div>
       <div hidden={abaDetalhe!=="corrigir"}>
       {podeLancar && inicial.status !== "ANULADO" ? (
         <form

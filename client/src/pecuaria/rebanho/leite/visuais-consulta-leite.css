@@ -12,3 +12,14 @@
 @media(max-width:1000px){.leite-balanco-fluxo{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:650px){.leite-balanco-fechamento{grid-template-columns:1fr}.leite-balanco-fluxo{grid-template-columns:1fr 1fr}}
 .leite-lista-consulta[data-layout=linhas] .leite-linha-consulta{display:grid;grid-template-columns:minmax(150px,1.2fr) minmax(260px,2fr) auto;align-items:center;gap:20px;padding:16px}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>header{margin:0}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta .consulta-entidade-conteudo{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta .consulta-fato{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:0}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta .leite-cartao-volume{padding:0;margin-right:auto}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta .leite-cartao-volume strong{font-size:23px}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>footer{margin:0;gap:8px}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>footer>span{flex:initial}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>footer :is(button,a){width:auto;font-size:12px}
 @media(max-width:1100px){.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta{grid-template-columns:1fr 2fr}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>footer{grid-column:1/-1;justify-content:flex-end}}@media(max-width:650px){.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta{grid-template-columns:1fr;gap:14px}.leite-lista-consulta[data-layout=linhas] .leite-linha-consulta>footer{grid-column:auto}}
+
+.leite-ordenha-visual,.leite-venda-visual,.leite-amostra-visual{min-height:0;gap:10px}
+.leite-card-visual.leite-ordenha-visual,.leite-card-visual.leite-amostra-visual,.leite-card-visual.leite-venda-visual{padding:16px}
+.leite-amostra-visual .leite-laudo-valores{margin:10px 0;gap:10px}
+.leite-amostra-visual .leite-laudo-pendente{padding:16px 0}
+.leite-amostra-visual .leite-laudo-valores dd{font-size:15px}
+.leite-venda-visual>dl{margin:10px 0;gap:10px}
+.leite-venda-visual .leite-venda-etapas{margin-bottom:0}
+.leite-venda-referencia{display:flex;align-items:center;gap:6px;margin:0}
+.leite-coleta-origem>span{display:flex;align-items:center;gap:8px}
+.leite-ordenha-visual .leite-composicao-visual{margin-bottom:0}

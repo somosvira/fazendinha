@@ -13,8 +13,10 @@ it("seleciona sítio no consolidado, mantém seleção global e responde ao hist
   render(<ConsultaPorSitio>{id => <p>Dados {id}</p>}</ConsultaPorSitio>);
   await screen.findByRole("combobox", { name: "Sítio da consulta" });
   await screen.findByText("Escolha um sítio");
-  await alterarControle(screen.getByLabelText("Sítio da consulta"), { target: { value: "7" } });
+  fireEvent.click(await screen.findByRole("button", {name:/Escola/}));
   await screen.findByText("Dados 7");
+  expect(screen.queryByRole("region", {name:"Seleção do sítio"})).toBeNull();
+  expect(listarPropriedades).toHaveBeenCalledTimes(1);
   expect(getPropriedadeAtiva()).toBeNull();
   expect(window.location.search).toBe("?rotina=partos&sitio=7");
   window.history.pushState(null, "", "/pecuaria/reproducao?rotina=partos&sitio=8");

@@ -1,0 +1,30 @@
+import React,{useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {Button} from '../../src/components/ui/button';
+import {Badge} from '../../src/components/ui/badge';
+import {RadioGroup,RadioGroupItem} from '../../src/components/ui/radio-group';
+import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from '../../src/components/ui/dialog';
+import {AjudaCampo} from '../../src/components/Dica';
+import {TerranoSymbol} from '../../src/components/TerranoLogo';
+import {ArrowLeft,ArrowRight,CalendarDays,ClipboardList,SlidersHorizontal,HeartPulse,GitBranch,House,ChevronDown,Search,PanelLeftClose,Milk,Leaf,Box,FileText,Layers,Settings2} from 'lucide-react';
+import '../../src/styles/theme.css';
+import '../../src/styles/cooperativa-theme.css';
+import './mockup.css';
+function App(){
+ const[modo,setModo]=useState(''),[previa,setPrevia]=useState(false),[voltar,setVoltar]=useState(false);
+ const agenda=modo==='agenda';
+ const proximos=agenda?['Escolher grupos da agenda','Revisar animais','Preparar atendimento']:['Filtrar animais','Revisar seleção e atividade','Preparar atendimento'];
+ return <div className="visita-proposta cooperativa-content"><aside className="menu"><div className="marca"><TerranoSymbol tone="light" size={29}/><strong>TERRANO</strong><Search size={17}/><PanelLeftClose size={17}/></div><div className="sitio"><House size={20}/><span><small>Sítio</small><strong>Sítio principal</strong></span><ChevronDown size={16}/></div><nav aria-label="Menu ilustrativo"><span className="admin">Painel administrativo</span><div>Financeiro</div><h2>Pecuária</h2>{[{nome:'Rebanho',Icon:Layers},{nome:'Sanidade',Icon:HeartPulse},{nome:'Nutrição',Icon:Leaf},{nome:'Leite',Icon:Milk},{nome:'Reprodução',Icon:GitBranch},{nome:'Visitas veterinárias',Icon:ClipboardList},{nome:'Relatórios',Icon:FileText}].map(({nome,Icon})=><div key={nome} className={nome==='Visitas veterinárias'?'ativo':'item'} aria-current={nome==='Visitas veterinárias'?'page':undefined}><Icon size={16}/>{nome}</div>)}<div className="externo"><Box size={17}/>Estoque</div><div className="externo"><Settings2 size={17}/>Configurações</div></nav><div className="perfil"><span>F</span><div>Fellipe<small>Proprietário</small></div></div></aside>
+ <main><div className="linha-mockup"><Badge variant="outline">Mockup</Badge><span>Proposta de interface · sem gravação de dados</span></div><header className="topo"><div className="caminho"><ClipboardList size={15}/><span>Visitas veterinárias</span><span>/</span><span>Visita prevista</span></div><h1>Adicionar grupo</h1></header>
+ <section className="contexto" aria-labelledby="contexto-titulo"><div className="contexto-identidade"><span className="contexto-icone"><ClipboardList size={21}/></span><div><h2 id="contexto-titulo">Visita prevista</h2></div></div><dl><div><dt>Data da visita</dt><dd><CalendarDays size={15}/>02/11/2026</dd></div><div><dt>Sítio</dt><dd>Sítio principal</dd></div><div><dt>Responsável</dt><dd>Equipe demonstrativa</dd></div></dl></section>
+ <section className="escolha" aria-labelledby="escolha-titulo"><header><div><h2 id="escolha-titulo">Como você quer escolher os animais?</h2></div><AjudaCampo rotulo="Sobre adicionar grupos" texto="Escolher um caminho não inclui animais nem registra procedimentos. Os grupos já preparados continuam nesta visita. As próximas telas mantêm revisão e preparação explícitas."/></header>
+ <RadioGroup value={modo} onValueChange={setModo} aria-labelledby="escolha-titulo" className="opcoes">
+ <label className={'opcao '+(agenda?'selecionada':'')} htmlFor="opcao-agenda"><div className="opcao-topo"><span className="icone"><CalendarDays size={23}/></span><h3>Agenda do dia</h3><RadioGroupItem id="opcao-agenda" value="agenda"/></div><div className="agenda-visual" aria-label="Grupos de reprodução e sanidade"><div><span className="ponto"><GitBranch size={16}/></span><div><strong>Reprodução</strong></div></div><div><span className="ponto"><HeartPulse size={16}/></span><div><strong>Sanidade</strong></div></div></div></label>
+ <label className={'opcao '+(modo==='livre'?'selecionada':'')} htmlFor="opcao-livre"><div className="opcao-topo"><span className="icone"><SlidersHorizontal size={23}/></span><h3>Seleção livre</h3><RadioGroupItem id="opcao-livre" value="livre"/></div><div className="filtros-visual"><div><SlidersHorizontal size={16}/><strong>Critérios da seleção</strong></div><div className="criterios"><span>Lote</span><span>Categoria</span><span>Situação reprodutiva</span></div></div></label>
+ </RadioGroup>
+ </section>
+ <section className={'continuidade '+(!modo?'neutra':'')} aria-label="Próximos passos"><strong>Depois da escolha</strong><ol>{(modo?proximos:['Escolher grupos ou animais','Revisar seleção','Preparar atendimento']).map((n,i)=><li key={n}><span>{i+1}</span>{n}{i<2&&<ArrowRight size={14}/>}</li>)}</ol></section>
+ <footer className="acoes"><Button variant="ghost" onClick={()=>{setVoltar(true);setPrevia(true)}}><ArrowLeft size={16}/>Voltar ao atendimento</Button><Button disabled={!modo} onClick={()=>{setVoltar(false);setPrevia(true)}}>{modo?(agenda?'Continuar para a agenda':'Continuar para os filtros'):'Selecione um caminho'}<ArrowRight size={16}/></Button></footer>
+ </main><Dialog open={previa} onOpenChange={setPrevia}><DialogContent aria-describedby="previa-descricao"><DialogHeader><DialogTitle>Prévia de navegação</DialogTitle><DialogDescription id="previa-descricao">Este mockup não altera a visita nem seus participantes.</DialogDescription></DialogHeader><p className="previa-texto">{!voltar&&modo?(agenda?'Na implementação, esta ação abre os grupos previstos para a visita de 02/11/2026.':'Na implementação, esta ação abre os filtros para selecionar os animais e depois definir a atividade.'):'Na implementação, esta ação retorna ao atendimento existente.'}</p><DialogFooter><Button variant="outline" onClick={()=>setPrevia(false)}>Voltar à proposta</Button></DialogFooter></DialogContent></Dialog></div>
+}
+createRoot(document.getElementById('root')!).render(<App/>);

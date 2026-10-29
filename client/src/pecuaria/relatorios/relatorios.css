@@ -5,3 +5,40 @@
 .relatorios-pecuaria .rel-tabs [role=tab]{border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;box-shadow:none;height:46px;padding:0 6px}.relatorios-pecuaria .rel-tabs [role=tab][data-state=active]{border-bottom-color:var(--primary);background:transparent;box-shadow:none}.relatorios-pecuaria .rel-leite .leite-titulo-secao{font-size:16px}
 .relatorios-pecuaria .rel-parto-card{display:block;height:auto;min-height:0;white-space:normal;font-weight:400;padding:16px;text-align:left}.relatorios-pecuaria .rel-parto-card header,.relatorios-pecuaria .rel-parto-card dl{width:100%}.relatorios-pecuaria .rel-parto-card>header>svg{flex-shrink:0}
 .relatorios-pecuaria .consulta-por-sitio>div:first-child{margin-bottom:12px}.relatorios-pecuaria .rel-periodo{padding:8px 0;margin-bottom:8px}.relatorios-pecuaria .rel-tabs{height:40px;margin-bottom:12px}.relatorios-pecuaria .rel-tabs [role=tab]{height:40px;font-size:14px}.relatorios-pecuaria .rel-tabs [role=tab]::after{display:none}
+
+/* Contexto da consulta: sítio no cabeçalho; período acima das ações. */
+.rel-cabecalho-acoes{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.rel-sitio-selecao,.rel-sitio-controle{display:flex;align-items:center;gap:8px;min-width:0}
+.rel-sitio-controle{width:210px}.rel-sitio-controle>button{width:100%;background:var(--card)}
+.rel-sitio-estado:empty{display:none}.rel-sitio-estado:not(:empty){margin:16px 0}
+.rel-builder-sitio{display:flex;justify-content:flex-end;margin-bottom:16px}
+.relatorios-pecuaria .rel-periodo{flex-direction:column;align-items:flex-end;justify-content:flex-end;gap:8px;padding:0 0 16px;margin:0}
+.rel-periodo>div:first-child,.rel-consulta-periodo{font-size:14px;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px}
+.rel-periodo>div:first-child>strong,.rel-consulta-periodo>strong{font-weight:600}
+.rel-consulta-periodo>span{font-size:12px;background:var(--muted);border:1px solid var(--border);border-radius:20px;padding:3px 9px}
+.rel-consulta-toolbar{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.rel-consulta-toolbar>.rel-consulta-periodo{flex-basis:100%;margin-bottom:2px}.rel-consulta-toolbar>.rel-controle{margin:0}
+.rel-consulta-toolbar>[role=status],.rel-consulta-toolbar>[role=alert]{flex-basis:100%}
+.rel-calculo-avisos{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:16px 0}
+.rel-calculo-avisos:empty{display:none}.rel-calculo-avisos>span{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--card);border-radius:8px;padding:7px 12px;font-size:14px}
+.rel-criterios-avisos{display:grid;gap:12px;margin:16px 0;padding:16px 16px 16px 32px;list-style:disc;background:var(--muted);border-radius:8px}
+.rel-detalhe-dialog .rel-detalhe-corpo{min-width:0;display:grid;gap:20px}
+.rel-detalhe-dialog [role=tablist]{width:100%;justify-content:flex-start;gap:6px;padding:4px;height:auto;flex-wrap:wrap;background:var(--muted);border-radius:8px}
+.rel-detalhe-dialog [role=tab]{padding:9px 14px;height:auto}.rel-detalhe-dialog [role=tabpanel]{margin-top:18px}
+.rel-detalhe-dialog .rel-detalhes{padding:0;gap:16px;margin:16px 0 24px}.rel-detalhes>div{padding:12px 14px;border:1px solid var(--border);border-radius:8px;min-width:0}.rel-detalhes>div.rel-fato-nota{grid-column:1/-1;background:var(--muted)}
+.rel-detalhe-dialog .rel-eventos{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:12px}.rel-eventos>dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;background:var(--muted)}.rel-eventos>dl dt{color:var(--muted-foreground);font-size:12px;margin-bottom:6px}.rel-eventos>dl dd{font-size:16px;font-weight:600}.rel-eventos>section{grid-column:1/-1}.rel-detalhe-dialog form label{font-size:14px}
+.rel-detalhe-dialog .rel-form{margin-top:4px}.rel-detalhe-dialog .rel-form label>div{min-width:0}
+@media(max-width:700px){.rel-cabecalho-acoes{justify-content:flex-start}.rel-sitio-controle{width:100%}.rel-sitio-selecao{flex:1}.rel-detalhe-dialog .rel-eventos{grid-template-columns:1fr}.relatorios-pecuaria .rel-periodo{align-items:stretch}.rel-periodo>div{justify-content:flex-end}}
+:root .app-main .rel-indicadores [role="tablist"].abas-pasta{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:0;min-width:0}:root .app-main .rel-indicadores [role="tablist"].abas-pasta>[role="tab"][aria-selected]{flex:0 0 auto;min-width:0;font-size:14px;padding:10px 12px}
+.rel-complementar-periodo{justify-content:flex-end}.rel-complementar-periodo .rel-periodo-aplicado{order:-1;flex:1 0 100%;justify-content:flex-end;text-align:right;font-size:14px;font-weight:600}.rel-catalogo-posicao{justify-content:flex-end}
+.rel-parto-detalhe{display:flex;flex-direction:column;padding:0;gap:0;overflow:hidden}.rel-parto-detalhe>[data-slot=dialog-header]{padding:22px 48px 20px 24px;border-bottom:1px solid var(--border);flex-shrink:0}.rel-parto-detalhe>.rel-detalhe-corpo{padding:20px 24px;overflow-y:auto;min-height:0}
+.rel-parto-detalhe .rel-detalhes{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:0}.rel-parto-detalhe .rel-detalhes>div{border:0;background:var(--muted);padding:12px}.rel-parto-detalhe .rel-detalhes>.rel-fato-nota{order:1;line-height:1.6}.rel-parto-detalhe .rel-evento-colostro{padding-top:16px}.rel-parto-detalhe .rel-eventos>section>.rel-detalhes{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:700px){.rel-parto-detalhe .rel-detalhes{grid-template-columns:repeat(2,minmax(0,1fr))}.rel-parto-detalhe>.rel-detalhe-corpo{padding:16px}.rel-parto-detalhe [role=tablist]{flex-wrap:nowrap;overflow:auto}}
+.consulta-por-sitio>.rel-sitio-selecao{margin-bottom:16px}
+.rel-toolbar-contexto{justify-content:flex-end}.rel-toolbar-contexto>.rel-periodo-aplicado{flex:1 0 100%;display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:14px;font-weight:600;margin:0 0 4px;color:var(--foreground)}
+.rel-consulta-toolbar>.rel-consulta-periodo{flex:0 1 auto;margin:0 auto 0 0;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;padding:12px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:none;min-width:0}
+.rel-consulta-periodo>.rel-periodo-dados{display:grid;gap:4px;text-align:left}.rel-periodo-dados>.rel-periodo-rotulo{font-size:12px;color:var(--muted-foreground)}.rel-periodo-dados>strong{font-size:15px;font-weight:650}.rel-periodo-dados>span:last-child{font-size:13px;color:var(--muted-foreground)}
+.rel-calculo-avisos{display:flex;gap:12px;margin:16px 0}.rel-calculo-avisos>.rel-aviso-calculo{display:flex;flex-direction:row;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--border);border-left:3px solid #8b7057;border-radius:8px;box-shadow:none;background:var(--card)}.rel-aviso-calculo>svg{color:#8b7057;flex-shrink:0}.rel-aviso-calculo>div{display:grid;gap:4px}.rel-aviso-calculo strong{font-size:14px;font-weight:600}.rel-aviso-calculo span{font-size:14px;color:var(--muted-foreground)}
+@media(max-width:700px){.rel-consulta-toolbar>.rel-consulta-periodo{flex-basis:100%;margin-right:0}.rel-calculo-avisos>.rel-aviso-calculo{flex:1 1 240px}}
+.rel-consulta-toolbar>.rel-periodo-compacto{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 12px;margin-right:auto;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:none}.rel-periodo-compacto>strong{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}.rel-periodo-compacto>.rel-controle{margin:0}.rel-acoes-icones{display:flex;align-items:center;gap:8px}
+@media(max-width:700px){.rel-consulta-toolbar>.rel-periodo-compacto{flex:1 1 100%}}

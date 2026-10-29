@@ -3,7 +3,7 @@ import {afterEach,expect,it,vi} from 'vitest';
 import {cleanup,render,screen,fireEvent} from '@testing-library/react';
 import {RelatoriosPecuaria} from '../rebanho/reproducao/RelatoriosPecuaria';
 import type {ReactNode} from 'react';
-vi.mock('../rebanho/reproducao/ConsultaPorSitio',()=>({ConsultaPorSitio:({children}:{children:(id:number)=>ReactNode})=>children(2)}));
+vi.mock('../rebanho/reproducao/ConsultaPorSitio',()=>({ConsultaPorSitio:({children,cabecalho}:{children:(id:number)=>ReactNode;cabecalho?:(controle:ReactNode)=>ReactNode})=><>{cabecalho?.(null)}{children(2)}</>}));
 vi.mock('../rebanho/reproducao/RelatorioPartos',()=>({RelatorioPartos:()=> <p>Consulta de partos</p>}));
 vi.mock('../rebanho/reproducao/IndicadoresReprodutivos',()=>({IndicadoresReprodutivos:()=> <p>Consulta de indicadores</p>}));
 vi.mock('../rebanho/leite/RelatoriosLeite',()=>({RelatoriosLeite:()=>null}));
