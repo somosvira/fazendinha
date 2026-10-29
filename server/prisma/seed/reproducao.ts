@@ -122,7 +122,7 @@ export async function reproducao(c: Contexto) {
   await protocolosReprodutivos(c);
 }
 
-async function protocolosReprodutivos(c: Contexto) {
+export async function protocolosReprodutivos(c: Contexto) {
   const uid = c.numero('usuario:dono'), propriedadeId = c.numero('sitio:Principal');
   for (const publicado of [true, false]) {
     const nome = `Protocolo reprodutivo ${publicado ? 'publicado' : 'rascunho'}`;
@@ -133,7 +133,17 @@ async function protocolosReprodutivos(c: Contexto) {
     ] }), uid));
   }
   for (const [nome, numeros, inicio, iniciar] of [['ativo', faixa(9, 14), -5, true], ['programado', [63, 64], 5, false], ['interrompido', [58], -10, false]] as const) {
-    await c.registro(`programacao:${nome}`, id => prisma.programacaoProtocolo.findFirst({ where: id ? { id } : { nome: `Reprodução ${nome}` } }), () => iatf.criarProgramacao(programacaoSchema.parse({ chave: chave(`programacao:${nome}`), propriedadeId, protocoloId: c.id('protocolo:reprodutivo:true'), nome: `Reprodução ${nome}`, inicioPrevisto: c.dias(inicio), animais: numeros.map(n => ({ animalId: c.id(`animal:${n}`) })) }), uid));
+    await c.registro(`programacao:${nome}`, id => prisma.programacaoProtocolo.findFirst({ where: id ? { id } : { nome: `Reprodução ${nome}` } }), async () => {
+      // A novilha não participa do preparo inicial das matrizes. Só uma programação nova prepara estes fatos fictícios.
+      if (nome === 'interrompido') {
+        await c.registro('inicial:58', id => prisma.situacaoInicialReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id('animal:58'), data: dia(c.dias(-100)) } }), () => registros.criarSituacaoInicial({
+          chave: chave('inicial:58'), animalId: c.id('animal:58'), propriedadeId, data: c.dias(-100), situacao: 'VAZIA',
+          observacao: `${AVISO} Origem inicial fictícia documentada antes da programação demonstrativa interrompida.`,
+        }, uid));
+        await acaoPecuaria(c, 'ciclo:58', () => vincularPoliticaCiclo({ chave: chave('ciclo:58'), animalId: c.id('animal:58'), propriedadeId, situacaoInicialId: c.id('inicial:58') }, uid));
+      }
+      return iatf.criarProgramacao(programacaoSchema.parse({ chave: chave(`programacao:${nome}`), propriedadeId, protocoloId: c.id('protocolo:reprodutivo:true'), nome: `Reprodução ${nome}`, inicioPrevisto: c.dias(inicio), animais: numeros.map(n => ({ animalId: c.id(`animal:${n}`) })) }), uid);
+    });
     for (const n of numeros) {
       const p = await c.registro(`participacao:${nome}:${n}`, id => prisma.participacaoProtocolo.findFirst({ where: id ? { id } : { rodadaId: c.id(`programacao:${nome}`), animalId: c.id(`animal:${n}`) } }), async () => { throw new Error('Participação não criada; não recriar.'); });
       if (iniciar) {
