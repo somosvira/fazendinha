@@ -1,3 +1,4 @@
+import { hashDados } from "../reproducao/operacoes.js";
 import { associacaoPesoSecagemHistoricaSchema, prepararAssociacaoPesoSecagemHistoricaTx, registrarAssociacaoPesoSecagemHistoricaTx } from "./peso-secagem.js";
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -120,7 +121,7 @@ export async function prepararFatoHistoricoTx(tx: Prisma.TransactionClient, inpu
                 throw new RebanhoError("CONFLITO", "Sujeito da qualidade diverge da origem");
             const resultados = r.resultados.map(v => ({ campo: v.campo, valor: v.valor, unidade: v.unidade }));
             const esperados = validarObservacoesExame(formato.tipoExame.campos, fato.dados.resultados, fato.dados.resultados.length > 0);
-            if (JSON.stringify(resultados.sort((a, b) => a.campo.localeCompare(b.campo))) !== JSON.stringify(esperados.sort((a, b) => a.campo.localeCompare(b.campo))))
+            if (hashDados(resultados.sort((a, b) => a.campo.localeCompare(b.campo))) !== hashDados(esperados.sort((a, b) => a.campo.localeCompare(b.campo))))
                 throw new RebanhoError("CONFLITO", "Resultados da amostra divergem da fonte");
             existenteId = r.id;
         }
@@ -159,7 +160,7 @@ export async function prepararFatoHistoricoTx(tx: Prisma.TransactionClient, inpu
         const payload = payloadOriginal(existente?.observacao ?? null);
         const achados = payload.achadosPorTeto ?? [];
         const tratamentos = payload.tratamentos ?? [];
-        if (!existente || existente.propriedadeId !== fato.dados.propriedadeId || (existente.fim?.toISOString().slice(0, 10) ?? null) !== (fato.dados.fim ?? null) || (existente.desfecho?.trim() || null) !== (fato.dados.desfecho?.trim() || null) || JSON.stringify(achados) !== JSON.stringify(fato.dados.achadosPorTeto) || JSON.stringify(tratamentos) !== JSON.stringify(fato.dados.tratamentos))
+        if (!existente || existente.propriedadeId !== fato.dados.propriedadeId || (existente.fim?.toISOString().slice(0, 10) ?? null) !== (fato.dados.fim ?? null) || (existente.desfecho?.trim() || null) !== (fato.dados.desfecho?.trim() || null) || hashDados(achados) !== hashDados(fato.dados.achadosPorTeto) || hashDados(tratamentos) !== hashDados(fato.dados.tratamentos))
             throw new RebanhoError("CONFLITO", "Ocorrência diverge do sítio, encerramento, achados ou tratamentos da origem; revise pelo domínio");
     }
     return { entidade: "OcorrenciaSanitaria", existenteId: existente?.id ?? null, candidatosDuplicidade: existente ? [] : candidatos.map(c => c.id), contexto: { doenca, achados: fato.dados.achadosPorTeto, tratamentos: fato.dados.tratamentos } };

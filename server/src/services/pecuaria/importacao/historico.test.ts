@@ -56,3 +56,35 @@ it("o contrato comum aceita associação pendente sem transformar pesagem em enc
  const r=await prepararFatoHistoricoTx(tx,fato,7);
  expect(r).toHaveProperty("pendente");expect(r.existenteId).toBeNull();expect(r.contexto).toHaveProperty("associacaoSecagem.estado","PENDENTE");
 });
+
+it("mastite aceita chaves reordenadas, mas recusa mudança de achado, dose, null ou ordem dos fatos", async () => {
+ const {reordenarChavesJson}=await import("../../../test/jsonb.js");
+ const {tipoExameId,formatoExameHash,...base}=comum;
+ const fato=fatoHistoricoSchema.parse({tipo:"MASTITE",dados:{...base,doencaId:tipoExameId,
+  achadosPorTeto:[{teto:"AD",achado:"Achado original AD"},{teto:"AE",achado:"Achado original AE"}],
+  tratamentos:[{descricao:"Primeiro tratamento documentado",produtoOriginal:"Produto documentado",doseOriginal:null,viaOriginal:null,inicio:"2024-02-10",fim:null},{descricao:"Segundo tratamento documentado",produtoOriginal:null,doseOriginal:"2 mL",viaOriginal:"Original",inicio:null,fim:null}],fim:null,desfecho:null}});
+ if(fato.tipo!=="MASTITE")throw new Error("Fixture inválida");
+ const preparar=async(payload:unknown)=>prepararFatoHistoricoTx({...contextoTx(),doenca:{findUnique:async()=>({id:tipoExameId,ativo:true})},ocorrenciaSanitaria:{findMany:async()=>[{id:"existente",propriedadeId:1,fim:null,desfecho:null,observacao:JSON.stringify({payload:reordenarChavesJson(payload)})}]}} as unknown as Prisma.TransactionClient,fato,7,{operacao:"VINCULAR",destinoId:"existente",motivo:"Origem conferida explicitamente"});
+ await expect(preparar(fato.dados)).resolves.toMatchObject({existenteId:"existente"});
+ const dados=fato.dados;
+ for(const divergente of [
+  {...dados,achadosPorTeto:[{...dados.achadosPorTeto[0],achado:"Outro achado"},dados.achadosPorTeto[1]]},
+  {...dados,achadosPorTeto:[...dados.achadosPorTeto].reverse()},
+  {...dados,tratamentos:[...dados.tratamentos].reverse()},
+  {...dados,tratamentos:[{...dados.tratamentos[0],doseOriginal:"0"},dados.tratamentos[1]]},
+  {...dados,tratamentos:[{descricao:dados.tratamentos[0].descricao,produtoOriginal:"Produto documentado",viaOriginal:null,inicio:"2024-02-10",fim:null},dados.tratamentos[1]]},
+ ]) await expect(preparar(divergente)).rejects.toMatchObject({code:"CONFLITO"});
+});
+
+it("qualidade vincula JSONB reordenado e recusa alteração de resultado, unidade ou null",async()=>{
+ const {reordenarChavesJson}=await import("../../../test/jsonb.js");
+ const {hashFormatoExame}=await import("../exames/formato-snapshot.js");
+ const tipo={id:comum.tipoExameId,ativo:true,tipoResultado:"MULTIPLO",nome:"Qualidade",campos:[{codigo:"CCS",tipo:"NUMERO",unidade:"mil/mL",obrigatorio:true}],versaoFormato:1,unidade:null,opcoes:[]};
+ const {animalId,...base}=comum;
+ const fato=fatoHistoricoSchema.parse({tipo:"QUALIDADE",dados:{...base,formatoExameHash:hashFormatoExame(tipo),sujeito:{tipo:"ANIMAL",animalId},resultados:[{campo:"CCS",valor:240}],referenciaUnidades:"Unidades documentadas no laudo"}});
+ const preparar=async(valor:unknown="240",unidade:string|null="mil/mL")=>prepararFatoHistoricoTx({...contextoTx(),formatoQualidadeLeite:{findUnique:async()=>({tipoExame:reordenarChavesJson(tipo)})},amostraQualidadeLeite:{findMany:async()=>[reordenarChavesJson({id:"existente",origemColetiva:null,exameAnimal:{animalId,resultados:[{campo:"CCS",valor,unidade}]},resultados:[]})]}} as unknown as Prisma.TransactionClient,fato,7,{operacao:"VINCULAR",destinoId:"existente",motivo:"Origem conferida explicitamente"});
+ await expect(preparar()).resolves.toMatchObject({existenteId:"existente"});
+ await expect(preparar("241")).rejects.toMatchObject({code:"CONFLITO"});
+ await expect(preparar("240",null)).rejects.toMatchObject({code:"CONFLITO"});
+ await expect(preparar(null)).rejects.toMatchObject({code:"CONFLITO"});
+});

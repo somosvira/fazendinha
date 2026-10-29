@@ -1,3 +1,4 @@
+import { hashDados } from "../reproducao/operacoes.js";
 import { Prisma } from "@prisma/client";
 import { controleHistoricoLeiteSchema, resumirControleHistorico, type ControleHistoricoLeiteInput } from "./controle-historico.calc.js";
 import { validarContextoHistoricoAnimalTx } from "../importacao/pesagens.js";
@@ -15,7 +16,7 @@ export interface RevisaoControleHistorico {
     duplicidadesRevisadas?: string[];
 }
 const json = (v: unknown) => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue;
-const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const igual = (a: unknown, b: unknown) => hashDados(a) === hashDados(b);
 function dadosPersistidos(d: ControleHistoricoLeiteInput) { return { tipo: d.tipo, inicio: new Date(d.inicio), fim: new Date(d.fim), contextoHistorico: d.contexto, animalId: d.animalId, propriedadeId: d.propriedadeId, lactacaoId: d.lactacaoId ?? null, origemColetiva: d.origemColetiva ?? null, total: d.total === null ? null : new Prisma.Decimal(d.total), unidade: d.unidade, referenciaUnidade: d.referenciaUnidade, parcelas: json(d.parcelas) }; }
 export async function prepararControleHistoricoLeiteTx(tx: Prisma.TransactionClient, input: FonteControleHistorico, usuarioId: number, opcoes: RevisaoControleHistorico = {}) {
     const dados = controleHistoricoLeiteSchema.parse(input.registro);

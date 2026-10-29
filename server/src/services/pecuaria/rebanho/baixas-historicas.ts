@@ -1,3 +1,4 @@
+import { hashDados } from "../reproducao/operacoes.js";
 import { Prisma } from "@prisma/client";
 import { transacaoPecuaria } from "../transacao.js";
 import { registrarBaixaTx, exigirNoEscopo } from "./animais.js";
@@ -15,7 +16,7 @@ type Snapshot = RegularizarBaixaHistoricaInput & {
   revisao?: { dados: RevisarClassificacaoBaixaInput; usuarioId: number; registradaEm: string };
 };
 const json = (valor: unknown) => JSON.parse(JSON.stringify(valor)) as Prisma.InputJsonValue;
-const equivalente = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+const equivalente = (a: unknown, b: unknown) => hashDados(a) === hashDados(b);
 function exigirAutor(usuarioId: number) {
   if (!Number.isSafeInteger(usuarioId) || usuarioId <= 0)
     throw new RebanhoError("VALIDACAO", "Regularização histórica exige usuário real identificado.");

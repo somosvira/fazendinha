@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
+import { reordenarChavesJson } from "../../../test/jsonb.js";
 import { pesagemHistoricaSchema, prepararPesagemHistoricaTx, registrarPesagemHistoricaTx, validarContextoHistoricoAnimalTx } from "./pesagens.js";
 
 const animalId = "3df406be-0a8e-4fa1-957e-03c008887804";
@@ -23,7 +24,7 @@ function banco() {
     localizacaoAnimal: { findMany: async ({ where }: { where: { desde: { lte: Date }; OR: Array<{ id?: string }> } }) => estado.locais.filter(l => l.desde <= where.desde.lte && (l.ate === null || l.ate > where.desde.lte || where.OR.some(o => o.id === l.id))) },
     pesagem: {
       findUnique: async ({ where }: { where: { referenciaHistorica: string } }) => estado.registros.find(p => p.referenciaHistorica === where.referenciaHistorica) ?? null,
-      create: async ({ data }: { data: Record<string, unknown> }) => { chamadas.criar(data); const criada = { id: "pesagem1", ...data }; estado.registros.push(criada); return criada; },
+      create: async ({ data }: { data: Record<string, unknown> }) => { chamadas.criar(data); const criada = { id: "pesagem1", ...data, provenienciaHistoricaSnapshot: reordenarChavesJson(data.provenienciaHistoricaSnapshot) }; estado.registros.push(criada); return criada; },
     },
     auditoriaPecuaria: { create: async ({ data }: { data: Record<string, unknown> }) => { chamadas.auditar(data); estado.auditorias.push(data); return data; } },
   } as unknown as Prisma.TransactionClient;
@@ -96,6 +97,7 @@ describe("pesagem histórica documentada", () => {
     expect(await registrarPesagemHistoricaTx(tx, input, 7)).toMatchObject({ id: primeira.id });
     expect(estado.registros).toHaveLength(1); expect(estado.auditorias).toHaveLength(1);
     await expect(registrarPesagemHistoricaTx(tx, { ...input, pesoKg: 430 }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
+    await expect(registrarPesagemHistoricaTx(tx, { ...input, observacao: "Observação diferente de null" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
     await expect(registrarPesagemHistoricaTx(tx, input, 8)).rejects.toMatchObject({ code: "CONFLITO" });
     await expect(registrarPesagemHistoricaTx(tx, { ...input, animalId: outraAnimalId }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
     expect(estado.registros).toHaveLength(1);

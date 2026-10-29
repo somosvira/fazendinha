@@ -138,7 +138,7 @@ Execute em `server/`, com o `.env` autorizado configurado. Prévia é o padrão 
 pnpm import:pecuaria:stg --arquivo=/caminho/carga.json --relatorio=/caminho/previa-stg.json
 ```
 
-O manifesto SHA256 conserva autor, banco de origem, destino exato sem credenciais, operações, dependências, hashes, candidatos/revisões e o contexto preparado pelos handlers. Revise o relatório completo. Alterar carga, decisão, destino, autoria ou contexto de domínio invalida a confirmação anterior.
+O manifesto SHA256 conserva autor, banco de origem, destino exato sem credenciais, operações, dependências, hashes, candidatos/revisões e o contexto preparado pelos handlers. A comparação dos snapshots históricos usa assinatura canônica: a reordenação de chaves pelo JSONB não invalida um reenvio idêntico; valores, autoria, `null` e a ordem das parcelas, achados e tratamentos continuam relevantes. Revise o relatório completo. Alterar carga, decisão, destino, autoria ou contexto de domínio invalida a confirmação anterior.
 
 A execução local aceita **somente** `fazendinha_seedatev3` em loopback, com confirmação explícita. Não execute contra outro banco nem recrie a base para ensaiar:
 

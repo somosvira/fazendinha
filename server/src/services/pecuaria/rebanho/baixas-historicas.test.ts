@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
+import { reordenarChavesJson } from "../../../test/jsonb.js";
 import { registrarBaixaTx, darBaixa } from "./animais.js";
 import { regularizarBaixaHistoricaTx, revisarClassificacaoBaixaTx } from "./baixas-historicas.js";
 
@@ -25,10 +26,10 @@ function banco() {
       findFirst: async () => estado.baixa,
       findUnique: async () => estado.baixa,
       findUniqueOrThrow: async () => estado.baixa,
-      create: async ({ data }: { data: Record<string, unknown> }) => (estado.baixa = { id: "baixa", ...data, estornadaEm: null }),
+      create: async ({ data }: { data: Record<string, unknown> }) => (estado.baixa = { id: "baixa", ...data, regularizacaoHistoricaSnapshot: reordenarChavesJson(data.regularizacaoHistoricaSnapshot), estornadaEm: null }),
       updateMany: async ({ where, data }: { where: { tipo?: string }; data: Record<string, unknown> }) => {
         if (!estado.baixa || where.tipo && estado.baixa.tipo !== where.tipo) return { count: 0 };
-        estado.baixa = { ...estado.baixa, ...data }; return { count: 1 };
+        estado.baixa = { ...estado.baixa, ...data, regularizacaoHistoricaSnapshot: reordenarChavesJson(data.regularizacaoHistoricaSnapshot) }; return { count: 1 };
       },
     },
     auditoriaPecuaria: { create: async ({ data }: { data: Record<string, unknown> }) => { estado.auditorias.push(data); return data; } },
@@ -92,7 +93,7 @@ describe("regularização histórica", () => {
     await expect(regularizarBaixaHistoricaTx(tx, "animal", origem, 7, 3)).rejects.toMatchObject({ code: "VALIDACAO", campo: "justificativaSanitaria" });
     expect(estado.baixa).toBeNull();
   });
-  it("revisão muda somente a classificação; reenvio conserva a saída e a auditoria", async () => {
+  it("revisão reenvia após JSONB reordenar recursivamente o snapshot, sem duplicar saída ou auditoria", async () => {
     const { tx, estado } = banco();
     await regularizarBaixaHistoricaTx(tx, "animal", origem, 7, 3);
     const antes = { ...estado.baixa };
@@ -102,6 +103,17 @@ describe("regularização histórica", () => {
     expect(estado.auditorias).toHaveLength(2);
     expect(estado.auditorias[1]).toMatchObject({ acao: "RECLASSIFICACAO", antes: expect.objectContaining({ tipo: "NAO_DETERMINADO" }), depois: expect.objectContaining({ tipo: "VENDA" }) });
     await expect(revisarClassificacaoBaixaTx(tx, "animal", "baixa", { ...revisao, chave: "6156f55c-4535-4ea1-bcfa-bfe235b42227", tipo: "MORTE" }, 7, 3)).rejects.toMatchObject({ code: "CONFLITO" });
+  });
+  it.each([
+    ["dados", { ...revisao, evidencia: "Outro documento de venda comprovado" }, 7],
+    ["autoria", revisao, 8],
+    ["null explícito", { ...revisao, justificativaSanitaria: null }, 7],
+  ] as const)("reenvio de revisão recusa %s diferentes após leitura JSONB", async (_caso, input, usuarioId) => {
+    const { tx, estado } = banco();
+    await regularizarBaixaHistoricaTx(tx, "animal", origem, 7, 3);
+    await revisarClassificacaoBaixaTx(tx, "animal", "baixa", revisao, 7, 3);
+    await expect(revisarClassificacaoBaixaTx(tx, "animal", "baixa", input, usuarioId, 3)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(estado.baixa?.tipo).toBe("VENDA"); expect(estado.auditorias).toHaveLength(2);
   });
   it("revisão recusa baixa estornada e motivo de classe incompatível", async () => {
     const { tx, estado } = banco();
