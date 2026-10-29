@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, BookOpen, Loader2, MessageCircle, Send, RotateCcw, ImagePlus, Mic, Square, X, AudioLines, MicOff } from "lucide-react";
+import { ArrowUpRight, BookOpen, Loader2, MessageCircle, Send, RotateCcw, ImagePlus, Mic, Square, X, AudioLines, MicOff, ChevronDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "./ui/sheet";
@@ -41,6 +41,8 @@ export function AssistenteConsulta() {
   const configAnterior = useRef<string | null>(null);
   const printRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+  const [apoioAberto, setApoioAberto] = useState(false);
+  const apoioToggleRef = useRef<HTMLButtonElement>(null);
   const versaoPrint = useRef(0);
   const audio = useAudioAssistente(aberto && !!config?.conversaDisponivel, texto => {
     const pergunta = [input.trim(), texto].filter(Boolean).join("\n");
@@ -81,6 +83,8 @@ export function AssistenteConsulta() {
   async function enviar(entrada: EntradaAssistente, pergunta: string, anexo?: Print) {
     if (trava.current || bloqueado || !config || carregandoConfig) return;
     trava.current = true; setOcupado(true); setInput("");
+    if (apoioAberto) apoioToggleRef.current?.focus();
+    setApoioAberto(false);
     const controller = new AbortController(); emCurso.current = controller;
     if (anexo) setPrint(null);
     setErroMidia(null);
@@ -103,7 +107,7 @@ export function AssistenteConsulta() {
     if (!pergunta || !config?.conversaDisponivel) return;
     void enviar({ pergunta, historico: mensagens.filter(m => m.resposta).map(m => m.pergunta).slice(-6), pagina: window.location.pathname, ...(print ? { imagem: print.dataUrl } : {}) }, pergunta, print ?? undefined);
   }
-  function novaConversa() { voz.encerrar(); setModoVoz(false); setMensagens([]); setInput(""); setPrint(null); setErroMidia(null); audio.cancelar(); versaoPrint.current++; inputRef.current?.focus(); }
+  function novaConversa() { setApoioAberto(false); voz.encerrar(); setModoVoz(false); setMensagens([]); setInput(""); setPrint(null); setErroMidia(null); audio.cancelar(); versaoPrint.current++; inputRef.current?.focus(); }
   function mudarAberto(valor: boolean) {
     if (!valor) { voz.encerrar(); audio.cancelar(); emCurso.current?.abort(); trava.current = false; setOcupado(false); }
     setAberto(valor);
@@ -121,14 +125,14 @@ export function AssistenteConsulta() {
 
   return <Sheet open={aberto} onOpenChange={mudarAberto}>
     <SheetTrigger asChild><Button className="fixed bottom-5 right-3 z-40 size-11 rounded-lg p-0 shadow-lg max-[900px]:bottom-auto max-[900px]:top-3" aria-label="Abrir assistente do Terrano" title="Assistente do Terrano"><MessageCircle size={18} aria-hidden /><span className="sr-only">Assistente</span></Button></SheetTrigger>
-    <SheetContent className="financeiro-colorido assistente-consulta h-[100dvh] w-full gap-0 p-0 sm:max-w-[700px]">
+    <SheetContent className="financeiro-colorido assistente-consulta w-full gap-0 p-0">
       <SheetHeader className="assistente-cabecalho">
         <div className="assistente-titulo"><SheetTitle>Assistente Terrano</SheetTitle><Button type="button" variant="outline" size="sm" disabled={ocupado || preparandoPrint} onClick={novaConversa}><RotateCcw size={14} aria-hidden />Nova conversa</Button></div>
         <SheetDescription className="sr-only">Seu financeiro e ajuda para usar o sistema. Converse por texto ou por voz.</SheetDescription>
         {config && <p className="assistente-contexto">{config.escopo.nome} · Somente consulta</p>}
         <div className="assistente-modos" aria-label="Forma de conversar">
           <Button type="button" variant="ghost" aria-label="Conversa por texto" aria-pressed={!modoVoz} onClick={() => { voz.encerrar(); setModoVoz(false); }}>Conversa</Button>
-          <Button type="button" variant="ghost" aria-pressed={modoVoz} disabled={ocupado || audio.ocupado || preparandoPrint || !config?.conversaDisponivel} onClick={() => { audio.cancelar(); setErroMidia(null); setModoVoz(true); }}><AudioLines size={16} aria-hidden />Conversar por voz</Button>
+          <Button type="button" variant="ghost" aria-pressed={modoVoz} disabled={ocupado || audio.ocupado || preparandoPrint} onClick={() => { audio.cancelar(); setErroMidia(null); setModoVoz(true); }}><AudioLines size={16} aria-hidden />Conversar por voz</Button>
         </div>
       </SheetHeader>
       <div className="assistente-corpo min-h-0 flex-1 overflow-y-auto overscroll-contain">
@@ -137,7 +141,7 @@ export function AssistenteConsulta() {
         {modoVoz && <section className="assistente-voz" aria-label="Conversa por voz">
           <div className="assistente-onda" data-estado={voz.estado} aria-hidden>{[20, 38, 65, 46, 76, 42, 28].map((altura, i) => <span key={i} style={{ height: altura }} />)}</div>
           <h3 role="status">{voz.estado === "conectando" ? "Aguardando microfone…" : voz.estado === "processando" ? "Consultando…" : voz.estado === "falando" ? "Terrano está falando" : voz.ativa ? voz.silenciado ? "Microfone silenciado" : "Pode falar" : "Vamos conversar?"}</h3>
-          <p>Fale sua pergunta e faça uma pausa para ouvir a resposta. Use Interromper para voltar a falar.</p>
+          <p>{carregandoConfig ? "Conferindo a disponibilidade da conversa…" : !config?.conversaDisponivel ? "A conversa por voz ainda não está configurada neste ambiente. Você pode usar as consultas rápidas e os guias na aba Conversa." : "Fale sua pergunta e faça uma pausa para ouvir a resposta. Use Interromper para voltar a falar."}</p>
           <div className="assistente-voz-controles">
             {!voz.ativa ? <Button type="button" disabled={!voz.suportado || !config?.conversaDisponivel || carregandoConfig} onClick={() => { setErroMidia(null); void voz.iniciar(); }}><Mic size={16} aria-hidden />Iniciar conversa</Button> : <>
               <Button type="button" variant="outline" disabled={voz.estado === "conectando"} aria-pressed={voz.silenciado} onClick={voz.alternarMicrofone}>{voz.silenciado ? <MicOff size={16} aria-hidden /> : <Mic size={16} aria-hidden />}{voz.silenciado ? "Ativar microfone" : "Silenciar microfone"}</Button>
@@ -150,16 +154,22 @@ export function AssistenteConsulta() {
           {erroMidia && <p role="alert" className="text-destructive">{erroMidia}</p>}
         </section>}
         {config && !carregandoConfig && !modoVoz && <>
-          {mensagens.length === 0 && <div className="assistente-boas-vindas"><h3>O que você quer consultar?</h3><p>Escreva sua dúvida, envie um print ou converse por voz. Cada resposta mostra a fonte para conferir.</p></div>}
-          {config.consultas.length > 0 && <div className="mb-5"><h3 className="mb-2 text-sm font-medium">Consultas rápidas</h3><p className="mb-2 text-xs text-muted-foreground">No sítio {config.escopo.nome}, somente dados permitidos ao seu perfil.</p><div className="flex flex-wrap gap-2">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" className="h-auto px-3 py-2 text-xs" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div>{config.consultas.length > 2 && <details className="mt-3"><summary className="cursor-pointer text-sm font-medium">Mais consultas financeiras</summary><div className="mt-2 flex flex-wrap gap-2">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(2).map(c => <Button key={c.visao} variant="outline" className="h-auto px-3 py-2 text-xs" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div></details>}</div>}
-          <details className="assistente-guias" open={mensagens.length === 0}><summary className="flex cursor-pointer items-center gap-2 text-sm font-medium"><BookOpen size={16} aria-hidden />Guias de uso</summary><div className="mt-3 grid gap-1">{config.artigos.map(a => <button key={a.id} type="button" disabled={bloqueado} className="rounded-lg px-2 py-2 text-left text-sm transition hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50" onClick={() => { void enviar({ artigoId: a.id }, a.titulo); }}>{a.titulo}</button>)}</div></details>
+          {mensagens.length === 0 && <div className="assistente-boas-vindas"><h3>O que você quer consultar?</h3><p>Escreva sua dúvida, envie um print ou converse por voz. Cada resposta mostra a fonte para conferir.</p>
+            {config.consultas.length > 0 && <div className="assistente-sugestoes">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" size="sm" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div>}
+          </div>}
+          <div className="assistente-apoio"><button ref={apoioToggleRef} type="button" className="assistente-apoio-toggle" aria-expanded={apoioAberto} aria-controls="assistente-catalogo" onClick={() => setApoioAberto(v => !v)}><BookOpen size={16} aria-hidden />Consultas e guias<ChevronDown size={14} aria-hidden /></button>
+            <div id="assistente-catalogo" className="assistente-catalogo" hidden={!apoioAberto}><p>Somente consultas e guias permitidos ao seu perfil, no sítio {config.escopo.nome}.</p>
+              {config.consultas.length > 0 && <section aria-label="Consultas rápidas"><h4>Consultas rápidas</h4><div className="assistente-sugestoes">{CONSULTAS.filter(c => config.consultas.includes(c.visao)).map(c => <Button key={c.visao} variant="outline" size="sm" disabled={bloqueado} onClick={() => { void enviar({ consulta: { visao: c.visao, inicio: null, fim: null } }, c.pergunta); }}>{c.titulo}</Button>)}</div></section>}
+              {config.artigos.length > 0 && <section aria-label="Guias de uso"><h4>Guias de uso</h4><div className="assistente-lista-guias">{config.artigos.map(a => <Button key={a.id} type="button" variant="ghost" disabled={bloqueado} onClick={() => { void enviar({ artigoId: a.id }, a.titulo); }}>{a.titulo}</Button>)}</div></section>}
+            </div>
+          </div>
         </>}
         <div role="log" aria-label="Conversa com o assistente" aria-live="polite" aria-relevant="additions text" className="space-y-5">
           {mensagens.map((m, i) => <div key={i} className="space-y-3">
             <p className="assistente-pergunta">{m.pergunta}</p>
             {m.print && <img src={m.print.dataUrl} alt="Print enviado junto da pergunta" className="ml-auto max-h-40 max-w-[80%] rounded-xl border border-border object-contain" />}
             {m.resposta && <div className="assistente-resposta"><div className="assistente-autor"><MessageCircle size={16} aria-hidden />Terrano</div><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{m.resposta.resposta}</p>
-              {m.resposta.fontes.map(f => <button key={f.url} type="button" className="mt-3 flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2.5 text-left text-xs font-medium transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" onClick={() => { setAberto(false); navegarPara(f.url); }}>{f.titulo}<ArrowUpRight size={15} aria-hidden /></button>)}
+              {m.resposta.fontes.length > 0 && <details className="assistente-fontes"><summary>Conferir fontes</summary><div>{m.resposta.fontes.map(f => <Button key={f.url} type="button" variant="ghost" onClick={() => { mudarAberto(false); navegarPara(f.url); }}>{f.titulo}<ArrowUpRight size={15} aria-hidden /></Button>)}</div></details>}
               <p className="mt-3 text-[11px] text-muted-foreground">{m.resposta.escopo.nome} · {m.resposta.modo === "dados" ? "Consultado" : "Respondido"} às {new Date(m.resposta.consultadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</p>
             </div>}
             {m.erro && <p role="alert" className="rounded-xl border border-destructive/30 p-3 text-sm text-destructive">{m.erro}</p>}
@@ -177,7 +187,7 @@ export function AssistenteConsulta() {
         <div className="assistente-compositor"><Textarea id="pergunta-assistente" ref={inputRef} value={input} maxLength={2000} rows={2} disabled={!config?.conversaDisponivel || bloqueado || carregandoConfig} onChange={e => setInput(e.target.value)} onPaste={e => {
           const arquivo = [...e.clipboardData.items].find(item => item.kind === "file" && item.type.startsWith("image/"))?.getAsFile();
           if (arquivo) { e.preventDefault(); void anexarPrint(arquivo); }
-        }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); enviarPergunta(); } }} placeholder="Pergunte sobre o Terrano…" className="min-h-20 resize-none text-sm" />
+        }} onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); enviarPergunta(); } }} placeholder="Pergunte sobre o Terrano…" className="min-h-16 resize-none text-sm" />
         <input ref={printRef} type="file" accept="image/png,image/jpeg,image/webp" aria-label="Selecionar print" className="hidden" onChange={e => { const arquivo = e.target.files?.[0]; e.target.value = ""; if (arquivo) void anexarPrint(arquivo); }} />
         <input ref={audioRef} type="file" accept="audio/*,.m4a,.webm" aria-label="Selecionar arquivo de áudio" className="hidden" onChange={e => { const arquivo = e.target.files?.[0]; e.target.value = ""; if (arquivo && !bloqueado && config?.conversaDisponivel) { setErroMidia(null); void audio.enviarArquivo(arquivo); } }} />
         <div className="assistente-ferramentas">

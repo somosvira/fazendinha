@@ -16,7 +16,7 @@ Cada resposta tem `modo`, `resposta`, `fontes`, `consultadoEm` e `escopo`. Fonte
 
 ## Acesso e memória
 
-A interface usa painel lateral de até 700px no desktop e largura disponível no celular, preservando a identidade Terrano. Cabeçalho reúne escopo, Nova conversa e modos Conversa/Conversar por voz; corpo apresenta perguntas, respostas e fontes; o compositor mantém texto, anexos e ditado juntos. Largura, composição e estados são decisões locais desta superfície, sem alterar os tokens compartilhados do produto.
+A interface usa uma janela flutuante de até 700px no desktop e ocupa a tela no celular, preservando a identidade Terrano. Cabeçalho reúne escopo, Nova conversa e modos Conversa/Conversar por voz; corpo prioriza perguntas e respostas, com duas sugestões iniciais. Consultas e guias ficam em catálogo recolhido, disponível também sem chave; fontes de cada resposta abrem sob demanda. O compositor mantém texto, anexos e ditado juntos. O modo de voz pode ser aberto sem configuração para explicar sua indisponibilidade, mas iniciar a captura continua condicionado à disponibilidade informada pelo servidor. Largura, composição e estados são decisões locais desta superfície, sem alterar os tokens compartilhados do produto.
 
 O novo canal exige usuário real ativo resolvido pela sessão. O dono sintético de `SHARED_ACCESS_TOKEN`/bootstrap incompleto não acessa o assistente. Sítio vem do resolvedor de leitura; ID explícito inexistente/inativo é rejeitado. A IA não recebe parâmetro para escolher sítio ou usuário.
 
