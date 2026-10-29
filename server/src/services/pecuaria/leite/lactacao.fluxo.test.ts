@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   matriz: vi.fn(),
   tx: { $executeRaw: vi.fn(), lactacaoAnimal: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn() },
+    vinculoPesagemSecagem: { findFirst: vi.fn() },
     $queryRaw: vi.fn(), participanteProducaoLeite: { findMany: vi.fn() }, auditoriaPecuaria: { create: vi.fn() } },
 }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
@@ -14,6 +15,7 @@ beforeEach(() => {
   mocks.matriz.mockResolvedValue({ id: "animal", sexo: "F" });
   mocks.tx.lactacaoAnimal.findFirst.mockResolvedValue({ id: "lactacao", animalId: "animal", propriedadeId: 1, inicio: dia("2026-01-01"), encerradaEm: null, versao: 1 });
   mocks.tx.lactacaoAnimal.findMany.mockResolvedValue([]);
+  mocks.tx.vinculoPesagemSecagem.findFirst.mockResolvedValue(null);
   mocks.tx.$queryRaw.mockResolvedValue([]);
   mocks.tx.participanteProducaoLeite.findMany.mockResolvedValue([{ lactacaoId: "lactacao", dia: { dataOperacional: dia("2026-10-01") } }]);
 });
