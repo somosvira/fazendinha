@@ -21,6 +21,8 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.resetAllMocks(); history.replaceState(null,"","/"); });
 it("reúne períodos abertos, fechados e avulsa cancelada sem consultar dinheiro", async () => {
   render(<VendasLeite podeLancar={false} podeFinanceiro={false} />);
+  await screen.findByRole("list", {name:"Vendas por período e avulsas"});
+  fireEvent.click(screen.getByRole("button", {name:"Tabela"}));
   await screen.findAllByText("Outubro aberto");
   expect(screen.getAllByText("Outubro fechado")[0]).toBeTruthy(); expect(screen.getAllByText("Venda #7")[0]).toBeTruthy(); expect(screen.getAllByText("Cancelada")[0]).toBeTruthy();
   expect(obterConfiguracoesFinanceiras).not.toHaveBeenCalled();
@@ -30,7 +32,9 @@ it("reúne períodos abertos, fechados e avulsa cancelada sem consultar dinheiro
   expect(vi.mocked(consultarLeite).mock.calls.some(([p]) => p.includes("/estoque/vendas"))).toBe(false);
 });
 it("descarta rascunho de filtros ao cancelar e aplica somente ao confirmar", async () => {
-  render(<VendasLeite podeLancar={false} podeFinanceiro={false} />); await screen.findAllByText("Outubro aberto");
+  render(<VendasLeite podeLancar={false} podeFinanceiro={false} />); await screen.findByRole("list", {name:"Vendas por período e avulsas"});
+  fireEvent.click(screen.getByRole("button", {name:"Tabela"}));
+  await screen.findAllByText("Outubro aberto");
   const chamadas = vi.mocked(consultarLeite).mock.calls.length;
   fireEvent.click(screen.getByRole("button",{name:"Filtros"}));
   fireEvent.change(screen.getByLabelText("Desde"),{target:{value:"2026-09-01"}});

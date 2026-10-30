@@ -20,7 +20,8 @@ it("mantém acesso às emissões dos dois tipos e navega pelo histórico da URL"
   fireEvent.mouseDown(screen.getByRole("tab", { name: "Indicadores reprodutivos" }),{button:0,ctrlKey:false});
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/relatorios/emissoes?tipo=INDICADORES&propriedadeId=7", undefined, "GET", 7));
   expect(window.location.search).toBe("?tipo=indicadores");
-  fireEvent.click(screen.getByRole('button',{name:'Emissões e exportação'}));
+  fireEvent.pointerDown(screen.getByRole('button',{name:'Exportar relatório'}), {button:0,ctrlKey:false,pointerType:'mouse'});
+  fireEvent.click(await screen.findByRole('menuitem',{name:'Emissões anteriores'}));
   expect(screen.getByLabelText("Emissões preservadas")).toBeTruthy();
   fireEvent.keyDown(screen.getByRole('dialog'),{key:'Escape'});
   await waitFor(()=>expect(screen.queryByRole('dialog')).toBeNull());

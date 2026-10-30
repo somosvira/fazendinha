@@ -21,11 +21,12 @@ vi.mock("./FormAtividadeVisita", () => ({ FormAtividade: () => <p>Formulário in
 const atividades: AtividadeVisita[] = ["a1", "a2"].map(id => ({ id, tipo: "AVALIACAO_REPRODUTIVA", nome: `Grupo ${id}`, extra: false, participantes: [] }));
 const visita: Visita = { id: "visita", nome: "Atendimento", propriedadeId: 1, data: "2026-10-15", status: "ABERTA", atividades, impressoes: [] };
 beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
   vi.clearAllMocks(); mocks.guarda.mockResolvedValue(true);
   vi.mocked(obterVisita).mockResolvedValue(visita);
   window.history.replaceState({}, "", "/pecuaria/visitas/visita?etapa=atendimento&atividade=a1");
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("intenções concorrentes de navegação da visita", () => {
   it("abre o detalhe a partir do resumo da lista sem exigir atividades no GET inicial", async () => {
