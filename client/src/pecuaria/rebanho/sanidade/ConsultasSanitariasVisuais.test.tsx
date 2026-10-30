@@ -29,3 +29,15 @@ it("distingue carência desconhecida, prazo zero e revisão da aplicabilidade", 
   expect(screen.getByText("Prazo desconhecido")).toBeTruthy(); expect(screen.getByText("Prazo zero confirmado")).toBeTruthy(); expect(screen.getByText("Revisar aplicabilidade")).toBeTruthy();
   expect(screen.queryByText(/animal liberado/i)).toBeNull(); fireEvent.click(screen.getByRole("button", { name: "A" })); expect(abrir).toHaveBeenCalledOnce();
 });
+
+it("resume laudos múltiplos na consulta e abre o resultado completo sem perder a referência", () => {
+  const item = { ...exame, formatoSnapshot: { tipoResultado: "MULTIPLO", campos: [{ codigo: "CCS", rotulo: "Células somáticas", tipo: "NUMERO" as const, unidade: "mil células/mL" }, { codigo: "GORDURA", rotulo: "Gordura", tipo: "NUMERO" as const, unidade: "%" }, { codigo: "INTEGRA", rotulo: "Amostra íntegra", tipo: "BOOLEANO" as const }, { codigo: "OBS", rotulo: "Observação", tipo: "TEXTO" as const }] }, resultados: [{ campo: "CCS", valor: 0 }, { campo: "GORDURA", valor: 3.8 }, { campo: "INTEGRA", valor: true }, { campo: "OBS", valor: "Texto integral preservado no laudo" }], data: "2026-10-10", status: "VALIDO", tipoExame: { nome: "Qualidade" } };
+  const abrir = vi.fn();
+  render(<ConsultaExames nomeAnimal={() => "Aurora"} rotulo="Exames" itens={[item]} chaveDe={e => e.id} colunas={[]} onAbrir={abrir} />);
+  expect(screen.getByText("0 mil células/mL")).toBeTruthy();
+  expect(screen.getByText("3,8 %")).toBeTruthy();
+  expect(screen.getByText("Sim")).toBeTruthy();
+  expect(screen.queryByText("Texto integral preservado no laudo")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Ver resultado completo.*1 informação adicional/ }));
+  expect(abrir).toHaveBeenCalledWith(item);
+});

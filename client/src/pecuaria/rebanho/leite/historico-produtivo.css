@@ -94,3 +94,11 @@
   .historico-produtivo .animal-afericoes { grid-template-columns: 1fr; }
   .historico-produtivo .animal-historico-cabecalho { flex-wrap: wrap; }
 }
+/* Ausência de aferições não reserva uma área vazia de gráfico. */
+.historico-produtivo .animal-curva-rotina{align-items:start}
+.historico-produtivo .animal-curva-rotina[data-sem-evolucao]{grid-template-columns:minmax(0,1fr)}
+.historico-produtivo .animal-curva-rotina[data-sem-evolucao] .producao-ficha-rotina{grid-template-columns:repeat(4,minmax(0,1fr))}
+.historico-produtivo .controles-historicos-leite[data-vazio]{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 16px;margin:0 0 20px}
+.historico-produtivo .controles-historicos-leite[data-vazio] header,.historico-produtivo .controles-historicos-leite[data-vazio] p{margin:0}
+.historico-produtivo .controles-historicos-leite[data-vazio] h3{font-size:14px}
+@container(max-width:650px){.historico-produtivo .animal-curva-rotina[data-sem-evolucao] .producao-ficha-rotina{grid-template-columns:repeat(2,minmax(0,1fr))}}

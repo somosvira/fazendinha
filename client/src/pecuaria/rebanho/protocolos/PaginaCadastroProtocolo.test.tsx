@@ -35,7 +35,9 @@ it("herda o domínio da rota e lista bases em páginas de dez sem rascunho ou á
   vi.mocked(listarCadastrosProtocolos).mockImplementation(async (_tipo, atual) => pagina(Array.from({ length: atual === 1 ? 10 : 1 }, (_, i) => ({ ...meta, id: `p-${atual}-${i}`, nome: `Modelo ${atual}-${i}` })), 11, atual));
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
   await screen.findByText("Modelo 1-0");
-  expect(screen.getAllByRole("button", { name: /^Usar Modelo/ })).toHaveLength(10);
+  const bases = screen.getByRole("region", { name: "Escolha de protocolo-base, com rolagem horizontal" });
+  expect(bases.tabIndex).toBe(0);
+  expect(within(bases).getAllByRole("button", { name: /^Usar Modelo/ })).toHaveLength(10);
   expect(screen.queryByLabelText("Área do protocolo")).toBeNull();
   expect(screen.queryByText("Salvar rascunho")).toBeNull();
   expect(screen.queryByText("Publicar versão")).toBeNull();

@@ -292,3 +292,25 @@
 .receita-composicao-direta .receita-composicao { border-top:0; }
 .receita-identidade-nova h3 { margin-top:0; }
 .nutricao-receita-card .receita-uso-direto { margin-top:0; padding:18px 22px; }
+
+/* A identidade usa a largura do cartão; composição e uso continuam abertos. */
+.receita-identidade-nova { padding:18px; gap:12px; }
+.receita-dados-operacionais { padding:0 18px 12px; }
+.receita-composicao-direta { margin-inline:18px; padding-block:12px; }
+.nutricao-receita-card .receita-uso-direto { padding:12px 18px; }
+.receita-acoes-novas { padding:12px 18px; }
+.receita-composicao-direta .receita-composicao-topo { margin-bottom:12px; }
+@media(max-width:700px) {
+ .receita-identidade-nova { display:grid; grid-template-columns:34px minmax(0,1fr); align-items:start; padding:16px; gap:8px 10px; }
+ .receita-emblema { width:34px; height:36px; }
+ .receita-identidade-nova > :last-child { grid-column:2; justify-self:start; }
+ .receita-dados-operacionais { padding:0 16px 12px; }
+ .receita-composicao-direta { margin-inline:16px; }
+ .receita-composicao-direta .receita-composicao-item { grid-template-columns:minmax(0,1fr); gap:6px; }
+ .receita-composicao-direta .receita-composicao-ms { grid-column:auto; text-align:left; }
+ .receita-composicao-direta .receita-composicao-quantidade { max-width:none; }
+ .nutricao-receita-card .receita-uso-direto { padding:12px 16px; }
+ :root [data-design-operacional] .nutricao-receitas > .consulta-barra { padding-block:10px; }
+ .nutricao-receitas > .consulta-barra .consulta-linha { padding:0 12px; gap:8px; }
+ .nutricao-receitas > .consulta-barra .consulta-acoes { margin-left:0; }
+}

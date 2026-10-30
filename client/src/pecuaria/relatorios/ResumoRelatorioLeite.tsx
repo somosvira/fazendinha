@@ -1,3 +1,5 @@
+import "./relatorios.css";
+import "./consulta-relatorio-ui.css";
 import{useEffect,useState}from'react';
 import{consultarLeite}from'../rebanho/leite/operacoes-api';
 import{RitmoLeite,type DiaRitmoLeite}from'../rebanho/leite/RitmoLeite';

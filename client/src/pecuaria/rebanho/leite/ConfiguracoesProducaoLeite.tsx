@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { CalendarDays, Milk, Plus, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
+import { CabecalhoTabela, PageHeader, TabelaFinanceira } from "@/financeiro/financeiro-ui";
 import { DatePicker } from "@/components/DatePicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -17,7 +17,8 @@ import type { TanqueLeite } from "./tanques-types";
 import { dataValida, hojeOperacional, formatarLitros } from "./modelo";
 import { formatarDataBR } from "../lib/rotulos";
 
-export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean }) {
+export function ConfiguracoesProducaoLeite({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
+  const Cabecalho = tituloPagina ? PageHeader : CabecalhoTabela;
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
   const [dados, setDados] = useState<ContextoParcelas | null>(null);
@@ -42,7 +43,7 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
   if (sitio == null) return <p className="p-5">Selecione um sítio para consultar as configurações.</p>;
   const criterio = dados?.contexto?.criterioColostro ?? dados?.configuracao.criterioColostro;
   return <div className="leite-page leite-configuracoes-consulta">
-    <CabecalhoTabela titulo="Rotina de produção" acao={<DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} />} />
+    <Cabecalho titulo="Rotina de produção" acao={<DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} />} />
     {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="p-5">Carregando configurações…</p> : <>
       <div className="p-5 grid gap-5">
         <div className="leite-configuracao-vigencia"><div><h3>Configuração vigente</h3><span><CalendarDays size={16} aria-hidden />Desde {formatarDataBR(dados.configuracao.vigenteDesde)}</span></div>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}><Settings2 size={17} aria-hidden />Nova configuração</Button>}</div>

@@ -98,3 +98,7 @@ Esta alteração não acrescenta variáveis, fórmulas ou fontes ao builder: com
 A prévia ocupa a área de trabalho; Configurar relatório abre fonte, nome, variáveis e modelos em modal centralizado. Fechar/reabrir o modal conserva os parâmetros em edição. Organização de campos, filtros, escopo e exportação continuam usando as mesmas fontes, adapters e gates; não há ampliação de variáveis por efeito do acabamento visual.
 
 O catálogo apresenta Área e Relatório em seletores superiores, com o resultado em largura integral. A seleção usa os mesmos handlers e parâmetros de URL; esta composição não adiciona fontes, variáveis ou regras ao builder.
+
+### Apresentação compartilhada
+
+Barra, período, resumo do leite e modal de emissão possuem estilos carregados pelos componentes consumidores. A abertura direta em Leite e a entrada pelo hub devem manter a mesma estrutura. O catálogo aproxima escolha, critérios e resultado, preservando campos, filtros e paginação. Estes ajustes de apresentação não acrescentam variáveis, fontes ou adapters ao builder; os catálogos vigentes continuam sendo a fonte de seleção e exportação.

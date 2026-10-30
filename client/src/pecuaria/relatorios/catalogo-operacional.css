@@ -11,3 +11,16 @@
 .rel-catalogo .rel-catalogo-definicao{padding-top:10px;margin-top:12px}
 }
 @media(max-width:650px){.rel-catalogo .rel-resultado-topo{padding:16px}.rel-catalogo-referencia{width:100%;justify-content:space-between}}
+/* Escolha e critérios são contexto compacto, antes do resultado. */
+@media screen{
+ .rel-catalogo nav.rel-catalogo-escolha{padding:16px 20px}
+ .rel-catalogo-seletores{gap:12px 16px}
+ .rel-catalogo .rel-catalogo-definicao{margin-top:12px;padding-top:12px}
+}
+@media(max-width:650px){
+ .rel-catalogo nav.rel-catalogo-escolha{padding:16px}
+ .rel-catalogo-seletores{grid-template-columns:minmax(0,.85fr) minmax(0,1.4fr);gap:12px}
+ .rel-catalogo .rel-catalogo-seletores>.rel-abrir-builder{grid-column:1/-1;min-height:44px;padding:8px 12px}
+ .rel-catalogo .rel-catalogo-definicao{font-size:14px;line-height:1.45}
+ .rel-catalogo .rel-leitura{padding:12px 16px}
+}

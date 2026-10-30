@@ -1,3 +1,4 @@
+import "./programacao-retirada.css";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { AjudaCampo } from "@/components/Dica";
 import { DatePicker } from "@/components/DatePicker";
@@ -39,7 +40,8 @@ const dataPt = (data: string) =>
     month: "2-digit",
     year: "numeric",
   });
-export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
+export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
+  const Titulo = tituloPagina ? "h1" : "h2";
   const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite");
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
@@ -82,8 +84,8 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
     };
   }, [data, sitio, revisao]);
   return (
-    <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></h2>
+    <section className="leite-operacoes leite-programacao-retirada">
+      <Titulo className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></Titulo>
 
       <div className="leite-form-inline">
         <label>

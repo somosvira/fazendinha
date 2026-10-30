@@ -145,7 +145,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const idsAtuais = new Set(animaisAtuais.map(a => a.animalId));
   const animais: { animalId: string; brinco: string; nome: string | null; ausente?: boolean }[] = [...animaisAtuais, ...[...new Set(rascunho.parcelas.flatMap(p => p.animais))].filter(id => !idsAtuais.has(id)).map(id => ({ animalId: id, brinco: id, nome: null, ausente: true }))];
   const soma = rascunho.parcelas.filter(p => p.litros.trim());
-  return <div className="leite-page leite-registro">
+  return <div className="leite-page leite-registro" data-confirmada={confirmada || undefined}>
     <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       <div className="leite-registro-campos">
@@ -166,6 +166,24 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
               const leitura = travado || !!p.entradaId;
               const direta = natureza !== "COMERCIAL" && (p.direta || !possuiContexto(p, contexto, rascunho.posicao));
               const tanques = [...new Map([...contexto.tanques, ...contexto.medicoes.flatMap(m => m.tanque ? [m.tanque] : [])].map(t => [t.id, t])).values()];
+              if (p.entradaId) {
+                const tanque = tanques.find(t => t.id === p.tanqueId);
+                const alertaSanitario = p.animais.some(id => carenciasSessao(contexto, rascunho.posicao).some(a => a.animalId === id && a.estado !== "SEM_RESTRICAO_REGISTRADA"));
+                return <article key={p.chave} className="leite-registro-origem-confirmada" aria-label={`Origem ${indice + 1} confirmada de ${nomesNatureza[natureza]}`}>
+                  <h4>Origem {indice + 1} · Confirmada</h4>
+                  <dl>
+                    <div className="origem-confirmada-volume"><dt>Litros informados manualmente</dt><dd>{formatarLitros(Number(p.litros.replace(",", ".")))}</dd></div>
+                    <div><dt>Régua</dt><dd>{p.regua.trim() ? `${p.regua.replace(".", ",")} mm` : "Não informada"}</dd></div>
+                    <div className="origem-confirmada-fisica"><dt>Tanque ou recipiente</dt><dd>{tanque ? `${tanque.nome} · v${tanque.versao} · ${formatarLitros(tanque.capacidadeLitros)}` : p.tanqueId ? "Tanque registrado não disponível nesta consulta" : p.recipiente || "Não informado"}</dd></div>
+                    <div><dt>Responsável</dt><dd>{p.responsavel || "Não informado"}</dd></div>
+                    {natureza === "COLOSTRO" && p.primeira != null && <div><dt>Primeira ordenha após parto</dt><dd>{p.primeira ? "Declarada" : "Não declarada"}</dd></div>}
+                    {direta && <div className="origem-confirmada-justificativa"><dt>Justificativa do registro direto</dt><dd>{p.justificativa || "Não informada"}</dd></div>}
+                  </dl>
+                  {p.direta && <p className="origem-confirmada-contexto">Registro direto com justificativa</p>}
+                  {alertaSanitario && <p className="origem-confirmada-alerta">Há animais com carência ou contexto sanitário pendente. Consulte os animais de origem.</p>}
+                  <div className="leite-registro-linha"><span>{p.animais.length} animais identificados</span><Button type="button" variant="outline" disabled={ocupado} onClick={() => setOrigens(p.chave)}>Consultar animais</Button></div>
+                </article>;
+              }
               return <fieldset key={p.chave} className="leite-registro-parcela" disabled={ocupado}><legend>Origem {indice + 1}{p.entradaId ? " · Confirmada" : ""}</legend>
                 {p.direta && <p>Registro direto com justificativa</p>}
                 <div className="leite-registro-campos">

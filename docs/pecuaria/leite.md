@@ -271,3 +271,9 @@ A consulta de ordenhas abre no dia operacional atual. O calendário muda o dia; 
 ### Organização da consulta operacional
 
 O cabeçalho identifica a rotina ativa e concentra suas ações principais. Ordenhas reúne data e registro nesse cabeçalho; tamanho e paginação ficam após a lista. Cartões de turno mostram volume por natureza e quantas origens gerais foram confirmadas no estoque, sem interpretar origens como animais ou volumes não informados como zero. A consulta isolada conserva o próprio cabeçalho. O formulário destaca o volume manual, mantém identificação do recipiente, responsável, régua opcional e conferência de origem, preservando a separação entre salvar aferição e confirmar estoque. Produção distingue o bloco de evolução da consulta do registro, mantendo custos e evidências acessíveis no mesmo recorte.
+
+### Apresentação das consultas e relatórios
+
+Os componentes de resumo, barra de consulta e programação de coleta carregam seus estilos diretamente, inclusive nas entradas próprias de Leite e Configurações. O modal de período distingue a exportação da consulta de produção da consulta/emissão de relatório: os dois intervalos permanecem independentes. A ficha produtiva não reserva um gráfico sem aferições; mantém separados controles documentais, rotina individual e carência. Cartões de produção, consumo e vendas conservam todos os fatos e a altura do próprio conteúdo. A apresentação não altera cálculo, período, permissões ou significado de ausência e zero.
+
+Na consulta de ordenha, origens já confirmadas no estoque são apresentadas como fatos com volume, tanque/recipiente, régua, responsável e justificativas conhecidas, mantendo acesso aos animais e aos sinais de carência. Origens ainda não confirmadas conservam o formulário. Incluir outra origem continua disponível conforme os gates existentes; salvar não regrava as parcelas anteriormente confirmadas.

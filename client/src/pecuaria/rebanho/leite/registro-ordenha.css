@@ -34,3 +34,17 @@
 .leite-registro-conferencia dd { margin: 0; font-weight: 600; text-align: right; }
 .leite-registro-conferencia p { font-size:14px; line-height: 1.65; color: var(--muted-foreground); margin: 18px 0 0; }
 @media(max-width: 1100px) { .leite-registro-layout { grid-template-columns: minmax(0,1fr); gap: 20px; } .leite-registro-conferencia { border-left: 0; border-top: 1px solid var(--border); padding: 20px 0 0; } }
+
+/* Parcela confirmada é uma consulta; novas origens conservam o formulário. */
+.leite-registro-origem-confirmada { display: grid; gap: 12px; border-top: 1px solid var(--border); padding-top: 14px; min-width: 0; }
+.leite-registro-origem-confirmada h4 { margin: 0; font-size: 15px; font-weight: 650; }
+.leite-registro-origem-confirmada dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin: 0; }
+.leite-registro-origem-confirmada dt { font-size: 14px; color: var(--muted-foreground); }
+.leite-registro-origem-confirmada dd { margin: 4px 0 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+.leite-registro-origem-confirmada .origem-confirmada-volume dd { font-size: 24px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.leite-registro-origem-confirmada :is(.origem-confirmada-fisica, .origem-confirmada-justificativa) { grid-column: 1 / -1; }
+.leite-registro-origem-confirmada .leite-registro-linha { justify-content: space-between; font-size: 14px; }
+.origem-confirmada-contexto { margin: 0; font-size: 14px; color: var(--muted-foreground); }
+.origem-confirmada-alerta { margin: 0; padding: 10px 12px; font-size: 14px; color: var(--warn); background: var(--fin-warning-bg); border-radius: 8px; }
+
+@media(max-width:1100px){.leite-registro[data-confirmada] .leite-registro-conferencia{grid-row:1}}

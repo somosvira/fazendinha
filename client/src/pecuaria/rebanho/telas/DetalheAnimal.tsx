@@ -1,4 +1,5 @@
 import "./rotinas-aprovadas.css";
+import { useAbaAtivaVisivel } from "@/lib/useAbaAtivaVisivel";
 import { HistoricoAnimalVisual } from "./HistoricoAnimalVisual";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
@@ -115,6 +116,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   }, [acoesAbertas]);
 
   const [animal, setAnimal] = useState<AnimalFicha | null>(null);
+  const abasRef = useAbaAtivaVisivel<HTMLElement>(`${animal?.id ?? "carregando"}:${secaoAtiva}`);
   useEffect(() => {
     if (animal?.id !== id) return;
     setSecaoAtiva(secaoDaUrl());
@@ -242,23 +244,12 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   const composicaoOrdenada = [...animal.composicao].sort((a, b) => b.fracao64 - a.fracao64);
   const somaComposicao = animal.composicao.reduce((total, item) => total + item.fracao64, 0);
 
-  return <PaginaFinanceira>
-    <nav aria-label="Navegação" className="pec-breadcrumb">{rotuloVoltar !== "Rebanho" && <><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span></>}<button type="button" onClick={onVoltar}>{rotuloVoltar}</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span>{new URLSearchParams(window.location.search).has("participacaoId") && new URLSearchParams(window.location.search).get("retorno")?.startsWith("/pecuaria/") && <a className="underline" href={new URLSearchParams(window.location.search).get("retorno")!} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(new URLSearchParams(window.location.search).get("retorno")!); } }}>Voltar ao protocolo</a>}</nav>
-    {erro && <div className="mt-3"><ErrorBox erro={erro} /></div>}
-    <article className="pec-ficha ficha-v4">
-    <div className="ficha-animal-cabecalho">
-      <img className="ficha-animal-ilustracao" src="/images/pecuaria/vaca.png" width={110} height={110} alt="Ilustração genérica de bovino" />
-      <div className="ficha-animal-identidade">
-      <PageHeader integrado
-        titulo={<>{animal.nome ?? animal.brinco}{animal.nome && <span className="ficha-brinco">#{animal.brinco}</span>}</>}
-        descricao={`${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
-
-        acao={podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
+  const acoesCabecalho = podeLancar && <div className="flex max-w-full flex-wrap gap-2 lg:max-w-[560px] lg:justify-end">
           {ativo ? <>
             {animal.identificacaoProvisoria && <Button secondary onClick={()=>setIdentificandoCria(true)}>Completar identificação</Button>}
             {secaoAtiva === "resumo" && <Button onClick={() => setPesagemForm({ modo: "novo" })}><Plus size={17} aria-hidden="true"/>Registrar pesagem</Button>}
             {secaoAtiva === "cadastro" && <Button onClick={() => setEditandoDados(true)}>Editar dados</Button>}
-            <div className="relative">
+            <div className="relative ficha-animal-menu">
               <button type="button" aria-expanded={acoesAbertas} id="acoes-animal-trigger" aria-controls={acoesAbertas ? "acoes-secundarias-animal" : undefined} onClick={() => setAcoesAbertas((abertas) => !abertas)} className="min-h-10 rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-surface-2">Mais ações</button>
               {acoesAbertas && <div id="acoes-secundarias-animal" className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-2 rounded-lg border border-border bg-card p-3 shadow-lg">
                 <Button secondary onClick={() => { setAcoesAbertas(false); setMovimentando(true); }}>Movimentar</Button>
@@ -275,9 +266,21 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
               </div>}
             </div>
           </> : <Button onClick={() => { setErroAcao(null); setEstornandoBaixa(true); }}>Estornar baixa</Button>}
-        </div>}
+        </div>;
+  return <PaginaFinanceira>
+    <nav aria-label="Navegação" className="pec-breadcrumb">{rotuloVoltar !== "Rebanho" && <><button type="button" onClick={() => navegarPara("/pecuaria/rebanho")}>Rebanho</button><span aria-hidden="true">/</span></>}<button type="button" onClick={onVoltar}>{rotuloVoltar}</button><span aria-hidden="true">/</span><span aria-current="page">{animal.brinco}</span>{new URLSearchParams(window.location.search).has("participacaoId") && new URLSearchParams(window.location.search).get("retorno")?.startsWith("/pecuaria/") && <a className="underline" href={new URLSearchParams(window.location.search).get("retorno")!} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(new URLSearchParams(window.location.search).get("retorno")!); } }}>Voltar ao protocolo</a>}</nav>
+    {erro && <div className="mt-3"><ErrorBox erro={erro} /></div>}
+    <article className="pec-ficha ficha-v4">
+    <div className="ficha-animal-cabecalho">
+      <img className="ficha-animal-ilustracao" src="/images/pecuaria/vaca.png" width={110} height={110} alt="Ilustração genérica de bovino" />
+      <div className="ficha-animal-identidade">
+      <PageHeader integrado
+        titulo={<><span className="ficha-animal-nome">{animal.nome ?? animal.brinco}</span>{animal.nome && <span className="ficha-brinco">#{animal.brinco}</span>}</>}
+        descricao={`${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
       >          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-sm text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}</PageHeader>
 
+      </div>
+      {acoesCabecalho && <div className="ficha-animal-acoes">{acoesCabecalho}</div>}
     <div className="ficha-status">
             {ativo && <Pill tone="green">{rotuloSituacao(animal.situacao)}</Pill>}
             {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
@@ -294,7 +297,6 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
               {animal.peso.ultimo && <span className="ficha-animal-data-peso" title="Data da última pesagem"><CalendarDays size={15} aria-hidden="true" /><time dateTime={animal.peso.ultimo.data.slice(0, 10)} aria-label={`Data da última pesagem: ${formatarDataBR(animal.peso.ultimo.data)}`}>{formatarDataBR(animal.peso.ultimo.data)}</time></span>}
             </div>
           </div>
-      </div>
       {!ativo && animal.baixa && <div role="status" className="ficha-baixa-resumo">
         <ArchiveX size={18} aria-hidden="true" />
         <div><strong>Animal baixado · {rotuloTipoBaixa(animal.baixa.tipo)} em {formatarDataBR(animal.baixa.data)}</strong>
@@ -303,7 +305,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </div>}
 
     </div>
-    <nav aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas">
+    <nav ref={abasRef} aria-label="Seções da ficha" role="tablist" className="rebanho-abas-ficha ficha-animal-abas">
       {ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([ancora, rotulo]) => <button type="button" role="tab" id={`aba-${ancora}`} key={ancora} aria-selected={secaoAtiva === ancora} aria-controls={`ficha-painel-${ancora}`} onClick={() => selecionarSecao(ancora)} onKeyDown={event => {
         if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
         event.preventDefault();

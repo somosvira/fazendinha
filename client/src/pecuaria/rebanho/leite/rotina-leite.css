@@ -7,10 +7,10 @@
 .leite-rotina-reformulada .leite-navegacao{margin-bottom:20px}
 .leite-rotina-reformulada .leite-modos{margin:0 0 16px;padding:0;width:fit-content}
 .leite-rotina-reformulada .leite-ordenhas-consulta>.consulta-barra{margin-bottom:18px;padding:0 0 16px;background:transparent}
-.leite-rotina-reformulada .ordenhas-visao-periodo{padding:20px 24px;grid-template-columns:minmax(210px, .8fr) minmax(0,2fr);gap:30px;margin:0 0 14px;background:#f0f4e9;border:0;border-radius:16px}
+.leite-rotina-reformulada .ordenhas-visao-periodo{display:grid;padding:20px 24px;grid-template-columns:minmax(210px, .8fr) minmax(0,2fr);gap:30px;margin:0 0 14px;background:#f0f4e9;border:0;border-radius:16px}
 .leite-rotina-reformulada .ordenhas-volume{gap:8px}
 .leite-rotina-reformulada .ordenhas-volume>strong{font-size:36px;line-height:1.1}
-.leite-rotina-reformulada .ordenhas-distribuicao{border:0;padding-left:0}
+.leite-rotina-reformulada .ordenhas-distribuicao{border:0;padding:0;margin:0}
 .leite-rotina-reformulada .ordenhas-distribuicao h3{font-size:16px;margin:0}
 .leite-rotina-reformulada .ordenhas-pendencias{margin:0 0 20px;gap:24px}
 .ordenhas-paginacao{display:flex;align-items:center;gap:20px;justify-content:space-between;margin-top:18px;flex-wrap:wrap}
@@ -51,3 +51,24 @@
 .leite-rotina-reformulada .leite-coleta-visual time strong{font-size:28px}
 .leite-rotina-reformulada :is(.leite-amostra-visual,.leite-venda-visual){padding:22px;border:0;box-shadow:0 3px 14px #203c3909;border-radius:16px}
 @media(max-width:650px){.leite-producao-evolucao,.leite-producao-registro{padding:16px}.leite-rotina-reformulada .leite-coleta-visual{gap:12px}.leite-rotina-reformulada .leite-cabecalho-acoes{flex-wrap:wrap}.leite-rotina-reformulada .leite-modulo-acoes>button{flex:1}}
+/* A data e a ação principal mantêm largura legível no telefone. */
+@media(max-width:650px){
+ .leite-rotina-reformulada .leite-cabecalho-acoes{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:12px;align-items:center}
+ .leite-rotina-reformulada .leite-modulo-acoes{display:contents}
+ .leite-rotina-reformulada .leite-modulo-acoes>div{grid-column:1;grid-row:1;width:100%;min-width:0}
+ .leite-rotina-reformulada .leite-modulo-acoes>button{grid-column:1/-1;width:100%;min-width:0}
+ .leite-rotina-reformulada .leite-modulo-acoes>[data-ordenha-registro=novo]{grid-row:2}
+ .leite-rotina-reformulada .leite-modulo-acoes>[data-ordenha-registro=rascunho]{grid-row:3}
+ .leite-rotina-reformulada .leite-configuracoes-acao{grid-column:2;grid-row:1;width:44px;height:44px;padding:0}
+ .leite-rotina-reformulada .leite-configuracoes-acao>span{display:none}
+ .leite-rotina-reformulada .ordenhas-visao-periodo{gap:16px;padding:16px}
+ .leite-rotina-reformulada .leite-navegacao{margin-bottom:16px}
+}
+
+@media(max-width:650px){
+ .leite-rotina-reformulada .leite-ordenhas-consulta>.consulta-barra>.consulta-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:0}
+ .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-controles{display:contents}
+ .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-controles>:is(.fin-filtro-busca,.consulta-busca){grid-column:1/-1;width:100%;min-width:0;max-width:none}
+ .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-mais-filtros{grid-column:2;grid-row:2;min-width:0;margin:0}
+ .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-acoes{grid-column:1;grid-row:2;justify-self:start;order:0}
+}

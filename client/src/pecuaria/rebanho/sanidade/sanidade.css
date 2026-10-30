@@ -87,3 +87,10 @@
 .sanidade-form-fato label { display:grid; gap:8px; font-size:14px; }
 .sanidade-form-fato textarea { min-height:100px; }
 @media(max-width:767px) { .sanidade-form-fato { grid-template-columns:minmax(0,1fr); gap:26px; }.sanidade-fato-registro { border-left:0; border-top:1px solid var(--border); padding-left:0; padding-top:24px; } }
+
+@media(max-width:600px) {
+ :root [data-design-operacional] .sanidade-pagina .sanidade-lista > .consulta-barra { padding-block:10px; }
+ .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-linha { padding:0 12px; gap:8px; }
+ .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-controles { gap:8px; }
+ .sanidade-pagina .sanidade-lista > .consulta-barra .consulta-acoes { flex-wrap:wrap; gap:8px; }
+}
