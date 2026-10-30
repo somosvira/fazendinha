@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ShieldCheck, GitBranch, ListChecks, Plus } from "lucide-react";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -40,7 +41,7 @@ export function CatalogoModelosProtocolos(props: Props) {
     </div>}
   </>;
   return <section className="catalogo-modelos" aria-label={titulo} aria-busy={carregando}>
-    <header className="catalogo-modelos-cabecalho"><div><h1>{titulo}</h1><p>Modelos e versões para utilizar nos atendimentos dos animais.</p></div>{podeLancar && <Button disabled={bloqueado} onClick={props.onNovo}>Novo protocolo</Button>}</header>
+    <header className="catalogo-modelos-cabecalho"><div><h1>{titulo}</h1><p>Modelos e versões para utilizar nos atendimentos dos animais.</p></div>{podeLancar && <Button disabled={bloqueado} onClick={props.onNovo}><Plus size={18} aria-hidden="true" />Novo protocolo</Button>}</header>
     <div className="catalogo-modelos-barra"><label className="catalogo-modelos-busca">Buscar protocolos<input className={classeInput} type="search" placeholder="Nome ou descrição" value={props.busca} onChange={e=>props.onBusca(e.target.value)}/></label>
       <label className="catalogo-modelos-inativos"><input type="checkbox" checked={props.situacao === "TODAS" || props.situacao === "INATIVA"} onChange={e=>props.onSituacao(e.target.checked?"TODAS":"ATIVA")}/>Mostrar inativos</label>
       <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos"/>
@@ -51,7 +52,8 @@ export function CatalogoModelosProtocolos(props: Props) {
     </div>
     {carregando && !protocolos.length ? <div className="catalogo-modelos-esqueleto" aria-hidden="true"><div/><div/></div> : visual.modo === "visual" ? <div className="catalogo-modelos-cartoes">{protocolos.map(p=>{
       const restantes = Math.max(0,(p.totalMomentos??0)+(p.totalAcoesSemEtapa??0)-(p.previaEstrutura?.length??0));
-      return <article key={p.id} className="modelo-cartao"><header><h3>{p.nome}</h3><div className="modelo-meta"><span>Versão {p.versao}</span><span>{p.finalidade ? finalidades[p.finalidade] : "Finalidade não informada"}</span><span>{resumoEstrutura(p)}</span><SituacaoModelo p={p}/></div></header>
+      return <article key={p.id} className="modelo-cartao"><header className="modelo-identidade"><span className="modelo-emblema"><ShieldCheck size={24} aria-hidden="true" /></span><div><h3>{p.nome}</h3><p>{p.finalidade ? finalidades[p.finalidade] : "Finalidade não informada"}</p></div><SituacaoModelo p={p}/></header>
+        <dl className="modelo-fatos"><div><dt><GitBranch size={17} aria-hidden="true" />Versão</dt><dd>{p.versao}</dd></div><div><dt><ListChecks size={17} aria-hidden="true" />Estrutura</dt><dd>{resumoEstrutura(p)}</dd></div></dl>
         <ol className="modelo-previa" aria-label={`Etapas e procedimentos de ${p.nome}`}>{p.previaEstrutura?.map(e=><li key={e.id}>{!e.agrupada && e.intervalo!=null && <span>{intervaloProcedimento(e.intervalo,e.unidade??"DIAS")}</span>}<strong>{e.nome}</strong>{e.agrupada && <small>{e.totalProcedimentos} {e.totalProcedimentos===1?"procedimento":"procedimentos"}</small>}</li>)}</ol>
         {restantes>0 && <p className="modelo-previa-mais">+ {restantes} {restantes===1?"item em":"itens em"} Ver detalhes</p>}
         {!p.totalEtapas && <p className="modelo-previa-mais">Nenhum procedimento cadastrado.</p>}

@@ -263,3 +263,11 @@ Novas emissões de relatório usam `LEITE_GERENCIAL_V6`, incluindo retiradas int
 A validação inclui testes de serviço/rotas para idempotência, saldo divergente, período fechado, destino/responsável, acesso e estorno; teste PostgreSQL com fixtures privadas e rollback para as novas garantias SQL; testes da interface e builds. A revisão no navegador é de leitura e abertura dos formulários; não representa homologação operacional com dados reais ou publicação em outro ambiente.
 
 Na consulta de ordenhas, a visualização em tabela agrupa os registros de cada página por data operacional, da mais recente à mais antiga, e ordena os turnos pela ordem da rotina. A data aparece no cabeçalho do grupo; sua contagem informa apenas as ordenhas presentes naquela página. Paginação e filtros continuam sendo por ordenha, sem completar turnos ausentes nem apresentar somas diárias a partir de páginas parciais. Volumes não aferidos permanecem distintos de zero.
+
+### Apresentação das ordenhas
+
+A consulta de ordenhas abre no dia operacional atual. O calendário muda o dia; o modal de filtros continua permitindo períodos, situação e natureza, preservados na URL ao consultar um registro e voltar. Totais e composição usam o resumo do conjunto completo filtrado, não a soma da página. Aferição ausente continua distinta de zero e de confirmação parcial no estoque. O registro geral abre em modal centralizado, reutilizando o formulário, rascunho local, revisão de versões e confirmação existentes. Fechamento durante gravação fica bloqueado; fechar sem gravar conserva o rascunho retomável. A fonte individual mantém seu fluxo próprio.
+
+### Organização da consulta operacional
+
+O cabeçalho identifica a rotina ativa e concentra suas ações principais. Ordenhas reúne data e registro nesse cabeçalho; tamanho e paginação ficam após a lista. Cartões de turno mostram volume por natureza e quantas origens gerais foram confirmadas no estoque, sem interpretar origens como animais ou volumes não informados como zero. A consulta isolada conserva o próprio cabeçalho. O formulário destaca o volume manual, mantém identificação do recipiente, responsável, régua opcional e conferência de origem, preservando a separação entre salvar aferição e confirmar estoque. Produção distingue o bloco de evolução da consulta do registro, mantendo custos e evidências acessíveis no mesmo recorte.

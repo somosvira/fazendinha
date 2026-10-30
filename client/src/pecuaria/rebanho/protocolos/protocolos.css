@@ -31,7 +31,7 @@
 .protocolos-superficie .secao-recolhivel-cabecalho { padding: 16px 20px; gap: 16px; }
 .protocolos-superficie .secao-recolhivel-cabecalho > h2 { font-size: 18px; color: var(--fin-heading); }
 .protocolos-superficie .secao-recolhivel-cabecalho > h2 > button { padding: 0; min-height: 44px; }
-.protocolos-superficie .secao-recolhivel-resumo { font-size: 13px; color: var(--muted-foreground); }
+.protocolos-superficie .secao-recolhivel-resumo { font-size: 14px; color: var(--muted-foreground); }
 .protocolos-superficie .secao-recolhivel-conteudo { padding: 0 20px 20px; }
 .protocolos-superficie .protocolo-operacao .secao-recolhivel-conteudo { padding: 0; }
 .protocolos-superficie .protocolo-operacao > .secao-recolhivel-cabecalho { border-bottom: 1px solid var(--border); }
@@ -55,13 +55,13 @@
 }
 .protocolo-etapas strong { font-size: 16px; font-weight: 650; }
 .protocolo-etapas > button > span { font-size: 14px; }
-.protocolo-etapas small { font-size: 12px; color: var(--muted-foreground); }
+.protocolo-etapas small { font-size: 14px; color: var(--muted-foreground); }
 .protocolo-etapas small:last-child { margin-top: auto; }
 .protocolo-etapas > button[aria-pressed=true] small:last-child { color: var(--primary); font-weight: 600; }
 .protocolo-filtros { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px; }
 .protocolo-filtros > label { flex: 0 1 320px; min-width: 140px; }
 .protocolo-situacoes { padding: 4px; border: 1px solid var(--border); border-radius: 8px; background: var(--secondary); gap: 4px; }
-.protocolo-situacoes > button { border: 0; box-shadow: none; min-height: 36px; font-size: 13px; }
+.protocolo-situacoes > button { border: 0; box-shadow: none; min-height: 36px; font-size: 14px; }
 .protocolo-situacoes > button[aria-pressed=false] { background: transparent; color: var(--muted-foreground); }
 .protocolo-situacoes > button[aria-pressed=false]:hover { background: var(--fin-filter-hover); }
 .protocolo-situacoes > button[aria-pressed=true] { background: var(--primary); color: var(--primary-foreground); }
@@ -71,7 +71,7 @@
   border: 1px solid var(--fin-table-divider,#d8e0e5);
 }
 .protocolos-superficie table > thead > tr > th {
-  font-size: 12px; font-weight: 600; color: var(--fin-table-heading);
+  font-size: 14px; font-weight: 600; color: var(--fin-table-heading);
   background: var(--fin-table-header); padding: 8px 16px; height: 36px;
   border-bottom: 1px solid var(--fin-table-rule);
 }
@@ -96,9 +96,9 @@
 .protocolo-custos-cards article:last-child { background: var(--fin-filter-bg); }
 .protocolo-custos-cards h3 { font-size: 14px; font-weight: 500; }
 .protocolo-custos-cards strong { display: block; font-family: var(--font-display); font-size: 28px; font-weight: 800; margin: 8px 0; color: var(--fin-heading); overflow-wrap: anywhere; }
-.protocolo-custos-cards p { font-size: 13px; color: var(--muted-foreground); }
+.protocolo-custos-cards p { font-size: 14px; color: var(--muted-foreground); }
 :is(.pecuaria-content,.cooperativa-content) .protocolos-superficie .fin-selo {
-  border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 500;
+  border-radius: 6px; padding: 4px 10px; font-size: 14px; font-weight: 500;
   background: var(--fin-tag-bg); color: var(--fin-tag-text); border-color: transparent;
 }
 :is(.pecuaria-content,.cooperativa-content) .protocolos-superficie .fin-selo[data-fin-tom="entrada"] { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
@@ -133,10 +133,20 @@
   .protocolos-superficie .protocolo-tabela table > tbody > tr > td:not(:last-child) {
     border: 0; height: auto; padding: 8px; min-width: 0; overflow-wrap: anywhere;
   }
-  .protocolo-tabela td[data-label]:before { display: block; content: attr(data-label); font-size: 12px; color: var(--muted-foreground); margin-bottom: 5px; }
+  .protocolo-tabela td[data-label]:before { display: block; content: attr(data-label); font-size: 14px; color: var(--muted-foreground); margin-bottom: 5px; }
   .protocolo-tabela td:last-child { grid-column: 1/-1; }
   .protocolo-tabela-dados > tbody > tr > td[data-label="Ações"] > div { justify-content: flex-start; }
   .protocolo-tabela td[data-label="Ações"] button { min-height: 44px; }
   .protocolo-detalhe-linha,.protocolo-detalhe-linha > td { display: block; }
   .protocolo-custos-cards { grid-template-columns: 1fr; }
 }
+
+/* Etapas e atendimentos mantêm a mesma hierarquia da rotina de campo. */
+.protocolo-etapas strong { font-family:var(--font-display); font-size:18px; }
+.protocolo-etapas > button { min-height:132px; gap:10px; }
+.protocolo-situacoes > button { min-height:44px; font-size:14px; }
+.protocolo-custos-cards { gap:24px; }
+.protocolo-custos-cards article { background:transparent; border:0; padding:0; border-radius:0; }
+.protocolo-custos-cards article:last-child { background:transparent; }
+.protocolo-custos-cards strong { font-size:26px; }
+.protocolos-superficie .protocolo-detalhe-linha > td { font-size:16px; }

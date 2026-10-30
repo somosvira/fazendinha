@@ -1,9 +1,11 @@
+import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
+import { FileText, Plus } from "lucide-react";
 import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CabecalhoTabela, Paginacao, Pill } from "../../../financeiro/financeiro-ui";
+import { Paginacao, Pill } from "../../../financeiro/financeiro-ui";
 import { obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { OperacoesComerciaisLeite } from "./OperacoesComerciaisLeite";
@@ -49,7 +51,7 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   function fecharDetalhe() { setSelecionada(null); setNova(false); const url = new URL(location.href); url.searchParams.delete("operacaoLeiteId"); url.searchParams.delete("novaOperacaoLeite"); history.replaceState(null, "", url); }
   function abrir(v: VendaUnificada) { if (v.comercialId) { setSelecionada(v.comercialId); const url = new URL(location.href); url.searchParams.set("operacaoLeiteId", v.comercialId); history.replaceState(null,"",url); } else setHistorico(v); }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Vendas do leite">
-    <CabecalhoTabela titulo="Vendas de leite" ajuda="Operações por período e vendas avulsas." rotuloAjuda="Sobre vendas de leite" acao={<><Button variant="outline" onClick={() => setDocumentos(true)}>Entregas e demonstrativos</Button>{podeLancar && <Button variant="outline" onClick={() => setNova(true)}>Nova operação por período</Button>}{podeLancar && podeFinanceiro && <Button onClick={() => setAvulsa(true)}>Venda avulsa</Button>}</>} />
+    <CabecalhoRotinaLeite titulo="Vendas de leite" ajuda="Operações por período e vendas avulsas." rotuloAjuda="Sobre vendas de leite" acao={<><Button variant="outline" onClick={() => setDocumentos(true)}><FileText size={17} aria-hidden />Entregas e demonstrativos</Button>{podeLancar && <Button variant="outline" onClick={() => setNova(true)}><Plus size={17} aria-hidden />Nova operação por período</Button>}{podeLancar && podeFinanceiro && <Button onClick={() => setAvulsa(true)}><Plus size={17} aria-hidden />Venda avulsa</Button>}</>} />
     <BarraComercialLeite vendas filtros={filtros} parceiros={cadastros.parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {aviso && <p role="status">{aviso}</p>}
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : <>

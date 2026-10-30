@@ -80,7 +80,7 @@ export function HistoricoMovimentacoes({
       {chave:"origem",titulo:"Origem",larguraMinima:180,larguraFlexivel:true,celula:m=>m.origens.length?m.origens.join("; "):"Não identificada"},
       {chave:"destino",titulo:"Destino",larguraMinima:180,celula:rotuloDestino},
       {chave:"motivo",titulo:"Motivo",larguraMinima:160,celula:m=>m.motivo??"Não informado"},
-      {chave:"situacao",titulo:"Situação",larguraMinima:130,celula:m=><><Pill tone={m.desfeitaEm?"neutral":"green"}>{m.desfeitaEm?"Desfeita":"Confirmada"}</Pill>{mostrarDirecao&&m.direcao&&<span className="block mt-1 text-xs">{m.direcao==="ENTRADA"?"Entrada":"Saída"}</span>}</>},
+      {chave:"situacao",titulo:"Situação",larguraMinima:130,celula:m=><><Pill tone={m.desfeitaEm?"neutral":"green"}>{m.desfeitaEm?"Desfeita":"Confirmada"}</Pill>{mostrarDirecao&&m.direcao&&<span className="block mt-1 text-sm">{m.direcao==="ENTRADA"?"Entrada":"Saída"}</span>}</>},
       {chave:"acoes",titulo:"Ações",acoes:true,larguraMinima:160,celula:m=><div className="historico-movimentacoes-acoes" onClick={e=>e.stopPropagation()}>{onAbrir&&<Button secondary className="historico-movimentacoes-acao" onClick={()=>onAbrir(m)}>Ver detalhes</Button>}{podeLancar&&m.podeDesfazer&&<Button secondary className="historico-movimentacoes-acao" onClick={()=>setDesfazendoId(m.id)}>Desfazer</Button>}</div>},
     ]}/> : !erro && <Empty>Nenhuma movimentação encontrada com os filtros selecionados.</Empty>}
     {itens.length > 0 && <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="movimentações" idSelect="pagina-historico-movimentacoes" />}

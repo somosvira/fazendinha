@@ -324,7 +324,7 @@ export function RelatoriosLeite({
         ...(emissao?[{rotulo:'Voltar à consulta atual',executar:()=>setEmissao(null)}]:[]),
       ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{dataPt(emissao?.snapshot.filtros.inicio??periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim??periodoAtual.fim)}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button></Card>{emissao&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
       {!emissao && sitio!=null && <ResumoRelatorioLeite key={`${sitio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
-      <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período e emissão de leite</DialogTitle></DialogHeader><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} />
+      <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog leite-relatorio-dialog leite-operacoes" aria-describedby={undefined}><DialogHeader><DialogTitle>Período e emissão de leite</DialogTitle></DialogHeader><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} />
       <h2 className="leite-titulo-secao">Relatórios preservados de leite <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h2>
 
       <form
@@ -368,7 +368,7 @@ export function RelatoriosLeite({
         </form>
       <Button variant="outline" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button></DialogContent></Dialog>
       {erro && <p role="alert">{erro}</p>}
-      <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões preservadas de leite</DialogTitle></DialogHeader>{lista && (
+      <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog leite-relatorio-dialog leite-operacoes" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões preservadas de leite</DialogTitle></DialogHeader>{lista && (
         <section aria-label="Emissões disponíveis">
 
           {lista.itens.length ? (

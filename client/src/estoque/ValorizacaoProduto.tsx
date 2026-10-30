@@ -1,3 +1,4 @@
+import "./estoque-theme.css";
 import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { abrirValorEstoque, consultarValorizacao, type DiagnosticoValorizacao } from "./api";
@@ -33,16 +34,16 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
       chave.current = crypto.randomUUID(); setValor(""); setMotivo(""); setEvidencia(""); setReferencia(""); setRevisao(v => v+1); onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
-  return <section className="mt-4 rounded-lg border border-border p-4" aria-label="Valorização do estoque">
+  return <section className="estoque-valorizacao" aria-label="Valorização do estoque">
     <h3 className="font-semibold">Valor do saldo e abertura documentada<AjudaCampo rotulo="Ajuda: valor do saldo" texto="Custos anteriores são preservados. Saldo sem valor comprovado exige evidência; zero comprovado pode ser informado explicitamente. A abertura documenta o valor disponível. Não altera quantidade, compras, pagamentos ou custos antigos. Em produto sem rastreio, as origens serão consumidas pela data e ordem comprovadas." /></h3>
 
     <label className="mt-3 block text-sm">Data de corte<input className={classeInput} type="date" max={hoje()} value={data} disabled={ocupado} onChange={e => setData(e.target.value)} /></label>
     <ErrorBox erro={erro} />
     {!dados && !erro && <p role="status" className="text-sm">Conferindo a valorização…</p>}
-    {dados && <ul className="my-3 space-y-2 text-sm">{dados.grupos.map(g => <li key={g.partidaId ?? "sem-rastreio"}>{g.grupoNome} · validade {g.validade ?? "não informada"} · saldo {g.quantidade} · {g.estadoValor === "CONHECIDO" ? brl(g.valor) : "Valor desconhecido — abertura necessária"} · {g.metodo === "MEDIA_SALDO_V1" ? "Média do saldo do grupo" : "Aquisições mais antigas"}</li>)}</ul>}
+    {dados && <ul className="estoque-grupos-valor">{dados.grupos.map(g => <li key={g.partidaId ?? "sem-rastreio"}><h4>{g.grupoNome}</h4><dl><div><dt>Saldo</dt><dd>{g.quantidade}</dd></div><div><dt>Validade</dt><dd>{g.validade ?? "Não informada"}</dd></div><div><dt>Valor do saldo</dt><dd>{g.estadoValor === "CONHECIDO" ? brl(g.valor) : "Valor desconhecido — abertura necessária"}</dd></div></dl><p>{g.metodo === "MEDIA_SALDO_V1" ? "Média do saldo do grupo" : "Aquisições mais antigas"}</p></li>)}</ul>}
     {dados && !dados.retroatividade.permitido && <p role="status" className="text-sm">{dados.retroatividade.motivo}</p>}
-    {podeEditar && pendentes.length > 0 && <form className="grid gap-3" onSubmit={e => { e.preventDefault(); void confirmar(); }}>
-      <label className="text-sm">Saldo a regularizar<select required className={classeInput} value={grupo} disabled={ocupado} onChange={e => { setGrupo(e.target.value); const g=pendentes.find(g => (g.partidaId ?? "sem-rastreio") === e.target.value); setOrigens([{id:crypto.randomUUID(),quantidade:g?.quantidade ?? "",valor:"",disponivelDesde:data,referencia:""}]); chave.current=crypto.randomUUID(); }}><option value="">Selecione</option>{pendentes.map((g) => <option key={g.partidaId ?? "sem-rastreio"} value={g.partidaId ?? "sem-rastreio"}>{g.grupoNome} · validade {g.validade ?? "não informada"} · {g.quantidade} disponíveis</option>)}</select></label>
+    {podeEditar && pendentes.length > 0 && <form className="estoque-abertura-valor" onSubmit={e => { e.preventDefault(); void confirmar(); }}>
+      <h4>Abertura documentada</h4><label className="text-sm">Saldo a regularizar<select required className={classeInput} value={grupo} disabled={ocupado} onChange={e => { setGrupo(e.target.value); const g=pendentes.find(g => (g.partidaId ?? "sem-rastreio") === e.target.value); setOrigens([{id:crypto.randomUUID(),quantidade:g?.quantidade ?? "",valor:"",disponivelDesde:data,referencia:""}]); chave.current=crypto.randomUUID(); }}><option value="">Selecione</option>{pendentes.map((g) => <option key={g.partidaId ?? "sem-rastreio"} value={g.partidaId ?? "sem-rastreio"}>{g.grupoNome} · validade {g.validade ?? "não informada"} · {g.quantidade} disponíveis</option>)}</select></label>
       {selecionado?.metodo !== "FIFO_AQUISICAO_V1" && <><label className="text-sm">Valor total comprovado (R$)<input required className={classeInput} type="number" min="0" step="0.01" value={valor} disabled={ocupado} onChange={e => setValor(e.target.value)} /></label>
       <label className="text-sm">Referência da aquisição ou inventário<input required minLength={2} maxLength={200} className={classeInput} value={referencia} disabled={ocupado} onChange={e => setReferencia(e.target.value)} /></label></>}
       {selecionado?.metodo === "FIFO_AQUISICAO_V1" && <fieldset className="grid gap-3"><legend>Origens comprovadas do saldo</legend>

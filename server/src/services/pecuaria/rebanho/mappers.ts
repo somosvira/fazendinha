@@ -9,6 +9,7 @@ function iso(v: Date | string): string {
 }
 
 export interface AnimalResumo {
+  contextoCartao?: import("./contexto-cartao.js").ContextoCartaoAnimal;
   papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   id: string;
   brinco: string;

@@ -1,3 +1,4 @@
+import { DialogFinanceiro } from "../financeiro/DialogFinanceiro";
 import { useBuscaUrl } from "../lib/useBuscaUrl";
 /* Rio Novo — Acessos (controle de permissões, admin).
  * Ligado à API real (/api/usuarios): carrega a lista no mount e persiste cada
@@ -51,9 +52,9 @@ function StatusBadge({ status }: { status: string }) {
 
 /* dono-tag / admin-tag (pequenas etiquetas outline) */
 const DONO_TAG =
-  "border border-leite px-[6px] py-px text-[9px] uppercase tracking-[0.16em] text-leite";
+  "border border-leite px-[6px] py-px text-[12px] text-leite";
 const ADMIN_TAG =
-  "ml-2 inline-block border border-[color:var(--neg)] px-[5px] py-px align-middle text-[9px] uppercase tracking-[0.14em] text-[color:var(--neg)]";
+  "ml-2 inline-block border border-[color:var(--neg)] px-[5px] py-px align-middle text-[12px] text-[color:var(--neg)]";
 
 /* Campo somente-leitura com o link de acesso e botão de copiar. O token cru só
  * existe em memória: o backend guarda apenas o hash, então o mesmo link não
@@ -345,7 +346,7 @@ function PermissionEditor({
         <>
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
-              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Áreas que pode acessar</span>
+              <h2 className="text-base font-semibold">Áreas que pode acessar</h2>
               <span className="text-[12px] text-ink-3 tabular-nums">{user.areas.length} de {AREAS.length}</span>
             </div>
             <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1 min-[1500px]:grid-cols-3">
@@ -366,7 +367,7 @@ function PermissionEditor({
 
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
-              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Papel</span>
+              <h2 className="text-base font-semibold">Papel</h2>
               <span className="font-serif text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -393,7 +394,7 @@ function PermissionEditor({
 
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
-              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Abas que pode ver</span>
+              <h2 className="text-base font-semibold">Abas que pode ver</h2>
               <span className="text-[12px] text-ink-3 tabular-nums">
                 {user.abas.length} de {ABAS.length}
               </span>
@@ -418,7 +419,7 @@ function PermissionEditor({
 
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
-              <span className="text-[12px] uppercase tracking-[0.16em] text-ink-3">Permissões sensíveis</span>
+              <h2 className="text-base font-semibold">Permissões sensíveis</h2>
             </div>
             <div className="grid grid-cols-2 gap-2.5 max-[1100px]:grid-cols-1 min-[1500px]:grid-cols-3">
               {FLAGS.map((flag) => {
@@ -457,8 +458,9 @@ function PermissionEditor({
 export function Acessos() {
   const toast = useToast();
   const [users, setUsers] = useState<UsuarioSessao[]>([]);
+  const [editorAberto, setEditorAberto] = useState(() => new URLSearchParams(location.search).has("usuario"));
   const [selId, setSelId] = useState<number | null>(() => Number(new URLSearchParams(location.search).get("usuario")) || null);
-  useEffect(() => { const restaurar = () => setSelId(Number(new URLSearchParams(location.search).get("usuario")) || null); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
+  useEffect(() => { const restaurar = () => { setSelId(Number(new URLSearchParams(location.search).get("usuario")) || null); setEditorAberto(new URLSearchParams(location.search).has("usuario")); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   const [showInvite, setShowInvite] = useState(false);
   const [busca, setBusca] = useBuscaUrl("busca");
   const [statusFiltro, setStatusFiltro] = useState("");
@@ -486,7 +488,7 @@ export function Acessos() {
     return () => { atual = false; };
   }, [revisao]);
 
-  const sel = users.find((u) => u.id === selId) ?? users[0] ?? null;
+  const sel = users.find((u) => u.id === selId) ?? null;
   const ativos = users.filter((u) => u.status === "ATIVO").length;
   const pendentes = users.filter((u) => u.status === "PENDENTE").length;
 
@@ -550,10 +552,12 @@ export function Acessos() {
   return (
     <PaginaFinanceira>
       <PageHeader
-        titulo="Acessos"
-        descricao="Convide pessoas e defina quais áreas e informações cada perfil pode consultar ou operar."
+        titulo={<span className="rotina-titulo"><span><Users/></span>Acessos</span>}
         acao={<Button onClick={() => setShowInvite(true)}><UserPlus size={16} /> Convidar pessoa</Button>}
       />
+      {editorAberto && selId != null && !carregando && !erroCarga && !sel && (
+        <p role="alert" className="mt-5 text-sm">Pessoa não encontrada. Selecione uma pessoa disponível na lista.</p>
+      )}
       <div className="acessos-layout mt-5">
         <section className="acessos-equipe" aria-label="Equipe e convidados">
           <div className="acessos-equipe-cabecalho">
@@ -570,15 +574,15 @@ export function Acessos() {
                 <button
                   key={u.id}
                   type="button"
-                  aria-pressed={sel?.id === u.id}
+                  aria-pressed={editorAberto && sel?.id === u.id}
                   className="acessos-pessoa"
-                  onClick={() => setSelId(u.id)}
+                  onClick={() => { setSelId(u.id); setEditorAberto(true); }}
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-serif text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="break-words font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
+                        <span className="acessos-pessoa-nome break-words font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
                         {u.dono && <span className={DONO_TAG}>dono</span>}
                       </div>
                       <div className="mt-0.5 text-[12px] text-ink-3">
@@ -586,9 +590,11 @@ export function Acessos() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="acessos-pessoa-contato">{u.email}</div>
+                  <div className="acessos-pessoa-escopo">{u.dono ? "Acesso completo à fazenda" : u.areas.map(id => AREAS.find(area => area.id === id)?.label ?? id).join(" · ") || "Sem área habilitada"}</div>
+                  <div className="acessos-pessoa-situacao">
                     <StatusBadge status={u.status} />
-                    <span className="whitespace-nowrap text-[11px] text-[color:var(--ink-mute)]">{fmtUltimoAcesso(u.ultimoAcesso)}</span>
+                    <span className="text-sm text-muted-foreground">{fmtUltimoAcesso(u.ultimoAcesso)}</span>
                   </div>
                 </button>
               ))}
@@ -596,8 +602,8 @@ export function Acessos() {
           )}
         </section>
 
-        {sel ? (
-          <fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
+        {editorAberto && sel ? (
+          <DialogFinanceiro titulo={`Permissões de ${sel.nome}`} eyebrow="Acessos e permissões" icon={ShieldCheck} className="max-w-4xl" onClose={() => { if (!salvando) setEditorAberto(false); }}><fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
           <legend className="sr-only">Permissões de {sel.nome}</legend>
           <span role="status" className={salvando ? "block mb-2 text-sm text-muted-foreground" : "sr-only"}>{salvando ? "Salvando permissões…" : ""}</span>
           <PermissionEditor
@@ -607,12 +613,8 @@ export function Acessos() {
             onResendInvite={resendInvite}
             onRevoke={confirmRevoke}
           />
-          </fieldset>
-        ) : (
-          <div className="border border-[color:var(--rule)] bg-[color:var(--bg-card)] px-[26px] py-[30px] text-[15px] text-ink-3">
-            {carregando ? "Carregando acessos…" : "Selecione uma pessoa para editar as permissões."}
-          </div>
-        )}
+          </fieldset></DialogFinanceiro>
+        ) : null}
       </div>
 
       {showInvite && (

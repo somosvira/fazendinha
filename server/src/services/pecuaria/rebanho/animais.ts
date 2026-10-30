@@ -1,3 +1,4 @@
+import { completarContextoCartoes } from "./contexto-cartao.js";
 import { ordenarPorPeso } from "./ordenacao-peso.calc.js";
 import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
 import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
@@ -1180,7 +1181,12 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
     situacao: a.baixas.length ? "BAIXADO" : "ATIVO",
   }));
 
-  return { itens: pagina.map((a) => resumoDe(a, regras, hoje)), total, painel: agregarPainel(leves, ordem) };
+  const itens = pagina.map((a) => resumoDe(a, regras, hoje));
+  if (filtros.comContexto) {
+    const contextos = await completarContextoCartoes(prisma, itens, hoje, propriedadeEscopo ?? filtros.propriedadeId ?? null);
+    for (const item of itens) { const contexto = contextos.get(item.id); if (contexto) item.contextoCartao = contexto; }
+  }
+  return { itens, total, painel: agregarPainel(leves, ordem) };
 }
 
 // ---------- movimentar (individual ou em massa) ----------

@@ -126,6 +126,8 @@ components:
 
 ## Overview
 
+Para direção de organização, hierarquia e simplificação, consulte o [README do frontend](README.md). Os tokens e componentes abaixo descrevem a implementação observada; propostas de composição do README passam pelo fluxo de mockup e aprovação.
+
 **Creative North Star: "Cooperativa contemporânea"**
 
 A identidade compartilhada usa canvas neutro quase branco com gradiente turquesa muito suave no topo direito, lateral cinza esverdeada, superfícies brancas, petróleo nas ações e turquesa nos detalhes. A direção petróleo/turquesa aprovada usa Manrope nos títulos, DM Sans na leitura operacional e sombras suaves com intensidade proporcional à elevação. Esta extração descreve a implementação; não transforma a composição de uma tela em regra global.

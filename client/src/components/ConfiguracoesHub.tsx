@@ -1,3 +1,4 @@
+import { Landmark, MapPin, Users, Settings } from "lucide-react";
 /* Rio Novo — Configurações (hub).
  *
  * Dobra as telas raras de setup/admin numa página só, com sub-abas:
@@ -48,9 +49,9 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
   const [path, setPath] = useState(window.location.pathname);
   useEffect(() => { const sync = () => setPath(window.location.pathname); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
   const tabs: SubTab<ConfSub>[] = [
-    ...(podeCategorias ? [{ id: "categorias" as const, label: "Categorias" }] : []),
-    ...(podePecuaria ? [{ id: "pecuaria" as const, label: "Pecuária" }] : []),
-    ...(isAdmin ? [{ id: "sitios" as const, label: "Sítios" }, { id: "acessos" as const, label: "Acessos" }] : []),
+    ...(podeCategorias ? [{ id: "categorias" as const, label: "Categorias", icon: Landmark }] : []),
+    ...(podePecuaria ? [{ id: "pecuaria" as const, label: "Pecuária", icon: Settings }] : []),
+    ...(isAdmin ? [{ id: "sitios" as const, label: "Sítios", icon: MapPin }, { id: "acessos" as const, label: "Acessos", icon: Users }] : []),
   ];
   // sub pedida pela rota (/configuracoes cai na primeira disponível); se o perfil
   // não pode a pedida (acessos sem admin, categorias sem permissão), usa a primeira
@@ -71,9 +72,9 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
     <>
       <div className={cn("configuracoes-navegacao pt-7", "px-[var(--gutter)]")}>
 
-        <SubTabs tabs={tabs} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
+        <SubTabs tabs={tabs.map(t => atual === "categorias" ? {...t, icon: undefined} : t)} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo="Configurações da Pecuária" descricao="Mantenha os cadastros e as regras de rebanho, sanidade e reprodução." />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

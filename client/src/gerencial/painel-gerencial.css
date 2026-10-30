@@ -9,9 +9,9 @@
 .painel-gerencial .ger-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
 .ger-periodo-popover { width: min(390px,calc(100vw - 24px)); }
 .ger-periodo-popover h2 { font-size: 16px; font-weight: 600; }
-.ger-periodo-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; font-size: 13px; }
+.ger-periodo-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; font-size:14px; }
 .ger-periodo-campos input { width: 100%; margin-top: 6px; }
-.painel-gerencial .ger-contexto { margin: 14px 0 20px; font-size: 13px; color: var(--ger-suave); }
+.painel-gerencial .ger-contexto { margin: 14px 0 20px; font-size:14px; color: var(--ger-suave); }
 .painel-gerencial .ger-atencao { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e6cf9d; border-radius: 10px; color: #80511b; background: #fff7e7; }
 .ger-atencao > div { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
 .ger-atencao svg { flex-shrink: 0; }
@@ -20,47 +20,47 @@
 .painel-gerencial .ger-card { min-width: 0; border: 1px solid var(--ger-borda); border-radius: 12px; background: var(--ger-papel); padding: 20px; }
 .ger-caixa { grid-area: caixa; }.ger-compromissos { grid-area: compromissos; }.ger-mensal { grid-area: mensal; }.ger-vencimentos { grid-area: vencimentos; }.ger-centros { grid-area: centros; }.ger-nutricao { grid-area: nutricao; }.ger-custos { grid-area: custos; }.ger-estoque { grid-area: estoque; }.ger-clinico { grid-area: clinico; }
 .painel-gerencial .ger-caixa-valores { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin: 20px 0 16px; }
-.painel-gerencial .ger-indicador dt { font-size: 12px; color: var(--ger-suave); }
+.painel-gerencial .ger-indicador dt { font-size:14px; color: var(--ger-suave); }
 .painel-gerencial .ger-indicador dd { font-size: 25px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 6px; overflow-wrap: anywhere; }
 .painel-gerencial .ger-valor { font-size: 30px; font-weight: 600; line-height: 1.25; font-variant-numeric: tabular-nums; margin: 12px 0; }
-.painel-gerencial .ger-muted { font-size: 12px; color: var(--ger-suave); line-height: 1.55; }
+.painel-gerencial .ger-muted { font-size:14px; color: var(--ger-suave); line-height: 1.55; }
 .painel-gerencial .ger-indices { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 16px 0 12px; }
 .painel-gerencial .ger-indices > div + div { border-left: 1px solid var(--ger-borda); padding-left: 16px; }
 .painel-gerencial .ger-compromissos .ger-indices > div:first-child dd { color: var(--ger-saida); }
 .painel-gerencial .ger-valor-linha { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.painel-gerencial .ger-selo { padding: 4px 9px; border-radius: 5px; color: #80511b; background: #fff0d4; font-size: 12px; }
-.painel-gerencial .ger-pendente { display: flex; align-items: center; gap: 8px; color: #80511b; font-size: 13px; }
-.painel-gerencial .ger-aviso { margin: 12px 0; padding: 10px 12px; border-radius: 6px; color: #80511b; background: #fff7e7; font-size: 12px; }
+.painel-gerencial .ger-selo { padding: 4px 9px; border-radius: 5px; color: #80511b; background: #fff0d4; font-size:14px; }
+.painel-gerencial .ger-pendente { display: flex; align-items: center; gap: 8px; color: #80511b; font-size:14px; }
+.painel-gerencial .ger-aviso { margin: 12px 0; padding: 10px 12px; border-radius: 6px; color: #80511b; background: #fff7e7; font-size:14px; }
 .painel-gerencial .ger-cobertura { margin: 12px 0; }
-.painel-gerencial .ger-progresso-linha { display: flex; align-items: center; gap: 12px; margin: 10px 0; font-size: 12px; }
+.painel-gerencial .ger-progresso-linha { display: flex; align-items: center; gap: 12px; margin: 10px 0; font-size:14px; }
 .painel-gerencial progress { flex: 1; min-width: 0; height: 10px; appearance: none; overflow: hidden; border: 0; border-radius: 4px; background: #e2e8ec; }
 .painel-gerencial progress::-webkit-progress-bar { background: #e2e8ec; }
 .painel-gerencial progress::-webkit-progress-value { background: var(--primary); }
 .painel-gerencial progress::-moz-progress-bar { background: var(--primary); }
 .painel-gerencial .ger-rodape-link { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ger-borda); }
-.painel-gerencial .ger-link { display: inline-flex; align-items: center; gap: 8px; color: var(--ger-verde); font-size: 13px; font-weight: 600; text-underline-offset: 3px; }
+.painel-gerencial .ger-link { display: inline-flex; align-items: center; gap: 8px; color: var(--ger-verde); font-size:14px; font-weight: 600; text-underline-offset: 3px; }
 .painel-gerencial .ger-link:hover { text-decoration: underline; }
 .painel-gerencial .ger-finalidades { margin: 12px 0; }
 .painel-gerencial .ger-finalidades > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ger-borda); }
 .painel-gerencial .ger-finalidades dd { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
-.painel-gerencial .ger-finalidades small { display: block; color: #80511b; font-size: 12px; }
+.painel-gerencial .ger-finalidades small { display: block; color: #80511b; font-size:14px; }
 .painel-gerencial .ger-restrito { padding: 12px 0; color: var(--ger-suave); }
 .painel-gerencial .ger-restrito p { display: flex; align-items: center; gap: 8px; }
-.painel-gerencial .ger-restrito p + p { margin-top: 8px; font-size: 12px; }
+.painel-gerencial .ger-restrito p + p { margin-top: 8px; font-size:14px; }
 .painel-gerencial .ger-grafico { height: 220px; min-width: 0; margin: 12px 0; }
 .painel-gerencial .ger-grafico-horizontal { min-width: 0; margin: 12px 0; }
-.painel-gerencial .ger-valores-grafico { font-size: 13px; margin: 12px 0; }
+.painel-gerencial .ger-valores-grafico { font-size:14px; margin: 12px 0; }
 .painel-gerencial .ger-valores-grafico > div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--ger-borda); padding: 8px 0; }
 .painel-gerencial .ger-valores-grafico dd { font-variant-numeric: tabular-nums; }
 .painel-gerencial .ger-tabela { overflow-x: auto; max-width: 100%; margin-top: 12px; }
-.painel-gerencial table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.painel-gerencial table { width: 100%; border-collapse: collapse; font-size:14px; font-variant-numeric: tabular-nums; }
 .painel-gerencial table :is(th,td) { padding: 9px 12px; border-bottom: 1px solid var(--ger-borda); text-align: right; white-space: nowrap; }
 .painel-gerencial table tr > :first-child { text-align: left; white-space: normal; }
 .painel-gerencial table thead { background: #e1e7eb; }
 .painel-gerencial table tbody th { font-weight: 400; }
-.painel-gerencial caption { text-align: left; font-size: 12px; padding-bottom: 8px; color: var(--ger-suave); }
-.painel-gerencial .ger-caixa-zerado { margin: 12px 0; padding: 14px; background: var(--muted); border-radius: 6px; font-size: 13px; }
-.painel-gerencial .ger-nota { display: flex; align-items: center; gap: 6px; margin-top: 16px; font-size: 12px; color: var(--ger-suave); }
+.painel-gerencial caption { text-align: left; font-size:14px; padding-bottom: 8px; color: var(--ger-suave); }
+.painel-gerencial .ger-caixa-zerado { margin: 12px 0; padding: 14px; background: var(--muted); border-radius: 6px; font-size:14px; }
+.painel-gerencial .ger-nota { display: flex; align-items: center; gap: 6px; margin-top: 16px; font-size:14px; color: var(--ger-suave); }
 .painel-gerencial .ger-carregando, .painel-gerencial .ger-vazio { padding: 24px 0; color: var(--ger-suave); }
 @media(max-width:1150px) { .painel-gerencial .ger-cabecalho { flex-wrap: wrap; }.painel-gerencial .ger-caixa-valores { grid-template-columns: repeat(auto-fit,minmax(135px,1fr)); } }
 @media(max-width:800px) { .painel-gerencial .ger-grade { grid-template-columns: minmax(0,1fr); grid-template-areas: 'caixa' 'compromissos' 'nutricao' 'custos' 'mensal' 'vencimentos' 'centros' 'clinico' 'estoque'; } }
@@ -68,9 +68,9 @@
 .ger-finalidade-barra { display: block; flex-basis: 100%; height: 6px; border-radius: 3px; overflow: hidden; background: var(--muted); }
 .ger-finalidade-barra > span { display: block; height: 100%; background: var(--primary); }
 .painel-gerencial .ger-grade { grid-template-areas: 'caixa compromissos' 'nutricao custos' 'mensal centros' 'estoque estoque' 'clinico clinico'; }
-.painel-gerencial .ger-subtitulo { font-size: 13px; font-weight: 600; margin: 18px 0 8px; }
-.ger-atencao strong small { display: block; font-size: 11px; font-weight: 400; }
-.painel-gerencial .ger-barras-diretas { display: grid; gap: 12px; margin: 12px 0; font-size: 12px; }
+.painel-gerencial .ger-subtitulo { font-size:14px; font-weight: 600; margin: 18px 0 8px; }
+.ger-atencao strong small { display: block; font-size:14px; font-weight: 400; }
+.painel-gerencial .ger-barras-diretas { display: grid; gap: 12px; margin: 12px 0; font-size:14px; }
 .ger-barras-diretas > div { display: grid; grid-template-columns: 105px minmax(0,1fr); align-items: center; gap: 12px; }
 .ger-barras-diretas dd { display: flex; align-items: center; gap: 12px; }
 .ger-barras-diretas strong { width: 105px; text-align: right; font-weight: 500; font-variant-numeric: tabular-nums; flex-shrink: 0; }
@@ -80,3 +80,5 @@
 .ger-barras-diretas [data-alerta] strong { color: var(--ger-saida); }.ger-barras-diretas [data-alerta] .ger-barra-trilho > span { background: var(--ger-saida); }
 @media(max-width:800px) { .painel-gerencial .ger-grade { grid-template-columns: minmax(0,1fr); grid-template-areas: 'caixa' 'compromissos' 'nutricao' 'custos' 'mensal' 'centros' 'estoque' 'clinico'; } }
 @media(max-width:450px) { .ger-barras-diretas > div { grid-template-columns: 90px minmax(0,1fr); gap: 8px; }.ger-barras-diretas strong { width: auto; }.ger-barra-trilho { min-width: 20px; } }
+
+.painel-gerencial .ger-secao{margin-top:30px}.ger-secao-titulo{margin-bottom:16px}.ger-secao-titulo h2{font-family:var(--font-heading,"Manrope",sans-serif);font-size:21px;line-height:1.3;font-weight:750}.ger-secao-titulo p{font-size:14px;color:var(--ger-suave);margin-top:6px}.painel-gerencial .ger-grade-caixa{grid-template-areas:'caixa compromissos' 'mensal centros';grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);align-items:stretch}.painel-gerencial .ger-grade-operacao{grid-template-areas:'nutricao custos' 'leite leite';align-items:start}.ger-grade-operacao>.ger-card:last-child{grid-area:leite}.painel-gerencial .ger-grade-posicao{grid-template-areas:'estoque clinico';grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.painel-gerencial .ger-card{padding:24px}.ger-grade-caixa .ger-rodape-link{margin-top:auto}.ger-grade-caixa .ger-card{display:flex;flex-direction:column}.ger-grade-caixa .ger-card>.ger-rodape-link{padding-top:16px}.ger-grade-operacao .ger-card>h2,.ger-grade-posicao .ger-card>h2{margin-bottom:16px}@media(max-width:900px){.painel-gerencial .ger-grade-caixa{grid-template-areas:'caixa' 'compromissos' 'mensal' 'centros';grid-template-columns:minmax(0,1fr)}.painel-gerencial .ger-grade-operacao{grid-template-areas:'nutricao' 'custos' 'leite';grid-template-columns:minmax(0,1fr)}.painel-gerencial .ger-grade-posicao{grid-template-areas:'estoque' 'clinico';grid-template-columns:minmax(0,1fr)}.painel-gerencial .ger-card{padding:20px}}

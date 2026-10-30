@@ -68,6 +68,8 @@ O setup de testes fornece configurações inertes de R2. O único banco local é
 
 ## Contexto para contribuir
 
+Para organização, hierarquia e simplificação das telas, comece pelo [README do frontend](client/README.md), apoiado na [pesquisa de interfaces agro](docs/design/pesquisa-interfaces-agro.md). O guia distingue a direção proposta da interface já implementada.
+
 Comece por [AGENTS.md](AGENTS.md) e pelo [índice da documentação](docs/README.md). [CLAUDE.md](CLAUDE.md) encaminha o Claude Code às mesmas regras. Documentos de features novas devem distinguir proposta, implementação e validação, e atualizar o contrato vigente quando concluídos.
 
 Software proprietário.

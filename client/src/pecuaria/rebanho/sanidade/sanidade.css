@@ -18,13 +18,13 @@
 .sanidade-carencias-tabela col:first-child { width: 30% !important; }
 .sanidade-prazo-titulo { display: flex; align-items: center; gap: 7px; font-weight: 600; }
 .sanidade-prazo-titulo svg { flex-shrink: 0; }
-.sanidade-prazo small { font-size: 12px; color: var(--muted-foreground); padding-left: 22px; }
+.sanidade-prazo small { font-size: 14px; color: var(--muted-foreground); padding-left: 22px; }
 .sanidade-prazo-atencao .sanidade-prazo-titulo { color: var(--fin-pendente); }
 .sanidade-prazo-alerta .sanidade-prazo-titulo { color: var(--destructive); }
 .sanidade-prazo-verde .sanidade-prazo-titulo { color: var(--primary); }
 .sanidade-prazo-neutro .sanidade-prazo-titulo { color: var(--muted-foreground); }
 .sanidade-carencias-atalhos { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 16px 14px; }
-.sanidade-carencias-atalhos button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; background: var(--card); font-size: 12px; cursor: pointer; }
+.sanidade-carencias-atalhos button { border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; background: var(--card); font-size: 14px; cursor: pointer; }
 .sanidade-carencias-atalhos button[aria-pressed=true] { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
 .sanidade-carencias-atalhos button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-corpo { grid-template-columns: 92px minmax(0, 1fr); gap: 16px; align-items: center; padding: 8px 0; min-height: 0; }
@@ -36,7 +36,7 @@
 .pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-item { padding: 4px 0; gap: 8px; }
 .pecuaria-content .sanidade-ciclo-compacto .pec-distribuicao-embutida { padding: 0; }
 .pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas { display: flex; flex-wrap: wrap; gap: 4px 8px; }
-.pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas > span { padding: 3px 6px; font-size: 11px; }
+.pecuaria-content .sanidade-ciclo-compacto .pec-contagens-etapa-compactas > span { padding: 3px 6px; font-size: 14px; }
 
 .pecuaria-content .sanidade-toolbar { align-items: center; flex-wrap: nowrap; gap: 24px; padding: 16px; }
 .sanidade-toolbar-consulta { display: flex; flex: 1; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -78,3 +78,12 @@
 .pecuaria-content .sanidade-lista .fin-tabela tbody tr:focus-within :is(td[data-fin-coluna="acoes"], td[data-fin-coluna="acao"]) { background: var(--fin-table-hover); }
 .sanidade-acao-encerrar:hover { border-color: var(--border); background: var(--muted); color: var(--foreground); }
 .sanidade-acao-anular:hover { border-color: var(--destructive); background: var(--fin-danger-bg); color: var(--destructive); }
+
+.sanidade-form-fato { display:grid; grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr); gap:28px; align-items:start; }
+.sanidade-form-fato > :not(section) { grid-column:1 / -1; }
+.sanidade-form-fato > section { display:grid; gap:18px; min-width:0; }
+.sanidade-form-fato h3 { font-family:var(--font-display); font-size:18px; font-weight:700; line-height:1.4; }
+.sanidade-fato-registro { border-left:1px solid var(--border); padding-left:28px; }
+.sanidade-form-fato label { display:grid; gap:8px; font-size:14px; }
+.sanidade-form-fato textarea { min-height:100px; }
+@media(max-width:767px) { .sanidade-form-fato { grid-template-columns:minmax(0,1fr); gap:26px; }.sanidade-fato-registro { border-left:0; border-top:1px solid var(--border); padding-left:0; padding-top:24px; } }

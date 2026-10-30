@@ -34,7 +34,7 @@ export function BarraComercialLeite({ filtros, onChange, parceiros, vendas = fal
       <CampoFiltro rotulo={vendas ? "Situação" : "Preço"}><SelectCampo value={draft.rascunho.situacao} onValueChange={v => draft.editar("situacao", v)}><option value="">Todas</option>{(vendas ? ["Aberta", "Fechada", "Confirmada", "Cancelada"] : ["Preço pendente", "Preço definido"]).map(v => <option key={v} value={v}>{v}</option>)}</SelectCampo></CampoFiltro>
       {vendas && <CampoFiltro rotulo="Modalidade"><SelectCampo value={draft.rascunho.modalidade} onValueChange={v => draft.editar("modalidade", v)}><option value="">Todas</option><option value="periodo">Por período</option><option value="avulsa">Avulsa</option></SelectCampo></CampoFiltro>}</>}
   > <BuscaLista rotulo={vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"} placeholder={vendas ? "Buscar comprador ou venda" : "Buscar comprador, coleta ou romaneio"} valor={filtros.busca} onChange={busca => onChange({ ...filtros, busca: busca.slice(0, 100) })} />
-    <PeriodoFinanceiroControl inicio={filtros.de} fim={filtros.ate} label={vendas ? "Período comercial" : "Período das coletas"} onChange={({ inicio, fim }) => onChange({ ...filtros, de: inicio, ate: fim })} />
+    <PeriodoFinanceiroControl showIcon inicio={filtros.de} fim={filtros.ate} label={vendas ? "Período comercial" : "Período das coletas"} onChange={({ inicio, fim }) => onChange({ ...filtros, de: inicio, ate: fim })} />
   </BarraConsulta>;
 }
 export function DialogComercialLeite({ titulo, aberto, onFechar, children }: { titulo: string; aberto: boolean; onFechar: () => void; children: ReactNode }) {

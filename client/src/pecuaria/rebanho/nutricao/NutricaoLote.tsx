@@ -1,7 +1,8 @@
 import { AjudaCampo } from "@/components/Dica";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { LinhaTempoDietas } from "./LinhaTempoDietas";
-import { Leaf } from "lucide-react";
+import { Leaf, CalendarDays, Layers } from "lucide-react";
+import { VacaIcon } from "@/components/icons/VacaIcon";
 import { formatarLitros } from "../leite/modelo";
 import { useCallback, useState } from "react";
 import { PageHeader, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -25,10 +26,12 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
   return <div className="nutricao-lote"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="detalhe" label="Carregando nutrição do lote…" />{r && <>
     {completa ? <><nav className="nutricao-breadcrumb" aria-label="Navegação"><LinkNutricional href={rotaNutricao()}>Nutrição</LinkNutricional><span>/</span><span>{r.lote.nome}</span></nav><PageHeader eyebrow="" titulo={r.lote.nome} descricao={`${r.lote.propriedade.nome}${r.lote.ativo ? "" : " · lote inativo"}`} acao={<LinkNutricional className="nutricao-botao-secundario" href={`/pecuaria/rebanho/lotes/${r.lote.id}`}>Ver lote e animais</LinkNutricional>} /></> : <div className="nutricao-card-cabecalho"><h2 className="h3">Nutrição do lote</h2><LinkNutricional href={rotaNutricao({ loteId })}>Abrir nutrição do lote</LinkNutricional></div>}
     <div className="nutricao-conteudo nutricao-lote-conteudo nutricao-lote-visual">
-      <Panel className="nutricao-dieta-vigente"><div className="nutricao-card-cabecalho"><div><h2 className="h3 flex items-center gap-2"><Leaf size={20} aria-hidden />Dieta vigente</h2><p>{r.lote.animaisAtivos} animais ativos hoje · {r.vigente ? `desde ${formatarDataBR(r.vigente.desde)}` : "nenhuma dieta vigente atribuída a este lote."}</p></div><Pill tone={r.vigente ? "green" : "amber"}>{r.vigente ? "Em uso" : "Sem dieta"}</Pill></div>
-        {(r.vigente || r.programada || escrever) && <div className="nutricao-card-corpo">{r.vigente && <p className="font-serif text-xl">{r.vigente.dieta.nome} <span className="nutricao-secundario">· v{r.vigente.dieta.versao}</span></p>}{r.programada && <p className="nutricao-aviso">Programada: {r.programada.dieta.nome} · v{r.programada.dieta.versao}, a partir de {formatarDataBR(r.programada.desde)}.</p>}
-          {escrever && <div className="nutricao-acoes"><LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", loteId)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional><LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", loteId)}>Conferir consumo</LinkNutricional></div>}
-        </div>}
+      <Panel className="nutricao-dieta-vigente">
+        <header className="lote-dieta-identidade"><span className="receita-emblema" aria-hidden="true"><Leaf size={26} /></span><div><h2>Dieta vigente</h2><p>{r.vigente ? "Planejamento de alimentação do lote" : "Nenhuma dieta atribuída"}</p></div><Pill tone={r.vigente ? "green" : "amber"}>{r.vigente ? "Em uso" : "Sem dieta"}</Pill></header>
+        <div className="lote-dieta-principal"><h3>{r.vigente ? r.vigente.dieta.nome : "Defina a alimentação do lote"}</h3>{r.vigente && <span>Versão {r.vigente.dieta.versao}</span>}</div>
+        <dl className="lote-dieta-fatos"><div><dt><VacaIcon width={20} height={20} aria-hidden="true" />Efetivo hoje</dt><dd>{r.lote.animaisAtivos} animais ativos</dd></div><div><dt><CalendarDays size={19} aria-hidden="true" />Vigência</dt><dd>{r.vigente ? `Desde ${formatarDataBR(r.vigente.desde)}` : "Não atribuída"}</dd></div></dl>
+        {r.programada && <div className="lote-dieta-programada"><Layers size={19} aria-hidden="true" /><div><strong>Próxima dieta</strong><p>{r.programada.dieta.nome} · v{r.programada.dieta.versao}</p><span>A partir de {formatarDataBR(r.programada.desde)}</span></div></div>}
+        {escrever && <footer className="lote-dieta-acoes"><LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("consumo", loteId)}>Conferir consumo</LinkNutricional><LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("atribuir", loteId)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional></footer>}
       </Panel>
       <CustosLote resumo={r} />
       {r.referenciaLeite && <Panel><div className="nutricao-card-cabecalho"><h2 className="h3">Referência comercial do leite fornecido <AjudaCampo rotulo="Sobre a referência comercial do leite" texto={"Medida gerencial separada do custo de produção, sem somar um novo gasto da fazenda. Confira a fonte e revise após o fechamento comercial nos detalhes do consumo."} /></h2></div><div className="nutricao-card-corpo grid gap-2"><p>{formatarLitros(Number(r.referenciaLeite.quantidadeLitros))} confirmados · referência conhecida <strong>{custoTexto(r.referenciaLeite.valorConhecido)}</strong></p><p>{r.referenciaLeite.pendentes} fornecimento(s) com preço pendente · {r.referenciaLeite.provisorios} com preço provisório do mês anterior.</p></div></Panel>}

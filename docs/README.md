@@ -39,6 +39,8 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Arquitetura](../ARCHITECTURE.md) | Organização, runtime, autorização, banco e testes |
 | [System design](system-design.md) | Fronteiras, relações, fatos/snapshots e fluxos entre domínios |
 | [Contexto de produto](../client/PRODUCT.md) | Usuários, propósito, princípios e limites |
+| [README do frontend](../client/README.md) | Direção de organização, hierarquia, legibilidade e simplificação das telas |
+| [Pesquisa de interfaces agro](design/pesquisa-interfaces-agro.md) | Evidências externas, análise das telas locais e decisões recuperadas das conversas |
 | [Design system](../client/DESIGN.md) | Tokens e componentes observados no código |
 | [Design unificado](design/cooperativa-unificada.md) | Composição e interação compartilhadas, com guias de Financeiro/Pecuária/Leite |
 | [Desenvolvimento](desenvolvimento.md) | Banco local único, seed integrada, dados e importadores |

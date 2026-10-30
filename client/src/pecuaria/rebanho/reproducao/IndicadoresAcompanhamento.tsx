@@ -399,7 +399,7 @@ export function IndicadoresAcompanhamento({
                         {p.animalId
                           ? animal(p.animalId)
                           : "Identificação não preservada"}
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                           {p.referencia}
                         </p>
                       </td>

@@ -19,7 +19,10 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 
 ## Fluxo de alterações visuais
 
+- Consulte o [README do frontend](client/README.md) para organização, hierarquia, legibilidade e simplificação. Ele distingue diretrizes consolidadas de composições ainda propostas; a pesquisa de concorrentes não substitui contratos nem aprova automaticamente um novo layout.
 - Antes de implementar uma página ou mudança de layout, gere um mockup e revise-o com as skills `impeccable` e `frontend-design`. Apresente o resultado para aprovação antes de escrever a interface. Preserve os dados e contratos funcionais no desenho. Na implementação, confira a tela no navegador; mockup e revisão visual não substituem validação funcional. Para os relatórios financeiros deste fluxo, priorize o desktop.
+
+- Aberturas auxiliares de detalhes, filtros, formulários e conferências usam modal centralizado; não introduza painéis laterais. Siga [a regra do frontend](client/README.md#aberturas-em-modal), preservando foco, rascunho e URLs.
 
 ## Implementação
 

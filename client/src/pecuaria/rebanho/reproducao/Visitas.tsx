@@ -1,5 +1,6 @@
+import { CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button, CabecalhoTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill } from "../../../financeiro/financeiro-ui";
+import { Button, CabecalhoTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
@@ -15,6 +16,7 @@ import { PlannerVisita } from "./PlannerVisita";
 import { Transcricao } from "./TranscricaoVisita";
 import { chaveGrupo, type GrupoPlannerInput } from "./planner-api";
 import { EntradaVisita } from "./EntradaVisita";
+import { ConsultaVisitas } from "./ConsultaVisitas";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -135,12 +137,9 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
 
   return <PaginaFinanceira><div className={`print:hidden${mostraAtendimento ? " visita-fluxo visita-atendimento" : ""}`}>
     {rota.tipo === "lista" ? <>
-      <PageHeader eyebrow="" titulo="Visitas veterinárias" descricao="Planeje os atendimentos e acompanhe os procedimentos de cada visita." acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); setPropriedadeId(getPropriedadeAtiva() ?? ""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}>Nova visita</Button>}/>
+      <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><CalendarDays aria-hidden/></span>Visitas veterinárias</span>} acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); setPropriedadeId(getPropriedadeAtiva() ?? ""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}><Plus size={18} aria-hidden/>Nova visita</Button>}/>
       <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visitas…</p>}
-      <Panel><div className="divide-y divide-border">{!carregando && !erro && lista.map(v => <button className="w-full p-4 text-left flex items-center justify-between gap-3 hover:bg-surface-2" key={v.id} onClick={() => { navegarPara(`/pecuaria/visitas/${encodeURIComponent(v.id)}`); setRota(parseRotaVisita(window.location.pathname,window.location.search)!); }}>
-        <span className="min-w-0 space-y-2"><strong className="block break-words font-semibold">{v.nome}</strong><span className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink-3"><span><span className="block text-xs">Data da visita</span><time dateTime={v.data.slice(0,10)}>{dataBR(v.data)}</time></span><span><span className="block text-xs">Sítio</span>{propriedades.find(p=>p.id===v.propriedadeId)?.nome ?? "Não informado"}</span>{v.responsavel && <span><span className="block text-xs">Responsável</span>{v.responsavel}</span>}</span></span>
-        <span className="shrink-0 self-start"><Pill tone={v.status === "ABERTA" ? "amber" : "neutral"}>{v.status === "ABERTA" ? "Aberta" : v.status === "ENCERRADA" ? "Encerrada" : v.status}</Pill></span>
-      </button>)}{!carregando && !erro && !lista.length && <Empty><strong className="block font-semibold text-foreground">{getPropriedadeAtiva() ? "Nenhuma visita neste sítio." : "Nenhuma visita nos sítios disponíveis."}</strong><p className="mt-2">{podeLancar ? "Use Nova visita para organizar os animais e preparar o atendimento." : "As visitas preparadas para os sítios aos quais você tem acesso aparecerão aqui."}</p></Empty>}</div></Panel>
+      {!carregando && !erro && <ConsultaVisitas visitas={lista} propriedades={propriedades} podeLancar={podeLancar} sitioSelecionado={!!getPropriedadeAtiva()} onAbrir={id => { navegarPara(`/pecuaria/visitas/${encodeURIComponent(id)}`); setRota(parseRotaVisita(window.location.pathname, window.location.search)!); }}/>}
     </> : rota.tipo === "nova" ? <>
       <ErrorBox erro={erro}/><EntradaVisita ocupado={ocupado} podeLancar={podeLancar} onVoltar={voltarLista} onContinuar={modo=>void executar(async()=>{
         const dados={propriedadeId:propDaVisita(),data,nome,responsavel:responsavel||undefined};

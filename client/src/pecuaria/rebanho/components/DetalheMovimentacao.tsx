@@ -66,14 +66,14 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
           </div>
           <p className="mt-2 break-words">{mov.origens.length ? mov.origens.join(", ") : "Origem não identificada"} → {rotuloDestino(mov)}</p>
           {mov.motivo && <p className="mt-1 break-words text-ink-3">Motivo: {mov.motivo}</p>}
-          <p className="mt-1 text-xs text-ink-3">{mov.criadoPor ?? "Sistema"} · {formatarDataBR(mov.criadoEm)}</p>
-          {mov.desfeitaEm && <p className="mt-1 text-xs font-medium text-red-700">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
+          <p className="mt-1 text-sm text-ink-3">{mov.criadoPor ?? "Sistema"} · {formatarDataBR(mov.criadoEm)}</p>
+          {mov.desfeitaEm && <p className="mt-1 text-sm font-medium text-red-700">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
           {podeLancar && mov.podeDesfazer && <div className="mt-3"><Button secondary onClick={() => setDesfazendo(true)}>Desfazer movimentação</Button></div>}
         </div>
 
         <div className="overflow-x-auto rounded-xl border border-border">
           <table className="w-full text-left text-sm consulta-tabela">
-            <thead className="bg-[#f4f2e9] text-[11px] uppercase tracking-[.08em] text-ink-3">
+            <thead className="bg-[#f4f2e9] text-sm uppercase tracking-[.08em] text-ink-3">
               <tr><th className="p-3 font-semibold">Animal</th><th className="p-3 font-semibold">Categoria</th><th className="p-3 font-semibold">Veio de</th><th className="p-3 font-semibold">Situação</th></tr>
             </thead>
             <tbody className="divide-y divide-border">

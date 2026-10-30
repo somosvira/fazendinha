@@ -44,7 +44,7 @@ export function FormPesoSecagem({ lactacao, propriedadeId, onFechar, onSalvo }: 
       {acao === "DESVINCULAR" ? <p className="rounded-lg bg-surface-2 p-4 text-sm">Somente a associação com esta lactação será desfeita. A pesagem e o encerramento serão preservados.</p> : <PesoSecagemCampos animalId={lactacao.animalId} propriedadeId={propriedadeId} dataEncerramento={lactacao.encerradaEm?.slice(0, 10) ?? ""} valor={peso} onChange={setPeso} erros={erros} permitirAusente={false} escolhaFixa={acao === "CORRIGIR"} />}
       {acao === "SUBSTITUIR" && <p className="text-sm text-ink-3">O vínculo anterior será revogado. A pesagem anterior continua no histórico do animal.</p>}
       <CampoFormulario id="secagem-motivo-alteracao" rotulo="Motivo da alteração" obrigatorio erro={erros.motivo}>{p => <textarea {...p} className={classeInput} required minLength={5} maxLength={1000} rows={3} value={motivo} onChange={e => setMotivo(e.target.value)} />}</CampoFormulario>
-      <p className="text-xs text-ink-3">As alterações conservam autoria e histórico. Dados incompatíveis e registros importados exigem revisão auditada.</p>
+      <p className="text-sm text-ink-3">As alterações conservam autoria e histórico. Dados incompatíveis e registros importados exigem revisão auditada.</p>
     </form>
   </PainelCadastro>;
 }

@@ -47,16 +47,16 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
     return () => { ativa = false; };
   }, [inicio, fim, natureza, visao, data, sitio, revisao, periodoInvalido]);
   return <section className="leite-operacoes leite-consultas">
-    <BarraConsulta resumo={`${inicio.split("-").reverse().join("/")} a ${fim.split("-").reverse().join("/")}`} edicaoFiltros={draft} adicionais={<>
+    <BarraConsulta edicaoFiltros={draft} adicionais={<>
       <CampoFiltro rotulo="Consultar produção por"><SelectCampo value={draft.rascunho.visao} onValueChange={v => draft.editar("visao", v)}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Data de produção"><input type="date" value={draft.rascunho.data} onChange={e => { if(e.target.value) { draft.editar("data", e.target.value); const periodo = datasVisao(e.target.value, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
       <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Não comercial</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Classificação"><span className="leite-checkbox"><input type="checkbox" checked={draft.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => draft.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Sem classificação</span></CampoFiltro>
-    </>}><PeriodoFinanceiroControl inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
+    </>}><PeriodoFinanceiroControl showIcon inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando produção…</p> : <>
       <div className="leite-producao-controles"><div className="leite-producao-cobertura">{!dados.coberturaCompleta && <Badge variant="outline" role="status">Produção parcial<AjudaCampo rotulo="Sobre a cobertura da produção" texto="Há registros ausentes no período. Ausência não significa produção zero."/></Badge>}{dados.mesEmAndamento && <Badge variant="outline">Mês em andamento</Badge>}</div>
       <div className="leite-agrupamento-producao"><span>Agrupar volumes por</span><Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}><TabsList variant="default" aria-label="Agrupamento da produção"><TabsTrigger value="dia">Dia</TabsTrigger><TabsTrigger value="mes">Mês</TabsTrigger></TabsList></Tabs></div></div>
-      <GraficoProducaoLeite grupos={grupos} />
+      <div className="leite-producao-painel"><div className="leite-producao-evolucao"><GraficoProducaoLeite grupos={grupos} /></div><section className="leite-producao-registro" aria-label="Consulta dos registros de produção">
       <div className="producao-registro-cabecalho"><h3>Registro da produção</h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da produção" /></div>
       {visualizacao.modo === "visual" ? <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} /> : <>
       <TabelaFinanceira visualizacao="tabela" barraRolagemSuperior rotulo="Volumes de produção" itens={grupos.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={g => g.periodo} colunas={[
@@ -67,6 +67,7 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       ]} />
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={grupos.length} porPagina={15} rotulo="Paginação da produção" substantivo="períodos" idSelect="pagina-producao-leite" onPagina={setPagina} />
       </>}
+      </section></div>
     </>}
     {!periodoInvalido && <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />}
     {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}

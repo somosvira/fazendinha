@@ -92,3 +92,9 @@ O ícone de documento abre a prévia A4 dos indicadores. A consulta atual pode s
 O documento inclui resumo visual, desempenho de todas as janelas, componentes e totais recalculados, maturidade/cobertura, animais, elegibilidade, tentativas e provas. Se o snapshot inclui acompanhamento V2, inclui também coorte, fila, ciclos pendentes, perdas/gestações, IEP, concepções e exclusões. Parâmetros, filtros, metodologia, fontes, critérios, avisos e identificação da emissão encerram o documento. V1 não recebe acompanhamento presumido. Dados idênticos de um animal em janelas consecutivas compartilham uma referência explícita ao intervalo de janelas; valores ou provas diferentes geram outra linha. Células extensas continuam em páginas adicionais sem truncamento, com cabeçalhos e numeração.
 
 Esta alteração não acrescenta variáveis, fórmulas ou fontes ao builder: compõe visualmente o snapshot completo existente. As variáveis das fontes de indicadores e acompanhamento continuam no catálogo/adapters vigentes; evidências estruturadas e populações de outra granularidade ficam na consulta nativa, conforme as exclusões já descritas neste contrato.
+
+### Organização do builder
+
+A prévia ocupa a área de trabalho; Configurar relatório abre fonte, nome, variáveis e modelos em modal centralizado. Fechar/reabrir o modal conserva os parâmetros em edição. Organização de campos, filtros, escopo e exportação continuam usando as mesmas fontes, adapters e gates; não há ampliação de variáveis por efeito do acabamento visual.
+
+O catálogo apresenta Área e Relatório em seletores superiores, com o resultado em largura integral. A seleção usa os mesmos handlers e parâmetros de URL; esta composição não adiciona fontes, variáveis ou regras ao builder.

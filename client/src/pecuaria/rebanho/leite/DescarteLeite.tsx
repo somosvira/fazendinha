@@ -1,3 +1,4 @@
+import { CalendarDays, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/DatePicker";
@@ -155,8 +156,8 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
     : null;
   return (
     <section className="leite-operacoes" aria-label={interna ? "Retiradas para Casa e Funcionários" : "Descarte físico de leite"}>
-      <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} ajuda="Saídas efetivas com origem, motivo e histórico preservado." rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}>{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
-      <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={`Mês até ${data.split("-").reverse().join("/")}`} />
+      <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} ajuda="Saídas efetivas com origem, motivo e histórico preservado." rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={<span className="leite-contexto-data"><CalendarDays size={17} aria-hidden />Mês até <time dateTime={data}>{data.split("-").reverse().join("/")}</time></span>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
       {podeLancar && novo && <Dialog open onOpenChange={v => { setNovo(v); if (!v) { setProduto(""); setEntradaId(""); setLitros(""); setMotivo(""); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{interna ? "Registrar retirada interna" : "Registrar descarte físico"}</DialogTitle></DialogHeader>{erro && <p role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}        <label>

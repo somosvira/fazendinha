@@ -2,7 +2,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { AjudaCampo } from '@/components/Dica';
-import { Milk, Sun, Sunset, Moon, ArrowUpRight, Truck, FlaskConical, Wallet, Check, Clock } from 'lucide-react';
+import { Milk, Sun, Sunset, Moon, ArrowUpRight, Truck, FlaskConical, Wallet, Check, Clock, PackageCheck, Container, CalendarDays } from 'lucide-react';
 import { formatarLitros } from './modelo';
 import { valorResultadoQualidade } from './resultado-qualidade';
 import { formatarDataBR } from '../lib/rotulos';
@@ -26,11 +26,14 @@ export function ComposicaoNaturezas({ itens, rotulo = 'Composição do volume' }
 export function CartaoOrdenhaVisual({ registro:r, abrir, podeLancar }: {registro:RegistroOrdenhaConsulta;abrir:()=>void;podeLancar:boolean}) {
   const Icone=r.ordem===1?Sun:r.ordem===2?Sunset:Moon;
   const estado=situacaoOrdenha(r);
+  const parcelasGerais = r.parcelas.filter(p => p.medicaoGeralId != null);
+  const confirmadas = parcelasGerais.filter(p => p.confirmada).length;
   return <Card asChild className="leite-card-visual leite-ordenha-visual"><article>
-    <header><Icone size={17} aria-hidden/><h3>{r.nome}</h3><EstadoLeite texto={estado} pendente={r.situacao!=='SEM_AFERICAO'&&r.situacao!=='CONFIRMADA'}/></header>
-    <div className="leite-volume-visual"><strong>{r.litros===null?'Não aferido':formatarLitros(r.litros)}</strong><span>{formatarDataBR(r.dataOperacional)} · Fonte {r.fonteProducao==='GERAL'?'geral':'individual'}</span></div>
-    <ComposicaoNaturezas itens={naturezasVisuais.filter(n=>n.natureza!=='A_CLASSIFICAR'||r.porNatureza.some(p=>p.natureza===n.natureza)).map(n=>({natureza:n.natureza,litros:r.porNatureza.find(p=>p.natureza===n.natureza)?.litros??null}))}/>
-    <footer><Button variant="ghost" onClick={abrir}>{!podeLancar||r.situacao==='CONFIRMADA'?'Consultar registro':r.situacao==='SEM_AFERICAO'?'Registrar aferição':'Continuar confirmação'}<ArrowUpRight size={14}/></Button></footer>
+    <header><span className="ordenha-turno-icone"><Icone size={23} aria-hidden/></span><h3>{r.nome}</h3><EstadoLeite texto={estado} pendente={r.situacao!=='SEM_AFERICAO'&&r.situacao!=='CONFIRMADA'}/></header>
+    <div className="leite-volume-visual"><strong>{r.litros===null?'Não aferido':formatarLitros(r.litros)}</strong><span><CalendarDays size={15} aria-hidden/>{formatarDataBR(r.dataOperacional)}<span className="ordenha-fonte">{r.fonteProducao==='GERAL'?'Aferição geral':'Controle individual'}</span></span></div>
+    {r.litros===null?<p className="ordenha-sem-afericao">O volume desta ordenha ainda não foi informado.</p>:<ComposicaoNaturezas itens={naturezasVisuais.filter(n=>n.natureza!=='A_CLASSIFICAR'||r.porNatureza.some(p=>p.natureza===n.natureza&&p.litros!=null)).map(n=>({natureza:n.natureza,litros:r.porNatureza.find(p=>p.natureza===n.natureza)?.litros??null}))}/>}
+    {parcelasGerais.length > 0 && <div className="ordenha-origens-resumo"><span><Container size={17} aria-hidden/>{parcelasGerais.length} {parcelasGerais.length === 1 ? 'origem' : 'origens'}</span><span><PackageCheck size={17} aria-hidden/>{confirmadas} de {parcelasGerais.length} no estoque</span></div>}
+    <footer><Button data-ordenha-registro={r.id} variant="ghost" onClick={abrir}>{!podeLancar||r.situacao==='CONFIRMADA'?'Consultar registro':r.situacao==='SEM_AFERICAO'?'Registrar aferição':'Continuar confirmação'}<ArrowUpRight size={14}/></Button></footer>
   </article></Card>;
 }
 export interface ProdutoVisualLeite {nome:string;quantidadeLitros:string|null;comercial:{quantidadeLitros:string|null};descarteLitros:string|null;colostroLitros:string|null;estadoValor:string;valorTotal:string|null;confiavel:boolean}

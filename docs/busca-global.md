@@ -45,3 +45,9 @@ Sempre que mudar páginas, registros, fluxos, URLs/filtros ou permissões, revis
 ## Validação
 
 Testes de servidor cobrem entrada, seleção prévia de fontes autorizadas, parâmetros SQL, escopo e contrato dos destinos. Testes de cliente cobrem catálogo, busca assíncrona, filtro de tipo, seleção por teclado, falha/repetição, restauração por URL, recepção de links e guarda de navegação. Consultas locais de conferência são somente de leitura no `fazendinha_seedatev3`, sem habilitar flags de integração, criar fixtures, aplicar migrations ou alterar o manifesto da seed. Validação no navegador e testes automatizados são evidências distintas; nenhuma marca de homologação de domínio é aprovada por esta mudança.
+
+A revisão visual de Animais/ficha/ordenhas/filas mantém o catálogo, os gates e os destinos existentes. O registro geral de ordenha continua consumindo `leiteModo=registro`, `registroId`, data operacional e ordenha; sua apresentação é modal, sem perder o período da consulta no retorno. Os cartões abrem o animal exato, sem substituir a navegação por uma ficha ilustrativa. O contexto adicional do cartão é dado de leitura da lista, não nova fonte autônoma da busca.
+
+O acabamento operacional geral conserva os destinos da busca. A seleção por `usuario` em Acessos abre o editor em modal; receitas, operações nutricionais e protocolos continuam consumindo suas URLs antes de apresentar o modal. Trocar a apresentação não autoriza abrir outro registro nem remover o retorno da consulta. Filtros e parâmetros persistentes continuam sujeitos aos testes de navegação existentes.
+
+A reformulação da composição operacional preserva as URLs, fontes e gates da busca. Cabeçalhos integrados do Leite, agrupamento das visitas, seleção superior dos relatórios e cartões de Sítios são apresentações dos mesmos destinos. O histórico dos cadastros é consultado em modal sob demanda; não há novo tipo de registro pesquisável introduzido por essa apresentação.

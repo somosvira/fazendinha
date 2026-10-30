@@ -2,7 +2,7 @@
 // As listas preservam os valores e filtros independentemente dos gráficos.
 
 import { useEffect, useState } from "react";
-import { ArrowDownRight, ArrowUpRight, ChartNoAxesCombined, ChevronRight, Heart, MapPin, Plus, RotateCcw } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, LayoutDashboard, ChartNoAxesCombined, ChevronRight, Heart, MapPin, Plus, RotateCcw } from "lucide-react";
 import { obterPainelRebanho } from "../api";
 import type { PainelGeral, TipoBaixa } from "../types";
 import { formatarDataBR, rotuloClasseMotivo, rotuloTipoBaixa } from "../lib/rotulos";
@@ -106,7 +106,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
   const hrefTipoBaixa = (tipo: TipoBaixa) => filtrosAnimais({ situacao: "BAIXADO", tipoBaixa: tipo, baixaDe: emDias(-(painel?.periodoDias ?? 30)) });
 
   return <PaginaFinanceira><div className="pec-painel-rebanho">
-    <PageHeader titulo="Rebanho" descricao="Acompanhe o efetivo, a distribuição por sítio e as movimentações recentes." acao={podeLancar ? <Button onClick={() => navegarPara(linkNovoAnimal())}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader titulo={<span className="rotina-titulo"><span><LayoutDashboard aria-hidden/></span>Rebanho</span>} acao={podeLancar ? <Button onClick={() => navegarPara(linkNovoAnimal())}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
     {carregando && <div className="rebanho-carregamento" role="status">Carregando rebanho…</div>}
@@ -135,7 +135,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
               aria-pressed={periodoBaixas === valor}
               disabled={carregandoBaixas}
               onClick={() => selecionarPeriodoBaixas(valor)}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${periodoBaixas === valor ? "bg-mast text-white" : "text-ink-2 hover:bg-surface-2"}`}
+              className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${periodoBaixas === valor ? "bg-mast text-white" : "text-ink-2 hover:bg-surface-2"}`}
             >{rotulo}</button>)}
           </div>
         </div>
@@ -164,7 +164,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
         <div className="pec-eventos-cabecalho flex items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-serif text-xl">Atividade recente</h2></div></div>
         {painel.ultimosEventos.length ? <ol className="pec-eventos">{painel.ultimosEventos.slice(0, 4).map((evento, indice) => {
           const Icone = ICONE_EVENTO[evento.tipo];
-          return <li key={`${evento.animalId}-${indice}`}><button type="button" onClick={() => navegarPara(linkFichaAnimal(evento.animalId))} className="pec-painel-link pec-evento-linha"><span aria-hidden="true" className={`pec-evento-icone pec-evento-${evento.tipo.toLowerCase()}`}><Icone size={18} /></span><span className="min-w-0 flex-1"><strong className="block break-words">{evento.brinco}</strong><span className="pec-participacao">{ROTULO_EVENTO[evento.tipo]}</span></span><span className="shrink-0 text-xs text-ink-3">{formatarDataBR(evento.data)}</span><ChevronRight aria-hidden="true" size={14} /></button></li>;
+          return <li key={`${evento.animalId}-${indice}`}><button type="button" onClick={() => navegarPara(linkFichaAnimal(evento.animalId))} className="pec-painel-link pec-evento-linha"><span aria-hidden="true" className={`pec-evento-icone pec-evento-${evento.tipo.toLowerCase()}`}><Icone size={18} /></span><span className="min-w-0 flex-1"><strong className="block break-words">{evento.brinco}</strong><span className="pec-participacao">{ROTULO_EVENTO[evento.tipo]}</span></span><span className="shrink-0 text-sm text-ink-3">{formatarDataBR(evento.data)}</span><ChevronRight aria-hidden="true" size={14} /></button></li>;
         })}</ol> : <Empty>Nenhum evento recente.</Empty>}
       </Panel>
       </div></div>

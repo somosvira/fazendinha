@@ -23,6 +23,7 @@ const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(ro
 beforeEach(() => {
   history.replaceState(null, "", "/configuracoes/sitios");
   vi.clearAllMocks();
+  localStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(usePropriedades).mockReturnValue({ data: sitiosMock, loading: false, recarregar: vi.fn() });
   vi.mocked(criarPropriedade).mockResolvedValue({ ...sitiosMock[1], id: 3, nome: "Nova" });
@@ -33,6 +34,9 @@ afterEach(cleanup);
 describe("Configurações > Sítios", () => {
   it("lista sítios pelo nome, com cidade, principal e situação", () => {
     render(<Sitios />);
+    expect(screen.getByRole("heading", { name: "Mexicana" })).toBeTruthy();
+    expect(screen.getByText("Localização não informada")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
     const tabela = screen.getByRole("table", { name: "Sítios" });
     expect(within(tabela).getByText("Principal", { selector: "strong" })).toBeTruthy();
     expect(within(tabela).queryByText("Sede")).toBeNull();

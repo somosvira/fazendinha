@@ -1,3 +1,5 @@
+import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
+import { CalendarDays, Plus } from "lucide-react";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { valorResultadoQualidade } from './resultado-qualidade';
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +14,7 @@ import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
+import { Paginacao } from "../../../financeiro/financeiro-ui";
 import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
@@ -133,7 +135,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Qualidade do leite" ajuda="Amostras individuais e coletivas, com o histórico de cada laudo." rotuloAjuda="Sobre qualidade do leite" />
+      <CabecalhoRotinaLeite titulo="Qualidade do leite" ajuda="Amostras individuais e coletivas, com o histórico de cada laudo." rotuloAjuda="Sobre qualidade do leite" />
       <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
       {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><input type="date" required value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
@@ -142,7 +144,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               setNova(true);
               setSelecionada(null);
             }}>
-            Registrar amostra
+            <Plus size={17} aria-hidden />Registrar amostra
           </Button>
         )}
         {podeLancar && (
@@ -185,10 +187,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       )}
       {aba === "amostras" && amostras && (
         <>
-          <p>
-            Amostras até {data} · {amostras.total}{" "}
-            registro(s).
-          </p>
+          <div className="leite-qualidade-contexto"><span><CalendarDays size={17} aria-hidden />Amostras até <time dateTime={data}>{formatarDataBR(data)}</time></span></div>
           {!amostras.itens.length && (
             <p>
               Nenhuma amostra neste período. Registre a coleta mesmo se o
@@ -526,7 +525,7 @@ export function NovaAmostra({
         {erro && <p role="alert">{erro}</p>}
         <div className="leite-form-inline">
           <Button disabled={ocupado || !formato || (informar && !valores.length)}>
-            Registrar amostra
+            <Plus size={17} aria-hidden />Registrar amostra
           </Button>
           <Button variant="outline" className="leite-secondary"
             type="button"

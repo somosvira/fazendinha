@@ -42,6 +42,23 @@ describe("formulários próprios de nutrição", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmar correção" }));
     await waitFor(() => expect(api.corrigirVigencia).toHaveBeenCalledWith("v", { propriedadeId: 2, desde: "2026-09-02", motivo: "Correção conferida" }));
   });
+  it.each(["Cancelar", "Fechar", "Escape"])("protege alteração feita apenas pelo calendário ao sair por %s", async (saida) => {
+    const onVoltar = vi.fn();
+    render(<FormOperacaoNutricional acao="corrigir" loteId="lote" vigenciaId="v" onVoltar={onVoltar} onSalvo={vi.fn()} />);
+    await screen.findByLabelText("Motivo da correção");
+    await waitFor(() => expect(screen.getByPlaceholderText("dd/mm/aaaa")).toHaveProperty("value", "01/09/2026"));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir calendário" }));
+    fireEvent.click(await screen.findByRole("button", { name: "2 de setembro de 2026" }));
+    expect(screen.getByPlaceholderText("dd/mm/aaaa")).toHaveProperty("value", "02/09/2026");
+    if (saida === "Escape") fireEvent.keyDown(document, { key: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: saida }));
+    expect(await screen.findByRole("dialog", { name: "Descartar alterações?" })).toBeTruthy();
+    expect(onVoltar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(screen.getByPlaceholderText("dd/mm/aaaa")).toHaveProperty("value", "02/09/2026");
+    expect(screen.getByLabelText("Motivo da correção")).toHaveProperty("value", "");
+    expect(api.corrigirVigencia).not.toHaveBeenCalled();
+  });
   it("não permite corrigir uma vigência de outro lote", async () => {
     vi.mocked(api.obterVigencia).mockResolvedValue({ id: "v", loteId: "outro", desde: "2026-09-01", ate: null, dieta: { id: "d", nome: "Outra dieta", versao: 1 } });
     render(<FormOperacaoNutricional acao="corrigir" loteId="lote" vigenciaId="v" onVoltar={vi.fn()} onSalvo={vi.fn()} />);

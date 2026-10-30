@@ -1,3 +1,5 @@
+import { VacaIcon } from "../../../components/icons/VacaIcon";
+import { CartaoAnimal } from "../components/CartaoAnimal";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { MapPin, Layers } from "lucide-react";
@@ -38,6 +40,7 @@ import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceir
 import { NavRebanho } from "./NavRebanho";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import "./lista-animais.css";
+import "./rotinas-aprovadas.css";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -202,6 +205,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       racaIds: multiplos.racaIds.length ? multiplos.racaIds : undefined,
     };
     listarAnimais({
+      comContexto: !pesagem,
       ...listas,
       busca: busca.trim() || undefined,
       propriedadeId: listas.propriedadeIds ? undefined : propriedadeId ? Number(propriedadeId) : undefined,
@@ -365,7 +369,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   const filtrosColunas = filtrosDasColunas(camposColunas,{iniciar:iniciarFiltros,aplicar:aplicarFiltros,limpar:limparRascunho});
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
     { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="animal-checkbox" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
-    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
     { chave: "sitio", titulo: "Sítio", larguraMinima: 140, celula: (item) => item.propriedade?.nome ?? "—" },
@@ -374,7 +378,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       : "—" },
     { chave: "aptidao", titulo: "Finalidade", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
-    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
+    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-sm text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
     { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -391,7 +395,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
 
 
   return <PaginaFinanceira><div className={pesagem ? undefined : "animais-pagina-refinada"}>
-    <PageHeader titulo={pesagem ? "Pesagem e manejo" : "Animais"} descricao={pesagem ? "Registre pesagens e manejos dos animais selecionados." : "Consulte os animais, filtre o efetivo e acompanhe peso e desempenho."} acao={!pesagem && podeLancar ? <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader titulo={pesagem ? "Pesagem e manejo" : <span className="rotina-titulo"><span><VacaIcon/></span>Animais</span>} acao={!pesagem && podeLancar ? <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
     {!pesagem && <NavRebanho ativa="animais" comIcones />}
     <ErrorBox erro={erro} />
 
@@ -405,8 +409,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
         const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Finalidade",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
         const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",REPRODUCAO:"Reprodução",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
-        return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
-      }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
+        return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
+      }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
       {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página" ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }} checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}</div>
       {podeLancar && itensSelecionaveis.length > 0 && (pesagem || selecionados.size > 0) && <div className="animais-acoes-coletivas flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         {selecionados.size > 0 && <><Button secondary={!pesagem} onClick={() => setPesando(true)}>Pesagem coletiva</Button>{!pesagem && <><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}</>}
@@ -415,7 +419,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       </div>}
       {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoConsulta key={item.id} titulo={item.brinco} detalhe={item.nome} className={`animal-cartao${selecionados.has(item.id) ? " animal-cartao-selecionado" : ""}`} onAbrir={() => onAbrirAnimal(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} status={<div className="animal-cartao-categoria">{COLUNAS_TODAS.find(c => c.chave === "categoria")?.celula(item)}{item.situacao !== "ATIVO" && pillSituacao(item.situacao)}</div>} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}><div className="consulta-fatos"><FatoConsulta rotulo="Sítio"><span className="inline-flex items-center gap-1"><MapPin size={14} aria-hidden />{item.propriedade?.nome ?? "Sem localização"}</span></FatoConsulta><FatoConsulta rotulo="Lote"><span className="inline-flex items-center gap-1"><Layers size={14} aria-hidden />{item.lote?.nome ?? "Sem lote"}</span></FatoConsulta></div><div className="consulta-fatos mt-3"><FatoConsulta rotulo="Último peso"><strong>{item.ultimoPeso ? `${item.ultimoPeso.kg.toLocaleString("pt-BR")} kg` : "—"}</strong><small>{item.ultimoPeso ? formatarDataBR(item.ultimoPeso.data) : "Sem pesagem"}</small></FatoConsulta><FatoConsulta rotulo="GMD recente"><strong>{formatarGmd(item.gmdRecente)}</strong></FatoConsulta></div>{mostrarColunasAdicionais && <div className="consulta-fatos mt-3">{COLUNAS.filter(c => !["selecionar","acoes","brinco","categoria","lote","peso","gmd","situacao"].includes(c.chave)).map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}</div>}</CartaoConsulta>)}</div> : <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
+        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined} adicionais={mostrarColunasAdicionais ? <div className="consulta-fatos">{COLUNAS.filter(c => !["selecionar","acoes","brinco","categoria","lote","peso","gmd","situacao","idade"].includes(c.chave)).map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}</div> : undefined}/>)}</div> : <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

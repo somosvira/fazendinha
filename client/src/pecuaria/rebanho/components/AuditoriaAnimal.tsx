@@ -15,7 +15,7 @@ const EIXOS = {
   SANIDADE: { nome: "Sanidade", Icone: HeartPulse }, NUTRICAO: { nome: "Nutrição", Icone: Leaf },
 };
 const campo = "h-9 w-full min-w-0 rounded-md border border-border bg-surface px-2 text-sm text-ink";
-const rotulo = "grid min-w-0 gap-1 text-xs text-ink-3";
+const rotulo = "grid min-w-0 gap-1 text-sm text-ink-3";
 
 type Consulta = { pagina: number; periodo: string; inicio: string; fim: string; eixo: string; acao: string; responsavel: string; busca: string };
 function diaLocal(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
@@ -96,7 +96,7 @@ export function AuditoriaAnimal({ id, recarregarToken }: { id: string; recarrega
     {carregando && <p role="status" className="p-4 text-ink-3">Carregando auditoria…</p>}
     {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-red-700">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
     {!carregando && !erro && !intervaloInvalido && resultado && <>
-      <div className="overflow-x-auto rounded-b-lg border border-t-0 border-border"><table className="w-full min-w-[780px] text-left text-xs consulta-tabela"><caption className="sr-only">Auditoria dos registros do animal</caption>
+      <div className="overflow-x-auto rounded-b-lg border border-t-0 border-border"><table className="w-full min-w-[780px] text-left text-sm consulta-tabela"><caption className="sr-only">Auditoria dos registros do animal</caption>
         <thead className="bg-surface-2 text-ink-3"><tr>{["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"].map((titulo) => <th scope="col" key={titulo} className="px-3 py-2 font-semibold">{titulo}{titulo === "Responsável" && <AjudaCampo rotulo="Sobre a autoria e os detalhes de auditoria" texto="Responsável é a autoria registrada na auditoria. Registros coletivos aparecem quando há vínculo persistido com o animal; detalhes dependem dos snapshots disponíveis e das permissões."/>}</th>)}</tr></thead>
         <tbody className="divide-y divide-border">{resultado.itens.map((entrada, indice) => {
           const chave = entrada.id ?? `${entrada.entidadeId}-${entrada.em}-${indice}`;
@@ -107,7 +107,7 @@ export function AuditoriaAnimal({ id, recarregarToken }: { id: string; recarrega
           </Fragment>;
         })}{!resultado.itens.length && <tr><td colSpan={6} className="p-5 text-center text-ink-3">Nenhum registro de auditoria neste período com os filtros selecionados.</td></tr>}</tbody>
       </table></div>
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-ink-3"><span>{total ? `${(pagina - 1) * TAMANHO_PAGINA + 1}–${Math.min(pagina * TAMANHO_PAGINA, total)}` : "0"} de {total} registros</span><div className="flex items-center gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina - 1 }))}>Anterior</Button><label className="sr-only" htmlFor={`pagina-auditoria-${id}`}>Página da auditoria</label><SelectCampo id={`pagina-auditoria-${id}`} className="h-9 rounded-md border border-border bg-surface px-2 text-ink" value={pagina} onValueChange={(valorSelecionado) => setConsulta((q) => ({ ...q, pagina: Number(valorSelecionado) }))}>{Array.from({ length: paginas }, (_, i) => <option key={i + 1} value={i + 1}>Página {i + 1} de {paginas}</option>)}</SelectCampo><Button secondary disabled={pagina >= paginas} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina + 1 }))}>Próxima</Button></div></div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-3"><span>{total ? `${(pagina - 1) * TAMANHO_PAGINA + 1}–${Math.min(pagina * TAMANHO_PAGINA, total)}` : "0"} de {total} registros</span><div className="flex items-center gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina - 1 }))}>Anterior</Button><label className="sr-only" htmlFor={`pagina-auditoria-${id}`}>Página da auditoria</label><SelectCampo id={`pagina-auditoria-${id}`} className="h-9 rounded-md border border-border bg-surface px-2 text-ink" value={pagina} onValueChange={(valorSelecionado) => setConsulta((q) => ({ ...q, pagina: Number(valorSelecionado) }))}>{Array.from({ length: paginas }, (_, i) => <option key={i + 1} value={i + 1}>Página {i + 1} de {paginas}</option>)}</SelectCampo><Button secondary disabled={pagina >= paginas} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina + 1 }))}>Próxima</Button></div></div>
     </>}
   </div>;
 }

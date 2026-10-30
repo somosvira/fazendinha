@@ -1,3 +1,4 @@
+import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
@@ -20,6 +21,7 @@ import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
 import "./styles/identidade-rural.css";
 import "./styles/tabelas-operacionais.css";
+import "./styles/operacional-aprovado.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
@@ -621,7 +623,7 @@ export function App() {
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        <div key={propAtiva ?? "all"} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
+        <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
           <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><Loader label="Carregando área…" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>

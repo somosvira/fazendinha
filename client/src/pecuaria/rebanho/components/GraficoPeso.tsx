@@ -63,7 +63,7 @@ export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { h
       <Line dataKey="pesoHistorico" name="Estimado, informado ou externo" stroke="none" connectNulls={false} dot={{ r: 4, fill: "var(--ink-2)", stroke: "var(--ink-2)" }} activeDot={{ r: 5 }} isAnimationActive={false} />
     </LineChart>
   </ChartContainer>
-    <p aria-label="Legenda da precisão do peso" className="mt-2 text-xs text-ink-3">{[
+    <p aria-label="Legenda da precisão do peso" className="mt-2 text-sm text-ink-3">{[
       pontos.some(p => p.pesoMedido !== null) && "Medido: linha contínua",
       pontos.some(p => p.pesoSemPrecisao !== null) && "Precisão não informada: linha tracejada",
       pontos.some(p => p.pesoHistorico !== null) && "Estimado, informado ou externo: pontos sem linha",

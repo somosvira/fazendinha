@@ -153,3 +153,10 @@ describe("listarFiltrosSchema (filtros novos de Animais)", () => {
     expect(listarFiltrosSchema.safeParse({ baixaDe: "2026-02-01", baixaAte: "2026-02-01" }).success).toBe(true);
   });
 });
+
+it("aceita contexto do cartão explicitamente sem confundir false com true", () => {
+  expect(listarFiltrosSchema.parse({ comContexto: "true" }).comContexto).toBe(true);
+  expect(listarFiltrosSchema.parse({ comContexto: "false" }).comContexto).toBe(false);
+  expect(listarFiltrosSchema.parse({}).comContexto).toBeUndefined();
+  expect(listarFiltrosSchema.safeParse({comContexto:"sim"}).success).toBe(false);
+});

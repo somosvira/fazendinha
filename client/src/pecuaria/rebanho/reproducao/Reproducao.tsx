@@ -1,3 +1,4 @@
+import { GitBranch } from "lucide-react";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -144,7 +145,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
-      <PageHeader titulo="Reprodução" descricao="Manejo, acompanhamentos e resultados do rebanho." />
+      <PageHeader titulo={<span className="rotina-titulo"><span><GitBranch/></span>Reprodução</span>} />
       <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
         active={rotina} onSelect={selecionarRotina} />
 

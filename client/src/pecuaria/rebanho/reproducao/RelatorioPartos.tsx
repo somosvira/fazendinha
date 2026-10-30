@@ -180,7 +180,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
 }
 
 export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapshot: SnapshotRelatorioPartos; operacional?: boolean }) {
-  return <article className="space-y-5 text-sm print:text-xs">
+  return <article className="space-y-5 text-sm print:text-sm">
     <header>
       <h2 className="text-lg font-semibold">Ficha de partos e pós-parto <AjudaCampo rotulo="Ajuda sobre a ficha de partos" texto="RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período."/></h2>
       <p>Sítio {snapshot.propriedadeId} · {snapshot.periodo.inicio} a {snapshot.periodo.fim} (ambas inclusive) · {snapshot.totalPartos} partos</p>

@@ -53,7 +53,7 @@ export function CirculoMarcosReprodutivos({ estado, marcos, eventos, pendencias 
   const descrever = (m: MarcoReprodutivo) => `${m.rotulo}: ${estados[m.estado]}${m.data ? ` em ${formatBRDateISO(m.data)}` : ", data não informada"}`;
   return <section className="rounded-xl border border-border bg-card p-4 sm:p-6" aria-labelledby={`${id}-titulo`}>
     <header className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-ink-3">Acompanhamento individual</p>
+      <div><p className="text-sm font-semibold uppercase tracking-wider text-ink-3">Acompanhamento individual</p>
         <h3 id={`${id}-titulo`} className="mt-1 text-lg font-semibold">Marcos do ciclo reprodutivo</h3></div>
       <p className="max-w-full rounded-lg bg-surface-2 px-3 py-2 text-sm font-semibold break-words" role="status">{estado}</p>
     </header>
@@ -73,15 +73,15 @@ export function CirculoMarcosReprodutivos({ estado, marcos, eventos, pendencias 
                   <circle cx={posicao.x} cy={posicao.y} r="6" stroke="currentColor" strokeWidth="2"
                     fill={realizado ? "currentColor" : "var(--card)"} className={realizado ? "text-primary" : "text-ink-3"} />
                   <text x={m.x} y={m.y} textAnchor={m.ancora} fill="currentColor" className="text-foreground text-[19px] sm:text-[13px]" fontWeight="600">{m.rotulo}</text>
-                  <text x={m.x} y={m.y + 19} textAnchor={m.ancora} fill="currentColor" className="text-ink-3 text-[17px] sm:text-[12px]">{m.data ? formatBRDateISO(m.data) : estados[m.estado]}</text>
-                  {m.data && m.estado !== "REALIZADO" && <text x={m.x} y={m.y + 36} textAnchor={m.ancora} fill="currentColor" className="text-ink-3 text-[16px] sm:text-[11px]">{estados[m.estado]}</text>}
+                  <text x={m.x} y={m.y + 19} textAnchor={m.ancora} fill="currentColor" className="text-ink-3 text-[17px] sm:text-sm">{m.data ? formatBRDateISO(m.data) : estados[m.estado]}</text>
+                  {m.data && m.estado !== "REALIZADO" && <text x={m.x} y={m.y + 36} textAnchor={m.ancora} fill="currentColor" className="text-ink-3 text-[16px] sm:text-sm">{estados[m.estado]}</text>}
                 </g>;
               })}
             </g>
           </svg>
           <div className="pointer-events-none absolute left-1/2 top-[52.5%] w-[35%] -translate-x-1/2 -translate-y-1/2 text-center" aria-hidden="true">
             <p className="text-sm font-semibold sm:text-base break-words line-clamp-3">{estado}</p>
-            <p className="mt-2 text-xs text-ink-3">{registrados} de 5 marcos registrados</p>
+            <p className="mt-2 text-sm text-ink-3">{registrados} de 5 marcos registrados</p>
           </div>
         </div>
         <figcaption className="text-sm text-ink-3">O círculo mostra marcos conhecidos, sem medir chance de prenhez. Datas previstas não comprovam realização. A liberação pode ocorrer em ordem diferente do desenho.</figcaption>
@@ -93,14 +93,14 @@ export function CirculoMarcosReprodutivos({ estado, marcos, eventos, pendencias 
           {eventos.map((e, i) => <li key={e.id} className={`relative ml-2 pl-6 pb-5 ${i < eventos.length - 1 ? "border-l-2 border-border" : "border-l-2 border-transparent"}`}>
             <span aria-hidden="true" className={`absolute -left-[7px] top-1 h-3 w-3 rounded-full border-2 border-primary ${e.pendente ? "bg-card" : "bg-primary"}`} />
             <p className="text-sm font-semibold break-words">{e.data ? <time dateTime={e.data}>{formatBRDateISO(e.data)}</time> : "Data não informada"} · {e.titulo}</p>
-            {e.pendente && <p className="text-xs font-semibold text-ink-3">Pendente</p>}
+            {e.pendente && <p className="text-sm font-semibold text-ink-3">Pendente</p>}
             {e.detalhe && <p className="mt-1 text-sm text-ink-3 break-words">{e.detalhe}</p>}
           </li>)}
         </ol>
       </div>
     </div>
     {intervalos.length > 0 && <dl className="mt-5 grid gap-3 sm:grid-cols-3">
-      {intervalos.map(item => <div key={item.rotulo} className="rounded-lg bg-surface-2 p-3"><dt className="text-xs text-ink-3">{item.rotulo}</dt>
+      {intervalos.map(item => <div key={item.rotulo} className="rounded-lg bg-surface-2 p-3"><dt className="text-sm text-ink-3">{item.rotulo}</dt>
         <dd className="mt-1 text-lg font-semibold">{item.dias === null ? "Não aferido" : `${item.dias} ${item.dias === 1 ? "dia" : "dias"}`}</dd></div>)}
     </dl>}
     {pendencias.length > 0 && <aside className="mt-5 rounded-lg border border-border p-3" aria-label="Lacunas e pendências do ciclo">
