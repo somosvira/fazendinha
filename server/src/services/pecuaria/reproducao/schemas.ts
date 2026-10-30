@@ -11,7 +11,12 @@ export const motivo = z.string().trim().min(5).max(1000);
 export const sitio = z.number().int().positive();
 const base = { chave: uuid, animalId: uuid, propriedadeId: sitio, data };
 const texto = z.string().trim().max(1000).nullish();
-export const situacaoInicialSchema = z.object({ ...base, situacao: z.enum(["VAZIA", "DESCONHECIDA", "APTA"]), aptaDesde: data.nullish(), observacao: texto }).strict();
+export const situacaoInicialSchema = z.object({ ...base, situacao: z.enum(["VAZIA", "DESCONHECIDA", "APTA"]), aptaDesde: data.nullish(),
+  classeReprodutiva: z.enum(["NOVILHA", "VACA"]).nullish(), observacao: texto,
+}).strict().superRefine((v, ctx) => {
+  if (v.classeReprodutiva && (v.observacao?.trim().length ?? 0) < 5)
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["observacao"], message: "Descreva a evidência da classe reprodutiva" });
+});
 export const restricaoSchema = z.object({ ...base, tipo: z.enum(["TEMPORARIA", "PERMANENTE", "DESCARTE"]), motivo, acoes: z.array(z.enum(["IA", "TE", "COBERTURA", "IATF"])).min(1).default(["IA", "TE", "COBERTURA", "IATF"]), ate: data.nullish() }).strict();
 export const regraSanitariaSchema = z.object({ propriedadeId: sitio, doencaId: uuid, acao: z.enum(["IA", "TE", "COBERTURA", "IATF"]), efeito: z.enum(["BLOQUEAR", "ALERTAR"]), motivo, ativo: z.boolean().default(true) }).strict();
 export const tentativaSchema = z.object({ ...base, tipo: z.enum(["IA", "TE", "COBERTURA"]), materialId: uuid.nullish(), touroId: uuid.nullish(), touroExternoId: uuid.nullish(), origem: z.enum(["ESTOQUE", "SERVICO", "DOCUMENTADA"]), quantidade: z.coerce.number().positive().max(99999999).nullish(), partidaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), valorServicoAtribuido: z.coerce.number().nonnegative().nullish(), responsavel: z.string().trim().max(160).nullish(), observacao: texto, cienciaValidadeDesconhecida: z.boolean().optional(), documentacaoExcepcional: z.boolean().optional(), motivoDocumentacaoExcepcional: motivo.optional(), cienciaSanitaria: z.boolean().optional(), justificativaSemOrigem: motivo.optional() }).strict();

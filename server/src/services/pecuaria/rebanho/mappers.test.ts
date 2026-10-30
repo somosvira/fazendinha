@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agregarPainel, mapearAnimalResumo, resumoAuditoria, type AnimalResumo } from "./mappers.js";
+import { agregarPainel, mapearAnimalResumo, mapearRegularizacaoHistoricaBaixa, resumoAuditoria, type AnimalResumo } from "./mappers.js";
 
 const animalBase = {
   id: "a1",
@@ -148,5 +148,16 @@ it("ficha conserva resumo produtivo sem referências ou fatos internos de outro 
   expect(mapearContextoProdutivoFicha(contexto)).toEqual({
     dataReferencia: "2026-10-14", situacaoProdutiva: "LACTANTE" as const, del: 0, diasPosParto: 0,
     diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [],
+  });
+});
+
+ describe("proveniência pública da baixa histórica", () => {
+  it("preserva evidência e revisão sem expor snapshots sanitários internos", () => {
+    const origem = { bancoOrigem: "IDEAGRI", chaveOrigem: "412", evidencia: "Extrato original", motivo: "Saída antiga", usuarioId: 7, registradaEm: "2026-10-29T12:00:00Z", segredo: "interno", revisao: { dados: { chave: "39ce15f7-bd59-4405-8757-45f5a627715c", tipo: "MORTE", evidencia: "Laudo encontrado", motivo: "Revisão documentada", cienciaSanitaria: true }, usuarioId: 8, registradaEm: "2026-10-29T13:00:00Z", carencias: { interno: true } } };
+    expect(mapearRegularizacaoHistoricaBaixa(origem)).toEqual({ bancoOrigem: "IDEAGRI", chaveOrigem: "412", evidencia: "Extrato original", motivo: "Saída antiga", usuarioId: 7, registradaEm: "2026-10-29T12:00:00Z", revisao: { dados: { chave: "39ce15f7-bd59-4405-8757-45f5a627715c", tipo: "MORTE", evidencia: "Laudo encontrado", motivo: "Revisão documentada" }, usuarioId: 8, registradaEm: "2026-10-29T13:00:00Z" } });
+  });
+  it("ausência ou snapshot inválido não comprova origem histórica", () => {
+    expect(mapearRegularizacaoHistoricaBaixa(null)).toBeNull();
+    expect(mapearRegularizacaoHistoricaBaixa({ evidencia: "isolada" })).toBeNull();
   });
 });

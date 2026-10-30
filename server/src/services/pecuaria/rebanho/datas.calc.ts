@@ -99,6 +99,12 @@ export interface PesagemData {
   id: string;
   data: Date | string;
   tipo: string;
+  referenciaHistorica?: string | null;
+  ideagriId?: number | null;
+  contextoHistorico?: string;
+  vinculadaImportacao?: boolean;
+  vinculadaParto?: boolean;
+  vinculadaSecagem?: boolean;
 }
 
 export interface PlanoAjusteEntrada {
@@ -112,7 +118,9 @@ export interface PlanoAjusteEntrada {
 
 /**
  * Quem começa exatamente na entrada antiga acompanha a nova: a 1ª localização, o 1º destino e a
- * pesagem ENTRADA; a pesagem NASCIMENTO acompanha o nascimento. A validação é feita contra o
+ * pesagem ENTRADA comum; a pesagem NASCIMENTO comum acompanha o nascimento. Pesos históricos
+ * ou vinculados a parto/secagem conservam a data factual e exigem reconciliação em conflito.
+ * A validação é feita contra o
  * histórico já ajustado — a nova entrada não pode passar do fim da 1ª linha, de outra pesagem,
  * nem da baixa.
  */
@@ -153,15 +161,25 @@ export function planejarAjusteEntrada(input: {
   const moverPesagensNascimento: string[] = [];
   for (const pesagem of input.pesagens) {
     let data = t(pesagem.data);
-    if (pesagem.tipo === "ENTRADA" && data === t(input.entradaAntiga) && data !== entradaNova) {
+    const preservar = pesagem.referenciaHistorica != null || pesagem.ideagriId != null
+      || pesagem.vinculadaImportacao || pesagem.vinculadaParto || pesagem.vinculadaSecagem
+      || pesagem.contextoHistorico === "EXTERNO";
+    const conflito = `pesagem ${pesagem.id} (${formatarDataBR(pesagem.data)})${preservar ? "; exige reconciliação explícita do fato" : " registrada"}`;
+    if (!preservar && pesagem.tipo === "ENTRADA" && data === t(input.entradaAntiga) && data !== entradaNova) {
       moverPesagensEntrada.push(pesagem.id);
       data = entradaNova;
-    } else if (pesagem.tipo === "NASCIMENTO" && data === t(input.nascimentoAntigo) && data !== t(input.nascimentoNovo)) {
+    } else if (!preservar && pesagem.tipo === "NASCIMENTO" && data === t(input.nascimentoAntigo) && data !== t(input.nascimentoNovo)) {
       moverPesagensNascimento.push(pesagem.id);
       data = t(input.nascimentoNovo);
     }
     if (data < t(input.nascimentoNovo)) {
-      erros.push({ campo: "dataNascimento", mensagem: "Data de nascimento não pode ser posterior a uma pesagem registrada" });
+      erros.push({ campo: "dataNascimento", mensagem: `Data de nascimento não pode ser posterior à ${conflito}` });
+    }
+    // Peso externo pode anteceder a entrada; nascimento também tem sua própria data.
+    // Os demais fatos que já pertenciam ao período interno não podem ficar antes dele.
+    if (pesagem.tipo !== "NASCIMENTO" && pesagem.contextoHistorico !== "EXTERNO"
+      && data < entradaNova && (data >= t(input.entradaAntiga) || pesagem.contextoHistorico === "INTERNO" || pesagem.tipo === "ENTRADA")) {
+      erros.push({ campo: "dataEntrada", mensagem: `Data de entrada não pode ser posterior à ${conflito}` });
     }
   }
 

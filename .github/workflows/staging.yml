@@ -59,6 +59,7 @@ jobs:
       - name: Verificar contratos da carga e seed unificada
         run: |
           pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
+          pnpm --filter rionovo-server run import:pecuaria:stg:typecheck
           pnpm --filter rionovo-server run seed:typecheck
       - name: Testes da interface
         run: pnpm --filter rionovo-client exec vitest run --fileParallelism=false
@@ -71,6 +72,8 @@ jobs:
         run: pnpm --filter rionovo-server test
       - name: Testes da carga técnica V4
         run: pnpm --filter rionovo-server run test:import:pecuaria:v4
+      - name: Testes da conciliação histórica STG
+        run: pnpm --filter rionovo-server run test:import:pecuaria:stg
 
   financeiro-integration:
     name: financeiro (bateria de invariantes, banco real)

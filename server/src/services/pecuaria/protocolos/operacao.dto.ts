@@ -11,6 +11,7 @@ export type CabecalhoOperacao = {
 export type EtapaOperacao = { id: string; nome: string; ordem: number; tipo: string; diaRelativo: number; unidadeIntervalo: string; previstaPara: string | null; precisaoTemporal: "DIA" | "HORA" | null; contagens: ContagensOperacao };
 export type VinculoAtualOperacao = { tipo: "APLICACAO" | "EXAME" | "TENTATIVA" | "MANEJO"; id: string; origem: string };
 export type ParticipanteOperacao = {
+  contextoTentativa?: { iaPrevista: boolean | null; possuiTentativaVinculada: boolean };
   id:string;animalId:string;animal:AnimalOperacao;encerradoEm:string|null;motivoEncerramento:string|null;
   inicioPrevisto:string;inicioEfetivo:string|null;precisaoTemporal:"DIA"|"HORA";precisaoInicioEfetivo:"DIA"|"HORA"|null;
 };

@@ -19,3 +19,12 @@ it("consulta dez resumos e destaca contexto selecionado fora da página sem carr
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "Busca" } });
   await waitFor(() => expect(req.mock.calls.some(([c]) => c.includes("busca=Busca") && c.includes("pagina=1"))).toBe(true));
 });
+
+
+it("distingue modelo sem IA e ausência de vínculo sem deduzir pelo nome", async () => {
+  req.mockResolvedValue({ itens: [{ ...vinculo(1), protocolo: { id: "v1", nome: "IATF no nome não comprova IA", versao: 1 }, contextoTentativa: { iaPrevista: false, possuiTentativaVinculada: false } }], total: 1, pagina: 1, porPagina: 10 });
+  render(<ProtocolosAnimal animalId="animal" propriedadeId={7} />);
+  expect(await screen.findByText("IA não prevista neste modelo histórico")).toBeTruthy();
+  expect(screen.getByText("Sem tentativa vinculada")).toBeTruthy();
+  expect(screen.queryByText(/IA ausente|incompleto/i)).toBeNull();
+});

@@ -12,7 +12,7 @@ Abra [index.html](index.html) diretamente no navegador. O arquivo contém os cap
 | Integração | [Conectar e avaliar](09-integracao-e-lacunas.md) |
 | Referências incluídas | [Estados do animal](../pecuaria/estados-animal.md) · [System design](../system-design.md) · [Lacunas](../lacunas.md) |
 
-Base de código inspecionada: `b63931e4` (V5 integrada à main). Os contratos explicam o comportamento; testes existentes indicam cenários cobertos, sem afirmar execução nesta revisão. Exemplos não representam dados reais ou prescrição veterinária.
+O manual acompanha os contratos versionados do repositório. Disponibilidade por ambiente depende do código e do schema implantados; testes existentes indicam cenários cobertos e não representam homologação da fazenda. Exemplos não representam dados reais ou prescrição veterinária.
 
 ## Regenerar
 

@@ -90,6 +90,9 @@ describe("motivoAceito (tipo × classe)", () => {
     ["MORTE", "DESCARTE_INVOLUNTARIO", false],
     ["EXTRAVIO", "DESCARTE_VOLUNTARIO", false],
     ["EXTRAVIO", "MORTE", false],
+    ["NAO_DETERMINADO", "MORTE", false],
+    ["NAO_DETERMINADO", "DESCARTE_VOLUNTARIO", false],
+    ["NAO_DETERMINADO", "DESCARTE_INVOLUNTARIO", false],
     ["CADASTRO_INDEVIDO", "DESCARTE_INVOLUNTARIO", false],
     ["CADASTRO_INDEVIDO", "MORTE", false],
   ];
@@ -98,7 +101,7 @@ describe("motivoAceito (tipo × classe)", () => {
   });
 
   it("todo tipo está na tabela", () => {
-    expect(Object.keys(CLASSES_POR_TIPO).sort()).toEqual(["ABATE", "CADASTRO_INDEVIDO", "DOACAO", "EXTRAVIO", "MORTE", "VENDA"]);
+    expect(Object.keys(CLASSES_POR_TIPO).sort()).toEqual(["ABATE", "CADASTRO_INDEVIDO", "DOACAO", "EXTRAVIO", "MORTE", "NAO_DETERMINADO", "VENDA"]);
   });
 
   it("mensagens explicam a recusa", () => {

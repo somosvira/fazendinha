@@ -1,3 +1,4 @@
+vi.mock("./filas-aptidao.js", () => ({ carregarFilasAptidaoTx: vi.fn(async () => []) }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { uid } from "../../../lib/uid.fixture.js";

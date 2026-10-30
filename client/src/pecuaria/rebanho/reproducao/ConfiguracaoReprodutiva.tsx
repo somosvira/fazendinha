@@ -1,3 +1,4 @@
+import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
 import { AjudaCampo } from "../../../components/Dica";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -17,6 +18,10 @@ export function ConfiguracaoReprodutiva({
   propriedadeId: number;
   podeLancar: boolean;
 }) {
+  const [vacas, setVacas] = useState(grupoCriteriosVazio);
+  const [novilhas, setNovilhas] = useState(grupoCriteriosVazio);
+  const [diasAvaliacao, setDiasAvaliacao] = useState<number | null>(null);
+  const [motivoVersao, setMotivoVersao] = useState("");
   const [politicas, setPoliticas] = useState<PoliticaElegibilidade[]>([]);
   const [vigencia, setVigencia] = useState("");
   const [primiparas, setPrimiparas] = useState("");
@@ -46,7 +51,7 @@ export function ConfiguracaoReprodutiva({
     setDescarte("");
     setRestricoes("");
     setPerda("");
-    setPapeis([]);
+    setPapeis([]); setVacas(grupoCriteriosVazio()); setNovilhas(grupoCriteriosVazio()); setDiasAvaliacao(null); setMotivoVersao("");
     void listarPoliticas(propriedadeId)
       .then((v) => {
         if (ativo) setPoliticas(v);
@@ -67,7 +72,8 @@ export function ConfiguracaoReprodutiva({
       return;
     }
     const parametros: ParametrosElegibilidade = {
-      versao: 1,
+      versao: 2,
+      criteriosAptidao: { vacas, novilhas, diasAvaliacaoPosParto: diasAvaliacao },
       metodologia: "IDEAGRI_IILB_BASE_V1",
       pevPrimiparasDias: Number(primiparas),
       pevMultiparasDias: Number(multiparas),
@@ -79,7 +85,7 @@ export function ConfiguracaoReprodutiva({
       perdaGestacional: perda as ParametrosElegibilidade["perdaGestacional"],
       papeisIncluidos: papeis,
     };
-    const input = { propriedadeId, vigenteDesde: vigencia, parametros };
+    const input = { propriedadeId, vigenteDesde: vigencia, parametros, motivo: motivoVersao };
     const assinatura = JSON.stringify(input);
     if (chave.current?.assinatura !== assinatura)
       chave.current = { assinatura, chave: crypto.randomUUID() };
@@ -205,6 +211,15 @@ export function ConfiguracaoReprodutiva({
               ]}
             />
           </div>
+          <div className="border-t pt-5">
+            <h3 className="text-lg font-semibold">Critérios de avaliação reprodutiva</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Somente critérios selecionados exigem evidência. Quando combinados, todos precisam ser atendidos. Avaliação devida não agenda nem determina aptidão.</p>
+            <label className="my-3 flex items-center gap-2"><input type="checkbox" checked={diasAvaliacao !== null} onChange={e => setDiasAvaliacao(e.target.checked ? 45 : null)}/>Solicitar avaliação após parto comprovado</label>
+            {diasAvaliacao !== null && <label>Dias após parto comprovado<Input required type="number" min={0} max={2000} value={diasAvaliacao} onChange={e => setDiasAvaliacao(Number(e.target.value))}/><span className="text-sm text-muted-foreground">Referência: 45 dias. Ajuste explicitamente com o responsável pelo manejo.</span></label>}
+            <div className="mt-5 grid gap-8 lg:grid-cols-2"><CriteriosAptidaoFormulario titulo="Vacas" valor={vacas} onChange={setVacas}/><CriteriosAptidaoFormulario titulo="Novilhas" valor={novilhas} onChange={setNovilhas}/></div>
+            <p className="mt-3 text-sm text-muted-foreground">Sem critérios de disparo, o agendamento continua manual. Pesos sem precisão informada não são aceitos como medida.</p>
+            <label className="mt-4 block">Motivo da nova versão<Input required minLength={5} maxLength={1000} value={motivoVersao} onChange={e => setMotivoVersao(e.target.value)}/></label>
+          </div>
           <fieldset>
             <legend className="mb-2">Papéis incluídos na elegibilidade <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Novilhas dependem da situação inicial com “apta desde” ou de liberação individual. Idade e DEL não liberam automaticamente."/></legend>
             {(
@@ -299,8 +314,9 @@ export function ConfiguracaoReprodutiva({
                 </dd>
               </div>
             </dl>
+            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios indicam necessidade de avaliação; liberação exige toque apto e decisão individual.</p></div>}
             <p className="mt-3 text-sm text-muted-foreground">
-              Base IDEAGRI/IILB — metodologia Fazendinha v1
+              Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com avaliação e decisão explícitas" : "histórica"}
             </p>
           </details>
         ))}

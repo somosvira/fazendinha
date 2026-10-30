@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { HistoricoBaixas } from "./HistoricoBaixas";
 import type { AnimalFicha } from "../types";
 
@@ -38,4 +38,26 @@ describe("HistoricoBaixas", () => {
     expect(screen.getByText(/Estornada em 10\/01\/2026 — Cadastro duplicado/)).toBeTruthy();
     expect(screen.getAllByText("Valendo")).toHaveLength(1);
   });
+});
+
+it("mostra evidência e autoria, oferecendo revisão só para origem comprovada ainda não classificada", () => {
+  const origem = { bancoOrigem: "IDEAGRI", chaveOrigem: "BAIXA:1", evidencia: "Extrato da saída", motivo: "Saída sem classificação", usuarioId: 7, registradaEm: "2026-10-29T12:00:00Z", revisao: null };
+  const revisar = vi.fn();
+  render(<HistoricoBaixas historicoBaixas={[
+    { ...baixaValendo, tipo: "NAO_DETERMINADO", regularizacaoHistorica: origem },
+    { ...baixaEstornada, id: "b2", tipo: "NAO_DETERMINADO", regularizacaoHistorica: origem },
+    { ...baixaValendo, id: "b3", tipo: "NAO_DETERMINADO" },
+  ]} onRevisar={revisar} />);
+  expect(screen.getAllByText("Extrato da saída")).toHaveLength(2);
+  const acoes = screen.getAllByRole("button", { name: "Revisar classificação" });
+  expect(acoes).toHaveLength(1);
+  fireEvent.click(acoes[0]);
+  expect(revisar).toHaveBeenCalledWith(expect.objectContaining({ id: "b1" }));
+});
+it("leitura da proveniência permanece disponível sem ação de escrita e conserva a revisão", () => {
+  render(<HistoricoBaixas historicoBaixas={[{ ...baixaValendo, regularizacaoHistorica: { bancoOrigem: "IDEAGRI", chaveOrigem: "1", evidencia: "Extrato original", motivo: "Saída antiga", usuarioId: 7, registradaEm: "2026-10-29T12:00:00Z", revisao: { usuarioId: 8, registradaEm: "2026-10-29T13:00:00Z", dados: { chave: "chave", tipo: "VENDA", evidencia: "Nota de venda", motivo: "Documento localizado" } } } }]} />);
+  expect(screen.getByText("Extrato original")).toBeTruthy();
+  expect(screen.getByText("Nota de venda")).toBeTruthy();
+  expect(screen.getByText(/Usuário 8/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Revisar classificação" })).toBeNull();
 });

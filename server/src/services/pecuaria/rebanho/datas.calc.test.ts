@@ -145,4 +145,56 @@ describe("planejarAjusteEntrada", () => {
       ...base, primeiraCategoriaManualDesde: "2025-02-01", entradaNova: "2024-12-01", localizacoes: [], destinos: [],
     }).erros).toEqual([]);
   });
+
+  it.each(["NASCIMENTO", "ENTRADA"])("preserva a data factual de %s histórico quando a correção é compatível", (tipo) => {
+    const data = tipo === "NASCIMENTO" ? base.nascimentoAntigo : base.entradaAntiga;
+    const plano = planejarAjusteEntrada({
+      ...base, entradaNova: "2025-01-01", nascimentoNovo: "2024-01-01",
+      pesagens: [{ id: "historica", data, tipo, referenciaHistorica: "IDEAGRI:PESO:1" }],
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.moverPesagensEntrada).toEqual([]);
+    expect(plano.moverPesagensNascimento).toEqual([]);
+  });
+
+  it("recusa nascimento posterior ao peso histórico, identificando o fato que exige reconciliação", () => {
+    const plano = planejarAjusteEntrada({
+      ...base, entradaNova: base.entradaAntiga, nascimentoNovo: "2024-02-01",
+      pesagens: [{ id: "peso-fonte", data: base.nascimentoAntigo, tipo: "NASCIMENTO", referenciaHistorica: "IDEAGRI:PESO:1" }],
+    });
+    expect(plano.erros).toEqual([{ campo: "dataNascimento", mensagem: expect.stringMatching(/peso-fonte.*10\/01\/2024.*reconciliação/) }]);
+    expect(plano.moverPesagensNascimento).toEqual([]);
+  });
+
+  it("recusa entrada posterior ao peso de entrada histórico sem deslocar o fato", () => {
+    const plano = planejarAjusteEntrada({
+      ...base, entradaNova: "2025-02-01",
+      pesagens: [{ id: "peso-entrada", data: base.entradaAntiga, tipo: "ENTRADA", referenciaHistorica: "IDEAGRI:PESO:2" }],
+    });
+    expect(plano.erros).toEqual([{ campo: "dataEntrada", mensagem: expect.stringMatching(/peso-entrada.*10\/01\/2025.*reconciliação/) }]);
+    expect(plano.moverPesagensEntrada).toEqual([]);
+  });
+
+  it.each([
+    { ideagriId: 123 },
+    { vinculadaImportacao: true },
+    { vinculadaParto: true },
+    { vinculadaSecagem: true },
+  ])("conserva pesagem com proveniência ou vínculo: %j", (proveniencia) => {
+    const plano = planejarAjusteEntrada({
+      ...base, entradaNova: "2025-01-01",
+      pesagens: [{ id: "preservada", data: base.entradaAntiga, tipo: "ENTRADA", ...proveniencia }],
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.moverPesagensEntrada).toEqual([]);
+  });
+
+  it("permite peso externo anterior à entrada sem mover a data da fonte", () => {
+    const plano = planejarAjusteEntrada({
+      ...base, entradaNova: "2025-02-01",
+      pesagens: [{ id: "externa", data: base.entradaAntiga, tipo: "ROTINA", contextoHistorico: "EXTERNO", referenciaHistorica: "IDEAGRI:PESO:3" }],
+    });
+    expect(plano.erros).toEqual([]);
+    expect(plano.moverPesagensEntrada).toEqual([]);
+  });
 });

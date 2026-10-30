@@ -45,6 +45,22 @@ PEV é período de espera voluntário configurado pela fazenda. Pode distinguir 
 
 Vazia durante o PEV pode ser não elegível. Aguardando diagnóstico pode ficar pendente. Sem política ou liberação suficiente, o sistema não fabrica aptidão. Gestante não é elegível a uma nova tentativa no cálculo. As guardas específicas do comando também verificam restrições sanitárias, material, estoque e período.
 
+### Critérios, avaliação e aptidão clínica
+
+A política V2 separa critérios de vacas e novilhas. Selecione somente os critérios desejados: dias pós-parto para vacas, idade, peso absoluto, percentual do peso adulto ou ECC. Cada parâmetro só participa quando selecionado. Se dois critérios estiverem ativos, ambos precisam ser atendidos; evidência ausente ou vencida aparece como pendência. O padrão do critério de peso aceita apenas medido; estimado/informado só participa se a política autorizar explicitamente. ECC conserva sua escala e validade. Uma vaca com parto anterior declarado, mas sem sua data, não passa a ser tratada como novilha por faltar a data.
+
+Contador de partos igual a zero não prova que a fêmea nunca pariu. Quando houver evidência, registre a **Classe na data do registro** no formulário **Situação inicial**: Novilha ou Vaca, acompanhada de **Evidência ou referência**. O padrão **Não determinada** mantém a lacuna. Essa declaração não cria parto nem libera reprodução. Parto conhecido, saldo positivo e declaração de vaca comprovam a classe sem inventar uma data de parto; conflitos de nuliparidade precisam de reconciliação. Um parto posterior à declaração de novilha passa a identificar vaca na sua data.
+
+Atender aos critérios sinaliza **Avaliação devida**. Não agenda visita nem libera protocolo ou tentativa. Sem critérios ativos, o agendamento continua manual. A referência pós-parto depende de parto comprovado e da política adotada; salvar uma configuração não adota parâmetros em nome da fazenda nem muda silenciosamente o ciclo anterior.
+
+O **toque de aptidão** usa o exame comum e registra Apta, Não apta ou Inconclusivo, com retorno quando informado. A conclusão clínica aparece separada dos impedimentos operacionais. DG negativo não comprova aptidão; idade, peso ou fim do PEV também não substituem o exame. Uma decisão individual explícita pode usar um toque apto válido para antecipar o PEV na ação escolhida, mantendo o prazo original, a justificativa e os outros impedimentos.
+
+Ficha, agenda e visita compartilham a mesma necessidade de avaliação do ciclo. Agendar ou informar retorno não cria outra necessidade; corrigir/anular a evidência revalida os efeitos da decisão sem apagar o histórico. Um novo parto, inclusive aborto ou natimorto, reinicia o ciclo e não herda a liberação anterior. Políticas V1 históricas conservam sua compatibilidade documentada; isso não dispensa a validação do ciclo atual.
+
+Em **Animais e acompanhamentos**, consulte **Avaliação devida**, **Agendadas**, **Retornos de aptidão**, **Aptidão avaliada** e **Pendências de dados**, além de liberadas sem serviço e **Diagnóstico e reconfirmação**. A fila clínica inclui gestantes com demanda de reconfirmação pendente e conserva cada ocorrência e sua previsão; sem previsão, o prazo continua não informado. A fila padrão reúne avaliações e serviços; **Todas as filas** inclui também aptidão avaliada e pendências. Uma fêmea pode ter mais de um acompanhamento, mas a lista combinada a conta uma vez. As contagens por fila não devem ser somadas como animais distintos.
+
+A avaliação permanece disponível para fêmeas em PEV ainda sem liberação. Machos não entram nessa fila. Agendar uma visita move a mesma necessidade para Agendadas, com a data e o acesso ao atendimento existente. O retorno conserva a data informada no toque. Ficha, manejo e visita usam a mesma projeção; aptidão clínica e disponibilidade para protocolo/IA/TE continuam separadas. Crescimento com critérios ainda não atingidos não vira pendência cadastral por si só.
+
 ## Tentativas, materiais e filiação
 
 IA usa material de sêmen; TE usa embrião e conserva doadora e receptora com papéis distintos. Cobertura observada registra o evento conhecido. Exposição de touro a um lote registra intervalo e participantes históricos; não comprova data exata de concepção nem paternidade automática.
@@ -65,9 +81,11 @@ Parto e criação de animais vivos são atômicos. Uma cria sem brinco definitiv
 
 ## Lactação e contadores
 
-`LACTANTE` exige lactação vigente única com evidência válida. `SECA` exige encerramento comprovado sem lactação posterior vigente nem parto posterior sem resolução. Sem evidência suficiente, usa-se `NAO_INFORMADA`.
+`LACTANTE` exige lactação vigente única com evidência válida. `SECA` exige encerramento comprovado sem lactação posterior vigente nem parto posterior sem resolução. Sem evidência suficiente, usa-se `NAO_INFORMADA`. Na interface, a Situação de lactação apresenta Lactante, Seca ou Não informada. O código legado `SEM_LACTACAO` também aparece como Não informada: ausência de lactação registrada não comprova secagem.
 
 DEL conta dias desde o início da lactação, com D0 no início. Fica nulo após o encerramento, inclusive no dia da secagem. Dias pós-parto usa o parto; dias desde tentativa usa a tentativa do ciclo; dias desde confirmação usa o diagnóstico. São relógios distintos.
+
+No formulário **Encerrar lactação**, peso é opcional: escolha **Não informar peso**, **Registrar pesagem** ou **Reutilizar pesagem existente**. A mesma pesagem fica no histórico do animal e na lactação encerrada. Depois, é possível acrescentar, corrigir, substituir ou retirar o vínculo com motivo e histórico. Registrar peso isoladamente não encerra lactação. Data e localização precisam corresponder ao encerramento comprovado; reutilizar conserva tipo, origem e precisão. Reabrir a lactação revoga o vínculo ativo, preservando a pesagem. Na conciliação dos 100 pesos de secagem identificados no IDEAGRI, falta de evidência deixa a associação pendente, sem inventar lactação ou data. Código disponível não indica que esses dados já foram carregados.
 
 Idade gestacional desde IA/cobertura vinculada é uma referência operacional. TE precisa considerar idade embrionária; o contexto atual conserva essa pendência em vez de tratar a data da transferência como fecundação exata. A análise de indicadores possui suas regras próprias de deslocamento, que não completam a ficha individual automaticamente.
 
@@ -76,6 +94,8 @@ Idade gestacional desde IA/cobertura vinculada é uma referência operacional. T
 Protocolo é uma versão de planejamento. Momentos agrupam ações; participação liga animal e versão; tarefa representa o que deve ser realizado. Programação reúne participações num contexto coletivo. A mesma base atende sanitário/reprodutivo e individual/coletivo.
 
 Aplicação, exame, tentativa, avaliação, manejo e retirada de dispositivo usam os executores comuns. A confirmação revalida a prévia e é idempotente: repetir o mesmo pedido não cria outro fato. Adiar ou não atender não administra produto, não insemina e não diagnostica.
+
+Na consulta histórica, **Sem tentativa vinculada** descreve a ausência de vínculo registrado com a participação. **IA não prevista neste modelo histórico** depende das etapas da versão, sem dedução pelo nome do protocolo: um modelo com TE ou somente preparação não fica incompleto por não ter IA. Etapas e fatos avulsos posteriores permanecem separados; datas próximas não atribuem vínculo nem sucesso ao protocolo. O acesso à ficha preserva o contexto de retorno e permite consultar os mesmos fatos.
 
 O executor HTTP comum atual aceita versão 1, até cem tarefas de animais distintos da mesma ação/contexto. A proposta antiga de atendimento por exceção de um momento inteiro com várias ações não está integralmente implementada. Visitas têm coordenação transacional própria entre grupos; isso não significa que o endpoint comum aceite um envelope v2.
 

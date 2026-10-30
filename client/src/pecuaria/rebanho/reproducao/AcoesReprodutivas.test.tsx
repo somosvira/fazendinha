@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { lactacaoSecagem } from "./PesoSecagem.fixture";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { reqV4, type PainelReprodutivo } from "./api";
 vi.mock("./api", () => ({reqV4: vi.fn()}));
 vi.mock("../../../propriedadeScope", () => ({getPropriedadeAtiva: () => 1}));
 afterEach(cleanup);
-beforeEach(() => vi.mocked(reqV4).mockReset());
+beforeEach(() => { vi.mocked(reqV4).mockReset(); });
 it("permite consultar a explicação e as evidências preservadas sem permissão de lançamento", () => {
   const painel: PainelReprodutivo = { animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [],
     gestacoes: [{ id: "g", animalId: "a", animal: { id: "a", brinco: "Matriz transferida 42", nome: null }, status: "VALIDO", tipoEncerramento: "PERDA", encerradaEm: "2026-10-17", motivoEncerramento: "Perda observada durante a visita", causaClinica: { estado: "SUSPEITA", descricao: "Achado ainda em investigação", evidencias: ["Laudo demonstrativo 42"] } }] };
@@ -54,4 +55,25 @@ it("mantém chave no retry da perda e gera outra para a próxima intenção", as
   const corpos = vi.mocked(reqV4).mock.calls.map(c => c[1] as {chave:string});
   expect(corpos[0].chave).toBe(corpos[1].chave);
   expect(corpos[2].chave).not.toBe(corpos[1].chave);
+});
+
+
+it.each(["SEM_LACTACAO", "NAO_INFORMADA"] as const)("apresenta lactação %s como não informada", (situacaoProdutiva) => {
+  const painel: PainelReprodutivo = { animais: [{ animalId: "a", brinco: "100", nome: null, situacao: "VAZIA", partos: 0, tentativasCiclo: 0, gestacao: null, restricoes: [], situacaoProdutiva }], tentativas: [], avaliacoes: [], partos: [], restricoes: [] };
+  render(<AcoesReprodutivas painel={painel} podeLancar={false} onMudou={vi.fn()} />);
+  expect(screen.getByText("Não informada")).toBeTruthy();
+  expect(screen.queryByText("Seca")).toBeNull();
+});
+
+it("expõe o encerramento com peso opcional e a manutenção apenas para quem pode lançar", async () => {
+  const painel: PainelReprodutivo = { animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [], lactacoes: [{ ...lactacaoSecagem, encerradaEm: null, vinculosPesagemSecagem: [] }] };
+  render(<AcoesReprodutivas painel={painel} podeLancar onMudou={vi.fn()} propriedadeId={7} />);
+  fireEvent.click(screen.getByRole("button", { name: "Encerrar lactação" }));
+  expect(await screen.findByLabelText("Como deseja informar o peso?")).toBeTruthy();
+});
+it("leitura da lactação mostra peso e histórico sem permitir manutenção", () => {
+  const painel: PainelReprodutivo = { animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [], lactacoes: [lactacaoSecagem] };
+  render(<AcoesReprodutivas painel={painel} podeLancar={false} onMudou={vi.fn()} propriedadeId={7} />);
+  expect(screen.getByText("512 kg")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Manter vínculo de peso" })).toBeNull();
 });

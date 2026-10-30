@@ -25,11 +25,11 @@ comBanco("Produto com usos próprios", () => {
     const origem = await prisma.categoria.create({ data: { nome: `Geral usos ${run}`, usoSanitario: false, usoNutricional: false } });
     const destino = await prisma.categoria.create({ data: { nome: `Outra usos ${run}` } });
     categorias.push(origem.id, destino.id);
-    const p = await criarProduto(produtoSchema.parse({ nome: `Produto usos ${run}`, categoriaId: origem.id, unidade: "KG", usoSanitario: true, usoNutricional: true, rastrearPartidas: true, perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: 90.25 } }), null);
+    const p = await criarProduto(produtoSchema.parse({ nome: `Produto usos ${run}`, categoriaId: origem.id, unidade: "KG", usoSanitario: true, usoNutricional: true, rastrearPartidas: true, perfilSanitario: { carenciaLeiteHoras: 24, carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: 90.25 } }), null);
     produtos.push(p.id);
     expect(p).toMatchObject({ usoSanitario: true, usoNutricional: true, rastrearPartidas: true });
     expect((await listarProdutos({ uso: "nutricional", q: run })).map((i) => i.id)).toContain(p.id);
-    await prisma.perfilSanitarioProduto.update({ where: { produtoId: p.id }, data: { referenciaTecnica: "Histórico preservado" } });
+    await prisma.perfilSanitarioProduto.update({ where: { produtoId: p.id }, data: { referenciaTecnica: "Histórico preservado", carenciaLeiteHoras: null } });
     const trocado = await atualizarProduto(p.id, { nome: p.nome, unidade: "KG", categoriaId: destino.id, usoSanitario: true, usoNutricional: true, usoGenetico: false, fornecedorIds: [], centroCustoIds: [], perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: 90.25 } }, null);
     expect(trocado.perfilSanitario?.referenciaTecnica).toBe("Histórico preservado");
     expect(trocado).toMatchObject({ usoSanitario: true, usoNutricional: true, perfilSanitario: { carenciaCarneHoras: 0 }, perfilNutricional: { materiaSecaPercentual: "90.25" } });

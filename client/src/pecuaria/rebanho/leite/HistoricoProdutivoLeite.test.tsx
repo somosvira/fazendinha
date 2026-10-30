@@ -126,3 +126,18 @@ it("descarta resposta antiga ao trocar o animal e não apresenta queda para subt
   expect(within(screen.getByRole("region", { name: "Última aferição" })).getByText("10 L")).toBeTruthy();
   expect(screen.queryByText("999 L")).toBeNull();
 });
+
+it("ficha com apenas controles documentais mostra o histórico sem criar aferições, totais ou curva", async () => {
+  vi.mocked(consultarLeite).mockResolvedValue({ ...dados, itens: [], total: 0, seriePeriodo: [], totaisPeriodo: { ...resumo, litros: null }, controlesDocumentais: [{
+    id: "doc", tipo: "CONTROLE_PERIODICO", inicio: "2026-10-02", fim: "2026-10-02", total: "22.4", unidade: "L",
+    referenciaUnidade: "Litros declarados pelo usuário, sem conversão", parcelas: [{ rotulo: "Manhã", hora: null, quantidade: 12.1 }],
+    lactacaoId: null, origemColetiva: null, versao: 1, contexto: "INTERNO", semEfeitoEstoqueFinanceiro: true,
+    origem: { banco: "IDEAGRI", chave: "CONTROLE:0001", evidencia: "Documento original conferido" },
+  }] });
+  render(<HistoricoProdutivoLeite animalId="animal" propriedadeId={1} />);
+  expect(await screen.findByText("22,4 L")).toBeTruthy();
+  expect(screen.getByText("Litros declarados pelo usuário, sem conversão")).toBeTruthy();
+  expect(screen.getByText("Nenhuma aferição no período")).toBeTruthy();
+  expect(screen.queryByText("Litros registrados no período")).toBeNull();
+  expect(screen.queryByRole("region", { name: "Última aferição" })).toBeNull();
+});

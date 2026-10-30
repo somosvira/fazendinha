@@ -64,6 +64,43 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.operacaoAgricolaCount.mockResolvedValue(0);
   });
 
+  it.each([undefined, { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }])("serviço recusa criar produto sanitário incompleto mesmo sem o validador HTTP", async (perfilSanitario) => {
+    await expect(criarProduto(input({ usoSanitario: true, perfilSanitario }), 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "perfilSanitario.carenciaLeiteHoras" });
+    expect(mocks.produtoCreate).not.toHaveBeenCalled();
+  });
+
+  it("ativar uso sanitário exige carências explícitas", async () => {
+    await expect(atualizarProduto(uid(1), { usoSanitario: true }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "perfilSanitario.carenciaLeiteHoras" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("editar outro dado do legado conserva carência desconhecida", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, usoSanitario: true, perfilSanitarioProduto: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 }, fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(uid(1), { nome: "Legado revisado", perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 } }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data.perfilSanitarioProduto.upsert.update.carenciaLeiteHoras).toBeNull();
+  });
+
+  it("legado sem perfil pode editar nome sem inventar prazos", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, usoSanitario: true, perfilSanitarioProduto: null, fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(uid(1), { nome: "Legado revisado" }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("perfilSanitarioProduto");
+  });
+
+  it.each(["carenciaLeiteHoras", "carenciaCarneHoras"] as const)("recusa apagar %s conhecida", async (campo) => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, usoSanitario: true, perfilSanitarioProduto: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48 }, fornecedores: [], centrosCusto: [] });
+    await expect(atualizarProduto(uid(1), { perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48, [campo]: null } }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: `perfilSanitario.${campo}` });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("mudar perfil audita antes/depois sem regravar aplicações", async () => {
+    const anterior = { ...base, usoSanitario: true, perfilSanitarioProduto: { carenciaLeiteHoras: null, carenciaCarneHoras: 48 }, fornecedores: [], centrosCusto: [] };
+    mocks.produtoFindUnique.mockResolvedValue(anterior);
+    mocks.produtoUpdate.mockResolvedValue({ ...anterior, perfilSanitarioProduto: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } });
+    await atualizarProduto(uid(1), { perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).toEqual({ perfilSanitarioProduto: { upsert: { create: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }, update: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } } } });
+    expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ usuarioId: 9, estadoAnterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: null }) }), estadoPosterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }) }) }) }));
+  });
+
   it("preserva uso sanitário referenciado por plano IATF ainda sem aplicações", async () => {
     mocks.protocoloIatfCount.mockResolvedValue(1);
     await expect(atualizarProduto(uid(1),{usoSanitario:false})).rejects.toMatchObject({code:"CONFLITO",campo:"usoSanitario"});

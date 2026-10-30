@@ -41,10 +41,25 @@ export function diasEntre(a: Date | string, b: Date | string): number {
 export interface PesagemPeso {
   data: Date | string;
   pesoKg: number;
+  precisao?: string;
+  contextoHistorico?: string;
+  origem?: string;
+}
+
+/** Pesos estimados/informados e fatos externos não comprovam desempenho interno.
+ * Legado sem precisão continua comparável, mas sua cobertura permanece desconhecida. */
+export function pesoCompativelIndicador(p: Pick<PesagemPeso, "precisao" | "contextoHistorico">) {
+  return !["ESTIMADO", "INFORMADO"].includes(p.precisao ?? "") && p.contextoHistorico !== "EXTERNO";
+}
+
+/** Série comparável em ordem crescente, limitada pela data de consulta ou baixa. */
+export function pesagensParaIndicadores<T extends PesagemPeso>(pesagens: T[], ate: Date | string): T[] {
+  return pesagens.filter(p => pesoCompativelIndicador(p) && t(p.data) <= t(ate)).sort((a, b) => t(a.data) - t(b.data));
 }
 
 /** GMD entre duas pesagens (kg/dia, 3 casas). `null` se forem do mesmo dia ou fora de ordem. */
 export function gmdEntre(inicial: PesagemPeso, final: PesagemPeso): number | null {
+  if (!pesoCompativelIndicador(inicial) || !pesoCompativelIndicador(final)) return null;
   const dias = diasEntre(inicial.data, final.data);
   if (dias < 1) return null;
   return arredondar3((final.pesoKg - inicial.pesoKg) / dias);
@@ -65,7 +80,7 @@ export function gmdPeriodo(pesagens: PesagemPeso[], de: Date | string | null, at
   const ateT = t(ate);
   const deT = de == null ? null : t(de);
   const janela = pesagens
-    .filter((p) => t(p.data) <= ateT && (deT == null || t(p.data) >= deT))
+    .filter((p) => pesoCompativelIndicador(p) && t(p.data) <= ateT && (deT == null || t(p.data) >= deT))
     .sort((a, b) => t(a.data) - t(b.data));
 
   if (janela.length < 2) return { dias: null, valor: null, pesagens: janela.length };
@@ -82,6 +97,7 @@ export interface ResumoPeso {
   gmdRecente: number | null;
   gmdDesdeEntrada: number | null;
   gmdPeriodo: ResultadoGmdPeriodo;
+  cobertura?: { medidas: number; estimadas: number; informadas: number; precisaoNaoInformada: number; externas: number };
 }
 
 /**
@@ -94,9 +110,8 @@ export function resumoPeso(
   opts: { hoje: Date | string; periodoDias: number | null; ateData?: Date | string | null },
 ): ResumoPeso {
   const limite = opts.ateData ?? opts.hoje;
-  const ordenadas = pesagens
-    .filter((p) => t(p.data) <= t(limite))
-    .sort((a, b) => t(a.data) - t(b.data));
+  const noCorte = pesagens.filter((p) => t(p.data) <= t(limite));
+  const ordenadas = pesagensParaIndicadores(noCorte, limite);
 
   const ultimaPesagem = ordenadas[ordenadas.length - 1] ?? null;
   const ultimo = ultimaPesagem ? { kg: arredondarPeso(ultimaPesagem.pesoKg), data: iso(ultimaPesagem.data) } : null;
@@ -107,7 +122,14 @@ export function resumoPeso(
   const de = opts.periodoDias == null ? null : new Date(t(limite) - opts.periodoDias * DIA_MS);
   const periodo = gmdPeriodo(ordenadas, de, limite);
 
-  return { ultimo, gmdRecente, gmdDesdeEntrada, gmdPeriodo: periodo };
+  const cobertura = noCorte.some(p => p.precisao !== undefined || p.contextoHistorico !== undefined) ? {
+    medidas: noCorte.filter(p => p.precisao === "MEDIDO").length,
+    estimadas: noCorte.filter(p => p.precisao === "ESTIMADO").length,
+    informadas: noCorte.filter(p => p.precisao === "INFORMADO").length,
+    precisaoNaoInformada: noCorte.filter(p => !p.precisao || p.precisao === "NAO_INFORMADO").length,
+    externas: noCorte.filter(p => p.contextoHistorico === "EXTERNO").length,
+  } : undefined;
+  return { ultimo, gmdRecente, gmdDesdeEntrada, gmdPeriodo: periodo, ...(cobertura ? { cobertura } : {}) };
 }
 
 export interface ItemPesoLote {

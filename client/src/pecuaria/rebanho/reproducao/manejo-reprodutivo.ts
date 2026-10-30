@@ -1,9 +1,11 @@
+import type { DemandaManejo } from "./elegibilidade-api";
 import { listarAnimais } from "../api";
 import type { AnimalResumo, CategoriaDTO } from "../types";
 import type { PainelReprodutivo } from "./api";
 import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
 
-export type FilaManejo = "liberadas" | "diagnostico" | "pendencias";
+export type FilaLegadaManejo = "liberadas" | "diagnostico" | "pendencias";
+export type FilaManejo = FilaLegadaManejo | "avaliacao" | "agendamento" | "retorno" | "aptidao";
 export type LinhaManejo = {
   animalId: string;
   brinco: string;
@@ -12,6 +14,10 @@ export type LinhaManejo = {
   data: string | null;
   dias: number | null;
   motivos: string[];
+  aptidaoClinica?: "APTA" | "NAO_APTA" | "NAO_DETERMINADA";
+  necessidadeId?: string;
+  demandasAcompanhamento?: DemandaManejo[];
+  visitas?: { id: string; nome: string }[];
 };
 export type ConsultaManejo = { fila: FilaManejo | "todas" | "manejo"; busca: string; lote: string; ordem: string; pagina: number; tamanho: number };
 const numero = (v: string | null, padrao: number) => v && /^\d+$/.test(v) && Number.isSafeInteger(Number(v)) && Number(v) > 0 ? Number(v) : padrao;
@@ -19,7 +25,7 @@ export function lerConsultaManejo(): ConsultaManejo {
   const p = new URLSearchParams(window.location.search);
   const fila = p.get("fila");
   return {
-    fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" || fila === "todas" ? fila : "manejo",
+    fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" || fila === "todas" || fila === "avaliacao" || fila === "agendamento" || fila === "retorno" || fila === "aptidao" ? fila : "manejo",
     busca: p.get("q") ?? "", lote: p.get("lote") ?? "",
     ordem: ["maior-espera", "menor-espera", "animal", "animal-desc"].includes(p.get("ordem") ?? "") ? p.get("ordem")! : "maior-espera",
     pagina: numero(p.get("pagina"), 1), tamanho: [4, 10, 25, 50].includes(numero(p.get("porPagina"), 4)) ? numero(p.get("porPagina"), 4) : 4,
@@ -43,7 +49,7 @@ export function diasManejo(data: string | null, hoje: string): number | null {
   const dias = (Date.parse(`${hoje}T00:00:00Z`) - Date.parse(`${data.slice(0, 10)}T00:00:00Z`)) / 86400000;
   return Number.isFinite(dias) ? dias : null;
 }
-export function montarFilasManejo(painel: PainelReprodutivo, acompanhamento: AcompanhamentoIndicadores, animais: AnimalResumo[], hoje: string, categorias: CategoriaDTO[] = []): Record<FilaManejo, LinhaManejo[]> {
+export function montarFilasManejo(painel: PainelReprodutivo, acompanhamento: AcompanhamentoIndicadores, animais: AnimalResumo[], hoje: string, categorias: CategoriaDTO[] = []): Record<FilaLegadaManejo, LinhaManejo[]> {
   const porId = new Map(animais.map(a => [a.id, a]));
   const porIdPainel = new Map(painel.animais.map(a => [a.animalId, a]));
   const linha = (animalId: string, data: string | null, motivos: string[] = []): LinhaManejo | null => {

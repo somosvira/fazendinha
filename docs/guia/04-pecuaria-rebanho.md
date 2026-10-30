@@ -12,6 +12,8 @@ Animal comprado registra entrada e origem; o cadastro zootécnico não deve ser 
 
 Não invente datas para preencher lacunas. “Partos antes da entrada” é um saldo conhecido, não uma lista de partos com datas recuperadas. Para consultas anteriores à entrada, esse saldo não pode ser distribuído no tempo por suposição.
 
+Corrigir nascimento ou entrada preserva as datas factuais de pesos históricos, inclusive cargas antigas identificadas por origem IDEAGRI ou vínculo de importação. Pesos associados a parto/secagem também não acompanham a correção cadastral. Se a nova cronologia contrariar esses fatos, a alteração é recusada por inteiro e informa o registro a reconciliar. Cadastro ou movimentação não podem tornar incompatíveis pesos com contexto interno/externo nem controles documentais de leite já registrados.
+
 ## Categoria, finalidade e papel
 
 Categoria vem de regras configuráveis, avaliadas em ordem, com critérios como sexo, idade e partos. Uma exceção manual tem história própria. “Vaca” e “novilha” não são sinônimos de gestante e vazia. A contagem de partos usa o saldo anterior mais eventos válidos não incluídos naquele saldo; pela convenção operacional vigente, inclui aborto e natimorto.
@@ -48,7 +50,9 @@ Composição racial informada e composição calculada têm proveniências disti
 
 Pesagens têm data, tipo e origem; podem ser individuais ou coletivas. GMD é ganho médio diário entre pesos válidos com intervalo conhecido. Peso ausente não é zero; uma pesagem isolada não comprova tendência. Desmama e castração são fatos de manejo com autoria e histórico.
 
-Peso de nascimento e peso ligado ao parto precisam conservar seus vínculos. Indicadores que usam bases diferentes não são equivalentes, mesmo que coincidam numericamente. A existência do enum BALANCA não significa integração automática com equipamento.
+Peso de nascimento e peso ligado ao parto precisam conservar seus vínculos. A ficha usa a mesma série comparável para último peso, peso anterior e GMD, até a referência ou baixa. Estimados, informados e externos permanecem no histórico, mas não entram nesses indicadores. Precisão desconhecida no legado continua identificada, sem virar medição comprovada. Indicadores com janelas diferentes conservam suas definições, mesmo que coincidam numericamente. A existência do enum BALANCA não significa integração automática com equipamento.
+
+Pesagem com origem histórica exige reconciliação da fonte para corrigir ou excluir; o editor comum não apaga sua proveniência. Por exemplo, o GMD entre 300 kg medidos em 30/09 e 340 kg medidos em 20/10 é 2 kg/dia; uma estimativa intermediária não substitui esses pesos comparáveis.
 
 ## Onde consultar
 

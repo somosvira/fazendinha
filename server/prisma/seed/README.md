@@ -4,7 +4,7 @@
 
 ## Ambiente e execução
 
-Aceita exclusivamente PostgreSQL de loopback `fazendinha_seedatev3`, fora de produção, com namespace `dev`/`test`, baseline aplicada e checksum idêntico. Não aplica migrations, reinicializa banco ou apaga dados. Configurações de serviços vêm do ambiente normal; o preflight não depende de R2.
+Aceita exclusivamente PostgreSQL de loopback `fazendinha_seedatev3`, fora de produção, com namespace `dev`/`test`, baseline canônica inicial e todas as migrations incrementais aplicadas, com checksums idênticos aos arquivos. Migrações pendentes, desconhecidas ou com aplicação ativa duplicada são recusadas; a identidade do manifesto permanece baseada na mesma baseline após evoluções válidas. Não aplica migrations, reinicializa banco ou apaga dados. Configurações de serviços vêm do ambiente normal; o preflight não depende de R2.
 
 ```sh
 pnpm --filter rionovo-server run seed --preflight
@@ -26,6 +26,10 @@ O manifesto `server/.seed/manifesto.json` guarda identidade do banco, checksum, 
 | Sítio test | 24 | Somente Nelore de corte |
 
 São 36 lactantes no principal, 12 secas, dez novilhas, oito crias e seis matrizes de reprodução. O cenário inclui tentativas terceira/quarta com avaliações negativas anteriores, partos/gêmeos/natimorto, aborto/perda, TE, protocolos, visitas, exames, 36 vacinações, carências informadas e desconhecida. Fatos históricos documentados permanecem distintos de baixas atuais de estoque.
+
+A nova liberação individual da novilha `DEV-049` registra primeiro um toque sintético `APTO` pelo núcleo comum de exames e vincula a decisão ao exame e ciclo, na mesma data, para IA e sem antecipação do PEV. Exame e decisão usam chaves próprias de reenvio; interrupção entre eles permite retomar sem duplicar o exame. Liberação já concluída no manifesto ou na requisição original é preservada, sem acrescentar evidência retroativa ou alterar autoria. As situações iniciais históricas declaradas `APTA` continuam como fatos de entrada, sem conversão em novas decisões ou exames.
+
+Uma programação interrompida nova da novilha `DEV-058` prepara antes uma situação inicial fictícia `VAZIA` em D−100 e associa a política ao ciclo pelos serviços normais, com autoria e chaves próprias. Programação já existente não recebe esses fatos retroativamente. Os grupos ativo e programado usam as origens já preparadas das matrizes. A política V1 demonstrativa não recebe exceção; uma V2 sem decisão comprovada continua bloqueando a intervenção, mesmo após comprovar a origem do ciclo.
 
 Financeiro contém quatro bancos, clientes/fornecedores/prestadores, grupos/categorias/centros, compras com partidas nos três sítios, compromissos, recebimentos, transferências e estornos. Quantidades e preços são sintéticos; os serviços mantêm autoria, vínculo e auditoria.
 

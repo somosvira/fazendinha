@@ -10,7 +10,7 @@ const idsSchema = (campo: string) =>
   z.array(z.string().uuid()).max(200)
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
-export const produtoSchema = z.object({
+const produtoBaseSchema = z.object({
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   usoGenetico: z.boolean().optional(),
@@ -25,9 +25,18 @@ export const produtoSchema = z.object({
   perfilSanitario: z.object({ tipoAplicacaoId: z.string().uuid().nullish(), orientacaoUso: z.string().trim().max(2000, "Informe uma orientação com até 2.000 caracteres.").nullish(), carenciaLeiteHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), carenciaCarneHoras: z.number({ invalid_type_error: "Informe um número inteiro de horas, igual ou maior que zero." }).int("Informe um número inteiro de horas.").nonnegative("A carência não pode ser negativa.").nullable(), viaPadrao: z.string().trim().max(80, "Informe uma via com até 80 caracteres.").nullish(), referenciaTecnica: z.string().trim().max(300, "Informe uma referência com até 300 caracteres.").nullish() }).optional(),
   perfilNutricional: z.object({ materiaSecaPercentual: z.number({ invalid_type_error: "Informe a matéria seca entre 0% e 100%." }).finite("Informe a matéria seca entre 0% e 100%.").min(0, "Informe a matéria seca entre 0% e 100%.").max(100, "Informe a matéria seca entre 0% e 100%.").multipleOf(0.01, "Use até duas casas decimais na matéria seca.").nullable() }).optional(),
 });
+export const produtoSchema = produtoBaseSchema.superRefine((produto, ctx) => {
+  if (!produto.usoSanitario) return;
+  for (const campo of ["carenciaLeiteHoras", "carenciaCarneHoras"] as const) {
+    if (produto.perfilSanitario?.[campo] == null) ctx.addIssue({
+      code: z.ZodIssueCode.custom, path: ["perfilSanitario", campo],
+      message: "Informe a carência em horas; use zero somente para Sem carência.",
+    });
+  }
+});
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 
-export const patchProdutoSchema = produtoSchema.partial().extend({ ativo: z.boolean().optional() });
+export const patchProdutoSchema = produtoBaseSchema.partial().extend({ ativo: z.boolean().optional() });
 export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 
 // Filtro de produtos por seus tipos de uso — usado por

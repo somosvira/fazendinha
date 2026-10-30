@@ -32,3 +32,21 @@ it.each([['NAO_ATENDIDO', 'Não atendido'], ['ADIADO', 'Adiado']] as const)("pre
   expect(screen.getByText("Animal indisponível para o manejo")).toBeTruthy();
   expect(screen.getByText("Previsto: 02/01/2020 · horário não informado")).toBeTruthy();
 });
+
+
+it("conserva retorno completo e separa a versão do modelo do vínculo da tentativa", async () => {
+  const origem = "/pecuaria/reproducao/programacoes/grupo?busca=matriz&sitio=7#participantes";
+  window.history.replaceState({}, "", origem);
+  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "p", animalId: "a", inicioPrevisto: "2020-01-01", inicioEfetivo: "2020-01-01", animal: { brinco: "Matriz 1" }, contextoTentativa: { iaPrevista: false, possuiTentativaVinculada: true } }], pagina: 1, total: 1, porPagina: 10 });
+  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
+  expect(await screen.findByText("IA não prevista neste modelo histórico")).toBeTruthy();
+  expect(screen.getByText("Tentativa vinculada")).toBeTruthy();
+  expect(screen.queryByText("Sem tentativa vinculada")).toBeNull();
+  const link = new URL(screen.getByRole("link", { name: "Ficha do animal" }).getAttribute("href")!, "http://localhost");
+  expect(link.searchParams.get("retorno")).toBe(origem);
+  expect(link.searchParams.get("participacaoId")).toBe("p");
+  expect(link.searchParams.get("programacaoId")).toBe("grupo");
+  expect(link.hash).toBe("#reproducao");
+  expect(obterTarefasProtocolo).not.toHaveBeenCalled();
+  window.history.replaceState({}, "", "/");
+});

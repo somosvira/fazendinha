@@ -46,6 +46,7 @@ import {
   reqV4,
   type TentativaInput,
   type PartoInput,
+  type SituacaoInicialInput,
 } from "./api";
 
 export type AcaoReprodutiva =
@@ -148,7 +149,8 @@ export function FormReproducao({
     { viva: true, sexo: "F", aptidao: "LEITE" },
   ]);
   const [lactacao, setLactacao] = useState(false);
-  const [situacao, setSituacao] = useState("VAZIA");
+  const [situacao, setSituacao] = useState<SituacaoInicialInput["situacao"]>("VAZIA");
+  const [classeReprodutiva, setClasseReprodutiva] = useState("");
   const [aptaDesde, setAptaDesde] = useState("");
   const [restricaoAte, setRestricaoAte] = useState("");
   const [acoesRestritas, setAcoesRestritas] = useState([
@@ -164,7 +166,9 @@ export function FormReproducao({
   const gestacaoDoFato = gestacoesClinicas.find(g => g.animalId === animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= data) && (!g.encerradaEm || (acao === "avaliacao" && resultado === "NEGATIVO" ? g.encerradaEm.slice(0,10) > data : g.encerradaEm.slice(0,10) >= data)));
   const negativoBloqueado =
     acao === "avaliacao" && resultado === "NEGATIVO" && !!gestacaoDoFato;
+  const exigeEvidenciaClasse = acao === "situacao" && !!classeReprodutiva;
   const exigeMotivo =
+    exigeEvidenciaClasse ||
     acao === "restricao" ||
     (acao === "tentativa" && origem === "DOCUMENTADA") ||
     conduta === "DESCARTE" ||
@@ -240,8 +244,9 @@ export function FormReproducao({
     setter: (s: string) => void,
     opcoes: [string, string][],
     required = true,
+    rotuloVazio = "Selecione",
   ) => (
-    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : undefined}>
+    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : undefined}>
       {(p) => (
         <SelectCampo
           key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
@@ -251,7 +256,7 @@ export function FormReproducao({
           onValueChange={valor => setter(valor)}
           required={required}
         >
-          <option value="">Selecione</option>
+          <option value="">{rotuloVazio}</option>
           {opcoes.map(([v, r]) => (
             <option key={v} value={v}>
               {r}
@@ -273,7 +278,7 @@ export function FormReproducao({
       return;
     }
     if (exigeMotivo && motivo.trim().length < 5) {
-      setErro("Informe um motivo com pelo menos 5 caracteres.");
+      setErro(exigeEvidenciaClasse ? "Descreva a evidência da classe reprodutiva com pelo menos 5 caracteres." : "Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
@@ -281,7 +286,7 @@ export function FormReproducao({
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, aptaDesde, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -342,9 +347,10 @@ export function FormReproducao({
         await reqV4("/reproducao/situacoes-iniciais", {
           ...base,
           situacao,
+          ...(classeReprodutiva === "NOVILHA" || classeReprodutiva === "VACA" ? { classeReprodutiva } : {}),
           observacao: motivo || undefined,
           aptaDesde: aptaDesde || undefined,
-        }, "POST", propriedadeId);
+        } satisfies SituacaoInicialInput, "POST", propriedadeId);
       if (acao === "restricao")
         await reqV4("/reproducao/restricoes", {
           ...base,
@@ -624,11 +630,16 @@ export function FormReproducao({
         )}
         {acao === "parto" && <PartoCampos valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
-          seletor("situacao", "Situação inicial", situacao, setSituacao, [
+          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],
             ["DESCONHECIDA", "Desconhecida"],
             ["APTA", "Apta"],
           ])}
+        {acao === "situacao" &&
+          seletor("classe-reprodutiva", "Classe na data do registro", classeReprodutiva, setClasseReprodutiva, [
+            ["NOVILHA", "Novilha — nunca pariu, conforme evidência"],
+            ["VACA", "Vaca — já pariu, conforme evidência"],
+          ], false, "Não determinada")}
         {acao === "situacao" &&
           situacao === "APTA" &&
           campo(
@@ -679,7 +690,7 @@ export function FormReproducao({
             ["PERMANENTE", "Permanente"],
             ["DESCARTE", "Descarte reprodutivo"],
           ])}
-        {acao !== "parto" && campo("motivo", "Motivo / observação", motivo, setMotivo, exigeMotivo)}
+        {acao !== "parto" && campo("motivo", acao === "situacao" ? "Evidência ou referência" : "Motivo / observação", motivo, setMotivo, exigeMotivo)}
       </form>
     </FormShellReproducao>
   );

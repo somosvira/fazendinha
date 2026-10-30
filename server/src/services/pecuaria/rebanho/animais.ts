@@ -5,7 +5,8 @@ import { resolverPapelReprodutivo } from "./papel-reprodutivo.calc.js";
 import crypto from "node:crypto";
 import { conferirFinalidadesComProducaoTx, conferirAnimalNoFato, conferirCadastroIndevidoSemFatosTx, conferirFatosNaBaixa, conferirHistoricoDosFatos, conferirLocalizacoesComProducaoTx } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
-import { Prisma } from "@prisma/client";
+import { Prisma, type TipoBaixa } from "@prisma/client";
+import { tipoBaixaOperacionalSchema, type RegularizarBaixaHistoricaInput } from "./schemas.js";
 import { prisma } from "../../../db.js";
 import {
   auditar, dadosAuditoria, exigirAfetadas, hojeFazenda, hojeFazendaDate, traduzirConflitoUnico, travarAnimais, travarBrinco, travarBrincos, travarLoteAtivo,
@@ -20,8 +21,8 @@ import { planejarDestino, planejarDesfazer, planejarDesfazerMovimentacao, planej
 import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual, type RegraCategoria } from "./categoria.calc.js";
 import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
-import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
-import { resumoPeso } from "./peso.calc.js";
+import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, mapearRegularizacaoHistoricaBaixa, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
+import { resumoPeso, pesagensParaIndicadores } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
 import { consultarAuditoriaAnimal } from "./auditoria-animal.js";
 import type {
@@ -95,7 +96,7 @@ function planejar<T>(fn: () => T): T {
  * Escopo de sítio para operar sobre um animal existente: o sítio é o da localização aberta
  * (ou da última, se o animal já saiu). Fora do escopo = "não encontrado" (não vaza existência).
  */
-async function exigirNoEscopo(db: DbPecuaria, animalId: string, escopo: number | null) {
+export async function exigirNoEscopo(db: DbPecuaria, animalId: string, escopo: number | null) {
   const animal = await exigirAnimal(db, animalId);
   if (escopo == null) return animal;
   const ultima = await db.localizacaoAnimal.findFirst({ where: { animalId }, orderBy: [{ ate: { sort: "desc", nulls: "first" } }, { desde: "desc" }] });
@@ -445,14 +446,23 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       const [localizacoes, destinos, pesagens, primeiraBaixa, primeiraCategoriaManual] = await Promise.all([
         tx.localizacaoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
         tx.finalidadeAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
-        tx.pesagem.findMany({ where: { animalId: id }, select: { id: true, data: true, tipo: true } }),
+        tx.pesagem.findMany({ where: { animalId: id }, select: {
+          id: true, data: true, tipo: true, referenciaHistorica: true, ideagriId: true, contextoHistorico: true,
+          vinculosParto: { select: { id: true }, take: 1 }, vinculosSecagem: { select: { id: true }, take: 1 },
+        } }),
         tx.baixaAnimal.findFirst({ where: { animalId: id, estornadaEm: null }, orderBy: { data: "asc" } }),
         tx.categoriaManualAnimal.findFirst({ where: { animalId: id }, orderBy: { desde: "asc" }, select: { desde: true } }),
       ]);
+      // Cargas anteriores à referência histórica já têm proveniência no vínculo de origem.
+      // A leitura ocorre sob a mesma trava do animal e dentro da transação da edição.
+      const pesosImportados = await idsPesagensImportadas(tx, pesagens.map(p => p.id));
       ajuste = planejarAjusteEntrada({
         entradaAntiga: animal.dataEntrada, entradaNova,
         nascimentoAntigo: animal.dataNascimento, nascimentoNovo,
-        localizacoes, destinos, pesagens,
+        localizacoes, destinos, pesagens: pesagens.map(p => ({
+          ...p, vinculadaImportacao: pesosImportados.has(p.id),
+          vinculadaParto: p.vinculosParto.length > 0, vinculadaSecagem: p.vinculosSecagem.length > 0,
+        })),
         primeiraBaixaData: primeiraBaixa?.data ?? null,
         primeiraCategoriaManualDesde: primeiraCategoriaManual?.desde ?? null,
       });
@@ -550,7 +560,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       await aplicarComposicaoCalculada(tx, id, composicaoSugeridaEdicao, usuarioId);
     }
 
-    // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
+    // Linhas iniciais e pesagens cadastrais comuns acompanham as novas datas; fatos preservados não.
     if (ajuste) {
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
       if (ajuste.moverDestino) {
@@ -820,9 +830,12 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
 
   const destinoAtual = destinos.find((d) => d.ate == null) ?? null;
   const baixaAtual = baixas.find((s) => s.estornadaEm == null) ?? null;
-  const ultimoPeso = pesagens[0] ? { pesoKg: Number(pesagens[0].pesoKg), data: pesagens[0].data } : null;
   // baixado: idade/categoria contam até a data da baixa, não até hoje (K5)
   const hoje = baixaAtual ? baixaAtual.data : hojeFazendaDate();
+  const pesos = pesagens.map(p => ({ ...p, pesoKg: Number(p.pesoKg) }));
+  const pesagensIndicadores = pesagensParaIndicadores(pesos, hoje);
+  const ultimoPeso = pesagensIndicadores.at(-1) ?? null;
+  const pesagemAnterior = pesagensIndicadores.at(-2) ?? null;
   const manualAberta = manuais.find((m) => m.ate == null)?.categoria ?? null;
 
   // baixado não tem localização/destino abertos: sítio, lote e destino vêm da linha que a
@@ -847,15 +860,15 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     destino: destinoFicha,
     composicao,
     ultimoPeso,
-    pesagemAnterior: pesagens[1] ? { pesoKg: Number(pesagens[1].pesoKg), data: pesagens[1].data } : null,
+    pesagemAnterior,
     situacao: baixaAtual ? "BAIXADO" : "ATIVO",
     idadeNaBaixa: baixaAtual != null,
     noLocalDesde: locAtual ? locAtual.desde : null,
     baixa: baixaAtual ? { data: baixaAtual.data, tipo: baixaAtual.tipo } : null,
   });
 
-  const peso = resumoPeso(pesagens.map((p) => ({ pesoKg: Number(p.pesoKg), data: p.data })), {
-    hoje: hojeFazendaDate(),
+  const peso = resumoPeso(pesos, {
+    hoje,
     periodoDias,
     ateData: baixaAtual ? baixaAtual.data : null,
   });
@@ -891,7 +904,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       id: m.id, categoria: m.categoria, desde: m.desde.toISOString().slice(0, 10), ate: m.ate ? m.ate.toISOString().slice(0, 10) : null,
       motivo: m.motivo, motivoEncerramento: m.motivoEncerramento,
     })),
-    historicoPesagens: pesagens.map((p) => ({ id: p.id, data: p.data.toISOString().slice(0, 10), pesoKg: Number(p.pesoKg), tipo: p.tipo, origem: p.origem, observacao: p.observacao })),
+    historicoPesagens: pesagens.map((p) => ({ id: p.id, data: p.data.toISOString().slice(0, 10), pesoKg: Number(p.pesoKg), tipo: p.tipo, origem: p.origem, observacao: p.observacao, precisao: p.precisao, contextoHistorico: p.contextoHistorico, propriedadeId: p.propriedadeId, referenciaHistorica: p.referenciaHistorica })),
     baixa: baixaAtual ? {
       id: baixaAtual.id, data: baixaAtual.data.toISOString().slice(0, 10), tipo: baixaAtual.tipo,
       motivo: baixaAtual.motivo ? { nome: baixaAtual.motivo.nome, classe: baixaAtual.motivo.classe } : null, observacao: baixaAtual.observacao,
@@ -907,6 +920,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       motivo: b.motivo ? { nome: b.motivo.nome, classe: b.motivo.classe } : null, observacao: b.observacao,
       estornadaEm: b.estornadaEm ? b.estornadaEm.toISOString() : null, estornoMotivo: b.estornoMotivo,
       criadoPor: b.criadoPor?.nome ?? null,
+      regularizacaoHistorica: mapearRegularizacaoHistoricaBaixa(b.regularizacaoHistoricaSnapshot),
     })),
     peso,
     filiacao: { mae, pai },
@@ -1055,7 +1069,7 @@ const INCLUDE_RESUMO = {
   baixas: { where: { estornadaEm: null }, take: 1, select: { id: true, data: true, tipo: true } },
   composicao: { include: { raca: true } },
   // 2 mais recentes: a última pesagem (ultimoPeso) e a anterior a ela (gmdRecente)
-  pesagens: { orderBy: { data: "desc" as const }, take: 2 },
+  pesagens: { where: { precisao: { notIn: ["ESTIMADO", "INFORMADO"] }, contextoHistorico: { not: "EXTERNO" } }, orderBy: { data: "desc" as const }, take: 2 },
   categoriasManuais: SELECT_MANUAL_ABERTA,
   partos: SELECT_PARTOS_CATEGORIA,
 } satisfies Prisma.AnimalInclude;
@@ -1125,7 +1139,7 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
   async function consultarPagina() {
     const ordenar = filtros.ordenar ?? "brinco";
     if (ordenar === "ultimoPeso" || ordenar === "gmd") {
-      const bases = await prisma.animal.findMany({ where, select: { id: true, brinco: true, pesagens: { orderBy: { data: "desc" }, take: 2, select: { data: true, pesoKg: true } } } });
+      const bases = await prisma.animal.findMany({ where, select: { id: true, brinco: true, pesagens: { where: { precisao: { notIn: ["ESTIMADO", "INFORMADO"] }, contextoHistorico: { not: "EXTERNO" } }, orderBy: { data: "desc" }, take: 2, select: { data: true, pesoKg: true } } } });
       const ids = ordenarPorPeso(bases, ordenar, filtros.direcao ?? "asc").slice((filtros.page - 1) * filtros.pageSize, filtros.page * filtros.pageSize).map(a => a.id);
       if (!ids.length) return [];
       const detalhes = await prisma.animal.findMany({ where: { AND: [where, { id: { in: ids } }] }, include: INCLUDE_RESUMO });
@@ -1521,67 +1535,87 @@ export async function desfazerDestino(animalId: string, usuarioId: number | null
 
 // ---------- baixa ----------
 
-export async function darBaixa(input: BaixaInput & { animalId: string }, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
-  const { id: animalId } = await exigirNoEscopo(prisma, input.animalId, escopo);
+type DadosBaixaTx = Omit<BaixaInput, "tipo"> & { animalId: string; tipo: TipoBaixa };
 
+/** Único executor físico da baixa comum e da regularização histórica.
+ * O chamador confere escopo; a trava, cronologia, carência e auditoria ficam aqui. */
+export async function registrarBaixaTx(
+  tx: Prisma.TransactionClient,
+  input: DadosBaixaTx,
+  usuarioId: number | null,
+  historico?: { referencia: string; origem: RegularizarBaixaHistoricaInput },
+) {
+  const animalId = input.animalId;
+  if (input.tipo === "NAO_DETERMINADO" && (!historico || !usuarioId))
+    throw new RebanhoError("VALIDACAO", "Tipo não determinado exige regularização histórica documentada e autoria.", "tipo");
   if (input.motivoId) {
-    const motivo = await prisma.motivoBaixa.findFirst({ where: { id: input.motivoId, ativo: true } });
+    const motivo = await tx.motivoBaixa.findFirst({ where: { id: input.motivoId, ativo: true } });
     if (!motivo) throw new RebanhoError("NAO_ENCONTRADO", "Motivo de baixa não encontrado", "motivoId");
     if (!motivoAceito(input.tipo, motivo.classe)) {
       throw new RebanhoError("VALIDACAO", mensagemMotivoRecusado(input.tipo, motivo.classe), "motivoId");
     }
   }
 
-  await transacaoPecuaria(async (tx) => {
-    // trava antes de ler a linha aberta: uma movimentação/mudança de destino simultânea
-    // esperaria aqui e depois veria o animal baixado (sem trava, ficava baixado com linha aberta)
-    await travarAnimais(tx, [animalId]);
-    const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
-    const carencias = await carenciaAnimalTx(tx, animalId, input.data);
-    await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
-    if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
-    const fimDia = new Date(`${input.data}T00:00:00-03:00`);
-    const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
-    if (["VENDA", "ABATE"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
-    const animal = await exigirAnimal(tx, animalId);
-    const [ativa, localAberta, destAberto, ultimaPesagem] = await Promise.all([
-      baixaAberta(tx, animalId),
-      localizacaoAberta(tx, animalId),
-      destinoAberto(tx, animalId),
-      tx.pesagem.findFirst({ where: { animalId }, orderBy: { data: "desc" } }),
-    ]);
-    // baixa não pode voltar no tempo antes de uma pesagem já registrada (R2)
-    const errosData = validarDataBaixa({ dataEntrada: animal.dataEntrada, dataBaixa: input.data, ultimaPesagemData: ultimaPesagem?.data ?? null });
-    if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
 
-    const plano = planejar(() => planejarBaixa({
-      animalAtivo: !ativa,
-      localizacaoAberta: localAberta ? { id: localAberta.id, desde: localAberta.desde } : null,
-      destinoAberto: destAberto ? { id: destAberto.id, desde: destAberto.desde } : null,
-      data: input.data,
-    }));
+  // trava antes de ler a linha aberta: uma movimentação/mudança de destino simultânea
+  // esperaria aqui e depois veria o animal baixado (sem trava, ficava baixado com linha aberta)
+  await travarAnimais(tx, [animalId]);
+  const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
+  const carencias = await carenciaAnimalTx(tx, animalId, input.data);
+  await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
+  if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
+  const fimDia = new Date(`${input.data}T00:00:00-03:00`);
+  const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
+  if (["VENDA", "ABATE", "NAO_DETERMINADO"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
+  const animal = await exigirAnimal(tx, animalId);
+  const [ativa, localAberta, destAberto, ultimaPesagem] = await Promise.all([
+    baixaAberta(tx, animalId),
+    localizacaoAberta(tx, animalId),
+    destinoAberto(tx, animalId),
+    tx.pesagem.findFirst({ where: { animalId }, orderBy: { data: "desc" } }),
+  ]);
+  // baixa não pode voltar no tempo antes de uma pesagem já registrada (R2)
+  const errosData = validarDataBaixa({ dataEntrada: animal.dataEntrada, dataBaixa: input.data, ultimaPesagemData: ultimaPesagem?.data ?? null });
+  if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
 
-    if (plano.fecharLocalizacao) {
-      exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: plano.fecharLocalizacao.id, ate: null }, data: { ate: new Date(plano.fecharLocalizacao.ate) } }), 1);
-    }
-    if (plano.fecharDestino) {
-      exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: plano.fecharDestino.id, ate: null }, data: { ate: new Date(plano.fecharDestino.ate) } }), 1);
-    }
+  const plano = planejar(() => planejarBaixa({
+    animalAtivo: !ativa,
+    localizacaoAberta: localAberta ? { id: localAberta.id, desde: localAberta.desde } : null,
+    destinoAberto: destAberto ? { id: destAberto.id, desde: destAberto.desde } : null,
+    data: input.data,
+  }));
 
-    const cienciaCarenciaSnapshot = JSON.parse(JSON.stringify({ carencias, restricoes,
-      ciente: input.cienciaSanitaria ?? false, justificativa: input.justificativaSanitaria?.trim() || null,
-      usuarioId, propriedadeId: localAberta?.propriedadeId ?? null, confirmadaEm: new Date().toISOString(), dataBaixa: input.data }));
-    const baixa = await tx.baixaAnimal.create({
-      data: {
-        animalId, data: new Date(input.data), tipo: input.tipo, motivoId: input.motivoId ?? null, observacao: input.observacao ?? null,
-        localizacaoFechadaId: plano.fecharLocalizacao?.id ?? null, destinoFechadoId: plano.fecharDestino?.id ?? null, criadoPorId: usuarioId,
-        cienciaCarenciaSnapshot,
-      },
-    });
+  if (plano.fecharLocalizacao) {
+    exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: plano.fecharLocalizacao.id, ate: null }, data: { ate: new Date(plano.fecharLocalizacao.ate) } }), 1);
+  }
+  if (plano.fecharDestino) {
+    exigirAfetadas(await tx.finalidadeAnimal.updateMany({ where: { id: plano.fecharDestino.id, ate: null }, data: { ate: new Date(plano.fecharDestino.ate) } }), 1);
+  }
 
-    await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, propriedadeId: localAberta?.propriedadeId ?? null, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: cienciaCarenciaSnapshot } });
+  const cienciaCarenciaSnapshot = JSON.parse(JSON.stringify({ carencias, restricoes,
+    ciente: input.cienciaSanitaria ?? false, justificativa: input.justificativaSanitaria?.trim() || null,
+    usuarioId, propriedadeId: localAberta?.propriedadeId ?? null, confirmadaEm: new Date().toISOString(), dataBaixa: input.data }));
+  const baixa = await tx.baixaAnimal.create({
+    data: {
+      animalId, data: new Date(input.data), tipo: input.tipo, motivoId: input.motivoId ?? null, observacao: input.observacao ?? null,
+      localizacaoFechadaId: plano.fecharLocalizacao?.id ?? null, destinoFechadoId: plano.fecharDestino?.id ?? null, criadoPorId: usuarioId,
+      cienciaCarenciaSnapshot,
+      ...(historico ? {
+        referenciaHistorica: historico.referencia,
+        regularizacaoHistoricaSnapshot: JSON.parse(JSON.stringify({ ...historico.origem, usuarioId, registradaEm: new Date().toISOString() })),
+      } : {}),
+    },
   });
 
+  await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, propriedadeId: localAberta?.propriedadeId ?? null, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: cienciaCarenciaSnapshot } });
+  return baixa;
+}
+
+export async function darBaixa(input: BaixaInput & { animalId: string }, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
+  if (!tipoBaixaOperacionalSchema.safeParse(input.tipo).success)
+    throw new RebanhoError("VALIDACAO", "Tipo não determinado só pode ser registrado na regularização histórica.", "tipo");
+  const { id: animalId } = await exigirNoEscopo(prisma, input.animalId, escopo);
+  await transacaoPecuaria((tx) => registrarBaixaTx(tx, input, usuarioId));
   return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
 }
 
@@ -1629,14 +1663,20 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
 // contra as pesagens), então as duas escritas não podem se cruzar.
 
 /** O chamador valida o sítio/data do fato e trava o animal antes de escrever. */
-export async function registrarPesagemTx(tx: Prisma.TransactionClient, input: PesagemInput & { animalId: string }, usuarioId: number | null) {
+export async function registrarPesagemTx(tx: Prisma.TransactionClient, input: PesagemInput & { animalId: string }, usuarioId: number | null, historico?: { referencia: string; contexto: "INTERNO" | "EXTERNO"; propriedadeId: number | null; snapshot: Prisma.InputJsonValue }) {
   const animal = await exigirAnimal(tx, input.animalId);
   const baixa = await baixaAberta(tx, input.animalId);
   const errosData = validarDataPesagem({ dataNascimento: animal.dataNascimento, dataBaixa: baixa?.data ?? null, dataPesagem: input.data });
   if (errosData.length) throw new RebanhoError("VALIDACAO", errosData[0].mensagem, errosData[0].campo);
 
+  const precisao = input.precisao ?? (input.origem === "BALANCA" ? "MEDIDO" : "NAO_INFORMADO");
+  if (input.origem === "BALANCA" && ["ESTIMADO", "INFORMADO"].includes(precisao))
+    throw new RebanhoError("VALIDACAO", "Estimativa ou peso informado não é aferição por balança", "precisao");
+  const locais = historico ? [] : await tx.localizacaoAnimal.findMany({ where: { animalId: input.animalId, desde: { lte: new Date(input.data) }, OR: [{ ate: null }, { ate: { gt: new Date(input.data) } }] } });
+  const propriedadeId = historico?.propriedadeId ?? (locais.length === 1 ? locais[0].propriedadeId : null);
+  const contextoHistorico = historico?.contexto ?? (propriedadeId !== null ? "INTERNO" : "NAO_INFORMADO");
   const criada = await tx.pesagem.create({
-    data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, observacao: input.observacao ?? null, criadoPorId: usuarioId },
+    data: { animalId: input.animalId, data: new Date(input.data), pesoKg: new Prisma.Decimal(input.pesoKg), tipo: input.tipo, origem: input.origem, precisao, contextoHistorico, propriedadeId, ...(historico ? { referenciaHistorica: historico.referencia, provenienciaHistoricaSnapshot: historico.snapshot } : {}), observacao: input.observacao ?? null, criadoPorId: usuarioId },
   });
   await auditar(tx, { entidade: "Pesagem", entidadeId: criada.id, animalId: input.animalId, acao: "REGISTRO", usuarioId, depois: criada });
   return criada;
@@ -1659,11 +1699,29 @@ async function exigirPesagem(db: DbPecuaria, id: string) {
   return pesagem;
 }
 
+async function idsPesagensImportadas(db: DbPecuaria, ids: string[]): Promise<Set<string>> {
+  const vinculos = ids.length ? await db.vinculoImportacaoPecuaria.findMany({
+    where: { entidadeDestino: "Pesagem", destinoId: { in: ids } }, select: { destinoId: true },
+  }) : [];
+  return new Set(vinculos.map(v => v.destinoId));
+}
+
+async function exigirPesagemSemOrigemHistorica(db: DbPecuaria, pesagem: { id: string; referenciaHistorica: string | null; ideagriId: number | null }) {
+  if (pesagem.referenciaHistorica != null || pesagem.ideagriId != null || (await idsPesagensImportadas(db, [pesagem.id])).has(pesagem.id))
+    throw new RebanhoError("CONFLITO", "Pesagem histórica exige reconciliação auditada da origem, sem edição ou exclusão operacional.");
+}
+
 /** O chamador já trava o animal e valida o sítio do fato. */
 export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, input: EditarPesagemInput, usuarioId: number | null) {
   const referencia = await exigirPesagem(tx, id);
   const animalId = referencia.animalId;
   const existente = await exigirPesagem(tx, id);
+  if (await tx.vinculoPesagemSecagem.findFirst({ where: { pesagemId: id, revogadoEm: null } }))
+    throw new RebanhoError("CONFLITO", "Pesagem vinculada à secagem exige correção explícita pelo encerramento da lactação, preservando o histórico", "id");
+  await exigirPesagemSemOrigemHistorica(tx, existente);
+  const precisao = input.precisao ?? existente.precisao;
+  if ((input.origem ?? existente.origem) === "BALANCA" && ["ESTIMADO", "INFORMADO"].includes(precisao))
+    throw new RebanhoError("VALIDACAO", "Estimativa ou peso informado não é aferição por balança", "precisao");
   const animal = await exigirAnimal(tx, animalId);
   const baixa = await baixaAberta(tx, animalId);
   const dataPesagem = input.data ?? existente.data;
@@ -1683,6 +1741,8 @@ export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, 
     }
   }
 
+  const locaisNaData = await tx.localizacaoAnimal.findMany({ where: { animalId, desde: { lte: new Date(dataPesagem) }, OR: [{ ate: null }, { ate: { gt: new Date(dataPesagem) } }] } });
+  const propriedadeNaData = locaisNaData.length === 1 ? locaisNaData[0].propriedadeId : null;
   const salva = await tx.pesagem.update({
     where: { id },
     data: {
@@ -1690,6 +1750,9 @@ export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, 
       pesoKg: input.pesoKg != null ? new Prisma.Decimal(input.pesoKg) : undefined,
       tipo: input.tipo ?? undefined,
       origem: input.origem ?? undefined,
+      precisao: input.precisao ?? undefined,
+      propriedadeId: propriedadeNaData,
+      contextoHistorico: propriedadeNaData !== null ? "INTERNO" : "NAO_INFORMADO",
       observacao: input.observacao === undefined ? undefined : input.observacao,
     },
   });
@@ -1717,6 +1780,9 @@ export async function excluirPesagem(id: string, usuarioId: number | null, escop
   await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const existente = await exigirPesagem(tx, id);
+    await exigirPesagemSemOrigemHistorica(tx, existente);
+    if (await tx.vinculoPesagemSecagem.count({ where: { pesagemId: id } }))
+      throw new RebanhoError("CONFLITO", "Pesagem com histórico de secagem não pode ser apagada; preserve o fato e revise sua associação", "id");
     if (await tx.vinculoPesagemParto.count({ where: { pesagemId: id } }))
       throw new RebanhoError("VALIDACAO", "Pesagem com histórico de parto deve ser corrigida, preservando o registro", "id");
     await tx.pesagem.delete({ where: { id } });

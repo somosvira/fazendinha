@@ -2,6 +2,7 @@ import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, Table
 import { Card } from "@/components/ui/card";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { EvolucaoProducaoIndividual } from "./EvolucaoProducaoIndividual";
+import { ControlesHistoricosLeite } from "./ControlesHistoricosLeite";
 import { resumirAfericoesIndividuais } from "./producao-individual.calc";
 import { DatePicker } from "@/components/DatePicker";
 import { AjudaCampo } from "@/components/Dica";
@@ -61,6 +62,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
     <ErrorBox erro={erro} />{erro && <Button variant="outline" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Consultando histórico produtivo…</p>}
     {!carregando && !erro && dados && <>
+      <ControlesHistoricosLeite itens={dados.controlesDocumentais ?? []} />
       {resumo.ultima && <div className="animal-indicadores">
         <Card asChild><section aria-label="Última aferição"><span>Última aferição<AjudaCampo rotulo="Sobre a última aferição" texto="Último volume medido no período, sem participações excluídas. Parcial indica ordenhas pendentes, nunca produção zero."/></span><strong>{formatarLitros(resumo.ultima.litros)}</strong><div>{dataSanitaria(resumo.ultima.data)}{!resumo.ultima.completa && " · Parcial"}</div><div className={resumo.variacao !== null && resumo.variacao < 0 ? "variacao-negativa" : ""}>{resumo.variacao === null ? "Sem comparação equivalente" : `${sinal}${formatarLitros(Math.abs(resumo.variacao))} frente à anterior`}<AjudaCampo rotulo="Sobre a variação da produção" texto={resumo.variacao === null ? "Exige duas aferições completas consecutivas, na mesma lactação conhecida e com as mesmas ordenhas e estados. Parciais e mudanças de rotina não são comparadas." : `Compara ${dataSanitaria(resumo.ultima.data)} com ${dataSanitaria(resumo.anterior!.data)}.${resumo.percentual === null ? " Percentual não calculado porque a anterior é zero." : ` Variação de ${resumo.percentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%.`}`}/></div></section></Card>
         <Card asChild><section aria-label="Média dos dias medidos"><span>Média dos dias medidos<AjudaCampo rotulo="Sobre a média das aferições" texto="Média dos volumes conhecidos somente nos dias aferidos, incluindo subtotais parciais identificados. Não representa média do calendário nem estima intervalos sem controle."/></span><strong>{formatarLitros(resumo.media)}</strong><div>{resumo.pontos.length} dia(s) aferido(s){resumo.pontos.some(p => !p.completa) && " · Inclui parciais"}</div></section></Card>

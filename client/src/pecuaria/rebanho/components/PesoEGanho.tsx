@@ -11,10 +11,10 @@ import { Pencil, Scale, Trash2, Weight } from "lucide-react";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
 import { Paginacao, CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
-import { formatarGmd, inicioJanelaGmd, rotuloPeriodoGmd } from "../lib/peso";
+import { formatarGmd, inicioJanelaGmd, pesoCompativelIndicador, rotuloContextoPeso, rotuloOrigemPesagem, rotuloPeriodoGmd, rotuloPrecisaoPeso } from "../lib/peso";
 import { hoje } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
-import type { AnimalFicha, PeriodoGmd, Pesagem } from "../types";
+import type { AnimalFicha, HistoricoPesagem, PeriodoGmd, Pesagem } from "../types";
 
 const avisoDemonstracao = "Cenário sintético de desenvolvimento. Animais, doses, resultados e intervalos fictícios; não são recomendação clínica.";
 function observacaoVisivel(texto: string | null | undefined) { return texto?.replaceAll(avisoDemonstracao, "").trim() ?? ""; }
@@ -22,8 +22,8 @@ function observacaoVisivel(texto: string | null | undefined) { return texto?.rep
 /** GMD entre uma pesagem e a imediatamente anterior (lista mais recente primeiro) — usado só na
  *  campo "GMD desde a anterior" dos cartões; o cálculo de verdade (recente/período/entrada) vem do
  *  servidor em `animal.peso`. */
-function gmdEntre(atual: { pesoKg: number; data: string }, anterior: { pesoKg: number; data: string } | undefined): string {
-  if (!anterior) return "—";
+function gmdEntre(atual: HistoricoPesagem, anterior: HistoricoPesagem | undefined): string {
+  if (!anterior || !pesoCompativelIndicador(atual) || !pesoCompativelIndicador(anterior)) return "—";
   const dias = (new Date(atual.data).getTime() - new Date(anterior.data).getTime()) / 86_400_000;
   if (dias <= 0) return "—";
   return formatarGmd((atual.pesoKg - anterior.pesoKg) / dias);
@@ -47,7 +47,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     // `gmdPeriodo.dias` é o intervalo entre a 1ª e a última pesagem usadas, não a janela escolhida
     : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
 
-  const mesmaBase = historicoPesagens.length === 2 && peso.gmdPeriodo.pesagens === 2
+  const mesmaBase = historicoPesagens.length === 2 && historicoPesagens.every(pesoCompativelIndicador) && peso.gmdPeriodo.pesagens === 2
     && peso.gmdPeriodo.valor != null && peso.gmdPeriodo.valor === peso.gmdRecente
     && peso.gmdRecente === peso.gmdDesdeEntrada;
   const [pagina, setPagina] = useState(1);
@@ -59,8 +59,8 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       <dl className="ficha-gmd-leitura">
         <div><dt>GMD do período</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{detalhePeriodo}</small></dd></div>
         {mesmaBase ? <div><dt><span>GMD recente</span> e <span>GMD desde a entrada</span></dt><dd className="text-sm">Mesmas duas pesagens do período.</dd></div> : <>
-          <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens."/></dd></div>
-          <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem."/></dd></div>
+          <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
+          <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
         </>}
 
       </dl>
@@ -79,10 +79,13 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
             <p className="mt-3 text-2xl font-semibold tabular-nums">{pesagem.pesoKg.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
             <dl className="mt-3 grid gap-2 text-xs">
               <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">GMD desde a anterior</dt><dd className="whitespace-nowrap font-medium tabular-nums">{gmdEntre(pesagem, historicoPesagens[(paginaAtual-1)*5 + indice + 1])}</dd></div>
-              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Origem</dt><dd>{pesagem.origem === "BALANCA" ? "Balança" : "Manual"}</dd></div>
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Origem</dt><dd>{rotuloOrigemPesagem(pesagem.origem)}</dd></div>
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Precisão</dt><dd>{rotuloPrecisaoPeso(pesagem.precisao)}</dd></div>
+              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Contexto</dt><dd>{rotuloContextoPeso(pesagem.contextoHistorico)}</dd></div>
             </dl>
             {observacaoVisivel(pesagem.observacao) && <p className="mt-3 border-t border-border pt-3 text-sm break-words">{observacaoVisivel(pesagem.observacao)}</p>}
-            {podeLancar && <footer className="mt-3 flex justify-end gap-2 border-t border-border pt-2">
+            {pesagem.referenciaHistorica && <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">Reconciliação auditada para corrigir este registro histórico.</p>}
+            {podeLancar && !pesagem.referenciaHistorica && <footer className="mt-3 flex justify-end gap-2 border-t border-border pt-2">
               <Button variant="ghost" size="icon" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onEditarPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao })}><Pencil size={16} /></Button>
               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onExcluirPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] })}><Trash2 size={16} /></Button>
             </footer>}

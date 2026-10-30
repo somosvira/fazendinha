@@ -1,3 +1,4 @@
+import { consultarControlesHistoricosLeiteTx } from "./controle-historico.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { hojeFazendaDate, RebanhoError } from "../rebanho/regras.js";
@@ -60,7 +61,8 @@ export async function consultarHistoricoProdutivoTx(tx: Prisma.TransactionClient
     carenciaLeite = { dataReferencia: fim, disponibilidade: "DISPONIVEL", leite: c.leite.estado === "CONHECIDO" ? { ...c.leite, ate: c.leite.ate.toISOString() } : c.leite,
       revisaoLeitePendente: c.revisaoLeitePendente, revisaoAdministracaoPendente: c.revisaoAdministracaoPendente };
   }
-  return { propriedadeId, animal, controleIndividual, periodo: { inicio, fim }, itens: dias.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
+  const controlesDocumentais = await consultarControlesHistoricosLeiteTx(tx, propriedadeId, animalId, inicio, fim);
+  return { propriedadeId, animal, controleIndividual, controlesDocumentais, periodo: { inicio, fim }, itens: dias.slice((filtro.pagina - 1) * filtro.tamanho, filtro.pagina * filtro.tamanho),
     seriePeriodo: dias.map(d => ({ participanteId: d.participanteId, data: d.dataOperacional, litros: d.totais.litros, completa: d.totais.completa, excluido: d.excluidoEm !== null, lactacaoId: d.lactacao?.id ?? null, comparabilidade: d.medicoes.map(m => `${m.posicaoId}:${m.estado}`).sort().join("|"), finalidade: d.finalidade.estado })),
     total: dias.length, pagina: filtro.pagina, tamanho: filtro.tamanho, totaisPeriodo: resumirProducao(ativos.flatMap(d => d.medicoes)),
     coberturaPeriodo: { diasCalendario, diasComRegistro, diasSemRegistro: Math.max(0, diasCalendario - diasComRegistro) }, carenciaLeite };
