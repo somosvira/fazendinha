@@ -263,3 +263,5 @@ A entrada unificada de relatórios e o builder de variáveis seguem [Relatórios
 
 
 Na ficha individual, idade e peso ficam em cartões compactos junto aos status do cabeçalho e permanecem visíveis ao trocar de aba. A data da última pesagem aparece separada, com ícone de calendário, como informação de leitura. Sem pesagem há indicação explícita, sem data fictícia; animais baixados conservam “Idade na baixa” e “Último peso”. O Resumo começa em Peso e manejo, sem repetir essas medidas. Cálculos, fatos e permissões permanecem os mesmos.
+
+Quando período, recente e desde a entrada usam as mesmas duas pesagens, a ficha mostra um único GMD com as datas dos registros. A equivalência e a definição ficam em “Como foi calculado”, expansível; valores iguais com bases diferentes permanecem separados. “Período do GMD” continua sendo um seletor funcional e atualiza a consulta e a curva.

@@ -50,6 +50,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   const mesmaBase = historicoPesagens.length === 2 && peso.gmdPeriodo.pesagens === 2
     && peso.gmdPeriodo.valor != null && peso.gmdPeriodo.valor === peso.gmdRecente
     && peso.gmdRecente === peso.gmdDesdeEntrada;
+  const datasDaBase = mesmaBase ? historicoPesagens.map(p => p.data).sort() : [];
   const [pagina, setPagina] = useState(1);
   useEffect(() => setPagina(1), [animal.id, historicoPesagens.length]);
   const totalPaginas = Math.max(1, Math.ceil(historicoPesagens.length / 5));
@@ -57,14 +58,15 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   return <div className="ficha-peso-conjunto space-y-4">
     <div className="ficha-gmd-cabecalho">
       <dl className="ficha-gmd-leitura">
-        <div><dt>GMD do período</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{detalhePeriodo}</small></dd></div>
-        {mesmaBase ? <div><dt><span>GMD recente</span> e <span>GMD desde a entrada</span></dt><dd className="text-sm">Mesmas duas pesagens do período.</dd></div> : <>
+        <div><dt>{mesmaBase ? "Ganho médio diário (GMD)" : "GMD do período"}</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{mesmaBase ? `2 pesagens · ${formatarDataBR(datasDaBase[0])} a ${formatarDataBR(datasDaBase[1])}` : detalhePeriodo}</small></dd></div>
+        {!mesmaBase && <>
           <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens."/></dd></div>
           <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem."/></dd></div>
         </>}
 
       </dl>
       <SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange}/>
+      {mesmaBase && <details className="ficha-gmd-calculo"><summary>Como foi calculado</summary><p>O ganho médio diário considera a diferença de peso entre as pesagens de {formatarDataBR(datasDaBase[0])} e {formatarDataBR(datasDaBase[1])}, dividida pelo intervalo de {peso.gmdPeriodo.dias} dias.</p><p>Como há apenas duas pesagens, <span>GMD recente</span> e <span>GMD desde a entrada</span> usam esses mesmos registros.</p></details>}
     </div>
     <div className="ficha-peso-distribuicao">
       <CardFicha icon={Scale} titulo="Evolução do peso"><GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/></CardFicha>
