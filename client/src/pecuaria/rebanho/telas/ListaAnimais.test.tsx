@@ -332,12 +332,45 @@ describe("ListaAnimais", () => {
     expect(screen.getByRole("button", {name:"Situação"}).textContent).toContain("Baixados");
   });
 
-  it("mostra o GMD recente na coluna GMD", async () => {
+  it("conserva o GMD recente nas colunas adicionais", async () => {
     const itens = [criarAnimal({ id: "a1", brinco: "0001", gmdRecente: 0.512 })];
     vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 1, painel: painelVazio });
     montar();
     await screen.findAllByText("0001");
+    expect(screen.queryByRole("columnheader", { name: "Último peso" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "GMD" })).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Reprodução" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "DEL" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expect(screen.getAllByText("+0,512 kg/dia").length).toBeGreaterThan(0);
+  });
+
+  it("mostra a situação comprovada e DEL zero sem confundir os dois eixos", async () => {
+    const contextoCartao: NonNullable<AnimalResumo["contextoCartao"]> = {
+      situacaoReprodutiva: "GESTANTE", ocorrencias: [],
+      produtivo: { dataReferencia: "2026-10-30", situacaoProdutiva: "LACTANTE", del: 0, diasPosParto: 0, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [] },
+    };
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao})], total: 1, painel: painelVazio });
+    montar();
+    await screen.findAllByText("0001");
+    expect(screen.getAllByText("Gestante").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0 dias").length).toBeGreaterThan(0);
+  });
+
+  it("preserva desconhecido e não aplicável e não apresenta DEL de vaca seca", async () => {
+    const contextoCartao: NonNullable<AnimalResumo["contextoCartao"]> = {
+      situacaoReprodutiva: null, ocorrencias: [],
+      produtivo: { dataReferencia: "2026-10-30", situacaoProdutiva: "SECA", del: 123, diasPosParto: 123, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [] },
+    };
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao}), criarAnimal({id:"macho",brinco:"M01",sexo:"M"})], total: 2, painel: painelVazio });
+    montar();
+    await screen.findAllByText("0001");
+    expect(screen.getAllByText("Sem informação").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Não se aplica").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Vazia")).toBeNull();
+    expect(screen.queryByText("123 dias")).toBeNull();
   });
 
   it("situação identifica baixados sem repetir uma coluna de baixa", async () => {

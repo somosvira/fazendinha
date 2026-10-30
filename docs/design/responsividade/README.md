@@ -15,7 +15,7 @@ A revisão da direção usou `impeccable`; `frontend-design` não estava dispon�
 - Protocolos em tabela explícita também no celular, com rolagem própria, finalidade somente quando relevante e comandos secundários condicionados em menu.
 - Cartões de protocolos sem reserva para prévia vazia; cartões de animais sem peso/GMD, idade e datas, mantendo identidade, seleção, contexto e alertas.
 
-Não há alteração de API, banco, migrations, permissões ou cálculos. Os comentários anteriores sobre tags do cabeçalho do animal e tabela de Últimas pesagens não integram esta entrega.
+A resposta de `GET /animais?comContexto=true` passa a incluir a situação reprodutiva já calculada em lote para a tabela de animais. Não há alteração de banco, migrations, permissões ou cálculos. Os comentários anteriores sobre tags do cabeçalho do animal e tabela de Últimas pesagens não integram esta entrega.
 
 ## Evidência e limites
 

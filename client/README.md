@@ -249,13 +249,15 @@ Manter as primitivas Radix/shadcn já adotadas, com Tailwind e os tokens compart
 
 Cálculo de negócio não pertence à renderização. A interface formata e apresenta o contrato; não recalcula indicadores do servidor para caber no desenho. Filtros e destinos mantêm a History API, os parâmetros e as guardas vigentes.
 
+Os cartões de animais abrem a ficha por toda a superfície, com seleção e comandos independentes, e não exibem o nome do sítio. A tabela principal apresenta Reprodução e DEL; peso/GMD ficam nas colunas adicionais e na ficha. Cabeçalho da tabela e rodapés usam os tokens compartilhados de cor. A opção explícita de tabela mantém suas colunas com rolagem própria no celular.
+
 ### Espaçamento, largura útil e propriedade dos estilos
 
 Usar uma escala curta: 8 px entre elementos inseparáveis, 12–16 px dentro de grupos e 20–24 px entre seções. São referências de composição, não margens obrigatórias em todo descendente. Evitar somar o recuo da página, do painel, da barra e da linha interna para o mesmo grupo. Rótulo e valor ficam próximos; um novo assunto recebe mais separação que seus próprios campos.
 
 O componente reutilizado carrega os estilos de que depende. Sua apresentação deve funcionar ao abrir a URL diretamente em uma aba nova, sem visitar antes o hub de relatórios ou outra rotina. Estilos de domínio não podem depender de um ancestral exclusivo de outro consumidor. Regras comuns permanecem no escopo operacional, incluindo portais, sem atravessar o Financeiro.
 
-Cartões de fatos têm altura do conteúdo; não esticar todos para acompanhar uma composição extensa no vizinho. Ausência de dados não reserva um gráfico vazio. Preservar a distinção entre controle documental, aferição operacional, pendência e zero conhecido. No estoque, aproximar a prioridade de reposição do atalho existente, evitando outro painel com a mesma lista antes dos produtos.
+Cartões de fatos têm altura do conteúdo. A grade de animais é a exceção: mantém altura uniforme entre os registros da página, sem cortar contexto ou alertas. Ausência de dados não reserva um gráfico vazio. Preservar a distinção entre controle documental, aferição operacional, pendência e zero conhecido. No estoque, aproximar a prioridade de reposição do atalho existente, evitando outro painel com a mesma lista antes dos produtos.
 
 No telefone, avaliar quanto da janela é gasto antes do primeiro registro, além de conferir overflow. Data, nome, unidade e ação precisam caber dentro do próprio controle. Abas horizontais mantêm a seleção visível, inclusive ao abrir uma URL, sem deslocar a página verticalmente. Ajuda e fechar têm alvo de toque de 44 px; ícone pequeno não implica alvo pequeno. Nome, brinco, estados e medidas da ficha aproveitam a largura disponível, sem ficar presos à coluna estreita ao lado da imagem.
 

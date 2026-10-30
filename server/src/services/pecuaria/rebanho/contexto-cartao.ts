@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { obterContextosAnimaisNaDataTx } from '../reproducao/contexto-animal.js';
 import { mapearContextoProdutivoFicha, type ContextoProdutivoFicha } from './mappers.js';
 export interface ContextoCartaoAnimal {
+    situacaoReprodutiva: string | null;
     produtivo: ContextoProdutivoFicha | null;
     ocorrencias: Array<{
         id: string;
@@ -29,5 +30,12 @@ export async function completarContextoCartoes(tx: Leitor, animais: readonly {
         lista.push({ id: o.id, nome: o.doencaNomeSnapshot ?? o.doenca.nome, inicio: o.inicio.toISOString().slice(0, 10) });
         porAnimal.set(o.animalId, lista);
     }
-    return new Map(ids.map(id => [id, { produtivo: contextos.has(id) ? mapearContextoProdutivoFicha(contextos.get(id)!) : null, ocorrencias: porAnimal.get(id) ?? [] }]));
+    return new Map(ids.map(id => {
+        const contexto = contextos.get(id);
+        return [id, {
+            situacaoReprodutiva: contexto?.situacaoReprodutiva ?? null,
+            produtivo: contexto ? mapearContextoProdutivoFicha(contexto) : null,
+            ocorrencias: porAnimal.get(id) ?? [],
+        }];
+    }));
 }

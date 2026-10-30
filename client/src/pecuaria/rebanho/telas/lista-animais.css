@@ -98,3 +98,6 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 @media (forced-colors: active) { .animal-checkbox { appearance: auto; } .animal-checkbox::after { display: none; } }
 
 @media (max-width:900px) { .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size:var(--fin-titulo-pagina-movel,22px); } }
+
+/* A consulta usa a mesma paleta das tabelas e filtros compartilhados. */
+:root [data-design-operacional] .animais-pagina-refinada .fin-tabela th{background:var(--fin-table-header);color:var(--fin-table-heading);border-bottom-color:var(--fin-table-rule)}

@@ -19,10 +19,11 @@ it('mostra ciclo comprovado inclusive D0 e preserva seleção e abertura indepen
     expect(abrir).toHaveBeenCalledOnce();
 });
 it('concentra o cartão na identidade e nas condições, sem medidas nem datas', () => {
-    render(<CartaoAnimal animal={{...animal,ultimoPeso:{kg:510,data:'2026-10-29'},gmdRecente:1.5}} onAbrir={vi.fn()}/>);
+    render(<CartaoAnimal animal={{...animal,papelReprodutivo:'RECEPTORA',ultimoPeso:{kg:510,data:'2026-10-29'},gmdRecente:1.5}} onAbrir={vi.fn()}/>);
     expect(screen.getByText('Mimosa')).toBeTruthy();
     expect(screen.getByText('Vaca')).toBeTruthy();
-    expect(screen.getByText('Sede')).toBeTruthy();
+    expect(screen.queryByText('Sede')).toBeNull();
+    expect(screen.getByText('Receptora')).toBeTruthy();
     expect(screen.getByText('Ocorrência comprovada')).toBeTruthy();
     expect(screen.queryByText(/Último peso|510 kg|GMD|Idade|Nasc\.|29\/10\/2026|05\/05\/2021/)).toBeNull();
 });
