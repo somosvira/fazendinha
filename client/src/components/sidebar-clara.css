@@ -14,14 +14,14 @@
   color: #262626;
   border-right: 1px solid var(--side-hair);
 }
-.sidebar-clara button { height: auto; white-space: normal; font-weight: 400; justify-content: flex-start; box-shadow: none; }
+.sidebar-clara button { height: auto; white-space: normal; font-weight: 400; box-shadow: none; }
 .sidebar-clara button:hover { background: var(--side-hover); color: var(--mast-ink); }
 .sidebar-clara button[aria-current="page"] { background: var(--side-active); color: var(--side-active-ink); font-weight: 600; }
 .sidebar-clara button[aria-current="page"]::before { display: none; }
 .sidebar-clara button[aria-expanded] { color: #626262; }
 .sidebar-clara button[aria-label="Menu da conta"] { color: #262626; }
 .sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: #262626; background: #d9d9d9; }
-.sidebar-clara button[aria-label="Propriedade / sítio ativo"] { border-color: #e1e5e2; background: #fff; }
+.sidebar-clara button[aria-label="Propriedade / sítio ativo"] { border-color: #e1e5e2; background: var(--sidebar-sitio-fundo, #fff); }
 .sidebar-clara .ah-brand-symbol { color: #80634e; }
 .sidebar-clara .ah-brand > span { text-transform: uppercase; letter-spacing: .035em; }
 .sidebar-clara button[aria-label^="Recolher Financeiro"], .sidebar-clara button[aria-label^="Expandir Financeiro"],
@@ -36,7 +36,7 @@
 .sidebar-clara .ah-brand { gap: 6px; padding-inline: 0; }
 .sidebar-clara .ah-brand > span { font-size: 18px; }
 .sidebar-clara .ah-brand-symbol { width: 24px; height: 24px; }
-.sidebar-clara .ah-brand button { width: 24px; height: 28px; padding: 4px; justify-content: center; }
+.sidebar-clara .ah-brand button { width: 32px; height: 32px; padding: 6px; justify-content: center; }
 .sidebar-clara nav button { gap: 8px; }
 .sidebar-clara button[aria-label="Contas e extratos"] { gap: 6px; font-size: 12.5px; }
 
@@ -59,7 +59,7 @@
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-current="page"] { color: var(--fin-sidebar-selected-ink); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara :is(button[aria-label="Menu da conta"],button[aria-label^="Recolher"],button[aria-label^="Expandir"]) { color: var(--fin-heading); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: var(--fin-heading); background: var(--fin-nav-selected); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] { background: var(--card); border-color: var(--border); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] { background: var(--sidebar-sitio-fundo, var(--card)); border-color: var(--border); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: var(--primary); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav svg { stroke-linecap: round; stroke-linejoin: round; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara {
@@ -96,4 +96,26 @@
 @media (max-width: 900px) {
   :root .sidebar-clara .trabalho-ativo-excluir { width: 36px; height: 36px; min-height: 36px; }
   :root .sidebar-clara .trabalho-ativo-com-exclusao > .trabalho-ativo-abrir { padding-right: 42px; }
+}
+
+/* No trilho, o fundo pertence ao acionador inteiro, com um único centro visual. */
+@media (min-width: 901px) {
+  .side-collapsed .sidebar-clara .sidebar-trilho-controle {
+    width: 44px; height: 44px; min-height: 44px; margin-inline: auto; padding: 0; gap: 0; justify-content: center;
+  }
+  .side-collapsed .sidebar-clara .sidebar-sitio { --sidebar-sitio-fundo: var(--fin-nav-selected, var(--side-hover)); border: 0; }
+  .side-collapsed .sidebar-clara .ah-brand button { width: 44px; height: 44px; }
+  .side-collapsed .sidebar-clara .sidebar-sitio-icone { background: transparent; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .app:not(.side-collapsed) .sidebar-clara:is(:hover, :focus-within) { width:240px; z-index:20; box-shadow:8px 0 30px rgba(32,60,57,.18); }
+  .sidebar-clara:not(:hover):not(:focus-within) .sidebar-trilho-controle {
+    width: 44px; height: 44px; min-height: 44px; margin-inline: auto; padding: 0; gap: 0; justify-content: center;
+  }
+  .sidebar-clara:not(:hover):not(:focus-within) .sidebar-sitio { --sidebar-sitio-fundo: var(--fin-nav-selected, var(--side-hover)); border: 0; }
+  .sidebar-clara:not(:hover):not(:focus-within) .ah-brand button { width: 44px; height: 44px; }
+  .sidebar-clara:not(:hover):not(:focus-within) .sidebar-sitio-icone { background: transparent; }
+}
+@media (max-width: 900px) {
+  .sidebar-clara .sidebar-trilho-controle { min-height: 44px; }
 }

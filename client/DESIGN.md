@@ -40,7 +40,7 @@ colors:
 typography:
   headline:
     fontFamily: '"Manrope", "DM Sans", sans-serif'
-    fontSize: "32px"
+    fontSize: "24px"
     fontWeight: 750
     lineHeight: 1.2
   title:
@@ -70,7 +70,7 @@ typography:
     fontWeight: 750
     lineHeight: 1.3
   responsive-headline:
-    fontSize: "26px"
+    fontSize: "22px"
   legacy-h1:
     fontSize: "40px"
   legacy-h3:
@@ -152,15 +152,15 @@ Canvas neutro quase branco com gradiente estático turquesa muito suave no topo 
 
 ## Typography
 
-Manrope variável (pesos 200–800) é hospedada em `public/fonts/manrope/`, sob SIL OFL, e usada nos títulos, sem substituir o símbolo Terrano. DM Sans permanece no corpo, tabelas, valores e controles. Os títulos usam peso 750 e tracking de -.02em; os títulos de página usam 32px. O corpo global do frontmatter convive com texto de controles e tabelas de 14px e metadados de 12px. Título de página reduz a 26px até 767px. Diálogos usam 22px, peso 750 e entrelinha 1.3. Valores de tabelas e indicadores usam números tabulares. O frontmatter distingue a hierarquia compartilhada das escalas legadas ainda existentes em base.css; registrar esses tamanhos não os aprova para novas composições nem afirma que toda a interface foi padronizada. Metadados de 11px também existem em detalhes. As divergências de tokens legados continuam passíveis de auditoria; não são ignoradas globalmente.
+Manrope variável (pesos 200–800) é hospedada em `public/fonts/manrope/`, sob SIL OFL, e usada nos títulos, sem substituir o símbolo Terrano. DM Sans permanece no corpo, tabelas, valores e controles. Os títulos usam peso 750 e tracking de -.02em; os títulos compartilhados de página usam 24px. O corpo global do frontmatter convive com texto de controles e tabelas de 14px e metadados de 12px. Título compartilhado de página reduz a 22px no móvel. Diálogos usam 22px, peso 750 e entrelinha 1.3. Valores de tabelas e indicadores usam números tabulares. O frontmatter distingue a hierarquia compartilhada das escalas legadas ainda existentes em base.css; registrar esses tamanhos não os aprova para novas composições nem afirma que toda a interface foi padronizada. Metadados de 11px também existem em detalhes. As divergências de tokens legados continuam passíveis de auditoria; não são ignoradas globalmente.
 
 ## Layout
 
-Página compartilhada: padding de 24px e máximo de 1600px; Pecuária ocupa a largura disponível. Até 900px, padding de 56px no topo, 16px nas laterais e 32px embaixo. Cabeçalhos agrupam identidade e comandos, com quebra responsiva. Lateral expandida de 224px acima de 1100px; até 900px usa Sheet. Até 1100px, a busca ocupa uma linha própria; no celular os grupos de filtros ocupam linhas completas. Consultas compartilhadas trocam a tabela por cartões conforme a largura disponível e a soma das referências das colunas, preservando ações e seleção.
+Página compartilhada: largura disponível sem máximo de 1600px, padding superior de 20px e gutter lateral de 24px; entre 901–1100px, gutter de 20px. Até 900px, padding de 56px no topo, 16px nas laterais e 32px embaixo. Cabeçalhos agrupam identidade e comandos, com quebra responsiva. Lateral expandida de 224px acima de 1100px; até 900px usa Sheet. Até 1100px, a busca ocupa uma linha própria; no celular os grupos de filtros ocupam linhas completas. Consultas compartilhadas trocam a tabela por cartões conforme a largura disponível e a soma das referências das colunas, preservando ações e seleção. Quando `visualizacao="tabela"` é explícita, conserva as colunas com rolagem horizontal, inclusive no celular.
 
 Abas de Rebanho têm largura natural e quebram em linhas, sem rolagem horizontal. Tabelas mantêm células de 10px por 16px, cabeçalho padrão de 36px e paginação adjacente. O escopo de Rebanho aplica controles de 40px no desktop e 44px até 900px, intervalo comum de 16px e painéis de 12px. Fora desse escopo continuam os estilos compartilhados e exceções legadas; não há padronização retroativa implícita.
 
-A navegação compartilhada por abas usa texto de 16px, ícones de 20px quando presentes e alvos de pelo menos 48px. Páginas de consulta apresentam título e descrição curta da finalidade, seguidos pelas abas quando existentes. Ações gerais ficam à direita do cabeçalho e quebram de linha em telas estreitas. Fichas mantêm o nome do registro e formulários identificam a tarefa. Ciclos/Tarefas preserva a aparência de botões.
+A navegação compartilhada por abas usa texto de 14px, ícones proporcionais e alvos de 40px no desktop e 44px no móvel. Páginas de consulta apresentam título e descrição curta da finalidade, seguidos pelas abas quando existentes. Ações gerais ficam à direita do cabeçalho e quebram de linha em telas estreitas. Fichas mantêm o nome do registro e formulários identificam a tarefa. Ciclos/Tarefas preserva a aparência de botões.
 
 No Rebanho, cabeçalho e navegação permanecem durante a carga. Descrições genéricas que apenas repetiam o título foram retiradas. Animais apresenta cabeçalho, navegação, busca/filtros e tabela, sem resumo de indicadores ou alternância de composição. Lotes oferece cartões de composição/desempenho e tabela, com cobertura e recorte explícitos. A ficha do lote abre em Animais; suas sete abas são Resumo, Animais, Baixas, Movimentações, Sanidade, Nutrição e Alterações. Métricas e período de GMD pertencem somente a Resumo. Os fragmentos históricos `#lote-*` continuam reconhecidos. Essas são composições específicas do domínio, não um modelo universal de dashboard.
 
@@ -206,3 +206,12 @@ Rebanho, Sanidade e Nutrição usam o canvas claro como contexto e superfícies 
 ## Produção V5 e estados
 
 O módulo Leite reutiliza a identidade e as consultas comuns, com sete entradas operacionais e configuração por vigência. A ficha da fêmea inclui Produção. Medição salva, rascunho e confirmação de estoque são estados distintos; natureza comercial, resultado clínico, carência e situação financeira não compartilham um badge global. Consulte [contexto de Leite](../docs/design/leite/PRODUCT.md), [contrato V5](../docs/pecuaria/leite.md) e [estados do animal](../docs/pecuaria/estados-animal.md).
+
+
+## Consultas compactas
+
+A sidebar recolhida usa acionadores de 44px, centralizados, e fundo único no seletor de sítio. O Painel administrativo possui ícone próprio. A folga do assistente é inferior; gutters do shell não recebem reserva extra à direita.
+
+O catálogo sanitário omite Finalidade e conserva Situação, Versão e Estrutura. No reprodutivo, Finalidade permanece. Detalhes é ação direta; comandos de escrita ficam no DropdownMenu existente com as mesmas condições de permissão, publicação/uso e carregamento. A tabela explícita conserva semântica e rolagem dentro do painel. Cartões usam a largura do contêiner, sem altura fixa nem espaço reservado para procedimentos ausentes.
+
+Cartões de animais concentram identidade, categoria/finalidade, lote/sítio, papel, ciclo e alertas existentes. Medidas, idade e datas permanecem na ficha e na tabela. A grade alinha os cartões pelo topo, evitando esticá-los para acompanhar o vizinho; seleção e ações são independentes.

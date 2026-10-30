@@ -103,11 +103,11 @@ Sequência recomendada: **título e contexto → busca e filtros → lista → p
 
 Busca e dois ou três filtros de uso frequente podem ficar diretamente visíveis. Os demais entram em “Filtros”, com critérios ativos removíveis e botão para limpar. A quantidade de filtros disponíveis não deve determinar o tamanho do cabeçalho.
 
-Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
+Quando a pessoa escolhe explicitamente Tabela, preservar as colunas também no celular, com rolagem horizontal dentro da consulta e acesso por teclado; não converter essa escolha em cartões. O modo automático dos consumidores sem essa escolha continua disponível. Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
 
 Na tabela, priorizar identificação, situação relevante, data e medida de comparação. Colunas extras ficam disponíveis conforme o contexto e os recursos existentes. Não exibir todos os identificadores, genitores e metadados por padrão. Valores e identificadores críticos não devem ficar sistematicamente cortados.
 
-No cartão de animal, nome e `#brinco` aparecem juntos. Mostrar categoria/finalidade e lote, idade e último peso/GMD. Acrescentar lactação/DEL, pós-parto, gestação e ocorrência aberta somente com evidência do registro; adaptar o conteúdo à fase. A ilustração genérica não representa foto do animal. Evitar a combinação de parágrafo, tabela interna, várias etiquetas e rodapé explicativo para cada registro.
+No cartão de animal, nome e `#brinco` aparecem juntos. Mostrar categoria/finalidade, lote e sítio. Peso/GMD, idade, nascimento e data da última pesagem ficam na ficha e na tabela de consulta, sem repetição no cartão. Acrescentar lactação/DEL, pós-parto, gestação e ocorrência aberta somente com evidência do registro; adaptar o conteúdo à fase. A ilustração genérica não representa foto do animal. Evitar a combinação de parágrafo, tabela interna, várias etiquetas e rodapé explicativo para cada registro.
 
 ### Ficha do animal
 
@@ -305,3 +305,10 @@ As permissões de uma pessoa são abertas em modal pela seleção explícita em 
 A composição operacional usa o cabeçalho da rotina para data e ação principal, sem repetir um título dentro da consulta. No Leite, os turnos exibem volume, naturezas e confirmação das origens; paginação e tamanho ficam após os registros. Produção separa evolução e consulta do registro em blocos próprios. O formulário de ordenha prioriza litros e agrupa origem, identificação e conferência, mantendo o salvamento distinto da entrada em estoque.
 
 Receitas apresentam composição e uso diretamente; a ficha nutricional aproxima dieta, efetivo e vigência. Ocorrências sanitárias reúnem fatos e acompanhamento no próprio registro. Visitas apresentam trabalho em aberto antes do histórico; os formulários separam identidade/contexto dos dados do fato. Cadastros mantêm criação no cabeçalho e consultam histórico em modal sob demanda. O catálogo de relatórios usa seletores superiores e resultado em largura integral. Sítios abre em cartões com tabela alternativa; Estoque aproxima saldo, lotes e rastreabilidade e agrupa as operações de transferência/perda. Essas composições preservam os recortes, estados de ausência, permissões e destinos de cada domínio.
+
+
+### Densidade responsiva da navegação e dos protocolos
+
+O shell usa gutters iguais: 24px no desktop, 20px entre 901–1100px e 16px até 900px. O assistente reserva folga inferior, sem retirar uma faixa da largura da página. Títulos compartilhados usam 24px/22px; abas usam 14px e alvos de 40px no desktop e 44px no móvel. Escalas específicas de documentos e indicadores continuam próprias. A sidebar recolhida centraliza desenhos proporcionais em acionadores de 44px, com um único fundo no seletor de sítio; mantém navegação móvel, colapso manual e expansão temporária do trilho automático.
+
+Protocolos sanitários apresentam Protocolo, Situação, Versão, Estrutura e Ações; a finalidade continua nas consultas reprodutivas. Ver detalhes é direto; Mais ações reúne os comandos autorizados, com seus bloqueios e confirmações existentes. Cartões organizam nome, situação e estrutura em leitura curta, sem altura reservada para uma prévia ausente. A largura do contêiner governa sua grade; nomes, procedimentos e alertas podem aumentar a altura sem corte.

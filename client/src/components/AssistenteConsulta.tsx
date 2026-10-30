@@ -124,7 +124,7 @@ export function AssistenteConsulta() {
   }
 
   return <Sheet open={aberto} onOpenChange={mudarAberto}>
-    <SheetTrigger asChild><Button className="fixed bottom-5 right-3 z-40 size-11 rounded-lg p-0 shadow-lg max-[900px]:bottom-auto max-[900px]:top-3" aria-label="Abrir assistente do Terrano" title="Assistente do Terrano"><MessageCircle size={18} aria-hidden /><span className="sr-only">Assistente</span></Button></SheetTrigger>
+    <SheetTrigger asChild><Button className="fixed bottom-5 right-3 z-40 size-11 rounded-lg p-0 shadow-lg max-[901px]:bottom-auto max-[901px]:top-3" aria-label="Abrir assistente do Terrano" title="Assistente do Terrano"><MessageCircle size={18} aria-hidden /><span className="sr-only">Assistente</span></Button></SheetTrigger>
     <SheetContent className="financeiro-colorido assistente-consulta w-full gap-0 p-0">
       <SheetHeader className="assistente-cabecalho">
         <div className="assistente-titulo"><SheetTitle>Assistente Terrano</SheetTitle><Button type="button" variant="outline" size="sm" disabled={ocupado || preparandoPrint} onClick={novaConversa}><RotateCcw size={14} aria-hidden />Nova conversa</Button></div>

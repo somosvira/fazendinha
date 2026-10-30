@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
+import { LayoutDashboard, GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -46,7 +46,7 @@ const ICON: Partial<Record<Tab, JSX.Element>> = {
 
 type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
-const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
+const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gerencial: LayoutDashboard, gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
 const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": GitBranch, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
 
@@ -101,19 +101,19 @@ function areaExtraOfTab(tab: Tab): AreaTrabalhoId | null {
 // auto) E o colapso MANUAL (.side-collapsed no .app, via toggle no header). O
 // colapso manual não tem hover-expand — fica ícone-only até o toggle reverter.
 const RAIL_ICON_BTN =
-  "min-[901px]:max-[1100px]:justify-center min-[901px]:max-[1100px]:gap-0 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:py-2.5 min-[901px]:max-[1100px]:[&_svg]:h-[19px] min-[901px]:max-[1100px]:[&_svg]:w-[19px] min-[901px]:max-[1100px]:[&_svg]:opacity-100 [.side-collapsed_&]:justify-center [.side-collapsed_&]:gap-0 [.side-collapsed_&]:px-2 [.side-collapsed_&]:py-2.5";
+  "sidebar-trilho-controle min-[901px]:max-[1101px]:justify-center min-[901px]:max-[1101px]:gap-0 min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:py-2.5 min-[901px]:max-[1101px]:[&_svg]:h-[19px] min-[901px]:max-[1101px]:[&_svg]:w-[19px] min-[901px]:max-[1101px]:[&_svg]:opacity-100 [.side-collapsed_&]:justify-center [.side-collapsed_&]:gap-0 [.side-collapsed_&]:px-2 [.side-collapsed_&]:py-2.5";
 // item/módulo ativo dentro da faixa colapsada: mantém só o realce de fundo (sem
 // barrinha ::before, que fica escondida na largura estreita).
 const RAIL_ACTIVE =
-  "min-[901px]:max-[1100px]:before:hidden min-[901px]:max-[1100px]:bg-[rgba(232,220,196,0.10)] [.side-collapsed_&]:before:hidden [.side-collapsed_&]:bg-[rgba(232,220,196,0.10)]";
+  "min-[901px]:max-[1101px]:before:hidden min-[901px]:max-[1101px]:bg-[rgba(232,220,196,0.10)] [.side-collapsed_&]:before:hidden [.side-collapsed_&]:bg-[rgba(232,220,196,0.10)]";
 // hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
 const RAIL_LABEL =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:flex min-[901px]:max-[1100px]:group-focus-within:flex [.side-collapsed_&]:hidden";
+  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:flex min-[901px]:max-[1101px]:group-focus-within:flex [.side-collapsed_&]:hidden";
 const RAIL_BLOCK =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:block min-[901px]:max-[1100px]:group-focus-within:block [.side-collapsed_&]:hidden";
+  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:block min-[901px]:max-[1101px]:group-focus-within:block [.side-collapsed_&]:hidden";
 // chevron `›` dos itens de clique único — some na faixa colapsada.
 const RAIL_HIDE =
-  "min-[901px]:max-[1100px]:hidden min-[901px]:max-[1100px]:group-hover:inline min-[901px]:max-[1100px]:group-focus-within:inline [.side-collapsed_&]:hidden";
+  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:inline min-[901px]:max-[1101px]:group-focus-within:inline [.side-collapsed_&]:hidden";
 
 /** Item de navegação (clique único). `chevron` mostra o `›` do protótipo nos
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
@@ -159,7 +159,7 @@ function SearchControl({ onClick }: { onClick: () => void }) {
       title="Buscar (Ctrl/⌘ K)"
       aria-keyshortcuts="Control+k Meta+k"
       aria-label="Buscar páginas, animais e ações"
-      className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-2 [.side-collapsed_&]:order-2"
+      className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-2 [.side-collapsed_&]:order-2"
     >
       <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
         <circle cx="11" cy="11" r="7" />
@@ -236,7 +236,7 @@ export function TrabalhoAtivo({ resumo, ativo, onAbrir, onExcluir, vazio = "Nova
         RAIL_ICON_BTN,
         // Na faixa 901–1100px, o hover expande a sidebar: volta ao layout de
         // duas linhas finas, em vez do respiro do modo ícone.
-        "min-[901px]:max-[1100px]:group-hover:justify-start min-[901px]:max-[1100px]:group-hover:gap-3 min-[901px]:max-[1100px]:group-hover:px-2.5 min-[901px]:max-[1100px]:group-hover:py-[3px] min-[901px]:max-[1100px]:group-focus-within:justify-start min-[901px]:max-[1100px]:group-focus-within:gap-3 min-[901px]:max-[1100px]:group-focus-within:px-2.5 min-[901px]:max-[1100px]:group-focus-within:py-[3px]",
+        "min-[901px]:max-[1101px]:group-hover:justify-start min-[901px]:max-[1101px]:group-hover:gap-3 min-[901px]:max-[1101px]:group-hover:px-2.5 min-[901px]:max-[1101px]:group-hover:py-[3px] min-[901px]:max-[1101px]:group-focus-within:justify-start min-[901px]:max-[1101px]:group-focus-within:gap-3 min-[901px]:max-[1101px]:group-focus-within:px-2.5 min-[901px]:max-[1101px]:group-focus-within:py-[3px]",
         ativo && "border-leite/60 bg-[rgba(232,220,196,0.10)]",
       )}
     >
@@ -415,18 +415,18 @@ export function AppSidebar({
   // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pb-2 min-[901px]:max-[1100px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
-        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1100px]:flex-col min-[901px]:max-[1100px]:gap-1.5 min-[901px]:max-[1100px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
+      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pb-2 min-[901px]:max-[1101px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+        <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1101px]:flex-col min-[901px]:max-[1101px]:gap-1.5 min-[901px]:max-[1101px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="light" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-sans text-[21px] font-semibold leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
-          <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
+          <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
             <SearchControl onClick={abrirBusca} />
-            <Button variant="ghost" type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1100px]:order-1 [.side-collapsed_&]:order-1">
+            <Button variant="ghost" type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-1 [.side-collapsed_&]:order-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
             </Button>
           </div>
         </div>
-        <div className="mt-3.5 min-[901px]:max-[1100px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
+        <div className="mt-3.5 min-[901px]:max-[1101px]:mt-1.5 [.side-collapsed_&]:mt-1.5">
           <SidebarFarmPicker propAtiva={propAtiva} onTrocarProp={onTrocarProp} onGerenciar={isAdmin ? () => nav("sitios") : undefined} />
         </div>
       </div>
@@ -434,7 +434,7 @@ export function AppSidebar({
   );
 
   const navBody = (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1100px]:px-2 min-[901px]:max-[1100px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
       {(temAcessoArea(areasEfetivas,"pecuaria") || (temAcessoArea(areasEfetivas,"financeiro") && financeiro.some(t=>t.id==="dashboard"))) && <div className="mb-3"><Item id="gerencial" label="Painel administrativo" current={current} onNav={nav}/></div>}
       {(trabalhoAtivo?.resumo || trabalhoAtivoRelatorio) && (
         <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
@@ -449,7 +449,7 @@ export function AppSidebar({
         <div className="flex flex-col gap-px">
           <GroupToggle id="financeiro" label="Financeiro" isOpen={!collapsedGroups.has("financeiro")} onToggle={() => toggleGroup("financeiro")} />
           {!collapsedGroups.has("financeiro") && (
-            <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+            <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:border-l-0 min-[901px]:max-[1101px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
               {itensFinanceiros.map((t) => (
                 <Item
                   key={t.id}
@@ -474,7 +474,7 @@ export function AppSidebar({
           <div key={area.id} className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
             <GroupToggle id={area.id} label={area.label} isOpen={groupOpen} onToggle={() => toggleGroup(area.id)} />
             {groupOpen && (
-              <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1100px]:ml-0 min-[901px]:max-[1100px]:border-l-0 min-[901px]:max-[1100px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
+              <div className="ml-[19px] mt-1 flex flex-col gap-px border-l border-[rgba(232,220,196,0.14)] pl-1 min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:border-l-0 min-[901px]:max-[1101px]:pl-0 [.side-collapsed_&]:ml-0 [.side-collapsed_&]:border-l-0 [.side-collapsed_&]:pl-0">
                 {area.principais.map((item) => (
                   <Item key={item.id} id={item.id} label={item.label} current={current} onNav={nav} nested />
                 ))}
@@ -512,7 +512,7 @@ export function AppSidebar({
 
   // Rodapé ancorado: somente identidade e ações do usuário.
   const sideFoot = (
-    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1100px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1101px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
         <UserMenu user={user} onAcessos={onAcessos} onSair={onSair} />
       </div>
@@ -521,17 +521,15 @@ export function AppSidebar({
 
   return (
     <>
-      {!mobileOpen && <Button variant="ghost" type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[900px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></Button>}
+      {!mobileOpen && <Button variant="ghost" type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-11 w-11 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[901px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></Button>}
       {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
         className={cn(
           "sidebar-clara group fixed inset-y-0 left-0 h-dvh z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
           "min-[901px]:flex",
-          "min-[901px]:max-[1100px]:w-[64px]",
-          "min-[901px]:max-[1100px]:transition-[width,box-shadow] min-[901px]:max-[1100px]:duration-[180ms] min-[901px]:max-[1100px]:ease-in-out",
-          "min-[901px]:max-[1100px]:hover:z-20 min-[901px]:max-[1100px]:hover:w-[240px] min-[901px]:max-[1100px]:hover:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
-          "min-[901px]:max-[1100px]:focus-within:z-20 min-[901px]:max-[1100px]:focus-within:w-[240px] min-[901px]:max-[1100px]:focus-within:shadow-[8px_0_30px_rgba(0,0,0,0.22)]",
+          "min-[901px]:max-[1101px]:w-[64px]",
+          "min-[901px]:max-[1101px]:transition-[width,box-shadow] min-[901px]:max-[1101px]:duration-[180ms] min-[901px]:max-[1101px]:ease-in-out",
         )}
       >
         {sideHead}
