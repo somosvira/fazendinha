@@ -10,7 +10,7 @@
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) {
     border-collapse: collapse;
     font-family: var(--sans);
-    font-size: 12px;
+    font-size: 13px;
     line-height: 1.45;
     color: var(--foreground);
   }
@@ -20,7 +20,7 @@
     background: var(--fin-table-header);
     color: var(--fin-table-heading);
     font-family: var(--sans);
-    font-size: 12px;
+    font-size: 13px;
     font-style: normal;
     font-weight: 600;
     line-height: 1.25;
@@ -32,7 +32,7 @@
   /* A escala da tabela inclui células, comandos e tags, mesmo sob estilos de domínio. */
   :root :is(.app-main, .financeiro-colorido, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela):is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > :is(thead, tbody, tfoot) > tr > :is(th, td),
   :root :is(.app-main, .financeiro-colorido, [data-slot="dialog-content"], [data-slot="sheet-content"]) table:not(.rg-tabela):is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > :is(thead, tbody, tfoot) > tr > :is(th, td) :where(span, div, p, a, strong, em, small, time, abbr, button, label, dl, dt, dd, h1, h2, h3, h4, h5, h6, code) {
-    font-size: 12px;
+    font-size: 13px;
   }
   /* O contorno pertence à tabela, mesmo dentro de cards ou áreas de rolagem. */
   :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) {
