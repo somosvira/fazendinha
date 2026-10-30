@@ -55,3 +55,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 Os roteiros [V3](pecuaria/artefatos/testes-v3-guia.html), [V4](pecuaria/artefatos/testes-v4-guia.html), [follow-up V4](pecuaria/artefatos/testes-follow-up-v4.html) e [finalidade V5](pecuaria/artefatos/homologacao-v5-finalidade.md) preservam IDs, aceites e armazenamento próprios. A preparação histórica pode não existir na seed atual; registre o bloqueio sem recriá-la ou alterar o aceite pela revisão documental.
 
 O material conceitual de [protocolos](pecuaria/artefatos/protocolos/index.html), [V4](pecuaria/artefatos/conceitos-v4.html) e seus mockups conserva proveniência. Propostas antigas incorporadas aos contratos foram retiradas como planos; diferenças ainda não implementadas ficam em [lacunas](lacunas.md). O histórico completo permanece no Git. Skills em `.agents/skills/` são ferramentas e não contratos do produto; não se remove seu funcionamento numa limpeza documental.
+
+## Propostas em execução
+
+- [Plano da ficha do animal — Geral](pecuaria/planos/ficha-animal-geral.md): reorganização proposta, dependências, critérios de aceite e orçamento de execução por modelo. Ainda não implementado.
