@@ -368,7 +368,8 @@ describe("ListaAnimais", () => {
     montar();
     await screen.findAllByText("0001");
     expect(screen.getAllByText("Sem informação").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Não se aplica").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Não se aplica")).toBeNull();
+    expect(screen.getByRole("row", { name: /M01/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
     expect(screen.queryByText("Vazia")).toBeNull();
     expect(screen.queryByText("123 dias")).toBeNull();
   });

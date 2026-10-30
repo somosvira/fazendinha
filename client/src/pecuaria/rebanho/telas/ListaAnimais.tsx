@@ -382,7 +382,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     ...(!pesagem ? [
       { chave: "reproducao", titulo: "Reprodução", larguraMinima: 175, celula: (item: AnimalResumo) => {
-        if (item.sexo === "M") return "Não se aplica";
+        if (item.sexo === "M") return <span title="Não se aplica">—</span>;
         const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
         const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico", DESCONHECIDA: "Sem informação" };
         return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{rotulos[situacaoReprodutiva ?? ""] ?? "Sem informação"}</Pill>;
