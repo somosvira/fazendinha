@@ -546,7 +546,7 @@ export function AppSidebar({
           showCloseButton={false}
           className="sidebar-clara h-dvh max-w-none w-[min(288px,88vw)] gap-0 border-r-0 bg-mast p-0 text-mast-ink shadow-[8px_0_30px_rgba(0,0,0,0.18)] sm:max-w-none min-[901px]:hidden print:hidden"
         >
-          <Button variant="ghost" type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></Button>
+          <Button variant="ghost" type="button" onClick={() => onMobileToggle(false)} aria-label="Fechar menu" className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-lg text-mast-ink hover:bg-white/5"><svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M6 6l12 12"/><path d="M18 6L6 18"/></svg></Button>
           <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
           <SheetDescription className="sr-only">Navegação principal do Rio Novo</SheetDescription>
           <div className="flex h-full flex-col overflow-hidden">
