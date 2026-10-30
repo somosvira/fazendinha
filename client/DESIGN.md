@@ -162,6 +162,8 @@ Abas de Rebanho têm largura natural e quebram em linhas, sem rolagem horizontal
 
 A navegação compartilhada por abas usa texto de 14px, ícones proporcionais e alvos de 40px no desktop e 44px no móvel. Páginas de consulta apresentam título e descrição curta da finalidade, seguidos pelas abas quando existentes. Ações gerais ficam à direita do cabeçalho e quebram de linha em telas estreitas. Fichas mantêm o nome do registro e formulários identificam a tarefa. Ciclos/Tarefas preserva a aparência de botões.
 
+O símbolo compartilhado de bovino (`VacaIcon`) usa a cabeça de vaca aprovada em `public/images/pecuaria/vaca-icone-v2.png`, com fundo transparente e arquivo de 128px. Seu uso na navegação e no cabeçalho permanece em escala de ícone, separado da ilustração genérica usada nas fichas e nos cartões; reduzir a imagem não reduz o alvo interativo.
+
 No Rebanho, cabeçalho e navegação permanecem durante a carga. Descrições genéricas que apenas repetiam o título foram retiradas. Animais apresenta cabeçalho, navegação, busca/filtros e tabela, sem resumo de indicadores ou alternância de composição. Lotes oferece cartões de composição/desempenho e tabela, com cobertura e recorte explícitos. A ficha do lote abre em Animais; suas sete abas são Resumo, Animais, Baixas, Movimentações, Sanidade, Nutrição e Alterações. Métricas e período de GMD pertencem somente a Resumo. Os fragmentos históricos `#lote-*` continuam reconhecidos. Essas são composições específicas do domínio, não um modelo universal de dashboard.
 
 ## Elevation & Depth
