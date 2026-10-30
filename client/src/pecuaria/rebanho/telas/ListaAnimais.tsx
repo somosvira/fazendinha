@@ -1,8 +1,6 @@
 import { VacaIcon } from "../../../components/icons/VacaIcon";
 import { CartaoAnimal } from "../components/CartaoAnimal";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
-import { MapPin, Layers } from "lucide-react";
 import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -433,7 +431,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       </div>}
       {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined} adicionais={mostrarColunasAdicionais ? <div className="consulta-fatos">{COLUNAS.filter(c => !["selecionar","acoes","brinco","categoria","lote","peso","gmd","situacao","idade","sitio"].includes(c.chave)).map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}</div> : undefined}/>)}</div> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
+        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}/>)}</div> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

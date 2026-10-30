@@ -216,4 +216,4 @@ A sidebar recolhida usa acionadores de 44px, centralizados, e fundo único no se
 
 O catálogo sanitário omite Finalidade e conserva Situação, Versão e Estrutura. No reprodutivo, Finalidade permanece. Detalhes é ação direta; comandos de escrita ficam no DropdownMenu existente com as mesmas condições de permissão, publicação/uso e carregamento. A tabela explícita conserva semântica e rolagem dentro do painel. Cartões usam a largura do contêiner, sem altura fixa nem espaço reservado para procedimentos ausentes.
 
-Cartões de animais concentram identidade, categoria/finalidade, lote/sítio, papel, ciclo e alertas existentes. Medidas, idade e datas permanecem na ficha e na tabela. A grade alinha os cartões pelo topo, evitando esticá-los para acompanhar o vizinho; seleção e ações são independentes.
+Cartões de animais mostram somente cabeçalho com nome, brinco e situação, bloco central com imagem genérica, categoria/finalidade e lote, e rodapé de ações. A grade mantém altura uniforme; toda a superfície abre a ficha, com seleção e comandos internos independentes. Ciclo, lactação/DEL, partos, papel, alertas, pendências e campos adicionais não são exibidos no cartão.

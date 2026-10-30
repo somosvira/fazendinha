@@ -249,7 +249,7 @@ Manter as primitivas Radix/shadcn já adotadas, com Tailwind e os tokens compart
 
 Cálculo de negócio não pertence à renderização. A interface formata e apresenta o contrato; não recalcula indicadores do servidor para caber no desenho. Filtros e destinos mantêm a History API, os parâmetros e as guardas vigentes.
 
-Os cartões de animais abrem a ficha por toda a superfície, com seleção e comandos independentes, e não exibem o nome do sítio. A tabela principal apresenta Reprodução e DEL; peso/GMD ficam nas colunas adicionais e na ficha. Cabeçalho da tabela e rodapés usam os tokens compartilhados de cor. Tabelas de consulta em tela usam fonte de 13px, inclusive nos textos das tags e comandos internos. A opção explícita de tabela mantém suas colunas com rolagem própria no celular.
+Os cartões de animais mostram apenas nome/brinco/situação no cabeçalho, imagem/categoria/finalidade/lote no centro e ações no rodapé. Abrem a ficha por toda a superfície, com seleção e comandos independentes. Não exibem sítio, contexto clínico/produtivo, papel ou campos adicionais, mesmo com todas as colunas habilitadas na tabela. A tabela principal apresenta Reprodução e DEL; peso/GMD ficam nas colunas adicionais e na ficha. Cabeçalho da tabela e rodapés usam os tokens compartilhados de cor. Tabelas de consulta em tela usam fonte de 13px, inclusive nos textos das tags e comandos internos. A opção explícita de tabela mantém suas colunas com rolagem própria no celular.
 
 ### Espaçamento, largura útil e propriedade dos estilos
 
