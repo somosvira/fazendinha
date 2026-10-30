@@ -680,6 +680,7 @@ model Propriedade {
   programacoesRetiradaLeite ProgramacaoRetiradaLeite[]
   destinosInternosLeite DestinoInternoLeite[]
   descartesLeite DescarteLeite[]
+  retiradasInternasLeite RetiradaInternaLeite[]
   emissoesLeite EmissaoRelatorioLeite[]
   configuracoesOrdenha ConfiguracaoOrdenha[]
   diasProducaoLeite DiaProducaoLeite[]
@@ -770,6 +771,8 @@ enum StatusMovimentoEstoque {
 model MovimentoEstoque {
   TentativaReprodutiva                  TentativaReprodutiva?
   MovimentoFornecimentoNutricionalLeite MovimentoFornecimentoNutricionalLeite?
+  retiradaInternaLeite RetiradaInternaLeite? @relation("RetiradaInternaLeiteMovimento")
+  estornoRetiradaInternaLeite RetiradaInternaLeite? @relation("RetiradaInternaLeiteEstorno")
   descarteLeite DescarteLeite? @relation("DescarteLeiteMovimento")
   estornoDescarteLeite DescarteLeite? @relation("DescarteLeiteEstorno")
   entregaLeite EntregaLeite?
@@ -3366,6 +3369,7 @@ model EntradaProducaoLeite {
   medicaoGeralId String?
   medicaoGeral MedicaoGeralLeite? @relation(fields: [medicaoGeralId], references: [id], onDelete: Restrict)
   descartes DescarteLeite[]
+  retiradasInternas RetiradaInternaLeite[]
   amostrasQualidadeLeite AmostraQualidadeLeite[]
   vinculosMedicoes VinculoMedicaoEntradaLeite[]
   destinosInternos DestinoInternoLeite[]
@@ -3762,6 +3766,34 @@ model DescarteLeite {
   motivoEstorno String?
   movimentoEstornoId String? @unique
   movimentoEstorno MovimentoEstoque? @relation("DescarteLeiteEstorno", fields: [movimentoEstornoId], references: [id], onDelete: Restrict)
+  @@index([propriedadeId, data])
+  @@schema("pecuaria")
+}
+
+model RetiradaInternaLeite {
+  id String @id @default(uuid())
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id])
+  entradaId String
+  entrada EntradaProducaoLeite @relation(fields: [entradaId], references: [id])
+  movimentoId String @unique
+  movimento MovimentoEstoque @relation("RetiradaInternaLeiteMovimento", fields: [movimentoId], references: [id])
+  destino String
+  responsavel String
+  data DateTime @db.Date
+  quantidadeLitros Decimal @db.Decimal(14,3)
+  saldoOrigemAntes Decimal @db.Decimal(14,3)
+  saldoOrigemDepois Decimal @db.Decimal(14,3)
+  motivo String
+  status String @default("CONFIRMADO")
+  versao Int @default(1)
+  criadoEm DateTime @default(now())
+  criadoPorId Int?
+  estornadoEm DateTime?
+  estornadoPorId Int?
+  motivoEstorno String?
+  movimentoEstornoId String? @unique
+  movimentoEstorno MovimentoEstoque? @relation("RetiradaInternaLeiteEstorno", fields: [movimentoEstornoId], references: [id], onDelete: Restrict)
   @@index([propriedadeId, data])
   @@schema("pecuaria")
 }

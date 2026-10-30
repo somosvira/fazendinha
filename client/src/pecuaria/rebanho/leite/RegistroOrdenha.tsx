@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Milk, Droplets, ShieldCheck, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
 import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
@@ -27,7 +27,7 @@ export function lerRascunhoOrdenha(chave: string): Rascunho | null {
 }
 function guardar(chave: string, rascunho: Rascunho) { try { sessionStorage.setItem(chave, JSON.stringify(rascunho)); } catch { /* Formulário permanece em memória. */ } }
 
-export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoVoltar }: { sitio: number; podeLancar: boolean; registroId: string; rascunhoId: string; aoVoltar: () => void }) {
+export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoVoltar, aoOcupadoChange }: { sitio: number; podeLancar: boolean; registroId: string; rascunhoId: string; aoVoltar: () => void; aoOcupadoChange?: (ocupado: boolean) => void }) {
   const chave = chaveRascunhoOrdenha(sitio, registroId || rascunhoId);
   const [rascunho, setRascunho] = useState<Rascunho>(() => lerRascunhoOrdenha(chave) ?? { data: new URLSearchParams(location.search).get("dataOperacional") || hojeOperacional(), posicao: new URLSearchParams(location.search).get("ordenha") ?? "", parcelas: [], alterado: false, registroId: registroId || undefined, contextoData: "" });
   const [contexto, setContexto] = useState<ContextoParcelas | null>(null);
@@ -35,6 +35,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const [erroContexto, setErroContexto] = useState("");
   const [revisao, setRevisao] = useState(0);
   const [ocupado, setOcupado] = useState(false);
+  useEffect(() => { aoOcupadoChange?.(ocupado); return () => aoOcupadoChange?.(false); }, [ocupado, aoOcupadoChange]);
   const salvandoRef = useRef(false);
   const campoDataRef = useRef<HTMLLabelElement>(null);
   const validarData = () => campoDataRef.current?.querySelector("input")?.reportValidity() ?? false;
@@ -145,7 +146,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const animais: { animalId: string; brinco: string; nome: string | null; ausente?: boolean }[] = [...animaisAtuais, ...[...new Set(rascunho.parcelas.flatMap(p => p.animais))].filter(id => !idsAtuais.has(id)).map(id => ({ animalId: id, brinco: id, nome: null, ausente: true }))];
   const soma = rascunho.parcelas.filter(p => p.litros.trim());
   return <div className="leite-page leite-registro">
-    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
+    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       <div className="leite-registro-campos">
         <label ref={campoDataRef}>Data da ordenha<DatePicker required aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
@@ -160,7 +161,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
           const grupo = rascunho.parcelas.filter(p => !p.classificacaoPendente && p.natureza === natureza);
           const sugestao = natureza === "NAO_COMERCIAL" ? carenciasSessao(contexto, rascunho.posicao).some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA") : natureza === "COLOSTRO" && !!contexto.contexto?.origensColostro.length;
           if (!grupo.length) return (sugestao || natureza === "COMERCIAL") && !travado ? <div className="leite-registro-sugestao" key={natureza}>{natureza !== "COMERCIAL" && <span>{natureza === "COLOSTRO" ? "Há partos compatíveis com o critério de colostro." : "Há animais com carência ou contexto sanitário pendente."}</span>}<Button variant="outline" onClick={() => adicionar(natureza)}>Incluir {nomesNatureza[natureza]}</Button></div> : null;
-          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
+          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{natureza === "COMERCIAL" ? <Milk size={20} aria-hidden/> : natureza === "COLOSTRO" ? <Droplets size={20} aria-hidden/> : <ShieldCheck size={20} aria-hidden/>}{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
             {grupo.map((p, indice) => {
               const leitura = travado || !!p.entradaId;
               const direta = natureza !== "COMERCIAL" && (p.direta || !possuiContexto(p, contexto, rascunho.posicao));
@@ -171,7 +172,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
                   <label>Tanque ou recipiente<SelectCampo aria-label={`Tanque ou recipiente · ${nomesNatureza[natureza]} ${indice + 1}`} disabled={leitura} value={p.tanqueId} onValueChange={tanqueId => mudarParcela(p.chave, { tanqueId })}><option value="">Outro recipiente segregado</option>{tanques.filter(t => t.ativo || t.id === p.tanqueId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versao} · {formatarLitros(t.capacidadeLitros)}</option>)}</SelectCampo></label>
                   {!p.tanqueId && <label>Identificação do recipiente<input className={classeInput} disabled={leitura} maxLength={160} value={p.recipiente} onChange={e => mudarParcela(p.chave, { recipiente: e.target.value })} /></label>}
                   <label>Régua (mm) · opcional<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.regua} onChange={e => mudarParcela(p.chave, { regua: e.target.value })} /></label>
-                  <label>Litros informados manualmente<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.litros} onChange={e => mudarParcela(p.chave, { litros: e.target.value })} /></label>
+                  <label className="ordenha-campo-volume">Litros informados manualmente<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.litros} onChange={e => mudarParcela(p.chave, { litros: e.target.value })} /></label>
                   <label>Responsável<input className={classeInput} disabled={leitura} maxLength={160} value={p.responsavel} onChange={e => mudarParcela(p.chave, { responsavel: e.target.value })} /></label>
                 </div>
                 <div className="leite-registro-linha"><span>{p.animais.length} animais identificados</span><Button type="button" variant="outline" onClick={() => setOrigens(p.chave)}>{leitura ? "Consultar animais" : "Conferir animais"}</Button>{!leitura && !p.id && <Button type="button" variant="ghost" aria-label={`Remover origem ${indice + 1} de ${nomesNatureza[natureza]}`} onClick={() => setRascunho(r => ({ ...r, alterado: true, parcelas: r.parcelas.filter(a => a.chave !== p.chave) }))}><Trash2 size={16} aria-hidden />Remover</Button>}</div>
@@ -181,7 +182,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
             })}</section>;
         })}
         {!travado && <div className="leite-registro-linha"><span>Registrar diretamente com justificativa</span><Button variant="outline" onClick={() => adicionar("NAO_COMERCIAL", true)}>Descarte</Button><Button variant="outline" onClick={() => adicionar("COLOSTRO", true)}>Colostro</Button></div>}
-        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3>Conferência</h3>
+        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3><ClipboardCheck size={20} aria-hidden/>Conferência</h3>
           <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
           <dl>{(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(n => {
             const parcelas = soma.filter(p => !p.classificacaoPendente && p.natureza === n);

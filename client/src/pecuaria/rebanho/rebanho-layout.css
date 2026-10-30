@@ -79,7 +79,7 @@
 @media (max-width: 639px) { .rebanho-content .ficha-peso-indicadores { grid-template-columns: repeat(2,minmax(0,1fr)); } .rebanho-content .ficha-peso-indicadores > :last-child { grid-column: 1 / -1; } }
 
 /* Ficha animal: contexto estável e um assunto por aba. */
-.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { gap: 4px; margin: 0; }
+.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { gap: 24px; margin: 0 0 22px; flex-wrap: nowrap; overflow-x: auto; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { flex: 0 0 auto; min-height: 48px; border-radius: 0; padding: 12px 0; background: transparent; color: var(--muted-foreground); border-bottom: 2px solid transparent; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [aria-selected="true"] { border-bottom-color: var(--primary); color: var(--primary); font-weight: 600; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-status { margin: 0 0 16px; padding: 0; }
@@ -158,8 +158,8 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px;
-  padding: 0;
+  gap: 24px;
+  padding: 26px;
   margin-bottom: 24px;
 }
 .ficha-animal-ilustracao {
@@ -174,8 +174,8 @@
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-identidade .fin-cabecalho-integrado { padding: 0; }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-identidade .ficha-status { margin: 12px 0 0; }
 .ficha-animal-cabecalho > .ficha-baixa-resumo { flex-basis: 100%; margin-bottom: 0; }
-.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { border-bottom: 0; }
-.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 11px 17px; }
+.pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { border-bottom: 1px solid var(--border); }
+.pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 13px 0; }
 .pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] {
   padding: 24px;
   background: var(--card);
@@ -185,8 +185,28 @@
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 18px; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-conteudo { padding: 0; }
 @media (max-width: 650px) {
-  .pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-cabecalho { gap: 14px; margin-bottom: 20px; }
+  .pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-cabecalho { gap: 14px; margin-bottom: 20px; padding: 18px; }
   .ficha-animal-ilustracao { flex-basis: 76px; width: 76px; height: 76px; align-self: flex-start; }
-  .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 10px 12px; }
+  .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 12px 0; }
   .pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; }
 }
+
+/* Medidas de identificação persistem junto ao título, inclusive fora do Resumo. */
+.ficha-animal-medidas { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ficha-animal-metricas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; }
+.ficha-animal-metrica { display: flex; align-items: baseline; gap: 9px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+.ficha-animal-metrica dt { color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+.ficha-animal-metrica dd { margin: 0; color: var(--foreground); font-size: 16px; font-weight: 750; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.ficha-animal-data-peso { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 4px; color: var(--muted-foreground); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ficha-animal-data-peso svg { flex-shrink: 0; }
+.ficha-animal-sem-pesagem { color: var(--muted-foreground); font-size: 12px; font-weight: 500; }
+@media (max-width: 600px) {
+  .ficha-animal-medidas, .ficha-animal-metricas { gap: 6px; }
+  .ficha-animal-metrica { gap: 7px; padding-inline: 9px; }
+  .ficha-animal-data-peso { padding-inline: 3px; }
+}
+
+.ficha-gmd-calculo { flex-basis: 100%; color: var(--muted-foreground); font-size: 12px; }
+.ficha-gmd-calculo summary { width: fit-content; color: var(--primary); cursor: pointer; }
+.ficha-gmd-calculo summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.ficha-gmd-calculo p { max-width: 72ch; margin-top: 8px; line-height: 1.65; }

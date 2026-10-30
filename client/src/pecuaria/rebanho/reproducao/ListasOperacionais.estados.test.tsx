@@ -36,7 +36,7 @@ it("lista apresenta datas brasileiras e situação legível", async () => {
   vi.mocked(listarVisitas).mockResolvedValue([{ id: "v1", propriedadeId: 7, nome: "Manejo das matrizes", data: "2026-10-17", status: "ABERTA", responsavel: "Veterinária" }]);
   render(<Visitas podeLancar={false}/>);
   await screen.findByText("Manejo das matrizes");
-  expect(screen.getByText("17/10/2026")).toBeTruthy();
+  expect(screen.getByLabelText("17/10/2026")).toBeTruthy();
   expect(screen.getByText("Aberta")).toBeTruthy();
   expect(screen.getByText("Veterinária")).toBeTruthy();
   expect(screen.queryByText("ABERTA")).toBeNull();

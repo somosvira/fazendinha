@@ -36,7 +36,7 @@
 .ficha-v4 #acoes-secundarias-animal{background:var(--card);isolation:isolate;max-height:70vh;overflow-y:auto}
 .ficha-v4 .ficha-resumo{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
 .ficha-v4 .repro-ciclo{background:var(--card)}
-.ficha-v4 .fin-cabecalho-contexto .fin-selo{font-size:12px;padding:5px 10px;border:1px solid #b9ccc1;background:#e3ece6;color:#254a3b}
+.ficha-v4 .fin-cabecalho-contexto .fin-selo{font-size:14px;padding:5px 10px;border:1px solid #b9ccc1;background:#e3ece6;color:#254a3b}
 .ficha-v4 .fin-cabecalho-contexto .fin-selo[data-fin-tom=entrada]{background:#d5eadb;color:#205336;border-color:#a4cdb2}
 .ficha-v4 .fin-cabecalho-contexto .fin-selo[data-fin-tom=pendente],.ficha-v4 .fin-cabecalho-contexto .fin-selo[data-fin-tom=alerta]{background:#f7e7cc;color:#724a13;border-color:#dfbf88}
 .ficha-genetica{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
@@ -49,8 +49,8 @@
 
 .repro-historico-periodo{display:flex;align-items:center;flex-wrap:wrap;gap:14px;padding-bottom:16px}.repro-historico-periodo p{flex:1;min-width:230px;color:var(--ink-3)}.repro-historico-periodo label{display:flex;align-items:center;gap:8px;color:var(--ink-3)}.repro-historico input,.repro-historico select{border:1px solid var(--border);background:var(--card);border-radius:7px;padding:7px;color:var(--ink)}.repro-historico-filtros{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}.repro-historico-filtros>div{width:min(100%,360px)}.repro-historico-tamanho{display:flex;justify-content:flex-end;padding:10px 0}.repro-resumo-acompanhamento{grid-template-columns:1fr 1fr 1.2fr}.repro-resumo-acompanhamento dd{font-size:14px}.repro-individual .secao-recolhivel-conteudo>.repro-historico{min-width:0}.repro-individual .secao-recolhivel h2{font-size:20px}
 @media(max-width:640px){.repro-resumo-acompanhamento{grid-template-columns:1fr}.repro-historico-periodo label{flex:1}.repro-historico-periodo input{min-width:0;width:100%}}
-.repro-personalizar-periodo{margin-left:auto}.repro-acompanhamentos-avulsos{margin-top:18px;border-top:1px solid var(--border);padding-top:16px}.repro-acompanhamentos-avulsos h3{font-size:17px}.repro-acompanhamentos-avulsos li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px}.repro-acompanhamentos-avulsos li p{font-size:13px;color:var(--ink-3);margin-top:5px}@media(max-width:640px){.repro-acompanhamentos-avulsos li{align-items:flex-start;flex-direction:column}.repro-personalizar-periodo{margin-left:0}}
-.pecuaria-content .repro-historico .fin-tabela{table-layout:fixed}.pecuaria-content .repro-historico .fin-tabela col:nth-child(1),.pecuaria-content .repro-historico .fin-tabela col:nth-child(5){--fin-coluna-largura:14% !important}.pecuaria-content .repro-historico .fin-tabela col:nth-child(2),.pecuaria-content .repro-historico .fin-tabela col:nth-child(3){--fin-coluna-largura:25% !important}.pecuaria-content .repro-historico .fin-tabela col:nth-child(4){--fin-coluna-largura:22% !important}.repro-historico .fin-tabela th{font-size:13px}.repro-historico .fin-tabela td .fin-selo{white-space:normal}
+.repro-personalizar-periodo{margin-left:auto}.repro-acompanhamentos-avulsos{margin-top:18px;border-top:1px solid var(--border);padding-top:16px}.repro-acompanhamentos-avulsos h3{font-size:17px}.repro-acompanhamentos-avulsos li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:14px}.repro-acompanhamentos-avulsos li p{font-size:14px;color:var(--ink-3);margin-top:5px}@media(max-width:640px){.repro-acompanhamentos-avulsos li{align-items:flex-start;flex-direction:column}.repro-personalizar-periodo{margin-left:0}}
+.pecuaria-content .repro-historico .fin-tabela{table-layout:fixed}.pecuaria-content .repro-historico .fin-tabela col:nth-child(1),.pecuaria-content .repro-historico .fin-tabela col:nth-child(5){--fin-coluna-largura:14% !important}.pecuaria-content .repro-historico .fin-tabela col:nth-child(2),.pecuaria-content .repro-historico .fin-tabela col:nth-child(3){--fin-coluna-largura:25% !important}.pecuaria-content .repro-historico .fin-tabela col:nth-child(4){--fin-coluna-largura:22% !important}.repro-historico .fin-tabela th{font-size:14px}.repro-historico .fin-tabela td .fin-selo{white-space:normal}
 .repro-historico .fin-tabela th{white-space:normal}.repro-historico-periodo>div{min-width:0;max-width:100%}
 
 /* Consulta e ações têm espaços próprios; os cartões usam o mesmo intervalo. */
@@ -59,15 +59,15 @@
 .repro-aptidao-resumo{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .repro-aptidao-resumo>svg{flex:none}
 .repro-aptidao-acao{margin-left:auto}
-.repro-aptidao-contexto{color:var(--ink-3);font-size:13px;line-height:1.5}
-.repro-aptidao-data{display:flex;align-items:center;gap:10px;width:fit-content;font-size:12px;color:var(--ink-3)}
-.repro-aptidao-data input{width:150px;min-height:32px;height:32px;font-size:12px}
+.repro-aptidao-contexto{color:var(--ink-3);font-size:14px;line-height:1.5}
+.repro-aptidao-data{display:flex;align-items:center;gap:10px;width:fit-content;font-size:14px;color:var(--ink-3)}
+.repro-aptidao-data input{width:150px;min-height:32px;height:32px;font-size:14px}
 .repro-aptidao-editor{border-top:1px solid var(--border);padding-top:16px;margin-top:16px}
-.repro-aptidao-editor>label{display:block;font-size:13px}
+.repro-aptidao-editor>label{display:block;font-size:14px}
 .repro-aptidao-editor h3{font-size:16px}
 .repro-aptidao-editor input[type=date]{max-width:200px}
 .repro-informacoes,.repro-adocao{border:1px solid var(--border);border-radius:8px;margin-top:12px;overflow:clip}
-.repro-informacoes>summary,.repro-adocao>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:12px 14px;font-size:13px;font-weight:600;background:var(--card);color:var(--ink)}
+.repro-informacoes>summary,.repro-adocao>summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;padding:12px 14px;font-size:14px;font-weight:600;background:var(--card);color:var(--ink)}
 .repro-informacoes>summary::-webkit-details-marker,.repro-adocao>summary::-webkit-details-marker{display:none}
 .repro-informacoes>summary::after{content:"+";margin-left:auto;font-size:18px}
 .repro-informacoes[open]>summary::after{content:"−"}
@@ -77,11 +77,11 @@
 .repro-intervalos dl>div{padding:8px 10px}
 .repro-intervalos dd{font-size:16px}
 .repro-adocao>summary>span{flex:1}
-.repro-adocao small{display:block;font-size:12px;font-weight:400;color:var(--ink-3);margin-top:3px}
+.repro-adocao small{display:block;font-size:14px;font-weight:400;color:var(--ink-3);margin-top:3px}
 .repro-adocao[open]>summary>svg:last-child{transform:rotate(180deg)}
 .repro-demandas-tabela{min-width:650px}
-.repro-demandas-tabela th{font-size:12px;background:var(--muted)}
-.repro-demandas-tabela td{font-size:13px;vertical-align:top;padding-block:12px;white-space:normal}
+.repro-demandas-tabela th{font-size:14px;background:var(--muted)}
+.repro-demandas-tabela td{font-size:14px;vertical-align:top;padding-block:12px;white-space:normal}
 .repro-demandas-tabela td:nth-child(1){white-space:nowrap}
 .repro-demandas-tabela td:nth-child(4){min-width:180px}
 @media(max-width:640px){.repro-aptidao-resumo{gap:8px}.repro-aptidao-acao{margin-left:0}.repro-aptidao-data{flex-wrap:wrap}.repro-adocao>summary{align-items:flex-start}}
@@ -102,17 +102,17 @@
 .repro-ficha-consultas>.secao-recolhivel{margin:0;min-width:0}
 .repro-ficha-consultas .secao-recolhivel-cabecalho{padding:16px}
 .repro-ficha-consultas .secao-recolhivel-conteudo{padding:16px}
-.repro-ficha-consultas .secao-recolhivel-resumo{font-size:12px;line-height:1.5}
+.repro-ficha-consultas .secao-recolhivel-resumo{font-size:14px;line-height:1.5}
 .repro-ficha-consultas .repro-intervalos dl>div{border:0;border-radius:0;border-bottom:1px solid var(--border);padding:8px 0}
 .repro-ficha-consultas .repro-intervalos dd{font-size:15px}
 .repro-individual .repro-resumo-acompanhamento{padding-block:16px;background:var(--card)}
 .repro-individual .repro-resumo-acompanhamento>div{gap:12px;padding-inline:18px}
-.repro-individual .repro-resumo-acompanhamento dt{font-size:12px;font-weight:500;color:var(--muted-foreground)}
-.repro-individual .repro-resumo-acompanhamento dd{font-size:13px;font-weight:600;line-height:1.5}
+.repro-individual .repro-resumo-acompanhamento dt{font-size:14px;font-weight:500;color:var(--muted-foreground)}
+.repro-individual .repro-resumo-acompanhamento dd{font-size:14px;font-weight:600;line-height:1.5}
 .repro-individual .repro-acoes-diretas{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:4px}
 .repro-individual .secao-recolhivel h2{font-size:18px;letter-spacing:-.02em}
 .repro-individual .protocolo-animal-cabecalho h3{font-size:16px}
-.repro-individual .protocolo-animal-resumo{grid-template-columns:repeat(2,minmax(0,1fr));font-size:13px;background:transparent;padding:12px 0 0}
+.repro-individual .protocolo-animal-resumo{grid-template-columns:repeat(2,minmax(0,1fr));font-size:14px;background:transparent;padding:12px 0 0}
 @media(max-width:1100px){.repro-ficha-consultas{grid-template-columns:1fr}.repro-individual .repro-resumo-acompanhamento{grid-template-columns:1fr;gap:12px}.repro-individual .repro-resumo-acompanhamento>div+div{border-left:0;border-top:1px solid var(--border);padding-top:12px}}
 
 /* A faixa de registro fica separada da consulta após as abas da ficha. */

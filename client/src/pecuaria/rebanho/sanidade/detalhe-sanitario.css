@@ -8,7 +8,7 @@
 .pec-detalhe-sanitario > p { max-width: 65ch; overflow-wrap: anywhere; }
 .pec-detalhe-sanitario .sanitario-dados { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 24px; margin: 0; }
 .pec-detalhe-sanitario .sanitario-dados > div { min-width: 0; }
-.pec-detalhe-sanitario .sanitario-dados dt { margin-bottom: 4px; font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
+.pec-detalhe-sanitario .sanitario-dados dt { margin-bottom: 4px; font-size: 14px; font-weight: 500; color: var(--muted-foreground); }
 .pec-detalhe-sanitario .sanitario-dados dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .pec-detalhe-sanitario .sanitario-identidade { padding-bottom: 22px; border-bottom: 1px solid var(--border); }
 .pec-detalhe-sanitario .sanitario-resultado { padding: 18px; border-radius: 12px; background: var(--muted); }
@@ -30,7 +30,7 @@
 .sanitario-historico-evento h4 { font-size: 14px; font-weight: 600; line-height: 1.5; }
 .sanitario-historico-evento > header p,
 .sanitario-historico-motivo,
-.sanitario-historico-paginacao { color: var(--muted-foreground); font-size: 12px; line-height: 1.5; }
+.sanitario-historico-paginacao { color: var(--muted-foreground); font-size: 14px; line-height: 1.5; }
 .sanitario-historico-evento > header p { margin-top: 4px; }
 .sanitario-historico-motivo { max-width: 65ch; margin-top: 12px; overflow-wrap: anywhere; }
 .sanitario-historico-paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

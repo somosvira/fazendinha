@@ -75,3 +75,13 @@ it("descarta uma quantidade explícita da origem sem atribuir destinatário ou r
     "parcelas",
   );
 });
+
+it("registra Casa com responsável e origem comercial sem criar descarte físico",async()=>{
+ vi.mocked(listarProdutos).mockResolvedValue([{id:"leite",nome:"Leite",unidade:"L",ativo:true,rastrearPartidas:false}]);
+ vi.mocked(consultarLeite).mockImplementation(async p=>p.startsWith("/destinos/origens")?{itens:[{entradaId:"origem",data:"2026-10-19",nomeOrdenha:"Tarde",natureza:"COMERCIAL",quantidadeDisponivelLitros:10}]}:{propriedadeId:2,itens:[],total:0,tamanho:20});
+ render(<DescarteLeite podeLancar modo="retirada"/>);fireEvent.click(screen.getByRole("button",{name:"Registrar retirada interna"}));
+ await selecionarCampoLeite("Produto de leite","leite");await selecionarCampoLeite("Origem do leite","origem");
+ fireEvent.change(screen.getByLabelText("Responsável"),{target:{value:"Maria"}});fireEvent.change(screen.getByLabelText("Volume (L)"),{target:{value:"2,125"}});fireEvent.change(screen.getByLabelText("Motivo da saída"),{target:{value:"Retirada para a casa"}});
+ fireEvent.click(screen.getByRole("button",{name:"Confirmar retirada interna"}));await waitFor(()=>expect(registrarLeite).toHaveBeenCalledWith("/retiradas-internas",2,expect.objectContaining({destino:"CASA",responsavel:"Maria",quantidadeLitros:2.125,entradaId:"origem"})));
+ expect(vi.mocked(registrarLeite).mock.calls.some(c=>c[0]==="/descartes")).toBe(false);
+});

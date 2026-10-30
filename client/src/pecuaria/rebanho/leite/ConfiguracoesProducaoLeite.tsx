@@ -1,3 +1,6 @@
+import { ListaConsultaLeite } from "./ListaConsultaLeite";
+import { Card } from "@/components/ui/card";
+import { CalendarDays, Milk, Plus, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
@@ -25,6 +28,11 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
   const [tanque, setTanque] = useState<TanqueLeite | null | undefined>();
   const [detalhe, setDetalhe] = useState<TanqueLeite | null>(null);
   useEffect(() => {
+    const abrir = () => { const id = new URLSearchParams(location.search).get("tanqueId"); if (id && dados) setDetalhe(dados.tanques.find(t => t.id === id) ?? null); };
+    abrir(); window.addEventListener("popstate", abrir); return () => window.removeEventListener("popstate", abrir);
+  }, [dados]);
+
+  useEffect(() => {
     if (sitio == null) return;
     let ativo = true;
     setDados(null); setErro("");
@@ -37,11 +45,11 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
     <CabecalhoTabela titulo="Rotina de produção" acao={<DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} />} />
     {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="p-5">Carregando configurações…</p> : <>
       <div className="p-5 grid gap-5">
-        <div className="flex items-center flex-wrap gap-3"><h3 className="mr-auto">Produção · desde {formatarDataBR(dados.configuracao.vigenteDesde)}</h3>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}>Nova configuração</Button>}</div>
-        <dl className="grid gap-4"><div><dt>Ordenhas do dia</dt><dd>{dados.configuracao.ordenhas.map(o => o.nome).join(" · ")}</dd></div><div><dt>Controle individual</dt><dd>A cada {dados.configuracao.intervaloIndividualQuantidade ?? 1} {dados.configuracao.intervaloIndividualUnidade === "DIAS" ? "dia(s)" : "mês(es)"} · Fonte {dados.configuracao.fonteProducao === "GERAL" ? "geral" : "individual"}</dd></div><div><dt>Critério de colostro</dt><dd>{criterio?.tipo === "PRIMEIRA_ORDENHA" ? "Primeira ordenha após o parto" : criterio?.tipo === "JANELA_DIAS" ? `Janela pós-parto de ${criterio.dias} dias, incluindo D0` : "Não informado"}</dd></div></dl>
+        <div className="leite-configuracao-vigencia"><div><h3>Configuração vigente</h3><span><CalendarDays size={16} aria-hidden />Desde {formatarDataBR(dados.configuracao.vigenteDesde)}</span></div>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}><Settings2 size={17} aria-hidden />Nova configuração</Button>}</div>
+        <dl className="grid gap-4 leite-configuracao-fatos"><div><dt>Ordenhas do dia</dt><dd>{dados.configuracao.ordenhas.map(o => o.nome).join(" · ")}</dd></div><div><dt>Controle individual</dt><dd>A cada {dados.configuracao.intervaloIndividualQuantidade ?? 1} {dados.configuracao.intervaloIndividualUnidade === "DIAS" ? "dia(s)" : "mês(es)"} · Fonte {dados.configuracao.fonteProducao === "GERAL" ? "geral" : "individual"}</dd></div><div><dt>Critério de colostro</dt><dd>{criterio?.tipo === "PRIMEIRA_ORDENHA" ? "Primeira ordenha após o parto" : criterio?.tipo === "JANELA_DIAS" ? `Janela pós-parto de ${criterio.dias} dias, incluindo D0` : "Não informado"}</dd></div></dl>
       </div>
-      <CabecalhoTabela titulo="Tanques e calibração" acao={podeLancar && <Button onClick={() => setTanque(null)}>Cadastrar tanque</Button>} />
-      {!dados.tanques.length ? <p className="p-5">Nenhum tanque cadastrado.</p> : <TabelaFinanceira rotulo="Tanques cadastrados" itens={dados.tanques} chaveDe={t => t.id} onAbrir={setDetalhe} colunas={[
+      <CabecalhoTabela titulo="Tanques e calibração" acao={podeLancar && <Button onClick={() => setTanque(null)}><Plus size={17} aria-hidden />Cadastrar tanque</Button>} />
+      {!dados.tanques.length ? <p className="p-5">Nenhum tanque cadastrado.</p> : <ListaConsultaLeite preferencia="tanquesLeiteVisualizacao" layout="grade" renderizarVisual={t => <Card className="leite-card-visual leite-equipamento"><header><Milk size={20} aria-hidden/><h3>{t.nome}</h3></header><strong>{formatarLitros(t.capacidadeLitros)}</strong><span>Capacidade nominal</span><dl><div><dt>Modelo / série</dt><dd>{[t.modelo,t.numeroSerie].filter(Boolean).join(" · ") || "Não informado"}</dd></div><div><dt>Versão</dt><dd>v{t.versao} · {t.ativo ? "Ativo" : "Inativo"}</dd></div></dl><Button variant="outline" onClick={() => setDetalhe(t)}>Equipamento e tabela</Button></Card>} rotulo="Tanques cadastrados" itens={dados.tanques} chaveDe={t => t.id} onAbrir={setDetalhe} colunas={[
         { chave: "nome", titulo: "Tanque", principal: true, celula: t => t.nome },
         { chave: "capacidade", titulo: "Capacidade", alinhamento: "direita", celula: t => formatarLitros(t.capacidadeLitros) },
         { chave: "modelo", titulo: "Modelo / série", celula: t => [t.modelo, t.numeroSerie].filter(Boolean).join(" · ") || "Não informado" },
@@ -57,7 +65,7 @@ export function ConfiguracoesProducaoLeite({ podeLancar }: { podeLancar: boolean
       ]} />}
       {config && <ConfiguracoesOrdenha configuracao={dados.configuracao} data={data} aoFechar={() => setConfig(false)} aoSalvar={() => { setConfig(false); setRevisao(r => r + 1); }} />}
       {tanque !== undefined && <ConfiguracaoTanques sitio={sitio} data={data} tanque={tanque ?? undefined} aoFechar={() => setTanque(undefined)} aoSalvar={() => { setTanque(undefined); setRevisao(r => r + 1); }} />}
-      <Dialog open={!!detalhe} onOpenChange={v => { if (!v) setDetalhe(null); }}><DialogContent className="max-w-3xl" aria-describedby={undefined}><DialogHeader><DialogTitle>{detalhe?.nome} · v{detalhe?.versao}</DialogTitle></DialogHeader>{detalhe && <div className="grid gap-4 max-h-[60vh] overflow-auto"><p>{formatarLitros(detalhe.capacidadeLitros)} · Vigência {formatarDataBR(detalhe.vigenteDesde)}</p><p>{[detalhe.fabricante, detalhe.modelo, detalhe.numeroSerie].filter(Boolean).join(" · ") || "Especificações adicionais não informadas"}</p><p>Referência: {detalhe.referenciaTabela || "Não informada"}</p>{detalhe.tabelaConversao.length ? <TabelaFinanceira rotulo="Tabela de calibração" itens={detalhe.tabelaConversao} chaveDe={p => String(p.mm)} colunas={[{ chave: "mm", titulo: "Régua (mm)", principal: true, celula: p => p.mm }, { chave: "litros", titulo: "Volume exato (L)", celula: p => p.litros }]} /> : <p>Nenhum ponto de calibração cadastrado.</p>}</div>}<DialogFooter><Button variant="outline" onClick={() => setDetalhe(null)}>Fechar</Button>{podeLancar && detalhe && <Button onClick={() => { setTanque(detalhe); setDetalhe(null); }}>Nova versão do tanque</Button>}</DialogFooter></DialogContent></Dialog>
+      <Dialog open={!!detalhe} onOpenChange={v => { if (!v) setDetalhe(null); }}><DialogContent className="leite-consulta-dialog leite-tanque-detalhe" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{detalhe?.nome} · v{detalhe?.versao}</DialogTitle></DialogHeader>{detalhe && <div className="grid gap-4 max-h-[60vh] overflow-auto"><p>{formatarLitros(detalhe.capacidadeLitros)} · Vigência {formatarDataBR(detalhe.vigenteDesde)}</p><p>{[detalhe.fabricante, detalhe.modelo, detalhe.numeroSerie].filter(Boolean).join(" · ") || "Especificações adicionais não informadas"}</p><p>Referência: {detalhe.referenciaTabela || "Não informada"}</p>{detalhe.tabelaConversao.length ? <TabelaFinanceira rotulo="Tabela de calibração" itens={detalhe.tabelaConversao} chaveDe={p => String(p.mm)} colunas={[{ chave: "mm", titulo: "Régua (mm)", principal: true, celula: p => p.mm }, { chave: "litros", titulo: "Volume exato (L)", celula: p => p.litros }]} /> : <p>Nenhum ponto de calibração cadastrado.</p>}</div>}<DialogFooter><Button variant="outline" onClick={() => setDetalhe(null)}>Fechar</Button>{podeLancar && detalhe && <Button onClick={() => { setTanque(detalhe); setDetalhe(null); }}>Nova versão do tanque</Button>}</DialogFooter></DialogContent></Dialog>
     </>}
   </div>;
 }

@@ -27,9 +27,13 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const [sitioId, setSitioId] = useState<number | undefined>(() => getPropriedadeAtiva() ?? undefined);
   const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
   const [dados, setDados] = useState<ProdutoEstoqueDTO | null>(null);
-  const [aba, setAba] = useState<Aba>("resumo");
+  const [aba, setAba] = useState<Aba>(() => new URLSearchParams(location.search).has("partidaId") ? "movimentos" : "resumo");
   const [pagina, setPagina] = useState(1);
-  const [partidaId, setPartidaId] = useState("");
+  const [partidaId, setPartidaId] = useState(() => new URLSearchParams(location.search).get("partidaId") ?? "");
+  useEffect(() => {
+    const restaurar = () => { const id = new URLSearchParams(location.search).get("partidaId") ?? ""; setPartidaId(id); setPagina(1); if (id) setAba("movimentos"); };
+    window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar);
+  }, []);
   const [lotes, setLotes] = useState<PaginaLotesProduto | null>(null);
   const [movimentos, setMovimentos] = useState<PaginaMovimentos | null>(null);
   const [origens, setOrigens] = useState<PaginaOrigensProduto | null>(null);
@@ -92,9 +96,9 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: o => <span className="tabular-nums">{Number(o.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
     { chave: "vinculos", titulo: "Documentos de origem", celula: o => <div className="flex flex-wrap gap-x-4 gap-y-2">{o.operacaoId && podeAcessarArea("financeiro") && <a href={`/financeiro/operacoes/${o.operacaoId}`} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Compra {o.operacaoNumero ? `OP-${String(o.operacaoNumero).padStart(4, "0")}` : "de origem"}</a>}{o.fornecedorId && podeAcessarArea("financeiro") && <a href={`/financeiro/configuracoes?aba=parceiros&parceiroId=${o.fornecedorId}`} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Consultar fornecedor</a>}</div> },
   ];
-  return <PaginaFinanceira>
+  return <PaginaFinanceira><div className="produto-ficha estoque-content">
     <nav className="fin-breadcrumb" aria-label="Navegação estrutural"><a href="/estoque" onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara("/estoque"); } }}>Estoque</a><span aria-hidden="true">/</span><span aria-current="page">{produto?.nome ?? "Ficha do produto"}</span></nav>
-    <PageHeader eyebrow="" titulo={produto?.nome ?? "Ficha do produto"} acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />Editar produto</Button> : undefined} />
+    <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><Package/></span>{produto?.nome ?? "Ficha do produto"}</span>} acao={produto && podeEditar ? <Button secondary disabled={salvando} onClick={() => { void abrirEdicao(); }}><Pencil size={16} />Editar produto</Button> : undefined} />
     <div className="estoque-filtro-ficha"><div className="grid min-w-0 w-full gap-1 text-sm sm:w-[280px]"><div className="flex items-center"><label htmlFor="sitio-ficha-produto">Sítio</label><AjudaCampo rotulo="Ajuda: sítio da ficha" texto="O sítio selecionado nesta ficha filtra somente esta consulta. A seleção geral da fazenda não é alterada." /></div><SelectCampo id="sitio-ficha-produto" aria-label="Sítio da ficha" className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { setSitioId(Number(valorSelecionado) || undefined); setPagina(1); setPartidaId(""); }}><option value="">Consolidado</option>{sitios.map(s => <option key={s.id} value={s.id}>{s.nome}{s.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></div>{partidaId && <p className="text-sm text-ink-3">Consulta filtrada por lote. <Button secondary onClick={() => { setPartidaId(""); setPagina(1); }}>Ver todos</Button></p>}</div>
     <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
 
@@ -103,9 +107,10 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       {aba === "resumo" && <Panel className="mt-5 overflow-hidden">
         <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Package aria-hidden="true" /></span><h2 className="h2">Saldo {sitioId ? `em ${sitios.find(s => s.id === sitioId)?.nome ?? "sítio selecionado"}` : "consolidado"}</h2></div>
         <div className="estoque-ficha-resumo">
-          <div><p className="estoque-ficha-saldo tabular-nums">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</p><p className="mt-2 text-sm text-ink-3">{produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{!podeEditar && <p className="mt-3 text-sm text-ink-3">Você tem acesso de consulta.</p>}</div>
-          <dl className="estoque-ficha-dados"><div><dt>Categoria</dt><dd>{produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"}</dd></div>{dados.custoMedio != null && <><div><dt>Custo médio</dt><dd>{brl(dados.custoMedio)}</dd></div><div><dt>Valor em estoque</dt><dd>{brl(dados.valor ?? 0)}</dd></div></>}</dl>
+          <div className="produto-ficha-disponivel"><span className="text-sm text-muted-foreground">Disponível</span><p className="estoque-ficha-saldo tabular-nums">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</p><p className="mt-2 text-sm text-ink-3">{produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{!podeEditar && <p className="mt-3 text-sm text-ink-3">Você tem acesso de consulta.</p>}</div>
+          <dl className="estoque-ficha-dados"><div><dt>Lotes com saldo</dt><dd>{dados.lotesComSaldo} <small>de {dados.totalLotes} cadastrados</small></dd></div><div><dt>Categoria</dt><dd>{produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"}</dd></div>{dados.custoMedio != null && <><div><dt>Custo médio</dt><dd>{brl(dados.custoMedio)}</dd></div><div><dt>Valor em estoque</dt><dd>{brl(dados.valor ?? 0)}</dd></div></>}</dl>
         </div>
+        <div className="produto-ficha-rastreio"><h3>Consultar rastreabilidade</h3><div><Button secondary onClick={() => abrirAba("lotes")}><Boxes size={17} aria-hidden="true" />Lotes e validades</Button><Button secondary onClick={() => abrirAba("movimentos")}>Movimentos do produto</Button><Button secondary onClick={() => abrirAba("origens")}>Origens das entradas</Button></div></div>
         {podeAjustarEstoque() && <div className="estoque-ficha-opcoes">{sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}><SlidersHorizontal size={16} />Ajustar quantidade</Button> : <p className="text-sm text-ink-3">Selecione um sítio acima para registrar movimentos.</p>}</div>}
         {podeEditar && sitioId && <details className="estoque-ficha-opcoes"><summary className="cursor-pointer text-sm font-medium">Opções avançadas</summary><div className="mt-3"><PartidasProduto key={`${produto.id}-${sitioId}`} produtoId={produto.id} propriedadeId={sitioId} rastreado={!!produto.rastrearPartidas} configuracao onMudou={() => setRevisao(r => r + 1)} /></div></details>}
       </Panel>}
@@ -123,5 +128,5 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><AjudaCampo rotulo="Ajuda: renomear lote" texto="A alteração ficará no histórico de auditoria." /></div></form>
     </DialogFinanceiro>}
     {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
-  </PaginaFinanceira>;
+  </div></PaginaFinanceira>;
 }

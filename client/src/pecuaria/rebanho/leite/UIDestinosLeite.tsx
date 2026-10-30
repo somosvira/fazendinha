@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
@@ -51,7 +52,7 @@ const novoRascunho = (): RascunhoDestino => ({
 });
 const dataPt = (data: string) =>
   data.slice(0, 10).split("-").reverse().join("/");
-export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
+export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; aoMudou?: () => void }) {
   const sitio = getPropriedadeAtiva();
   const [novo, setNovo] = useState(false);
   const [data, setData] = useState(hojeOperacional);
@@ -121,6 +122,7 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
       setMotivo("");
       setAviso("Destino estornado. O histórico foi preservado.");
       setRevisao((r) => r + 1);
+      aoMudou?.();
     } catch (e) {
       if (atual === geracao.current)
         setErro(
@@ -134,9 +136,9 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Destinos internos" ajuda="Fornecimentos com origem e volume por animal." rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}>Registrar fornecimento</Button> : undefined} />
+      <CabecalhoTabela titulo="Histórico de fornecimentos" ajuda="Fornecimentos com origem e volume por animal." rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
       {podeLancar && novo ? (
-        <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
+        <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
           <label>
             Data do fornecimento
             <input
@@ -156,6 +158,7 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
                   "Destino registrado e volume baixado uma vez do estoque.",
                 );
                 setRevisao((r) => r + 1);
+                aoMudou?.();
                 setNovo(false);
               }}
             />
@@ -168,15 +171,14 @@ export function DestinosLeite({ podeLancar }: { podeLancar: boolean }) {
         </p>
       ) : null}
       {aviso && <p role="status">{aviso}</p>}
-      <h2>Histórico de fornecimentos</h2>
       <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><input type="date" value={filtros.rascunho.de} onChange={e => filtros.editar("de", e.target.value)} /></CampoFiltro><CampoFiltro rotulo="Até"><input type="date" value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={e => filtros.editar("ate", e.target.value)} /></CampoFiltro></>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <ListaConsultaLeite preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="linhas" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
-            { chave: "natureza", titulo: "Natureza", celula: d => nomeNaturezaDestino(d.natureza) },
+            { chave: "natureza", titulo: "Natureza", ocultarNoCartao: true, celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
             { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: d => d.parcelas.length },
             { chave: "situacao", titulo: "Situação", celula: d => d.status === "ESTORNADO" ? "Estornado" : "Confirmado" },

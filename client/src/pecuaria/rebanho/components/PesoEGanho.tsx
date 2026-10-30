@@ -2,12 +2,13 @@
 // período), o gráfico de evolução do peso e os cartões de pesagens
 // (GMD desde a anterior, observação, editar/excluir).
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState, type ReactNode } from "react";
-import { Pencil, Scale, Trash2, Weight } from "lucide-react";
+import { Info, Pencil, Scale, Trash2, Weight } from "lucide-react";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
 import { Paginacao, CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
@@ -50,21 +51,24 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   const mesmaBase = historicoPesagens.length === 2 && historicoPesagens.every(pesoCompativelIndicador) && peso.gmdPeriodo.pesagens === 2
     && peso.gmdPeriodo.valor != null && peso.gmdPeriodo.valor === peso.gmdRecente
     && peso.gmdRecente === peso.gmdDesdeEntrada;
+  const datasDaBase = mesmaBase ? historicoPesagens.map(p => p.data).sort() : [];
   const [pagina, setPagina] = useState(1);
-  useEffect(() => setPagina(1), [animal.id, historicoPesagens.length]);
+  const [pesagemAberta, setPesagemAberta] = useState<HistoricoPesagem | null>(null);
+  useEffect(() => { setPagina(1); setPesagemAberta(null); }, [animal.id, historicoPesagens.length]);
   const totalPaginas = Math.max(1, Math.ceil(historicoPesagens.length / 5));
   const paginaAtual = Math.min(pagina, totalPaginas);
   return <div className="ficha-peso-conjunto space-y-4">
     <div className="ficha-gmd-cabecalho">
       <dl className="ficha-gmd-leitura">
-        <div><dt>GMD do período</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{detalhePeriodo}</small></dd></div>
-        {mesmaBase ? <div><dt><span>GMD recente</span> e <span>GMD desde a entrada</span></dt><dd className="text-sm">Mesmas duas pesagens do período.</dd></div> : <>
+        <div><dt>{mesmaBase ? "Ganho médio diário (GMD)" : "GMD do período"}</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{mesmaBase ? `2 pesagens · ${formatarDataBR(datasDaBase[0])} a ${formatarDataBR(datasDaBase[1])}` : detalhePeriodo}</small></dd></div>
+        {!mesmaBase && <>
           <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
           <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
         </>}
 
       </dl>
       <SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange}/>
+      {mesmaBase && <details className="ficha-gmd-calculo"><summary>Como foi calculado</summary><p>O ganho médio diário considera a diferença de peso entre as pesagens de {formatarDataBR(datasDaBase[0])} e {formatarDataBR(datasDaBase[1])}, dividida pelo intervalo de {peso.gmdPeriodo.dias} dias.</p><p>Como há apenas duas pesagens, <span>GMD recente</span> e <span>GMD desde a entrada</span> usam esses mesmos registros.</p></details>}
     </div>
     <div className="ficha-peso-distribuicao">
       <CardFicha icon={Scale} titulo="Evolução do peso"><GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/></CardFicha>
@@ -77,18 +81,19 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
               <Badge variant="secondary">{ROTULO_TIPO_PESAGEM[pesagem.tipo] ?? pesagem.tipo}</Badge>
             </header>
             <p className="mt-3 text-2xl font-semibold tabular-nums">{pesagem.pesoKg.toLocaleString("pt-BR")} <span className="text-sm font-normal text-muted-foreground">kg</span></p>
-            <dl className="mt-3 grid gap-2 text-xs">
+            <dl className="mt-3 grid gap-2 text-sm">
               <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">GMD desde a anterior</dt><dd className="whitespace-nowrap font-medium tabular-nums">{gmdEntre(pesagem, historicoPesagens[(paginaAtual-1)*5 + indice + 1])}</dd></div>
-              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Origem</dt><dd>{rotuloOrigemPesagem(pesagem.origem)}</dd></div>
-              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Precisão</dt><dd>{rotuloPrecisaoPeso(pesagem.precisao)}</dd></div>
-              <div className="flex items-baseline justify-between gap-3"><dt className="text-muted-foreground">Contexto</dt><dd>{rotuloContextoPeso(pesagem.contextoHistorico)}</dd></div>
+              {!pesoCompativelIndicador(pesagem) && <div className="flex flex-wrap items-center gap-2"><dt className="sr-only">Limites desta pesagem</dt><dd className="flex flex-wrap gap-2"><Badge variant="outline">{rotuloPrecisaoPeso(pesagem.precisao)}</Badge>{pesagem.contextoHistorico === "EXTERNO" && <Badge variant="outline">Externo</Badge>}</dd></div>}
             </dl>
             {observacaoVisivel(pesagem.observacao) && <p className="mt-3 border-t border-border pt-3 text-sm break-words">{observacaoVisivel(pesagem.observacao)}</p>}
-            {pesagem.referenciaHistorica && <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">Reconciliação auditada para corrigir este registro histórico.</p>}
-            {podeLancar && !pesagem.referenciaHistorica && <footer className="mt-3 flex justify-end gap-2 border-t border-border pt-2">
+            {pesagem.referenciaHistorica && <p className="mt-3 border-t border-border pt-3 text-sm text-muted-foreground">Reconciliação auditada para corrigir este registro histórico.</p>}
+            <footer className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-2">
+              <Button variant="ghost" size="sm" aria-label={`Detalhes da pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => setPesagemAberta(pesagem)}><Info size={16} aria-hidden/>Detalhes</Button>
+              {podeLancar && !pesagem.referenciaHistorica && <div className="flex gap-2">
               <Button variant="ghost" size="icon" aria-label={`Editar pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onEditarPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"], observacao: pesagem.observacao })}><Pencil size={16} /></Button>
               <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" aria-label={`Excluir pesagem de ${formatarDataBR(pesagem.data)}`} onClick={() => onExcluirPesagem({ id: pesagem.id, animalId: animal.id, data: pesagem.data, pesoKg: pesagem.pesoKg, tipo: pesagem.tipo as Pesagem["tipo"], origem: pesagem.origem as Pesagem["origem"] })}><Trash2 size={16} /></Button>
-            </footer>}
+              </div>}
+            </footer>
           </article></Card>
         </li>)}
       </ul> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
@@ -96,5 +101,19 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       </CardFicha>
     </div>
     {manejo}
+    <Dialog open={!!pesagemAberta} onOpenChange={aberto => { if (!aberto) setPesagemAberta(null); }}>
+      <DialogContent aria-describedby={undefined} className="max-w-xl">
+        <DialogHeader><DialogTitle>Detalhes da pesagem</DialogTitle></DialogHeader>
+        {pesagemAberta && <dl className="grid grid-cols-2 gap-x-6 gap-y-5 text-base">
+          <div><dt className="text-muted-foreground">Data</dt><dd className="mt-1 font-semibold">{formatarDataBR(pesagemAberta.data)}</dd></div>
+          <div><dt className="text-muted-foreground">Peso</dt><dd className="mt-1 font-semibold">{pesagemAberta.pesoKg.toLocaleString("pt-BR")} kg</dd></div>
+          <div><dt className="text-muted-foreground">Origem</dt><dd className="mt-1">{rotuloOrigemPesagem(pesagemAberta.origem)}</dd></div>
+          <div><dt className="text-muted-foreground">Tipo</dt><dd className="mt-1">{ROTULO_TIPO_PESAGEM[pesagemAberta.tipo] ?? pesagemAberta.tipo}</dd></div>
+          <div><dt className="text-muted-foreground">Precisão</dt><dd className="mt-1">{rotuloPrecisaoPeso(pesagemAberta.precisao)}</dd></div>
+          <div><dt className="text-muted-foreground">Contexto</dt><dd className="mt-1">{rotuloContextoPeso(pesagemAberta.contextoHistorico)}</dd></div>
+          {pesagemAberta.referenciaHistorica && <div className="col-span-2"><dt className="text-muted-foreground">Referência histórica</dt><dd className="mt-1 break-words">{pesagemAberta.referenciaHistorica}</dd></div>}
+        </dl>}
+      </DialogContent>
+    </Dialog>
   </div>;
 }

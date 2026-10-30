@@ -234,7 +234,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "produto", naBarra: true, ativo: !!buscaMov, limpar: () => edicaoHistorico.editar("busca", ""), conteudo: <label>Produto, operação ou fornecedor<input aria-label="Buscar movimento no filtro" className={CAMPO} value={edicaoHistorico.rascunho.busca} onChange={e => edicaoHistorico.editar("busca", e.target.value)} /></label> },
   ];
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo={titulo ?? "Estoque"} descricao="Consulte os produtos e acompanhe as movimentações." acao={acao} />
+    <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><Package/></span>{titulo ?? "Estoque"}</span>} acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 

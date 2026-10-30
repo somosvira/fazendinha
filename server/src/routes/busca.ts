@@ -1,17 +1,20 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { buscarEntidades } from "../services/busca.js";
+import { buscarEntidades, qValido } from "../services/busca.js";
 import { getUsuario } from "../middleware/permissao.js";
-import { temArea, type Area } from "../services/auth/papeis.js";
+import { resolverEscopoLeitura, PropriedadeError } from "../services/propriedade.js";
 
-const buscaQuerySchema = z.object({ q: z.string().max(60).optional() });
-
-/* Busca global de entidades reais para a paleta ⌘K. Montado em /api → GET /api/busca?q= */
+const buscaQuerySchema = z.object({ q: z.string().trim().max(60).default("") });
 export const buscaRouter = new Hono().get("/busca", zValidator("query", buscaQuerySchema), async (c) => {
   const usuario = getUsuario(c);
-  const resultados = await buscarEntidades(c.req.valid("query").q ?? "");
-  const areaDaTab = (tab: string): Area => tab.startsWith("pec-") ? "pecuaria"
-    : "financeiro";
-  return c.json(usuario ? resultados.filter((r) => temArea(usuario, areaDaTab(r.tab))) : []);
+  if (!usuario) return c.json({ error: "não autenticado" }, 401);
+  const { q } = c.req.valid("query");
+  if (!qValido(q)) return c.json([]);
+  try {
+    return c.json(await buscarEntidades(q, usuario, await resolverEscopoLeitura(c)));
+  } catch (e) {
+    if (e instanceof PropriedadeError) return c.json({ error: e.message, code: e.code }, 422);
+    throw e;
+  }
 });

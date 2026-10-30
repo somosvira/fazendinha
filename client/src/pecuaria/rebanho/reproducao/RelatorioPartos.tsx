@@ -1,3 +1,13 @@
+import {BarraRelatorio,AcoesRelatorio} from "../../relatorios/ConsultaRelatorioUI";
+import {Card} from "@/components/ui/card";
+import {CalendarDays} from "lucide-react";
+import {DatePicker} from "@/components/DatePicker";
+import { PartosVisual } from "../../relatorios/PartosVisual";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { History, SlidersHorizontal, Download, Printer, Archive } from "lucide-react";
+import { formatBRDateISO } from "@/lib/hoje";
 import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -67,6 +77,8 @@ function exportar(snapshot: SnapshotRelatorioPartos) {
   URL.revokeObjectURL(url);
 }
 export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: number; podeLancar: boolean }) {
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [historicoAberto, setHistoricoAberto] = useState(false);
   const [inicio, setInicio] = useState(() => periodoPadrao("partos").inicio);
   const [fim, setFim] = useState(() => periodoPadrao("partos").fim);
   const [snapshot, setSnapshot] = useState<SnapshotRelatorioPartos | null>(null);
@@ -77,6 +89,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
   const propriedadeAtual = useRef(propriedadeId);
   propriedadeAtual.current = propriedadeId;
   const consultaAtual = useRef(0);
+  const ultimaOperacao = useRef<(() => void) | null>(null);
   const requisicao = useRef<{ assinatura: string; chave: string } | null>(null);
   useEffect(() => {
     let ativo = true;
@@ -91,11 +104,12 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
       `/reproducao/relatorios/emissoes?tipo=PARTOS&propriedadeId=${propriedadeId}`, undefined, "GET", propriedadeId,
     ).then(lista => { if (ativo) setEmissoes(lista); })
       .catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar as emissões"); });
-    return () => { ativo = false; };
+    return () => { ativo = false; consultaAtual.current++; };
   }, [propriedadeId]);
   const visivel = snapshot?.propriedadeId === propriedadeId ? snapshot : null;
   const periodoAlterado = !!visivel && (inicio !== visivel.periodo.inicio || fim !== visivel.periodo.fim);
   async function consultar() {
+    ultimaOperacao.current = () => { void consultar(); };
     const sequencia = ++consultaAtual.current;
     setOcupado(true);
     setErro("");
@@ -111,6 +125,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
   }
   async function salvarEmissao() {
     if (!podeLancar || !visivel) return;
+    ultimaOperacao.current = () => { void salvarEmissao(); };
     const sequencia = ++consultaAtual.current;
     setOcupado(true);
     setErro("");
@@ -131,6 +146,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
     } finally { if (consultaAtual.current === sequencia) setOcupado(false); }
   }
   async function abrir(id: string) {
+    ultimaOperacao.current = () => { void abrir(id); };
     const sequencia = ++consultaAtual.current;
     setOcupado(true);
     setErro("");
@@ -147,48 +163,24 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
       if (consultaAtual.current === sequencia) setErro(e instanceof Error ? e.message : "Não foi possível abrir a emissão");
     } finally { if (consultaAtual.current === sequencia) setOcupado(false); }
   }
-  return (
-    <div className="space-y-5">
-      <Panel className="space-y-4 p-5 print:hidden">
-
-      <form className="flex flex-wrap items-end gap-3" onSubmit={e => { e.preventDefault(); void consultar(); }}>
-        <label className="space-y-1 text-sm">Início (inclusive)<Input type="date" required value={inicio} onChange={e => setInicio(e.target.value)} /></label>
-        <label className="space-y-1 text-sm">Fim (inclusive)<Input type="date" required min={inicio} value={fim} onChange={e => setFim(e.target.value)} /></label>
-        <Button disabled={ocupado} type="submit">{ocupado ? "Consultando…" : "Consultar ficha de partos"}</Button>
-      </form>
-      </Panel>
-      <Panel className="space-y-3 p-5 print:hidden">
-        <div><h2 className="font-semibold">Histórico de emissões</h2><p className="text-sm text-muted-foreground">Reabra uma emissão para consultar e exportar os dados preservados, sem recalcular os fatos atuais.</p></div>
-        <label className="block text-sm">Emissões anteriores
-          <select className="mt-1 block w-full rounded-md border bg-card px-3 py-2" value={emissaoId ?? ""} disabled={ocupado}
-            onChange={e => { if (e.target.value) void abrir(e.target.value); }}>
-            <option value="">Selecione uma emissão preservada</option>
-            {emissoes.map(e => <option key={e.id} value={e.id}>{new Date(e.criadoEm).toLocaleString("pt-BR")}</option>)}
-          </select>
-        </label>
-      </Panel>
-      {erro && <p role="alert" className="text-destructive print:hidden">{erro}</p>}
-      {!visivel && ocupado && <p role="status" className="text-sm text-muted-foreground print:hidden">Carregando a ficha de partos e pós-parto…</p>}
-      {visivel && <>
-        <Panel className="space-y-3 p-5 print:hidden">
-          <div><h2 className="font-semibold">Resultado exibido</h2><p className="text-sm text-muted-foreground">Sítio {visivel.propriedadeId} · {visivel.periodo.inicio} a {visivel.periodo.fim}. Impressão e CSV usam estes dados.</p></div>
-          {periodoAlterado && <p className="rounded-lg border bg-muted p-3 text-sm">As datas editadas ainda não foram consultadas. O resultado abaixo mantém o período exibido; use Consultar ficha de partos para atualizá-lo.</p>}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" onClick={() => window.print()}>Imprimir ficha</Button>
-          <Button variant="outline" onClick={() => exportar(visivel)}>Exportar CSV</Button>
-          {podeLancar && !emissaoId && <Button disabled={ocupado} onClick={() => void salvarEmissao()}>Salvar emissão deste período</Button>}
-          <span className="text-sm text-muted-foreground">{emissaoId
-            ? `Emissão preservada: ${emissaoId}. Reabrir conserva os mesmos dados.`
-            : "Consulta atual. Salvar uma emissão preserva um novo corte dos dados deste período."}</span>
-        </div>
-        </Panel>
-        <Panel className="min-w-0 overflow-x-auto p-5 print:overflow-visible print:border-0 print:p-0 print:shadow-none"><FolhaRelatorioPartos snapshot={visivel} /></Panel>
-      </>}
-    </div>
-  );
+  useEffect(() => { void consultar(); }, [propriedadeId]);
+  return <div className="rel-partos">
+    <BarraRelatorio acoes={<AcoesRelatorio imprimir={()=>window.print()} rotuloImprimir="Imprimir ficha" impressaoDesabilitada={!visivel} acoes={[
+      {rotulo:'Exportar CSV',executar:()=>{if(visivel)exportar(visivel)},desabilitado:!visivel,icone:<Download size={16}/>},
+      ...(podeLancar&&!emissaoId?[{rotulo:'Preservar emissão',executar:()=>{void salvarEmissao()},desabilitado:ocupado||!visivel,icone:<Archive size={16}/>}]:[]),
+      {rotulo:'Emissões anteriores',executar:()=>setHistoricoAberto(true),icone:<History size={16}/>},
+      ...(emissaoId?[{rotulo:'Voltar à consulta atual',executar:()=>{void consultar()},desabilitado:ocupado}]:[]),
+    ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{visivel?`${formatBRDateISO(visivel.periodo.inicio)} a ${formatBRDateISO(visivel.periodo.fim)}`:`${formatBRDateISO(inicio)} a ${formatBRDateISO(fim)}`}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e filtros</Button></Card>{emissaoId&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
+    {erro && <div role="alert" className="rel-erro print:hidden">{erro}<Button variant="outline" onClick={() => ultimaOperacao.current?.()}>Tentar novamente</Button></div>}
+    {ocupado && !visivel && <div role="status" aria-label="Carregando ficha de partos" className="space-y-3 p-5 print:hidden">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full"/>)}</div>}
+    {visivel && <><section className="rel-superficie print:hidden"><header className="rel-resultado-topo"><h2>Partos e acompanhamento</h2></header><PartosVisual key={`${visivel.emitidoEm}:${emissaoId??'atual'}`} snapshot={visivel}/></section><div className="hidden print:block"><FolhaRelatorioPartos snapshot={visivel}/></div></>}
+    <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período da ficha de partos</DialogTitle></DialogHeader><form className="rel-form" onSubmit={e => {e.preventDefault();setFiltrosAbertos(false);void consultar();}}><label>Início (inclusive)<DatePicker  required max={fim} value={inicio} onChange={setInicio}/></label><label>Fim (inclusive)<DatePicker  required min={inicio} value={fim} onChange={setFim}/></label>{periodoAlterado && <p role="status">As datas editadas ainda não foram consultadas. O resultado mantém o período exibido até aplicar.</p>}<Button disabled={ocupado}>Consultar ficha de partos</Button></form></DialogContent></Dialog>
+    <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões anteriores de partos</DialogTitle></DialogHeader><div className="rel-emissoes">{emissoes.length ? emissoes.map(e => <Button variant="outline" key={e.id} disabled={ocupado} onClick={() => {setHistoricoAberto(false);void abrir(e.id);}}><History size={18}/><span><strong>Partos e pós-parto · Sítio {propriedadeId}</strong><small>Emitido em {new Date(e.criadoEm).toLocaleString("pt-BR")}</small></span></Button>) : <p>Nenhuma emissão preservada neste sítio.</p>}</div></DialogContent></Dialog>
+  </div>;
 }
+
 export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapshot: SnapshotRelatorioPartos; operacional?: boolean }) {
-  return <article className="space-y-5 text-sm print:text-xs">
+  return <article className="space-y-5 text-sm print:text-sm">
     <header>
       <h2 className="text-lg font-semibold">Ficha de partos e pós-parto <AjudaCampo rotulo="Ajuda sobre a ficha de partos" texto="RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período."/></h2>
       <p>Sítio {snapshot.propriedadeId} · {snapshot.periodo.inicio} a {snapshot.periodo.fim} (ambas inclusive) · {snapshot.totalPartos} partos</p>

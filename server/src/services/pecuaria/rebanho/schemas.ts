@@ -243,6 +243,7 @@ const booleanoQuery = z.enum(["true", "false"]).optional().transform((v) => v ==
 const mesesQuery = z.coerce.number().int().min(0).max(600);
 
 export const listarFiltrosSchema = z.object({
+  comContexto: z.enum(["true", "false"]).transform(v => v === "true").optional(),
   propriedadeIds: listaQuery(z.coerce.number().int().positive().max(2147483647)),
   loteIds: listaQuery(z.string().uuid()),
   categoriaIds: listaQuery(z.string().uuid()),

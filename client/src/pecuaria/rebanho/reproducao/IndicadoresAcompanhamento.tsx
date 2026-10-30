@@ -1,3 +1,4 @@
+import {CiclosIndicadoresVisuais} from "./CiclosIndicadoresVisuais";
 import { AjudaCampo } from "../../../components/Dica";
 import { useState } from "react";
 import { Paginacao } from "../ui";
@@ -297,8 +298,7 @@ export function IndicadoresAcompanhamento({
           </section>
         )}
 
-      {desempenho && (
-        <section className="space-y-2">
+      {desempenho && (secao === "todos" ? <CiclosIndicadoresVisuais dados={d} nome={nome} tabela={linhas(d.espera.coorte)} detalhar={l=>linhas([l])}/> :         <section className="space-y-2">
           <h3 className="font-semibold">
             Coorte de ciclos iniciados no período <AjudaCampo rotulo="Ajuda sobre a metodologia dos intervalos" texto="Dias corridos; as restrições intermediárias permanecem visíveis e não são descontadas da espera. Coorte: ciclos iniciados no período, com sítio, lote e papel daquela data. A fila usa a disponibilidade no corte."/>
           </h3>
@@ -309,16 +309,7 @@ export function IndicadoresAcompanhamento({
             {d.espera.resumoCoorte.saidas} saídas. Média liberação → serviço:{" "}
             {numero(d.espera.resumoCoorte.mediaDiasLiberacaoServico)} dias.
           </p>
-          {secao === "todos" ? (
-            linhas(d.espera.coorte)
-          ) : (
-            <details>
-              <summary className="cursor-pointer">
-                Conferir ciclos e intervalos
-              </summary>
-              {linhas(d.espera.coorte)}
-            </details>
-          )}
+          <details><summary className="cursor-pointer">Conferir ciclos e intervalos</summary>{linhas(d.espera.coorte)}</details>
         </section>
       )}
       {fila && (
@@ -408,7 +399,7 @@ export function IndicadoresAcompanhamento({
                         {p.animalId
                           ? animal(p.animalId)
                           : "Identificação não preservada"}
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-muted-foreground">
                           {p.referencia}
                         </p>
                       </td>

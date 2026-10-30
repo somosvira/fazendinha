@@ -1,3 +1,4 @@
+import {acionarMenuRelatorio} from "../../relatorios/consulta-relatorio.fixture";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { RelatoriosLeite } from "./RelatoriosLeite";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
+vi.mock("../../relatorios/ResumoRelatorioLeite",()=>({ResumoRelatorioLeite:({inicio,fim}:{inicio:string;fim:string})=><span>Consulta viva: {inicio} a {fim}</span>}));
 vi.mock("./operacoes-api", () => ({
   consultarLeite: vi.fn(),
   registrarLeite: vi.fn(),
@@ -71,12 +73,14 @@ it("abre os números preservados sem chamar produção viva nem emitir novamente
     p.endsWith("/emissao") ? emissao : lista,
   );
   render(<RelatoriosLeite podeExportar={false} podeFinanceiro={false} />);
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(
     await screen.findByRole("button", {
       name: "Abrir relatório de 01/10/2026",
     }),
   );
   await screen.findByText("54 L");
+  expect(screen.getByText(/Fazenda A · 01\/10\/2026 a 01\/10\/2026/).closest(".rel-identificacao-impressao")).toBeTruthy();
   expect(
     screen.getByText(
       "Valores financeiros não incluídos ou ocultos pela permissão atual.",
@@ -96,7 +100,8 @@ it("usa o sítio resolvido na emissão e não solicita valores sem permissão fi
   vi.mocked(consultarLeite).mockResolvedValue(lista);
   vi.mocked(registrarLeite).mockResolvedValue(emissao);
   render(<RelatoriosLeite podeExportar podeFinanceiro={false} />);
-  await screen.findByRole("button", { name: "Abrir relatório de 01/10/2026" });
+  fireEvent.click(screen.getByRole("button", {name:"Período e emissão"}));
+  await waitFor(()=>expect(screen.getByRole("button",{name:"Emitir relatório preservado"})).not.toHaveProperty("disabled",true));
   fireEvent.click(
     screen.getByRole("button", { name: "Emitir relatório preservado" }),
   );
@@ -157,6 +162,7 @@ it("separa expedição, aceite e faturamento documentado na emissão", async () 
     p.endsWith("/emissao") ? cf : lista,
   );
   render(<RelatoriosLeite podeExportar={false} podeFinanceiro />);
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(
     await screen.findByRole("button", {
       name: "Abrir relatório de 01/10/2026",
@@ -179,6 +185,7 @@ it.each([true, false])("operações integrais e datas de qualidade preservam o r
     valores: autorizado ? { custos: { consolidado: { custoPorLitro: null, custos: { totalConhecido: null } } }, comercial: [], operacoesComerciais: [{ comercialId: "comercial", fechamentoId: "fechamento", precoUnitario: "2.0000", ajuste: "0.00", valorTotal: "20.00" }] } : null } };
   vi.mocked(consultarLeite).mockImplementation(async p => p.endsWith("/emissao") ? cf : lista);
   const { rerender } = render(<RelatoriosLeite podeExportar={false} podeFinanceiro={autorizado} />);
+  await acionarMenuRelatorio("Emissões anteriores");
   fireEvent.click(await screen.findByRole("button", { name: "Abrir relatório de 01/10/2026" }));
   await screen.findByRole("heading", { name: "Operações comerciais por período integral" });
   expect(screen.getAllByText("Abrange datas fora do filtro").length).toBe(3);
@@ -198,4 +205,17 @@ it.each([true, false])("operações integrais e datas de qualidade preservam o r
     expect(screen.queryByRole("columnheader", { name: "Valor integral da venda (BRL)" })).toBeNull();
     expect(screen.getByRole("heading", { name: "Operações comerciais por período integral" })).toBeTruthy();
   }
+});
+it('leitor pode editar o período da consulta atual sem permissão de exportar',async()=>{vi.mocked(consultarLeite).mockResolvedValue(lista);render(<RelatoriosLeite propriedadeId={2} podeExportar={false} podeFinanceiro={false}/>);fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));expect(await screen.findByLabelText('Início do relatório')).toBeTruthy();expect(screen.getByLabelText('Fim do relatório')).toBeTruthy();expect(screen.queryByRole('button',{name:'Emitir relatório preservado'})).toBeNull()});
+
+it('editar e fechar filtros não altera o período aplicado da consulta',async()=>{vi.mocked(consultarLeite).mockResolvedValue(lista);render(<RelatoriosLeite propriedadeId={2} podeExportar={false} podeFinanceiro={false}/>);const anterior=screen.getByText(/Consulta viva:/).textContent;fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));fireEvent.change(screen.getByLabelText('Início do relatório'),{target:{value:'2026-09-01'}});fireEvent.click(screen.getByRole('button',{name:'Fechar'}));expect(screen.getByText(/Consulta viva:/).textContent).toBe(anterior);fireEvent.click(screen.getByRole('button',{name:'Período e emissão'}));fireEvent.click(screen.getByRole('button',{name:'Consultar produção atual'}));expect(screen.getByText(/Consulta viva:/).textContent).toContain('2026-09-01')});
+
+it("abre emissão por link de busca sem criar nova emissão", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=relatorios&emissaoId=emissao");
+  vi.mocked(consultarLeite).mockImplementation(async p => p.endsWith("/emissao") ? emissao : lista);
+  render(<RelatoriosLeite podeExportar={false} podeFinanceiro={false} />);
+  await screen.findByText("Emissão preservada");
+  expect(consultarLeite).toHaveBeenCalledWith("/relatorios/emissoes/emissao", null);
+  expect(registrarLeite).not.toHaveBeenCalled();
+  cleanup(); history.replaceState(null, "", "/");
 });

@@ -1,0 +1,53 @@
+/* Composição operacional das rotinas do leite. O Financeiro não usa esta superfície. */
+.leite-rotina-reformulada .leite-identidade-rotina{display:inline-grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#e8efe1;color:#527649;margin-right:12px;vertical-align:middle}
+.leite-identidade-rotina>svg{width:26px;height:26px}
+.leite-rotina-reformulada .leite-modulo-acoes{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.leite-rotina-reformulada .leite-modulo-acoes>div{max-width:190px}
+.leite-rotina-reformulada .leite-superficie{background:transparent;box-shadow:none;border:0;padding:0}
+.leite-rotina-reformulada .leite-navegacao{margin-bottom:20px}
+.leite-rotina-reformulada .leite-modos{margin:0 0 16px;padding:0;width:fit-content}
+.leite-rotina-reformulada .leite-ordenhas-consulta>.consulta-barra{margin-bottom:18px;padding:0 0 16px;background:transparent}
+.leite-rotina-reformulada .ordenhas-visao-periodo{padding:20px 24px;grid-template-columns:minmax(210px, .8fr) minmax(0,2fr);gap:30px;margin:0 0 14px;background:#f0f4e9;border:0;border-radius:16px}
+.leite-rotina-reformulada .ordenhas-volume{gap:8px}
+.leite-rotina-reformulada .ordenhas-volume>strong{font-size:36px;line-height:1.1}
+.leite-rotina-reformulada .ordenhas-distribuicao{border:0;padding-left:0}
+.leite-rotina-reformulada .ordenhas-distribuicao h3{font-size:16px;margin:0}
+.leite-rotina-reformulada .ordenhas-pendencias{margin:0 0 20px;gap:24px}
+.ordenhas-paginacao{display:flex;align-items:center;gap:20px;justify-content:space-between;margin-top:18px;flex-wrap:wrap}
+.ordenhas-paginacao>label{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:14px}
+.ordenhas-paginacao>label>button{width:80px}
+.ordenhas-paginacao>nav,.ordenhas-paginacao>.fin-paginacao{flex:1}
+.leite-rotina-reformulada .leite-ordenha-visual{padding:22px;gap:18px;border:0;box-shadow:0 3px 14px #203c3909;border-radius:16px;background:var(--card)}
+.leite-ordenha-visual header{align-items:flex-start;margin-bottom:0;flex-wrap:wrap}
+.leite-ordenha-visual header>h3{align-self:center;flex:1}
+.leite-ordenha-visual header .ordenha-turno-icone{display:grid!important;place-items:center;width:42px;height:42px;flex-shrink:0;border-radius:12px;background:#edf1e3;color:#6d8049}
+.leite-ordenha-visual .leite-volume-visual{margin:0;gap:8px}
+.leite-ordenha-visual .leite-volume-visual>strong{font-size:32px}
+.leite-ordenha-visual .leite-volume-visual>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ordenha-fonte{margin-left:auto;font-size:14px}
+.leite-ordenha-visual .leite-naturezas-legenda{grid-template-columns:1fr;gap:0}
+.leite-ordenha-visual .leite-naturezas-legenda>div{display:flex;justify-content:space-between;padding:8px 0;gap:12px}
+.leite-ordenha-visual .leite-naturezas-legenda dd{margin:0;font-size:16px}
+.ordenha-origens-resumo{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 16px;padding-top:8px;font-size:14px;color:var(--muted-foreground)}
+.ordenha-origens-resumo>span{display:flex;gap:6px;align-items:center}
+.leite-registro .ordenha-campo-volume{grid-column:1/-1;grid-row:1;background:#edf3e7;padding:16px 18px;border-radius:12px}
+.leite-registro .ordenha-campo-volume>input{font-size:28px;font-weight:650;background:var(--card);height:54px}
+.leite-registro .leite-registro-natureza h3,.leite-registro-conferencia h3{display:flex;align-items:center;gap:8px}
+.leite-registro .leite-registro-natureza{background:var(--card);padding:20px;border:1px solid var(--border);border-radius:14px}
+.leite-registro .leite-registro-conferencia{background:#f4f6ef;padding:20px;border:0;border-radius:14px;position:sticky;top:0}
+.leite-rotina-reformulada .leite-operacoes:not(.leite-consultas){background:transparent}
+@media(max-width:800px){.leite-rotina-reformulada .ordenhas-visao-periodo{grid-template-columns:1fr;gap:20px;padding:20px}.leite-rotina-reformulada .leite-identidade-rotina{width:40px;height:40px}.leite-rotina-reformulada .leite-cabecalho-acoes{width:100%}.leite-rotina-reformulada .leite-modulo-acoes{flex:1}.leite-rotina-reformulada .leite-modulo-acoes>div{max-width:none;flex:1}.leite-registro .leite-registro-conferencia{position:static}.ordenha-fonte{margin-left:0}.leite-registro .leite-registro-natureza{padding:16px}}
+.leite-producao-painel{display:grid;gap:24px}
+.leite-producao-evolucao{padding:24px;background:var(--card);border-radius:16px;min-width:0}
+.leite-producao-registro{padding:24px;background:var(--card);border-radius:16px;min-width:0}
+.leite-producao-registro .producao-registro-cabecalho{margin-top:0}
+.leite-rotina-reformulada :is(.leite-consulta-custos,.leite-historico-coletivo){margin-top:24px}
+.leite-rotina-reformulada .leite-estoque-visao{align-items:stretch;gap:20px}
+.leite-rotina-reformulada .leite-estoque-visao>section{padding:24px;border-radius:16px;background:#f0f4e9}
+.leite-rotina-reformulada .leite-coberturas{padding:24px;background:var(--card);border:0;border-radius:16px}
+.leite-rotina-reformulada .leite-produto-visual{padding:22px;border:0;box-shadow:0 3px 14px #203c3909;border-radius:16px}
+.leite-rotina-reformulada .leite-coleta-visual{padding:20px;border:0;box-shadow:0 3px 14px #203c3909;border-radius:16px;gap:20px}
+.leite-rotina-reformulada .leite-coleta-visual time{background:#edf1e3;min-width:58px;padding:10px}
+.leite-rotina-reformulada .leite-coleta-visual time strong{font-size:28px}
+.leite-rotina-reformulada :is(.leite-amostra-visual,.leite-venda-visual){padding:22px;border:0;box-shadow:0 3px 14px #203c3909;border-radius:16px}
+@media(max-width:650px){.leite-producao-evolucao,.leite-producao-registro{padding:16px}.leite-rotina-reformulada .leite-coleta-visual{gap:12px}.leite-rotina-reformulada .leite-cabecalho-acoes{flex-wrap:wrap}.leite-rotina-reformulada .leite-modulo-acoes>button{flex:1}}

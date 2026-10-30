@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, CalendarDays, CircleAlert, LockKeyhole, RefreshCw } from "lucide-react";
+import { ArrowRight, CalendarDays, CircleAlert, LockKeyhole, RefreshCw, LayoutDashboard, Wallet, ClipboardList, TrendingUp, Layers, Leaf, Scale, Package, Milk } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
 import { Button, ErrorBox, PaginaFinanceira, brl, dataBR } from "../financeiro/financeiro-ui";
 import { Button as Botao } from "../components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog";
 import { AjudaCampo } from "../components/Dica";
 import { classeInput } from "../financeiro/PainelCadastro";
 import { consultarResumo, periodoGerencial, hojeGerencial, type Bloco, type ResumoGerencial } from "./api";
@@ -20,7 +20,7 @@ const finalidade = (f: string | null) => ({ REPRODUCAO: "Reprodução", SANIDADE
 
 function BlocoPainel<T>({ titulo, bloco, children, id, className = "" }: { titulo: string; bloco: Bloco<T>; children: (dados: T) => ReactNode; id?: string; className?: string }) {
   return <section id={id} tabIndex={-1} className={`ger-card ${className}`} aria-label={titulo}>
-    <h2>{titulo}</h2>
+    <h2><span className="ger-bloco-icone">{className === "ger-caixa" ? <Wallet/> : className === "ger-compromissos" ? <ClipboardList/> : className === "ger-mensal" ? <TrendingUp/> : className === "ger-centros" ? <Layers/> : className === "ger-nutricao" ? <Leaf/> : className === "ger-custos" ? <Scale/> : className === "ger-estoque" ? <Package/> : <Milk/>}</span>{titulo}</h2>
     {bloco.estado === "RESTRITO" ? <div className="ger-restrito"><p><LockKeyhole size={17} aria-hidden="true" /> Acesso restrito</p><p>{bloco.motivo}</p></div> : children(bloco.dados)}
   </section>;
 }
@@ -61,11 +61,11 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
   const link = (path: string, extra: Record<string, string> = {}) => `${path}?${new URLSearchParams({ ...Object.fromEntries(params), ...extra })}`;
   return <PaginaFinanceira><div className="painel-gerencial">
     <header className="ger-cabecalho">
-      <div><h1>Painel administrativo</h1><p>Visão geral da fazenda.</p></div>
-      <div className="ger-filtros"><Popover open={periodoAberto} onOpenChange={aberto => { setPeriodoAberto(aberto); if (aberto) setEdicao(periodo); }}><PopoverTrigger asChild><Botao variant="outline" aria-label="Selecionar período"><CalendarDays size={17} aria-hidden="true" />{dataBR(periodo.inicio)} – {dataBR(periodo.fim)}</Botao></PopoverTrigger><PopoverContent align="end" className="ger-periodo-popover"><form onSubmit={e => { e.preventDefault(); setPeriodo({ ...edicao }); onPeriodo(edicao); setPeriodoAberto(false); }}>
-        <h2>Período do painel</h2><div className="ger-periodo-campos"><label>Início<input required type="date" className={classeInput} value={edicao.inicio} max={edicao.fim} onChange={e => setEdicao(p => ({ ...p, inicio: e.target.value }))} /></label>
+      <div><h1 className="rotina-titulo"><span><LayoutDashboard/></span>Painel administrativo</h1></div>
+      <div className="ger-filtros"><Dialog open={periodoAberto} onOpenChange={aberto => { setPeriodoAberto(aberto); if (aberto) setEdicao(periodo); }}><DialogTrigger asChild><Botao variant="outline" aria-label="Selecionar período"><CalendarDays size={17} aria-hidden="true" />{dataBR(periodo.inicio)} – {dataBR(periodo.fim)}</Botao></DialogTrigger><DialogContent aria-describedby={undefined} className="ger-periodo-modal"><form onSubmit={e => { e.preventDefault(); setPeriodo({ ...edicao }); onPeriodo(edicao); setPeriodoAberto(false); }}>
+        <DialogHeader><DialogTitle><CalendarDays size={22}/>Período do painel</DialogTitle></DialogHeader><div className="ger-periodo-campos"><label>Início<input required type="date" className={classeInput} value={edicao.inicio} max={edicao.fim} onChange={e => setEdicao(p => ({ ...p, inicio: e.target.value }))} /></label>
         <label>Fim<input required type="date" className={classeInput} value={edicao.fim} min={edicao.inicio} max={hojeGerencial()} onChange={e => setEdicao(p => ({ ...p, fim: e.target.value }))} /></label></div>
-        <Button type="submit">Aplicar período</Button></form></PopoverContent></Popover><Button secondary type="button" disabled={carregando} onClick={() => setRevisao(r => r + 1)}><RefreshCw size={16} aria-hidden="true" />Atualizar</Button></div>
+        <Button type="submit">Aplicar período</Button></form></DialogContent></Dialog><Button secondary type="button" disabled={carregando} onClick={() => setRevisao(r => r + 1)}><RefreshCw size={16} aria-hidden="true" />Atualizar</Button></div>
     </header>
     <p className="ger-contexto">{dados ? <>{dados.escopo.propriedadeId == null ? "Todos os sítios · consolidado" : dados.escopo.sitios[0]?.nome ?? "Sítio selecionado"} <span>· {dataBR(dados.periodo.inicio)} a {dataBR(dados.periodo.fim)} · consulta em {new Date(dados.corte).toLocaleString("pt-BR")}</span></> : "Selecione o sítio no menu da fazenda."}</p>
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
@@ -75,7 +75,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
         {dados.compromissos.estado === "DISPONIVEL" && Number(dados.compromissos.dados.vencido) > 0 && <div><CircleAlert size={20} aria-hidden="true" /><strong>{brl(dados.compromissos.dados.vencido)} vencidos</strong><LinkOrigem href={`/financeiro/compromissos?${new URLSearchParams({situacao:"pagar", ...(propriedadeId == null ? {} : {propriedadeId:String(propriedadeId)})})}`}>Consultar vencimentos</LinkOrigem></div>}
         {dados.clinico.estado === "DISPONIVEL" && dados.clinico.dados.acompanhamentosPendentes > 0 && <div><CircleAlert size={20} aria-hidden="true" /><strong>Pendências reprodutivas: {dados.clinico.dados.acompanhamentosPendentes}<small>Até {dataBR(dados.clinico.dados.data)}</small></strong><LinkOrigem href={link("/pecuaria/reproducao")}>Consultar acompanhamentos</LinkOrigem></div>}
       </aside>}
-      <div className="ger-grade">
+      <section className="ger-secao" aria-labelledby="ger-financas"><div className="ger-secao-titulo"><h2 id="ger-financas">Caixa e compromissos</h2><p>Movimentos do período e posição atual dos vencimentos.</p></div><div className="ger-grade ger-grade-caixa">
         <BlocoPainel titulo="Caixa no período" bloco={dados.caixa} className="ger-caixa">{c => <>
           <p className="ger-muted">Valores líquidos de estornos.</p>
           <dl className="ger-caixa-valores"><Valor rotulo="Recebido" valor={brl(c.entradas)} /><Valor rotulo="Pago" valor={brl(c.saidas)} /><Valor rotulo="Resultado de caixa" valor={brl(c.resultado)} /></dl>
@@ -103,6 +103,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
           <p className="ger-muted">Valores negativos indicam estornos superiores aos pagamentos do centro no período.</p>
           <div className="ger-rodape-link"><LinkOrigem href={link("/financeiro/contas")}>Ver contas</LinkOrigem></div>
         </>}</BlocoPainel>
+      </div></section><section className="ger-secao" aria-labelledby="ger-operacao"><div className="ger-secao-titulo"><h2 id="ger-operacao">Produção e custos do rebanho</h2><p>Consumo registrado, cobertura e custos atribuídos aos fatos.</p></div><div className="ger-grade ger-grade-operacao">
         <BlocoPainel titulo="Nutrição registrada" bloco={dados.nutricao} className="ger-nutricao">{n => {
           const cobertura = n.cobertura.animalDias > 0 ? n.cobertura.diasAlimentados / n.cobertura.animalDias * 100 : null;
           const percentual = cobertura == null ? "Não apurado" : `${cobertura.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`;
@@ -124,6 +125,8 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
           <p className="ger-muted">Custos sem atribuição operacional não são distribuídos entre animais.</p>
           {c.cobertura === "PARCIAL" && <p className="ger-muted">Valores parciais.</p>}
         </>}</BlocoPainel>
+        <BlocoPainel titulo="Produção de leite" bloco={dados.clinico}>{() => <ResumoLeitePainel inicio={periodo.inicio} fim={periodo.fim} propriedadeId={propriedadeId} revisao={revisao} />}</BlocoPainel>
+      </div></section><section className="ger-secao" aria-labelledby="ger-posicao"><div className="ger-secao-titulo"><h2 id="ger-posicao">Posição atual da fazenda</h2><p>Estoque na data de referência e acompanhamentos pendentes.</p></div><div className="ger-grade ger-grade-posicao">
         <BlocoPainel titulo={`Estoque atual em ${dados.estoque.estado === "DISPONIVEL" ? dataBR(dados.estoque.dados.data) : "data de referência"}`} bloco={dados.estoque} className="ger-estoque">{e => <>
           <p className="ger-valor">{dinheiro(e.valorConhecido)}</p>
           <p>{contagem(new Set(e.itens.map(i => i.produtoId)).size,"produto","produtos")} · {e.gruposPendentes ? `${contagem(e.gruposPendentes,"grupo","grupos")} com valor pendente` : "sem valor pendente neste recorte"}.</p>
@@ -131,9 +134,8 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
           {e.situacao === "DESCONHECIDO" && <p className="ger-aviso">Valor não apurado: os grupos em estoque não têm valor conhecido.</p>}
           <p className="ger-muted">O estoque usa a data de referência indicada.</p><div className="ger-rodape-link"><LinkOrigem href={propriedadeId == null ? "/estoque" : `/estoque?${new URLSearchParams({propriedadeId:String(propriedadeId)})}`}>Ver estoque</LinkOrigem></div>
         </>}</BlocoPainel>
-        <BlocoPainel titulo="Produção de leite" bloco={dados.clinico}>{() => <ResumoLeitePainel inicio={periodo.inicio} fim={periodo.fim} propriedadeId={propriedadeId} revisao={revisao} />}</BlocoPainel>
         {(dados.clinico.estado === "RESTRITO" || dados.clinico.dados.acompanhamentosPendentes === 0) && <BlocoPainel<{ data: string; acompanhamentosPendentes: number }> titulo="Pontos de atenção" bloco={dados.clinico} className="ger-clinico">{c => <><p>{c.acompanhamentosPendentes} acompanhamentos reprodutivos pendentes até {dataBR(c.data)}.</p><div className="ger-rodape-link"><LinkOrigem href={link("/pecuaria/reproducao")}>Ver reprodução</LinkOrigem></div></>}</BlocoPainel>}
-      </div>
+      </div></section>
       <div className="ger-nota"><AjudaCampo rotulo="Sobre as leituras do painel" texto="Caixa, consumo e estoque representam momentos diferentes e não devem ser somados. Nutrição já integra os custos diretos; não some novamente. Não apurado preserva um valor desconhecido; zero representa zero comprovado." />Sobre as leituras do painel</div>
     </>}
   </div></PaginaFinanceira>;

@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../lib/useBuscaUrl";
 import { useOrdenacaoTabela } from "./OrdenarConsulta";
 import { useFiltrosTabelaLocal, type DefinicaoFiltroLocal } from "./useFiltrosTabelaLocal";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
@@ -8,13 +9,14 @@ import { Empty, Paginacao, Panel, TabelaFinanceira, type ColunaTabela } from "./
 
 export const normalizarBuscaFinanceira = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/[^a-z0-9]/g, "");
 
-export function ListaCadastroFinanceiro<T extends { id: string; nome: string; ativo?: boolean }>({ itens, colunas, rotulo, rotuloBusca, termosDe, onAbrir, filtros, acao, filtrosAdicionais, criteriosAdicionais = [], onLimparAdicionais, mostrarSituacao = true, edicaoFiltros, camposLocais = [] }: {
+export function ListaCadastroFinanceiro<T extends { id: string; nome: string; ativo?: boolean }>({ itens, colunas, rotulo, rotuloBusca, termosDe, onAbrir, filtros, acao, filtrosAdicionais, criteriosAdicionais = [], onLimparAdicionais, mostrarSituacao = true, edicaoFiltros, camposLocais = [], parametroBusca }: {
+  parametroBusca?: string;
   camposLocais?: DefinicaoFiltroLocal<T>[];
   edicaoFiltros?: { iniciar: () => void; aplicar: () => void; limpar: () => void };
   itens: T[]; colunas: ColunaTabela<T>[]; rotulo: string; rotuloBusca?: string;
   termosDe?: (item: T) => string; onAbrir?: (item: T) => void; filtros?: ReactNode; acao?: ReactNode; filtrosAdicionais?: ReactNode; criteriosAdicionais?: import("./BarraConsulta").CriterioConsulta[]; onLimparAdicionais?: () => void; mostrarSituacao?: boolean;
 }) {
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useBuscaUrl(parametroBusca);
   const [pagina, setPagina] = useState(1);
   useEffect(() => setPagina(1), [itens]);
   const consultaColunas = useFiltrosTabelaLocal<T>([

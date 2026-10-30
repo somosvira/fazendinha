@@ -1,0 +1,5 @@
+import{useState,type ReactNode}from'react';
+import{Dialog,DialogContent,DialogHeader,DialogTitle}from'@/components/ui/dialog';
+import{Button}from'@/components/ui/button';
+import{History,SlidersHorizontal}from'lucide-react';
+export function ControleRelatorio({tipo,children,ativo=true,gatilho}:{tipo:'filtros'|'emissoes';children:ReactNode;ativo?:boolean;gatilho?:(abrir:()=>void)=>ReactNode}){const[aberto,setAberto]=useState(false);if(!ativo)return <>{children}</>;const titulo=tipo==='filtros'?'Período e filtros':'Emissões e exportação';return <div className="rel-controle print:hidden">{gatilho?gatilho(()=>setAberto(true)):<Button variant="outline" size="sm" onClick={()=>setAberto(true)}>{tipo==='filtros'?<SlidersHorizontal size={15}/>:<History size={15}/>} {titulo}</Button>}<Dialog open={aberto} onOpenChange={setAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>{titulo}</DialogTitle></DialogHeader><div onSubmit={()=>setAberto(false)}>{children}</div></DialogContent></Dialog></div>}

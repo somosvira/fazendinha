@@ -1,13 +1,5 @@
-/* Rio Novo — índice estático + busca pura para a command palette (⌘K).
- *
- * Fonte única dos destinos navegáveis (páginas/abas) + atalhos de ação.
- * Espelha o AppSidebar (MODULOS subs) e as abas do Financeiro/Administração.
- * Não toca em `window` nem em estado — `buscar()` é pura e testável.
- *
- * Quando o backend ganhar entidades reais (talhões/animais/lançamentos),
- * basta concatenar mais `Comando[]` antes de chamar `buscar()`.
- */
-
+/** Catálogo de destinos da busca global; revisar junto com páginas, fluxos e permissões. */
+import { tabToPath } from "../router";
 import type { Tab } from "../components/Shell";
 
 export type GrupoComando =
@@ -24,23 +16,27 @@ export interface Comando {
   sinonimos?: string[];
   acao?: boolean;
   descricao?: string;
+  caminho: string;
+  exigeLancamento?: boolean;
+  exigeValores?: boolean;
 }
 
 // Resultado de entidade real vinda do backend (GET /api/busca?q=). Espelha o
 // contrato do servidor: cada item aponta para uma aba de módulo (`tab`) e traz
 export interface ResultadoBusca {
-  tipo: "categoria" | "fornecedor";
+  tipo: string;
   entidadeId: string;
   label: string;
   sublabel: string;
   tab: string;
   grupo: string;
+  caminho: string;
 }
 
 // ── O índice estático ───────────────────────────────────────────────────────
 // Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "plano"→"Categorias";
 // replicamos aqui para o usuário achar pelos dois nomes.
-export const COMANDOS: Comando[] = [
+const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
   // — Financeiro (grupo "Visão & gestão" / abas do ABAS) —
   { id: "fin-dashboard", tab: "dashboard", label: "Visão geral", grupo: "Financeiro", sinonimos: ["dashboard", "painel", "início", "home", "executivo"], descricao: "Resultados, saldos e compromissos do período" },
   { id: "fin-gastos", tab: "gastos", label: "Compromissos", grupo: "Financeiro", sinonimos: ["gastos", "despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Valores a pagar e a receber" },
@@ -56,7 +52,7 @@ export const COMANDOS: Comando[] = [
   { id: "pec-sanidade", tab: "pec-sanidade", label: "Sanidade", grupo: "Pecuária", sinonimos: ["vacina", "tratamento", "protocolo", "exame"], descricao: "Agenda e registros sanitários" },
   { id: "pec-relatorios", tab: "pec-relatorios", label: "Relatórios da Pecuária", grupo: "Pecuária", sinonimos: ["partos", "indicadores", "emissões", "exportar", "reprodução"], descricao: "Consultar, salvar e reimprimir relatórios reprodutivos" },
   { id: "pec-nutricao", tab: "pec-nutricao", label: "Nutrição", grupo: "Pecuária", sinonimos: ["dieta", "receita", "consumo"], descricao: "Dietas e consumo por lote" },
-  { id: "acao-novo-animal", tab: "pec-rebanho", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
+  { id: "acao-novo-animal", caminho: "/pecuaria/rebanho/animais/novo", exigeLancamento: true, tab: "pec-rebanho", label: "Novo animal", grupo: "Ações", acao: true, sinonimos: ["cadastrar animal", "novo animal", "cadastrar gado", "nova vaca", "registrar gado", "novo bovino"], descricao: "Cadastrar um novo animal no rebanho" },
 
 
   // Registros coletivos preexistentes permanecem acessíveis dentro de Pecuária.
@@ -73,7 +69,56 @@ export const COMANDOS: Comando[] = [
   { id: "acao-relatorio-gerencial", tab: "relatorio", label: "Relatório financeiro gerencial", grupo: "Ações", acao: true, sinonimos: ["relatório gerencial", "saldo por conta", "compromissos", "exportar pdf", "exportar csv", "relatório financeiro"], descricao: "Montar e exportar o relatório financeiro do período" },
   { id: "acao-relatorio", tab: "relatorio", label: "Abrir relatórios", grupo: "Ações", acao: true, sinonimos: ["criar relatório", "exportar", "pdf", "csv", "fechamento"], descricao: "Abrir a central de relatórios" },
   { id: "acao-cadastros", tab: "cadastros", label: "Cadastros", grupo: "Ações", acao: true, sinonimos: ["produtos", "fornecedores", "registrar cadastro"], descricao: "Abrir os cadastros" },
+  { id: "gerencial", tab: "gerencial", label: "Painel administrativo", grupo: "Administração", sinonimos: ["gestão", "gerencial", "indicadores", "visão da fazenda"] },
+  { id: "pec-animais", tab: "pec-rebanho", label: "Animais", grupo: "Pecuária", caminho: "/pecuaria/rebanho/animais", sinonimos: ["brinco", "sisbov", "cadastro", "rebanho"] },
+  { id: "pec-lotes", tab: "pec-rebanho", label: "Lotes de animais", grupo: "Pecuária", caminho: "/pecuaria/rebanho/lotes" },
+  { id: "pec-reproducao", tab: "pec-reproducao", label: "Reprodução", grupo: "Pecuária", sinonimos: ["inseminação", "cobertura", "gestação", "tentativas", "transferência de embrião", "ciclos"] },
+  { id: "pec-visitas", tab: "pec-visitas", label: "Visitas veterinárias", grupo: "Pecuária", sinonimos: ["atendimento", "veterinário", "agenda", "planner"] },
+  { id: "pec-leite", tab: "pec-leite", label: "Leite", grupo: "Pecuária", sinonimos: ["produção", "ordenha", "lactação"] },
+  ...[
+    ["ordenhas", "Ordenhas", "aferição controle leiteiro individual medição"],
+    ["producao", "Produção de leite", "custo litro cobertura"],
+    ["estoque", "Estoque de leite", "saldo origens parcelas"],
+    ["coletas", "Coletas de leite", "retiradas entregas"],
+    ["qualidade", "Qualidade do leite", "amostras laudos laboratório ccs cbt gordura proteína"],
+    ["vendas", "Vendas de leite", "comercialização comprador fechamento preço"],
+    ["destinos", "Alimentação e descarte do leite", "consumo fornecimento casa funcionários"],
+    ["relatorios", "Relatórios do leite", "emissões exportação"],
+    ["configuracoes", "Configurações de produção", "tanques recipientes ordenha posições vigência"],
+  ].map(([secao, label, termos]) => ({ id: `leite-${secao}`, tab: "pec-leite" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/leite?leiteSecao=${secao}`, sinonimos: termos.split(" ") })),
+  ...[
+    ["ciclos", "Manejo reprodutivo", "tentativas avaliação gestação inseminação cobertura"],
+    ["programacoes", "Programações de protocolos", "iatf rodadas tarefas agenda"],
+    ["partos", "Partos", "nascimentos crias aborto natimorto"],
+    ["indicadores", "Indicadores reprodutivos", "fertilidade concepção iep"],
+  ].map(([rotina, label, termos]) => ({ id: `repro-${rotina}`, tab: "pec-reproducao" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/reproducao?rotina=${rotina}`, sinonimos: termos.split(" ") })),
+  ...[
+    ["agenda", "Agenda sanitária", "tarefas protocolos rodadas"], ["ocorrencias", "Ocorrências sanitárias", "doenças tratamentos"],
+    ["aplicacoes", "Aplicações sanitárias", "vacinas medicamentos"], ["exames", "Exames", "coletas resultados"], ["carencias", "Carências", "leite carne prazos"],
+  ].map(([aba, label, termos]) => ({ id: `sanidade-${aba}`, tab: "pec-sanidade" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/sanidade?aba=${aba}`, sinonimos: termos.split(" ") })),
+  { id: "nutricao-receitas", tab: "pec-nutricao", label: "Receitas nutricionais", grupo: "Pecuária", caminho: "/pecuaria/nutricao?aba=receitas", sinonimos: ["dietas", "ingredientes", "ração"] },
+  { id: "nutricao-fechamentos", tab: "pec-nutricao", label: "Fechamentos nutricionais", grupo: "Pecuária", caminho: "/pecuaria/nutricao?aba=fechamentos", sinonimos: ["consumo", "conferência", "nutrição"] },
+  ...[
+    ["parceiros", "Clientes e fornecedores", "parceiros documento contato"], ["categorias", "Categorias financeiras", "classificação plano de contas"],
+    ["centros", "Centros de custo", "centro gerencial"], ["grupos", "Grupos de categorias", "grupo financeiro"], ["produtos", "Cadastro de produtos", "insumos"],
+  ].map(([aba, label, termos]) => ({ id: `cadastro-${aba}`, tab: "cadastros" as Tab, label, grupo: "Financeiro" as GrupoComando, caminho: `/financeiro/configuracoes?aba=${aba}`, sinonimos: termos.split(" ") })),
+  ...[
+    ["rebanho/categorias", "Categorias do rebanho", "regras animais"], ["rebanho/motivos", "Motivos de baixa", "baixas morte venda descarte"],
+    ["genetica/racas", "Raças", "genética composição racial"], ["genetica/genitores", "Genitores externos", "touros doadoras filiação genética"],
+    ["genetica/material-genetico", "Material genético", "sêmen embriões doadoras touros genética"],
+    ["sanidade/protocolos", "Protocolos sanitários", "modelos etapas versão"], ["sanidade/doencas", "Doenças", "sanidade diagnósticos"],
+    ["sanidade/tipos-exame", "Tipos de exame", "formatos resultados sanidade"], ["sanidade/tipos-aplicacao", "Tipos de aplicação", "vacinas medicamentos sanidade"],
+    ["reproducao/politica", "Política reprodutiva", "reprodução elegibilidade"],
+  ].map(([rota, label, termos]) => ({ id: `config-pec-${rota}`, tab: "config" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/configuracoes/pecuaria/${rota}`, sinonimos: termos.split(" ") })),
+  { id: "acao-nova-operacao", tab: "lancar", label: "Nova operação", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/financeiro/operacoes/nova", sinonimos: ["registrar compra", "registrar venda", "lançar despesa"] },
+  { id: "acao-nova-visita", tab: "pec-visitas", label: "Planejar visita", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/pecuaria/visitas/nova", sinonimos: ["nova visita", "veterinário"] },
+
 ];
+
+export const COMANDOS: Comando[] = comandosBase.map(c => ({ ...c,
+  exigeValores: c.exigeValores ?? ["dashboard", "gastos", "caixinha", "relatorio"].includes(c.tab),
+  caminho: c.caminho ?? tabToPath(c.tab),
+}));
 
 // IDs (do array COMANDOS) curados para a tela vazia — o primeiro Painel/Dashboard
 // de cada módulo + os destinos-topo do Financeiro, em ordem de navegação.
@@ -119,6 +164,7 @@ function rankComando(c: Comando, qFull: string): number {
 function casaToken(c: Comando, t: string): boolean {
   if (normalizar(c.label).includes(t)) return true;
   if (normalizar(c.grupo).includes(t)) return true;
+  if (c.descricao && normalizar(c.descricao).includes(t)) return true;
   return (c.sinonimos || []).some((s) => normalizar(s).includes(t));
 }
 

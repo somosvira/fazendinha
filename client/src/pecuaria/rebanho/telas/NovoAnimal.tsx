@@ -1,3 +1,4 @@
+import { Beef, Dna, MapPin, Save, Tag, CalendarDays } from "lucide-react";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 // Cadastro de animal — página cheia no layout de FormOperacao.tsx: form em
 // card + resumo de revisão à direita. POST /pecuaria/rebanho/animais.
@@ -172,7 +173,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
 
 
   return <PaginaFinanceira><div className="pb-10">
-    <PageHeader titulo="Novo animal" />
+    <PageHeader titulo={<span className="rotina-titulo"><span><Beef aria-hidden/></span>Novo animal</span>} />
     <ErrorBox erro={erroCatalogos} />
     {!catalogos && !erroCatalogos && <div className="rebanho-carregamento" role="status">Carregando cadastro…</div>}
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
@@ -180,7 +181,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <div className="rebanho-origem-cadastro"><span>Animal comprado</span><Button secondary type="button" onClick={() => navegarPara("/pecuaria/reproducao?acao=parto")}>Registrar nascimento pelo parto</Button></div>
         <div id="novo-animal-erro" tabIndex={-1} className="outline-none"><ErrorBox erro={erroGeral} /></div>
         <section>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Identificação</h3>
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground"><Tag size={20} className="text-primary" aria-hidden/>Identificação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>
             <CampoFormulario id="novo-animal-nome" rotulo="Nome">{(p) => <input {...p} maxLength={120} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>
@@ -190,7 +191,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           </div>
         </section>
         <section>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Datas e filiação</h3>
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground"><CalendarDays size={20} className="text-primary" aria-hidden/>Datas e filiação</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div><CampoFormulario id="novo-animal-data-nascimento" rotulo="Data de nascimento" obrigatorio erro={erros.dataNascimento}>{(p) => <DatePicker {...p} required max={hoje()} value={dataNascimento} onChange={alterarDataNascimento} className="mt-1.5" />}</CampoFormulario>
               <label className="mt-2 flex items-center gap-2 text-sm"><input id="novo-animal-nascimento-estimado" type="checkbox" checked={nascimentoEstimado} onChange={(e) => setNascimentoEstimado(e.target.checked)} />Nascimento estimado</label>
@@ -204,7 +205,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           </div>
         </section>
         <section>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Localização e finalidade</h3>
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground"><MapPin size={20} className="text-primary" aria-hidden/>Localização e finalidade</h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <CampoFormulario id="novo-animal-propriedade" rotulo="Sítio" obrigatorio erro={erros.propriedadeId}>{(p) => <SelectCampo {...p} required value={propriedadeId} onValueChange={(valorSelecionado) => alterarPropriedade(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{catalogos.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>}</CampoFormulario>
             <CampoFormulario id="novo-animal-lote" rotulo="Lote" ajuda={!propriedadeId ? "Selecione o sítio para escolher o lote." : undefined}>{(p) => <SelectCampo {...p} disabled={!propriedadeId} value={loteId} onValueChange={(valorSelecionado) => setLoteId(valorSelecionado)} className={classeInput}><option value="">Sem lote</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>}</CampoFormulario>
@@ -213,7 +214,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
           </div>
         </section>
         <section>
-          <h3 className="mb-4 text-xs font-semibold uppercase tracking-[.12em] text-ink-3">Composição racial</h3>
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground"><Dna size={20} className="text-primary" aria-hidden/>Composição racial</h3>
           {carregandoHerdanca && <p className="mb-3 text-sm text-ink-3">Calculando a parcela herdada…</p>}
           {erroHerdanca && <p role="alert" className="mb-3 text-sm text-red-700">{erroHerdanca}</p>}
           {herdada && <p className="mb-3 text-sm text-ink-3">Parcela fixa dos genitores: {herdada.rotulo} ({somaFracoes(itensHerdados)}/64). {limiteInformavel ? `Você pode informar até ${limiteInformavel}/64 da parcela ainda desconhecida.` : "Composição completa; não há parcela para informar."}</p>}
@@ -227,7 +228,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
       <footer className="rebanho-form-acoes">
         {categoriaPrevista && <span>Categoria prevista: <strong>{categoriaPrevista.nome}</strong></span>}
         <Button secondary type="button" onClick={onVoltar} disabled={salvando}>Cancelar</Button>
-        <Button type="submit" disabled={salvando}>{salvando ? "Salvando…" : "Salvar animal"}</Button>
+        <Button type="submit" disabled={salvando}><Save size={18} aria-hidden/>{salvando ? "Salvando…" : "Salvar animal"}</Button>
       </footer>
     </form>}
   </div></PaginaFinanceira>;

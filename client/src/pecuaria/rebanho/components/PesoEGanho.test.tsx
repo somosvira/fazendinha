@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { PesoEGanho } from "./PesoEGanho";
 import type { AnimalFicha } from "../types";
 const catVaca = { id: "cat-vaca", nome: "Vaca" };
@@ -59,7 +59,9 @@ describe("PesoEGanho", () => {
     expect(screen.getAllByText("+0,500 kg/dia")).toHaveLength(1);
     expect(screen.getByText("GMD recente")).toBeTruthy();
     expect(screen.getByText("GMD desde a entrada")).toBeTruthy();
-    expect(screen.getByText("Mesmas duas pesagens do período.")).toBeTruthy();
+    expect(screen.getByText("Como foi calculado").closest("details")?.open).toBe(false);
+    expect(screen.getByText("Ganho médio diário (GMD)")).toBeTruthy();
+    expect(screen.getByText(/2 pesagens · 01\/09\/2026 a 01\/10\/2026/)).toBeTruthy();
   });
   it("não agrupa resultados numericamente iguais quando as bases de cálculo são diferentes", () => {
     montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }, { ...pesagem, id: "p-1", data: "2026-08-01", pesoKg: 450 }], peso: { ...base.peso, gmdRecente: 0.5, gmdDesdeEntrada: 0.5, gmdPeriodo: { dias: 30, valor: 0.5, pesagens: 2 } } });
@@ -117,7 +119,11 @@ it("mantém pesos históricos visíveis, identifica precisão/contexto e não ca
 it("não transforma precisão ausente em medida e preserva a comparação compatível do legado", () => {
   montar({ ...base, historicoPesagens: [pesagem, { ...pesagem, id: "p0", data: "2026-09-01", pesoKg: 470 }] });
   const atual = screen.getByRole("article", { name: "Pesagem de 01/10/2026" });
-  expect(atual.textContent).toContain("Precisão não informada");
-  expect(atual.textContent).toContain("Contexto não informado");
+  expect(atual.textContent).not.toContain("Precisão não informada");
+  expect(atual.textContent).not.toContain("Contexto não informado");
+  fireEvent.click(screen.getByRole("button", { name: "Detalhes da pesagem de 01/10/2026" }));
+  const detalhe = screen.getByRole("dialog", { name: "Detalhes da pesagem" });
+  expect(within(detalhe).getByText("Precisão não informada")).toBeTruthy();
+  expect(within(detalhe).getByText("Contexto não informado")).toBeTruthy();
   expect(atual.textContent).toContain("+0,633 kg/dia");
 });

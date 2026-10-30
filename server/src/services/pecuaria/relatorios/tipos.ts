@@ -1,0 +1,6 @@
+import type {RegraFiltroRelatorio} from './filtros.js';
+export type CelulaRelatorio=string|number|boolean|null;
+export type LinhaRelatorio=Record<string,CelulaRelatorio>;
+export type ConsultaRelatorio={fonte:string;propriedadeId:number;inicio:string;fim:string;pagina:number;porPagina:number;animalId?:string;loteId?:string;filtros?:RegraFiltroRelatorio[];corte?:string;tiposTentativa?:('IA'|'TE'|'COBERTURA')[];papeis?:('NENHUM'|'DOADORA'|'RECEPTORA')[];deslocamentoTeDias?:number;concepcaoEstimada?:number;janelaPerdaDias?:number;iepModo?:'VIVOS_NATIMORTOS'|'TODOS_PARTOS';podeVerValores:boolean;podeConsultarCustos:boolean};
+export type ResultadoRelatorio={linhas:LinhaRelatorio[];total:number;pagina:number;porPagina:number;paginado:boolean;consultadoEm:string;avisos?:string[];resumo?:{nome:string;valor:number|null;unidade?:string}[];resumoEscopo?:'POPULACAO'};
+export function paginarRelatorio(linhas:LinhaRelatorio[],q:ConsultaRelatorio,avisos?:string[]):ResultadoRelatorio{return {linhas:linhas.slice((q.pagina-1)*q.porPagina,q.pagina*q.porPagina),total:linhas.length,pagina:q.pagina,porPagina:q.porPagina,paginado:true,consultadoEm:new Date().toISOString(),...(avisos?.length?{avisos}:{})};}

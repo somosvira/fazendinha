@@ -1,3 +1,5 @@
+import "./sitios.css";
+import { MapPin } from "lucide-react";
 // Cadastro de sítio (propriedade), aberto por Configurações > Sítios. Reusa
 // client/src/api/propriedades.ts no padrão visual do Financeiro. PATCH /propriedades
 // exige nome sempre; ativo/principal só mudam quando enviados — omitir preserva o
@@ -44,19 +46,19 @@ export function FormSitio({ sitio, onSalvo, onFechar }: { sitio: PropriedadeDTO 
   };
 
   const formId = "form-sitio";
-  return <PainelCadastro aberto compacto titulo={sitio ? `Editar ${sitio.nome}` : "Novo sítio"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro icon={MapPin} aberto compacto titulo={sitio ? `Editar ${sitio.nome}` : "Novo sítio"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : sitio ? "Salvar sítio" : "Criar sítio"}</Button></>}>
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral} />
-      <CampoFormulario id="sitio-nome" rotulo="Nome do sítio" obrigatorio erro={erroNome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fazenda Recria" className={classeInput} />}</CampoFormulario>
+      <section className="sitio-form-secao" aria-labelledby="sitio-identificacao"><h2 id="sitio-identificacao">Identificação</h2><CampoFormulario id="sitio-nome" rotulo="Nome do sítio" obrigatorio erro={erroNome}>{(p) => <input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Fazenda Recria" className={classeInput} />}</CampoFormulario>
       <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_96px]">
         <CampoFormulario id="sitio-cidade" rotulo="Cidade">{(p) => <input {...p} maxLength={80} value={cidade} onChange={(e) => setCidade(e.target.value)} className={classeInput} />}</CampoFormulario>
         <CampoFormulario id="sitio-uf" rotulo="UF" erro={erroUf}>{(p) => <input {...p} maxLength={2} value={uf} onChange={(e) => setUf(e.target.value.toUpperCase())} placeholder="MG" className={classeInput} />}</CampoFormulario>
       </div>
-      <label className="flex items-start gap-3 text-sm font-medium">
+      </section><section className="sitio-form-secao" aria-labelledby="sitio-preferencia"><h2 id="sitio-preferencia">Uso na fazenda</h2><label className="flex items-start gap-3 text-sm font-medium">
         <input type="checkbox" aria-label="Principal — sítio padrão quando não há filtro" checked={principal} onChange={(e) => setPrincipal(e.target.checked)} className="mt-1" />
         <span>Principal<span className="block text-xs font-normal text-ink-3">Sítio padrão quando não há filtro selecionado. Só um sítio pode ser principal.</span></span>
-      </label>
+      </label></section>
     </form>
   </PainelCadastro>;
 }

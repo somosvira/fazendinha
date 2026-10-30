@@ -24,9 +24,11 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Estoque e valor do leite](pecuaria/leite-decisoes-estoque.md) | Natureza, origens, segregação, consumo e apropriação de custo |
 | [Comercialização do leite](pecuaria/leite-comercial.md) | Coletas, preço posterior, vendas, entregas e demonstrativos |
 | [Qualidade do leite](pecuaria/leite-qualidade.md) | Formatos, datas, versões, parâmetros e vínculo comercial |
+| [Relatórios da Pecuária e builder](pecuaria/relatorios.md) | Consulta, emissões e seleção de variáveis |
 | [Relatórios do leite](pecuaria/leite-relatorios.md) | Consulta viva, conferência física e emissões preservadas |
 | [Referência IDEAGRI do leite](pecuaria/leite-ideagri-referencia.md) | Proveniência e limites do mapeamento, sem presumir importação automática |
 | [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |
+| [Busca global](busca-global.md) | Registros, páginas, ações, destinos, escopo, permissões e manutenção do catálogo |
 | [Assistente de consulta](assistente-consulta.md) | Ferramentas de leitura, ajuda, gates e política de custo |
 
 ## Arquitetura, design e desenvolvimento
@@ -37,6 +39,8 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Arquitetura](../ARCHITECTURE.md) | Organização, runtime, autorização, banco e testes |
 | [System design](system-design.md) | Fronteiras, relações, fatos/snapshots e fluxos entre domínios |
 | [Contexto de produto](../client/PRODUCT.md) | Usuários, propósito, princípios e limites |
+| [README do frontend](../client/README.md) | Direção de organização, hierarquia, legibilidade e simplificação das telas |
+| [Pesquisa de interfaces agro](design/pesquisa-interfaces-agro.md) | Evidências externas, análise das telas locais e decisões recuperadas das conversas |
 | [Design system](../client/DESIGN.md) | Tokens e componentes observados no código |
 | [Design unificado](design/cooperativa-unificada.md) | Composição e interação compartilhadas, com guias de Financeiro/Pecuária/Leite |
 | [Desenvolvimento](desenvolvimento.md) | Banco local único, seed integrada, dados e importadores |

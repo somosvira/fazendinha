@@ -218,9 +218,9 @@
 .leite-modulo { padding: 28px 32px; }
 .leite-modulo > .fin-cabecalho-pagina { margin-bottom: 24px; }
 .leite-modulo > .fin-cabecalho-pagina .fin-cabecalho-descricao { max-width: 72ch; font-size: 14px; }
-:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start; width: 100%; background: transparent; padding: 0; }
-:root .app-main .leite-sete-rotinas [role="tab"] { flex: 0 0 auto; min-height: 44px; padding: 10px 14px; white-space: nowrap; font-size: 13px; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: var(--muted); color: var(--muted-foreground); }
-:root .app-main .leite-sete-rotinas [role="tab"][data-state="active"] { background: var(--card); color: var(--primary); border-bottom-color: var(--card); }
+:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; justify-content: flex-start; width: 100%; background: transparent; padding: 0; }
+:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 0 0 auto; min-height: 42px; padding: 10px 12px; white-space: nowrap; font-size:14px; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: var(--muted); color: var(--muted-foreground); }
+:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta > [role="tab"][aria-selected][data-state="active"] { background: var(--card); color: var(--primary); border-bottom-color: var(--card); }
 .leite-superficie { padding: 22px; border-radius: 0 12px 12px 12px; }
 .leite-superficie > .leite-operacoes > .fin-cabecalho-pagina { margin-bottom: 16px; }
 .leite-superficie > .leite-operacoes > .fin-cabecalho-pagina h1 { font-size: 18px; line-height: 1.4; }
@@ -228,15 +228,13 @@
 .leite-superficie .leite-consultas { gap: 16px; }
 .leite-superficie .leite-form-inline { gap: 12px; margin: 16px 0; }
 .leite-superficie .leite-operacoes :is(input:not([type="checkbox"]), select, textarea) { min-height: 40px; font-size: 14px; }
-.leite-superficie .leite-consulta-resumo { gap: 16px 28px; margin: 0; padding: 4px 0 18px; border-bottom: 1px solid var(--border); }
-.leite-superficie .leite-consulta-resumo dd { font-size: 24px; font-weight: 700; letter-spacing: -.025em; }
 .leite-superficie .leite-modos { margin-bottom: 18px; }
 @media(max-width: 900px) {
   .leite-modulo { padding: 56px 16px 24px; }
   .leite-superficie { padding: 16px; }
 }
 @media(max-width: 640px) {
-  :root .app-main .leite-sete-rotinas [role="tab"] { padding: 8px 11px; min-height: 42px; font-size: 12px; }
+  :root .app-main .leite-sete-rotinas [role="tab"] { padding: 8px 11px; min-height: 42px; font-size:14px; }
   .leite-superficie .leite-operacoes :is(input:not([type="checkbox"]), select, textarea) { min-height: 44px; font-size: 16px; }
 }
 .leite-configuracoes-consulta > .grid { padding: 16px 0 20px; gap: 16px; }
@@ -252,8 +250,6 @@
 .leite-superficie .consulta-criterios { padding: 0 0 10px; gap: 6px; }
 .leite-superficie .fin-tabela-cabecalho { margin-bottom: 12px; }
 .leite-superficie .fin-tabela-cabecalho h2 { font-size: 16px; }
-.leite-ordenhas-consulta > .leite-consulta-resumo { display: flex; flex-wrap: wrap; gap: 14px 28px; margin: 16px 0 18px; }
-.leite-ordenhas-consulta > .leite-consulta-resumo dd { font-size: 22px; }
 @media(min-width: 700px) {
   .leite-superficie .consulta-linha { flex-direction: row; align-items: center; }
   :root .leite-superficie .consulta-controles > label.busca-lista:has(input[type="search"]) { flex: 1 1 200px; width: auto; min-width: 160px; max-width: none; }

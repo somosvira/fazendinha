@@ -86,7 +86,7 @@ beforeEach(() => {
 it("mostra zero e falso do laudo sem converter em ausência", async () => {
   render(<QualidadeLeite podeLancar={false} />);
   await tela.findByText("Tanque A");
-  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  fireEvent.click(tela.getByRole("button", { name: /Abrir (amostra|laudo e histórico)/ }));
   expect(await tela.findByText("0 %")).toBeTruthy();
   expect(tela.getByText("Não")).toBeTruthy();
   expect(
@@ -128,7 +128,8 @@ it("falha na correção conserva valores e motivo para reenvio, sem confirmar su
   );
   render(<QualidadeLeite podeLancar />);
   await tela.findByText("Tanque A");
-  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  fireEvent.click(tela.getByRole("button", { name: /Abrir (amostra|laudo e histórico)/ }));
+  fireEvent.click(tela.getByRole("tab", { name: "Informar ou corrigir" }));
   const detalhe = tela.getByRole("region", { name: "Detalhe da amostra" });
   fireEvent.change(within(detalhe).getByLabelText("Motivo da atualização"), {
     target: { value: "Conferido com laboratório" },
@@ -173,7 +174,7 @@ it("correção só de datas de coleta pendente omite resultados e mantém motivo
   vi.mocked(registrarLeite).mockRejectedValue(new Error("Falha ao salvar datas"));
   render(<QualidadeLeite podeLancar />);
   await tela.findByText("Tanque A");
-  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  fireEvent.click(tela.getByRole("button", { name: /Abrir (amostra|laudo e histórico)/ }));
   const detalhe = within(tela.getByRole("region", { name: "Detalhe da amostra" }));
   fireEvent.change(detalhe.getByLabelText("Data de recebimento do laudo (opcional)"), { target: { value: "2026-10-16" } });
   fireEvent.change(detalhe.getByLabelText("Motivo da atualização"), { target: { value: "Conferido no laudo" } });
@@ -191,13 +192,15 @@ it("limpa explicitamente uma data, preserva a outra e mostra datas do histórico
   vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.includes("/formatos") ? [formato] : caminho.includes("/historico") ? { itens: [{ id: "h", acao: "DATAS_CORRIGIDAS", em: "2026-10-23T12:00:00Z", antes: { dataResultadoLaboratorial: null }, depois: { dataResultadoLaboratorial: "2026-10-15" }, motivo: "Conferido" }], total: 1, pagina: 1, tamanho: 20 } : { propriedadeId: 2, itens: [item], total: 1, pagina: 1, tamanho: 20 });
   render(<QualidadeLeite podeLancar />);
   await tela.findByText("Tanque A");
-  fireEvent.click(tela.getByRole("button", { name: "Abrir amostra" }));
+  fireEvent.click(tela.getByRole("button", { name: /Abrir (amostra|laudo e histórico)/ }));
   expect(await tela.findByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
-  expect(tela.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
-  expect(tela.getByText(/Cadastro da amostra: 23\/10\/2026/)).toBeTruthy();
+  expect(tela.getByText("16/10/2026")).toBeTruthy();
+  expect(tela.getByText(/23\/10\/2026, 09:00/)).toBeTruthy();
+  fireEvent.click(tela.getByRole("tab", {name:"Histórico"}));
   const detalhe = within(tela.getByRole("region", { name: "Detalhe da amostra" }));
   await detalhe.findByText(/Datas corrigidas/);
   expect(detalhe.getByText("Resultado laboratorial: Não informado")).toBeTruthy();
+  fireEvent.click(tela.getByRole("tab", {name:"Informar ou corrigir"}));
   fireEvent.change(detalhe.getByLabelText("Data do resultado laboratorial (opcional)"), { target: { value: "" } });
   fireEvent.change(detalhe.getByLabelText("Motivo da atualização"), { target: { value: "Data removida após conferência" } });
   fireEvent.click(detalhe.getByRole("button", { name: "Confirmar atualização" }));
@@ -206,4 +209,26 @@ it("limpa explicitamente uma data, preserva a outra e mostra datas do histórico
   expect(payload).toMatchObject({ dataResultadoLaboratorial: null });
   expect(payload).not.toHaveProperty("dataRecebimentoLaudo");
   expect(payload).not.toHaveProperty("resultados");
+});
+
+it("as abas mantêm o rascunho da correção e não executam escrita ao alternar",async()=>{
+ render(<QualidadeLeite podeLancar/>);await tela.findByText("Tanque A");fireEvent.click(tela.getByRole("button",{name:/Abrir (amostra|laudo e histórico)/}));
+ fireEvent.click(tela.getByRole("tab",{name:"Informar ou corrigir"}));fireEvent.change(tela.getByLabelText("Motivo da atualização"),{target:{value:"Conferência ainda em edição"}});
+ fireEvent.click(tela.getByRole("tab",{name:"Arquivos"}));expect(tela.getByRole("region",{name:"Arquivos do laudo"})).toBeTruthy();
+ fireEvent.click(tela.getByRole("tab",{name:"Informar ou corrigir"}));expect((tela.getByLabelText("Motivo da atualização") as HTMLTextAreaElement).value).toBe("Conferência ainda em edição");expect(registrarLeite).not.toHaveBeenCalled();
+});
+
+it('não repete a anotação original quando o mesmo conteúdo já está nos resultados',async()=>{
+ const texto='Observação preservada do laboratório';
+ vi.mocked(consultarLeite).mockImplementation(async caminho=>caminho.includes('/formatos')?[formato]:caminho.includes('/historico')?{itens:[],total:0,pagina:1,tamanho:20}:{propriedadeId:2,itens:[{...amostra,anotacaoOriginal:texto,resultados:[...amostra.resultados,{campo:'NOTA',valor:texto}]}],total:1,pagina:1,tamanho:20});
+ render(<QualidadeLeite podeLancar={false}/>);await tela.findByText('Tanque A');fireEvent.click(tela.getByRole('button',{name:/Abrir (amostra|laudo e histórico)/}));const dialog=await screen.findByRole('dialog');expect(within(dialog).getAllByText(texto).filter(el=>!el.closest('[hidden]'))).toHaveLength(1);expect(within(dialog).queryByRole('heading',{name:'Observação'})).toBeNull();
+});
+
+it("abre uma amostra por ID recebido da busca mesmo fora da página listada", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=qualidade&amostraId=amostra");
+  vi.mocked(consultarLeite).mockImplementation(async caminho => caminho === "/qualidade/amostras/amostra" ? amostra : caminho.includes("formatos") ? [formato] : caminho.includes("historico") ? { itens: [], total: 0 } : { propriedadeId: 2, itens: [], total: 0 });
+  render(<QualidadeLeite podeLancar={false} />);
+  expect(await screen.findByRole("dialog", { name: "Detalhes da amostra" })).toBeTruthy();
+  expect(consultarLeite).toHaveBeenCalledWith("/qualidade/amostras/amostra", null);
+  cleanup(); history.replaceState(null, "", "/");
 });

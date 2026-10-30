@@ -4,5 +4,5 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import "./consultas-leite.css";
 export function DialogConsultaLeite({ titulo, children, acoes, className = "" }: { titulo: ReactNode; children: ReactNode; acoes?: ReactNode; className?: string; inicialmenteAberto?: boolean }) {
   const [aberto, setAberto] = useState(false);
-  return <><Button type="button" variant="outline" onClick={() => setAberto(true)}>{titulo}</Button>{acoes}<Dialog open={aberto} onOpenChange={setAberto}><DialogContent className={`leite-consulta-dialog ${className}`} aria-describedby={undefined}><DialogHeader><DialogTitle>{titulo}</DialogTitle></DialogHeader>{children}</DialogContent></Dialog></>;
+  return <><Button type="button" variant="outline" className="leite-consulta-abrir" onClick={() => setAberto(true)}>{titulo}</Button>{acoes}<Dialog open={aberto} onOpenChange={setAberto}><DialogContent className={`leite-consulta-dialog ${className}`} data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{titulo}</DialogTitle></DialogHeader>{children}</DialogContent></Dialog></>;
 }

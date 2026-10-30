@@ -227,10 +227,12 @@ it("usa as novas filas sem contar crescimento como pendência e reúne animais �
     elegibilidade("9", { elegivel: null, necessidadeAptidao: necessidade("9", "CRITERIOS_NAO_ATINGIDOS") }),
   ] });
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
-  await screen.findByRole("button", { name: "Avaliação devida · 1" });
+  await screen.findByRole("button", { name: "Outras filas" });
+  fireEvent.keyDown(screen.getByRole("button", {name:"Outras filas"}), {key:"ArrowDown"});
+  await screen.findByRole("menuitem", {name:"Avaliação devida · 1"});
   expect(screen.getByText("1–3 de 3 animais")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Revisar pendências" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Agendadas · 1" }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Agendadas · 1" }));
   expect(screen.getByText("20/10/2026")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Visita de reprodução" })).toBeTruthy();
   expect(window.location.search).toContain("fila=agendamento");
@@ -245,7 +247,9 @@ it("mantém aptidão clínica e liberação como eixos, sem duplicar animal em t
   window.history.replaceState(null, "", "/pecuaria/reproducao?fila=todas");
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
   await screen.findByText("Apta");
-  expect(screen.getByRole("button", { name: "Aptidão avaliada · 1" })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("button", {name:"Outras filas"}), {key:"ArrowDown"});
+  expect(await screen.findByRole("menuitem", { name: "Aptidão avaliada · 1" })).toBeTruthy();
+  fireEvent.keyDown(screen.getByRole("menuitem", {name:"Aptidão avaliada · 1"}),{key:"Escape"});
   expect(screen.getByRole("button", { name: "Liberadas sem serviço · 1" })).toBeTruthy();
   expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
   expect(screen.getByText("01/10/2026")).toBeTruthy();

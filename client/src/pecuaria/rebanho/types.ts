@@ -19,6 +19,10 @@ export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  contextoCartao?: {
+    produtivo: AnimalFicha["contextoProdutivo"];
+    ocorrencias: Array<{id:string;nome:string;inicio:string}>;
+  };
   papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   identificacaoProvisoria?: boolean;
   id: string;
@@ -268,6 +272,7 @@ export type Pesagem = {
 };
 
 export type ListarFiltros = {
+  comContexto?: boolean;
   propriedadeIds?: number[]; loteIds?: string[]; categoriaIds?: string[];
   sexos?: Sexo[]; origens?: Origem[]; racaIds?: string[]; aptidoes?: Aptidao[];
   papeisReprodutivos?: PapelReprodutivo[]; situacoes?: Situacao[];

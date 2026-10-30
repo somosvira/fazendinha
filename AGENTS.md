@@ -19,9 +19,16 @@ Confira comportamento em rotas/serviços/interface, estrutura no schema e garant
 
 ## Fluxo de alterações visuais
 
+- Consulte o [README do frontend](client/README.md) para organização, hierarquia, legibilidade e simplificação. Ele distingue diretrizes consolidadas de composições ainda propostas; a pesquisa de concorrentes não substitui contratos nem aprova automaticamente um novo layout.
 - Antes de implementar uma página ou mudança de layout, gere um mockup e revise-o com as skills `impeccable` e `frontend-design`. Apresente o resultado para aprovação antes de escrever a interface. Preserve os dados e contratos funcionais no desenho. Na implementação, confira a tela no navegador; mockup e revisão visual não substituem validação funcional. Para os relatórios financeiros deste fluxo, priorize o desktop.
 
+- Aberturas auxiliares de detalhes, filtros, formulários e conferências usam modal centralizado; não introduza painéis laterais. Siga [a regra do frontend](client/README.md#aberturas-em-modal), preservando foco, rascunho e URLs.
+
 ## Implementação
+
+- Sempre que criar, remover ou alterar páginas, registros, fluxos, URLs/filtros ou permissões, confira a busca global na mesma alteração: atualize o catálogo de páginas/ações, as fontes de registros, os destinos navegáveis, os gates e os testes afetados. Um resultado deve abrir a ficha exata ou a consulta já filtrada, respeitando o sítio e as permissões; não basta encontrar a aba. Quando algo não for pesquisável, documente a limitação e o motivo no [contrato da busca](docs/busca-global.md).
+
+- Ao criar ou ampliar relatórios, confira as variáveis no builder na mesma alteração: atualize catálogo, adapters e testes, ou documente o motivo de exclusão. Siga [o contrato dos relatórios](docs/pecuaria/relatorios.md).
 
 - Busque componentes, schemas, formatadores e serviços equivalentes antes de criar novos. Use TypeScript estrito e identificadores/mensagens em português consistentes com o domínio.
 - Rotas Hono validam entradas com Zod e delegam aos serviços; cálculos puros ficam separados do acesso ao banco. Imports relativos do backend usam `.js`.

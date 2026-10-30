@@ -1,289 +1,98 @@
-/* Rio Novo — command palette (busca global ⌘K, estilo Cloudflare).
- *
- * Modal client-only: navega entre páginas/abas + dispara ações (atalhos).
- * Filtra o índice por `podeVer` (abas bloqueadas do Financeiro/Admin somem;
- * abas de módulo passam sempre). Busca via `buscar()` puro (índice estático)
- * + entidades reais do backend (GET /api/busca?q=). Teclado (setas/enter) é
- * do cmdk; Escape/backdrop/foco-trap vêm do shadcn Dialog (Radix).
- *
- * Usa os primitivos compartilhados `command` (cmdk) + `Dialog`. A busca é
- * SERVIDOR + índice estático (não é fuzzy-filter do
- * cmdk), então `shouldFilter={false}` no `Command` e os resultados são
- * filtrados/agrupados por nós mesmos; o cmdk só cuida de seleção/teclado.
- *
- * Nada toca `window`/`document` no nível de módulo — só dentro de effects.
- */
-
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FileText, MapPin, X, CornerDownLeft } from "lucide-react";
 import type { Tab } from "./Shell";
-import { COMANDOS, buscar, type Comando, type GrupoComando, type ResultadoBusca } from "../lib/searchIndex";
+import { COMANDOS, buscar, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { X } from "lucide-react";
+import "./busca-global.css";
 
+type FiltroBusca = "Tudo" | "Registros" | "Páginas" | "Ações";
 type Props = {
-  aberto: boolean;
-  onFechar: () => void;
-  onNav: (t: Tab, entidadeId?: string) => void;
+  aberto: boolean; onFechar: () => void;
+  onNav: (t: Tab, entidadeId?: string, caminho?: string) => void;
   podeVer: (t: Tab) => boolean;
+  podeVerCaminho?: (caminho: string) => boolean;
+  podeLancar?: boolean; podeVerValores?: boolean; escopo?: string;
 };
-
-// Ordem fixa dos cabeçalhos de entidades reais (depois dos grupos de navegação).
-const ORDEM_GRUPO_ENTIDADE = ["Animais", "Lotes coletivos", "Categorias", "Fornecedores"];
-
-// Ordem fixa das seções (cabeçalhos) no resultado.
-const ORDEM_GRUPO: GrupoComando[] = [
-  "Ações",
-  "Financeiro",
-  "Pecuária",
-  "Administração",
-];
-
-// Pontinho colorido por grupo (reusa as vars de atividade da paleta).
-const COR_GRUPO: Record<GrupoComando, string> = {
-  Financeiro: "var(--info)",
-  Pecuária: "var(--leite)",
-  Administração: "var(--ink-3)",
-  Ações: "var(--leite-2)",
-};
-
-// Estilo compartilhado das linhas selecionáveis (nav e entidade).
-const LINHA_CLASSE =
-  "gap-3 rounded-none px-3 py-2.5 text-foreground data-[selected=true]:bg-[color:var(--leite-soft)] data-[selected=true]:text-foreground";
-
-function Dot({ cor }: { cor: string }) {
-  return (
-    <span
-      aria-hidden
-      className="h-2 w-2 shrink-0 rounded-full"
-      style={{ background: cor, boxShadow: "0 0 0 3px var(--bg-card-2)" }}
-    />
-  );
+const filtros: FiltroBusca[] = ["Tudo", "Registros", "Páginas", "Ações"];
+const consultaValida = (q: string) => q.length >= 2 || /^\d$/.test(q);
+function eResultadoBusca(v: unknown): v is ResultadoBusca {
+  if (!v || typeof v !== "object") return false;
+  const r = v as Record<string, unknown>;
+  return ["tipo", "entidadeId", "label", "sublabel", "tab", "grupo", "caminho"].every(k => typeof r[k] === "string")
+    && (r.caminho as string).startsWith("/") && !(r.caminho as string).startsWith("//");
 }
 
-export function CommandPalette({ aberto, onFechar, onNav, podeVer }: Props) {
+export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado" }: Props) {
   const [query, setQuery] = useState("");
-  const [entidades, setEntidades] = useState<ResultadoBusca[]>([]);
+  const [filtro, setFiltro] = useState<FiltroBusca>("Tudo");
+  const [valorSelecionado, setValorSelecionado] = useState("");
+  const [resposta, setResposta] = useState<{ q: string; itens: ResultadoBusca[] } | null>(null);
   const [buscando, setBuscando] = useState(false);
+  const [erro, setErro] = useState(false);
+  const [tentativa, setTentativa] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const listaRef = useRef<HTMLDivElement | null>(null);
+  const termo = query.trim();
+  const visiveis = useMemo(() => COMANDOS.filter(c => podeVer(c.tab) && (!podeVerCaminho || podeVerCaminho(c.caminho)) && (!c.exigeLancamento || podeLancar) && (!c.exigeValores || podeVerValores)), [podeVer, podeVerCaminho, podeLancar, podeVerValores]);
+  const comandos = useMemo(() => buscar(visiveis, query), [visiveis, query]);
+  const paginas = filtro === "Tudo" || filtro === "Páginas" ? comandos.filter(c => !c.acao) : [];
+  const acoes = filtro === "Tudo" || filtro === "Ações" ? comandos.filter(c => c.acao) : [];
+  const entidades = useMemo(() => resposta?.q === termo ? resposta.itens.filter(e => podeVer(e.tab as Tab) && (!podeVerCaminho || podeVerCaminho(e.caminho))) : [], [resposta, termo, podeVer, podeVerCaminho]);
+  const registros = filtro === "Tudo" || filtro === "Registros" ? entidades : [];
+  const primeiroId = registros[0] ? `${registros[0].tipo}:${registros[0].entidadeId}` : paginas[0]?.id ?? acoes[0]?.id ?? "";
+  useEffect(() => { setValorSelecionado(primeiroId); if (listaRef.current) listaRef.current.scrollTop = 0; }, [primeiroId, termo, filtro]);
 
-  // Índice já filtrado pela permissão — abas bloqueadas não aparecem.
-  const visiveis = useMemo(() => COMANDOS.filter((c) => podeVer(c.tab)), [podeVer]);
-
-  // Resultado (índice estático) puro — `buscar()` não toca estado nenhum.
-  const resultados = useMemo(() => buscar(visiveis, query), [visiveis, query]);
-
-  // Agrupa preservando a ordem de ORDEM_GRUPO; dentro do grupo, ordem do resultado.
-  const grupos = useMemo(() => {
-    const out: { grupo: GrupoComando; itens: Comando[] }[] = [];
-    for (const g of ORDEM_GRUPO) {
-      const itens = resultados.filter((c) => c.grupo === g);
-      if (itens.length) out.push({ grupo: g, itens });
-    }
-    return out;
-  }, [resultados]);
-
-  const vazio = query.trim() === "";
-
-  // Busca de entidades reais no backend (GET /api/busca?q=). Só dispara com ≥2
-  // chars, com debounce ~200ms; respostas obsoletas (query já mudou) são
-  // ignoradas. NUNCA roda no nível de módulo — só dentro deste effect.
   useEffect(() => {
-    const q = query.trim();
-    if (q.length < 2) {
-      setEntidades([]);
-      setBuscando(false);
-      return;
-    }
-    let vivo = true;
-    setBuscando(true);
-    const id = window.setTimeout(() => {
-      fetch(`/api/busca?q=${encodeURIComponent(q)}`, { headers: comPropriedade() })
-        .then((r) => (r.ok ? r.json() : []))
-        .then((data: ResultadoBusca[]) => {
-          if (!vivo) return; // resposta obsoleta — a query já mudou
-          setEntidades(Array.isArray(data) ? data : []);
-          setBuscando(false);
-        })
-        .catch(() => {
-          if (!vivo) return;
-          setEntidades([]);
-          setBuscando(false);
-        });
-    }, 200);
-    return () => {
-      vivo = false;
-      window.clearTimeout(id);
-    };
-  }, [query]);
-
-  // Só entidades cujo `tab` o perfil pode ver (abas de módulo passam sempre).
-  const entidadesVisiveis = useMemo(
-    () => entidades.filter((e) => podeVer(e.tab as Tab)),
-    [entidades, podeVer],
-  );
-
-  // Agrupa entidades por `grupo` na ordem fixa de ORDEM_GRUPO_ENTIDADE.
-  const gruposEntidade = useMemo(() => {
-    const out: { grupo: string; itens: ResultadoBusca[] }[] = [];
-    for (const g of ORDEM_GRUPO_ENTIDADE) {
-      const itens = entidadesVisiveis.filter((e) => e.grupo === g);
-      if (itens.length) out.push({ grupo: g, itens });
-    }
-    // Qualquer grupo não previsto entra no fim, preservando a ordem de chegada.
-    for (const e of entidadesVisiveis) {
-      if (!ORDEM_GRUPO_ENTIDADE.includes(e.grupo) && !out.some((o) => o.grupo === e.grupo)) {
-        out.push({ grupo: e.grupo, itens: entidadesVisiveis.filter((x) => x.grupo === e.grupo) });
-      }
-    }
-    return out;
-  }, [entidadesVisiveis]);
-
-  const semResultados = grupos.length === 0 && gruposEntidade.length === 0 && !buscando;
-
-  // Ao abrir: limpa a query (curadoria some, dicas voltam). Fechar/reabrir sempre
-  // parte de um estado limpo, igual ao comportamento anterior.
-  useEffect(() => {
-    if (aberto) setQuery("");
+    if (aberto) { setQuery(""); setFiltro("Tudo"); setResposta(null); setErro(false); }
   }, [aberto]);
+  useEffect(() => {
+    if (!aberto || !consultaValida(termo)) { setResposta(null); setBuscando(false); setErro(false); return; }
+    const controller = new AbortController();
+    let vivo = true;
+    setErro(false); setBuscando(true); setResposta(null);
+    const timer = window.setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/busca?q=${encodeURIComponent(termo)}`, { headers: comPropriedade(), signal: controller.signal });
+        if (!r.ok) throw new Error("Falha ao buscar");
+        const data: unknown = await r.json();
+        if (!Array.isArray(data) || !data.every(eResultadoBusca)) throw new Error("Resposta inválida da busca");
+        if (vivo) setResposta({ q: termo, itens: data });
+      } catch {
+        if (vivo) { setResposta(null); setErro(true); }
+      } finally { if (vivo) setBuscando(false); }
+    }, 200);
+    return () => { vivo = false; controller.abort(); window.clearTimeout(timer); };
+  }, [aberto, termo, tentativa]);
 
-  const escolher = (tab: Tab, entidadeId?: string) => {
-    onNav(tab, entidadeId);
-    onFechar();
-  };
-
-  return (
-    <Dialog
-      open={aberto}
-      onOpenChange={(open) => {
-        if (!open) onFechar();
-      }}
-    >
-      <DialogContent
-        showCloseButton={false}
-        aria-describedby={undefined}
-        className="top-[12vh] flex max-h-[70vh] max-w-[640px] translate-y-0 flex-col gap-0 overflow-hidden rounded-xl p-0"
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          inputRef.current?.focus();
-        }}
-      >
-        <DialogTitle className="sr-only">Busca global</DialogTitle>
-        <Command shouldFilter={false} vimBindings={false} className="flex h-full max-h-[70vh] flex-col">
-          <div className="relative">
-            <CommandInput
-              ref={inputRef}
-              value={query}
-              onValueChange={setQuery}
-              placeholder="Pesquisar páginas, ações e recursos…"
-              className="h-auto w-full border-0 py-3 pr-12 text-[15px]"
-            />
-            <button
-              type="button"
-              onClick={onFechar}
-              tabIndex={-1}
-              aria-label="Fechar busca"
-              className="absolute right-2.5 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-ink-3 transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
-          </div>
-
-          <CommandList className="max-h-none flex-1 overflow-y-auto overflow-x-hidden px-2 pb-2">
-            {vazio && (
-              <div className="px-3 pb-2.5 pt-2.5 text-[13px] text-ink-3">
-                Digite uma página, ação ou recurso — ex.: <em className="not-italic font-semibold text-ink-2">rebanho</em>,{" "}
-                <em className="not-italic font-semibold text-ink-2">estoque</em>,{" "}
-                <em className="not-italic font-semibold text-ink-2">nova operação</em>.
-              </div>
-            )}
-
-            {semResultados ? (
-              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                Nenhum resultado para «{query.trim()}»
-              </div>
-            ) : (
-              <>
-                {grupos.map((g) => (
-                  <CommandGroup
-                    key={g.grupo}
-                    heading={vazio && g.grupo === "Financeiro" ? "Sugestões" : g.grupo}
-                    className="[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em]"
-                  >
-                    {g.itens.map((c) => (
-                      <CommandItem
-                        key={c.id}
-                        value={c.id}
-                        onSelect={() => escolher(c.tab)}
-                        className={LINHA_CLASSE}
-                      >
-                        <Dot cor={COR_GRUPO[c.grupo]} />
-                        <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                          <span className="truncate text-[15px] font-medium text-foreground">{c.label}</span>
-                          {c.descricao && (
-                            <span className="truncate text-xs text-ink-3">{c.descricao}</span>
-                          )}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-[color:var(--ink-mute)]">
-                          {c.acao ? "Ação" : c.grupo}
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-
-                {gruposEntidade.map((g) => (
-                  <CommandGroup
-                    key={"ent-" + g.grupo}
-                    heading={g.grupo}
-                    className="[&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-[0.08em]"
-                  >
-                    {g.itens.map((e) => (
-                      <CommandItem
-                        key={e.tipo + ":" + e.entidadeId}
-                        value={e.tipo + ":" + e.entidadeId}
-                        onSelect={() => escolher(e.tab as Tab, e.entidadeId)}
-                        className={LINHA_CLASSE}
-                      >
-                        <Dot cor="var(--ink-3)" />
-                        <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                          <span className="truncate text-[15px] font-medium text-foreground">{e.label}</span>
-                          {e.sublabel && <span className="truncate text-xs text-ink-3">{e.sublabel}</span>}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-[color:var(--ink-mute)]">{e.grupo}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                ))}
-
-                {buscando && (
-                  <div className="px-3.5 pb-2.5 pt-2 text-xs tracking-wide text-[color:var(--ink-mute)]">
-                    buscando…
-                  </div>
-                )}
-              </>
-            )}
-          </CommandList>
-
-          <div className="flex flex-wrap items-center gap-4 border-t border-[color:var(--rule-soft)] bg-muted px-3.5 py-2.5">
-            <span className="text-[11px] text-muted-foreground"><kbd>Ctrl/⌘ K</kbd> abrir busca</span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
-              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↑</kbd>
-              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↓</kbd>
-              navegar
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
-              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">↵</kbd>
-              selecionar
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-[color:var(--ink-mute)]">
-              <kbd className="grid h-[17px] min-w-[17px] place-items-center rounded-[5px] border border-border bg-card px-1 text-[11px] text-ink-3">esc</kbd>
-              fechar
-            </span>
-          </div>
-        </Command>
-      </DialogContent>
-    </Dialog>
-  );
+  const mostrarRegistros = filtro === "Tudo" || filtro === "Registros";
+  const semResultados = !paginas.length && !acoes.length && !registros.length && !(mostrarRegistros && (buscando || erro));
+  const escolher = (tab: Tab, id: string | undefined, caminho: string) => { onNav(tab, id, caminho); onFechar(); };
+  return <Dialog open={aberto} onOpenChange={open => { if (!open) onFechar(); }}>
+    <DialogContent showCloseButton={false} aria-describedby={undefined} className="busca-global" onOpenAutoFocus={e => { e.preventDefault(); inputRef.current?.focus(); }}>
+      <DialogTitle className="sr-only">Busca global</DialogTitle>
+      <Command value={valorSelecionado} onValueChange={setValorSelecionado} shouldFilter={false} vimBindings={false} label="Busca global" className="busca-global-comando">
+        <div className="busca-global-entrada">
+          <CommandInput ref={inputRef} value={query} onValueChange={setQuery} placeholder="Buscar em tudo…" maxLength={60} aria-label="Buscar em tudo" />
+          <button type="button" onClick={onFechar} aria-label="Fechar busca" className="busca-global-fechar"><X size={18} aria-hidden /></button>
+        </div>
+        <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{escopo}</span></div>
+        <nav className="busca-global-filtros" aria-label="Tipos de resultado">{filtros.map(f => <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}>{f}</button>)}</nav>
+        <CommandList ref={listaRef} className="busca-global-lista" aria-label="Resultados da busca" aria-busy={mostrarRegistros && buscando}>
+          {!termo && <p className="busca-global-dica">Busque por nome, brinco, número ou referência.</p>}
+          {mostrarRegistros && registros.length > 0 && <CommandGroup heading="Registros">{registros.map(e => <CommandItem key={`${e.tipo}:${e.entidadeId}`} value={`${e.tipo}:${e.entidadeId}`} onSelect={() => escolher(e.tab as Tab, e.entidadeId, e.caminho)} className="busca-global-linha">
+            <FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{e.label}</span><small>{e.sublabel}</small></span><span className="busca-global-tipo">{e.grupo}</span>
+          </CommandItem>)}</CommandGroup>}
+          {mostrarRegistros && buscando && <p role="status" className="busca-global-estado">Buscando registros…</p>}
+          {mostrarRegistros && erro && <div role="alert" className="busca-global-falha"><strong>Não foi possível buscar os registros</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</button></div>}
+          {paginas.length > 0 && <CommandGroup heading={termo ? "Páginas" : "Ir para"}>{paginas.map(c => <CommandItem key={c.id} value={c.id} onSelect={() => escolher(c.tab, undefined, c.caminho)} className="busca-global-linha"><FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{c.label}</span><small>{c.descricao ?? c.grupo}</small></span><span className="busca-global-tipo">Página</span></CommandItem>)}</CommandGroup>}
+          {acoes.length > 0 && <CommandGroup heading="Ações">{acoes.map(c => <CommandItem key={c.id} value={c.id} onSelect={() => escolher(c.tab, undefined, c.caminho)} className="busca-global-linha"><CornerDownLeft size={19} aria-hidden /><span className="busca-global-texto"><span>{c.label}</span><small>{c.descricao ?? c.grupo}</small></span><span className="busca-global-tipo">Ação</span></CommandItem>)}</CommandGroup>}
+          {semResultados && <div className="busca-global-vazio"><strong>{termo ? `Nenhum resultado para «${termo}»` : "Digite para buscar"}</strong><p>{!consultaValida(termo) && termo ? "Digite pelo menos duas letras ou um número." : "Tente parte do nome, brinco ou referência do registro."}</p></div>}
+          {registros.length >= 6 && <p className="busca-global-dica">Resultados limitados por tipo. Refine o termo para localizar outros registros.</p>}
+        </CommandList>
+        <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl/⌘ K</kbd> buscar</span></div>
+      </Command>
+    </DialogContent>
+  </Dialog>;
 }

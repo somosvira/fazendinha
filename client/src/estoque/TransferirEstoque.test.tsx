@@ -92,3 +92,18 @@ describe("perda de estoque", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(JSON.parse(fetchMock.mock.calls[1][1].body));
   });
 });
+
+it('Cancelar conserva o rascunho até confirmar o descarte', async () => {
+  const fechar = vi.fn();
+  render(<TransferirEstoque perda onSalvo={vi.fn()} onFechar={fechar}/>);
+  await screen.findByRole('option', {hidden:true, name:'Vacina'});
+  fireEvent.change(screen.getByLabelText('Motivo da perda'), {target:{value:'Embalagem danificada'}});
+  fireEvent.click(screen.getByRole('button', {name:'Cancelar'}));
+  expect(fechar).not.toHaveBeenCalled();
+  expect(screen.getByRole('dialog', {name:'Descartar alterações?'})).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', {name:'Continuar editando'}));
+  expect((screen.getByLabelText('Motivo da perda') as HTMLTextAreaElement).value).toBe('Embalagem danificada');
+  fireEvent.click(screen.getByRole('button', {name:'Cancelar'}));
+  fireEvent.click(screen.getByRole('button', {name:'Descartar alterações'}));
+  expect(fechar).toHaveBeenCalledOnce();
+});

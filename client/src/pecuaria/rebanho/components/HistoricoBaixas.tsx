@@ -14,7 +14,7 @@ export function HistoricoBaixas({ historicoBaixas, onRevisar }: {
   return <CardFicha icon={ArchiveX} titulo="Baixas" className="lg:col-span-2">
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm consulta-tabela">
-        <thead className="text-xs text-ink-3"><tr>
+        <thead className="text-sm text-ink-3"><tr>
           <th className="py-1.5 pr-3 font-semibold">Data</th>
           <th className="py-1.5 pr-3 font-semibold">Tipo</th>
           <th className="py-1.5 pr-3 font-semibold">Motivo</th>
@@ -37,8 +37,8 @@ export function HistoricoBaixas({ historicoBaixas, onRevisar }: {
             <section aria-label={`Proveniência da baixa de ${formatarDataBR(baixa.data)}`} className="space-y-3 rounded-lg bg-surface-2 p-4 text-sm">
               <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-semibold">Regularização histórica</h3><p className="mt-1 break-words text-ink-2">{baixa.regularizacaoHistorica.bancoOrigem} — {baixa.regularizacaoHistorica.chaveOrigem}</p></div>{onRevisar && baixa.tipo === "NAO_DETERMINADO" && !baixa.estornadaEm && !baixa.regularizacaoHistorica.revisao && <Button secondary onClick={() => onRevisar(baixa)}>Revisar classificação</Button>}</div>
               <dl className="space-y-2"><div><dt className="text-ink-3">Evidência de origem</dt><dd className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.evidencia}</dd></div><div><dt className="text-ink-3">Justificativa da regularização</dt><dd className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.motivo}</dd></div></dl>
-              <p className="text-xs text-ink-3">Registrada por {baixa.criadoPor ?? `Usuário ${baixa.regularizacaoHistorica.usuarioId}`} em {formatarDataBR(baixa.regularizacaoHistorica.registradaEm)}</p>
-              {baixa.regularizacaoHistorica.revisao && <div className="space-y-2 border-t border-border pt-3"><h4 className="font-semibold">Classificação revisada: {rotuloTipoBaixa(baixa.regularizacaoHistorica.revisao.dados.tipo)}</h4><p className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.revisao.dados.evidencia}</p><p className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.revisao.dados.motivo}</p><p className="text-xs text-ink-3">Usuário {baixa.regularizacaoHistorica.revisao.usuarioId} em {formatarDataBR(baixa.regularizacaoHistorica.revisao.registradaEm)}</p></div>}
+              <p className="text-sm text-ink-3">Registrada por {baixa.criadoPor ?? `Usuário ${baixa.regularizacaoHistorica.usuarioId}`} em {formatarDataBR(baixa.regularizacaoHistorica.registradaEm)}</p>
+              {baixa.regularizacaoHistorica.revisao && <div className="space-y-2 border-t border-border pt-3"><h4 className="font-semibold">Classificação revisada: {rotuloTipoBaixa(baixa.regularizacaoHistorica.revisao.dados.tipo)}</h4><p className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.revisao.dados.evidencia}</p><p className="whitespace-pre-wrap break-words">{baixa.regularizacaoHistorica.revisao.dados.motivo}</p><p className="text-sm text-ink-3">Usuário {baixa.regularizacaoHistorica.revisao.usuarioId} em {formatarDataBR(baixa.regularizacaoHistorica.revisao.registradaEm)}</p></div>}
             </section>
           </td></tr>}
           </Fragment>)}

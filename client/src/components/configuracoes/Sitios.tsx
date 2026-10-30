@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -9,8 +10,10 @@ import { BarraConsulta } from "@/financeiro/BarraConsulta";
 // PainelCadastro (FormSitio) para criar e editar. Nada é apagado: desativar
 // esconde o sítio do seletor e de novos cadastros.
 
-import { useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../VisualizacaoConsulta";
+import "./sitios.css";
+import { Plus, MapPin, Pencil } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Loader } from "@/components/Loading";
 import { editarPropriedade, usePropriedades, type PropriedadeDTO } from "../../api/propriedades";
@@ -30,8 +33,10 @@ const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeD
 ];
 
 export function Sitios() {
-  const [mostrarInativos, setMostrarInativos] = useState(false);
-  const [busca, setBusca] = useState("");
+  const visual = useVisualizacaoConsulta("visualSitios");
+  const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).has("busca"));
+  const [busca, setBusca] = useBuscaUrl("busca");
+  useEffect(() => { const restaurar = () => { if (new URLSearchParams(location.search).has("busca")) setMostrarInativos(true); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);
   const sitios = usePropriedades({ incluirInativos: mostrarInativos });
   const [painel, setPainel] = useState<Painel>(null);
   const [confirmando, setConfirmando] = useState<PropriedadeDTO | null>(null);
@@ -74,7 +79,7 @@ export function Sitios() {
   const paginacao = usePaginacaoLocal(visiveis, `${busca}|${mostrarInativos}|${consulta.criterios.map(c=>c.rotulo).join("|")}`);
 
   return <PaginaFinanceira>
-    <PageHeader eyebrow="" titulo="Sítios" descricao="Cadastre os sítios usados para organizar animais, estoque e lançamentos financeiros." acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
+    <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><MapPin/></span>Sítios</span>} acao={<Button onClick={abrirNovo}><Plus size={16} /> Novo sítio</Button>} />
     <ErrorBox erro={erro} />
 
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
@@ -83,8 +88,13 @@ export function Sitios() {
         : <Panel className="mt-5 overflow-hidden">
           <BarraConsulta campos={campos} edicaoFiltros={edicao} criterios={[...consulta.criterios,...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[])]}>
             <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />
+            <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos sítios" />
           </BarraConsulta>
-          <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />
+          {visual.modo === "visual" ? <div className="sitios-cartoes" aria-label="Sítios cadastrados">{paginacao.itens.map(s => <article className="sitio-cartao" key={s.id} data-inativo={!s.ativo || undefined}>
+            <header><span className="sitio-identidade"><MapPin size={24} aria-hidden="true" /></span><div><h2>{s.nome}</h2><p>{[s.cidade, s.uf].filter(Boolean).join(" — ") || "Localização não informada"}</p></div></header>
+            <div className="sitio-situacao"><Pill tone={s.ativo ? "green" : "neutral"}>{s.ativo ? "Ativo" : "Inativo"}</Pill>{s.principal && <Pill tone="blue">Sítio principal</Pill>}</div>
+            <footer><Button secondary onClick={() => editar(s)} aria-label={`Editar ${s.nome}`}><Pencil size={15} aria-hidden="true" />Editar sítio</Button><button type="button" onClick={() => alternar(s)} aria-label={`${s.ativo ? "Desativar" : "Reativar"} ${s.nome}`}>{s.ativo ? "Desativar" : "Reativar"}</button></footer>
+          </article>)}</div> : <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />}
           <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
           {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}

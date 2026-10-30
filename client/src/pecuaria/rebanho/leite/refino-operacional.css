@@ -1,0 +1,108 @@
+/* Cabeçalhos compactos: sem acumular margens de h2 com recuos do painel. */
+.leite-superficie .fin-tabela-cabecalho{padding:12px 0;min-height:60px;margin:0;gap:12px}
+.leite-superficie .fin-tabela-cabecalho h2{margin:0;line-height:1.4;font-size:16px}
+.leite-superficie .fin-tabela-cabecalho .fin-tabela-acoes{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.leite-page .leite-impedimentos-faixa{display:flex;align-items:center;gap:12px;background:var(--muted);border:1px solid var(--border);border-radius:9px;padding:12px 16px;margin:16px 0}
+.leite-impedimentos-faixa>div{flex:1}.leite-impedimentos-faixa strong{font-size:14px}.leite-impedimentos-faixa span{display:block;font-size:14px;color:var(--muted-foreground);margin-top:5px}.leite-impedimentos-faixa>button{font-size:14px}
+.leite-impedimentos-contexto{display:flex;align-items:center;gap:14px;color:var(--muted-foreground);font-size:14px}
+.leite-impedimentos-lista{display:grid;gap:10px}.leite-impedimentos-lista>article{display:flex;align-items:center;gap:16px;padding:14px 16px;background:var(--muted);border:1px solid var(--border);border-radius:8px;min-width:0}
+.leite-impedimentos-lista>article>div{flex:1;min-width:100px}.leite-impedimentos-lista strong{font-size:14px}.leite-impedimentos-lista span{display:block;font-size:14px;color:var(--muted-foreground);margin-top:5px}.leite-impedimentos-lista p{font-size:14px;line-height:1.5;max-width:280px;margin:0}.leite-impedimentos-lista button{font-size:14px}
+/* O resumo do dia e cada histórico conservam recortes independentes. */
+.leite-historicos-destinos{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.leite-historicos-destinos>div[hidden]{display:none}.leite-historicos-destinos>.abas-navegacao{margin-bottom:12px}
+.leite-historicos-destinos .leite-operacoes>h2{margin:20px 0 12px;font-size:16px}
+.leite-superficie .leite-resumo-destinos{border:0;border-radius:0;padding:0 0 20px;margin:0;box-shadow:none;background:var(--card);gap:20px}
+.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:24px}
+.leite-resumo-destinos .consumo-retiradas{grid-column:auto;border-top:0;border-left:1px solid var(--border);padding:0 0 0 24px}
+.leite-resumo-destinos .consumo-retiradas>div{grid-template-columns:1fr;gap:8px;margin-top:16px}.leite-resumo-destinos .consumo-retiradas>div>div{padding:10px;gap:8px}
+.leite-resumo-destinos .consumo-retiradas>div>div>span:nth-child(2){font-size:14px}.leite-resumo-destinos .consumo-retiradas>h3{font-size:14px;margin:0;line-height:1.5}
+.leite-resumo-destinos .consumo-descarte dl{grid-template-columns:1fr 1fr;gap:14px}.leite-resumo-destinos .consumo-descarte dl>div{grid-template-columns:1fr;gap:5px}.leite-resumo-destinos .consumo-descarte dd{font-size:14px}
+/* Modal de amostra: cabeçalho fixo, conteúdo rolável, rascunhos montados nas abas. */
+:root [data-slot=dialog-content].leite-consulta-dialog.leite-laudo-dialog[data-fin-scroll=conteudo]{padding:0;gap:0;display:flex;flex-direction:column;overflow:hidden}
+.leite-laudo-dialog>[data-slot=dialog-header]{padding:20px 55px 18px 24px;flex-shrink:0}
+.leite-laudo-dialog>.leite-operacoes{padding:20px 24px;overflow:auto;min-height:0}
+.leite-laudo-dialog [hidden]{display:none}.leite-laudo-identidade{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}
+.leite-laudo-identidade h2{font-size:17px;margin:0;line-height:1.4}.leite-laudo-identidade>div>span{display:block;font-size:14px;color:var(--muted-foreground);margin-top:6px}
+.leite-laudo-metadados{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin:0 0 18px}.leite-laudo-metadados dt{font-size:14px;color:var(--muted-foreground)}.leite-laudo-metadados dd{display:flex;gap:6px;align-items:center;font-size:14px;font-weight:600;margin:5px 0 0}
+.leite-laudo-dialog .abas-navegacao{margin-bottom:18px}.leite-laudo-resultados{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.leite-laudo-resultados>div{border:1px solid var(--border);border-radius:8px;background:var(--muted);padding:14px;min-width:0}.leite-laudo-resultados dt{min-height:32px;font-size:14px;line-height:1.4;color:var(--muted-foreground)}.leite-laudo-resultados dd{margin:8px 0 0;font-size:19px;line-height:1.5;font-weight:600;overflow-wrap:anywhere}
+.leite-laudo-observacao{border-top:1px solid var(--border);padding-top:16px;margin-top:18px}.leite-laudo-observacao h3{font-size:14px;margin:0}.leite-laudo-observacao p{font-size:14px;line-height:1.6;color:var(--muted-foreground)}
+.leite-laudo-dialog fieldset.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.leite-laudo-dialog fieldset.grid legend{font-size:16px;margin-bottom:14px}.leite-laudo-dialog fieldset label{font-size:14px;line-height:1.5}.leite-laudo-dialog fieldset>label:has(textarea){margin:16px 0}.leite-laudo-dialog fieldset legend{font-size:16px}
+.leite-laudo-historico>ol{list-style:none;padding:0;margin:18px 0}.leite-laudo-historico>ol>li{border-bottom:1px solid var(--border);padding:16px 0}.leite-laudo-historico>ol>li>div{padding:12px;background:var(--muted);border-radius:8px;margin-top:12px}.leite-laudo-historico h3{font-size:16px;margin:0 0 16px}
+@media(max-width:1050px){.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:1fr 1fr}.leite-resumo-destinos .consumo-retiradas{grid-column:1/-1;padding:18px 0 0;border-left:0;border-top:1px solid var(--border)}.leite-resumo-destinos .consumo-retiradas>div{grid-template-columns:1fr 1fr}.leite-impedimentos-lista>article{flex-wrap:wrap}.leite-impedimentos-lista p{max-width:none;flex:1 1 180px}}
+@media(max-width:700px){.leite-impedimentos-faixa{flex-wrap:wrap}.leite-impedimentos-faixa>div{flex-basis:70%}.leite-impedimentos-faixa>button{margin-left:30px}.leite-laudo-dialog>.leite-operacoes{padding:18px 16px}.leite-laudo-dialog>[data-slot=dialog-header]{padding:18px 50px 16px 16px}.leite-laudo-identidade{flex-wrap:wrap}.leite-laudo-metadados{grid-template-columns:1fr 1fr}.leite-laudo-resultados{grid-template-columns:1fr 1fr}.leite-laudo-dialog fieldset.grid{grid-template-columns:1fr}.leite-resumo-destinos>.consumo-distribuicao{grid-template-columns:1fr}.leite-resumo-destinos .consumo-descarte{border-left:0;padding:18px 0 0;border-top:1px solid var(--border)}.leite-resumo-destinos .consumo-retiradas{grid-column:auto}.leite-impedimentos-lista>article>div{flex-basis:60%}.leite-impedimentos-lista button{margin-left:auto}}
+.leite-laudo-dialog [data-slot=dialog-title]:focus{outline:none}
+.leite-laudo-metadados{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.leite-laudo-dialog .abas-navegacao [role=tablist]{display:flex;flex-wrap:nowrap;width:100%;height:auto;overflow-x:auto;justify-content:flex-start;gap:4px;padding:4px}
+.leite-laudo-dialog .abas-navegacao [role=tablist]>[role=tab]{flex:0 0 auto;white-space:nowrap;padding:10px 12px;min-height:40px;font-size:14px}
+.leite-laudo-resultados>div[data-tipo=TEXTO]{grid-column:1/-1}.leite-laudo-resultados>div[data-tipo=TEXTO] dt{min-height:0}.leite-laudo-resultados>div[data-tipo=TEXTO] dd{font-size:14px;font-weight:400;line-height:1.6}
+.leite-laudo-resultados>div[data-tipo=OPCAO] dd{font-size:15px}.leite-laudo-dialog .leite-campo-rotulo{display:flex;align-items:center;gap:5px;min-height:36px}.leite-laudo-dialog fieldset.grid label[data-tipo=TEXTO]{grid-column:1/-1}
+@media(max-width:700px){.leite-laudo-metadados{grid-template-columns:1fr 1fr}}
+
+.leite-laudo-resultados>div{padding:12px 14px;min-height:0}
+.leite-laudo-resultados dt{min-height:0;margin-bottom:8px}
+.leite-laudo-resultados dd{font-size:20px;margin:0}
+.leite-laudo-resultados>div[data-tipo=OPCAO],.leite-laudo-resultados>div[data-tipo=BOOLEANO]{background:transparent;border:1px solid var(--border)}
+.leite-laudo-resultados>div[data-tipo=OPCAO] dd,.leite-laudo-resultados>div[data-tipo=BOOLEANO] dd{font-size:14px;font-weight:500}
+.leite-resumo-destinos .consumo-distribuicao header>strong{font-size:19px}
+.leite-resumo-destinos .consumo-legenda dd{font-size:17px}
+
+/* Contexto temporal único, próximo aos controles que alteram a consulta. */
+.leite-contexto-data,
+.leite-qualidade-contexto > span,
+.leite-configuracao-vigencia > div > span {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.leite-contexto-data svg,
+.leite-qualidade-contexto svg,
+.leite-configuracao-vigencia svg { flex-shrink: 0; }
+.leite-qualidade-contexto { margin: 18px 0 12px; }
+.leite-configuracao-vigencia { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.leite-configuracao-vigencia h3 { margin: 0 0 6px; font-size: 18px; }
+.leite-importacao > .leite-titulo-secao { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.leite-importacao > form > fieldset { margin-top: 0; }
+.leite-importacao .leite-etapas-importacao { gap: 20px; margin-bottom: 24px; }
+.leite-importacao .leite-etapas-importacao li { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.leite-importacao .leite-etapas-importacao b { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+
+/* As consultas com muitos fatos precisam crescer com o conteúdo e com o zoom. */
+.leite-superficie .leite-card-visual header { align-items: flex-start; flex-wrap: wrap; gap: 10px; }
+.leite-superficie .leite-card-visual h3 { font-size: 17px; line-height: 1.4; }
+.leite-superficie .leite-venda-visual > h3 { font-size: 19px; }
+.leite-superficie .leite-naturezas-legenda { grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 14px; }
+.leite-superficie .leite-naturezas-legenda dt { align-items: flex-start; line-height: 1.45; }
+.leite-superficie .leite-naturezas-legenda i { margin-top: 6px; }
+.leite-superficie .leite-estado-visual { max-width: none; line-height: 1.5; }
+.leite-superficie .leite-coleta-visual time { min-width: 70px; padding: 10px 12px; }
+.leite-superficie .leite-coleta-visual time span { line-height: 1.4; }
+.leite-superficie .leite-consulta-resumo { background: transparent; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; padding: 12px 0 20px; gap: 20px 28px; }
+.leite-superficie .leite-consulta-resumo dt { line-height: 1.5; }
+.leite-superficie .leite-consulta-resumo dd { font-size: 24px; }
+.leite-superficie .leite-configuracao-fatos { background: transparent; border: 0; border-radius: 0; padding: 0; gap: 24px !important; }
+.leite-configuracoes-consulta > .grid > .leite-configuracao-fatos > div { display: block; padding: 12px 0 18px; }
+.leite-superficie .leite-equipamento dl { margin: 18px 0; }
+.leite-superficie .leite-equipamento dd { line-height: 1.5; }
+.leite-superficie .leite-previsoes-grade { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.leite-superficie .leite-sumario-emissao { gap: 10px; }
+.leite-superficie .leite-sumario-emissao a { font-size: 14px; min-height: 40px; display: inline-flex; align-items: center; }
+
+/* Modais do módulo mantêm a mesma leitura mesmo fora da árvore da página. */
+:is(.leite-consulta-dialog, .leite-comercial-dialog, .leite-relatorio-dialog, .leite-config, .leite-registro-dialog) { font-size: 14px; line-height: 1.5; }
+:is(.leite-consulta-dialog, .leite-comercial-dialog, .leite-relatorio-dialog, .leite-config, .leite-registro-dialog) [data-slot=dialog-title] { font-family: var(--font-display); font-size: 22px; font-weight: 750; line-height: 1.35; }
+.leite-consulta-dialog :is(h2, h3, legend) { font-family: var(--font-display); }
+.leite-tanque-detalhe > .grid { padding-block: 4px; }
+.leite-tanque-detalhe > .grid > p { margin: 0; line-height: 1.6; }
+.leite-laudo-dialog fieldset label { font-size: 14px; }
+.leite-laudo-dialog .leite-campo-rotulo { line-height: 1.5; min-height: 42px; }
+@media(max-width:700px) {
+  .leite-superficie .leite-configuracao-fatos { gap: 0 !important; }
+  .leite-superficie .leite-consulta-resumo { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px; }
+  .leite-superficie .leite-card-visual header .leite-estado-visual { margin-left: 0; }
+  .leite-contexto-data { justify-content: flex-start; }
+}

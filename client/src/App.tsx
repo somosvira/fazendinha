@@ -1,3 +1,4 @@
+import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
 /* Rio Novo — raiz.
  * Permissionamento: Marco (dono) é o usuário logado. Ele gerencia acessos e pode
@@ -20,6 +21,7 @@ import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
 import "./styles/identidade-rural.css";
 import "./styles/tabelas-operacionais.css";
+import "./styles/operacional-aprovado.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
@@ -550,13 +552,13 @@ export function App() {
     : tab === "pec-reproducao"
     ? <Reproducao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-relatorios"
-    ? <RelatoriosPecuaria podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    ? <RelatoriosPecuaria podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-visitas"
     ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-leite"
-    ? <LeiteModulo podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
+    ? <LeiteModulo onSelecionarSitio={trocarPropriedade} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"
     ? <PainelGerencial locationRevision={locationRevision} propriedadeId={propAtiva} onPeriodo={periodo=>setDeepLinkFiltros({tab:"gerencial",filtros:{...periodo,...(propAtiva==null?{}:{propriedadeId:String(propAtiva)})}})}/>
     : tab === "estoque"
@@ -621,15 +623,28 @@ export function App() {
           : null}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
-        <div key={propAtiva ?? "all"} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
+        <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
           <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><Loader label="Carregando área…" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>
       <CommandPalette
+        key={`busca:${usuario.id}:${propAtiva ?? "all"}`}
+        escopo={propAtiva == null ? "Consolidado · Todos os sítios" : "Sítio selecionado"}
+        podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
+        podeVerValores={podeVerValores}
+        podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
         onFechar={() => setBuscaAberta(false)}
-        onNav={(t) => {
-          navegarTab(t);
+        onNav={(t, _entidadeId, caminho) => {
+          if (!caminho) { navegarTab(t); return; }
+          void executarComGuardaNavegacao(() => {
+            if (!podeAcessarCaminho(usuario, caminho)) return;
+            const destino = new URL(caminho, window.location.origin);
+            const sitio = Number(destino.searchParams.get("propriedadeId"));
+            if (Number.isInteger(sitio) && sitio > 0 && sitio <= 2147483647) { setPropriedadeAtiva(sitio); setPropAtiva(sitio); }
+            setDeepLinkFiltros(null);
+            navegarPara(caminho);
+          });
         }}
         podeVer={(t) => {
           return canAccessTab(t);

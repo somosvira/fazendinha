@@ -49,6 +49,8 @@ import {
   type SituacaoInicialInput,
 } from "./api";
 
+import "./registro-reprodutivo.css";
+
 export type AcaoReprodutiva =
   | "tentativa"
   | "avaliacao"
@@ -389,7 +391,7 @@ export function FormReproducao({
     >
       <form
         id="form-reproducao"
-        className="grid gap-4"
+        className="repro-registro"
         onSubmit={(e) => {
           e.preventDefault();
           void salvar();
@@ -397,6 +399,7 @@ export function FormReproducao({
       >
         {conteudoExtra}
         <ErrorBox erro={erro} />
+        <section className="repro-registro-identidade" aria-label="Animal e data do fato">
         {seletor(
           "animal",
           "Animal",
@@ -408,6 +411,8 @@ export function FormReproducao({
           ]),
         )}
         {campo("data", "Data do fato", data, setData, true, "date")}
+        </section>
+        <section className="repro-registro-dados" aria-labelledby="repro-dados-titulo"><h2 id="repro-dados-titulo">{{tentativa:"Procedimento e material",avaliacao:"Resultado e acompanhamento",parto:"Parto e crias",situacao:"Referências da situação inicial",restricao:"Alcance da restrição"}[acao]}</h2><div className="repro-registro-campos">
         {acao === "tentativa" && (
           <>
             {seletor(
@@ -690,6 +695,7 @@ export function FormReproducao({
             ["PERMANENTE", "Permanente"],
             ["DESCARTE", "Descarte reprodutivo"],
           ])}
+        </div></section>
         {acao !== "parto" && campo("motivo", acao === "situacao" ? "Evidência ou referência" : "Motivo / observação", motivo, setMotivo, exigeMotivo)}
       </form>
     </FormShellReproducao>

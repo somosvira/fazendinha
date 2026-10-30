@@ -88,6 +88,8 @@ O parto pode iniciar a lactação mínima quando isso foi efetivamente informado
 
 A visita organiza atividades e participantes; cada procedimento continua sendo um fato individual único, consultável pela visita e pela ficha. O percurso é preparar, imprimir, atender no campo, retomar a mesma lista, transcrever e confirmar.
 
+Na entrada de uma visita existente, nome, data, sítio e responsável aparecem como contexto somente leitura em uma faixa compacta, sem aparência de campos editáveis. Agenda do dia e Seleção livre usam escolha única shadcn, sem seleção automática; escolher não prepara participantes. A continuidade exige a ação explícita, conserva os grupos existentes e bloqueia interação durante a operação. Instruções complementares ficam em ajuda contextual; os próximos passos e o rodapé de ações permanecem visíveis. O cadastro de Nova visita conserva seus campos obrigatórios.
+
 A interface separa planejamento, revisão dos animais e atendimento em páginas inteiras. O cadastro começa em `/pecuaria/visitas/nova`; uma visita existente mantém `/pecuaria/visitas/:id`, com `etapa=planejamento|revisao|atendimento` e referências de grupo/atividade na query. Links antigos continuam abrindo a visita: lista vazia segue para planejamento, lista preparada para atendimento. Visita encerrada conserva consulta, reimpressão e as regularizações autorizadas, sem liberar nova execução por alteração da URL.
 
 O planner segue a composição do mockup aprovado: cabeçalho único, navegação numerada de três etapas, contexto compacto de data/sítio, painel de grupos com seções de reprodução/sanidade e barra fixa com animais únicos, procedimentos e a ação “Revisar seleção”. A atividade/etapa é o título da linha; protocolo, turma, data, versão e avisos ficam em posições próprias. Marcar um grupo carrega sua prévia completa e mantém a pessoa no planejamento; revisar é uma ação separada. A data da visita existente permanece a definida no cadastro. Preparar é oferecido na revisão, preservando revalidação no servidor e retomada após falha parcial. Impressão e encerramento continuam disponíveis em “Opções da visita”, além do atendimento.
@@ -327,6 +329,12 @@ Na consulta das participações, as etapas preservam a situação operacional e 
 
 A ficha apresenta o planejamento administrativo e a classificação gerencial em seções fixas, sem resumo nativo de abrir/fechar. Filtros, prévias, motivos e confirmações permanecem necessários; dados clínicos não são substituídos por indicadores decorativos. Custos agrupam cobertura e limitações junto ao total, preservando valores ocultos, desconhecidos, preparatórios e a distinção entre bases sobrepostas.
 
+
+### Visualização do desempenho por período
+
+O painel de indicadores alterna cartões e tabela com `indicadoresVisualizacao`, preservando os mesmos períodos paginados, taxas, contagens e denominadores do snapshot. A escolha fica na URL e na preferência de visualização por usuário. Trocar a apresentação não reconsulta nem recalcula o indicador, muda filtros ou emite relatório. Os cartões mantêm a consulta dos animais da janela e distinguem taxa zero de base insuficiente; a barra de serviço é apenas representação da taxa já calculada, limitada visualmente a 0–100%, sem substituir o valor exato exibido. Emissões preservadas conservam metodologia e conteúdo próprios.
+
+A apresentação unificada de relatórios, o builder e a revisão de novas variáveis seguem [Relatórios da Pecuária](relatorios.md). O desenho não muda o cálculo dos indicadores nem o conteúdo de emissões já preservadas.
 
 ### Crescimento e pendências na consulta de manejo
 

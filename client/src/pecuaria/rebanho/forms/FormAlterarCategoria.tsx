@@ -50,7 +50,7 @@ export function FormAlterarCategoria({ animal, categorias, onSalvo, onFechar }: 
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar categoria"}</Button></>}>
     <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
       <ErrorBox erro={erroGeral} />
-      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Isto muda só a classificação. Não registra parto nem altera a reprodução.</p>
+      <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Isto muda só a classificação. Não registra parto nem altera a reprodução.</p>
       <CampoFormulario id="categoria-nova" rotulo="Nova categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} required value={categoriaId} onValueChange={(valorSelecionado) => setCategoriaId(valorSelecionado)} className={classeInput}>
         <option value="">Selecione</option>
         {categorias.map((c) => <option key={c.id} value={c.id}>{rotuloOpcaoCategoria(categorias, c)}</option>)}

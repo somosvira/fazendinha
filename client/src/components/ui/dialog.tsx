@@ -33,7 +33,15 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string;
   }
 >(({ className, children, showCloseButton = true, overlayClassName, onOpenAutoFocus, onCloseAutoFocus, ...props }, ref) => {
-  const retornoFoco = useRetornoFocoDialogo(onOpenAutoFocus, onCloseAutoFocus);
+  const retornoFoco = useRetornoFocoDialogo(evento => {
+    if (onOpenAutoFocus) { onOpenAutoFocus(evento); return; }
+    // A abertura operacional começa no título, sem disparar dicas por foco automático.
+    // Fluxos financeiros e solicitações explícitas de foco mantêm seu comportamento.
+    if (!document.querySelector("[data-design-operacional]")) return;
+    const conteudo = evento.target instanceof HTMLElement ? evento.target : null;
+    const titulo = conteudo?.querySelector<HTMLElement>('[data-slot="dialog-title"]');
+    if (titulo) { evento.preventDefault(); titulo.tabIndex = -1; titulo.focus({preventScroll:true}); }
+  }, onCloseAutoFocus);
   return (
   <DialogPortal>
     <DialogOverlay className={overlayClassName} />

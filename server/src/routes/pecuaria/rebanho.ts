@@ -1,3 +1,5 @@
+import { leiteRetiradasInternasRouter } from "./leite-retiradas-internas.js";
+import { relatoriosOperacionaisRouter } from "./relatorios-operacionais.js";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -123,6 +125,7 @@ const exigirLancarParaEscrita: MiddlewareHandler = async (c, next) => {
 
 export const rebanhoRouter = new Hono()
   .use("*", exigirLancarParaEscrita)
+  .route('/relatorios',relatoriosOperacionaisRouter)
   .get("/animais", zValidator("query", listarFiltrosSchema, (resultado, c) => {
     if (!resultado.success) {
       const erro = resultado.error.issues[0];
@@ -468,6 +471,7 @@ rebanhoRouter.route("/leite/qualidade", leiteQualidadeRouter);
 rebanhoRouter.route("/leite/custos", leiteCustosRouter);
 rebanhoRouter.route("/leite", leiteRelatoriosRouter);
 rebanhoRouter.route("/leite", leiteDescartesRouter);
+rebanhoRouter.route("/leite", leiteRetiradasInternasRouter);
 rebanhoRouter.route("/leite", leiteHistoricoRouter);
 rebanhoRouter.route("/leite", leitePreviaRouter);
 rebanhoRouter.route("/leite/consultas-producao", leiteConsultasProducaoRouter);

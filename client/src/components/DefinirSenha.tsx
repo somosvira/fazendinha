@@ -1,3 +1,4 @@
+import { KeyRound } from "lucide-react";
 /* Tela "Definir senha" — usada em dois deep-links:
  *   /invite/<token>         → pessoa recém-convidada cria a primeira senha
  *   /reset-password/<token> → redefinição de senha (reset)
@@ -82,14 +83,14 @@ export function DefinirSenha({
   };
 
   if (estado === "carregando" || estado === "erro") {
-    return <main className="cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6"><section className="max-w-[380px] text-center text-[15px] text-ink-3">
+    return <main data-design-operacional="" className="auth-operacional cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6"><section className="max-w-[380px] text-center text-[15px] text-ink-3">
       {estado === "carregando" ? <p role="status">Verificando seu link… Aguarde antes de definir a senha.</p> : <><p ref={validacaoErroRef} tabIndex={-1} role="alert">Não foi possível verificar o link agora. Confira sua conexão e tente novamente.</p><Button className="mt-4" onClick={() => setTentativa((n) => n + 1)}>Tentar novamente</Button></>}
     </section></main>;
   }
 
   if (estado === "invalido") {
     return (
-      <main className="cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6">
+      <main data-design-operacional="" className="auth-operacional cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6">
         <div className="max-w-[380px] text-center text-[15px] text-ink-3">
           <p ref={validacaoErroRef} tabIndex={-1} role="alert">Este link é inválido, expirou ou já foi utilizado.</p>
           <a className="mt-4 inline-block font-semibold text-[color:var(--cafe)] hover:underline" href={modo === "senha" ? "/forgot-password" : "/signin"}>
@@ -101,18 +102,18 @@ export function DefinirSenha({
   }
 
   return (
-    <main className="cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6">
+    <main data-design-operacional="" className="auth-operacional cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6">
       <form
         onSubmit={submeter}
         className="flex w-full max-w-[380px] flex-col gap-2.5 rounded-[14px] border border-border bg-card px-[26px] py-7 shadow-[0_4px_20px_rgba(0,0,0,0.05)]"
       >
-        <h1 className="mb-1 text-[26px] font-semibold leading-[1.1] text-foreground">
+        <span className="auth-operacional-icone"><KeyRound size={29} aria-hidden/></span><h1 className="mb-1 text-[26px] font-semibold leading-[1.1] text-foreground">
           {modo === "convite" ? "Criar sua senha" : "Redefinir senha"}
         </h1>
         {modo === "convite" && nome && (
           <div className="mb-2 text-[13px] text-ink-3">Bem-vindo, {nome.split(" ")[0]}.</div>
         )}
-        <Label htmlFor="ds-senha" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
+        <Label htmlFor="ds-senha" className="mt-1 text-sm text-ink-3">
           Nova senha
         </Label>
         <CampoSenha
@@ -126,7 +127,7 @@ export function DefinirSenha({
           onChange={(e) => setSenha(e.target.value)}
           className="rounded-[8px] bg-background text-[15px]"
         />
-        <Label htmlFor="ds-senha2" className="mt-1 text-xs uppercase tracking-[0.05em] text-ink-3">
+        <Label htmlFor="ds-senha2" className="mt-1 text-sm text-ink-3">
           Repita a senha
         </Label>
         <CampoSenha

@@ -202,7 +202,7 @@ export function ComercialLeite({
   }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Comercial do leite">
     <CabecalhoTabela titulo="Documentos comerciais" descricao={contexto?.parceiroNome} ajuda={contexto ? "Aceite, comprovantes e demonstrativos." : "Aceite, comprovantes e demonstrativos das entregas."} rotuloAjuda="Sobre os documentos comerciais" acao={<>{podeLancar && <Button disabled={resolvido === null || !entregas || carregando} onClick={() => setNovaEntrega(true)}>Registrar entrega</Button>}{podeLancar && podeFinanceiro && <Button disabled={!config || resolvido === null || !entregas || carregando} onClick={() => setNovoDoc(true)}>Registrar demonstrativo</Button>}</>} />
-    <PeriodoFinanceiroControl inicio={de} fim={ate} label="Período das entregas e documentos" onChange={({inicio,fim}) => { alterarPeriodo("de", inicio); alterarPeriodo("ate", fim); }} />
+    <PeriodoFinanceiroControl showIcon inicio={de} fim={ate} label="Período das entregas e documentos" onChange={({inicio,fim}) => { alterarPeriodo("de", inicio); alterarPeriodo("ate", fim); }} />
     {carregando && <p role="status">Consultando documentos comerciais…</p>}{erro && <p role="alert">{erro}</p>}{erroConfig && podeFinanceiro && <p role="alert">{erroConfig}</p>}{aviso && <p role="status">{aviso}</p>}
     <CabecalhoTabela titulo="Entregas e conferências" />
     {entregas && <>

@@ -61,7 +61,7 @@ export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, seleciona
             aria-label={`Abrir atendimento de ${animal.brinco}${animal.nome ? ` · ${animal.nome}` : ""}`}
             className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${selecionado ? "border-primary bg-surface-2" : "border-border"}`}>
             <span className="min-w-0"><span className="block font-semibold break-words">{animal.brinco}{animal.nome && <span className="font-normal"> · {animal.nome}</span>}</span>
-              <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-3">
+              <span className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-3">
                 <span>{situacoes.join(" · ")}</span>{temRascunho && <span className="font-semibold">Rascunho salvo</span>}
                 {grupo.length > 1 && <span>{grupo.length} registros na visita</span>}
               </span></span>

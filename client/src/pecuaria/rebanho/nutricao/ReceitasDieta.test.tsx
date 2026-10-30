@@ -23,7 +23,7 @@ describe("gestão compartilhada de receitas", () => {
     const salvar = screen.getByRole("button", { name: "Salvar rascunho" });
     await waitFor(() => expect(salvar.hasAttribute("disabled")).toBe(false));
     fireEvent.change(screen.getByLabelText("Nome da dieta"), { target: { value: "Receita revisada" } });
-    const form = salvar.closest("form")!;
+    const form = (salvar as HTMLButtonElement).form!;
     act(() => { fireEvent.submit(form); fireEvent.submit(form); });
     expect(api.editarDieta).toHaveBeenCalledTimes(1);
     await act(async () => { recusar(new Error("Sem permissão para alterar (403)")); });
@@ -83,6 +83,37 @@ describe("gestão compartilhada de receitas", () => {
     fireEvent.click(screen.getByRole("button", { name: "Criar nova versão a partir desta" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.getByLabelText("Buscar receita")).toHaveProperty("value", "lactação");
+  });
+  it("mantém a edição em modal central e pede confirmação antes de descartar", async () => {
+    render(<ReceitasDieta podeLancar />);
+    fireEvent.click(await screen.findByRole("button", { name: "Editar rascunho" }));
+    expect(screen.getByRole("dialog", { name: "Editar rascunho de dieta" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Nome da dieta"), { target: { value: "Rascunho preservado" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByRole("dialog", { name: "Descartar alterações?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(screen.getByLabelText("Nome da dieta")).toHaveProperty("value", "Rascunho preservado");
+    expect(new URLSearchParams(window.location.search).get("formReceita")).toBe("editar");
+    expect(api.editarDieta).not.toHaveBeenCalled();
+  });
+  it.each(["Cancelar", "Fechar", "Escape"])("protege ingrediente removido ao sair por %s", async (saida) => {
+    const receita = dieta("rascunho", null);
+    receita.itens.push({ ...receita.itens[0], produtoId: "soja", produto: { nome: "Soja" } });
+    vi.mocked(api.listarDietas).mockResolvedValue([receita]);
+    render(<ReceitasDieta podeLancar />);
+    fireEvent.click(await screen.findByRole("button", { name: "Editar rascunho" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Salvar rascunho" }).hasAttribute("disabled")).toBe(false));
+    const remover = screen.getAllByRole("button", { name: "Remover" })[1];
+    act(() => remover.focus());
+    fireEvent.click(remover);
+    if (saida === "Escape") fireEvent.keyDown(document, { key: "Escape" });
+    else fireEvent.click(screen.getByRole("button", { name: saida }));
+    expect(await screen.findByRole("dialog", { name: "Descartar alterações?" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(screen.getAllByRole("button", { name: "Remover" })).toHaveLength(1);
+    expect(screen.queryByRole("spinbutton", { name: /Quantidade por cabeça\/dia · Soja/ })).toBeNull();
+    expect(new URLSearchParams(window.location.search).get("formReceita")).toBe("editar");
+    expect(api.editarDieta).not.toHaveBeenCalled();
   });
   it("leitura mantém versões e ingredientes sem ações de escrita", async () => {
     const { container } = render(<ReceitasDieta podeLancar={false} />);

@@ -4,7 +4,7 @@
 .secao-recolhivel-cabecalho>h2>button{display:flex;justify-content:space-between;align-items:center;gap:16px;width:100%;padding:14px 0;text-align:left;color:var(--ink);cursor:pointer;background:transparent;border:0}
 .secao-recolhivel-cabecalho>h2>button:focus-visible{outline:2px solid var(--ring);outline-offset:3px;border-radius:4px}
 .secao-recolhivel-texto{display:flex;flex-direction:column;min-width:0;gap:3px}
-.secao-recolhivel-resumo{font-size:12px;line-height:1.4;font-weight:400;color:var(--ink-3)}
+.secao-recolhivel-resumo{font-size:14px;line-height:1.4;font-weight:400;color:var(--ink-3)}
 .secao-recolhivel-chevron{flex-shrink:0;transition:transform .15s}.secao-recolhivel-chevron.aberta{transform:rotate(180deg)}
 .secao-recolhivel-acoes{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .secao-recolhivel-conteudo{padding:0 14px 14px}.secao-recolhivel-conteudo[hidden]{display:none}
@@ -25,11 +25,11 @@
 .ficha-v4 .ficha-peso-faixa{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--border);border-radius:6px;padding:12px 0;background:var(--muted)}
 .ficha-v4 .ficha-peso-faixa>div{padding:0 12px;min-width:0}
 .ficha-v4 .ficha-peso-faixa>div+div{border-left:1px solid var(--border)}
-.ficha-v4 .ficha-peso-faixa dt{font-size:12px;color:var(--ink-3)}
+.ficha-v4 .ficha-peso-faixa dt{font-size:14px;color:var(--ink-3)}
 .ficha-v4 .ficha-peso-faixa dd{font-size:16px;font-weight:650;margin-top:4px;overflow-wrap:anywhere}
 .ficha-v4 .ficha-peso-faixa>div:nth-child(2) dd{color:var(--primary)}
-.ficha-v4 .ficha-peso-faixa small{display:block;font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.4}
-.ficha-v4 .ficha-peso-detalhes{width:100%;margin-top:10px;font-size:13px;border-radius:8px}
+.ficha-v4 .ficha-peso-faixa small{display:block;font-size:14px;color:var(--ink-3);margin-top:4px;line-height:1.4}
+.ficha-v4 .ficha-peso-detalhes{width:100%;margin-top:10px;font-size:14px;border-radius:8px}
 .ficha-v4 .ficha-peso-detalhes .grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 @container ficha-peso (min-width:760px){
  .ficha-v4 .ficha-peso-manejo{grid-template-columns:minmax(0,1.85fr) minmax(250px,1fr)}
@@ -40,7 +40,7 @@
  .ficha-v4 .ficha-peso-faixa>div+div{border-left:0;border-top:1px solid var(--border);padding-top:10px}
  .ficha-v4 .ficha-peso-detalhes .grid{grid-template-columns:1fr}
 }
-.menu-acoes-ficha-gatilho{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);font-size:13px;font-weight:600;min-height:36px;padding:8px 12px;cursor:pointer}
+.menu-acoes-ficha-gatilho{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--ink);font-size:14px;font-weight:600;min-height:36px;padding:8px 12px;cursor:pointer}
 .menu-acoes-ficha-gatilho:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .menu-acoes-ficha-lista{min-width:220px;border-radius:8px}
 
