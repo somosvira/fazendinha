@@ -1,5 +1,5 @@
 import type { Prisma } from "@prisma/client";
-import type { ElegibilidadeNaData } from "./elegibilidade.calc.js";
+import { permiteAvaliacaoAptidao, type ElegibilidadeNaData } from "./elegibilidade.calc.js";
 import { obterElegibilidadesNaDataTx } from "./elegibilidade.js";
 import { FINALIDADE_APTIDAO } from "./toque-aptidao.calc.js";
 import { NOME_TIPO } from "./toque-aptidao.js";
@@ -14,10 +14,11 @@ export async function carregarFilasAptidaoTx(tx: Prisma.TransactionClient, ids: 
     } }, include: { AtividadeVisita: { include: { VisitaVeterinaria: true } } } }),
   ]);
   return [...elegibilidades.values()].flatMap(e => {
+    if (!permiteAvaliacaoAptidao(e)) return [];
     if (!e.necessidadeAptidao && !e.aptidaoClinica?.exameId) return [];
     const necessidadeId = e.necessidadeAptidao?.necessidadeId ?? `APTIDAO:${e.animalId}:${e.ciclo?.chaveCiclo ?? "INICIAL"}`;
     const visitas = agendados.filter(p => p.animalId === e.animalId && (p.snapshot as Prisma.JsonObject).necessidadeAptidaoId === necessidadeId)
-      .map(p => ({ id: p.AtividadeVisita.VisitaVeterinaria.id, nome: p.AtividadeVisita.VisitaVeterinaria.nome }));
+      .map(p => ({ id: p.AtividadeVisita.VisitaVeterinaria.id, nome: p.AtividadeVisita.VisitaVeterinaria.nome, data: p.AtividadeVisita.VisitaVeterinaria.data.toISOString().slice(0, 10) }));
     const clinica = e.aptidaoClinica;
     const fila = visitas.length ? "AGENDAMENTO" : clinica?.retornoEm ? "RETORNO" : clinica?.estado === "APTA" || clinica?.estado === "NAO_APTA" ? "APTIDAO" : e.necessidadeAptidao?.estado ?? "MANUAL";
     return [{ animalId: e.animalId, necessidadeId, fila, tipoExameId: tipo?.id ?? null, clinica,

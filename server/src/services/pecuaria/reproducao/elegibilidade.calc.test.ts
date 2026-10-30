@@ -173,3 +173,58 @@ it("saldo de partos positivo identifica vaca e não usa critérios de novilha qu
   expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-03-01")).get("animal")?.necessidadeAptidao)
     .toMatchObject({ estado: "PENDENCIA_DADOS", pendencias: ["DATA_PARTO_NAO_COMPROVADA"], criteriosNaoAtingidos: [] });
 });
+
+
+it("zero padrão sem evidência de classe não vira novilha com avaliação devida", () => {
+  const dados = conjunto();
+  dados.partos = []; dados.gestacoes = []; dados.vinculos = [];
+  dados.animais[0].dataNascimento = dia("2020-01-01");
+  const grupo = { idadeMinimaMeses: null, percentualPesoAdulto: null, pesoMinimoKg: null, eccMinimo: null, pesoAdultoReferenciaKg: null, validadePesoDias: null, precisaoPesoAceita: ["MEDIDO"], escalaEcc: null, validadeEccDias: null };
+  dados.politicas[0] = { ...dados.politicas[0], propriedadeId: 1, vigenteDesde: dia("2026-01-01"), parametros: {
+    ...parametros(), versao: 2, criteriosAptidao: { vacas: grupo, novilhas: { ...grupo, idadeMinimaMeses: 15 }, diasAvaliacaoPosParto: 45 },
+  } };
+  expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-10-29")).get("animal"))
+    .toMatchObject({ elegivel: null, necessidadeAptidao: { estado: "PENDENCIA_DADOS", pendencias: ["CLASSE_REPRODUTIVA_NAO_COMPROVADA"] } });
+});
+
+describe("classe declarada orienta critérios sem conceder aptidão", () => {
+  function historico(classeReprodutiva: "NOVILHA" | "VACA") {
+    const dados = conjunto();
+    dados.partos = []; dados.gestacoes = []; dados.vinculos = [];
+    dados.animais[0].dataNascimento = dia("2020-01-01");
+    dados.iniciais = [{ id: "declaracao", animalId: "animal", data: dia("2026-01-01"), criadoEm: dia("2026-01-01"), status: "VALIDO", situacao: "DESCONHECIDA", aptaDesde: null, classeReprodutiva }];
+    const grupo = { idadeMinimaMeses: null, percentualPesoAdulto: null, pesoMinimoKg: null, eccMinimo: null, pesoAdultoReferenciaKg: null, validadePesoDias: null, precisaoPesoAceita: ["MEDIDO"], escalaEcc: null, validadeEccDias: null };
+    dados.politicas = [{ id: "criterios", propriedadeId: 1, vigenteDesde: dia("2026-01-01"), versao: 2, parametros: {
+      ...parametros(), versao: 2, criteriosAptidao: { vacas: grupo, novilhas: { ...grupo, idadeMinimaMeses: 15 }, diasAvaliacaoPosParto: 45 },
+    } }];
+    return dados;
+  }
+  it("novilha comprovada com idade atingida requer avaliação e conserva a fonte inicial", () => {
+    expect(calcularElegibilidadesDoConjunto(historico("NOVILHA"), 1, dia("2026-10-29")).get("animal"))
+      .toMatchObject({ elegivel: null, decisaoId: null, aptidaoClinica: { estado: "NAO_DETERMINADA" }, necessidadeAptidao: { estado: "AVALIACAO_DEVIDA", evidenciaIds: ["declaracao"] } });
+  });
+  it("declaração de vaca sem data não aplica idade da novilha nem inventa parto", () => {
+    expect(calcularElegibilidadesDoConjunto(historico("VACA"), 1, dia("2026-10-29")).get("animal"))
+      .toMatchObject({ elegivel: null, necessidadeAptidao: { estado: "PENDENCIA_DADOS", pendencias: ["DATA_PARTO_NAO_COMPROVADA"], evidenciaIds: ["declaracao"] } });
+  });
+  it("conflito com saldo posterior revalida a declaração sem ignorar a pendência", () => {
+    const dados = historico("NOVILHA"); dados.animais[0].partosAntesDaEntrada = 1;
+    expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-10-29")).get("animal")?.necessidadeAptidao)
+      .toMatchObject({ estado: "PENDENCIA_DADOS", pendencias: ["CLASSE_REPRODUTIVA_CONFLITANTE"] });
+  });
+  it("anulação da fonte retira a comprovação da classe e preserva a pendência", () => {
+    const dados = historico("NOVILHA"); dados.iniciais[0].status = "ANULADO";
+    expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-10-29")).get("animal")?.necessidadeAptidao)
+      .toMatchObject({ estado: "PENDENCIA_DADOS", pendencias: ["CLASSE_REPRODUTIVA_NAO_COMPROVADA"], evidenciaIds: [] });
+  });
+  it("mudança de configuração reavalia a necessidade sem criar decisão", () => {
+    const dados = historico("NOVILHA");
+    const anteriores = parametrosElegibilidadeSchema.parse(dados.politicas[0].parametros);
+    dados.politicas.push({ ...dados.politicas[0], id: "nova", versao: 3, vigenteDesde: dia("2026-10-30"), parametros: {
+      ...anteriores, criteriosAptidao: { ...anteriores.criteriosAptidao!, novilhas: { ...anteriores.criteriosAptidao!.novilhas, idadeMinimaMeses: 120 } },
+    } });
+    expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-10-29")).get("animal")?.necessidadeAptidao?.estado).toBe("AVALIACAO_DEVIDA");
+    expect(calcularElegibilidadesDoConjunto(dados, 1, dia("2026-10-30")).get("animal"))
+      .toMatchObject({ elegivel: null, decisaoId: null, necessidadeAptidao: { estado: "CRITERIOS_NAO_ATINGIDOS", criteriosNaoAtingidos: ["IDADE_MINIMA"], politicaId: "nova" } });
+  });
+});

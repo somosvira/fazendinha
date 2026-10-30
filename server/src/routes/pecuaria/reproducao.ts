@@ -1,3 +1,4 @@
+import { consultarManejoAptidao } from "../../services/pecuaria/reproducao/manejo-aptidao.js";
 import { encerramentoLactacaoSchema, manterPesoSecagemSchema, pesoSecagemSchema } from "../../services/pecuaria/reproducao/peso-secagem.schemas.js";
 import { manterPesoSecagem } from "../../services/pecuaria/reproducao/peso-secagem.js";
 import { registrarToqueAptidao, corrigirToqueAptidao } from "../../services/pecuaria/reproducao/toque-aptidao.js";
@@ -891,6 +892,10 @@ reproducaoRouter.post("/decisoes-elegibilidade", validarV4(elegibilidadeSchemas.
 reproducaoRouter.post("/decisoes-elegibilidade/:id/anular", validarV4(elegibilidadeSchemas.anularDecisaoElegibilidadeSchema), async c => {
   try { const b=c.req.valid("json"); return c.json(await elegibilidade.anularDecisaoElegibilidade(s.uuid.parse(c.req.param("id")),{ ...b,
     propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c))); }
+  catch(e) { return falhaV4(c,e); }
+});
+reproducaoRouter.get("/filas-aptidao", async c => {
+  try { return c.json(await consultarManejoAptidao(s.sitio.parse(await resolverEscopoLeitura(c)), s.data.parse(c.req.query("data")))); }
   catch(e) { return falhaV4(c,e); }
 });
 reproducaoRouter.get("/animais/:id/elegibilidade", async c => {

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+vi.mock("../../services/pecuaria/reproducao/manejo-aptidao.js", () => ({ consultarManejoAptidao: mocks.manejoAptidao }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao, encerrarLactacao: mocks.encerrarLactacao }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
@@ -217,4 +218,13 @@ describe("peso da secagem: rota e contrato autorizado", () => {
     expect(r.status).toBe(200);
     expect(mocks.encerrarLactacao).toHaveBeenCalledWith(uid(2),2,"2026-10-20",input.motivo,7,{chave:uid(1),pesoSecagem:input.pesoSecagem});
   });
+});
+
+it("consulta filas de aptidão no sítio autorizado, sem exigir lançamento e com data válida", async () => {
+  mocks.leitura.mockResolvedValue(2);
+  mocks.manejoAptidao.mockResolvedValue({ propriedadeId: 2, dataReferencia: "2026-10-29", itens: [] });
+  const resposta = await app({ ...usuario, flags: [] }).request("/reproducao/filas-aptidao?data=2026-10-29&propriedadeId=999");
+  expect(resposta.status).toBe(200);
+  expect(mocks.manejoAptidao).toHaveBeenCalledWith(2, "2026-10-29");
+  expect((await app().request("/reproducao/filas-aptidao?data=invalida")).status).toBe(422);
 });

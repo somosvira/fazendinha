@@ -1,3 +1,4 @@
+import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { avaliarCriteriosAptidao, type EvidenciaPesoAptidao, type EvidenciaEccAptidao, type NecessidadeAptidao, type ClasseReprodutivaAptidao } from "./criterios-aptidao.calc.js";
 import { concluirAptidaoClinica, evidenciaDecisaoAptidaoVigente, type EvidenciaToqueAptidao, type AptidaoClinica } from "./toque-aptidao.calc.js";
 import { desfechoGestacao } from "./desfecho-gestacao.calc.js";
@@ -29,6 +30,7 @@ export type EntradaElegibilidade = {
   situacaoReprodutiva: string; perdaGestacionalEm: Date | null;
   pendenciasContexto?: string[];
   classeReprodutiva?: ClasseReprodutivaAptidao;
+  classeReprodutivaConflitante?: boolean; evidenciaClasseIds?: string[];
   dataNascimento?: Date | null;
   pesagens?: EvidenciaPesoAptidao[]; escores?: EvidenciaEccAptidao[]; toques?: EvidenciaToqueAptidao[];
 };
@@ -115,10 +117,15 @@ export function calcularElegibilidadeNaData(input: EntradaElegibilidade): Elegib
   const criteriosNecessidade = input.parametrosNecessidade?.criteriosAptidao ?? parametros?.criteriosAptidao;
   const necessidadeAptidao = criteriosNecessidade ? avaliarCriteriosAptidao({
     ...criteriosNecessidade, animalId: input.animalId, chaveCiclo: ciclo?.chaveCiclo ?? "INICIAL", referencia: ref,
-    classeReprodutiva: input.classeReprodutiva ?? (ciclo?.partoId || (ciclo?.paridade ?? 0) > 0 ? "VACA" : ciclo?.paridade === 0 ? "NOVILHA" : "NAO_DETERMINADA"),
+    classeReprodutiva: input.classeReprodutiva ?? (ciclo?.partoId || (ciclo?.paridade ?? 0) > 0 ? "VACA" : "NAO_DETERMINADA"),
     parto: ciclo?.partoId ? ciclo.inicioCiclo : null, dataNascimento: input.dataNascimento ?? null,
     pesagens: input.pesagens ?? [], escores: input.escores ?? [],
   }) : null;
+  if (necessidadeAptidao) {
+    necessidadeAptidao.evidenciaIds.push(...input.evidenciaClasseIds ?? []);
+    if (input.classeReprodutivaConflitante && necessidadeAptidao.estado !== "MANUAL")
+      necessidadeAptidao.pendencias = necessidadeAptidao.pendencias.map(p => p === "CLASSE_REPRODUTIVA_NAO_COMPROVADA" ? "CLASSE_REPRODUTIVA_CONFLITANTE" : p);
+  }
   if (necessidadeAptidao) Object.assign(necessidadeAptidao, { politicaId: input.politicaNecessidade?.id ?? politica?.id ?? null, politicaVersao: input.politicaNecessidade?.versao ?? politica?.versao ?? null });
   const restricoes = input.restricoes.filter(r => r.status === "VALIDO" && !depois(r.data, ref) && (!r.ate || depois(r.ate, ref)));
   if (restricoes.length) {
@@ -148,7 +155,7 @@ export type DadosElegibilidade = {
   gestacoes: Array<HistoricoContextoAnimal["gestacoes"][number] & { motivoEncerramento: string | null; tipoEncerramento?: string | null }>;
   localizacoes: Array<HistoricoContextoAnimal["localizacoes"][number]>;
   avaliacoes: Array<HistoricoContextoAnimal["avaliacoes"][number] & {tentativaId?:string|null;gestacaoId?:string|null}>;
-  iniciais: Array<HistoricoContextoAnimal["iniciais"][number] & { id: string; aptaDesde: Date | null; criadoEm: Date }>;
+  iniciais: Array<HistoricoContextoAnimal["iniciais"][number] & { id: string; aptaDesde: Date | null; criadoEm: Date; classeReprodutiva?: string | null }>;
   vinculos: Array<{ id: string; animalId: string; chaveCiclo: string; inicioCiclo: Date; politicaId: string | null; situacaoInicialId?: string | null }>;
   politicas: Array<{ id: string; versao: number; parametros: unknown; propriedadeId?: number; vigenteDesde?: Date }>;
   decisoes: Array<DecisaoElegibilidade & { vinculoCicloId: string }>;
@@ -193,8 +200,8 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
     // Somente o tipo explícito e os vínculos factuais classificam o encerramento.
     const perda = encerradas.filter(g => desfechoGestacao(g, partos) === "PERDA")
       .sort((a, b) => b.encerradaEm!.getTime() - a.encerradaEm!.getTime())[0];
-    const classeReprodutiva: ClasseReprodutivaAptidao = ultimoParto || (animal.partosAntesDaEntrada > 0 && animal.dataEntrada <= ref) ? "VACA" : animal.partosAntesDaEntrada === 0 ? "NOVILHA" : "NAO_DETERMINADA";
-    const entrada:EntradaElegibilidade={ classeReprodutiva, politicaNecessidade: parametrosNecessidade?.success && vigente ? { id: vigente.id, versao: vigente.versao } : undefined, parametrosNecessidade: parametrosNecessidade?.success ? parametrosNecessidade.data : undefined, dataNascimento: animal.dataNascimento, pesagens: porAnimal(dados.pesagens ?? [], animal.id),
+    const classe = resolverClasseReprodutiva({ referencia: ref, dataEntrada: animal.dataEntrada, partosAntesDaEntrada: animal.partosAntesDaEntrada, partos, iniciais });
+    const entrada:EntradaElegibilidade={ classeReprodutiva: classe.classe, classeReprodutivaConflitante: classe.conflito, evidenciaClasseIds: classe.evidenciaIds, politicaNecessidade: parametrosNecessidade?.success && vigente ? { id: vigente.id, versao: vigente.versao } : undefined, parametrosNecessidade: parametrosNecessidade?.success ? parametrosNecessidade.data : undefined, dataNascimento: animal.dataNascimento, pesagens: porAnimal(dados.pesagens ?? [], animal.id),
       escores: porAnimal(dados.escores ?? [], animal.id), toques: porAnimal(dados.toques ?? [], animal.id).filter(e => !ciclo || e.data >= ciclo.inicioCiclo), animalId: animal.id, propriedadeId, referencia: ref, sexo: animal.sexo,
       propriedadeNaData: contexto.localizacaoNaData?.propriedadeId ?? null, localizacaoConflitante: contexto.pendencias.includes("LOCALIZACOES_SOBREPOSTAS"),
       baixaEm: porAnimal(dados.baixas, animal.id).find(b => !b.estornadaEm && b.data <= ref)?.data ?? null,
@@ -221,4 +228,9 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
     resultado.set(animal.id, item);
   }
   return resultado;
+}
+
+/** A avaliação admite fêmeas em PEV; disponibilidade para IA/TE é decidida separadamente. */
+export function permiteAvaliacaoAptidao(elegibilidade: Pick<ElegibilidadeNaData, "motivos">): boolean {
+  return !elegibilidade.motivos.some(m => ["ANIMAL_NAO_FEMEA", "ANIMAL_BAIXADO", "FORA_DO_SITIO", "LOCALIZACAO_DESCONHECIDA", "LOCALIZACOES_CONFLITANTES"].includes(m));
 }

@@ -52,6 +52,11 @@ export function pesoCompativelIndicador(p: Pick<PesagemPeso, "precisao" | "conte
   return !["ESTIMADO", "INFORMADO"].includes(p.precisao ?? "") && p.contextoHistorico !== "EXTERNO";
 }
 
+/** Série comparável em ordem crescente, limitada pela data de consulta ou baixa. */
+export function pesagensParaIndicadores<T extends PesagemPeso>(pesagens: T[], ate: Date | string): T[] {
+  return pesagens.filter(p => pesoCompativelIndicador(p) && t(p.data) <= t(ate)).sort((a, b) => t(a.data) - t(b.data));
+}
+
 /** GMD entre duas pesagens (kg/dia, 3 casas). `null` se forem do mesmo dia ou fora de ordem. */
 export function gmdEntre(inicial: PesagemPeso, final: PesagemPeso): number | null {
   if (!pesoCompativelIndicador(inicial) || !pesoCompativelIndicador(final)) return null;
@@ -106,9 +111,7 @@ export function resumoPeso(
 ): ResumoPeso {
   const limite = opts.ateData ?? opts.hoje;
   const noCorte = pesagens.filter((p) => t(p.data) <= t(limite));
-  const ordenadas = noCorte
-    .filter(pesoCompativelIndicador)
-    .sort((a, b) => t(a.data) - t(b.data));
+  const ordenadas = pesagensParaIndicadores(noCorte, limite);
 
   const ultimaPesagem = ordenadas[ordenadas.length - 1] ?? null;
   const ultimo = ultimaPesagem ? { kg: arredondarPeso(ultimaPesagem.pesoKg), data: iso(ultimaPesagem.data) } : null;

@@ -22,7 +22,7 @@ import { avaliarCategoria, faixaNascimentoParaIdade, validarDataCategoriaManual,
 import { carregarRegras, manualDe, SELECT_MANUAL_ABERTA, SELECT_PARTOS_CATEGORIA, whereCategoria, whereSemCategoria } from "./categorias.js";
 import { planejarBaixa, planejarEstornoBaixa, motivoAceito, mensagemMotivoRecusado, BaixaError } from "./baixa.calc.js";
 import { agregarPainel, mapearAnimalResumo, mapearContextoProdutivoFicha, mapearRegularizacaoHistoricaBaixa, resumoAuditoria, type AnimalResumo, type AnimalFicha, type ItemComposicaoFicha, type PainelRebanho, type FiliacaoLadoDTO } from "./mappers.js";
-import { resumoPeso, pesoCompativelIndicador } from "./peso.calc.js";
+import { resumoPeso, pesagensParaIndicadores } from "./peso.calc.js";
 import { diferencas, type CampoAlteracao } from "./auditoria.calc.js";
 import { consultarAuditoriaAnimal } from "./auditoria-animal.js";
 import type {
@@ -446,14 +446,23 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       const [localizacoes, destinos, pesagens, primeiraBaixa, primeiraCategoriaManual] = await Promise.all([
         tx.localizacaoAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
         tx.finalidadeAnimal.findMany({ where: { animalId: id }, select: { id: true, desde: true, ate: true } }),
-        tx.pesagem.findMany({ where: { animalId: id }, select: { id: true, data: true, tipo: true } }),
+        tx.pesagem.findMany({ where: { animalId: id }, select: {
+          id: true, data: true, tipo: true, referenciaHistorica: true, ideagriId: true, contextoHistorico: true,
+          vinculosParto: { select: { id: true }, take: 1 }, vinculosSecagem: { select: { id: true }, take: 1 },
+        } }),
         tx.baixaAnimal.findFirst({ where: { animalId: id, estornadaEm: null }, orderBy: { data: "asc" } }),
         tx.categoriaManualAnimal.findFirst({ where: { animalId: id }, orderBy: { desde: "asc" }, select: { desde: true } }),
       ]);
+      // Cargas anteriores à referência histórica já têm proveniência no vínculo de origem.
+      // A leitura ocorre sob a mesma trava do animal e dentro da transação da edição.
+      const pesosImportados = await idsPesagensImportadas(tx, pesagens.map(p => p.id));
       ajuste = planejarAjusteEntrada({
         entradaAntiga: animal.dataEntrada, entradaNova,
         nascimentoAntigo: animal.dataNascimento, nascimentoNovo,
-        localizacoes, destinos, pesagens,
+        localizacoes, destinos, pesagens: pesagens.map(p => ({
+          ...p, vinculadaImportacao: pesosImportados.has(p.id),
+          vinculadaParto: p.vinculosParto.length > 0, vinculadaSecagem: p.vinculosSecagem.length > 0,
+        })),
         primeiraBaixaData: primeiraBaixa?.data ?? null,
         primeiraCategoriaManualDesde: primeiraCategoriaManual?.desde ?? null,
       });
@@ -551,7 +560,7 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       await aplicarComposicaoCalculada(tx, id, composicaoSugeridaEdicao, usuarioId);
     }
 
-    // o histórico que começava na entrada/nascimento antigos acompanha as novas datas
+    // Linhas iniciais e pesagens cadastrais comuns acompanham as novas datas; fatos preservados não.
     if (ajuste) {
       if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
       if (ajuste.moverDestino) {
@@ -821,10 +830,12 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
 
   const destinoAtual = destinos.find((d) => d.ate == null) ?? null;
   const baixaAtual = baixas.find((s) => s.estornadaEm == null) ?? null;
-  const pesagensIndicadores = pesagens.filter(pesoCompativelIndicador);
-  const ultimoPeso = pesagensIndicadores[0] ? { pesoKg: Number(pesagensIndicadores[0].pesoKg), data: pesagensIndicadores[0].data } : null;
   // baixado: idade/categoria contam até a data da baixa, não até hoje (K5)
   const hoje = baixaAtual ? baixaAtual.data : hojeFazendaDate();
+  const pesos = pesagens.map(p => ({ ...p, pesoKg: Number(p.pesoKg) }));
+  const pesagensIndicadores = pesagensParaIndicadores(pesos, hoje);
+  const ultimoPeso = pesagensIndicadores.at(-1) ?? null;
+  const pesagemAnterior = pesagensIndicadores.at(-2) ?? null;
   const manualAberta = manuais.find((m) => m.ate == null)?.categoria ?? null;
 
   // baixado não tem localização/destino abertos: sítio, lote e destino vêm da linha que a
@@ -849,15 +860,15 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     destino: destinoFicha,
     composicao,
     ultimoPeso,
-    pesagemAnterior: pesagens[1] ? { pesoKg: Number(pesagens[1].pesoKg), data: pesagens[1].data } : null,
+    pesagemAnterior,
     situacao: baixaAtual ? "BAIXADO" : "ATIVO",
     idadeNaBaixa: baixaAtual != null,
     noLocalDesde: locAtual ? locAtual.desde : null,
     baixa: baixaAtual ? { data: baixaAtual.data, tipo: baixaAtual.tipo } : null,
   });
 
-  const peso = resumoPeso(pesagens.map((p) => ({ ...p, pesoKg: Number(p.pesoKg) })), {
-    hoje: hojeFazendaDate(),
+  const peso = resumoPeso(pesos, {
+    hoje,
     periodoDias,
     ateData: baixaAtual ? baixaAtual.data : null,
   });
@@ -1688,6 +1699,18 @@ async function exigirPesagem(db: DbPecuaria, id: string) {
   return pesagem;
 }
 
+async function idsPesagensImportadas(db: DbPecuaria, ids: string[]): Promise<Set<string>> {
+  const vinculos = ids.length ? await db.vinculoImportacaoPecuaria.findMany({
+    where: { entidadeDestino: "Pesagem", destinoId: { in: ids } }, select: { destinoId: true },
+  }) : [];
+  return new Set(vinculos.map(v => v.destinoId));
+}
+
+async function exigirPesagemSemOrigemHistorica(db: DbPecuaria, pesagem: { id: string; referenciaHistorica: string | null; ideagriId: number | null }) {
+  if (pesagem.referenciaHistorica != null || pesagem.ideagriId != null || (await idsPesagensImportadas(db, [pesagem.id])).has(pesagem.id))
+    throw new RebanhoError("CONFLITO", "Pesagem histórica exige reconciliação auditada da origem, sem edição ou exclusão operacional.");
+}
+
 /** O chamador já trava o animal e valida o sítio do fato. */
 export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, input: EditarPesagemInput, usuarioId: number | null) {
   const referencia = await exigirPesagem(tx, id);
@@ -1695,8 +1718,7 @@ export async function editarPesagemTx(tx: Prisma.TransactionClient, id: string, 
   const existente = await exigirPesagem(tx, id);
   if (await tx.vinculoPesagemSecagem.findFirst({ where: { pesagemId: id, revogadoEm: null } }))
     throw new RebanhoError("CONFLITO", "Pesagem vinculada à secagem exige correção explícita pelo encerramento da lactação, preservando o histórico", "id");
-  if (existente.referenciaHistorica)
-    throw new RebanhoError("CONFLITO", "Pesagem histórica exige reconciliação auditada da origem, sem edição operacional.");
+  await exigirPesagemSemOrigemHistorica(tx, existente);
   const precisao = input.precisao ?? existente.precisao;
   if ((input.origem ?? existente.origem) === "BALANCA" && ["ESTIMADO", "INFORMADO"].includes(precisao))
     throw new RebanhoError("VALIDACAO", "Estimativa ou peso informado não é aferição por balança", "precisao");
@@ -1758,8 +1780,7 @@ export async function excluirPesagem(id: string, usuarioId: number | null, escop
   await prisma.$transaction(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const existente = await exigirPesagem(tx, id);
-    if (existente.referenciaHistorica)
-      throw new RebanhoError("CONFLITO", "Pesagem histórica exige reconciliação auditada, sem excluir a origem.");
+    await exigirPesagemSemOrigemHistorica(tx, existente);
     if (await tx.vinculoPesagemSecagem.count({ where: { pesagemId: id } }))
       throw new RebanhoError("CONFLITO", "Pesagem com histórico de secagem não pode ser apagada; preserve o fato e revise sua associação", "id");
     if (await tx.vinculoPesagemParto.count({ where: { pesagemId: id } }))

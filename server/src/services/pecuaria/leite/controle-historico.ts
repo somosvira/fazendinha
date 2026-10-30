@@ -1,8 +1,13 @@
 import { hashDados } from "../reproducao/operacoes.js";
-import { Prisma } from "@prisma/client";
+import { Prisma, type ControleHistoricoLeite } from "@prisma/client";
+import { z } from "zod";
+import { prisma } from "../../../db.js";
+import { conferirSitioLeiteTx } from "./configuracoes.js";
+import { consultarControlesColetivosSchema, type ConsultaControlesColetivos } from "./historico.schemas.js";
+import type { ControleHistoricoLeiteDTO } from "./controle-historico.contratos.js";
 import { controleHistoricoLeiteSchema, resumirControleHistorico, type ControleHistoricoLeiteInput } from "./controle-historico.calc.js";
-import { validarContextoHistoricoAnimalTx } from "../importacao/pesagens.js";
-import { auditar, hojeFazendaDate, RebanhoError, travarAnimais } from "../rebanho/regras.js";
+import { validarContextoControleHistoricoLeiteTx } from "./controle-historico-contexto.js";
+import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 export interface FonteControleHistorico {
     bancoOrigem: string;
     chaveOrigem: string;
@@ -22,8 +27,6 @@ export async function prepararControleHistoricoLeiteTx(tx: Prisma.TransactionCli
     const dados = controleHistoricoLeiteSchema.parse(input.registro);
     if (!Number.isInteger(usuarioId) || usuarioId <= 0 || !await tx.usuario.findUnique({ where: { id: usuarioId }, select: { id: true } }))
         throw new RebanhoError("VALIDACAO", "Histórico exige usuário real identificado");
-    if (new Date(dados.fim) > hojeFazendaDate())
-        throw new RebanhoError("VALIDACAO", "Histórico não pode estar no futuro");
     const referencia = JSON.stringify([input.bancoOrigem, input.chaveOrigem]);
     const existente = await tx.controleHistoricoLeite.findUnique({ where: opcoes.destinoId ? { id: opcoes.destinoId } : { referenciaHistorica: referencia } });
     if (existente) {
@@ -40,21 +43,9 @@ export async function prepararControleHistoricoLeiteTx(tx: Prisma.TransactionCli
         else if (!igual(origem.dados, dados) || (opcoes.operacao !== "VINCULAR" && origem.usuarioId !== usuarioId))
             throw new RebanhoError("CONFLITO", "Origem histórica já registrada com outros dados/autoria");
     }
-    if (dados.animalId) {
-        await validarContextoHistoricoAnimalTx(tx, { animalId: dados.animalId, data: dados.inicio, contexto: dados.contexto, propriedadeId: dados.propriedadeId, evidencia: dados.evidencia });
-        const a = await tx.animal.findUnique({ where: { id: dados.animalId }, select: { sexo: true } });
-        if (a?.sexo !== "F")
-            throw new RebanhoError("VALIDACAO", "Controle individual exige fêmea");
-    }
-    else if (dados.propriedadeId !== null && !await tx.propriedade.findUnique({ where: { id: dados.propriedadeId }, select: { id: true } }))
+    const lactacao = await validarContextoControleHistoricoLeiteTx(tx, dados);
+    if (!dados.animalId && dados.propriedadeId !== null && !await tx.propriedade.findUnique({ where: { id: dados.propriedadeId }, select: { id: true } }))
         throw new RebanhoError("NAO_ENCONTRADO", "Sítio não encontrado");
-    let lactacao: unknown = null;
-    if (dados.lactacaoId) {
-        const l = await tx.lactacaoAnimal.findUnique({ where: { id: dados.lactacaoId } });
-        if (!l || l.animalId !== dados.animalId || l.propriedadeId !== dados.propriedadeId || l.inicio > new Date(dados.inicio) || l.encerradaEm && l.encerradaEm <= new Date(dados.fim))
-            throw new RebanhoError("VALIDACAO", "Lactação não comprova vínculo no período do controle");
-        lactacao = l;
-    }
     const candidatos = existente ? [] : await tx.controleHistoricoLeite.findMany({ where: { animalId: dados.animalId, propriedadeId: dados.propriedadeId, inicio: new Date(dados.inicio), fim: new Date(dados.fim), tipo: dados.tipo }, select: { id: true } });
     return { dados, referencia, existenteId: existente?.id ?? null, candidatosDuplicidade: candidatos.map(c => c.id), contexto: { lactacao, semLactacaoComprovada: dados.animalId !== null && !dados.lactacaoId, versao: existente?.versao ?? null }, resumo: resumirControleHistorico(dados) };
 }
@@ -90,7 +81,38 @@ export async function registrarControleHistoricoLeiteTx(tx: Prisma.TransactionCl
 
 /** Documentos históricos permanecem separados da série diária e dos seus totais.
  * Esta leitura só retorna o sítio comprovado, sem atribuir documentos externos. */
-export async function consultarControlesHistoricosLeiteTx(tx:Prisma.TransactionClient,propriedadeId:number,animalId:string,inicio:string,fim:string){
+const parcelasDocumentaisSchema = z.array(z.object({ rotulo: z.string().nullable(), hora: z.string().nullable(), quantidade: z.number().finite().nonnegative().nullable() }));
+const origemDocumentalSchema = z.object({
+ bancoOrigem: z.string().nullish(), chaveOrigem: z.string().nullish(),
+ dados: z.object({ evidencia: z.string().nullish() }).nullish(),
+});
+function controleDocumentalDTO(r: ControleHistoricoLeite): ControleHistoricoLeiteDTO {
+ const origem = origemDocumentalSchema.safeParse(r.provenienciaSnapshot);
+ return {
+  id:r.id,tipo:z.enum(["CONTROLE_PERIODICO","AGREGADO_MENSAL"]).parse(r.tipo),
+  inicio:r.inicio.toISOString().slice(0,10),fim:r.fim.toISOString().slice(0,10),total:r.total?.toString()??null,
+  unidade:z.enum(["L","KG"]).parse(r.unidade),referenciaUnidade:r.referenciaUnidade,
+  parcelas:parcelasDocumentaisSchema.parse(r.parcelas),lactacaoId:r.lactacaoId,origemColetiva:r.origemColetiva,
+  versao:r.versao,contexto:z.enum(["INTERNO","EXTERNO"]).parse(r.contextoHistorico),semEfeitoEstoqueFinanceiro:true,
+  origem:{banco:origem.success?origem.data.bancoOrigem??null:null,chave:origem.success?origem.data.chaveOrigem??null:null,
+   evidencia:origem.success?origem.data.dados?.evidencia??null:null},
+ };
+}
+export async function consultarControlesHistoricosLeiteTx(tx:Prisma.TransactionClient,propriedadeId:number,animalId:string,inicio:string,fim:string): Promise<ControleHistoricoLeiteDTO[]> {
  const registros=await tx.controleHistoricoLeite.findMany({where:{propriedadeId,animalId,inicio:{lte:new Date(fim)},fim:{gte:new Date(inicio)}},orderBy:[{inicio:"desc"},{id:"asc"}]});
- return registros.map(r=>({id:r.id,tipo:r.tipo,inicio:r.inicio.toISOString().slice(0,10),fim:r.fim.toISOString().slice(0,10),total:r.total?.toString()??null,unidade:r.unidade,referenciaUnidade:r.referenciaUnidade,parcelas:r.parcelas,lactacaoId:r.lactacaoId,versao:r.versao,contexto:r.contextoHistorico,semEfeitoEstoqueFinanceiro:true as const}));
+ return registros.map(controleDocumentalDTO);
+}
+
+export async function consultarControlesColetivosLeiteTx(tx: Prisma.TransactionClient, propriedadeId: number, input: ConsultaControlesColetivos) {
+ const filtro=consultarControlesColetivosSchema.parse(input);
+ await conferirSitioLeiteTx(tx,propriedadeId);
+ const where:Prisma.ControleHistoricoLeiteWhereInput={propriedadeId,contextoHistorico:"INTERNO",tipo:"AGREGADO_MENSAL",animalId:null,inicio:{lte:new Date(filtro.fim)},fim:{gte:new Date(filtro.inicio)}};
+ const [registros,total]=await Promise.all([
+  tx.controleHistoricoLeite.findMany({where,orderBy:[{inicio:"desc"},{id:"asc"}],skip:(filtro.pagina-1)*filtro.tamanho,take:filtro.tamanho}),
+  tx.controleHistoricoLeite.count({where}),
+ ]);
+ return {propriedadeId,periodo:{inicio:filtro.inicio,fim:filtro.fim},itens:registros.map(controleDocumentalDTO),total,pagina:filtro.pagina,tamanho:filtro.tamanho};
+}
+export function consultarControlesColetivosLeite(propriedadeId:number,filtro:ConsultaControlesColetivos) {
+ return prisma.$transaction(tx=>consultarControlesColetivosLeiteTx(tx,propriedadeId,filtro),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }

@@ -199,12 +199,18 @@ export async function listarAcompanhamentos(propriedadeId:number,animalId:string
  return prisma.$transaction(async tx=>{
   if(animalId)await conferirAnimalNoFato(tx,animalId,propriedadeId,dia(data));
   const locais=animalId?[{animalId}]:await tx.localizacaoAnimal.findMany({where:{propriedadeId,desde:{lte:dia(data)},OR:[{ate:null},{ate:{gt:dia(data)}}]},select:{animalId:true}});
-  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:locais.map(l=>l.animalId)},dataReferencia:{lte:dia(data)}},include:{exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{id:"asc"}]});
-  return demandas.map(({exameOrigem,...demanda})=>{
-   const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);
-   // A leitura revela resolução obsoleta sem reescrever o histórico ou adotar outra âncora.
-   return {...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{}),pendencias};
-  });
+  return carregarAcompanhamentosNaDataTx(tx,locais.map(l=>l.animalId),dia(data));
+ });
+}
+
+/** IDs autorizados pelo chamador; a leitura compartilha a projeção de validade da origem sem escrever. */
+export async function carregarAcompanhamentosNaDataTx(tx: Prisma.TransactionClient, animalIds: string[], referencia: Date) {
+ if (!animalIds.length) return [];
+ const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:animalIds},dataReferencia:{lte:referencia}},include:{exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
+ return demandas.map(({exameOrigem,...demanda})=>{
+  const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);
+  // A leitura revela resolução obsoleta sem reescrever o histórico ou adotar outra âncora.
+  return {...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{}),pendencias};
  });
 }
 

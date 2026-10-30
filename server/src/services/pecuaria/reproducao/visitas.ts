@@ -1,3 +1,4 @@
+import { permiteAvaliacaoAptidao } from "./elegibilidade.calc.js";
 import { obterElegibilidadesNaDataTx } from "./elegibilidade.js";
 import { registrarToqueAptidaoTx } from "./toque-aptidao.js";
 import { registrarToqueAptidaoSchema } from "./toque-aptidao.schemas.js";
@@ -176,7 +177,7 @@ export async function adicionarAtividadeTx(
       if (aptidoes) {
         const necessidadeId = aptidao?.necessidadeAptidao?.necessidadeId ?? `APTIDAO:${animal.id}:${aptidao?.ciclo?.chaveCiclo ?? "INICIAL"}`;
         const informada = (input.contexto.necessidadesPorAnimal as Record<string, unknown> | undefined)?.[animal.id];
-        if (input.tipo !== "EXAME_SANITARIO" || animal.sexo !== "F" || informada !== necessidadeId) erro("A necessidade de aptidão mudou; refaça a prévia", "contexto");
+        if (input.tipo !== "EXAME_SANITARIO" || animal.sexo !== "F" || !aptidao || !permiteAvaliacaoAptidao(aptidao) || informada !== necessidadeId) erro("A necessidade de aptidão mudou; refaça a prévia", "contexto");
         const agendada = await tx.participanteVisita.findFirst({ where: { animalId: animal.id, status: "PENDENTE", snapshot: { path: ["necessidadeAptidaoId"], equals: necessidadeId },
           AtividadeVisita: { VisitaVeterinaria: { propriedadeId: input.propriedadeId, encerradaEm: null } } } });
         if (agendada) erro("A avaliação de aptidão já está agendada em visita aberta; use o atendimento existente", "animalId");

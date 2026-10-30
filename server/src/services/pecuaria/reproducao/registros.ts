@@ -1,3 +1,4 @@
+import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
 import type { PesoSecagemInput } from "./peso-secagem.schemas.js";
 import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
@@ -916,12 +917,22 @@ export async function criarSituacaoInicial(
     usuarioId,
     "SITUACAO_INICIAL",
     async (tx) => {
-      await conferirMatrizTx(
+      const animal = await conferirMatrizTx(
         tx,
         input.animalId,
         input.propriedadeId,
         dia(input.data),
       );
+      if (input.classeReprodutiva === "NOVILHA") {
+        const referencia = dia(input.data);
+        const [partos, iniciais] = await Promise.all([
+          tx.partoAnimal.findMany({ where: { animalId: input.animalId, status: "VALIDO", data: { lte: referencia } } }),
+          tx.situacaoInicialReprodutiva.findMany({ where: { animalId: input.animalId, status: "VALIDO", data: { lte: referencia } } }),
+        ]);
+        const classe = resolverClasseReprodutiva({ referencia, dataEntrada: animal.dataEntrada, partosAntesDaEntrada: animal.partosAntesDaEntrada, partos,
+          iniciais: [...iniciais, { id: "NOVA_DECLARACAO", data: referencia, criadoEm: new Date(), status: "VALIDO", classeReprodutiva: input.classeReprodutiva }] });
+        if (classe.conflito) erro("Nuliparidade incompatível com o histórico comprovado; reconcilie as evidências", "classeReprodutiva");
+      }
       const { chave: _chave, data, aptaDesde, ...resto } = input;
       const fato = await tx.situacaoInicialReprodutiva.create({
         data: {

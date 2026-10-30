@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { consultarOrigensGeraisTx } from "./leite/origens-gerais.js";
 import { resolverFinalidadeLeite } from "./leite/finalidade.calc.js";
 import { RebanhoError, hojeFazendaDate } from "./rebanho/regras.js";
+import { conferirControlesHistoricosLeiteTx } from "./leite/controle-historico-contexto.js";
+import { validarContextoHistoricoAnimalTx } from "./importacao/pesagens.js";
 
 /** Mesmo uma inclusão depois excluída conserva a origem da folha guardada. */
 export async function conferirLocalizacoesComProducaoTx(tx: Prisma.TransactionClient, localizacaoIds: string[]) {
@@ -124,6 +126,7 @@ export async function conferirFatosNaBaixa(
     } }),
     tx.medicaoGeralLeite.count({ where: { animaisOrigem: { array_contains: [animalId] }, sessao: { dia: { dataOperacional: { gt: data } } } } }),
     tx.parcelaDestinoLeite.count({ where: { animalId, ativo: true, destino: { status: "CONFIRMADO", data: { gt: data } } } }),
+    tx.controleHistoricoLeite.count({ where: { animalId, fim: { gt: data } } }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(
@@ -327,6 +330,27 @@ export async function conferirHistoricoDosFatos(
       );
     }
   }
+  // O cadastro e as movimentações já aplicaram as localizações propostas sob a trava do
+  // animal. Pesos estruturados conservam o contexto factual; legado desconhecido não o recebe.
+  const pesos = await tx.pesagem.findMany({
+    where: { animalId: { in: animalIds }, contextoHistorico: { in: ["INTERNO", "EXTERNO"] } },
+    select: { id: true, animalId: true, data: true, contextoHistorico: true, propriedadeId: true },
+  });
+  for (const peso of pesos) {
+    const contexto = peso.contextoHistorico;
+    if (contexto !== "INTERNO" && contexto !== "EXTERNO") continue;
+    try {
+      await validarContextoHistoricoAnimalTx(tx, {
+        animalId: peso.animalId, data: peso.data.toISOString().slice(0, 10),
+        contexto, propriedadeId: peso.propriedadeId,
+        evidencia: "Contexto factual da pesagem preservado",
+      });
+    } catch (erro) {
+      if (!(erro instanceof RebanhoError)) throw erro;
+      throw new RebanhoError("CONFLITO", `A alteração invalida a pesagem ${peso.id} (${peso.data.toISOString().slice(0, 10)}): ${erro.message}. Reconcilie o fato antes`, erro.campo);
+    }
+  }
+  await conferirControlesHistoricosLeiteTx(tx, animalIds);
 }
 
 /** Cadastro indevido não serve para ocultar reprodução, gestações ou crias verdadeiras. */
@@ -350,6 +374,7 @@ export async function conferirCadastroIndevidoSemFatosTx(
     tx.participanteProducaoLeite.count({ where: { animalId } }),
     tx.medicaoGeralLeite.count({ where: { animaisOrigem: { array_contains: [animalId] } } }),
     tx.parcelaDestinoLeite.count({ where: { animalId } }),
+    tx.controleHistoricoLeite.count({ where: { animalId } }),
   ]);
   if (fatos.some(Boolean))
     throw new RebanhoError(

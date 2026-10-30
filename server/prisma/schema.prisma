@@ -2414,6 +2414,8 @@ model SituacaoInicialReprodutiva {
   criadoEm          DateTime             @default(now())
   criadoPorId       Int?
   situacao          String
+  // Declaração explícita; ausência não comprova nuliparidade. Proveniência no fato e auditoria.
+  classeReprodutiva String?
   aptaDesde         DateTime?            @db.Date
   observacao        String?
 
