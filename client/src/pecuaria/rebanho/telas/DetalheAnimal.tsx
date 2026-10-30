@@ -25,6 +25,7 @@ import { FormDestino } from "../forms/FormDestino";
 import { FormAlterarCategoria } from "../forms/FormAlterarCategoria";
 import { FormPesagem } from "../forms/FormPesagem";
 import { FormBaixa } from "../forms/FormBaixa";
+import { FormBaixaHistorica } from "../forms/FormBaixaHistorica";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira, Panel, Pill } from "../../../financeiro/financeiro-ui";
@@ -139,6 +140,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   const [voltandoAutomatico, setVoltandoAutomatico] = useState(false);
   const [pesagemForm, setPesagemForm] = useState<{ modo: "novo" } | { modo: "editar"; pesagem: Pesagem } | null>(null);
   const [dandoBaixa, setDandoBaixa] = useState(false);
+  const [baixaHistorica, setBaixaHistorica] = useState<{ baixa?: AnimalFicha["historicoBaixas"][number] } | null>(null);
   const [estornandoBaixa, setEstornandoBaixa] = useState(false);
   const [excluindoCadastro, setExcluindoCadastro] = useState(false);
   const [desfazendoLocalizacao, setDesfazendoLocalizacao] = useState(false);
@@ -146,7 +148,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   const [excluindoPesagem, setExcluindoPesagem] = useState<Pesagem | null>(null);
   const [emAcao, setEmAcao] = useState(false);
   const [erroAcao, setErroAcao] = useState<string | null>(null);
-  const dialogoAberto = Boolean(identificandoCria || editandoDados || editandoComposicao || definindoFiliacao || movimentando || mudandoDestino || alterandoCategoria || voltandoAutomatico || pesagemForm || dandoBaixa || estornandoBaixa || excluindoCadastro || desfazendoLocalizacao || desfazendoDestino || excluindoPesagem);
+  const dialogoAberto = Boolean(identificandoCria || editandoDados || editandoComposicao || definindoFiliacao || movimentando || mudandoDestino || alterandoCategoria || voltandoAutomatico || pesagemForm || dandoBaixa || baixaHistorica || estornandoBaixa || excluindoCadastro || desfazendoLocalizacao || desfazendoDestino || excluindoPesagem);
   const haviaDialogo = useRef(false);
   useEffect(() => {
     const devolver = haviaDialogo.current && !dialogoAberto;
@@ -265,6 +267,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
                 {animal.categoriaOrigem === "MANUAL" && <Button secondary onClick={() => { setAcoesAbertas(false); setErroAcao(null); setVoltandoAutomatico(true); }}>Voltar ao automático</Button>}
                 {secaoAtiva !== "cadastro" && <Button secondary onClick={() => { setAcoesAbertas(false); setEditandoDados(true); }}>Editar dados</Button>}
                 <Button secondary onClick={() => { setAcoesAbertas(false); setEditandoComposicao(true); }}>Editar composição</Button>
+                <Button secondary onClick={() => { setAcoesAbertas(false); setBaixaHistorica({}); }}>Regularizar baixa histórica</Button>
                 <Button danger onClick={() => { setAcoesAbertas(false); setDandoBaixa(true); }}>Dar baixa</Button>
                 <Button danger onClick={() => { setAcoesAbertas(false); setExcluindoCadastro(true); }}>Excluir cadastro</Button>
               </div>}
@@ -417,7 +420,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </CardFicha>}
 
 
-      <HistoricoBaixas historicoBaixas={animal.historicoBaixas} />
+      <HistoricoBaixas historicoBaixas={animal.historicoBaixas} onRevisar={podeLancar ? baixa => setBaixaHistorica({ baixa }) : undefined} />
       <CardFicha icon={ArrowLeftRight} titulo="Movimentações" className="lg:col-span-2">
         <div className="-m-5">
           <HistoricoMovimentacoes
@@ -467,6 +470,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setAlterandoCategoria(false); }}
     />}
     {pesagemForm && <FormPesagem animalId={animal.id} pesagem={pesagemForm.modo === "editar" ? pesagemForm.pesagem : null} onFechar={() => setPesagemForm(null)} onSalvo={async () => { setPesagemForm(null); await carregar(); }} />}
+    {baixaHistorica && catalogos && <FormBaixaHistorica animal={animal} baixa={baixaHistorica.baixa} motivos={catalogos.motivosBaixa} onFechar={() => setBaixaHistorica(null)} onSalvo={async () => { const ficha = await buscarFichaAnimal(animal.id, { periodoDias: periodoGmd }, sitioConsulta); setAnimal(ficha); tocar(); setBaixaHistorica(null); }} />}
     {dandoBaixa && catalogos && <FormBaixa animal={animal} motivos={catalogos.motivosBaixa} onFechar={() => setDandoBaixa(false)} onSalvo={async (atualizado) => { setAnimal(atualizado); tocar(); setDandoBaixa(false); }} />}
 
     {voltandoAutomatico && <ModalMotivo titulo="Voltar ao automático" eyebrow={`Animal ${animal.brinco}`} impacto={<p>O animal passa a ser {animal.categoriaCalculada?.nome ?? "Sem categoria"} pelo cálculo.</p>} labelManter="Manter categoria" labelConfirmar="Confirmar" confirmando={emAcao} erro={erroAcao} onFechar={() => setVoltandoAutomatico(false)} onConfirmar={(motivo) => { void executar(() => removerCategoriaManual(animal.id, { motivo }), () => setVoltandoAutomatico(false)); }} />}

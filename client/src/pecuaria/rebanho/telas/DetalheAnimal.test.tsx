@@ -558,3 +558,15 @@ it("link do protocolo conserva hash, sítio explícito e retorno na ficha", asyn
   expect(vi.mocked(ReproducaoAnimal).mock.calls.at(-1)?.[0].propriedadeId).toBe(7);
   expect(screen.getByRole("link", { name: "Voltar ao protocolo" }).getAttribute("href")).toBe("/pecuaria/reproducao/programacoes/g1?sitio=7");
 });
+
+ it("oferece regularização histórica na ficha ativa com permissão de lançamento", async () => {
+  await montar(base);
+  fireEvent.click(screen.getByRole("button", { name: "Regularizar baixa histórica" }));
+  expect(await screen.findByRole("dialog", { name: "Regularizar baixa histórica" })).toBeTruthy();
+});
+it("omite regularização histórica para usuário de consulta", async () => {
+  vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
+  render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} podeLancar={false} />, { wrapper: Wrapper });
+  await screen.findByText("Mimosa");
+  expect(screen.queryByRole("button", { name: "Regularizar baixa histórica" })).toBeNull();
+});

@@ -94,12 +94,28 @@ async function validarTipoAplicacaoPerfil(tx: Prisma.TransactionClient, tipoApli
   }
 }
 
+/** Null é admissível apenas se o mesmo campo já era desconhecido no catálogo sanitário. */
+function validarCarenciasPerfil(
+  perfil: ProdutoInput["perfilSanitario"],
+  anterior?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null } | null,
+  conservarDesconhecido = false,
+) {
+  for (const campo of ["carenciaLeiteHoras", "carenciaCarneHoras"] as const) {
+    const horas = perfil?.[campo];
+    if (horas == null && conservarDesconhecido && anterior?.[campo] == null) continue;
+    if (horas == null || !Number.isInteger(horas) || horas < 0) {
+      throw new FinanceiroError("VALIDACAO", "Informe a carência em horas; use zero somente para Sem carência.", `perfilSanitario.${campo}`);
+    }
+  }
+}
+
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
   const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
   if (produto.categoriaId == null) {
     throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
   }
+  if (produto.usoSanitario) validarCarenciasPerfil(perfilSanitario);
   await validarFornecedores(tx, fornecedorIds, new Set());
   await validarCentrosCusto(tx, centroCustoIds, new Set());
   if (perfilSanitario && !produto.usoSanitario) throw new FinanceiroError("VALIDACAO", "Selecione o uso sanitário para preencher esse perfil", "usoSanitario");
@@ -141,6 +157,9 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       }
       if ((perfilSanitario || anterior.perfilSanitarioProduto) && !(produto.usoSanitario ?? anterior.usoSanitario)) throw new FinanceiroError("CONFLITO", "O perfil sanitário exige uso sanitário", "usoSanitario");
       if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
+      if ((produto.usoSanitario ?? anterior.usoSanitario) && (perfilSanitario !== undefined || !anterior.usoSanitario)) {
+        validarCarenciasPerfil(perfilSanitario, anterior.perfilSanitarioProduto, anterior.usoSanitario);
+      }
       const vinculos = [
         ["usoGenetico", "material genético", () => tx.materialGenetico.count({ where: { produtoId: id } })],
         ["usoSanitario", "aplicações ou protocolos sanitários", async () => (await tx.aplicacaoProduto.count({ where: { produtoId: id } })) + (await tx.etapaProtocolo.count({ where: { produtoId: id } })) + (await tx.protocoloIatf.count({where:{etapas:{array_contains:[{planoAplicacao:{produtoId:id}}]}}}))],

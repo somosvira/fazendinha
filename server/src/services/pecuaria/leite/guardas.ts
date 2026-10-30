@@ -5,6 +5,9 @@ import { RebanhoError } from "../rebanho/regras.js";
 
 /** Não invalida silenciosamente a origem de uma medição resolvida. Exclusão explícita mantém a trilha. */
 export async function conferirLactacaoComProducaoTx(tx: Prisma.TransactionClient, animalId: string, lactacaoId: string, inicio: Date, fim: Date | null) {
+  const controles = await tx.controleHistoricoLeite.findMany({ where: { lactacaoId }, select: { id: true, inicio: true, fim: true } });
+  if (controles.some(c => c.inicio < inicio || fim !== null && c.fim >= fim))
+    throw new RebanhoError("CONFLITO", "A alteração da lactação invalida um controle histórico de leite vinculado; reconcilie o documento antes", "encerradaEm");
   const foraDoIntervalo: Prisma.DiaProducaoLeiteWhereInput[] = [{ dataOperacional: { lt: inicio } }];
   if (fim) foraDoIntervalo.push({ dataOperacional: { gte: fim } });
   const participantes = await tx.participanteProducaoLeite.findMany({ where: {

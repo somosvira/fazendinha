@@ -17,6 +17,7 @@ export interface DiaHistoricoProdutivoDTO {
   totais: ResumoProducaoLeite;
 }
 export interface HistoricoProdutivoLeiteDTO {
+  controlesDocumentais?: import("./controle-historico.contratos.js").ControleHistoricoLeiteDTO[];
   controleIndividual?: { quantidade: number; unidade: "DIAS" | "MESES"; ultimaAfericao: string | null; proximaAfericao: string | null };
   propriedadeId: number; animal: { id: string; brinco: string; nome: string | null };
   periodo: { inicio: string; fim: string }; itens: DiaHistoricoProdutivoDTO[];

@@ -1,7 +1,15 @@
 import { reqV4 } from "./api";
 export type PapelElegibilidade = "NENHUM" | "DOADORA" | "RECEPTORA";
+export type GrupoCriteriosAptidao = {
+  idadeMinimaMeses: number | null; percentualPesoAdulto: number | null; pesoMinimoKg: number | null; eccMinimo: number | null;
+  pesoAdultoReferenciaKg: number | null; validadePesoDias: number | null;
+  precisaoPesoAceita: ("MEDIDO" | "ESTIMADO" | "INFORMADO")[];
+  escalaEcc: { minimo: number; maximo: number } | null; validadeEccDias: number | null;
+};
+export type CriteriosAptidao = { vacas: GrupoCriteriosAptidao; novilhas: GrupoCriteriosAptidao; diasAvaliacaoPosParto: number | null };
 export type ParametrosElegibilidade = {
-  versao: 1;
+  versao: 1 | 2;
+  criteriosAptidao?: CriteriosAptidao;
   metodologia: "IDEAGRI_IILB_BASE_V1";
   pevPrimiparasDias: number;
   pevMultiparasDias: number;
@@ -18,6 +26,11 @@ export type PoliticaElegibilidade = {
   vigenteDesde: string;
   parametros: ParametrosElegibilidade;
 };
+export type DemandaManejo = {
+  id: string; finalidade: "DIAGNOSTICO" | "RECONFIRMACAO"; ocorrencia: number;
+  tentativaId: string | null; gestacaoId: string | null;
+  dataReferencia: string; previstaPara: string | null; pendencias: string[];
+};
 export type ElegibilidadeNaData = {
   animalId: string;
   propriedadeId: number;
@@ -25,6 +38,11 @@ export type ElegibilidadeNaData = {
   estado: "ELEGIVEL" | "NAO_ELEGIVEL" | "PENDENTE";
   baseElegivel: boolean | null;
   elegivel: boolean | null;
+  demandasAcompanhamento?: DemandaManejo[];
+  acompanhamentoAptidao?: { necessidadeId: string; fila: string; visitasAbertas: { id: string; nome: string; data?: string }[] } | null;
+  aptidaoClinica?: { estado: "APTA" | "NAO_APTA" | "NAO_DETERMINADA"; exameId: string | null; data: string | null; retornoEm: string | null; resultado: string | null };
+  necessidadeAptidao?: { politicaId?: string | null; politicaVersao?: number | null; necessidadeId: string; estado: "MANUAL" | "AVALIACAO_DEVIDA" | "PENDENCIA_DADOS" | "CRITERIOS_NAO_ATINGIDOS"; devidaDesde: string | null; pendencias: string[]; criteriosNaoAtingidos: string[]; evidenciaIds: string[] } | null;
+  pevOriginalAte?: string | null; revisaoDecisaoNecessaria?: boolean;
   aptaDesde: string | null;
   ciclo: {
     chaveCiclo: string;
@@ -51,6 +69,7 @@ export const criarPolitica = (input: {
   chave: string;
   propriedadeId: number;
   vigenteDesde: string;
+  motivo?: string;
   parametros: ParametrosElegibilidade;
 }) =>
   reqV4<PoliticaElegibilidade>(
@@ -89,6 +108,7 @@ export const decidirElegibilidade = (input: {
   vinculoCicloId: string;
   data: string;
   tipo: "LIBERAR" | "BLOQUEAR" | "RETOMAR_POLITICA";
+  anteciparPev?: boolean; exameAptidaoId?: string; acaoLiberada?: "PROTOCOLO" | "IA" | "TE";
   aptaDesde: string | null;
   motivo: string;
 }) =>
@@ -109,6 +129,15 @@ export const anularDecisao = (
     input.propriedadeId,
   );
 const motivos: Record<string, string> = {
+  EXAME_ORIGEM_INVALIDO: "O exame que fundamentou este acompanhamento está inválido; confira a evidência de origem antes de registrar a resolução.",
+  DATA_PARTO_NAO_COMPROVADA: "Há parto anterior comprovado, mas falta sua data para calcular a avaliação pós-parto.",
+  CLASSE_REPRODUTIVA_CONFLITANTE: "A classificação informada conflita com o histórico de partos; confira a evidência.",
+  CLASSE_REPRODUTIVA_NAO_COMPROVADA: "Confirme o histórico de partos para aplicar os critérios de vacas ou novilhas.",
+  DECISAO_APTIDAO_NECESSARIA: "A avaliação e os critérios não liberam reprodução. Registre decisão individual após toque apto.",
+  EXAME_ALTERADO_REVISAR_DECISAO: "O exame foi corrigido, anulado ou sucedido por outro toque. Revise a decisão antes de nova intervenção.",
+  PESO_AUSENTE_OU_VENCIDO: "Pesagem ausente, vencida ou sem a precisão aceita nesta política.",
+  ECC_AUSENTE_VENCIDO_OU_ESCALA_INCOMPATIVEL: "ECC ausente, vencido ou em escala diferente da política.",
+  NASCIMENTO_NAO_COMPROVADO: "Data de nascimento não comprovada.",
   INICIO_CICLO_NAO_COMPROVADO: "Não há parto ou situação inicial que comprove o início do acompanhamento.",
   LIBERACAO_NAO_COMPROVADA: "Liberação reprodutiva ainda não comprovada.",
   DISPONIBILIDADE_NO_CORTE_NAO_COMPROVADA: "Disponibilidade para reprodução não comprovada na data consultada.",
@@ -137,3 +166,10 @@ const motivos: Record<string, string> = {
 };
 export const descreverMotivo = (codigo: string) =>
   motivos[codigo] ?? codigo.toLocaleLowerCase("pt-BR").replaceAll("_", " ");
+
+export const registrarToqueAptidao = (input: { chave: string; animalId: string; propriedadeId: number; data: string; resultado: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; responsavel: string; observacao?: string | null }) =>
+  reqV4("/reproducao/toques-aptidao", input, "POST", input.propriedadeId);
+export const corrigirToqueAptidao = (id: string, input: { chave: string; propriedadeId: number; motivo: string; resultado?: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; anular?: boolean }) =>
+  reqV4(`/reproducao/toques-aptidao/${id}/corrigir`, input, "POST", input.propriedadeId);
+
+export const consultarManejoAptidao = (propriedadeId: number, data: string) => reqV4<{ propriedadeId: number; dataReferencia: string; itens: ElegibilidadeNaData[] }>(`/reproducao/filas-aptidao?${new URLSearchParams({ propriedadeId: String(propriedadeId), data })}`, undefined, "GET", propriedadeId);

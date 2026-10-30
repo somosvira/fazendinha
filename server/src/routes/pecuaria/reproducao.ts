@@ -1,3 +1,8 @@
+import { consultarManejoAptidao } from "../../services/pecuaria/reproducao/manejo-aptidao.js";
+import { encerramentoLactacaoSchema, manterPesoSecagemSchema, pesoSecagemSchema } from "../../services/pecuaria/reproducao/peso-secagem.schemas.js";
+import { manterPesoSecagem } from "../../services/pecuaria/reproducao/peso-secagem.js";
+import { registrarToqueAptidao, corrigirToqueAptidao } from "../../services/pecuaria/reproducao/toque-aptidao.js";
+import { registrarToqueAptidaoSchema, corrigirToqueAptidaoSchema } from "../../services/pecuaria/reproducao/toque-aptidao.schemas.js";
 import { paginaSubstitutosTarefa } from "../../services/pecuaria/protocolos/substitutos.js";
 import { obterPartoOperacional } from "../../services/pecuaria/reproducao/relatorio-partos.js";
 import {listarBibliotecaReprodutiva,copiarReferenciaSchema,copiarReferenciaReprodutiva} from "../../services/pecuaria/reproducao/biblioteca.js";
@@ -349,7 +354,7 @@ export const reproducaoRouter = new Hono()
       return falhaV4(c, e);
     }
   })
-  .post("/lactacoes/:id/encerramento", validarV4(encerramento), async (c) => {
+  .post("/lactacoes/:id/encerramento", validarV4(encerramentoLactacaoSchema), async (c) => {
     try {
       const b = c.req.valid("json");
       return c.json(
@@ -359,6 +364,7 @@ export const reproducaoRouter = new Hono()
           b.data,
           b.motivo,
           usuarioV4(c),
+          { chave: b.chave, pesoSecagem: b.pesoSecagem },
         ),
       );
     } catch (e) {
@@ -801,6 +807,7 @@ reproducaoRouter.post(
         inicio: s.data.optional(),
         encerradaEm: s.data.nullish(),
         motivo: s.motivo,
+        pesoSecagem: pesoSecagemSchema.optional(),
       })
       .strict(),
   ),
@@ -887,6 +894,10 @@ reproducaoRouter.post("/decisoes-elegibilidade/:id/anular", validarV4(elegibilid
     propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c))); }
   catch(e) { return falhaV4(c,e); }
 });
+reproducaoRouter.get("/filas-aptidao", async c => {
+  try { return c.json(await consultarManejoAptidao(s.sitio.parse(await resolverEscopoLeitura(c)), s.data.parse(c.req.query("data")))); }
+  catch(e) { return falhaV4(c,e); }
+});
 reproducaoRouter.get("/animais/:id/elegibilidade", async c => {
   try { return c.json(await elegibilidade.consultarElegibilidadeNaData(s.uuid.parse(c.req.param("id")),
     s.sitio.parse(await resolverEscopoLeitura(c)),s.data.parse(c.req.query("data")))); }
@@ -915,4 +926,19 @@ reproducaoRouter.post("/relatorios/emissoes", validarV4(emissoes.criarEmissaoRep
   try { const b=c.req.valid("json"); return c.json(await emissoes.criarEmissaoReprodutiva({ ...b,
     propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId) },usuarioV4(c)),201); }
   catch(e) { return falhaV4(c,e); }
+});
+
+reproducaoRouter.post("/toques-aptidao", validarV4(registrarToqueAptidaoSchema), async c => {
+  try { const b = c.req.valid("json"); return c.json(await registrarToqueAptidao({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c)), 201); }
+  catch (e) { return falhaV4(c, e); }
+});
+
+reproducaoRouter.post("/toques-aptidao/:id/corrigir", validarV4(corrigirToqueAptidaoSchema), async c => {
+  try { const b = c.req.valid("json"); return c.json(await corrigirToqueAptidao(s.uuid.parse(c.req.param("id")), { ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c))); }
+  catch (e) { return falhaV4(c, e); }
+});
+
+reproducaoRouter.post("/lactacoes/:id/peso-secagem", validarV4(manterPesoSecagemSchema), async c => {
+  try { const b = c.req.valid("json"); return c.json(await manterPesoSecagem(s.uuid.parse(c.req.param("id")), { ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c))); }
+  catch (e) { return falhaV4(c, e); }
 });

@@ -1,3 +1,4 @@
+import { rotuloLactacao } from "../lib/lactacao";
 import { dataHoraISO } from "./CampoDataIatf";
 import type { RascunhoVisita, TipoAtividade } from "./visitas-api";
 import type { ParticipanteVisita } from "./visitas-api";
@@ -82,8 +83,7 @@ export function contextoTranscricao(
   const lactacao = snapshot.situacaoProdutiva === "SECA" ? "Seca"
     : snapshot.situacaoProdutiva === "LACTANTE"
       ? snapshot.del == null ? "Lactante · DEL não informado" : `DEL ${snapshot.del}`
-      : snapshot.situacaoProdutiva === "SEM_LACTACAO" ? "Sem lactação registrada"
-        : "Lactação não informada";
+      : rotuloLactacao(snapshot.situacaoProdutiva);
   const rp = !snapshot.ultimoParto ? "Sem parto registrado"
     : snapshot.retencaoPlacenta === true ? "Sim"
       : snapshot.retencaoPlacenta === false ? "Não" : "Não informado";

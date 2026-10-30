@@ -57,6 +57,14 @@ describe("FormBaixa", () => {
     expect(screen.queryByText("Doença")).toBeNull();
   });
 
+  it("registro comum não oferece tipo não determinado nem cadastro indevido", async () => {
+    render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText(/^Tipo/));
+    expect(await screen.findByRole("option", { name: "Venda" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Tipo não determinado na origem" })).toBeNull();
+    expect(screen.queryByRole("option", { name: "Cadastro indevido" })).toBeNull();
+  });
+
   it("Morte mostra só motivos de morte", async () => {
     render(<FormBaixa animal={animal} motivos={motivos} onSalvo={vi.fn()} onFechar={vi.fn()} />);
     await alterarControle(screen.getByLabelText(/^Tipo/), { target: { value: "MORTE" } });

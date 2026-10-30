@@ -9,10 +9,10 @@ export type Aptidao = "LEITE" | "CORTE" | "REPRODUCAO";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
 export type Situacao = "ATIVO" | "BAIXADO";
-export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "CADASTRO_INDEVIDO";
+export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "NAO_DETERMINADO" | "CADASTRO_INDEVIDO";
 export type ClasseMotivoBaixa = "DESCARTE_VOLUNTARIO" | "DESCARTE_INVOLUNTARIO" | "MORTE";
 export type PeriodoGmd = 30 | 90 | 180 | 365 | "entrada";
-export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA";
+export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA" | "PARTO" | "SECAGEM";
 export type OrigemPesagem = "MANUAL" | "BALANCA";
 
 export type PropriedadeRef = { id: number; nome: string };
@@ -77,10 +77,25 @@ export type HistoricoDestino = {
   ate: string | null;
 };
 
-export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null };
+export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null; precisao?: "MEDIDO" | "ESTIMADO" | "INFORMADO" | "NAO_INFORMADO"; contextoHistorico?: "INTERNO" | "EXTERNO" | "NAO_INFORMADO"; propriedadeId?: number | null; referenciaHistorica?: string | null };
 
 /** Item de `historicoCategoriasManuais` na ficha — mais recente primeiro. */
 export type HistoricoCategoriaManual = { id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null };
+
+export type RegularizarBaixaHistoricaInput = {
+  data: string; bancoOrigem: string; chaveOrigem: string; evidencia: string; motivo: string;
+  cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
+};
+export type RevisarClassificacaoBaixaInput = {
+  chave: string; tipo: Exclude<TipoBaixa, "NAO_DETERMINADO" | "CADASTRO_INDEVIDO">;
+  motivoId?: string | null; evidencia: string; motivo: string;
+  cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
+};
+export type RegularizacaoHistoricaBaixa = {
+  bancoOrigem: string; chaveOrigem: string; evidencia: string; motivo: string;
+  usuarioId: number; registradaEm: string;
+  revisao: { dados: RevisarClassificacaoBaixaInput; usuarioId: number; registradaEm: string } | null;
+};
 
 export type BaixaAnimalResumo = {
   id: string;
@@ -135,6 +150,7 @@ export type AnimalFicha = AnimalResumo & {
     estornadaEm: string | null;
     estornoMotivo: string | null;
     criadoPor: string | null;
+    regularizacaoHistorica?: RegularizacaoHistoricaBaixa | null;
   }>;
 };
 

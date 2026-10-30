@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { TipoBaixa, OrigemComposicao } from "@prisma/client";
 import { idadeEmMeses, type AvaliacaoCategoria, type CategoriaRef, type OrigemCategoria } from "./categoria.calc.js";
 import { normalizarComposicao, rotuloComposicao, type FracaoRaca } from "./composicao.calc.js";
@@ -130,7 +131,27 @@ export interface FichaPeso {
   gmdPeriodo: { dias: number | null; valor: number | null; pesagens: number };
 }
 
+const revisaoHistoricaPublicaSchema = z.object({
+  dados: z.object({
+    chave: z.string().uuid(), tipo: z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"]),
+    motivoId: z.string().nullish(), evidencia: z.string(), motivo: z.string(),
+  }),
+  usuarioId: z.number().int().positive(), registradaEm: z.string().datetime(),
+});
+const regularizacaoHistoricaPublicaSchema = z.object({
+  bancoOrigem: z.string().min(1), chaveOrigem: z.string().min(1),
+  evidencia: z.string().min(5), motivo: z.string().min(5),
+  usuarioId: z.number().int().positive(), registradaEm: z.string().datetime(),
+  revisao: revisaoHistoricaPublicaSchema.nullish(),
+});
+/** Expõe apenas a proveniência necessária à conferência, sem copiar o JSON bruto. */
+export function mapearRegularizacaoHistoricaBaixa(snapshot: unknown) {
+  const resultado = regularizacaoHistoricaPublicaSchema.safeParse(snapshot);
+  return resultado.success ? { ...resultado.data, revisao: resultado.data.revisao ?? null } : null;
+}
+
 export interface HistoricoBaixaFicha {
+  regularizacaoHistorica?: ReturnType<typeof mapearRegularizacaoHistoricaBaixa>;
   id: string;
   data: string;
   tipo: TipoBaixa;

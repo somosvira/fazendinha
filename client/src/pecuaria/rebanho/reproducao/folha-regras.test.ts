@@ -115,3 +115,8 @@ describe("ficha própria de partos", () => {
     expect(csv).toContain('"2026-09-30"');
   });
 });
+
+
+it("critério legado sem lactação continua desconhecido, sem virar secagem", () => {
+  expect(criteriosFolha({ selecaoCriterios: { todas: [{ tipo: "VALORES", campo: "SITUACAO_PRODUTIVA", valores: ["SEM_LACTACAO"] }] } }).join(" ")).toContain("Situação de lactação: Não informada");
+});

@@ -1,0 +1,18 @@
+.controles-historicos-leite { margin-block: 24px; min-width: 0; color: var(--foreground); }
+.controles-historicos-leite header { margin-bottom: 12px; }
+.controles-historicos-leite h3 { font-size: 16px; font-weight: 650; margin: 0; }
+.controles-historicos-tabela { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.controles-historicos-tabela table { min-width: 620px; width: 100%; }
+.controles-historicos-tabela td { vertical-align: top; white-space: normal; }
+.controles-historicos-tabela p, .controles-historicos-tabela small { display: block; margin: 4px 0 0; color: var(--muted-foreground); font-size: 12px; }
+.controles-historicos-total { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.controles-historicos-referencia { max-width: 36ch; overflow-wrap: anywhere; }
+.controles-historicos-tabela ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.controles-historicos-origem details { max-width: 75ch; }
+.controles-historicos-origem summary { cursor: pointer; color: var(--primary); padding-block: 6px; min-height: 40px; }
+.controles-historicos-origem dl { display: grid; gap: 12px; margin: 12px 0; }
+.controles-historicos-origem dt { color: var(--muted-foreground); font-size: 12px; }
+.controles-historicos-origem dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.controles-historicos-nota, .controles-historicos-vazio { color: var(--muted-foreground); font-size: 13px; line-height: 1.6; max-width: 75ch; margin: 12px 0; }
+.controles-historicos-tabela:focus-visible, .controles-historicos-origem summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+@media (max-width: 640px) { .controles-historicos-origem summary { min-height: 44px; } }

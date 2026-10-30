@@ -10,6 +10,7 @@ import { getUsuario, exigePermissao } from "../../middleware/permissao.js";
 import { podeConsultarCustosPecuaria } from "../../services/pecuaria/custos/permissoes.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 import * as animais from "../../services/pecuaria/rebanho/animais.js";
+import * as baixasHistoricas from "../../services/pecuaria/rebanho/baixas-historicas.js";
 import * as lotes from "../../services/pecuaria/rebanho/lotes.js";
 import * as racas from "../../services/pecuaria/rebanho/racas.js";
 import * as motivos from "../../services/pecuaria/rebanho/motivos.js";
@@ -44,7 +45,7 @@ import { protocolosCadastrosRouter } from "./protocolos-cadastros.js";
 import { nutricaoRouter } from "./nutricao.js";
 import {
   cadastrarAnimalSchema, editarAnimalSchema, movimentarSchema, mudarDestinoSchema,
-  baixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
+  baixaSchema, regularizarBaixaHistoricaSchema, revisarClassificacaoBaixaSchema, estornoBaixaSchema, pesagemSchema, editarPesagemSchema, listarFiltrosSchema,
   criarLoteSchema, editarLoteSchema, incluirInativosQuerySchema,
   substituirComposicaoSchema, criarRacaSchema, editarRacaSchema,
   criarMotivoBaixaSchema, editarMotivoBaixaSchema, desfazerMovimentacaoSchema, paginaQuerySchema, listarMovimentacoesSchema,
@@ -222,6 +223,23 @@ export const rebanhoRouter = new Hono()
     const body = c.req.valid("json");
     try {
       return c.json(await animais.darBaixa({ ...body, animalId: c.req.valid("param").id }, usuarioId(c), await resolverEscopoLeitura(c)));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/animais/:id/baixa/regularizacao-historica", idParam, validar(regularizarBaixaHistoricaSchema), async (c) => {
+    const autorId = usuarioId(c);
+    if (!autorId) return c.json({ error: "Regularização histórica exige usuário real identificado." }, 403);
+    try {
+      return c.json(await baixasHistoricas.regularizarBaixaHistorica(c.req.valid("param").id, c.req.valid("json"), autorId, await resolverEscopoLeitura(c)));
+    } catch (e) { return falha(c, e); }
+  })
+  .post("/animais/:id/baixas/:baixaId/classificacao", zValidator("param", z.object({ id: z.string().uuid(), baixaId: z.string().uuid() }), (resultado, c) => {
+    if (!resultado.success) return c.json({ error: "Baixa não encontrada", code: "NAO_ENCONTRADO" }, 404);
+  }), validar(revisarClassificacaoBaixaSchema), async (c) => {
+    const autorId = usuarioId(c);
+    if (!autorId) return c.json({ error: "Revisão histórica exige usuário real identificado." }, 403);
+    try {
+      const { id, baixaId } = c.req.valid("param");
+      return c.json(await baixasHistoricas.revisarClassificacaoBaixa(id, baixaId, c.req.valid("json"), autorId, await resolverEscopoLeitura(c)));
     } catch (e) { return falha(c, e); }
   })
   .post("/animais/:id/baixa/estorno", idParam, validar(estornoBaixaSchema), async (c) => {

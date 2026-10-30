@@ -1,3 +1,4 @@
+import { incorporarAptidaoManejo } from "./manejo-aptidao";
 import { listarCategorias } from "../api";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Input } from "../../../components/ui/input";
@@ -17,14 +18,18 @@ import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { Paginacao } from "../ui";
 import { obterReproducao } from "./api";
 import { consultarIndicadores } from "./indicadores-api";
-import { descreverMotivo } from "./elegibilidade-api";
+import { consultarManejoAptidao, descreverMotivo } from "./elegibilidade-api";
 
 import { carregarAnimaisManejo, filtrarManejo, lerConsultaManejo, montarFilasManejo, type ConsultaManejo, type FilaManejo, type LinhaManejo } from "./manejo-reprodutivo";
 
 const FILAS = [
   { id: "liberadas", titulo: "Liberadas sem serviço", descricao: "Matrizes com liberação comprovada até hoje.", Icone: Venus },
-  { id: "diagnostico", titulo: "Aguardando diagnóstico", descricao: "Tentativas aguardando diagnóstico, sem presumir resultado ou prazo clínico.", Icone: Stethoscope },
-  { id: "pendencias", titulo: "Pendências de cadastro e liberação", descricao: "Confira origem do ciclo, liberação, restrições e dados de escopo antes do manejo.", Icone: ClipboardList },
+  { id: "diagnostico", titulo: "Diagnóstico e reconfirmação", descricao: "Diagnósticos e reconfirmações pendentes, com a previsão registrada no acompanhamento.", Icone: Stethoscope },
+  { id: "avaliacao", titulo: "Avaliação devida", descricao: "Critérios de avaliação atingidos; o toque não libera o animal automaticamente.", Icone: Stethoscope },
+  { id: "agendamento", titulo: "Agendadas", descricao: "Avaliações de aptidão incluídas em visitas abertas.", Icone: ClipboardList },
+  { id: "retorno", titulo: "Retornos de aptidão", descricao: "Retornos informados no exame, sem presumir resultado.", Icone: Stethoscope },
+  { id: "aptidao", titulo: "Aptidão avaliada", descricao: "Conclusão clínica comprovada pelo toque; disponibilidade operacional é conferida separadamente.", Icone: Venus },
+  { id: "pendencias", titulo: "Pendências de dados", descricao: "Evidências que precisam de conferência para aplicar as regras selecionadas.", Icone: ClipboardList },
 ] as const;
 type DadosManejo = { propriedadeId: number; hoje: string; filas: Record<FilaManejo, LinhaManejo[]> };
 export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento, recarregarToken = 0 }: {
@@ -51,27 +56,30 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
       consultarIndicadores({ propriedadeId, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 }),
       carregarAnimaisManejo(propriedadeId, () => ativo),
       listarCategorias(),
-    ]).then(([painel, snapshot, animais, categorias]) => {
+      consultarManejoAptidao(propriedadeId, hoje),
+    ]).then(([painel, snapshot, animais, categorias, aptidao]) => {
       if (!ativo) return;
       if (!snapshot.acompanhamento) throw new Error("A consulta não trouxe a fila de manejo. Tente novamente ou consulte os animais e ciclos.");
-      setDados({ propriedadeId, hoje, filas: montarFilasManejo(painel, snapshot.acompanhamento, animais, hoje, categorias.itens) });
+      setDados({ propriedadeId, hoje, filas: incorporarAptidaoManejo(montarFilasManejo(painel, snapshot.acompanhamento, animais, hoje, categorias.itens), aptidao.itens, animais, hoje) });
     }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível carregar o manejo."); })
       .finally(() => { if (ativo) setCarregando(false); });
     return () => { ativo = false; };
   }, [propriedadeId, hoje, tentativa, recarregarToken]);
   const visivel = dados && dados.propriedadeId === propriedadeId && dados.hoje === hoje ? dados : null;
   const filas = visivel?.filas;
-  const filtradas = {
-    liberadas: filtrarManejo(filas?.liberadas ?? [], consulta),
-    diagnostico: filtrarManejo(filas?.diagnostico ?? [], consulta),
-    pendencias: filtrarManejo(filas?.pendencias ?? [], consulta),
-  };
+  const filtradas = Object.fromEntries(FILAS.map(f => [f.id, filtrarManejo(filas?.[f.id] ?? [], consulta)])) as Record<FilaManejo, LinhaManejo[]>;
   const atual = FILAS.find(f => f.id === consulta.fila);
-  const todas = [...new Map(Object.values(filtradas).flat().map(a => [a.animalId, a])).values()];
+  const unicas = (itens: LinhaManejo[]) => [...new Map([...itens].reverse().map(a => [a.animalId, a])).values()];
+  const todas = unicas(Object.values(filtradas).flat());
   const linhas = consulta.fila === "todas" ? filtrarManejo(todas, consulta)
-    : consulta.fila === "manejo" ? filtrarManejo([...filtradas.liberadas, ...filtradas.diagnostico], consulta)
+    : consulta.fila === "manejo" ? filtrarManejo(unicas([...filtradas.liberadas, ...filtradas.diagnostico, ...filtradas.avaliacao, ...filtradas.agendamento, ...filtradas.retorno]), consulta)
     : filtradas[consulta.fila];
-  const filaDe = (id: string) => FILAS.find(f => filas?.[f.id].some(a => a.animalId === id))?.id;
+  const filasDe = (id: string) => FILAS.filter(f => filas?.[f.id].some(a => a.animalId === id));
+  const filaDe = (id: string) => filasDe(id).find(f => f.id === consulta.fila)?.id ?? filasDe(id)[0]?.id;
+  const rotuloAptidao = (a: LinhaManejo) => a.aptidaoClinica === "APTA" ? "Apta" : a.aptidaoClinica === "NAO_APTA" ? "Não apta" : "Não determinada";
+  const prazo = (a: LinhaManejo) => a.data && a.data > hoje ? `Prevista para ${formatBRDateISO(a.data)}` : a.dias === null ? "Prazo não informado" : `${a.dias} dias ${descricaoData(a)}`;
+  const descricaoData = (a: LinhaManejo) => filaDe(a.animalId) === "diagnostico" ? a.demandasAcompanhamento?.length ? "desde a previsão" : "desde a tentativa" : filaDe(a.animalId) === "liberadas" ? "sem serviço" : "desde a referência";
+  const detalhesDiagnostico = (a: LinhaManejo) => a.demandasAcompanhamento?.length ? <ul className="space-y-1 text-sm">{a.demandasAcompanhamento.map(d => <li key={d.id}>{d.finalidade === "RECONFIRMACAO" ? "Reconfirmação" : "Diagnóstico"} · ocorrência {d.ocorrencia} · {d.previstaPara ? `Previsão: ${formatBRDateISO(d.previstaPara)}` : "Previsão não definida"}{d.pendencias.length > 0 && <span> · {d.pendencias.map(descreverMotivo).join("; ")}</span>}</li>)}</ul> : null;
   const paginas = Math.max(1, Math.ceil(linhas.length / consulta.tamanho));
   const pagina = Math.min(consulta.pagina, paginas);
   const lotes = [...new Map(Object.values(filas ?? {}).flat().flatMap(a => a.lote ? [[a.lote.id, a.lote] as const] : [])).values()].sort((a,b) => a.nome.localeCompare(b.nome, "pt-BR"));
@@ -86,7 +94,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   }
     const edicaoFiltros = useRascunhoConsulta({fila:consulta.fila,busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{fila:"manejo" as ConsultaManejo["fila"],busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
   const campos: CampoConsulta[] = [
-    {chave:"situacao",ativo:consulta.fila!=="manejo",limpar:()=>edicaoFiltros.editar("fila","manejo"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="manejo">Manejo: liberadas e diagnóstico</option><option value="todas">Todas as filas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
+    {chave:"situacao",ativo:consulta.fila!=="manejo",limpar:()=>edicaoFiltros.editar("fila","manejo"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="manejo">Manejo: avaliações e serviços</option><option value="todas">Todas as filas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><Input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
     {chave:"lote",ativo:!!consulta.lote,limpar:()=>edicaoFiltros.editar("lote",""),conteudo:<CampoFiltro rotulo="Lote"><SelectCampo aria-label="Filtrar lote" value={edicaoFiltros.rascunho.lote} onValueChange={v=>edicaoFiltros.editar("lote",v)}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote!=="sem-lote" && !lotes.some(l=>l.id===consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"ordem",colunas:[],ativo:consulta.ordem!=="maior-espera",limpar:()=>edicaoFiltros.editar("ordem","maior-espera"),conteudo:<CampoFiltro rotulo="Ordenar por"><SelectCampo aria-label="Ordenar animais" value={edicaoFiltros.rascunho.ordem} onValueChange={v=>edicaoFiltros.editar("ordem",v as ConsultaManejo["ordem"])}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal · A–Z</option><option value="animal-desc">Identificação do animal · Z–A</option></SelectCampo></CampoFiltro>},
@@ -96,7 +104,8 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   return <section className="manejo-v4 space-y-5" aria-label="Manejo reprodutivo">
     <ErrorBox erro={erro}/>
     {erro && <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
-    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de cadastro e liberação</strong><p>Esta contagem não inclui os {filtradas.diagnostico.length} animais aguardando diagnóstico.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
+    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de dados</strong><p>Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
+    {visivel && <nav aria-label="Filas de manejo" className="flex flex-wrap gap-2">{FILAS.map(f => <Button key={f.id} variant={consulta.fila === f.id ? "default" : "outline"} aria-pressed={consulta.fila === f.id} onClick={() => mudar({fila:f.id})}>{f.titulo} · {filtradas[f.id].length}</Button>)}</nav>}
     <Panel className="overflow-hidden">
       <header>
 
@@ -104,21 +113,23 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
       </header>
       {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
       {visivel && <>
-        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Liberadas sem serviço e aguardando diagnóstico. Pendências de cadastro são consultadas separadamente." : "Todas as filas, incluindo pendências de cadastro e liberação.")}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
+        <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Avaliações, agendamentos, retornos e serviços. Contagem de animais únicos nas filas exibidas." : "Todas as filas. Um animal pode ter mais de um acompanhamento; cada animal é contado uma vez.")}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
         {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
           const fila = filaDe(a.animalId);
           return <article className="reproducao-cartao" key={a.animalId}>
-            <header><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p>{a.lote?.nome ?? "Lote não informado"}</p></div><Pill tone={fila === "liberadas" ? "green" : "amber"}>{fila === "liberadas" ? "Liberada" : fila === "diagnostico" ? "Aguardando diagnóstico" : "Evidência pendente"}</Pill></header>
-            <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{a.dias ?? "—"} dias {fila === "diagnostico" ? "desde a tentativa" : "sem serviço"}</strong>}</div>
-            <dl><div><dt>Fila de manejo</dt><dd>{FILAS.find(f => f.id === fila)?.titulo ?? "Não informada"}</dd></div><div><dt>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
-            <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao></footer>
+            <header><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p>{a.lote?.nome ?? "Lote não informado"}</p></div><Pill tone={a.aptidaoClinica === "APTA" ? "green" : "amber"}>{rotuloAptidao(a)}</Pill></header>
+            <dl><div><dt>Fila de manejo</dt><dd>{filasDe(a.animalId).map(f => f.titulo).join(" · ") || "Não informada"}</dd></div><div><dt>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
+            {detalhesDiagnostico(a)}
+            <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{prazo(a)}</strong>}</div>
+            <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</footer>
           </article>;
         })}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicaoFiltros)} rotulo={atual?.titulo ?? "Animais e acompanhamentos"} itens={linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho)} chaveDe={a => a.animalId} colunas={[
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: a => <IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/> },
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
-          { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-xs text-muted-foreground">{a.dias ?? "—"} dias {filaDe(a.animalId)==="diagnostico"?"desde a tentativa":"sem serviço"}</p></div> : "Não comprovada" },
-          { chave: "situacao", titulo: consulta.fila === "pendencias" ? "Conferência necessária" : "Situação", celula: a => filaDe(a.animalId) === "pendencias" ? <ul className="max-w-sm space-y-1 text-sm">{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <Pill tone={filaDe(a.animalId)==="liberadas"?"green":"amber"}>{filaDe(a.animalId) === "liberadas" ? "Liberada" : "Aguardando diagnóstico"}</Pill> },
-          { chave: "acao", titulo: "Ação", acoes: true, celula: a => <LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao> },
+          { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-xs text-muted-foreground">{prazo(a)}</p></div> : "Não comprovada" },
+          { chave: "situacao", titulo: consulta.fila === "pendencias" ? "Conferência necessária" : "Situação", celula: a => filaDe(a.animalId) === "pendencias" ? <ul className="max-w-sm space-y-1 text-sm">{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <div><span>{filasDe(a.animalId).map(f => f.titulo).join(" · ")}</span>{detalhesDiagnostico(a)}</div> },
+          { chave: "aptidao", titulo: "Aptidão clínica", celula: a => rotuloAptidao(a) },
+          { chave: "acao", titulo: "Ação", acoes: true, celula: a => <div className="flex flex-wrap justify-end gap-2"><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</div> },
         ]}/>}
         <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <SelectCampo className="ml-2" aria-label="Animais por página" value={String(consulta.tamanho)} onValueChange={v => mudar({ tamanho: Number(v) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</SelectCampo></label></div>
         <Paginacao paginaAtual={pagina} totalPaginas={paginas} totalItens={linhas.length} itensPorPagina={consulta.tamanho} onPaginaChange={pagina => mudar({ pagina })} rotulo="animais" idSelect="pagina-manejo"/>

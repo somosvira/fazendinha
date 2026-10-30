@@ -293,7 +293,7 @@ export function Transcricao({
     if (!preparar) return;
     const p = preparar;
     rascunhosAtuais.current[p.id] = {
-      ...rascunhosAtuais.current[p.id], dados: { ...(p.tarefaSanitariaId ? { desvio: rascunhosAtuais.current[p.id]?.dados?.desvio } : {}), ...dados }, status: "CONFIRMADO",
+      ...rascunhosAtuais.current[p.id], dados: { ...(atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" ? { retornoEm: rascunhosAtuais.current[p.id]?.dados?.retornoEm } : {}), ...(p.tarefaSanitariaId ? { desvio: rascunhosAtuais.current[p.id]?.dados?.desvio } : {}), ...dados }, status: "CONFIRMADO",
     };
     rascunhosSujos.current.add(p.id);
     setRascunhos({ ...rascunhosAtuais.current });
@@ -1033,7 +1033,7 @@ export function Transcricao({
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
-            conteudoExtra={preparar.tarefaSanitariaId ? campoDesvioSanitario(preparar) : undefined}
+            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<input className={classeInput} type="date" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={e => atualizarDados(preparar, { retornoEm: e.target.value || undefined })}/></label>}</>}
             dataInicial={visita.data.slice(0, 10)}
             tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}

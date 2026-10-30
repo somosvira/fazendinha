@@ -17,6 +17,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
 import { formatarLitros, hojeOperacional } from "./modelo";
 import { CustosLeite } from "./CustosLeite";
+import { HistoricoColetivoLeite } from "./HistoricoColetivoLeite";
 import "./consultas-leite.css";
 type Grupo = GrupoProducaoLeite;
 interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[]; coberturaCompleta: boolean; mesEmAndamento: boolean }
@@ -67,6 +68,7 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={grupos.length} porPagina={15} rotulo="Paginação da produção" substantivo="períodos" idSelect="pagina-producao-leite" onPagina={setPagina} />
       </>}
     </>}
+    {!periodoInvalido && <HistoricoColetivoLeite key={`${sitio}:${inicio}:${fim}`} propriedadeId={sitio} inicio={inicio} fim={fim} />}
     {!periodoInvalido && <CustosLeite periodo={{ inicio, fim, natureza }} />}
   </section>;
 }

@@ -7,7 +7,8 @@ const mocks = vi.hoisted(() => ({ tx: {
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: async (fn: (tx: typeof mocks.tx) => unknown) => fn(mocks.tx) }));
 vi.mock("../rebanho/regras.js", async (original) => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar, travarAnimais: mocks.travar }));
-import { anularOcorrencia, encerrarOcorrencia } from "./ocorrencias.js";
+import { anularOcorrencia, encerrarOcorrencia, encerrarOcorrenciaTx } from "./ocorrencias.js";
+import type { Prisma } from "@prisma/client";
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -15,6 +16,14 @@ beforeEach(() => {
   mocks.tx.ocorrenciaSanitaria.findUniqueOrThrow.mockResolvedValue({ id: "ocorrencia", animalId: "animal", status: "ANULADO" });
 });
 describe("ocorrências revalidam o fato após o bloqueio", () => {
+  it("conserva desfecho desconhecido no encerramento histórico comprovado", async () => {
+    mocks.tx.ocorrenciaSanitaria.findUniqueOrThrow.mockResolvedValue({ id: "ocorrencia", animalId: "animal", status: "VALIDO", inicio: new Date("2024-01-01"), fim: null });
+    mocks.tx.baixaAnimal.findFirst.mockResolvedValue(null);
+    mocks.tx.ocorrenciaSanitaria.update.mockResolvedValue({ id: "ocorrencia", desfecho: null });
+    await encerrarOcorrenciaTx(mocks.tx as unknown as Prisma.TransactionClient, "ocorrencia", null, { fim: "2024-01-10", desfecho: null }, 7);
+    expect(mocks.tx.ocorrenciaSanitaria.update).toHaveBeenCalledWith({ where: { id: "ocorrencia" }, data: { fim: new Date("2024-01-10"), desfecho: null } });
+    expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ acao: "ENCERRAMENTO", usuarioId: 7 }));
+  });
   it("não encerra uma ocorrência anulada enquanto aguardava a confirmação", async () => {
     await expect(encerrarOcorrencia("ocorrencia", 1, { fim: "2026-09-12", desfecho: "Recuperado" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
     expect(mocks.tx.ocorrenciaSanitaria.update).not.toHaveBeenCalled();

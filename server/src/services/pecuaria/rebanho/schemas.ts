@@ -105,7 +105,8 @@ export const mudarDestinoSchema = z.object({
 });
 export type MudarDestinoInput = z.infer<typeof mudarDestinoSchema>;
 
-export const tipoBaixaSchema = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "CADASTRO_INDEVIDO"]);
+export const tipoBaixaOperacionalSchema = z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "CADASTRO_INDEVIDO"]);
+export const tipoBaixaSchema = z.enum([...tipoBaixaOperacionalSchema.options, "NAO_DETERMINADO"]);
 export const classeMotivoBaixaSchema = z.enum(["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE"]);
 
 export const baixaSchema = z.object({
@@ -113,11 +114,35 @@ export const baixaSchema = z.object({
   justificativaSanitaria: z.string().trim().min(5).max(500).nullish(),
   animalId: z.string().uuid().optional(),
   data: dataNaoFutura,
-  tipo: tipoBaixaSchema,
+  tipo: tipoBaixaOperacionalSchema,
   motivoId: z.string().uuid().nullable().optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type BaixaInput = z.infer<typeof baixaSchema>;
+
+// A ausência de classificação só existe na regularização histórica documentada.
+// O payload não aceita escolher um tipo conhecido para substituir evidência.
+export const regularizarBaixaHistoricaSchema = z.object({
+  data: dataNaoFutura,
+  bancoOrigem: z.string().trim().min(1).max(120),
+  chaveOrigem: z.string().trim().min(1).max(200),
+  evidencia: z.string().trim().min(5).max(1000),
+  motivo: z.string().trim().min(5).max(500),
+  cienciaSanitaria: z.boolean().optional(),
+  justificativaSanitaria: z.string().trim().min(5).max(500).nullish(),
+}).strict();
+export type RegularizarBaixaHistoricaInput = z.infer<typeof regularizarBaixaHistoricaSchema>;
+
+export const revisarClassificacaoBaixaSchema = z.object({
+  chave: z.string().uuid(),
+  tipo: z.enum(["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"]),
+  motivoId: z.string().uuid().nullish(),
+  evidencia: z.string().trim().min(5).max(1000),
+  motivo: z.string().trim().min(5).max(500),
+  cienciaSanitaria: z.boolean().optional(),
+  justificativaSanitaria: z.string().trim().min(5).max(500).nullish(),
+}).strict();
+export type RevisarClassificacaoBaixaInput = z.infer<typeof revisarClassificacaoBaixaSchema>;
 
 export const estornoBaixaSchema = z.object({
   motivo: z.string().trim().min(1).max(300),
@@ -195,17 +220,19 @@ export const pesagemSchema = z.object({
   animalId: z.string().uuid().optional(),
   data: dataNaoFutura,
   pesoKg: pesoKgSchema,
-  tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA"]),
+  tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA", "PARTO", "SECAGEM"]),
   origem: z.enum(["MANUAL", "BALANCA"]).optional().default("MANUAL"),
+  precisao: z.enum(["MEDIDO", "ESTIMADO", "INFORMADO", "NAO_INFORMADO"]).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
-});
+}).refine(v => v.origem !== "BALANCA" || !["ESTIMADO", "INFORMADO"].includes(v.precisao ?? ""), { path: ["precisao"], message: "Estimativa ou peso informado não é aferição por balança" });
 export type PesagemInput = z.infer<typeof pesagemSchema>;
 
 export const editarPesagemSchema = z.object({
   data: dataNaoFutura.optional(),
   pesoKg: pesoKgSchema.optional(),
-  tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA"]).optional(),
+  tipo: z.enum(["NASCIMENTO", "ENTRADA", "DESMAMA", "ROTINA", "SAIDA", "PARTO", "SECAGEM"]).optional(),
   origem: z.enum(["MANUAL", "BALANCA"]).optional(),
+  precisao: z.enum(["MEDIDO", "ESTIMADO", "INFORMADO", "NAO_INFORMADO"]).optional(),
   observacao: z.string().trim().max(500).nullable().optional(),
 });
 export type EditarPesagemInput = z.infer<typeof editarPesagemSchema>;

@@ -19,7 +19,8 @@ export const PRODUTOS = [
   ['vacina', 'Vacina sintética de teste', 'ML', 'Vacinas', 'sanitario', 2000, 1],
   ['vermifugo', 'Vermífugo sintético de teste', 'ML', 'Medicamentos veterinários', 'sanitario', 2000, 1.5],
   ['medicamento', 'Medicamento sintético com carência', 'ML', 'Medicamentos veterinários', 'sanitario', 2000, 3],
-  ['medicamento-desconhecido', 'Medicamento sintético carência desconhecida', 'ML', 'Medicamentos veterinários', 'sanitario', 500, 3],
+  // A chave histórica do manifesto permanece; o desconhecimento pertence ao fato aplicado.
+  ['medicamento-desconhecido', 'Medicamento sintético para histórico de aplicação incompleto', 'ML', 'Medicamentos veterinários', 'sanitario', 500, 3],
   ['direto', 'Medicamento sintético de consumo direto', 'ML', 'Medicamentos veterinários', 'sanitario', 1000, 2],
   ['vacina-reforco', 'Vacina sintética reforço', 'ML', 'Vacinas', 'sanitario', 500, 2],
   ['antisseptico', 'Antisséptico sintético de teste', 'ML', 'Medicamentos veterinários', 'sanitario', 500, 1],
@@ -43,7 +44,7 @@ export async function estoque(c: ContextoSeed) {
       nome, unidade, categoriaId: c.id(`categoria:${categoria}`), centroCustoIds: [c.id('centro:Pecuária')], fornecedorIds: [c.id('parceiro:fornecedor')],
       usoNutricional: uso === 'nutricional', usoSanitario: uso === 'sanitario', rastrearPartidas: true, minimoEstoque: 10,
       ...(uso === 'nutricional' ? { perfilNutricional: { materiaSecaPercentual: ref === 'silagem' ? 35 : 90 } } : {}),
-      ...(uso === 'sanitario' ? { perfilSanitario: { carenciaLeiteHoras: ref === 'medicamento-desconhecido' ? null : ref === 'medicamento' ? 96 : 0, carenciaCarneHoras: 48, viaPadrao: 'Demonstrativa', referenciaTecnica: 'DADOS SINTÉTICOS DE TESTE — não usar como recomendação clínica.' } } : {}),
+      ...(uso === 'sanitario' ? { perfilSanitario: { carenciaLeiteHoras: ['medicamento', 'medicamento-desconhecido'].includes(ref) ? 96 : 0, carenciaCarneHoras: 48, viaPadrao: 'Demonstrativa', referenciaTecnica: 'DADOS SINTÉTICOS DE TESTE — não usar como recomendação clínica.' } } : {}),
     }), c.usuarioId));
   const descritores = [
     ...PRODUTOS.map(([ref, , , , , quantidade, preco]) => ({ ref, quantidade, preco })),

@@ -50,6 +50,14 @@ Salvar animal envia sua célula; salvar ordenha envia as demais alterações. Ra
 
 Na fonte INDIVIDUAL, grupos de medições positivas inteiras da mesma sessão podem gerar origens segregadas. Uma medição não pode entrar em duas origens nem ser fracionada arbitrariamente. Na fonte GERAL, o controle individual não gera outra entrada.
 
+## Histórico documental de leite
+
+A ficha de Produção também mostra **Controles históricos do animal**. Esses documentos conservam data, total declarado, parcelas, horário conhecido e unidade original, em litros ou quilogramas. **Ver origem e conferência** apresenta fonte, referência, evidência, versão e eventual lactação vinculada. Total não informado é diferente de zero. Se houver somente documentos, eles aparecem sem criar aferições ou uma curva de produção diária.
+
+Em Leite → Produção, **Agregados históricos do sítio** mostra os meses documentados no sítio e período selecionados, com paginação própria. O mês permanece integral mesmo quando apenas parte dele se sobrepõe ao filtro. O agregado não é distribuído por dias ou animais, e o filtro de natureza não o reclassifica. Quilogramas não são convertidos em litros. Esses documentos não criam saldo, venda, custo ou recebimento e não entram nos totais, médias ou cobertura das aferições operacionais.
+
+Documentos individuais também protegem o contexto histórico: uma baixa anterior ao controle, um cadastro/localização incompatível ou uma alteração de lactação que retire o controle de seu intervalo é recusada. Isso vale mesmo quando o controle não tem lactação vinculada, para as guardas de cadastro e baixa. A correção exige reconciliar o fato correspondente; o sistema não apaga o documento para aceitar a mudança. Documentos externos conservam sua origem e não são atribuídos a um sítio interno por suposição.
+
 ## Confirmação e natureza do leite
 
 Confirmar usa versão esperada, produto, motivo e chaves idempotentes. Falha de uma parcela do conjunto desfaz a confirmação inteira. Só volumes positivos geram entrada; zero medido continua registrado. Sessões/parcelas confirmadas têm proteção contra correção até regularizar entradas e consumidores.
