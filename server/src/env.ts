@@ -36,6 +36,7 @@ const envSchema = z
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().trim().min(1).default("gpt-5-nano"),
     OPENAI_TRANSCRIBE_MODEL: z.string().trim().min(1).default("gpt-4o-mini-transcribe"),
+    OPENAI_SPEECH_MODEL: z.literal("gpt-4o-mini-tts").default("gpt-4o-mini-tts"),
     // Novo chat de leitura. Não reativa o bot/WhatsApp suspensos.
     ASSISTENTE_CONSULTA_ENABLED: z.enum(["true", "false"]).default("true").transform(v => v === "true"),
 

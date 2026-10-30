@@ -14,6 +14,10 @@ export interface RespostaAssistente {
   consultadoEm: string;
   escopo: { propriedadeId: number | null; nome: string };
 }
+export interface RespostaAssistenteVoz extends RespostaAssistente { audio: string | null; avisoVoz?: string }
+export async function consultarAssistenteComVoz(entrada: Omit<Extract<EntradaAssistente, { pergunta: string }>, "imagem">, signal?: AbortSignal) {
+  return ler<RespostaAssistenteVoz>(await fetch("/api/assistente/conversar", { method: "POST", headers: comPropriedade({ "content-type": "application/json" }), body: JSON.stringify(entrada), signal }));
+}
 export type EntradaAssistente = { pergunta: string; historico: string[]; pagina: string; imagem?: string }
   | { artigoId: string }
   | { consulta: { visao: VisaoAssistente; inicio: string | null; fim: string | null } };
@@ -21,7 +25,7 @@ export type EntradaAssistente = { pergunta: string; historico: string[]; pagina:
 async function ler<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as { error?: string };
-    throw new Error(body.error ?? "Não foi possível falar com o assistente. Tente novamente.");
+    throw Object.assign(new Error(body.error ?? "Não foi possível falar com o assistente. Tente novamente."), { status: res.status });
   }
   return res.json() as Promise<T>;
 }
