@@ -202,6 +202,12 @@ export type FatoBase = {
   animalId: string;
   data: string;
 };
+export type SituacaoInicialInput = FatoBase & {
+  situacao: "VAZIA" | "DESCONHECIDA" | "APTA";
+  classeReprodutiva?: "NOVILHA" | "VACA" | null;
+  observacao?: string | null;
+  aptaDesde?: string | null;
+};
 export type TentativaInput = FatoBase & {
   tipo: "IA" | "TE" | "COBERTURA";
   origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";

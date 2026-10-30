@@ -319,3 +319,37 @@ it("inicia o fato no dia local mesmo depois da virada UTC", () => {
 async function esperarOpcao(nome: string | RegExp) {
   await waitFor(() => expect(Array.from(document.querySelectorAll("option")).some(o => typeof nome === "string" ? o.textContent === nome : nome.test(o.textContent ?? ""))).toBe(true));
 }
+
+describe("classe comprovada no histórico inicial", () => {
+  function abrir() {
+    render(<FormReproducao acao="situacao" painel={painel} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  }
+  it("inicia não determinada apesar do contador de partos e não envia classe presumida", async () => {
+    abrir();
+    expect(screen.getByLabelText("Classe na data do registro").textContent).toContain("Não determinada");
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.not.objectContaining({ classeReprodutiva: expect.anything() }), "POST", 1));
+  });
+  it("exige evidência para a classe e envia a declaração explícita sem liberar o animal", async () => {
+    abrir();
+    await alterarControle(screen.getByLabelText("Classe na data do registro"), { target: { value: "NOVILHA" } });
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await screen.findByText("Descreva a evidência da classe reprodutiva com pelo menos 5 caracteres.");
+    expect(reqV4).not.toHaveBeenCalled();
+    await alterarControle(screen.getByLabelText("Evidência ou referência"), { target: { value: "Nuliparidade conferida na origem" } });
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.objectContaining({ classeReprodutiva: "NOVILHA", observacao: "Nuliparidade conferida na origem", situacao: "VAZIA", aptaDesde: undefined }), "POST", 1));
+  });
+  it("preserva evidência e classe no erro e reutiliza chave somente para o mesmo conteúdo", async () => {
+    abrir();
+    await alterarControle(screen.getByLabelText("Classe na data do registro"), { target: { value: "VACA" } });
+    await alterarControle(screen.getByLabelText("Evidência ou referência"), { target: { value: "Parto confirmado no cadastro original" } });
+    vi.mocked(reqV4).mockRejectedValueOnce(new Error("Conflito de histórico"));
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await screen.findByText("Conflito de histórico");
+    const primeira = vi.mocked(reqV4).mock.calls[0][1];
+    fireEvent.submit(document.getElementById("form-reproducao")!);
+    await waitFor(() => expect(reqV4).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(reqV4).mock.calls[1][1]).toEqual(primeira);
+  });
+});

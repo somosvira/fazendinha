@@ -26,6 +26,11 @@ export type PoliticaElegibilidade = {
   vigenteDesde: string;
   parametros: ParametrosElegibilidade;
 };
+export type DemandaManejo = {
+  id: string; finalidade: "DIAGNOSTICO" | "RECONFIRMACAO"; ocorrencia: number;
+  tentativaId: string | null; gestacaoId: string | null;
+  dataReferencia: string; previstaPara: string | null; pendencias: string[];
+};
 export type ElegibilidadeNaData = {
   animalId: string;
   propriedadeId: number;
@@ -33,7 +38,8 @@ export type ElegibilidadeNaData = {
   estado: "ELEGIVEL" | "NAO_ELEGIVEL" | "PENDENTE";
   baseElegivel: boolean | null;
   elegivel: boolean | null;
-  acompanhamentoAptidao?: { necessidadeId: string; fila: string; visitasAbertas: { id: string; nome: string }[] } | null;
+  demandasAcompanhamento?: DemandaManejo[];
+  acompanhamentoAptidao?: { necessidadeId: string; fila: string; visitasAbertas: { id: string; nome: string; data?: string }[] } | null;
   aptidaoClinica?: { estado: "APTA" | "NAO_APTA" | "NAO_DETERMINADA"; exameId: string | null; data: string | null; retornoEm: string | null; resultado: string | null };
   necessidadeAptidao?: { politicaId?: string | null; politicaVersao?: number | null; necessidadeId: string; estado: "MANUAL" | "AVALIACAO_DEVIDA" | "PENDENCIA_DADOS" | "CRITERIOS_NAO_ATINGIDOS"; devidaDesde: string | null; pendencias: string[]; criteriosNaoAtingidos: string[]; evidenciaIds: string[] } | null;
   pevOriginalAte?: string | null; revisaoDecisaoNecessaria?: boolean;
@@ -123,7 +129,9 @@ export const anularDecisao = (
     input.propriedadeId,
   );
 const motivos: Record<string, string> = {
+  EXAME_ORIGEM_INVALIDO: "O exame que fundamentou este acompanhamento está inválido; confira a evidência de origem antes de registrar a resolução.",
   DATA_PARTO_NAO_COMPROVADA: "Há parto anterior comprovado, mas falta sua data para calcular a avaliação pós-parto.",
+  CLASSE_REPRODUTIVA_CONFLITANTE: "A classificação informada conflita com o histórico de partos; confira a evidência.",
   CLASSE_REPRODUTIVA_NAO_COMPROVADA: "Confirme o histórico de partos para aplicar os critérios de vacas ou novilhas.",
   DECISAO_APTIDAO_NECESSARIA: "A avaliação e os critérios não liberam reprodução. Registre decisão individual após toque apto.",
   EXAME_ALTERADO_REVISAR_DECISAO: "O exame foi corrigido, anulado ou sucedido por outro toque. Revise a decisão antes de nova intervenção.",
@@ -163,3 +171,5 @@ export const registrarToqueAptidao = (input: { chave: string; animalId: string; 
   reqV4("/reproducao/toques-aptidao", input, "POST", input.propriedadeId);
 export const corrigirToqueAptidao = (id: string, input: { chave: string; propriedadeId: number; motivo: string; resultado?: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; anular?: boolean }) =>
   reqV4(`/reproducao/toques-aptidao/${id}/corrigir`, input, "POST", input.propriedadeId);
+
+export const consultarManejoAptidao = (propriedadeId: number, data: string) => reqV4<{ propriedadeId: number; dataReferencia: string; itens: ElegibilidadeNaData[] }>(`/reproducao/filas-aptidao?${new URLSearchParams({ propriedadeId: String(propriedadeId), data })}`, undefined, "GET", propriedadeId);

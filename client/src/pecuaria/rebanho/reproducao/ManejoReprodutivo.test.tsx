@@ -1,3 +1,4 @@
+import { consultarManejoAptidao, type ElegibilidadeNaData } from "./elegibilidade-api";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -9,6 +10,7 @@ import { listarAnimais, listarCategorias } from "../api";
 import type { AnimalResumo, ListarResultado } from "../types";
 import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
 import { navegarConsultaComSitio } from "./contexto-consulta";
+vi.mock("./elegibilidade-api", async original => ({ ...await original<typeof import("./elegibilidade-api")>(), consultarManejoAptidao: vi.fn() }));
 vi.mock("./api", () => ({ obterReproducao: vi.fn() }));
 vi.mock("../api", () => ({ listarAnimais: vi.fn(), listarCategorias: vi.fn() }));
 vi.mock("./indicadores-api", () => ({ consultarIndicadores: vi.fn() }));
@@ -33,10 +35,14 @@ function snapshot(filtros: FiltrosIndicadores): SnapshotIndicadoresReprodutivos 
 function resultado(itens: AnimalResumo[], total = itens.length): ListarResultado {
   return { itens, total, painel: { totalAtivos: total, porCategoria: [], porSitio: [], femeasAtivas: total, receptorasAtivas: 0 } };
 }
+function elegibilidade(id: string, patch: Partial<ElegibilidadeNaData> = {}): ElegibilidadeNaData {
+  return { animalId: id, propriedadeId: 7, dataReferencia: hoje, estado: "ELEGIVEL", baseElegivel: true, elegivel: true, aptaDesde: "2026-10-01", ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null, metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: null, motivos: id === "9" ? ["CICLO_DESCONHECIDO"] : [], alertas: [], restricaoIds: [], ...patch };
+}
 let painel: PainelReprodutivo;
 beforeEach(() => {
   vi.clearAllMocks(); localStorage.clear(); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
   painel = { animais: [estado("1"), estado("2"), estado("3"), estado("4", "AGUARDANDO_DIAGNOSTICO"), estado("9", "DESCONHECIDA")], tentativas: [], avaliacoes: [], partos: [], restricoes: [] };
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: Array.from({length:9}, (_,i)=>elegibilidade(String(i+1))) });
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
   vi.mocked(obterReproducao).mockResolvedValue(painel);
   vi.mocked(consultarIndicadores).mockImplementation(async f => snapshot(f));
@@ -47,9 +53,9 @@ it("separa liberação comprovada de diagnóstico e pendências, sem projetar da
   const historico = vi.fn(); const registrar = vi.fn();
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false} onConsultarHistorico={historico} onRegistrarEvento={registrar}/>);
   await screen.findAllByText("V4-1");
-  expect(screen.queryByRole("button", { name: /^Liberadas sem serviço/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
   expect(screen.queryByText("V4-9")).toBeNull();
-  expect(screen.getByText("Esta contagem não inclui os 1 animais aguardando diagnóstico.")).toBeTruthy();
+  expect(screen.getByText("Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.")).toBeTruthy();
   expect(screen.queryByText("V4-3")).toBeNull(); expect(screen.getAllByText("V4-4")[0]).toBeTruthy();
   expect(screen.getAllByText("0 dias sem serviço")[0]).toBeTruthy(); expect(screen.queryByText("Registrar evento")).toBeNull();
   expect(consultarIndicadores).toHaveBeenCalledWith({ propriedadeId: 7, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 });
@@ -75,7 +81,7 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await abrirFiltrosConsulta();
   await alterarControle(screen.getByLabelText("Filtrar lote"), { target: { value: "l2" } });
   await aplicarFiltrosConsulta();
-  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy(); expect(screen.queryByRole("button", { name: /^Liberadas sem serviço/ })).toBeNull();
+  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy(); expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
   expect(screen.queryByText("V4-1")).toBeNull(); expect(screen.getAllByText("V4-2")[0]).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get("pagina")).toBe("1");
   await abrirFiltrosConsulta();
@@ -88,7 +94,7 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await alterarControle(screen.getByLabelText("Animais por página"), { target: { value: "10" } });
   expect(screen.getByText("1–6 de 6 animais")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Buscar animal"), { target: { value: "Animal 5" } });
-  expect(screen.queryByRole("button", { name: /^Liberadas sem serviço/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
   expect(window.location.search).toContain("sitio=7"); expect(window.location.search).toContain("porPagina=10");
 });
 it("percorre todas as páginas da lista autorizada e restaura filtros ao voltar", async () => {
@@ -133,7 +139,7 @@ it("exclui baixadas, servidas e gestantes e mantém pendências de escopo da fil
   });
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
   await screen.findAllByText("V4-1");
-  expect(screen.queryByRole("button", { name: /^Liberadas sem serviço/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
   for (const id of ["2","3","4"]) expect(screen.queryByText(`V4-${id}`)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Revisar pendências" }));
   expect(screen.getAllByText("Papel reprodutivo não informado.").length).toBeGreaterThan(0);
@@ -146,7 +152,7 @@ it("alterna cartões e tabela preservando recorte, ordem, página e lista autori
   expect(screen.getByRole("button", { name: "Cartões" }).getAttribute("aria-pressed")).toBe("true");
   expect(screen.getAllByRole("link", { name: "Abrir ficha" })).toHaveLength(1);
   fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
-  expect(screen.getByRole("table", { name: "Aguardando diagnóstico" })).toBeTruthy();
+  expect(screen.getByRole("table", { name: "Diagnóstico e reconfirmação" })).toBeTruthy();
   expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
   expect(window.location.search).toContain("fila=diagnostico");
   expect(window.location.search).toContain("q=Animal");
@@ -211,4 +217,59 @@ it("conserva a URL Todas como consulta explícita das filas, sem misturar as pen
   await screen.findAllByText("V4-9");
   expect(screen.getAllByText("V4-4").length).toBeGreaterThan(0);
   expect(screen.getByText("1–4 de 4 animais")).toBeTruthy();
+});
+it("usa as novas filas sem contar crescimento como pendência e reúne animais únicos", async () => {
+  const necessidade = (id: string, estado: "AVALIACAO_DEVIDA" | "CRITERIOS_NAO_ATINGIDOS") => ({ necessidadeId: `APTIDAO:${id}:INICIAL`, estado, devidaDesde: estado === "AVALIACAO_DEVIDA" ? "2026-10-15" : null, pendencias: [], criteriosNaoAtingidos: estado === "CRITERIOS_NAO_ATINGIDOS" ? ["IDADE_MINIMA"] : [], evidenciaIds: [] });
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: [
+    elegibilidade("1", { elegivel: false, necessidadeAptidao: necessidade("1", "AVALIACAO_DEVIDA"), acompanhamentoAptidao: { necessidadeId: "APTIDAO:1:INICIAL", fila: "AVALIACAO_DEVIDA", visitasAbertas: [] } }),
+    elegibilidade("2", { elegivel: false, necessidadeAptidao: necessidade("2", "AVALIACAO_DEVIDA"), acompanhamentoAptidao: { necessidadeId: "APTIDAO:2:INICIAL", fila: "AGENDAMENTO", visitasAbertas: [{ id: "visita", nome: "Visita de reprodução", data: "2026-10-20" }] } }),
+    elegibilidade("4", { elegivel: null }),
+    elegibilidade("9", { elegivel: null, necessidadeAptidao: necessidade("9", "CRITERIOS_NAO_ATINGIDOS") }),
+  ] });
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findByRole("button", { name: "Avaliação devida · 1" });
+  expect(screen.getByText("1–3 de 3 animais")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Revisar pendências" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Agendadas · 1" }));
+  expect(screen.getByText("20/10/2026")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Visita de reprodução" })).toBeTruthy();
+  expect(window.location.search).toContain("fila=agendamento");
+  expect(screen.queryByText("V4-1")).toBeNull();
+});
+it("mantém aptidão clínica e liberação como eixos, sem duplicar animal em todas", async () => {
+  vi.mocked(listarAnimais).mockResolvedValue(resultado([animal("1")]));
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: [elegibilidade("1", {
+    aptidaoClinica: { estado: "APTA", exameId: "exame", data: "2026-10-10", retornoEm: null, resultado: "APTO" },
+    acompanhamentoAptidao: { necessidadeId: "APTIDAO:1:INICIAL", fila: "APTIDAO", visitasAbertas: [] },
+  })] });
+  window.history.replaceState(null, "", "/pecuaria/reproducao?fila=todas");
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findByText("Apta");
+  expect(screen.getByRole("button", { name: "Aptidão avaliada · 1" })).toBeTruthy();
+  expect(screen.getByRole("button", { name: "Liberadas sem serviço · 1" })).toBeTruthy();
+  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
+  expect(screen.getByText("01/10/2026")).toBeTruthy();
+  expect(screen.getByText("16 dias sem serviço")).toBeTruthy();
+});
+it("falha de aptidão não mostra filas antigas como se estivessem atualizadas", async () => {
+  vi.mocked(consultarManejoAptidao).mockRejectedValueOnce(new Error("Não foi possível conferir a aptidão"));
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findByText("Não foi possível conferir a aptidão");
+  expect(screen.queryByText("V4-1")).toBeNull();
+  expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeTruthy();
+});
+
+it("mostra reconfirmação pendente de gestante sem perder identidade ou inventar prazo", async () => {
+  painel.animais = [estado("1", "GESTANTE")];
+  vi.mocked(listarAnimais).mockResolvedValue(resultado([animal("1")]));
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: [elegibilidade("1", { elegivel: false, demandasAcompanhamento: [
+    { id: "reconfirmacao-1", finalidade: "RECONFIRMACAO", ocorrencia: 1, tentativaId: "tentativa-1", gestacaoId: "gestacao-1", dataReferencia: "2026-09-01", previstaPara: "2026-10-15", pendencias: [] },
+    { id: "reconfirmacao-2", finalidade: "RECONFIRMACAO", ocorrencia: 2, tentativaId: "tentativa-1", gestacaoId: "gestacao-1", dataReferencia: "2026-09-01", previstaPara: null, pendencias: [] },
+  ] })] });
+  render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
+  await screen.findByRole("button", { name: "Diagnóstico e reconfirmação · 1" });
+  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
+  expect(screen.getByText("Reconfirmação · ocorrência 1 · Previsão: 15/10/2026")).toBeTruthy();
+  expect(screen.getByText("Reconfirmação · ocorrência 2 · Previsão não definida")).toBeTruthy();
+  expect(screen.getByText("2 dias desde a previsão")).toBeTruthy();
 });
