@@ -2,12 +2,13 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { Client } from 'pg';
 import { describe, expect, it } from 'vitest';
 import { env } from '../../../env.js';
+import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integration.fixture.js';
 const suite = process.env.PECUARIA_DB_INTEGRATION === '1' ? describe : describe.skip;
 // Somente fixtures privadas; todas as gravações e seq explícitas negativas são desfeitas.
 suite('SQL real das retiradas internas do leite',()=>{
  it('valida a saída única e impede reescrever/apagar fatos e origens incompatíveis',async()=>{
   const url=new URL(env.DATABASE_URL);
-  expect(['localhost','127.0.0.1','[::1]']).toContain(url.hostname);expect(url.pathname).toBe('/fazendinha_seedatev3');
+  exigirBancoIntegracaoPecuaria();
   const db=new Client({connectionString:url.toString()});await db.connect();
   const sitio=-randomInt(1,2_000_000_000), produto=randomUUID(),config=randomUUID(),posicao=randomUUID(),dia=randomUUID(),sessao=randomUUID(),medicao=randomUUID(),entrada=randomUUID(),movEntrada=randomUUID(),classificacao=randomUUID(),movSaida=randomUUID(),retirada=randomUUID();
   try{

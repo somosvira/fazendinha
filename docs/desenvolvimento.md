@@ -86,6 +86,9 @@ A carga real V4 tem ferramentas separadas da seed demonstrativa única. Não rod
 
 As flags de integração habilitam escritas reais. Antes de executar uma suíte local, confira que sua preparação/limpeza altera somente fixtures próprias, sem colisão com dados existentes. Não rode indiscriminadamente a suíte inteira com todas as flags. Testes que recriam banco/estrutura e a bateria financeira que cria bancos estão restritos ao CI externo. Migrations locais são aplicadas diretamente no banco de desenvolvimento, sem recarregar o cenário. Testes unitários, builds e consultas de conferência continuam disponíveis.
 
+O job principal do GitHub Actions usa seu PostgreSQL efêmero `fazendinha_test`. A validação compartilhada `server/src/lib/banco-pecuaria-integration.fixture.ts` permite esse banco somente com `CI=true` e `GITHUB_ACTIONS=true`, mantendo host local; fora desse contexto, exige `fazendinha_seedatev3`. Testes de integração novos devem reutilizar essa validação, sem mudar o banco do workflow para atender uma asserção isolada. O job próprio da seed mantém seu banco efêmero `fazendinha_seedatev3`.
+
+
 O extrator `scripts/extract-pecuaria-v4.sh` exige caminho explícito de uma **cópia** Firebird e diretório de saída fora do Git, ambos acessíveis pelo Windows em `/mnt/c`. Recusa o diretório operacional `Ideagri/dados`. Consultas usam transação somente de leitura; erros SQL/UDF interrompem a transformação automática, conservando o dump para inspeção. `scripts/build-pecuaria-v4-json.mjs` verifica sentinelas e totais das tabelas antes de gerar o JSON. A presença de um dump não prova que a extração terminou integralmente.
 
 ```bash
