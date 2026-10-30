@@ -11,10 +11,11 @@ type Props = {
   tipos: TipoExameAcompanhamento[];
   ocupado: boolean;
   aoSalvar: (input: RegistroPoliticaAcompanhamento) => Promise<void>;
+  aoAlterar?: () => void;
   aoErro: (erro: string) => void;
 };
 
-export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupado, aoSalvar, aoErro }: Props) {
+export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupado, aoSalvar, aoErro, aoAlterar }: Props) {
   const [vigencia, setVigencia] = useState("");
   const [dias, setDias] = useState("");
   const [dg, setDg] = useState(false);
@@ -48,7 +49,8 @@ export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupad
   </select>;
 
   if (!visivel) return null;
-  return <form onSubmit={salvar} className="space-y-3 rounded-xl border border-border bg-card p-4">
+  return <form id="nova-politica-acompanhamento" onSubmit={salvar} className="space-y-4">
+    <fieldset disabled={ocupado} className="space-y-4 min-w-0">
     <label>Vigente desde<input className={classeInput} required type="date" value={vigencia} onChange={e => setVigencia(e.target.value)} /></label>
     <label className="flex gap-2"><input type="checkbox" checked={dg} onChange={e => setDg(e.target.checked)} />Configurar diagnóstico após tentativa</label>
     {dg && <div className="grid gap-3 sm:grid-cols-2">
@@ -59,11 +61,11 @@ export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupad
       <legend>Reconfirmação {i + 1}</legend>
       <label>Dias desde o primeiro DG positivo<input className={classeInput} required type="number" min={1} max={1000} value={r.dias} onChange={e => setReconfirmacoes(v => v.map((x, n) => n === i ? { ...x, dias: e.target.value } : x))} /></label>
       <label>Exame{exame(r.tipo, t => setReconfirmacoes(v => v.map((x, n) => n === i ? { ...x, tipo: t } : x)))}</label>
-      <Button type="button" secondary onClick={() => setReconfirmacoes(v => v.filter((_, n) => n !== i))}>Remover ocorrência</Button>
+      <Button type="button" secondary onClick={() => { aoAlterar?.(); setReconfirmacoes(v => v.filter((_, n) => n !== i)); }}>Remover ocorrência</Button>
     </fieldset>)}
     <div className="flex flex-wrap gap-2">
-      <Button type="button" secondary onClick={() => setReconfirmacoes(v => [...v, { dias: "", tipo: "" }])}>Adicionar reconfirmação</Button>
-      <Button type="submit" disabled={ocupado}>Registrar nova versão</Button>
+      <Button type="button" secondary onClick={() => { aoAlterar?.(); setReconfirmacoes(v => [...v, { dias: "", tipo: "" }]); }}>Adicionar reconfirmação</Button>
     </div>
+    </fieldset>
   </form>;
 }

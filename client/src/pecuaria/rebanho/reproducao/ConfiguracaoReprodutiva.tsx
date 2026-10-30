@@ -1,4 +1,6 @@
 import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
+import { ModalPolitica } from "./ModalPolitica";
+import { getHojeISO } from "../../../lib/hoje";
 import { AjudaCampo } from "../../../components/Dica";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -18,6 +20,8 @@ export function ConfiguracaoReprodutiva({
   propriedadeId: number;
   podeLancar: boolean;
 }) {
+  const [formularioAberto, setFormularioAberto] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [vacas, setVacas] = useState(grupoCriteriosVazio);
   const [novilhas, setNovilhas] = useState(grupoCriteriosVazio);
   const [diasAvaliacao, setDiasAvaliacao] = useState<number | null>(null);
@@ -43,6 +47,21 @@ export function ConfiguracaoReprodutiva({
     setPoliticas([]);
     setErro("");
     setMensagem("");
+    setFormularioAberto(false);
+    setCarregando(true);
+    limparFormulario();
+    void listarPoliticas(propriedadeId)
+      .then((v) => {
+        if (ativo) setPoliticas(v);
+      })
+      .catch((e) => {
+        if (ativo) setErro(e.message);
+      }).finally(() => { if (ativo) setCarregando(false); });
+    return () => {
+      ativo = false;
+    };
+  }, [propriedadeId]);
+  function limparFormulario() {
     setVigencia("");
     setPrimiparas("");
     setMultiparas("");
@@ -52,19 +71,12 @@ export function ConfiguracaoReprodutiva({
     setRestricoes("");
     setPerda("");
     setPapeis([]); setVacas(grupoCriteriosVazio()); setNovilhas(grupoCriteriosVazio()); setDiasAvaliacao(null); setMotivoVersao("");
-    void listarPoliticas(propriedadeId)
-      .then((v) => {
-        if (ativo) setPoliticas(v);
-      })
-      .catch((e) => {
-        if (ativo) setErro(e.message);
-      });
-    return () => {
-      ativo = false;
-    };
-  }, [propriedadeId]);
+    chave.current = null;
+  }
+  function fecharFormulario() { setFormularioAberto(false); limparFormulario(); setErro(""); }
   async function salvar(e: FormEvent) {
     e.preventDefault();
+    if (ocupado) return;
     setErro("");
     setMensagem("");
     if (!papeis.length) {
@@ -95,6 +107,8 @@ export function ConfiguracaoReprodutiva({
       const lista = await listarPoliticas(propriedadeId);
       if (ref.current === propriedadeId) {
         setPoliticas(lista);
+        setFormularioAberto(false);
+        limparFormulario();
         setMensagem(
           "Nova versão registrada. Os ciclos já vinculados conservam sua política.",
         );
@@ -110,24 +124,101 @@ export function ConfiguracaoReprodutiva({
       setOcupado(false);
     }
   }
+  const vigente = [...politicas].filter(p => p.vigenteDesde.slice(0, 10) <= getHojeISO()).sort((a, b) => b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao - a.versao)[0];
+  const politicasOrdenadas = [...politicas].sort((a, b) => Number(b.id === vigente?.id) - Number(a.id === vigente?.id) || b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao - a.versao);
   return (
     <section className="space-y-5">
-      <div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Elegibilidade reprodutiva <AjudaCampo rotulo="Ajuda sobre elegibilidade reprodutiva" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
-
+        {podeLancar && <Button type="button" onClick={() => setFormularioAberto(true)}>Nova versão da política</Button>}
       </div>
-      {erro && (
+      {erro && !formularioAberto && (
         <p role="alert" className="rounded border border-destructive p-3">
           {erro}
         </p>
       )}
       {mensagem && <p role="status">{mensagem}</p>}
-      {podeLancar && (
-        <form
+
+      <div className="space-y-3">
+        <h3 className="font-semibold">Versões preservadas</h3>
+        {carregando && <p role="status">Carregando política…</p>}
+        {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
+        {politicasOrdenadas.map((p) => (
+          <details key={p.id} open={p.id === vigente?.id} className="rounded-xl border bg-card p-4">
+            <summary className="cursor-pointer font-medium">
+              {p.id === vigente?.id && "Política vigente · "}Versão {p.versao} · vigente desde{" "}
+              {p.vigenteDesde.slice(0, 10).split("-").reverse().join("/")}
+            </summary>
+            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+              <div>
+                <dt>PEV primeiro parto</dt>
+                <dd>{p.parametros.pevPrimiparasDias} dias</dd>
+              </div>
+              <div>
+                <dt>PEV demais partos</dt>
+                <dd>{p.parametros.pevMultiparasDias} dias</dd>
+              </div>
+              <div>
+                <dt>Aborto</dt>
+                <dd>
+                  {p.parametros.aborto === "PEV_CONFIGURADO"
+                    ? `${p.parametros.pevAposAbortoDias} dias de PEV`
+                    : "Liberação individual"}
+                </dd>
+              </div>
+              <div>
+                <dt>Descarte</dt>
+                <dd>
+                  {p.parametros.descarte === "EXCLUIR" ? "Excluir" : "Incluir"}
+                </dd>
+              </div>
+              <div>
+                <dt>Restrições</dt>
+                <dd>
+                  {p.parametros.restricoes === "EXCLUIR"
+                    ? "Excluir enquanto vigentes"
+                    : "Apenas alertar"}
+                </dd>
+              </div>
+              <div>
+                <dt>Perda gestacional</dt>
+                <dd>
+                  {p.parametros.perdaGestacional === "EXIGE_LIBERACAO"
+                    ? "Exigir liberação"
+                    : "Retomar ciclo"}
+                </dd>
+              </div>
+              <div>
+                <dt>Papéis incluídos</dt>
+                <dd>
+                  {p.parametros.papeisIncluidos
+                    .map((v) =>
+                      v === "NENHUM"
+                        ? "Nenhum"
+                        : v === "DOADORA"
+                          ? "Doadora"
+                          : "Receptora",
+                    )
+                    .join(", ")}
+                </dd>
+              </div>
+            </dl>
+            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios indicam necessidade de avaliação; liberação exige toque apto e decisão individual.</p></div>}
+            <p className="mt-3 text-sm text-muted-foreground">
+              Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com avaliação e decisão explícitas" : "histórica"}
+            </p>
+          </details>
+        ))}
+      </div>
+      {podeLancar && formularioAberto && (
+        <ModalPolitica aberto titulo="Nova versão da política" onFechar={fecharFormulario} bloqueado={ocupado} largura="sm:max-w-5xl" rodape={fechar => <><Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar</Button><Button form="nova-politica-reprodutiva" type="submit" disabled={ocupado}>{ocupado ? "Registrando…" : "Registrar versão da política"}</Button></>}>
+        {erro && <p role="alert" className="mb-4 text-destructive">{erro}</p>}
+        <form id="nova-politica-reprodutiva"
           onSubmit={salvar}
-          className="space-y-4 rounded-xl border bg-card p-5"
+          className="space-y-4"
         >
-          <h3 className="font-semibold">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. Ciclos antigos exigem associação explícita na ficha do animal."/></h3>
+          <fieldset disabled={ocupado} className="space-y-4 min-w-0">
+          <p className="text-sm">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. Ciclos antigos exigem associação explícita na ficha do animal."/></p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
@@ -246,81 +337,10 @@ export function ConfiguracaoReprodutiva({
             ))}
           </fieldset>
 
-          <Button disabled={ocupado} type="submit">
-            {ocupado ? "Registrando…" : "Registrar versão da política"}
-          </Button>
+          </fieldset>
         </form>
+        </ModalPolitica>
       )}
-      <div className="space-y-3">
-        <h3 className="font-semibold">Versões preservadas</h3>
-        {!politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
-        {politicas.map((p) => (
-          <details key={p.id} className="rounded-xl border bg-card p-4">
-            <summary className="cursor-pointer font-medium">
-              Versão {p.versao} · vigente desde{" "}
-              {p.vigenteDesde.slice(0, 10).split("-").reverse().join("/")}
-            </summary>
-            <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-              <div>
-                <dt>PEV primeiro parto</dt>
-                <dd>{p.parametros.pevPrimiparasDias} dias</dd>
-              </div>
-              <div>
-                <dt>PEV demais partos</dt>
-                <dd>{p.parametros.pevMultiparasDias} dias</dd>
-              </div>
-              <div>
-                <dt>Aborto</dt>
-                <dd>
-                  {p.parametros.aborto === "PEV_CONFIGURADO"
-                    ? `${p.parametros.pevAposAbortoDias} dias de PEV`
-                    : "Liberação individual"}
-                </dd>
-              </div>
-              <div>
-                <dt>Descarte</dt>
-                <dd>
-                  {p.parametros.descarte === "EXCLUIR" ? "Excluir" : "Incluir"}
-                </dd>
-              </div>
-              <div>
-                <dt>Restrições</dt>
-                <dd>
-                  {p.parametros.restricoes === "EXCLUIR"
-                    ? "Excluir enquanto vigentes"
-                    : "Apenas alertar"}
-                </dd>
-              </div>
-              <div>
-                <dt>Perda gestacional</dt>
-                <dd>
-                  {p.parametros.perdaGestacional === "EXIGE_LIBERACAO"
-                    ? "Exigir liberação"
-                    : "Retomar ciclo"}
-                </dd>
-              </div>
-              <div>
-                <dt>Papéis incluídos</dt>
-                <dd>
-                  {p.parametros.papeisIncluidos
-                    .map((v) =>
-                      v === "NENHUM"
-                        ? "Nenhum"
-                        : v === "DOADORA"
-                          ? "Doadora"
-                          : "Receptora",
-                    )
-                    .join(", ")}
-                </dd>
-              </div>
-            </dl>
-            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios indicam necessidade de avaliação; liberação exige toque apto e decisão individual.</p></div>}
-            <p className="mt-3 text-sm text-muted-foreground">
-              Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com avaliação e decisão explícitas" : "histórica"}
-            </p>
-          </details>
-        ))}
-      </div>
       <ConfiguracaoAcompanhamento propriedadeId={propriedadeId} podeLancar={podeLancar}/>
     </section>
   );

@@ -10,7 +10,7 @@ const quantidade = (valor: string | number | null, unidade: "L" | "KG") => valor
 export function ControlesHistoricosLeite({ itens, coletivo = false }: { itens: ControleHistoricoLeite[]; coletivo?: boolean }) {
   const id = useId();
   const titulo = coletivo ? "Agregados históricos do sítio" : "Controles históricos do animal";
-  return <section className="controles-historicos-leite" aria-labelledby={id}>
+  return <section className="controles-historicos-leite" data-vazio={!itens.length || undefined} aria-labelledby={id}>
     <header><h3 id={id}>{titulo}</h3></header>
     {itens.length === 0 ? <p className="controles-historicos-vazio">{coletivo ? "Nenhum agregado histórico no período." : "Nenhum controle histórico no período."}</p> : <>
       <div className="controles-historicos-tabela" role="region" aria-label={titulo} tabIndex={0}>

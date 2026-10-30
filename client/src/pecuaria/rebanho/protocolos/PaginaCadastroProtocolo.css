@@ -63,3 +63,12 @@
  .cadastro-protocolo-acoes { padding:18px 20px; }
  .cadastro-protocolo-pagina .builder-etapas-lista { grid-template-columns:minmax(0,1fr); }
 }
+
+/* A base pode ter várias colunas; somente sua região rola, sem alargar o modal. */
+.cadastro-protocolo-pagina > *,
+.cadastro-protocolo-editor :is(section,fieldset,.builder-etapas,.builder-etapas-layout,.builder-etapas-lista,.builder-etapas-editor),
+.cadastro-protocolo-origens > label > span,
+.cadastro-protocolo-origem > div { min-width:0; max-width:100%; }
+.cadastro-protocolo-bases-rolagem { position:relative; display:block; width:100%; min-width:0; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
+.cadastro-protocolo-bases-rolagem > table { min-width:620px; }
+.cadastro-protocolo-bases-rolagem:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }

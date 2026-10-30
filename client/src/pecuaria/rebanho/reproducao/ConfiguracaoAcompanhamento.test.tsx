@@ -32,6 +32,7 @@ describe("formulário da política de acompanhamento", () => {
     });
     render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar />);
     await screen.findByText(/Versão 1/);
+    fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
     expect(escritas()).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
     fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));
@@ -39,7 +40,7 @@ describe("formulário da política de acompanhamento", () => {
     fireEvent.change(screen.getByLabelText("Exame do diagnóstico"), { target: { value: "reprodutivo" } });
     fireEvent.click(screen.getByRole("button", { name: "Adicionar reconfirmação" }));
     fireEvent.change(screen.getByLabelText("Dias desde o primeiro DG positivo"), { target: { value: "30" } });
-    const submeter = () => fireEvent.submit(screen.getByRole("button", { name: "Registrar nova versão" }).closest("form")!);
+    const submeter = () => fireEvent.submit((screen.getByRole("button", { name: "Registrar nova versão" }) as HTMLButtonElement).form!);
     submeter();
     await screen.findByText("Conferência recusada");
     expect(screen.getByLabelText("Dias após a tentativa")).toHaveProperty("value", "0");
@@ -53,6 +54,9 @@ describe("formulário da política de acompanhamento", () => {
     submeter();
     await screen.findByText(/Versão registrada/);
     expect(escritas()[1]).toEqual(escritas()[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
+    fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
+    fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));
     fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "10" } });
     submeter();
     await waitFor(() => expect(escritas()).toHaveLength(3));
@@ -63,7 +67,8 @@ describe("formulário da política de acompanhamento", () => {
   it("oferece apenas tipos ativos compatíveis e exige ao menos uma regra", async () => {
     render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar />);
     await screen.findByText(/Versão 1/);
-    fireEvent.submit(screen.getByRole("button", { name: "Registrar nova versão" }).closest("form")!);
+    fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
+    fireEvent.submit((screen.getByRole("button", { name: "Registrar nova versão" }) as HTMLButtonElement).form!);
     await screen.findByText("Configure ao menos um acompanhamento.");
     expect(escritas()).toHaveLength(0);
     fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));

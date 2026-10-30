@@ -1,3 +1,4 @@
+import { useAbaAtivaVisivel } from "../lib/useAbaAtivaVisivel";
 /* Navegação compartilhada: abas com contorno e seleção ligada à superfície branca.
  * A alternância Ciclos/Tarefas usa a aparência explícita de botões. */
 
@@ -17,6 +18,7 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
   variant?: "financeiro";
   aparencia?: "abas" | "botoes";
 }) {
+  const listaRef = useAbaAtivaVisivel<HTMLDivElement>(active);
   if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", aparencia === "abas" && "abas-navegacao", className)}>
     <TabsList variant={aparencia === "botoes" ? "default" : "pasta"} aria-label={ariaLabel} className="fin-abas">
       {tabs.map(({ id, label, icon: Icon }) => <TabsTrigger key={id} value={id} onClick={event => { if (event.detail === 0 && active !== id) onSelect(id); }} className="h-auto min-h-10 whitespace-normal px-3 text-left">{Icon && <Icon size={16} strokeWidth={1.8} aria-hidden="true" />}{label}</TabsTrigger>)}
@@ -25,7 +27,7 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
   return (
     <div className={cn("mb-5 flex", className)}>
       <div
-        role="tablist" aria-label={ariaLabel}
+        ref={listaRef} role="tablist" aria-label={ariaLabel}
         className="abas-pasta"
       >
         {tabs.map((t) => {

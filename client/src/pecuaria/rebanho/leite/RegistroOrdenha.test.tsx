@@ -211,3 +211,58 @@ for (const entrada of ["31/02/2026", "12/1", "31/12/2099", ""]) it(`bloqueia sal
   await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
   expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-23", "manha", [expect.objectContaining({ recipiente: "Balde separado", litros: 30 })]);
 });
+
+it("consulta origem confirmada como fatos legíveis preservando volume, régua, responsável e justificativa", async () => {
+  const confirmada = { ...medicao, entradaId: "e1", litros: 25.125, reguaMm: 0 };
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([confirmada]));
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
+  expect(within(resumo).getByText("25,125 L")).toBeTruthy();
+  expect(within(resumo).getByText("0 mm")).toBeTruthy();
+  expect(within(resumo).getByText("Maria")).toBeTruthy();
+  expect(within(resumo).getByText("Balde segregado")).toBeTruthy();
+  expect(within(resumo).getByText("Origem declarada diretamente em campo")).toBeTruthy();
+  expect(within(resumo).queryByRole("textbox")).toBeNull();
+  expect(within(resumo).queryByRole("combobox")).toBeNull();
+  expect(within(resumo).getByRole("button", { name: "Consultar animais" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Salvar ordenha" })).toBeNull();
+});
+
+it("adiciona e salva outra origem na ordenha confirmada sem reenviar a parcela já confirmada", async () => {
+  const confirmada = { ...medicao, entradaId: "e1" };
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([confirmada]));
+  vi.mocked(salvarParcelas).mockResolvedValue({ sessaoId: "s1", parcelas: [{ ...medicao, id: "m-nova", recipiente: "Novo balde", litros: 12, responsavel: "Ana", declaracaoDireta: { justificativa: "Origem separada conferida" } }] });
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
+  const grupo = screen.getByRole("region", { name: "Parcelas de Descarte" });
+  fireEvent.click(within(grupo).getByRole("button", { name: "Incluir outra origem" }));
+  fireEvent.change(screen.getByLabelText("Identificação do recipiente"), { target: { value: "Novo balde" } });
+  fireEvent.change(screen.getByLabelText("Litros informados manualmente"), { target: { value: "12" } });
+  fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "Ana" } });
+  fireEvent.change(screen.getByLabelText("Justificativa do registro direto"), { target: { value: "Origem separada conferida" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
+  expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-24", "manha", [expect.objectContaining({ recipiente: "Novo balde", litros: 12, responsavel: "Ana", versaoEsperada: 0 })]);
+  expect(within(screen.getByRole("article", { name: "Origem 1 confirmada de Descarte" })).getByText("25 L")).toBeTruthy();
+});
+
+it("mantém tanque versionado, régua ausente e alerta sanitário na consulta da origem confirmada", async () => {
+  const tanque: NonNullable<ParcelaOrdenha["tanque"]> = { id: "t1", identidadeId: "ti1", versao: 3, propriedadeId: 1, nome: "Tanque principal", fabricante: null, modelo: null, numeroSerie: null, capacidadeLitros: 2000, vigenteDesde: "2026-01-01", ativo: false, referenciaTabela: null, tabelaConversao: [] };
+  const confirmada: ParcelaOrdenha = { ...medicao, natureza: "COMERCIAL", entradaId: "e1", tanque, recipiente: null, reguaMm: null, animaisOrigem: ["a1"], declaracaoDireta: null };
+  const base = contexto([confirmada]);
+  vi.mocked(contextoParcelas).mockResolvedValue({ ...base, animais: [{ animalId: "a1", brinco: "118", nome: "Estrela" }], contexto: { ...base.contexto, carencias: [{ posicaoId: "manha", horario: null, animais: [{ animalId: "a1", estado: "VIGENTE", evidencias: [] }] }] } });
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Comercial" });
+  expect(within(resumo).getByText("Tanque principal · v3 · 2.000 L")).toBeTruthy();
+  expect(within(resumo).getByText("Não informada")).toBeTruthy();
+  expect(within(resumo).getByText(/Há animais com carência/)).toBeTruthy();
+  fireEvent.click(within(resumo).getByRole("button", { name: "Consultar animais" }));
+  const animal = screen.getByRole("checkbox", { name: "118 · Estrela · Carência / revisão sanitária" });
+  expect(animal).toHaveProperty("checked", true);
+  expect(animal).toHaveProperty("disabled", true);
+  expect(salvarParcelas).not.toHaveBeenCalled();
+  expect(confirmarParcelas).not.toHaveBeenCalled();
+});

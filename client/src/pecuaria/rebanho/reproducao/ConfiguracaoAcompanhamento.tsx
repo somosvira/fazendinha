@@ -1,7 +1,9 @@
 import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useRef, useState } from "react";
+import { ModalPolitica } from "./ModalPolitica";
+import { Button } from "../../../components/ui/button";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
-import { formatBRDateISO } from "../../../lib/hoje";
+import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { reqV4 } from "./api";
 import { FormularioAcompanhamento, type RegistroPoliticaAcompanhamento, type TipoExameAcompanhamento } from "./FormularioAcompanhamento";
 
@@ -24,6 +26,8 @@ export function ConfiguracaoAcompanhamento(props: Props) {
 }
 
 function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props) {
+  const [formularioAberto, setFormularioAberto] = useState(false);
+  const [alterado, setAlterado] = useState(false);
   const [politicas, setPoliticas] = useState<PoliticaAcompanhamento[]>([]);
   const [tipos, setTipos] = useState<TipoExameAcompanhamento[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -47,6 +51,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
   }, [propriedadeId]);
 
   async function salvar(input: RegistroPoliticaAcompanhamento) {
+    if (ocupado) return;
     const g = geracao.current;
     setErro(null);
     setMensagem("");
@@ -56,6 +61,8 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
       const p = await reqV4<PoliticaAcompanhamento[]>("/reproducao/acompanhamento/politicas", undefined, "GET", propriedadeId);
       if (g === geracao.current) {
         setPoliticas(p);
+        setFormularioAberto(false);
+        setAlterado(false);
         setMensagem("Versão registrada. Os fatos e demandas existentes foram preservados; a adoção em casos antigos exige conferência explícita.");
       }
     } catch (e) {
@@ -65,18 +72,26 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
     }
   }
 
+  const vigente = [...politicas].filter(p => p.vigenteDesde.slice(0, 10) <= getHojeISO()).sort((a, b) => b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao - a.versao)[0];
+  const ordenadas = [...politicas].sort((a, b) => Number(b.id === vigente?.id) - Number(a.id === vigente?.id) || b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao - a.versao);
   return <section className="space-y-4 border-t pt-5">
+    <div className="flex flex-wrap items-center justify-between gap-3">
     <h2 className="text-xl font-semibold">Diagnóstico e reconfirmações <AjudaCampo rotulo="Ajuda sobre prazos de acompanhamento" texto="Escolha os prazos com o responsável pelo manejo. As regras geram alertas e conservam sua versão em cada demanda. Não há prazo clínico padrão."/></h2>
-
-    <ErrorBox erro={erro} />
+    {podeLancar && <Button type="button" variant="outline" onClick={() => setFormularioAberto(true)}>Nova versão de acompanhamento</Button>}
+    </div>
+    {!formularioAberto && <ErrorBox erro={erro} />}
     {carregando && <p role="status">Carregando políticas…</p>}
     {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
     {mensagem && <p role="status">{mensagem}</p>}
-    <FormularioAcompanhamento visivel={podeLancar} propriedadeId={propriedadeId} tipos={tipos} ocupado={ocupado} aoSalvar={salvar} aoErro={mensagemErro => { setErro(mensagemErro); setMensagem(""); }} />
-    {politicas.map(p => <details key={p.id} className="rounded border border-border bg-card p-3">
-      <summary>Versão {p.versao} · vigente desde {formatBRDateISO(p.vigenteDesde)}</summary>
+
+    {ordenadas.map(p => <details key={p.id} open={p.id === vigente?.id} className="rounded border border-border bg-card p-3">
+      <summary>{p.id === vigente?.id && "Política vigente · "}Versão {p.versao} · vigente desde {formatBRDateISO(p.vigenteDesde)}</summary>
       <p>Diagnóstico: {p.parametros.diagnostico ? `${p.parametros.diagnostico.diasAposTentativa} dias após a tentativa` : "não configurado"}</p>
       {p.parametros.reconfirmacoes.map(r => <p key={r.ocorrencia}>Reconfirmação {r.ocorrencia}: {r.diasAposPrimeiroPositivo} dias desde o primeiro DG positivo{r.tipoExameId ? ` · exame configurado, versão ${r.tipoExameVersao}` : ""}</p>)}
     </details>)}
+    {podeLancar && formularioAberto && <ModalPolitica aberto titulo="Nova versão de acompanhamento" bloqueado={ocupado} alteracoesExternas={alterado} onFechar={() => { setFormularioAberto(false); setAlterado(false); setErro(null); }} rodape={fechar => <><Button type="button" variant="outline" onClick={fechar} disabled={ocupado}>Cancelar</Button><Button type="submit" form="nova-politica-acompanhamento" disabled={ocupado || carregando}>{ocupado ? "Registrando…" : "Registrar nova versão"}</Button></>}>
+      <ErrorBox erro={erro}/>
+      <FormularioAcompanhamento visivel propriedadeId={propriedadeId} tipos={tipos} ocupado={ocupado} aoSalvar={salvar} aoAlterar={() => setAlterado(true)} aoErro={mensagemErro => { setErro(mensagemErro); setMensagem(""); }} />
+    </ModalPolitica>}
   </section>;
 }

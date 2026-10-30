@@ -1,3 +1,5 @@
+import "./relatorios.css";
+import "./consulta-relatorio-ui.css";
 import type {ReactNode} from 'react';
 import {CalendarDays,Download,Printer,SlidersHorizontal} from 'lucide-react';
 import {Button} from '@/components/ui/button';

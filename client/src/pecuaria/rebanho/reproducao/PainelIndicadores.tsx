@@ -13,6 +13,8 @@ import { descreverMotivo } from "./elegibilidade-api";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import type { DetalheAnimalIndicador, SnapshotIndicadoresReprodutivos } from "./indicadores-api";
 
+import "./cobertura-indicadores.css";
+
 const numero = (n: number | null) => n === null ? "Sem base suficiente" : n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 const taxa = (n: number | null) => n === null ? "Sem base suficiente" : `${numero(n)}%`;
 const pendente = (a: DetalheAnimalIndicador) => a.incluidaNaBase === false || a.incluidaNaBase === undefined && a.contribuicaoElegiveis === null;

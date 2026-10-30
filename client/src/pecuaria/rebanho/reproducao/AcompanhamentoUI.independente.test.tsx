@@ -28,7 +28,7 @@ const posts = () => mocks.req.mock.calls.filter(([, body]) => body !== undefined
 beforeEach(() => { vi.resetAllMocks(); mocks.req.mockImplementation(padrao); });
 afterEach(() => cleanup());
 async function conferirAdocao() { await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes")); await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await screen.findByLabelText("Motivo obrigatório"); }
-function preencherPolitica() { fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } }); fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa")); fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } }); }
+function preencherPolitica() { fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" })); fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } }); fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa")); fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } }); }
 function preencherCopia(nome = "Rascunho da fazenda", versao = "1") { fireEvent.change(screen.getByLabelText("Nome do novo rascunho"), { target: { value: nome } }); fireEvent.change(screen.getByLabelText("Versão do novo rascunho"), { target: { value: versao } }); }
 describe("UI acompanhamento — contraprovas independentes", () => {
  it("leitura das demandas independe da demora ou falha das regras administrativas", async () => {
@@ -91,9 +91,9 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  });
  it("escrita de política pendente não mantém mensagem ou bloqueio no novo sítio", async () => {
   const escrita = adiada<unknown>(); mocks.req.mockImplementation((url, body) => url.endsWith("/politicas") && body ? escrita.promise : padrao(url, body));
-  const { rerender } = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar/>); await screen.findByText(/Versão 1/); preencherPolitica(); fireEvent.submit(screen.getByRole("button", { name: "Registrar nova versão" }).closest("form")!); await waitFor(() => expect(posts()).toHaveLength(1));
-  rerender(<ConfiguracaoAcompanhamento propriedadeId={2} podeLancar/>); await screen.findByText(/Versão 1/); expect(screen.getByRole("button", { name: "Registrar nova versão" })).toHaveProperty("disabled", false);
-  await act(async () => escrita.resolve({ id: "politica-antiga" })); expect(screen.queryByText(/Versão registrada/)).toBeNull(); expect(screen.getByLabelText("Vigente desde")).toHaveProperty("value", "");
+  const { rerender } = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar/>); await screen.findByText(/Versão 1/); preencherPolitica(); fireEvent.submit((screen.getByRole("button", { name: "Registrar nova versão" }) as HTMLButtonElement).form!); await waitFor(() => expect(posts()).toHaveLength(1));
+  rerender(<ConfiguracaoAcompanhamento propriedadeId={2} podeLancar/>); await screen.findByText(/Versão 1/); expect(screen.queryByRole("dialog")).toBeNull(); expect(screen.getByRole("button", { name: "Nova versão de acompanhamento" })).toHaveProperty("disabled", false);
+  await act(async () => escrita.resolve({ id: "politica-antiga" })); expect(screen.queryByText(/Versão registrada/)).toBeNull(); fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" })); expect(screen.getByLabelText("Vigente desde")).toHaveProperty("value", "");
  });
  it("consulta de política lenta não substitui versão do novo sítio", async () => {
   const antiga = adiada<unknown>(); mocks.req.mockImplementation((url, body, _method, sitio) => url.endsWith("/politicas") ? sitio === 1 ? antiga.promise : Promise.resolve([politica("p2", 2)]) : padrao(url, body));

@@ -174,3 +174,20 @@
 .san-ocorrencias-operacionais footer { align-items:center; }
 @media(max-width:900px) { .san-ocorrencias-operacionais .san-ocorrencias-cartoes { grid-template-columns:1fr; } }
 @media(max-width:600px) { .san-ocorrencias-operacionais { padding:14px; }.san-ocorrencias-operacionais .san-ocorrencia-cartao { padding:18px; }.san-ocorrencia-fatos { gap:8px; }.san-ocorrencias-doencas .san-doenca-barra { display:none; } }
+
+/* Contexto e registros compartilham a mesma moldura da consulta. */
+.sanidade-pagina .san-visual-barra { padding:10px 16px; gap:10px; }
+.san-ocorrencias-operacionais { padding:16px; gap:14px; background:transparent; }
+.san-ocorrencias-resumo { padding-bottom:12px; }
+.san-ocorrencias-doencas { gap:8px; margin-top:8px; }
+.san-ocorrencias-operacionais .san-ocorrencias-cartoes { gap:14px; align-items:start; }
+.san-ocorrencias-operacionais .san-ocorrencia-cartao { padding:16px; gap:12px; box-shadow:none; border:1px solid var(--border); }
+.san-ocorrencias-operacionais .san-ocorrencia-icone { padding:7px; }
+.san-ocorrencia-fatos { padding-block:10px; }
+@media(max-width:600px) {
+ .sanidade-pagina .san-visual-barra { padding:8px 12px; }
+ .san-ocorrencias-operacionais { padding:12px; gap:12px; }
+ .san-ocorrencias-resumo > header { gap:4px; }
+ :root [data-design-operacional] .san-ocorrencias-resumo h2 { font-size:18px; }
+ .san-ocorrencias-operacionais .san-ocorrencia-cartao { padding:14px; }
+}

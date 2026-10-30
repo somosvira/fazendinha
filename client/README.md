@@ -249,6 +249,18 @@ Manter as primitivas Radix/shadcn já adotadas, com Tailwind e os tokens compart
 
 Cálculo de negócio não pertence à renderização. A interface formata e apresenta o contrato; não recalcula indicadores do servidor para caber no desenho. Filtros e destinos mantêm a History API, os parâmetros e as guardas vigentes.
 
+### Espaçamento, largura útil e propriedade dos estilos
+
+Usar uma escala curta: 8 px entre elementos inseparáveis, 12–16 px dentro de grupos e 20–24 px entre seções. São referências de composição, não margens obrigatórias em todo descendente. Evitar somar o recuo da página, do painel, da barra e da linha interna para o mesmo grupo. Rótulo e valor ficam próximos; um novo assunto recebe mais separação que seus próprios campos.
+
+O componente reutilizado carrega os estilos de que depende. Sua apresentação deve funcionar ao abrir a URL diretamente em uma aba nova, sem visitar antes o hub de relatórios ou outra rotina. Estilos de domínio não podem depender de um ancestral exclusivo de outro consumidor. Regras comuns permanecem no escopo operacional, incluindo portais, sem atravessar o Financeiro.
+
+Cartões de fatos têm altura do conteúdo; não esticar todos para acompanhar uma composição extensa no vizinho. Ausência de dados não reserva um gráfico vazio. Preservar a distinção entre controle documental, aferição operacional, pendência e zero conhecido. No estoque, aproximar a prioridade de reposição do atalho existente, evitando outro painel com a mesma lista antes dos produtos.
+
+No telefone, avaliar quanto da janela é gasto antes do primeiro registro, além de conferir overflow. Data, nome, unidade e ação precisam caber dentro do próprio controle. Abas horizontais mantêm a seleção visível, inclusive ao abrir uma URL, sem deslocar a página verticalmente. Ajuda e fechar têm alvo de toque de 44 px; ícone pequeno não implica alvo pequeno. Nome, brinco, estados e medidas da ficha aproveitam a largura disponível, sem ficar presos à coluna estreita ao lado da imagem.
+
+Modais têm recuo interno explícito, espaço para fechar e rolagem dentro da altura da janela. Separar grupos com períodos independentes: exportar produção e emitir/consultar relatório não compartilham automaticamente o mesmo intervalo. Um registro confirmado apresenta os fatos para conferência; campos editáveis ficam nos trechos que admitem nova gravação, preservando as ações de inclusão existentes. Configurações mostram a política vigente antes da criação de uma nova versão; o formulário em modal protege rascunho e bloqueia saída durante gravação.
+
 ## 10. Critério para revisar e aprovar uma mudança
 
 Antes do mockup, definir: tarefa, público, informação essencial, ação principal e fonte dos dados. A revisão de `impeccable` e `frontend-design` deve avaliar esses itens e não apenas o acabamento.
@@ -266,7 +278,8 @@ Na implementação, conferir:
 - Estado vazio, carregamento, erro, atualização e acesso restrito têm tratamentos diferentes.
 - Nenhum alerta necessário escondido em tooltip; nenhum botão aparente sem comportamento.
 - URL, voltar/avançar, sítio e guarda de rascunho preservados; busca global atualizada na mesma alteração.
-- Desktop e celular conferidos no navegador com conteúdo realista; sem marcar homologação apenas por passar testes.
+- Desktop e celular conferidos no navegador com conteúdo realista; sem marcar homologação apenas por passar testes. Conferir também entrada direta em aba nova, ordem de navegação, aba ativa, texto longo e data/ação dentro do controle.
+- Cada modal contado na revisão deve ter sido realmente aberto e conferido após carregar; captura da página ao fundo não comprova o formulário. Testar fechar/retorno de foco e cancelamento de rascunho, sem gravar dados de negócio para uma revisão visual.
 - PDF completo e legível quando fizer parte da tarefa; métodos e limitações preservados no documento.
 
 Em uma rodada com usuários, pedir que encontrem um animal, identifiquem sua situação, registrem um fato e retornem ao conjunto anterior. Medir hesitações, caminho percorrido, erros e necessidade de explicação. Registrar a base atual antes de definir metas; não inventar percentuais de melhoria.

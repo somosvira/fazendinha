@@ -911,7 +911,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           )}
           {aba === "ocorrencias" && (
             <>
-              <div className="san-visual-barra"><p>Acompanhe os casos e consulte o histórico de cada animal.</p><AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/></div>
+              <div className="san-visual-barra"><AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/></div>
               {visualOcorrencias.modo === "visual" ? carregandoAba || erroAba ? null : <CartoesOcorrencias itens={ocorrenciasVisiveis} resumo={resumoOcorrencias} nomeAnimal={nomeAnimal} acoes={o=>colunasOcorrencias.find(c=>c.chave==="acoes")!.celula(o)} onAbrir={o=>abrirDetalhe("ocorrencia",o.id,o.propriedadeId)} doencaId={doencaVisual} onDoenca={id=>{setDoencaVisual(id);setPagina(1);}}/> : <>
               <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrencias.filter((o) => noPeriodo(o.inicio, o.status, o.fim))} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}

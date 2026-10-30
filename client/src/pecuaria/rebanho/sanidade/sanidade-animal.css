@@ -36,3 +36,11 @@
 }
 .ficha-v4 .sanidade-acoes-diretas { gap: 10px; }
 .ficha-v4 .sanidade-animal .protocolo-sanitario-dados { gap: 20px; margin-top: 18px; margin-bottom: 18px; }
+
+/* Carências continuam separadas; protocolos e aplicações usam divisórias, sem painéis vazios aninhados. */
+.ficha-v4 #ficha-painel-sanidade > .sanidade-animal { gap:16px; }
+.ficha-v4 .sanidade-animal-acoes { padding-bottom:12px; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; overflow:visible; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-cabecalho { padding:12px 0 6px; border:0; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-conteudo { padding:6px 0 0; }
+.pecuaria-content .sanidade-animal > .historico-sanitario-animal { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; padding:16px 0 0; }

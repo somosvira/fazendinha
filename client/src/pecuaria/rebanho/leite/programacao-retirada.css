@@ -1,0 +1,12 @@
+/* Programação também é acessada diretamente em Configurações. */
+.leite-previsoes-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(144px,1fr));gap:12px;list-style:none;padding:0;margin:16px 0 24px}
+.leite-previsoes-grade>li{display:grid;align-content:start;gap:8px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:14px;min-width:0}
+.leite-previsoes-grade time{font-weight:650;font-size:16px}
+.leite-previsoes-grade span{color:var(--muted-foreground)}
+
+.leite-programacao-retirada>h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.leite-programacao-retirada>h2>svg{flex-shrink:0}
+
+.pec-config-producao.leite-modulo{padding:0}
+.pec-config-producao .leite-programacao-retirada>h1{font-size:32px;font-weight:650;line-height:1.2;margin:0 0 24px}
+@media(max-width:650px){.pec-config-producao .leite-programacao-retirada>h1{font-size:28px}}

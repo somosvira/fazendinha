@@ -1,0 +1,5 @@
+/* O painel também é aberto diretamente pela rotina de reprodução. */
+.repro-indicadores-resultado > .rel-cobertura-unica{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding:16px 20px;border-top:1px solid var(--border);background:var(--muted);font-size:14px;line-height:1.5}
+.repro-indicadores-resultado > .rel-cobertura-unica > svg{flex-shrink:0;color:var(--primary)}
+.repro-indicadores-resultado > .rel-cobertura-unica > button:last-child{margin-left:auto}
+@media(max-width:650px){.repro-indicadores-resultado > .rel-cobertura-unica{padding:16px;gap:8px}.repro-indicadores-resultado > .rel-cobertura-unica > strong{flex:1 1 200px}.repro-indicadores-resultado > .rel-cobertura-unica > button:last-child{margin-left:0}}

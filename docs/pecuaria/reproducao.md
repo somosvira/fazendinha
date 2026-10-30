@@ -386,3 +386,9 @@ Escritas usam o núcleo comum de pesagem, trava por animal, autorização de lan
 A conciliação IDEAGRI separa a importação/reutilização da pesagem da associação ao encerramento. Os **100 pesos de secagem** são o levantamento informado pela fazenda, não registros executados ou homologados. A ferramenta distingue peso existente/criado, duplicidade, associação comprovada, conflito e pendência. Sem prova suficiente, conserva o peso válido e relata associação pendente, sem inventar lactação, data ou motivo. A conclusão posterior exige nova prévia/manifesto e usa o mesmo núcleo de vínculo. Consulte o [procedimento do importador](../desenvolvimento.md).
 
 Testes de serviço e interface verificam opcionalidade, reuso, incompatibilidades, motivo/versão/reenvio, correção/reabertura e pendências com dependências controladas. Fixtures PostgreSQL, quando habilitadas, usam apenas seus próprios fatos; as verificações SQL e concorrência real precisam de evidência separada. Código e migration preparados não significam aplicação no banco, carga dos 100 casos ou homologação STG.
+
+### Composição das configurações e cobertura
+
+Política reprodutiva e acompanhamento apresentam a versão vigente antes do formulário de nova versão. A criação abre em modal centralizado; alterações de campos e das regras de reconfirmação protegem o rascunho ao fechar, navegar ou trocar o sítio. Durante a gravação, a saída fica bloqueada; falhas conservam os dados e a chave idempotente, e sucesso encerra o formulário. A consulta da política e os destinos de busca existentes continuam nos mesmos endereços.
+
+O aviso de base parcial dos indicadores tem apresentação própria também na rotina de Reprodução, sem depender do carregamento do hub de relatórios. Contagens de pendências, denominadores e acesso aos animais continuam preservados.
