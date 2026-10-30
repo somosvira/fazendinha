@@ -5,13 +5,13 @@ import { CartaoAnimal } from './CartaoAnimal';
 import type { AnimalResumo } from '../types';
 afterEach(cleanup);
 const animal = { categoriaOrigem: 'AUTOMATICA', categoriaCalculada: null, idadeNaBaixa: false, dataEntrada: '2021-05-05', origem: 'NASCIDO', papelReprodutivo: null, composicaoRotulo: '', noLocalDesde: null, baixa: null, id: 'a', brinco: '001', nome: 'Mimosa', sexo: 'F', situacao: 'ATIVO', idadeMeses: 65, dataNascimento: '2021-05-05', categoria: { id: 'cat', nome: 'Vaca' }, aptidao: 'LEITE', lote: { id: 'l', nome: 'Lactantes' }, propriedade: { id: 1, nome: 'Sede' }, ultimoPeso: null, gmdRecente: null, contextoCartao: { produtivo: { dataReferencia: '2026-10-30', partosRealizados: 3, diasDesdeConfirmacao: null, situacaoProdutiva: 'LACTANTE', del: 0, diasPosParto: 0, idadeGestacionalDias: null, pendencias: [] }, ocorrencias: [{ id: 'o', nome: 'Ocorrência comprovada', inicio: '2026-10-30' }] } } as AnimalResumo;
-it('mostra ciclo comprovado inclusive D0 e preserva seleção e abertura independentes', () => {
+it('preserva DEL zero e seleção independente, sem mostrar dias pós-parto no cartão', () => {
     const abrir = vi.fn(), selecionar = vi.fn();
     render(<CartaoAnimal animal={animal} onAbrir={abrir} selecao={<input type="checkbox" aria-label="Selecionar Mimosa" onChange={selecionar}/>}/>);
     expect(screen.getByText('#001')).toBeTruthy();
     expect(screen.queryByText('Sem pesagem')).toBeNull();
     expect(screen.getByText('0 dias em lactação')).toBeTruthy();
-    expect(screen.getByText('Pós-parto · 0 dias')).toBeTruthy();
+    expect(screen.queryByText(/^Pós-parto/)).toBeNull();
     fireEvent.click(screen.getByLabelText('Selecionar Mimosa'));
     expect(abrir).not.toHaveBeenCalled();
     expect(selecionar).toHaveBeenCalled();

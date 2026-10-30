@@ -18,7 +18,7 @@ export function CartaoAnimal({ animal: a, onAbrir, selecao, acoes, selecionado =
 }) {
     const [ocorrenciasAbertas, setOcorrenciasAbertas] = useState(false);
     const c = a.contextoCartao?.produtivo, o = a.contextoCartao?.ocorrencias ?? [];
-    const ciclo = c?.idadeGestacionalDias != null ? `Gestante · ${c.idadeGestacionalDias} dias` : c?.diasPosParto != null ? `Pós-parto · ${c.diasPosParto} dias` : null;
+    const ciclo = c?.idadeGestacionalDias != null ? `Gestante · ${c.idadeGestacionalDias} dias` : null;
     const fase = c?.situacaoProdutiva === 'LACTANTE' ? 'Em lactação' : c?.situacaoProdutiva === 'SECA' ? 'Seca' : null;
     return <><article className={`pec-cartao-animal${selecionado ? ' selecionado' : ''}`} aria-label={`Animal ${a.brinco}`}>
  <header>{selecao}<h3><button type="button" className="pec-animal-titulo" onClick={onAbrir} aria-label={`Abrir animal ${a.brinco}`}>{a.nome ?? a.brinco}{a.nome && <span className="pec-brinco">#{a.brinco}</span>}</button></h3><span className={`pec-animal-situacao ${a.situacao === 'ATIVO' ? 'ativo' : 'baixado'}`}><i />{rotuloSituacao(a.situacao)}</span></header>
