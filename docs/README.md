@@ -50,6 +50,10 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 
 ## Evidências e referências históricas
 
+### Proposta em implementação
+
+[Responsividade e densidade da interface](design/responsividade/README.md) reúne o plano do PR dedicado e o mockup de shell/sidebar, protocolos e cartões de animais. A direção visual foi aceita para planejamento; implementação e validação funcional permanecem pendentes conforme o estado registrado no plano.
+
 [QA de interface](../design-qa.md), [QA do leite](design/leite/design-qa.md), [QA gerencial](gerencial/design-qa.md) e [validação operacional](design/validacao-refino-operacional.md) conservam suas datas, cenários e limites. Não substituem contratos atuais. Mockups aprovados continuam como referência visual com dados ilustrativos; não comprovam persistência ou disponibilidade.
 
 Os roteiros [V3](pecuaria/artefatos/testes-v3-guia.html), [V4](pecuaria/artefatos/testes-v4-guia.html), [follow-up V4](pecuaria/artefatos/testes-follow-up-v4.html) e [finalidade V5](pecuaria/artefatos/homologacao-v5-finalidade.md) preservam IDs, aceites e armazenamento próprios. A preparação histórica pode não existir na seed atual; registre o bloqueio sem recriá-la ou alterar o aceite pela revisão documental.
