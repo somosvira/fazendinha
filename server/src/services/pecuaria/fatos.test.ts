@@ -116,6 +116,28 @@ describe("contexto factual das pesagens após revisão de cadastro/localizaçõe
     await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({ code: "CONFLITO", campo: "propriedadeId", message: expect.stringContaining("peso-historico") });
   });
 
+  it("peso interno sem vínculo ativo com parto conserva o sítio factual ao desfazer retorno", async () => {
+    const pesoDesvinculado = { ...peso, data: dia("2025-01-15"), contextoHistorico: "INTERNO", propriedadeId: 1 };
+    const original = structuredClone(pesoDesvinculado);
+    db.pesagem.findMany.mockResolvedValue([pesoDesvinculado]);
+    db.vinculoPesagemParto.findMany.mockResolvedValue([]);
+    locais[0].ate = dia("2025-01-12");
+    locais.push(
+      { ...localInicial, id: "intermediaria", propriedadeId: 2, desde: dia("2025-01-12"), ate: dia("2025-01-14") },
+      { ...localInicial, id: "retorno", desde: dia("2025-01-14") },
+    );
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    const retorno = locais.pop()!;
+    locais[1].ate = null;
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({
+      code: "CONFLITO", campo: "propriedadeId", message: expect.stringContaining(pesoDesvinculado.id),
+    });
+    expect(pesoDesvinculado).toEqual(original);
+    locais[1].ate = retorno.desde;
+    locais.push(retorno);
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+  });
+
   it("preserva legado NAO_INFORMADO sem atribuir ou exigir sítio inferido", async () => {
     db.pesagem.findMany.mockResolvedValue([]);
     await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
