@@ -11,10 +11,10 @@ it("distingue protocolo previsto de iniciado sem afirmar saúde por ausência", 
   vi.mocked(reqSanidade).mockResolvedValue([]);
   vi.mocked(reqV4).mockResolvedValue([{ participantes: [{ animalId: "a", inicioEfetivo: null, encerradoEm: null }] }]);
   const tela = render(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={0}/>);
-  await screen.findByText("Protocolo reprodutivo programado");
+  await screen.findByText("Protocolo programado");
   vi.mocked(reqV4).mockResolvedValue([{ participantes: [{ animalId: "a", inicioEfetivo: "2026-01-01", encerradoEm: null }] }]);
   tela.rerender(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={1}/>);
-  await screen.findByText("Em protocolo reprodutivo");
+  await screen.findByText("Em protocolo");
   expect(screen.queryByText(/Saudável/)).toBeNull();
 });
 it("ignora ocorrências e protocolos do contexto anterior e distingue erro de ausência", async () => {
@@ -35,19 +35,19 @@ it("omite protocolos concluídos ou dispensados e mantém regularização penden
  vi.mocked(reqV4).mockResolvedValue([{participantes:[participante]}]);
  const tela=render(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={0}/>);
  await act(async()=>{});
- expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
- expect(screen.queryByText("Protocolo reprodutivo programado")).toBeNull();
+ expect(screen.queryByText("Em protocolo")).toBeNull();
+ expect(screen.queryByText("Protocolo programado")).toBeNull();
  vi.mocked(reqV4).mockResolvedValue([{participantes:[{...participante,tarefas:[{...tarefa,realizadaEm:null,dispensadaEm:"2020-01-02"}]}]}]);
  tela.rerender(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={1}/>);
- await act(async()=>{});expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
+ await act(async()=>{});expect(screen.queryByText("Em protocolo")).toBeNull();
  vi.mocked(reqV4).mockResolvedValue([{participantes:[{...participante,tarefas:[{...tarefa,regularizacaoPendente:true}]}]}]);
  tela.rerender(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={2}/>);
- await screen.findByText("Em protocolo reprodutivo");
+ await screen.findByText("Em protocolo");
 });
 it("início efetivo futuro ainda é programação e não protocolo ativo",async()=>{
  vi.mocked(reqSanidade).mockResolvedValue([]);
  vi.mocked(reqV4).mockResolvedValue([{participantes:[{animalId:"a",inicioEfetivo:"2999-01-01",encerradoEm:null,tarefas:[]}]}]);
  render(<StatusOperacionaisAnimal animalId="a" propriedadeId={7} revisao={0}/>);
- await screen.findByText("Protocolo reprodutivo programado");
- expect(screen.queryByText("Em protocolo reprodutivo")).toBeNull();
+ await screen.findByText("Protocolo programado");
+ expect(screen.queryByText("Em protocolo")).toBeNull();
 });

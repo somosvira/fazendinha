@@ -34,3 +34,22 @@
 .sanitario-historico-evento > header p { margin-top: 4px; }
 .sanitario-historico-motivo { max-width: 65ch; margin-top: 12px; overflow-wrap: anywhere; }
 .sanitario-historico-paginacao { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+.sanitario-bloco-estatico { min-width:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.sanitario-bloco-estatico > header { display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border); }
+.sanitario-bloco-estatico > header h3 { flex:1; margin:0; }
+.sanitario-bloco-estatico > header > svg { flex-shrink:0; color:var(--primary); }
+.sanitario-bloco-conteudo { display:grid; gap:20px; padding:18px; min-width:0; }
+.pec-detalhe-sanitario .sanitario-bloco-conteudo .sanitario-identidade { border:0; padding:0; }
+.pec-detalhe-sanitario .sanitario-aplicacao-dados .dado-ficha { min-width:0; }
+.pec-detalhe-sanitario a { text-underline-offset:3px; }
+.sanitario-custo-resumo { display:grid; gap:14px; }
+.sanitario-custo-total { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; }
+.sanitario-custo-total > strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.sanitario-custo-total > .text-sm { flex-basis:100%; }
+.sanitario-custo-parcelas { display:grid; gap:10px; }
+.sanitario-custo-parcelas > div { display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; }
+.sanitario-custo-parcelas dd { font-variant-numeric:tabular-nums; }
+.sanitario-painel-rodape { background:var(--card); }
+@media(max-width:540px) { .sanitario-bloco-conteudo { padding:14px; } }
+.pec-detalhe-sanitario .sanitario-aplicacao-dados a { color:var(--primary); text-decoration:underline; text-underline-offset:3px; }

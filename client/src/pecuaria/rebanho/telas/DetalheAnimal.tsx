@@ -39,7 +39,6 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
-import { SecaoFicha } from "../components/SecaoRecolhivel";
 import { QualidadeAnimalLeite } from "../leite/QualidadeAnimalLeite";
 import { HistoricoProdutivoLeite } from "../leite/HistoricoProdutivoLeite";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
@@ -296,24 +295,20 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
     {erro && <div className="mt-3"><ErrorBox erro={erro} /></div>}
     <article className="pec-ficha ficha-v4 ficha-animal-geral">
     <div className="ficha-animal-cabecalho">
-      <img className="ficha-animal-ilustracao" src="/images/pecuaria/vaca.png" width={110} height={110} alt="Ilustração genérica de bovino" />
+      <img className="ficha-animal-ilustracao" src="/images/pecuaria/vaca.png" width={72} height={72} alt="Ilustração genérica de bovino" />
       <div className="ficha-animal-identidade">
-      <PageHeader integrado
-        titulo={<><span className="ficha-animal-nome">{animal.nome ?? animal.brinco}</span>{animal.nome && <span className="ficha-brinco">#{animal.brinco}</span>}</>}
-        descricao={`${animal.propriedade?.nome ?? "Sem sítio"} · ${animal.lote?.nome ?? "Sem lote"}`}
-      >          {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-sm text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}</PageHeader>
-
-      </div>
-      <div className="ficha-animal-acoes">{acoesCabecalho}{(!podeLancar || !ativo) && <Button secondary onClick={() => setManejoDetalhe(true)}>Desmama e castração</Button>}</div>
+        <h1 className="ficha-animal-identificacao"><span className="ficha-animal-brinco">{animal.brinco}</span>{animal.nome && <span className="ficha-animal-nome">{animal.nome}</span>}<span className="ficha-animal-lote">{animal.lote?.nome ?? "Sem lote"}</span></h1>
     <div className="ficha-status">
             {!ativo && <Pill tone="neutral">Baixado</Pill>}
             {animal.identificacaoProvisoria && <Pill tone="amber">Brinco pendente · cadastro provisório</Pill>}
-            <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />
+            {animal.categoria && animal.categoriaOrigem !== "SEM_CATEGORIA" && <CategoriaPill categoria={animal.categoria} categoriaOrigem={animal.categoriaOrigem} categoriaCalculada={animal.categoriaCalculada} />}
             {animal.aptidao && <Pill tone="brown">{rotuloAptidao(animal.aptidao)}{!ativo && " · na baixa"}</Pill>}
-            {animal.papelReprodutivo && animal.papelReprodutivo !== "NENHUM" && <Pill tone="amber">{rotuloPapelReprodutivo(animal.papelReprodutivo)}{!ativo && " · na baixa"}</Pill>}
             <StatusOperacionaisAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} revisao={refreshToken}/>
-            <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} carencia={carenciaResumo} />
+            <SinaisClinicosAnimal situacao={animal.sexo === "F" ? situacaoReprodutiva : null} situacaoProdutiva={animal.sexo === "F" ? animal.contextoProdutivo?.situacaoProdutiva : null} carencia={carenciaResumo} />
           </div>
+        {animal.categoriaOrigem === "MANUAL" && animal.categoriaCalculada?.id === animal.categoria?.id && <p className="mt-2 text-sm text-ink-3">O cálculo já concorda — pode voltar ao automático.</p>}
+      </div>
+      <div className="ficha-animal-acoes">{acoesCabecalho}{(!podeLancar || !ativo) && <Button secondary onClick={() => setManejoDetalhe(true)}>Desmama e castração</Button>}</div>
       {!ativo && animal.baixa && <div role="status" className="ficha-baixa-resumo">
         <ArchiveX size={18} aria-hidden="true" />
         <div><strong>Animal baixado · {rotuloTipoBaixa(animal.baixa.tipo)} em {formatarDataBR(animal.baixa.data)}</strong>
@@ -417,9 +412,9 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
 </DialogContent></Dialog>
 <Dialog open={manejoDetalhe} onOpenChange={setManejoDetalhe}><DialogContent className="ficha-dialogo max-w-4xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Desmama e castração</DialogTitle></DialogHeader><ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }}/></DialogContent></Dialog>
       {animal.sexo === "F" && <section id="ficha-painel-producao" role="tabpanel" aria-labelledby="aba-producao" hidden={secaoAtiva !== "producao"}>
-        <SecaoFicha id="producao-leite" titulo="Produção individual" resumo="Controles nas datas aferidas; ausência de medição não é produção zero">
+        <div id="producao-leite">
           <HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />
-        </SecaoFicha>
+        </div>
         {secaoAtiva === "producao" && <QualidadeAnimalLeite key={animal.id} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
       </section>}
       {animal.sexo==="F"&&<section id="ficha-painel-reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} /></section>}

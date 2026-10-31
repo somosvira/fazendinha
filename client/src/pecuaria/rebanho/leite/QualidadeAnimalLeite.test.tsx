@@ -60,12 +60,18 @@ it("falha de consulta não é apresentada como ausência de exames", async () =>
   await screen.findByRole("alert");
   expect(screen.queryByText(/Nenhuma análise/)).toBeNull();
 });
-it("apresenta a qualidade como seção direta e um único estado vazio sem paginação inútil", async () => {
+it("preserva o recorte ao recolher a qualidade e um único estado vazio sem paginação inútil", async () => {
   vi.mocked(consultarLeite).mockResolvedValue({ total: 0, tamanho: 20, pagina: 1, itens: [] });
   const { container } = render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
   await screen.findByText("Nenhuma análise individual registrada neste recorte.");
   expect(screen.getByRole("region", { name: "Qualidade individual do leite" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Qualidade individual do leite" })).toBeNull();
+  const recolher = screen.getByRole("button", { name: "Qualidade individual do leite" });
+  const conteudo = container.querySelector("#qualidade-individual-leite-conteudo")!;
+  fireEvent.click(recolher);
+  expect(conteudo.hasAttribute("hidden")).toBe(true);
+  expect(conteudo.textContent).toContain("Nenhuma análise individual registrada neste recorte.");
+  fireEvent.click(recolher);
+  expect(conteudo.hasAttribute("hidden")).toBe(false);
   expect(container.querySelector("details")).toBeNull();
   expect(screen.queryByText("0 amostra(s) no período e sítio consultados.")).toBeNull();
   expect(screen.queryByRole("button", { name: "Próximas análises" })).toBeNull();

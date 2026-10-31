@@ -29,6 +29,7 @@ import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { NutricaoLote } from "../nutricao/NutricaoLote";
+import { AgendaSanitaria } from "../sanidade/AgendaSanitaria";
 import { HistoricoSanitario } from "../sanidade/HistoricoSanitario";
 import { linkFichaAnimal } from "../lib/navegacao";
 
@@ -275,7 +276,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
     </div>
 
     <div id="lote-painel-sanidade" role="tabpanel" aria-labelledby="lote-aba-sanidade" hidden={secaoAtiva !== "sanidade"}>
-    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /></div>
+    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /><AgendaSanitaria loteId={lote.id} /></div>
     </div>
     <div id="lote-painel-nutricao" role="tabpanel" aria-labelledby="lote-aba-nutricao" hidden={secaoAtiva !== "nutricao"}>
     <div id="lote-nutricao" style={{ scrollMarginTop: 120 }}><NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} /></div>

@@ -1,11 +1,11 @@
 import "./protocolos.css";
 import { AtendimentoParticipacaoAnimal } from "./AtendimentoParticipacaoAnimal";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
 import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo } from "./api";
 import type { PaginaProtocolo } from "./EtapasProtocolo";
-export function ParticipacoesIndividuais({ animalId, tipo, revisao, propriedadeId, podeLancar = false, aoSalvar, mensagemVazia }: { animalId: string; tipo: "SANITARIO" | "REPRODUTIVO"; revisao: number; propriedadeId?: number; podeLancar?: boolean; aoSalvar?: () => void; mensagemVazia?: string | false }) {
+export function ParticipacoesIndividuais({ animalId, tipo, revisao, propriedadeId, podeLancar = false, aoSalvar, mensagemVazia }: { animalId: string; tipo: "SANITARIO" | "REPRODUTIVO"; revisao: number; propriedadeId?: number; podeLancar?: boolean; aoSalvar?: () => void; mensagemVazia?: ReactNode }) {
   const selecionadaId = window.location.hash === `#${tipo === "SANITARIO" ? "sanidade" : "reproducao"}` && !new URLSearchParams(window.location.search).has("programacaoId") ? new URLSearchParams(window.location.search).get("participacaoId") : null;
   const [selecionada, setSelecionada] = useState<CabecalhoProtocolo | null>(null);
   const [erroSelecionada, setErroSelecionada] = useState<string | null>(null);

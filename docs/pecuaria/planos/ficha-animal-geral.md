@@ -1,6 +1,6 @@
 # Plano de implementação — ficha do animal
 
-Status: implementação da ficha e revisão independente Astra/high concluídas; builds de cliente e servidor aprovados. Consumo real de tokens não aferido pelas ferramentas. A integração B no Bezerreiro está pendente; por isso a reorganização está parcialmente concluída e o plano permanece ativo. Base de referência: `staging`, commit `53300a38` (PR #342), verificada em 30/10/2026. Rota: `/pecuaria/rebanho/animais/:id`. Branch: `codex/plano-ficha-animal-geral`. PR permanece draft.
+Status: reorganização original integrada em staging; rodada v8 implementada localmente na branch `codex/etiquetas-ficha-animal`, com validação local concluída. A integração B com Bezerreiro permanece uma dependência separada, não executada nesta rodada. Consumo real de tokens não aferido. Sem publicação ou deploy desta rodada.
 
 ## Resultado pretendido
 
@@ -40,7 +40,7 @@ A referência foi atualizada para `v5/` nesta execução e comparada com a aplic
 
 - Retirar Ativo; usar Baixado como indicação explícita quando houver baixa. Preservar motivo/data/restrições de escrita e a leitura na data da baixa.
 - Retirar idade, peso e data do cabeçalho. A data ali hoje é a **data da última pesagem**, apesar de ter sido interpretada como nascimento na primeira anotação. Nascimento e idade ficam em Identificação; peso/data ficam na tabela de pesagens.
-- Ampliar a imagem proporcionalmente à identidade textual (referência desktop 104 px), mantendo adaptação móvel e imagem padrão acessível.
+- Ampliar a imagem proporcionalmente à identidade textual (referência desktop 72 px), mantendo adaptação móvel e imagem padrão acessível.
 - Preservar `DadoFicha`, ícones por campo e cartões de Identificação/Filiação. Observações do cadastro continuam sendo o campo livre existente, sem presumir interpretação do texto importado.
 - Substituir a explicação da regra de categoria por etiqueta da categoria e botão **Categoria**. Manter no fluxo desse botão o modo automático/manual e a explicação da regra quando necessária à decisão; não retirar os comandos existentes.
 - Mostrar filhos diretamente na seção, usando a consulta real e seus estados/paginação, sem botão “Consultar filhos”. Não inferir ausência de filhos quando a consulta falha ou não terminou. Conservar filiação interna/externa e composição racial.
@@ -196,3 +196,109 @@ Escopo: abas compartilhadas; formulário alinhado; finalidade/papel na identific
 
 
 Rodada v6 concluída: 98 testes em oito arquivos passaram (SubTabs, DetalheAnimal, FormDadosAnimal, PesoEGanho, SecaoRecolhivel, HistoricoMovimentacoes, HistoricoBaixas e GraficoPeso); TypeScript e build do cliente passaram, com aviso de chunk acima de 500 kB. Detector mecânico impeccable não retornou achados nos componentes alterados. Navegador confirmou Geral desktop e largura de 390 px, ausência de overflow da página, seleção de aba, alinhamento do formulário, recolhimento sem desmontagem e modal de movimentações vazio para DEV-001. A tabela de movimentações com registros em largura estreita foi validada por teste, não por captura desse animal. Revisão Astra/high do diff desta rodada e capturas finais terminou sem achados materiais; não foi reauditoria integral do PR. Modelos delegados: Sol/medium e Astra/high; consumo real não aferido. Permanecem os limites de homologação e a dependência B registrados acima.
+
+
+## Cabeçalho aprovado em 31/10/2026
+
+Decisão aprovada para implementação futura: opção A ajustada do mockup `http://127.0.0.1:41879/headers/`. Esta seção registra o desenho aprovado; não declara a implementação concluída nem altera o status das etapas anteriores.
+
+- Ordem: brinco → nome, quando informado → lote. Brinco sem formato de etiqueta.
+- Tipografia: brinco **20 px / peso 750**, nome **18 px / peso 600**, lote **16 px / peso 500**; mesma família Manrope, altura de linha de 24 px e alinhamento pela linha de base. A experiência de três textos em 18 px foi revertida a pedido do usuário.
+- Lote separado por divisória discreta e com cor secundária. Nome ausente não deve gerar placeholder ou espaço vazio.
+- Etiquetas abaixo da identificação, com intervalo de 8 px. Imagem de bovino de 72 × 72 px; identificação e etiquetas contidas na altura da imagem no desktop. Botão Mais ações à direita.
+- Preservar as regras vigentes de dados, permissões e etiquetas; esta aprovação trata da composição do cabeçalho.
+- Conferência final: comparar com a opção A ajustada; validar animal sem nome, nome/lote longos e largura estreita, sem sobreposição ou overflow horizontal. Preservar leitura e acesso às ações na adaptação responsiva.
+
+
+## Padronização das abas e Sanidade (mockup v8)
+
+Status: execução autorizada e implementação local concluída em 31/10/2026; revisão Astra concluída sem achados pendentes, builds de cliente/servidor e testes direcionados aprovados. Referência visual: `http://127.0.0.1:41879/v8/#sanidade`, incluindo seus diálogos e estados com/sem dados. O mockup é demonstrativo: seus valores, vínculos, resultados e datas não comprovam contratos do servidor. Esta rodada complementa o cabeçalho A aprovado acima e não reabre o escopo já entregue pela rodada v6. O histórico de execução anterior não deve ser interpretado como validação desta rodada.
+
+### 1. Conferir contratos e preservar a base
+
+- Preservar as alterações locais de etiquetas e a documentação já existentes na branch `codex/etiquetas-ficha-animal`; revisar o diff antes de integrar a rodada.
+- Inspecionar `SanidadeAnimal`, `DetalheSanitario`, `CarenciasSanitarias`, os DTOs em `sanidade/api.ts`, `CustosDiretos`, rotas/serviços sanitários, schema e migrations pertinentes. Rastrear testes de anulação, escopo, custos e tarefas.
+- `AplicacaoSanitaria` já expõe `produtoId`, `produto`, `operacaoServicoId`, status e estados de carência; não expõe custo exato no DTO inspecionado. `DetalheSanitario` já usa `CustosDiretos` e link de produto. Reaproveitar essas fontes antes de criar consultas novas.
+- Custo vem do registro econômico vinculado ao fato, com Decimal e a autorização operacional existente (`podeConsultarCustosPecuaria`); documentos/totais financeiros continuam exigindo área Financeiro e `verValores`. Não calcular pelo preço atual do produto nem somar o valor integral de um atendimento a cada aplicação. Evitar dupla contagem de insumo incluso em serviço. Se a atribuição não for comprovada ou estiver incompleta, apresentar indisponibilidade/pendência em vez de zero ou um total supostamente exato. Só ampliar DTO/serviço após definir e testar a origem de cada parcela.
+- Links exigem IDs reais e acesso autorizado. Serviço veterinário somente por vínculo explícito; nunca inferir por data, nome ou profissional. Nenhum ID/valor fictício do mockup entra na implementação.
+
+### 2. Corrigir shell e padronizar componentes
+
+- Aplicar o cabeçalho A aprovado: brinco 20 px, nome 18 px, lote 16 px; tags abaixo e altura compatível com imagem de 72 px no desktop.
+- Reutilizar a seção de Geral nas demais abas: títulos de 16 px, ícones, radius e espaçamento consistentes; seta na extrema direita, ações somente quando expandido; preservar montagem do conteúdo, rascunhos, foco e hashes.
+- Alinhar as bordas externas dos componentes às abas; remover padding lateral duplicado sem retirar o padding interno dos componentes. Pais recolhíveis; filhos de Peso sem recolhimento independente.
+- **Sidebar solicitada nesta conversa:** usuário relatou desorganização em laptop 1024 × 768 e pediu retorno ao padrão já corrigido. Inspecionar `AppSidebar.tsx`, `sidebar-clara.css` e `styles/base.css`. O código prevê trilho de 64 px na faixa 901–1100 px e expansão por hover; corrigir conflitos entre largura, labels, ícones, controles, offset do conteúdo e rodapé. A sidebar simplificada de 200 px do mockup NÃO substitui esse contrato. Preservar recolhimento manual, navegação por teclado e drawer abaixo do breakpoint.
+
+### 3. Reorganizar Sanidade
+
+Ordem dos pais: **Aplicações sanitárias → Protocolos sanitários → Histórico sanitário → Agenda sanitária**.
+
+- Carências integradas no topo de Aplicações: dois blocos alinhados (leite e abate/carne), divisória vertical no desktop e horizontal quando empilhados. Preservar estados conhecidos, não informados, não aplicáveis e revisões pendentes; ausência de aplicações não significa automaticamente liberação.
+- Aplicações em tabela com radius discreto de 8 px, cabeçalho do padrão do app, custo autorizado e ações Detalhes/Anular. Ações primárias no padrão de Registrar aplicação; Anular mantém tratamento destrutivo.
+- Protocolos sem “do animal” no título; conservar dados reais de execução, etapas, situação e acesso ao protocolo.
+- Estados vazios centralizados com ícone, seguindo GMD. Diferenciar vazio real, carregamento, falha e nenhum resultado após filtro.
+- Histórico sanitário reutiliza LinhaTempoConsulta/CartaoConsulta e tabela: ocorrências e exames com data, dias decorridos, tipo, nome, situação e detalhes. Nome e status agrupados como `Nome - Status`, centralizados no espaço disponível, com tipo/ícone e botão Detalhes nas extremidades. Quebra somente quando necessário. Busca e filtros devem operar sobre o recorte real e respeitar paginação, sem tratar página parcial como histórico completo.
+- Nova ocorrência/Registrar exame no cabeçalho do Histórico, com comportamento de recolhimento igual aos demais componentes.
+- Agenda em componente separado, com Lista/Calendário. Referência definitiva é **CalendarioCompromissos**, não o seletor mensal de Reprodução: grade mensal com tarefas dentro dos dias, navegação de mês, Hoje e clique para detalhes. Reutilizar helpers e extrair apresentação comum se útil, mantendo o fluxo financeiro intacto; não adaptar tarefas sanitárias como compromissos financeiros fictícios. Preservar datas/status reais e comportamento móvel legível.
+
+### 4. Detalhes e anulação
+
+- Modal com título fixo, corpo rolável (min-height: 0 e altura limitada ao viewport) e rodapé fixo. Anular aplicação ao lado de Fechar; evitar botões Fechar duplicados no corpo.
+- Nenhuma seção recolhível dentro do modal. Bloco **Detalhes** integra aplicação, produto, carências e observações. Status Válida/Anulada no cabeçalho desse bloco; remover a antiga faixa redundante de identidade.
+- Grade: Animal / Responsável; Data / Tempo desde a aplicação; Produto / Lote do produto; Dose e via / Vínculo; Local / Serviço veterinário quando comprovado. Preservar dados históricos e não inventar campos ausentes.
+- Nome do produto e identificação do serviço são links textuais aos registros reais, com foco visível e comportamento nativo de link. Não usar os diálogos substitutos do mockup como navegação definitiva.
+- Bloco Custo separado: total e parcelas comprovadas, visibilidade pela política operacional vigente; documentos integrais protegidos por `verValores`; origem e disponibilidade verificadas na etapa 1.
+- Dias decorridos por data civil no fuso do produto, incluindo Hoje/Há 1 dia/Há N dias; não fixar a referência 31/10/2026 do mockup na aplicação.
+- Anular reutiliza o fluxo existente: motivo, permissões e regras de consumo/administração, carência, custos e auditoria. Não simplificar a anulação real à confirmação demonstrativa; atualizar os dados após sucesso e impedir submissão duplicada. Aplicações anuladas permanecem rastreáveis e não oferecem nova anulação.
+- Detalhes de ocorrência, exame e tarefa seguem a mesma estrutura de modal sem recolhimento, mostrando campos próprios e histórico/resultados quando existentes. Não criar previsões de reavaliação ou vínculos a partir dos exemplos fictícios.
+
+### 5. Validar e concluir
+
+- Testes direcionados: DTO/custos e permissões se alterados; anulação e atualização das carências; links com/sem vínculo; calendários e navegação; datas civis; detalhe/rolagem; recolhimento e rascunhos; regressão dos consumidores compartilhados.
+- TypeScript e build do cliente; servidor e seus testes quando houver alteração de contrato/cálculo. Integração local somente em `fazendinha_seedatev3`, sem reset ou seed adicional; não usar o proxy de STG para testes de escrita.
+- Conferência no navegador com e sem dados, aplicações válidas/anuladas, custo indisponível, ausência de vínculo, textos longos, falhas e permissões reduzidas. Conferir tabela, timeline e calendário, abertura e rolagem até rodapé dos modais.
+- Responsividade: 1280/1440 px, **1024 × 768**, 931 × 698 (captura relatada), limites 900/901 e 1100/1101 px, e 390 px. Verificar trilho/hover/foco/drawer, ausência de sobreposição involuntária e overflow da página; rolagem horizontal apenas nas regiões previstas.
+- Revisão final independente de código e comparação com mockup usando Astra, conforme solicitação anterior do usuário. Corrigir divergências antes de apresentar a implementação. Mockup de sidebar simplificado não é prova de correção do shell real.
+- Atualizar contratos vigentes com comportamento entregue e retirar os trechos temporários concluídos. Relatar separadamente checks automatizados, inspeção visual e homologação. Sem merge/deploy nesta etapa de planejamento.
+
+Sequência: contratos e dependências → shell/componentes → Sanidade e diálogos → calendário/histórico → regressões e revisão final. Distribuição de modelos e custos deve ser definida antes da execução, com preços vigentes verificados; nenhuma estimativa antiga é tratada como consumo real ou orçamento aprovado desta rodada.
+
+Ajuste posterior do Histórico sanitário: nome e situação formam um grupo centralizado no espaço disponível, separados por hífen (`Nome - Status`); tipo/ícone à esquerda e botão Detalhes à direita, nas extremidades. Permitir quebra em larguras menores sem sobreposição.
+
+
+### Ordem de execução consolidada após a revisão final do mockup
+
+O usuário encerrou a revisão visual e solicitou este plano. Referência final: mockup v8 com nome/status centralizados no Histórico sanitário, detalhes não recolhíveis e calendário de Compromissos. A execução foi autorizada posteriormente e realizada em agentes; publicação e deploy não integram esta rodada.
+
+| Etapa | Entrega concreta | Critério de conclusão |
+| --- | --- | --- |
+| 1. Diagnóstico de dados | Mapeamento de custos, vínculos, anulação e DTOs existentes | Origem comprovada de cada valor; lacunas explícitas, sem valores inferidos |
+| 2. Shell e componentes | Sidebar de laptop corrigida; alinhamento de abas/painéis; cabeçalho A; seções das demais abas padronizadas | Conferência de 1024 × 768, breakpoints do shell e preservação de rascunhos/URLs |
+| 3. Aplicações e protocolos | Carências integradas, tabela arredondada, custos e ações, estados vazios e protocolos | Dados reais, gates e estados clínicos preservados; ausência de dados não interpretada como liberação |
+| 4. Modais sanitários | Detalhes da aplicação, ocorrência, exame e tarefa; anulação existente integrada | Corpo rolável; rodapé fixo; ausência de seções recolhíveis; links reais autorizados |
+| 5. Histórico e agenda | Linha do tempo/tabela; Nome - Status centralizados; agenda separada em grade mensal/lista | Busca e paginação coerentes; clique em tarefa abre detalhe; nenhum evento previsto inventado |
+| 6. Verificação e documentação | Testes, builds, inspeção visual e revisão independente | Comparação com mockup concluída, regressões corrigidas e contratos atualizados |
+
+A etapa 1 antecede custo e links. A etapa 2 define o padrão compartilhado antes das etapas 3–5. A revisão final ocorre após a integração de todas as etapas, sem aprovar apenas uma captura isolada.
+
+Detalhes finais do modal de aplicação: Animal / Responsável na primeira linha; Data / Tempo desde a aplicação na segunda. Produto, lote, dose/via, vínculo e local nas linhas seguintes; serviço veterinário apenas com vínculo comprovado. Válida/Anulada no cabeçalho do bloco Detalhes. Produto e serviço são links no texto. Carências e observações pertencem ao mesmo bloco Detalhes; custo em bloco próprio. Anular aplicação e Fechar juntos no rodapé fixo. Não reproduzir os placeholders de navegação do mockup.
+
+Critérios de encerramento adicionais: verificar retorno do foco ao fechar modais, leitura por teclado, ação de anulação indisponível para aplicação anulada ou usuário sem permissão, custos operacionais restritos ao fato autorizado e documentos/totais financeiros não expostos sem `verValores` e calendário financeiro sem regressão após eventual extração compartilhada. Custos incompletos devem permanecer explicitamente incompletos. A sidebar é mudança do shell: validar também Compromissos, além da ficha do animal.
+
+
+### Execução autorizada — divisão por agentes
+
+Usuário autorizou execução e divisão por custo-benefício nesta conversa. As frentes compartilham a branch `codex/etiquetas-ficha-animal`, com ownership de arquivos para evitar sobrescrita; alterações locais anteriores são preservadas.
+
+| Agente/frente | Modelo e esforço | Entrada estimada | Saída estimada |
+| --- | --- | ---: | ---: |
+| Shell, cabeçalho, padronização de abas | GPT-6.1 Sol / medium | 25–45 mil tokens | 5–10 mil |
+| Aplicações, modais, vínculos e custos | GPT-6.1 Sol / high | 35–65 mil tokens | 8–15 mil |
+| Histórico e agenda | GPT-6.1 Sol / medium | 25–45 mil tokens | 5–10 mil |
+| Revisão independente final | GPT-6 Astra / high | 15–30 mil tokens | 3–6 mil |
+
+Integrador responsável por composição, ambiente local, navegador, documentação e checks finais. Estimativas orientam escopo/contexto, não são orçamento fechado nem consumo medido. Evitar agentes extras para tarefas pequenas; Astra somente revisão, com diff e evidências focados. A seleção Sol para execução segue a orientação oficial de equilíbrio custo/capacidade, consultada em https://developers.openai.com/api/docs/models em 31/10/2026. Não equivaler preços públicos da API à cobrança efetiva desta sessão. Nenhuma execução de escrita em STG, deploy ou merge está incluída.
+
+### Encerramento da rodada v8
+
+Implementação local e revisão independente Astra/high concluídas. Builds do cliente e servidor e testes direcionados de ficha, abas, sidebar, Sanidade, custos, permissões, calendário e navegação passaram. Conferência no navegador usou apenas o banco local `fazendinha_seedatev3`, com estados vazios/preenchidos, recolhimento, calendário/tarefa, detalhes e rolagem/retorno de foco. A matriz completa de dispositivos e homologação operacional em STG não foram executadas. Não houve migration, gravação sanitária de validação, deploy ou merge nesta rodada. Decisões funcionais vigentes incorporadas ao contrato de Pecuária; a dependência de Bezerreiro continua separada.
