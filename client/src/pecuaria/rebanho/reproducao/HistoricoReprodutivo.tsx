@@ -3,7 +3,7 @@ import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { DatePicker } from "@/components/DatePicker";
 import { BuscaLista } from "@/components/BuscaLista";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { dataValida } from "./periodo-consulta";
 import { navegarPara } from "../../../router";
 import { MultiSelect } from "../../../components/MultiSelect";
@@ -37,9 +37,9 @@ function parametrosHistorico(chave: string) {
   }
   return p;
 }
-export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, chaveUrl = "historico" }: { chaveUrl?: string; fatos: FatoHistorico[]; animalId: string; propriedadeId?: number; onAbrir: (fato: FatoHistorico) => void }) {
-  const [visual,setVisual]=useState<"linha"|"tabela">("linha");
-  const periodo = useRef<HTMLDivElement>(null);
+export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, visual: visualExterno, chaveUrl = "historico" }: { visual?: "linha" | "tabela"; chaveUrl?: string; fatos: FatoHistorico[]; animalId: string; propriedadeId?: number; onAbrir: (fato: FatoHistorico) => void }) {
+  const [visualLocal,setVisual]=useState<"linha"|"tabela">("linha");
+  const visual = visualExterno ?? visualLocal;
   const [tipos, setTipos] = useState<string[]>(()=>parametrosHistorico(chaveUrl).getAll(`${chaveUrl}Tipos`));
   const [inicio, setInicio] = useState<string | null>(()=>parametrosHistorico(chaveUrl).get(`${chaveUrl}Inicio`));
   const [fim, setFim] = useState<string | null>(()=>parametrosHistorico(chaveUrl).get(`${chaveUrl}Fim`));
@@ -68,10 +68,11 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, 
   const acoes=(f:FatoHistorico)=><Button size="sm" onClick={()=>abrir(f)}>{f.grupo==="Parto"?"Ver parto":"Detalhes"}</Button>;
 
   return <div className="repro-historico">
+      {chaveUrl==="historico"&&!visualExterno&&<div className="repro-historico-visual" role="group" aria-label="Visualização do histórico reprodutivo"><Button variant={visual==="linha"?"default":"outline"} aria-pressed={visual==="linha"} onClick={()=>setVisual("linha")}>Linha do tempo</Button><Button variant={visual==="tabela"?"default":"outline"} aria-pressed={visual==="tabela"} onClick={()=>setVisual("tabela")}>Tabela</Button></div>}
     <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={erroFiltro} criterios={tipos.map(t=>({id:t,rotulo:filtros.find(([,v])=>v===t)?.[0]??"Tipo selecionado",limpar:()=>{setTipos(v=>v.filter(x=>x!==t));setPagina(1);}}))}>
       <BuscaLista rotulo="Buscar evento" placeholder="Evento ou resultado" valor={busca} onChange={v=>{setBusca(v);setPagina(1);}}/>
-      <DateRangePicker value={{start:dataValida(de)?dateFromIso(de):null,end:dataValida(ate)?dateFromIso(ate):null}} onChange={range => { setInicio(range.start ? isoDate(range.start) : ""); setFim(range.end ? isoDate(range.end) : ""); setPagina(1); }} showPresets={false} triggerAriaLabel="Período do histórico reprodutivo" triggerLabel={<span className="inline-flex items-center gap-3"><CalendarDays size={18} aria-hidden="true"/>{inicio == null && fim == null ? primeiro ? `Desde o início registrado · ${formatBRDateISO(primeiro)}–${formatBRDateISO(hoje)}` : "Início não informado" : `${de ? formatBRDateISO(de) : "Sem início"}–${ate ? formatBRDateISO(ate) : "Sem fim"}`}</span>}/>
-      {chaveUrl==="historico"&&<div className="flex gap-2" role="group" aria-label="Visualização do histórico reprodutivo"><Button variant={visual==="linha"?"default":"outline"} aria-pressed={visual==="linha"} onClick={()=>setVisual("linha")}>Linha do tempo</Button><Button variant={visual==="tabela"?"default":"outline"} aria-pressed={visual==="tabela"} onClick={()=>setVisual("tabela")}>Tabela</Button></div>}
+      <DateRangePicker value={{start:dataValida(de)?dateFromIso(de):null,end:dataValida(ate)?dateFromIso(ate):null}} onChange={range => { setInicio(range.start ? isoDate(range.start) : ""); setFim(range.end ? isoDate(range.end) : ""); setPagina(1); }} showPresets={false} triggerAriaLabel="Período do histórico reprodutivo" showIcon triggerLabel={inicio == null && fim == null ? "Todo o período" : "Período selecionado"}/>
+
     </BarraConsulta>
     {invalido && <p role="alert">O início deve ser anterior ou igual ao fim do período.</p>}
     {chaveUrl==="historico"&&visual==="linha"?<LinhaTempoConsulta rotulo="Histórico reprodutivo por data" itens={itens} dataDe={f=>f.data} chaveDe={f=>f.chaveHistorico??`${f.grupo}:${f.id}`} complementoData={data=><span className="font-normal text-ink-3"> - {dataRelativaFato(data)}</span>} render={f=><CartaoConsulta titulo={f.grupo} icon={f.grupo==="Protocolo"?ClipboardList:f.grupo==="Avaliação"?HeartPulse:f.grupo==="Tentativa"?Syringe:f.grupo==="Parto"?Baby:History} acoes={acoes(f)}><div className="flex flex-wrap gap-2 text-sm"><strong>{registro(f)}</strong><span>- {resultado(f)}</span></div></CartaoConsulta>}/>:<TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao,erroFiltro)} rotulo="Histórico reprodutivo" itens={itens} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
@@ -82,7 +83,7 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, 
       { chave: "acao", titulo: "Ação", acoes: true, celula: acoes },
     ]}/>}
     {!selecionados.length && <p className="p-4 text-ink-3">Nenhum evento registrado neste período e tipo.</p>}
-    {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
-    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect={`pagina-${chaveUrl}-animal`}/></>}
+    {selecionados.length > 0 && <div className="repro-historico-rodape"><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
+    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect={`pagina-${chaveUrl}-animal`}/></div>}
   </div>;
 }

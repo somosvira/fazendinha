@@ -96,3 +96,9 @@ it("lactação na Produção conserva desconhecimento e põe encerramento no men
   fireEvent.click(await screen.findByRole("menuitem",{name:"Encerrar lactação"}));
   expect(await screen.findByLabelText("Como deseja informar o peso?")).toBeTruthy();
 });
+
+it("oculta gestação atual encerrada sem eliminar o histórico", () => {
+ const painel: PainelReprodutivo = {animais:[{animalId:"a",brinco:"100",nome:null,situacao:"VAZIA",partos:1,tentativasCiclo:0,gestacao:{id:"g",status:"VALIDO",encerradaEm:"2026-10-24"},restricoes:[]}],tentativas:[],avaliacoes:[],partos:[],restricoes:[],gestacoes:[{id:"g",animalId:"a",status:"VALIDO",encerradaEm:"2026-10-24"}]};
+ render(<AcoesReprodutivas modo="gestacao" animalId="a" painel={painel} propriedadeId={7} podeLancar={false} onMudou={vi.fn()}/>);
+ expect(screen.queryByRole("heading",{name:"Gestação atual"})).toBeNull();
+});

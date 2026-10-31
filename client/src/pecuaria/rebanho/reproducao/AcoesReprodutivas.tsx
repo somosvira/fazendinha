@@ -98,7 +98,7 @@ export function AcoesReprodutivas({
   };
   const crias = painel.partos.filter(p => p.animalId === animalId && p.status !== "ANULADO").flatMap(p => (p.crias ?? []).filter(c => c.viva && c.animalId && c.animal?.identificacaoProvisoria !== false));
   return <>
-    {modo === "gestacao" ? <><SecaoReproducaoAnimal titulo="Gestação atual" icon={Baby} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
+    {modo === "gestacao" ? <>{gestacao && !gestacao.encerradaEm && gestacao.status !== "ANULADO" && <SecaoReproducaoAnimal titulo="Gestação atual" icon={Baby} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
       { id: "previsao", rotulo: "Editar previsão", onSelect: () => abrirGestacao("previsao") },
       { id: "vinculo", rotulo: "Corrigir vínculo da tentativa", onSelect: () => abrirGestacao("vinculo") },
       { id: "perda", rotulo: "Registrar perda", onSelect: () => abrirGestacao("perda") },
@@ -109,8 +109,8 @@ export function AcoesReprodutivas({
         <DadoFicha icon={Syringe} rotulo="Tentativa vinculada">{tentativa ? `${rotulosReprodutivos[tentativa.tipo ?? ""] ?? tentativa.tipo} · ${formatBRDateISO(tentativa.data)}` : gestacao.tentativaId ? "Vínculo fora deste histórico" : "Não informada"}</DadoFicha>
         <DadoFicha icon={HeartPulse} rotulo="Última avaliação">{avaliacao ? `${rotulosReprodutivos[avaliacao.tipo ?? ""] ?? "Avaliação"} · ${formatBRDateISO(avaliacao.data)}` : "Não informada"}</DadoFicha>
       </dl> : <p className="repro-vazio"><Baby aria-hidden="true"/>{animal?.situacao === "VAZIA" ? "Animal vazio · sem gestação em andamento" : "Situação gestacional não informada"}</p>}
-    </SecaoReproducaoAnimal><PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
-      {restricoes.length ? restricoes.map(r => <article key={r.id} className="repro-restricao"><div><strong>{rotulosReprodutivos[r.tipo] ?? r.tipo}</strong><p>{r.motivo}</p><small>{r.data ? `Desde ${formatBRDateISO(r.data)}` : "Início não informado"}{r.ate ? ` · Até ${formatBRDateISO(r.ate)}` : ""} · {r.acoes?.join(", ") ?? "Todas as intervenções"}</small></div><Pill>Ativa</Pill>{podeLancar && <Button secondary onClick={() => abrir({ tipo: "restricao", id: r.id, animalId: r.animalId, propriedadeId: r.propriedadeId })}>Encerrar restrição</Button>}</article>) : <p>Sem restrições vigentes registradas.</p>}
+    </SecaoReproducaoAnimal>}<PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
+      {restricoes.length ? restricoes.map(r => <article key={r.id} className="repro-restricao"><div><strong>{rotulosReprodutivos[r.tipo] ?? r.tipo}</strong><p>{r.motivo}</p><small>{r.data ? `Desde ${formatBRDateISO(r.data)}` : "Início não informado"}{r.ate ? ` · Até ${formatBRDateISO(r.ate)}` : ""} · {r.acoes?.join(", ") ?? "Todas as intervenções"}</small></div><Pill>Ativa</Pill>{podeLancar && <Button secondary onClick={() => abrir({ tipo: "restricao", id: r.id, animalId: r.animalId, propriedadeId: r.propriedadeId })}>Encerrar restrição</Button>}</article>) : <div className="repro-vazio" role="status"><HeartPulse aria-hidden="true"/><strong>Nenhuma restrição vigente registrada</strong></div>}
     </div> : modo === "lactacao" ? <SecaoGeralAnimal id="lactacao-atual-animal" titulo="Lactação atual" icon={Milk} acao={podeLancar ? <MenuAcoesFicha rotulo="Gerenciar lactação" itens={[
       ...(lactacaoAtual ? [
         { id: "corrigir", rotulo: "Corrigir lactação", onSelect: () => setLactacaoCorrigida(lactacaoAtual) },

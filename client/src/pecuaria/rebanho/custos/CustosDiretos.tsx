@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DateRangePicker, formatRangeLabel, isoDate, type DateRange } from "../../../components/DateRangePicker";
 import { getHoje } from "../../../lib/hoje";
 import { descricaoCusto, ultimosDozeMeses } from "./apresentacao";
-import { classeInput } from "../../../financeiro/PainelCadastro";
+import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { getUsuario } from "../../../lib/auth";
 import { temAcessoArea } from "../../../lib/areas";
 import { obterCustos, type CustosDTO, type EscopoCustos, type Componente } from "./api";
@@ -22,6 +22,8 @@ export function CustosDiretos(props: Props) {
 }
 
 function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = false, aoAlterarRascunho, aoGravar, aoSalvar, propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
+  const [ajustando,setAjustando]=useState(false);
+  const [rascunhoLocal,setRascunhoLocal]=useState(false);
   const [resposta, setResposta] = useState<CustosDTO | null>(null);
   const [respostaIdentidade, setRespostaIdentidade] = useState("");
   const [erro, setErro] = useState("");
@@ -78,14 +80,14 @@ function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = fa
     setFontesPagina(1);setPreparosPagina(1);setMotivo(""); setErro(""); setOcupado(false); setPagina(1); setChave(crypto.randomUUID());
   }, [identidade]);
 
-  const alterar = () => { setChave(crypto.randomUUID()); aoAlterarRascunho?.(true); };
+  const alterar = () => { setRascunhoLocal(true); setChave(crypto.randomUUID()); aoAlterarRascunho?.(true); };
   async function gravar(acao: () => Promise<unknown>) {
     setOcupado(true); aoGravar?.(true);
     setErro("");
     try {
       await acao();
       if (contexto === contextoAtual.current) {
-        aoAlterarRascunho?.(false); aoSalvar?.();
+        setRascunhoLocal(false); aoAlterarRascunho?.(false); aoSalvar?.();
         setAtualizacao(v => v + 1);
         setChave(crypto.randomUUID());
       }
@@ -106,7 +108,7 @@ function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = fa
   const visivel = !!dados && !carregando;
   return <section className={mostrarTitulo ? "custos-diretos space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" : "custos-diretos space-y-4"} aria-label="Composição dos custos diretos">
     {mostrarTitulo && <h3 className="text-lg font-semibold">Custos diretos</h3>}
-    {!somenteClassificacao && <div className="custos-diretos-filtros">
+    {!somenteClassificacao && !mediaPorTentativa && <div className="custos-diretos-filtros">
       <label className="min-w-56 text-sm">Período<SelectCampo className={classeInput} value={atalho} onValueChange={valorSelecionado => {
         setAtalho(valorSelecionado); setErroPeriodo(""); setPagina(1);
         if (valorSelecionado === "12m") setPeriodo(ultimosDozeMeses(getHoje()));
@@ -119,12 +121,15 @@ function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = fa
       </SelectCampo></label>
       <DateRangePicker value={periodo} onChange={mudarPeriodo} showPresets={false} triggerAriaLabel="Personalizar período dos custos" triggerLabel={<>Personalizar período{periodo.start && periodo.end ? ` · ${formatRangeLabel(periodo)}` : ""}</>} />
     </div>}
+    {mediaPorTentativa && !somenteClassificacao && <div className="custos-ficha-controles"><DateRangePicker value={periodo} onChange={range=>{if(!range.start&&!range.end){setPeriodo(range);setAtalho("todos");setPagina(1);setErroPeriodo("");}else mudarPeriodo(range);}} allowAll showIcon triggerAriaLabel="Período dos custos" triggerLabel={atalho==="12m"?"Últimos 12 meses":"Período dos custos"}/>{podeEditar&&<Button variant="outline" onClick={()=>setAjustando(true)}>Ajustar custos</Button>}</div>}
     {erroPeriodo && <p role="alert" className="text-destructive">{erroPeriodo}</p>}
     {carregando && <p role="status">Consultando custos…</p>}
     {erro && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button variant="outline" disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
     {!somenteClassificacao && dados && visivel && <ResumoCustosDiretos mostrarMediaPorTentativa={mediaPorTentativa} fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
     {/* Os editores conservam rascunhos durante a recarga e reiniciam ao trocar o alvo/sítio. */}
-    <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
+    {(!mediaPorTentativa || ajustando) && <PainelAjusteCustos emModal={mediaPorTentativa} aberto={ajustando} onFechar={()=>{setAjustando(false);setRascunhoLocal(false);}} ocupado={ocupado} alterado={rascunhoLocal}><EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} /></PainelAjusteCustos>}
     {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} aoMudarPaginaVinculos={setPreparosPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}
   </section>;
 }
+
+function PainelAjusteCustos({emModal,aberto,onFechar,ocupado,alterado,children}:{emModal:boolean;aberto:boolean;onFechar:()=>void;ocupado:boolean;alterado:boolean;children:import("react").ReactNode}){return emModal?<PainelCadastro aberto={aberto} titulo="Ajustar custos" onFechar={onFechar} bloqueado={ocupado} alteracoesExternas={alterado} rodape={null}>{children}</PainelCadastro>:children;}

@@ -131,28 +131,28 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     {erroConsulta && <p role="alert">{erroConsulta}</p>}
     {naFicha ? <>{r && <>
       <dl className="repro-metricas" aria-label="Avaliação e disponibilidade">
-        <div><dt>Disponibilidade operacional</dt><dd>{r.estado === "ELEGIVEL" ? "Elegível" : r.estado === "NAO_ELEGIVEL" ? "Não elegível" : "Pendente de informação"}</dd></div>
-        <div><dt>Aptidão clínica</dt><dd>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</dd>{r.aptidaoClinica?.data && <small>Toque de {formatBRDateISO(r.aptidaoClinica.data)}</small>}</div>
-        <div><dt>PEV original</dt><dd>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</dd></div>
+        <div><dt>Elegibilidade reprodutiva</dt><dd>{r.estado === "ELEGIVEL" ? "Elegível" : r.estado === "NAO_ELEGIVEL" ? "Não elegível" : "Pendente de informação"}</dd></div>
+        <div><dt>Avaliação clínica</dt><dd>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</dd>{r.aptidaoClinica?.data && <small>Toque de {formatBRDateISO(r.aptidaoClinica.data)}</small>}</div>
+        <div><dt>Fim do período de espera</dt><dd>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</dd></div>
       </dl>
       <dl className="repro-dados">
-        <div><dt>Disponível desde</dt><dd>{r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"}</dd></div>
-        <div><dt>Agendamento</dt><dd>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Agendamento manual"}</dd>{r.necessidadeAptidao?.devidaDesde && <small>Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</small>}</div>
+        {(r.decisaoId || r.aptaDesde !== r.pevOriginalAte) && <div><dt>{r.decisaoId ? "Data definida na decisão" : "Data prevista pela regra"}</dt><dd>{r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"}</dd></div>}
+        <div><dt>Acompanhamento da avaliação</dt><dd>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Sem agendamento comprovado"}</dd>{r.necessidadeAptidao?.devidaDesde && <small>Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</small>}</div>
       </dl>
     </>}</> : <>{r && <div className="grid gap-4 border-y py-4 sm:grid-cols-3" aria-label="Avaliação e disponibilidade">
       <div><p className="text-sm text-muted-foreground">Aptidão clínica</p><strong>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</strong><p className="text-sm">{r.aptidaoClinica?.data ? `Toque de ${formatBRDateISO(r.aptidaoClinica.data)}` : "Sem toque de aptidão comprovado."}</p></div>
-      <div><p className="text-sm text-muted-foreground">Acompanhamento</p><strong>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Agendamento manual"}</strong>{r.necessidadeAptidao?.politicaVersao && <p className="text-sm">Política de avaliação: versão {r.necessidadeAptidao.politicaVersao}</p>}{r.necessidadeAptidao?.devidaDesde && <p className="text-sm">Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</p>}</div>
+      <div><p className="text-sm text-muted-foreground">Acompanhamento</p><strong>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Sem agendamento comprovado"}</strong>{r.necessidadeAptidao?.politicaVersao && <p className="text-sm">Política de avaliação: versão {r.necessidadeAptidao.politicaVersao}</p>}{r.necessidadeAptidao?.devidaDesde && <p className="text-sm">Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</p>}</div>
       <div><p className="text-sm text-muted-foreground">PEV original</p><strong>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</strong><p className="text-sm">A avaliação devida não libera protocolo nem IA/TE.</p></div>
     </div>}</>}
     {r?.acompanhamentoAptidao?.visitasAbertas.map(v => <p key={v.id}><a className="underline" href={`/pecuaria/visitas/${v.id}`}>{v.nome}</a></p>)}
     {r?.necessidadeAptidao?.pendencias.map(p => <p key={p}>{descreverMotivo(p)}</p>)}
     {r?.aptidaoClinica?.retornoEm && <p>Retorno informado: {formatBRDateISO(r.aptidaoClinica.retornoEm)}</p>}
     {r && <div className="repro-aptidao-contexto">
-      {naFicha ? r.politicaVersao ? <p>Política: versão {r.politicaVersao}</p> : null : <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>}
+      {naFicha ? null : <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>}
       {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
       {r.alertas.map(m => <p key={m}>Atenção: {descreverMotivo(m)}</p>)}
     </div>}
-    <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>
+    {!naFicha && <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>}
     {podeLancar && r?.aptidaoClinica?.exameId && <RevisarToqueAptidao key={`${contexto}:${r.aptidaoClinica.exameId}`} exameId={r.aptidaoClinica.exameId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
     {podeLancar && <ToqueAptidaoFormulario key={contexto} emModal={naFicha} aberto={toqueAberto} onFechar={() => setToqueAberto(false)} animalId={animalId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
     {podeLancar && <EditorDecisao emModal={naFicha} aberto={editando} onFechar={() => setEditando(false)} ocupado={ocupado}><div id={editorId} className="space-y-3">
@@ -186,10 +186,10 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
       </>}
     </div></EditorDecisao>}
   </div>;
-  return naFicha ? <SecaoReproducaoAnimal titulo="Disponibilidade e aptidão" icon={Target} acao={podeLancar ? <MenuAcoesFicha rotulo="Registrar" itens={[
+  return naFicha ? <SecaoReproducaoAnimal titulo="Elegibilidade e avaliação clínica" icon={Target} acao={<><DatePicker aria-label="Data de referência da elegibilidade" value={data} onChange={setData}/>{podeLancar ? <MenuAcoesFicha rotulo="Registrar" itens={[
     { id: "decisao", rotulo: "Registrar decisão", onSelect: () => setEditando(true) },
     { id: "toque", rotulo: "Registrar toque de aptidão", onSelect: () => setToqueAberto(true) },
-  ]}/> : undefined}>{conteudo}</SecaoReproducaoAnimal> : conteudo;
+  ]}/> : null}</>}>{conteudo}</SecaoReproducaoAnimal> : conteudo;
 }
 
 function EditorDecisao({ emModal, aberto, onFechar, ocupado, children }: { emModal: boolean; aberto: boolean; onFechar: () => void; ocupado: boolean; children: ReactNode }) {

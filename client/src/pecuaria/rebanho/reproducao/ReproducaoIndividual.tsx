@@ -25,6 +25,7 @@ export function ReproducaoIndividual(props: ReproducaoIndividualProps) {
   return <ConteudoReproducao key={`${props.animalId}:${props.propriedadeId ?? "consolidado"}`} {...props}/>;
 }
 function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarToken = 0, onSituacao, onMudou }: ReproducaoIndividualProps) {
+  const [visualHistorico,setVisualHistorico]=useState<"linha"|"tabela">("linha");
   const [revisaoProtocolos, setRevisaoProtocolos] = useState(0);
   const [iniciandoProtocolo, setIniciandoProtocolo] = useState(false);
   const [painel, setPainel] = useState<PainelReprodutivo | null>(null);
@@ -111,9 +112,9 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
         {iniciandoProtocolo && propriedadeId != null && <FormParticipacaoIndividual animalId={animalId} propriedadeId={propriedadeId} onFechar={() => setIniciandoProtocolo(false)} onSalvo={id => { setIniciandoProtocolo(false); navegarPara(`/pecuaria/reproducao/participacoes/${encodeURIComponent(id)}?sitio=${propriedadeId}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`); }} />}
         <ProtocolosReprodutivosAnimal animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} aoSalvar={() => void atualizar()} revisao={recarregarToken + revisaoProtocolos}/>
       </SecaoGeralAnimal>
-      <SecaoGeralAnimal icon={History} titulo="Histórico reprodutivo" id="historico-reprodutivo-animal" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("situacao");}}>Registrar situação inicial</Button> : undefined}>
+      <SecaoGeralAnimal icon={History} titulo="Histórico reprodutivo" id="historico-reprodutivo-animal" acao={<div className="flex flex-wrap gap-2"><Button variant={visualHistorico==="linha"?"default":"outline"} aria-pressed={visualHistorico==="linha"} onClick={()=>setVisualHistorico("linha")}>Linha do tempo</Button><Button variant={visualHistorico==="tabela"?"default":"outline"} aria-pressed={visualHistorico==="tabela"} onClick={()=>setVisualHistorico("tabela")}>Tabela</Button>{podeLancar && <Button variant="outline" onClick={() => {setDemanda(null);setAcao("situacao");}}>Registrar situação inicial</Button>}</div>}>
         {erroHistoricoProtocolos && <p role="alert">Histórico de protocolos não consultado: {erroHistoricoProtocolos}</p>}
-        <HistoricoReprodutivo fatos={[...fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto"), ...eventosProtocolos].sort((a,b) => b.data.localeCompare(a.data))} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
+        <HistoricoReprodutivo visual={visualHistorico} fatos={[...fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto"), ...eventosProtocolos].sort((a,b) => b.data.localeCompare(a.data))} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
       </SecaoGeralAnimal>
       {propriedadeId != null && <SecaoGeralAnimal icon={CircleDollarSign} titulo="Custos diretos" id="custos-reproducao-animal"><CustosDiretos mediaPorTentativa mostrarTitulo={false} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} finalidadeInicial="REPRODUCAO"/></SecaoGeralAnimal>}
 
