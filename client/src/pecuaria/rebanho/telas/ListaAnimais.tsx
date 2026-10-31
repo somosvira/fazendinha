@@ -379,13 +379,13 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-sm text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     ...(!pesagem ? [
-      { chave: "reproducao", titulo: "Reprodução", larguraMinima: 175, celula: (item: AnimalResumo) => {
+      { chave: "reproducao", titulo: "Reprodução", larguraMinima: 120, celula: (item: AnimalResumo) => {
         if (item.sexo === "M") return <span title="Não se aplica">—</span>;
         const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
-        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico" };
+        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "DG pend." };
         const rotulo = rotulos[situacaoReprodutiva ?? ""];
         if (!rotulo) return <span title="Sem informação">—</span>;
-        return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{rotulo}</Pill>;
+        return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? <abbr title="Aguardando diagnóstico" className="no-underline">{rotulo}</abbr> : rotulo}</Pill>;
       } },
       { chave: "del", titulo: "DEL", larguraMinima: 90, celula: (item: AnimalResumo) => {
         const produtivo = item.contextoCartao?.produtivo;
