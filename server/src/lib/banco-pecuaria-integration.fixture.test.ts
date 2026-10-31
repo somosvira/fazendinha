@@ -20,3 +20,8 @@ it("permite o banco efêmero configurado exclusivamente no CI externo", () => {
   vi.stubEnv("DATABASE_URL", "postgresql://ci:ci@localhost:5432/fazendinha_test");
   expect(exigirBancoIntegracaoPecuaria()).toBe("fazendinha_test");
 });
+it.each(["postgresql://ci:ci@remoto.invalid/fazendinha_test", "postgresql://ci:ci@localhost:5432/outro"])("CI externo também recusa destino não autorizado: %s", url => {
+  vi.stubEnv("CI", "true"); vi.stubEnv("GITHUB_ACTIONS", "true");
+  vi.stubEnv("DATABASE_URL", url);
+  expect(exigirBancoIntegracaoPecuaria).toThrow();
+});

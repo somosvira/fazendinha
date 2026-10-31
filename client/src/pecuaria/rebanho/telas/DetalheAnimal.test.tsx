@@ -8,6 +8,8 @@ import { ManejoAnimal } from "../manejo/ManejoAnimal";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { DetalheAnimal } from "./DetalheAnimal";
+import { consultarBezerreiro } from "../bezerreiro/api";
+vi.mock("../bezerreiro/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("../bezerreiro/api")>()), consultarBezerreiro: vi.fn() }));
 import {
   RebanhoApiError, buscarAuditoriaAnimal, buscarFichaAnimal, definirCategoriaManual, desfazerMovimentacao, editarAnimal, editarPesagem, listarCategorias,
   listarFilhosAnimal, listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
@@ -45,6 +47,7 @@ afterEach(cleanup);
 beforeEach(() => {
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1");
   vi.clearAllMocks();
+  vi.mocked(consultarBezerreiro).mockResolvedValue({ temHistorico: false });
   window.history.replaceState(null, "", window.location.pathname);
   vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(obterCatalogos).mockResolvedValue({ racas: [], motivosBaixa: [], propriedades: [], lotes: [] } as Catalogos);
@@ -454,6 +457,7 @@ describe("Ficha por domínio", () => {
     expect(ilustracao.getAttribute("src")).toBe("/images/pecuaria/vaca.png");
     expect(ilustracao.getAttribute("width")).toBe("110");
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
+    expect(nav.contains(screen.getByRole("heading", { name: "Demandam atenção" }))).toBe(false);
     expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Geral", "Produção", "Reprodução", "Sanidade", "Nutrição"]);
     for (const id of ["cadastro", "identificacao-genetica", "ficha-painel-sanidade", "peso", "ficha-painel-nutricao", "historico"]) expect(document.getElementById(id)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Filiação e composição racial" }).getAttribute("aria-expanded")).toBe("true");
@@ -635,4 +639,31 @@ it("preserva origem e revogação do papel no histórico sem tabela complementar
   expect(within(historico).getByText("01/01/2025 – 01/03/2025")).toBeTruthy();
   expect(within(historico).getByText("Importado do IDEAGRI · Desfeito · preservado no histórico")).toBeTruthy();
   expect(screen.queryByRole("heading", { name: "Histórico do papel reprodutivo" })).toBeNull();
+});
+
+describe("Ficha contextual do bezerreiro", () => {
+  it("abre Geral quando o link do bezerreiro não tem histórico comprovado", async () => {
+    window.history.replaceState(null, "", "#bezerreiro");
+    vi.mocked(buscarFichaAnimal).mockResolvedValue(base);
+    render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} />, { wrapper: Wrapper });
+    await screen.findByRole("heading", { name: /Mimosa.*#1234/ });
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Geral" }).getAttribute("aria-selected")).toBe("true"));
+    expect(document.getElementById("ficha-painel-geral")?.hidden).toBe(false);
+    expect(screen.queryByRole("tab", { name: "Bezerreiro" })).toBeNull();
+  });
+
+  it("não cria aba de bezerreiro para animal sem participação ou acompanhamento", async () => {
+    await montar(base);
+    await waitFor(() => expect(consultarBezerreiro).toHaveBeenCalled());
+    expect(screen.queryByRole("tab", { name: "Bezerreiro" })).toBeNull();
+  });
+  it("oferece a aba quando há acompanhamento real mesmo sem participação atual", async () => {
+    vi.mocked(consultarBezerreiro).mockImplementation(async path => path === "/configuracoes" ? {vigente:null,coleiras:[],fases:[],perfis:[]} : {animal:{id:base.id,brinco:base.brinco,nome:base.nome},participacoes:[],acompanhamento:{id:"acompanhamento",exames:[],fornecimentos:[]},colostro:[],exames:[],temHistorico:true});
+    await montar(base);
+    const aba = await screen.findByRole("tab", { name: "Bezerreiro" });
+    fireEvent.click(aba);
+    expect(screen.getByText("Histórico do bezerreiro")).toBeTruthy();
+    expect(screen.getByText("Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.")).toBeTruthy();
+    expect(location.hash).toBe("#bezerreiro");
+  });
 });

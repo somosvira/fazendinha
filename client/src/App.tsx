@@ -47,6 +47,7 @@ const IA = lazy(() => import("./components/IA").then(m => ({ default: m.IA })));
 const FinanceiroContent = lazy(() => import("./financeiro/FinanceiroContent").then(m => ({ default: m.FinanceiroContent })));
 const RebanhoContent = lazy(() => import("./pecuaria/rebanho/RebanhoContent").then(m => ({ default: m.RebanhoContent })));
 const Sanidade = lazy(() => import("./pecuaria/rebanho/sanidade/Sanidade").then(m => ({ default: m.Sanidade })));
+const BezerreiroModulo = lazy(() => import("./pecuaria/rebanho/bezerreiro/BezerreiroModulo").then(m => ({ default: m.BezerreiroModulo })));
 const LeiteModulo = lazy(() => import("./pecuaria/rebanho/leite/LeiteModulo").then(m => ({ default: m.LeiteModulo })));
 const Nutricao = lazy(() => import("./pecuaria/rebanho/nutricao/Nutricao").then(m => ({ default: m.Nutricao })));
 const EstoqueContent = lazy(() => import("./estoque/EstoqueContent").then(m => ({ default: m.EstoqueContent })));
@@ -160,7 +161,7 @@ export function App() {
   // consolidado; com 1 sítio o seletor fica quase invisível (só o + discreto).
   const [propAtiva, setPropAtiva] = useState<number | null>(() => {
     const destino = pathToTab(window.location.pathname);
-    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "pec-leite", "caixinha", "gastos"].includes(destino);
+    const recebeOrigemGerencial = destino != null && ["estoque", "pec-nutricao", "pec-reproducao", "pec-sanidade", "pec-leite", "pec-bezerreiro", "caixinha", "gastos"].includes(destino);
     if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
     const raw=new URLSearchParams(window.location.search).get("propriedadeId");
     if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
@@ -175,6 +176,12 @@ export function App() {
       if (id !== getPropriedadeAtiva() && /^\/pecuaria\/rebanho\/animais\/?$/.test(window.location.pathname)) {
         const url = new URL(window.location.href);
         url.searchParams.delete("page");
+        window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      }
+      if (tabAtual.current === "pec-bezerreiro") {
+        const url = new URL(window.location.href);
+        if (id == null) url.searchParams.delete("propriedadeId");
+        else url.searchParams.set("propriedadeId", String(id));
         window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
       }
       setPropriedadeAtiva(id);
@@ -383,16 +390,18 @@ export function App() {
       normalizarLocalizacaoPecuaria();
       const sp = new URLSearchParams(window.location.search);
       const t = pathToTab(window.location.pathname);
+      const rawSitio = sp.get("propriedadeId");
+      const sitioDaUrl = rawSitio && /^\d+$/.test(rawSitio) && Number(rawSitio)>0 && Number(rawSitio)<=2147483647 ? Number(rawSitio) : null;
+      const mudaSitioBezerreiro = t === "pec-bezerreiro" && sitioDaUrl != null && sitioDaUrl !== getPropriedadeAtiva();
       const atualizar = () => {
-        if(t==="gerencial") {
-          const raw=sp.get("propriedadeId");const id=raw&&/^\d+$/.test(raw)&&Number(raw)>0&&Number(raw)<=2147483647?Number(raw):null;
-          setPropriedadeAtiva(id);setPropAtiva(id);
+        if(t === "gerencial" || (t === "pec-bezerreiro" && sitioDaUrl != null)) {
+          setPropriedadeAtiva(sitioDaUrl);setPropAtiva(sitioDaUrl);
         }
         setTab(t ?? DEFAULT_TAB);
         setLocationRevision((valor) => valor + 1);
         setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
       };
-      if (t && t !== tabAtual.current) void executarComGuardaNavegacao(atualizar);
+      if ((t && t !== tabAtual.current) || mudaSitioBezerreiro) void executarComGuardaNavegacao(atualizar);
       else atualizar();
     };
     window.addEventListener("popstate", onPop);
@@ -545,7 +554,7 @@ export function App() {
 
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
-    : tab === "pec-rebanho"
+    : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
     ? <Sanidade podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
@@ -557,6 +566,8 @@ export function App() {
     ? <Visitas podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    : tab === "pec-bezerreiro"
+    ? <BezerreiroModulo key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-leite"
     ? <LeiteModulo onSelecionarSitio={trocarPropriedade} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"
@@ -577,6 +588,7 @@ export function App() {
             podeCategorias={canSee("plano")}
             podePecuaria={canAccessTab("pec-rebanho")}
             podeLancarPecuaria={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
+            podeGerenciarAlertas={!!effectiveUser.dono || (effectiveUser.flags.includes("lancar") && effectiveUser.abas.includes("cadastros"))}
           />
         )}
       </>

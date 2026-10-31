@@ -1,0 +1,6 @@
+// @vitest-environment jsdom
+import {afterEach,describe,it,expect} from "vitest";
+import {render,screen,fireEvent,cleanup} from "@testing-library/react";
+import {HistoricoAlerta} from "./HistoricoAlerta";
+afterEach(cleanup);
+describe("histórico operacional autorizado",()=>{it("apresenta publicação e decisão com motivo, revisão e autoria sem expor JSON",()=>{render(<HistoricoAlerta eventos={[{id:"e1",revisao:1,comando:"PUBLICAR",criadoEm:"2026-10-28T12:00:00Z",autorUsuarioId:null,autorTecnico:"sanidade-temporal",payload:{situacao:"PENDENTE",motivo:"Idade configurada alcançada",dataReferencia:"2026-10-28"}},{id:"e2",revisao:2,comando:"ENCERRAR",criadoEm:"2026-10-28T13:00:00Z",autorUsuarioId:3,autorTecnico:null,payload:{situacao:"DISPENSADO",motivo:"Decisão conferida pela fazenda"}}]}/>);fireEvent.click(screen.getByText("Histórico do alerta (2)"));expect(screen.getByText("Alerta publicado")).toBeTruthy();expect(screen.getByText("Alerta encerrado")).toBeTruthy();expect(screen.getByText("Decisão conferida pela fazenda")).toBeTruthy();expect(screen.getByText("Revisão 2 · Usuário 3")).toBeTruthy();expect(screen.queryByText(/sanidade-temporal/)).toBeNull();expect(document.querySelector("pre")).toBeNull();});});

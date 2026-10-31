@@ -17,7 +17,9 @@ function banco() {
   };
   const tx = {
     $executeRaw: async () => 1,
-    animal: { findUnique: async () => ({ id: "animal", dataEntrada: new Date("2024-01-01") }) },
+    necessidadeSanitaria: { findMany: async () => [] },
+    necessidadeProgramacaoSanitaria: { findMany: async () => [] },
+    animal: { findUniqueOrThrow: async () => ({ id: "animal", localizacoes: [], baixas: estado.baixa ? [estado.baixa] : [] }), findUnique: async () => ({ id: "animal", dataEntrada: new Date("2024-01-01") }) },
     localizacaoAnimal: { findFirst: async () => estado.local, updateMany: async ({ data }: { data: { ate: Date } }) => { estado.local.ate = data.ate; return { count: 1 }; } },
     finalidadeAnimal: { findFirst: async () => estado.destino, updateMany: async ({ data }: { data: { ate: Date } }) => { estado.destino.ate = data.ate; return { count: 1 }; } },
     pesagem: { findFirst: async () => null },

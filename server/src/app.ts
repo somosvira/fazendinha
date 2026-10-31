@@ -1,3 +1,6 @@
+import { programacoesSanitariasRouter } from "./routes/pecuaria/programacoes-sanitarias.js";
+import { atendimentoAlertasRouter } from "./routes/pecuaria/atendimento-alertas.js";
+import { alertasRouter } from "./routes/pecuaria/alertas.js";
 import { gerencialRouter } from "./routes/gerencial.js";
 // Construção do app Hono — roteamento, CORS e os gates de auth/área. Runtime-
 // agnóstico de propósito: tanto index.ts (entrypoint Node, `@hono/node-server`)
@@ -80,6 +83,9 @@ app.route("/api", propriedadeRouter);
 app.route("/api", categoriasRouter);
 app.route("/api", financeiroRouter);
 app.route("/api", gerencialRouter);
+app.route("/api/pecuaria/rebanho/sanidade/programacoes", programacoesSanitariasRouter);
+app.route("/api/pecuaria/rebanho", atendimentoAlertasRouter);
+app.route("/api/pecuaria/rebanho/alertas", alertasRouter);
 app.route("/api/pecuaria/rebanho", pecuariaRebanhoRouter);
 app.route("/api", estoqueRouter);
 app.route("/api", relatorioGerencialRouter);

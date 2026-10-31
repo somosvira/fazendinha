@@ -24,6 +24,7 @@ import { listarExamesTarefaClinica,listarOpcoesClinicas } from "../../services/p
 
 const uuid = z.string().uuid();
 const participacaoSchema = z.object({
+  alertaId: uuid.optional(), alertaRevisao: z.number().int().positive().optional(), confirmarCuidadoAlerta: z.literal(true).optional(),
   chave: uuid, propriedadeId: z.number().int().positive().max(2147483647),
   tipo: z.enum(["SANITARIO", "REPRODUTIVO"]), protocoloId: uuid, animalId: uuid,
   inicioReferencia: z.union([z.string().date(), z.string().datetime({ offset: true })]),
@@ -120,10 +121,11 @@ protocolosOperacaoRouter.post("/participacoes/previa", async c => {
 protocolosOperacaoRouter.post("/participacoes", async c => {
   try {
     const { tipo, ...input } = participacaoSchema.parse(await c.req.json());
+    if (input.alertaId && tipo !== "SANITARIO") throw new RebanhoError("VALIDACAO", "Este alerta exige um protocolo sanitário");
     const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId);
     const resultado = tipo === "REPRODUTIVO"
       ? await criarParticipacaoIndividualReprodutiva({ ...input, propriedadeId }, usuarioId(c))
-      : await iniciarExecucao({ chave: input.chave, propriedadeId, protocoloId: input.protocoloId, animalId: input.animalId,
+      : await iniciarExecucao({ chave: input.chave, alertaId: input.alertaId, alertaRevisao: input.alertaRevisao, confirmarCuidadoAlerta: input.confirmarCuidadoAlerta, propriedadeId, protocoloId: input.protocoloId, animalId: input.animalId,
         inicio: z.string().date().parse(input.inicioReferencia), confirmarSobreposicao: input.confirmarSobreposicao, justificativaSobreposicao: input.justificativaSobreposicao }, usuarioId(c));
     return c.json({ id: resultado.id }, 201);
   } catch (e) { return falha(c, e); }

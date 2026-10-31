@@ -221,6 +221,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         await reqSanidade("/tarefas/execucao/confirmacao", { method: "POST", body: JSON.stringify({ ...payload, chave, fingerprint: previaExecucao.fingerprint }) }, sitioExecucao);
         onSalvo(undefined, sitioExecucao); return;
       }
+      if (onConferirConjunto) { await onConferirConjunto(entradas); return; }
       const resultado = await reqSanidade<{ aplicacoes: string[] }>("/aplicacoes/coletivas", { method: "POST", body: JSON.stringify({ chave, propriedadeId: animais?.length ? propriedadeId : sitioDoFato, itens: entradas }) }, sitioDoFato);
       onSalvo(resultado?.aplicacoes?.[0], sitioDoFato);
     } catch (falha) { erroDaApi(falha); }

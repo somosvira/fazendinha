@@ -1,4 +1,5 @@
 import { completarContextoCartoes } from "./contexto-cartao.js";
+import { reavaliarContinuidadeAnimalTx } from "../sanidade/alertas/continuidade.js";
 import { ordenarPorPeso } from "./ordenacao-peso.calc.js";
 import { obterContextosAnimaisNaDataTx } from "../reproducao/contexto-animal.js";
 import { papelReprodutivoNaDataTx, registrarPapelReprodutivoTx, desfazerPapelDoDestinoTx, idsComPapelReprodutivo } from "./papeis.js";
@@ -402,6 +403,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
 
     await auditar(tx, { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "CADASTRO", usuarioId, depois: { ...animal, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null } });
 
+    await reavaliarContinuidadeAnimalTx(tx, animal.id, usuarioId, "CADASTRO");
     return animal;
   });
 
@@ -572,7 +574,10 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
       if (ajuste.moverPesagensEntrada.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensEntrada } }, data: { data: entradaNova } });
       if (ajuste.moverPesagensNascimento.length) await tx.pesagem.updateMany({ where: { id: { in: ajuste.moverPesagensNascimento } }, data: { data: nascimentoNovo } });
     }
-    if (mudaDatas || (input.sexo && input.sexo !== animal.sexo)) await conferirHistoricoDosFatos(tx, [id]);
+    if (mudaDatas || (input.sexo && input.sexo !== animal.sexo) || input.nascimentoEstimado != null && input.nascimentoEstimado !== animal.nascimentoEstimado) {
+      await conferirHistoricoDosFatos(tx, [id]);
+      await reavaliarContinuidadeAnimalTx(tx, id, usuarioId, "CORRECAO");
+    }
 
     if (ajusteDestino) {
       await auditar(tx, {
@@ -1292,6 +1297,7 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
       ],
     });
     await conferirHistoricoDosFatos(tx, novas.map((l) => l.animalId));
+    for (const nova of novas) await reavaliarContinuidadeAnimalTx(tx, nova.animalId, usuarioId, "LOCALIZACAO");
     return novas.length;
   }, { timeout: 30_000, maxWait: 10_000 });
 
@@ -1382,6 +1388,7 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     const reaberta = { ...anterior, ate: null };
 
     await conferirHistoricoDosFatos(tx, [animalId]);
+    await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "LOCALIZACAO");
 
     await auditar(tx, { entidade: "LocalizacaoAnimal", entidadeId: removida.id, animalId, acao: "DESFAZER", usuarioId, antes: { removida, anteriorFechada: anterior }, depois: { reaberta } });
 
@@ -1504,6 +1511,7 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
       ],
     });
     await conferirHistoricoDosFatos(tx, plano.passos.map((p) => p.animalId));
+    for (const passo of plano.passos) await reavaliarContinuidadeAnimalTx(tx, passo.animalId, usuarioId, "LOCALIZACAO");
     return { desfeitos: plano.passos.length };
   }, { timeout: 30_000, maxWait: 10_000 });
 }
@@ -1613,6 +1621,7 @@ export async function registrarBaixaTx(
     },
   });
 
+  await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "BAIXA");
   await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, propriedadeId: localAberta?.propriedadeId ?? null, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: cienciaCarenciaSnapshot } });
   return baixa;
 }
@@ -1658,6 +1667,7 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
     if (marcada.count !== 1) throw new RebanhoError("JA_ESTORNADA", "Não há baixa ativa para estornar (ou já foi estornada)");
     const atualizada = await tx.baixaAnimal.findUniqueOrThrow({ where: { id: baixa.id } });
 
+    await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "ESTORNO_BAIXA");
     await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "ESTORNO", usuarioId, antes: baixa, depois: atualizada });
   });
 

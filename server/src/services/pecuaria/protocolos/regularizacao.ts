@@ -1,3 +1,4 @@
+import { reconciliarParticipacaoAlertaTx } from "../sanidade/alertas/protocolos.js";
 import { Prisma, type TipoProtocolo } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
@@ -55,6 +56,7 @@ export async function regularizarTarefaComumTx(tx: Prisma.TransactionClient, id:
     ...(input.acao === "REABRIR" ? { status: "PENDENTE", fatoId: null, fatoTipo: null, rascunho: {}, versaoRascunho: { increment: 1 } } : input.acao === "VINCULAR_SUBSTITUTO" && v.fatoTipo !== "TarefaIatf" ? { fatoId: input.fatoId } : {}) } });
   if (input.acao === "REABRIR") await tx.visitaVeterinaria.updateMany({ where: { id: { in: cabecalhos.map(v => v.id) } }, data: { status: "PARCIAL" } });
   await auditar(tx, { entidade: tarefa.execucao.protocolo.tipo === "REPRODUTIVO" ? "TarefaIatf" : "TarefaProtocolo", entidadeId: id, animalId: tarefa.execucao.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: "REGULARIZACAO", antes: anterior, depois: salva });
+  await reconciliarParticipacaoAlertaTx(tx, tarefa.execucaoId, usuarioId);
   return salva;
 }
 

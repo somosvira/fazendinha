@@ -441,7 +441,7 @@ describe("Pesagem e manejo", () => {
     fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expect(screen.getByRole("columnheader", { name: "Idade" })).toBeTruthy();
     const nav = screen.getByText("Animais", { selector: "button" }).parentElement!;
-    expect(within(nav).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Visão geral", "Animais", "Lotes"]);
+    expect(within(nav).getAllByRole("tab").map((b) => b.textContent)).toEqual(["Visão geral", "Animais", "Alertas", "Lotes"]);
   });
 });
 

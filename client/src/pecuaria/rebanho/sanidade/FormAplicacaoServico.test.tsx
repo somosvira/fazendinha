@@ -309,3 +309,12 @@ it("editor real conserva DIA e horário opcional na aplicação reprodutiva indi
   await waitFor(()=>expect(reqProtocolo).toHaveBeenCalledTimes(3));
   expect(vi.mocked(reqProtocolo).mock.calls[2][2]).toMatchObject({itens:[{aplicadaEm:"2026-09-10T12:30:00.000Z"},{aplicadaEm:"2026-09-10T12:30:00.000Z"}]});
 });
+
+it("coletivo sem tarefa entrega os itens conferidos ao adaptador sem POST interno",async()=>{
+ const conferir=vi.fn().mockResolvedValue(undefined);
+ render(<FormAplicacaoServico animalId="a" propriedadeId={1} animais={[{id:'a',brinco:'RN01',propriedadeId:1},{id:'b',brinco:'RN02',propriedadeId:1}]} onConferirConjunto={conferir} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await screen.findByRole('option',{hidden:true,name:'Tratamento personalizado'});await preencher();submeter();await screen.findByText('Revisão por animal');submeter();
+ await waitFor(()=>expect(conferir).toHaveBeenCalledTimes(1));
+ expect(conferir.mock.calls[0][0]).toMatchObject([{animalId:'a',produtoId:'produto',dose:'10'},{animalId:'b',produtoId:'produto',dose:'10'}]);
+ expect(vi.mocked(reqSanidade).mock.calls.some(([path])=>path==='/aplicacoes/coletivas')).toBe(false);
+});

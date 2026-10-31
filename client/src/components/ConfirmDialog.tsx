@@ -16,6 +16,7 @@ export type ConfirmTone = "neutral" | "danger";
 
 export function ConfirmDialog({
   open,
+  camada = "padrao",
   title,
   message,
   confirmLabel = "Confirmar",
@@ -28,6 +29,7 @@ export function ConfirmDialog({
   onDismiss,
   dismissLabel,
 }: {
+  camada?: "padrao" | "sobreDetalhe";
   open: boolean;
   title: string;
   message: React.ReactNode;
@@ -57,8 +59,8 @@ export function ConfirmDialog({
           e.preventDefault();
           confirmRef.current?.focus();
         }}
-        overlayClassName="z-[1200]"
-        className="z-[1200] gap-0"
+        overlayClassName={camada === "sobreDetalhe" ? "z-[1390]" : "z-[1200]"}
+        className={camada === "sobreDetalhe" ? "z-[1400] gap-0" : "z-[1200] gap-0"}
       >
         <DialogHeader className="border-b border-[color:var(--rule-soft)] px-[22px] pb-3 pt-[18px]">
           <DialogTitle>{title}</DialogTitle>

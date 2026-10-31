@@ -1,0 +1,27 @@
+const m=vi.hoisted(()=>({auditar:vi.fn()}));
+vi.mock("../../rebanho/regras.js",async original=>({...await original<typeof import("../../rebanho/regras.js")>(),auditar:m.auditar}));
+import {afterEach,describe,it,expect,vi} from "vitest";
+import type {ProgramacaoSanitaria,Produto,AvaliacaoAlertas} from "@prisma/client";
+import {prisma} from "../../../../db.js";
+import {ativarProgramacao,previaAtivacaoProgramacao} from "./ativacao.js";
+const data=new Date("2026-10-28");
+const p:ProgramacaoSanitaria={id:"p",propriedadeId:1,nome:"Configuração fictícia",tipo:"VACINACAO",meses:[10],ano:2026,vigenciaInicio:data,vigenciaFim:null,precisao:"MES",dia:null,recorrencia:"SEM_REPETICAO",produtoId:"produto",procedimento:null,publico:{sexo:"F"},publicoConferido:true,fonte:null,observacao:null,executor:"APLICACAO",tipoExameId:null,sujeitoTipo:"ANIMAL",antecedenciaDias:0,ativo:false,revisao:1,ativadoEm:null,criadoPorId:1,regraEquivalenteId:null,criadoEm:data,atualizadoEm:data};
+const produto:Produto={id:"produto",nome:"Produto fictício",usoSanitario:true,usoGenetico:false,usoNutricional:false,rastrearPartidas:false,unidade:"UN",minimoEstoque:null,ativo:true,categoriaId:null,createdAt:data,updatedAt:data};
+const cobertura:AvaliacaoAlertas={id:"sanidade",produtor:"sanidade",estado:"CONCLUIDO",diaCoberto:data,ultimaConclusao:data,erro:null,cursor:null,posse:null,posseAte:null,versao:3,atualizadoEm:data};
+afterEach(()=>{vi.restoreAllMocks();m.auditar.mockClear();});
+describe("ativação exige reavaliar a cobertura",()=>{it("invalida checkpoint do dia sob a mesma trava ao ativar uma programação",async()=>{
+ vi.spyOn(prisma,"$transaction").mockImplementation(async executar=>{if(typeof executar!=="function")throw new Error("Callback esperado");return executar(prisma);});
+ const trava=vi.spyOn(prisma,"$executeRaw").mockResolvedValue(1);
+ vi.spyOn(prisma.programacaoSanitaria,"findFirst").mockResolvedValue(p);
+ vi.spyOn(prisma.animal,"findMany").mockResolvedValue([]);
+ vi.spyOn(prisma.produto,"findUnique").mockResolvedValue(produto);
+ const escrita=vi.spyOn(prisma.programacaoSanitaria,"update").mockResolvedValue({...p,ativo:true,revisao:2,ativadoEm:data});
+ const sinal=vi.spyOn(prisma.avaliacaoAlertas,"upsert").mockResolvedValue(cobertura);
+ const previa=await previaAtivacaoProgramacao("p",1,new Date("2026-10-28T12:00:00Z"));
+ await ativarProgramacao("p",1,{revisao:previa.revisao,chavePrevia:previa.chavePrevia},9,new Date("2026-10-28T12:00:00Z"));
+ expect(m.auditar).toHaveBeenCalledOnce();expect(m.auditar.mock.calls[0][0]).toBe(prisma);expect(m.auditar.mock.calls[0][1]).toMatchObject({usuarioId:9,acao:"ATIVACAO_CONFERIDA",entidadeId:"p"});
+ const primeiraTrava=trava.mock.calls[0][0];
+ expect(escrita).toHaveBeenCalledOnce();expect(trava).toHaveBeenCalledTimes(2);expect(("strings" in primeiraTrava?primeiraTrava.strings:primeiraTrava).join(" ")).toContain("pg_advisory_xact_lock");expect(String(trava.mock.calls[1][0])).toContain("avaliacao-alertas-sanidade");
+ expect(sinal).toHaveBeenCalledWith(expect.objectContaining({update:expect.objectContaining({estado:"DESATUALIZADO",diaCoberto:null,cursor:null,versao:{increment:1}})}));
+ expect(escrita.mock.invocationCallOrder[0]).toBeLessThan(sinal.mock.invocationCallOrder[0]);
+});});

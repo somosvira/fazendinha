@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../sanidade/alertas/protocolos.js",()=>({reconciliarParticipacaoAlertaTx:vi.fn()}));
 import type { Prisma } from "@prisma/client";
 import { uid } from "../../../lib/uid.fixture.js";
 

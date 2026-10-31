@@ -1,3 +1,4 @@
+import { marcarReavaliacaoDestinoTx } from "../pecuaria/sanidade/alertas/avaliador.js";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
 import { papeisDoParceiro } from "../financeiro/papeis.js";
@@ -208,6 +209,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
       });
       const antes = produtoDTO(anterior);
       const depois = produtoDTO(atualizado);
+      if (input.ativo === false) await marcarReavaliacaoDestinoTx(tx, { produtoId: id }, usuarioId ?? null);
       await auditar(tx, { entidade: "Produto", entidadeId: id, acao: "ATUALIZADO", usuarioId, antes, depois });
       return depois;
     });

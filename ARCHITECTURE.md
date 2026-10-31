@@ -43,6 +43,12 @@ O [assistente de consulta](docs/assistente-consulta.md) usa OpenAI para interpre
 
 O bot anterior, motor estruturado legado e WhatsApp conservam código. `ASSISTENTE_ATIVO=false` nos dois lados mantém esses canais e `/ia` suspensos; o servidor devolve `FEATURE_DISABLED`/503 para bot/WhatsApp. A configuração de credenciais não os reativa.
 
+## Alertas persistidos e processamento temporal
+
+`services/alertas/` contém contratos, registro e publicação transacional/eventos. A fachada SQL de consulta agrupada pertence a `services/pecuaria/sanidade/alertas/consulta-alertas.ts`, sem dependência clínica no núcleo comum. `Alerta`/`EventoAlerta` no schema `public` conservam identidade por proprietário estável + produtor + tipo + ocorrência, revisão, autoria e snapshot inicial. O sítio operacional é um escopo mutável separado dessa identidade. Sanidade mantém regras/necessidades e programação no schema `pecuaria`; o núcleo não executa suas condições durante GET. O ledger de atendimento protege a exclusividade de aplicação/exame entre necessidades. Detalhe na origem revalida contexto; resumos registrados não incluem custos. Veja o [contrato de alertas](docs/pecuaria/alertas.md).
+
+`worker.ts` mantém `fetch` do Hono e implementa `scheduled` com Prisma Client próprio da invocação, encerrado ao final. O avaliador sanitário usa lotes, trava/lease e checkpoint confirmado com as publicações, expondo cobertura e falha nas consultas. `ALERTAS_CRON_ENABLED=false` é o padrão e `wrangler.jsonc` não configura cron de ambiente; o handler implementado não comprova agendamento habilitado, SLA ou deploy. Inativações de destinos sinalizam cobertura desatualizada para reconciliação em lotes. Cadastro/decisões têm endpoints, mas as interfaces de gestão e a liberação operacional mantêm seus gates próprios.
+
 ## Sessão, permissões e sítio
 
 Login, recuperação e definição de senha bloqueiam submissões concorrentes por instância e preservam campos após falhas. Convite/reset aguardam a validação do link antes de oferecer senha: HTTP 404 significa inválido/expirado; rede ou outras falhas oferecem nova tentativa sem afirmar que o token é inválido. O cliente de autenticação conserva o status HTTP no erro. Respostas de validação ou de criação de sessão de um link anterior são ignoradas quando o contexto muda ou desmonta. Essa proteção visual não substitui os gates nem a validade/uso único garantidos pelo servidor.

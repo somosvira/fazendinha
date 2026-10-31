@@ -1,0 +1,8 @@
+import {afterEach,describe,it,expect,vi} from "vitest";
+import type {RegraAlertaSanitario} from "@prisma/client";
+import {prisma} from "../../../../db.js";
+import {configuracaoNecessidadeTx} from "./produtor.js";
+const data=new Date("2026-10-28");
+const atual:RegraAlertaSanitario={id:"r",baseAtivacao:null,tipoAplicacaoId:"novo-tipo",cuidado:"Nova campanha",nome:"Nova regra",ativo:true,revisao:2,produtoId:"novo-produto",protocoloId:null,gatilho:"DATA_FIXA",idadeMeses:null,dataFixa:data,propriedadeIds:[2],sexo:"M",idadeMinimaMeses:12,idadeMaximaMeses:24,antecedenciaDias:7,prazoDias:3,vigencia:data,adocao:data,orientacao:"Orientação nova",criadoPorId:1,criadoEm:data,atualizadoEm:data};
+afterEach(()=>vi.restoreAllMocks());
+describe("necessidade mantida na revisão original",()=>{it("preserva público, orientação e revisão originais enquanto a flag ativa é atual",async()=>{const original={...atual,revisao:1,nome:"Cuidado original",produtoId:"produto-antigo",tipoAplicacaoId:"tipo-antigo",cuidado:"Dose A",propriedadeIds:[1],sexo:"F",idadeMinimaMeses:3,idadeMaximaMeses:6,orientacao:"Referência original",ativo:false};vi.spyOn(prisma.revisaoRegraAlertaSanitario,"findUnique").mockResolvedValue({id:"h",regraId:"r",revisao:1,dados:JSON.parse(JSON.stringify(original)),motivo:"Original",autorId:1,criadoEm:data});const r=await configuracaoNecessidadeTx(prisma,{regraId:"r",revisaoRegra:1,regra:atual});expect(r).toMatchObject({revisao:1,nome:"Cuidado original",produtoId:"produto-antigo",tipoAplicacaoId:"tipo-antigo",cuidado:"Dose A",propriedadeIds:[1],sexo:"F",idadeMinimaMeses:3,idadeMaximaMeses:6,orientacao:"Referência original",ativo:true});});});
