@@ -103,11 +103,11 @@ Sequência recomendada: **título e contexto → busca e filtros → lista → p
 
 Busca e dois ou três filtros de uso frequente podem ficar diretamente visíveis. Os demais entram em “Filtros”, com critérios ativos removíveis e botão para limpar. A quantidade de filtros disponíveis não deve determinar o tamanho do cabeçalho.
 
-Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
+Quando a pessoa escolhe explicitamente Tabela, preservar as colunas também no celular, com rolagem horizontal dentro da consulta e acesso por teclado; não converter essa escolha em cartões. O modo automático dos consumidores sem essa escolha continua disponível. Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
 
 Na tabela, priorizar identificação, situação relevante, data e medida de comparação. Colunas extras ficam disponíveis conforme o contexto e os recursos existentes. Não exibir todos os identificadores, genitores e metadados por padrão. Valores e identificadores críticos não devem ficar sistematicamente cortados.
 
-No cartão de animal, nome e `#brinco` aparecem juntos. Mostrar categoria/finalidade e lote, idade e último peso/GMD. Acrescentar lactação/DEL, pós-parto, gestação e ocorrência aberta somente com evidência do registro; adaptar o conteúdo à fase. A ilustração genérica não representa foto do animal. Evitar a combinação de parágrafo, tabela interna, várias etiquetas e rodapé explicativo para cada registro.
+No cartão de animal, nome e `#brinco` aparecem juntos. Mostrar categoria/finalidade, lote e sítio. Peso/GMD, idade, nascimento e data da última pesagem ficam na ficha e na tabela de consulta, sem repetição no cartão. Acrescentar lactação/DEL, pós-parto, gestação e ocorrência aberta somente com evidência do registro; adaptar o conteúdo à fase. A ilustração genérica não representa foto do animal. Evitar a combinação de parágrafo, tabela interna, várias etiquetas e rodapé explicativo para cada registro.
 
 ### Ficha do animal
 
@@ -249,13 +249,15 @@ Manter as primitivas Radix/shadcn já adotadas, com Tailwind e os tokens compart
 
 Cálculo de negócio não pertence à renderização. A interface formata e apresenta o contrato; não recalcula indicadores do servidor para caber no desenho. Filtros e destinos mantêm a History API, os parâmetros e as guardas vigentes.
 
+Os cartões de animais mostram apenas nome/brinco/situação no cabeçalho, imagem/categoria/finalidade/lote no centro e ações no rodapé. Abrem a ficha por toda a superfície, com seleção e comandos independentes. Não exibem sítio, contexto clínico/produtivo, papel ou campos adicionais, mesmo com todas as colunas habilitadas na tabela. A tabela principal apresenta Reprodução e DEL; peso/GMD ficam nas colunas adicionais e na ficha. Cabeçalho da tabela e rodapés usam os tokens compartilhados de cor. Tabelas de consulta em tela usam fonte de 13px, inclusive nos textos das tags e comandos internos. A opção explícita de tabela mantém suas colunas com rolagem própria no celular.
+
 ### Espaçamento, largura útil e propriedade dos estilos
 
 Usar uma escala curta: 8 px entre elementos inseparáveis, 12–16 px dentro de grupos e 20–24 px entre seções. São referências de composição, não margens obrigatórias em todo descendente. Evitar somar o recuo da página, do painel, da barra e da linha interna para o mesmo grupo. Rótulo e valor ficam próximos; um novo assunto recebe mais separação que seus próprios campos.
 
 O componente reutilizado carrega os estilos de que depende. Sua apresentação deve funcionar ao abrir a URL diretamente em uma aba nova, sem visitar antes o hub de relatórios ou outra rotina. Estilos de domínio não podem depender de um ancestral exclusivo de outro consumidor. Regras comuns permanecem no escopo operacional, incluindo portais, sem atravessar o Financeiro.
 
-Cartões de fatos têm altura do conteúdo; não esticar todos para acompanhar uma composição extensa no vizinho. Ausência de dados não reserva um gráfico vazio. Preservar a distinção entre controle documental, aferição operacional, pendência e zero conhecido. No estoque, aproximar a prioridade de reposição do atalho existente, evitando outro painel com a mesma lista antes dos produtos.
+Cartões de fatos têm altura do conteúdo. A grade de animais é a exceção: mantém altura uniforme entre os registros da página, sem cortar contexto ou alertas. Ausência de dados não reserva um gráfico vazio. Preservar a distinção entre controle documental, aferição operacional, pendência e zero conhecido. No estoque, aproximar a prioridade de reposição do atalho existente, evitando outro painel com a mesma lista antes dos produtos.
 
 No telefone, avaliar quanto da janela é gasto antes do primeiro registro, além de conferir overflow. Data, nome, unidade e ação precisam caber dentro do próprio controle. Abas horizontais mantêm a seleção visível, inclusive ao abrir uma URL, sem deslocar a página verticalmente. Ajuda e fechar têm alvo de toque de 44 px; ícone pequeno não implica alvo pequeno. Nome, brinco, estados e medidas da ficha aproveitam a largura disponível, sem ficar presos à coluna estreita ao lado da imagem.
 
@@ -305,3 +307,10 @@ As permissões de uma pessoa são abertas em modal pela seleção explícita em 
 A composição operacional usa o cabeçalho da rotina para data e ação principal, sem repetir um título dentro da consulta. No Leite, os turnos exibem volume, naturezas e confirmação das origens; paginação e tamanho ficam após os registros. Produção separa evolução e consulta do registro em blocos próprios. O formulário de ordenha prioriza litros e agrupa origem, identificação e conferência, mantendo o salvamento distinto da entrada em estoque.
 
 Receitas apresentam composição e uso diretamente; a ficha nutricional aproxima dieta, efetivo e vigência. Ocorrências sanitárias reúnem fatos e acompanhamento no próprio registro. Visitas apresentam trabalho em aberto antes do histórico; os formulários separam identidade/contexto dos dados do fato. Cadastros mantêm criação no cabeçalho e consultam histórico em modal sob demanda. O catálogo de relatórios usa seletores superiores e resultado em largura integral. Sítios abre em cartões com tabela alternativa; Estoque aproxima saldo, lotes e rastreabilidade e agrupa as operações de transferência/perda. Essas composições preservam os recortes, estados de ausência, permissões e destinos de cada domínio.
+
+
+### Densidade responsiva da navegação e dos protocolos
+
+O shell usa gutters iguais: 24px no desktop, 20px entre 901–1100px e 16px até 900px. O assistente reserva folga inferior, sem retirar uma faixa da largura da página. Títulos compartilhados usam 24px/22px; abas usam 14px e alvos de 40px no desktop e 44px no móvel. Escalas específicas de documentos e indicadores continuam próprias. A sidebar recolhida centraliza desenhos proporcionais em acionadores de 44px, com um único fundo no seletor de sítio; mantém navegação móvel, colapso manual e expansão temporária do trilho automático.
+
+Protocolos sanitários apresentam Protocolo, Situação, Versão, Estrutura e Ações; a finalidade continua nas consultas reprodutivas. Ver detalhes é direto; Mais ações reúne os comandos autorizados, com seus bloqueios e confirmações existentes. Cartões organizam nome, situação e estrutura em leitura curta, sem altura reservada para uma prévia ausente. A largura do contêiner governa sua grade; nomes, procedimentos e alertas podem aumentar a altura sem corte.

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Regressão visual da seleção operacional</title>
+<!-- Com o Vite ativo, abrir /testes/checkbox-operacional.html. Não integra o build de produção. -->
+<link rel="stylesheet" href="../src/pecuaria/rebanho/telas/lista-animais.css">
+<link rel="stylesheet" href="../src/styles/operacional-aprovado.css">
+<style>
+  :root { --card: #fff; --primary: #006f68; }
+  body { font: 14px sans-serif; padding: 24px; }
+  label { display: flex; align-items: center; gap: 12px; margin-block: 16px; }
+</style>
+<body>
+  <h1>Seleção operacional</h1>
+  <section data-design-operacional>
+    <label><input class="animal-checkbox" type="checkbox" id="desmarcado">Desmarcado</label>
+    <label><input class="animal-checkbox" type="checkbox" id="marcado" checked>Marcado</label>
+    <label><input class="animal-checkbox" type="checkbox" id="parcial">Seleção parcial</label>
+  </section>
+  <output id="resultado" aria-live="polite">Executando…</output>
+  <script type="module">
+    window.addEventListener('load', () => {
+      const desmarcado = document.getElementById('desmarcado');
+      const marcado = document.getElementById('marcado');
+      const parcial = document.getElementById('parcial');
+      parcial.indeterminate = true;
+      const fundo = elemento => getComputedStyle(elemento).backgroundColor;
+      const casos = [
+        marcado.checked && fundo(marcado) !== fundo(desmarcado),
+        parcial.indeterminate && fundo(parcial) !== fundo(desmarcado),
+        getComputedStyle(marcado, '::after').borderLeftColor === 'rgb(255, 255, 255)',
+        getComputedStyle(parcial, '::after').backgroundColor === 'rgb(255, 255, 255)',
+      ];
+      const resultado = document.getElementById('resultado');
+      resultado.dataset.resultado = casos.every(Boolean) ? 'PASSOU' : 'FALHOU';
+      resultado.textContent = `${resultado.dataset.resultado}: marcado e parcial precisam contrastar com o fundo desmarcado e ter marca branca.`;
+    }, { once: true });
+  </script>
+</body>
+</html>

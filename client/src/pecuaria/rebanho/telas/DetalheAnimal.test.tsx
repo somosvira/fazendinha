@@ -181,10 +181,10 @@ describe("DetalheAnimal — categoria", () => {
     expect(screen.queryByRole("button", { name: "Voltar ao automático" })).toBeNull();
   });
 
-  it("categoria manual mostra o selo Manual, o título com o cálculo e o botão de voltar", async () => {
+  it("categoria manual mantém os controles de correção sem exibir selo Manual", async () => {
     await montar({ ...base, categoria: catNovilha, categoriaOrigem: "MANUAL", categoriaCalculada: catVaca });
     expect(screen.getAllByText("Novilha").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Manual").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Manual")).toBeNull();
     // o card de categoria diz o que as regras dariam
     fireEvent.click(screen.getByRole("button", { name: "Categoria" }));
     expect(screen.getByText(/Pelas regras seria Vaca/)).toBeTruthy();

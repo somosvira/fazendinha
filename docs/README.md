@@ -50,6 +50,10 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 
 ## Evidências e referências históricas
 
+### Referência visual de responsividade
+
+[Responsividade e densidade da interface](design/responsividade/README.md) identifica o mockup aprovado e os contratos que incorporam a implementação de shell/sidebar, protocolos e cartões de animais. Evidência local não substitui homologação em STG e dispositivos físicos.
+
 [QA de interface](../design-qa.md), [QA do leite](design/leite/design-qa.md), [QA gerencial](gerencial/design-qa.md) e [validação operacional](design/validacao-refino-operacional.md) conservam suas datas, cenários e limites. Não substituem contratos atuais. Mockups aprovados continuam como referência visual com dados ilustrativos; não comprovam persistência ou disponibilidade.
 
 Os roteiros [V3](pecuaria/artefatos/testes-v3-guia.html), [V4](pecuaria/artefatos/testes-v4-guia.html), [follow-up V4](pecuaria/artefatos/testes-follow-up-v4.html) e [finalidade V5](pecuaria/artefatos/homologacao-v5-finalidade.md) preservam IDs, aceites e armazenamento próprios. A preparação histórica pode não existir na seed atual; registre o bloqueio sem recriá-la ou alterar o aceite pela revisão documental.

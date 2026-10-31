@@ -1,5 +1,5 @@
 .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina { margin-bottom: 14px; }
-.pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: 32px; }
+.pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: var(--fin-titulo-pagina, 24px); }
 .pecuaria-content .animais-pagina-refinada .fin-cabecalho-descricao { margin-top: 5px; font-size: 14px; }
 .pecuaria-content .animais-pagina-refinada > .mt-5 { margin-top: 12px; }
 .pecuaria-content .animais-resumo-visual { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 12px 0; margin-block: 8px; border: 0; border-radius: 0; background: transparent; }
@@ -53,7 +53,7 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
   .pecuaria-content .animais-pagina-refinada .animais-composicao-legenda button[aria-label] { min-height: 40px; }
   .pecuaria-content .animais-composicao-legenda span { white-space: normal; }
   .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais > :first-child { flex-basis: 100%; }
-  .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: 25px; }
+  .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size: var(--fin-titulo-pagina-movel, 22px); }
 }
 .pecuaria-content .animais-indicador { text-align: left; cursor: pointer; transition: background-color .15s; }
 .pecuaria-content .animais-indicador:hover { background: var(--muted); }
@@ -96,3 +96,11 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 .animal-checkbox:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .animal-checkbox:hover { border-color: var(--primary); }
 @media (forced-colors: active) { .animal-checkbox { appearance: auto; } .animal-checkbox::after { display: none; } }
+
+@media (max-width:900px) { .pecuaria-content .animais-pagina-refinada .fin-cabecalho-pagina .h1 { font-size:var(--fin-titulo-pagina-movel,22px); } }
+
+/* A consulta usa a mesma paleta das tabelas e filtros compartilhados. */
+:root [data-design-operacional] .animais-pagina-refinada .fin-tabela th{background:var(--fin-table-header);color:var(--fin-table-heading);border-bottom-color:var(--fin-table-rule)}
+
+:root .app-main .fin-tabela .animal-ajuda-celula { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0; background:transparent; color:inherit; cursor:help; border-radius:6px; }
+.animal-ajuda-celula:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }

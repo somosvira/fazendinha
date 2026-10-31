@@ -3,7 +3,7 @@
   --rebanho-controle: 40px;
   --rebanho-espaco: 16px;
 }
-.rebanho-content .pagina-financeira { padding: 24px; }
+.rebanho-content .pagina-financeira { padding: 20px var(--gutter) 32px; }
 .rebanho-content .fin-cabecalho-pagina { margin-bottom: 16px; }
 .rebanho-content .fin-cabecalho-integrado { padding: 16px 20px; }
 .rebanho-content .fin-abas { margin: 0 0 16px; padding: 0; height: auto; overflow: visible; flex-wrap: wrap; }
@@ -125,7 +125,7 @@
 .ficha-historico-sem-titulo > .secao-recolhivel-conteudo { padding-top: 0; }
 
 /* Refinamento desktop aprovado: consulta, ficha e formulários compartilham ritmo. */
-.rebanho-content .fin-cabecalho-pagina h1 { font-size: 34px; font-weight: 600; letter-spacing: -.025em; }
+.rebanho-content .fin-cabecalho-pagina h1 { font-size: var(--fin-titulo-pagina, 24px); font-weight: 750; letter-spacing: -.025em; }
 .rebanho-content .fin-cabecalho-pagina { gap: 16px; }
 .rebanho-content :is(.pec-ficha,.pec-novo-animal) h3 { letter-spacing: normal; text-transform: none; font-size: 16px; font-weight: 600; }
 .rebanho-content .pec-novo-animal { max-width: none; border: 0; background: transparent; }
@@ -145,7 +145,7 @@
 .rebanho-content .pec-card-ficha { border-radius: 12px; }
 .rebanho-content .pec-card-ficha > header h2 { font-size: 18px; }
 @media(max-width:600px) {
- .rebanho-content .fin-cabecalho-pagina h1 { font-size: 28px; }
+ .rebanho-content .fin-cabecalho-pagina h1 { font-size: var(--fin-titulo-pagina-movel, 22px); }
  .rebanho-content .pec-novo-animal .pec-form-corpo > section { padding: 16px; }
 }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-resumo { padding: 16px 20px; margin: 0 0 16px; gap: 16px 40px; }
@@ -170,7 +170,7 @@
 .ficha-animal-cabecalho > .ficha-baixa-resumo { grid-column: 1 / -1; margin-bottom: 0; }
 .pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { border-bottom: 1px solid var(--border); }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 11px 0; }
-.pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; background: var(--card); border-radius: 0 12px 12px; }
+.pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; background: var(--card); border-radius: 12px; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta { margin: 0; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 14px; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-conteudo { padding: 0; }

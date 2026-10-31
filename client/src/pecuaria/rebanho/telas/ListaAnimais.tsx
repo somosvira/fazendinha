@@ -1,8 +1,8 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { ReactNode } from "react";
 import { VacaIcon } from "../../../components/icons/VacaIcon";
 import { CartaoAnimal } from "../components/CartaoAnimal";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
-import { MapPin, Layers } from "lucide-react";
 import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -107,6 +107,12 @@ function lerMultiplos() {
 }
 function pillSituacao(situacao: Situacao) {
   return <Pill tone={situacao === "ATIVO" ? "green" : "neutral"}>{rotuloSituacao(situacao)}</Pill>;
+}
+
+function AjudaCelula({ texto, children }: { texto: string; children: ReactNode }) {
+  return <Popover><PopoverTrigger asChild>
+    <button type="button" className="animal-ajuda-celula h-auto" aria-label={texto} onClick={e => e.stopPropagation()}>{children}</button>
+  </PopoverTrigger><PopoverContent className="w-auto max-w-xs rounded-lg text-sm" aria-label={texto} onClick={e => e.stopPropagation()}>{texto}</PopoverContent></Popover>;
 }
 
 export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, variante = "rebanho" }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean; variante?: "rebanho" | "pesagem" }) {
@@ -380,6 +386,22 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
     { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-sm text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    ...(!pesagem ? [
+      { chave: "reproducao", titulo: "Reprodução", larguraMinima: 120, celula: (item: AnimalResumo) => {
+        if (item.sexo === "M") return <AjudaCelula texto="Não se aplica">—</AjudaCelula>;
+        const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
+        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "DG pend." };
+        const rotulo = rotulos[situacaoReprodutiva ?? ""];
+        if (!rotulo) return <AjudaCelula texto="Sem informação">—</AjudaCelula>;
+        return situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? <AjudaCelula texto="Aguardando diagnóstico"><Pill tone="amber">{rotulo}</Pill></AjudaCelula> : <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : "neutral"}>{rotulo}</Pill>;
+      } },
+      { chave: "del", titulo: "DEL", larguraMinima: 90, celula: (item: AnimalResumo) => {
+        const produtivo = item.contextoCartao?.produtivo;
+        return item.sexo === "F" && produtivo?.situacaoProdutiva === "LACTANTE" && produtivo.del != null
+          ? <AjudaCelula texto="Dias em lactação">{produtivo.del.toLocaleString("pt-BR")} dias</AjudaCelula>
+          : <AjudaCelula texto={item.sexo === "M" ? "Não se aplica" : produtivo?.situacaoProdutiva === "SECA" ? "Sem lactação vigente" : "Sem informação de lactação vigente"}>—</AjudaCelula>;
+      } },
+    ] : []),
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
     { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-50" aria-label={`Editar ${item.brinco}`} title="Editar dados" disabled={carregandoEdicaoId === item.id} onClick={() => { void editar(item.id); }}><Pencil size={16} /></button>
@@ -387,7 +409,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     </div> },
   ];
   // sem permissão de lançar: sem seleção em massa e sem ações de linha
-  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "peso", "gmd", "situacao", "acoes"];
+  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "reproducao", "del", "situacao", "acoes"];
   const colunasVisiveis = mostrarColunasAdicionais ? COLUNAS_TODAS : principais.flatMap((chave) => COLUNAS_TODAS.filter((c) => c.chave === chave));
   const exibirSituacao = mostrarColunasAdicionais || situacao !== "ATIVO" || multiplos.situacoes.some(s => s !== "ATIVO") || itens.some(item => item.situacao !== "ATIVO");
   const colunasContexto = colunasVisiveis.filter(c => c.chave !== "situacao" || exibirSituacao);
@@ -419,7 +441,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       </div>}
       {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined} adicionais={mostrarColunasAdicionais ? <div className="consulta-fatos">{COLUNAS.filter(c => !["selecionar","acoes","brinco","categoria","lote","peso","gmd","situacao","idade"].includes(c.chave)).map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}</div> : undefined}/>)}</div> : <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
+        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}/>)}</div> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>
