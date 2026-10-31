@@ -41,8 +41,7 @@ export function useAoMovimentarComToast(recarregar: () => Promise<void>) {
   }, [recarregar, toast]);
 }
 
-/** Pill de categoria do animal: nome calculado/manual + selo "Manual" quando há troca manual
- *  aberta, com o cálculo automático no `title` (tooltip) para comparação rápida. */
+/** Mostra somente a categoria vigente; a comparação com o cálculo fica na ajuda. */
 export function CategoriaPill({ categoria, categoriaOrigem, categoriaCalculada }: {
   categoria: CategoriaRef | null;
   categoriaOrigem: CategoriaOrigem;
@@ -52,7 +51,6 @@ export function CategoriaPill({ categoria, categoriaOrigem, categoriaCalculada }
   const manual = categoriaOrigem === "MANUAL";
   return <span className="inline-flex items-center gap-1.5" title={manual ? `cálculo: ${categoriaCalculada?.nome ?? "sem categoria"}` : undefined}>
     <Pill>{categoria.nome}</Pill>
-    {manual && <Pill tone="amber">Manual</Pill>}
   </span>;
 }
 

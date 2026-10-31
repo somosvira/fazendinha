@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { completarContextoCartoes } from './contexto-cartao.js';
-vi.mock('../reproducao/contexto-animal.js', () => ({ obterContextosAnimaisNaDataTx: vi.fn(async () => new Map([['ativa', { situacaoProdutiva: 'LACTANTE', del: 4, diasPosParto: 4, idadeGestacionalDias: null, pendencias: [] }]])) }));
+vi.mock('../reproducao/contexto-animal.js', () => ({ obterContextosAnimaisNaDataTx: vi.fn(async () => new Map([['ativa', { situacaoReprodutiva: 'GESTANTE', situacaoProdutiva: 'LACTANTE', del: 4, diasPosParto: 4, idadeGestacionalDias: null, pendencias: [] }]])) }));
 import { obterContextosAnimaisNaDataTx } from '../reproducao/contexto-animal.js';
 describe('contexto dos cartões', () => {
     it('consulta em lote só fêmeas ativas da página e limita ocorrências ao sítio autorizado', async () => {
@@ -11,6 +11,7 @@ describe('contexto dos cartões', () => {
         expect(vi.mocked(obterContextosAnimaisNaDataTx).mock.calls.at(-1)?.[1]).toEqual(['ativa']);
         expect(findMany.mock.calls[0]).toEqual([{ where: { animalId: { in: ['ativa'] }, propriedadeId: 1, status: 'VALIDO', fim: null, inicio: { lte: new Date('2026-10-30') } }, select: expect.any(Object), orderBy: expect.any(Array) }]);
         expect(dados.get('ativa')?.ocorrencias[0].nome).toBe('Nome histórico');
+        expect(dados.get('ativa')).toMatchObject({ situacaoReprodutiva: 'GESTANTE', produtivo: { situacaoProdutiva: 'LACTANTE', del: 4 } });
         expect(dados.has('baixa')).toBe(false);
         expect(dados.has('macho')).toBe(false);
     });

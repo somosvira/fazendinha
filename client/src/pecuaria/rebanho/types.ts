@@ -20,6 +20,7 @@ export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
   contextoCartao?: {
+    situacaoReprodutiva?: string | null;
     produtivo: AnimalFicha["contextoProdutivo"];
     ocorrencias: Array<{id:string;nome:string;inicio:string}>;
   };

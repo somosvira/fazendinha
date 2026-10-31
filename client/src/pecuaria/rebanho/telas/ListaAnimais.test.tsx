@@ -122,7 +122,7 @@ describe("ListaAnimais", () => {
   });
 
   it("seleciona pelo espaço ao redor do checkbox sem abrir a ficha", async () => {
-    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({}), criarAnimal({id:"a2",brinco:"0002"})], total: 2, painel: painelVazio });
     const onAbrirAnimal = vi.fn();
     montar({ onAbrirAnimal });
     const checkbox = (await screen.findAllByRole("checkbox", { name: "Selecionar 0001" }))[0];
@@ -130,6 +130,7 @@ describe("ListaAnimais", () => {
     expect(onAbrirAnimal).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Pesagem coletiva" })).toBeTruthy();
     expect((checkbox as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("checkbox", { name: "Selecionar todos os animais desta página" })).toHaveProperty("indeterminate", true);
   });
   it("mostra e remove o filtro aplicado no painel", async () => {
     montar();
@@ -332,12 +333,61 @@ describe("ListaAnimais", () => {
     expect(screen.getByRole("button", {name:"Situação"}).textContent).toContain("Baixados");
   });
 
-  it("mostra o GMD recente na coluna GMD", async () => {
+  it("conserva o GMD recente nas colunas adicionais", async () => {
     const itens = [criarAnimal({ id: "a1", brinco: "0001", gmdRecente: 0.512 })];
     vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 1, painel: painelVazio });
     montar();
     await screen.findAllByText("0001");
+    expect(screen.queryByRole("columnheader", { name: "Último peso" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "GMD" })).toBeNull();
+    expect(screen.getByRole("columnheader", { name: "Reprodução" })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: "DEL" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+    fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expect(screen.getAllByText("+0,512 kg/dia").length).toBeGreaterThan(0);
+  });
+
+  it("mostra a situação comprovada e DEL zero sem confundir os dois eixos", async () => {
+    const contextoCartao: NonNullable<AnimalResumo["contextoCartao"]> = {
+      situacaoReprodutiva: "GESTANTE", ocorrencias: [],
+      produtivo: { dataReferencia: "2026-10-30", situacaoProdutiva: "LACTANTE", del: 0, diasPosParto: 0, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [] },
+    };
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao})], total: 1, painel: painelVazio });
+    montar();
+    await screen.findAllByText("0001");
+    expect(screen.getAllByText("Gestante").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("0 dias").length).toBeGreaterThan(0);
+  });
+
+  it("preserva desconhecido e não aplicável e não apresenta DEL de vaca seca", async () => {
+    const contextoCartao: NonNullable<AnimalResumo["contextoCartao"]> = {
+      situacaoReprodutiva: null, ocorrencias: [],
+      produtivo: { dataReferencia: "2026-10-30", situacaoProdutiva: "SECA", del: 123, diasPosParto: 123, diasDesdeConfirmacao: null, idadeGestacionalDias: null, partosRealizados: 1, pendencias: [] },
+    };
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao}), criarAnimal({id:"macho",brinco:"M01",sexo:"M"})], total: 2, painel: painelVazio });
+    montar();
+    await screen.findAllByText("0001");
+    expect(screen.queryByText("Sem informação")).toBeNull();
+    expect(screen.getByRole("row", { name: /0001/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
+    expect(screen.queryByText("Não se aplica")).toBeNull();
+    expect(screen.getByRole("row", { name: /M01/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
+    expect(screen.queryByText("Vazia")).toBeNull();
+    expect(screen.queryByText("123 dias")).toBeNull();
+  });
+
+  it("abre a explicação do travessão sem abrir a ficha e fecha com Escape", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({sexo:"M"})], total: 1, painel: painelVazio });
+    const onAbrirAnimal = vi.fn();
+    montar({onAbrirAnimal});
+    await screen.findAllByText("0001");
+    const gatilho = within(screen.getByRole("row", {name:/0001/})).getAllByRole("button", {name:"Não se aplica"})[0];
+    expect(gatilho.textContent).toBe("—");
+    fireEvent.click(gatilho);
+    expect(await screen.findByText("Não se aplica")).toBeTruthy();
+    expect(onAbrirAnimal).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("dialog"), {key:"Escape"});
+    await waitFor(() => expect(screen.queryByText("Não se aplica")).toBeNull());
   });
 
   it("situação identifica baixados sem repetir uma coluna de baixa", async () => {
