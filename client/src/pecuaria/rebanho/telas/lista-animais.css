@@ -101,3 +101,6 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 
 /* A consulta usa a mesma paleta das tabelas e filtros compartilhados. */
 :root [data-design-operacional] .animais-pagina-refinada .fin-tabela th{background:var(--fin-table-header);color:var(--fin-table-heading);border-bottom-color:var(--fin-table-rule)}
+
+:root .app-main .fin-tabela .animal-ajuda-celula { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0; background:transparent; color:inherit; cursor:help; border-radius:6px; }
+.animal-ajuda-celula:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }

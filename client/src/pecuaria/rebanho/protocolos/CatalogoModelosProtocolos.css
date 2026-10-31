@@ -70,3 +70,6 @@
 .modelo-detalhe-identidade dt { display:flex; align-items:center; gap:7px; font-size:14px; color:var(--muted-foreground); }
 .modelo-detalhe-identidade dd { font-size:17px; font-weight:650; margin-top:7px; }
 @media(max-width:600px) { .modelo-detalhe-identidade { grid-template-columns:1fr 1fr; gap:18px; }.modelo-detalhe-identidade > div:last-child { grid-column:1/-1; } }
+
+/* O menu é portado para fora do catálogo pelo Radix. */
+.modelo-menu-acoes [role="menuitem"] { min-height:44px; }

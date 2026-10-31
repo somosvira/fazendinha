@@ -376,6 +376,20 @@ describe("ListaAnimais", () => {
     expect(screen.queryByText("123 dias")).toBeNull();
   });
 
+  it("abre a explicação do travessão sem abrir a ficha e fecha com Escape", async () => {
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({sexo:"M"})], total: 1, painel: painelVazio });
+    const onAbrirAnimal = vi.fn();
+    montar({onAbrirAnimal});
+    await screen.findAllByText("0001");
+    const gatilho = within(screen.getByRole("row", {name:/0001/})).getAllByRole("button", {name:"Não se aplica"})[0];
+    expect(gatilho.textContent).toBe("—");
+    fireEvent.click(gatilho);
+    expect(await screen.findByText("Não se aplica")).toBeTruthy();
+    expect(onAbrirAnimal).not.toHaveBeenCalled();
+    fireEvent.keyDown(screen.getByRole("dialog"), {key:"Escape"});
+    await waitFor(() => expect(screen.queryByText("Não se aplica")).toBeNull());
+  });
+
   it("situação identifica baixados sem repetir uma coluna de baixa", async () => {
     const itens = [criarAnimal({ id: "a1", brinco: "0001", situacao: "BAIXADO", baixa: { data: "2026-01-10", tipo: "VENDA" } })];
     vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 1, painel: painelVazio });

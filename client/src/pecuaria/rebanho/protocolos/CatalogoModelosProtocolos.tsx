@@ -40,7 +40,7 @@ export function CatalogoModelosProtocolos(props: Props) {
       <DropdownMenuTrigger asChild>
         <BotaoMenu type="button" variant="ghost" size="icon" className="modelo-mais-acoes" disabled={bloqueado} aria-label={`Mais ações de ${p.nome} v${p.versao}`}><MoreHorizontal size={18} aria-hidden="true"/></BotaoMenu>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="modelo-menu-acoes">
         {!p.publicado && !p.publicadoEm && !p.utilizada && p.ativo && <DropdownMenuItem disabled={bloqueado} onSelect={()=>props.onConcluir(p)} aria-label={`Concluir cadastro de ${p.nome} v${p.versao}`}>Concluir cadastro</DropdownMenuItem>}
         <DropdownMenuItem disabled={bloqueado} onSelect={()=>props.onNovaVersao(p)} aria-label={`Nova versão de ${p.nome} v${p.versao}`}>Nova versão</DropdownMenuItem>
         {p.ativo && <DropdownMenuItem disabled={bloqueado} onSelect={()=>props.onInativar(p)} aria-label={`Inativar ${p.nome} v${p.versao}`} className="text-destructive focus:text-destructive">Inativar</DropdownMenuItem>}

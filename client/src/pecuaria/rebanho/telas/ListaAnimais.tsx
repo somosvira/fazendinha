@@ -1,3 +1,5 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { ReactNode } from "react";
 import { VacaIcon } from "../../../components/icons/VacaIcon";
 import { CartaoAnimal } from "../components/CartaoAnimal";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
@@ -105,6 +107,12 @@ function lerMultiplos() {
 }
 function pillSituacao(situacao: Situacao) {
   return <Pill tone={situacao === "ATIVO" ? "green" : "neutral"}>{rotuloSituacao(situacao)}</Pill>;
+}
+
+function AjudaCelula({ texto, children }: { texto: string; children: ReactNode }) {
+  return <Popover><PopoverTrigger asChild>
+    <button type="button" className="animal-ajuda-celula" aria-label={texto} onClick={e => e.stopPropagation()}>{children}</button>
+  </PopoverTrigger><PopoverContent className="w-auto max-w-xs rounded-lg text-sm" aria-label={texto} onClick={e => e.stopPropagation()}>{texto}</PopoverContent></Popover>;
 }
 
 export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, variante = "rebanho" }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean; variante?: "rebanho" | "pesagem" }) {
@@ -380,18 +388,18 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
     ...(!pesagem ? [
       { chave: "reproducao", titulo: "Reprodução", larguraMinima: 120, celula: (item: AnimalResumo) => {
-        if (item.sexo === "M") return <span title="Não se aplica">—</span>;
+        if (item.sexo === "M") return <AjudaCelula texto="Não se aplica">—</AjudaCelula>;
         const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
         const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "DG pend." };
         const rotulo = rotulos[situacaoReprodutiva ?? ""];
-        if (!rotulo) return <span title="Sem informação">—</span>;
-        return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? <abbr title="Aguardando diagnóstico" className="no-underline">{rotulo}</abbr> : rotulo}</Pill>;
+        if (!rotulo) return <AjudaCelula texto="Sem informação">—</AjudaCelula>;
+        return situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? <AjudaCelula texto="Aguardando diagnóstico"><Pill tone="amber">{rotulo}</Pill></AjudaCelula> : <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : "neutral"}>{rotulo}</Pill>;
       } },
       { chave: "del", titulo: "DEL", larguraMinima: 90, celula: (item: AnimalResumo) => {
         const produtivo = item.contextoCartao?.produtivo;
         return item.sexo === "F" && produtivo?.situacaoProdutiva === "LACTANTE" && produtivo.del != null
-          ? <span title="Dias em lactação">{produtivo.del.toLocaleString("pt-BR")} dias</span>
-          : <span title={item.sexo === "M" ? "Não se aplica" : produtivo?.situacaoProdutiva === "SECA" ? "Sem lactação vigente" : "Sem informação de lactação vigente"}>—</span>;
+          ? <AjudaCelula texto="Dias em lactação">{produtivo.del.toLocaleString("pt-BR")} dias</AjudaCelula>
+          : <AjudaCelula texto={item.sexo === "M" ? "Não se aplica" : produtivo?.situacaoProdutiva === "SECA" ? "Sem lactação vigente" : "Sem informação de lactação vigente"}>—</AjudaCelula>;
       } },
     ] : []),
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
