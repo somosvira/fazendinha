@@ -195,6 +195,8 @@ export const painelQuerySchema = z.object({ periodoDias: periodoDiasPainelCampo 
 export type PainelQuery = z.infer<typeof painelQuerySchema>;
 
 export const auditoriaAnimalQuerySchema = z.object({
+  entidade: z.string().trim().min(1).max(100).optional(),
+  entidadeId: z.string().uuid().optional(),
   page: z.coerce.number().int().min(1).optional().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
   inicio: z.string().datetime({ offset: true }).optional(),
@@ -203,6 +205,8 @@ export const auditoriaAnimalQuerySchema = z.object({
   acao: z.string().trim().min(1).max(100).optional(),
   responsavel: z.union([z.literal("sem"), z.coerce.number().int().positive()]).optional(),
   busca: z.string().trim().max(200).optional(),
+}).refine((q) => !!q.entidade === !!q.entidadeId, {
+  message: "Informe entidade e identificador juntos", path: ["entidadeId"],
 }).refine((q) => !q.inicio || !q.fim || new Date(q.inicio) <= new Date(q.fim), {
   message: "O início deve ser anterior ao fim", path: ["fim"],
 });

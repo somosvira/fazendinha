@@ -72,6 +72,10 @@ export async function consultarAuditoriaAnimal(animalId: string, filtros: Audito
       { entidade: "FechamentoConsumo", entidadeId: { in: fechamentos.map((f) => f.id) } },
     ] };
     const condicoes: Prisma.AuditoriaPecuariaWhereInput[] = [base];
+    if (filtros.entidade && filtros.entidadeId) condicoes.push({
+      entidade: filtros.entidade === "FinalidadeAnimal" || filtros.entidade === "DestinoAnimal" ? { in: ["FinalidadeAnimal", "DestinoAnimal"] } : filtros.entidade,
+      entidadeId: filtros.entidadeId,
+    });
     if (filtros.inicio || filtros.fim) condicoes.push({ em: { ...(filtros.inicio ? { gte: new Date(filtros.inicio) } : {}), ...(filtros.fim ? { lte: new Date(filtros.fim) } : {}) } });
     if (filtros.eixo === "NAO_CLASSIFICADO") condicoes.push({ entidade: { notIn: Object.keys(ENTIDADES).flatMap((e) => Object.keys(ENTIDADES[e as Eixo])) } });
     else if (filtros.eixo) condicoes.push({ entidade: { in: Object.keys(ENTIDADES[filtros.eixo]) } });
@@ -89,13 +93,22 @@ export async function consultarAuditoriaAnimal(animalId: string, filtros: Audito
       ] });
     }
     const where: Prisma.AuditoriaPecuariaWhereInput = { AND: condicoes };
-    const [total, entradas, opcoes] = await Promise.all([
+    const [total, entradas, opcoes, transicoes] = await Promise.all([
       tx.auditoriaPecuaria.count({ where }),
       tx.auditoriaPecuaria.findMany({ where, include: { usuario: { select: { nome: true } } },
         orderBy: [{ em: "desc" }, { id: "desc" }], skip: (filtros.page - 1) * filtros.pageSize, take: filtros.pageSize }),
       tx.auditoriaPecuaria.findMany({ where: base, distinct: ["acao", "usuarioId"],
         select: { acao: true, usuarioId: true, usuario: { select: { nome: true } } } }),
+      tx.auditoriaPecuaria.findMany({ where: { AND: [base, { entidade: { in: ["LocalizacaoAnimal", "FinalidadeAnimal", "DestinoAnimal"] }, acao: { in: ["MOVIMENTACAO", "MUDANCA_DESTINO", "CRIACAO", "REGISTRO"] } }] },
+        orderBy: [{ em: "asc" }, { id: "asc" }], distinct: ["entidade", "entidadeId"],
+        select: { id: true, entidade: true, entidadeId: true, antes: true, depois: true } }),
     ]);
+    const identidades = new Set<string>();
+    const transicoesUnicas = transicoes.filter(t => {
+      const chave = `${t.entidade === "DestinoAnimal" ? "FinalidadeAnimal" : t.entidade}:${t.entidadeId}`;
+      if (identidades.has(chave)) return false;
+      identidades.add(chave); return true;
+    });
     const responsaveis = new Map<number, string>();
     for (const o of opcoes) if (o.usuarioId != null && o.usuario) responsaveis.set(o.usuarioId, o.usuario.nome);
     return {
@@ -108,6 +121,7 @@ export async function consultarAuditoriaAnimal(animalId: string, filtros: Audito
         return {
           id: e.id, em: e.em.toISOString(), acao: e.acao, acaoRotulo: rotuloAcao(e.acao),
           eixo: REGISTROS[e.entidade]?.eixo ?? null, registro: REGISTROS[e.entidade]?.nome ?? e.entidade,
+          anteriorEstado: e.antes != null ? "DISPONIVEL" as const : ["CADASTRO", "CRIACAO", "REGISTRO", "REGISTRO_MANEJO", "MOVIMENTACAO", "MUDANCA_DESTINO"].includes(e.acao) && e.depois != null ? "SEM_ANTERIOR" as const : "NAO_INFORMADO" as const,
           entidade: e.entidade, entidadeId: e.entidadeId, usuarioNome: e.usuario?.nome ?? null,
           resumo: typeof justificativa === "string" ? "Exceção na composição racial" : resumoLegivel,
           alteracoes: [
@@ -117,6 +131,22 @@ export async function consultarAuditoriaAnimal(animalId: string, filtros: Audito
         };
       }),
       total,
+      transicoes: transicoesUnicas.map(t => {
+        const campos = t.entidade === "LocalizacaoAnimal" ? ["propriedadeId", "loteId"] : ["aptidao"];
+        const projetar = (valor: unknown) => {
+          if (!valor || typeof valor !== "object" || Array.isArray(valor)) return null;
+          const registro = valor as Record<string, unknown>;
+          return Object.fromEntries(campos.flatMap(c => {
+            if (!Object.hasOwn(registro, c)) return [];
+            const valor = registro[c];
+            const valido = valor === null || (c === "aptidao" ? typeof valor === "string" && ["LEITE", "CORTE", "REPRODUCAO"].includes(valor)
+              : c === "propriedadeId" ? typeof valor === "number" && Number.isSafeInteger(valor)
+              : typeof valor === "string");
+            return valido ? [[c, valor]] : [];
+          }));
+        };
+        return { auditoriaId: t.id, entidade: t.entidade, entidadeId: t.entidadeId, antes: projetar(t.antes), depois: projetar(t.depois) };
+      }),
       filtros: {
         acoes: [...new Set(opcoes.map((o) => o.acao))].sort().map((acao) => ({ valor: acao, rotulo: rotuloAcao(acao) })),
         responsaveis: [...responsaveis].map(([id, nome]) => ({ id, nome })).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),

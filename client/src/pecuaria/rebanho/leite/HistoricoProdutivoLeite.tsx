@@ -4,16 +4,16 @@ import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/compone
 import { EvolucaoProducaoIndividual } from "./EvolucaoProducaoIndividual";
 import { ControlesHistoricosLeite } from "./ControlesHistoricosLeite";
 import { resumirAfericoesIndividuais } from "./producao-individual.calc";
-import { DatePicker } from "@/components/DatePicker";
+import { DateRangePicker, dateFromIso, isoDate } from "@/components/DateRangePicker";
 import { AjudaCampo } from "@/components/Dica";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { SecaoFicha } from "../components/SecaoRecolhivel";
 import { dataHoraSanitaria, dataSanitaria } from "../sanidade/rotulos";
 import { navegarPara } from "../../../router";
 import { consultarLeite } from "./operacoes-api";
-import { hojeOperacional, formatarLitros, dataValida } from "./modelo";
+import { hojeOperacional, formatarLitros } from "./modelo";
 import type { HistoricoProdutivo, ContextoCarenciaLeite } from "./historico-types";
 import "./historico-produtivo.css";
 function periodoInicial() { const fim = hojeOperacional(), inicio = new Date(`${fim}T00:00:00Z`); inicio.setUTCDate(inicio.getUTCDate() - 29); return { inicio: inicio.toISOString().slice(0, 10), fim }; }
@@ -33,9 +33,8 @@ function ContextoCarencia({ contexto, animalId }: { contexto: ContextoCarenciaLe
   </SecaoFicha>;
 }
 export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarToken = 0 }: { animalId: string; propriedadeId: number | null; recarregarToken?: number }) {
-  const id = useId();
   const visualizacao = useVisualizacaoConsulta("animalProducaoVisualizacao", "leite");
-  const [periodo, setPeriodo] = useState(periodoInicial), [edicao, setEdicao] = useState(periodoInicial);
+  const [periodo, setPeriodo] = useState(periodoInicial);
   const [pagina, setPagina] = useState(1), [revisao, setRevisao] = useState(0);
   const [dados, setDados] = useState<HistoricoProdutivo | null>(null), [erro, setErro] = useState<string | null>(null), [carregando, setCarregando] = useState(true);
   useEffect(() => { setPagina(1); setDados(null); }, [animalId, propriedadeId]);
@@ -46,21 +45,20 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
       .finally(() => { if (vivo) setCarregando(false); });
     return () => { vivo = false; };
   }, [animalId, propriedadeId, periodo, pagina, recarregarToken, revisao]);
-  function consultar(event: FormEvent) {
-    event.preventDefault();
-    if (!dataValida(edicao.inicio) || !dataValida(edicao.fim) || edicao.inicio > edicao.fim) { setErro("Informe um período válido, com o fim posterior ao início."); return; }
-    setPagina(1); setPeriodo({ ...edicao });
-  }
   const serie = dados?.seriePeriodo ?? (dados && dados.total <= dados.itens.length ? dados.itens.map(d => ({ participanteId: d.participanteId, data: d.dataOperacional, litros: d.totais.litros, completa: d.totais.completa, excluido: d.excluidoEm !== null, lactacaoId: d.lactacao?.id ?? null, comparabilidade: d.medicoes.map(m => `${m.posicaoId}:${m.estado}`).sort().join("|"), finalidade: d.finalidade.estado })) : []);
   const resumo = resumirAfericoesIndividuais(serie);
   const sinal = resumo.variacao !== null && resumo.variacao < 0 ? "−" : "+";
-  return <><SecaoFicha id="historico-produtivo-leite" className="historico-produtivo" titulo="Histórico produtivo" acoes={<form onSubmit={consultar} className="historico-produtivo-filtros producao-ficha-filtros" aria-label="Período do histórico produtivo">
-      <label htmlFor={`${id}-inicio`}>Produção desde<DatePicker id={`${id}-inicio`} aria-label="Produção desde" required max={hojeOperacional()} value={edicao.inicio} onChange={inicio => setEdicao(v => ({ ...v, inicio }))} /></label>
-      <label htmlFor={`${id}-fim`}>Produção até<DatePicker id={`${id}-fim`} aria-label="Produção até" required max={hojeOperacional()} value={edicao.fim} onChange={fim => setEdicao(v => ({ ...v, fim }))} /></label>
-      <Button type="submit" disabled={carregando}>Consultar período</Button>
-    </form>}>
+  const filtroPeriodo = <DateRangePicker anchor="right" triggerAriaLabel="Período da produção" value={{ start: dateFromIso(periodo.inicio), end: dateFromIso(periodo.fim) }} onChange={({ start, end }) => {
+      if (!start || !end) return;
+      const hoje = hojeOperacional();
+      const fim = isoDate(end) > hoje ? hoje : isoDate(end);
+      if (isoDate(start) > fim) { setErro("Informe um período até a data de hoje."); return; }
+      setPagina(1); setPeriodo({ inicio: isoDate(start), fim });
+    }} />;
+  return <><SecaoFicha id="historico-produtivo-leite" className="historico-produtivo" titulo="Histórico produtivo">
     <ErrorBox erro={erro} />{erro && <Button variant="outline" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Consultando histórico produtivo…</p>}
+    {(carregando || erro) && <div className="producao-filtro-consulta">{filtroPeriodo}</div>}
     {!carregando && !erro && dados && <>
       <ControlesHistoricosLeite itens={dados.controlesDocumentais ?? []} />
       {resumo.ultima && <div className="animal-indicadores">
@@ -81,7 +79,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
         <div><dt>Litros registrados no período<AjudaCampo rotulo="Sobre o volume individual do período" texto="Soma somente os litros individuais medidos em todo o recorte, antes da paginação, sem exclusões. Pendências e dias sem registro não recebem volume presumido."/></dt><dd>{formatarLitros(dados.totaisPeriodo.litros)}</dd></div>
         {dados.totaisPeriodo.pendentes > 0 && <div><dt>Medições pendentes<AjudaCampo rotulo="Sobre medições pendentes" texto="Ordenhas ainda sem aferição resolvida. O volume conhecido é parcial, sem zeros presumidos para essas ordenhas."/></dt><dd role="status">{dados.totaisPeriodo.pendentes} ordenha(s) · Produção parcial</dd></div>}
       </dl>}
-      {dados.itens.length > 0 && <header className="animal-historico-cabecalho"><h3>Aferições do animal<AjudaCampo rotulo="Sobre as aferições do animal" texto="Os cartões e a tabela mostram os mesmos registros da página. Indicadores e gráfico consideram todo o período, antes da paginação, sem rateio da produção geral."/></h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Apresentação das aferições do animal"/></header>}
+      <header className="animal-historico-cabecalho"><h3>Aferições do animal<AjudaCampo rotulo="Sobre as aferições do animal" texto="Os cartões e a tabela mostram os mesmos registros da página. Indicadores e gráfico consideram todo o período, antes da paginação, sem rateio da produção geral."/></h3><div className="producao-filtro-consulta">{filtroPeriodo}{dados.itens.length > 0 && <AlternarVisualizacaoConsulta {...visualizacao} rotulo="Apresentação das aferições do animal"/>}</div></header>
       {dados.itens.length && visualizacao.modo === "visual" ? <div className="animal-afericoes">{dados.itens.map(d => <Card asChild key={d.participanteId}><article>
         <time dateTime={d.dataOperacional}>{dataSanitaria(d.dataOperacional)}</time><strong>{formatarLitros(d.totais.litros)}</strong>
         {d.excluidoEm && <p>Excluído dos totais{d.motivoExclusao ? ` · ${d.motivoExclusao}` : ""}</p>}{!d.totais.completa && <span>Parcial</span>}

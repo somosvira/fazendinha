@@ -48,7 +48,7 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
   { id: "estoque", tab: "estoque", label: "Estoque", grupo: "Financeiro", sinonimos: ["insumo", "insumos", "saldo", "almoxarifado", "medicamento", "produto", "defensivo", "fertilizante"], descricao: "Estoque de insumos — saldos, movimentos e ajustes" },
 
   // — Pecuária: cadastro individual único, independentemente da finalidade —
-  { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "lote", "movimentar", "saída", "pesagem", "peso", "gmd", "manejo"], descricao: "Cadastro de animais do rebanho" },
+  { id: "pec-rebanho", tab: "pec-rebanho", label: "Rebanho", grupo: "Pecuária", sinonimos: ["rebanho", "pecuária", "vaca", "vacas", "boi", "gado", "bovino", "animais", "brinco", "ficha do animal", "geral", "histórico do animal", "auditoria do animal", "lote", "movimentar", "saída", "pesagem", "peso", "gmd", "manejo"], descricao: "Cadastro de animais do rebanho" },
   { id: "pec-sanidade", tab: "pec-sanidade", label: "Sanidade", grupo: "Pecuária", sinonimos: ["vacina", "tratamento", "protocolo", "exame"], descricao: "Agenda e registros sanitários" },
   { id: "pec-relatorios", tab: "pec-relatorios", label: "Relatórios da Pecuária", grupo: "Pecuária", sinonimos: ["partos", "indicadores", "emissões", "exportar", "reprodução"], descricao: "Consultar, salvar e reimprimir relatórios reprodutivos" },
   { id: "pec-nutricao", tab: "pec-nutricao", label: "Nutrição", grupo: "Pecuária", sinonimos: ["dieta", "receita", "consumo"], descricao: "Dietas e consumo por lote" },

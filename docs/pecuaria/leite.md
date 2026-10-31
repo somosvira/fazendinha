@@ -2,6 +2,10 @@
 
 Este contrato descreve a V5 e suas extensões implementadas neste código. Disponibilidade em cada ambiente depende do código e do schema efetivamente implantados. A estrutura V5 integra a baseline `20261025000000_base_unificada`, instalada no PostgreSQL local `fazendinha_seedatev3` após substituição autorizada com backup. A cadeia anterior foi consolidada preservando suas garantias SQL; o histórico permanece no Git e nos backups locais. Isso não indica aplicação em outros ambientes. Testes sem banco não comprovam execução dos gatilhos, concorrência PostgreSQL ou operação da fazenda. A Reprodução V4 permanece no seu contrato.
 
+## Ficha individual: produção e qualidade
+
+Na ficha do animal, os períodos de Produção e Qualidade têm seletores de data independentes: alterar um não substitui nem redefine o outro. As consultas e seus estados de erro/vazio permanecem separados; ausência ou falha não é apresentada como produção zero. A regra geral da ficha está em [Pecuária](README.md#ficha-individual).
+
 ## Finalidade do animal na produção
 
 A elegibilidade leiteira usa a `FinalidadeAnimal` vigente na data operacional, resolvida pelo intervalo `[desde, ate)`. Somente uma finalidade `LEITE` comprovada admite participação individual e identificação de origem na produção; `CORTE`, `REPRODUCAO`, lacuna ou sobreposição impedem inclusão e são apresentados como motivo ou pendência. A exceção de lactação desconhecida permanece explícita apenas quando a finalidade Leite está comprovada. A possibilidade de inclusão manual não torna uma fêmea sem lactação participante efetiva do cálculo de custos. Na extremidade encerrada por uma baixa ativa, a produção do próprio dia continua admitida somente pelo vínculo comprovado entre a baixa e a finalidade que ela fechou; a evidência registra esse motivo e o identificador da baixa. Essa regra não estende uma finalidade encerrada por mudança para Corte ou Reprodução. Localização na data, lactação, carência e papel reprodutivo continuam sendo dimensões próprias.

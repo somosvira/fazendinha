@@ -36,8 +36,8 @@ function prazoRegistrado(estado: EstadoPrazo, horas: number | null): string {
 function ConteinerSanidade({ geral, children, acao }: { geral: boolean; children: ReactNode; acao?: ReactNode }) {
   return geral ? <div className="sanidade-aplicacoes-geral">{acao}{children}</div> : <div className="sanidade-animal lg:col-span-2">{acao && <div className="sanidade-animal-acoes">{acao}</div>}{children}</div>;
 }
-function SecaoAplicacoes({ geral, children, somenteCarencias }: { geral: boolean; children: ReactNode; somenteCarencias: boolean }) {
-  return geral ? <>{children}</> : <SecaoFicha titulo={<span className="ficha-titulo-com-icone"><Syringe size={20} aria-hidden />{somenteCarencias ? "Prazos por aplicação" : "Aplicações sanitárias"}</span>}>{children}</SecaoFicha>;
+function SecaoAplicacoes({ geral, children, somenteCarencias, acao }: { geral: boolean; children: ReactNode; somenteCarencias: boolean; acao?: ReactNode }) {
+  return geral ? <>{children}</> : <SecaoFicha acoes={acao} titulo={<span className="ficha-titulo-com-icone"><Syringe size={20} aria-hidden />{somenteCarencias ? "Prazos por aplicação" : "Aplicações sanitárias"}</span>}>{children}</SecaoFicha>;
 }
 export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, propriedadeId, podeLancar, recarregarToken, lista, onMudou, geral = false, somenteCarencias = false, abrirDetalhe, onCarencia }: {
   filtrosColunas?: FiltrosColunas;
@@ -102,20 +102,14 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
 
   const ListaAplicacoes = geral && !somenteCarencias ? ConsultaAplicacoes : TabelaFinanceira<AplicacaoSanitaria>;
   return <ConteinerSanidade geral={geral}
-    acao={geral ? (typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setAberto(true)}>Registrar aplicação</Button> : undefined) : <div className="flex flex-wrap items-center gap-3">{resumoUI}{podeLancar && <Button onClick={() => setAberto(true)}>Registrar aplicação</Button>}</div>) : !somenteCarencias && podeLancar && propriedadeId != null ? <div className="sanidade-acoes-diretas">
-      <Button onClick={() => setAberto(true)}>Registrar aplicação</Button>
-      <Button secondary onClick={() => setNovoFato("ocorrencia")}>Nova ocorrência</Button>
-      <Button secondary onClick={() => setNovoFato("exame")}>Registrar exame</Button>
-      <Button secondary onClick={() => setNovoFato("protocolo")}>Iniciar protocolo</Button>
-    </div> : undefined}>
+    acao={geral ? (typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setAberto(true)}>Registrar aplicação</Button> : undefined) : <div className="flex flex-wrap items-center gap-3">{resumoUI}{podeLancar && <Button onClick={() => setAberto(true)}>Registrar aplicação</Button>}</div>) : undefined}>
     {erro && <p className="text-sm text-red-700">{erro}</p>}
     {erroConsulta && <><ErrorBox erro={erroConsulta} /><Button secondary onClick={() => atualizar()}>Tentar novamente</Button></>}
     {!erroConsulta && carregando && <SkeletonSanitario label="Carregando aplicações sanitárias…" />}
-    {!erroConsulta && !carregando && <>
-    {animalId && <CarenciasSanitarias carencia={carencia} integrado={somenteCarencias} />}
+    {!erroConsulta && !carregando && animalId && <CarenciasSanitarias carencia={carencia} integrado={somenteCarencias} />}
     {typeof filtrosUI !== "function" && filtrosUI}
-    {!geral && !somenteCarencias && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} propriedadeId={propriedadeId??undefined} podeLancar={podeLancar} aoSalvar={()=>{setVersao(v=>v+1);onMudou?.();}} />}
-    {<SecaoAplicacoes geral={geral} somenteCarencias={somenteCarencias}>{(geral && lista ? lista : aplicacoes).length ? <ListaAplicacoes filtrosColunas={filtrosColunas} rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} colunas={[
+    {!geral && !somenteCarencias && animalId && <RodadasAnimal animalId={animalId} revisao={versao + recarregarToken} propriedadeId={propriedadeId??undefined} podeLancar={podeLancar} aoSalvar={()=>{setVersao(v=>v+1);onMudou?.();}} acao={podeLancar && propriedadeId != null ? <Button onClick={() => setNovoFato("protocolo")}>Iniciar protocolo</Button> : undefined} />}
+    {<SecaoAplicacoes geral={geral} somenteCarencias={somenteCarencias} acao={!somenteCarencias && podeLancar && propriedadeId != null ? <Button onClick={() => setAberto(true)}>Registrar aplicação</Button> : undefined}>{!erroConsulta && !carregando && ((geral && lista ? lista : aplicacoes).length ? <ListaAplicacoes filtrosColunas={filtrosColunas} rotulo="Aplicações sanitárias" itens={geral && lista ? lista : aplicacoes} chaveDe={(a) => a.id} onAbrir={verDetalhe} colunas={[
       ...(geral ? [{ chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: (a: AplicacaoSanitaria) => a.animal ? nomeAnimalSanitario(a.animal) : "Animal não identificado" }] : []),
       { chave: "registro", titulo: "Registro", principal: !geral, larguraMinima: 175, celula: (a) => <><div>{dataAplicacaoSanitaria(a)}</div><div className="text-sm text-ink-3">{tipoSanitario(a)}</div></> },
       { chave: "aplicacao", titulo: "Aplicação", larguraMinima: 260, larguraFlexivel: true, celula: (a) => <><div>{a.nomeProdutoAplicado || a.produto?.nome || "Medicamento não informado"} · {a.dose} {unidadeSanitaria(a.unidadeDose)}</div><div className="text-sm text-ink-3">{origemSanitaria(a.origemInsumo)}{a.produto?.nome ? (a.produto.nome !== a.nomeProdutoAplicado ? ` · Produto vinculado: ${a.produto.nome}` : "") : " · Sem produto vinculado"}</div></> },
@@ -126,9 +120,8 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
       { chave: "situacao", titulo: "Situação", celula: (a) => <EstadoSanitario tom={a.status === "ANULADO" ? "neutro" : a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" ? "atencao" : "verde"}>{a.status === "ANULADO" ? "Anulada" : a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" ? "Origem pendente" : "Válida"}</EstadoSanitario> },
       { chave: "acoes", titulo: "Ações", acoes: true, larguraMinima: 180, celula: (a) => <div className="sanidade-acoes-linha" onClick={(evento) => evento.stopPropagation()}>{podeLancar && (a.propriedadeId ?? propriedadeId) != null && a.status === "VALIDO" && <div className="contents">{!somenteCarencias && a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA" && <button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Reconciliar origem de ${a.nomeProdutoAplicado}`} title="Reconciliar origem" onClick={() => setReconciliando(a)}><Link2 size={16} aria-hidden /><span className="sr-only">Origem</span></button>}<button type="button" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Corrigir carência de ${a.nomeProdutoAplicado}`} title="Corrigir carência" onClick={() => { setErro(null); setCorrecao({ id: a.id, anular: false }); setMotivo(""); setPrazos({ leite: { estado: a.estadoCarenciaLeite, horas: a.carenciaLeiteHoras?.toString() ?? "" }, carne: { estado: a.estadoCarenciaCarne, horas: a.carenciaCarneHoras?.toString() ?? "" } }); setJustificativaCarne(a.justificativaCarenciaCarne ?? ""); }}><Pencil size={16} aria-hidden /><span className="sr-only">Carência</span></button>{!somenteCarencias && <button type="button" className="sanidade-acao-anular inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border text-ink hover:bg-surface-2" aria-label={`Anular aplicação de ${a.nomeProdutoAplicado}`} title="Anular com motivo" onClick={() => { setErro(null); setDestinoConsumo(""); setAdministracao(""); setCorrecao({ id: a.id, anular: true }); setMotivo(""); }}><Ban size={16} aria-hidden /><span className="sr-only">Anular</span></button>}</div>}
 </div> },
-     ]} /> : <p className="text-sm text-ink-3">Nenhuma aplicação sanitária registrada.</p>}</SecaoAplicacoes>}
-    {!geral && !somenteCarencias && <HistoricoSanitario key={versao + recarregarToken} animalId={animalId} abrir={(tipo, id, propriedadeId) => setDetalhe({ tipo, id, propriedadeId })} />}
-    </>}
+     ]} /> : <p className="text-sm text-ink-3">Nenhuma aplicação sanitária registrada.</p>)}</SecaoAplicacoes>}
+    {!geral && !somenteCarencias && <HistoricoSanitario key={versao + recarregarToken} animalId={animalId} abrir={(tipo, id, propriedadeId) => setDetalhe({ tipo, id, propriedadeId })} onNovoFato={podeLancar && propriedadeId != null ? setNovoFato : undefined} />}
     {novoFato && <FormFatoSanitario tipo={novoFato} animalInicial={animalId} fixo onFechar={() => setNovoFato(null)} onSalvo={() => { setNovoFato(null); atualizar(); }} />}
     {detalhe && <PainelDetalheSanitario tipo={detalhe.tipo} onFechar={() => setDetalhe(null)}>
       {erroDetalhe ? <><ErrorBox erro={erroDetalhe} /><Button secondary onClick={() => setRetryDetalhe((v) => v + 1)}>Tentar novamente</Button></> : conteudo == null ? <SkeletonSanitario estrutura="detalhe" label="Carregando detalhe sanitário…" /> : <DetalheSanitario tipo={detalhe.tipo} valor={conteudo} abrir={(tipo, id) => setDetalhe({ tipo, id, propriedadeId: detalhe.propriedadeId })} />}

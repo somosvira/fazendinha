@@ -1,6 +1,6 @@
 # Plano de implementação — ficha do animal
 
-Status: planejamento; nenhuma interface ou regra de negócio foi implementada por este PR. Base verificada em 30/10/2026: `staging`, commit `53300a38` (PR #342). Rota principal: `/pecuaria/rebanho/animais/:id`. Branch: `codex/plano-ficha-animal-geral`. O PR é draft e deve continuar assim até implementação, validação e revisão.
+Status: implementação da ficha e revisão independente Astra/high concluídas; builds de cliente e servidor aprovados. Consumo real de tokens não aferido pelas ferramentas. A integração B no Bezerreiro está pendente; por isso a reorganização está parcialmente concluída e o plano permanece ativo. Base de referência: `staging`, commit `53300a38` (PR #342), verificada em 30/10/2026. Rota: `/pecuaria/rebanho/animais/:id`. Branch: `codex/plano-ficha-animal-geral`. PR permanece draft.
 
 ## Resultado pretendido
 
@@ -24,7 +24,7 @@ Este documento consolida as decisões atuais e substitui propostas anteriores co
 
 Mockup local v4: `http://127.0.0.1:41879/v4/`. Não é endereço compartilhável fora da máquina e não integra a aplicação. Artefato local: `/Users/montes/.codex/visualizations/2026/10/30/01a18edd-2347-74f3-b6ab-cff6ebbce1bc/ficha-geral/`; fonte em `fonte-v2`, capturas em `v4`. Valores anteriores, autores e alguns estados são demonstrativos: nunca copiar para fixtures operacionais ou dados reais.
 
-A v4 ainda contém Manejo e GMD separado da curva. As decisões posteriores neste plano prevalecem: retirar Manejo, renomear pai para Peso e reunir GMD/curva. A tarefa T1 deve atualizar a referência e apresentá-la antes de escrever a interface da aplicação, conforme AGENTS.md. A skill `impeccable` foi usada nas revisões; `frontend-design` não estava disponível na sessão. Procurar novamente no início de T1 e registrar a indisponibilidade se persistir, sem declarar revisão inexistente.
+A referência foi atualizada para `v5/` nesta execução e comparada com a aplicação por Astra/high. Capturas reais estão no mesmo artefato local em `implementacao/`, incluindo desktop, móvel e modais. A v4 ainda contém Manejo e GMD separado da curva. As decisões posteriores neste plano prevalecem: retirar Manejo, renomear pai para Peso e reunir GMD/curva. A tarefa T1 deve atualizar a referência e apresentá-la antes de escrever a interface da aplicação, conforme AGENTS.md. A skill `impeccable` foi usada nas revisões; `frontend-design` não estava disponível na sessão. Procurar novamente no início de T1 e registrar a indisponibilidade se persistir, sem declarar revisão inexistente.
 
 ## Especificação de interface
 
@@ -105,7 +105,7 @@ Produção: dados/indicadores primeiro, filtros secundários junto da consulta; 
 
 Estimativas de engenharia, não medição de consumo nem limite configurado. Cada faixa abaixo soma **todas as chamadas** da tarefa: entrada inclui releituras/resultados de ferramentas/contexto reenviado; saída inclui raciocínio quando contabilizado e código/texto. `k` = mil tokens. São intervalos para uma passagem de implementação e correção delimitada, com contexto focado; conversas longas, screenshots e retries podem aumentar o consumo.
 
-Modelos disponíveis na sessão: `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol`, `gpt-6-astra`. A distribuição abaixo é uma recomendação específica deste trabalho, não garantia de qualidade/custo. Luna para tarefas mecânicas com critérios claros; Terra para ajustes visuais delimitados; Sol para integração de código e invariantes. Astra/max/ultra não fazem parte do caminho padrão.
+Modelos disponíveis na sessão: `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol`, `gpt-6-astra`. A distribuição abaixo é uma recomendação específica deste trabalho, não garantia de qualidade/custo. Luna para tarefas mecânicas com critérios claros; Terra para ajustes visuais delimitados; Sol para integração de código e invariantes. Astra entra apenas na conferência final autorizada; max/ultra não fazem parte do caminho padrão.
 
 | ID | Entrega / aceite | Dependência | Modelo / esforço | Entrada k | Saída k |
 | --- | --- | --- | --- | ---: | ---: |
@@ -121,6 +121,7 @@ Modelos disponíveis na sessão: `gpt-6-luna`, `gpt-6.1-terra`, `gpt-6.1-sol`, `
 | T9 | Integração, regressões de autorização/dados/URL, testes e revisão crítica do diff | T3–T8, B se necessário | gpt-6.1-sol / high | 30–50 | 6–10 |
 | T10 | Conferência visual desktop/móvel, teclado, foco, estados e uma rodada de correção | T9 | gpt-6.1-terra / medium | 15–25 | 3–5 |
 | T11 | Incorporar contrato vigente, evidências e descrição final do PR; retirar este plano ao concluir | T10 | gpt-6-luna / low | 8–15 | 2–3 |
+| T12 | Conferência final independente contra mockup atualizado + revisão de código, invariantes, testes e diff; resolver achados materiais antes de concluir | T9–T11 | gpt-6-astra / high | 30–60 | 6–12 |
 | B | Integrar os acessos específicos no Bezerreiro reutilizando APIs; validar antes de remover acesso antigo | T0 e módulo integrado | gpt-6.1-sol / high | 35–65 | 7–13 |
 
 B é estimativa condicional de integração pequena, **não de implementar o Bezerreiro inteiro**. Se o módulo não estiver pronto, registrar dependência separada e reestimar. Não absorver outra feature para satisfazer a retirada do cartão.
@@ -144,7 +145,7 @@ Reserva é margem de planejamento para integração/retries, não autorização 
 - Antes de T5, fechar a identidade do vínculo fato/auditoria em T0; usar `high` ali evita retrabalho caro. Token volume sozinho não determina capacidade: risco de perda de histórico e autorização também conta.
 - No máximo dois trabalhos independentes simultâneos se a execução paralela for explicitamente escolhida; um único integrador edita `DetalheAnimal.tsx`. Não usar paralelismo só para reduzir tempo, pois ele duplica contexto e revisão.
 - Em 75% da faixa superior de uma tarefa, registrar consumo e trabalho restante. Ao exceder a estimativa ou repetir duas falhas pelo mesmo motivo, interromper tentativas cegas, reduzir escopo/contexto e reestimar. Não promover automaticamente para modelo mais caro; mudança fora desta matriz exige justificativa e nova escolha.
-- Sem Astra no orçamento padrão. Seu uso só se justificaria por impasse concreto que Sol/high não resolveu, com custo separado previamente informado. Não repetir revisão ou suites completas sem alteração/falha que motive.
+- Astra/high foi autorizado pelo usuário para T12: revisão final visual e de código. Estimativa adicional de 36–72 mil tokens e 15–30 créditos Standard sem cache (250 créditos/M entrada, 1.250/M saída, mesma fonte oficial). Essa etapa deve comparar capturas reais com o mockup atualizado, revisar o diff e registrar achados/limitações, sem aprovar apenas pela existência dos testes. Não elevar para max/ultra automaticamente. Não repetir revisão ou suites completas sem alteração/falha que motive.
 - Registrar consumo real por tarefa (entrada, cache, saída e modelo), onde a ferramenta expuser essas métricas; quando não expuser, marcar não aferido. Comparar qualidade e retrabalho, não apenas menor número de tokens.
 
 ## Validação e critérios de conclusão
@@ -167,6 +168,12 @@ Banco: somente `fazendinha_seedatev3`; não resetar, clonar, reexecutar seed nem
 
 Ao finalizar implementação: atualizar os contratos de Pecuária/Reprodução/Leite/Busca e frontend apenas onde o comportamento mudou; remover o plano temporário e conservar as referências visuais úteis com status correto. O PR final descreve o resultado implementado, os testes executados e limites de homologação, não esta conversa.
 
-## Evidência deste PR de planejamento
+## Evidência e pendência da execução
 
-Inspeção de código, schema, SQL e contratos, branches e PRs em leitura. Sem testes de aplicação/build, pois este PR altera somente documentação. Validação desta entrega: links relativos, soma das estimativas, `git diff --check` e conferência de escopo. Não constitui implementação, homologação, publicação ou disponibilidade do Bezerreiro em STG.
+Implementação comparada com o mockup v5 e anotações finais. Revisão independente Astra/high concluída sem achados materiais pendentes após corrigir datas civis, cronologia intradia, acesso histórico para leitores/baixados, compatibilidade dos períodos legados de Reprodução e ajustes visuais. A regressão final em `America/Sao_Paulo` passou 92 casos em DetalheAnimal, ReproducaoIndividual e AuditoriaAnimal; os testes direcionados de peso, produção/sanidade, auditoria por identidade e servidor também passaram. Builds de cliente e servidor aprovados; o cliente emitiu aviso de chunk acima de 500 kB. Os três testes do componente compartilhado ConsultaVisual passaram.
+
+Navegador local: DEV-001 em `fazendinha_seedatev3`, Geral desktop/móvel, Produção, Reprodução, Sanidade, Nutrição e modais de auditoria, filtros e categoria. Conferidos recolhimento e manutenção desse estado entre abas, abertura de edição e retorno de foco sem salvar dados. Estados adicionais de leitores/baixados, races, 0/1/2+ pesagens e erros têm cobertura automatizada; não foram todos homologados manualmente. A referência BETÂNIA do mockup não existe nessa base e não foi recriada.
+
+B permanece pendente: o Bezerreiro não integra a árvore de staging desta entrega. Desmama/castração saiu de Geral, com acesso transitório em Mais ações para animais ativos de quem lança e no cabeçalho para leitores/baixados. Não remover esses acessos até integrar e validar o destino real no Bezerreiro. O plano permanece ativo apenas para essa dependência e é retirado quando ela for concluída. Não houve deploy, merge, migration aplicada, reset ou reexecução de seed; integração PostgreSQL e homologação em STG/campo não foram executadas.
+
+Modelos usados nas tarefas delegadas: Sol (medium/high) para implementação e regressões, Terra/medium para Produção/Sanidade, Luna/medium para documentação e Astra/high para revisão final. Entrada/cache/saída e custo real não expostos pelas ferramentas: não aferidos, sem confundir estimativas com consumo.

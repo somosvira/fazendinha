@@ -17,10 +17,10 @@ export function FatoConsulta({ rotulo, children }: { rotulo: string; children: R
   return <div className="consulta-fato"><span>{rotulo}</span><div>{children}</div></div>;
 }
 /** Agrupa só datas consecutivas; conserva integralmente a ordenação e a paginação recebidas. */
-export function LinhaTempoConsulta<T>({ itens, dataDe, chaveDe, render, rotulo }: { itens: T[]; dataDe: (item: T) => string; chaveDe: (item: T) => string | number; render: (item: T) => ReactNode; rotulo: string }) {
+export function LinhaTempoConsulta<T>({ itens, dataDe, chaveDe, render, rotulo, complementoData }: { complementoData?: (data: string) => ReactNode; itens: T[]; dataDe: (item: T) => string; chaveDe: (item: T) => string | number; render: (item: T) => ReactNode; rotulo: string }) {
   return <ol className="consulta-cronologia" aria-label={rotulo}>{itens.map((item, i) => {
     const data = dataDe(item).slice(0, 10);
     const nova = i === 0 || dataDe(itens[i - 1]).slice(0, 10) !== data;
-    return <li key={chaveDe(item)}>{nova && <div className="consulta-cronologia-data"><CalendarDays size={16} aria-hidden /><time dateTime={data}>{new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR")}</time></div>}{render(item)}</li>;
+    return <li key={chaveDe(item)}>{nova && <div className="consulta-cronologia-data"><CalendarDays size={16} aria-hidden /><time dateTime={data}>{new Date(`${data}T12:00:00`).toLocaleDateString("pt-BR")}</time>{complementoData?.(data)}</div>}{render(item)}</li>;
   })}</ol>;
 }

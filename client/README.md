@@ -120,7 +120,7 @@ O resumo deve responder à situação do animal. A composição aprovada preserv
 3. Visão sucinta de produção/peso e fatos recentes, quando aplicáveis.
 4. Acesso ao histórico e aos assuntos especializados já existentes.
 
-Cadastro e genealogia ficam na aba Cadastro, sem duplicar os mesmos dados no Resumo. Aberturas auxiliares seguem a regra de modal centralizado.
+Na ficha individual do animal, Geral reúne Identificação, Filiação e composição racial, Peso e Histórico e auditoria, nessa ordem. Os quatro cabeçalhos pais têm ícone, título de 16 px e botão de recolhimento; conteúdo e rascunhos permanecem montados. Essa é a exceção aprovada à regra de leitura direta: os filhos de Peso não recolhem separadamente. Ações usam botões, sem textos de detalhe recolhíveis. Aberturas auxiliares seguem a regra de modal centralizado. Os hashes antigos revelam o componente correspondente. GMD e curva compartilham um cartão e filtro; a tabela de pesagens mantém os comandos existentes.
 
 O histórico pode agrupar eventos por data e filtrar por assunto. Cada evento apresenta data, tipo, fato e resultado; detalhes técnicos abrem o registro. Não duplicar um mesmo fato por aparecer em mais de um domínio. Um histórico unificado novo depende da cobertura real das fontes e destinos.
 
