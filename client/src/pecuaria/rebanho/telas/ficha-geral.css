@@ -69,3 +69,11 @@
  .pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade > .ficha-status { grid-column:1 / -1; }
  .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade > p { grid-column:1 / -1; }
 }
+
+/* Atalho confirmado para a consulta completa; identidade mantém suas dimensões. */
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-acoes { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:8px 14px; border:1px solid #dac7a9; border-radius:8px; background:#fbf5e9; color:#775930; font-size:14px; font-weight:600; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas > svg { flex-shrink:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas:hover { background:#f5ead5; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas-contagem { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 5px; border-radius:6px; background:#775930; color:white; font-size:12px; font-weight:700; line-height:20px; text-align:center; }

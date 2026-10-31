@@ -8,6 +8,8 @@ import { ManejoAnimal } from "../manejo/ManejoAnimal";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { DetalheAnimal } from "./DetalheAnimal";
+import { AlertasAnimal } from "../alertas/AlertasAnimal";
+import { resumirAlertas, type ConsultaAlertas } from "../alertas/api";
 import { consultarBezerreiro } from "../bezerreiro/api";
 vi.mock("../bezerreiro/api", async (importOriginal) => ({ ...(await importOriginal<typeof import("../bezerreiro/api")>()), consultarBezerreiro: vi.fn() }));
 import {
@@ -15,6 +17,16 @@ import {
   listarFilhosAnimal, listarMovimentacoes, movimentarAnimais, obterCatalogos, removerCategoriaManual,
 } from "../api";
 import type { AnimalFicha, CategoriaDTO, Catalogos } from "../types";
+
+vi.mock("../alertas/AlertasAnimal", () => ({ AlertasAnimal: vi.fn(() => <input aria-label="Busca dos alertas do animal" />) }));
+vi.mock("../alertas/api", async importOriginal => ({ ...(await importOriginal<typeof import("../alertas/api")>()), resumirAlertas: vi.fn() }));
+
+const resumoAlertas: ConsultaAlertas = {
+  itens: [], total: 0, pagina: 1, tamanho: 1, tiposDisponiveis: [],
+  totaisGerais: { cuidados: 30, animais: 10, necessidades: 40 },
+  totaisFiltrados: { cuidados: 0, animais: 0, necessidades: 0 },
+  cobertura: { estado: "ATUALIZADA", diaCoberto: null, ultimaConclusao: null, erro: null },
+};
 
 vi.mock("../manejo/ManejoAnimal", () => ({ ManejoAnimal: vi.fn(() => null), reqManejo: vi.fn().mockResolvedValue([]) }));
 
@@ -47,6 +59,7 @@ afterEach(cleanup);
 beforeEach(() => {
   window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1");
   vi.clearAllMocks();
+  vi.mocked(resumirAlertas).mockResolvedValue(resumoAlertas);
   vi.mocked(consultarBezerreiro).mockResolvedValue({ temHistorico: false });
   window.history.replaceState(null, "", window.location.pathname);
   vi.mocked(buscarAuditoriaAnimal).mockResolvedValue({ itens: [], total: 0 });
@@ -459,9 +472,9 @@ describe("Ficha por domínio", () => {
     expect(ilustracao.getAttribute("src")).toBe("/images/pecuaria/vaca.png");
     expect(ilustracao.getAttribute("width")).toBe("72");
     const nav = screen.getByRole("tablist", { name: "Seções da ficha" });
-    expect(nav.contains(screen.getByRole("heading", { name: "Demandam atenção" }))).toBe(false);
-    expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Geral", "Produção", "Reprodução", "Sanidade", "Nutrição"]);
-    for (const id of ["cadastro", "identificacao-genetica", "ficha-painel-sanidade", "peso", "ficha-painel-nutricao", "historico"]) expect(document.getElementById(id)).toBeTruthy();
+    expect(document.querySelector(".resumo-alertas")).toBeNull();
+    expect(within(nav).getAllByRole("tab").map(aba => aba.textContent)).toEqual(["Geral", "Produção", "Reprodução", "Sanidade", "Nutrição", "Alertas"]);
+    for (const id of ["cadastro", "identificacao-genetica", "ficha-painel-sanidade", "peso", "ficha-painel-nutricao", "ficha-painel-alertas", "historico"]) expect(document.getElementById(id)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Filiação e composição racial" }).getAttribute("aria-expanded")).toBe("true");
     expect(document.getElementById("identificacao-genetica-conteudo")?.hidden).toBe(false);
     expect(document.getElementById("peso-conteudo")?.hidden).toBe(false);
@@ -668,5 +681,52 @@ describe("Ficha contextual do bezerreiro", () => {
     expect(screen.getByText("Histórico do bezerreiro")).toBeTruthy();
     expect(screen.getByText("Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.")).toBeTruthy();
     expect(location.hash).toBe("#bezerreiro");
+  });
+});
+
+
+describe("DetalheAnimal — alertas no cabeçalho e aba", () => {
+  it("mostra o total confirmado e abre a aba sem alterar o contexto de retorno", async () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1?sitio=2&retorno=%2Fpecuaria%2Fbezerreiro#geral");
+    vi.mocked(resumirAlertas).mockResolvedValue({ ...resumoAlertas, totaisFiltrados: { cuidados: 12, animais: 1, necessidades: 15 } });
+    await montar(base);
+    const botao = await screen.findByRole("button", { name: "12 alertas — abrir aba Alertas" });
+    expect(botao.textContent).toBe("Alertas12");
+    expect(document.querySelector(".resumo-alertas")).toBeNull();
+    expect(resumirAlertas).toHaveBeenLastCalledWith(expect.objectContaining({ animalId: base.id, propriedadeId: 2, disposicao: "ATENCAO" }), expect.any(AbortSignal));
+    fireEvent.click(botao);
+    expect(location.hash).toBe("#alertas");
+    expect(new URLSearchParams(location.search).get("retorno")).toBe("/pecuaria/bezerreiro");
+    expect(screen.getByRole("tab", { name: "Alertas" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Alertas" })).toBeTruthy();
+    const cabecalho = document.querySelector(".ficha-animal-cabecalho")!;
+    expect(within(cabecalho as HTMLElement).getByRole("button", { name: /12 alertas/ }).compareDocumentPosition(screen.getByRole("button", { name: "Mais ações" })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it.each(["ATUALIZADA", "NAO_AVALIADO", "DESATUALIZADA", "FALHA"] as const)("mantém a aba acessível sem botão para cobertura %s e total vazio", async estado => {
+    vi.mocked(resumirAlertas).mockResolvedValue({ ...resumoAlertas, cobertura: { ...resumoAlertas.cobertura, estado } });
+    await montar(base);
+    await waitFor(() => expect(resumirAlertas).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /abrir aba Alertas/ })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Alertas" }));
+    expect(screen.getByRole("tabpanel", { name: "Alertas" })).toBeTruthy();
+    expect(screen.queryByText("Alertas0")).toBeNull();
+  });
+
+  it("preserva a consulta montada entre abas e permite leitura sem lançar", async () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais/animal-1#alertas");
+    vi.mocked(buscarFichaAnimal).mockResolvedValue({ ...base, sexo: "M" });
+    vi.mocked(resumirAlertas).mockResolvedValue({ ...resumoAlertas, totaisFiltrados: { cuidados: 1, animais: 1, necessidades: 1 } });
+    render(<DetalheAnimal id={base.id} onVoltar={vi.fn()} podeLancar={false}/>, { wrapper: Wrapper });
+    await screen.findByText("Mimosa");
+    expect(screen.getByRole("tabpanel", { name: "Alertas" })).toBeTruthy();
+    const busca = screen.getByRole("textbox", { name: "Busca dos alertas do animal" });
+    fireEvent.change(busca, { target: { value: "Vacinação" } });
+    fireEvent.click(screen.getByRole("tab", { name: "Geral" }));
+    fireEvent.click(await screen.findByRole("button", { name: "1 alerta — abrir aba Alertas" }));
+    expect(screen.getByRole("textbox", { name: "Busca dos alertas do animal" })).toBe(busca);
+    expect((busca as HTMLInputElement).value).toBe("Vacinação");
+    expect(vi.mocked(AlertasAnimal).mock.lastCall?.[0]).toMatchObject({ animalId: base.id, propriedadeId: 1, podeLancar: false });
+    expect(screen.queryByRole("button", { name: "Mais ações" })).toBeNull();
   });
 });

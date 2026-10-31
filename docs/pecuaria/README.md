@@ -86,6 +86,10 @@ Um Serviço financeiro pode associar múltiplos procedimentos realizados do mesm
 
 Serviços atuais: `server/src/services/pecuaria/sanidade/`; garantias de catálogos, histórico, partidas/validade e protocolos na baseline SQL vigente.
 
+### Ficha individual — alertas
+
+A aba Alertas reúne a consulta dos cuidados deste animal, com estados de cobertura, filtros, lista/tabela e detalhes existentes. O acesso junto de Mais ações só aparece com atenção confirmada e contagem positiva; substitui o resumo acima das abas. Regras de contagem, escopo e navegação estão no [contrato de alertas](alertas.md#alertas-na-ficha-do-animal).
+
 ### Ficha individual — consulta sanitária
 
 A aba Sanidade organiza Aplicações sanitárias, Protocolos sanitários, Histórico sanitário e Agenda sanitária em seções independentes. Os cabeçalhos recolhem o conteúdo sem desmontá-lo e exibem suas ações somente quando abertos. Carências de leite e abate/carne pertencem ao bloco de aplicações, com estados próprios; ausência de aplicação não comprova liberação sanitária.
