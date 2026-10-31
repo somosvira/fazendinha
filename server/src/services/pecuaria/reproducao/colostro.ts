@@ -74,8 +74,12 @@ export async function corrigirColostroTx(tx: Prisma.TransactionClient, id: strin
       const alteraQuantidade = !input.anular && "quantidadeLitros" in dados &&
         (antes.quantidadeLitros == null ? dados.quantidadeLitros != null : dados.quantidadeLitros == null || !antes.quantidadeLitros.eq(dados.quantidadeLitros));
       const alteraData = !input.anular && "data" in dados && antes.data.getTime() !== dados.data.getTime();
+      const alteraHorario = !input.anular && "ocorridoEm" in dados &&
+        (antes.ocorridoEm?.getTime() !== dados.ocorridoEm?.getTime() || antes.horarioEstimado !== dados.horarioEstimado);
       if ((input.anular || alteraQuantidade || alteraData) && await tx.parcelaDestinoLeite.findFirst({ where: { fornecimentoColostroId: id, ativo: true }, select: { id: true } }))
         throw new RebanhoError("CONFLITO", "O fornecimento está vinculado à saída de leite; estorne o destino interno antes de corrigir data, quantidade ou anulação");
+      if ((input.anular || alteraQuantidade || alteraData || alteraHorario) && await tx.alocacaoFornecimentoColostro.findFirst({ where: { fornecimentoId: id, ativo: true }, select: { id: true } }))
+        throw new RebanhoError("CONFLITO", "O fornecimento está vinculado a uma origem do Bezerreiro; estorne a destinação antes de corrigir data, horário, quantidade ou anulação");
       if (!input.anular) await conferirCriaTx(tx, antes.criaId, input.propriedadeId, (dados as ReturnType<typeof normalizarColostro>).data, dados as ReturnType<typeof normalizarColostro>);
       const salvo = await tx.fornecimentoColostro.update({ where: { id, versao: antes.versao }, data: { ...dados, versao: { increment: 1 } } });
       await auditar(tx, { entidade: "FornecimentoColostro", entidadeId: id, animalId: cria.animalId, propriedadeId: input.propriedadeId, acao: input.anular ? "ANULACAO" : "CORRECAO", usuarioId, antes, depois: { ...salvo, motivo: input.motivo } });

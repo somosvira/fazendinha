@@ -1,0 +1,30 @@
+import { AlertaError } from "../../services/alertas/erros.js";
+import { Prisma } from "@prisma/client";
+import { conflitoTransacaoPecuaria } from "../../services/pecuaria/transacao.js";
+import { prisma } from "../../db.js";
+import { Hono, type Context } from "hono";
+import { z } from "zod";
+import { getUsuario } from "../../middleware/permissao.js";
+import { temArea, temPermissao } from "../../services/auth/papeis.js";
+import { resolverEscopoLeitura, PropriedadeError } from "../../services/propriedade.js";
+import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
+import { consultaAlertasSchema, consultarAlertas, consultarParticipantes } from "../../services/pecuaria/sanidade/alertas/consulta-alertas.js";
+import { consultarDetalheAlerta } from "../../services/pecuaria/sanidade/alertas/detalhe.js";
+import { criarRegra, listarRegras, previaRegra, ativarRegra, inativarRegra, revisarRegra, regraAlertaSchema } from "../../services/pecuaria/sanidade/alertas/regras.js";
+const uuid=z.string().uuid();
+function falha(c:Context,e:unknown){if(e instanceof SyntaxError)return c.json({error:"JSON inválido",code:"VALIDACAO"},422);if(e instanceof PropriedadeError)return c.json({error:e.message,code:e.code},422);if(conflitoTransacaoPecuaria(e)||(e instanceof Prisma.PrismaClientKnownRequestError&&e.code==="P2002"))return c.json({error:"Os dados mudaram durante a confirmação. Reconsulte.",code:"CONFLITO"},409);if(e instanceof z.ZodError)return c.json({error:e.issues[0].message,code:"VALIDACAO"},422);if(e instanceof RebanhoError || e instanceof AlertaError)return c.json({error:e.message,code:e.code},e.code==="NAO_ENCONTRADO"?404:e.code==="VALIDACAO"?422:409);console.error("[alertas]",e);return c.json({error:"Não foi possível consultar os alertas"},500);}
+function gestao(c:Context){const u=getUsuario(c)!;return temPermissao(u,"lancar")&&(u.dono||u.abas.includes("cadastros"));}
+async function exigirRegraNoEscopo(c:Context,id:string){const sitio=await resolverEscopoLeitura(c);if(!await prisma.regraAlertaSanitario.findFirst({where:{id,...(sitio==null?{}:{propriedadeIds:{has:sitio}})},select:{id:true}}))throw new RebanhoError("NAO_ENCONTRADO","Regra não encontrada neste sítio");}
+async function validarPublicoNoEscopo(c:Context,entrada:unknown){const input=regraAlertaSchema.parse(entrada);const sitio=await resolverEscopoLeitura(c);if(sitio!=null&&!input.propriedadeIds.includes(sitio))throw new RebanhoError("VALIDACAO","O público da regra deve incluir o sítio selecionado","propriedadeIds");return input;}
+export const alertasRouter=new Hono();
+alertasRouter.use("*",async(c,next)=>{const u=getUsuario(c);if(!u||u.id<1||u.status!=="ATIVO")return c.json({error:"Alertas exigem uma sessão de usuário real",code:"SESSAO_REAL_OBRIGATORIA"},401);if(!temArea(u,"pecuaria"))return c.json({error:"Sem acesso à Pecuária"},403);await next();});
+alertasRouter.get("/",async c=>{try{return c.json(await consultarAlertas(await resolverEscopoLeitura(c),consultaAlertasSchema.parse(c.req.query())));}catch(e){return falha(c,e);}});
+alertasRouter.get("/resumo",async c=>{try{return c.json(await consultarAlertas(await resolverEscopoLeitura(c),consultaAlertasSchema.parse({...c.req.query(),pagina:1,tamanho:3})));}catch(e){return falha(c,e);}});
+alertasRouter.get("/cuidados/:chave/participantes",async c=>{try{return c.json(await consultarParticipantes(await resolverEscopoLeitura(c),c.req.param("chave"),consultaAlertasSchema.parse(c.req.query())));}catch(e){return falha(c,e);}});
+alertasRouter.get("/regras",async c=>{try{return c.json(await listarRegras(await resolverEscopoLeitura(c)));}catch(e){return falha(c,e);}});
+alertasRouter.post("/regras",async c=>{try{if(!gestao(c))return c.json({error:"Gerenciar regras exige cadastro e permissão para lançar"},403);return c.json(await criarRegra(await validarPublicoNoEscopo(c,await c.req.json()),getUsuario(c)!.id),201);}catch(e){return falha(c,e);}});
+alertasRouter.post("/regras/:id/previa",async c=>{try{if(!gestao(c))return c.json({error:"Sem permissão de gestão"},403);await exigirRegraNoEscopo(c,uuid.parse(c.req.param("id")));const input=z.object({pagina:z.number().int().positive().default(1),tamanho:z.number().int().min(1).max(100).default(20)}).parse(await c.req.json());return c.json(await previaRegra(uuid.parse(c.req.param("id")),input.pagina,input.tamanho));}catch(e){return falha(c,e);}});
+alertasRouter.post("/regras/:id/ativacao",async c=>{try{if(!gestao(c))return c.json({error:"Sem permissão de gestão"},403);await exigirRegraNoEscopo(c,uuid.parse(c.req.param("id")));return c.json(await ativarRegra(uuid.parse(c.req.param("id")),z.object({base:z.string().length(64),revisao:z.number().int().positive()}).strict().parse(await c.req.json()),getUsuario(c)!.id));}catch(e){return falha(c,e);}});
+alertasRouter.post("/regras/:id/inativacao",async c=>{try{if(!gestao(c))return c.json({error:"Sem permissão de gestão"},403);await exigirRegraNoEscopo(c,uuid.parse(c.req.param("id")));return c.json(await inativarRegra(uuid.parse(c.req.param("id")),z.object({revisao:z.number().int().positive(),destinoAbertas:z.enum(["MANTER","ENCERRAR"]),motivo:z.string().trim().min(5).max(500)}).strict().parse(await c.req.json()),getUsuario(c)!.id));}catch(e){return falha(c,e);}});
+alertasRouter.post("/regras/:id/revisao",async c=>{try{if(!gestao(c))return c.json({error:"Sem permissão de gestão"},403);await exigirRegraNoEscopo(c,uuid.parse(c.req.param("id")));const body=z.object({regra:regraAlertaSchema,revisao:z.number().int().positive(),destinoAbertas:z.enum(["MANTER","ENCERRAR"]),motivo:z.string().trim().min(5).max(500)}).strict().parse(await c.req.json());await validarPublicoNoEscopo(c,body.regra);return c.json(await revisarRegra(uuid.parse(c.req.param("id")),body.regra,body,getUsuario(c)!.id));}catch(e){return falha(c,e);}});
+alertasRouter.get("/:id",async c=>{try{return c.json(await consultarDetalheAlerta(uuid.parse(c.req.param("id")),await resolverEscopoLeitura(c),getUsuario(c)!));}catch(e){return falha(c,e);}});

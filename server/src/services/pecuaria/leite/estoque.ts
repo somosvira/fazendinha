@@ -291,6 +291,8 @@ export async function anularEntradaProducaoLeite(input: z.infer<typeof anularEnt
         throw new RebanhoError("CONFLITO", "A entrada já foi anulada com outros dados ou autor");
       return inverso;
     }
+    if (await tx.loteColostro.findFirst({ where: { entradaId: atual.id, status: "CONFIRMADO" }, select: { id: true } }))
+      throw new RebanhoError("CONFLITO", "Esta produção está vinculada a uma origem do Bezerreiro; regularize a retirada e seus destinos antes de anular");
     if (origem && JSON.stringify(origem.animaisOrigem) !== JSON.stringify(atual.medicaoGeral?.animaisOrigem))
       throw new RebanhoError("CONFLITO", "Os animais de origem mudaram; recarregue antes de anular a entrada");
     if (atual.alocacoes.some(a => a.movimento.status === "CONFIRMADO" && !a.movimento.reversaoDeId))

@@ -335,7 +335,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     } else if (m.aplicacaoProduto) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
       else oculto = true;
-    } else if (m.itemFechamentoConsumo) {
+    } else if (m.itemFechamentoConsumo?.fechamento) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "FECHAMENTO_NUTRICIONAL", id: m.itemFechamentoConsumo.fechamento.id, loteId: m.itemFechamentoConsumo.fechamento.loteId };
       else oculto = true;
     }

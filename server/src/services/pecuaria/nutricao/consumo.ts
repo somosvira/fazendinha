@@ -15,6 +15,7 @@ import { converterQuantidade } from "../../estoque/unidades.js";
 import { calcularAtribuicao } from "./atribuicao.calc.js";
 import type { PaginaNutricao } from "./schemas.js";
 import { transacaoPecuaria } from "../transacao.js";
+import { ofertasSobrepostasTx, travarAlimentacaoLeiteTx } from "../bezerreiro/alimentacao-compartilhada.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 const decimal = (v: number | string | Prisma.Decimal) => new Prisma.Decimal(v);
@@ -45,7 +46,7 @@ async function contexto(tx: Prisma.TransactionClient, input: Pick<FechamentoInpu
     unidade: item.unidade, quantidadeCabecaDia: item.quantidadeCabecaDia,
     quantidadePrevista: item.quantidadeCabecaDia.mul(participacao.animalDias),
     materiaSecaPercentual: item.materiaSecaPercentualSnapshot, rastrearPartidas: item.produto.rastrearPartidas }));
-  return { lote, vigencia, centroCustoId, inicio, fim, participacao, itens };
+  return { lote, vigencia, centroCustoId, inicio, fim, participacao, itens, localizacoes };
 }
 
 async function previaConsumoTx(tx: Prisma.TransactionClient, input: Omit<FechamentoInput, "itens">) {
@@ -64,7 +65,8 @@ async function previaConsumoTx(tx: Prisma.TransactionClient, input: Omit<Fechame
       if (leite) custoPrevisto = leite.custoPrevisto;
       return { ...i, leite, quantidadeCabecaDia: i.quantidadeCabecaDia.toString(), quantidadePrevista: i.quantidadePrevista.toString(), materiaSecaPercentual: i.materiaSecaPercentual?.toString() ?? null, materiaSecaKg, saldo: leite?.quantidadeDisponivelLitros ?? (await saldoProduto(tx, i.produtoId, input.propriedadeId)).toString(), custoPrevisto };
     }));
-    return { loteId: c.lote.id, vigenciaId: c.vigencia.id, dieta: { nome: c.vigencia.dieta.nome, versao: c.vigencia.dieta.versao },
+    const ofertasBezerreiro = await ofertasSobrepostasTx(tx, input.propriedadeId, c.inicio, c.fim, c.localizacoes);
+    return { ofertasBezerreiro, orientacaoLeiteBezerreiro: ofertasBezerreiro.length ? "Há ofertas de leite já registradas para animais neste período. Concilie esses fatos; confirme zero justificado na parcela leiteira e mantenha os demais ingredientes. Novo consumo adicional deve ser registrado explicitamente no Bezerreiro." : null, loteId: c.lote.id, vigenciaId: c.vigencia.id, dieta: { nome: c.vigencia.dieta.nome, versao: c.vigencia.dieta.versao },
       inicio: c.inicio, fim: c.fim, centroCustoId: c.centroCustoId, animalDias: c.participacao.animalDias,
       participantes: c.participacao.participacoes.map((p) => ({ ...p, brinco: animais.find((a) => a.id === p.animalId)?.brinco ?? p.animalId })), itens,
       materiaSecaConhecidaKg: itens.reduce((s, i) => s.plus(i.materiaSecaKg ?? 0), decimal(0)).toString(), coberturaMateriaSecaCompleta: itens.every((i) => i.materiaSecaKg != null) };
@@ -81,8 +83,9 @@ async function saldoProduto(tx: Prisma.TransactionClient, produtoId: string, pro
   return movimentos.reduce((saldo, m) => m.tipo === "SAIDA" ? saldo.minus(m.quantidade) : saldo.plus(m.quantidade), decimal(0));
 }
 
-async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: FechamentoInput, usuarioId: number | null) {
-    // Leitura serializável do histórico, dentro da mesma transação da baixa.
+export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: FechamentoInput, usuarioId: number | null) {
+    // Mesma ordem de locks das ofertas e dos estornos.
+    await travarAlimentacaoLeiteTx(tx, input.propriedadeId);
     const c = await contexto(tx, input);
     await travarAnimais(tx, c.participacao.participacoes.map((p) => p.animalId));
     const produtosLeite = await tx.entradaProducaoLeite.findMany({ where: { status: "CONFIRMADA", movimento: { propriedadeId: input.propriedadeId } }, select: { movimento: { select: { produtoId: true } } } });
@@ -91,6 +94,15 @@ async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fechament
     await exigirPeriodoAberto(tx, input.propriedadeId, c.inicio);
     if (input.itens.length !== c.itens.length || new Set(input.itens.map((i) => i.produtoId)).size !== input.itens.length) {
       throw new RebanhoError("VALIDACAO", "Confirme todos os ingredientes da dieta uma vez cada", "itens");
+    }
+    const sobreposicoes = await ofertasSobrepostasTx(tx, input.propriedadeId, c.inicio, c.fim, c.localizacoes);
+    // Recusar antes de criar qualquer fato: zero justificado permite fechar os outros ingredientes.
+    if (sobreposicoes.length) for (const previsto of c.itens) {
+      const informado = input.itens.find(i => i.produtoId === previsto.produtoId);
+      const quantidade = informado?.quantidadeConfirmada == null ? previsto.quantidadePrevista : decimal(informado.quantidadeConfirmada);
+      if (quantidade.gt(0) && previsto.unidade === "L" && await ingredienteLeiteProducaoTx(tx, previsto.produtoId, input.propriedadeId)) {
+        throw new RebanhoError("CONFLITO", `Há leite fornecido pelo Bezerreiro neste período (${[...new Set(sobreposicoes.map(o => o.data))].join(', ')}). Concilie as ofertas: informe zero justificado para o leite no fechamento e confirme os demais ingredientes. Registre novo consumo adicional explicitamente no Bezerreiro.`);
+      }
     }
     const fechamento = await tx.fechamentoConsumo.create({ data: { loteId: c.lote.id, propriedadeId: input.propriedadeId,
       vigenciaId: c.vigencia.id, inicio: c.inicio, fim: c.fim, centroCustoId: c.centroCustoId, animalDias: c.participacao.animalDias,
@@ -188,7 +200,7 @@ async function montarPreviaPeriodosTx(tx: Prisma.TransactionClient, input: Omit<
     }
     const baseConferida = periodos.map((p) => ({ inicio: p.inicio, fim: p.fim, vigenciaId: p.vigenciaId, centroCustoId: p.centroCustoId, animalDias: p.animalDias,
       participantes: [...p.participantes].sort((a, b) => a.animalId.localeCompare(b.animalId)).map((a) => [a.animalId, a.dias]),
-      itens: [...p.itens].sort((a, b) => a.produtoId.localeCompare(b.produtoId)).map((i) => [i.produtoId, i.quantidadePrevista, i.saldo, i.custoPrevisto, i.materiaSecaKg, i.leite]) }));
+      itens: [...p.itens].sort((a, b) => a.produtoId.localeCompare(b.produtoId)).map((i) => [i.produtoId, i.quantidadePrevista, i.saldo, i.custoPrevisto, i.materiaSecaKg, i.leite]), ofertasBezerreiro: p.ofertasBezerreiro }));
     const revisao = crypto.createHash("sha256").update(JSON.stringify({ baseConferida, lacunas })).digest("hex");
     return { periodos, lacunas, revisao };
 }
@@ -207,6 +219,7 @@ export async function confirmarPeriodos(input: { chave: string; revisao: string;
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "CONSUMO_PERIODOS") throw new RebanhoError("CONFLITO", "Chave já utilizada com outros dados");
       return { fechamentos: anterior.resultadoIds };
     }
+    await travarAlimentacaoLeiteTx(tx, input.propriedadeId);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-lote-consumo:${input.loteId}`}))`;
     const previaAtual = await montarPreviaPeriodosTx(tx, input);
     if (previaAtual.revisao !== input.revisao) throw new RebanhoError("CONFLITO", "A dieta, ocupação, estoque ou custo mudou desde a prévia; confira novamente");
@@ -280,6 +293,7 @@ export async function consumoAnimal(animalId: string, propriedadeId: number | nu
 
 export async function estornarFechamento(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
+    await travarAlimentacaoLeiteTx(tx, propriedadeId);
     const fechamento = await tx.fechamentoConsumo.findFirst({ where: { id, propriedadeId },
       include: { itens: true, participacoes: true } });
     if (!fechamento) throw new RebanhoError("NAO_ENCONTRADO", "Fechamento não encontrado");

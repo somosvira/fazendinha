@@ -13,7 +13,7 @@ if (typeof WebSocket !== "undefined") {
   neonConfig.webSocketConstructor = WebSocket;
 }
 
-function criarPrismaClient(): PrismaClient {
+export function criarPrismaClient(): PrismaClient {
   const adapter = isCloudflareWorkers() ? new PrismaNeon({ connectionString: env.DATABASE_URL }) : new PrismaPg({ connectionString: env.DATABASE_URL });
   return new PrismaClient({ adapter });
 }

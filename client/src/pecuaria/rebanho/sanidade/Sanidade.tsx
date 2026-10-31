@@ -1,4 +1,6 @@
 import { ConsultaExames, ConsultaCarencias } from "./ConsultasSanitariasVisuais";
+import { AgendaCuidados } from "./AgendaCuidados";
+import { AgendaCalendario } from "./AgendaCalendario";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { AlternarVisualizacaoSanitaria, useVisualizacaoSanitaria } from "./VisualizacaoSanitaria";
 import { AgendaSemanal } from "./AgendaSemanal";
@@ -148,7 +150,7 @@ const estadoDaUrl = () => {
       : p.get("aplicacaoId")
         ? ("aplicacoes" as Aba)
         : (abaDoDetalhe[p.get("detalheTipo") ?? ""] ?? "agenda"),
-    visaoAgenda: p.get("visaoAgenda") === "tarefas" || (!p.has("visaoAgenda") && p.get("detalheTipo") === "execucao") ? "tarefas" : "rodadas",
+    visaoAgenda: p.get("visaoAgenda") === "cuidados" ? "cuidados" : p.get("visaoAgenda") === "tarefas" || (!p.has("visaoAgenda") && p.get("detalheTipo") === "execucao") ? "tarefas" : "rodadas",
     aplicacaoId: p.get("aplicacaoId") ?? "",
     animalId: p.get("animalId") ?? "",
     buscaAnimal: p.get("buscaAnimal") ?? "",
@@ -175,7 +177,12 @@ import type { TarefaRodada } from "./rodadas-api";
 import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
 
-export function Sanidade({ podeLancar }: { podeLancar: boolean }) {
+export function Sanidade(props: { podeLancar: boolean }) {
+  const [caminho,setCaminho]=useState(window.location.pathname);
+  useEffect(()=>{const atualizar=()=>setCaminho(window.location.pathname);window.addEventListener("popstate",atualizar);return()=>window.removeEventListener("popstate",atualizar);},[]);
+  return caminho.endsWith("/calendario") ? <AgendaCalendario /> : <SanidadeRotina {...props} />;
+}
+function SanidadeRotina({ podeLancar }: { podeLancar: boolean }) {
   const participacaoRota = window.location.pathname.match(/^\/pecuaria\/sanidade\/participacoes\/([^/]+)\/?$/);
   if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="SANITARIO" propriedadeId={Number(new URLSearchParams(window.location.search).get("sitio")) || getPropriedadeAtiva() || undefined} podeLancar={podeLancar} />;
   return <ConteudoSanidade podeLancar={podeLancar}/>;
@@ -400,6 +407,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
     setCarregandoAba(true);
     setErroAba(null);
     setTarefas([]); setTotalTarefas(0); setOcorrencias([]); setResumoOcorrencias(null); setTotalOcorrencias(0); setOcorrenciasPaginadas(false); setAplicacoes([]); setExames([]); setCarencias([]);
+    if (aba === "agenda" && visaoAgenda === "cuidados") { setCarregandoAba(false); return () => { vivo = false; }; }
     if (aba === "carencias" && animalId) {
       setCarregandoAba(false);
       return () => { vivo = false; };
@@ -493,7 +501,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
     return () => {
       vivo = false;
     };
-  }, [aba, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao, doencaVisual, visualTarefas.modo]);
+  }, [aba, visaoAgenda, animalId, buscaAnimal, loteId, de, ate, situacao, pagina, revisao, doencaVisual, visualTarefas.modo]);
   useEffect(() => {
     setServicos([]);
     setServicoId("");
@@ -841,7 +849,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           }}
         />
       )}
-      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <PageHeader titulo={<span className="flex items-center gap-3"><ShieldCheck size={28} aria-hidden />Sanidade</span>} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>} />}
+      {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <PageHeader titulo={<span className="flex items-center gap-3"><ShieldCheck size={28} aria-hidden />Sanidade</span>} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={() => navegarPara("/pecuaria/sanidade/calendario")}>Calendário sanitário</Button><Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/sanidade/protocolos")}>Gerenciar protocolos</Button>{podeGerenciarServicos && <Button secondary onClick={() => setRateando(true)}>Gerenciar procedimentos</Button>}</div>} />}
       {!(aba === "agenda" && visaoAgenda === "rodadas" && rodadaId) && <div className="sanidade-navegacao" ref={abasSanidade}>
       <SubTabs variant="financeiro" ariaLabel="Sanidade"
         className="sanidade-abas-principais"
@@ -869,8 +877,8 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
         </Button>
       )}
       <Panel className="overflow-hidden sanidade-lista">
-        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }]} /></div>}
-        {!(aba === "agenda" && visaoAgenda === "rodadas") && aba !== "aplicacoes" && <>
+        {aba === "agenda" && !rodadaId && <div className="sanidade-agenda-visoes"><SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Visão da agenda" active={visaoAgenda} onSelect={v => { setVisaoAgenda(v); setPagina(1); }} tabs={[{ id: "rodadas", label: "Ciclos" }, { id: "tarefas", label: "Tarefas" }, { id: "cuidados", label: "Todos os cuidados" }]} /></div>}
+        {!(aba === "agenda" && ["rodadas","cuidados"].includes(visaoAgenda)) && aba !== "aplicacoes" && <>
           {carenciasIndividuais ? <div className="sanidade-carencias-contexto">
             <strong>{animal ? nomeAnimalSanitario(animal) : "Animal selecionado"}</strong>
             <Button secondary onClick={() => { setAnimalId(""); setBuscaAnimal(""); setLoteId(""); setDe(""); setAte(""); setSituacao(""); setPagina(1); }}>Todos os animais</Button>
@@ -890,7 +898,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "agenda" && (
             <>
 
-              {visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
+              {visaoAgenda === "cuidados" ? <AgendaCuidados filtros={{animalId,busca:buscaAnimal,loteId,de,ate,pagina}} revisao={revisao} onFiltros={v=>{setAnimalId(v.animalId);setBuscaAnimal(v.busca);setLoteId(v.loteId);setDe(v.de);setAte(v.ate);setPagina(v.pagina)}}/> : visaoAgenda === "rodadas" ? <AgendaRodadas filtrosColunas={filtrosColunas} filtrosUI={(acao) => filtrosTabela(acao)} filtros={{ animalId, buscaAnimal, loteId, de, ate, situacao, pagina, porPagina: 10 }} podeLancar={podeLancar} recarregarToken={revisao} onAcao={(acao, t) => { if (acao === "consultar") { abrirDetalhe("execucao", t.execucaoId, t.execucao.propriedadeId); return; } setAnimalDaAcao({ animalId: t.execucao.animalId, propriedadeId: t.propriedadeAtualId ?? t.execucao.propriedadeId }); abrir({ tipo: acao, id: acao === "cancelar" ? t.execucaoId : t.id }); }} rodadaId={rodadaId} onAbrir={(id) => { const url = new URL(window.location.href); if (id) url.searchParams.set("rodadaId", id); else url.searchParams.delete("rodadaId"); for (const chave of ["protocoloContexto", "protocoloBusca", "protocoloSituacao", "abaCiclo", "etapaId", "paginaEtapas", "paginaParticipantes", "paginaTarefas"]) url.searchParams.delete(chave); navegarPara(url.pathname + url.search); setRodadaId(id); }} onExecutar={setExecutandoEtapa} /> : <>
               <div className="san-visual-barra"><p>Planeje por dia ou consulte todas as tarefas na tabela.</p><AlternarVisualizacaoSanitaria rotulo="Visualização das tarefas" semana {...visualTarefas}/></div>
               {visualTarefas.modo === "visual" ? <AgendaSemanal<Tarefa> filtros={{animalId,buscaAnimal,loteId,de,ate,situacao}} revisao={revisao} podeLancar={podeLancar} acoes={t=>colunasTarefas.find(c=>c.chave==="acoes")!.celula(t)} regularizacao={t=><RegularizacaoTarefa tarefa={t} podeLancar={podeLancar} onMudou={async()=>setRevisao(v=>v+1)}/>} onExecutar={itens=>setExecutandoEtapa(itens.map(t=>({...t,parametros:{...t.parametros,tipo:t.parametros.tipo === "APLICACAO" ? "APLICACAO" : "EXAME"}})))}/> : <>
               <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Tarefas de protocolos" itens={tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao)).sort((a, b) => Number(b.situacao === "PENDENTE") - Number(a.situacao === "PENDENTE") || a.previstaPara.localeCompare(b.previstaPara) || a.id.localeCompare(b.id))} chaveDe={t => t.id} colunas={colunasTarefas} />

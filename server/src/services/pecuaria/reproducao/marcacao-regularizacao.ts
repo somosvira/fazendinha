@@ -1,3 +1,4 @@
+import { reconciliarParticipacaoAlertaTx } from "../sanidade/alertas/protocolos.js";
 import type { Prisma } from "@prisma/client";
 
 /** Preserva a realização e o fato original até a regularização explícita; não move estoque. */
@@ -23,4 +24,5 @@ export async function marcarRegularizacaoFatoTx(tx: Prisma.TransactionClient, in
     await tx.tarefaProtocolo.update({ where: { id: tarefa.id }, data: { regularizacaoPendente: true, historicoRegularizacao: [...(Array.isArray(tarefa.historicoRegularizacao) ? tarefa.historicoRegularizacao : []), evento] as Prisma.InputJsonValue } });
   for (const participante of participantes)
     await tx.participanteVisita.update({ where: { id: participante.id }, data: { regularizacaoPendente: true, historicoRegularizacao: [...(Array.isArray(participante.historicoRegularizacao) ? participante.historicoRegularizacao : []), evento] as Prisma.InputJsonValue } });
+  for (const participacaoId of new Set(tarefas.map(t => t.execucaoId))) await reconciliarParticipacaoAlertaTx(tx, participacaoId, input.usuarioId);
 }

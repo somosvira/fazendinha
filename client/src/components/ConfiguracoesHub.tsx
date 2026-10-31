@@ -37,7 +37,7 @@ const SUB_BY_TAB: Partial<Record<Tab, ConfSub>> = {
   acessos: "acessos",
 };
 
-export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, podePecuaria = false, podeLancarPecuaria = false }: {
+export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, podePecuaria = false, podeLancarPecuaria = false, podeGerenciarAlertas = false }: {
   tab: Tab;
   onNav: (t: Tab) => void;
   isAdmin: boolean;
@@ -45,6 +45,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
   podeCategorias?: boolean;
   podePecuaria?: boolean;
   podeLancarPecuaria?: boolean;
+  podeGerenciarAlertas?: boolean;
 }) {
   const [path, setPath] = useState(window.location.pathname);
   useEffect(() => { const sync = () => setPath(window.location.pathname); window.addEventListener("popstate", sync); return () => window.removeEventListener("popstate", sync); }, []);
@@ -74,7 +75,7 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
 
         <SubTabs tabs={tabs.map(t => atual === "categorias" ? {...t, icon: undefined} : t)} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} /></div>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} podeGerenciarAlertas={podeGerenciarAlertas} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

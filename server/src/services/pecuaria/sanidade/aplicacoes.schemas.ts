@@ -6,7 +6,7 @@ const desvio = z
   .object({ motivo: z.string().trim().min(5).max(500) })
   .strict()
   .optional();
-export const aplicacaoSchema = z
+export const aplicacaoCamposSchema = z
   .object({
     desvio,
     chave: uuid.optional(),
@@ -51,6 +51,9 @@ export const aplicacaoSchema = z
     via: z.string().trim().max(80).nullish(),
     ocorrenciaId: uuid.nullish(),
     tarefaId: uuid.nullish(),
+    alertaId: uuid.optional(),
+    alertaRevisao: z.number().int().positive().optional(),
+    confirmarCuidadoAlerta: z.literal(true).optional(),
     operacaoServicoId: uuid.nullish(),
     itemCompraDiretaId: uuid.nullish(),
     partidaId: uuid.nullish(),
@@ -62,3 +65,8 @@ export const aplicacaoSchema = z
     motivoDocumentacaoExcepcional: z.string().trim().min(5).max(500).nullish(),
   })
   .strict("Confira os campos informados para a aplicação");
+
+export const aplicacaoSchema = aplicacaoCamposSchema.superRefine((input, ctx) => {
+  if (input.alertaId && (!input.alertaRevisao || input.confirmarCuidadoAlerta !== true)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertaRevisao"], message: "Confira a revisão e o cuidado do alerta" });
+  if (!input.alertaId && (input.alertaRevisao != null || input.confirmarCuidadoAlerta != null)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertaId"], message: "Informe o alerta de origem" });
+});
