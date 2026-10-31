@@ -8,7 +8,7 @@
 :root [data-design-operacional] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger]){min-height:44px;border-radius:8px}
 :root [data-design-operacional] textarea{min-height:100px;border-radius:8px}
 :root [data-design-operacional] :is(button[data-slot=button],.fin-btn,.rb-btn){min-height:44px;font-size:15px;border-radius:8px;gap:8px}
-:root [data-design-operacional] :is(input,textarea,select,[data-slot=select-trigger]){border-color:#b9cbbb;background-color:var(--card,#fff)}
+:root [data-design-operacional] :is(input:not([type=checkbox],[type=radio]),textarea,select,[data-slot=select-trigger]){border-color:#b9cbbb;background-color:var(--card,#fff)}
 :root [data-design-operacional] :is(button,a,input,textarea,[role=tab]):focus-visible{outline:3px solid #5c9a7c;outline-offset:3px}
 :root [data-design-operacional] :is(dt,.consulta-cartao-meta,.consulta-entidade-detalhe,.ger-muted){font-size:14px;line-height:1.5;color:var(--op-muted)}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) th{background:#f3f7ef;color:#4d6552;font-size:14px;font-weight:600;line-height:1.5;padding:14px 18px;border-inline:0}

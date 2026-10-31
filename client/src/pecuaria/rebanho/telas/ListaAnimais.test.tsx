@@ -122,7 +122,7 @@ describe("ListaAnimais", () => {
   });
 
   it("seleciona pelo espaço ao redor do checkbox sem abrir a ficha", async () => {
-    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({}), criarAnimal({id:"a2",brinco:"0002"})], total: 2, painel: painelVazio });
     const onAbrirAnimal = vi.fn();
     montar({ onAbrirAnimal });
     const checkbox = (await screen.findAllByRole("checkbox", { name: "Selecionar 0001" }))[0];
@@ -130,6 +130,7 @@ describe("ListaAnimais", () => {
     expect(onAbrirAnimal).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Pesagem coletiva" })).toBeTruthy();
     expect((checkbox as HTMLInputElement).checked).toBe(true);
+    expect(screen.getByRole("checkbox", { name: "Selecionar todos os animais desta página" })).toHaveProperty("indeterminate", true);
   });
   it("mostra e remove o filtro aplicado no painel", async () => {
     montar();
@@ -367,7 +368,8 @@ describe("ListaAnimais", () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao}), criarAnimal({id:"macho",brinco:"M01",sexo:"M"})], total: 2, painel: painelVazio });
     montar();
     await screen.findAllByText("0001");
-    expect(screen.getAllByText("Sem informação").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Sem informação")).toBeNull();
+    expect(screen.getByRole("row", { name: /0001/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
     expect(screen.queryByText("Não se aplica")).toBeNull();
     expect(screen.getByRole("row", { name: /M01/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
     expect(screen.queryByText("Vazia")).toBeNull();

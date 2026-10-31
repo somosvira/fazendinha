@@ -382,8 +382,10 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       { chave: "reproducao", titulo: "Reprodução", larguraMinima: 175, celula: (item: AnimalResumo) => {
         if (item.sexo === "M") return <span title="Não se aplica">—</span>;
         const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
-        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico", DESCONHECIDA: "Sem informação" };
-        return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{rotulos[situacaoReprodutiva ?? ""] ?? "Sem informação"}</Pill>;
+        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico" };
+        const rotulo = rotulos[situacaoReprodutiva ?? ""];
+        if (!rotulo) return <span title="Sem informação">—</span>;
+        return <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? "amber" : "neutral"}>{rotulo}</Pill>;
       } },
       { chave: "del", titulo: "DEL", larguraMinima: 90, celula: (item: AnimalResumo) => {
         const produtivo = item.contextoCartao?.produtivo;
