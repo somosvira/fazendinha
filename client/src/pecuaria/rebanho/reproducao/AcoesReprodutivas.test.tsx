@@ -77,3 +77,22 @@ it("leitura da lactação mostra peso e histórico sem permitir manutenção", (
   expect(screen.getByText("512 kg")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Manter vínculo de peso" })).toBeNull();
 });
+
+it("gestação na ficha usa o vínculo completo do fato e separa a lactação", () => {
+  const painel: PainelReprodutivo = { animais: [{ animalId: "a", brinco: "100", nome: null, situacao: "GESTANTE", partos: 1, tentativasCiclo: 1, gestacao: { id: "g", status: "VALIDO" }, restricoes: [], situacaoProdutiva: "LACTANTE", del: 12 }], tentativas: [{id:"t",animalId:"a",data:"2026-07-16",tipo:"IA",status:"VALIDO"}], avaliacoes: [{id:"e",animalId:"a",data:"2026-10-14",tipo:"RECONFIRMACAO",gestacaoId:"g",status:"VALIDO"}], partos: [], restricoes: [], gestacoes: [{id:"g",animalId:"a",status:"VALIDO",confirmadaEm:"2026-08-15",previsaoParto:"2027-04-25",tentativaId:"t"}] };
+  render(<AcoesReprodutivas modo="gestacao" animalId="a" painel={painel} propriedadeId={7} podeLancar={false} onMudou={vi.fn()}/>);
+  expect(screen.getByText("Inseminação artificial · 16/07/2026")).toBeTruthy();
+  expect(screen.getByText("Reconfirmação · 14/10/2026")).toBeTruthy();
+  expect(screen.getByText("25/04/2027")).toBeTruthy();
+  expect(screen.queryByText("Lactante")).toBeNull();
+  expect(screen.queryByRole("button",{name:"Gerenciar gestação"})).toBeNull();
+});
+it("lactação na Produção conserva desconhecimento e põe encerramento no menu autorizado", async () => {
+  const painel: PainelReprodutivo = {animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[],lactacoes:[{...lactacaoSecagem,animalId:"a",encerradaEm:null,vinculosPesagemSecagem:[]}]};
+  render(<AcoesReprodutivas modo="lactacao" animalId="a" painel={painel} propriedadeId={7} podeLancar onMudou={vi.fn()}/>);
+  expect(screen.getByText("Não informada")).toBeTruthy();
+  expect(screen.queryByText("Seca")).toBeNull();
+  fireEvent.keyDown(screen.getByRole("button",{name:"Gerenciar lactação"}),{key:"Enter"});
+  fireEvent.click(await screen.findByRole("menuitem",{name:"Encerrar lactação"}));
+  expect(await screen.findByLabelText("Como deseja informar o peso?")).toBeTruthy();
+});

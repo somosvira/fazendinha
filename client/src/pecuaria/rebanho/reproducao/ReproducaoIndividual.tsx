@@ -1,14 +1,12 @@
 import { Button } from "../../../components/ui/button";
 import { listarDemandasAcompanhamento, type ResumoAcompanhamentos } from "./acompanhamento-api";
-import { ParticipacoesIndividuais } from "../protocolos/ParticipacoesIndividuais";
 import { FormParticipacaoIndividual } from "../protocolos/FormParticipacaoIndividual";
 import { navegarPara } from "../../../router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, Circle, Syringe, Baby, GitBranch, Target, History, ClipboardList, CircleDollarSign } from "lucide-react";
-import { ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
+import { CalendarDays, HeartPulse, Syringe, Baby, GitBranch, Target, History, ClipboardList, CircleDollarSign, Clock } from "lucide-react";
+import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { CustosDiretos } from "../custos/CustosDiretos";
-import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
 import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
 import { obterReproducao, type PainelReprodutivo } from "./api";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
@@ -17,25 +15,28 @@ import { DemandasAcompanhamento, type DemandaAcompanhamento } from "./DemandasAc
 import { ElegibilidadeAnimal } from "./ElegibilidadeAnimal";
 import { FormReproducao, type AcaoReprodutiva } from "./FormReproducao";
 import { HistoricoReprodutivo, rotulosReprodutivos, type FatoHistorico } from "./HistoricoReprodutivo";
-import { ProtocolosAnimal } from "./ProtocolosAnimal";
+import { ProtocolosReprodutivosAnimal, useHistoricoProtocolosReprodutivos } from "./ProtocolosReprodutivosAnimal";
+import { SecaoReproducaoAnimal } from "./SecaoReproducaoAnimal";
 import "./reproducao-individual.css";
 
-export type ReproducaoIndividualProps = { animalId: string; propriedadeId?: number | null; podeLancar: boolean; recarregarToken?: number; onSituacao?: (situacao: string | null) => void };
+export type ReproducaoIndividualProps = { animalId: string; propriedadeId?: number | null; podeLancar: boolean; recarregarToken?: number; onSituacao?: (situacao: string | null) => void; onMudou?: () => void };
 /** A identidade do contexto desmonta formulários e invalida leituras ao trocar animal/sítio. */
 export function ReproducaoIndividual(props: ReproducaoIndividualProps) {
   return <ConteudoReproducao key={`${props.animalId}:${props.propriedadeId ?? "consolidado"}`} {...props}/>;
 }
-function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarToken = 0, onSituacao }: ReproducaoIndividualProps) {
+function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarToken = 0, onSituacao, onMudou }: ReproducaoIndividualProps) {
   const [revisaoProtocolos, setRevisaoProtocolos] = useState(0);
   const [iniciandoProtocolo, setIniciandoProtocolo] = useState(false);
   const [painel, setPainel] = useState<PainelReprodutivo | null>(null);
   const [resumoDemandas, setResumoDemandas] = useState<ResumoAcompanhamentos | null>(null);
+  const [proximaDemanda, setProximaDemanda] = useState<DemandaAcompanhamento | null>(null);
   const [erroDemandas, setErroDemandas] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [acao, setAcao] = useState<AcaoReprodutiva | null>(() => new URLSearchParams(window.location.search).get("acao") === "parto" && podeLancar ? "parto" : null);
   const [demanda, setDemanda] = useState<DemandaAcompanhamento | null>(null);
   const [fato, setFato] = useState<FatoHistorico | null>(null);
+  const { eventos: eventosProtocolos, erro: erroHistoricoProtocolos } = useHistoricoProtocolosReprodutivos(animalId, propriedadeId ?? undefined, recarregarToken + revisaoProtocolos);
   const geracao = useRef(0);
   const carregar = useCallback(async () => {
     const g = ++geracao.current;
@@ -61,8 +62,8 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
     abrirUrl(); window.addEventListener("popstate", abrirUrl); return () => window.removeEventListener("popstate", abrirUrl);
   }, [painel]);
   useEffect(() => {
-    let vigente = true; setResumoDemandas(null); setErroDemandas(null);
-    if (propriedadeId != null && painel?.animais.some(a => a.animalId === animalId)) void listarDemandasAcompanhamento(propriedadeId, animalId, 1, "PENDENTE", "", 1).then(d => { if (vigente) setResumoDemandas(d.resumo); }).catch(e => { if (vigente) setErroDemandas(e instanceof Error ? e.message : String(e)); });
+    let vigente = true; setResumoDemandas(null); setProximaDemanda(null); setErroDemandas(null);
+    if (propriedadeId != null && painel?.animais.some(a => a.animalId === animalId)) void listarDemandasAcompanhamento(propriedadeId, animalId, 1, "PENDENTE", "", 1).then(d => { if (vigente) { setResumoDemandas(d.resumo); setProximaDemanda(d.itens[0] ?? null); } }).catch(e => { if (vigente) setErroDemandas(e instanceof Error ? e.message : String(e)); });
     return () => { vigente = false; };
   }, [animalId, propriedadeId, recarregarToken, painel]);
   const animal = painel?.animais.find(a => a.animalId === animalId);
@@ -72,40 +73,50 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
 
   const fecharFato = () => { setFato(null); const url = new URL(window.location.href); url.searchParams.delete("fatoId"); url.searchParams.delete("tentativaId"); window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash); };
   const fechar = () => { setAcao(null); setDemanda(null); const url = new URL(window.location.href); url.searchParams.delete("acao"); window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash); };
-  const atualizar = async () => { setRevisaoProtocolos(v => v + 1); await carregar(); };
+  const atualizar = async () => { setRevisaoProtocolos(v => v + 1); await carregar(); onMudou?.(); };
   return <div className="repro-individual">
     <ErrorBox erro={erro}/>{erro && <Button variant="outline" onClick={() => void carregar()}>Tentar novamente</Button>}
     {carregando && <p role="status">Carregando reprodução…</p>}
     {painel && <>
-      <SecaoGeralAnimal id="acompanhamento-reprodutivo" icon={GitBranch} titulo="Acompanhamento reprodutivo">{animal ? <dl className="repro-ciclo repro-resumo-acompanhamento">
-        <div><Circle aria-hidden="true" size={25}/><div><dt>Situação reprodutiva</dt><dd><Pill tone={animal?.situacao === "GESTANTE" ? "green" : "amber"}>{rotulosReprodutivos[animal?.situacao ?? "DESCONHECIDA"] ?? animal?.situacao}</Pill></dd></div></div>
-        <div><Syringe aria-hidden="true" size={25}/><div><dt>Tentativas</dt><dd>{resumo ? <>{resumo.tentativas} {referencia ? referencia.tipo === "SITUACAO_INICIAL" ? "desde o início registrado" : "desde o último parto registrado" : "no histórico disponível"}</> : "Contagem não informada"}</dd></div></div>
-        <div><Baby aria-hidden="true" size={25}/><div><dt>Total de partos</dt><dd>{animal.partos ?? "Não informado"}</dd></div></div>
-        <div><CalendarDays aria-hidden="true" size={25}/><div><dt>Referência</dt><dd>{referencia ? `${referencia.tipo === "SITUACAO_INICIAL" ? "Situação inicial" : referencia.tipo === "ABORTO" ? "Aborto registrado" : "Último parto registrado"} · ${formatBRDateISO(referencia.data)}` : resumo ? "Início não comprovado" : "Referência não informada"}</dd></div></div>
-      </dl> : <p className="text-sm text-ink-3">Consulta histórica neste sítio; o animal não pertence ao efetivo atual.</p>}</SecaoGeralAnimal>
-      {erroDemandas ? <p role="alert">Acompanhamentos não consultados: {erroDemandas}</p> : resumoDemandas && resumoDemandas.pendentes > 0 && <p className="text-sm">{resumoDemandas.pendentes} acompanhamento{resumoDemandas.pendentes === 1 ? " pendente" : "s pendentes"}. Consulte os exames e as próximas avaliações abaixo.</p>}
-      <div className="repro-ficha-consultas">
-      <SecaoGeralAnimal icon={Target} titulo={animal ? "Aptidão e intervalos" : "Intervalos comprovados"} id="aptidao-reprodutiva-animal" acao={podeLancar ? <Button variant="outline" onClick={() => {setDemanda(null);setAcao("avaliacao");}}>Avaliação avulsa</Button> : undefined}>
-        {animal && (propriedadeId != null ? <ElegibilidadeAnimal animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()}/> : <p>É necessário o sítio comprovado no histórico de localização.</p>)}
-        <section className="repro-intervalos" aria-label="Intervalos comprovados"><dl>{(painel.marcos?.intervalos ?? []).map(i => <div key={i.rotulo}><dt>{i.rotulo}</dt><dd>{i.dias == null ? "Não aferido" : `${i.dias} dias`}</dd></div>)}</dl>{!painel.marcos?.intervalos?.length && <p>Sem intervalos aferidos.</p>}</section>
-        {!!painel.marcos?.pendencias?.length && <section className="repro-pendencias"><h3>Informações a conferir</h3><ul className="mt-2 space-y-2 text-sm">{painel.marcos.pendencias.map(p => <li key={p}>{p === "Não há início de ciclo comprovado." ? "Não há parto ou situação inicial que comprove o início do acompanhamento." : p}</li>)}</ul></section>}
+      <SecaoGeralAnimal id="acompanhamento-reprodutivo" icon={GitBranch} titulo="Acompanhamento reprodutivo">
+        {animal ? <dl className="repro-metricas repro-metricas-com-icone">
+          <div><dt><HeartPulse aria-hidden="true"/>Situação reprodutiva</dt><dd>{rotulosReprodutivos[animal.situacao] ?? animal.situacao}</dd></div>
+          <div><dt><Syringe aria-hidden="true"/>Tentativas no ciclo</dt><dd>{resumo ? resumo.tentativas : "Contagem não informada"}</dd><small>{referencia ? `${referencia.tipo === "SITUACAO_INICIAL" ? "Situação inicial" : referencia.tipo === "ABORTO" ? "Aborto registrado" : "Último parto registrado"} · ${formatBRDateISO(referencia.data)}` : resumo ? "Início não comprovado" : "Referência não informada"}</small></div>
+          <div><dt><Baby aria-hidden="true"/>Total de partos</dt><dd>{animal.partos ?? "Não informado"}</dd></div>
+        </dl> : <p className="text-sm text-ink-3">Consulta histórica neste sítio; o animal não pertence ao efetivo atual.</p>}
+        <SecaoReproducaoAnimal id="tentativas-animal" icon={Syringe} titulo="Tentativas reprodutivas" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("tentativa");}}>Registrar tentativa</Button> : undefined}>
+          <HistoricoReprodutivo chaveUrl="tentativas" fatos={fatos.filter(f => f.grupo === "Tentativa")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
+        </SecaoReproducaoAnimal>
       </SecaoGeralAnimal>
-      {animal && propriedadeId != null && <SecaoGeralAnimal icon={CalendarDays} titulo="Acompanhamentos" id="acompanhamentos-reproducao-animal"><DemandasAcompanhamento animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} atualizacao={recarregarToken} onMudou={atualizar} onAvaliar={d => { setDemanda(d); setAcao("avaliacao"); }}/></SecaoGeralAnimal>}
-      </div>
-      <SecaoGeralAnimal icon={ClipboardList} titulo="Protocolos reprodutivos" id="protocolos-reprodutivos-animal" acao={podeLancar && propriedadeId != null ? <Button variant="outline" onClick={() => setIniciandoProtocolo(true)}>Iniciar protocolo individual</Button> : undefined}>
+      <SecaoGeralAnimal id="gestacao-partos-animal" icon={Baby} titulo="Gestação e partos" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("parto");}}>Registrar parto</Button> : undefined}>
+        <AcoesReprodutivas modo="gestacao" painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/>
+        <SecaoReproducaoAnimal id="partos-animal" icon={History} titulo="Histórico de partos">
+          <HistoricoReprodutivo chaveUrl="partos" fatos={fatos.filter(f => f.grupo === "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
+          <AcoesReprodutivas modo="crias" painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/>
+        </SecaoReproducaoAnimal>
+      </SecaoGeralAnimal>
+      <SecaoGeralAnimal icon={Target} titulo="Aptidão e avaliações" id="aptidao-reprodutiva-animal" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("avaliacao");}}>Avaliação avulsa</Button> : undefined}>
+        {animal && (propriedadeId != null ? <ElegibilidadeAnimal naFicha animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void atualizar()}/> : <p>É necessário o sítio comprovado no histórico de localização.</p>)}
+        <SecaoReproducaoAnimal titulo="Intervalos comprovados" icon={Clock}>
+          {(painel.marcos?.intervalos ?? []).length ? <dl className="repro-metricas">{painel.marcos!.intervalos!.map(i => <div key={i.rotulo}><dt>{i.rotulo.replace(/primeiro serviço/gi, "primeira tentativa")}</dt><dd>{i.dias == null ? "Não aferido" : `${i.dias} dias`}</dd></div>)}</dl> : <p>Sem intervalos aferidos.</p>}
+          {!!painel.marcos?.pendencias?.filter(p => p !== "Primeira liberação válida ainda não comprovada.").length && <div className="repro-pendencias"><h4>Informações a conferir</h4><ul>{painel.marcos.pendencias.filter(p => p !== "Primeira liberação válida ainda não comprovada.").map(p => <li key={p}>{p === "Não há início de ciclo comprovado." ? "Não há parto ou situação inicial que comprove o início do acompanhamento." : p}</li>)}</ul></div>}
+        </SecaoReproducaoAnimal>
+        <SecaoReproducaoAnimal titulo="Restrições reprodutivas" icon={HeartPulse} acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("restricao");}}>Registrar restrição</Button> : undefined}>
+          <AcoesReprodutivas modo="restricoes" painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/>
+        </SecaoReproducaoAnimal>
+        {erroDemandas && <p role="alert">Acompanhamentos não consultados: {erroDemandas}</p>}
+        {animal && propriedadeId != null && <DemandasAcompanhamento naFicha resumo={resumoDemandas} proxima={proximaDemanda} animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} atualizacao={recarregarToken} onMudou={atualizar} onAvaliar={d => { setDemanda(d); setAcao("avaliacao"); }}/>}
+      </SecaoGeralAnimal>
+      <SecaoGeralAnimal icon={ClipboardList} titulo="Protocolos reprodutivos" id="protocolos-reprodutivos-animal" acao={podeLancar && propriedadeId != null ? <Button onClick={() => setIniciandoProtocolo(true)}>Iniciar protocolo individual</Button> : undefined}>
         {iniciandoProtocolo && propriedadeId != null && <FormParticipacaoIndividual animalId={animalId} propriedadeId={propriedadeId} onFechar={() => setIniciandoProtocolo(false)} onSalvo={id => { setIniciandoProtocolo(false); navegarPara(`/pecuaria/reproducao/participacoes/${encodeURIComponent(id)}?sitio=${propriedadeId}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`); }} />}
-        <ParticipacoesIndividuais animalId={animalId} tipo="REPRODUTIVO" podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos} propriedadeId={propriedadeId ?? undefined} />
-        <ProtocolosAnimal animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos}/>
+        <ProtocolosReprodutivosAnimal animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} aoSalvar={() => void atualizar()} revisao={recarregarToken + revisaoProtocolos}/>
       </SecaoGeralAnimal>
-      <SecaoGeralAnimal id="tentativas-animal" icon={Syringe} titulo="Tentativas" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("tentativa");}}>Registrar tentativa</Button> : undefined}>
-        <HistoricoReprodutivo chaveUrl="tentativas" fatos={fatos.filter(f => f.grupo === "Tentativa")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
+      <SecaoGeralAnimal icon={History} titulo="Histórico reprodutivo" id="historico-reprodutivo-animal" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("situacao");}}>Registrar situação inicial</Button> : undefined}>
+        {erroHistoricoProtocolos && <p role="alert">Histórico de protocolos não consultado: {erroHistoricoProtocolos}</p>}
+        <HistoricoReprodutivo fatos={[...fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto"), ...eventosProtocolos].sort((a,b) => b.data.localeCompare(a.data))} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
       </SecaoGeralAnimal>
-      <SecaoGeralAnimal id="partos-animal" icon={Baby} titulo="Partos" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("parto");}}>Registrar parto</Button> : undefined}>
-        <HistoricoReprodutivo chaveUrl="partos" fatos={fatos.filter(f => f.grupo === "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
-      </SecaoGeralAnimal>
-      <SecaoGeralAnimal icon={History} titulo="Histórico reprodutivo" id="historico-reprodutivo-animal" acao={podeLancar ? <MenuAcoesFicha rotulo="Outros registros" itens={([["situacao", "Registrar situação inicial"], ["restricao", "Registrar restrição"]] as const).map(([id, rotulo]) => ({ id, rotulo, onSelect: () => { setDemanda(null); setAcao(id); } }))}/> : undefined}><HistoricoReprodutivo fatos={fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/></SecaoGeralAnimal>
-      {propriedadeId != null && <SecaoGeralAnimal icon={CircleDollarSign} titulo="Custos diretos" id="custos-reproducao-animal"><CustosDiretos mostrarTitulo={false} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} finalidadeInicial="REPRODUCAO"/></SecaoGeralAnimal>}
-      {(animal || painel.lactacoes?.some(f => f.animalId === animalId) || painel.partos.some(f => f.animalId === animalId) || painel.gestacoes?.some(f => f.animalId === animalId && f.tipoEncerramento === "PERDA")) && <SecaoGeralAnimal id="gestacao-restricoes-lactacao" icon={Baby} titulo="Gestação, restrições e lactação"><AcoesReprodutivas painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/></SecaoGeralAnimal>}
+      {propriedadeId != null && <SecaoGeralAnimal icon={CircleDollarSign} titulo="Custos diretos" id="custos-reproducao-animal"><CustosDiretos mediaPorTentativa mostrarTitulo={false} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} finalidadeInicial="REPRODUCAO"/></SecaoGeralAnimal>}
+
 
     </>}
     {fato && <DetalheFato fato={fato} podeLancar={podeLancar} onFechar={fecharFato} onMudou={() => { fecharFato(); void atualizar(); }}/>}

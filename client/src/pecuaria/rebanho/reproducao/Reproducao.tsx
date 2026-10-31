@@ -65,6 +65,7 @@ export function ReproducaoAnimal({
   podeLancar,
   recarregarToken = 0,
   onSituacao,
+  onMudou,
   propriedadeId,
 }: {
   animalId: string;
@@ -72,10 +73,12 @@ export function ReproducaoAnimal({
   podeLancar: boolean;
   recarregarToken?: number;
   onSituacao?: (situacao: string | null) => void;
+  onMudou?: () => void;
 }) {
   return (
     <ReproducaoIndividual
       onSituacao={onSituacao}
+      onMudou={onMudou}
       animalId={animalId}
       podeLancar={podeLancar}
       recarregarToken={recarregarToken}

@@ -1,8 +1,11 @@
 import { RevisarToqueAptidao } from "./RevisarToqueAptidao";
 import { ToqueAptidaoFormulario } from "./ToqueAptidaoFormulario";
 import { AjudaCampo } from "../../../components/Dica";
-import { useEffect, useId, useRef, useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { SecaoReproducaoAnimal } from "./SecaoReproducaoAnimal";
+import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
+import { PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { Target, CalendarDays } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { Checkbox } from "../../../components/ui/checkbox";
 import { Input } from "../../../components/ui/input";
@@ -20,17 +23,19 @@ import {
   type ElegibilidadeNaData,
 } from "./elegibilidade-api";
 
-export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLancar, onMudou }: {
+export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLancar, onMudou, naFicha = false }: {
   animalId: string;
   propriedadeId: number;
   painel: PainelReprodutivo;
   podeLancar: boolean;
   onMudou?: () => void;
+  naFicha?: boolean;
 }) {
   const [data, setData] = useState(getHojeISO);
   // A consulta histórica nunca preenche a data de uma nova decisão.
   const [dataDecisao, setDataDecisao] = useState(getHojeISO);
   const [editando, setEditando] = useState(false);
+  const [toqueAberto, setToqueAberto] = useState(false);
   const [resultado, setResultado] = useState<ElegibilidadeNaData | null>(null);
   const [contextoDecisao, setContextoDecisao] = useState<ElegibilidadeNaData | null>(null);
   const [erroConsulta, setErroConsulta] = useState("");
@@ -56,7 +61,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     return chave.current.chave;
   };
   useEffect(() => {
-    setEditando(false); setData(getHojeISO()); setDataDecisao(getHojeISO());
+    setEditando(false); setToqueAberto(false); setData(getHojeISO()); setDataDecisao(getHojeISO());
     setOcupado(false); setConfirmacao(false); setAnteciparPev(false); setOrigem(""); setMotivo(""); setApta(""); setErroEdicao("");
   }, [animalId, propriedadeId]);
   useEffect(() => {
@@ -114,33 +119,43 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
       ...(tipo === "LIBERAR" ? { exameAptidaoId: decisao.aptidaoClinica!.exameId!, acaoLiberada, anteciparPev } : {}), aptaDesde: tipo === "LIBERAR" ? apta : null, motivo };
     void executar(() => decidirElegibilidade({ ...input, chave: idempotencia(JSON.stringify(input)) }));
   }
-  return <div className="repro-aptidao space-y-3">
-    <div className="repro-aptidao-resumo">
+  const conteudo = <div className="repro-aptidao space-y-3">
+    {!naFicha && <div className="repro-aptidao-resumo">
       <CalendarDays size={21} aria-hidden="true"/>
       <strong>{data === getHojeISO() ? "Hoje · " : "Em "}{data ? formatBRDateISO(data) : "data não informada"}</strong>
       {r && <span className="text-sm text-muted-foreground">Disponibilidade operacional</span>}
       {r && <Pill tone={r.estado === "ELEGIVEL" ? "green" : "amber"}>{r.estado === "ELEGIVEL" ? "Elegível" : r.estado === "NAO_ELEGIVEL" ? "Não elegível" : "Pendente de informação"}</Pill>}
       {podeLancar && <Button variant="outline" className="repro-aptidao-acao" aria-expanded={editando} aria-controls={editorId} onClick={() => setEditando(v => !v)}>Registrar decisão</Button>}
-    </div>
+    </div>}
     {carregando && <p role="status">Consultando aptidão…</p>}
     {erroConsulta && <p role="alert">{erroConsulta}</p>}
-    {r && <div className="grid gap-4 border-y py-4 sm:grid-cols-3" aria-label="Avaliação e disponibilidade">
+    {naFicha ? <>{r && <>
+      <dl className="repro-metricas" aria-label="Avaliação e disponibilidade">
+        <div><dt>Disponibilidade operacional</dt><dd>{r.estado === "ELEGIVEL" ? "Elegível" : r.estado === "NAO_ELEGIVEL" ? "Não elegível" : "Pendente de informação"}</dd></div>
+        <div><dt>Aptidão clínica</dt><dd>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</dd>{r.aptidaoClinica?.data && <small>Toque de {formatBRDateISO(r.aptidaoClinica.data)}</small>}</div>
+        <div><dt>PEV original</dt><dd>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</dd></div>
+      </dl>
+      <dl className="repro-dados">
+        <div><dt>Disponível desde</dt><dd>{r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"}</dd></div>
+        <div><dt>Agendamento</dt><dd>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Agendamento manual"}</dd>{r.necessidadeAptidao?.devidaDesde && <small>Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</small>}</div>
+      </dl>
+    </>}</> : <>{r && <div className="grid gap-4 border-y py-4 sm:grid-cols-3" aria-label="Avaliação e disponibilidade">
       <div><p className="text-sm text-muted-foreground">Aptidão clínica</p><strong>{r.aptidaoClinica?.estado === "APTA" ? "Apta" : r.aptidaoClinica?.estado === "NAO_APTA" ? "Não apta" : "Não determinada"}</strong><p className="text-sm">{r.aptidaoClinica?.data ? `Toque de ${formatBRDateISO(r.aptidaoClinica.data)}` : "Sem toque de aptidão comprovado."}</p></div>
       <div><p className="text-sm text-muted-foreground">Acompanhamento</p><strong>{r.acompanhamentoAptidao?.fila === "AGENDAMENTO" ? "Agendamento em visita" : r.acompanhamentoAptidao?.fila === "RETORNO" ? "Retorno de aptidão" : r.acompanhamentoAptidao?.fila === "APTIDAO" ? "Aptidão avaliada" : r.necessidadeAptidao?.estado === "AVALIACAO_DEVIDA" ? "Avaliação devida" : r.necessidadeAptidao?.estado === "PENDENCIA_DADOS" ? "Pendência de dados" : r.necessidadeAptidao?.estado === "CRITERIOS_NAO_ATINGIDOS" ? "Critérios ainda não atingidos" : "Agendamento manual"}</strong>{r.necessidadeAptidao?.politicaVersao && <p className="text-sm">Política de avaliação: versão {r.necessidadeAptidao.politicaVersao}</p>}{r.necessidadeAptidao?.devidaDesde && <p className="text-sm">Referência: {formatBRDateISO(r.necessidadeAptidao.devidaDesde)}</p>}</div>
       <div><p className="text-sm text-muted-foreground">PEV original</p><strong>{r.pevOriginalAte ? formatBRDateISO(r.pevOriginalAte) : "Não determinado"}</strong><p className="text-sm">A avaliação devida não libera protocolo nem IA/TE.</p></div>
-    </div>}
+    </div>}</>}
     {r?.acompanhamentoAptidao?.visitasAbertas.map(v => <p key={v.id}><a className="underline" href={`/pecuaria/visitas/${v.id}`}>{v.nome}</a></p>)}
     {r?.necessidadeAptidao?.pendencias.map(p => <p key={p}>{descreverMotivo(p)}</p>)}
     {r?.aptidaoClinica?.retornoEm && <p>Retorno informado: {formatBRDateISO(r.aptidaoClinica.retornoEm)}</p>}
     {r && <div className="repro-aptidao-contexto">
-      <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>
+      {naFicha ? r.politicaVersao ? <p>Política: versão {r.politicaVersao}</p> : null : <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>}
       {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
       {r.alertas.map(m => <p key={m}>Atenção: {descreverMotivo(m)}</p>)}
     </div>}
     <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>
     {podeLancar && r?.aptidaoClinica?.exameId && <RevisarToqueAptidao key={`${contexto}:${r.aptidaoClinica.exameId}`} exameId={r.aptidaoClinica.exameId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
-    {podeLancar && <ToqueAptidaoFormulario key={contexto} animalId={animalId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
-    {podeLancar && <div id={editorId} hidden={!editando} className="repro-aptidao-editor space-y-3">
+    {podeLancar && <ToqueAptidaoFormulario key={contexto} emModal={naFicha} aberto={toqueAberto} onFechar={() => setToqueAberto(false)} animalId={animalId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
+    {podeLancar && <EditorDecisao emModal={naFicha} aberto={editando} onFechar={() => setEditando(false)} ocupado={ocupado}><div id={editorId} className="space-y-3">
       <h3>Decisão individual <AjudaCampo rotulo="Ajuda sobre decisão individual" texto="Informe a data do registro. A consulta acima é independente; restrições, papel e situação gestacional continuam sendo considerados."/></h3>
 
       <label>Data da decisão<Input type="date" value={dataDecisao} disabled={ocupado} onChange={e => setDataDecisao(e.target.value)}/></label>
@@ -169,6 +184,14 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
           }}>Anular decisão vigente com motivo</Button>}
         </div>
       </>}
-    </div>}
+    </div></EditorDecisao>}
   </div>;
+  return naFicha ? <SecaoReproducaoAnimal titulo="Disponibilidade e aptidão" icon={Target} acao={podeLancar ? <MenuAcoesFicha rotulo="Registrar" itens={[
+    { id: "decisao", rotulo: "Registrar decisão", onSelect: () => setEditando(true) },
+    { id: "toque", rotulo: "Registrar toque de aptidão", onSelect: () => setToqueAberto(true) },
+  ]}/> : undefined}>{conteudo}</SecaoReproducaoAnimal> : conteudo;
+}
+
+function EditorDecisao({ emModal, aberto, onFechar, ocupado, children }: { emModal: boolean; aberto: boolean; onFechar: () => void; ocupado: boolean; children: ReactNode }) {
+  return emModal ? <PainelCadastro rodape={null} aberto={aberto} titulo="Registrar decisão individual" onFechar={onFechar} bloqueado={ocupado}>{children}</PainelCadastro> : <div hidden={!aberto} className="repro-aptidao-editor">{children}</div>;
 }

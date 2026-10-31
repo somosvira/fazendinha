@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UsuarioContexto } from "../../services/auth/sessao.js";
 import { uid } from "../../lib/uid.fixture.js";
+const ficha=vi.hoisted(()=>vi.fn());
+vi.mock("../../services/pecuaria/protocolos/ficha-animal.js",async original=>({...await original<typeof import("../../services/pecuaria/protocolos/ficha-animal.js")>(),listarProtocolosAnimal:ficha}));
 const mocks = vi.hoisted(() => ({ cabecalho: vi.fn(), momentos: vi.fn(), previaComum: vi.fn(), confirmarComum: vi.fn(), reciboComum: vi.fn(), etapas: vi.fn(), tarefas: vi.fn(), procedimentos: vi.fn(), eventos: vi.fn(), previa: vi.fn(), participacoes: vi.fn(), programacoes: vi.fn(), versoes: vi.fn(), origensFato: vi.fn(), vinculosColetivos: vi.fn(), participantes: vi.fn(), previaExecucao: vi.fn(), registrar: vi.fn(), individual: vi.fn(), sanitario: vi.fn() }));
 vi.mock("../../services/pecuaria/protocolos/operacao.js", () => ({ obterCabecalhoOperacao: mocks.cabecalho, listarMomentosOperacao: mocks.momentos, listarEtapasOperacao: mocks.etapas, listarTarefasOperacao: mocks.tarefas, listarProcedimentosOperacao: mocks.procedimentos, listarEventosTarefaOperacao: mocks.eventos, preverParticipacaoIndividual: mocks.previa, listarParticipacoesOperacao: mocks.participacoes, listarProgramacoesOperacao: mocks.programacoes, listarVersoesOperacao: mocks.versoes, listarOrigensFatoOperacao: mocks.origensFato, listarVinculosColetivosOperacao: mocks.vinculosColetivos, listarParticipantesOperacao: mocks.participantes }));
 vi.mock("../../services/pecuaria/protocolos/eventos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/protocolos/eventos.js")>(), registrarEventoTarefa: mocks.registrar }));
@@ -24,6 +26,15 @@ beforeEach(() => {
   mocks.registrar.mockResolvedValue({ id: uid(406) }); mocks.individual.mockResolvedValue({ id }); mocks.sanitario.mockResolvedValue({ id }); mocks.previa.mockResolvedValue({ tarefas: [] });
 });
 describe("operação comum de protocolos", () => {
+  it("ficha unificada exige sessão e Pecuária, valida período e resolve sítio antes da consulta",async()=>{
+    ficha.mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10});
+    expect((await app(false,true,false).request(`/ficha-animal?animalId=${animalId}`)).status).toBe(403);
+    expect((await app(false,false).request(`/ficha-animal?animalId=${animalId}`)).status).toBe(403);
+    expect(ficha).not.toHaveBeenCalled();
+    expect((await app().request(`/ficha-animal?animalId=${animalId}&propriedadeId=114&inicio=2026-10-01&fim=2026-10-31`)).status).toBe(200);
+    expect(ficha).toHaveBeenCalledWith(114,expect.objectContaining({animalId,inicio:"2026-10-01",fim:"2026-10-31",porPagina:10}));
+    expect((await app().request(`/ficha-animal?animalId=${animalId}&porPagina=11`)).status).toBe(422);
+  });
   it("exige sessão/área e protege a escrita por lançamento", async () => {
     expect((await app(false, true, false).request(`/programacoes/${id}`)).status).toBe(403);
     expect((await app(false, false).request(`/programacoes/${id}`)).status).toBe(403);

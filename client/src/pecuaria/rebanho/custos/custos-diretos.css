@@ -18,3 +18,10 @@
 .custos-preparos-linhas>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(180px,1fr);gap:12px;padding:12px 0;border-bottom:1px solid var(--border);font-size:13px;line-height:1.5}
 .custos-preparos-linhas dd{text-align:right}
 @media(max-width:640px){.custos-preparos-linhas>div{grid-template-columns:1fr;gap:4px}.custos-preparos-linhas dd{text-align:left}}
+
+.custos-ficha-metricas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.5rem;padding:.5rem 0 1rem}.custos-ficha-metricas dt{font-size:.85rem;color:var(--muted-foreground)}.custos-ficha-metricas dd{margin-top:.4rem;font-size:1.35rem;font-weight:650}.custos-ficha-metricas small{display:block;margin-top:.3rem;color:var(--muted-foreground);font-size:.78rem}@media(max-width:800px){.custos-ficha-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:420px){.custos-ficha-metricas{grid-template-columns:1fr}}
+
+.repro-individual .custos-diretos .custos-ficha-metricas{grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0;background:var(--surface-2,var(--muted));border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.repro-individual .custos-ficha-metricas>div{padding:18px 20px}.repro-individual .custos-ficha-metricas>div+div{border-left:1px solid var(--border)}
+@media(max-width:800px){.repro-individual .custos-diretos .custos-ficha-metricas{grid-template-columns:repeat(2,minmax(0,1fr))}.repro-individual .custos-ficha-metricas>div:nth-child(3){border-left:0}.repro-individual .custos-ficha-metricas>div:nth-child(n+3){border-top:1px solid var(--border)}}
+@media(max-width:600px){.repro-individual .custos-diretos .custos-ficha-metricas{grid-template-columns:1fr}.repro-individual .custos-ficha-metricas>div+div{border-left:0;border-top:1px solid var(--border)}}

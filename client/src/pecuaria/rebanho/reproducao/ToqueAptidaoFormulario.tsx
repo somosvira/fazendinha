@@ -1,10 +1,11 @@
+import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { getHojeISO } from "../../../lib/hoje";
 import { registrarToqueAptidao } from "./elegibilidade-api";
-export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou }: { animalId: string; propriedadeId: number; onMudou: () => void }) {
+export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou, emModal = false, aberto = false, onFechar }: { animalId: string; propriedadeId: number; onMudou: () => void; emModal?: boolean; aberto?: boolean; onFechar?: () => void }) {
   const [data, setData] = useState(getHojeISO);
   const [resultado, setResultado] = useState<"" | "APTO" | "NAO_APTO" | "INCONCLUSIVO">("");
   const [retorno, setRetorno] = useState("");
@@ -14,8 +15,7 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou }: { a
   const [ocupado, setOcupado] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const chave = useRef<{ assinatura: string; chave: string } | null>(null);
-  return <details className="border-t pt-4"><summary className="cursor-pointer font-semibold">Registrar toque de aptidão</summary>
-    <form className="mt-4 space-y-3" onSubmit={async e => {
+  const formulario = <form className="mt-4 space-y-3" onSubmit={async e => {
       e.preventDefault(); if (!resultado || ocupado) return;
       setOcupado(true); setErro(""); setMensagem("");
       const input = { animalId, propriedadeId, data, resultado, retornoEm: retorno || null, responsavel, observacao: observacao || null };
@@ -33,6 +33,6 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou }: { a
       <p className="text-sm text-muted-foreground">Inconclusivo não equivale a negativo. Toque de aptidão e DG são exames distintos. O retorno conserva a identidade da necessidade.</p>
       {erro && <p role="alert">{erro}</p>}{mensagem && <p role="status">{mensagem}</p>}
       <Button type="submit" disabled={ocupado || !resultado}>{ocupado ? "Registrando…" : "Registrar exame de aptidão"}</Button>
-    </form>
-  </details>;
+    </form>;
+  return emModal ? <PainelCadastro rodape={null} aberto={aberto} titulo="Registrar toque de aptidão" onFechar={() => onFechar?.()} bloqueado={ocupado}>{formulario}</PainelCadastro> : <details className="border-t pt-4"><summary className="cursor-pointer font-semibold">Registrar toque de aptidão</summary>{formulario}</details>;
 }

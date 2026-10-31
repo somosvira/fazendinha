@@ -13,7 +13,7 @@ import { Button } from "../../../components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import "./custos-diretos.css";
 
-type Props = { somenteClassificacao?: boolean; aoAlterarRascunho?: (alterado: boolean) => void; aoGravar?: (ocupado: boolean) => void; aoSalvar?: () => void; fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; linksJaExibidos?: readonly string[]; mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
+type Props = { mediaPorTentativa?: boolean; somenteClassificacao?: boolean; aoAlterarRascunho?: (alterado: boolean) => void; aoGravar?: (ocupado: boolean) => void; aoSalvar?: () => void; fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; linksJaExibidos?: readonly string[]; mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
 
 export function CustosDiretos(props: Props) {
   // Uma nova identidade inicia filtros e rascunhos próprios, sem herdar o sítio anterior.
@@ -21,7 +21,7 @@ export function CustosDiretos(props: Props) {
   return <ComposicaoCustos key={chave} {...props} />;
 }
 
-function ComposicaoCustos({ somenteClassificacao = false, aoAlterarRascunho, aoGravar, aoSalvar, propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
+function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = false, aoAlterarRascunho, aoGravar, aoSalvar, propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
   const [resposta, setResposta] = useState<CustosDTO | null>(null);
   const [respostaIdentidade, setRespostaIdentidade] = useState("");
   const [erro, setErro] = useState("");
@@ -122,7 +122,7 @@ function ComposicaoCustos({ somenteClassificacao = false, aoAlterarRascunho, aoG
     {erroPeriodo && <p role="alert" className="text-destructive">{erroPeriodo}</p>}
     {carregando && <p role="status">Consultando custos…</p>}
     {erro && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button variant="outline" disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
-    {!somenteClassificacao && dados && visivel && <ResumoCustosDiretos fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
+    {!somenteClassificacao && dados && visivel && <ResumoCustosDiretos mostrarMediaPorTentativa={mediaPorTentativa} fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
     {/* Os editores conservam rascunhos durante a recarga e reiniciam ao trocar o alvo/sítio. */}
     <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
     {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} aoMudarPaginaVinculos={setPreparosPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}

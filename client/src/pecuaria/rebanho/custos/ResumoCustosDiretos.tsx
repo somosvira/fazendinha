@@ -1,4 +1,10 @@
+import { rotaFechamento } from "../nutricao/navegacao";
+import { navegarPara } from "../../../router";
 import { AjudaCampo } from "../../../components/Dica";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { CustosDiretos } from "./CustosDiretos";
+import type { EscopoCustos, ProcedimentoCusto, ParcelaProcedimento } from "./api";
 import { Paginacao } from "../ui";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
@@ -31,6 +37,7 @@ function linkOrigem(c: Componente, propriedadeId: number) {
 }
 
 type Props = {
+  mostrarMediaPorTentativa?:boolean;
   aoMudarPaginaPreparos?:(pagina:number)=>void;
   fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">;
   linksJaExibidos?: readonly string[];
@@ -43,12 +50,18 @@ type Props = {
   aoMudarPagina: (pagina: number) => void;
 };
 
-export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos, propriedadeId, porAnimal, tentativaId, comRecorte, pagina, aoMudarPagina, fatoEmConsulta, linksJaExibidos = [] }: Props) {
+export function ResumoCustosDiretos({ mostrarMediaPorTentativa=false, dados, aoMudarPaginaPreparos, propriedadeId, porAnimal, tentativaId, comRecorte, pagina, aoMudarPagina, fatoEmConsulta, linksJaExibidos = [] }: Props) {
+  const [procedimento,setProcedimento]=useState<ProcedimentoCusto|null>(null);
+  const escopoProcedimento=(p:ProcedimentoCusto):EscopoCustos=>p.tipoFonte==="NUTRICAO"?{}:({[({TENTATIVA:"tentativaId",APLICACAO:"aplicacaoId",EXAME:"exameId",PARTICIPACAO:"participacaoId",MANEJO:"manejoId"} as const)[p.tipoFonte]]:p.fonteId});
   const mostrarFato = (c: Componente) => !fatoEmConsulta || c.tipoFonte !== fatoEmConsulta.tipoFonte || c.fonteId !== fatoEmConsulta.fonteId;
   const mostrarOrigem = (c: Componente) => !!c.origemId && dados.situacao !== "OCULTO" && !linksJaExibidos.includes(linkOrigem(c, propriedadeId));
   const temAcoes = dados.componentes.some(c => mostrarFato(c) || mostrarOrigem(c));
   const vazio = dados.totalComponentes === 0 && dados.situacao !== "OCULTO";
+  const moeda=(valor:string|null|undefined)=>dados.situacao==="OCULTO"?"Valores ocultos":valor==null?"Não apurado":brl(Number(valor));
+  const media=dados.mediaPorTentativa;
+  const parcela=(p:ParcelaProcedimento)=>dados.situacao==="OCULTO"?"Valores ocultos":p.situacao==="NAO_APLICAVEL"?"Não aplicável":p.situacao==="INCLUIDO_PACOTE"?"Incluído no pacote":moeda(p.totalConhecido);
   return <>
+    {mostrarMediaPorTentativa&&<><dl className="repro-metricas custos-ficha-metricas"><div><dt>Total conhecido</dt><dd>{moeda(dados.totalConhecido)}</dd><small>{dados.situacao==="OCULTO"?"Valores ocultos":dados.cobertura==="COMPLETO"?"Composição completa":"Composição parcial ou desconhecida"}</small></div><div><dt>Material</dt><dd>{moeda(dados.totaisNatureza?.material)}</dd></div><div><dt>Serviços vinculados</dt><dd>{moeda(dados.totaisNatureza?.servico)}</dd></div><div><dt>Custo médio por tentativa <AjudaCampo rotulo="Ajuda sobre custo médio por tentativa" texto="A média considera tentativas válidas e apenas seus custos e preparatórios explicitamente atribuídos neste recorte. Custos sem vínculo ficam fora da média."/></dt><dd>{moeda(media?.mediaConhecida)}</dd><small>{media?`${media.tentativas} tentativa${media.tentativas===1?"":"s"} no período · ${media.situacao==="OCULTO"?"Valores ocultos":media.cobertura==="COMPLETO"?"Custo conhecido":"Custo conhecido parcial ou desconhecido"}`:"Base não informada"}</small></div></dl></>}
     <section className="custos-cobertura" aria-label="Cobertura dos custos">
       {vazio ? <p><strong>Nenhum custo neste recorte</strong></p> : <p><strong>{rotulos[dados.situacao] ?? dados.situacao}</strong>{dados.situacao !== "OCULTO" && <> · {dados.totalConhecido == null ? "Valor ainda não comprovado" : `${brl(Number(dados.totalConhecido))}${dados.cobertura !== "COMPLETO" ? " de parcelas conhecidas" : ""}`}</>}</p>}
       <span className="custos-contagem">{dados.totalComponentes} {dados.totalComponentes === 1 ? "componente" : "componentes"}</span>
@@ -57,7 +70,9 @@ export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos, propriedadeI
       {dados.componentesPendentes > 0 && <p>{dados.componentesPendentes} componente(s) com valor pendente.</p>}
     </section>
     {dados.totalIntegral && comRecorte && <p className="text-sm">Tentativa/protocolo inteiro, sem recorte: {dados.totalIntegral.situacao === "OCULTO" ? "Valores ocultos" : dados.totalIntegral.totalConhecido == null ? "Valor ainda não comprovado" : brl(Number(dados.totalIntegral.totalConhecido))}. O valor acima é o recorte consultado.</p>}
-    {!!dados.componentes.length && <div className="overflow-x-auto rounded-lg border border-border">
+    {mostrarMediaPorTentativa&&dados.procedimentos&&!!dados.procedimentos.total&&<><div className="overflow-x-auto rounded-lg border border-border"><table className="w-full min-w-[720px] text-left text-sm consulta-tabela"><caption className="sr-only">Custos diretos por fato</caption><thead><tr>{["Data","Fato","Material","Serviço","Total conhecido","Ações"].map(t=><th scope="col" key={t} className="px-3 py-3">{t}</th>)}</tr></thead><tbody>{dados.procedimentos.itens.map(p=><tr key={p.chave} className="border-t border-border"><td className="px-3 py-3">{p.data.split("-").reverse().join("/")}</td><td className="px-3 py-3">{descricaoCusto(p.descricao)}</td><td className="px-3 py-3">{parcela(p.material)}</td><td className="px-3 py-3">{parcela(p.servico)}</td><td className="px-3 py-3">{moeda(p.totalConhecido)}{p.cobertura!=="COMPLETO"&&p.situacao!=="OCULTO"&&<small className="block text-ink-3">Composição {p.cobertura==="PARCIAL"?"parcial":"desconhecida"}</small>}</td><td className="px-3 py-3"><Button disabled={p.tipoFonte==="NUTRICAO"&&!p.fechamentoId} onClick={()=>p.tipoFonte==="NUTRICAO"?p.fechamentoId&&navegarPara(rotaFechamento(p.fechamentoId)):setProcedimento(p)}>Detalhes</Button></td></tr>)}</tbody></table></div>{dados.procedimentos.total>10&&<Paginacao paginaAtual={dados.procedimentos.pagina} totalPaginas={Math.ceil(dados.procedimentos.total/10)} totalItens={dados.procedimentos.total} itensPorPagina={10} onPaginaChange={aoMudarPagina} rotulo="fatos" idSelect="custos-fatos-ficha"/>}</>}
+    {procedimento&&procedimento.tipoFonte!=="NUTRICAO"&&<Dialog open onOpenChange={aberto=>{if(!aberto)setProcedimento(null);}}><DialogContent className="max-w-[min(68rem,calc(100vw-2rem))] max-h-[90vh] overflow-y-auto p-6"><DialogHeader><DialogTitle>Composição do custo</DialogTitle><DialogDescription>{descricaoCusto(procedimento.descricao)} · {procedimento.data.split("-").reverse().join("/")}</DialogDescription></DialogHeader><CustosDiretos {...escopoProcedimento(procedimento)} propriedadeId={propriedadeId} podeLancar={false} mostrarTitulo={false}/></DialogContent></Dialog>}
+    {(!mostrarMediaPorTentativa||!dados.procedimentos)&&!!dados.componentes.length && <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[780px] text-left text-sm consulta-tabela">
         <caption className="sr-only">Componentes do custo direto registrado</caption>
         <thead className="bg-muted/40 text-xs text-ink-3"><tr>{["Data", "Fato de origem", "Componente", "Finalidade", "Situação", "Valor", ...(temAcoes ? ["Ações"] : [])].map(t => <th key={t} scope="col" className="px-3 py-3 font-medium">{t}</th>)}</tr></thead>
@@ -76,7 +91,7 @@ export function ResumoCustosDiretos({ dados, aoMudarPaginaPreparos, propriedadeI
       </table>
     </div>}
     {!dados.componentes.length && dados.totalComponentes > 0 && <p>Nenhum componente nesta página.</p>}
-    {dados.totalComponentes > dados.limite && <nav className="flex items-center gap-3" aria-label="Páginas dos componentes">
+    {(!mostrarMediaPorTentativa||!dados.procedimentos)&&dados.totalComponentes > dados.limite && <nav className="flex items-center gap-3" aria-label="Páginas dos componentes">
       <Button variant="outline" disabled={pagina === 1} onClick={() => aoMudarPagina(pagina - 1)}>Anterior</Button>
       <span>Página {pagina} · {dados.totalComponentes} componentes</span>
       <Button variant="outline" disabled={pagina * dados.limite >= dados.totalComponentes} onClick={() => aoMudarPagina(pagina + 1)}>Próxima</Button>

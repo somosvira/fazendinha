@@ -8,14 +8,14 @@ export type ClassificacaoCusto = {
   valorMaterialDocumentado: Prisma.Decimal.Value | null;
 };
 export type FonteCusto = {
-  id: string; tipo: TipoFonteCusto; animalId: string; propriedadeId: number; data: string;
+  id: string; fechamentoId?: string; tipo: TipoFonteCusto; animalId: string; propriedadeId: number; data: string;
   descricao: string; estadoFato: string; participacaoId: string | null;
   origemMaterial: string; movimentoEstoqueId: string | null; operacaoServicoId: string | null;
   valorMaterial: Prisma.Decimal.Value | null; valorServico: Prisma.Decimal.Value | null;
   classificacao: ClassificacaoCusto | null; versaoClassificacao?: number; documentoMaterial?: unknown; componenteId?: string; periodoConsumo?: {inicio:string;fim:string};
 };
 export type ComponenteCusto = {
-  chave: string; fonteId: string; tipoFonte: TipoFonteCusto; animalId: string; data: string;
+  chave: string; fonteId: string; fechamentoId?: string; tipoFonte: TipoFonteCusto; animalId: string; data: string;
   descricao: string; estadoFato: string; participacaoId: string | null;
   finalidade: FinalidadeCusto | null; natureza: "MATERIAL" | "SERVICO";
   estado: "CONHECIDO" | "DESCONHECIDO" | "NAO_APLICAVEL" | "INCLUIDO_PACOTE";
@@ -35,7 +35,7 @@ export function componentesDaFonte(f: FonteCusto): ComponenteCusto[] {
   const pacoteProcedimento = !!f.operacaoServicoId && c?.coberturaServico === "AMBOS";
   const material = f.valorMaterial ?? (f.origemMaterial === "DOCUMENTADA" ? c?.valorMaterialDocumentado ?? null : null);
   if (pacoteMaterial && material != null) throw new Error("Pacote com material não pode sobrepor consumo ou valor material separado");
-  const comum = { fonteId: f.id, tipoFonte: f.tipo, animalId: f.animalId, data: f.data, descricao: f.descricao,
+  const comum = { fonteId: f.id, fechamentoId: f.fechamentoId, tipoFonte: f.tipo, animalId: f.animalId, data: f.data, descricao: f.descricao,
     periodoConsumo:f.periodoConsumo, estadoFato: f.estadoFato, participacaoId: f.participacaoId, finalidade: c?.finalidade ?? null };
   const linhas: ComponenteCusto[] = [];
   // Exame e atribuição de participação não presumem consumo de material próprio.
