@@ -11,7 +11,7 @@ import { Info, Pencil, Scale, Trash2, Weight } from "lucide-react";
 import { SeletorPeriodoGmd } from "./SeletorPeriodoGmd";
 import { Paginacao, CardFicha } from "../ui";
 import { GraficoPeso, ROTULO_TIPO_PESAGEM } from "./GraficoPeso";
-import { formatarGmd, inicioJanelaGmd, pesoCompativelIndicador, rotuloContextoPeso, rotuloOrigemPesagem, rotuloPeriodoGmd, rotuloPrecisaoPeso } from "../lib/peso";
+import { formatarGmd, inicioJanelaGmd, pesoCompativelIndicador, rotuloContextoPeso, rotuloOrigemPesagem, rotuloPrecisaoPeso } from "../lib/peso";
 import { hoje } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
 import type { AnimalFicha, HistoricoPesagem, PeriodoGmd, Pesagem } from "../types";
@@ -46,11 +46,6 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   const desde = inicioJanelaGmd(periodo, limite);
   const temCurva = historicoPesagens.filter(p => (desde == null || p.data.slice(0, 10) >= desde) && p.data.slice(0, 10) <= limite).length >= 2;
   const semBaseConjunta = !temCurva && peso.gmdPeriodo.valor == null;
-  const detalhePeriodo = peso.gmdPeriodo.valor == null
-    ? "Pesagens insuficientes"
-    // `gmdPeriodo.dias` é o intervalo entre a 1ª e a última pesagem usadas, não a janela escolhida
-    : `${peso.gmdPeriodo.pesagens} pesagens em ${peso.gmdPeriodo.dias ?? 0} dias · ${rotuloPeriodoGmd(periodo)}`;
-
   const mesmaBase = historicoPesagens.length === 2 && historicoPesagens.every(pesoCompativelIndicador) && peso.gmdPeriodo.pesagens === 2
     && peso.gmdPeriodo.valor != null && peso.gmdPeriodo.valor === peso.gmdRecente
     && peso.gmdRecente === peso.gmdDesdeEntrada;
@@ -63,8 +58,8 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
   return <div className="ficha-peso-conjunto space-y-4">
     <CardFicha icon={Scale} titulo="Evolução do peso" acao={<SeletorPeriodoGmd id="periodo-gmd-animal" valor={periodo} onChange={onPeriodoChange}/>} className="ficha-peso-evolucao">
     <div className="ficha-gmd-cabecalho">
-      <dl className="ficha-gmd-leitura">
-        <div><dt>{mesmaBase ? "Ganho médio diário (GMD)" : "GMD do período"}</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{mesmaBase ? `2 pesagens · ${formatarDataBR(datasDaBase[0])} a ${formatarDataBR(datasDaBase[1])}` : peso.gmdPeriodo.valor != null ? detalhePeriodo : null}</small></dd></div>
+      <dl className={`ficha-gmd-leitura${mesmaBase ? " ficha-gmd-base-unica" : ""}`}>
+        <div><dt>{mesmaBase ? "Ganho médio diário (GMD)" : "GMD do período"}</dt><dd><strong>{formatarGmd(peso.gmdPeriodo.valor)}</strong><small>{mesmaBase ? `2 pesagens · ${formatarDataBR(datasDaBase[0])} a ${formatarDataBR(datasDaBase[1])}` : null}</small></dd></div>
         {!mesmaBase && <>
           <div><dt>GMD recente</dt><dd>{formatarGmd(peso.gmdRecente)}<AjudaCampo rotulo="Sobre o GMD recente" texto="Calculado entre as duas últimas pesagens compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
           <div><dt>GMD desde a entrada</dt><dd>{formatarGmd(peso.gmdDesdeEntrada)}<AjudaCampo rotulo="Sobre o GMD desde a entrada" texto="Calculado entre a primeira e a última pesagem compatíveis. Pesos estimados, informados e externos ficam fora do cálculo."/></dd></div>
@@ -79,7 +74,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
     </>}
     </CardFicha>
       <CardFicha icon={Weight} titulo="Últimas pesagens">
-      {historicoPesagens.length ? <div className="ficha-pesagens-rolagem" role="region" aria-label="Últimas pesagens" tabIndex={0}><table className="ficha-pesagens-tabela">
+      {historicoPesagens.length ? <div className="ficha-pesagens-rolagem" role="region" aria-label="Últimas pesagens" tabIndex={0}><table data-tabela-operacional className="ficha-pesagens-tabela consulta-tabela">
         <caption className="sr-only">Últimas pesagens do animal</caption>
         <thead><tr><th scope="col">Data</th><th scope="col">Peso</th><th scope="col">Tipo</th><th scope="col">GMD desde a anterior</th><th scope="col">Ações</th></tr></thead>
         <tbody>{historicoPesagens.slice((paginaAtual-1)*5,paginaAtual*5).map((pesagem, indice) => <tr key={pesagem.id} aria-label={`Pesagem de ${formatarDataBR(pesagem.data)}`}>

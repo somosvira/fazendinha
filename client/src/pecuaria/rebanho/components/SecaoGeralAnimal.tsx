@@ -6,7 +6,7 @@ import { SecaoRecolhivel } from "./SecaoRecolhivel";
 export function SecaoGeralAnimal({ id, titulo, icon: Icon, acao, children }: {
   id: string; titulo: string; icon: LucideIcon; acao?: ReactNode; children: ReactNode;
 }) {
-  return <SecaoRecolhivel id={id} className="ficha-geral-secao" titulo={<><span className="pec-icone" aria-hidden="true"><Icon size={18}/></span>{titulo}</>} acoes={acao}>
+  return <SecaoRecolhivel id={id} className="ficha-geral-secao" titulo={<><span className="pec-icone" aria-hidden="true"><Icon size={18}/></span>{titulo}</>} acoes={acao} setaAoFinal acoesSomenteAberta>
     {children}
   </SecaoRecolhivel>;
 }

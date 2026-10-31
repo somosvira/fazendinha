@@ -174,6 +174,25 @@ Implementação comparada com o mockup v5 e anotações finais. Revisão indepen
 
 Navegador local: DEV-001 em `fazendinha_seedatev3`, Geral desktop/móvel, Produção, Reprodução, Sanidade, Nutrição e modais de auditoria, filtros e categoria. Conferidos recolhimento e manutenção desse estado entre abas, abertura de edição e retorno de foco sem salvar dados. Estados adicionais de leitores/baixados, races, 0/1/2+ pesagens e erros têm cobertura automatizada; não foram todos homologados manualmente. A referência BETÂNIA do mockup não existe nessa base e não foi recriada.
 
-B permanece pendente: o Bezerreiro não integra a árvore de staging desta entrega. Desmama/castração saiu de Geral, com acesso transitório em Mais ações para animais ativos de quem lança e no cabeçalho para leitores/baixados. Não remover esses acessos até integrar e validar o destino real no Bezerreiro. O plano permanece ativo apenas para essa dependência e é retirado quando ela for concluída. Não houve deploy, merge, migration aplicada, reset ou reexecução de seed; integração PostgreSQL e homologação em STG/campo não foram executadas.
+B permanece pendente: o Bezerreiro não integra a árvore de staging desta entrega. Desmama/castração saiu de Geral, com acesso transitório em Mais ações para animais ativos de quem lança e no cabeçalho para leitores/baixados. Não remover esses acessos até integrar e validar o destino real no Bezerreiro. Após as correções da rodada v6 abaixo, o plano permanece ativo apenas para essa dependência e é retirado quando ela for concluída. Não houve deploy, merge, migration aplicada, reset ou reexecução de seed; integração PostgreSQL e homologação em STG/campo não foram executadas.
 
 Modelos usados nas tarefas delegadas: Sol (medium/high) para implementação e regressões, Terra/medium para Produção/Sanidade, Luna/medium para documentação e Astra/high para revisão final. Entrada/cache/saída e custo real não expostos pelas ferramentas: não aferidos, sem confundir estimativas com consumo.
+
+
+## Rodada de correções aprovada — referência v6
+
+Execução autorizada em 30/10/2026. A composição aprovada no mockup v6 orienta cadastro, localização, peso e histórico; para as abas prevalece o componente compartilhado `SubTabs`/`abas-pasta` da mesma base da aplicação, sem as exceções de espaçamento, altura ou tipografia do mockup. Preservar URLs, foco, permissões, autoria e comandos de correção.
+
+| Trabalho | Modelo / esforço | Entrada estimada | Saída estimada |
+| --- | --- | ---: | ---: |
+| Correções da ficha e regressões direcionadas | gpt-6.1-sol / medium | 20–35 mil | 4–8 mil |
+| Revisão final independente de código e capturas | gpt-6-astra / high | 8–15 mil | 2–4 mil |
+
+Integração, documentação e navegador permanecem com o integrador da conversa, sem abrir outro agente para tarefas pequenas. Sol concentra os arquivos acoplados da ficha para evitar contexto duplicado e conflitos; Astra recebe somente o diff desta rodada, critérios e evidências. Estimativas não são consumo aferido nem limite automático. Não mudar esforço para max/ultra ou promover implementação para Astra por padrão.
+
+Preços e orientação de seleção reconsultados nas fontes oficiais acima em 30/10/2026: Sol tem taxa Standard menor que Astra; a revisão usa Astra por autorização explícita e risco de regressão funcional/visual. A tabela desta rodada não inclui o contexto anterior nem o custo do integrador. Consumo real só será registrado se exposto pela ferramenta.
+
+Escopo: abas compartilhadas; formulário alinhado; finalidade/papel na identificação; categoria e localização atual identificadas; histórico de movimentações em tabela própria; nenhuma seção de baixas em Geral; ações de baixa/auditoria existentes preservadas; GMD distribuído e sem legenda redundante; eixos do gráfico separados; cabeçalho da tabela padrão; retirada do parágrafo de limites no histórico; setas à direita e ações dos pais somente quando expandidos. Validação: testes direcionados, build do cliente, navegador desktop/móvel e revisão Astra antes de atualizar o PR.
+
+
+Rodada v6 concluída: 98 testes em oito arquivos passaram (SubTabs, DetalheAnimal, FormDadosAnimal, PesoEGanho, SecaoRecolhivel, HistoricoMovimentacoes, HistoricoBaixas e GraficoPeso); TypeScript e build do cliente passaram, com aviso de chunk acima de 500 kB. Detector mecânico impeccable não retornou achados nos componentes alterados. Navegador confirmou Geral desktop e largura de 390 px, ausência de overflow da página, seleção de aba, alinhamento do formulário, recolhimento sem desmontagem e modal de movimentações vazio para DEV-001. A tabela de movimentações com registros em largura estreita foi validada por teste, não por captura desse animal. Revisão Astra/high do diff desta rodada e capturas finais terminou sem achados materiais; não foi reauditoria integral do PR. Modelos delegados: Sol/medium e Astra/high; consumo real não aferido. Permanecem os limites de homologação e a dependência B registrados acima.

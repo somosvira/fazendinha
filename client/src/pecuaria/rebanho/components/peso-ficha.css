@@ -6,7 +6,6 @@
 .ficha-pesagens-rolagem:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .ficha-pesagens-tabela { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .ficha-pesagens-tabela :is(th, td) { padding: 12px; border: 1px solid var(--border); text-align: center; vertical-align: middle; }
-.ficha-pesagens-tabela th { background: var(--table-header, #e2e7ea); color: var(--table-heading, #34434b); font-size: 12px; font-weight: 600; }
 .ficha-pesagens-acoes { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .ficha-pesagens-limites { display: flex; justify-content: center; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .ficha-pesagens-observacao { max-width: 36ch; margin: 8px auto 0; color: var(--muted-foreground); font-size: 12px; overflow-wrap: anywhere; }
@@ -14,3 +13,7 @@
   .ficha-peso-evolucao > header > label { width: 100%; justify-content: space-between; flex-wrap: wrap; }
   .ficha-pesagens-tabela { min-width: 640px; }
 }
+.ficha-peso-conjunto .ficha-gmd-leitura{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;width:100%}
+.ficha-peso-conjunto .ficha-gmd-leitura>div{min-width:0}
+.ficha-peso-conjunto .ficha-gmd-base-unica{grid-template-columns:minmax(0,1fr)}
+@container ficha-peso (max-width:480px){.ficha-peso-conjunto .ficha-gmd-leitura{grid-template-columns:1fr}}

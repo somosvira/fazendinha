@@ -47,7 +47,7 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
 }) {
   const descricao = [erro && `${id}-erro`, ajuda && `${id}-ajuda`].filter(Boolean).join(" ") || undefined;
   return <div className="text-sm font-medium">
-    <span className="inline-flex min-h-6 items-center gap-1"><label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}</span>
+    <span className="campo-formulario-rotulo inline-flex min-h-6 items-center gap-1"><label htmlFor={id}>{rotulo}{obrigatorio && <span aria-hidden="true"> *</span>}</label>{ajuda && <AjudaCampo texto={ajuda} rotulo={`Ajuda: ${rotulo}`} />}</span>
     {children({ id, "aria-label": rotulo, "aria-invalid": Boolean(erro), "aria-describedby": descricao })}
     {erro && <p id={`${id}-erro`} role="alert" className="mt-1 flex items-start gap-1.5 text-xs font-normal text-destructive"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
     {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}

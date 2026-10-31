@@ -1,3 +1,4 @@
+import "./form-dados-animal.css";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { IdCard } from "lucide-react";
 // Sheet "Editar dados" do animal — PATCH /pecuaria/rebanho/animais/:id.
@@ -104,7 +105,7 @@ export function FormDadosAnimal({ animal, onSalvo, onFechar }: {
   const formId = "form-dados-animal";
   return <PainelCadastro icon={IdCard} aberto titulo={`Editar ${animal.brinco}`} onFechar={() => { if (!salvando) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar dados"}</Button></>}>
-    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="grid gap-4">
+    <form data-pec-formulario  id={formId} onSubmit={submeter} noValidate className="form-dados-animal grid gap-4">
       <ErrorBox erro={erroGeral} />
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="animal-brinco" rotulo="Brinco" obrigatorio erro={erros.brinco}>{(p) => <input {...p} required maxLength={40} value={brinco} onChange={(e) => setBrinco(e.target.value)} className={classeInput} />}</CampoFormulario>

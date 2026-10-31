@@ -50,10 +50,10 @@ export function GraficoPeso({ historicoPesagens, desde = null, ate = null }: { h
   }
 
   return <><ChartContainer config={config} className="h-[220px] w-full aspect-auto overflow-hidden" role="img" aria-label="Evolução do peso do animal ao longo do tempo">
-    <LineChart data={pontos} margin={{ top: 18, right: 18, bottom: 8, left: 8 }} accessibilityLayer>
+    <LineChart data={pontos} margin={{ top: 18, right: 18, bottom: 16, left: 8 }} accessibilityLayer>
       <CartesianGrid vertical={false} stroke="var(--rule-soft)" />
-      <XAxis dataKey="rotuloData" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
-      <YAxis width={60} tickFormatter={(valor) => formatarKg(Number(valor))} domain={["auto", "auto"]} {...axisProps} />
+      <XAxis tickMargin={12} height={44} padding={{ left: 28, right: 28 }} dataKey="rotuloData" minTickGap={18} interval="preserveStartEnd" {...axisProps} />
+      <YAxis tickMargin={10} width={68} tickFormatter={(valor) => formatarKg(Number(valor))} domain={["auto", "auto"]} {...axisProps} />
       <ChartTooltip
         formatter={(valor, _nome, item) => [formatarKg(Number(valor)), `${ROTULO_TIPO_PESAGEM[String(item.payload.tipo)] ?? String(item.payload.tipo)} · ${rotuloPrecisaoPeso(item.payload.precisao)} · ${rotuloContextoPeso(item.payload.contextoHistorico)} · ${rotuloOrigemPesagem(String(item.payload.origem))}`]}
         labelFormatter={(rotulo) => rotulo}

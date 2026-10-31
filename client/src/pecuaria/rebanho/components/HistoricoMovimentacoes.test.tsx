@@ -143,3 +143,18 @@ describe("HistoricoMovimentacoes", () => {
     expect(screen.queryByRole("button", { name: "Desfazer" })).toBeNull();
   });
 });
+
+it("conserva tabela explícita em uma janela estreita", async () => {
+  const larguraAnterior = window.innerWidth;
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
+  try {
+    const carregar = vi.fn().mockResolvedValue({ itens: [criarMovimentacao({})], total: 1 });
+    render(<HistoricoMovimentacoes carregar={carregar} visualizacao="tabela" />);
+    const tabela = await screen.findByRole("table");
+    expect(within(tabela).getByRole("columnheader", { name: "Motivo" })).toBeTruthy();
+    expect(within(tabela).getByRole("cell", { name: "Reagrupamento" })).toBeTruthy();
+    expect(document.querySelector('[data-fin-visualizacao="tabela"]')).toBeTruthy();
+  } finally {
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: larguraAnterior });
+  }
+});

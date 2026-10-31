@@ -14,7 +14,8 @@
     line-height: 1.45;
     color: var(--foreground);
   }
-  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > th {
+  :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > th,
+  :root :is(.app-main, .financeiro-colorido) table[data-tabela-operacional]:not(.rg-tabela) > thead > tr > th {
     height: var(--fin-table-head-height, 36px);
     padding: var(--fin-table-head-padding, 5px) 16px;
     background: var(--fin-table-header);

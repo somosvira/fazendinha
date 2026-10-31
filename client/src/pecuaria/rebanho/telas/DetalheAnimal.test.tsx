@@ -106,7 +106,7 @@ describe("DetalheAnimal — ações conforme situação", () => {
       historicoBaixas: [{ id: "baixa-1", data: "2026-09-12", tipo: "VENDA", motivo: { nome: "Baixa produção", classe: "DESCARTE_VOLUNTARIO" }, observacao: null, estornadaEm: null, estornoMotivo: null, criadoPor: "Ana" }],
     };
     await montar(baixado);
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Consultar baixa e autoria" }));
     expect(screen.getByText("Venda")).toBeTruthy();
     expect(screen.getByText("12/09/2026")).toBeTruthy();
     expect(screen.getByText("Baixa produção (descarte voluntário)")).toBeTruthy();
@@ -116,10 +116,12 @@ describe("DetalheAnimal — ações conforme situação", () => {
 
   it("apresenta finalidade Reprodução no histórico sem substituir o papel", async () => {
     await montar({ ...base, aptidao: "REPRODUCAO", historicoDestinos: [{ ...base.historicoDestinos[0], aptidao: "REPRODUCAO" }] });
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
-    expect(screen.getByRole("columnheader", { name: "Finalidade" })).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "Reprodução" })).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "Receptora" })).toBeTruthy();
+    const cadastro = document.getElementById("cadastro")!;
+    expect(within(cadastro).getByText("Finalidade")).toBeTruthy();
+    expect(within(cadastro).getByText("Reprodução")).toBeTruthy();
+    expect(within(cadastro).getByText("Papel reprodutivo")).toBeTruthy();
+    expect(within(cadastro).getByText("Receptora")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "Finalidade" })).toBeNull();
   });
 
   it("só oferece desfazer localização/destino quando há pelo menos duas linhas de histórico", async () => {
@@ -133,8 +135,6 @@ describe("DetalheAnimal — ações conforme situação", () => {
       historicoDestinos: [...base.historicoDestinos, { id: "dest-0", aptidao: "CORTE", papelReprodutivo: "NENHUM", desde: "2021-01-01", ate: "2022-01-01" }],
     };
     await montar(comHistorico);
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
-
     expect(screen.getByRole("button", { name: "Desfazer última movimentação" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Desfazer última mudança" })).toBeTruthy();
   });
@@ -163,8 +163,7 @@ describe("DetalheAnimal — permissão, linha atual e composição", () => {
         { id: "loc-1", propriedade: { id: 1, nome: "Principal" }, lote: null, desde: "2022-01-01", ate: null, motivo: null, movimentacaoId: null },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
-    expect(screen.getByRole("cell", { name: /^Principal$/ })).toBeTruthy();
+    expect(within(document.querySelector<HTMLElement>('[aria-label="Localização atual"]')!).getByText("Principal · Sem lote")).toBeTruthy();
   });
 
   it("mostra o nome da raça e marca a inativa", async () => {
@@ -309,7 +308,7 @@ describe("DetalheAnimal — ficha de baixado (K4/K5)", () => {
     expect(faixa.textContent).toContain("Morte em 24/09/2026");
     expect(faixa.textContent).not.toContain("Tempestade no pasto");
     fireEvent.click(within(faixa).getByRole("button", { name: "Histórico" }));
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Consultar baixa e autoria" }));
     expect(screen.getByRole("cell", { name: "Raio (morte)" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "Tempestade no pasto" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "Ana" })).toBeTruthy();
@@ -396,16 +395,19 @@ describe("DetalheAnimal — localização com motivo", () => {
         { id: "loc-1", propriedade: { id: 1, nome: "Sede" }, lote: null, desde: "2022-01-01", ate: "2026-01-01", motivo: null, movimentacaoId: null },
       ],
     });
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
-    expect(screen.getByText("Motivo")).toBeTruthy();
-    expect(within(screen.getByRole("dialog", { name: "Movimentações e baixas" })).getByText("Movido para engorda")).toBeTruthy();
+    expect(within(document.getElementById("historico")!).getByText("Movido para engorda")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ver histórico" }));
+    const dialogo = screen.getByRole("dialog", { name: "Histórico de movimentações" });
+    expect(within(dialogo).queryByRole("heading", { name: "Localização" })).toBeNull();
+    expect(within(dialogo).queryByRole("heading", { name: "Finalidade" })).toBeNull();
+    expect(within(dialogo).queryByRole("heading", { name: "Baixas" })).toBeNull();
   });
 });
 
 describe("DetalheAnimal — movimentações", () => {
   it("busca as movimentações filtradas pelo animal, incluindo as desfeitas", async () => {
     await montar(base);
-    fireEvent.click(screen.getByRole("button", { name: "Movimentações e baixas" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver histórico" }));
     await waitFor(() => expect(listarMovimentacoes).toHaveBeenCalledWith(expect.objectContaining({ animalId: "animal-1", incluirDesfeitas: true })));
   });
 });
@@ -624,4 +626,13 @@ it("preserva consulta de manejo de animal ativo para leitor", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "Desmama e castração" }));
   expect(await screen.findByRole("dialog", { name: "Desmama e castração" })).toBeTruthy();
   expect(vi.mocked(ManejoAnimal).mock.calls.at(-1)?.[0].podeLancar).toBe(false);
+});
+
+it("preserva origem e revogação do papel no histórico sem tabela complementar", async () => {
+  await montar({ ...base, historicoPapeisReprodutivos: [{ id: "papel-1", tipo: "RECEPTORA", inicio: "2025-01-01", fim: "2025-03-01", origem: "IDEAGRI", revogado: true }] });
+  const historico = document.getElementById("historico")!;
+  expect(within(historico).getByText("Papel reprodutivo · registro desfeito")).toBeTruthy();
+  expect(within(historico).getByText("01/01/2025 – 01/03/2025")).toBeTruthy();
+  expect(within(historico).getByText("Importado do IDEAGRI · Desfeito · preservado no histórico")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Histórico do papel reprodutivo" })).toBeNull();
 });
