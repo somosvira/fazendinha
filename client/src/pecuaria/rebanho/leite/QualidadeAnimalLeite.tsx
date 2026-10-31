@@ -1,11 +1,12 @@
 import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/DatePicker";
+import { DateRangePicker, dateFromIso, isoDate } from "@/components/DateRangePicker";
 import "./ordenhas-gerais.css";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 import { DatasQualidade } from "./DatasQualidade";
+import { dataSanitaria } from "../sanidade/rotulos";
 import { SecaoFicha } from "../components/SecaoRecolhivel";
 import type { AmostraQualidade } from "./qualidade-types";
 import "./operacoes.css";
@@ -74,30 +75,11 @@ export function QualidadeAnimalLeite({
       id="qualidade-individual-leite"
       className="leite-qualidade-animal"
       titulo={<>Qualidade individual do leite <AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." /></>}
-      acoes={propriedadeId != null ? <div className="producao-ficha-filtros" role="group" aria-label="Período das amostras">
-            <label>
-              Amostras desde
-              <DatePicker
-                aria-label="Amostras desde"
-                value={inicio}
-                onChange={(v) => {
-                  setInicio(v);
-                  setPagina(1);
-                }}
-              />
-            </label>
-            <label>
-              Amostras até
-              <DatePicker
-                aria-label="Amostras até"
-                value={fim}
-                onChange={(v) => {
-                  setFim(v);
-                  setPagina(1);
-                }}
-              />
-            </label>
-          </div> : undefined}
+      acoes={propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel={!inicio && fim ? `Até ${dataSanitaria(fim)}` : undefined} triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
+        setInicio(start ? isoDate(start) : "");
+        setFim(end ? isoDate(end) : "");
+        setPagina(1);
+      }} /> : undefined}
     >
       {propriedadeId == null ? (
         <p>Selecione o sítio autorizado para consultar as amostras individuais.</p>

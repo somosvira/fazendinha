@@ -7,7 +7,7 @@
 .sanidade-acompanhamento-secao>header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .sanidade-animal .carencia-destino{border:0;border-radius:0;padding:4px 0;gap:10px}
 .sanidade-animal .carencia-destino strong{display:inline;margin-right:4px}
-.sanidade-animal .carencia-destino>svg{width:18px;height:18px}
+.sanidade-animal .carencia-destino>svg{width:24px;height:24px}
 .sanidade-animal .protocolo-sanitario-animal{border:0;border-top:1px solid var(--border);border-radius:0;padding:12px 0}
 .sanidade-animal .protocolo-sanitario-animal:first-child{border-top:0;padding-top:0}
 @media(max-width:1000px){.sanidade-acompanhamento-secoes{grid-template-columns:1fr}.sanidade-acompanhamento-secao>header{flex-wrap:nowrap}}
@@ -44,3 +44,5 @@
 .pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-cabecalho { padding:12px 0 6px; border:0; }
 .pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-conteudo { padding:6px 0 0; }
 .pecuaria-content .sanidade-animal > .historico-sanitario-animal { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; padding:16px 0 0; }
+
+.ficha-v4 .sanidade-animal > .secao-ficha-direta > .secao-recolhivel-cabecalho h2, .ficha-v4 .historico-sanitario-animal > div > h3 { font-size:16px; }

@@ -80,6 +80,8 @@ O parto é único para a matriz, mesmo com gêmeos, e contém o resultado de cad
 
 O total de partos soma o saldo anterior à entrada e os eventos válidos que ainda não estejam incluídos nesse saldo. Eventos anulados não contam. Ficha, categorias, filtros, resumo de lote e painel usam essa mesma regra. O parto inicia um novo ciclo de tentativas, mantendo os ciclos anteriores consultáveis.
 
+Na ficha individual, o cartão de Reprodução apresenta as tentativas com referência ao ciclo (desde o início registrado ou desde o último parto) e o total de partos informado pela consulta do servidor. Listas de tentativas e partos são seções próprias, sem inferir contagem pela página visível; os demais eventos ficam no histórico reprodutivo. Ações secundárias de situação/restrição ficam no cabeçalho desse histórico, e não em uma fileira de botões independente. Links antigos para a ficha continuam encaminhando às seções compatíveis.
+
 Uma cria viva nasce no sistema junto com o parto, na mesma transação. Sexo, aptidão e sítio são conhecidos; brinco definitivo e peso podem ficar pendentes. Sem brinco, recebe identificação provisória explicitamente sinalizada. Completar a identificação preserva seu ID, filiação, histórico e vínculo com o parto. Natimorto não gera um animal ativo. Morte posterior ao nascimento usa o fluxo normal de baixa do animal.
 
 O parto pode iniciar a lactação mínima quando isso foi efetivamente informado. Aborto não abre uma lactação automaticamente. Há registro de início e encerramento. Produção, qualidade e coletas são atendidas pelo [contrato V5](leite.md), ligado a essa lactação; laboratório/FIV continua fora do escopo.

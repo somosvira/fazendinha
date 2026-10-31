@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { consultarLeite } from "./operacoes-api";
 import { QualidadeAnimalLeite } from "./QualidadeAnimalLeite";
+import { HistoricoProdutivoLeite } from "./HistoricoProdutivoLeite";
 vi.mock("./operacoes-api", () => ({ consultarLeite: vi.fn() }));
 afterEach(() => {
   cleanup();
@@ -68,4 +69,18 @@ it("apresenta a qualidade como seção direta e um único estado vazio sem pagin
   expect(container.querySelector("details")).toBeNull();
   expect(screen.queryByText("0 amostra(s) no período e sítio consultados.")).toBeNull();
   expect(screen.queryByRole("button", { name: "Próximas análises" })).toBeNull();
+});
+
+it("altera o período de qualidade sem consultar novamente a produção", async () => {
+  vi.mocked(consultarLeite).mockImplementation((url) => url.startsWith("/animais/")
+    ? new Promise(() => {})
+    : Promise.resolve({ total: 0, tamanho: 20, pagina: 1, itens: [] }));
+  render(<><HistoricoProdutivoLeite animalId="vaca-1" propriedadeId={2} /><QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} /></>);
+  await screen.findByText("Nenhuma análise individual registrada neste recorte.");
+  const producaoAntes = vi.mocked(consultarLeite).mock.calls.filter(([url]) => url.startsWith("/animais/")).length;
+  fireEvent.click(screen.getByRole("button", { name: /Período das amostras/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Todo o período" }));
+  await waitFor(() => expect(vi.mocked(consultarLeite).mock.calls.filter(([url]) => url.startsWith("/qualidade/")).length).toBe(2));
+  expect(vi.mocked(consultarLeite).mock.calls.filter(([url]) => url.startsWith("/animais/")).length).toBe(producaoAntes);
+  expect(vi.mocked(consultarLeite).mock.calls.at(-1)?.[0]).not.toContain("fim=");
 });

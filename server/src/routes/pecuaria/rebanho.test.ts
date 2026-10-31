@@ -336,6 +336,18 @@ describe("rebanhoRouter — ficha do animal: `periodoDias` do GMD", () => {
 });
 
 describe("rebanhoRouter — auditoria do animal: paginação", () => {
+  it("repassa identidade do fato sem alterar o escopo autorizado", async () => {
+    const params = new URLSearchParams({ entidade: "FinalidadeAnimal", entidadeId: ID, page: "2" });
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?${params}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 2, 20, { entidade: "FinalidadeAnimal", entidadeId: ID }, false);
+  });
+  it.each(["entidade=Pesagem", `entidadeId=${ID}`, "entidade=Pesagem&entidadeId=invalido"])("recusa identidade incompleta/inválida sem consultar: %s", async query => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?${query}`);
+    expect(res.status).toBe(422);
+    expect(mocks.buscarAuditoriaAnimal).not.toHaveBeenCalled();
+  });
+
   it("sem query: usa os defaults (page 1, pageSize 20)", async () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria`);
     expect(res.status).toBe(200);

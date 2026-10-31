@@ -2,6 +2,7 @@
 import { alterarControle } from "../../../lib/controles.fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Scale } from "lucide-react";
 import { AuditoriaAnimal } from "./AuditoriaAnimal";
 import { buscarAuditoriaAnimal } from "../api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
@@ -49,14 +50,14 @@ describe("AuditoriaAnimal", () => {
     expect((screen.getByLabelText("Período") as HTMLSelectElement).value).toBe("30");
   });
 
-  it("expande somente a linha selecionada em Campo/Antes/Depois e preserva null", async () => {
+  it("abre somente a entrada selecionada em modal com Campo/Antes/Depois e preserva null", async () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), alteracoes: [{ campo: "observacao", rotulo: "Observação", antes: null, depois: "Nova nota" }] }, entrada(2)]));
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
-    const botoes = screen.getAllByRole("button", { name: "Ver detalhes" });
+    const botoes = screen.getAllByRole("button", { name: "Ver auditoria" });
     fireEvent.click(botoes[0]);
-    expect(screen.getByRole("button", { name: "Ocultar detalhes" }).getAttribute("aria-expanded")).toBe("true");
-    expect(botoes[1].getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getAllByRole("columnheader", { name: "Antes" })).toHaveLength(1);
     expect(screen.getByRole("columnheader", { name: "Antes" })).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy(); expect(screen.getByText("Nova nota")).toBeTruthy();
   });
@@ -67,9 +68,9 @@ describe("AuditoriaAnimal", () => {
     await screen.findByText("Identificação 1");
     expect(screen.queryByText("Sistema")).toBeNull();
     expect(within(screen.getByRole("table")).getByText("Não informado")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Ver detalhes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ver auditoria" }));
     expect(screen.getByText("Sem detalhes de campos disponíveis nesta consulta.")).toBeTruthy();
-    expect(screen.getByText(/Registro: animal-1/)).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
   it("usa opções completas do servidor e envia filtros ao conjunto completo", async () => {
@@ -77,9 +78,11 @@ describe("AuditoriaAnimal", () => {
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
     await alterarControle(screen.getByLabelText("Período"), { target: { value: "todos" } });
+    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
     await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NUTRICAO" } });
     await alterarControle(screen.getByLabelText("Ação"), { target: { value: "ESTORNO" } });
     await alterarControle(screen.getByLabelText("Responsável"), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
     await alterarControle(screen.getByLabelText("Buscar registro"), { target: { value: "Consumo" } });
     fireEvent.click(screen.getByRole("button", { name: "Buscar registros" }));
     await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", { page: 1, pageSize: 20, eixo: "NUTRICAO", acao: "ESTORNO", responsavel: 8, busca: "Consumo" }));
@@ -100,6 +103,7 @@ describe("AuditoriaAnimal", () => {
     vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([{ ...entrada(), eixo: null, registro: "Classificação de custo" }]));
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Classificação de custo");
+    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
     await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "NAO_CLASSIFICADO" } });
     await waitFor(() => expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1, eixo: "NAO_CLASSIFICADO" })));
   });
@@ -110,7 +114,9 @@ describe("AuditoriaAnimal", () => {
     render(<AuditoriaAnimal id="animal-1" />);
     await screen.findByText("Identificação 1");
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mais filtros" }));
     await alterarControle(screen.getByLabelText("Eixo"), { target: { value: "SANIDADE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Concluir" }));
     await screen.findByText("Identificação 3");
     await act(async () => antiga.resolver(resposta([entrada(2)], 25)));
     expect(screen.queryByText("Identificação 2")).toBeNull();
@@ -126,7 +132,7 @@ describe("AuditoriaAnimal", () => {
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
     await screen.findByText("Identificação 3");
     expect(buscarAuditoriaAnimal).toHaveBeenLastCalledWith("animal-1", expect.objectContaining({ page: 1 }));
-    expect(screen.getByText("1–15 de 15 registros")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText((_, elemento) => elemento?.tagName === "SPAN" && elemento.textContent === "1–15 de 15 registros")).toBeTruthy());
   });
 
   it("ignora consulta de outro animal e sítio após a troca de ficha", async () => {
@@ -179,4 +185,17 @@ describe("AuditoriaAnimal", () => {
     await screen.findByRole("alert");
     expect(buscarAuditoriaAnimal).toHaveBeenCalledTimes(chamadas);
   });
+});
+
+it("mantém data civil do fato e ordena correções do mesmo dia pelo instante", async () => {
+  vi.mocked(buscarAuditoriaAnimal).mockResolvedValue(resposta([
+    { ...entrada(1), em: "2026-10-18T09:00:00.000Z", registro: "Correção cedo" },
+    { ...entrada(2), em: "2026-10-18T15:00:00.000Z", registro: "Correção tarde" },
+  ]));
+  render(<AuditoriaAnimal id="animal-1" fatos={[{ id: "peso-p1", entidade: "Pesagem", entidadeId: "p1", eixo: "REBANHO", data: "2026-10-18", titulo: "Pesagem", detalhe: "310 kg", textoBusca: "310", Icone: Scale }]} />);
+  await screen.findByText("Correção tarde");
+  const linhas = within(screen.getByRole("table")).getAllByRole("row");
+  expect(linhas[1].textContent).toContain("18/10/2026");
+  expect(linhas[2].textContent).toContain("Correção tarde");
+  expect(linhas[3].textContent).toContain("Correção cedo");
 });

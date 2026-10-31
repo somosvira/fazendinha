@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { SanidadeAnimal } from "./SanidadeAnimal";
 import { reqSanidade, type AplicacaoSanitaria } from "./api";
 vi.mock("./api", async (original) => ({ ...await original<typeof import("./api")>(), consultarCarencia: vi.fn().mockResolvedValue({ leite: { estado: "NENHUMA" }, carne: { estado: "NENHUMA" } }), listarAplicacoes: vi.fn().mockResolvedValue([]), reqSanidade: vi.fn().mockResolvedValue({ nomeProdutoAplicado: "Medicamento", aplicadaEm: "2026-10-05T13:04:00Z", tipoAplicacaoNomeSnapshot: "Tipo preservado" }) }));
-vi.mock("./HistoricoSanitario", () => ({ HistoricoSanitario: ({ abrir }: { abrir: (tipo: string, id: string, propriedadeId?: number) => void }) => <button onClick={() => abrir("exame", "exame-historico", 1)}>Abrir exame histórico</button> }));
+vi.mock("./HistoricoSanitario", () => ({ HistoricoSanitario: ({ abrir, onNovoFato }: { abrir: (tipo: string, id: string, propriedadeId?: number) => void; onNovoFato?: (tipo: "ocorrencia" | "exame") => void }) => <><button onClick={() => abrir("exame", "exame-historico", 1)}>Abrir exame histórico</button>{onNovoFato && <><button onClick={() => onNovoFato("ocorrencia")}>Nova ocorrência</button><button onClick={() => onNovoFato("exame")}>Registrar exame</button></>}</> }));
 vi.mock("./FormAplicacaoServico", () => ({ FormAplicacaoServico: () => null }));
 vi.mock("./ReconciliarOrigem", () => ({ ReconciliarOrigem: () => null }));
 const aplicacao = { id: "a1", animalId: "animal1", animal: { id: "animal1", brinco: "GV3-1", nome: null }, propriedadeId: 1, data: "2026-10-05", aplicadaEm: "2026-10-05T13:04:00Z", tipoAplicacaoNomeSnapshot: "Tipo preservado", nomeProdutoAplicado: "Medicamento", dose: "2", unidadeDose: "mL", status: "VALIDO", origemInsumo: "SEM_ORIGEM_JUSTIFICADA", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } as AplicacaoSanitaria;
@@ -52,7 +52,7 @@ it("abre detalhe compartilhado na ficha e fecha por Escape restaurando foco", as
 });
 it("oferece ações sanitárias diretas na ficha e mantém permissões", async () => {
   const { rerender } = render(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar recarregarToken={0} lista={[]} />);
-  for (const nome of ["Registrar aplicação", "Nova ocorrência", "Registrar exame", "Iniciar protocolo"]) expect(screen.getByRole("button", { name: nome })).toBeTruthy();
+  for (const nome of ["Registrar aplicação", "Nova ocorrência", "Registrar exame", "Iniciar protocolo"]) expect(await screen.findByRole("button", { name: nome })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Ações sanitárias" })).toBeNull();
   rerender(<SanidadeAnimal animalId="animal1" propriedadeId={2} podeLancar={false} recarregarToken={0} lista={[]} />);
   for (const nome of ["Registrar aplicação", "Nova ocorrência", "Registrar exame", "Iniciar protocolo"]) expect(screen.queryByRole("button", { name: nome })).toBeNull();

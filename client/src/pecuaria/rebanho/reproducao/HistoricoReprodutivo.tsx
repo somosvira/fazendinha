@@ -20,15 +20,29 @@ export type FatoHistorico = FatoReprodutivo & { grupo: string; chaveHistorico?: 
 export const rotulosReprodutivos: Record<string, string> = { VAZIA: "Vazia", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", POSITIVO: "Positivo", NEGATIVO: "Negativo", INCONCLUSIVO: "Inconclusivo", IA: "Inseminação artificial", TE: "Transferência de embrião", COBERTURA: "Cobertura", NAO_AVALIADO: "Não avaliado", ABORTO: "Aborto registrado", NASCIMENTO: "Nascimento", NATIMORTO: "Natimorto", NORMAL: "Parto", DISTOCICO: "Parto distócico", PARTO_DISTOCICO: "Parto distócico", PARTO_NORMAL: "Parto normal", GESTACAO_ENCERRADA_PARTO: "Gestação encerrada pelo parto", GESTACAO_ENCERRADA_PERDA: "Gestação encerrada por perda", PERDA: "Perda gestacional", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem", ANULADO: "Anulado", ENCERRADA: "Encerrada", ATIVA: "Confirmada" };
 const filtros = [["Todos", ""], ["Tentativas", "Tentativa"], ["Avaliações", "Avaliação"], ["Gestações e perdas", "Gestação"], ["Partos", "Parto"], ["Restrições", "Restrição"], ["Situações iniciais", "Situação inicial"]] as const;
 export function tituloFato(f: FatoHistorico) { return f.grupo === "Tentativa" ? rotulosReprodutivos[f.tipo ?? ""] ?? "Tentativa" : f.grupo === "Parto" ? rotulosReprodutivos[f.desfecho ?? f.tipo ?? ""] ?? "Parto" : f.grupo; }
-export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir }: { fatos: FatoHistorico[]; animalId: string; propriedadeId?: number; onAbrir: (fato: FatoHistorico) => void }) {
+/** Preserva links da ficha anteriores à separação de tentativas e partos. */
+function parametrosHistorico(chave: string) {
+  const p = new URLSearchParams(window.location.search);
+  const legados = p.getAll("historicoTipos");
+  const tipo = chave === "tentativas" ? "Tentativa" : chave === "partos" ? "Parto" : null;
+  if (tipo && ["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(sufixo => p.has(`historico${sufixo}`)) && (!legados.length || legados.includes(tipo)) && !["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(sufixo => p.has(`${chave}${sufixo}`))) {
+    p.set(`${chave}Tipos`, tipo);
+    for (const sufixo of ["Inicio", "Fim", "Pagina", "Tamanho"]) {
+      const valor = p.get(`historico${sufixo}`);
+      if (valor !== null) p.set(`${chave}${sufixo}`, valor);
+    }
+  }
+  return p;
+}
+export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, chaveUrl = "historico" }: { chaveUrl?: string; fatos: FatoHistorico[]; animalId: string; propriedadeId?: number; onAbrir: (fato: FatoHistorico) => void }) {
   const periodo = useRef<HTMLDivElement>(null);
-  const [tipos, setTipos] = useState<string[]>(()=>new URLSearchParams(window.location.search).getAll("historicoTipos"));
-  const [inicio, setInicio] = useState<string | null>(()=>new URLSearchParams(window.location.search).get("historicoInicio"));
-  const [fim, setFim] = useState<string | null>(()=>new URLSearchParams(window.location.search).get("historicoFim"));
-  const [pagina, setPagina] = useState(()=>Math.max(1,Math.floor(Number(new URLSearchParams(window.location.search).get("historicoPagina"))||1)));
-  const [tamanho, setTamanho] = useState(()=>{const valor=Number(new URLSearchParams(window.location.search).get("historicoTamanho"));return [5,10].includes(valor)?valor:10;});
-  useEffect(()=>{const restaurar=()=>{const p=new URLSearchParams(window.location.search);setTipos(p.getAll("historicoTipos"));setInicio(p.get("historicoInicio"));setFim(p.get("historicoFim"));setPagina(Math.max(1,Math.floor(Number(p.get("historicoPagina"))||1)));const n=Number(p.get("historicoTamanho"));setTamanho([5,10].includes(n)?n:10);};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[]);
-  useEffect(()=>{const u=new URL(window.location.href);["historicoTipos","historicoInicio","historicoFim","historicoPagina","historicoTamanho"].forEach(k=>u.searchParams.delete(k));tipos.forEach(t=>u.searchParams.append("historicoTipos",t));if(inicio!=null)u.searchParams.set("historicoInicio",inicio);if(fim!=null)u.searchParams.set("historicoFim",fim);if(pagina>1)u.searchParams.set("historicoPagina",String(pagina));if(tamanho!==10)u.searchParams.set("historicoTamanho",String(tamanho));window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[tipos,inicio,fim,pagina,tamanho]);
+  const [tipos, setTipos] = useState<string[]>(()=>parametrosHistorico(chaveUrl).getAll(`${chaveUrl}Tipos`));
+  const [inicio, setInicio] = useState<string | null>(()=>parametrosHistorico(chaveUrl).get(`${chaveUrl}Inicio`));
+  const [fim, setFim] = useState<string | null>(()=>parametrosHistorico(chaveUrl).get(`${chaveUrl}Fim`));
+  const [pagina, setPagina] = useState(()=>Math.max(1,Math.floor(Number(parametrosHistorico(chaveUrl).get(`${chaveUrl}Pagina`))||1)));
+  const [tamanho, setTamanho] = useState(()=>{const valor=Number(parametrosHistorico(chaveUrl).get(`${chaveUrl}Tamanho`));return [5,10].includes(valor)?valor:10;});
+  useEffect(()=>{const restaurar=()=>{const p=parametrosHistorico(chaveUrl);setTipos(p.getAll(`${chaveUrl}Tipos`));setInicio(p.get(`${chaveUrl}Inicio`));setFim(p.get(`${chaveUrl}Fim`));setPagina(Math.max(1,Math.floor(Number(p.get(`${chaveUrl}Pagina`))||1)));const n=Number(p.get(`${chaveUrl}Tamanho`));setTamanho([5,10].includes(n)?n:10);};window.addEventListener("popstate",restaurar);return()=>window.removeEventListener("popstate",restaurar);},[chaveUrl]);
+  useEffect(()=>{const u=new URL(window.location.href);[`${chaveUrl}Tipos`,`${chaveUrl}Inicio`,`${chaveUrl}Fim`,`${chaveUrl}Pagina`,`${chaveUrl}Tamanho`].forEach(k=>u.searchParams.delete(k));tipos.forEach(t=>u.searchParams.append(`${chaveUrl}Tipos`,t));if(inicio!=null)u.searchParams.set(`${chaveUrl}Inicio`,inicio);if(fim!=null)u.searchParams.set(`${chaveUrl}Fim`,fim);if(pagina>1)u.searchParams.set(`${chaveUrl}Pagina`,String(pagina));if(tamanho!==10)u.searchParams.set(`${chaveUrl}Tamanho`,String(tamanho));window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);},[tipos,inicio,fim,pagina,tamanho,chaveUrl]);
   const hoje = getHojeISO();
   const primeiro = [...fatos].filter(f => f.data && f.data.slice(0, 10) <= hoje).sort((a,b) => a.data.localeCompare(b.data))[0]?.data.slice(0,10) ?? "";
   const de = inicio ?? primeiro, ate = fim ?? hoje;
@@ -59,6 +73,6 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir }
     ]}/>
     {!selecionados.length && <p className="p-4 text-ink-3">Nenhum evento registrado neste período e tipo.</p>}
     {selecionados.length > 0 && <><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
-    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect="pagina-historico-animal"/></>}
+    <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect={`pagina-${chaveUrl}-animal`}/></>}
   </div>;
 }

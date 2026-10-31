@@ -59,3 +59,10 @@
 .secao-ficha-direta > .secao-recolhivel-cabecalho > h2 { padding: 0; font-size: 18px; }
 .secao-ficha-direta > .secao-recolhivel-conteudo { padding: 16px 0 0; }
 .secao-ficha-direta > .secao-recolhivel-conteudo > .pec-card-ficha:only-child > header:has(> h2:only-child) { display: none; }
+
+/* Opt-in: o mesmo botão cobre título e seta; comandos ficam independentes. */
+.secao-recolhivel-seta-final{position:relative;padding-right:64px}
+.secao-recolhivel-seta-final>h2>button::after{content:"";position:absolute;inset:0;cursor:pointer}
+.secao-recolhivel-seta-final>h2>button>.secao-recolhivel-chevron{position:absolute;right:16px;top:50%;translate:0 -50%;pointer-events:none}
+.secao-recolhivel-seta-final>.secao-recolhivel-acoes{position:relative;z-index:1}
+@media(max-width:640px){.secao-recolhivel-seta-final>h2{flex-basis:auto}.secao-recolhivel-seta-final>.secao-recolhivel-acoes{padding-bottom:0}.secao-recolhivel-seta-final>h2>button>.secao-recolhivel-chevron{top:34px}}

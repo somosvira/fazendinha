@@ -316,6 +316,7 @@ export type ListarResultado = { itens: AnimalResumo[]; total: number; painel: Pa
 
 /** Entrada de GET /animais/:id/auditoria. */
 export type EntradaAuditoria = {
+  anteriorEstado?: "DISPONIVEL" | "SEM_ANTERIOR" | "NAO_INFORMADO";
   id?: string;
   eixo?: "REBANHO" | "REPRODUCAO" | "SANIDADE" | "NUTRICAO" | null;
   acaoRotulo?: string;
@@ -330,6 +331,8 @@ export type EntradaAuditoria = {
 };
 
 export type FiltrosAuditoriaAnimal = {
+  entidade?: string;
+  entidadeId?: string;
   page?: number;
   pageSize?: number;
   inicio?: string;
@@ -339,7 +342,9 @@ export type FiltrosAuditoriaAnimal = {
   responsavel?: number | "sem";
   busca?: string;
 };
+export type TransicaoFatoAnimal = { auditoriaId?: string; entidade: string; entidadeId: string; antes: Record<string, string | number | null> | null; depois: Record<string, string | number | null> | null };
 export type ResultadoAuditoriaAnimal = {
+  transicoes?: TransicaoFatoAnimal[];
   itens: EntradaAuditoria[];
   total: number;
   filtros?: {

@@ -37,3 +37,20 @@ it("revela ações recolhidas pela chamada externa do cabeçalho", () => {
  expect(screen.getByRole("button", { name: "Avaliar" })).toBeTruthy();
  expect(screen.getByRole("button", { name: "Registros" }).getAttribute("aria-expanded")).toBe("true");
 });
+
+it("oculta as ações ao recolher no opt-in sem desmontar o rascunho", () => {
+  const acao = vi.fn();
+  render(<SecaoRecolhivel id="geral-opt-in" titulo="Identificação" setaAoFinal acoesSomenteAberta acoes={<button onClick={acao}>Editar dados</button>}><label>Nome<input defaultValue="Mimosa"/></label></SecaoRecolhivel>);
+  const campo = screen.getByLabelText("Nome");
+  fireEvent.change(campo, { target: { value: "Rascunho" } });
+  fireEvent.click(screen.getByRole("button", { name: "Editar dados" }));
+  expect(acao).toHaveBeenCalledOnce();
+  const titulo = screen.getByRole("button", { name: "Identificação" });
+  expect(titulo.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(titulo);
+  expect(screen.queryByRole("button", { name: "Editar dados" })).toBeNull();
+  expect(document.querySelector("input")).toBe(campo);
+  fireEvent.click(titulo);
+  expect((screen.getByLabelText("Nome") as HTMLInputElement).value).toBe("Rascunho");
+  expect(screen.getByRole("button", { name: "Editar dados" })).toBeTruthy();
+});

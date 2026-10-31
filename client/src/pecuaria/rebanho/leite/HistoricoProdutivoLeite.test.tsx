@@ -52,33 +52,18 @@ it("erro de leitura não aparece como ausência e permite nova tentativa", async
   fireEvent.click(screen.getByText("Tentar novamente"));
   await screen.findByText("0 dias em lactação");
 });
-it("edita datas em português no rascunho e consulta em ISO mantendo o sítio explícito", async () => {
+it("aplica período personalizado em ISO preservando o sítio", async () => {
   render(<HistoricoProdutivoLeite animalId="animal" propriedadeId={7} />);
   await screen.findByText("0 dias em lactação");
   const chamadas = vi.mocked(consultarLeite).mock.calls.length;
-  fireEvent.change(screen.getByLabelText("Produção desde"), { target: { value: "01/10/2026" } });
-  fireEvent.change(screen.getByLabelText("Produção até"), { target: { value: "03/10/2026" } });
-  expect((screen.getByLabelText("Produção desde") as HTMLInputElement).value).toBe("01/10/2026");
+  fireEvent.click(screen.getByRole("button", { name: /Período da produção/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Período personalizado" }));
+  fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2026-10-01" } });
+  fireEvent.change(screen.getByLabelText("Data final"), { target: { value: "2026-10-03" } });
   expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
-  fireEvent.click(screen.getByText("Consultar período"));
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar período" }));
   await screen.findByText("0 dias em lactação");
   expect(consultarLeite).toHaveBeenLastCalledWith("/animais/animal?inicio=2026-10-01&fim=2026-10-03&pagina=1&tamanho=20", 7);
-});
-it("não consulta um período invertido nem reutiliza a data anterior quando o texto é inválido", async () => {
-  render(<HistoricoProdutivoLeite animalId="animal" propriedadeId={7} />);
-  await screen.findByText("0 dias em lactação");
-  const chamadas = vi.mocked(consultarLeite).mock.calls.length;
-  fireEvent.change(screen.getByLabelText("Produção desde"), { target: { value: "03/10/2026" } });
-  fireEvent.change(screen.getByLabelText("Produção até"), { target: { value: "01/10/2026" } });
-  fireEvent.click(screen.getByText("Consultar período"));
-  expect(screen.getByText("Informe um período válido, com o fim posterior ao início.")).toBeTruthy();
-  expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
-  const fim = screen.getByLabelText("Produção até") as HTMLInputElement;
-  fireEvent.change(fim, { target: { value: "31/02/2026" } });
-  fireEvent.click(screen.getByText("Consultar período"));
-  expect(fim.validity.valid).toBe(false);
-  expect(fim.value).toBe("31/02/2026");
-  expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
 });
 it("mantém litros históricos quando a finalidade aguarda conciliação", async () => {
   vi.mocked(consultarLeite).mockResolvedValue({ ...dados,

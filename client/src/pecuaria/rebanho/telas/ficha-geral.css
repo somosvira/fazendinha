@@ -1,0 +1,41 @@
+/* Escopo exclusivo da ficha individual; reaproveita abas-pasta e cartões existentes. */
+.ficha-animal-geral .ficha-geral{display:grid;gap:24px;padding-top:20px}
+.ficha-animal-geral [hidden]{display:none!important}
+.ficha-animal-geral .ficha-geral-secao{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden;padding:0}
+.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-cabecalho{padding:12px 16px;border-bottom:1px solid var(--border);margin:0}
+.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-seta-final{padding-right:64px}
+.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-conteudo{padding:16px}
+.ficha-animal-geral .secao-recolhivel-titulo{display:flex;align-items:center;gap:10px}
+.ficha-animal-geral h2,.ficha-animal-geral .secao-recolhivel-titulo{font-size:16px!important;line-height:1.5}
+.ficha-animal-geral .pec-icone{display:grid;place-items:center;flex-shrink:0}
+.ficha-animal-geral .ficha-animal-ilustracao{width:104px;height:104px}
+.ficha-botao-contorno{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:13px;font-weight:600}
+.ficha-botao-contorno:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ficha-dialogo{padding:24px!important;max-height:90dvh;overflow:auto}
+@media(max-width:600px){.ficha-animal-geral .ficha-animal-ilustracao{width:80px;height:80px}.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-cabecalho{flex-wrap:wrap}.ficha-dialogo{padding:20px!important}}
+
+.ficha-historico-filtros{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.ficha-historico-filtros>div.order-first{flex:1 1 300px}
+.ficha-historico-filtros>label{flex:0 1 180px}
+.ficha-historico-filtros-extra{display:flex;gap:12px;flex-wrap:wrap;flex-basis:100%;order:5}
+.ficha-historico-filtros-extra>label{flex:1;min-width:150px}
+.ficha-animal-geral .consulta-cronologia{padding:12px 0 12px 20px;gap:8px}
+.ficha-animal-geral .consulta-cronologia .ficha-historico-item{min-height:64px;padding:10px 12px;display:grid;grid-template-columns:minmax(160px,.8fr) minmax(0,1.4fr) auto;gap:12px;align-items:center}
+.ficha-historico-item .consulta-entidade-icone{width:34px;height:34px;border-radius:8px;color:inherit}
+.ficha-historico-item h3{font-size:14px;color:var(--foreground)}
+.ficha-historico-item .consulta-entidade-conteudo,.ficha-historico-item footer{margin:0;padding:0;border:0}
+@media(max-width:760px){.ficha-animal-geral .consulta-cronologia .ficha-historico-item{grid-template-columns:1fr}.ficha-historico-item footer{justify-content:flex-start}}
+
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:104px;height:104px}
+.pecuaria-content .pec-ficha.ficha-animal-geral .pec-icone{display:inline-grid;width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--primary);place-items:center}
+.pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item h3{font-size:14px;line-height:1.4}
+.pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item footer{border:0;margin:0;padding:0}
+.pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item .consulta-entidade-conteudo{margin:0;color:var(--foreground)}
+.pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item .consulta-entidade-icone{color:inherit}
+@media(max-width:600px){.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:80px;height:80px}}
+
+.pecuaria-content .pec-ficha.ficha-animal-geral :is(h2,h3){font-size:16px;line-height:1.5}
+.ficha-categoria-localizacao{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:24px;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
+.ficha-categoria-localizacao>section{display:flex;align-items:end;justify-content:space-between;gap:16px;min-width:0}
+.ficha-categoria-localizacao>section+section{border-left:1px solid var(--border);padding-left:24px}
+@media(max-width:760px){.ficha-categoria-localizacao{grid-template-columns:1fr}.ficha-categoria-localizacao>section+section{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:20px}}

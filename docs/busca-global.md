@@ -26,6 +26,8 @@ Ao mudar o termo, fechar a busca ou trocar sítio/usuário, respostas obsoletas 
 
 Páginas e subconsultas também são encontradas por vocabulário de uso, incluindo relatórios, reprodução, ordenhas, qualidade, destinos, configurações e cadastros. Atalhos de criação somente aparecem com permissão de lançamento e levam ao formulário real, sem executar uma gravação.
 
+O atalho do Rebanho também reconhece “Geral”, “histórico do animal” e “auditoria do animal” e abre a consulta existente do Rebanho. Esses termos não criam um novo destino pesquisável: a ficha resolve aliases de seção legados na própria URL e continua respeitando o escopo e as permissões da consulta.
+
 Não são fontes autônomas: logs/auditoria, sessões/tokens, rascunhos privados, componentes internos de protocolos, medições/alocações individuais internas, anexos binários ou campos livres dentro de snapshots. Esses dados permanecem acessíveis pelos contextos autorizados dos registros principais. Manejos/pesagens e emissões reprodutivas ainda não têm fonte autônoma nesta busca: seus destinos precisam receber um fato/emissão histórico exato, e abrir apenas a ficha geral não satisfaz esse contrato. Documentos financeiros são encontrados quando ligados diretamente a uma operação, abrindo o contexto dessa operação; anexos exclusivamente de outros contextos ainda não são fontes. Versões históricas/futuras de tanque ficam fora da busca, pois o destino atual mostra o equipamento vigente na data de referência. São limites explícitos, não promessa de cobertura de cada tabela técnica.
 
 ## Autorização e sítio

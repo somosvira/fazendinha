@@ -9,7 +9,7 @@ import type { ComponentType } from "react";
 
 export type SubTab<T extends string> = { id: T; label: string; icon?: ComponentType<LucideProps> };
 
-export function SubTabs<T extends string>({ tabs, active, onSelect, className, ariaLabel, variant, aparencia = "abas" }: {
+export function SubTabs<T extends string>({ tabs, active, onSelect, className, ariaLabel, variant, aparencia = "abas", idDaAba, idDoPainel }: {
   tabs: SubTab<T>[];
   active: T;
   onSelect: (id: T) => void;
@@ -17,6 +17,8 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
   ariaLabel?: string;
   variant?: "financeiro";
   aparencia?: "abas" | "botoes";
+  idDaAba?: (id: T) => string;
+  idDoPainel?: (id: T) => string;
 }) {
   const listaRef = useAbaAtivaVisivel<HTMLDivElement>(active);
   if (variant === "financeiro") return <Tabs value={active} onValueChange={id => onSelect(id as T)} className={cn("min-w-0", aparencia === "abas" && "abas-navegacao", className)}>
@@ -38,8 +40,19 @@ export function SubTabs<T extends string>({ tabs, active, onSelect, className, a
               key={t.id}
               type="button"
               role="tab"
+              id={idDaAba?.(t.id)}
+              aria-controls={idDoPainel?.(t.id)}
+              tabIndex={on ? 0 : -1}
               aria-selected={on}
               onClick={() => onSelect(t.id)}
+              onKeyDown={event => {
+                if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+                event.preventDefault();
+                const indice = tabs.findIndex(aba => aba.id === t.id);
+                const proxima = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (indice + (event.key === "ArrowRight" ? 1 : -1) + tabs.length) % tabs.length;
+                event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role=tab]")[proxima]?.focus();
+                onSelect(tabs[proxima].id);
+              }}
               className={cn(
                 "shrink-0 cursor-pointer whitespace-nowrap rounded-[8px] border-0 bg-transparent px-4 py-[7px] font-sans text-[13.5px] text-ink-mute transition-[color,background-color,box-shadow] duration-150",
                 "hover:text-ink",
