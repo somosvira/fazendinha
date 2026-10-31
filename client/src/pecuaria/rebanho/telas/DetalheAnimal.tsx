@@ -6,6 +6,10 @@ import "./rotinas-aprovadas.css";
 import { SubTabs } from "@/components/SubTabs";
 import { HistoricoAnimalVisual } from "./HistoricoAnimalVisual";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { ResumoAlertas } from "../alertas/ResumoAlertas";
+import { AcompanhamentoBezerreiro } from "../bezerreiro/AcompanhamentoBezerreiro";
+import { useConsultaBezerreiro } from "../bezerreiro/ui";
+import type { AcompanhamentoAnimal } from "../bezerreiro/types";
 import { linkFichaAnimal, linkFichaLote } from "../lib/navegacao";
 // Ficha por domínio; os painéis permanecem montados para preservar rascunhos.
 // Ações principais no cabeçalho; alterações secundárias em Mais ações.
@@ -52,8 +56,8 @@ import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
 import type { CarenciaAnimal } from "../sanidade/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
 
-const ABAS_FICHA = [["geral", "Geral"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"]] as const;
-const ICONES_FICHA = {geral: IdCard, producao: Milk, reproducao: GitBranch, sanidade: HeartPulse, nutricao: Leaf, cadastro: IdCard};
+const ABAS_FICHA = [["geral", "Geral"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["bezerreiro", "Bezerreiro"]] as const;
+const ICONES_FICHA = {geral: IdCard, producao: Milk, reproducao: GitBranch, sanidade: HeartPulse, nutricao: Leaf, bezerreiro: Baby, cadastro: IdCard};
 function secaoDaUrl() {
   const hash = window.location.hash.slice(1);
   if (["resumo", "cadastro", "historico", "auditoria", "identificacao-genetica", "categoria", "peso", "peso-manejo"].includes(hash)) return "geral";
@@ -229,6 +233,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   };
   const carregarMovimentacoes = useCallback((pagina: number) => listarMovimentacoes({ animalId: id, incluirDesfeitas: true, page: pagina, pageSize: 20 }), [id]);
 
+  const sitioBezerreiro = sitioConsulta ?? getPropriedadeAtiva() ?? animal?.historicoLocalizacoes.find(l => l.ate == null)?.propriedade?.id ?? animal?.historicoLocalizacoes[0]?.propriedade?.id ?? null;
+  const bezerreiro = useConsultaBezerreiro<AcompanhamentoAnimal>(animal ? `/animais/${id}/acompanhamento` : null, sitioBezerreiro, refreshToken);
+  useEffect(() => { if (secaoAtiva === "bezerreiro" && bezerreiro.dados?.temHistorico === false) setSecaoAtiva("geral"); }, [secaoAtiva, bezerreiro.dados]);
+
   if (!animal) return <PaginaFinanceira><nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={onVoltar}>{rotuloVoltar}</button></nav><PageHeader titulo="Animal" /><div className="rebanho-carregamento">
     {indisponivel ? <section className="mt-6 space-y-3 rounded-xl border border-border bg-card p-5" aria-labelledby="animal-indisponivel">
       <h1 id="animal-indisponivel" className="text-xl font-semibold">{getPropriedadeAtiva() == null ? "Animal não encontrado" : "Animal não disponível no sítio selecionado"}</h1>
@@ -317,7 +325,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       </div>}
 
     </div>
-    <SubTabs ariaLabel="Seções da ficha" tabs={ABAS_FICHA.filter(([ancora]) => !["reproducao", "producao"].includes(ancora) || animal.sexo === "F").map(([id, label]) => ({ id, label, icon: ICONES_FICHA[id] }))} active={secaoAtiva} onSelect={selecionarSecao} idDaAba={aba => `aba-${aba}`} idDoPainel={aba => `ficha-painel-${aba}`} />
+    <ResumoAlertas animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id} revisao={refreshToken} />
+    <SubTabs ariaLabel="Seções da ficha" tabs={ABAS_FICHA.filter(([ancora]) => (ancora !== "bezerreiro" || !!bezerreiro.dados?.temHistorico) && (!["reproducao", "producao"].includes(ancora) || animal.sexo === "F")).map(([id, label]) => ({ id, label, icon: ICONES_FICHA[id] }))} active={secaoAtiva} onSelect={selecionarSecao} idDaAba={aba => `aba-${aba}`} idDoPainel={aba => `ficha-painel-${aba}`} />
+    {secaoAtiva === "bezerreiro" && !bezerreiro.dados && <div className="p-5" role={bezerreiro.erro ? "alert" : "status"}>{bezerreiro.erro || "Consultando acompanhamento do bezerreiro…"}{bezerreiro.erro && <Button secondary onClick={bezerreiro.tentar}>Tentar novamente</Button>}</div>}
+    {bezerreiro.dados?.temHistorico && sitioBezerreiro != null && <section id="ficha-painel-bezerreiro" role="tabpanel" aria-labelledby="aba-bezerreiro" hidden={secaoAtiva !== "bezerreiro"}>{<AcompanhamentoBezerreiro animalId={animal.id} sitio={sitioBezerreiro} podeLancar={podeLancar} revisao={refreshToken} embutido dadosIniciais={bezerreiro.dados}/>}</section>}
     <div id="ficha-painel-geral" role="tabpanel" aria-labelledby="aba-geral" hidden={secaoAtiva !== "geral"} className="ficha-geral">
       <SecaoGeralAnimal id="cadastro" icon={IdCard} titulo="Identificação" acao={podeLancar && ativo ? <Button secondary onClick={() => setEditandoDados(true)}>Editar dados</Button> : undefined}>
         <dl className="grid gap-4 sm:grid-cols-2">

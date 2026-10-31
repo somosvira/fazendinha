@@ -16,6 +16,7 @@ const appBaseUrlSchema = z.string().trim().transform((valor, ctx) => {
 const envSchema = z
   .object({
     DATABASE_URL: z.string().url("DATABASE_URL ausente ou inválida — copie de server/.env.example"),
+    ALERTAS_CRON_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
     PORT: z.coerce.number().int().positive().default(41873),
     JWT_SECRET: z.string().min(8).default("dev-secret-trocar-em-producao"),
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),

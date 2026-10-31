@@ -37,7 +37,7 @@ describe("classificação conservadora da entrada inteira", () => {
       vinculosMedicoes: [{ medicao: { participante: { animalId: `animal-${i}` } } }],
       movimento: { quantidade: new Prisma.Decimal(b.quantidade), data: new Date(b.data), seq: i + 1 }, apuracoes: [], alocacoes: [],
       classificacoes: [{ id: `classe-${i}`, natureza: b.natureza, versao: 2 }] }));
-    const tx = { aplicacaoProduto: { findMany: vi.fn(async () => []) }, entradaProducaoLeite: { findMany: vi.fn(async () => fontes) }, movimentoEstoque: {
+    const tx = { loteColostro: { findMany: vi.fn().mockResolvedValue([]) }, aplicacaoProduto: { findMany: vi.fn(async () => []) }, entradaProducaoLeite: { findMany: vi.fn(async () => fontes) }, movimentoEstoque: {
       findMany: vi.fn(async () => fontes.map(f => ({ tipo: "ENTRADA", quantidade: f.movimento.quantidade }))), create: vi.fn(),
     }, alocacaoLeiteEstoque: { createMany: vi.fn() } };
     const banco = tx as unknown as Prisma.TransactionClient;
@@ -51,7 +51,7 @@ describe("classificação conservadora da entrada inteira", () => {
   });
 
   it("declaração restritiva já vigente não duplica e nunca permite desbloqueio", async () => {
-    const tx = { $executeRaw: vi.fn(), entradaProducaoLeite: { findFirst: vi.fn(async () => ({ movimento: { produtoId: "leite" } })) },
+    const tx = { loteColostro: { findMany: vi.fn().mockResolvedValue([]) }, $executeRaw: vi.fn(), entradaProducaoLeite: { findFirst: vi.fn(async () => ({ movimento: { produtoId: "leite" } })) },
       classificacaoEntradaLeite: { findFirst: vi.fn(async () => ({ id: "restrita", natureza: "COLOSTRO", versao: 2 })), create: vi.fn() } };
     const banco = tx as unknown as Prisma.TransactionClient;
     const ctx = { propriedadeId: 7, usuarioId: 9 };
@@ -62,7 +62,7 @@ describe("classificação conservadora da entrada inteira", () => {
 
   it("declarar colostro cria outra versão da origem inteira sem alterar litros nem a declaração anterior", async () => {
     const anterior = { id: "declarada", natureza: "COMERCIAL", versao: 2 };
-    const tx = { $executeRaw: vi.fn(), entradaProducaoLeite: { findFirst: vi.fn(async () => ({ movimento: { produtoId: "leite" } })) },
+    const tx = { loteColostro: { findMany: vi.fn().mockResolvedValue([]) }, $executeRaw: vi.fn(), entradaProducaoLeite: { findFirst: vi.fn(async () => ({ movimento: { produtoId: "leite" } })) },
       classificacaoEntradaLeite: { findFirst: vi.fn(async () => anterior), create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({ id: "restrita", ...data })) },
       periodoFinanceiro: { findUnique: vi.fn(async () => null) }, auditoriaFinanceira: { create: vi.fn() }, movimentoEstoque: { create: vi.fn(), update: vi.fn() } };
     await classificarEntradaLeiteTx(tx as unknown as Prisma.TransactionClient, { entradaId: "origem", natureza: "COLOSTRO", motivo: "Entrada inteira contém colostro", versaoEsperada: 2 }, { propriedadeId: 7, usuarioId: 9 });
@@ -70,5 +70,25 @@ describe("classificação conservadora da entrada inteira", () => {
     expect(anterior.natureza).toBe("COMERCIAL");
     expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
     expect(tx.movimentoEstoque.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("origens reservadas ao Bezerreiro", () => {
+  const preparar = () => {
+    const fonte = { id: "entrada-colostro", sessao: { ordem: 1 }, movimento: { quantidade: new Prisma.Decimal(6), data: new Date("2026-10-20") },
+      apuracoes: [], alocacoes: [], classificacoes: [{ id: "classe", natureza: "COLOSTRO" }] };
+    const tx = { entradaProducaoLeite: { findMany: vi.fn(async () => [fonte]) }, movimentoEstoque: { findMany: vi.fn(async () => [{ tipo: "ENTRADA", quantidade: new Prisma.Decimal(6) }]) },
+      loteColostro: { findMany: vi.fn(async () => [{ entradaId: fonte.id }]) } };
+    return tx as unknown as Prisma.TransactionClient;
+  };
+  it("impede consumo genérico explícito e a seleção FIFO de leite sob gestão do banco", async () => {
+    const tx = preparar(), input = { produtoId: "leite", propriedadeId: 7, data: new Date("2026-10-20"), quantidade: 2, finalidade: "CONSUMO" as const };
+    await expect(planejarBaixaLeiteTx(tx, { ...input, entradaIds: ["entrada-colostro"] })).rejects.toMatchObject({ code: "CONFLITO" });
+    await expect(planejarBaixaLeiteTx(tx, input)).rejects.toMatchObject({ code: "SALDO_INSUFICIENTE" });
+  });
+  it("permite somente ao adaptador consumir a entrada gerida explicitamente selecionada", async () => {
+    const tx = preparar(), input = { produtoId: "leite", propriedadeId: 7, data: new Date("2026-10-20"), quantidade: 2, finalidade: "CONSUMO" as const, permitirOrigemColostro: true };
+    await expect(planejarBaixaLeiteTx(tx, input)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect((await planejarBaixaLeiteTx(tx, { ...input, entradaIds: ["entrada-colostro"] })).parcelas[0].quantidade.toString()).toBe("2");
   });
 });

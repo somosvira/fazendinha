@@ -4,7 +4,9 @@ const m = vi.hoisted(() => {
   const db = {
     $executeRaw: vi.fn(),
     $transaction: vi.fn(),
-    animal: { findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn() },
+    necessidadeSanitaria: { findMany: vi.fn().mockResolvedValue([]) },
+    necessidadeProgramacaoSanitaria: { findMany: vi.fn().mockResolvedValue([]) },
+    animal: { findUniqueOrThrow: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn() },
     localizacaoAnimal: { findMany: vi.fn(), update: vi.fn() },
     finalidadeAnimal: { findMany: vi.fn(), update: vi.fn() },
     pesagem: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn(), delete: vi.fn() },
@@ -45,6 +47,9 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-29T12:00:00Z"));
   m.db.animal.findUnique.mockResolvedValue(animal);
+  m.db.animal.findUniqueOrThrow.mockResolvedValue({ ...animal, localizacoes: [], baixas: [] });
+  m.db.necessidadeSanitaria.findMany.mockResolvedValue([]);
+  m.db.necessidadeProgramacaoSanitaria.findMany.mockResolvedValue([]);
   m.db.animal.findFirst.mockResolvedValue(null);
   m.db.animal.count.mockResolvedValue(0);
   m.db.animal.update.mockResolvedValue(animal);

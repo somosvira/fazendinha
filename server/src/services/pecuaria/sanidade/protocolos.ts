@@ -1,3 +1,5 @@
+import { marcarReavaliacaoDestinoTx } from "./alertas/avaliador.js";
+import { vincularParticipacaoAlertaTx, reconciliarParticipacaoAlertaTx } from "./alertas/protocolos.js";
 import { z } from "zod";
 import { momentoAcaoSchema } from "../protocolos/momentos.js";
 import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
@@ -120,7 +122,7 @@ async function publicarSanitarioTx(tx: Prisma.TransactionClient, id: string, usu
   });
 }
 
-export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { chave?: string; protocoloId: string; animalId: string; propriedadeId: number; inicio: string;
+export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { chave?: string; alertaId?: string; alertaRevisao?: number; confirmarCuidadoAlerta?: boolean; protocoloId: string; animalId: string; propriedadeId: number; inicio: string;
   ocorrenciaId?: string | null; operacaoServicoId?: string | null; confirmarSobreposicao?: boolean; justificativaSobreposicao?: string | null }, usuarioId: number | null) {
     await travarAnimais(tx, [input.animalId]);
     const data = dia(input.inicio);
@@ -157,10 +159,12 @@ export async function iniciarExecucaoTx(tx: Prisma.TransactionClient, input: { c
     await auditar(tx, { entidade: "ExecucaoProtocoloSanitario", entidadeId: execucao.id, animalId: input.animalId,
       propriedadeId: input.propriedadeId, acao: "INICIO", usuarioId, depois: { ...execucao,
         ...(simultaneas.length ? { sobreposicao: { execucaoIds: simultaneas.map((e) => e.id), justificativa: input.justificativaSobreposicao!.trim(), confirmada: true } } : {}) } });
+    await vincularParticipacaoAlertaTx(tx, input, execucao, usuarioId);
     return execucao;
 }
 
 export async function iniciarExecucao(input: Parameters<typeof iniciarExecucaoTx>[1], usuarioId: number | null) {
+  if (input.alertaId && !input.chave) throw new RebanhoError("VALIDACAO", "Programar um alerta exige chave de confirmação", "chave");
   return confirmarFato(input, usuarioId, "PROTOCOLO", iniciarExecucaoTx, (tx, id) => tx.participacaoProtocolo.findUniqueOrThrow({ where: { id }, include: { tarefas: { orderBy: [{ previstaPara: "asc" }, { etapa: { ordem: "asc" } }, { id: "asc" }] } } }));
 }
 export async function iniciarExecucaoColetivo(input: { chave: string; propriedadeId: number; itens: Parameters<typeof iniciarExecucaoTx>[1][] }, usuarioId: number | null) {
@@ -225,6 +229,7 @@ export async function dispensarTarefa(id: string, motivo: string, usuarioId: num
     const salva = await tx.tarefaProtocolo.update({ where: { id }, data: { dispensadaEm: new Date(), motivoDispensa: motivo } });
     await auditar(tx, { entidade: "TarefaSanitaria", entidadeId: id, animalId: original.execucao.animalId, acao: "DISPENSA", usuarioId,
       propriedadeId: propriedadeId ?? original.execucao.propriedadeId, antes: original, depois: salva });
+    await reconciliarParticipacaoAlertaTx(tx, original.execucaoId, usuarioId);
     return salva;
   });
 }
@@ -239,12 +244,17 @@ export async function cancelarExecucao(id: string, propriedadeId: number, motivo
     if (!(await tx.localizacaoAnimal.findFirst({ where: { animalId: original.animalId, propriedadeId, ate: null } }))) throw new RebanhoError("NAO_ENCONTRADO", "Execução não encontrada neste sítio");
     const salva = await tx.participacaoProtocolo.update({ where: { id }, data: { canceladaEm: new Date(), motivoCancelamento: motivo } });
     await auditar(tx, { entidade: "ExecucaoProtocoloSanitario", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "CANCELAMENTO", usuarioId, antes: original, depois: salva });
+    await reconciliarParticipacaoAlertaTx(tx, id, usuarioId);
     return salva;
   });
 }
 
 export async function inativarProtocolo(id: string, usuarioId: number | null) {
-  return transacaoPecuaria(tx => inativarVersaoTx(tx, id, "SANITARIO", usuarioId));
+  return transacaoPecuaria(async tx => {
+    const resultado = await inativarVersaoTx(tx, id, "SANITARIO", usuarioId);
+    await marcarReavaliacaoDestinoTx(tx, { protocoloId: id }, usuarioId);
+    return resultado;
+  });
 }
 
 export async function adiarTarefa(id: string, input: { previstaPara: string; motivo: string; chave?: string }, usuarioId: number | null, propriedadeId: number) {

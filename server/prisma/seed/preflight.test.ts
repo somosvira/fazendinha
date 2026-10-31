@@ -100,9 +100,35 @@ describe('preflight sem alterações e sem conexão operacional', () => {
     expect(mocks.query.mock.calls.every(([consulta]) => String(consulta).startsWith('SELECT'))).toBe(true);
     expect(mocks.writeFile).not.toHaveBeenCalled(); await aberto.fechar(); expect(mocks.end).toHaveBeenCalledOnce();
   });
+  it('aceita migration aditiva aplicada sem mudar a identidade da baseline', async () => {
+    const adicional = '20261028180000_alertas_sanitarios';
+    mocks.readdir.mockResolvedValue([adicional, nome, 'migration_lock.toml']);
+    const original = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations')
+      ? { rows: [
+        { migration_name: adicional, checksum, finished_at: new Date('2026-10-28T12:00:00Z'), rolled_back_at: null },
+        { migration_name: nome, checksum, finished_at: new Date('2026-10-24T12:00:00Z'), rolled_back_at: null },
+      ] } : original(consulta));
+    const aberto = await abrirContexto('preflight');
+    expect(aberto.contexto.manifesto.baseline).toEqual({ nome, checksum });
+    expect(aberto.contexto.manifesto.identidade).toContain('2026-10-24T12:00:00.000Z');
+    expect(mocks.writeFile).not.toHaveBeenCalled();
+    await aberto.fechar();
+  });
   it('recusa cadeia com migration anterior à baseline canônica', async () => {
     mocks.readdir.mockResolvedValue([nome, '20261001000000_antiga']);
     await expect(abrirContexto('preflight')).rejects.toThrow('uma baseline'); expect(mocks.end).toHaveBeenCalledOnce();
+  });
+  it.each(['não aplicada', 'checksum divergente', 'incompleta', 'desconhecida', 'duplicada'])('recusa migration aditiva %s sem escrever', async caso => {
+    const adicional = '20261028180000_alertas_sanitarios';
+    mocks.readdir.mockResolvedValue([nome, adicional, 'migration_lock.toml']);
+    const baseline = { migration_name: nome, checksum, finished_at: new Date('2026-10-24T12:00:00Z'), rolled_back_at: null };
+    const aplicada = { migration_name: caso === 'desconhecida' ? '20261029000000_desconhecida' : adicional, checksum: caso === 'checksum divergente' ? 'f'.repeat(64) : checksum, finished_at: caso === 'incompleta' ? null : new Date('2026-10-28T12:00:00Z'), rolled_back_at: null };
+    const rows = caso === 'não aplicada' ? [baseline] : caso === 'duplicada' ? [baseline, aplicada, aplicada] : [baseline, aplicada];
+    const original = mocks.query.getMockImplementation()!;
+    mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations') ? { rows } : original(consulta));
+    await expect(abrirContexto('preflight')).rejects.toThrow('cadeia de migrations');
+    expect(mocks.writeFile).not.toHaveBeenCalled(); expect(mocks.end).toHaveBeenCalledOnce();
   });
   it('recusa checksum de baseline divergente', async () => {
     const original = mocks.query.getMockImplementation()!;

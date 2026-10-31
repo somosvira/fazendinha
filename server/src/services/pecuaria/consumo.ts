@@ -27,7 +27,7 @@ type ConsumoEstoque = {
   cienciaValidadeDesconhecida?: boolean;
   documentacaoExcepcional?: boolean;
   motivoDocumentacaoExcepcional?: string | null;
-  origem: "SANIDADE" | "REPRODUCAO";
+  origem: "SANIDADE" | "REPRODUCAO" | "NUTRICAO";
   observacao: string;
   usuarioId: number | null;
   previa?: boolean;

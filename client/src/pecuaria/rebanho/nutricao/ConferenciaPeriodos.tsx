@@ -10,6 +10,7 @@ import { confirmarPeriodos, previaPeriodos, type CentroNutricional, type Previa 
 import { estimativaConferida, somarEstimativas } from "./conferencia.calc";
 import { formatarDataBR } from "../lib/rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
+import { navegarPara } from "../../../router";
 
 type Escolha = { origensLeite: string[]; quantidade: string; motivo: string; modo: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativa: string; partidas: DistribuicaoPartida[] };
 export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void }) {
@@ -30,12 +31,17 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
     if (enviando.current) return; enviando.current = true; setOcupado(true); setErro(null); setPrevia(null); setSalvo(false);
     try { const p = await previaPeriodos({ loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null }); setPrevia(p); setChave(crypto.randomUUID()); setEscolhas(Object.fromEntries(p.periodos.flatMap((p) => p.itens.map((i) => [chaveItem(p, i.produtoId), { origensLeite: i.leite?.origens.map(o => o.entradaId) ?? [], quantidade: i.quantidadePrevista, motivo: "", modo: "BAIXA_ESTOQUE", justificativa: "", partidas: [] }])))); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
+  const leiteSemConciliacao = previa?.periodos.some(p => !!p.ofertasBezerreiro?.length && p.itens.some(i => {
+    const escolha = escolhas[chaveItem(p, i.produtoId)];
+    return !!i.leite && (Number(escolha?.quantidade) !== 0 || !escolha?.motivo.trim());
+  })) ?? false;
   async function confirmar() {
     if (!previa || enviando.current || previa.lacunas.length || !previa.periodos.length) return;
     enviando.current = true; setOcupado(true); setErro(null);
     try {
       const periodos = previa.periodos.map((p) => ({ inicio: p.inicio.slice(0, 10), fim: p.fim.slice(0, 10), itens: p.itens.map((i) => {
         const e = escolhas[chaveItem(p, i.produtoId)];
+        if (i.leite && p.ofertasBezerreiro?.length && (Number(e.quantidade) !== 0 || !e.motivo.trim())) throw new Error(`${i.nome}: concilie as ofertas já registradas com quantidade zero e motivo antes de confirmar.`);
         if (!e.quantidade.trim() || !Number.isFinite(Number(e.quantidade)) || Number(e.quantidade) < 0) throw new Error(`${i.nome}: informe a quantidade, inclusive zero se confirmado.`);
         if (Number(e.quantidade) !== Number(i.quantidadePrevista) && !e.motivo.trim()) throw new Error(`${i.nome}: justifique a diferença da previsão.`);
         if (e.modo === "SEM_BAIXA_JUSTIFICADA" && !e.justificativa.trim()) throw new Error(`${i.nome}: justifique o consumo sem baixa.`);
@@ -72,6 +78,13 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
           <p>MS conferida conhecida ≈ {somarEstimativas(valores.map((v) => v.ms), 3)} kg ({valores.every((v) => v.ms != null) ? "completa" : "cobertura incompleta"})</p>
           {mostrarValores && <p>Custo conferido estimado conhecido: {valores.some((v) => v.custo != null) ? `≈ ${fmtMoneyExact(Number(somarEstimativas(valores.map((v) => v.custo), 2)))}` : "não apurado"} ({valores.every((v) => v.custo != null) ? "completo" : "incompleto"}). Apurado na confirmação com a base de estoque.</p>}
           <div className="nutricao-participantes"><h3 className="text-sm font-semibold">Participantes</h3><ul>{p.participantes.map((a) => <li key={a.animalId}>{a.brinco}: {a.dias} dias</li>)}</ul></div>
+          {!!p.ofertasBezerreiro?.length && <section aria-label="Leite já registrado no Bezerreiro" className="grid gap-2">
+            <h3 className="text-sm font-semibold">Leite já registrado no Bezerreiro</h3>
+            <ul className="grid gap-2">{p.ofertasBezerreiro.map(oferta => <li key={oferta.fornecimentoId} className="flex flex-wrap items-center gap-2 text-sm">
+              <span>{formatarDataBR(oferta.data)} · {formatarLitros(Number(oferta.quantidadeLitros))} já fornecidos</span>
+              <Button secondary onClick={() => navegarPara(`/pecuaria/bezerreiro?${new URLSearchParams({aba:'alimentacao',propriedadeId:String(propriedadeId),data:oferta.data,...(oferta.animalIds[0]?{animalId:oferta.animalIds[0]}:{})})}`)}>Abrir no Bezerreiro</Button>
+            </li>)}</ul>
+          </section>}
           {p.itens.map((i, indice) => {
             const k = chaveItem(p, i.produtoId); const e = escolhas[k]; const v = valores[indice];
             return <div key={k} className="grid gap-2 border-t border-border pt-3">
@@ -79,6 +92,10 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
               <p className="text-sm">Saldo {i.saldo} {i.unidade}{!mostrarValores ? "" : ` · custo previsto ${i.custoPrevisto == null ? "não apurado" : fmtMoneyExact(Number(i.custoPrevisto))}`}</p>
               <p className="text-sm">MS prevista: {i.materiaSecaKg == null ? "não informada / unidade sem conversão para massa" : `${i.materiaSecaKg} kg`} · MS conferida: {v.ms == null ? "não apurada" : `≈ ${v.ms} kg`}</p>
               {mostrarValores && <p className="text-sm">Custo conferido estimado: {v.custo == null ? (e.modo === "SEM_BAIXA_JUSTIFICADA" ? "não apurado — sem baixa de estoque" : "não apurado — sem base de custo") : `≈ ${fmtMoneyExact(Number(v.custo))}`}</p>}
+              {i.leite && !!p.ofertasBezerreiro?.length && <div className="grid gap-2">
+                <p className="text-sm" title={p.orientacaoLeiteBezerreiro ?? undefined}>Concilie o leite já fornecido. Os demais ingredientes permanecem neste fechamento.</p>
+                <div><Button secondary onClick={() => mudar(k, { quantidade: '0', motivo: 'Leite já registrado nas ofertas do Bezerreiro; sem novo fornecimento neste fechamento.' })}>Usar ofertas já registradas · zerar leite</Button></div>
+              </div>}
               {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta <AjudaCampo rotulo="Sobre a atribuição do leite na dieta" texto="A quantidade por animal será atribuída pelos dias no lote. Custo de produção e preço de referência podem ficar pendentes; os litros comprovados continuam registráveis." /></legend>
                 <p className="text-sm">Previsto {formatarLitros(Number(i.leite.quantidadePrevistaLitros))} · disponível {formatarLitros(Number(i.leite.quantidadeDisponivelLitros))} · atendível {formatarLitros(Number(i.leite.quantidadeAtendivelLitros))}. Selecione as origens autorizadas; o fornecimento usa primeiro o não comercial e completa com o comercial.</p>
                 {i.leite.origens.length === 0 && <p role="status">Sem origem disponível. Registre apenas os litros efetivamente fornecidos e justifique a diferença.</p>}
@@ -89,14 +106,14 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
                 <label>Quantidade conferida ({i.unidade})<input type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
                 <label>Origem<SelectCampo className={classeInput} value={e.modo} onValueChange={(valorSelecionado) => mudar(k, { modo: valorSelecionado as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></SelectCampo></label>
               </div>
-              {Number(e.quantidade) !== Number(i.quantidadePrevista) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
+              {(Number(e.quantidade) !== Number(i.quantidadePrevista) || (i.leite && !!p.ofertasBezerreiro?.length)) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}
               {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas compacto produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
             </div>;
           })}
         </fieldset>;
       })}
-      <Button disabled={ocupado || !!previa.lacunas.length || !previa.periodos.length} onClick={() => void confirmar()}>Confirmar conjunto conferido</Button>
+      <Button disabled={ocupado || !!previa.lacunas.length || !previa.periodos.length || leiteSemConciliacao} onClick={() => void confirmar()}>Confirmar conjunto conferido</Button>
     </>}
   </section>;
 }

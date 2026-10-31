@@ -1,4 +1,6 @@
 import "./rebanho-layout.css";
+import { ParticipantesAlertas } from "./alertas/ParticipantesAlertas";
+import { CentralAlertas } from "./alertas/CentralAlertas";
 // Entrypoint do módulo Rebanho. A aba "pec-rebanho" é única — as cinco telas
 // abaixo vivem todas sob o mesmo path canônico /pecuaria/rebanho e a navegação
 // entre elas é só pushState + popstate (mesmo padrão de OperacoesFinanceiras),
@@ -34,9 +36,10 @@ type Tela =
   | { tipo: "lotes" }
   | { tipo: "detalhe-lote"; id: string }
   | { tipo: "cadastros" };
-type TelaV3 = Tela | { tipo: "sanidade" | "nutricao" };
+type TelaV3 = Tela | { tipo: "sanidade" | "nutricao" | "alertas" };
 
 function telaDaUrl(pathname: string): TelaV3 {
+  if (pathname.startsWith("/pecuaria/rebanho/alertas")) return { tipo: "alertas" };
   if (pathname === "/pecuaria/rebanho/sanidade") return { tipo: "sanidade" };
   if (pathname === "/pecuaria/rebanho/nutricao") return { tipo: "nutricao" };
   const animalId = parseAnimalId(pathname);
@@ -85,6 +88,7 @@ function TelasRebanho({ podeLancar = true }: { podeLancar?: boolean }) {
   if (tela.tipo === "cadastros") {
     return <Cadastros podeLancar={podeLancar} />;
   }
+  if (tela.tipo === "alertas") return window.location.pathname.endsWith("/participantes") ? <ParticipantesAlertas /> : <CentralAlertas />;
   if (tela.tipo === "sanidade") return <Sanidade podeLancar={podeLancar} />;
   if (tela.tipo === "nutricao") return <Nutricao podeLancar={podeLancar} />;
   return <VisaoGeral podeLancar={podeLancar} />;

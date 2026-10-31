@@ -1,3 +1,4 @@
+import { reconciliarParticipacaoAlertaTx } from "../sanidade/alertas/protocolos.js";
 import { z } from "zod";
 import { type Prisma, type TipoProtocolo } from "@prisma/client";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -66,6 +67,7 @@ export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: 
     } });
     await auditar(tx, { entidade: "EventoTarefaProtocolo", entidadeId: evento.id, animalId: tarefa.execucao.animalId,
       propriedadeId: input.propriedadeId, acao: input.tipo, usuarioId, depois: evento });
+    await reconciliarParticipacaoAlertaTx(tx, tarefa.execucaoId, usuarioId);
     return evento;
   });
 }

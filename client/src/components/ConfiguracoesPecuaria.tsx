@@ -1,6 +1,9 @@
+import { ConfiguracoesBezerreiro } from "../pecuaria/rebanho/bezerreiro/ConfiguracoesBezerreiro";
 import { ConfiguracoesProducaoLeite } from "../pecuaria/rebanho/leite/ConfiguracoesProducaoLeite";
 import { ProgramacaoRetirada } from "../pecuaria/rebanho/leite/UIProgramacaoRetirada";
 import "../pecuaria/rebanho/leite/operacoes.css";
+import { RegrasAlertas } from "../pecuaria/rebanho/alertas/RegrasAlertas";
+import { ProgramacoesSanitariasConfig } from "../pecuaria/rebanho/sanidade/ProgramacoesSanitariasConfig";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { PaginaCadastroProtocolo } from "../pecuaria/rebanho/protocolos/PaginaCadastroProtocolo";
 import { ConfiguracaoReprodutiva } from "../pecuaria/rebanho/reproducao/ConfiguracaoReprodutiva";
@@ -16,10 +19,10 @@ import { BuscaLista } from "./BuscaLista";
 
 
 const GRUPOS = [
-  { id: "producao", nome: "Produção de leite", icon: Milk, itens: [{ id: "leite", nome: "Ordenhas, controle individual e tanques", href: "/configuracoes/pecuaria/producao/leite" }, { id: "coleta", nome: "Rotina de coleta", href: "/configuracoes/pecuaria/producao/coleta" }] },
+  { id: "producao", nome: "Produção de leite", icon: Milk, itens: [{ id: "leite", nome: "Ordenhas, controle individual e tanques", href: "/configuracoes/pecuaria/producao/leite" }, { id: "coleta", nome: "Rotina de coleta", href: "/configuracoes/pecuaria/producao/coleta" }, { id: "bezerreiro", nome: "Bezerreiro e colostro", href: "/configuracoes/pecuaria/producao/bezerreiro" }] },
   { id: "rebanho", nome: "Rebanho", icon: Beef, itens: [{ id: "categorias", nome: "Categorias de animais", rebanho: "categorias" }, { id: "motivos", nome: "Motivos de baixa", rebanho: "motivos" }] },
   { id: "genetica", nome: "Genética", icon: Dna, itens: [{ id: "racas", nome: "Raças", rebanho: "racas" }, { id: "genitores", nome: "Genitores externos", rebanho: "genitores" }, { id: "material-genetico", nome: "Materiais genéticos", rebanho: "material-genetico" }] },
-  { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
+  { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "alertas", nome: "Alertas", href: "/configuracoes/pecuaria/sanidade/alertas" }, { id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
   { id: "reproducao", nome: "Reprodução", icon: Dna, itens: [{ id: "politica", nome: "Política reprodutiva", reproducao: "politica" }, { id: "protocolos", nome: "Protocolos reprodutivos", reproducao: "protocolos" }, { id: "tipos-exame", nome: "Tipos de exame reprodutivo", reproducao: "exames" }, { id: "regras-sanitarias", nome: "Regras sanitárias por doença", reproducao: "regras" }, { id: "materiais", nome: "Materiais genéticos", href: "/configuracoes/pecuaria/genetica/material-genetico" }, { id: "genitores", nome: "Genitores externos", href: "/configuracoes/pecuaria/genetica/genitores" }, { id: "produtos", nome: "Produtos", href: "/financeiro/configuracoes?aba=produtos" }] },
 ] satisfies { id: string; nome: string; icon: typeof Beef; itens: { id: string; nome: string; rebanho?: AbaCadastroRebanho; sanitario?: AbaCadastroSanitario; reproducao?: string; href?: string }[] }[];
 
@@ -28,7 +31,7 @@ function LinkCadastro({ href, children }: { href: string; children: React.ReactN
 }
 
 /** Agrupa os cadastros existentes sem recriar seus formulários nem contratos. */
-export function ConfiguracoesPecuaria({ podeLancar }: { podeLancar: boolean }) {
+export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false }: { podeLancar: boolean; podeGerenciarAlertas?: boolean }) {
  const [localizacao, setLocalizacao] = useState(() => window.location.pathname + window.location.search);
  const path = localizacao.split("?")[0];
  const [busca, setBusca] = useState("");
@@ -44,10 +47,12 @@ export function ConfiguracoesPecuaria({ podeLancar }: { podeLancar: boolean }) {
    window.addEventListener("popstate", sync);
    return () => window.removeEventListener("popstate", sync);
  }, []);
+ if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <ConfiguracoesBezerreiro podeLancar={podeLancar} />;
  if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo pec-config-producao"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada tituloPagina podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite tituloPagina podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);
  const item = grupo?.itens.find(i => i.id === partes[3]);
+ if(grupo?.id==="sanidade"&&item?.id==="alertas")return <><nav className="pec-config-caminho" aria-label="Cadastros da Pecuária"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden/><span>Sanidade</span></nav><RegrasAlertas podeLancar={podeGerenciarAlertas} programacoes={<ProgramacoesSanitariasConfig podeLancar={podeGerenciarAlertas}/>}/></>;
  if (item?.id === "protocolos" && (grupo?.id === "sanidade" || grupo?.id === "reproducao") && partes[4] === "novo") return <PaginaCadastroProtocolo key={localizacao} tipo={grupo.id === "sanidade" ? "SANITARIO" : "REPRODUTIVO"} podeLancar={podeLancar} />;
  if (item && grupo && !("href" in item)) return <>
    <nav className="pec-config-caminho" aria-label="Cadastros da Pecuária"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden="true" /><span>{grupo.nome}</span></nav>

@@ -1,6 +1,7 @@
 // Composição do efetivo atual e baixas no período, sem inferir séries históricas.
 // As listas preservam os valores e filtros independentemente dos gráficos.
 
+import { ResumoAlertas } from "../alertas/ResumoAlertas";
 import { useEffect, useState } from "react";
 import { ArrowDownRight, ArrowUpRight, LayoutDashboard, ChartNoAxesCombined, ChevronRight, Heart, MapPin, Plus, RotateCcw } from "lucide-react";
 import { obterPainelRebanho } from "../api";
@@ -110,6 +111,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
     {carregando && <div className="rebanho-carregamento" role="status">Carregando rebanho…</div>}
+    <ResumoAlertas />
     {painel && <>
       <div className="pec-panorama-grid"><div className="pec-panorama-principal">
         <Panel className="min-w-0 overflow-hidden">

@@ -1,4 +1,5 @@
 import { custoAplicacao } from "./custo-aplicacao.js";
+import { vincularAplicacaoAlertaTx, revisarAplicacaoAnuladaTx } from "./alertas/atendimento.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
 import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import { marcarRegularizacaoFatoTx } from "../reproducao/marcacao-regularizacao.js";
@@ -22,6 +23,9 @@ import { travarUsosProduto } from "../../estoque/usos.js";
 
 export type AplicacaoInput = {
   chave?: string;
+  alertaId?: string;
+  alertaRevisao?: number;
+  confirmarCuidadoAlerta?: boolean;
   animalId: string;
   propriedadeId: number;
   data: string;
@@ -233,10 +237,12 @@ export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: Apli
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
+    await vincularAplicacaoAlertaTx(tx, input, criada, usuarioId);
     return criada;
 }
 
 export async function criarAplicacao(input: AplicacaoInput, usuarioId: number | null) {
+  if (input.alertaId && !input.chave) erro("O atendimento do alerta exige chave de confirmação", "chave");
   return confirmarFato(input, usuarioId, "APLICACAO", criarAplicacaoTx, (tx, id) => tx.aplicacaoProduto.findUniqueOrThrow({ where: { id } }));
 }
 
@@ -367,6 +373,7 @@ export async function anularAplicacao(id: string, propriedadeId: number, motivo:
     if (existente.movimentoEstoqueId && destino === "DEVOLVER_ESTOQUE") await estornarMovimentoTx(tx, existente.movimentoEstoqueId, { usuarioId, observacao: motivo, data: existente.data, propriedadeId });
     if (destino === "DEVOLVER_ESTOQUE" && administracaoMantida != null) throw new RebanhoError("VALIDACAO", "Devolução exige material não utilizado; não mantenha administração", "administracaoMantida");
     const salva = await tx.aplicacaoProduto.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date(), consumoMantido: destino === "MANTER_CONSUMO", administracaoMantida: destino === "MANTER_CONSUMO" ? administracaoMantida ?? null : null } });
+    await revisarAplicacaoAnuladaTx(tx, id, motivo, usuarioId);
     await marcarRegularizacaoFatoTx(tx, { fatoTipo: "APLICACAO", fatoId: id, destinoConsumo: destino, motivo, usuarioId });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
       antes: existente, depois: { status: salva.status, motivo, destinoConsumo: destino, consumoMantido: salva.consumoMantido, administracaoMantida: salva.administracaoMantida } });

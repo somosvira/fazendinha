@@ -20,6 +20,7 @@ const input = { sessaoId: id(1), versaoEsperada: 3, produtoId: id(2), chave: id(
 function banco() {
   const participantes = [{ id: id(4), animalId: id(40), finalidadeId: id(400), finalidadeSnapshot: { regra: "FINALIDADE_LEITE_V1", aptidao: "LEITE", finalidadeId: id(400), dataOperacional: "2026-10-18", desde: "2020-01-01", ate: null }, excluidoEm: null }, { id: id(5), animalId: id(50), finalidadeId: id(500), finalidadeSnapshot: { regra: "FINALIDADE_LEITE_V1", aptidao: "LEITE", finalidadeId: id(500), dataOperacional: "2026-10-18", desde: "2020-01-01", ate: null }, excluidoEm: null }];
   return {
+    loteColostro: { findFirst: vi.fn(async () => null) },
     requisicaoPecuaria: { findUnique: vi.fn(async () => null), create: vi.fn(async ({ data }: { data: unknown }) => data) },
     baixaAnimal: { findMany: vi.fn(async (): Promise<{ id: string; animalId: string; data: Date; destinoFechadoId: string | null }[]> => []) },
     participanteProducaoLeite: { findMany: vi.fn(async () => participantes) },

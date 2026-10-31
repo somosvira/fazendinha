@@ -70,6 +70,8 @@ Validação de código cobre entrada exclusiva histórica, autoria, escopo, car�
 
 ## Sanidade e rastreabilidade
 
+O [contrato de alertas e programação sanitária](alertas.md) descreve o núcleo persistido, regras por idade/data fixa, calendário mensal/anual, vínculos com os executores e cobertura temporal. As consultas estão codificadas localmente; interfaces de configuração/decisão, validação integrada e liberação operacional conservam seus gates. Cron de ambiente permanece desabilitado.
+
 Aplicações preservam nome/perfil histórico, data/hora, origem, produto/lote, quantidade/unidade, responsável e carências. Estoque, compra direta, origem documentada e reconciliação têm efeitos diferentes. Compra direta destina quantidade comprada sem criar movimento de estoque ou outra despesa; reconciliação conserva a origem e exige produto/unidade compatíveis e confirmação/motivo de equivalência quando aplicável.
 
 Carência zero/encerrada conhecida, desconhecida, não aplicável e em revisão são estados distintos. A baixa considera a situação na data informada e revalida a ciência quando os dados dependentes mudam. Carência é informação operacional, sem recomendação clínica automática.
@@ -334,3 +336,7 @@ As telas de animais, ficha individual, ordenhas e filas reprodutivas seguem a di
 Detalhes e formulários auxiliares abrem em modal centralizado, com foco, proteção de rascunho e bloqueio de gravação mantidos. Fichas por URL e navegação entre áreas conservam seus endereços; a mudança não transforma todas as páginas de domínio em janelas.
 
 O acabamento operacional se estende às consultas, cadastros e auxiliares de todas as áreas pecuárias. Receitas, vigências, consumo e fechamento nutricional abrem em modal sem perder os contratos de URL e revisão. Remover ingredientes ou alterar a data pelo calendário também ativa a proteção de rascunho. Agenda/ciclos mantêm fatos e contagens; renomeação, associação de execuções e remoção de participação preservam confirmação, motivo e bloqueio durante gravação em modais próprios. Origem, precisão e contexto de uma pesagem ficam acessíveis em Detalhes; avisos que afetam o peso/GMD permanecem na leitura principal.
+
+## Bezerreiro e colostragem
+
+O [contrato do Bezerreiro](bezerreiro.md) descreve participação, coleiras, aleitamento coletivo, retirada vinculada ao parto, Brix, banco/enriquecimento e acompanhamento. Código e migration aditiva são separados da aplicação/homologação no ambiente.

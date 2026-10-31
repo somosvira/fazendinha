@@ -19,6 +19,7 @@ import * as movimentacoes from "../../services/pecuaria/rebanho/movimentacoes.js
 import * as categorias from "../../services/pecuaria/rebanho/categorias.js";
 import * as genitores from "../../services/pecuaria/rebanho/genitores.js";
 import * as materialGenetico from "../../services/pecuaria/rebanho/materialGenetico.js";
+import { bezerreiroRouter } from "./bezerreiro.js";
 import { sanidadeRouter } from "./sanidade.js";
 import { manejoRouter } from "./manejo.js";
 import { reproducaoRouter } from "./reproducao.js";
@@ -451,7 +452,8 @@ export const rebanhoRouter = new Hono()
     });
   });
 
-rebanhoRouter.route("/sanidade", sanidadeRouter);
+rebanhoRouter.route("/bezerreiro", bezerreiroRouter)
+  .route("/sanidade", sanidadeRouter);
 rebanhoRouter.route("/manejo", manejoRouter);
 rebanhoRouter.route("/nutricao", nutricaoRouter);
 

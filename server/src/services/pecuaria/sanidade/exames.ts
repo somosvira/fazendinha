@@ -1,4 +1,8 @@
 import { validarContextoHistoricoAnimalTx, type ContextoHistoricoAnimalInput } from "../importacao/pesagens.js";
+import { reconciliarExameProtocoladoTx } from "./alertas/protocolos.js";
+import { marcarReavaliacaoDestinoTx } from "./alertas/avaliador.js";
+import { vincularExameProgramacaoTx, revisarFatoProgramacaoTx } from "./programacoes/atendimento.js";
+import type { OrigemAlertaAplicacao } from "./alertas/atendimento.js";
 import { hashFormatoExame } from "../exames/formato-snapshot.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
 import { camposExameSchema, validarObservacoesExame, conferirFormatoReprodutivo, formatoReprodutivoCompativel, type CampoExame, type ObservacaoExame } from "../exames/formatos.js";
@@ -55,6 +59,7 @@ export async function editarTipoExame(id: string, input: { nome?: string; ativo?
       campos: campos == null ? Prisma.DbNull : campos,
       opcoes: opcoes == null ? Prisma.JsonNull : opcoes as Prisma.InputJsonValue,
     } });
+    if (input.ativo === false && antes.ativo) await marcarReavaliacaoDestinoTx(tx, { tipoExameId: id }, usuarioId);
     await auditar(tx, { entidade: "TipoExame", entidadeId: id, acao: "EDICAO", usuarioId, antes, depois });
     return { ...depois, formatoBloqueado };
   });
@@ -105,7 +110,7 @@ export function nomeExameHistorico(formato: Prisma.JsonValue, nomeAtual: string)
   return formato && typeof formato === "object" && !Array.isArray(formato) && typeof formato.nome === "string" ? formato.nome : nomeAtual;
 }
 
-export type ExameInput = { observacao?: string | null; formatoExameHash?: string; chave?: string; animalId: string; propriedadeId: number; tipoExameId: string; data: string;
+export type ExameInput = OrigemAlertaAplicacao & { observacao?: string | null; formatoExameHash?: string; chave?: string; animalId: string; propriedadeId: number; tipoExameId: string; data: string;
   resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[];
   responsavel?: string | null; ocorrenciaId?: string | null; tarefaId?: string | null; operacaoServicoId?: string | null; desvio?: DesvioInput };
 
@@ -173,6 +178,7 @@ export async function registrarExameTx(tx: Prisma.TransactionClient, input: Exam
     const criado = await tx.exameAnimal.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { exameId: criado.id }, usuarioId);
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, propriedadeId: dadosCriacao.propriedadeId ?? null, acao: "REGISTRO", usuarioId, depois: criado });
+    await vincularExameProgramacaoTx(tx, input, criado, usuarioId);
     return criado;
 }
 
@@ -208,7 +214,9 @@ export async function corrigirExameTx(tx: Prisma.TransactionClient, id: string, 
     }
     if (multiplos) await tx.resultadoExame.updateMany({ where: { exameId: id, vigente: true }, data: { vigente: false, substituidoEm: new Date() } });
     const salvo = await tx.exameAnimal.update({ where: { id }, include: { resultados: { where: { vigente: true } } }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { realizacao: "REALIZADO", ...(multiplos ? { resultados: { create: multiplos.map(r => ({ ...r, criadoPorId: usuarioId })) } } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null }) } });
+    await revisarFatoProgramacaoTx(tx, { exameId: id }, input.motivo, usuarioId);
     if (input.anular) await marcarRegularizacaoFatoTx(tx, { fatoTipo: "EXAME", fatoId: id, destinoConsumo: null, motivo: input.motivo, usuarioId });
+    await reconciliarExameProtocoladoTx(tx,id,original.tarefaId,usuarioId);
     await auditar(tx, { entidade: "ExameAnimal", entidadeId: id, animalId: original.animalId, propriedadeId, acao: input.anular ? "ANULACAO" : "RESULTADO_CORRIGIDO", usuarioId, antes: original, depois: { ...salvo, motivo: input.motivo } });
     return salvo;
 }

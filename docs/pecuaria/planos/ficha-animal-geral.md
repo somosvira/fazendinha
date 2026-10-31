@@ -1,5 +1,7 @@
 # Plano de implementação — ficha do animal
 
+Atualização da base: o PR #346 integrou Alertas e Bezerreiro em `staging`. A ficha preserva agora a aba contextual de acompanhamento quando há histórico comprovado. Isso não comprova a conclusão da realocação dos comandos de desmama/castração (tarefa B); os registros abaixo descrevem a base anterior à integração.
+
 Status: reorganização original integrada em staging; rodada v8 implementada localmente na branch `codex/etiquetas-ficha-animal`, com validação local concluída. A integração B com Bezerreiro permanece uma dependência separada, não executada nesta rodada. Consumo real de tokens não aferido. Sem publicação ou deploy desta rodada.
 
 ## Resultado pretendido
