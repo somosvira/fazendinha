@@ -111,7 +111,7 @@ function pillSituacao(situacao: Situacao) {
 
 function AjudaCelula({ texto, children }: { texto: string; children: ReactNode }) {
   return <Popover><PopoverTrigger asChild>
-    <button type="button" className="animal-ajuda-celula" aria-label={texto} onClick={e => e.stopPropagation()}>{children}</button>
+    <button type="button" className="animal-ajuda-celula h-auto" aria-label={texto} onClick={e => e.stopPropagation()}>{children}</button>
   </PopoverTrigger><PopoverContent className="w-auto max-w-xs rounded-lg text-sm" aria-label={texto} onClick={e => e.stopPropagation()}>{texto}</PopoverContent></Popover>;
 }
 
