@@ -9,7 +9,8 @@ import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
-import { SecaoFicha } from "../components/SecaoRecolhivel";
+import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
+import { Milk, ShieldCheck } from "lucide-react";
 import { dataHoraSanitaria, dataSanitaria } from "../sanidade/rotulos";
 import { navegarPara } from "../../../router";
 import { consultarLeite } from "./operacoes-api";
@@ -28,9 +29,9 @@ function ContextoCarencia({ contexto, animalId }: { contexto: ContextoCarenciaLe
       : prazo.estado === "CONHECIDO" ? prazo.prazoZero ? "Prazo zero confirmado no registro sanitário."
       : `Prazo registrado até ${dataHoraSanitaria(prazo.ate)}${prazo.precisaoAproximada ? " (data aproximada)" : ""}.` : "Carência não informada.";
   }
-  return <SecaoFicha id="carencia-producao-leite" className="historico-produtivo-carencia" titulo="Carência do leite" acoes={<><AjudaCampo rotulo="Sobre carência do leite" texto="Destino registrado separadamente; esta consulta não confirma descarte nem aptidão sanitária."/><Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Conferir Sanidade</Button></>}>
+  return <SecaoGeralAnimal icon={ShieldCheck} id="carencia-producao-leite" className="historico-produtivo-carencia" titulo="Carência do leite" acao={<><AjudaCampo rotulo="Sobre carência do leite" texto="Destino registrado separadamente; esta consulta não confirma descarte nem aptidão sanitária."/><Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Conferir Sanidade</Button></>}>
     <div className="historico-carencia-situacao"><p>{texto}</p><span>Referência: {dataSanitaria(contexto.dataReferencia)}</span></div>
-  </SecaoFicha>;
+  </SecaoGeralAnimal>;
 }
 export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarToken = 0 }: { animalId: string; propriedadeId: number | null; recarregarToken?: number }) {
   const visualizacao = useVisualizacaoConsulta("animalProducaoVisualizacao", "leite");
@@ -55,7 +56,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
       if (isoDate(start) > fim) { setErro("Informe um período até a data de hoje."); return; }
       setPagina(1); setPeriodo({ inicio: isoDate(start), fim });
     }} />;
-  return <><SecaoFicha id="historico-produtivo-leite" className="historico-produtivo" titulo="Histórico produtivo">
+  return <><SecaoGeralAnimal icon={Milk} id="historico-produtivo-leite" className="historico-produtivo" titulo="Histórico produtivo">
     <ErrorBox erro={erro} />{erro && <Button variant="outline" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
     {carregando && <p role="status">Consultando histórico produtivo…</p>}
     {(carregando || erro) && <div className="producao-filtro-consulta">{filtroPeriodo}</div>}
@@ -99,5 +100,5 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
       </div> : <div className="producao-ficha-vazio" role="status"><h3 className="inline-flex items-center gap-1">Nenhuma aferição no período<AjudaCampo rotulo="Sobre ausência de aferições" texto="Sem registros não significa produção zero nem secagem."/></h3></div>}
       {dados.total > dados.tamanho && <nav aria-label="Páginas do histórico produtivo" className="historico-produtivo-paginas"><Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Anterior</Button><span>Página {pagina} · {dados.total} registros</span><Button variant="outline" disabled={pagina * dados.tamanho >= dados.total} onClick={() => setPagina(p => p + 1)}>Próxima</Button></nav>}
     </>}
-  </SecaoFicha>{!carregando && !erro && dados && <ContextoCarencia contexto={dados.carenciaLeite} animalId={animalId} />}</>;
+  </SecaoGeralAnimal>{!carregando && !erro && dados && <ContextoCarencia contexto={dados.carenciaLeite} animalId={animalId} />}</>;
 }

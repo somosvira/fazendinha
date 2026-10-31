@@ -7,7 +7,8 @@ import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 import { DatasQualidade } from "./DatasQualidade";
 import { dataSanitaria } from "../sanidade/rotulos";
-import { SecaoFicha } from "../components/SecaoRecolhivel";
+import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
+import { FlaskConical } from "lucide-react";
 import type { AmostraQualidade } from "./qualidade-types";
 import "./operacoes.css";
 import "./historico-produtivo.css";
@@ -71,15 +72,15 @@ export function QualidadeAnimalLeite({
     };
   }, [animalId, propriedadeId, inicio, fim, pagina, revisao, recarregarToken]);
   return (
-    <SecaoFicha
+    <SecaoGeralAnimal icon={FlaskConical}
       id="qualidade-individual-leite"
       className="leite-qualidade-animal"
-      titulo={<>Qualidade individual do leite <AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." /></>}
-      acoes={propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel={!inicio && fim ? `Até ${dataSanitaria(fim)}` : undefined} triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
+      titulo="Qualidade individual do leite"
+      acao={<><AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." />{propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel={!inicio && fim ? `Até ${dataSanitaria(fim)}` : undefined} triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
         setInicio(start ? isoDate(start) : "");
         setFim(end ? isoDate(end) : "");
         setPagina(1);
-      }} /> : undefined}
+      }} /> : undefined}</>}
     >
       {propriedadeId == null ? (
         <p>Selecione o sítio autorizado para consultar as amostras individuais.</p>
@@ -165,6 +166,6 @@ export function QualidadeAnimalLeite({
           )}
         </>
       )}
-    </SecaoFicha>
+    </SecaoGeralAnimal>
   );
 }

@@ -4,13 +4,12 @@ import { ParticipacoesIndividuais } from "../protocolos/ParticipacoesIndividuais
 import { FormParticipacaoIndividual } from "../protocolos/FormParticipacaoIndividual";
 import { navegarPara } from "../../../router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CalendarDays, Circle, Syringe, Baby, GitBranch, Target } from "lucide-react";
-import { CardFicha } from "../ui";
+import { CalendarDays, Circle, Syringe, Baby, GitBranch, Target, History, ClipboardList, CircleDollarSign } from "lucide-react";
 import { ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { CustosDiretos } from "../custos/CustosDiretos";
 import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
-import { SecaoRecolhivel, SecaoFicha } from "../components/SecaoRecolhivel";
+import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
 import { obterReproducao, type PainelReprodutivo } from "./api";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { DetalheFato } from "./DetalheFato";
@@ -78,35 +77,35 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
     <ErrorBox erro={erro}/>{erro && <Button variant="outline" onClick={() => void carregar()}>Tentar novamente</Button>}
     {carregando && <p role="status">Carregando reprodução…</p>}
     {painel && <>
-      <CardFicha icon={GitBranch} titulo="Acompanhamento reprodutivo">{animal ? <dl className="repro-ciclo repro-resumo-acompanhamento">
+      <SecaoGeralAnimal id="acompanhamento-reprodutivo" icon={GitBranch} titulo="Acompanhamento reprodutivo">{animal ? <dl className="repro-ciclo repro-resumo-acompanhamento">
         <div><Circle aria-hidden="true" size={25}/><div><dt>Situação reprodutiva</dt><dd><Pill tone={animal?.situacao === "GESTANTE" ? "green" : "amber"}>{rotulosReprodutivos[animal?.situacao ?? "DESCONHECIDA"] ?? animal?.situacao}</Pill></dd></div></div>
         <div><Syringe aria-hidden="true" size={25}/><div><dt>Tentativas</dt><dd>{resumo ? <>{resumo.tentativas} {referencia ? referencia.tipo === "SITUACAO_INICIAL" ? "desde o início registrado" : "desde o último parto registrado" : "no histórico disponível"}</> : "Contagem não informada"}</dd></div></div>
         <div><Baby aria-hidden="true" size={25}/><div><dt>Total de partos</dt><dd>{animal.partos ?? "Não informado"}</dd></div></div>
         <div><CalendarDays aria-hidden="true" size={25}/><div><dt>Referência</dt><dd>{referencia ? `${referencia.tipo === "SITUACAO_INICIAL" ? "Situação inicial" : referencia.tipo === "ABORTO" ? "Aborto registrado" : "Último parto registrado"} · ${formatBRDateISO(referencia.data)}` : resumo ? "Início não comprovado" : "Referência não informada"}</dd></div></div>
-      </dl> : <p className="text-sm text-ink-3">Consulta histórica neste sítio; o animal não pertence ao efetivo atual.</p>}</CardFicha>
+      </dl> : <p className="text-sm text-ink-3">Consulta histórica neste sítio; o animal não pertence ao efetivo atual.</p>}</SecaoGeralAnimal>
       {erroDemandas ? <p role="alert">Acompanhamentos não consultados: {erroDemandas}</p> : resumoDemandas && resumoDemandas.pendentes > 0 && <p className="text-sm">{resumoDemandas.pendentes} acompanhamento{resumoDemandas.pendentes === 1 ? " pendente" : "s pendentes"}. Consulte os exames e as próximas avaliações abaixo.</p>}
       <div className="repro-ficha-consultas">
-      <SecaoFicha titulo={animal ? "Aptidão e intervalos" : "Intervalos comprovados"} id="aptidao-reprodutiva-animal" acoes={podeLancar ? <Button variant="outline" onClick={() => {setDemanda(null);setAcao("avaliacao");}}>Avaliação avulsa</Button> : undefined}>
+      <SecaoGeralAnimal icon={Target} titulo={animal ? "Aptidão e intervalos" : "Intervalos comprovados"} id="aptidao-reprodutiva-animal" acao={podeLancar ? <Button variant="outline" onClick={() => {setDemanda(null);setAcao("avaliacao");}}>Avaliação avulsa</Button> : undefined}>
         {animal && (propriedadeId != null ? <ElegibilidadeAnimal animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} onMudou={() => void carregar()}/> : <p>É necessário o sítio comprovado no histórico de localização.</p>)}
         <section className="repro-intervalos" aria-label="Intervalos comprovados"><dl>{(painel.marcos?.intervalos ?? []).map(i => <div key={i.rotulo}><dt>{i.rotulo}</dt><dd>{i.dias == null ? "Não aferido" : `${i.dias} dias`}</dd></div>)}</dl>{!painel.marcos?.intervalos?.length && <p>Sem intervalos aferidos.</p>}</section>
         {!!painel.marcos?.pendencias?.length && <section className="repro-pendencias"><h3>Informações a conferir</h3><ul className="mt-2 space-y-2 text-sm">{painel.marcos.pendencias.map(p => <li key={p}>{p === "Não há início de ciclo comprovado." ? "Não há parto ou situação inicial que comprove o início do acompanhamento." : p}</li>)}</ul></section>}
-      </SecaoFicha>
-      {animal && propriedadeId != null && <SecaoFicha titulo="Acompanhamentos" resumo="Demandas e previsões · separados dos fatos realizados" id="acompanhamentos-reproducao-animal"><DemandasAcompanhamento animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} atualizacao={recarregarToken} onMudou={atualizar} onAvaliar={d => { setDemanda(d); setAcao("avaliacao"); }}/></SecaoFicha>}
+      </SecaoGeralAnimal>
+      {animal && propriedadeId != null && <SecaoGeralAnimal icon={CalendarDays} titulo="Acompanhamentos" id="acompanhamentos-reproducao-animal"><DemandasAcompanhamento animalId={animalId} propriedadeId={propriedadeId} painel={painel} podeLancar={podeLancar} atualizacao={recarregarToken} onMudou={atualizar} onAvaliar={d => { setDemanda(d); setAcao("avaliacao"); }}/></SecaoGeralAnimal>}
       </div>
-      <SecaoRecolhivel recolhivel={false} titulo="Protocolos reprodutivos" id="protocolos-reprodutivos-animal" acoes={podeLancar && propriedadeId != null ? <Button variant="outline" onClick={() => setIniciandoProtocolo(true)}>Iniciar protocolo individual</Button> : undefined}>
+      <SecaoGeralAnimal icon={ClipboardList} titulo="Protocolos reprodutivos" id="protocolos-reprodutivos-animal" acao={podeLancar && propriedadeId != null ? <Button variant="outline" onClick={() => setIniciandoProtocolo(true)}>Iniciar protocolo individual</Button> : undefined}>
         {iniciandoProtocolo && propriedadeId != null && <FormParticipacaoIndividual animalId={animalId} propriedadeId={propriedadeId} onFechar={() => setIniciandoProtocolo(false)} onSalvo={id => { setIniciandoProtocolo(false); navegarPara(`/pecuaria/reproducao/participacoes/${encodeURIComponent(id)}?sitio=${propriedadeId}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`); }} />}
         <ParticipacoesIndividuais animalId={animalId} tipo="REPRODUTIVO" podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos} propriedadeId={propriedadeId ?? undefined} />
         <ProtocolosAnimal animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} aoSalvar={()=>{setRevisaoProtocolos(v=>v+1);void carregar();}} revisao={recarregarToken + revisaoProtocolos}/>
-      </SecaoRecolhivel>
-      <CardFicha icon={Syringe} titulo="Tentativas" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("tentativa");}}>Registrar tentativa</Button> : undefined}>
+      </SecaoGeralAnimal>
+      <SecaoGeralAnimal id="tentativas-animal" icon={Syringe} titulo="Tentativas" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("tentativa");}}>Registrar tentativa</Button> : undefined}>
         <HistoricoReprodutivo chaveUrl="tentativas" fatos={fatos.filter(f => f.grupo === "Tentativa")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
-      </CardFicha>
-      <CardFicha icon={Baby} titulo="Partos" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("parto");}}>Registrar parto</Button> : undefined}>
+      </SecaoGeralAnimal>
+      <SecaoGeralAnimal id="partos-animal" icon={Baby} titulo="Partos" acao={podeLancar ? <Button onClick={() => {setDemanda(null);setAcao("parto");}}>Registrar parto</Button> : undefined}>
         <HistoricoReprodutivo chaveUrl="partos" fatos={fatos.filter(f => f.grupo === "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/>
-      </CardFicha>
-      <SecaoFicha titulo="Histórico reprodutivo" resumo="Fatos registrados · tentativas, avaliações e partos" id="historico-reprodutivo-animal" acoes={podeLancar ? <MenuAcoesFicha rotulo="Outros registros" itens={([["situacao", "Registrar situação inicial"], ["restricao", "Registrar restrição"]] as const).map(([id, rotulo]) => ({ id, rotulo, onSelect: () => { setDemanda(null); setAcao(id); } }))}/> : undefined}><HistoricoReprodutivo fatos={fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/></SecaoFicha>
-      {propriedadeId != null && <SecaoFicha titulo="Custos diretos" resumo="Reprodução · consultar custos" abertaInicial={false} id="custos-reproducao-animal"><CustosDiretos mostrarTitulo={false} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} finalidadeInicial="REPRODUCAO"/></SecaoFicha>}
-      {(animal || painel.lactacoes?.some(f => f.animalId === animalId) || painel.partos.some(f => f.animalId === animalId) || painel.gestacoes?.some(f => f.animalId === animalId && f.tipoEncerramento === "PERDA")) && <AcoesReprodutivas painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/>}
+      </SecaoGeralAnimal>
+      <SecaoGeralAnimal icon={History} titulo="Histórico reprodutivo" id="historico-reprodutivo-animal" acao={podeLancar ? <MenuAcoesFicha rotulo="Outros registros" itens={([["situacao", "Registrar situação inicial"], ["restricao", "Registrar restrição"]] as const).map(([id, rotulo]) => ({ id, rotulo, onSelect: () => { setDemanda(null); setAcao(id); } }))}/> : undefined}><HistoricoReprodutivo fatos={fatos.filter(f => f.grupo !== "Tentativa" && f.grupo !== "Parto")} animalId={animalId} propriedadeId={propriedadeId ?? undefined} onAbrir={setFato}/></SecaoGeralAnimal>
+      {propriedadeId != null && <SecaoGeralAnimal icon={CircleDollarSign} titulo="Custos diretos" id="custos-reproducao-animal"><CustosDiretos mostrarTitulo={false} animalId={animalId} propriedadeId={propriedadeId} podeLancar={podeLancar} finalidadeInicial="REPRODUCAO"/></SecaoGeralAnimal>}
+      {(animal || painel.lactacoes?.some(f => f.animalId === animalId) || painel.partos.some(f => f.animalId === animalId) || painel.gestacoes?.some(f => f.animalId === animalId && f.tipoEncerramento === "PERDA")) && <SecaoGeralAnimal id="gestacao-restricoes-lactacao" icon={Baby} titulo="Gestação, restrições e lactação"><AcoesReprodutivas painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} onMudou={atualizar}/></SecaoGeralAnimal>}
 
     </>}
     {fato && <DetalheFato fato={fato} podeLancar={podeLancar} onFechar={fecharFato} onMudou={() => { fecharFato(); void atualizar(); }}/>}

@@ -119,3 +119,28 @@
 @media (max-width: 900px) {
   .sidebar-clara .sidebar-trilho-controle { min-height: 44px; }
 }
+
+/* Um estado de trilho governa conteúdo, controles e rodapé. Os rótulos só
+   reaparecem quando há largura para lê-los, inclusive pelo teclado. */
+.sidebar-clara .sidebar-trilho-rotulo { min-width:0; }
+.sidebar-clara nav .sidebar-trilho-rotulo { white-space:nowrap; }
+.sidebar-clara button[aria-label="Menu da conta"] > .sidebar-trilho-rotulo { display:block; }
+@media(min-width:901px) {
+ .app.side-collapsed .sidebar-clara :is(.sidebar-trilho-rotulo,.sidebar-trilho-bloco,.sidebar-trilho-extra) { display:none; }
+ .app.side-collapsed .sidebar-clara { width:64px; }
+}
+@media(min-width:901px) and (max-width:1100px) {
+ .app:has(.sidebar-clara) { --side-w:64px; }
+ .app .sidebar-clara { width:64px; }
+ .app:not(.side-collapsed) .sidebar-clara:not(:hover):not(:focus-within) :is(.sidebar-trilho-rotulo,.sidebar-trilho-bloco,.sidebar-trilho-extra) { display:none; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) { width:240px; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-trilho-controle { width:100%; margin-inline:0; justify-content:flex-start; gap:8px; padding:8px 10px; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .ah-brand { flex-direction:row; gap:6px; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-marca-controles { flex-direction:row; margin-left:auto; gap:0; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) :is(.sidebar-cabecalho,.sidebar-navegacao,.sidebar-rodape) { padding-inline:12px; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-cabecalho { padding-top:16px; padding-bottom:14px; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-sitio { border:1px solid var(--side-hair); background:var(--sidebar-sitio-fundo,var(--card)); }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-sitio > span:nth-child(2) { display:flex; }
+ .app:not(.side-collapsed) .sidebar-clara:is(:hover,:focus-within) .sidebar-sitio > svg { display:block; }
+}
+@media(prefers-reduced-motion:reduce) { .sidebar-clara { transition:none; } }

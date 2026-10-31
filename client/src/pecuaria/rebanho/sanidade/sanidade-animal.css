@@ -46,3 +46,23 @@
 .pecuaria-content .sanidade-animal > .historico-sanitario-animal { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; padding:16px 0 0; }
 
 .ficha-v4 .sanidade-animal > .secao-ficha-direta > .secao-recolhivel-cabecalho h2, .ficha-v4 .historico-sanitario-animal > div > h3 { font-size:16px; }
+
+/* Ficha: carências pertencem às aplicações; o restante mantém seções irmãs. */
+.sanidade-animal .carencias-sanitarias-integradas { margin-bottom:20px; }
+.carencias-resumo-aplicacoes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); background:var(--surface-2,var(--muted)); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.carencia-destino-integrada { min-width:0; display:grid; align-content:start; gap:10px; padding:20px 24px; }
+.carencia-destino-integrada + .carencia-destino-integrada { border-left:1px solid var(--border); }
+.carencia-destino-integrada > span { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted-foreground); }
+.carencia-destino-integrada > span > svg { flex-shrink:0; color:var(--primary); }
+.carencia-destino-integrada > p { padding-left:32px; font-size:14px; line-height:22px; color:var(--muted-foreground); }
+.sanidade-animal .fin-tabela-desktop { border:1px solid var(--border); border-radius:8px; }
+.sanidade-animal .sanitario-custo-resumo > p { display:grid; gap:4px; }
+.sanidade-animal .sanidade-aplicacoes-vazio { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:28px 20px; text-align:center; color:var(--muted-foreground); background:var(--surface-2,var(--muted)); border-radius:10px; }
+.sanidade-aplicacoes-vazio > svg { width:32px; height:32px; color:var(--primary); }
+.sanidade-animal .sanidade-acao-anular { color:var(--destructive); }
+@media(max-width:600px) { .carencias-resumo-aplicacoes { grid-template-columns:1fr; } .carencia-destino-integrada { padding:16px; } .carencia-destino-integrada + .carencia-destino-integrada { border-left:0; border-top:1px solid var(--border); } }
+:root [data-design-operacional] .sanidade-animal .fin-tabela thead th { background:var(--table-header,#e2e7ea); color:var(--table-heading,#34434b); }
+.sanidade-animal .sanidade-acoes-linha { flex-wrap:wrap; gap:6px; }
+.sanidade-animal .sanidade-acao-anular { background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+
+.carencia-destino-integrada > small { padding-left:32px; color:var(--muted-foreground); }

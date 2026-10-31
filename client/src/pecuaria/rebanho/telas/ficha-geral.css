@@ -8,11 +8,11 @@
 .ficha-animal-geral .secao-recolhivel-titulo{display:flex;align-items:center;gap:10px}
 .ficha-animal-geral h2,.ficha-animal-geral .secao-recolhivel-titulo{font-size:16px!important;line-height:1.5}
 .ficha-animal-geral .pec-icone{display:grid;place-items:center;flex-shrink:0}
-.ficha-animal-geral .ficha-animal-ilustracao{width:104px;height:104px}
+.ficha-animal-geral .ficha-animal-ilustracao{width:72px;height:72px}
 .ficha-botao-contorno{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);font-size:13px;font-weight:600}
 .ficha-botao-contorno:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .ficha-dialogo{padding:24px!important;max-height:90dvh;overflow:auto}
-@media(max-width:600px){.ficha-animal-geral .ficha-animal-ilustracao{width:80px;height:80px}.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-cabecalho{flex-wrap:wrap}.ficha-dialogo{padding:20px!important}}
+@media(max-width:600px){.ficha-animal-geral .ficha-animal-ilustracao{width:72px;height:72px}.ficha-animal-geral .ficha-geral-secao>.secao-recolhivel-cabecalho{flex-wrap:wrap}.ficha-dialogo{padding:20px!important}}
 
 .ficha-historico-filtros{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--border)}
 .ficha-historico-filtros>div.order-first{flex:1 1 300px}
@@ -26,16 +26,54 @@
 .ficha-historico-item .consulta-entidade-conteudo,.ficha-historico-item footer{margin:0;padding:0;border:0}
 @media(max-width:760px){.ficha-animal-geral .consulta-cronologia .ficha-historico-item{grid-template-columns:1fr}.ficha-historico-item footer{justify-content:flex-start}}
 
-.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:104px;height:104px}
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:72px;height:72px}
 .pecuaria-content .pec-ficha.ficha-animal-geral .pec-icone{display:inline-grid;width:36px;height:36px;border-radius:50%;background:var(--accent);color:var(--primary);place-items:center}
 .pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item h3{font-size:14px;line-height:1.4}
 .pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item footer{border:0;margin:0;padding:0}
 .pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item .consulta-entidade-conteudo{margin:0;color:var(--foreground)}
 .pecuaria-content .pec-ficha.ficha-animal-geral .consulta-cronologia .ficha-historico-item .consulta-entidade-icone{color:inherit}
-@media(max-width:600px){.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:80px;height:80px}}
+@media(max-width:600px){.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-ilustracao{width:72px;height:72px}}
 
 .pecuaria-content .pec-ficha.ficha-animal-geral :is(h2,h3){font-size:16px;line-height:1.5}
 .ficha-categoria-localizacao{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:24px;margin-top:20px;padding-top:20px;border-top:1px solid var(--border)}
 .ficha-categoria-localizacao>section{display:flex;align-items:end;justify-content:space-between;gap:16px;min-width:0}
 .ficha-categoria-localizacao>section+section{border-left:1px solid var(--border);padding-left:24px}
 @media(max-width:760px){.ficha-categoria-localizacao{grid-template-columns:1fr}.ficha-categoria-localizacao>section+section{border-left:0;border-top:1px solid var(--border);padding-left:0;padding-top:20px}}
+
+/* Os painéis compartilham a borda das abas; cada seção possui seu próprio recuo. */
+.pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral > [role="tabpanel"] { padding:0; background:transparent; border-radius:0; margin-top:20px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-geral { padding-top:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-geral-secao { margin-top:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral :is(#ficha-painel-producao,.repro-individual) { display:grid; gap:24px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .repro-ficha-consultas { gap:24px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-geral-secao > .secao-recolhivel-cabecalho { padding:12px 64px 12px 16px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-geral-secao > .secao-recolhivel-conteudo { padding:16px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral #gestacao-restricoes-lactacao > .secao-recolhivel-conteudo > [data-slot="financeiro-panel"] { border:0; padding:0; background:transparent; }
+.pecuaria-content .pec-ficha.ficha-animal-geral #gestacao-restricoes-lactacao > .secao-recolhivel-conteudo > [data-slot="financeiro-panel"] > .fin-tabela-cabecalho { display:none; }
+
+/* Identificação A: brinco, nome e lote na mesma linha de base; estados abaixo. */
+.pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:16px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade { display:flex; flex-direction:column; justify-content:center; gap:8px; min-height:72px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identificacao { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 12px; font-family:"Manrope","DM Sans",sans-serif; line-height:24px; margin:0; min-width:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-brinco { font-size:20px; font-weight:750; overflow-wrap:anywhere; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-nome { font-size:18px; font-weight:600; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-lote { font-size:16px; font-weight:500; color:var(--muted-foreground); border-left:1px solid var(--border); padding-left:12px; overflow-wrap:anywhere; }
+.pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade > .ficha-status { width:auto; gap:8px; margin:0; padding:0; }
+@media(max-width:900px) {
+ .pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns:72px minmax(0,1fr); }
+ .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-acoes { grid-column:1 / -1; grid-row:auto; }
+}
+@media(max-width:600px) {
+ .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade { display:contents; }
+ .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identificacao { align-self:center; }
+ .pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade > .ficha-status { grid-column:1 / -1; }
+ .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade > p { grid-column:1 / -1; }
+}
+
+/* Atalho confirmado para a consulta completa; identidade mantém suas dimensões. */
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-acoes { display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:8px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:8px 14px; border:1px solid #dac7a9; border-radius:8px; background:#fbf5e9; color:#775930; font-size:14px; font-weight:600; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas > svg { flex-shrink:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas:hover { background:#f5ead5; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-alertas-contagem { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; padding:0 5px; border-radius:6px; background:#775930; color:white; font-size:12px; font-weight:700; line-height:20px; text-align:center; }

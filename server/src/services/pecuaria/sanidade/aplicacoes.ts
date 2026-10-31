@@ -1,3 +1,4 @@
+import { custoAplicacao } from "./custo-aplicacao.js";
 import { vincularAplicacaoAlertaTx, revisarAplicacaoAnuladaTx } from "./alertas/atendimento.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
 import { buscaAnimal, filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
@@ -310,9 +311,9 @@ function filtroAplicacoes(animalId: string | undefined, propriedadeId: number | 
 
 export async function listarAplicacoes(animalId: string | undefined, propriedadeId: number | null, filtro?: ConsultaSanitaria) {
   const fatos = await prisma.aplicacaoProduto.findMany({ where: filtroAplicacoes(animalId, propriedadeId, filtro),
-    include: { animal: { select: { id: true, brinco: true, nome: true } }, produto: { select: { id: true, nome: true, unidade: true } }, movimentoEstoque: { select: { alocacaoPartidaEstoques: alocacaoLoteSanitario } } },
+    include: { classificacaoCusto: true, ocorrencia: { select: { id: true, doencaNomeSnapshot: true } }, tarefa: { select: { execucaoId: true } }, animal: { select: { id: true, brinco: true, nome: true } }, produto: { select: { id: true, nome: true, unidade: true } }, movimentoEstoque: { select: { alocacaoPartidaEstoques: alocacaoLoteSanitario } } },
     orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
-  return fatos.map((fato) => { const { movimentoEstoque: _movimento, ...historico } = fato; return { ...historico, ...loteAplicacaoDTO(fato) }; });
+  return fatos.map((fato) => { const { movimentoEstoque: _movimento, classificacaoCusto: _classificacao, ...historico } = fato; return { ...historico, resumoCusto: custoAplicacao(fato), ...loteAplicacaoDTO(fato) }; });
 }
 
 export async function listarAplicacoesPaginadas(animalId: string | undefined, propriedadeId: number | null, filtro: ConsultaSanitaria) {

@@ -30,12 +30,19 @@ it("estado vazio não comprova zero/segagem e histórico sem lactação permanec
   expect(await screen.findByText("Sem registros não significa produção zero nem secagem.")).toBeTruthy();
   expect(screen.queryByText("Litros registrados no período")).toBeNull();
 });
-it("deixa histórico, ordenhas e carência visíveis e agrupa a rotina com a cobertura", async () => {
+it("preserva conteúdo ao recolher histórico e agrupa a rotina com a cobertura", async () => {
   vi.mocked(consultarLeite).mockResolvedValue({ ...dados, controleIndividual: { quantidade: 1, unidade: "MESES", ultimaAfericao: null, proximaAfericao: null } });
   const { container } = render(<HistoricoProdutivoLeite animalId="animal" propriedadeId={1} />);
   await screen.findByText("0 dias em lactação");
   expect(screen.getByRole("heading", { name: "Histórico produtivo" })).toBeTruthy();
-  expect(screen.queryByRole("button", { name: "Histórico produtivo" })).toBeNull();
+  const recolher = screen.getByRole("button", { name: "Histórico produtivo" });
+  const conteudo = container.querySelector("#historico-produtivo-leite-conteudo")!;
+  expect(recolher.getAttribute("aria-expanded")).toBe("true");
+  fireEvent.click(recolher);
+  expect(conteudo.hasAttribute("hidden")).toBe(true);
+  expect(conteudo.textContent).toContain("0 dias em lactação");
+  fireEvent.click(recolher);
+  expect(conteudo.hasAttribute("hidden")).toBe(false);
   expect(container.querySelector("details")).toBeNull();
   const rotina = screen.getByRole("group", { name: "Rotina e cobertura do controle individual" });
   expect(within(rotina).getByText("A cada 1 mês")).toBeTruthy();

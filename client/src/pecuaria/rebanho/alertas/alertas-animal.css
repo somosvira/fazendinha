@@ -1,0 +1,20 @@
+.alertas-animal-disposicoes,.alertas-animal-filtros,.alertas-animal-visual{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.alertas-animal-disposicoes{margin-bottom:16px}
+.alertas-animal-filtros{gap:12px;margin-bottom:16px}
+.alertas-animal-filtros>.busca-lista{flex:1;min-width:200px}
+.alertas-animal-total{color:var(--muted-foreground);margin-bottom:12px;font-size:13px}
+.alertas-animal-lista{display:grid;gap:10px}
+.alertas-animal-linha{display:grid;grid-template-columns:24px minmax(180px,1fr) minmax(100px,auto) 140px auto;align-items:center;gap:16px;padding:16px;border:1px solid var(--border);border-radius:12px}
+.alertas-animal-linha>svg{color:var(--fin-pendente-texto,#775930)}
+.alertas-animal-linha>div{min-width:0;overflow-wrap:anywhere}
+.alertas-animal-motivo{font-size:13px;color:var(--muted-foreground);margin-top:4px;white-space:normal}
+.alertas-animal-data{display:grid;gap:4px;font-variant-numeric:tabular-nums;font-size:14px}
+.alertas-animal-data>span{font-size:13px;color:var(--muted-foreground)}
+.alertas-animal-estado{padding:24px 0;display:grid;gap:12px}
+.alertas-animal-registros{list-style:none;padding:0;margin:0;display:grid;gap:12px}
+.alertas-animal-registros>li{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border)}
+.alertas-animal-registros p{margin-top:4px;font-size:14px;overflow-wrap:anywhere}
+.alertas-animal .fin-paginacao{margin-top:16px}
+@media(max-width:900px){.alertas-animal-linha{grid-template-columns:24px minmax(0,1fr) auto;gap:12px}.alertas-animal-linha>.fin-selo{grid-column:2;justify-self:start}.alertas-animal-data{grid-column:2}.alertas-animal-linha>button{grid-column:3;grid-row:2 / span 2}.alertas-animal-registros>li{align-items:flex-start;flex-wrap:wrap}}
+@media(max-width:480px){.alertas-animal-filtros>.busca-lista{min-width:0;width:100%;flex-basis:100%}.alertas-animal-linha{grid-template-columns:24px minmax(0,1fr)}.alertas-animal-linha>button{grid-column:2;grid-row:auto;justify-self:start}}
+.alertas-animal-vazio{display:grid;justify-items:center;gap:12px;padding:30px 16px;text-align:center;color:var(--muted-foreground)}

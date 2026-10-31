@@ -92,30 +92,13 @@ function areaExtraOfTab(tab: Tab): AreaTrabalhoId | null {
   return AREAS_TRABALHO.find((area) => area.extras?.some((item) => item.id === tab))?.id ?? null;
 }
 
-// Breakpoints do antigo `.rb-side` (rebanho.css): >=901px o trilho fica sempre
-// visível; entre 901–1100px vira ícone-only (colapsado) e expande temporário por
-// cima do conteúdo no hover/foco; <=900px quem assume é o drawer (Sheet) abaixo.
-// IMPORTANTE: o scanner do Tailwind lê o TEXTO literal do arquivo (não executa
-// JS) — por isso estas constantes precisam conter os nomes de classe já
-// escritos por extenso (sem `${...}` template), senão a CSS correspondente
-// nunca é gerada (utilitário "desconhecido", descartado silenciosamente).
-// Cada constante do trilho tem DUAS gatilhos: a faixa 901–1100px (media query,
-// auto) E o colapso MANUAL (.side-collapsed no .app, via toggle no header). O
-// colapso manual não tem hover-expand — fica ícone-only até o toggle reverter.
-const RAIL_ICON_BTN =
-  "sidebar-trilho-controle min-[901px]:max-[1101px]:justify-center min-[901px]:max-[1101px]:gap-0 min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:py-2.5 min-[901px]:max-[1101px]:[&_svg]:h-[19px] min-[901px]:max-[1101px]:[&_svg]:w-[19px] min-[901px]:max-[1101px]:[&_svg]:opacity-100 [.side-collapsed_&]:justify-center [.side-collapsed_&]:gap-0 [.side-collapsed_&]:px-2 [.side-collapsed_&]:py-2.5";
-// item/módulo ativo dentro da faixa colapsada: mantém só o realce de fundo (sem
-// barrinha ::before, que fica escondida na largura estreita).
-const RAIL_ACTIVE =
-  "min-[901px]:max-[1101px]:before:hidden min-[901px]:max-[1101px]:bg-[rgba(232,220,196,0.10)] [.side-collapsed_&]:before:hidden [.side-collapsed_&]:bg-[rgba(232,220,196,0.10)]";
-// hidden por padrão na faixa colapsada, reaparece no hover/foco do <aside group>.
-const RAIL_LABEL =
-  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:flex min-[901px]:max-[1101px]:group-focus-within:flex [.side-collapsed_&]:hidden";
-const RAIL_BLOCK =
-  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:block min-[901px]:max-[1101px]:group-focus-within:block [.side-collapsed_&]:hidden";
-// chevron `›` dos itens de clique único — some na faixa colapsada.
-const RAIL_HIDE =
-  "min-[901px]:max-[1101px]:hidden min-[901px]:max-[1101px]:group-hover:inline min-[901px]:max-[1101px]:group-focus-within:inline [.side-collapsed_&]:hidden";
+// O CSS do shell governa os estados desktop: trilho automático entre 901–1100px,
+// expansão temporária por hover/foco e colapso manual sem expansão temporária.
+// As classes semânticas mantêm rótulos, blocos e controles no mesmo estado.
+const RAIL_ICON_BTN = "sidebar-trilho-controle";
+const RAIL_LABEL = "sidebar-trilho-rotulo";
+const RAIL_BLOCK = "sidebar-trilho-bloco";
+const RAIL_HIDE = "sidebar-trilho-extra";
 
 /** Item de navegação (clique único). `chevron` mostra o `›` do protótipo nos
  *  itens que abrem uma página/sub-página. `activeWhen` acende o item também
@@ -141,11 +124,10 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         nested && "py-[7px] pl-4 text-[13px] [&_svg]:h-[15px] [&_svg]:w-[15px]",
         // item ativo: fundo sutil + barrinha brass à esquerda (::before)
         isOn && "bg-[rgba(232,220,196,0.10)] font-semibold [&_svg]:opacity-100 before:absolute before:bottom-2 before:left-0 before:top-2 before:w-[3px] before:rounded-[2px] before:bg-leite",
-        isOn && RAIL_ACTIVE,
       )}
     >
       {Icone ? <Icone strokeWidth={1.7} aria-hidden /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>{ICON[id]}</svg>}
-      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
+      <span className={cn("min-w-0 flex-1 text-left", RAIL_LABEL)}>{label}</span>
       {chevron && (
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
       )}
@@ -178,7 +160,7 @@ function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => vo
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" type="button" aria-label="Menu da conta" className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-[rgba(232,220,196,0.08)]", RAIL_ICON_BTN)}>
           <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-leite text-sm font-semibold text-ink">{user.inicial}</span>
-          <span className={cn("min-w-0 flex-1", RAIL_LABEL)}><span className="block truncate text-[13px] font-semibold text-mast-ink">{user.nome}</span><span className="mt-0.5 block truncate text-[10.5px] text-[var(--side-mute)]">{papel}</span></span>
+          <span className={cn("min-w-0 flex-1 text-left", RAIL_LABEL)}><span className="block truncate text-[13px] font-semibold text-mast-ink">{user.nome}</span><span className="mt-0.5 block truncate text-[10.5px] text-[var(--side-mute)]">{papel}</span></span>
           <span className={cn("text-xs text-[var(--side-mute)]", RAIL_HIDE)} aria-hidden>⌃</span>
         </Button>
       </DropdownMenuTrigger>
@@ -276,7 +258,7 @@ function GroupToggle({ id, label, isOpen, onToggle }: { id: SidebarGroupId; labe
       )}
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>{GROUP_ICON[id]}</svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>{label}</span>
+      <span className={cn("min-w-0 flex-1 text-left", RAIL_LABEL)}>{label}</span>
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
         className={cn("!h-[10px] !w-[10px] transition-transform duration-150", isOpen && "rotate-90", RAIL_HIDE)}
@@ -306,7 +288,7 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
         <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" />
         <circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" />
       </svg>
-      <span className={cn("flex-1", RAIL_LABEL)}>Mais</span>
+      <span className={cn("min-w-0 flex-1 text-left", RAIL_LABEL)}>Mais</span>
       <svg
         viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden
         className={cn("!h-[10px] !w-[10px] flex-none transition-transform duration-150", isOpen && "rotate-90", RAIL_BLOCK)}
@@ -417,11 +399,11 @@ export function AppSidebar({
   // o contexto da fazenda. O divisor fecha o cabeçalho depois do seletor.
   const sideHead = (
     <div className="flex-none">
-      <div className="border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pb-2 min-[901px]:max-[1101px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
+      <div className="sidebar-cabecalho border-b border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 pb-3.5 pt-4 min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pb-2 min-[901px]:max-[1101px]:pt-3 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pb-2 [.side-collapsed_&]:pt-3">
         <div className="ah-brand flex items-center gap-2.5 px-1.5 min-[901px]:max-[1101px]:flex-col min-[901px]:max-[1101px]:gap-1.5 min-[901px]:max-[1101px]:px-0 [.side-collapsed_&]:flex-col [.side-collapsed_&]:gap-1.5 [.side-collapsed_&]:px-0">
           <TerranoSymbol size={30} tone="light" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-sans text-[21px] font-semibold leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
-          <div className="ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
+          <div className="sidebar-marca-controles ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
             <SearchControl onClick={abrirBusca} />
             <Button variant="ghost" type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-1 [.side-collapsed_&]:order-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
@@ -436,7 +418,7 @@ export function AppSidebar({
   );
 
   const navBody = (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
+    <div className="sidebar-navegacao flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3.5 pb-2 pt-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[901px]:max-[1101px]:px-2 min-[901px]:max-[1101px]:pt-2.5 [.side-collapsed_&]:px-2 [.side-collapsed_&]:pt-2.5">
       {(temAcessoArea(areasEfetivas,"pecuaria") || (temAcessoArea(areasEfetivas,"financeiro") && financeiro.some(t=>t.id==="dashboard"))) && <div className="mb-3"><Item id="gerencial" label="Painel administrativo" current={current} onNav={nav}/></div>}
       {(trabalhoAtivo?.resumo || trabalhoAtivoRelatorio) && (
         <section role="group" aria-label="Trabalhos ativos" className="mb-3 border-b border-dashed border-[rgba(232,220,196,0.16)] pb-3">
@@ -514,7 +496,7 @@ export function AppSidebar({
 
   // Rodapé ancorado: somente identidade e ações do usuário.
   const sideFoot = (
-    <div className="flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1101px]:px-2 [.side-collapsed_&]:px-2">
+    <div className="sidebar-rodape flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1101px]:px-2 [.side-collapsed_&]:px-2">
       <div className="flex flex-col gap-px">
         <UserMenu user={user} onAcessos={onAcessos} onSair={onSair} />
       </div>
@@ -530,7 +512,6 @@ export function AppSidebar({
         className={cn(
           "sidebar-clara group fixed inset-y-0 left-0 h-dvh z-[11] hidden w-[var(--side-w)] flex-col overflow-hidden bg-mast text-mast-ink print:hidden",
           "min-[901px]:flex",
-          "min-[901px]:max-[1101px]:w-[64px]",
           "min-[901px]:max-[1101px]:transition-[width,box-shadow] min-[901px]:max-[1101px]:duration-[180ms] min-[901px]:max-[1101px]:ease-in-out",
         )}
       >

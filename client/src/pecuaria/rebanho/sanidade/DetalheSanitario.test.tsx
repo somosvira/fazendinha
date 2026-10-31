@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import * as permissoesFinanceiras from "../../../financeiro/permissoes";
 import { DetalheSanitario } from "./DetalheSanitario";
 vi.mock("./HistoricoExame", () => ({ HistoricoExame: () => <section>Histórico preservado</section> }));
 vi.mock("../../../estoque/navegacao", () => ({ podeAcessarArea: () => true }));
@@ -64,4 +65,38 @@ it("mantém zero, falso e JSON composto nos resultados múltiplos", () => {
   expect(screen.getByText("Não")).toBeTruthy();
   expect(screen.getByText('{"lote":"A","valor":0,"reagente":false}')).toBeTruthy();
   expect(screen.queryByText("[object Object]")).toBeNull();
+});
+
+it("separa custo comprovado dos detalhes e conserva cobertura parcial", () => {
+  render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ status: "VALIDO", responsavel: "Ana", data: "2026-10-30", resumoCusto: { cobertura: "PARCIAL", situacao: "PARCIAL", totalConhecido: "12.30", componentes: [{ chave: "produto", natureza: "MATERIAL", valor: "12.30", estado: "CONHECIDO" }, { chave: "servico", natureza: "SERVICO", valor: null, estado: "DESCONHECIDO" }], limitacoes: ["Custos indiretos fora deste total"] } }} />);
+  expect(screen.getByRole("heading", { name: "Detalhes" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Custo da aplicação" })).toBeTruthy();
+  expect(screen.getByText("Parcelas conhecidas · parcial")).toBeTruthy();
+  expect(screen.getByText("Serviço / procedimento atribuído")).toBeTruthy();
+  expect(screen.getByText("Custos indiretos fora deste total")).toBeTruthy();
+  expect(screen.queryByRole("link", { name: /Serviço/ })).toBeNull();
+});
+
+it("tarefa usa somente o planejamento recebido e não inventa responsável ou reavaliação", () => {
+  render(<DetalheSanitario tipo="tarefa" abrir={vi.fn()} valor={{ id: "t", previstaPara: "2026-11-01", situacao: "PENDENTE", parametros: { tipo: "EXAME", tipoExameNomeSnapshot: "Avaliação registrada" }, execucao: { animal: { id: "a", brinco: "RN02" }, protocolo: { nome: "Protocolo real", versao: 2 } } }} />);
+  expect(screen.getByText("01/11/2026")).toBeTruthy();
+  expect(screen.getByText("Avaliação registrada")).toBeTruthy();
+  expect(screen.getByText(/Protocolo real/)).toBeTruthy();
+  expect(screen.queryByText("Próxima reavaliação")).toBeNull();
+});
+
+it("custos operacionais não concedem acesso ao documento financeiro sem verValores", () => {
+  const gate = vi.spyOn(permissoesFinanceiras, "podeVerValoresFinanceiros").mockReturnValue(false);
+  render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ operacaoServicoId: "servico", operacaoServico: { numero: 42 }, resumoCusto: { cobertura: "COMPLETO", situacao: "COMPLETO", totalConhecido: "7.40", componentes: [{ chave: "servico", natureza: "SERVICO", valor: "7.40", estado: "CONHECIDO" }], limitacoes: [] } }} />);
+  expect(screen.getByText("Serviço vinculado")).toBeTruthy();
+  expect(screen.queryByRole("link", { name: /Operação #42/ })).toBeNull();
+  expect(screen.getByText("Custo direto registrado")).toBeTruthy();
+  gate.mockRestore();
+});
+
+it("abre o fato realizado pelo sítio próprio mesmo quando a tarefa pertence a outro sítio", () => {
+  const abrir = vi.fn();
+  render(<DetalheSanitario tipo="tarefa" abrir={abrir} valor={{ id: "t", execucao: { propriedadeId: 2 }, aplicacoes: [{ id: "aplicacao-b", propriedadeId: 9, data: "2026-10-30" }] }} />);
+  fireEvent.click(screen.getByRole("button", { name: "Aplicação · 30/10/2026" }));
+  expect(abrir).toHaveBeenCalledWith("aplicacao", "aplicacao-b", 9);
 });

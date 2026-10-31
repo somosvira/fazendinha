@@ -117,7 +117,7 @@ describe("TrabalhoAtivo", () => {
     expect(botao.getAttribute("aria-current")).toBeNull();
     // Descrição e tipo ficam no mesmo bloco, escondido inteiro no trilho recolhido.
     const bloco = screen.getByText("Ração para o gado").parentElement!;
-    expect(bloco.className).toContain("[.side-collapsed_&]:hidden");
+    expect(bloco.className).toContain("sidebar-trilho-bloco");
     expect(bloco.contains(screen.getByText("Compra para estoque"))).toBe(true);
   });
 

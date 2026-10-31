@@ -22,6 +22,8 @@ Produção e qualidade de leite V5 estão implementadas na base integrada, confo
 
 A rota `/pecuaria/rebanho/animais/:id` reúne Resumo, Cadastro e Histórico na aba **Geral**, nesta ordem: Identificação, Filiação e composição racial, Peso, Histórico e auditoria. Links e hashes antigos (`resumo`, `cadastro`, `historico`, `auditoria`, `categoria`, `identificacao-genetica`, `peso-manejo`) continuam reconhecidos e revelam a seção correspondente. O cadastro mantém filiação interna/externa e composição; filhos aparecem inline com estados distintos de carregamento, erro e resultado, sem converter falha em ausência. Categoria mantém cálculo automático/manual e histórico em modal próprio. Finalidade e papel reprodutivo integram os dados da identificação. Categoria e localização atual têm rótulos explícitos e ficam próximas; “Ver histórico” da localização abre a tabela de movimentações, com os comandos autorizados existentes. As abas usam o componente compartilhado `SubTabs` sem ajustes visuais exclusivos da ficha.
 
+O cabeçalho omite “Sem categoria”, papel de receptora/doadora e estados “a conferir”. Situação reprodutiva exibe apenas Gestante ou Vazia; Seca depende de contexto produtivo confirmado, pode coexistir com a situação reprodutiva e não é inferida de ausência de lactação. Carência vigente confirmada gera somente “Em carência”, sem destinos ou etiqueta para ausência/pendência. Protocolos usam “Em protocolo” e “Protocolo programado”. Dados completos permanecem nas respectivas seções.
+
 O cabeçalho não apresenta o estado positivo “Ativo” nem medidas de idade/peso; baixa explícita e comandos existentes seguem sujeitos às permissões. Peso fica na seção própria, com GMD e curva juntos e pesagens em tabela, preservando detalhes e ações. Histórico e auditoria relacionam fatos e alterações por identidade e entidade, incluindo os aliases `DestinoAnimal`/`FinalidadeAnimal`; transições só mostram anterior → atual quando sustentadas por evidência. A trilha conserva alterações de cadastro e correções sem criar fatos clínicos fictícios. Sanidade e Reprodução agrupam ações nos cabeçalhos das respectivas seções.
 
 O acesso de desmama/castração não foi removido: enquanto B estiver pendente, continua acessível no modal **Desmama e castração** por **Mais ações** para quem lança e pelo cabeçalho para leitores/animais baixados, reutilizando os fluxos existentes. A ficha conserva os fatos no histórico. A conclusão futura depende de destino funcional no Bezerreiro antes de retirar esse acesso.
@@ -83,6 +85,20 @@ Execução de etapa usa prévia/confirmação atômica e idempotente. Desvios de
 Um Serviço financeiro pode associar múltiplos procedimentos realizados do mesmo sítio. Valor individual é opcional (`null` difere de zero); vínculo não gera novo fato físico ou despesa e não duplica procedimento já representado pelo protocolo. A leitura dos custos operacionais atribuídos depende de sessão, área Pecuária e escopo autorizado; edição e documentos financeiros completos conservam as permissões financeiras. Na interface, use “Gerenciar procedimentos”; nomes internos de rateio permanecem por compatibilidade. Referência técnica sanitária fica no histórico, sem voltar aos formulários.
 
 Serviços atuais: `server/src/services/pecuaria/sanidade/`; garantias de catálogos, histórico, partidas/validade e protocolos na baseline SQL vigente.
+
+### Ficha individual — alertas
+
+A aba Alertas reúne a consulta dos cuidados deste animal, com estados de cobertura, filtros, lista/tabela e detalhes existentes. O acesso junto de Mais ações só aparece com atenção confirmada e contagem positiva; substitui o resumo acima das abas. Regras de contagem, escopo e navegação estão no [contrato de alertas](alertas.md#alertas-na-ficha-do-animal).
+
+### Ficha individual — consulta sanitária
+
+A aba Sanidade organiza Aplicações sanitárias, Protocolos sanitários, Histórico sanitário e Agenda sanitária em seções independentes. Os cabeçalhos recolhem o conteúdo sem desmontá-lo e exibem suas ações somente quando abertos. Carências de leite e abate/carne pertencem ao bloco de aplicações, com estados próprios; ausência de aplicação não comprova liberação sanitária.
+
+O histórico reúne ocorrências e exames, com linha do tempo/tabela, busca, tipo e período. Consulta todas as páginas autorizadas antes da apresentação local de dez registros; falhas não apresentam uma coleção parcial como completa. A agenda separada oferece calendário mensal e lista, usando as datas e situações das tarefas existentes. O carregamento paginado não constitui um snapshot transacional durante alterações concorrentes.
+
+Detalhes sanitários usam blocos estáticos e corpo rolável. Aplicações exibem animal, autoria, data, dias decorridos, produto/lote, administração, local, vínculos, carências e observações. Links de produto e serviço dependem dos identificadores comprovados e do acesso ao destino. Anulação conserva motivo, permissões e efeitos operacionais existentes.
+
+O custo da aplicação reutiliza a composição de custos diretos com os valores históricos atribuídos ao fato, incluindo cobertura do serviço e material documentado. Não utiliza preço atual do produto nem soma novamente o total do atendimento. Ausência de valor é pendência, não zero; aplicação anulada sem consumo mantido não compõe o custo atual. A leitura operacional e o acesso aos documentos financeiros continuam sujeitos às permissões descritas acima.
 
 ### Carência sugerida no cadastro de produto
 
