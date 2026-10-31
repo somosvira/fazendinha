@@ -170,7 +170,7 @@
 .ficha-animal-cabecalho > .ficha-baixa-resumo { grid-column: 1 / -1; margin-bottom: 0; }
 .pecuaria-content .rebanho-content .ficha-v4 > .ficha-animal-abas { border-bottom: 1px solid var(--border); }
 .pecuaria-content .rebanho-content .ficha-v4 .ficha-animal-abas [role="tab"] { padding: 11px 0; }
-.pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; background: var(--card); border-radius: 0 12px 12px; }
+.pecuaria-content .rebanho-content .ficha-v4 > [role="tabpanel"] { padding: 18px; background: var(--card); border-radius: 12px; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta { margin: 0; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-cabecalho { padding: 0 0 14px; }
 .pecuaria-content .rebanho-content .ficha-v4 #ficha-painel-producao > .secao-ficha-direta > .secao-recolhivel-conteudo { padding: 0; }

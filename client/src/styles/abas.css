@@ -62,9 +62,8 @@
 .pecuaria-content .sanidade-navegacao:has(.abas-pasta) { margin-bottom: 0; }
 .pecuaria-content .sanidade-navegacao:has(.abas-pasta) ~ .sanidade-lista { border-top-left-radius: 0; }
 .pecuaria-content .rebanho-nav:has(.abas-pasta) ~ .rebanho-lista,
-.pecuaria-content .rebanho-nav:has(.abas-pasta) + [data-slot="financeiro-panel"] { margin-top: 0; border-top-left-radius: 0; }
+.pecuaria-content .rebanho-nav:has(.abas-pasta) + [data-slot="financeiro-panel"] { margin-top: 0; }
 .pecuaria-content .pec-painel-rebanho > .rebanho-nav:has(.abas-pasta) ~ .pec-panorama-grid { margin-top: 0; }
-.pecuaria-content .pec-panorama-principal > [data-slot="financeiro-panel"]:first-child { border-top-left-radius: 0; }
 .pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo { margin-top: 0; }
 .pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo > [data-slot="financeiro-panel"]:first-of-type,
 .pecuaria-content .nutricao-pagina > .abas-navegacao + [data-slot="financeiro-panel"],

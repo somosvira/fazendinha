@@ -13,6 +13,7 @@ A revisão da direção usou `impeccable`; `frontend-design` não estava dispon�
 - Gutters simétricos, títulos compartilhados compactos e acionadores alinhados no trilho; limites de 900/901 e 1100/1101 px coerentes entre CSS e variantes do Tailwind.
 - Menu móvel e expansão temporária do trilho automático preservados, separados do colapso manual.
 - Protocolos em tabela explícita também no celular, com rolagem própria, finalidade somente quando relevante e comandos secundários condicionados em menu.
+- Consultas de animais, painel do rebanho e conteúdo da ficha mantêm os quatro cantos arredondados em 12 px, como os demais painéis. O espaço entre as abas do rebanho e a consulta é preservado.
 - Cartões de protocolos sem reserva para prévia vazia; cartões de animais limitados a cabeçalho, imagem/tags/lote e ações, com altura uniforme e seleção independente.
 
 A resposta de `GET /animais?comContexto=true` passa a incluir a situação reprodutiva já calculada em lote para a tabela de animais. Não há alteração de banco, migrations, permissões ou cálculos. Os comentários anteriores sobre tags do cabeçalho do animal e tabela de Últimas pesagens não integram esta entrega.
