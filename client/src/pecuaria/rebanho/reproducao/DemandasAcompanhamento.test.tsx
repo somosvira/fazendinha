@@ -32,3 +32,25 @@ it("oferece planejamento diretamente e exige prévia e motivo para criar sem alt
   fireEvent.click(confirmar);
   await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/acompanhamento/adocao",expect.objectContaining({politicaId:"regra1",revisao:"revisao1",tentativaIds:["tentativa1"],motivo:"Planejamento conferido no histórico"}),"POST",7));
 });
+
+it("calendário consulta todas as páginas e conserva avaliações sem data", async () => {
+ vi.mocked(reqV4).mockImplementation(async path => {const pagina=new URLSearchParams(path.split("?")[1]).get("pagina");return {itens:[{id:`d${pagina}`,finalidade:pagina==="1"?"DIAGNOSTICO":"SEXAGEM",ocorrencia:1,tentativaId:null,gestacaoId:null,previstaPara:null,estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{},exameResolucaoId:null}],total:2,pagina:Number(pagina),porPagina:1,resumo:{total:2,pendentes:2,resolvidas:0,encerradas:0,semData:2}} as never;});
+ render(<DemandasAcompanhamento naFicha animalId="a" propriedadeId={7} painel={{animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[]}} podeLancar={false} onAvaliar={vi.fn()} atualizacao={1}/>);
+ fireEvent.click(screen.getByRole("button",{name:"Calendário"}));
+ expect(await screen.findByRole("button",{name:"Sexagem"})).toBeTruthy();
+ expect(screen.getByRole("button",{name:"Diagnóstico"})).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:"Sexagem"}));
+ expect(await screen.findByRole("heading",{name:"Avaliação ou retorno"})).toBeTruthy();
+ expect(screen.queryByRole("button",{name:"Registrar avaliação"})).toBeNull();
+});
+
+it("permite repetir uma consulta de calendário que falhou", async () => {
+ const resposta={itens:[],total:0,pagina:1,porPagina:10,resumo:{total:0,pendentes:0,resolvidas:0,encerradas:0,semData:0}};
+ vi.mocked(reqV4).mockResolvedValue(resposta as never);
+ render(<DemandasAcompanhamento naFicha animalId="a" propriedadeId={7} painel={{animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[]}} podeLancar={false} onAvaliar={vi.fn()} atualizacao={1}/>);
+ await screen.findByText("Nenhum acompanhamento planejado registrado para este animal.");
+ vi.mocked(reqV4).mockRejectedValueOnce(new Error("Falha de conexão"));
+ fireEvent.click(screen.getByRole("button",{name:"Calendário"}));
+ fireEvent.click(await screen.findByRole("button",{name:"Tentar carregar calendário novamente"}));
+ expect(await screen.findByRole("region",{name:"Calendário de avaliações e retornos"})).toBeTruthy();
+});

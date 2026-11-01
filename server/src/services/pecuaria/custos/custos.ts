@@ -9,6 +9,8 @@ import { calcularAtribuicao } from "../nutricao/atribuicao.calc.js";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { componentesDaFonte, aplicarParcelaPreparo, conferirParcelasPreparo, consolidarCustos, type ClassificacaoCusto, type FonteCusto, type TipoFonteCusto } from "./custos.calc.js";
 import { classificacaoCustoSchema, consultaCustosSchema, vinculoPreparoSchema, type ClassificacaoCustoInput, type ConsultaCustos, type VinculoPreparoInput } from "./custos.schemas.js";
+import { mediaCustosTentativas } from "./media-tentativas.calc.js";
+import { procedimentosDosComponentes } from "./procedimentos.calc.js";
 
 type Db = Prisma.TransactionClient;
 export function paginaCustos<T>(itens:T[], solicitada:number, porPagina:number) {
@@ -45,7 +47,7 @@ export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtr
       for(const p of f.participacoes.filter(p=>(!filtro.animalId||p.animalId===filtro.animalId)&&(!filtro.animalIds||filtro.animalIds.includes(p.animalId))&&(!filtro.ids?.NUTRICAO||filtro.ids.NUTRICAO.includes(p.id)))){
         const atribuicao=distribuicao.participacoes.find(v=>v.animalId===p.animalId)!;
         for(const i of f.itens){const parcela=atribuicao.itens.find(v=>v.produtoId===i.produtoId)!;
-          nutricao.push({id:p.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio)} a ${dia(f.fim)}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});
+          nutricao.push({id:p.id,fechamentoId:f.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio)} a ${dia(f.fim)}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});
         }
       }
     }
@@ -109,6 +111,9 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
   const totalIntegral=consolidarCustos(componentes,verValores);
   const recorte=componentes.filter(c=>(!filtro.inicio||c.data>=filtro.inicio)&&(!filtro.fim||c.data<=filtro.fim)&&(!filtro.finalidade||(filtro.finalidade==="SEM_CLASSIFICACAO" ? c.finalidade==null : c.finalidade===filtro.finalidade)));
   const consolidado=consolidarCustos(recorte,verValores);
+  const mediaPorTentativa = filtro.animalId ? mediaCustosTentativas(fontes, vinculos.map(v=>({...v,modo:v.modo as "INTEGRAL"|"PARCELA"})), filtro, verValores) : null;
+  const porNatureza = (natureza: "MATERIAL"|"SERVICO") => consolidarCustos(recorte.filter(c=>c.natureza===natureza),verValores).totalConhecido;
+  const procedimentos=paginaCustos(procedimentosDosComponentes(recorte,verValores),filtro.pagina,10);
   const fontesConsultadas=new Set(fontes.map(chaveFonte));
   vinculos=vinculos.filter(v=>fontesConsultadas.has(`APLICACAO:${v.aplicacaoId}`)||fontesConsultadas.has(`EXAME:${v.exameId}`)||fontesConsultadas.has(`PARTICIPACAO:${v.participacaoId}`));
   // As pendências acompanham o recorte completo, antes da paginação. Na tentativa,
@@ -127,6 +132,7 @@ export async function consultarCustosTx(tx: Db, propriedadeId: number, filtro: C
   const atribuicoesPaginadas=paginaCustos(atribuicoes.sort((a,b)=>`${a.tipo}:${a.fonteId}`.localeCompare(`${b.tipo}:${b.fonteId}`)),filtro.preparosPagina??1,10);
   const apresentarFonte=(f:FonteCusto)=>({id:f.id,tipo:f.tipo,descricao:f.descricao,data:f.data,periodoConsumo:f.periodoConsumo,origemMaterial:f.origemMaterial,documentoMaterial:verDocumentos?f.documentoMaterial??null:null,versaoClassificacao:f.versaoClassificacao??0,classificacao:f.classificacao?{...f.classificacao,valorMaterialDocumentado:verValores?f.classificacao.valorMaterialDocumentado?.toString()??null:null}:null});
   return {...consolidado,escopo:filtro.tentativaId?"TENTATIVA":filtro.participacaoId?"PARTICIPACAO":filtro.programacaoId?"PROGRAMACAO":filtro.aplicacaoId?"APLICACAO":filtro.exameId?"EXAME":filtro.manejoId?"MANEJO":"ANIMAL_PERIODO",propriedadeId,
+    mediaPorTentativa, procedimentos, totaisNatureza: { material: porNatureza("MATERIAL"), servico: porNatureza("SERVICO") },
     periodo:{inicio:filtro.inicio??null,fim:filtro.fim??null,referencia:"DATA_DO_FATO"},totalIntegral:filtro.animalId?null:{rotulo:"Protocolo ou tentativa inteira, sem recorte",cobertura:totalIntegral.cobertura,situacao:totalIntegral.situacao,totalConhecido:totalIntegral.totalConhecido,componentesPendentes:totalIntegral.componentesPendentes},
     componentes:paginada.itens,itens:paginada.itens,total:paginada.total,totalComponentes:paginada.total,pagina:paginada.pagina,porPagina:paginada.porPagina,limite:paginada.porPagina,
     fontes:fontesPaginadas.itens.map(apresentarFonte),fontesPaginadas:{...fontesPaginadas,itens:fontesPaginadas.itens.map(apresentarFonte)},atribuicoesPreparos:atribuicoesPaginadas.itens,atribuicoesPaginadas};

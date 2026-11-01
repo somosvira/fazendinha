@@ -5,6 +5,13 @@ import { rotuloLactacao } from "../lib/lactacao";
 import { CorrigirFato } from "./CorrigirFato";
 import { FormLactacao } from "./FormLactacao";
 import { useState } from "react";
+import { Baby, CalendarDays, Clock, HeartPulse, Milk, Syringe } from "lucide-react";
+import { formatBRDateISO } from "../../../lib/hoje";
+import { DadoFicha } from "../ui";
+import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
+import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
+import { SecaoReproducaoAnimal } from "./SecaoReproducaoAnimal";
+import { rotulosReprodutivos } from "./HistoricoReprodutivo";
 import {
   Button,
   CabecalhoTabela,
@@ -36,12 +43,14 @@ export function AcoesReprodutivas({
   podeLancar,
   onMudou,
   propriedadeId: propriedadeContexto,
+  modo,
 }: {
   painel: PainelReprodutivo;
   animalId?: string;
   podeLancar: boolean;
   onMudou: () => Promise<void>;
   propriedadeId?: number;
+  modo?: "gestacao" | "restricoes" | "lactacao" | "crias";
 }) {
   const [lactacaoEncerrando, setLactacaoEncerrando] = useState<LactacaoReprodutiva | null>(null);
   const [pesoSecagemMantido, setPesoSecagemMantido] = useState<LactacaoReprodutiva | null>(null);
@@ -77,8 +86,45 @@ export function AcoesReprodutivas({
   };
   const nome = (id: string) =>
     painel.animais.find((a) => a.animalId === id)?.brinco ?? "Animal";
-  return (
-    <Panel>
+  const animal = painel.animais.find(a => a.animalId === animalId);
+  const gestacao = painel.gestacoes?.find(g => (animal?.gestacao ? g.id === animal.gestacao.id : g.animalId === animalId && g.status === "VALIDO" && !g.encerradaEm)) ?? animal?.gestacao;
+  const tentativa = gestacao?.tentativaId ? painel.tentativas.find(t => t.id === gestacao.tentativaId) : null;
+  const avaliacao = gestacao ? painel.avaliacoes.filter(a => a.animalId === animalId && a.status !== "ANULADO" && a.gestacaoId === gestacao.id).sort((a, b) => b.data.localeCompare(a.data))[0] : null;
+  const lactacoes = (painel.lactacoes ?? []).filter(l => l.animalId === animalId).sort((a, b) => b.inicio.localeCompare(a.inicio));
+  const lactacaoAtual = lactacoes.find(l => !l.encerradaEm);
+  const restricoes = animal?.restricoes ?? [];
+  const abrirGestacao = (tipo: "previsao" | "vinculo" | "perda") => {
+    if (gestacao && animalId) abrir({ tipo, id: gestacao.id, animalId, propriedadeId: gestacao.propriedadeId });
+  };
+  const crias = painel.partos.filter(p => p.animalId === animalId && p.status !== "ANULADO").flatMap(p => (p.crias ?? []).filter(c => c.viva && c.animalId && c.animal?.identificacaoProvisoria !== false));
+  return <>
+    {modo === "gestacao" ? <>{gestacao && !gestacao.encerradaEm && gestacao.status !== "ANULADO" && <SecaoReproducaoAnimal titulo="Gestação atual" icon={Baby} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
+      { id: "previsao", rotulo: "Editar previsão", onSelect: () => abrirGestacao("previsao") },
+      { id: "vinculo", rotulo: "Corrigir vínculo da tentativa", onSelect: () => abrirGestacao("vinculo") },
+      { id: "perda", rotulo: "Registrar perda", onSelect: () => abrirGestacao("perda") },
+    ]}/> : undefined}>
+      {gestacao ? <dl className="repro-dados repro-dados-quatro">
+        <DadoFicha icon={CalendarDays} rotulo="Confirmação">{gestacao.confirmadaEm ? formatBRDateISO(gestacao.confirmadaEm) : "Não informada"}</DadoFicha>
+        <DadoFicha icon={Baby} rotulo="Previsão de parto">{gestacao.previsaoParto ? formatBRDateISO(gestacao.previsaoParto) : "Não informada"}</DadoFicha>
+        <DadoFicha icon={Syringe} rotulo="Tentativa vinculada">{tentativa ? `${rotulosReprodutivos[tentativa.tipo ?? ""] ?? tentativa.tipo} · ${formatBRDateISO(tentativa.data)}` : gestacao.tentativaId ? "Vínculo fora deste histórico" : "Não informada"}</DadoFicha>
+        <DadoFicha icon={HeartPulse} rotulo="Última avaliação">{avaliacao ? `${rotulosReprodutivos[avaliacao.tipo ?? ""] ?? "Avaliação"} · ${formatBRDateISO(avaliacao.data)}` : "Não informada"}</DadoFicha>
+      </dl> : <p className="repro-vazio"><Baby aria-hidden="true"/>{animal?.situacao === "VAZIA" ? "Animal vazio · sem gestação em andamento" : "Situação gestacional não informada"}</p>}
+    </SecaoReproducaoAnimal>}<PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
+      {restricoes.length ? restricoes.map(r => <article key={r.id} className="repro-restricao"><div><strong>{rotulosReprodutivos[r.tipo] ?? r.tipo}</strong><p>{r.motivo}</p><small>{r.data ? `Desde ${formatBRDateISO(r.data)}` : "Início não informado"}{r.ate ? ` · Até ${formatBRDateISO(r.ate)}` : ""} · {r.acoes?.join(", ") ?? "Todas as intervenções"}</small></div><Pill>Ativa</Pill>{podeLancar && <Button secondary onClick={() => abrir({ tipo: "restricao", id: r.id, animalId: r.animalId, propriedadeId: r.propriedadeId })}>Encerrar restrição</Button>}</article>) : <div className="repro-vazio" role="status"><HeartPulse aria-hidden="true"/><strong>Nenhuma restrição vigente registrada</strong></div>}
+    </div> : modo === "lactacao" ? <SecaoGeralAnimal id="lactacao-atual-animal" titulo="Lactação atual" icon={Milk} acao={podeLancar ? <MenuAcoesFicha rotulo="Gerenciar lactação" itens={[
+      ...(lactacaoAtual ? [
+        { id: "corrigir", rotulo: "Corrigir lactação", onSelect: () => setLactacaoCorrigida(lactacaoAtual) },
+        { id: "encerrar", rotulo: "Encerrar lactação", onSelect: () => setLactacaoEncerrando(lactacaoAtual) },
+      ] : []),
+      ...(animalId ? [{ id: "historica", rotulo: "Informar lactação histórica", onSelect: () => setHistoricoLactacao(animalId) }] : []),
+    ]}/> : undefined}>
+      <dl className="repro-metricas repro-metricas-com-icone">
+        <div><dt><Milk aria-hidden="true"/>Situação produtiva</dt><dd>{rotuloLactacao(animal?.situacaoProdutiva)}</dd></div>
+        <div><dt><CalendarDays aria-hidden="true"/>Início da lactação</dt><dd>{lactacaoAtual ? formatBRDateISO(lactacaoAtual.inicio) : "Não informado"}</dd></div>
+        <div><dt><Clock aria-hidden="true"/>Dias em lactação</dt><dd>{animal?.situacaoProdutiva === "LACTANTE" && animal.del != null ? `${animal.del} dias` : "Não informado"}</dd></div>
+      </dl>
+      {lactacoes.filter(l => l.encerradaEm).map(l => <article key={l.id} className="repro-lactacao-encerrada"><div><strong>{formatBRDateISO(l.inicio)} a {formatBRDateISO(l.encerradaEm!)}</strong>{l.motivoEncerramento && <p>{l.motivoEncerramento}</p>}</div>{podeLancar && <Button secondary onClick={() => setLactacaoCorrigida(l)}>Corrigir lactação</Button>}<PesoSecagemLactacao lactacao={l} podeLancar={podeLancar} onGerenciar={() => setPesoSecagemMantido(l)}/></article>)}
+    </SecaoGeralAnimal> : modo === "crias" ? <>{podeLancar && crias.map(c => <div className="repro-cria-identificacao" key={c.animalId}><span>{c.animal?.brinco ?? c.brinco ?? "Cadastro provisório"}</span><Button secondary onClick={() => abrir({ tipo: "identificacao", id: c.animalId!, animalId: c.animalId! })}>Completar identificação da cria</Button></div>)}</> : <Panel>
       <CabecalhoTabela titulo="Gestação, restrições e lactação" />
       <div className="p-4 space-y-4">
         {painel.animais
@@ -171,20 +217,7 @@ export function AcoesReprodutivas({
               ))}
             </section>
           ))}
-        {painel.gestacoes?.some(g => g.tipoEncerramento === "PERDA" && (!animalId || g.animalId === animalId)) && (
-          <details className="rounded-lg border border-border p-4">
-            <summary className="cursor-pointer font-semibold">Perdas gestacionais registradas</summary>
-            {painel.gestacoes.filter(g => g.tipoEncerramento === "PERDA" && (!animalId || g.animalId === animalId)).map(g => (
-              <article key={g.id} className="mt-3 space-y-2 border-t border-border pt-3 text-sm">
-                <p>{g.animal?.brinco ?? g.animal?.nome ?? nome(g.animalId ?? "")} · {g.encerradaEm?.slice(0, 10).split("-").reverse().join("/")} · {g.status}</p>
-                <p>{g.motivoEncerramento ?? "Explicação histórica não informada"}</p>
-                <p>Causa clínica: {g.causaClinica ? { DESCONHECIDA: "Desconhecida", SUSPEITA: "Suspeita", CONFIRMADA: "Confirmada" }[g.causaClinica.estado] : "Não informada"}</p>
-                {g.causaClinica?.descricao && <p>{g.causaClinica.descricao}</p>}
-                {g.causaClinica?.evidencias?.length ? <ul className="list-disc pl-5">{g.causaClinica.evidencias.map((e, i) => <li key={i}>{e}</li>)}</ul> : <p>Evidências não informadas.</p>}
-              </article>
-            ))}
-          </details>
-        )}
+        <PerdasGestacionais painel={painel} animalId={animalId}/>
         {painel.lactacoes
           ?.filter((l) => !animalId || l.animalId === animalId)
           .map((l) => (
@@ -247,6 +280,7 @@ export function AcoesReprodutivas({
               )),
           )}
       </div>
+    </Panel>}
       {lactacaoEncerrando && <FormEncerrarLactacao key={`${lactacaoEncerrando.id}:${lactacaoEncerrando.propriedadeId ?? propriedadeContexto ?? ""}`} lactacao={lactacaoEncerrando} animalRotulo={nome(lactacaoEncerrando.animalId)} propriedadeId={lactacaoEncerrando.propriedadeId ?? propriedadeContexto} onFechar={() => setLactacaoEncerrando(null)} onSalvo={async () => { await onMudou(); setLactacaoEncerrando(null); }} />}
       {pesoSecagemMantido && <FormPesoSecagem key={`${pesoSecagemMantido.id}:${pesoSecagemMantido.propriedadeId ?? propriedadeContexto ?? ""}`} lactacao={pesoSecagemMantido} propriedadeId={pesoSecagemMantido.propriedadeId ?? propriedadeContexto} onFechar={() => setPesoSecagemMantido(null)} onSalvo={async () => { await onMudou(); setPesoSecagemMantido(null); }} />}
       {historicoLactacao && <FormLactacao animalId={historicoLactacao} partos={painel.partos} propriedadeId={propriedadeContexto}
@@ -436,6 +470,19 @@ export function AcoesReprodutivas({
           </form>
         </PainelCadastro>
       )}
-    </Panel>
-  );
+  </>;
+}
+
+function PerdasGestacionais({ painel, animalId, naFicha = false }: { painel: PainelReprodutivo; animalId?: string; naFicha?: boolean }) {
+  const perdas = (painel.gestacoes ?? []).filter(g => g.tipoEncerramento === "PERDA" && (!animalId || g.animalId === animalId));
+  if (!perdas.length) return null;
+  const conteudo = perdas.map(g => <article key={g.id} className="repro-perda-gestacional">
+    <div><strong>{g.encerradaEm ? formatBRDateISO(g.encerradaEm) : "Data não informada"}</strong><Pill>{g.status === "ANULADO" ? "Anulada" : "Perda registrada"}</Pill></div>
+    {!naFicha && <p>{g.animal?.brinco ?? g.animal?.nome ?? painel.animais.find(a => a.animalId === g.animalId)?.brinco ?? "Animal"}</p>}
+    <p>{g.motivoEncerramento ?? "Explicação histórica não informada"}</p>
+    <p>Causa clínica: {g.causaClinica ? { DESCONHECIDA: "Desconhecida", SUSPEITA: "Suspeita", CONFIRMADA: "Confirmada" }[g.causaClinica.estado] : "Não informada"}</p>
+    {g.causaClinica?.descricao && <p>{g.causaClinica.descricao}</p>}
+    {g.causaClinica?.evidencias?.length ? <ul>{g.causaClinica.evidencias.map((e, i) => <li key={i}>{e}</li>)}</ul> : <p>Evidências não informadas.</p>}
+  </article>);
+  return naFicha ? <SecaoReproducaoAnimal titulo="Histórico de perdas" icon={HeartPulse}>{conteudo}</SecaoReproducaoAnimal> : <details className="rounded-lg border border-border p-4"><summary className="cursor-pointer font-semibold">Perdas gestacionais registradas</summary>{conteudo}</details>;
 }
