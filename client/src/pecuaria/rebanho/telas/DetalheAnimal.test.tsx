@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ToastProvider } from "@/components/Toast";
 import { ManejoAnimal } from "../manejo/ManejoAnimal";
-import { LactacaoIndividual } from "../reproducao/LactacaoIndividual";
+import { LactacaoIndividual, type LactacaoIndividualProps } from "../reproducao/LactacaoIndividual";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { DetalheAnimal } from "./DetalheAnimal";
@@ -31,7 +31,7 @@ const resumoAlertas: ConsultaAlertas = {
 
 vi.mock("../manejo/ManejoAnimal", () => ({ ManejoAnimal: vi.fn(() => null), reqManejo: vi.fn().mockResolvedValue([]) }));
 
-vi.mock("../reproducao/LactacaoIndividual", () => ({ LactacaoIndividual: vi.fn(() => <span>Lactação da produção</span>) }));
+vi.mock("../reproducao/LactacaoIndividual", () => ({ LactacaoIndividual: vi.fn(({ compor }: LactacaoIndividualProps) => compor ? compor(<span>Lactação da produção</span>, null) : <span>Lactação da produção</span>) }));
 
 vi.mock("../reproducao/Reproducao", () => ({ ReproducaoAnimal: vi.fn(() => null) }));
 
@@ -739,6 +739,9 @@ it("coloca a lactação em Produção com contexto e permissão da ficha", async
  fireEvent.click(screen.getByRole("tab", { name: "Produção" }));
  const producao = screen.getByRole("tabpanel", { name: "Produção" });
  expect(within(producao).getByText("Lactação da produção")).toBeTruthy();
+ expect(within(producao).getByRole("heading", { name: "Produção individual" })).toBeTruthy();
+ expect(within(producao).getByRole("heading", { name: "Qualidade do leite" })).toBeTruthy();
+ expect(within(producao).getByRole("heading", { name: "Controles históricos" })).toBeTruthy();
  expect(vi.mocked(LactacaoIndividual).mock.calls.at(-1)?.[0].animalId).toBe(base.id);
  expect(vi.mocked(LactacaoIndividual).mock.calls.at(-1)?.[0].podeLancar).toBe(true);
  fireEvent.click(screen.getByRole("tab", { name: "Reprodução" }));
