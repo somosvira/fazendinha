@@ -4,7 +4,7 @@ import { PesoSecagemLactacao } from "./PesoSecagemLactacao";
 import { rotuloLactacao } from "../lib/lactacao";
 import { CorrigirFato } from "./CorrigirFato";
 import { FormLactacao } from "./FormLactacao";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Baby, CalendarDays, Clock, HeartPulse, Milk, Syringe } from "lucide-react";
 import { formatBRDateISO } from "../../../lib/hoje";
 import { DadoFicha } from "../ui";
@@ -44,6 +44,7 @@ export function AcoesReprodutivas({
   onMudou,
   propriedadeId: propriedadeContexto,
   modo,
+  comporLactacao,
 }: {
   painel: PainelReprodutivo;
   animalId?: string;
@@ -51,6 +52,7 @@ export function AcoesReprodutivas({
   onMudou: () => Promise<void>;
   propriedadeId?: number;
   modo?: "gestacao" | "restricoes" | "lactacao" | "crias";
+  comporLactacao?: (conteudo: ReactNode, acoes: ReactNode) => ReactNode;
 }) {
   const [lactacaoEncerrando, setLactacaoEncerrando] = useState<LactacaoReprodutiva | null>(null);
   const [pesoSecagemMantido, setPesoSecagemMantido] = useState<LactacaoReprodutiva | null>(null);
@@ -97,6 +99,7 @@ export function AcoesReprodutivas({
     if (gestacao && animalId) abrir({ tipo, id: gestacao.id, animalId, propriedadeId: gestacao.propriedadeId });
   };
   const crias = painel.partos.filter(p => p.animalId === animalId && p.status !== "ANULADO").flatMap(p => (p.crias ?? []).filter(c => c.viva && c.animalId && c.animal?.identificacaoProvisoria !== false));
+  const comporConteudoLactacao = comporLactacao ?? ((conteudo: ReactNode, acoes: ReactNode) => <SecaoGeralAnimal id="lactacao-atual-animal" titulo="Lactação atual" icon={Milk} acao={acoes}>{conteudo}</SecaoGeralAnimal>);
   return <>
     {modo === "gestacao" ? <>{gestacao && !gestacao.encerradaEm && gestacao.status !== "ANULADO" && <SecaoReproducaoAnimal titulo="Gestação atual" icon={Baby} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
       { id: "previsao", rotulo: "Editar previsão", onSelect: () => abrirGestacao("previsao") },
@@ -111,20 +114,18 @@ export function AcoesReprodutivas({
       </dl> : <p className="repro-vazio"><Baby aria-hidden="true"/>{animal?.situacao === "VAZIA" ? "Animal vazio · sem gestação em andamento" : "Situação gestacional não informada"}</p>}
     </SecaoReproducaoAnimal>}<PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
       {restricoes.length ? restricoes.map(r => <article key={r.id} className="repro-restricao"><div><strong>{rotulosReprodutivos[r.tipo] ?? r.tipo}</strong><p>{r.motivo}</p><small>{r.data ? `Desde ${formatBRDateISO(r.data)}` : "Início não informado"}{r.ate ? ` · Até ${formatBRDateISO(r.ate)}` : ""} · {r.acoes?.join(", ") ?? "Todas as intervenções"}</small></div><Pill>Ativa</Pill>{podeLancar && <Button secondary onClick={() => abrir({ tipo: "restricao", id: r.id, animalId: r.animalId, propriedadeId: r.propriedadeId })}>Encerrar restrição</Button>}</article>) : <div className="repro-vazio" role="status"><HeartPulse aria-hidden="true"/><strong>Nenhuma restrição vigente registrada</strong></div>}
-    </div> : modo === "lactacao" ? <SecaoGeralAnimal id="lactacao-atual-animal" titulo="Lactação atual" icon={Milk} acao={podeLancar ? <MenuAcoesFicha rotulo="Gerenciar lactação" itens={[
+    </div> : modo === "lactacao" ? comporConteudoLactacao(<><dl className="repro-metricas repro-metricas-com-icone">
+        <div><dt><Milk aria-hidden="true"/>Situação produtiva</dt><dd>{rotuloLactacao(animal?.situacaoProdutiva)}</dd></div>
+        <div><dt><CalendarDays aria-hidden="true"/>Início da lactação</dt><dd>{lactacaoAtual ? formatBRDateISO(lactacaoAtual.inicio) : "Não informado"}</dd></div>
+        <div><dt><Clock aria-hidden="true"/>Dias em lactação</dt><dd>{animal?.situacaoProdutiva === "LACTANTE" && animal.del != null ? `${animal.del} dias` : "Não informado"}</dd></div>
+      </dl>
+      {lactacoes.filter(l => l.encerradaEm).map(l => <article key={l.id} className="repro-lactacao-encerrada"><div><strong>{formatBRDateISO(l.inicio)} a {formatBRDateISO(l.encerradaEm!)}</strong>{l.motivoEncerramento && <p>{l.motivoEncerramento}</p>}</div>{podeLancar && <Button secondary onClick={() => setLactacaoCorrigida(l)}>Corrigir lactação</Button>}<PesoSecagemLactacao lactacao={l} podeLancar={podeLancar} onGerenciar={() => setPesoSecagemMantido(l)}/></article>)}</>, podeLancar ? <MenuAcoesFicha rotulo="Gerenciar lactação" itens={[
       ...(lactacaoAtual ? [
         { id: "corrigir", rotulo: "Corrigir lactação", onSelect: () => setLactacaoCorrigida(lactacaoAtual) },
         { id: "encerrar", rotulo: "Encerrar lactação", onSelect: () => setLactacaoEncerrando(lactacaoAtual) },
       ] : []),
       ...(animalId ? [{ id: "historica", rotulo: "Informar lactação histórica", onSelect: () => setHistoricoLactacao(animalId) }] : []),
-    ]}/> : undefined}>
-      <dl className="repro-metricas repro-metricas-com-icone">
-        <div><dt><Milk aria-hidden="true"/>Situação produtiva</dt><dd>{rotuloLactacao(animal?.situacaoProdutiva)}</dd></div>
-        <div><dt><CalendarDays aria-hidden="true"/>Início da lactação</dt><dd>{lactacaoAtual ? formatBRDateISO(lactacaoAtual.inicio) : "Não informado"}</dd></div>
-        <div><dt><Clock aria-hidden="true"/>Dias em lactação</dt><dd>{animal?.situacaoProdutiva === "LACTANTE" && animal.del != null ? `${animal.del} dias` : "Não informado"}</dd></div>
-      </dl>
-      {lactacoes.filter(l => l.encerradaEm).map(l => <article key={l.id} className="repro-lactacao-encerrada"><div><strong>{formatBRDateISO(l.inicio)} a {formatBRDateISO(l.encerradaEm!)}</strong>{l.motivoEncerramento && <p>{l.motivoEncerramento}</p>}</div>{podeLancar && <Button secondary onClick={() => setLactacaoCorrigida(l)}>Corrigir lactação</Button>}<PesoSecagemLactacao lactacao={l} podeLancar={podeLancar} onGerenciar={() => setPesoSecagemMantido(l)}/></article>)}
-    </SecaoGeralAnimal> : modo === "crias" ? <>{podeLancar && crias.map(c => <div className="repro-cria-identificacao" key={c.animalId}><span>{c.animal?.brinco ?? c.brinco ?? "Cadastro provisório"}</span><Button secondary onClick={() => abrir({ tipo: "identificacao", id: c.animalId!, animalId: c.animalId! })}>Completar identificação da cria</Button></div>)}</> : <Panel>
+    ]}/> : undefined) : modo === "crias" ? <>{podeLancar && crias.map(c => <div className="repro-cria-identificacao" key={c.animalId}><span>{c.animal?.brinco ?? c.brinco ?? "Cadastro provisório"}</span><Button secondary onClick={() => abrir({ tipo: "identificacao", id: c.animalId!, animalId: c.animalId! })}>Completar identificação da cria</Button></div>)}</> : <Panel>
       <CabecalhoTabela titulo="Gestação, restrições e lactação" />
       <div className="p-4 space-y-4">
         {painel.animais

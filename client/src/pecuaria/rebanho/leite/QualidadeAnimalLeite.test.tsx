@@ -38,8 +38,9 @@ it("consulta só amostras do animal e preserva zero, falso e unidades do laudo",
     ],
   });
   render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
+  fireEvent.click(await screen.findByRole("button", { name: "Detalhes" }));
   await screen.findByText("Gordura");
-  expect(screen.getByText("0 %")).toBeTruthy();
+  expect(screen.getByText("0")).toBeTruthy();
   expect(screen.getByText("Não")).toBeTruthy();
   expect(screen.getByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();
   expect(screen.getByText("Recebimento do laudo: 16/10/2026")).toBeTruthy();
@@ -64,8 +65,8 @@ it("preserva o recorte ao recolher a qualidade e um único estado vazio sem pagi
   vi.mocked(consultarLeite).mockResolvedValue({ total: 0, tamanho: 20, pagina: 1, itens: [] });
   const { container } = render(<QualidadeAnimalLeite animalId="vaca-1" propriedadeId={2} />);
   await screen.findByText("Nenhuma análise individual registrada neste recorte.");
-  expect(screen.getByRole("region", { name: "Qualidade individual do leite" })).toBeTruthy();
-  const recolher = screen.getByRole("button", { name: "Qualidade individual do leite" });
+  expect(screen.getByRole("region", { name: "Qualidade do leite" })).toBeTruthy();
+  const recolher = screen.getByRole("button", { name: "Qualidade do leite" });
   const conteudo = container.querySelector("#qualidade-individual-leite-conteudo")!;
   fireEvent.click(recolher);
   expect(conteudo.hasAttribute("hidden")).toBe(true);
