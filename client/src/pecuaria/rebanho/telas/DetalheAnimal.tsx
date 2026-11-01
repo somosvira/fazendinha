@@ -51,7 +51,7 @@ import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { SanidadeAnimal } from "../sanidade/SanidadeAnimal";
 import { ManejoAnimal } from "../manejo/ManejoAnimal";
 import { IdentificarCria } from "../reproducao/IdentificarCria";
-import { LactacaoIndividual } from "../reproducao/LactacaoIndividual";
+import { ControlesDocumentaisAnimal } from "../leite/ControlesDocumentaisAnimal";
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { StatusOperacionaisAnimal } from "../components/StatusOperacionaisAnimal";
 import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
@@ -428,11 +428,11 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
 </DialogContent></Dialog>
 <Dialog open={manejoDetalhe} onOpenChange={setManejoDetalhe}><DialogContent className="ficha-dialogo max-w-4xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Desmama e castração</DialogTitle></DialogHeader><ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }}/></DialogContent></Dialog>
       {animal.sexo === "F" && <section id="ficha-painel-producao" role="tabpanel" aria-labelledby="aba-producao" hidden={secaoAtiva !== "producao"}>
-        <LactacaoIndividual animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
         <div id="producao-leite">
-          <HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />
+          <HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} lactacao={{ propriedadeId: sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null, podeLancar, onMudou: () => { void carregar(); } }} />
         </div>
         {secaoAtiva === "producao" && <QualidadeAnimalLeite key={animal.id} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
+        {secaoAtiva === "producao" && <ControlesDocumentaisAnimal key={`documentos-${animal.id}`} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
       </section>}
       {animal.sexo==="F"&&<section id="ficha-painel-reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} onMudou={() => { void carregar(); }} /></section>}
       <section id="ficha-painel-sanidade" role="tabpanel" aria-labelledby="aba-sanidade" hidden={secaoAtiva !== "sanidade"} className="scroll-mt-6">
