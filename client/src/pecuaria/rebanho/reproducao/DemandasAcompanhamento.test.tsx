@@ -43,3 +43,14 @@ it("calendário consulta todas as páginas e conserva avaliações sem data", as
  expect(await screen.findByRole("heading",{name:"Avaliação ou retorno"})).toBeTruthy();
  expect(screen.queryByRole("button",{name:"Registrar avaliação"})).toBeNull();
 });
+
+it("permite repetir uma consulta de calendário que falhou", async () => {
+ const resposta={itens:[],total:0,pagina:1,porPagina:10,resumo:{total:0,pendentes:0,resolvidas:0,encerradas:0,semData:0}};
+ vi.mocked(reqV4).mockResolvedValue(resposta as never);
+ render(<DemandasAcompanhamento naFicha animalId="a" propriedadeId={7} painel={{animais:[],tentativas:[],avaliacoes:[],partos:[],restricoes:[]}} podeLancar={false} onAvaliar={vi.fn()} atualizacao={1}/>);
+ await screen.findByText("Nenhum acompanhamento planejado registrado para este animal.");
+ vi.mocked(reqV4).mockRejectedValueOnce(new Error("Falha de conexão"));
+ fireEvent.click(screen.getByRole("button",{name:"Calendário"}));
+ fireEvent.click(await screen.findByRole("button",{name:"Tentar carregar calendário novamente"}));
+ expect(await screen.findByRole("region",{name:"Calendário de avaliações e retornos"})).toBeTruthy();
+});

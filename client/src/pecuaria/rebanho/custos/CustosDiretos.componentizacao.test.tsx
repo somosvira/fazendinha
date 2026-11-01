@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CustosDiretos } from "./CustosDiretos";
 import { escreverCustos, obterCustos, obterPreparatorios, type CustosDTO } from "./api";
@@ -110,4 +110,18 @@ it("retirar lançar oculta confirmação sem descartar rascunho do mesmo alvo", 
   expect(escreverCustos).not.toHaveBeenCalled();
   rerender(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar />);
   expect(screen.getByLabelText("Motivo da classificação")).toHaveProperty("value", "Rascunho conservado com revisão");
+});
+
+
+it("exibe falha de gravação dentro do modal de ajustes sem descartar o motivo", async () => {
+  vi.mocked(escreverCustos).mockRejectedValueOnce(new Error("Revisão pendente"));
+  render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar mediaPorTentativa />);
+  await screen.findByRole("table", { name: "Componentes do custo direto registrado" });
+  fireEvent.click(screen.getByRole("button", {name:"Ajustar custos"}));
+  await alterarControle(screen.getByLabelText("Fato a classificar"), {target:{value:"TENTATIVA:t"}});
+  await alterarControle(screen.getByLabelText("Motivo da classificação"), {target:{value:"Conferência do registro"}});
+  fireEvent.click(screen.getByRole("button", {name:"Salvar classificação"}));
+  const janela = screen.getByRole("dialog");
+  expect(await within(janela).findByRole("alert")).toHaveProperty("textContent", "Revisão pendente");
+  expect(within(janela).getByLabelText("Motivo da classificação")).toHaveProperty("value", "Conferência do registro");
 });
