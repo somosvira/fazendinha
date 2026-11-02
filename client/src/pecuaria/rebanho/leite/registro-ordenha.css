@@ -62,3 +62,5 @@
   .leite-registro[data-confirmada] .leite-registro-origem-confirmada dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .leite-registro[data-confirmada] .leite-registro-origem-confirmada .origem-confirmada-fisica { grid-column: 1 / -1; }
 }
+/* Rótulo que quebra em duas linhas não desloca o campo: a linha alinha pela base. */
+.leite-registro-campos{align-items:end}

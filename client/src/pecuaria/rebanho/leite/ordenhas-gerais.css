@@ -248,7 +248,7 @@
   margin-top: 10px;
 }
 .leite-escolha-tanque{display:grid;gap:10px;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--border)}
-.leite-escolha-tanque [data-slot="select-trigger"]{width:100%;min-height:44px}
+.leite-escolha-tanque [data-slot="select-trigger"]{width:100%;min-height:var(--campo-altura)}
 .leite-origens-painel{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)}
 .leite-origens-painel h4{margin:0 0 6px;font-size:14px;font-weight:650}
 .leite-origens-painel p+p{margin-top:6px}

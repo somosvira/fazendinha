@@ -1313,3 +1313,21 @@ body.no-scroll { overflow: hidden; }
 /* O título recebe foco programático ao abrir o diálogo (leitor de tela começa por ele);
  * não é um controle, então não mostra contorno de foco. */
 :is([data-slot="dialog-title"], [data-slot="sheet-title"])[tabindex="-1"]:focus { outline: none; }
+
+/* Altura única dos controles de uma linha (campos, selects, botões): 40px no desktop,
+ * 44px até 900px, onde o toque pede alvo maior. */
+:root { --campo-altura: 40px; }
+@media (max-width: 900px) { :root { --campo-altura: 44px; } }
+/* Alinhamento de formulário: o "?" de ajuda mantém a área de toque (28–44px), mas não
+ * aumenta a linha do rótulo; assim campos vizinhos começam na mesma altura. */
+:root .dica-gatilho { margin-block: -12px; }
+/* Campos de uma linha têm a mesma altura dos botões (40px): texto, data, select e
+ * seleção múltipla. Áreas de texto ficam de fora. */
+:root :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"]), [data-slot="select-trigger"]).p-2\.5 { height: var(--campo-altura); min-height: var(--campo-altura); padding-block: 0; }
+:root [data-slot="multi-select-control"] { min-height: var(--campo-altura); }
+/* Também campos nativos sem a classe padrão (datas, números) nas áreas operacionais e
+ * diálogos. Ficam de fora tabelas, a busca global e entradas internas de outros controles. */
+:root :is([data-design-operacional], [data-slot="dialog-content"], [data-slot="sheet-content"]) input:is([type="text"], [type="date"], [type="number"], [type="email"], [type="search"], [type="tel"], [type="time"], :not([type])):not([data-slot="command-input"], table *, .busca-lista *, [data-slot="multi-select-control"] *) { box-sizing: border-box; height: var(--campo-altura); min-height: var(--campo-altura); }
+/* Select de uma linha: valor longo termina em reticências em vez de quebrar e crescer. */
+:root [data-slot="select-trigger"] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root :is([data-design-operacional], [data-slot="dialog-content"], [data-slot="sheet-content"]) :is(label, .filtros-campo, .campo-formulario-rotulo + *) > [data-slot="select-trigger"] { height: var(--campo-altura); min-height: var(--campo-altura); }

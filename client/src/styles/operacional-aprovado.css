@@ -1,13 +1,14 @@
 /* Direção aprovada para áreas operacionais. Financeiro não recebe o marcador. */
+/* Controles (campos, selects e botões) têm 40px em todo o app, como no Financeiro e nas barras de consulta. */
 [data-design-operacional]{--op-ink:#244137;--op-muted:#5b705f;--op-line:#dbe5d8;--op-soft:#eef4e7;--op-radius:8px;font-size:16px;line-height:1.5}
 :root [data-design-operacional] :is(h1,.h1){font-family:var(--sans);font-size:var(--fin-titulo-pagina,24px);line-height:1.25;letter-spacing:-.01em;color:var(--op-ink)}
 :root [data-design-operacional] :is(h2,.h2){font-size:18px;line-height:1.35;letter-spacing:-.005em}
 :root [data-design-operacional] :is(h3,.h3){font-size:18px;line-height:1.4}
 :root [data-design-operacional] :is(small,.caption,.text-xs,[class~="text-[10px]"],[class~="text-[11px]"],[class~="text-[12px]"],[class~="text-[13px]"]){font-size:14px;line-height:1.5}
 :root [data-design-operacional] :is(label,input,textarea,select,[data-slot=select-trigger]){font-size:16px;line-height:1.5}
-:root [data-design-operacional] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger]){min-height:44px;border-radius:8px}
+:root [data-design-operacional] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger]){min-height:var(--campo-altura);border-radius:8px}
 :root [data-design-operacional] textarea{min-height:100px;border-radius:8px}
-:root [data-design-operacional] :is(button[data-slot=button],.fin-btn,.rb-btn){min-height:44px;font-size:15px;border-radius:8px;gap:8px}
+:root [data-design-operacional] :is(button[data-slot=button],.fin-btn,.rb-btn){min-height:var(--campo-altura);font-size:15px;border-radius:8px;gap:8px}
 :root [data-design-operacional] :is(input:not([type=checkbox],[type=radio]),textarea,select,[data-slot=select-trigger]){border-color:#b9cbbb;background-color:var(--card,#fff)}
 :root [data-design-operacional] :is(button,a,input,textarea,[role=tab]):focus-visible{outline:2px solid #5c9a7c;outline-offset:2px}
 :root [data-design-operacional] :is(dt,.consulta-cartao-meta,.consulta-entidade-detalhe,.ger-muted){font-size:14px;line-height:1.5;color:var(--op-muted)}
@@ -35,7 +36,7 @@
 :root:has([data-design-operacional]) [data-slot=dialog-title]{font-family:var(--sans);font-size:23px;line-height:1.35;font-weight:700;letter-spacing:-.005em}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(label,input,textarea,select,[data-slot=select-trigger]){font-size:16px;line-height:1.5}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(small,.text-xs,.caption,[class~="text-[11px]"],[class~="text-[12px]"]){font-size:14px;line-height:1.5}
-:root:has([data-design-operacional]) [data-slot=dialog-content] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger],button[data-slot=button]){min-height:44px;border-radius:8px}
+:root:has([data-design-operacional]) [data-slot=dialog-content] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger],button[data-slot=button]){min-height:var(--campo-altura);border-radius:8px}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(h2,h3){font-family:var(--sans)}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is([data-slot=dialog-header],.fin-dialogo-cabecalho,.sanitario-painel-cabecalho){background:#f7faf3}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(.fin-dialogo-rodape,[data-slot=dialog-footer]){gap:12px}

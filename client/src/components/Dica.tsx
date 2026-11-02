@@ -41,5 +41,5 @@ export function Dica({ conteudo, rotulo, children, className }: {
 }
 
 export function AjudaCampo({ texto, rotulo = "Ajuda" }: { texto: ReactNode; rotulo?: string }) {
-  return <Dica conteudo={texto} rotulo={rotulo} className="-my-1 ml-0.5 rounded p-1"><CircleHelp size={14} aria-hidden="true" /></Dica>;
+  return <Dica conteudo={texto} rotulo={rotulo} className="ml-0.5 rounded"><CircleHelp size={14} aria-hidden="true" /></Dica>;
 }

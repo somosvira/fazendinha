@@ -84,7 +84,7 @@ export function MultiSelect<T extends MultiSelectValue>({
         <div
           data-slot="multi-select-control"
           className={cn(
-            "relative flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1.5 pl-2.5 pr-10 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring",
+            "relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1 pl-2.5 pr-10 text-[length:inherit] transition-colors focus-within:ring-2 focus-within:ring-ring",
             error ? "border-destructive" : "border-border",
             disabled && "cursor-not-allowed opacity-50",
           )}
