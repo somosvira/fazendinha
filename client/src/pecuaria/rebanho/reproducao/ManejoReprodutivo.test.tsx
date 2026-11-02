@@ -1,3 +1,4 @@
+import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { consultarManejoAptidao, type ElegibilidadeNaData } from "./elegibilidade-api";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
@@ -40,7 +41,7 @@ function elegibilidade(id: string, patch: Partial<ElegibilidadeNaData> = {}): El
 }
 let painel: PainelReprodutivo;
 beforeEach(() => {
-  vi.clearAllMocks(); localStorage.clear(); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
+  vi.clearAllMocks(); localStorage.clear();preferirCartoes({reproducao:["visualAnimaisReproducao"]}); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7");
   painel = { animais: [estado("1"), estado("2"), estado("3"), estado("4", "AGUARDANDO_DIAGNOSTICO"), estado("9", "DESCONHECIDA")], tentativas: [], avaliacoes: [], partos: [], restricoes: [] };
   vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: Array.from({length:9}, (_,i)=>elegibilidade(String(i+1))) });
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
@@ -74,6 +75,7 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   const ids = ["1", "2", "5", "6", "7", "8"];
   vi.mocked(listarAnimais).mockResolvedValue(resultado(ids.map(id => animal(id, id === "2" ? "l2" : "l1"))));
   vi.mocked(consultarIndicadores).mockImplementation(async f => { const s = snapshot(f); s.acompanhamento!.espera.filaAtual = ids.map((id,i) => espera(id, `2026-10-${String(i + 1).padStart(2,"0")}`)); return s; });
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7&porPagina=4");
   render(<ManejoReprodutivo propriedadeId={7} podeLancar/>);
   await screen.findByText("1–4 de 6 animais");
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));

@@ -436,7 +436,7 @@ export function RelatoriosLeite({
   );
 }
 function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFinanceiro: boolean }) {
-  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite");
+  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite", "visual");
   const ancora = (secao: string) => `leite-relatorio-${emissao.id}-${secao}`;
   const s = { ...emissao.snapshot, valores: podeFinanceiro ? emissao.snapshot.valores : null };
   const [paginaAnimal, setPaginaAnimal] = useState(1),

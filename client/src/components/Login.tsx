@@ -1,8 +1,8 @@
-/* Autenticação alinhada à identidade Cooperativa contemporânea.
+/* Entrada do Terrano: uma coluna, marca, formulário. Sem slogan nem painel
+ * decorativo — quem chega aqui já sabe o que veio fazer.
  *
  * A tela mantém o fluxo de sessão em estado, sem recarregar o documento depois
- * do login. O painel de contexto só aparece em telas largas; no celular a marca
- * e o formulário permanecem em uma única superfície, sem informação perdida.
+ * do login.
  */
 
 import { FormEvent, useEffect, useRef, useState } from "react";
@@ -12,32 +12,6 @@ import { login } from "../api/auth";
 import type { UsuarioSessao } from "../lib/auth";
 import { TerranoSymbol } from "./TerranoLogo";
 import { CampoSenha } from "./CampoSenha";
-
-function IconeEmail() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="m3 7 9 6 9-6" />
-    </svg>
-  );
-}
-
-function IconeSenha() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden>
-      <rect x="4" y="11" width="16" height="9" rx="2" />
-      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-    </svg>
-  );
-}
-
-function IconeSeta() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" aria-hidden>
-      <path d="M5 12h14m-6-6 6 6-6 6" />
-    </svg>
-  );
-}
 
 export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: UsuarioSessao) => void }) {
   const [email, setEmail] = useState("");
@@ -66,68 +40,25 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
   };
 
   const campoInput =
-    "h-11 rounded-lg border-[#c7d4ca] bg-white px-3 text-[15px] text-[#283c31] shadow-none placeholder:text-[#718178] focus-visible:border-[#24493b] focus-visible:ring-2 focus-visible:ring-[#24493b]/15 focus-visible:ring-offset-0";
+    "h-12 rounded-md border-[#a9b2a6] bg-white px-3 text-base text-[#1e2621] shadow-none placeholder:text-[#6b756e] focus-visible:border-[#2c5a3f] focus-visible:ring-2 focus-visible:ring-[#2c5a3f]/20 focus-visible:ring-offset-0";
 
   return (
-    <main className="login-cooperativa min-h-[100dvh] bg-[#edf2ed] p-4 font-[family-name:var(--sans)] sm:p-6 lg:p-8">
-      <div className="login-cooperativa__frame mx-auto grid min-h-[calc(100dvh-2rem)] max-w-[1240px] overflow-hidden rounded-2xl border border-[#d8e2da] bg-white shadow-[0_18px_48px_rgba(34,53,44,0.10)] sm:min-h-[calc(100dvh-3rem)] lg:grid-cols-[minmax(380px,0.9fr)_minmax(480px,1.1fr)] lg:rounded-[20px]">
-        <aside className="login-cooperativa__context relative hidden overflow-hidden bg-[#24493b] p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
-          <div className="pointer-events-none absolute inset-0 opacity-40" aria-hidden>
-            <div className="absolute -left-24 top-28 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/30" />
-            <div className="absolute -left-20 top-40 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/25" />
-            <div className="absolute -left-14 top-52 h-72 w-[130%] rounded-[50%] border border-[#a9c4ad]/20" />
-            <div className="absolute -right-28 -bottom-36 h-80 w-80 rounded-full bg-[#91af95]/20 blur-3xl" />
+    <main className="login-campo min-h-[100dvh] bg-[#f5f6f2] px-4 py-10 font-[family-name:var(--sans)] sm:py-16">
+      <div className="mx-auto w-full max-w-[400px]">
+        <div className="flex items-center gap-3">
+          <TerranoSymbol size={32} tone="light" strokeWidth={4.2} />
+          <div className="leading-tight">
+            <span className="block text-[20px] font-bold text-[#1e2621]">Terrano</span>
+            <span className="block text-[14px] text-[#56615a]">Fazenda Rio Novo</span>
           </div>
+        </div>
 
-          <div className="relative flex items-center gap-2.5">
-            <TerranoSymbol size={30} tone="dark" strokeWidth={4.2} />
-            <span className="text-[19px] font-semibold tracking-[-0.02em]">Terrano</span>
-          </div>
+        <form onSubmit={submeter} className="mt-12">
+          <h1 className="text-[28px] font-bold leading-tight text-[#1e2621]">Entrar</h1>
 
-          <div className="relative max-w-[440px]">
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#c8dacb]">Gestão da fazenda</p>
-            <h1 className="mt-5 text-[42px] font-semibold leading-[1.08] tracking-[-0.035em] xl:text-[50px]">
-              Uma visão clara para decidir melhor, todos os dias.
-            </h1>
-            <p className="mt-5 max-w-[38ch] text-[16px] leading-7 text-[#d9e6dc]">
-              Financeiro, estoque e pecuária trabalhando juntos no ritmo da sua operação.
-            </p>
-          </div>
-
-          <div className="relative grid grid-cols-3 gap-3 border-t border-white/20 pt-6 text-[#e8f0e9]">
-            {[
-              ["Financeiro", "resultado"],
-              ["Estoque", "controle"],
-              ["Pecuária", "manejo"],
-            ].map(([titulo, descricao]) => (
-              <div key={titulo}>
-                <p className="text-[13px] font-semibold">{titulo}</p>
-                <p className="mt-1 text-[12px] text-[#c8dacb]">{descricao}</p>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <section className="login-cooperativa__form-panel flex min-h-full items-center justify-center bg-white px-6 py-10 sm:px-12 sm:py-14 lg:px-16">
-          <form onSubmit={submeter} className="login-cooperativa__form w-full max-w-[408px]">
-            <div className="mb-12 flex items-center gap-2.5 lg:hidden">
-              <TerranoSymbol size={28} tone="light" strokeWidth={4.2} />
-              <span className="text-[20px] font-semibold tracking-[-0.02em] text-[#283c31]">Terrano</span>
-            </div>
-
-            <div>
-              <p className="login-cooperativa__eyebrow text-[11px] font-bold uppercase tracking-[0.14em] text-[#55715e]">Acesse sua conta</p>
-              <h2 className="login-cooperativa__title mt-3 text-[32px] font-semibold tracking-[-0.035em] text-[#283c31] sm:text-[36px]">Bem-vindo de volta</h2>
-              <p className="login-cooperativa__subtitle mt-3 text-[15px] leading-6 text-[#56665f]">Entre com seus dados para acompanhar a operação.</p>
-            </div>
-
-            <div className="mt-9">
-              <label htmlFor="login-email" className="mb-2 block text-[13px] font-semibold text-[#384b40]">E-mail</label>
-              <div className="relative flex items-center">
-                <span className="pointer-events-none absolute left-3 flex h-[18px] w-[18px] text-[#718178]">
-                  <IconeEmail />
-                </span>
-                <Input
+          <div className="mt-8">
+            <label htmlFor="login-email" className="mb-2 block text-[15px] font-semibold text-[#1e2621]">E-mail</label>
+            <Input
                   id="login-email"
                   type="email"
                   required
@@ -138,20 +69,15 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
                   value={email}
                   disabled={validando}
                   onChange={(event) => setEmail(event.target.value)}
-                  className={`${campoInput} pl-10`}
+                  className={campoInput}
                 />
-              </div>
-            </div>
+          </div>
 
-            <div className="mt-5">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <label htmlFor="login-senha" className="block text-[13px] font-semibold text-[#384b40]">Senha</label>
-                <a href="/forgot-password" className="text-[13px] font-semibold text-[#315b49] transition-colors hover:text-[#173a2c] hover:underline">Esqueci a senha</a>
-              </div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-3 flex h-[18px] w-[18px] text-[#718178]">
-                  <IconeSenha />
-                </span>
+          <div className="mt-5">
+            <div className="mb-2 flex items-baseline justify-between gap-3">
+              <label htmlFor="login-senha" className="block text-[15px] font-semibold text-[#1e2621]">Senha</label>
+              <a href="/forgot-password" className="text-[15px] font-semibold text-[#2c5a3f] underline-offset-4 hover:underline">Esqueci a senha</a>
+            </div>
                 <CampoSenha
                   id="login-senha"
                   autoComplete="current-password"
@@ -160,31 +86,28 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
                   value={senha}
                   disabled={validando}
                   onChange={(event) => setSenha(event.target.value)}
-                  className={`${campoInput} pl-10`}
+                  className={campoInput}
                 />
-              </div>
-            </div>
+          </div>
 
-            {erro && (
-              <p ref={erroRef} tabIndex={-1} role="alert" className="mt-5 rounded-lg border border-[#e7c4bf] bg-[#fbefec] px-3 py-2.5 text-[13px] leading-5 text-[#8d3931]">
-                {erro}
-              </p>
-            )}
-
-            <Button
-              type="submit"
-              disabled={!email || !senha || validando}
-              className="login-cooperativa__submit group mt-7 h-11 w-full gap-2 rounded-lg bg-[#24493b] text-[15px] font-semibold text-white shadow-none transition-colors hover:bg-[#1b3a2e]"
-            >
-              {validando ? "Entrando…" : "Entrar"}
-              {!validando && <IconeSeta />}
-            </Button>
-
-            <p className="login-cooperativa__footer mt-7 border-t border-[#e3ebe4] pt-5 text-center text-[13px] leading-5 text-[#64746b]">
-              Ainda não tem acesso? <span className="font-semibold text-[#384b40]">Fale com o administrador.</span>
+          {erro && (
+            <p ref={erroRef} tabIndex={-1} role="alert" className="mt-5 rounded-md border border-[#e3b9b4] bg-[#f8e9e7] px-3 py-2.5 text-[15px] leading-6 text-[#a3312a]">
+              {erro}
             </p>
-          </form>
-        </section>
+          )}
+
+          <Button
+            type="submit"
+            disabled={!email || !senha || validando}
+            className="mt-8 h-12 w-full rounded-md bg-[#2c5a3f] text-base font-semibold text-white shadow-none transition-colors hover:bg-[#21452f] disabled:bg-[#2c5a3f]/55 disabled:text-white disabled:opacity-100"
+          >
+            {validando ? "Entrando…" : "Entrar"}
+          </Button>
+
+          <p className="mt-8 text-[15px] leading-6 text-[#56615a]">
+            Sem acesso? Peça um convite a quem administra a fazenda.
+          </p>
+        </form>
       </div>
     </main>
   );

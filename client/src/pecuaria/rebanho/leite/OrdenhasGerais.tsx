@@ -29,7 +29,7 @@ import "./leite.css";
 const situacoes: Record<string, string> = { SEM_AFERICAO: "Sem aferição", PENDENTE_ESTOQUE: "Salva", PARCIAL_ESTOQUE: "Parcial no estoque", CONFIRMADA: "Confirmada" };
 export function OrdenhasGerais({ podeLancar, acoesContainer }: { podeLancar: boolean; acoesContainer?: HTMLElement | null }) {
   const sitio = getPropriedadeAtiva();
-  const visualizacao = useVisualizacaoConsulta("ordenhasVisualizacao", "leite");
+  const visualizacao = useVisualizacaoConsulta("ordenhasVisualizacao", "leite", "visual");
   const [params, setParams] = useState(() => new URLSearchParams(location.search));
   const [lista, setLista] = useState<ConsultaParcelas | null>(null);
   const [erro, setErro] = useState("");

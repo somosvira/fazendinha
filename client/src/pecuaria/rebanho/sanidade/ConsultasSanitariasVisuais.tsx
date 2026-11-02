@@ -20,12 +20,12 @@ export function ConsultaExames<T extends ExameVisual>({ nomeAnimal, ...props }: 
   })}{!props.itens.length && <p className="text-sm text-muted-foreground">Nenhum exame nesta consulta.</p>}</div>}</>;
 }
 export function ConsultaAplicacoes(props: Props<AplicacaoSanitaria>) {
-  const visual = useVisualizacaoConsulta("visualAplicacoes", "sanidade");
+  const visual = useVisualizacaoConsulta("visualAplicacoes", "sanidade", "visual");
   return <><div className="consulta-visual-barra"><span>Aplicações registradas por data</span><AlternarVisualizacaoConsulta {...visual} visual="Linha do tempo" rotulo="Visualização das aplicações" /></div>{visual.modo === "tabela" ? <TabelaFinanceira {...props} /> : <LinhaTempoConsulta rotulo="Histórico de aplicações" itens={props.itens} dataDe={a => a.data} chaveDe={a => String(props.chaveDe(a))} render={a => <CartaoConsulta icon={Syringe} titulo={a.animal ? nomeAnimalSanitario(a.animal) : "Aplicação sanitária"} detalhe={tipoSanitario(a)} onAbrir={() => props.onAbrir?.(a)} status={props.colunas.find(c => c.chave === "situacao")?.celula(a)} acoes={props.colunas.find(c => c.chave === "acoes")?.celula(a)}><div className="consulta-fatos"><FatoConsulta rotulo="Produto">{a.nomeProdutoAplicado || a.produto?.nome || "Não informado"}</FatoConsulta><FatoConsulta rotulo="Dose"><strong>{a.dose} {unidadeSanitaria(a.unidadeDose)}</strong></FatoConsulta><FatoConsulta rotulo="Origem">{origemSanitaria(a.origemInsumo)}</FatoConsulta><FatoConsulta rotulo="Registro">{dataAplicacaoSanitaria(a)}</FatoConsulta></div>{a.status === "ANULADO" && a.consumoMantido && <p className="mt-3 text-sm text-muted-foreground">Consumo mantido no histórico.</p>}</CartaoConsulta>} />}</>;
 }
 type CarenciaVisual = CarenciaAnimal & { animal: { id: string; brinco: string; nome: string | null } };
 export function ConsultaCarencias<T extends CarenciaVisual>(props: Props<T>) {
-  const visual = useVisualizacaoConsulta("visualCarencias", "sanidade");
+  const visual = useVisualizacaoConsulta("visualCarencias", "sanidade", "visual");
   const agora = Date.now();
   const datas = props.itens.flatMap(c => [c.leite, c.carne].flatMap(p => p.estado === "CONHECIDO" && !p.prazoZero ? [new Date(p.ate).getTime()] : [])).filter(Number.isFinite);
   const minimo = Math.min(agora, ...datas) - 86400000;

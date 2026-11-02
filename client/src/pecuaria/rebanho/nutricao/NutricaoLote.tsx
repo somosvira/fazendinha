@@ -16,7 +16,7 @@ import { PaginacaoNutricao } from "./PaginacaoNutricao";
 import "./nutricao.css";
 
 export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" }) {
-  const visual = useVisualizacaoConsulta("visualDietasLote", "nutricao");
+  const visual = useVisualizacaoConsulta("visualDietasLote", "nutricao", "visual");
   const [pagina, setPagina] = useState(1);
   const consulta = useConsulta(useCallback(() => consultarResumoNutricional(loteId), [loteId]));
   const historico = useConsulta(useCallback(() => listarVigencias(loteId, pagina), [loteId, pagina]));

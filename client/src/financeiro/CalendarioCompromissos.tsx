@@ -39,7 +39,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" type="button" aria-label="Mês anterior" onClick={() => mudarMes(deslocarMes(mes, -1))} className={`rounded-lg border border-border hover:bg-muted ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronLeft aria-hidden="true" size={16} strokeWidth={1.8} /></Button>
         <Button variant="outline" size="icon" type="button" aria-label="Próximo mês" onClick={() => mudarMes(deslocarMes(mes, 1))} className={`rounded-lg border border-border hover:bg-muted ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronRight aria-hidden="true" size={16} strokeWidth={1.8} /></Button>
-        <h3 className="ml-1 text-sm font-semibold capitalize" aria-live="polite">{nomeMes(mes)}</h3>
+        <h3 className="ml-1 text-sm font-semibold" aria-live="polite">{nomeMes(mes)}</h3>
       </div>
       <Button variant="outline" size={resumo ? "sm" : "default"} onClick={() => mudarMes(mesAtual())}>Hoje</Button>
     </div>

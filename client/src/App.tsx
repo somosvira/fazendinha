@@ -19,9 +19,9 @@ import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import "./pecuaria/pecuaria-theme.css";
 import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
-import "./styles/identidade-rural.css";
 import "./styles/tabelas-operacionais.css";
 import "./styles/operacional-aprovado.css";
+import "./styles/campo.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
@@ -567,7 +567,7 @@ export function App() {
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-bezerreiro"
-    ? <BezerreiroModulo key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    ? <BezerreiroModulo key={propAtiva ?? "consolidado"} onSelecionarSitio={trocarPropriedade} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-leite"
     ? <LeiteModulo onSelecionarSitio={trocarPropriedade} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"

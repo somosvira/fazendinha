@@ -33,7 +33,7 @@ const colunas = (editar: (s: PropriedadeDTO) => void, alternar: (s: PropriedadeD
 ];
 
 export function Sitios() {
-  const visual = useVisualizacaoConsulta("visualSitios");
+  const visual = useVisualizacaoConsulta("visualSitios", "consultas", "visual");
   const [mostrarInativos, setMostrarInativos] = useState(() => new URLSearchParams(window.location.search).has("busca"));
   const [busca, setBusca] = useBuscaUrl("busca");
   useEffect(() => { const restaurar = () => { if (new URLSearchParams(location.search).has("busca")) setMostrarInativos(true); }; window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, []);

@@ -7,11 +7,16 @@ export type ModoConsulta = "visual" | "tabela";
 function chavePreferencia(chave: string, dominio: string) {
   try { const usuario = JSON.parse(localStorage.getItem("rionovo:usuario") ?? "null"); return `terrano:${dominio}:${usuario?.id ?? "sessao"}:${chave}`; } catch { return `terrano:${dominio}:sessao:${chave}`; }
 }
-export function useVisualizacaoConsulta(chave: string, dominio = "consultas") {
+/**
+ * Listas operacionais abrem em tabela: quem administra a fazenda compara linhas,
+ * não cartões. `padrao = "visual"` fica para visualizações que mostram algo que a
+ * tabela não mostra (calendário, linha do tempo, prazos, gráficos, ordenhas do dia).
+ */
+export function useVisualizacaoConsulta(chave: string, dominio = "consultas", padrao: ModoConsulta = "tabela") {
   const ler = (): ModoConsulta => {
     const url = new URLSearchParams(window.location.search).get(chave);
     if (url === "visual" || url === "tabela") return url;
-    try { return localStorage.getItem(chavePreferencia(chave, dominio)) === "tabela" ? "tabela" : "visual"; } catch { return "visual"; }
+    try { const salvo = localStorage.getItem(chavePreferencia(chave, dominio)); return salvo === "visual" || salvo === "tabela" ? salvo : padrao; } catch { return padrao; }
   };
   const [modo, setModo] = useState<ModoConsulta>(ler);
   useEffect(() => { const restaurar = () => setModo(ler()); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, [chave, dominio]);

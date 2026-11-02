@@ -1,13 +1,13 @@
 :root body .financeiro-colorido.assistente-consulta[data-slot="sheet-content"] { top: auto; bottom: 24px; right: 24px; width: min(700px, calc(100vw - 48px)); max-width: 700px; height: min(780px, calc(100dvh - 48px)); border-radius: 16px; overflow: hidden; }
 .assistente-consulta .assistente-cabecalho { padding: 24px 56px 16px 24px; border-bottom: 1px solid var(--border); gap: 0; }
 .assistente-titulo { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.assistente-consulta .assistente-titulo h2 { font-family: Manrope, sans-serif; font-size: 22px; font-weight: 750; letter-spacing: -.025em; }
+.assistente-consulta .assistente-titulo h2 { font-family: var(--sans); font-size: 22px; font-weight: 750; letter-spacing: -.025em; }
 .assistente-contexto { color: var(--muted-foreground); font-size: 13px; margin-top: 8px; }
 .assistente-modos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
 .assistente-modos button[aria-pressed="true"] { background: var(--accent); color: var(--primary); }
 .assistente-corpo { padding: 24px 28px; }
 .assistente-boas-vindas { margin-bottom: 24px; }
-.assistente-boas-vindas h3, .assistente-voz h3 { font: 750 24px/1.3 Manrope, sans-serif; letter-spacing: -.02em; }
+.assistente-boas-vindas h3, .assistente-voz h3 { font: 750 24px/1.3 var(--sans); letter-spacing: -.02em; }
 .assistente-boas-vindas p { margin-top: 10px; max-width: 58ch; color: var(--muted-foreground); line-height: 1.65; font-size: 14px; }
 .assistente-sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .assistente-apoio { margin-bottom: 24px; }

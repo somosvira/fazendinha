@@ -42,7 +42,7 @@ const dataPt = (data: string) =>
   });
 export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
   const Titulo = tituloPagina ? "h1" : "h2";
-  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite");
+  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite", "visual");
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
   const [dados, setDados] = useState<ConsultaProgramacaoDTO | null>(null);

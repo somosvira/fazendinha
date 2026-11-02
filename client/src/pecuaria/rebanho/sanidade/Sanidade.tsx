@@ -247,7 +247,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [ocorrenciaId, setOcorrenciaId] = useState("");
   const [chave, setChave] = useState(() => crypto.randomUUID());
   const [aplicacoes, setAplicacoes] = useState<AplicacaoSanitaria[]>([]);
-  const visualTarefas = useVisualizacaoSanitaria("visualTarefas");
+  const visualTarefas = useVisualizacaoSanitaria("visualTarefas", "visual");
   const visualOcorrencias = useVisualizacaoSanitaria("visualOcorrencias");
   const [doencaVisual, setDoencaVisual] = useState(() => new URLSearchParams(window.location.search).get("doencaId") ?? "");
   const [resumoOcorrencias, setResumoOcorrencias] = useState<ResumoOcorrencias | null>(null);

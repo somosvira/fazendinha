@@ -20,7 +20,7 @@ const taxa = (n: number | null) => n === null ? "Sem base suficiente" : `${numer
 const pendente = (a: DetalheAnimalIndicador) => a.incluidaNaBase === false || a.incluidaNaBase === undefined && a.contribuicaoElegiveis === null;
 
 export function PainelIndicadores({ snapshot: s, mostrarMetodo = true, exibirResultado = true, exibirDesempenho = true, mostrarPeriodo = true }: { snapshot: SnapshotIndicadoresReprodutivos; mostrarMetodo?: boolean; exibirResultado?: boolean; exibirDesempenho?: boolean; mostrarPeriodo?: boolean }) {
-  const visualizacao=useVisualizacaoConsulta("indicadoresVisualizacao","reproducao");
+  const visualizacao=useVisualizacaoConsulta("indicadoresVisualizacao","reproducao","visual");
   const [pagina, setPagina] = useState(1);
   const [consulta, setConsulta] = useState<string | null>(null);
   const [paginaAnimais, setPaginaAnimais] = useState(1);

@@ -12,7 +12,7 @@ import "./painel-gerencial.css";
 import { ResumoLeitePainel } from "../pecuaria/rebanho/leite/ResumoLeitePainel";
 
 const dinheiro = (v: string | null) => v == null ? "Não apurado" : brl(v);
-const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(Number(v));
+const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v));
 const numero = (v: string | number) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 const contagem = (n: number, singular: string, plural: string) => `${numero(n)} ${n === 1 ? singular : plural}`;
 const media = (v: string) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 });

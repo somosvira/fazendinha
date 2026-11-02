@@ -42,7 +42,7 @@ export function AcompanhamentoReprodutivo({
   propriedadeId?: number;
   podeLancar?: boolean;
 }) {
-  const visual = useVisualizacaoConsulta("visualAgendaReproducao", "reproducao");
+  const visual = useVisualizacaoConsulta("visualAgendaReproducao", "reproducao", "visual");
   const [dados, setDados] = useState<SugestoesVisita | null>(null),
     [erro, setErro] = useState<string | null>(null),
     [carregando, setCarregando] = useState(true);

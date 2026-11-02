@@ -20,7 +20,7 @@ import { rotaFechamento, useFiltrosNutricionais } from "./navegacao";
 import { PaginacaoNutricao } from "./PaginacaoNutricao";
 
 export function FechamentosNutricao({ loteId }: { loteId?: string }) {
-  const visual = useVisualizacaoConsulta("visualFechamentos");
+  const visual = useVisualizacaoConsulta("visualFechamentos", "consultas", "visual");
   const { params, atualizar } = useFiltrosNutricionais();
   const de = params.get("fechamentosDe") ?? "";
   const ate = params.get("fechamentosAte") ?? "";

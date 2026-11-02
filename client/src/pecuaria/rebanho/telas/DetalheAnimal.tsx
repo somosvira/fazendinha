@@ -89,7 +89,7 @@ function LinkLote({ id, nome }: { id: string; nome: string }) {
 
 export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = "Animais" }: { id: string; onVoltar: () => void; podeLancar?: boolean; rotuloVoltar?: string }) {
   const [situacaoReprodutiva, setSituacaoReprodutiva] = useState<string | null>(null);
-  const visualHistorico = useVisualizacaoConsulta("visualHistoricoAnimal", "rebanho");
+  const visualHistorico = useVisualizacaoConsulta("visualHistoricoAnimal", "rebanho", "visual");
   const [carenciaResumo, setCarenciaResumo] = useState<CarenciaAnimal | null>(null);
   useEffect(() => { setSituacaoReprodutiva(null); setCarenciaResumo(null); }, [id]);
   const [identificandoCria,setIdentificandoCria]=useState(false);

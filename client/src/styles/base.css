@@ -46,7 +46,7 @@
 
   /* type */
   --serif: "Newsreader", "Source Serif 4", Georgia, serif;
-  --sans: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --sans: "Public Sans", "Helvetica Neue", Arial, sans-serif;
 
   /* escala tipográfica (piso 14px) */
   --ts-min:    14px;
@@ -878,7 +878,7 @@ body.no-scroll { overflow: hidden; }
 .relatorio-export-pdf {
   width: 277mm;
   padding: 0;
-  font-family: "DM Sans", system-ui, sans-serif;
+  font-family: var(--sans);
   font-size: 11px;
   line-height: 1.35;
 }

@@ -120,7 +120,7 @@ describe("visualizações financeiras integradas", () => {
     expect(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })).toHaveLength(6);
     expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Próximo mês" }));
-    expect(screen.getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Outubro de 2026" })).toBeTruthy();
     expect(obterDashboardFinanceiro).toHaveBeenCalledOnce();
     fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
     fireEvent.click(screen.getAllByRole("button", { name: /Compromisso \d, a pagar/ })[0]);

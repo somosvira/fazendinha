@@ -12,7 +12,7 @@ export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, cha
   tituloDe?: (item: T) => ReactNode; detalheDe?: (item: T) => ReactNode; destaque?: string;
   chaveDe: (item: T) => Key; onAbrir?: (item: T) => void; compacta?: boolean;
 }) {
-  const preferenciaLocal = useVisualizacaoConsulta(preferencia, "leite");
+  const preferenciaLocal = useVisualizacaoConsulta(preferencia, "leite", "visual");
   const { modo, mudar } = visualizacao ?? preferenciaLocal;
   const principal = colunas.find(c => c.principal) ?? colunas[0];
   const acoes = colunas.filter(c => c.acoes || c.chave === "acao");
