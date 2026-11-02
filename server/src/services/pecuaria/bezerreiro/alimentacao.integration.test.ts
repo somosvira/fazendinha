@@ -93,8 +93,10 @@ suite('alimentação íntegra com PostgreSQL real', () => {
     const entrada = await oferta(tx, f);
     await tx.periodoFaseBezerreiro.update({ where: { id: f.participacao.fases[0].id }, data: { ate: data } });
     await tx.participacaoBezerreiro.update({ where: { id: f.participacao.id }, data: { ate: data, versao: { increment: 1 } } });
+    await tx.localizacaoAnimal.updateMany({ where: { animalId: f.animal.id, loteId: f.lote.id, ate: null }, data: { ate: data } });
+    await tx.localizacaoAnimal.create({ data: { animalId: f.animal.id, propriedadeId: f.sitio.id, desde: data } });
     const b = await tx.animal.create({ data: { brinco: randomUUID(), sexo: 'F', dataNascimento: new Date('2026-10-01'), dataEntrada: desde, origem: 'COMPRADO' } });
-    await tx.localizacaoAnimal.create({ data: { animalId: b.id, propriedadeId: f.sitio.id, loteId: f.lote.id, desde } });
+    await tx.localizacaoAnimal.create({ data: { animalId: b.id, propriedadeId: f.sitio.id, loteId: f.lote.id, desde: data } });
     await tx.participacaoBezerreiro.create({ data: { perfilId: f.perfil.id, animalId: b.id, desde: data, fases: { create: { faseVersaoId: f.fase.id, desde: data } } } });
     await conferir(tx);
     await expect(confirmarOfertaTx(tx, entrada, null)).rejects.toMatchObject({ code: 'CONFLITO', campo: 'contextoToken' });

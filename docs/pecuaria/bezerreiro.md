@@ -4,7 +4,7 @@ O Bezerreiro reúne participação dos animais, programação por coleira, aleit
 
 ## Estado e validação
 
-O código do módulo e as migrations aditivas do Bezerreiro evoluem a baseline V5. As migrations não foram aplicadas localmente nesta entrega. Disponibilidade operacional depende de sua aplicação e homologação no ambiente autorizado. Testes de serviço/contrato e verificações estáticas de SQL não comprovam execução das funções SQL ou concorrência real em PostgreSQL.
+O código do módulo e as migrations aditivas do Bezerreiro evoluem a baseline V5. A integração por localização acrescenta a migration `20261102160000_bezerreiro_localizacao`, somente de estrutura e proteção, sem carga de participantes. Disponibilidade em STG depende da publicação, aplicação da migration e regularização revisada dos lotes ocupados. Validação automatizada local não substitui homologação operacional da fazenda.
 
 A referência de produto é a [prévia navegável](../design/bezerreiro/index.html), incluindo os comentários consolidados em seu [planejamento](../design/bezerreiro/planejamento.html#implementacao). A prévia usa dados fictícios e armazenamento próprio de sessão; a aplicação consulta a API real.
 
@@ -12,9 +12,25 @@ A referência de produto é a [prévia navegável](../design/bezerreiro/index.ht
 
 Bezerreiro é um item de Pecuária na sidebar, com Animais, Alimentação, Colostragem, Sanidade e Custos. A consulta de saídas é independente da lista de presentes. Busca, coleira/fase, período e paginação permanecem na URL dos fluxos correspondentes.
 
-`PerfilBezerreiro` especializa um `Lote` existente. `ParticipacaoBezerreiro` registra animal, perfil, entrada/saída, motivo, autoria e versão; os intervalos são `[desde, ate)`: a data de saída não integra a permanência. A localização do animal precisa comprovar o lote/sítio na data. Incluir um participante exige que ele já esteja no lote; a movimentação usa o fluxo de Rebanho. Não se inventa localização ou participação a partir de idade, nascimento ou compra.
+`PerfilBezerreiro` especializa um `Lote` existente. `ParticipacaoBezerreiro` registra animal, perfil, entrada/saída, motivo, autoria e versão; os intervalos são `[desde, ate)`: a data de saída não integra a permanência. A localização do animal comprova o lote/sítio e determina a participação: uma entrada em lote com perfil ativo abre a participação na mesma transação; saída, transferência e baixa encerram a permanência. Transferir entre dois Bezerreiros encerra a participação de origem e abre outra no destino. Categoria e nome do lote não são gatilhos. Cadastro, nascimento e importação reutilizam essa integração quando a localização inicial aponta para um lote configurado. Não se inventa localização ou data de entrada a partir de idade, nascimento ou compra.
 
 As fases são fatos versionados em `PeriodoFaseBezerreiro`. A ficha apresenta acompanhamento somente quando há participação ou fatos reais de colostragem; após a saída, conserva histórico. Um animal que nunca participou não recebe aba vazia por pertencer a uma categoria etária.
+
+## Integração com a localização e regularização
+
+O executor `bezerreiro/localizacao.ts` é chamado dentro das transações de cadastro, nascimento, movimentação individual/coletiva, baixa, estorno e correções/desfazimentos da localização. O conjunto da movimentação é atômico: conflito em um animal reverte o comando inteiro. Mudanças sem alteração de permanência não criam uma segunda participação. A autorização continua nos endpoints de Rebanho e Bezerreiro, com escopo por sítio e permissão de lançamento.
+
+No formulário de parto, um único Bezerreiro ativo do sítio é sugerido como lote inicial da cria viva, com troca permitida. No cadastro avulso, a sugestão depende da categoria calculada Bezerro/Bezerra. A categoria serve apenas à sugestão: um animal de qualquer categoria participa se o lote escolhido estiver configurado; um bezerro em outro lote não participa. Havendo vários Bezerreiros, o operador escolhe o destino; não há seleção arbitrária. A escolha manual, inclusive Sem lote, prevalece sobre respostas tardias da consulta.
+
+Uma nova permanência não recebe fase, coleira ou dose automaticamente. A consulta apresenta **Sem programação**; alimentação, consumo, estoque, custos e colostragem dependem dos seus próprios fatos. A programação do sítio de origem não é copiada na transferência. Desmama não altera a localização nem encerra a participação.
+
+Saídas encerram os intervalos de fase abrangidos pela permanência. Reabrir a localização por estorno conserva a fase já encerrada, sem restaurar programação por suposição. Desfazer uma entrada sem fase ou oferta pode remover a participação derivada, conservando seus dados e motivo na auditoria; existindo fatos dependentes, o comando é recusado. Correções e desfazimentos conferem fases e ofertas realizadas: fatos incompatíveis exigem regularização ou estorno explícito antes da mudança, sem apagar alimentação ou executar cascatas. Uma correção comum não importa participações históricas faltantes. Os intervalos usam datas civis, com saída exclusiva; entrada e saída no mesmo dia não constituem uma permanência positiva e são recusadas, sem deslocar datas ou criar horários artificiais.
+
+`POST /perfis` reutiliza o perfil único por lote. Configurar um lote ocupado exige uma regularização explícita com motivo e a lista completa dos IDs, animais e datas das localizações atuais. O servidor reconfere essa lista sob trava e grava perfil e participações atomicamente; divergência exige nova prévia. Sem essa confirmação, o comando recusa o lote ocupado. A migration estrutural não cria perfis ou participantes históricos.
+
+`POST /participantes` é uma regularização de participação faltante: o animal já deve estar no lote, a entrada deve coincidir com a localização comprovada e o motivo é obrigatório. Reexecução reutiliza a participação existente. Não cria movimentação fictícia nem programação alimentar. A saída operacional deve usar movimentação ou baixa do Rebanho; o endpoint antigo de saída isolada não permite contrariar a localização.
+
+A [ferramenta de prévia e o procedimento de regularização](bezerreiro-regularizacao.md) produzem manifesto e comandos revisáveis sem executá-los. Dados reais e relatórios ficam fora do Git. Publicar código não significa executar a adaptação: a conciliação e a carga histórica pertencem à manutenção autorizada separadamente.
 
 ## Configuração e aleitamento
 

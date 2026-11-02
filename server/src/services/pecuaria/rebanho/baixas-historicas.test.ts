@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock('../bezerreiro/localizacao.js', () => ({ sincronizarLocalizacoesBezerreiroTx: vi.fn() }));
+
 import type { Prisma } from "@prisma/client";
 import { reordenarChavesJson } from "../../../test/jsonb.js";
 import { registrarBaixaTx, darBaixa } from "./animais.js";

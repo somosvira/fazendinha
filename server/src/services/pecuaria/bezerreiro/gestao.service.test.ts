@@ -14,7 +14,7 @@ const participacao = { id: id(1), animalId: id(2), perfilId: id(3), desde: new D
 const fase = { id: id(4), publicada: true, litrosDia: '0', ofertas: [], propriedadeId: 1 };
 function modelo() { return { findFirst: vi.fn(), findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn() }; }
 let m: ReturnType<typeof mocks>;
-function mocks() { return { $executeRaw: vi.fn(), requisicaoPecuaria: modelo(), configuracaoBezerreiro: modelo(), coleiraBezerreiro: modelo(), faseBezerreiroVersao: modelo(), participacaoBezerreiro: modelo(), grupoOfertaBezerreiro: modelo(), periodoFaseBezerreiro: modelo() }; }
+function mocks() { return { $executeRaw: vi.fn(), requisicaoPecuaria: modelo(), configuracaoBezerreiro: modelo(), coleiraBezerreiro: modelo(), faseBezerreiroVersao: modelo(), localizacaoAnimal: modelo(), perfilBezerreiro: modelo(), participacaoBezerreiro: modelo(), grupoOfertaBezerreiro: modelo(), periodoFaseBezerreiro: modelo() }; }
 beforeEach(() => {
   vi.clearAllMocks(); m = mocks(); f.tx = m as unknown as Prisma.TransactionClient;
   const requisicoes = new Map<string, unknown>();
@@ -24,6 +24,8 @@ beforeEach(() => {
   m.participacaoBezerreiro.update.mockResolvedValue({ ...participacao, versao: 2 });
   m.faseBezerreiroVersao.findFirst.mockResolvedValue(fase);
   m.grupoOfertaBezerreiro.findFirst.mockResolvedValue(null);
+  m.localizacaoAnimal.findFirst.mockResolvedValue(null);
+  m.perfilBezerreiro.findFirst.mockResolvedValue({ id: participacao.perfilId, loteId: id(99), propriedadeId: 1 });
   m.periodoFaseBezerreiro.findFirst.mockResolvedValue(null);
 });
 const troca = { chave: id(10), propriedadeId: 1, versaoEsperada: 1, faseVersaoId: id(4), desde: '2026-10-28', motivo: 'Mudança conferida no manejo' };
