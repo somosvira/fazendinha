@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { montarConsultaBusca, fontesAutorizadas, escaparTermoBusca } from "./busca.consulta.js";
+import { montarConsultaBusca, fontesAutorizadas, escaparTermoBusca, compactarTermoBusca, numeroDoTermo } from "./busca.consulta.js";
 import type { UsuarioContexto } from "./auth/sessao.js";
 const usuario = (extra: Partial<UsuarioContexto> = {}): UsuarioContexto => ({ id: 1, nome: "Consulta", email: "", papel: "consulta", areas: [], abas: [], flags: [], dono: false, status: "ATIVO", ...extra });
 describe("fontes da busca global", () => {
@@ -30,5 +30,25 @@ describe("fontes da busca global", () => {
   });
   it("trata curingas SQL como texto e não como expansão da busca", () => {
     expect(escaparTermoBusca("50%_!" )).toBe("50!%!_!!");
+  });
+  it("compacta identificadores e normaliza números para casar brincos com hífen e zeros à esquerda", () => {
+    expect(compactarTermoBusca("DEV-001")).toBe("dev001");
+    expect(compactarTermoBusca("Dev 035")).toBe("dev035");
+    expect(numeroDoTermo("035")).toBe("35");
+    expect(numeroDoTermo("000")).toBe("0");
+    expect(numeroDoTermo("dev35")).toBeNull();
+  });
+  it("busca sem separadores e prioriza o animal entre correspondências iguais", () => {
+    const fontes = fontesAutorizadas(usuario({ dono: true }));
+    const alfanumerica = montarConsultaBusca("dev001", fontes, null);
+    expect(alfanumerica.values).toContain("%dev001%");
+    expect(alfanumerica.sql).toContain("[^a-z0-9]");
+    expect(alfanumerica.sql).toContain("ORDER BY ordem, prioridade, label");
+    const numerica = montarConsultaBusca("035", fontes, null);
+    expect(numerica.values).toContain("35");
+  });
+  it("não aplica a comparação compacta a termos só de letras", () => {
+    const consulta = montarConsultaBusca("estrela", fontesAutorizadas(usuario({ dono: true })), null);
+    expect(consulta.values.filter(v => v === "%estrela%").length).toBe(fontesAutorizadas(usuario({ dono: true })).length);
   });
 });

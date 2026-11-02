@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FileText, MapPin, X, CornerDownLeft } from "lucide-react";
 import type { Tab } from "./Shell";
-import { COMANDOS, buscar, type ResultadoBusca } from "../lib/searchIndex";
+import { COMANDOS, agruparPorFamilia, buscar, type FamiliaRegistro, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -27,6 +27,7 @@ function eResultadoBusca(v: unknown): v is ResultadoBusca {
 export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado" }: Props) {
   const [query, setQuery] = useState("");
   const [filtro, setFiltro] = useState<FiltroBusca>("Tudo");
+  const [familia, setFamilia] = useState<FamiliaRegistro | null>(null);
   const [valorSelecionado, setValorSelecionado] = useState("");
   const [resposta, setResposta] = useState<{ q: string; itens: ResultadoBusca[] } | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -37,12 +38,16 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
   const termo = query.trim();
   const visiveis = useMemo(() => COMANDOS.filter(c => podeVer(c.tab) && (!podeVerCaminho || podeVerCaminho(c.caminho)) && (!c.exigeLancamento || podeLancar) && (!c.exigeValores || podeVerValores)), [podeVer, podeVerCaminho, podeLancar, podeVerValores]);
   const comandos = useMemo(() => buscar(visiveis, query), [visiveis, query]);
-  const paginas = filtro === "Tudo" || filtro === "Páginas" ? comandos.filter(c => !c.acao) : [];
-  const acoes = filtro === "Tudo" || filtro === "Ações" ? comandos.filter(c => c.acao) : [];
+  // Uma mini aba de família restringe a lista àqueles registros, sem páginas/ações.
+  const paginas = !familia && (filtro === "Tudo" || filtro === "Páginas") ? comandos.filter(c => !c.acao) : [];
+  const acoes = !familia && (filtro === "Tudo" || filtro === "Ações") ? comandos.filter(c => c.acao) : [];
   const entidades = useMemo(() => resposta?.q === termo ? resposta.itens.filter(e => podeVer(e.tab as Tab) && (!podeVerCaminho || podeVerCaminho(e.caminho))) : [], [resposta, termo, podeVer, podeVerCaminho]);
-  const registros = filtro === "Tudo" || filtro === "Registros" ? entidades : [];
+  const familias = useMemo(() => agruparPorFamilia(filtro === "Tudo" || filtro === "Registros" ? entidades : []), [entidades, filtro]);
+  const gruposVisiveis = familia ? familias.filter(g => g.familia === familia) : familias;
+  const registros = gruposVisiveis.flatMap(g => g.itens);
   const primeiroId = registros[0] ? `${registros[0].tipo}:${registros[0].entidadeId}` : paginas[0]?.id ?? acoes[0]?.id ?? "";
-  useEffect(() => { setValorSelecionado(primeiroId); if (listaRef.current) listaRef.current.scrollTop = 0; }, [primeiroId, termo, filtro]);
+  useEffect(() => { setValorSelecionado(primeiroId); if (listaRef.current) listaRef.current.scrollTop = 0; }, [primeiroId, termo, filtro, familia]);
+  useEffect(() => { setFamilia(null); }, [termo, filtro]);
 
   useEffect(() => {
     if (aberto) { setQuery(""); setFiltro("Tudo"); setResposta(null); setErro(false); }
@@ -79,11 +84,15 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
         </div>
         <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{escopo}</span></div>
         <nav className="busca-global-filtros" aria-label="Tipos de resultado">{filtros.map(f => <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}>{f}</button>)}</nav>
+        {familias.length > 1 && <nav className="busca-global-familias" aria-label="Tipos de registro">
+          <button type="button" aria-pressed={!familia} onClick={() => setFamilia(null)}>Todos<span>{entidades.length}</span></button>
+          {familias.map(g => <button key={g.familia} type="button" aria-pressed={familia === g.familia} onClick={() => setFamilia(g.familia)}>{g.familia}<span>{g.itens.length}</span></button>)}
+        </nav>}
         <CommandList ref={listaRef} className="busca-global-lista" aria-label="Resultados da busca" aria-busy={mostrarRegistros && buscando}>
           {!termo && <p className="busca-global-dica">Busque por nome, brinco, número ou referência.</p>}
-          {mostrarRegistros && registros.length > 0 && <CommandGroup heading="Registros">{registros.map(e => <CommandItem key={`${e.tipo}:${e.entidadeId}`} value={`${e.tipo}:${e.entidadeId}`} onSelect={() => escolher(e.tab as Tab, e.entidadeId, e.caminho)} className="busca-global-linha">
+          {mostrarRegistros && gruposVisiveis.map(g => <CommandGroup key={g.familia} heading={g.familia}>{g.itens.map(e => <CommandItem key={`${e.tipo}:${e.entidadeId}`} value={`${e.tipo}:${e.entidadeId}`} onSelect={() => escolher(e.tab as Tab, e.entidadeId, e.caminho)} className="busca-global-linha">
             <FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{e.label}</span><small>{e.sublabel}</small></span><span className="busca-global-tipo">{e.grupo}</span>
-          </CommandItem>)}</CommandGroup>}
+          </CommandItem>)}</CommandGroup>)}
           {mostrarRegistros && buscando && <p role="status" className="busca-global-estado">Buscando registros…</p>}
           {mostrarRegistros && erro && <div role="alert" className="busca-global-falha"><strong>Não foi possível buscar os registros</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</button></div>}
           {paginas.length > 0 && <CommandGroup heading={termo ? "Páginas" : "Ir para"}>{paginas.map(c => <CommandItem key={c.id} value={c.id} onSelect={() => escolher(c.tab, undefined, c.caminho)} className="busca-global-linha"><FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{c.label}</span><small>{c.descricao ?? c.grupo}</small></span><span className="busca-global-tipo">Página</span></CommandItem>)}</CommandGroup>}

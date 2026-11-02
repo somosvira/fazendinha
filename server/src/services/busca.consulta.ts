@@ -131,13 +131,38 @@ export function fontesAutorizadas(u: UsuarioContexto): FonteBusca[] {
 export const normalizarTermoBusca = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 export const escaparTermoBusca = (s: string) => s.replace(/[!%_]/g, c => `!${c}`);
 const normalizado = (campo: Prisma.Sql) => sql`translate(lower(normalize(${campo}, NFC)), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')`;
+/** Forma compacta: só letras e dígitos, para "dev001" achar "DEV-001" e "DEV 001". */
+export const compactarTermoBusca = (s: string) => normalizarTermoBusca(s).replace(/[^a-z0-9]/g, "");
+const compacto = (campo: Prisma.Sql) => sql`regexp_replace(${normalizado(campo)}, '[^a-z0-9]', '', 'g')`;
+/** Termo só numérico sem zeros à esquerda ("035" → "35"); nulo quando há letras. */
+export const numeroDoTermo = (q: string): string | null => /^\d{1,30}$/.test(q.trim()) ? (q.trim().replace(/^0+/, "") || "0") : null;
+/** Prioridade entre fontes no mesmo nível de correspondência: o animal antes dos fatos e documentos ligados a ele. */
+const PRIORIDADE_FONTE: Record<string, number> = { animal: 0, lote: 1 };
 export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedadeId: number | null): Prisma.Sql {
   const termos = normalizarTermoBusca(q.trim()).split(/\s+/).filter(Boolean);
   const inteira = escaparTermoBusca(normalizarTermoBusca(q.trim()));
-  const consultas = fontes.map(f => sql`(SELECT ${f.tipo}::text AS tipo, b.id, b.label, b.contexto, b."alvoId", b."propriedadeId",
-    CASE WHEN b.id = ${q.trim()} OR split_part(${normalizado(sql`regexp_replace(b.label, '^(Movimento |Compromisso )', '')`)}, ' — ', 1) = ${normalizarTermoBusca(q.trim())} THEN 0 WHEN ${normalizado(sql`b.label`)} LIKE ${inteira + '%'} ESCAPE '!' THEN 1 ELSE 2 END AS ordem
-    FROM (${f.consulta}) b WHERE (${Prisma.join(termos.map(t => sql`${normalizado(sql`concat_ws(' ', b.texto, ${f.grupo}::text, ${f.tipo}::text)`)} LIKE ${'%' + escaparTermoBusca(t) + '%'} ESCAPE '!'`), ' AND ')} OR b.id = ${q.trim()})
+  const qCompacto = compactarTermoBusca(q);
+  const qNumero = numeroDoTermo(q);
+  // Identificador do rótulo: o que vem antes do primeiro " — ", sem o prefixo de movimentos/compromissos.
+  const identificador = sql`split_part(regexp_replace(b.label, '^(Movimento |Compromisso )', ''), ' — ', 1)`;
+  // Número do identificador sem zeros à esquerda: "DEV-035" e "OP-0035" valem 35.
+  const numeroIdentificador = sql`nullif(ltrim(regexp_replace(${identificador}, '[^0-9]', '', 'g'), '0'), '')`;
+  const exato = [
+    sql`b.id = ${q.trim()}`,
+    sql`${normalizado(identificador)} = ${normalizarTermoBusca(q.trim())}`,
+    ...(qCompacto.length >= 2 ? [sql`${compacto(identificador)} = ${qCompacto}`] : []),
+    ...(qNumero != null ? [sql`coalesce(${numeroIdentificador}, CASE WHEN ${identificador} ~ '[0-9]' THEN '0' END) = ${qNumero}`] : []),
+  ];
+  const consultas = fontes.map(f => {
+    const texto = sql`concat_ws(' ', b.texto, ${f.grupo}::text, ${f.tipo}::text)`;
+    const porTermos = Prisma.join(termos.map(t => sql`${normalizado(texto)} LIKE ${'%' + escaparTermoBusca(t) + '%'} ESCAPE '!'`), ' AND ');
+    // Sem separadores, o termo inteiro também casa com identificadores escritos com hífen/espaço.
+    const porCompacto = qCompacto.length >= 3 && /[a-z]/.test(qCompacto) && /\d/.test(qCompacto) ? sql` OR ${compacto(sql`b.texto`)} LIKE ${'%' + qCompacto + '%'}` : Prisma.empty;
+    return sql`(SELECT ${f.tipo}::text AS tipo, b.id, b.label, b.contexto, b."alvoId", b."propriedadeId", ${PRIORIDADE_FONTE[f.tipo] ?? 2}::integer AS prioridade,
+    CASE WHEN ${Prisma.join(exato, ' OR ')} THEN 0 WHEN ${normalizado(sql`b.label`)} LIKE ${inteira + '%'} ESCAPE '!'${qCompacto.length >= 2 ? sql` OR ${compacto(sql`b.label`)} LIKE ${qCompacto + '%'}` : Prisma.empty} THEN 1 ELSE 2 END AS ordem
+    FROM (${f.consulta}) b WHERE ((${porTermos})${porCompacto} OR b.id = ${q.trim()})
     ${propriedadeId == null || f.global ? Prisma.empty : sql`AND b."propriedadeId" = ${propriedadeId}`}
-    ORDER BY ordem, b.label, b.id LIMIT 6)`);
-  return sql`SELECT tipo, id, label, contexto, "alvoId", "propriedadeId" FROM (${Prisma.join(consultas, ' UNION ALL ')}) resultados ORDER BY ordem, label, tipo, id LIMIT 120`;
+    ORDER BY ordem, b.label, b.id LIMIT 6)`;
+  });
+  return sql`SELECT tipo, id, label, contexto, "alvoId", "propriedadeId" FROM (${Prisma.join(consultas, ' UNION ALL ')}) resultados ORDER BY ordem, prioridade, label, tipo, id LIMIT 120`;
 }

@@ -204,3 +204,32 @@ export function buscar(comandos: Comando[], q: string): Comando[] {
 
   return candidatos.slice(0, 24).map(({ c }) => c);
 }
+
+// ── Famílias de registros (mini abas da busca global) ───────────────────────
+// Agrupa os `tipo` devolvidos pelo servidor em famílias de leitura. A ordem é a
+// de exibição: o animal vem antes dos fatos e documentos ligados a ele.
+export const FAMILIAS_REGISTRO = ["Animais", "Reprodução", "Sanidade", "Leite", "Nutrição", "Financeiro", "Estoque", "Cadastros", "Administração", "Outros"] as const;
+export type FamiliaRegistro = typeof FAMILIAS_REGISTRO[number];
+const FAMILIA_POR_TIPO: Record<string, FamiliaRegistro> = {
+  animal: "Animais", lote: "Animais",
+  tentativa: "Reprodução", parto: "Reprodução", visita: "Reprodução",
+  ocorrencia: "Sanidade", aplicacao: "Sanidade", exame: "Sanidade",
+  "producao-leite": "Leite", "amostra-leite": "Leite", "coleta-leite": "Leite", "venda-leite": "Leite", "emissao-leite": "Leite", tanque: "Leite",
+  dieta: "Nutrição", "fechamento-nutricao": "Nutrição",
+  operacao: "Financeiro", conta: "Financeiro", compromisso: "Financeiro", "relatorio-financeiro": "Financeiro", documento: "Financeiro", parceiro: "Financeiro",
+  produto: "Estoque", partida: "Estoque", "movimento-estoque": "Estoque",
+  categoria: "Cadastros", centro: "Cadastros", grupo: "Cadastros", protocolo: "Cadastros", genitor: "Cadastros", raca: "Cadastros",
+  "categoria-animal": "Cadastros", doenca: "Cadastros", "tipo-exame": "Cadastros", "tipo-aplicacao": "Cadastros", material: "Cadastros",
+  sitio: "Administração", usuario: "Administração",
+};
+/** Família de um registro; programações seguem a aba de destino (sanitária ou reprodutiva). */
+export function familiaDoRegistro(r: Pick<ResultadoBusca, "tipo" | "tab">): FamiliaRegistro {
+  if (r.tipo === "programacao") return r.tab === "pec-sanidade" ? "Sanidade" : "Reprodução";
+  return FAMILIA_POR_TIPO[r.tipo] ?? "Outros";
+}
+/** Registros agrupados por família, na ordem de FAMILIAS_REGISTRO, preservando a ordem do servidor dentro de cada uma. */
+export function agruparPorFamilia(itens: ResultadoBusca[]): { familia: FamiliaRegistro; itens: ResultadoBusca[] }[] {
+  const mapa = new Map<FamiliaRegistro, ResultadoBusca[]>();
+  for (const r of itens) { const f = familiaDoRegistro(r); mapa.set(f, [...(mapa.get(f) ?? []), r]); }
+  return FAMILIAS_REGISTRO.filter(f => mapa.has(f)).map(f => ({ familia: f, itens: mapa.get(f)! }));
+}
