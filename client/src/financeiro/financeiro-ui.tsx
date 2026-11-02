@@ -120,10 +120,10 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
   if (total === 0 && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
     <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
-    {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
+    {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2 max-sm:w-full">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
-      <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-card px-2 text-sm">
+      <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-card px-2 text-sm max-sm:min-w-0 max-sm:flex-1">
         {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
       </SelectCampo>
       <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>

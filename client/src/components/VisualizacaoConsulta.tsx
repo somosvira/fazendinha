@@ -11,8 +11,14 @@ function chavePreferencia(chave: string, dominio: string) {
  * Listas operacionais abrem em tabela: quem administra a fazenda compara linhas,
  * não cartões. `padrao = "visual"` fica para visualizações que mostram algo que a
  * tabela não mostra (calendário, linha do tempo, prazos, gráficos, ordenhas do dia).
+ * Abaixo de 768px a tabela mostra uma ou duas colunas e pede rolagem lateral: sem
+ * escolha salva, o padrão ali é o cartão.
  */
-export function useVisualizacaoConsulta(chave: string, dominio = "consultas", padrao: ModoConsulta = "tabela") {
+function padraoNaLargura(padrao: ModoConsulta): ModoConsulta {
+  try { return padrao === "tabela" && window.matchMedia("(max-width: 767px)").matches ? "visual" : padrao; } catch { return padrao; }
+}
+export function useVisualizacaoConsulta(chave: string, dominio = "consultas", padraoAmplo: ModoConsulta = "tabela") {
+  const padrao = padraoNaLargura(padraoAmplo);
   const ler = (): ModoConsulta => {
     const url = new URLSearchParams(window.location.search).get(chave);
     if (url === "visual" || url === "tabela") return url;

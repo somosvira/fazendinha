@@ -86,3 +86,13 @@
 
 @media (max-width: 900px) { :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] { min-height: 44px; } }
 
+
+/* Em telas estreitas as abas rolam na horizontal: o esmaecimento à direita mostra que há
+ * mais abas, e o respiro final deixa a última sair do esmaecimento ao rolar até o fim. */
+@media (max-width: 900px) {
+  :root .app-main [role="tablist"].abas-pasta {
+    padding-right: 32px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+}

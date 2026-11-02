@@ -72,7 +72,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
         </TableCell>)}</TableRow>)}</TableBody>
       </Table>
     </div>}
-    {diaSelecionado && <Modal icon={CalendarDays} tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
+    {diaSelecionado && <Modal icon={CalendarDays} tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="" onClose={() => setDiaSelecionado(null)}>
       <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><Button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} variant="ghost" className="h-auto w-full flex-col items-start whitespace-normal space-y-2 p-5 text-left hover:bg-muted"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</Button></li>)}</ul>
     </Modal>}
     {selecionado && <CompromissoDetalheDialog compromisso={selecionado} onClose={() => setSelecionadoId(null)} onLiquidar={onLiquidar} />}

@@ -63,7 +63,7 @@ export function DetalheFato({
   return (
     <Modal
       titulo={`${fato.grupo} · ${fato.data.slice(0, 10).split("-").reverse().join("/")}`}
-      eyebrow="Histórico reprodutivo"
+      eyebrow=""
       onClose={onFechar}
     >
       <div className="p-5 space-y-4">

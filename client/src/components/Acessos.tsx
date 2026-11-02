@@ -143,7 +143,7 @@ function InviteModal({
   // única vez e some ao fechar, então nada de formulário competindo por atenção.
   if (criado) {
     return (
-      <Modal titulo="Convite criado" eyebrow="Acessos" onClose={onClose}>
+      <Modal titulo="Convite criado" eyebrow="" onClose={onClose}>
           <div className="modal-body">
             <p className="m-0 mb-5 text-[15px] leading-[1.6] text-ink-3">
               Envie este link para <strong className="text-[color:var(--ink)]">{criado.nome}</strong>. Ele vale por 7 dias,
@@ -167,7 +167,7 @@ function InviteModal({
   }
 
   return (
-    <Modal titulo="Convidar pessoa" eyebrow="Acessos" onClose={onClose}>
+    <Modal titulo="Convidar pessoa" eyebrow="" onClose={onClose}>
         <div className="modal-body">
           <div className="field">
             <label className="field-label" htmlFor="inv-nome">Nome</label>
@@ -603,7 +603,7 @@ export function Acessos() {
         </section>
 
         {editorAberto && sel ? (
-          <DialogFinanceiro titulo={`Permissões de ${sel.nome}`} eyebrow="Acessos e permissões" icon={ShieldCheck} className="max-w-4xl" onClose={() => { if (!salvando) setEditorAberto(false); }}><fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
+          <DialogFinanceiro titulo={`Permissões de ${sel.nome}`} eyebrow="" icon={ShieldCheck} className="max-w-4xl" onClose={() => { if (!salvando) setEditorAberto(false); }}><fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
           <legend className="sr-only">Permissões de {sel.nome}</legend>
           <span role="status" className={salvando ? "block mb-2 text-sm text-muted-foreground" : "sr-only"}>{salvando ? "Salvando permissões…" : ""}</span>
           <PermissionEditor

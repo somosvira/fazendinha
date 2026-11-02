@@ -54,7 +54,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
     navegarPara(`/pecuaria/rebanho/animais/${animalId}`);
   };
 
-  return <DialogFinanceiro titulo="Movimentação" eyebrow="Rebanho" className="sm:max-w-3xl" onClose={onFechar}
+  return <DialogFinanceiro titulo="Movimentação" eyebrow="" className="sm:max-w-3xl" onClose={onFechar}
       rodape={<Button secondary onClick={onFechar}>Fechar</Button>}>
       <div className="p-5"><ErrorBox erro={erro} />
       {carregando && !mov ? <Loader label="Carregando movimentação" /> : mov && <div className="grid gap-5">

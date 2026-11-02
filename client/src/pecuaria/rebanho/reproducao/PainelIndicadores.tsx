@@ -55,7 +55,7 @@ export function PainelIndicadores({ snapshot: s, mostrarMetodo = true, exibirRes
     {periodos.length>10 && <Paginacao paginaAtual={atual} totalPaginas={totalPaginas} totalItens={periodos.length} itensPorPagina={10} onPaginaChange={setPagina} rotulo="períodos" idSelect="pagina-periodos-indicadores"/>}
     {mostrarMetodo && <details className="repro-indicadores-metodo"><summary>Método e critérios do cálculo</summary><h3>{s.metodologia.rotulo}</h3><p>Versão {s.versaoMetodologia} · deslocamento TE: {s.metodologia.deslocamentoTeDias} dias · concepção estimada: {s.metodologia.concepcaoEstimada === null ? "não informada" : `${s.metodologia.concepcaoEstimada}%`}</p><ul>{s.metodologia.regras.map((regra, i) => <li key={i}>{regra}</li>)}</ul><p>Fontes: {s.metodologia.fontes.join("; ")}</p></details>}
     </Panel>}
-    {consulta && <Modal eyebrow="Indicadores reprodutivos" titulo={consulta === "pendencias" ? "Pendências fora da base de cálculo" : "Animais da base válida"} onClose={()=>setConsulta(null)}>
+    {consulta && <Modal eyebrow="" titulo={consulta === "pendencias" ? "Pendências fora da base de cálculo" : "Animais da base válida"} onClose={()=>setConsulta(null)}>
       <div className="p-4 space-y-4">{periodo && <p>{formatBRDateISO(periodo.inicio)} – {formatBRDateISO(periodo.fim)}</p>}
         <TabelaFinanceira rotulo={consulta === "pendencias" ? "Animais com pendências" : "Animais do período"} itens={animais.slice((paginaAnimais-1)*10,paginaAnimais*10)} chaveDe={a=>a.animalId} colunas={[
           {chave:"animal",titulo:"Animal",principal:true,celula:a=><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={s.filtros.propriedadeId}/>},
