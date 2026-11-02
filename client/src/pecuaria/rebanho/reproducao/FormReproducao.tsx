@@ -109,6 +109,7 @@ export function FormReproducao({
   const [touros, setTouros] = useState<AnimalResumo[]>([]);
   const [genitores, setGenitores] = useState<GenitorDTO[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
+  const [catalogosCarregando, setCatalogosCarregando] = useState(true);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);
   const [tipo, setTipo] = useState<string>(tentativaInicial?.tipo ?? "IA");
   const [origem, setOrigem] = useState("DOCUMENTADA");
@@ -147,6 +148,7 @@ export function FormReproducao({
   const [previsao, setPrevisao] = useState("");
   useEffect(() => setCienciaSanitaria(false), [animalId, data, tipo, conduta]);
   const [dadosParto, setDadosParto] = useState(dadosPartoVazios);
+  const [destinoCriaPendente, setDestinoCriaPendente] = useState(false);
   const [crias, setCrias] = useState<CriaInput[]>([
     { viva: true, sexo: "F", aptidao: "LEITE" },
   ]);
@@ -177,6 +179,7 @@ export function FormReproducao({
     (acao === "avaliacao" && resultado === "NEGATIVO" && !!gestacaoDoFato);
   useEffect(() => {
     let ativo = true;
+    setCatalogosCarregando(true); setLotes([]);
     Promise.all([
       listarMaterialGenetico({}, propriedadeId ?? undefined),
       listarGenitores({ sexo: "M" }, propriedadeId ?? undefined),
@@ -195,7 +198,7 @@ export function FormReproducao({
       })
       .catch((e) => {
         if (ativo) setErro(e instanceof Error ? e.message : String(e));
-      });
+      }).finally(() => {if (ativo) setCatalogosCarregando(false);});
     return () => {
       ativo = false;
     };
@@ -284,6 +287,7 @@ export function FormReproducao({
       return;
     }
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
+    if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); return; }
     if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); return; } }
     if (ocupado) return;
     setOcupado(true);
@@ -633,7 +637,7 @@ export function FormReproducao({
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && <PartoCampos valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
+        {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
           seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],

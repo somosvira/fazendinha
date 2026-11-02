@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Propriedade } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../../db.js';
 import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integration.fixture.js';
+import { cancelarFaseTx } from './gestao.js';
+import { sincronizarLocalizacoesBezerreiroTx } from './localizacao.js';
 import { confirmarOfertaTx, previsaoTx } from './aleitamento.js';
 import { confirmarConsumoTx } from '../nutricao/consumo.js';
 import { confirmarOfertaSchema } from './schemas.js';
@@ -15,14 +17,16 @@ const suite = process.env.PECUARIA_DB_INTEGRATION === '1' ? describe : describe.
 const data = new Date('2026-10-26T00:00:00Z'), desde = new Date('2026-10-25T00:00:00Z');
 const rollback = new Error('ROLLBACK_EXCLUSIVO_FIXTURE_ALIMENTACAO');
 
-/** Todas as fixtures ficam na transação, inclusive os fatos imutáveis. Jamais
- * remove fatos do seed, desabilita triggers ou deixa registros commitados. */
+/** Somente o sítio próprio é confirmado para a consulta de propriedadePrincipalId,
+ * que usa outra conexão. Fatos operacionais/imutáveis ficam na transação revertida;
+ * ao final removemos apenas esse sítio, sem depender da seed ou limpar dados alheios. */
 async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<ReturnType<typeof preparar>>) => Promise<void>) {
   exigirBancoIntegracaoPecuaria();
   const nome = `Alimentação R01 ${randomUUID()}`;
+  const sitio = await prisma.propriedade.create({ data: { nome } });
   try {
     await prisma.$transaction(async tx => {
-      const fixture = await preparar(tx, nome);
+      const fixture = await preparar(tx, nome, sitio);
       await conferir(tx);
       await teste(tx, fixture);
       await conferir(tx);
@@ -30,14 +34,16 @@ async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<Retur
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
     throw new Error('A transação de fixture deveria ter sido desfeita');
   } catch (erro) { if (erro !== rollback) throw erro; }
-  finally { expect(await prisma.propriedade.count({ where: { nome } })).toBe(0); }
+  finally {
+    await prisma.propriedade.delete({ where: { id: sitio.id } });
+    expect(await prisma.propriedade.count({ where: { id: sitio.id } })).toBe(0);
+  }
 }
 async function conferir(tx: Prisma.TransactionClient) {
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
 }
-async function preparar(tx: Prisma.TransactionClient, nome: string) {
-  const sitio = await tx.propriedade.create({ data: { nome } });
+async function preparar(tx: Prisma.TransactionClient, nome: string, sitio: Propriedade) {
   const centro = await tx.centroCusto.create({ data: { nome } });
   const lote = await tx.lote.create({ data: { propriedadeId: sitio.id, nome, centroCustoId: centro.id } });
   const animal = await tx.animal.create({ data: { brinco: randomUUID(), sexo: 'F', dataNascimento: new Date('2026-10-01'), dataEntrada: desde, origem: 'COMPRADO' } });
@@ -89,12 +95,39 @@ function fechamento(f: Awaited<ReturnType<typeof preparar>>, leite = 4) {
   ] };
 }
 suite('alimentação íntegra com PostgreSQL real', () => {
+  it('cancelamento auditado libera a correção da localização sem recriar fase ou apagar outro fato', async () => comFixture(async (tx, f) => {
+    const periodo = await tx.periodoFaseBezerreiro.findFirstOrThrow({ where: { participacaoId: f.participacao.id } });
+    const anterior = await tx.localizacaoAnimal.findFirstOrThrow({ where: { animalId: f.animal.id } });
+    await cancelarFaseTx(tx, f.participacao.id, periodo.id, { chave: randomUUID(), propriedadeId: f.sitio.id, versaoEsperada: f.participacao.versao, motivo: 'Fase lançada no animal errado' }, null);
+    expect(await tx.periodoFaseBezerreiro.count({ where: { participacaoId: f.participacao.id } })).toBe(0);
+    expect(await tx.auditoriaPecuaria.findFirst({ where: { entidadeId: periodo.id, acao: 'CANCELAMENTO' } })).toMatchObject({ antes: expect.objectContaining({ id: periodo.id, faseVersaoId: f.fase.id }), depois: expect.objectContaining({ cancelado: true, motivo: 'Fase lançada no animal errado' }) });
+    await tx.localizacaoAnimal.update({ where: { id: anterior.id }, data: { loteId: null } });
+    await sincronizarLocalizacoesBezerreiroTx(tx, [f.animal.id], null, [anterior]);
+    expect(await tx.participacaoBezerreiro.count({ where: { animalId: f.animal.id } })).toBe(0);
+    expect(await tx.faseBezerreiroVersao.count({ where: { id: f.fase.id } })).toBe(1);
+    expect(await tx.animal.count({ where: { id: f.animal.id } })).toBe(1);
+  }));
+  it('alimentação real confirmada impede cancelar fase e conserva período, oferta e estoque', async () => comFixture(async (tx, f) => {
+    const dados = await oferta(tx, f);
+    await confirmarOfertaTx(tx, dados, null);
+    await conferir(tx);
+    const periodo = await tx.periodoFaseBezerreiro.findFirstOrThrow({ where: { participacaoId: f.participacao.id } });
+    const movimentosAntes = await tx.movimentoEstoque.count({ where: { propriedadeId: f.sitio.id } });
+    await expect(cancelarFaseTx(tx, f.participacao.id, periodo.id, { chave: randomUUID(), propriedadeId: f.sitio.id, versaoEsperada: f.participacao.versao, motivo: 'Tentativa de correção da programação' }, null)).rejects.toThrow('estorne');
+    expect(await tx.periodoFaseBezerreiro.findUnique({ where: { id: periodo.id } })).toMatchObject({ desde: periodo.desde, ate: periodo.ate });
+    expect(await tx.ofertaBezerreiro.count({ where: { perfilId: f.perfil.id, status: 'CONFIRMADO' } })).toBe(1);
+    expect(await tx.movimentoEstoque.count({ where: { propriedadeId: f.sitio.id } })).toBe(movimentosAntes);
+    expect(await tx.auditoriaPecuaria.count({ where: { entidadeId: periodo.id, acao: 'CANCELAMENTO' } })).toBe(0);
+  }));
+
   it('troca A→B com dose igual invalida token sem gravar oferta, parcela ou baixa', async () => comFixture(async (tx, f) => {
     const entrada = await oferta(tx, f);
     await tx.periodoFaseBezerreiro.update({ where: { id: f.participacao.fases[0].id }, data: { ate: data } });
     await tx.participacaoBezerreiro.update({ where: { id: f.participacao.id }, data: { ate: data, versao: { increment: 1 } } });
+    await tx.localizacaoAnimal.updateMany({ where: { animalId: f.animal.id, loteId: f.lote.id, ate: null }, data: { ate: data } });
+    await tx.localizacaoAnimal.create({ data: { animalId: f.animal.id, propriedadeId: f.sitio.id, desde: data } });
     const b = await tx.animal.create({ data: { brinco: randomUUID(), sexo: 'F', dataNascimento: new Date('2026-10-01'), dataEntrada: desde, origem: 'COMPRADO' } });
-    await tx.localizacaoAnimal.create({ data: { animalId: b.id, propriedadeId: f.sitio.id, loteId: f.lote.id, desde } });
+    await tx.localizacaoAnimal.create({ data: { animalId: b.id, propriedadeId: f.sitio.id, loteId: f.lote.id, desde: data } });
     await tx.participacaoBezerreiro.create({ data: { perfilId: f.perfil.id, animalId: b.id, desde: data, fases: { create: { faseVersaoId: f.fase.id, desde: data } } } });
     await conferir(tx);
     await expect(confirmarOfertaTx(tx, entrada, null)).rejects.toMatchObject({ code: 'CONFLITO', campo: 'contextoToken' });

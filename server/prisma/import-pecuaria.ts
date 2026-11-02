@@ -1,3 +1,5 @@
+import { transacaoPecuaria } from '../src/services/pecuaria/transacao.js';
+import { sincronizarLocalizacoesBezerreiroTx } from '../src/services/pecuaria/bezerreiro/localizacao.js';
 // Importador da carga inicial da Pecuária v1 (domínio Rebanho).
 //
 // Consome `server/prisma/pecuaria_v1.json` (gerado por `scripts/build-pecuaria-json.mjs`
@@ -362,10 +364,11 @@ async function main() {
   interface Falha { brinco: string; ideagriId: number; mensagem: string }
   const falhas: Falha[] = [];
 
-  type ResultadoAnimal =
+  type EstatisticasAnimal = { avisos: string[]; fracoesRacaPerdidas: number; papelPorPeriodo: number; baixasSemMotivo: number; categoriasManuaisCriadas: number };
+  type ResultadoAnimal = { estatisticas: EstatisticasAnimal } & (
     | { tipo: "ignorado" }
     | { tipo: "propriedade-nao-resolvida" }
-    | { tipo: "criado"; temComposicao: boolean; baixaCriada: boolean; pesagensCriadas: number };
+    | { tipo: "criado"; temComposicao: boolean; baixaCriada: boolean; pesagensCriadas: number });
 
   // brinco duplicado entre ativos do mesmo sítio: calculado no fim, sobre o estado final do banco.
 
@@ -379,16 +382,19 @@ async function main() {
 
   for (const a of dados.animais) {
     try {
-      const resultado = await prisma.$transaction<ResultadoAnimal>(async (tx) => {
+      const resultado = await transacaoPecuaria<ResultadoAnimal>(async (tx) => {
+        // A transação pode ser repetida por SSI. Avisos e contagens só são
+        // incorporados ao relatório depois do commit da tentativa vencedora.
+        const estatisticas: EstatisticasAnimal = { avisos: [], fracoesRacaPerdidas: 0, papelPorPeriodo: 0, baixasSemMotivo: 0, categoriasManuaisCriadas: 0 };
         const propriedadeId = propriedadeIdPorNome.get(a.propriedadeNome);
         if (propriedadeId == null) {
-          avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): propriedade "${a.propriedadeNome}" não resolvida — ignorado`);
-          return { tipo: "propriedade-nao-resolvida" };
+          estatisticas.avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): propriedade "${a.propriedadeNome}" não resolvida — ignorado`);
+          return { tipo: "propriedade-nao-resolvida", estatisticas };
         }
         const loteId = a.loteNome ? loteIdPorChave.get(`${propriedadeId}\u0000${a.loteNome}`) ?? null : null;
 
         const jaExiste = await tx.animal.findUnique({ where: { ideagriId: a.ideagriId } });
-        if (jaExiste) return { tipo: "ignorado" };
+        if (jaExiste) return { tipo: "ignorado", estatisticas };
 
         // ---- Brinco eletrônico / SISBOV: @unique no schema — conflito não aborta o animal,
         // ele entra sem o dado conflitante e o conflito vira aviso (dado histórico do IDEAGRI,
@@ -398,7 +404,7 @@ async function main() {
         if (brincoEletronico) {
           const conflito = await tx.animal.findFirst({ where: { brincoEletronico }, select: { brinco: true } });
           if (conflito) {
-            avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): brincoEletronico "${brincoEletronico}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
+            estatisticas.avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): brincoEletronico "${brincoEletronico}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
             brincoEletronico = null;
           }
         }
@@ -406,7 +412,7 @@ async function main() {
         if (sisbov) {
           const conflito = await tx.animal.findFirst({ where: { sisbov }, select: { brinco: true } });
           if (conflito) {
-            avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): SISBOV "${sisbov}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
+            estatisticas.avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): SISBOV "${sisbov}" já usado pelo animal "${conflito.brinco}" — importado sem esse dado`);
             sisbov = null;
           }
         }
@@ -437,9 +443,9 @@ async function main() {
         // automaticamente acima) — não trunca em silêncio: avisa por animal e conta no relatório.
         const racaNaoResolvida = compositoDesejado.filter((c) => !racaIdPorSigla.has(c.sigla));
         for (const c of racaNaoResolvida) {
-          avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): raça "${c.sigla}" não resolvida — fração ${c.fracao64}/64 perdida da composição`);
+          estatisticas.avisos.push(`Animal ${a.brinco} (ideagriId ${a.ideagriId}): raça "${c.sigla}" não resolvida — fração ${c.fracao64}/64 perdida da composição`);
         }
-        fracoesRacaPerdidas += racaNaoResolvida.length;
+        estatisticas.fracoesRacaPerdidas += racaNaoResolvida.length;
         compositoDesejado = compositoDesejado.filter((c) => racaIdPorSigla.has(c.sigla));
         const temComposicao = compositoDesejado.length > 0;
         if (temComposicao) {
@@ -457,7 +463,7 @@ async function main() {
         // papelReprodutivo: prefere o ANIMALPERIODO aberto (fonte melhor que o nome do setor);
         // sem período resolvido, cai na heurística do builder (papelReprodutivoDe, pelo SETOR).
         const papelPeriodo = papelDoPeriodo(a.periodoAberto);
-        if (papelPeriodo != null) papelPorPeriodo++;
+        if (papelPeriodo != null) estatisticas.papelPorPeriodo++;
         const papelReprodutivo = papelPeriodo ?? a.papelReprodutivo;
         const localizacaoInicial = await tx.localizacaoAnimal.create({
           data: { animalId: animal.id, propriedadeId, loteId, desde: d(a.dataEntrada) },
@@ -478,7 +484,7 @@ async function main() {
             const classe = motivoClassePorId.get(motivoId);
             if (!classe || !motivoAceito(tipo, classe)) motivoId = null;
           }
-          if (!motivoId) baixasSemMotivo++;
+          if (!motivoId) estatisticas.baixasSemMotivo++;
 
           await tx.localizacaoAnimal.update({ where: { id: localizacaoInicial.id }, data: { ate: d(a.baixa.data) } });
           await tx.finalidadeAnimal.update({ where: { id: destinoInicial.id }, data: { ate: d(a.baixa.data) } });
@@ -497,6 +503,8 @@ async function main() {
           });
           baixaCriada = true;
         }
+
+        await sincronizarLocalizacoesBezerreiroTx(tx, [animal.id], null, [], [localizacaoInicial.id]);
 
         // ---- Pesagens ----------------------------------------------------------
         let pesagensCriadas = 0;
@@ -523,7 +531,7 @@ async function main() {
             await tx.categoriaManualAnimal.create({
               data: { animalId: animal.id, categoriaId: categoriaIdeagri.id, desde: d(a.dataEntrada), motivo: "Categoria do IDEAGRI na carga" },
             });
-            categoriasManuaisCriadas++;
+            estatisticas.categoriasManuaisCriadas++;
           }
         }
 
@@ -531,8 +539,14 @@ async function main() {
           data: { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "IMPORTACAO", depois: JSON.parse(JSON.stringify(animal)) },
         });
 
-        return { tipo: "criado", temComposicao, baixaCriada, pesagensCriadas };
+        return { tipo: "criado", temComposicao, baixaCriada, pesagensCriadas, estatisticas };
       });
+
+      avisos.push(...resultado.estatisticas.avisos);
+      fracoesRacaPerdidas += resultado.estatisticas.fracoesRacaPerdidas;
+      papelPorPeriodo += resultado.estatisticas.papelPorPeriodo;
+      baixasSemMotivo += resultado.estatisticas.baixasSemMotivo;
+      categoriasManuaisCriadas += resultado.estatisticas.categoriasManuaisCriadas;
 
       if (resultado.tipo === "criado") {
         cAnimal.criadas++;

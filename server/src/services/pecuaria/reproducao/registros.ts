@@ -1,3 +1,4 @@
+import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
 import type { PesoSecagemInput } from "./peso-secagem.schemas.js";
@@ -808,6 +809,7 @@ export async function criarPartoTx(
           },
         },
       });
+      await sincronizarLocalizacoesBezerreiroTx(tx, [animal.id], usuarioId, [], "INICIAIS");
       const racas = new Map(
         [...(mae?.composicao ?? []), ...(pai?.composicao ?? [])].map((r) => [
           r.sigla,

@@ -7,7 +7,7 @@ const m = vi.hoisted(() => {
     necessidadeSanitaria: { findMany: vi.fn().mockResolvedValue([]) },
     necessidadeProgramacaoSanitaria: { findMany: vi.fn().mockResolvedValue([]) },
     animal: { findUniqueOrThrow: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn() },
-    localizacaoAnimal: { findMany: vi.fn(), update: vi.fn() },
+    localizacaoAnimal: { findMany: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
     finalidadeAnimal: { findMany: vi.fn(), update: vi.fn() },
     pesagem: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn(), delete: vi.fn() },
     vinculoPesagemParto: { findMany: vi.fn(), count: vi.fn() },
@@ -25,6 +25,7 @@ const m = vi.hoisted(() => {
 
 vi.mock("../../../db.js", () => ({ prisma: m.db }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: async (executar: (tx: typeof m.db) => Promise<unknown>) => executar(m.db) }));
+vi.mock("../bezerreiro/localizacao.js", () => ({ sincronizarLocalizacoesBezerreiroTx: vi.fn() }));
 vi.mock("../fatos.js", () => ({ conferirHistoricoDosFatos: m.conferirHistorico }));
 
 import { buscarFicha, editar, editarPesagem, excluirPesagem } from "./animais.js";
@@ -54,6 +55,7 @@ beforeEach(() => {
   m.db.animal.count.mockResolvedValue(0);
   m.db.animal.update.mockResolvedValue(animal);
   m.db.localizacaoAnimal.findMany.mockResolvedValue([]);
+  m.db.localizacaoAnimal.findUniqueOrThrow.mockResolvedValue({ id: "local", animalId: animal.id, desde: animal.dataEntrada, ate: null });
   m.db.finalidadeAnimal.findMany.mockResolvedValue([]);
   m.db.pesagem.findMany.mockResolvedValue([]);
   m.db.pesagem.findUnique.mockResolvedValue(peso);
