@@ -1,6 +1,6 @@
+import { RegularizarParticipacao } from "./RegularizarParticipacao";
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/DatePicker';
 import { BarraConsulta, SituacoesConsulta } from '@/financeiro/BarraConsulta';
 import { CampoFiltro } from '@/financeiro/PainelFiltros';
 import { SelectCampo } from '@/financeiro/SelectCampo';
@@ -10,15 +10,15 @@ import { formatarDataBR } from '../lib/rotulos';
 import { hojeOperacional } from '../leite/modelo';
 import { consultaBezerreiro } from './api';
 import { faseParticipacao, litros } from './modelo';
-import { ColeiraBadge, EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useComando, useConsultaBezerreiro } from './ui';
-import type { Configuracao, ContextoBezerreiro, Pagina, Participacao } from './types';
+import { ColeiraBadge, EstadoConsulta, PaginacaoBezerreiro, useConsultaBezerreiro } from './ui';
+import type { Configuracao, Pagina, Participacao } from './types';
 export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,params,mudar}: {sitio:number;podeLancar:boolean;config:Configuracao;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(valores:Record<string,string>)=>void}) {
   const [entrada,setEntrada]=useState(false), [busca,setBusca]=useState(params.get('busca')??'');
   const [rascunho,setRascunho]=useState({coleira:params.get('coleira')??'',fase:params.get('fase')??''});
   const historico=params.get('historico')==='true', pagina=Math.max(1,Number(params.get('pagina'))||1);
   const q=consultaBezerreiro({historico,pagina,busca:params.get('busca'),coleiraId:params.get('coleira'),faseVersaoId:params.get('fase'),perfilId:params.get('perfil')});
   const consulta=useConsultaBezerreiro<Pagina<Participacao>>(`/participantes${q}`,sitio,revisao);
-  return <><div className="bez-sectionhead"><h2>{historico?'Histórico de saídas':'Animais do bezerreiro'}</h2>{podeLancar&&!historico&&<Button onClick={()=>setEntrada(true)}>Registrar entrada</Button>}</div>
+  return <><div className="bez-sectionhead"><h2>{historico?'Histórico de saídas':'Animais do bezerreiro'}</h2>{podeLancar&&!historico&&<Button variant="outline" onClick={()=>setEntrada(true)}>Regularizar participação</Button>}</div>
     <BarraConsulta resumo={`${consulta.dados?.total??'…'} animais`} criterios={[...(params.get('coleira')?[{id:'coleira',rotulo:`Coleira: ${config.coleiras.find(c=>c.id===params.get('coleira'))?.nome??'Selecionada'}`,limpar:()=>mudar({coleira:'',pagina:''})}]:[]),...(params.get('fase')?[{id:'fase',rotulo:`Fase: ${config.fases.find(c=>c.id===params.get('fase'))?.nome??'Selecionada'}`,limpar:()=>mudar({fase:'',pagina:''})}]:[])]} onLimpar={()=>mudar({coleira:'',fase:'',busca:'',pagina:''})}
       edicaoFiltros={{iniciar:()=>setRascunho({coleira:params.get('coleira')??'',fase:params.get('fase')??''}),aplicar:()=>mudar({...rascunho,pagina:''}),limpar:()=>setRascunho({coleira:'',fase:''})}}
       adicionais={<><CampoFiltro rotulo="Coleira"><SelectCampo value={rascunho.coleira} onValueChange={v=>setRascunho({...rascunho,coleira:v})}><option value="">Todas</option>{config.coleiras.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro><CampoFiltro rotulo="Fase"><SelectCampo value={rascunho.fase} onValueChange={v=>setRascunho({...rascunho,fase:v})}><option value="">Todas</option>{config.fases.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro></>}>
@@ -36,11 +36,6 @@ export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,para
       ]),
       {chave:'acao',titulo:'Ação',acoes:true,celula:p=><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/bezerreiro/animais/${p.animalId}`)}>{historico?'Ver histórico':'Acompanhar'}</Button>},
     ]}/><PaginacaoBezerreiro pagina={pagina} total={consulta.dados.total} mudar={p=>mudar({pagina:String(p)})}/></>)}</EstadoConsulta>
-    {entrada&&<EntradaBezerreiro sitio={sitio} config={config} aoFechar={()=>setEntrada(false)} aoSalvar={()=>{setEntrada(false);aoSalvar();}}/>}
+    {entrada&&<RegularizarParticipacao sitio={sitio} config={config} aoFechar={()=>setEntrada(false)} aoSalvar={()=>{setEntrada(false);aoSalvar();}}/>}
   </>;
-}
-function EntradaBezerreiro({sitio,config,aoFechar,aoSalvar}: {sitio:number;config:Configuracao;aoFechar:()=>void;aoSalvar:()=>void}) {
-  const [busca,setBusca]=useState(''),[animalId,setAnimalId]=useState(''),[perfilId,setPerfilId]=useState(config.perfis.filter(p=>p.ativo).length===1?config.perfis.find(p=>p.ativo)!.id:''),[faseVersaoId,setFase]=useState(''),[desde,setDesde]=useState(hojeOperacional),[motivo,setMotivo]=useState('');
-  const contexto=useConsultaBezerreiro<ContextoBezerreiro>(`/contexto${consultaBezerreiro({busca,data:desde})}`,sitio),comando=useComando(sitio,aoSalvar);
-  return <ModalBezerreiro titulo="Registrar entrada no bezerreiro" form="entrada-bezerreiro" aoFechar={aoFechar} {...comando}><form id="entrada-bezerreiro" onSubmit={e=>{e.preventDefault();void comando.salvar('/participantes',{animalId,perfilId,desde,...(faseVersaoId?{faseVersaoId}:{}),...(motivo?{motivo}:{})});}}><fieldset disabled={comando.ocupado} className="bez-campos"><label>Data da entrada<DatePicker required value={desde} onChange={setDesde}/></label><label>Bezerreiro<SelectCampo required value={perfilId} onValueChange={setPerfilId}><option value="">Selecione</option>{config.perfis.filter(p=>p.ativo).map(p=><option value={p.id} key={p.id}>{p.lote.nome}</option>)}</SelectCampo></label><label>Buscar animal<input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="Brinco ou nome"/></label><label>Animal<SelectCampo required value={animalId} onValueChange={setAnimalId}><option value="">Selecione</option>{contexto.dados?.animais.map(a=><option key={a.id} value={a.id}>{a.brinco} · {a.nome??'Sem nome'}</option>)}</SelectCampo></label><label>Fase inicial<SelectCampo value={faseVersaoId} onValueChange={setFase}><option value="">Sem programação definida</option>{config.fases.filter(f=>f.publicada).map(f=><option value={f.id} key={f.id}>{f.nome} · {f.coleira?.nome??'Sem coleira'}</option>)}</SelectCampo></label><label>Motivo / observação<input value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></fieldset>{contexto.erro&&<p role="alert" className="bez-erro">{contexto.erro}</p>}</form></ModalBezerreiro>;
 }

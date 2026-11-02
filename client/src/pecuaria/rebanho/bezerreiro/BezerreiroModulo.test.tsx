@@ -16,7 +16,7 @@ describe('Bezerreiro: consultas e acessos',()=>{
     render(<BezerreiroModulo podeLancar={false}/>);
     await screen.findByText('Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.');
     expect(screen.getByRole('heading',{name:'Histórico de saídas'})).toBeTruthy();
-    expect(screen.queryByRole('button',{name:'Registrar entrada'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
     expect(vi.mocked(consultarBezerreiro).mock.calls.some(([path,sitio])=>path.includes('historico=true')&&path.includes('coleiraId=coleira-a')&&path.includes('faseVersaoId=fase-v1')&&sitio===1)).toBe(true);
   });
   it('mantém falha de consulta distinta de ausência e permite tentar novamente',async()=>{
@@ -41,6 +41,6 @@ describe('Bezerreiro: consultas e acessos',()=>{
     expect(screen.getByText('Histórico do bezerreiro')).toBeTruthy();
     expect(screen.getByText(/Saída após desmame/)).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Alterar fase'})).toBeNull();
-    expect(screen.queryByRole('button',{name:'Registrar saída'})).toBeNull();
+    expect(screen.queryByRole('button',{name:'Movimentar animal'})).toBeNull();
   });
 });

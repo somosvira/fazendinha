@@ -92,3 +92,11 @@ describe("destinos atuais da busca", () => {
     expect(novo?.exigeLancamento).toBe(true);
   });
 });
+
+ it("encontra regularização contextual e entrada automática na página do Bezerreiro", () => {
+   for (const termo of ["entrada no bezerreiro", "regularizar participação"]) {
+     const destino = buscar(COMANDOS, termo).find(c => c.id === "pec-bezerreiro");
+     expect(destino?.caminho).toBe("/pecuaria/bezerreiro");
+     expect(destino?.acao).not.toBe(true);
+   }
+ });

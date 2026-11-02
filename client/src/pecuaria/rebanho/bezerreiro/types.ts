@@ -4,7 +4,7 @@ export interface AnimalBezerreiro { id: string; brinco: string; nome: string | n
 export interface Coleira { id: string; nome: string; cor: string }
 export interface OfertaProgramada { id?: string; identidadeId: string; ordem: number; percentual: DecimalTexto; horarioPrevisto?: string | null }
 export interface Fase { id: string; identidadeId: string; nome: string; coleiraId: string | null; coleira: Coleira | null; coleiraSnapshot?: Coleira | null; litrosDia: DecimalTexto; publicada: boolean; ofertas: OfertaProgramada[]; criteriosTransicao?: { idadeDias?: number; pesoKg?: DecimalTexto; combinacao?: 'E' | 'OU'; automatico: false } | null }
-export interface Perfil { id: string; loteId: string; ativo: boolean; lote: { id: string; nome: string } }
+export interface Perfil { id: string; loteId: string; ativo: boolean; lote: { id: string; nome: string; ativo?: boolean; propriedadeId?: number } }
 export interface Participacao { id: string; animalId: string; animal: AnimalBezerreiro; perfilId: string; perfil: Perfil; desde: string; ate: string | null; motivoSaida: string | null; versao: number; fases: { id: string; desde: string; ate: string | null; motivo: string | null; faseVersao: Fase }[] }
 export interface Configuracao { vigente: { versao: number; brixReferencia: DecimalTexto; percentualPesoColostro: DecimalTexto; imunidade?: {tipoExameId?: string; prazoDias?: number} | null } | null; coleiras: Coleira[]; fases: Fase[]; perfis: Perfil[] }
 export interface Pagina<T> { itens: T[]; total: number; pagina: number; porPagina?: number; tamanho?: number }
