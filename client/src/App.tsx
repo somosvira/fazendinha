@@ -109,6 +109,14 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 
 
 
+/** Grava o sítio ativo na URL do painel administrativo sem criar entrada no histórico. */
+function fixarSitioNaUrlDoPainel(sitio: number | null) {
+  const url = new URL(window.location.href);
+  if (sitio == null) url.searchParams.delete("propriedadeId");
+  else url.searchParams.set("propriedadeId", String(sitio));
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+}
+
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
   const [locationRevision, setLocationRevision] = useState(0);
@@ -165,10 +173,9 @@ export function App() {
     if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
     const raw=new URLSearchParams(window.location.search).get("propriedadeId");
     if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
-    if (destino === "gerencial") {
-      setPropriedadeAtiva(null);
-      return null;
-    }
+    // Painel sem sítio na URL (favorito, recarga) mantém o sítio ativo e o grava na URL,
+    // para que o link continue reproduzindo o mesmo escopo.
+    if (destino === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
     return getPropriedadeAtiva();
   });
   const trocarPropriedade = (id: number | null) => {
@@ -394,9 +401,9 @@ export function App() {
       const sitioDaUrl = rawSitio && /^\d+$/.test(rawSitio) && Number(rawSitio)>0 && Number(rawSitio)<=2147483647 ? Number(rawSitio) : null;
       const mudaSitioBezerreiro = t === "pec-bezerreiro" && sitioDaUrl != null && sitioDaUrl !== getPropriedadeAtiva();
       const atualizar = () => {
-        if(t === "gerencial" || (t === "pec-bezerreiro" && sitioDaUrl != null)) {
+        if((t === "gerencial" || t === "pec-bezerreiro") && sitioDaUrl != null) {
           setPropriedadeAtiva(sitioDaUrl);setPropAtiva(sitioDaUrl);
-        }
+        } else if (t === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
         setTab(t ?? DEFAULT_TAB);
         setLocationRevision((valor) => valor + 1);
         setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);

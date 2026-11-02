@@ -69,11 +69,21 @@ describe("App — contexto do painel administrativo", () => {
     expect(getPropriedadeAtiva()).toBe(2);
   });
 
-  it("interpreta acesso direto sem sítio como consolidado mesmo após outra seleção", async () => {
+  it("mantém o sítio ativo no acesso direto sem sítio na URL e o grava no endereço", async () => {
+    window.history.replaceState(null, "", "/gerencial");
+    render(<App />);
+    await screen.findByText("Painel sítio: 2");
+    expect(getPropriedadeAtiva()).toBe(2);
+    expect(new URLSearchParams(location.search).get("propriedadeId")).toBe("2");
+  });
+
+  it("abre consolidado no acesso direto quando o consolidado já está ativo", async () => {
+    setPropriedadeAtiva(null);
     window.history.replaceState(null, "", "/gerencial");
     render(<App />);
     await screen.findByText("Painel sítio: consolidado");
     expect(getPropriedadeAtiva()).toBeNull();
+    expect(new URLSearchParams(location.search).get("propriedadeId")).toBeNull();
   });
 
   it("restaura o sítio explícito da URL ao carregar o painel", async () => {
