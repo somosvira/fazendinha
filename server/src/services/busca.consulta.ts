@@ -138,7 +138,7 @@ const compacto = (campo: Prisma.Sql) => sql`regexp_replace(${normalizado(campo)}
 export const numeroDoTermo = (q: string): string | null => /^\d{1,30}$/.test(q.trim()) ? (q.trim().replace(/^0+/, "") || "0") : null;
 /** Prioridade entre fontes no mesmo nível de correspondência: o animal antes dos fatos e documentos ligados a ele. */
 const PRIORIDADE_FONTE: Record<string, number> = { animal: 0, lote: 1 };
-export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedadeId: number | null): Prisma.Sql {
+export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedadeId: number | null, limitePorFonte = 6): Prisma.Sql {
   const termos = normalizarTermoBusca(q.trim()).split(/\s+/).filter(Boolean);
   const inteira = escaparTermoBusca(normalizarTermoBusca(q.trim()));
   const qCompacto = compactarTermoBusca(q);
@@ -162,7 +162,7 @@ export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedade
     CASE WHEN ${Prisma.join(exato, ' OR ')} THEN 0 WHEN ${normalizado(sql`b.label`)} LIKE ${inteira + '%'} ESCAPE '!'${qCompacto.length >= 2 ? sql` OR ${compacto(sql`b.label`)} LIKE ${qCompacto + '%'}` : Prisma.empty} THEN 1 ELSE 2 END AS ordem
     FROM (${f.consulta}) b WHERE ((${porTermos})${porCompacto} OR b.id = ${q.trim()})
     ${propriedadeId == null || f.global ? Prisma.empty : sql`AND b."propriedadeId" = ${propriedadeId}`}
-    ORDER BY ordem, b.label, b.id LIMIT 6)`;
+    ORDER BY ordem, b.label, b.id LIMIT ${limitePorFonte})`;
   });
   return sql`SELECT tipo, id, label, contexto, "alvoId", "propriedadeId" FROM (${Prisma.join(consultas, ' UNION ALL ')}) resultados ORDER BY ordem, prioridade, label, tipo, id LIMIT 120`;
 }
