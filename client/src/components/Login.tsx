@@ -40,24 +40,24 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
   };
 
   const campoInput =
-    "h-12 rounded-md border-[#a9b2a6] bg-white px-3 text-base text-[#1e2621] shadow-none placeholder:text-[#6b756e] focus-visible:border-[#2c5a3f] focus-visible:ring-2 focus-visible:ring-[#2c5a3f]/20 focus-visible:ring-offset-0";
+    "h-12 rounded-md border-[#c7d4ca] bg-white px-3 text-base text-[#283c31] shadow-none placeholder:text-[#718178] focus-visible:border-[#24493b] focus-visible:ring-2 focus-visible:ring-[#24493b]/20 focus-visible:ring-offset-0";
 
   return (
-    <main className="login-campo min-h-[100dvh] bg-[#f5f6f2] px-4 py-10 font-[family-name:var(--sans)] sm:py-16">
+    <main className="login-campo min-h-[100dvh] bg-[#edf2ed] px-4 py-10 font-[family-name:var(--sans)] sm:py-16">
       <div className="mx-auto w-full max-w-[400px]">
         <div className="flex items-center gap-3">
           <TerranoSymbol size={32} tone="light" strokeWidth={4.2} />
           <div className="leading-tight">
-            <span className="block text-[20px] font-bold text-[#1e2621]">Terrano</span>
-            <span className="block text-[14px] text-[#56615a]">Fazenda Rio Novo</span>
+            <span className="block text-[20px] font-bold text-[#283c31]">Terrano</span>
+            <span className="block text-[14px] text-[#56665f]">Fazenda Rio Novo</span>
           </div>
         </div>
 
         <form onSubmit={submeter} className="mt-12">
-          <h1 className="text-[28px] font-bold leading-tight text-[#1e2621]">Entrar</h1>
+          <h1 className="text-[28px] font-bold leading-tight text-[#283c31]">Entrar</h1>
 
           <div className="mt-8">
-            <label htmlFor="login-email" className="mb-2 block text-[15px] font-semibold text-[#1e2621]">E-mail</label>
+            <label htmlFor="login-email" className="mb-2 block text-[15px] font-semibold text-[#283c31]">E-mail</label>
             <Input
                   id="login-email"
                   type="email"
@@ -75,8 +75,8 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
 
           <div className="mt-5">
             <div className="mb-2 flex items-baseline justify-between gap-3">
-              <label htmlFor="login-senha" className="block text-[15px] font-semibold text-[#1e2621]">Senha</label>
-              <a href="/forgot-password" className="text-[15px] font-semibold text-[#2c5a3f] underline-offset-4 hover:underline">Esqueci a senha</a>
+              <label htmlFor="login-senha" className="block text-[15px] font-semibold text-[#283c31]">Senha</label>
+              <a href="/forgot-password" className="text-[15px] font-semibold text-[#24493b] underline-offset-4 hover:underline">Esqueci a senha</a>
             </div>
                 <CampoSenha
                   id="login-senha"
@@ -99,12 +99,12 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
           <Button
             type="submit"
             disabled={!email || !senha || validando}
-            className="mt-8 h-12 w-full rounded-md bg-[#2c5a3f] text-base font-semibold text-white shadow-none transition-colors hover:bg-[#21452f] disabled:bg-[#2c5a3f]/55 disabled:text-white disabled:opacity-100"
+            className="mt-8 h-12 w-full rounded-md bg-[#24493b] text-base font-semibold text-white shadow-none transition-colors hover:bg-[#1b3a2e] disabled:bg-[#24493b]/55 disabled:text-white disabled:opacity-100"
           >
             {validando ? "Entrando…" : "Entrar"}
           </Button>
 
-          <p className="mt-8 text-[15px] leading-6 text-[#56615a]">
+          <p className="mt-8 text-[15px] leading-6 text-[#56665f]">
             Sem acesso? Peça um convite a quem administra a fazenda.
           </p>
         </form>

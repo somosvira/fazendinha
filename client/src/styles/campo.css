@@ -49,29 +49,8 @@
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is([data-slot="badge"], .fin-pill, .pill) { border-radius: 4px; }
 
 /* ── Navegação lateral ─────────────────────────────────────────────────── */
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara { background: var(--campo-folha); border-right: 1px solid var(--campo-linha); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara::before { display: none; }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand > span { font-family: var(--sans); font-weight: 700; color: var(--campo-tinta); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand-symbol { color: var(--campo-ouro); }
-/* A página atual: fundo verde-claro e o traço dourado à esquerda. */
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav button[aria-current="page"] {
-  position: relative;
-  background: var(--campo-pasto-claro);
-  color: var(--campo-pasto-escuro);
-  font-weight: 700;
-  border-radius: 4px;
-}
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav button[aria-current="page"]::before {
-  content: "";
-  display: block;
-  position: absolute;
-  left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 2px;
-  background: var(--campo-ouro);
-}
+/* Fundo, paisagem e item atual seguem sidebar-clara.css; aqui só a tipografia da marca. */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand > span { font-family: var(--sans); font-weight: 700; color: var(--primary); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav button { border-radius: 4px; }
 
 /* ── Navegador ─────────────────────────────────────────────────────────── */

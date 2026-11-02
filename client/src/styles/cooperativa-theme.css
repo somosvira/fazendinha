@@ -1,87 +1,87 @@
 /* O escopo no root alcança os portais Radix e restaura as outras áreas ao sair. */
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
-  /* Caderno de campo — paleta curta. Tudo abaixo deriva destes valores. */
-  --campo-papel: #f5f6f2;       /* fundo: branco-cal frio, não creme */
-  --campo-folha: #ffffff;       /* superfícies de leitura */
-  --campo-tinta: #1e2621;       /* texto principal */
-  --campo-tinta-2: #56615a;     /* texto de apoio (6,4:1 sobre branco) */
-  --campo-linha: #dce0d9;       /* divisórias */
-  --campo-linha-forte: #a9b2a6; /* contornos de controles */
-  --campo-pasto: #2c5a3f;       /* ação e seleção */
-  --campo-pasto-escuro: #21452f;
-  --campo-pasto-claro: #e7eee8;
-  --campo-ouro: #a87a1f;        /* só marca "onde você está" e "hoje" */
-  --campo-atraso: #a3312a;
-  --campo-atraso-claro: #f8e9e7;
-  --campo-atencao: #7a5410;
-  --campo-atencao-claro: #f8f0df;
+  /* Paleta da cooperativa (verde-azulado). Os nomes --campo-* são usados pelas
+   * regras de caderno de campo (campo.css, abas.css, operacional-aprovado.css). */
+  --campo-papel: #f7f8fa;
+  --campo-folha: #ffffff;
+  --campo-tinta: #203c39;
+  --campo-tinta-2: #526863;
+  --campo-linha: #dfe7e5;
+  --campo-linha-forte: #7a928d;
+  --campo-pasto: #006f68;
+  --campo-pasto-escuro: #005d57;
+  --campo-pasto-claro: #e0efec;
+  --campo-ouro: #009c91;
+  --campo-atraso: #8d3931;
+  --campo-atraso-claro: #fbefec;
+  --campo-atencao: #775930;
+  --campo-atencao-claro: #f6f0e5;
 
   --radius: 6px;
   --radius-btn: 6px;
   --fin-radius-panel: 8px;
-  --fin-heading: var(--campo-tinta);
-  --fin-canvas: var(--campo-papel);
-  --fin-canvas-light: var(--campo-papel);
-  --fin-canvas-sage: var(--campo-papel);
-  --fin-canvas-end: var(--campo-papel);
-  --fin-sidebar: var(--campo-folha);
-  --fin-nav-hover: #eef1ec;
-  --fin-nav-selected: var(--campo-pasto-claro);
-  --fin-sidebar-selected: var(--campo-pasto-claro);
-  --fin-sidebar-selected-ink: var(--campo-pasto-escuro);
-  --fin-primary-hover: var(--campo-pasto-escuro);
-  --fin-positive-bg: var(--campo-pasto-claro);
-  --fin-danger-bg: var(--campo-atraso-claro);
-  --fin-warning-bg: var(--campo-atencao-claro);
-  --fin-control-border: var(--campo-linha-forte);
-  --fin-overlay: rgba(30,38,33,.4);
+  --fin-heading: #203c39;
+  --fin-canvas: #f7f8fa;
+  --fin-canvas-light: #fcfdfe;
+  --fin-canvas-sage: #edf5f4;
+  --fin-canvas-end: #f7f8fa;
+  --fin-sidebar: #dce8e5;
+  --fin-nav-hover: #cfe0dc;
+  --fin-nav-selected: #c5ded8;
+  --fin-sidebar-selected: #2f7570;
+  --fin-sidebar-selected-ink: #ffffff;
+  --fin-primary-hover: #005d57;
+  --fin-positive-bg: #ebf4e6;
+  --fin-danger-bg: #fbefec;
+  --fin-warning-bg: #f6f0e5;
+  --fin-control-border: #7a928d;
+  --fin-overlay: rgba(32,60,57,.38);
   --sans: "Public Sans", "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--sans);
   --fin-titulo-pagina: 24px;
   --fin-titulo-pagina-movel: 21px;
-  --fin-brand-accent: var(--campo-ouro);
+  --fin-brand-accent: #009c91;
   /* Sem sombras decorativas: só o que flutua sobre a página (menus, diálogos) tem elevação. */
   --fin-shadow: none;
   --fin-panel-shadow: none;
   --fin-button-shadow: none;
-  --fin-popover-shadow: 0 6px 20px rgba(30,38,33,.12);
-  --fin-dialog-shadow: 0 18px 48px rgba(30,38,33,.18);
-  --fin-skeleton: #e3e7e1;
-  --background: var(--campo-papel);
-  --foreground: var(--campo-tinta);
-  --card: var(--campo-folha);
+  --fin-popover-shadow: 0 8px 24px rgba(32,60,57,.12), 0 2px 5px rgba(32,60,57,.04);
+  --fin-dialog-shadow: 0 16px 48px rgba(32,60,57,.18), 0 4px 12px rgba(32,60,57,.05);
+  --fin-skeleton: #d8e4e0;
+  --background: var(--fin-canvas);
+  --foreground: #263e3b;
+  --card: #ffffff;
   --card-foreground: var(--foreground);
   --popover: var(--card);
   --popover-foreground: var(--foreground);
-  --primary: var(--campo-pasto);
+  --primary: #006f68;
   --primary-foreground: #ffffff;
-  --secondary: #f0f2ee;
+  --secondary: #f1f5f4;
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
   --fin-surface-subtle: var(--secondary);
-  --fin-table-header: var(--campo-papel);
-  --fin-table-heading: var(--campo-tinta-2);
-  --fin-table-rule: var(--campo-linha);
-  --fin-table-control-hover: #e6eae4;
-  /* Filtros só ganham cor quando há filtro aplicado. */
-  --fin-filter-bg: var(--card);
-  --fin-filter-border: var(--campo-linha-forte);
-  --fin-filter-hover: #eef1ec;
-  --fin-option-hover: #eef1ec;
-  --fin-tag-bg: #f0f2ee;
-  --fin-tag-text: var(--campo-tinta-2);
-  --fin-tag-border: var(--campo-linha);
-  --fin-status-positive-bg: var(--campo-pasto-claro);
-  --fin-status-positive-text: var(--campo-pasto-escuro);
-  --fin-status-danger-bg: var(--campo-atraso-claro);
-  --fin-status-danger-text: var(--campo-atraso);
-  --fin-table-hover: #f3f5f1;
-  --muted-foreground: var(--campo-tinta-2);
+  --fin-table-header: #e2e7ea;
+  --fin-table-heading: #34434b;
+  --fin-table-rule: #bdc8cf;
+  --fin-table-control-hover: #cdd8dc;
+  --fin-filter-bg: #e0efec;
+  --fin-filter-border: #80b4ac;
+  --fin-filter-hover: #cee5e0;
+  --fin-option-hover: #c5e4df;
+  --fin-tag-bg: #eef1f3;
+  --fin-tag-text: #425563;
+  --fin-tag-border: #d9e1e6;
+  --fin-status-positive-bg: #ddf3e1;
+  --fin-status-positive-text: #246a36;
+  --fin-status-danger-bg: #fce1df;
+  --fin-status-danger-text: #a3312a;
+  --fin-table-hover: #edf5f3;
+  --muted-foreground: #526863;
   --accent: var(--muted);
   --accent-foreground: var(--foreground);
-  --border: var(--campo-linha);
+  --border: #dfe7e5;
   --input: var(--fin-control-border);
-  --ring: var(--campo-pasto);
+  --ring: var(--primary);
   --bg: var(--background);
   --bg-card: var(--card);
   --bg-card-2: var(--muted);
@@ -91,33 +91,28 @@
   --ink-2: var(--foreground);
   --ink-3: var(--muted-foreground);
   --ink-mute: var(--muted-foreground);
-  --lucro: var(--campo-pasto);
+  --lucro: #32683b;
   --pos: var(--lucro);
-  --prejuizo: var(--campo-atraso);
+  --prejuizo: #8d3931;
   --neg: var(--prejuizo);
   --destructive: var(--prejuizo);
   --destructive-foreground: #ffffff;
-  --warn: var(--campo-atencao);
-  --rural: #7a5f45;
+  --warn: #775930;
+  --rural: #80634e;
   --fin-entrada: var(--pos);
   --fin-saida: var(--foreground);
-  --fin-chart-entrada: var(--campo-pasto);
-  --fin-chart-saida: #8a6a45;
+  --fin-chart-entrada: #32683b;
+  --fin-chart-saida: #806343;
   --fin-alerta: var(--destructive);
   --fin-info: var(--foreground);
   --fin-pendente: var(--warn);
   --fin-superficie: var(--card);
-  --leite: #8a6a45;
+  --leite: #80634e;
   --leite-soft: var(--muted);
-  --cafe: #4f7a5c;
+  --cafe: #55715e;
   --outros: #818568;
-  --cafe-2: #b39d7f;
+  --cafe-2: #ac987e;
   --outros-2: #aab0a6;
-  --chart-1: var(--campo-pasto);
-  --chart-2: #8a6a45;
-  --chart-3: #6f9a7a;
-  --chart-4: #c9a65a;
-  --chart-5: #5b6b78;
 }
 
 /* A escala de página acompanha o mesmo limite da navegação móvel. */

@@ -1,5 +1,5 @@
 /* Direção aprovada para áreas operacionais. Financeiro não recebe o marcador. */
-[data-design-operacional]{--op-ink:var(--campo-tinta);--op-muted:var(--campo-tinta-2);--op-line:var(--campo-linha);--op-soft:var(--muted);--op-radius:8px;font-size:16px;line-height:1.5}
+[data-design-operacional]{--op-ink:#244137;--op-muted:#5b705f;--op-line:#dbe5d8;--op-soft:#eef4e7;--op-radius:8px;font-size:16px;line-height:1.5}
 :root [data-design-operacional] :is(h1,.h1){font-family:var(--sans);font-size:var(--fin-titulo-pagina,24px);line-height:1.25;letter-spacing:-.01em;color:var(--op-ink)}
 :root [data-design-operacional] :is(h2,.h2){font-size:18px;line-height:1.35;letter-spacing:-.005em}
 :root [data-design-operacional] :is(h3,.h3){font-size:18px;line-height:1.4}
@@ -8,13 +8,13 @@
 :root [data-design-operacional] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger]){min-height:44px;border-radius:8px}
 :root [data-design-operacional] textarea{min-height:100px;border-radius:8px}
 :root [data-design-operacional] :is(button[data-slot=button],.fin-btn,.rb-btn){min-height:44px;font-size:15px;border-radius:8px;gap:8px}
-:root [data-design-operacional] :is(input:not([type=checkbox],[type=radio]),textarea,select,[data-slot=select-trigger]){border-color:var(--campo-linha-forte);background-color:var(--card,#fff)}
-:root [data-design-operacional] :is(button,a,input,textarea,[role=tab]):focus-visible{outline:2px solid var(--campo-pasto);outline-offset:2px}
+:root [data-design-operacional] :is(input:not([type=checkbox],[type=radio]),textarea,select,[data-slot=select-trigger]){border-color:#b9cbbb;background-color:var(--card,#fff)}
+:root [data-design-operacional] :is(button,a,input,textarea,[role=tab]):focus-visible{outline:2px solid #5c9a7c;outline-offset:2px}
 :root [data-design-operacional] :is(dt,.consulta-cartao-meta,.consulta-entidade-detalhe,.ger-muted){font-size:14px;line-height:1.5;color:var(--op-muted)}
-:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) th{background:var(--campo-papel);color:var(--campo-tinta-2);font-size:14px;font-weight:600;line-height:1.4;padding:9px 14px;border-inline:0}
+:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) th{background:#f3f7ef;color:#4d6552;font-size:14px;font-weight:600;line-height:1.4;padding:9px 14px;border-inline:0}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) td{font-size:15px;line-height:1.45;padding:9px 14px;border-inline:0;vertical-align:middle;font-variant-numeric:tabular-nums}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) td :is(.text-xs,small){font-size:14px;line-height:1.45}
-:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) tbody tr:hover{background:var(--fin-table-hover)}
+:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) tbody tr:hover{background:#f7faf3}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) :is(td,th).numero{font-variant-numeric:tabular-nums}
 :root [data-design-operacional] :is(.consulta-entidade,.consulta-cartao,.ger-card,.estoque-reposicao-painel){border-radius:var(--op-radius);border-color:var(--op-line);background:#fff;box-shadow:none}
 :root [data-design-operacional] :is(.consulta-entidade,.consulta-cartao){padding:16px}
@@ -37,9 +37,9 @@
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(small,.text-xs,.caption,[class~="text-[11px]"],[class~="text-[12px]"]){font-size:14px;line-height:1.5}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(input:not([type=checkbox],[type=radio],[type=hidden]),select,[data-slot=select-trigger],button[data-slot=button]){min-height:44px;border-radius:8px}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(h2,h3){font-family:var(--sans)}
-:root:has([data-design-operacional]) [data-slot=dialog-content] :is([data-slot=dialog-header],.fin-dialogo-cabecalho,.sanitario-painel-cabecalho){background:var(--fin-table-hover)}
+:root:has([data-design-operacional]) [data-slot=dialog-content] :is([data-slot=dialog-header],.fin-dialogo-cabecalho,.sanitario-painel-cabecalho){background:#f7faf3}
 :root:has([data-design-operacional]) [data-slot=dialog-content] :is(.fin-dialogo-rodape,[data-slot=dialog-footer]){gap:12px}
-:root:has([data-design-operacional]) [data-slot=dialog-content] :is(button,a,input,textarea):focus-visible{outline:2px solid var(--campo-pasto);outline-offset:2px}
+:root:has([data-design-operacional]) [data-slot=dialog-content] :is(button,a,input,textarea):focus-visible{outline:2px solid #5c9a7c;outline-offset:2px}
 @media(max-width:760px){:root [data-design-operacional] :is(h1,.h1){font-size:var(--fin-titulo-pagina-movel,22px)}:root [data-design-operacional] :is(h2,.h2){font-size:18px}:root [data-design-operacional] .rotina-titulo{gap:13px}:root [data-design-operacional] .rotina-titulo>span{width:36px;height:36px;border-radius:8px}:root [data-design-operacional] .rotina-titulo svg{width:20px;height:20px}:root [data-design-operacional] :is(.consulta-entidade,.consulta-cartao){padding:18px}:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) :is(td,th){padding:13px 15px}:root:has([data-design-operacional]) [data-slot=dialog-content]{max-height:calc(100dvh - 24px);max-width:calc(100vw - 24px);border-radius:8px}:root:has([data-design-operacional]) [data-slot=dialog-title]{font-size:21px}}
 @media print{:root [data-design-operacional] :is(.rotina-titulo>span,.consulta-entidade-icone){background:none;box-shadow:none}:root [data-design-operacional] :is(.consulta-entidade,.consulta-cartao,.ger-card){break-inside:avoid}}
 :root [data-design-operacional] .acessos-layout{display:block;max-width:none}:root [data-design-operacional] .acessos-pessoas{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:16px;padding:20px;background:transparent}:root [data-design-operacional] .acessos-pessoa{border:1px solid var(--campo-linha);border-radius:8px;padding:20px;background:#fff;gap:17px;min-height:125px}:root [data-design-operacional] .acessos-pessoa:hover{background:var(--fin-table-hover);border-color:var(--campo-linha-forte)}:root [data-design-operacional] .acessos-equipe{background:transparent;border:0}:root [data-design-operacional] .acessos-equipe-cabecalho{border:1px solid var(--campo-linha);border-radius:8px;padding:22px;background:#fff}:root [data-design-operacional] .acessos-equipe-cabecalho h2{display:flex;gap:9px;align-items:center}:root [data-design-operacional] .acessos-pessoa .text-\[13px\]{font-size:16px}:root [data-design-operacional] .acessos-pessoa .text-\[11px\]{font-size:14px}:root:has([data-design-operacional]) .acessos-editor{border:0;border-radius:0}:root:has([data-design-operacional]) .acessos-editor :is(label,button,p){line-height:1.5}:root:has([data-design-operacional]) .acessos-editor .acessos-perfil-resumo{margin:20px}
@@ -49,9 +49,9 @@
 /* A malha de divisórias legada não acompanha as consultas operacionais. */
 @media screen {
 :root [data-design-operacional] table:not(.rg-tabela){border:0}
-:root [data-design-operacional] table:not(.rg-tabela)>thead>tr>th{height:40px;padding:8px 14px;font-size:14px;line-height:1.4;background:var(--campo-papel);color:var(--campo-tinta-2);border-bottom:1px solid var(--campo-linha)}
+:root [data-design-operacional] table:not(.rg-tabela)>thead>tr>th{height:40px;padding:8px 14px;font-size:14px;line-height:1.4;background:#f3f7ef;color:#4d6552;border-bottom:1px solid #dbe5d8}
 :root [data-design-operacional] table:not(.rg-tabela)>:is(thead,tbody,tfoot)>tr>:is(th,td):not(:last-child){border-inline-end:0}
-:root [data-design-operacional] table:not(.rg-tabela)>tbody>tr>td{font-size:15px;line-height:1.45;padding:9px 14px;font-variant-numeric:tabular-nums;border-bottom:1px solid var(--campo-linha)}
+:root [data-design-operacional] table:not(.rg-tabela)>tbody>tr>td{font-size:15px;line-height:1.45;padding:9px 14px;font-variant-numeric:tabular-nums;border-bottom:1px solid #e1e9dd}
 :root:has([data-design-operacional]) [data-slot=dialog-content] table:not(.rg-tabela)>:is(thead,tbody,tfoot)>tr>:is(th,td){border-inline:0;font-size:14px;line-height:1.5;padding:13px 16px}
 }
 :root [data-design-operacional] .painel-gerencial .ger-caixa-valores{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:20px}

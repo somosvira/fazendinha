@@ -4,6 +4,6 @@
 .login-campo h1 { margin: 0 0 32px; font-size: 28px; line-height: 1.2; }
 .login-campo label { margin: 0 0 8px; }
 .login-campo form > div + div { margin-top: 20px; }
-.login-campo a[href="/forgot-password"] { color: #2c5a3f; }
+.login-campo a[href="/forgot-password"] { color: #315b49; }
 .login-campo button[type="submit"] { margin-top: 32px; }
 .login-campo form > p:last-child { margin-top: 28px; }

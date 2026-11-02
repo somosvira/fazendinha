@@ -54,7 +54,7 @@
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="false"]:hover { background: transparent; color: var(--foreground); border-bottom-color: var(--border); }
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] {
   z-index: 1;
-  border-bottom-color: var(--campo-ouro, #a87a1f);
+  border-bottom-color: var(--primary);
   background: transparent;
   color: var(--foreground);
   font-weight: 700;
