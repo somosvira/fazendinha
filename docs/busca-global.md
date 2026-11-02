@@ -59,3 +59,5 @@ A composição das consultas operacionais mantém os destinos existentes de pol�
 A revisão de responsividade e densidade conserva o catálogo, as fontes, os gates e os destinos exatos. Sidebar, ações do catálogo de protocolos e cartões de animais usam os handlers anteriores; parâmetros de visualização, busca, paginação e retorno continuam reconhecidos. A retirada de medidas/datas dos cartões não remove campos pesquisáveis ou a informação da ficha e da tabela.
 
 A integração automática do Bezerreiro conserva a identidade do animal e os destinos de sua ficha. Participação é um intervalo contextual, não um segundo cadastro pesquisável; a regularização exige conferir lote e localização e não é executada pela busca. A página Bezerreiro permanece no catálogo sob o gate de Pecuária.
+
+O cancelamento de programação do Bezerreiro é uma ação contextual ao período na ficha exata do animal, acessível pelo destino já indexado. Não ganha comando global: exige conferir a fase, o intervalo e a versão da participação antes de escrever. Mantém os gates de Pecuária, lançamento e sítio; não altera URLs ou fontes de registros.

@@ -8,7 +8,7 @@ import { conferirAnimalNoFato } from '../fatos.js';
 import { conferirSitioLeiteTx } from '../leite/configuracoes.js';
 import { conferirProgramacao } from './aleitamento.calc.js';
 import { sincronizarLocalizacoesBezerreiroTx } from './localizacao.js';
-import { perfilSchema } from './schemas.js';
+import { perfilSchema, cancelarFaseSchema } from './schemas.js';
 import { dataCivil, salvarConfiguracaoSchema, type ConsultaBezerreiro, type SalvarConfiguracao } from './schemas.js';
 
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
@@ -157,6 +157,36 @@ export async function mudarFase(id: string, input: { chave: string; propriedadeI
     return salvo;
   }));
 }
+type CancelamentoFase = { chave: string; propriedadeId: number; versaoEsperada: number; motivo: string };
+
+export async function cancelarFase(id: string, periodoId: string, input: CancelamentoFase, usuarioId: number | null) {
+  const dados = { ...cancelarFaseSchema.parse(input), propriedadeId: input.propriedadeId };
+  usuarioId = autor(usuarioId);
+  return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, { ...dados, id, periodoId }, usuarioId, 'BEZERREIRO_CANCELAR_FASE',
+    () => cancelarFaseTx(tx, id, periodoId, dados, usuarioId)));
+}
+
+/** Regularização explícita, inclusive de permanência encerrada. Compartilha locks com
+ * oferta e movimentação; o período cancelado permanece integralmente na auditoria. */
+export async function cancelarFaseTx(tx: Prisma.TransactionClient, id: string, periodoId: string, input: CancelamentoFase, usuarioId: number | null) {
+  const p = await participacaoTravadaTx(tx, id, input.propriedadeId);
+  if (p.versao !== input.versaoEsperada) throw new RebanhoError('CONFLITO', 'A participação mudou. Atualize a ficha e confira a programação antes de cancelar.');
+  const periodo = await tx.periodoFaseBezerreiro.findFirst({ where: { id: periodoId, participacaoId: id } });
+  if (!periodo) throw new RebanhoError('NAO_ENCONTRADO', 'Programação não encontrada nesta participação. Atualize a ficha.');
+  const oferta = await tx.grupoOfertaBezerreiro.findFirst({ where: {
+    oferta: { perfilId: p.perfilId, status: 'CONFIRMADO', data: { gte: periodo.desde, ...(periodo.ate ? { lt: periodo.ate } : {}) } },
+    participantesSnapshot: { array_contains: [{ animalId: p.animalId }] },
+  } });
+  if (oferta) throw new RebanhoError('CONFLITO', 'Há alimentação confirmada para este animal no período. Confira e estorne as ofertas incompatíveis em Alimentação antes de cancelar a programação.');
+  // Não estende o período anterior nem altera fases posteriores: o intervalo passa
+  // a representar ausência de programação comprovada, sem inventar uma substituta.
+  await tx.periodoFaseBezerreiro.delete({ where: { id: periodo.id } });
+  const salvo = await tx.participacaoBezerreiro.update({ where: { id, versao: input.versaoEsperada }, data: { versao: { increment: 1 } } });
+  await auditar(tx, { entidade: 'PeriodoFaseBezerreiro', entidadeId: periodo.id, animalId: p.animalId, propriedadeId: input.propriedadeId, usuarioId,
+    acao: 'CANCELAMENTO', antes: periodo, depois: { cancelado: true, motivo: input.motivo, participacaoId: id, versaoParticipacao: salvo.versao } });
+  return { id: salvo.id, versao: salvo.versao };
+}
+
 export async function sairParticipacao(id: string, input: { chave: string; propriedadeId: number; versaoEsperada: number; data: string; motivo: string }, usuarioId: number | null) {
   usuarioId = autor(usuarioId);
   return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, { ...input, id }, usuarioId, 'BEZERREIRO_SAIDA', async () => {

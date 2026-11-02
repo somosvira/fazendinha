@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../../db.js';
 import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integration.fixture.js';
+import { cancelarFaseTx } from './gestao.js';
+import { sincronizarLocalizacoesBezerreiroTx } from './localizacao.js';
 import { confirmarOfertaTx, previsaoTx } from './aleitamento.js';
 import { confirmarConsumoTx } from '../nutricao/consumo.js';
 import { confirmarOfertaSchema } from './schemas.js';
@@ -89,6 +91,31 @@ function fechamento(f: Awaited<ReturnType<typeof preparar>>, leite = 4) {
   ] };
 }
 suite('alimentação íntegra com PostgreSQL real', () => {
+  it('cancelamento auditado libera a correção da localização sem recriar fase ou apagar outro fato', async () => comFixture(async (tx, f) => {
+    const periodo = await tx.periodoFaseBezerreiro.findFirstOrThrow({ where: { participacaoId: f.participacao.id } });
+    const anterior = await tx.localizacaoAnimal.findFirstOrThrow({ where: { animalId: f.animal.id } });
+    await cancelarFaseTx(tx, f.participacao.id, periodo.id, { chave: randomUUID(), propriedadeId: f.sitio.id, versaoEsperada: f.participacao.versao, motivo: 'Fase lançada no animal errado' }, null);
+    expect(await tx.periodoFaseBezerreiro.count({ where: { participacaoId: f.participacao.id } })).toBe(0);
+    expect(await tx.auditoriaPecuaria.findFirst({ where: { entidadeId: periodo.id, acao: 'CANCELAMENTO' } })).toMatchObject({ antes: expect.objectContaining({ id: periodo.id, faseVersaoId: f.fase.id }), depois: expect.objectContaining({ cancelado: true, motivo: 'Fase lançada no animal errado' }) });
+    await tx.localizacaoAnimal.update({ where: { id: anterior.id }, data: { loteId: null } });
+    await sincronizarLocalizacoesBezerreiroTx(tx, [f.animal.id], null, [anterior]);
+    expect(await tx.participacaoBezerreiro.count({ where: { animalId: f.animal.id } })).toBe(0);
+    expect(await tx.faseBezerreiroVersao.count({ where: { id: f.fase.id } })).toBe(1);
+    expect(await tx.animal.count({ where: { id: f.animal.id } })).toBe(1);
+  }));
+  it('alimentação real confirmada impede cancelar fase e conserva período, oferta e estoque', async () => comFixture(async (tx, f) => {
+    const dados = await oferta(tx, f);
+    await confirmarOfertaTx(tx, dados, null);
+    await conferir(tx);
+    const periodo = await tx.periodoFaseBezerreiro.findFirstOrThrow({ where: { participacaoId: f.participacao.id } });
+    const movimentosAntes = await tx.movimentoEstoque.count({ where: { propriedadeId: f.sitio.id } });
+    await expect(cancelarFaseTx(tx, f.participacao.id, periodo.id, { chave: randomUUID(), propriedadeId: f.sitio.id, versaoEsperada: f.participacao.versao, motivo: 'Tentativa de correção da programação' }, null)).rejects.toThrow('estorne');
+    expect(await tx.periodoFaseBezerreiro.findUnique({ where: { id: periodo.id } })).toMatchObject({ desde: periodo.desde, ate: periodo.ate });
+    expect(await tx.ofertaBezerreiro.count({ where: { perfilId: f.perfil.id, status: 'CONFIRMADO' } })).toBe(1);
+    expect(await tx.movimentoEstoque.count({ where: { propriedadeId: f.sitio.id } })).toBe(movimentosAntes);
+    expect(await tx.auditoriaPecuaria.count({ where: { entidadeId: periodo.id, acao: 'CANCELAMENTO' } })).toBe(0);
+  }));
+
   it('troca A→B com dose igual invalida token sem gravar oferta, parcela ou baixa', async () => comFixture(async (tx, f) => {
     const entrada = await oferta(tx, f);
     await tx.periodoFaseBezerreiro.update({ where: { id: f.participacao.fases[0].id }, data: { ate: data } });

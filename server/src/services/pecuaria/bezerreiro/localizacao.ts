@@ -2,8 +2,8 @@ import type { LocalizacaoAnimal, Prisma } from '@prisma/client';
 import { auditar, RebanhoError } from '../rebanho/regras.js';
 
 /** Chamado depois de escrever a localização, dentro da mesma transação e sob o lock do animal.
- * Só entradas explicitamente novas/regularizadas criam participação: uma correção não importa
- * silenciosamente permanências históricas ainda não conciliadas. */
+ * Entradas novas/regularizadas e permanências comprovadamente reabertas criam participação.
+ * Uma correção não importa silenciosamente outros intervalos históricos não conciliados. */
 export async function sincronizarLocalizacoesBezerreiroTx(
   tx: Prisma.TransactionClient,
   animalIds: string[],
@@ -51,13 +51,13 @@ export async function sincronizarLocalizacoesBezerreiroTx(
     const ofertas = await tx.grupoOfertaBezerreiro.findMany({ where: { oferta: { perfilId: p.perfilId, status: 'CONFIRMADO', data: { gte: p.desde, ...(p.ate ? { lt: p.ate } : {}) } }, participantesSnapshot: { array_contains: [{ animalId: p.animalId }] } }, include: { oferta: { select: { data: true } } } });
     if (ofertas.some(o => !local || o.oferta.data < desde! || (ate != null && o.oferta.data >= ate))) throw new RebanhoError('CONFLITO', 'Regularize ou estorne as ofertas realizadas incompatíveis antes de corrigir ou desfazer a localização.');
     if (!local) {
-      if (p.fases.length || ofertas.length) throw new RebanhoError('CONFLITO', 'A participação possui fases ou ofertas registradas. Regularize esses fatos antes de desfazer a localização.');
+      if (p.fases.length || ofertas.length) throw new RebanhoError('CONFLITO', 'A participação possui fases ou ofertas registradas. Na ficha do animal, em Bezerreiro, cancele as programações equivocadas; confira e estorne as ofertas incompatíveis em Alimentação antes de desfazer a localização.');
       await tx.participacaoBezerreiro.delete({ where: { id: p.id } });
       await auditar(tx, { entidade: 'ParticipacaoBezerreiro', entidadeId: p.id, animalId: p.animalId, propriedadeId: p.perfil.propriedadeId, usuarioId, acao: 'DESFAZER_LOCALIZACAO', antes: p, depois: { motivo } });
       continue;
     }
     for (const f of p.fases) {
-      if (f.desde < desde! || (ate && f.desde >= ate)) throw new RebanhoError('CONFLITO', 'Há uma fase fora da permanência proposta. Regularize a programação antes de corrigir a localização.');
+      if (f.desde < desde! || (ate && f.desde >= ate)) throw new RebanhoError('CONFLITO', 'Há uma fase fora da permanência proposta. Na ficha do animal, em Bezerreiro, use Cancelar programação no período equivocado antes de corrigir a localização.');
       if (ate && (!f.ate || f.ate > ate)) {
         await tx.periodoFaseBezerreiro.update({ where: { id: f.id }, data: { ate } });
         await auditar(tx, { entidade: 'PeriodoFaseBezerreiro', entidadeId: f.id, animalId: p.animalId, propriedadeId: p.perfil.propriedadeId, usuarioId, acao: 'ENCERRAMENTO_LOCALIZACAO', antes: f, depois: { ...f, ate, motivo } });
@@ -66,8 +66,16 @@ export async function sincronizarLocalizacoesBezerreiroTx(
     const salvo = await tx.participacaoBezerreiro.update({ where: { id: p.id, versao: p.versao }, data: { desde: desde!, ate, motivoSaida: ate ? motivo : null, versao: { increment: 1 } } });
     await auditar(tx, { entidade: 'ParticipacaoBezerreiro', entidadeId: p.id, animalId: p.animalId, propriedadeId: p.perfil.propriedadeId, usuarioId, acao: 'LOCALIZACAO', antes: p, depois: salvo });
   }
-  const novas = novasIds === 'INICIAIS' ? locais : locais.filter(l => novasIds.includes(l.id));
-  for (const l of novas) {
+  const anterioresPorId = new Map(anteriores.map(l => [l.id, l]));
+  const entradas = locais.map(l => {
+    const antes = anterioresPorId.get(l.id);
+    const mesmaIdentidade = antes && antes.animalId === l.animalId && antes.loteId === l.loteId && antes.propriedadeId === l.propriedadeId;
+    const reaberta = mesmaIdentidade && igual(antes.desde, l.desde) && antes.ate != null && l.ate == null;
+    const ampliada = antes && (!mesmaIdentidade || l.desde < antes.desde || antes.ate != null && (l.ate == null || l.ate > antes.ate));
+    const criar = novasIds === 'INICIAIS' || novasIds.includes(l.id) || reaberta;
+    return { l, criar, conferir: criar || ampliada };
+  }).filter(entrada => entrada.conferir);
+  for (const { l, criar } of entradas) {
     const perfil = perfis.find(p => p.ativo && p.loteId === l.loteId && p.propriedadeId === l.propriedadeId);
     if (!perfil) continue;
     if (l.ate && l.ate <= l.desde) throw new RebanhoError('CONFLITO', 'Bezerreiro exige saída posterior à entrada; uma permanência vazia no mesmo dia precisa de regularização.');
@@ -76,6 +84,7 @@ export async function sincronizarLocalizacoesBezerreiroTx(
       if (existente.desde > l.desde || existente.ate && (!l.ate || existente.ate < l.ate)) throw new RebanhoError('CONFLITO', 'A participação existente cobre apenas parte da localização. Concilie o intervalo e seus fatos antes de regularizar.');
       continue;
     }
+    if (!criar) throw new RebanhoError('CONFLITO', 'Regularize a participação faltante no Bezerreiro antes de ampliar ou corrigir esta localização histórica.');
     const p = await tx.participacaoBezerreiro.create({ data: { perfilId: perfil.id, animalId: l.animalId, desde: l.desde, ate: l.ate, motivoEntrada: motivo, motivoSaida: l.ate ? motivo : null, criadoPorId: usuarioId } });
     await auditar(tx, { entidade: 'ParticipacaoBezerreiro', entidadeId: p.id, animalId: p.animalId, propriedadeId: perfil.propriedadeId, usuarioId, acao: 'ENTRADA_LOCALIZACAO', depois: { ...p, localizacaoId: l.id } });
   }

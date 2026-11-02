@@ -36,6 +36,37 @@ describe('participação acompanha a localização na mesma transação', () => 
     await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local()]);
     expect(m.participacaoBezerreiro.create).not.toHaveBeenCalled();
   });
+  it('reabertura após configurar o lote integra somente a localização reaberta, sem carregar histórico antigo', async () => {
+    const historica = local('historica', 'lote', '2026-09-01', '2026-09-10');
+    const encerrada = local('local', 'lote', '2026-10-01', '2026-10-10');
+    m.localizacaoAnimal.findMany.mockResolvedValue([historica, local()]);
+    await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [historica, encerrada]);
+    expect(m.participacaoBezerreiro.create).toHaveBeenCalledTimes(1);
+    expect(m.participacaoBezerreiro.create).toHaveBeenCalledWith({ data: expect.objectContaining({ perfilId: perfil.id, animalId: 'animal', desde: encerrada.desde, ate: null }) });
+    expect(m.periodoFaseBezerreiro.create).not.toHaveBeenCalled();
+    expect(mocks.auditar).toHaveBeenCalledWith(tx(), expect.objectContaining({ acao: 'ENTRADA_LOCALIZACAO', depois: expect.objectContaining({ localizacaoId: 'local' }) }));
+    m.participacaoBezerreiro.findMany.mockResolvedValue([p()]);
+    m.participacaoBezerreiro.findFirst.mockResolvedValue(p());
+    await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [historica, encerrada]);
+    expect(m.participacaoBezerreiro.create).toHaveBeenCalledTimes(1);
+  });
+  it('não importa participação ao apenas encerrar localização legada', async () => {
+    m.localizacaoAnimal.findMany.mockResolvedValue([local('local', 'lote', '2026-10-01', '2026-10-10')]);
+    await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local()]);
+    expect(m.participacaoBezerreiro.create).not.toHaveBeenCalled();
+  });
+  it('reabertura coletiva integra os animais e preserva localizações inalteradas', async () => {
+    const b = { ...local('local-b'), animalId: 'animal-b' };
+    const antiga = { ...local('legada'), animalId: 'legado' };
+    m.localizacaoAnimal.findMany.mockResolvedValue([local(), b, antiga]);
+    await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal', 'animal-b', 'legado'], 7, [local('local', 'lote', '2026-10-01', '2026-10-10'), { ...b, ate: d('2026-10-10') }, antiga]);
+    expect(m.participacaoBezerreiro.create.mock.calls.map(([args]) => args.data.animalId)).toEqual(['animal', 'animal-b']);
+  });
+  it('não amplia intervalo legado sem participação como efeito de uma correção', async () => {
+    m.localizacaoAnimal.findMany.mockResolvedValue([local('local', 'lote', '2026-09-30')]);
+    await expect(sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local()])).rejects.toThrow('Regularize a participação');
+    expect(m.participacaoBezerreiro.create).not.toHaveBeenCalled();
+  });
   it('reexecução preserva participação existente e não fragmenta permanência', async () => {
     m.participacaoBezerreiro.findMany.mockResolvedValue([p()]); m.participacaoBezerreiro.findFirst.mockResolvedValue(p());
     await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local()], ['local']);
@@ -97,6 +128,7 @@ describe('participação acompanha a localização na mesma transação', () => 
     const origem = { ...p(), ate: d('2026-10-10') };
     const destino = { ...p(), id: 'destino', perfilId: 'perfilB', perfil: { ...perfil, id: 'perfilB', loteId: 'loteB' }, desde: d('2026-10-10') };
     m.participacaoBezerreiro.findMany.mockResolvedValue([origem, destino]);
+    m.participacaoBezerreiro.findFirst.mockResolvedValue({ ...origem, ate: null });
     await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local('local', 'lote', '2026-10-01', '2026-10-10'), local('localB', 'loteB', '2026-10-10')]);
     expect(m.participacaoBezerreiro.delete).toHaveBeenCalledWith({ where: { id: 'destino' } });
     expect(m.participacaoBezerreiro.delete.mock.invocationCallOrder[0]).toBeLessThan(m.participacaoBezerreiro.update.mock.invocationCallOrder[0]);
@@ -105,8 +137,10 @@ describe('participação acompanha a localização na mesma transação', () => 
   it('estorno da baixa reabre permanência e conserva fase já encerrada', async () => {
     const atual = { ...p(), ate: d('2026-10-10'), fases: [{ id: 'fase', desde: d('2026-10-01'), ate: d('2026-10-10') }] };
     m.participacaoBezerreiro.findMany.mockResolvedValue([atual]);
+    m.participacaoBezerreiro.findFirst.mockResolvedValue({ ...atual, ate: null });
     await sincronizarLocalizacoesBezerreiroTx(tx(), ['animal'], 7, [local('local', 'lote', '2026-10-01', '2026-10-10')]);
     expect(m.participacaoBezerreiro.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ ate: null }) }));
     expect(m.periodoFaseBezerreiro.update).not.toHaveBeenCalled();
+    expect(m.participacaoBezerreiro.create).not.toHaveBeenCalled();
   });
 });

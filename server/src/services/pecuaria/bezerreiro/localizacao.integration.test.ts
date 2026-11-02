@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../../db.js';
 import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integration.fixture.js';
-import { cadastrar, darBaixa, desfazerMovimentacao, estornarBaixa, movimentar } from '../rebanho/animais.js';
+import { cadastrar, darBaixa, desfazerLocalizacao, desfazerMovimentacao, estornarBaixa, movimentar } from '../rebanho/animais.js';
 import { cadastrarAnimalSchema } from '../rebanho/schemas.js';
 import { registrarPerfil, registrarParticipacao } from './gestao.js';
 import { sincronizarLocalizacoesBezerreiroTx } from './localizacao.js';
@@ -86,6 +86,42 @@ suite('localização e participação com PostgreSQL autorizado', () => {
     expect((await participantes(a.id))[0].ate).toBeNull();
     await movimentar({ animalIds: [a.id], propriedadeId: outroSitio, data: '2026-01-05' }, null);
     expect((await participantes(a.id))[0].ate).toEqual(data('2026-01-05'));
+  });
+  it.each(['individual', 'coletiva', 'baixa'] as const)('reabertura %s integra lote configurado após a saída, sem duplicar participação', async modo => {
+    const origem = await lote(`reabertura-${modo}`);
+    const animais = [await animal(origem.id)];
+    if (modo === 'coletiva') animais.push(await animal(origem.id));
+    const ids = animais.map(a => a.id);
+    let movimentoId: string | undefined;
+    if (modo === 'baixa') await darBaixa({ animalId: ids[0], tipo: 'EXTRAVIO', data: '2026-01-03' }, null);
+    else movimentoId = (await movimentar({ animalIds: ids, propriedadeId: sitio, data: '2026-01-03' }, null)).movimentacaoId;
+    const perfil = await registrarPerfil({ chave: randomUUID(), propriedadeId: sitio, loteId: origem.id }, null);
+    expect(await prisma.participacaoBezerreiro.count({ where: { animalId: { in: ids } } })).toBe(0);
+    if (modo === 'individual') await desfazerLocalizacao(ids[0], null);
+    else if (modo === 'coletiva') await desfazerMovimentacao(movimentoId!, 'Revisão da saída coletiva', null);
+    else await estornarBaixa(ids[0], { motivo: 'Animal localizado novamente' }, null);
+    for (const id of ids) {
+      const [p] = await participantes(id);
+      expect(p).toMatchObject({ perfilId: perfil.id, animalId: id, desde: data('2026-01-01'), ate: null });
+      expect(await prisma.localizacaoAnimal.findFirst({ where: { animalId: id, ate: null } })).toMatchObject({ loteId: origem.id, desde: p.desde });
+      expect(await prisma.periodoFaseBezerreiro.count({ where: { participacaoId: p.id } })).toBe(0);
+      await registrarParticipacao({ chave: randomUUID(), propriedadeId: sitio, perfilId: perfil.id, animalId: id, desde: '2026-01-01', motivo: 'Conferência da permanência reaberta' }, null);
+      expect(await participantes(id)).toHaveLength(1);
+      expect(await prisma.auditoriaPecuaria.count({ where: { entidade: 'ParticipacaoBezerreiro', entidadeId: p.id, acao: 'ENTRADA_LOCALIZACAO' } })).toBe(1);
+    }
+  });
+  it('SQL recusa reabrir localização sem integração e reverte a alteração inteira', async () => {
+    const origem = await lote('reabertura-sem-integracao'), a = await animal(origem.id);
+    await movimentar({ animalIds: [a.id], propriedadeId: sitio, data: '2026-01-03' }, null);
+    await registrarPerfil({ chave: randomUUID(), propriedadeId: sitio, loteId: origem.id }, null);
+    const antes = await prisma.localizacaoAnimal.findMany({ where: { animalId: a.id }, orderBy: { desde: 'asc' } });
+    await expect(prisma.$transaction(async tx => {
+      await tx.localizacaoAnimal.delete({ where: { id: antes[1].id } });
+      await tx.localizacaoAnimal.update({ where: { id: antes[0].id }, data: { ate: null } });
+      await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
+    })).rejects.toThrow('exige participação atômica');
+    expect(await prisma.localizacaoAnimal.findMany({ where: { animalId: a.id }, orderBy: { desde: 'asc' } })).toEqual(antes);
+    expect(await participantes(a.id)).toHaveLength(0);
   });
   it('saída no mesmo dia é recusada e localização/participação permanecem íntegras', async () => {
     const a = await animal(loteA);
