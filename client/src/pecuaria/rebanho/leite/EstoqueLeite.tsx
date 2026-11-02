@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { ClipboardCheck } from "lucide-react";
 import { ProdutoEstoqueVisual, ResumoEstoqueVisual } from "./VisuaisConsultaLeite";
@@ -239,7 +240,7 @@ function DetalheEstoqueLeite({
           <h2>Origens, natureza e apuração <AjudaCampo rotulo="Sobre a apuração do custo" texto={"O custo pode ser documentado depois da retirada. Apurar não altera os litros e não cria outra despesa."} /></h2>
 
           {!estoque.origens.length ? (
-            <p>Nenhuma produção confirmada para este produto neste sítio.</p>
+            <Empty>Nenhuma produção confirmada para este produto neste sítio.</Empty>
           ) : (
             <div className="leite-tabela-scroll">
               <Table semContainer>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { NovaAmostra } from "./QualidadeLeite";
 import type { AmostraQualidade, FormatoQualidade } from "./qualidade-types";
+import { Empty } from "@/financeiro/financeiro-ui";
 export function SelecaoQualidadeFechamento({ sitio, inicio, fim, selecionadas, onChange, ocupado }: {
   sitio: number; inicio: string; fim: string; selecionadas: { amostraId: string; versaoEsperada: number }[];
   onChange: (v: { amostraId: string; versaoEsperada: number }[]) => void; ocupado: boolean;
@@ -25,7 +26,7 @@ export function SelecaoQualidadeFechamento({ sitio, inicio, fim, selecionadas, o
     {!dados && !erro && <p role="status">Consultando amostras do período…</p>}
     <fieldset disabled={ocupado}><legend>Amostras de {inicio} até {fim}</legend>
       {dados?.itens.filter(a => a.status === "VALIDO").map(a => <label className="leite-checkbox" key={a.id}><input type="checkbox" checked={selecionadas.some(s => s.amostraId === a.id)} onChange={e => onChange(e.target.checked ? [...selecionadas.filter(s => s.amostraId !== a.id), { amostraId: a.id, versaoEsperada: a.versao }] : selecionadas.filter(s => s.amostraId !== a.id))} />{a.data} · {a.sujeito.tipo === "COLETIVO" ? a.sujeito.origem : a.animal?.brinco} · {a.formatoSnapshot.nome} · versão {a.versao}{!a.resultados.length ? " · Resultado pendente" : ""}</label>)}
-      {dados && !dados.itens.length && <p>Nenhuma amostra neste período.</p>}
+      {dados && !dados.itens.length && <Empty>Nenhuma amostra neste período.</Empty>}
       <p>{selecionadas.length} amostra(s) selecionada(s), incluindo outras páginas.</p>
       {!!selecionadas.length && <Button type="button" onClick={() => onChange([])}>Remover todos os vínculos desta versão</Button>}
       <Button variant="outline" type="button" className="leite-secondary" onClick={() => setNova(true)}>Registrar nova amostra para selecionar</Button>

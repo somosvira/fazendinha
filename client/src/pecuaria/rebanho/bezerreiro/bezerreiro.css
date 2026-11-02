@@ -2,3 +2,5 @@
 @media(max-width:1000px){.bez-colunas{grid-template-columns:1fr}.bez-superficie,.bez-conteudo{padding:18px}.bez-indicadores{gap:22px}}@media(max-width:600px){.bez-campos{grid-template-columns:1fr}.bez-superficie,.bez-conteudo{padding:16px}.bez-modal{padding:18px}.bez-modal input:not([type=checkbox]):not([type=color]),.bez-modal textarea,.bezerreiro input:not([type=checkbox]):not([type=color]),.bezerreiro textarea{font-size:16px;min-height:44px}.bez-indicadores{gap:16px}.bez-indicadores div{min-width:135px}.bez-indicadores dd{font-size:22px}.bez-form-acoes{justify-content:flex-start}}
 
 .bez-modulo{padding:24px;font-variant-numeric:tabular-nums}.bez-modulo ::selection{background:var(--fin-nav-selected,#c5ded8)}@media(max-width:900px){.bez-modulo{padding:56px 16px 32px}}
+/* Vazio em parágrafo segue o mesmo desenho do Empty compartilhado (fin-vazio). */
+p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-card-2,var(--muted));text-align:center;line-height:1.5}

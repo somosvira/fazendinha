@@ -1,7 +1,7 @@
 import type { Key, ReactNode } from "react";
 import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { TabelaFinanceira, type ColunaTabela } from "@/financeiro/financeiro-ui";
+import { TabelaFinanceira, type ColunaTabela, Empty } from "@/financeiro/financeiro-ui";
 import "./consultas-leite.css";
 
 /** As duas apresentações compartilham as mesmas células, permissões e ações. */
@@ -25,7 +25,7 @@ export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, cha
         {volume && <div className="leite-cartao-volume"><strong>{volume.celula(item)}</strong><span>{volume.titulo}</span></div>}
         {fatos.map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}
       </CartaoConsulta>}</div>)}
-      {!itens.length && <p>Nenhum registro neste recorte.</p>}
+      {!itens.length && <Empty>Nenhum registro neste recorte.</Empty>}
     </div>}
   </div>;
 }

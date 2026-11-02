@@ -32,6 +32,7 @@ import {
 } from "./programacao-types";
 import "./operacoes.css";
 import "./leite.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 const dataPt = (data: string) =>
   new Date(`${data}T12:00:00Z`).toLocaleDateString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -117,7 +118,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
               {dataPt(dados.vigente.vigenteDesde)}
             </p>
           ) : (
-            <p>Nenhuma programação vigente nesta data.</p>
+            <Empty>Nenhuma programação vigente nesta data.</Empty>
           )}
           {dados.meta && (
             <div>
@@ -212,7 +213,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
                 </Table>
               </div>
             ) : (
-              <p>Ainda não há versões registradas.</p>
+              <Empty>Ainda não há versões registradas.</Empty>
             )}
           </SecaoDetalhesLeite>
           {config && (

@@ -12,7 +12,7 @@ import { SkeletonListaFinanceira } from "./CarregamentoFinanceiro";
 import "./cores-financeiro.css";
 import { forwardRef, useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ArrowDown, ArrowUp, Check, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Inbox, LoaderCircle, Pencil, Power, PowerOff, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const brl = (valor: string | number | null | undefined) => valor == null ? "—" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(valor));
@@ -163,8 +163,9 @@ export function ErrorBox({ erro }: { erro: string | null }) {
   return erro ? <div role="alert" className="fin-erro mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{erro}</div> : null;
 }
 
-export function Empty({ children }: { children: React.ReactNode }) {
-  return <div className="p-10 text-center text-sm text-ink-3">{children}</div>;
+/** Lista, gráfico ou seção sem registros: mesmo desenho do EmptyState compacto. */
+export function Empty({ children, icone: Icone = Inbox, acao }: { children: React.ReactNode; icone?: LucideIcon; acao?: React.ReactNode }) {
+  return <div className="fin-vazio" role="note"><span aria-hidden className="fin-vazio-icone"><Icone size={20} strokeWidth={1.5} /></span><div className="fin-vazio-texto">{children}</div>{acao && <div className="fin-vazio-acao">{acao}</div>}</div>;
 }
 
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {

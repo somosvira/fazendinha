@@ -17,6 +17,7 @@ import { formatarDataBR } from "../lib/rotulos";
 import type { AnimalFicha, HistoricoPesagem, PeriodoGmd, Pesagem } from "../types";
 
 import "./peso-ficha.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 const avisoDemonstracao = "Cenário sintético de desenvolvimento. Animais, doses, resultados e intervalos fictícios; não são recomendação clínica.";
 function observacaoVisivel(texto: string | null | undefined) { return texto?.replaceAll(avisoDemonstracao, "").trim() ?? ""; }
@@ -94,7 +95,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
             </>}
           </div></td>
         </tr>)}</tbody>
-      </table></div> : <p className="text-sm text-ink-3">Nenhuma pesagem registrada.</p>}
+      </table></div> : <Empty>Nenhuma pesagem registrada.</Empty>}
       {historicoPesagens.length > 5 && <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={historicoPesagens.length} itensPorPagina={5} onPaginaChange={setPagina} rotulo="pesagens" idSelect="pagina-pesagens-animal"/>}
       </CardFicha>
     <Dialog open={!!pesagemAberta} onOpenChange={aberto => { if (!aberto) setPesagemAberta(null); }}>

@@ -52,6 +52,7 @@ import { Iatf } from "./Iatf";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { FormReproducao } from "./FormReproducao";
 import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
+import { Empty } from "@/financeiro/financeiro-ui";
 type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
 export function Transcricao({
   visita,
@@ -705,7 +706,7 @@ export function Transcricao({
           </Fragment>;
         })}</tbody>
       </table>
-      {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
+      {!itens.length && <Empty>Nenhum participante com estes filtros.</Empty>}
       <p className="p-4 text-sm text-ink-3">RP refere-se ao último parto válido até a visita. Informações não preenchidas continuam pendentes. Gestação e tentativa exibidas são contexto; o vínculo clínico exige confirmação.</p>
     </div>;
   }
@@ -965,7 +966,7 @@ export function Transcricao({
             </Fragment>;
           })}</tbody>
         </table>
-        {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
+        {!itens.length && <Empty>Nenhum participante com estes filtros.</Empty>}
       </div>}
       {paginacaoAtendimento()}
       </div>

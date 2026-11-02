@@ -16,7 +16,8 @@
 .consulta-criterios button { height: auto; min-height: 32px; white-space: normal; text-align: left; }
 @media (max-width:1100px) {
   .consulta-linha { flex-direction: column; align-items: stretch; gap: 12px; }
-  .consulta-acoes { order: -1; justify-content: flex-end; }
+  /* Abaixo da busca e dos filtros: no topo, sozinho à direita, deixava uma faixa vazia na barra. */
+  .consulta-acoes { order: 1; justify-content: flex-end; }
   .consulta-controles > :is(.fin-filtro-busca,.consulta-busca) { max-width: none; }
   :root .consulta-controles > :is(.fin-filtro-busca, .consulta-busca, label:has(input[type="search"], input[aria-label^="Buscar"], input[placeholder^="Buscar"], input[placeholder^="Brinco"])) { flex: 1 1 100%; width: 100%; min-width: 0; max-width: none; }
   .consulta-controles > [data-slot="date-range-trigger"] { order: 1; }

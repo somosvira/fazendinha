@@ -6,6 +6,7 @@ import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { reqV4 } from "./api";
 import { FormularioAcompanhamento, type RegistroPoliticaAcompanhamento, type TipoExameAcompanhamento } from "./FormularioAcompanhamento";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 type Regra = { tipoExameId?: string; tipoExameVersao?: number };
 export type PoliticaAcompanhamento = {
@@ -81,7 +82,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
     </div>
     {!formularioAberto && <ErrorBox erro={erro} />}
     {carregando && <p role="status">Carregando políticas…</p>}
-    {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
+    {!carregando && !erro && !politicas.length && <Empty>Nenhuma política registrada neste sítio.</Empty>}
     {mensagem && <p role="status">{mensagem}</p>}
 
     {ordenadas.map(p => <details key={p.id} open={p.id === vigente?.id} className="rounded border border-border bg-card p-3">

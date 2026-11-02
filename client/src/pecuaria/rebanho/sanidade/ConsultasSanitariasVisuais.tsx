@@ -2,7 +2,7 @@ import { ResultadoVisualExame } from "./ResultadoVisualExame";
 import { FlaskConical, Syringe, Milk, Beef } from "lucide-react";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { CartaoConsulta, FatoConsulta, LinhaTempoConsulta } from "@/components/ConsultaVisual";
-import { TabelaFinanceira } from "@/financeiro/financeiro-ui";
+import { TabelaFinanceira, Empty } from "@/financeiro/financeiro-ui";
 import type { ExameResultado } from "./ResultadoExame";
 import type { AplicacaoSanitaria, CarenciaAnimal } from "./api";
 import { dataSanitaria, dataAplicacaoSanitaria, nomeAnimalSanitario, origemSanitaria, resultadoExameSanitario, tipoSanitario, unidadeSanitaria } from "./rotulos";
@@ -17,7 +17,7 @@ export function ConsultaExames<T extends ExameVisual>({ nomeAnimal, ...props }: 
     const resultado = resultadoExameSanitario(e);
     const pendente = resultado === "Aguardando resultado";
     return <CartaoConsulta className="san-exame-cartao" key={props.chaveDe(e)} icon={FlaskConical} titulo={nomeAnimal(e)} detalhe={e.tipoExame.nome} onAbrir={() => props.onAbrir?.(e)} status={<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : pendente ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : pendente ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario>} acoes={props.colunas.find(c => c.chave === "acoes")?.celula(e)}><div className="consulta-fatos san-exame-fatos"><FatoConsulta rotulo="Coleta">{dataSanitaria(e.data)}</FatoConsulta><FatoConsulta rotulo="Resultado"><ResultadoVisualExame exame={e} onAbrirCompleto={props.onAbrir ? () => props.onAbrir?.(e) : undefined} /></FatoConsulta></div></CartaoConsulta>;
-  })}{!props.itens.length && <p className="text-sm text-muted-foreground">Nenhum exame nesta consulta.</p>}</div>}</>;
+  })}{!props.itens.length && <Empty>Nenhum exame nesta consulta.</Empty>}</div>}</>;
 }
 export function ConsultaAplicacoes(props: Props<AplicacaoSanitaria>) {
   const visual = useVisualizacaoConsulta("visualAplicacoes", "sanidade", "visual");
@@ -34,5 +34,5 @@ export function ConsultaCarencias<T extends CarenciaVisual>(props: Props<T>) {
   return <><div className="consulta-visual-barra"><span>Consulta em {new Date(agora).toLocaleDateString("pt-BR")}</span><AlternarVisualizacaoConsulta {...visual} visual="Prazos" rotulo="Visualização das carências" /></div>{visual.modo === "tabela" ? <TabelaFinanceira {...props} /> : <div className="carencias-prazos-rolagem"><div className="carencias-prazos"><div className="carencias-prazos-eixo"><span>Prazos por animal</span><div><span>{new Date(minimo).toLocaleDateString("pt-BR")}</span><strong style={{ left: posicao(agora) }}>Hoje</strong><span>{new Date(maximo).toLocaleDateString("pt-BR")}</span></div></div>{props.itens.map(c => <section key={props.chaveDe(c)} className="carencias-prazos-animal"><h3><button type="button" onClick={() => props.onAbrir?.(c)}>{nomeAnimalSanitario(c.animal)}</button></h3><div>{(["leite", "carne"] as const).map(destino => {
     const p = c[destino], Icone = destino === "leite" ? Milk : Beef;
     return <div className="carencias-prazo" key={destino}><span><Icone size={18} aria-hidden />{destino === "leite" ? "Leite" : "Abate / carne"}</span><div className="carencias-prazo-trilho"><i className="carencias-prazo-hoje" style={{ left: posicao(agora) }} />{p.estado === "CONHECIDO" && !p.prazoZero && <i className="carencias-prazo-marco" data-vigente={new Date(p.ate).getTime() > agora} style={{ left: posicao(new Date(p.ate).getTime()) }} />}<div className="carencias-prazo-texto"><PrazoCarencia estado={p} agora={agora} revisao={destino === "leite" && c.revisaoLeitePendente} /></div></div></div>;
-  })}{c.revisaoAdministracaoPendente && <p className="text-sm text-amber-800">Administração não confirmada · revisar os registros</p>}</div></section>)}{!props.itens.length && <p className="p-5">Nenhuma carência encontrada.</p>}</div></div>}</>;
+  })}{c.revisaoAdministracaoPendente && <p className="text-sm text-amber-800">Administração não confirmada · revisar os registros</p>}</div></section>)}{!props.itens.length && <Empty>Nenhuma carência encontrada.</Empty>}</div></div>}</>;
 }

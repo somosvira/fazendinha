@@ -24,6 +24,7 @@ import { registro } from "./folha-regras";
 import { CorrigirFato } from "./CorrigirFato";
 import { AnularFato } from "./AnularFato";
 import { ColostroCria } from "./ColostroCria";
+import { Empty } from "@/financeiro/financeiro-ui";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -107,7 +108,7 @@ function Lista<T extends { id: string }>({
         colunas={colunas}
       />
       {!itens.length && (
-        <p className="p-4 text-sm text-ink-3">Nenhum registro informado.</p>
+        <Empty>Nenhum registro informado.</Empty>
       )}
       {itens.length > 10 && (
         <Paginacao

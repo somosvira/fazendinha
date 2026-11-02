@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, ArrowLeft, Milk, Droplets, ShieldCheck, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
-import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
+import { CabecalhoTabela, TabelaFinanceira, Empty } from "@/financeiro/financeiro-ui";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { classeInput } from "@/financeiro/PainelCadastro";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -220,7 +220,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
         const bloqueado = a.ausente || (parcelaOrigens.natureza === "COMERCIAL" && (!carencia || carencia.estado !== "SEM_RESTRICAO_REGISTRADA"));
         return <label key={a.animalId}><input type="checkbox" disabled={travado || !!parcelaOrigens.entradaId || (!!bloqueado && !parcelaOrigens.animais.includes(a.animalId))} checked={parcelaOrigens.animais.includes(a.animalId)} onChange={e => { if (e.target.checked && bloqueado) return; mudarParcela(parcelaOrigens.chave, { animais: e.target.checked ? [...parcelaOrigens.animais, a.animalId] : parcelaOrigens.animais.filter(id => id !== a.animalId) }); }} /><span>{a.brinco}{a.nome ? ` · ${a.nome}` : ""}{a.ausente ? " · Origem fora do contexto atual; apenas remoção" : carencia && carencia.estado !== "SEM_RESTRICAO_REGISTRADA" ? " · Carência / revisão sanitária" : ""}</span></label>;
       })}
-      {!animais.length && <p>Nenhum animal identificado no contexto desta data.</p>}
+      {!animais.length && <Empty>Nenhum animal identificado no contexto desta data.</Empty>}
       {parcelaOrigens.natureza === "COLOSTRO" && !parcelaOrigens.direta && contexto?.contexto?.criterioColostro?.tipo === "PRIMEIRA_ORDENHA" && <label><input type="checkbox" disabled={travado || !!parcelaOrigens.entradaId} checked={parcelaOrigens.primeira ?? false} onChange={e => mudarParcela(parcelaOrigens.chave, { primeira: e.target.checked })} />Declaro que esta parcela é a primeira ordenha dos animais selecionados após o parto.</label>}
       {parcelaOrigens.direta && <p>Declaração direta: {parcelaOrigens.justificativa || "Justificativa ainda não informada"}. Nenhum parto ou evento sanitário é criado.</p>}
     </div>}<DialogFooter><Button onClick={() => setOrigens(null)}>Concluir conferência</Button></DialogFooter></DialogContent></Dialog>

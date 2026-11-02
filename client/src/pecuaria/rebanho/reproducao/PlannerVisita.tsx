@@ -17,6 +17,7 @@ import { criteriosVazios, validarCriterios } from "./EditorSelecaoVisita";
 import { CabecalhoContextoVisita, CelulasContextoVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
 import { carregarPreviaCompleta, chaveGrupo, consultarAgenda, incluirGrupo, previaGrupo, resumoRevisao, type CriteriosSelecao, type GrupoLivreInput, type GrupoPlanner, type GrupoRevisado, type JanelaPlanner, type PreviaPlanner } from "./planner-api";
 import { obterVisita, type Visita } from "./visitas-api";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 const janelas: [JanelaPlanner, string][] = [["DIA", "Previstos para o dia"], ["ANTERIOR", "Pendências anteriores"], ["SEM_PREVISAO", "Sem previsão"], ["FUTURA", "Datas futuras"]];
 const mensagem = (e: unknown) => e instanceof Error ? e.message : String(e);
@@ -342,7 +343,7 @@ export function PlannerVisita({ visita, podeLancar, propriedadeNome, etapa = "pl
       <div className="visita-grupo-total">{quantidade}<small>{quantidade === 1 ? "animal" : "animais"}{selecionado?.excluidos.length ? " incluídos" : ""}</small>{g.totalProcedimentos !== g.totalAnimais && <small>{g.totalProcedimentos} procedimentos</small>}</div>
       <button type="button" className="visita-botao pequeno h-auto" disabled={ocupado || carregando} onClick={() => void abrirRevisao(g)}>Revisar animais</button>
     </div>;
-  })}{!lista.length && <p className="visita-vazio">Nenhum grupo nesta janela.</p>}</div>;
+  })}{!lista.length && <Empty>Nenhum grupo nesta janela.</Empty>}</div>;
   const cabecalhoPainel = (titulo: string, descricao: string, acao?: ReactNode) => <div className="visita-painel-cabecalho"><div><h2>{titulo}</h2><p>{descricao}</p></div>{acao}</div>;
   const revisarSelecao = () => { const primeiro = revisados[0]; if (primeiro) void abrirRevisao(primeiro.previa.grupo); };
 
@@ -489,6 +490,6 @@ export function PlannerVisita({ visita, podeLancar, propriedadeNome, etapa = "pl
         </section>
         <div className="visita-rodape"><div><strong>{revisao.previa.total - revisao.excluidos.length} de {revisao.previa.total} animais incluídos neste grupo</strong><small>{resumoRevisao(comRevisaoAtual()).animais} animais únicos · {resumoRevisao(comRevisaoAtual()).procedimentos} procedimentos na seleção da visita.</small></div><div className="visita-acoes"><button className="visita-botao" disabled={ocupado} onClick={livre ? ()=>ir(etapaInicial) : guardarRevisao}>{livre ? "Voltar aos filtros" : "Salvar grupo revisado"}</button><button className="visita-botao primario" disabled={!!jaPreparado || !podeLancar || ocupado || carregando || revisao.previa.total === revisao.excluidos.length || revisados.some(r => invalidos.includes(chaveGrupo(r.previa.grupo.grupo)) && chaveGrupo(r.previa.grupo.grupo) !== chaveGrupo(revisao.previa.grupo.grupo))} onClick={() => livre ? (salvarEstado(visita,modo,[],revisao,[],[],criteriosLivres,atividadeLivre), ir("atividade",{grupo:chaveGrupo(revisao.previa.grupo.grupo)})) : void prepararRevisao()}>{livre ? "Definir atividade e visita" : "Preparar visita e ir ao atendimento"}</button></div></div>
       </>}
-    </> : <Panel><CabecalhoTabela titulo="Atendimento da visita" descricao="Escolha uma atividade para continuar o registro."/><div className="divide-y divide-border">{visita.atividades.map(a => <button key={a.id} type="button" className="w-full p-4 text-left hover:bg-surface-2" onClick={() => ir("atendimento", {atividade:a.id})}>{a.nome}<span className="ml-2 text-sm text-ink-3">{a.totais?.totalParticipantes ?? a.participantes.length} animais</span></button>)}{!visita.atividades.length && <p className="p-4">Nenhuma atividade preparada.</p>}</div></Panel>}
+    </> : <Panel><CabecalhoTabela titulo="Atendimento da visita" descricao="Escolha uma atividade para continuar o registro."/><div className="divide-y divide-border">{visita.atividades.map(a => <button key={a.id} type="button" className="w-full p-4 text-left hover:bg-surface-2" onClick={() => ir("atendimento", {atividade:a.id})}>{a.nome}<span className="ml-2 text-sm text-ink-3">{a.totais?.totalParticipantes ?? a.participantes.length} animais</span></button>)}{!visita.atividades.length && <Empty>Nenhuma atividade preparada.</Empty>}</div></Panel>}
   </section>;
 }

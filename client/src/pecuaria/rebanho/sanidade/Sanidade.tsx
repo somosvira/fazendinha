@@ -176,6 +176,7 @@ import { ExecutarEtapa } from "./ExecutarEtapa";
 import type { TarefaRodada } from "./rodadas-api";
 import type { PaginaSanitaria } from "./rodadas-api";
 import { FormFatoSanitario, type TipoFatoSanitario } from "./FormFatoSanitario";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 export function Sanidade(props: { podeLancar: boolean }) {
   const [caminho,setCaminho]=useState(window.location.pathname);
@@ -924,7 +925,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
               <TabelaFinanceira filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrencias.filter((o) => noPeriodo(o.inicio, o.status, o.fim))} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}
               {!carregandoAba && !erroAba && !ocorrencias.length && (
-                <p className="p-4">Nenhuma ocorrência encontrada para os filtros atuais.</p>
+                <Empty>Nenhuma ocorrência encontrada para os filtros atuais.</Empty>
               )}
             </>
           )}
@@ -964,7 +965,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
               ]} />
               {!carregandoAba && !erroAba && <p className="sanidade-nota-historico">O tratamento e seus lançamentos permanecem no histórico.</p>}
               {!carregandoAba && !erroAba && !carencias.length && (
-                <p className="p-4">Nenhuma carência encontrada para os filtros atuais.</p>
+                <Empty>Nenhuma carência encontrada para os filtros atuais.</Empty>
               )}
             </div>
           )}
@@ -978,7 +979,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "acoes", titulo: "Ações", acoes: true, celula: (e) => <div className="sanidade-acoes-linha" onClick={(v) => v.stopPropagation()}>{podeLancar && e.status === "VALIDO" && <ResultadoExame exame={e} propriedadeId={e.propriedadeId} onSalvo={() => { setRevisao((v) => v + 1); setRecarregarDetalhe((v) => v + 1); }} />}</div> },
               ]} />
               {!carregandoAba && !erroAba && !exames.length && (
-                <p className="p-4">Nenhum exame encontrado para os filtros atuais.</p>
+                <Empty>Nenhum exame encontrado para os filtros atuais.</Empty>
               )}
             </>
           )}

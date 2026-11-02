@@ -16,6 +16,7 @@ import { navegarPara } from "../router";
 import { Cadastros, type AbaCadastroRebanho } from "../pecuaria/rebanho/telas/Cadastros";
 import { CadastrosSanitarios, type AbaCadastroSanitario } from "../pecuaria/rebanho/sanidade/CadastrosSanitarios";
 import { BuscaLista } from "./BuscaLista";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 
 const GRUPOS = [
@@ -65,6 +66,6 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
  return <><div className="pec-config-busca"><BuscaLista rotulo="Buscar configuração" placeholder="Buscar categoria, raça, protocolo…" valor={busca} onChange={setBusca} /></div><div className="pec-config-grid">
   {grupos.map(({ icon: Icon, ...g }) => <section key={g.id} className="pec-config-grupo"><h2><span className="fin-section-icon"><Icon size={20} aria-hidden /></span>{g.nome}</h2>{g.itens.map(i => <LinkCadastro key={i.id} href={"href" in i && i.href ? i.href : "/configuracoes/pecuaria/"+g.id+"/"+i.id}><span>{i.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>)}
   {mostrarNutricao && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2><LinkCadastro href="/pecuaria/nutricao?aba=receitas"><span>Receitas de dieta</span><ChevronRight size={16} aria-hidden /></LinkCadastro></section>}
-  {!grupos.length && !mostrarNutricao && <p className="p-5 text-sm text-ink-3">Nenhuma configuração corresponde à busca.</p>}
+  {!grupos.length && !mostrarNutricao && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
  </div></>;
 }

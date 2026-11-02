@@ -13,6 +13,7 @@ import {
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqSanidade } from "../sanidade/api";
 import { obterReproducao, reqV4 } from "./api";
+import { Empty } from "@/financeiro/financeiro-ui";
 type Regra = {
   id: string;
   doencaId: string;
@@ -87,7 +88,7 @@ export function RegrasSanitarias({ podeEditar }: { podeEditar: boolean }) {
           </div>
         ))}
         {!regras.length && (
-          <p className="text-sm">Nenhuma regra configurada.</p>
+          <Empty>Nenhuma regra configurada.</Empty>
         )}
       </div>
       {aberto && (

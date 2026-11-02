@@ -7,6 +7,7 @@ import { consultarHistoricoExame, type HistoricoExame as DadosHistorico } from "
 import { dataHoraSanitaria, resultadoExameSanitario } from "./rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
 import type { ExameResultado } from "./ResultadoExame";
+import { Empty } from "@/financeiro/financeiro-ui";
 function valorServico(valor: unknown): string {
   if (!valor || typeof valor !== "object") return "Não registrado";
   const dado = valor as Record<string, unknown>;
@@ -47,7 +48,7 @@ export function HistoricoExame({ exameId, propriedadeId, formato }: { exameId: s
         <dl className="sanitario-dados"><div><dt>Antes</dt><dd>{eventoServico(a.acao) ? valorServico(a.antes) : valorHistorico(a.antes, formato)}</dd></div><div><dt>Depois</dt><dd>{eventoServico(a.acao) ? valorServico(a.depois) : valorHistorico(a.depois, formato)}</dd></div></dl>
         <p className="sanitario-historico-motivo"><strong>Motivo:</strong> {a.motivo ?? "Não registrado"}</p>
       </article>)}
-      {!dados.itens.length && <p>Nenhuma alteração registrada.</p>}
+      {!dados.itens.length && <Empty>Nenhuma alteração registrada.</Empty>}
       <nav aria-label="Páginas do histórico de alterações" className="sanitario-historico-paginacao">
         {dados.total > dados.tamanho && <Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(v => v - 1)}>Anterior</Button>}
         <span>{dados.total > dados.tamanho ? `Página ${pagina} · ` : ""}{dados.total} {dados.total === 1 ? "alteração" : "alterações"}</span>
