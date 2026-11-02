@@ -1,3 +1,4 @@
+import { LotesSemDieta } from "./LotesSemDieta";
 import { useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { listarLotes } from "../api";
@@ -15,34 +16,13 @@ import {
 import * as api from "./mensal-api";
 import { LinkNutricional } from "./componentes";
 import "./mensal.css";
-const modelos: Record<api.ModeloMensal, { nome: string; descricao: string }> = {
-  AUTOMATICO: {
-    nome: "Baixa automática diária",
-    descricao:
-      "O estoque é descontado todos os dias conforme a dieta e os animais presentes. No fechamento mensal, confira os totais e justifique diferenças.",
-  },
-  MANUAL: {
-    nome: "Confirmar antes de baixar",
-    descricao:
-      "Confira um ou vários consumos diários juntos para descontar do estoque. Ao final, revise o mês inteiro.",
-  },
-  PROVISORIO: {
-    nome: "Estimar e baixar no fechamento",
-    descricao:
-      "A estimativa diária reduz o saldo disponível estimado. O estoque confirmado só muda na conferência mensal.",
-  },
-};
+import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
     minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
 const data = (v: string) => v.slice(0, 10).split("-").reverse().join("/");
-function amanha() {
-  const d = new Date(hoje() + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
 export function GestaoMensal({
   podeLancar,
   vista,
@@ -66,18 +46,12 @@ export function GestaoMensal({
     [carregando, setCarregando] = useState(true),
     [recarregar, setRecarregar] = useState(0),
     [mensagem, setMensagem] = useState("");
-  const [sitio, setSitio] = useState(String(escopo ?? "")),
-    [lote, setLote] = useState(""),
-    [modelo, setModelo] = useState<api.ModeloMensal>("AUTOMATICO"),
-    [dia, setDia] = useState(5),
-    [validade, setValidade] = useState(false),
-    [desde, setDesde] = useState(amanha);
+  const [lote, setLote] = useState("");
   const enviando = useRef(false);
   const url = new URLSearchParams(window.location.search),
     id = url.get("mesId");
   const [mes, setMes] = useState<api.MesNutricional | null>(null);
   useEffect(() => {
-    setSitio(String(escopo ?? ""));
     setLote("");
     setPagina(1);
   }, [escopo]);
@@ -138,14 +112,10 @@ export function GestaoMensal({
   }
   const abrir = (m: api.MesNutricional) =>
     navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
-  const previas = configs.filter(
-    (c) =>
-      c.propriedadeId === Number(sitio) &&
-      (lote ? c.loteId === lote || c.loteId === null : c.loteId === null),
-  );
   return (
     <div className="nutricao-mensal">
       {vista !== "configuracao" && <div className="mensal-acoes"><LinkNutricional className="nutricao-botao" href="/configuracoes/pecuaria/nutricao/fechamento">Configurar nutrição</LinkNutricional></div>}
+      {vista === "alertas" && <LotesSemDieta podeLancar={podeLancar} />}
       <ErrorBox erro={erro} />
       {erro && (
         <Button secondary onClick={() => setRecarregar((v) => v + 1)}>
@@ -172,153 +142,7 @@ export function GestaoMensal({
             </p>
           )}
           {vista === "configuracao" ? (
-            <section>
-              <h2>Como registrar o consumo</h2>
-              <p>
-                Escolha quando o alimento será descontado do estoque. O
-                fechamento será sempre mensal.
-              </p>
-              {podeLancar ? (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    void executar(() =>
-                      api.salvarConfiguracaoMensal({
-                        propriedadeId: Number(sitio),
-                        loteId: lote || null,
-                        modelo,
-                        diaConferencia: dia,
-                        autorizaValidade: validade,
-                        desde,
-                      }),
-                    );
-                  }}
-                >
-                  <fieldset disabled={ocupado}>
-                    <div className="mensal-campos">
-                      <label>
-                        Sítio
-                        <select
-                          required
-                          value={sitio}
-                          onChange={(e) => {
-                            setSitio(e.target.value);
-                            setLote("");
-                          }}
-                        >
-                          <option value="">Selecione</option>
-                          {sitios
-                            .filter((s) => escopo === null || s.id === escopo)
-                            .map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.nome}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                      <label>
-                        Aplicar a
-                        <select
-                          value={lote}
-                          onChange={(e) => setLote(e.target.value)}
-                        >
-                          <option value="">Padrão do sítio</option>
-                          {lotes
-                            .filter((l) => l.propriedade.id === Number(sitio))
-                            .map((l) => (
-                              <option key={l.id} value={l.id}>
-                                Exceção: {l.nome}
-                              </option>
-                            ))}
-                        </select>
-                      </label>
-                    </div>
-                    {(Object.keys(modelos) as api.ModeloMensal[]).map((m) => (
-                      <label className="mensal-opcao" key={m}>
-                        <input
-                          type="radio"
-                          name="modeloMensal"
-                          value={m}
-                          checked={modelo === m}
-                          onChange={() => setModelo(m)}
-                        />
-                        <span>
-                          <strong>
-                            {modelos[m].nome}
-                            {m === "AUTOMATICO" ? " · recomendado" : ""}
-                          </strong>
-                          <span>{modelos[m].descricao}</span>
-                        </span>
-                      </label>
-                    ))}
-                    <div className="mensal-campos">
-                      <label>
-                        Dia da conferência no mês seguinte
-                        <input
-                          required
-                          type="number"
-                          min={1}
-                          max={31}
-                          value={dia}
-                          onChange={(e) => setDia(Number(e.target.value))}
-                        />
-                      </label>
-                      <label>
-                        Válido a partir de
-                        <input
-                          required
-                          type="date"
-                          value={desde}
-                          onChange={(e) => setDesde(e.target.value)}
-                        />
-                      </label>
-                    </div>
-                    <p className="mensal-ajuda">
-                      {previas.length
-                        ? "Uma mudança começa no primeiro dia de um próximo mês."
-                        : "A primeira ativação pode começar amanhã, com mês inicial parcial."}{" "}
-                      Dias 29, 30 ou 31 inexistentes vencem no último dia do
-                      mês.
-                    </p>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={validade}
-                        onChange={(e) => setValidade(e.target.checked)}
-                      />{" "}
-                      Autorizar seleção dos lotes de produto com menor validade.
-                    </label>
-                    <p className="mensal-ajuda">
-                      Partidas vencidas na data do consumo são bloqueadas;
-                      validade desconhecida exige seleção manual. Falta de saldo
-                      ou valor comprovado gera pendência.
-                    </p>
-                    <Button type="submit" disabled={!sitio || ocupado}>
-                      Confirmar configuração
-                    </Button>
-                  </fieldset>
-                </form>
-              ) : (
-                <p>Seu perfil pode consultar as configurações.</p>
-              )}
-              <h3>Configurações registradas</h3>
-              {configs.length ? (
-                <ul>
-                  {configs.map((c) => (
-                    <li key={c.id}>
-                      {sitios.find((s) => s.id === c.propriedadeId)?.nome} ·{" "}
-                      {c.loteId
-                        ? lotes.find((l) => l.id === c.loteId)?.nome
-                        : "Padrão do sítio"}{" "}
-                      · {modelos[c.modelo].nome} · desde {data(c.desde)} ·
-                      conferência dia {c.diaConferencia}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p>Nenhuma configuração registrada.</p>
-              )}
-            </section>
+            <ConfiguracaoNutricao key={escopo ?? "consolidado"} podeLancar={podeLancar} escopo={escopo} sitios={sitios} lotes={lotes} configs={configs} onSalvo={() => { setMensagem("Configuração salva."); setRecarregar(v => v + 1); }} />
           ) : mes ? (
             <RevisaoMensal
               key={`${mes.id}:${mes.revisao}`}

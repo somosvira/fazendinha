@@ -20,7 +20,7 @@ A opção automática atende a rotina com menor esforço: o usuário cuida de ex
 
 ## Configuração e calendário
 
-Em **Nutrição → Configuração**, a pessoa escolhe o sítio, o padrão geral ou um lote como exceção, o modelo, a vigência, o dia da conferência e a autorização de seleção por validade. A configuração é versionada e auditada. Uma exceção vigente do lote prevalece sobre o padrão do sítio.
+Em **Configurações → Pecuária → Nutrição**, a pessoa escolhe o sítio, o padrão geral ou um lote como exceção, o modelo, a vigência, o dia da conferência e a autorização de seleção por validade. A configuração é versionada e auditada. Uma exceção vigente do lote prevalece sobre o padrão do sítio.
 
 A primeira ativação começa amanhã ou depois e pode produzir um primeiro mês parcial. Alterações começam no primeiro dia de um mês seguinte; não reinterpretam meses já iniciados. Fechamentos anteriores sobrepostos impedem a ativação. Não se permite fechar pelo fluxo anterior um período que já adotou o mensal.
 
@@ -70,3 +70,11 @@ O fechamento mensal atende ingredientes do estoque convencional. Dietas com leit
 ## Navegação operacional
 
 Nutrição tem uma única aba **Fechamentos**, com meses para conferência e a consulta **Fechamentos por período** para histórico e lotes ainda sem adoção mensal. O modelo e o prazo aparecem em cada mês. **Configurar nutrição** leva a Configurações → Pecuária → Nutrição → Modelo e prazo de fechamento (`/configuracoes/pecuaria/nutricao/fechamento`). O formulário mantém explicações, escopo por sítio, exceções por lote e vigências. URLs anteriores com `aba=mensal` e `aba=configuracao` são normalizadas, preservando os parâmetros; detalhes históricos e filtros continuam válidos.
+
+## Manejo por lote e configuração
+
+A visão geral conserva o gráfico de lotes com/sem dieta e oferece tabela como padrão na ausência de preferência salva, com alternância para cartões. Situação e programação são filtros junto da busca, não cards adicionais. Ambas as apresentações mostram a dieta vigente e a próxima troca; usuários autorizados atribuem ou trocam diretamente no lote. Receitas publicadas também iniciam a atribuição, com a receita pré-selecionada. O formulário mostra composição por ingrediente/unidade, estimativa com o efetivo atual e início; a atribuição não confirma consumo nem faz baixa. Alertas reúne também lotes sem dieta vigente cadastrada, distinguindo eventual programação futura.
+
+O card de custo médio usa o último mês civil encerrado: custo conhecido dividido pelos animal-dias da mesma base, com `Prisma.Decimal` no servidor. Inclui somente lotes cuja base registrada no recorte está integralmente valorizada; exclui bases vazias, desconhecidas ou parcialmente valorizadas e exibe quantos lotes entraram. Fechamentos anteriores só entram se inteiramente contidos no mês, sem rateio fictício dos que cruzam suas bordas; dias mensais respeitam a data factual. Consumos virtuais/aguardando confirmação não viram custos realizados. Essa média de registros não comprova cobertura alimentar integral. O endpoint `/nutricao/custo-medio` resolve sítio e permissão no servidor e devolve `null` sem permissão de custos.
+
+Em Configurações → Pecuária → Nutrição, o formulário separa aplicação (padrão do sítio ou exceção de lote), modelo de baixa, conferência/vigência e autorização de seleção por validade. Exibe a regra vigente, explica o efeito dos três modelos e exemplifica o prazo no mês seguinte. Uma revisão antecede a escrita, conservando trava contra submissão concorrente, erros e campos. O servidor continua responsável pelas restrições temporais, sobreposições e autorização; a revisão visual não as substitui.

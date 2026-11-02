@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { GestaoMensal } from "./GestaoMensal";
 import * as api from "./mensal-api";
+vi.mock("./LotesSemDieta", () => ({ LotesSemDieta: () => null }));
 vi.mock("./mensal-api", () => ({
   statusMensal: vi.fn(),
   configuracoesMensais: vi.fn(),
@@ -40,7 +41,7 @@ beforeEach(() => {
 describe("configuração nutricional", () => {
   it("explica os três modelos e envia o dia exato e o escopo", async () => {
     render(<GestaoMensal vista="configuracao" podeLancar />);
-    await screen.findByText("Como registrar o consumo");
+    await screen.findByText("Como dar baixa no estoque");
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     expect(
       (
@@ -53,6 +54,7 @@ describe("configuração nutricional", () => {
       screen.getByLabelText("Dia da conferência no mês seguinte"),
       { target: { value: "31" } },
     );
+    fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Confirmar configuração" }),
     );
@@ -89,13 +91,13 @@ describe("configuração nutricional", () => {
         }),
     );
     render(<GestaoMensal vista="configuracao" podeLancar />);
-    const botao = await screen.findByRole("button", {
-      name: "Confirmar configuração",
-    });
+    await screen.findByRole("button", { name: "Revisar configuração" });
     fireEvent.change(
       screen.getByLabelText("Dia da conferência no mês seguinte"),
       { target: { value: "9" } },
     );
+    fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
+    const botao = screen.getByRole("button", { name: "Confirmar configuração" });
     fireEvent.click(botao);
     fireEvent.click(botao);
     expect(api.salvarConfiguracaoMensal).toHaveBeenCalledTimes(1);

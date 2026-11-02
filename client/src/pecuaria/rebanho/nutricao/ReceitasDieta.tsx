@@ -8,7 +8,7 @@ import { Button, ErrorBox, Panel, Pill } from "../../../financeiro/financeiro-ui
 import { navegarPara } from "../../../router";
 import { listarDietas, publicarDieta } from "./api";
 import { useConsulta } from "./consulta";
-import { useFiltrosNutricionais } from "./navegacao";
+import { rotaOperacaoNutricional, useFiltrosNutricionais } from "./navegacao";
 import { EstadoConsulta, LinkNutricional, rotaNutricao } from "./componentes";
 import { FormReceitaDieta } from "./FormReceitaDieta";
 import "./nutricao.css";
@@ -56,7 +56,7 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
         <div className="receita-dados-operacionais"><span><Leaf size={18} aria-hidden="true" /><strong>{d.itens.length}</strong> {d.itens.length === 1 ? "ingrediente" : "ingredientes"}</span><span><Layers size={18} aria-hidden="true" /><strong>{d.lotesEmUso?.length ?? 0}</strong> {(d.lotesEmUso?.length ?? 0) === 1 ? "lote em uso" : "lotes em uso"}</span></div>
         <div className="receita-composicao-direta"><ComposicaoReceita dieta={d} /></div>
         <div className="nutricao-uso-receita receita-uso-direto"><h4>Uso vigente</h4>{d.lotesEmUso?.length ? d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>) : <p>Sem uso vigente neste contexto</p>}</div>
-        {podeLancar && <footer className="receita-acoes-novas"><Button secondary className="nutricao-receita-acao" onClick={() => abrir(d.publicadaEm ? "versao" : "editar", d.id)}>{d.publicadaEm ? "Criar nova versão a partir desta" : "Editar rascunho"}</Button>{!d.publicadaEm && <Button className="nutricao-receita-acao" onClick={() => abrir("publicar", d.id)}>Publicar</Button>}</footer>}
+        {podeLancar && <footer className="receita-acoes-novas">{d.publicadaEm && <LinkNutricional className="nutricao-botao" href={rotaOperacaoNutricional("atribuir", undefined, undefined, d.id)}>Atribuir a lote</LinkNutricional>}<Button secondary className="nutricao-receita-acao" onClick={() => abrir(d.publicadaEm ? "versao" : "editar", d.id)}>{d.publicadaEm ? "Criar nova versão a partir desta" : "Editar rascunho"}</Button>{!d.publicadaEm && <Button className="nutricao-receita-acao" onClick={() => abrir("publicar", d.id)}>Publicar</Button>}</footer>}
       </Panel>)}</div>}
 
     </>}

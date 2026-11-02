@@ -112,3 +112,6 @@ export async function obterVigencia(id: string, loteId: string): Promise<Vigenci
 
 export const listarReferenciasLeite = (fornecimentoId: string) => req<{ itens: CandidatoReferenciaLeite[] }>(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencias`);
 export const revisarReferenciaLeite = (fornecimentoId: string, body: { chave: string; propriedadeId: number; fechamentoId: string; versaoEsperada: number; motivo: string }) => post(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencia`, body);
+
+export type CustoMedioNutricional = { inicio: string; fim: string; custoPorAnimalDia: string | null; custoConhecido: string | null; animalDias: number; lotesIncluidos: number; lotesTotal: number };
+export const consultarCustoMedio = () => req<CustoMedioNutricional | null>("/pecuaria/rebanho/nutricao/custo-medio");
