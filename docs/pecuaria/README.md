@@ -34,6 +34,7 @@ O IDEAGRI é fonte da carga inicial e de reconciliação. O importador original 
 
 - A contagem de partos soma o saldo de entrada aos partos válidos não incluídos nesse saldo, incluindo aborto e natimorto, conforme a regra aprovada da V4.
 - Categoria vem das regras configuráveis `CategoriaAnimal`, avaliadas em ordem; exceção manual tem histórico em `CategoriaManualAnimal`. Não grave categoria calculada como atributo fixo do animal. Na apresentação, exibir somente o nome vigente, sem selo Manual; histórico e controles de correção preservam a origem.
+- O cadastro de Bezerro/Bezerra pode sugerir o lote Bezerreiro do sítio, com troca permitida. A participação depende do lote efetivamente escolhido, independentemente da categoria; veja [Bezerreiro](bezerreiro.md).
 - Movimentação reúne cabeçalho, itens com origem por animal e histórico de localização. Desfazer preserva itens e respeita atomicidade; não apaga movimentos antigos.
 - Use a localização na data do fato. Transferência/baixa não podem apagar eventos, consumos ou consultas históricas no sítio de origem.
 - Baixa tem tipo e motivo compatível pela classe, conforme `baixa.calc.ts`. Excluir cadastro indevido não equivale a apagar animal com fatos reais.

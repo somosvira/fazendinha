@@ -19,6 +19,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Visão geral financeira](financeiro-dashboard-grid.md) | Bases dos indicadores e navegação para detalhes |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e integrações |
 | [Alertas e programação sanitária](pecuaria/alertas.md) | Núcleo persistido, idade/data fixa, calendário, atendimento e cobertura |
+| [Bezerreiro e colostragem](pecuaria/bezerreiro.md) | Participação por localização, programação, alimentação e colostragem |
 | [Reprodução](pecuaria/reproducao.md) | Tentativas, gestação, parto/crias, lactação, visitas, políticas e indicadores |
 | [Protocolos e exames](pecuaria/protocolos-exames.md) | Núcleo comum, versões, momentos, tarefas, papéis e limites do executor |
 | [Produção V5](pecuaria/leite.md) | Aferição geral/individual, população, configuração e rotina leiteira |

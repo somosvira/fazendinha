@@ -1,3 +1,6 @@
+import { FormMovimentar } from "../forms/FormMovimentar";
+import { buscarFichaAnimal, obterCatalogos } from "../api";
+import type { AnimalFicha, Catalogos } from "../types";
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
@@ -13,7 +16,11 @@ import { brixFornecimentoColostro, coleiraHistoricaFase, faseParticipacao, litro
 import type { AcompanhamentoAnimal, Configuracao, Participacao } from './types';
 export function AcompanhamentoBezerreiro({animalId,sitio,podeLancar,revisao=0,embutido=false,dadosIniciais}: {animalId:string;sitio:number;podeLancar:boolean;revisao?:number;embutido?:boolean;dadosIniciais?:AcompanhamentoAnimal}) {
   const [atualizacao,setAtualizacao]=useState(0),consulta=useConsultaBezerreiro<AcompanhamentoAnimal>(dadosIniciais&&atualizacao===0?null:`/animais/${animalId}/acompanhamento`,sitio,revisao+atualizacao),dados=dadosIniciais&&atualizacao===0?dadosIniciais:consulta.dados;
-  const config=useConsultaBezerreiro<Configuracao>('/configuracoes',sitio),[alteracao,setAlteracao]=useState<{tipo:'fase'|'saida';participacao:Participacao}|null>(null),[exame,setExame]=useState(false),[vinculo,setVinculo]=useState(false);
+  const config=useConsultaBezerreiro<Configuracao>('/configuracoes',sitio),[alteracao,setAlteracao]=useState<{tipo:'fase';participacao:Participacao}|null>(null),[exame,setExame]=useState(false),[vinculo,setVinculo]=useState(false);
+  const [cancelamento,setCancelamento]=useState<{animalId:string;sitio:number;participacao:Participacao;periodo:Participacao['fases'][number]}|null>(null);
+  useEffect(()=>{setCancelamento(null);},[animalId,sitio]);
+  const [movimentando,setMovimentando]=useState(false),[movimento,setMovimento]=useState<{animal:AnimalFicha;catalogos:Catalogos}|null>(null),[erroMovimento,setErroMovimento]=useState('');
+  useEffect(()=>{let vigente=true;setMovimento(null);setErroMovimento('');if(movimentando)void Promise.all([buscarFichaAnimal(animalId,undefined,sitio),obterCatalogos()]).then(([animal,catalogos])=>{if(vigente)setMovimento({animal,catalogos});}).catch(()=>{if(vigente)setErroMovimento('Não foi possível carregar a movimentação. Feche e tente novamente.');});return()=>{vigente=false;};},[movimentando,animalId,sitio]);
   const atual=dados?.participacoes.find(p=>p.desde.slice(0,10)<=hojeOperacional()&&(!p.ate||p.ate.slice(0,10)>hojeOperacional())),fase=atual?faseParticipacao(atual):undefined;
   function salvo(){setAtualizacao(n=>n+1);}
   return <div className="bezerreiro"><EstadoConsulta erro={consulta.erro} carregando={!dados} tentar={consulta.tentar}>{dados&&<>{!embutido&&<div className="bez-sectionhead"><h2>{dados.animal.brinco} · {dados.animal.nome??'Sem nome'}</h2><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/rebanho/animais/${animalId}#bezerreiro`)}>Ver na ficha animal</Button></div>}
@@ -25,20 +32,41 @@ export function AcompanhamentoBezerreiro({animalId,sitio,podeLancar,revisao=0,em
     <section><div className="bez-sectionhead"><h3>Avaliação da imunidade</h3></div><TabelaFinanceira rotulo="Exames vinculados ao acompanhamento" itens={dados.exames} chaveDe={e=>e.id} colunas={[
       {chave:'data',titulo:'Coleta',principal:true,celula:e=>formatarDataBR(e.exame.data)},{chave:'metodo',titulo:'Método / exame',celula:e=>e.metodo??e.exame.tipoExame.nome},{chave:'resultado',titulo:'Resultado',celula:e=>e.exame.resultadoNumero!=null?`${numero(e.exame.resultadoNumero)} ${e.exame.tipoExame.unidade??''}`:e.exame.resultadoOpcao??e.exame.resultadoTexto??'Resultado no exame'},{chave:'status',titulo:'Situação',celula:e=>e.exame.status==='VALIDO'?'Registrado':e.exame.status},
     ]}/>{!dados.exames.length&&<p className="bez-estado">Nenhum exame de imunidade vinculado.</p>}{podeLancar&&<div className="bez-acoes"><Button onClick={()=>setExame(true)}>Registrar exame</Button><Button variant="outline" onClick={()=>setVinculo(true)}>Vincular exame existente</Button></div>}</section></div>
-    <section className="bez-secao"><div className="bez-sectionhead"><h3>Participação e fases</h3>{podeLancar&&atual&&<div className="bez-acoes"><Button variant="outline" disabled={!config.dados} onClick={()=>setAlteracao({tipo:'fase',participacao:atual})}>Alterar fase</Button><Button variant="outline" onClick={()=>setAlteracao({tipo:'saida',participacao:atual})}>Registrar saída</Button></div>}</div>
+    <section className="bez-secao"><div className="bez-sectionhead"><h3>Participação e fases</h3>{podeLancar&&atual&&<div className="bez-acoes"><Button variant="outline" disabled={!config.dados} onClick={()=>setAlteracao({tipo:'fase',participacao:atual})}>Alterar fase</Button><Button variant="outline" onClick={()=>setMovimentando(true)}>Movimentar animal</Button></div>}</div>
     {dados.participacoes.map(p=><section key={p.id} className="bez-participacao"><p><strong>{p.perfil.lote.nome}</strong> · {formatarDataBR(p.desde)} a {p.ate?formatarDataBR(p.ate):'presente'}{p.motivoSaida?` · ${p.motivoSaida}`:''}</p><TabelaFinanceira rotulo="Fases da participação" itens={p.fases} chaveDe={f=>f.id} colunas={[
       {chave:'desde',titulo:'Desde',principal:true,celula:f=>formatarDataBR(f.desde)},{chave:'fase',titulo:'Fase',celula:f=>f.faseVersao.nome},{chave:'coleira',titulo:'Coleira',celula:f=><ColeiraBadge nome={coleiraHistoricaFase(f.faseVersao)?.nome} cor={coleiraHistoricaFase(f.faseVersao)?.cor}/>},{chave:'ate',titulo:'Até',celula:f=>f.ate?formatarDataBR(f.ate):'Vigente'},{chave:'motivo',titulo:'Motivo',celula:f=>f.motivo??'—'},
+      ...(podeLancar?[{chave:'acoes',titulo:'Ações',celula:(f:Participacao['fases'][number])=><Button variant="outline" onClick={()=>setCancelamento({animalId,sitio,participacao:p,periodo:f})}>Cancelar programação</Button>}]:[]),
     ]}/></section>)}{!dados.participacoes.length&&<p className="bez-estado">Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.</p>}</section>
     <div className="bez-acoes bez-secao"><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Sanidade do animal</Button><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/bezerreiro?aba=alimentacao&animalId=${animalId}`)}>Alimentação</Button></div></>:<p className="bez-estado">Nenhuma passagem ou acompanhamento de bezerreiro registrado para este animal.</p>}
   </>}</EstadoConsulta>
-    {alteracao&&<AlteracaoParticipacao sitio={sitio} config={config.dados} tipo={alteracao.tipo} participacao={alteracao.participacao} aoFechar={()=>setAlteracao(null)} aoSalvar={()=>{setAlteracao(null);salvo();}}/>}
+    {movimentando&&!movimento&&<div role={erroMovimento?'alert':'status'}>{erroMovimento||'Carregando movimentação…'}<Button variant="outline" onClick={()=>setMovimentando(false)}>Fechar</Button></div>}
+    {movimentando&&movimento&&<FormMovimentar animais={[movimento.animal]} propriedades={movimento.catalogos.propriedades} lotes={movimento.catalogos.lotes} propriedadeInicial={sitio} loteInicial={movimento.animal.lote?.id} onFechar={()=>setMovimentando(false)} onSalvo={()=>{setMovimentando(false);salvo();}}/>}
+    {podeLancar&&cancelamento?.animalId===animalId&&cancelamento.sitio===sitio&&<CancelamentoProgramacao key={`${sitio}:${animalId}:${cancelamento.periodo.id}`} sitio={sitio} participacao={cancelamento.participacao} periodo={cancelamento.periodo} aoFechar={()=>setCancelamento(null)} aoSalvar={()=>{setCancelamento(null);salvo();}}/>}
+    {alteracao&&<AlteracaoParticipacao sitio={sitio} config={config.dados} participacao={alteracao.participacao} aoFechar={()=>setAlteracao(null)} aoSalvar={()=>{setAlteracao(null);salvo();}}/>}
     {exame&&<FormFatoSanitario tipo="exame" animalInicial={animalId} fixo propriedadeId={sitio} cadastroInicial={config.dados?.vigente?.imunidade?.tipoExameId} onFechar={()=>setExame(false)} onSalvo={()=>{setExame(false);setVinculo(true);salvo();}}/>}
     {vinculo&&<VincularExame sitio={sitio} animalId={animalId} vinculados={dados?.exames.map(e=>e.exameId)??[]} aoFechar={()=>setVinculo(false)} aoSalvar={()=>{setVinculo(false);salvo();}}/>}
   </div>;
 }
-function AlteracaoParticipacao({sitio,config,tipo,participacao,aoFechar,aoSalvar}: {sitio:number;config:Configuracao|null;tipo:'fase'|'saida';participacao:Participacao;aoFechar:()=>void;aoSalvar:()=>void}) {
+function CancelamentoProgramacao({sitio,participacao,periodo,aoFechar,aoSalvar}: {sitio:number;participacao:Participacao;periodo:Participacao['fases'][number];aoFechar:()=>void;aoSalvar:()=>void}) {
+  const [motivo,setMotivo]=useState(''),comando=useComando(sitio,aoSalvar);
+  function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    if(motivo.trim().length<5||motivo.trim().length>500){comando.setErro('Informe um motivo de 5 a 500 caracteres.');return;}
+    void comando.salvar(`/participantes/${participacao.id}/fases/${periodo.id}/cancelamento`,{versaoEsperada:participacao.versao,motivo:motivo.trim()});
+  }
+  return <ModalBezerreiro titulo="Cancelar programação" form="cancelar-programacao" textoCancelar="Voltar" textoSalvar="Cancelar programação" aoFechar={aoFechar} {...comando}>
+    <form id="cancelar-programacao" onSubmit={enviar}>
+      <p><strong>{periodo.faseVersao.nome}</strong></p>
+      <p>De {formatarDataBR(periodo.desde)} {periodo.ate?`até ${formatarDataBR(periodo.ate)} (data final exclusiva)`:'até o presente'}</p>
+      <p className="bez-ajuda">O período ficará sem programação. O registro original e o motivo serão preservados na auditoria. A fase anterior não será reaberta.</p>
+      <fieldset disabled={comando.ocupado} className="bez-campos"><label className="bez-inteiro">Motivo do cancelamento<textarea required minLength={5} maxLength={500} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></fieldset>
+      <p className="bez-ajuda">Se houver alimentação confirmada no período, regularize ou estorne essas ofertas antes de cancelar.</p>
+    </form>
+  </ModalBezerreiro>;
+}
+function AlteracaoParticipacao({sitio,config,participacao,aoFechar,aoSalvar}: {sitio:number;config:Configuracao|null;participacao:Participacao;aoFechar:()=>void;aoSalvar:()=>void}) {
   const [data,setData]=useState(hojeOperacional),[faseId,setFase]=useState(''),[motivo,setMotivo]=useState(''),comando=useComando(sitio,aoSalvar);
-  return <ModalBezerreiro titulo={tipo==='fase'?'Alterar fase':'Registrar saída do bezerreiro'} form="alterar-participacao" aoFechar={aoFechar} {...comando}><form id="alterar-participacao" onSubmit={e=>{e.preventDefault();void comando.salvar(`/participantes/${participacao.id}/${tipo==='fase'?'fase':'saida'}`,{versaoEsperada:participacao.versao,motivo,...(tipo==='fase'?{faseVersaoId:faseId,desde:data}:{data})});}}><fieldset disabled={comando.ocupado} className="bez-campos"><label>Data<DatePicker required value={data} onChange={setData}/></label>{tipo==='fase'&&<label>Nova fase<SelectCampo required value={faseId} onValueChange={setFase}><option value="">Selecione uma fase publicada</option>{config?.fases.filter(f=>f.publicada).map(f=><option value={f.id} key={f.id}>{f.nome} · {f.coleira?.nome??'Sem coleira'}</option>)}</SelectCampo></label>}<label className="bez-inteiro">Motivo<textarea required minLength={5} maxLength={500} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></fieldset><p className="bez-ajuda">O histórico anterior é preservado. Esta ação não registra desmama ou movimentação de lote.</p></form></ModalBezerreiro>;
+  return <ModalBezerreiro titulo="Alterar fase" form="alterar-participacao" aoFechar={aoFechar} {...comando}><form id="alterar-participacao" onSubmit={e=>{e.preventDefault();void comando.salvar(`/participantes/${participacao.id}/fase`,{versaoEsperada:participacao.versao,motivo,faseVersaoId:faseId,desde:data});}}><fieldset disabled={comando.ocupado} className="bez-campos"><label>Data<DatePicker required value={data} onChange={setData}/></label><label>Nova fase<SelectCampo required value={faseId} onValueChange={setFase}><option value="">Selecione uma fase publicada</option>{config?.fases.filter(f=>f.publicada).map(f=><option value={f.id} key={f.id}>{f.nome} · {f.coleira?.nome??'Sem coleira'}</option>)}</SelectCampo></label><label className="bez-inteiro">Motivo<textarea required minLength={5} maxLength={500} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></fieldset><p className="bez-ajuda">O histórico anterior é preservado. Esta ação não registra desmama ou movimentação de lote.</p></form></ModalBezerreiro>;
 }
 function VincularExame({sitio,animalId,vinculados,aoFechar,aoSalvar}: {sitio:number;animalId:string;vinculados:string[];aoFechar:()=>void;aoSalvar:()=>void}) {
   const [exames,setExames]=useState<{id:string;data:string;status:string;tipoExame?:{nome:string}}[]|null>(null),[erro,setErro]=useState(''),[exameId,setExame]=useState(''),[metodo,setMetodo]=useState(''),[material,setMaterial]=useState(''),[laboratorio,setLaboratorio]=useState(''),[instrumento,setInstrumento]=useState(''),comando=useComando(sitio,aoSalvar);
