@@ -1309,3 +1309,7 @@ body.no-scroll { overflow: hidden; }
   .app-main::before { content: ""; position: fixed; inset: 0 0 auto 0; height: 68px; z-index: 25; background: var(--background); border-bottom: 1px solid var(--border); pointer-events: none; }
   @media print { .app-main::before { display: none; } }
 }
+
+/* O título recebe foco programático ao abrir o diálogo (leitor de tela começa por ele);
+ * não é um controle, então não mostra contorno de foco. */
+:is([data-slot="dialog-title"], [data-slot="sheet-title"])[tabindex="-1"]:focus { outline: none; }
