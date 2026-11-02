@@ -1,3 +1,5 @@
+import { paginaConsumoAnimal, apresentarConsumoDiario } from "./mensal.animal.js";
+import { env } from "../../../env.js";
 import crypto from "node:crypto";
 import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { baixarLeiteNutricionalTx, consultarFornecimentosNutricionaisTx, estornarLeiteNutricionalTx, ingredienteLeiteProducaoTx, previaLeiteNutricionalTx, registrarFornecimentoNutricionalTx } from "../leite/nutricao.js";
@@ -86,6 +88,8 @@ async function saldoProduto(tx: Prisma.TransactionClient, produtoId: string, pro
 export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: FechamentoInput, usuarioId: number | null) {
     // Mesma ordem de locks das ofertas e dos estornos.
     await travarAlimentacaoLeiteTx(tx, input.propriedadeId);
+    // Leitura serializável do histórico, dentro da mesma transação da baixa.
+    if (env.NUTRICAO_MENSAL_ENABLED && await tx.configuracaoNutricao.findFirst({where:{propriedadeId:input.propriedadeId,desde:{lte:dia(input.fim)},OR:[{loteId:null},{loteId:input.loteId}]}})) throw new RebanhoError("CONFLITO", "Este período usa consumo diário; consulte o fechamento mensal");
     const c = await contexto(tx, input);
     await travarAnimais(tx, c.participacao.participacoes.map((p) => p.animalId));
     const produtosLeite = await tx.entradaProducaoLeite.findMany({ where: { status: "CONFIRMADA", movimento: { propriedadeId: input.propriedadeId } }, select: { movimento: { select: { produtoId: true } } } });
@@ -284,6 +288,15 @@ export async function detalheFechamento(id: string, propriedadeId: number | null
 export async function consumoAnimal(animalId: string, propriedadeId: number | null, pagina: PaginaNutricao, verValores: boolean, verReferenciasComerciais = verValores) {
   const animal = await prisma.animal.findFirst({ where: { id: animalId, ...(propriedadeId == null ? {} : { localizacoes: { some: { propriedadeId } } }) }, select: { id: true } });
   if (!animal) throw new RebanhoError("NAO_ENCONTRADO", "Animal não encontrado neste sítio");
+  if(env.NUTRICAO_MENSAL_ENABLED){
+    const misto=await paginaConsumoAnimal(animalId,propriedadeId,pagina.pagina,pagina.limite);
+    const itens=await Promise.all(misto.linhas.map(async linha=>{
+      if(linha.origem==="DIARIO")return apresentarConsumoDiario(misto.dias.find(d=>d.id===linha.id)!,animalId,verValores);
+      const f=await detalheFechamento(linha.id,propriedadeId,verValores,verReferenciasComerciais),p=f.participacoes.find(p=>p.animalId===animalId)!;
+      return {...p,id:f.id,participacaoId:p.id,inicio:f.inicio,fim:f.fim,status:f.status,lote:f.lote,dieta:f.vigencia.dieta,propriedadeId:f.propriedadeId,itens:p.itens.map(i=>({...i,nome:f.itens.find(item=>item.produtoId===i.produtoId)!.produto.nome,leite:f.itens.find(item=>item.produtoId===i.produtoId)!.leite}))};
+    }));
+    return {...pagina,total:misto.total,animalId,verValores,verReferenciasComerciais,itens};
+  }
   const lista = await listarFechamentos(undefined, propriedadeId, pagina, verValores, animalId, undefined, {}, verReferenciasComerciais);
   return { ...lista, animalId, verValores, verReferenciasComerciais, itens: lista.itens.map((f) => ({ inicio: f.inicio, fim: f.fim, status: f.status, lote: f.lote,
     dieta: f.vigencia.dieta, propriedadeId: f.propriedadeId, ...f.participacoes.find((p) => p.animalId === animalId)!, participacaoId: f.participacoes.find((p) => p.animalId === animalId)!.id, id: f.id,

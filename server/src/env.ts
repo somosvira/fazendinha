@@ -31,6 +31,9 @@ const envSchema = z
     // quando escalar além do piloto. Mínimo 16 chars para evitar brute force trivial.
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
+    NUTRICAO_MENSAL_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+    NUTRICAO_AUTOMACAO_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+
     // --- OpenAI (provider único do app) ---
     // Interpretação das perguntas do assistente de consulta. Sem a chave,
     // consultas rápidas e guias seguem reais; pergunta livre fica indisponível.

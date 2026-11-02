@@ -32,7 +32,7 @@ export type Fechamento = { id: string; inicio: string; fim: string; animalDias: 
   motivoEstorno?: string | null; estornadoEm?: string | null;
   itens: Array<{ leite?: FornecimentoLeiteNutricional | null; produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
 
-async function req<T>(path: string, init?: RequestInit, consolidado = false, propriedadeId?: number): Promise<T> {
+export async function req<T>(path: string, init?: RequestInit, consolidado = false, propriedadeId?: number): Promise<T> {
   const headers = comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) });
   if (consolidado) delete headers["X-Propriedade-Id"];
   else if (propriedadeId) headers["X-Propriedade-Id"] = String(propriedadeId);
@@ -41,7 +41,7 @@ async function req<T>(path: string, init?: RequestInit, consolidado = false, pro
   if (!r.ok) throw new Error(data.error ?? `Erro HTTP ${r.status}`);
   return data as T;
 }
-const post = <T>(path: string, body: unknown) => req<T>(path, { method: "POST", body: JSON.stringify(body) });
+export const post = <T>(path: string, body: unknown) => req<T>(path, { method: "POST", body: JSON.stringify(body) });
 
 export const listarProdutosNutricionais = () => req<ProdutoNutricional[]>("/estoque/produtos?uso=nutricional&ativo=true");
 export const listarCentrosNutricionais = () => req<CentroNutricional[]>("/estoque/centros-custo");
@@ -76,7 +76,7 @@ export const obterFechamento = async (id: string): Promise<Fechamento> => {
   const lote = await buscarLote(fechamento.lote.id);
   return { ...fechamento, propriedade: lote.propriedade };
 };
-export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { id: string; participacaoId?: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: Fechamento["vigencia"]["dieta"]; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
+export type ConsumoAnimal = Omit<ParticipacaoConsumo, "itens"> & { origem?: "DIARIO"; mesId?: string; id: string; participacaoId?: string; inicio: string; fim: string; status: Fechamento["status"]; lote: Fechamento["lote"]; dieta: { nome:string; versao:number|null }; propriedadeId: number; itens: Array<ParcelaConsumo & { nome: string }> };
 export const consultarConsumoAnimal = (animalId: string, pagina = 1) => req<Pagina<ConsumoAnimal> & { verValores: boolean }>(`/pecuaria/rebanho/nutricao/consumo/animais/${encodeURIComponent(animalId)}?pagina=${pagina}`);
 export const previaPeriodos = (body: Parameters<typeof previaConsumo>[0]) => post<{ revisao: string; periodos: Previa[]; lacunas: Array<{ inicio: string; fim: string }> }>("/pecuaria/rebanho/nutricao/consumo/periodos/previa", body);
 export const confirmarPeriodos = (body: { chave: string; revisao: string; loteId: string; propriedadeId: number; inicio: string; fim: string; centroCustoId?: string | null; periodos: Array<{ inicio: string; fim: string; itens: Parameters<typeof confirmarConsumo>[0]["itens"] }> }) => post("/pecuaria/rebanho/nutricao/consumo/periodos/confirmacao", body);

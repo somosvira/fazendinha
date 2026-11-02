@@ -1,4 +1,5 @@
 import { FinanceiroError } from "../../services/financeiro/regras.js";
+import { nutricaoMensalRouter } from "./nutricao-mensal.js";
 import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
@@ -32,6 +33,7 @@ const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positi
 const itemConsumo = z.object({ origensLeite: z.array(uuid).min(1).max(500).optional(), produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
+  .route("/mensal", nutricaoMensalRouter)
   .get("/resumo", validarQuery(z.object({ loteId: uuid.optional() })), async c => {
     try { return c.json(await consultarResumo(c.req.valid("query").loteId, await resolverEscopoLeitura(c), verValores(c), verReferencias(c))); }
     catch (e) { return falha(c, e); }

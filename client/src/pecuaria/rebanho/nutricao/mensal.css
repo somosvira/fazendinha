@@ -1,0 +1,128 @@
+.nutricao-mensal {
+  color: var(--ink-1, #243e36);
+}
+.nutricao-mensal section {
+  background: #fff;
+  border: 1px solid var(--border, #d9e1dd);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 18px 0;
+}
+.nutricao-mensal h2 {
+  font-size: 1.3rem;
+  font-weight: 650;
+  margin: 16px 0;
+}
+.nutricao-mensal h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.nutricao-mensal p {
+  margin: 10px 0;
+}
+.nutricao-mensal fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.nutricao-mensal label:not(.mensal-opcao) {
+  display: block;
+  margin: 12px 0;
+}
+.nutricao-mensal input:not([type="checkbox"]):not([type="radio"]),
+.nutricao-mensal select,
+.nutricao-mensal textarea {
+  display: block;
+  border: 1px solid #a9bdb1;
+  border-radius: 5px;
+  padding: 9px;
+  background: #fff;
+  color: #243e36;
+  max-width: 100%;
+}
+.nutricao-mensal textarea {
+  width: 100%;
+  min-height: 85px;
+}
+.nutricao-mensal :focus-visible {
+  outline: 3px solid #b67a22;
+  outline-offset: 3px;
+}
+.mensal-campos,
+.mensal-acoes {
+  display: flex;
+  align-items: end;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.mensal-opcao {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  padding: 20px 0;
+  border-bottom: 1px solid #d9e1dd;
+  cursor: pointer;
+}
+.mensal-opcao strong,
+.mensal-opcao span span {
+  display: block;
+}
+.mensal-opcao input {
+  align-self: start;
+  margin-top: 5px;
+  accent-color: #256347;
+}
+.mensal-ajuda {
+  font-size: 0.875rem;
+  color: #60736b;
+  max-width: 75ch;
+}
+.mensal-aviso {
+  padding: 14px 18px;
+  background: #fff5df;
+  border-left: 4px solid #9e6c1d;
+}
+.mensal-linha {
+  padding: 20px 0;
+  border-bottom: 1px solid #d9e1dd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.mensal-tabela {
+  overflow: auto;
+}
+.mensal-tabela table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.mensal-tabela th,
+.mensal-tabela td {
+  padding: 12px;
+  border-bottom: 1px solid #dde5df;
+}
+.mensal-tabela input {
+  width: 140px;
+}
+.mensal-dia {
+  border-bottom: 1px solid #d9e1dd;
+  padding: 16px 0;
+}
+.nutricao-mensal details {
+  margin: 20px 0;
+}
+.nutricao-mensal summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+@media (max-width: 650px) {
+  .nutricao-mensal section {
+    padding: 16px;
+  }
+  .mensal-linha {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

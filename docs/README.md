@@ -31,6 +31,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |
 | [Busca global](busca-global.md) | Registros, páginas, ações, destinos, escopo, permissões e manutenção do catálogo |
 | [Assistente de consulta](assistente-consulta.md) | Ferramentas de leitura, ajuda, gates e política de custo |
+| [Nutrição mensal](pecuaria/nutricao-mensal.md) | Modelos configuráveis, consumo diário real/virtual, conferência mensal e alertas |
 
 ## Arquitetura, design e desenvolvimento
 

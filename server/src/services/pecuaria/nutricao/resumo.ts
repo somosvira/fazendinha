@@ -1,3 +1,4 @@
+import { env } from "../../../env.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { hojeFazendaDate, RebanhoError } from "../rebanho/regras.js";
@@ -91,6 +92,16 @@ export async function consultarResumo(loteId: string | undefined, propriedadeId:
     const vigentes = new Map(atuais.map(v => [v.loteId, v]));
     const programadas = new Map(futuras.map(v => [v.loteId, v]));
     const porLote = new Map(custos.map(c => [c.loteId, c]));
+    if(env.NUTRICAO_MENSAL_ENABLED){
+      const diarios=await tx.$queryRaw<Agregado[]>(Prisma.sql`
+        SELECT m."loteId", COUNT(DISTINCT m.id)::bigint AS fechamentos,
+          SUM((SELECT COUNT(*) FROM pecuaria."ParticipacaoConsumoDiario" p WHERE p."diaId"=d.id))::bigint AS "animalDias",
+          SUM(CASE WHEN d.situacao='EFETIVADO' THEN COALESCE((SELECT SUM(i."custoLiquido") FROM pecuaria."ItemConsumoDiario" i WHERE i."diaId"=d.id),0) END) AS "custoConhecido",
+          BOOL_AND(d.situacao='EFETIVADO' AND d.pendencia IS NULL) AS "coberturaCustoCompleta"
+        FROM pecuaria."MesNutricao" m JOIN pecuaria."ConsumoDiario" d ON d."mesId"=m.id
+        WHERE m."loteId" IN (${Prisma.join(ids)}) GROUP BY m."loteId"`);
+      for(const d of diarios){const antigo=porLote.get(d.loteId);porLote.set(d.loteId,antigo?{...d,fechamentos:antigo.fechamentos+d.fechamentos,animalDias:antigo.animalDias+d.animalDias,custoConhecido:antigo.custoConhecido===null&&d.custoConhecido===null?null:new Prisma.Decimal(antigo.custoConhecido??0).plus(d.custoConhecido??0),coberturaCustoCompleta:antigo.coberturaCustoCompleta&&d.coberturaCustoCompleta}:d);}
+    }
     return { verValores, lotes: ids.map(id => ({ loteId: id, vigente: vigentes.get(id) ?? null, programada: programadas.get(id) ?? null, custos: apresentarResumoCusto(porLote.get(id), verValores), referenciaLeite: apresentarResumoReferenciaLeite(referenciasPorLote.get(id), verReferenciasComerciais) })) };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
