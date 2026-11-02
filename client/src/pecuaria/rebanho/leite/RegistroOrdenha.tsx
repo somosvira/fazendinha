@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, ArrowLeft, Milk, Droplets, ShieldCheck, ClipboardCheck } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
-import { CabecalhoTabela, TabelaFinanceira, Empty } from "@/financeiro/financeiro-ui";
+import { CabecalhoTabela, TabelaFinanceira, Empty, Pill } from "@/financeiro/financeiro-ui";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { classeInput } from "@/financeiro/PainelCadastro";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -12,6 +12,7 @@ import { contextoParcelas, salvarParcelas, confirmarParcelas } from "./parcelas-
 import type { ContextoParcelas, NaturezaParcela } from "./parcelas-types";
 import { aplicarParcelasSalvas, carenciasSessao, nomesNatureza, novaParcela, possuiContexto, prepararParcelas, reconciliarParcelas, selecionarParcelasAlteradas, type RascunhoParcela } from "./registro-parcelas-modelo";
 import { dataValida, formatarLitros, hojeOperacional } from "./modelo";
+import { formatarDataBR } from "../lib/rotulos";
 import "./registro-ordenha.css";
 
 interface Rascunho { data: string; posicao: string; parcelas: RascunhoParcela[]; alterado: boolean; registroId?: string; contextoData: string; conflitos?: string[] }
@@ -146,12 +147,12 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const animais: { animalId: string; brinco: string; nome: string | null; ausente?: boolean }[] = [...animaisAtuais, ...[...new Set(rascunho.parcelas.flatMap(p => p.animais))].filter(id => !idsAtuais.has(id)).map(id => ({ animalId: id, brinco: id, nome: null, ausente: true }))];
   const soma = rascunho.parcelas.filter(p => p.litros.trim());
   return <div className="leite-page leite-registro" data-confirmada={confirmada || undefined}>
-    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
+    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} descricao={confirmada ? [contexto?.sessoes.find(s => s.posicaoId === rascunho.posicao)?.nome, formatarDataBR(rascunho.data)].filter(Boolean).join(" · ") : undefined} acao={confirmada ? undefined : <Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
-      <div className="leite-registro-campos">
+      {!confirmada && <div className="leite-registro-campos">
         <label ref={campoDataRef}>Data da ordenha<DatePicker required aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
         <label>Ordenha<SelectCampo aria-label="Ordenha" disabled={travado || !!rascunho.registroId || !contexto} value={rascunho.posicao} onValueChange={posicao => setRascunho(r => ({ ...r, posicao, alterado: true }))}><option value="">Selecione</option>{contexto?.sessoes.map(s => <option key={s.posicaoId} value={s.posicaoId}>{s.nome}</option>)}</SelectCampo></label>
-      </div>
+      </div>}
       {erroContexto ? <div role="alert">{erroContexto}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !contexto ? <p role="status">Consultando contexto da ordenha…</p> : <>
         {emConflito && <section role="alert"><h3>Alterações no servidor</h3>{rascunho.conflitos?.map(c => <p key={c}>{c}</p>)}<div className="leite-registro-linha"><Button variant="outline" disabled={ocupado} onClick={() => setRevisao(r => r + 1)}>Reconsultar versões</Button>{registroDisponivel && <Button variant="outline" disabled={ocupado} onClick={() => setSubstituindoRascunho(true)}>Usar versão do servidor</Button>}</div></section>}
         {rascunho.parcelas.some(p => p.classificacaoPendente) && <section><h3>Classificação pendente</h3>{rascunho.parcelas.filter(p => p.classificacaoPendente).map(p => <p key={p.chave}>{formatarLitros(Number(p.litros))} · Natureza histórica não comprovada. Consulte a regularização em Estoque.</p>)}</section>}
@@ -161,7 +162,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
           const grupo = rascunho.parcelas.filter(p => !p.classificacaoPendente && p.natureza === natureza);
           const sugestao = natureza === "NAO_COMERCIAL" ? carenciasSessao(contexto, rascunho.posicao).some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA") : natureza === "COLOSTRO" && !!contexto.contexto?.origensColostro.length;
           if (!grupo.length) return (sugestao || natureza === "COMERCIAL") && !travado ? <div className="leite-registro-sugestao" key={natureza}>{natureza !== "COMERCIAL" && <span>{natureza === "COLOSTRO" ? "Há partos compatíveis com o critério de colostro." : "Há animais com carência ou contexto sanitário pendente."}</span>}<Button variant="outline" onClick={() => adicionar(natureza)}>Incluir {nomesNatureza[natureza]}</Button></div> : null;
-          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{natureza === "COMERCIAL" ? <Milk size={20} aria-hidden/> : natureza === "COLOSTRO" ? <Droplets size={20} aria-hidden/> : <ShieldCheck size={20} aria-hidden/>}{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
+          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
             {grupo.map((p, indice) => {
               const leitura = travado || !!p.entradaId;
               const direta = natureza !== "COMERCIAL" && (p.direta || !possuiContexto(p, contexto, rascunho.posicao));
@@ -170,9 +171,9 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
                 const tanque = tanques.find(t => t.id === p.tanqueId);
                 const alertaSanitario = p.animais.some(id => carenciasSessao(contexto, rascunho.posicao).some(a => a.animalId === id && a.estado !== "SEM_RESTRICAO_REGISTRADA"));
                 return <article key={p.chave} className="leite-registro-origem-confirmada" aria-label={`Origem ${indice + 1} confirmada de ${nomesNatureza[natureza]}`}>
-                  <h4>Origem {indice + 1} · Confirmada</h4>
+                  <h4>{grupo.length > 1 ? `Origem ${indice + 1}` : "Origem"} <Pill tone="green">Confirmada</Pill></h4>
                   <dl>
-                    <div className="origem-confirmada-volume"><dt>Litros informados manualmente</dt><dd>{formatarLitros(Number(p.litros.replace(",", ".")))}</dd></div>
+                    <div className="origem-confirmada-volume"><dt>Litros</dt><dd>{formatarLitros(Number(p.litros.replace(",", ".")))}</dd></div>
                     <div><dt>Régua</dt><dd>{p.regua.trim() ? `${p.regua.replace(".", ",")} mm` : "Não informada"}</dd></div>
                     <div className="origem-confirmada-fisica"><dt>Tanque ou recipiente</dt><dd>{tanque ? `${tanque.nome} · v${tanque.versao} · ${formatarLitros(tanque.capacidadeLitros)}` : p.tanqueId ? "Tanque registrado não disponível nesta consulta" : p.recipiente || "Não informado"}</dd></div>
                     <div><dt>Responsável</dt><dd>{p.responsavel || "Não informado"}</dd></div>
@@ -180,7 +181,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
                     {direta && <div className="origem-confirmada-justificativa"><dt>Justificativa do registro direto</dt><dd>{p.justificativa || "Não informada"}</dd></div>}
                   </dl>
                   {p.direta && <p className="origem-confirmada-contexto">Registro direto com justificativa</p>}
-                  {alertaSanitario && <p className="origem-confirmada-alerta">Há animais com carência ou contexto sanitário pendente. Consulte os animais de origem.</p>}
+                  {alertaSanitario && <p className="origem-confirmada-alerta"><TriangleAlert size={16} aria-hidden />Há animais com carência ou contexto sanitário pendente. Consulte os animais de origem.</p>}
                   <div className="leite-registro-linha"><span>{p.animais.length} animais identificados</span><Button type="button" variant="outline" disabled={ocupado} onClick={() => setOrigens(p.chave)}>Consultar animais</Button></div>
                 </article>;
               }
@@ -199,15 +200,15 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
               </fieldset>;
             })}</section>;
         })}
-        {!travado && <div className="leite-registro-linha"><span>Registrar diretamente com justificativa</span><Button variant="outline" onClick={() => adicionar("NAO_COMERCIAL", true)}>Descarte</Button><Button variant="outline" onClick={() => adicionar("COLOSTRO", true)}>Colostro</Button></div>}
-        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3><ClipboardCheck size={20} aria-hidden/>Conferência</h3>
+        {!travado && <div className="leite-registro-linha"><span>Registrar diretamente com justificativa</span><Button variant="outline" onClick={() => adicionar("NAO_COMERCIAL", true)}>Não comercial</Button><Button variant="outline" onClick={() => adicionar("COLOSTRO", true)}>Colostro</Button></div>}
+        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3>Conferência</h3>
           <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
           <dl>{(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(n => {
             const parcelas = soma.filter(p => !p.classificacaoPendente && p.natureza === n);
             const volumes = parcelas.map(p => Number(p.litros.replace(",", ".")));
             return <div key={n}><dt>{nomesNatureza[n]}</dt><dd>{volumes.length && volumes.every(v => Number.isFinite(v) && v >= 0) ? formatarLitros(volumes.reduce((a, b) => a + b, 0)) : "Não informado"}</dd></div>;
           })}</dl>
-          <p>Salvar a medição não movimenta o estoque. Confira as origens, a segregação e os produtos antes de confirmar a entrada.</p>
+          <p>{confirmada ? "Todas as parcelas desta ordenha já entraram no estoque." : "Salvar a medição não movimenta o estoque. Confira as origens, a segregação e os produtos antes de confirmar a entrada."}</p>
         </aside></div>
         {mensagem && <p role="status">{mensagem}</p>}{erro && <p role="alert" className="leite-erro">{erro}</p>}
         {!confirmada && podeLancar && <div className="leite-registro-rodape"><Button variant="outline" disabled={ocupado || emConflito} onClick={() => void salvar()}>Salvar ordenha</Button><Button disabled={ocupado || emConflito} onClick={abrirConfirmacao}>Conferir entrada no estoque</Button></div>}

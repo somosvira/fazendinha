@@ -109,7 +109,7 @@ export function SanidadeAnimal({ filtrosColunas, filtrosUI, resumoUI, animalId, 
   const ListaAplicacoes = geral && !somenteCarencias ? ConsultaAplicacoes : TabelaFinanceira<AplicacaoSanitaria>;
   return <ConteinerSanidade geral={geral}
     acao={geral ? (typeof filtrosUI === "function" ? filtrosUI(podeLancar ? <Button onClick={() => setAberto(true)}>Registrar aplicação</Button> : undefined) : <div className="flex flex-wrap items-center gap-3">{resumoUI}{podeLancar && <Button onClick={() => setAberto(true)}>Registrar aplicação</Button>}</div>) : undefined}>
-    {erro && <p className="text-sm text-red-700">{erro}</p>}
+    {erro && <p className="text-sm text-destructive">{erro}</p>}
     {erroConsulta && <><ErrorBox erro={erroConsulta} /><Button secondary onClick={() => atualizar()}>Tentar novamente</Button></>}
     {!erroConsulta && carregando && <SkeletonSanitario label="Carregando aplicações sanitárias…" />}
     {!erroConsulta && !carregando && animalId && (geral || somenteCarencias) && <CarenciasSanitarias carencia={carencia} integrado={somenteCarencias} />}

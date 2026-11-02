@@ -267,7 +267,7 @@ function DetalheEstoqueLeite({
                             NAO_INFORMADA: "A declarar",
                             COMERCIAL: "Comercial",
                             COLOSTRO: "Colostro",
-                            NAO_COMERCIAL: "Descarte",
+                            NAO_COMERCIAL: "Não comercial",
                           } as Record<string, string>
                         )[o.natureza] ?? "A declarar"}
                       </TableCell>

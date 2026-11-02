@@ -285,7 +285,7 @@ function PermissionEditor({
     <div className="acessos-editor overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5">
         <div className="flex items-center gap-[14px]">
-          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
+          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-sans text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5 text-lg font-semibold">
               {user.nome}
@@ -335,7 +335,7 @@ function PermissionEditor({
 
       {user.dono ? (
         <div className="px-[26px] py-[30px]">
-          <span className="font-serif font-medium" style={{ fontSize: 17 }}>
+          <span className="font-sans font-medium" style={{ fontSize: 17 }}>
             Acesso total e irrevogável.
           </span>
           <p className="mt-2 max-w-[56ch] text-[15px] leading-[1.6] text-ink-3">
@@ -368,7 +368,7 @@ function PermissionEditor({
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
               <h2 className="text-base font-semibold">Papel</h2>
-              <span className="font-serif text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
+              <span className="font-sans text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(PAPEIS)
@@ -579,7 +579,7 @@ export function Acessos() {
                   onClick={() => { setSelId(u.id); setEditorAberto(true); }}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-serif text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
+                    <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-sans text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="acessos-pessoa-nome break-words font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>

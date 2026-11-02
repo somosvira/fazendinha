@@ -167,7 +167,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
       {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
       <BarraConsulta ordenacao={ordem.controle} criterios={criterios} onLimpar={() => aplicarFiltros({ ...FILTROS_OPERACOES_VAZIOS, inicio, fim })}>
-        <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
+        <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-card py-2.5 pl-9 pr-3 text-sm" /></label>
         <span aria-hidden="true" className="operacoes-divisor-busca" />
         <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll showIcon onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
 

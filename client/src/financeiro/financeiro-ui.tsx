@@ -92,11 +92,11 @@ export function CabecalhoTabela({ titulo, descricao, ajuda, rotuloAjuda, acao, i
 }
 
 export function Panel({ children, className = "", tom }: { children: React.ReactNode; className?: string; tom?: TomFinanceiro }) {
-  return <Card asChild className={`rounded-xl border border-border bg-white shadow-[0_1px_2px_rgba(30,35,28,.04)] gap-0 py-0 ${className}`}><section data-fin-tom={tom} data-slot="financeiro-panel">{children}</section></Card>;
+  return <Card asChild className={`rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(30,35,28,.04)] gap-0 py-0 ${className}`}><section data-fin-tom={tom} data-slot="financeiro-panel">{children}</section></Card>;
 }
 
 export function Pill({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "green" | "amber" | "red" | "blue" | "brown" }) {
-  const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-[#eee7d8] text-[#63543c]", red: "bg-red-100 text-red-800", blue: "bg-[#eee7d8] text-[#63543c]", brown: "bg-[#eee7d8] text-[#63543c]" };
+  const tons = { neutral: "bg-stone-100 text-stone-700", green: "bg-green-100 text-green-800", amber: "bg-[#eee7d8] text-[#63543c]", red: "bg-red-100 text-destructive", blue: "bg-[#eee7d8] text-[#63543c]", brown: "bg-[#eee7d8] text-[#63543c]" };
   return <Badge data-fin-tom={tone === "green" ? "entrada" : tone === "red" ? "alerta" : tone === "amber" ? "pendente" : tone === "blue" ? "info" : tone === "brown" ? "info" : "neutro"} className={`fin-selo inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-semibold ${tons[tone]}`}>{children}</Badge>;
 }
 
@@ -106,8 +106,8 @@ export function StatusPill({ status }: { status: string }) {
 }
 
 export function Metric({ label, valor, detalhe, icon: Icon, tone = "default", tom, compacto = false }: { compacto?: boolean; label: string; valor: string; detalhe?: string; icon: LucideIcon; tone?: "default" | "green" | "red"; tom?: TomFinanceiro }) {
-  const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-red-50 text-red-800" : "bg-muted text-mast";
-  return <Panel tom={tom} className={`@container ${compacto ? "p-3" : "p-5"} ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`${compacto ? "mt-1" : "mt-3"} break-words font-serif text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`fin-metric-icone shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className={`${compacto ? "mt-2" : "mt-3"} break-words text-xs text-ink-3`}>{detalhe}</div>}</Panel>;
+  const iconTone = tone === "green" ? "bg-green-50 text-green-800" : tone === "red" ? "bg-[color:var(--fin-danger-bg)] text-destructive" : "bg-muted text-mast";
+  return <Panel tom={tom} className={`@container ${compacto ? "p-3" : "p-5"} ${tom ? "fin-indicador" : ""}`}><div className="flex items-start justify-between gap-4"><div className="min-w-0 flex-1"><div className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">{label}</div><div className={`${compacto ? "mt-1" : "mt-3"} break-words font-sans text-[clamp(19px,8cqw,28px)] leading-none tracking-tight ${tom ? "fin-valor" : "text-ink"}`}>{valor}</div></div><div className={`fin-metric-icone shrink-0 rounded-lg p-2.5 @max-[240px]:hidden ${iconTone}`}><Icon size={18} /></div></div>{detalhe && <div className={`${compacto ? "mt-2" : "mt-3"} break-words text-xs text-ink-3`}>{detalhe}</div>}</Panel>;
 }
 
 /* Rodapé de paginação das tabelas: intervalo exibido, Anterior/Próxima e salto
@@ -123,7 +123,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
-      <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-white px-2 text-sm">
+      <SelectCampo id={idSelect} aria-label="Ir para a página" value={pagina} onValueChange={valor => onPagina(Number(valor))} className="h-10 rounded-lg border border-border bg-card px-2 text-sm">
         {Array.from({ length: totalPaginas }, (_, indice) => <option key={indice + 1} value={indice + 1}>Página {indice + 1} de {totalPaginas}</option>)}
       </SelectCampo>
       <Button secondary disabled={pagina === totalPaginas} onClick={() => onPagina(pagina + 1)}>Próxima</Button>
@@ -137,7 +137,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
 const FILTRO_TODOS = "__todos__";
 export function SelectFiltro({ rotulo, valor, onChange, opcoes, className = "" }: { rotulo: string; valor: string; onChange: (valor: string) => void; opcoes: { valor: string; texto: string }[]; className?: string }) {
   return <Select value={valor === "" ? FILTRO_TODOS : valor} onValueChange={(v) => onChange(v === FILTRO_TODOS ? "" : v)}>
-    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-white px-3 text-left text-sm font-normal sm:w-auto sm:w-44 [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
+    <SelectTrigger aria-label={rotulo} title={opcoes.find((o) => o.valor === valor)?.texto} className={`h-10 w-full justify-between rounded-lg bg-card px-3 text-left text-sm font-normal sm:w-auto sm:w-44 [&>span]:whitespace-nowrap ${className}`}><SelectValue /></SelectTrigger>
     <SelectContent className="z-[1300]">{opcoes.map((o) => <SelectItem key={o.valor || FILTRO_TODOS} value={o.valor === "" ? FILTRO_TODOS : o.valor}>{o.texto}</SelectItem>)}</SelectContent>
   </Select>;
 }
@@ -155,12 +155,12 @@ export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDesce
     {onSubir && <ShadcnButton variant="ghost" type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></ShadcnButton>}
     {onDescer && <ShadcnButton variant="ghost" type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></ShadcnButton>}
     <ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton>
-    <ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-red-700` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton>
+    <ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-destructive` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton>
   </div>;
 }
 
 export function ErrorBox({ erro }: { erro: string | null }) {
-  return erro ? <div role="alert" className="fin-erro mt-5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">{erro}</div> : null;
+  return erro ? <div role="alert" className="fin-erro mt-5 rounded-lg border border-destructive/30 bg-[color:var(--fin-danger-bg)] p-4 text-sm text-destructive">{erro}</div> : null;
 }
 
 /** Lista, gráfico ou seção sem registros: mesmo desenho do EmptyState compacto. */
@@ -171,7 +171,7 @@ export function Empty({ children, icone: Icone = Inbox, acao }: { children: Reac
 export function Modal({ titulo, eyebrow, onClose, children, width = "max-w-xl", semCabecalho = false, colorida = false, tom = "info" }: { titulo: string; eyebrow: string; onClose: () => void; children: React.ReactNode; width?: string; semCabecalho?: boolean; colorida?: boolean; tom?: TomFinanceiro }) {
   const [origem] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null);
   return <Dialog open onOpenChange={open => { if (!open) onClose(); }}><DialogContent aria-describedby={undefined} onCloseAutoFocus={event => { event.preventDefault(); if (origem?.isConnected) origem.focus({ preventScroll: true }); }} showCloseButton={false} overlayClassName="z-[1190]" data-fin-scroll={semCabecalho ? undefined : "conteudo"} data-fin-tom={tom} className={`z-[1200] w-[calc(100%-2rem)] rounded-xl ${semCabecalho ? "h-[92dvh] overflow-hidden" : "max-h-[92dvh] overflow-auto"} ${width} ${colorida ? "financeiro-colorido" : ""}`}>
-    {semCabecalho ? <DialogTitle className="sr-only">{titulo}</DialogTitle> : <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-muted p-5"><div className="min-w-0"><DialogTitle className="break-words font-sans text-xl font-semibold">{titulo}</DialogTitle><p className="mt-1 text-sm text-muted-foreground">{eyebrow}</p></div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="shrink-0 rounded-lg p-2 hover:bg-white"><X size={18} /></ShadcnButton></div>}
+    {semCabecalho ? <DialogTitle className="sr-only">{titulo}</DialogTitle> : <div className="fin-modal-cabecalho sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-card p-5"><div className="min-w-0"><DialogTitle className="break-words">{titulo}</DialogTitle>{eyebrow && <p className="mt-1 text-sm text-muted-foreground">{eyebrow}</p>}</div><ShadcnButton variant="ghost" size="icon" onClick={onClose} aria-label="Fechar" className="-mr-2 -mt-1 shrink-0 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"><X size={18} /></ShadcnButton></div>}
     {children}</DialogContent></Dialog>;
 }
 

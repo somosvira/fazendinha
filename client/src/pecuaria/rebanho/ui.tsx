@@ -173,11 +173,11 @@ export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }:
       <div className="flex flex-wrap gap-1 pb-0.5">
         {PRESETS_FRACAO.filter((preset) => preset.fracao64 <= limite64).map((preset) => <button key={preset.label} type="button" onClick={() => atualizar(indice, { fracao64: preset.fracao64 })} className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-ink-2 hover:bg-surface-2">{preset.label}</button>)}
       </div>
-      <button type="button" onClick={() => remover(indice)} aria-label="Remover raça da composição" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-red-700"><X size={16} /></button>
+      <button type="button" onClick={() => remover(indice)} aria-label="Remover raça da composição" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-destructive"><X size={16} /></button>
     </div>)}
     <button type="button" onClick={adicionar} className="text-sm font-semibold text-mast hover:underline">+ Adicionar raça</button>
-    <p className={`text-xs ${soma > limite64 ? "font-semibold text-red-700" : "text-ink-3"}`}>Soma atual: {soma > 0 && soma <= 64 ? `${fracaoReduzida(soma)} (${soma}/64)` : `${soma}/64`}{soma > limite64 ? ` — reduza para no máximo ${limite64}/64` : ""}</p>
-    {erro && <p role="alert" className="text-xs text-red-700">{erro}</p>}
+    <p className={`text-xs ${soma > limite64 ? "font-semibold text-destructive" : "text-ink-3"}`}>Soma atual: {soma > 0 && soma <= 64 ? `${fracaoReduzida(soma)} (${soma}/64)` : `${soma}/64`}{soma > limite64 ? ` — reduza para no máximo ${limite64}/64` : ""}</p>
+    {erro && <p role="alert" className="text-xs text-destructive">{erro}</p>}
   </div>;
 }
 
@@ -201,9 +201,9 @@ export function ModalMotivo({ titulo, eyebrow, impacto, labelMotivo = "Motivo", 
   return <Modal titulo={titulo} eyebrow={eyebrow} onClose={() => { if (!confirmando) onFechar(); }}>
     <div className="p-6">
       <ErrorBox erro={erro ?? null} />
-      {impacto && <div className="mt-2 space-y-2 rounded-xl border border-red-200 bg-red-50/60 p-4 text-sm text-red-950">{impacto}</div>}
+      {impacto && <div className="mt-2 space-y-2 rounded-xl border border-destructive/30 bg-[color:var(--fin-danger-bg)]/60 p-4 text-sm text-red-950">{impacto}</div>}
       <label className="mt-5 block text-sm font-medium">{labelMotivo} *
-        <textarea aria-label={labelMotivo} maxLength={300} disabled={confirmando} value={motivo} onChange={(e) => setMotivo(e.target.value)} className="mt-1.5 min-h-24 w-full rounded-lg border border-border bg-white p-3 font-normal" />
+        <textarea aria-label={labelMotivo} maxLength={300} disabled={confirmando} value={motivo} onChange={(e) => setMotivo(e.target.value)} className="mt-1.5 min-h-24 w-full rounded-lg border border-border bg-card p-3 font-normal" />
       </label>
       <div className="mt-5 flex justify-end gap-2">
         <Button secondary disabled={confirmando} onClick={onFechar}>{labelManter}</Button>

@@ -115,7 +115,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
     {painel && <>
       <div className="pec-panorama-grid"><div className="pec-panorama-principal">
         <Panel className="min-w-0 overflow-hidden">
-          <div className="pec-grafico-cabecalho"><div><h2 className="font-serif text-xl">Composição do rebanho</h2></div><button type="button" className="pec-consulta-ativos" onClick={() => navegarPara(filtrosAnimais({ situacao: "ATIVO" }))}><ChartNoAxesCombined aria-hidden="true" size={18} /> Ver animais <ChevronRight aria-hidden="true" size={14} /></button></div>
+          <div className="pec-grafico-cabecalho"><div><h2 className="font-sans text-xl">Composição do rebanho</h2></div><button type="button" className="pec-consulta-ativos" onClick={() => navegarPara(filtrosAnimais({ situacao: "ATIVO" }))}><ChartNoAxesCombined aria-hidden="true" size={18} /> Ver animais <ChevronRight aria-hidden="true" size={14} /></button></div>
           {categorias.length && painel.ativos > 0 ? <div className="pec-composicao-corpo">
             <div className="pec-efetivo"><strong>{painel.ativos.toLocaleString("pt-BR")}</strong><span>animais ativos</span><span className="pec-efetivo-femeas">{painel.femeasAtivas.toLocaleString("pt-BR")} fêmeas ativas</span></div>
             <div className="pec-legenda-categorias">{categorias.map((c) => <LinhaClicavel key={`${c.categoriaId ?? "sem-categoria"}-${c.sexo ?? "todos"}`} href={filtrosAnimais(c.categoriaId ? { categoriaId: c.categoriaId, sexo: c.sexo ?? undefined } : { semCategoria: true, sexo: c.sexo ?? undefined })} className="pec-categoria-linha">
@@ -129,8 +129,8 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
 
       <Panel className="overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-5">
-          <div><h2 className="font-serif text-xl">Baixas no período</h2><p className="mt-1 text-sm text-ink-3">{totalBaixas} {totalBaixas === 1 ? "baixa" : "baixas"} · últimos {painel.periodoDias} dias{carregandoBaixas ? " · atualizando…" : ""}</p></div>
-          <div role="group" aria-label="Período das baixas" className="inline-flex overflow-hidden rounded-lg border border-border bg-white p-0.5">
+          <div><h2 className="font-sans text-xl">Baixas no período</h2><p className="mt-1 text-sm text-ink-3">{totalBaixas} {totalBaixas === 1 ? "baixa" : "baixas"} · últimos {painel.periodoDias} dias{carregandoBaixas ? " · atualizando…" : ""}</p></div>
+          <div role="group" aria-label="Período das baixas" className="inline-flex overflow-hidden rounded-lg border border-border bg-card p-0.5">
             {PERIODOS_BAIXAS.map(({ valor, rotulo }) => <button
               key={valor}
               type="button"
@@ -152,7 +152,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
 
       </div><div className="pec-panorama-contexto">
         {consolidado && <Panel className="min-w-0 overflow-hidden">
-          <div className="pec-grafico-cabecalho"><div><h2 className="font-serif text-xl">Por sítio</h2></div><MapPin aria-hidden="true" size={20} /></div>
+          <div className="pec-grafico-cabecalho"><div><h2 className="font-sans text-xl">Por sítio</h2></div><MapPin aria-hidden="true" size={20} /></div>
           {painel.porSitio.length ? <div className="pec-sitios-corpo">
             {painel.porSitio.map((s, indice) => <LinhaClicavel key={s.propriedadeId ?? "sem-sitio"} href={filtrosAnimais({ propriedadeId: s.propriedadeId ?? undefined })} className="pec-sitio-linha">
               <div className="flex items-center justify-between gap-3 text-sm"><span className="min-w-0 break-words font-medium">{s.nome}</span><strong>{s.qtd} <span className="pec-participacao">animais</span></strong></div>
@@ -163,7 +163,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
           </div> : <Empty>Nenhum animal ativo.</Empty>}
         </Panel>}
       <Panel className="overflow-hidden">
-        <div className="pec-eventos-cabecalho flex items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-serif text-xl">Atividade recente</h2></div></div>
+        <div className="pec-eventos-cabecalho flex items-center justify-between gap-3 border-b border-border p-5"><div><h2 className="font-sans text-xl">Atividade recente</h2></div></div>
         {painel.ultimosEventos.length ? <ol className="pec-eventos">{painel.ultimosEventos.slice(0, 4).map((evento, indice) => {
           const Icone = ICONE_EVENTO[evento.tipo];
           return <li key={`${evento.animalId}-${indice}`}><button type="button" onClick={() => navegarPara(linkFichaAnimal(evento.animalId))} className="pec-painel-link pec-evento-linha"><span aria-hidden="true" className={`pec-evento-icone pec-evento-${evento.tipo.toLowerCase()}`}><Icone size={18} /></span><span className="min-w-0 flex-1"><strong className="block break-words">{evento.brinco}</strong><span className="pec-participacao">{ROTULO_EVENTO[evento.tipo]}</span></span><span className="shrink-0 text-sm text-ink-3">{formatarDataBR(evento.data)}</span><ChevronRight aria-hidden="true" size={14} /></button></li>;

@@ -34,12 +34,12 @@ export function Dica({ conteudo, rotulo, children, className }: {
     </PopoverTrigger>
     <PopoverContent
       side="top"
-      className="z-[1200] w-auto max-w-xs px-3 py-2 text-xs font-normal normal-case leading-5 tracking-normal"
+      className="z-[1200] w-auto max-w-xs px-3 py-2 text-[13px] font-normal normal-case leading-5 tracking-normal"
       onOpenAutoFocus={(e) => e.preventDefault()}
     >{conteudo}</PopoverContent>
   </Popover>;
 }
 
 export function AjudaCampo({ texto, rotulo = "Ajuda" }: { texto: ReactNode; rotulo?: string }) {
-  return <Dica conteudo={texto} rotulo={rotulo} className="ml-1"><CircleHelp size={14} aria-hidden="true" /></Dica>;
+  return <Dica conteudo={texto} rotulo={rotulo} className="-my-1 ml-0.5 rounded p-1"><CircleHelp size={14} aria-hidden="true" /></Dica>;
 }

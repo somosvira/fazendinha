@@ -62,7 +62,7 @@ function NewCategoryModal({
         className="w-[520px] max-w-[92vw] bg-background p-0 shadow-[0_18px_60px_rgba(20,25,26,0.25)]"
       >
         <DialogHeader className="flex-row items-center justify-between space-y-0 bg-mast px-6 py-[18px]">
-          <DialogTitle className="font-serif text-[22px] font-normal text-mast-ink">Nova categoria</DialogTitle>
+          <DialogTitle className="font-sans text-[22px] font-normal text-mast-ink">Nova categoria</DialogTitle>
           <DialogClose
             className="cursor-pointer border-0 bg-transparent text-xl text-mast-ink outline-none"
             aria-label="Fechar"
@@ -146,9 +146,9 @@ function NewCategoryModal({
 function TreeSub({ sub }: { sub: { nome: string; total: number; lancamentos: number } }) {
   return (
     <div className="group grid grid-cols-[14px_1fr_auto_auto] items-center gap-3 py-[7px] pr-3 font-sans text-[13px]">
-      <span className="font-serif text-[color:var(--ink-mute)]">·</span>
+      <span className="font-sans text-[color:var(--ink-mute)]">·</span>
       <span className="text-[15px] text-ink-2 group-hover:text-foreground">{sub.nome}</span>
-      <span className="mono-nums font-serif text-sm tabular-nums">{fmtMoney(sub.total)}</span>
+      <span className="mono-nums font-sans text-sm tabular-nums">{fmtMoney(sub.total)}</span>
       <span className="text-[11px] text-ink-3">{sub.lancamentos} lançam.</span>
     </div>
   );
@@ -194,11 +194,11 @@ function TreeCat({
         aria-expanded={expanded}
       >
         <span className="text-base font-semibold text-foreground">{cat.nome}</span>
-        <span className="mono-nums font-serif text-[15px] font-normal tabular-nums">{fmtMoney(total)}</span>
+        <span className="mono-nums font-sans text-[15px] font-normal tabular-nums">{fmtMoney(total)}</span>
         <span className="text-[11px] font-normal tabular-nums text-ink-3">
           {lancamentos} lançam. · {subs.length} {subs.length === 1 ? "subcategoria" : "subcategorias"}
         </span>
-        <span className="font-serif text-sm font-normal text-ink-3" aria-hidden>{expanded ? "▾" : "›"}</span>
+        <span className="font-sans text-sm font-normal text-ink-3" aria-hidden>{expanded ? "▾" : "›"}</span>
       </button>
       {expanded && (
         <div className="pb-2.5 pl-[18px] pt-1.5">
@@ -206,7 +206,7 @@ function TreeCat({
             <TreeSub key={i} sub={s} />
           ))}
           <button
-            className="grid w-full cursor-pointer grid-cols-[14px_1fr] gap-3 bg-transparent py-2 pr-3 text-left font-serif text-xs italic text-ink-3 transition-colors hover:text-foreground"
+            className="grid w-full cursor-pointer grid-cols-[14px_1fr] gap-3 bg-transparent py-2 pr-3 text-left font-sans text-xs italic text-ink-3 transition-colors hover:text-foreground"
             type="button"
             onClick={() => onAddSub(cat.nome)}
           >
@@ -262,15 +262,15 @@ function TreeGroup({
         className="grid w-full cursor-pointer grid-cols-[1fr_auto_auto_auto] items-center gap-3 bg-transparent px-2 py-3 text-left transition-colors hover:bg-card"
         onClick={() => setOpen(!open)}
       >
-        <span className="font-serif text-[22px] tracking-[-0.005em]">
+        <span className="font-sans text-[22px] tracking-[-0.005em]">
           {grupo.nome}
           <small className="mt-1 block font-sans text-[11px] uppercase tracking-[0.14em] text-ink-3">
             {grupo.pilha} · {grupo.categorias.length} categorias · {cntG} subcategorias
           </small>
         </span>
-        <span className="mono-nums font-serif text-lg tabular-nums">{fmtMoney(totalG)}</span>
+        <span className="mono-nums font-sans text-lg tabular-nums">{fmtMoney(totalG)}</span>
         <span className="font-sans text-xs tabular-nums text-ink-3">YTD 2026</span>
-        <span className="font-serif text-lg text-ink-3">{open ? "▾" : "›"}</span>
+        <span className="font-sans text-lg text-ink-3">{open ? "▾" : "›"}</span>
       </button>
       {open && (
         <div className="ml-2 border-l border-[color:var(--rule-soft)]">
@@ -398,8 +398,8 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
           </div>
           {semResultados ? (
             <div className="flex flex-col items-center gap-2 px-6 py-14 text-center text-ink-2">
-              <div className="mb-1.5 grid h-11 w-11 place-items-center rounded-full border border-dashed border-border font-serif text-[22px] text-ink-3">⌕</div>
-              <div className="font-serif text-xl font-medium text-foreground">Nada encontrado para "{search}"</div>
+              <div className="mb-1.5 grid h-11 w-11 place-items-center rounded-full border border-dashed border-border font-sans text-[22px] text-ink-3">⌕</div>
+              <div className="font-sans text-xl font-medium text-foreground">Nada encontrado para "{search}"</div>
               <div className="max-w-[42ch] text-sm text-ink-2">
                 Verifique a ortografia ou abra "+ Nova categoria" se for o caso de cadastrar algo novo.
               </div>
@@ -436,7 +436,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
                 className="flex flex-col gap-1 border-b border-r border-[color:var(--rule-soft)] px-4 py-3.5 even:border-r-0 [&:nth-last-child(-n+2)]:border-b-0"
               >
                 <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">{cell.l}</span>
-                <span className={cn("mono-nums font-serif tabular-nums tracking-[-0.005em]", cell.small ? "text-sm" : "text-[22px]")}>
+                <span className={cn("mono-nums font-sans tabular-nums tracking-[-0.005em]", cell.small ? "text-sm" : "text-[22px]")}>
                   {cell.v}
                 </span>
               </div>
@@ -460,7 +460,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
                         <span className="h-1.5 w-1.5 bg-lucro"></span>
                         <span className="text-[10px] uppercase tracking-[0.2em] text-ink-3">Sugestão</span>
                       </div>
-                      <div className="font-serif text-[17px] font-medium leading-[1.4] tracking-[-0.005em] text-foreground">{s.titulo}</div>
+                      <div className="font-sans text-[17px] font-medium leading-[1.4] tracking-[-0.005em] text-foreground">{s.titulo}</div>
                       <div className="text-sm leading-[1.5] text-ink-3">{s.detalhe}</div>
                       <div className="mt-1 flex gap-2">
                         <Button
@@ -491,7 +491,7 @@ export function PlanoContas({ onNav: _onNav }: { onNav: (t: Tab) => void }) {
             </div>
           )}
 
-          <div className="mt-2.5 border-l-[3px] border-l-leite bg-card px-[18px] py-4 font-serif text-[15px] italic leading-[1.5] text-ink-2">
+          <div className="mt-2.5 border-l-[3px] border-l-leite bg-card px-[18px] py-4 font-sans text-[15px] italic leading-[1.5] text-ink-2">
             A IA observa os lançamentos novos e sugere divisões ou agrupamentos quando detecta padrões. Você decide
             se aceita.
           </div>

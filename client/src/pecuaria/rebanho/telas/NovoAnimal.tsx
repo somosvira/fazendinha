@@ -216,7 +216,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
         <section>
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground"><Dna size={20} className="text-primary" aria-hidden/>Composição racial</h3>
           {carregandoHerdanca && <p className="mb-3 text-sm text-ink-3">Calculando a parcela herdada…</p>}
-          {erroHerdanca && <p role="alert" className="mb-3 text-sm text-red-700">{erroHerdanca}</p>}
+          {erroHerdanca && <p role="alert" className="mb-3 text-sm text-destructive">{erroHerdanca}</p>}
           {herdada && <p className="mb-3 text-sm text-ink-3">Parcela fixa dos genitores: {herdada.rotulo} ({somaFracoes(itensHerdados)}/64). {limiteInformavel ? `Você pode informar até ${limiteInformavel}/64 da parcela ainda desconhecida.` : "Composição completa; não há parcela para informar."}</p>}
           {!carregandoHerdanca && limiteInformavel > 0 && <CampoComposicao racas={catalogos.racas} itens={composicao} onChange={setComposicao} erro={erros.composicao} limite64={limiteInformavel} />}
         </section>

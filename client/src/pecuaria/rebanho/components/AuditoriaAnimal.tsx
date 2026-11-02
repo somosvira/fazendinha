@@ -153,9 +153,9 @@ function ConsultaAuditoriaAnimal({ id, recarregarToken, fatos, modo = "tabela", 
       </div></RebModal>}
       {consulta.periodo === "personalizado" && <div className="flex flex-wrap gap-3 md:col-span-5"><label className={rotulo}>De<DatePicker value={consulta.inicio} onChange={inicio => alterar({ inicio })} /></label><label className={rotulo}>Até<DatePicker value={consulta.fim} onChange={fim => alterar({ fim })} /></label></div>}
     </form>
-    {intervaloInvalido && <p role="alert" className="p-3 text-red-700">O início deve ser anterior ao fim.</p>}
+    {intervaloInvalido && <p role="alert" className="p-3 text-destructive">O início deve ser anterior ao fim.</p>}
     {carregando && <p role="status" className="p-4 text-ink-3">Carregando auditoria…</p>}
-    {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-red-700">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
+    {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-destructive">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
     {!intervaloInvalido && (resultado || fatos) && <>
       {modo === "visual" ? <LinhaTempoConsulta rotulo="Fatos e alterações do animal" itens={linhas} dataDe={diaLinha} chaveDe={l => l.chave} complementoData={data => <span className="font-normal text-ink-3"> - {dataRelativaFato(data, agora)}</span>} render={linha => {
         const fato = linha.fato; const entrada = linha.entrada;

@@ -1,6 +1,6 @@
 import type { ContextoParcelas, NaturezaParcela, ParcelaInput, ParcelaOrdenha } from "./parcelas-types";
 
-export const nomesNatureza: Record<NaturezaParcela, string> = { COMERCIAL: "Comercial", NAO_COMERCIAL: "Descarte", COLOSTRO: "Colostro" };
+export const nomesNatureza: Record<NaturezaParcela, string> = { COMERCIAL: "Comercial", NAO_COMERCIAL: "Não comercial", COLOSTRO: "Colostro" };
 export interface RascunhoParcela {
   chave: string; id?: string; versao: number; natureza: NaturezaParcela;
   tanqueId: string; recipiente: string; litros: string; regua: string;

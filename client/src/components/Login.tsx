@@ -40,7 +40,7 @@ export function Login({ onEntrar }: { onEntrar?: (token: string, usuario: Usuari
   };
 
   const campoInput =
-    "h-12 rounded-md border-[#c7d4ca] bg-white px-3 text-base text-[#283c31] shadow-none placeholder:text-[#718178] focus-visible:border-[#24493b] focus-visible:ring-2 focus-visible:ring-[#24493b]/20 focus-visible:ring-offset-0";
+    "h-12 rounded-md border-[#c7d4ca] bg-card px-3 text-base text-[#283c31] shadow-none placeholder:text-[#718178] focus-visible:border-[#24493b] focus-visible:ring-2 focus-visible:ring-[#24493b]/20 focus-visible:ring-offset-0";
 
   return (
     <main className="login-campo min-h-[100dvh] bg-[#edf2ed] px-4 py-10 font-[family-name:var(--sans)] sm:py-16">
