@@ -42,6 +42,7 @@ describe("configuração nutricional", () => {
   it("explica os três modelos e envia o dia exato e o escopo", async () => {
     render(<GestaoMensal vista="configuracao" podeLancar />);
     await screen.findByText("Como dar baixa no estoque");
+    expect((screen.getByLabelText("Válido a partir de") as HTMLInputElement).readOnly).toBe(true);
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     expect(
       (
@@ -51,8 +52,8 @@ describe("configuração nutricional", () => {
       ).checked,
     ).toBe(true);
     fireEvent.change(
-      screen.getByLabelText("Dia da conferência no mês seguinte"),
-      { target: { value: "31" } },
+      screen.getByLabelText("Data de referência da conferência"),
+      { target: { value: "31/01/2027" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
     fireEvent.click(
@@ -93,8 +94,8 @@ describe("configuração nutricional", () => {
     render(<GestaoMensal vista="configuracao" podeLancar />);
     await screen.findByRole("button", { name: "Revisar configuração" });
     fireEvent.change(
-      screen.getByLabelText("Dia da conferência no mês seguinte"),
-      { target: { value: "9" } },
+      screen.getByLabelText("Data de referência da conferência"),
+      { target: { value: "09/01/2027" } },
     );
     fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
     const botao = screen.getByRole("button", { name: "Confirmar configuração" });
@@ -106,9 +107,9 @@ describe("configuração nutricional", () => {
     expect(
       (
         screen.getByLabelText(
-          "Dia da conferência no mês seguinte",
+          "Data de referência da conferência",
         ) as HTMLInputElement
       ).value,
-    ).toBe("9");
+    ).toBe("09/01/2027");
   });
 });
