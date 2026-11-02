@@ -66,3 +66,7 @@ A migration foi validada no PostgreSQL local `fazendinha_seedatev3`, sobre a bas
 ### Compatibilidade com produção de leite
 
 O fechamento mensal atende ingredientes do estoque convencional. Dietas com leite de produção própria V5 ficam pendentes, sem baixa automática: exigem o fluxo específico de fornecimento de leite, que conserva origens, natureza e custo de produção. Não configure o mensal para esses lotes até existir adaptação específica; os fluxos anteriores continuam disponíveis nos lotes sem configuração mensal.
+
+## Navegação operacional
+
+Nutrição tem uma única aba **Fechamentos**, com meses para conferência e a consulta **Fechamentos por período** para histórico e lotes ainda sem adoção mensal. O modelo e o prazo aparecem em cada mês. **Configurar nutrição** leva a Configurações → Pecuária → Nutrição → Modelo e prazo de fechamento (`/configuracoes/pecuaria/nutricao/fechamento`). O formulário mantém explicações, escopo por sítio, exceções por lote e vigências. URLs anteriores com `aba=mensal` e `aba=configuracao` são normalizadas, preservando os parâmetros; detalhes históricos e filtros continuam válidos.

@@ -13,6 +13,7 @@ import {
   type DistribuicaoPartida,
 } from "../../../estoque/SelecaoPartidas";
 import * as api from "./mensal-api";
+import { LinkNutricional } from "./componentes";
 import "./mensal.css";
 const modelos: Record<api.ModeloMensal, { nome: string; descricao: string }> = {
   AUTOMATICO: {
@@ -136,7 +137,7 @@ export function GestaoMensal({
     }
   }
   const abrir = (m: api.MesNutricional) =>
-    navegarPara(`/pecuaria/nutricao?aba=mensal&mesId=${m.id}`);
+    navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
   const previas = configs.filter(
     (c) =>
       c.propriedadeId === Number(sitio) &&
@@ -144,6 +145,7 @@ export function GestaoMensal({
   );
   return (
     <div className="nutricao-mensal">
+      {vista !== "configuracao" && <div className="mensal-acoes"><LinkNutricional className="nutricao-botao" href="/configuracoes/pecuaria/nutricao/fechamento">Configurar nutrição</LinkNutricional></div>}
       <ErrorBox erro={erro} />
       {erro && (
         <Button secondary onClick={() => setRecarregar((v) => v + 1)}>
@@ -479,7 +481,7 @@ function RevisaoMensal({
     <section>
       <Button
         secondary
-        onClick={() => navegarPara("/pecuaria/nutricao?aba=mensal")}
+        onClick={() => navegarPara("/pecuaria/nutricao?aba=fechamentos")}
       >
         Voltar aos meses
       </Button>

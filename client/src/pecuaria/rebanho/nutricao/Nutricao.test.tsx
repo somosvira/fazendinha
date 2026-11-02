@@ -17,6 +17,9 @@ describe("navegação da Nutrição", () => {
     expect(screen.queryByLabelText("Lote")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Fechamentos" }));
     expect(screen.getByText("Fechamentos gerais")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "Fechamento mensal" })).toBeNull();
+    expect(screen.queryByRole("tab", { name: "Configuração" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Configurar nutrição" }).getAttribute("href")).toBe("/configuracoes/pecuaria/nutricao/fechamento");
     expect(window.location.search).not.toContain("loteId");
   });
   it("restaura a aba depois de voltar no navegador e mantém links antigos de detalhe", () => {
