@@ -7,6 +7,8 @@ import { auditar, hojeFazendaDate, RebanhoError, travarAnimais } from '../rebanh
 import { conferirAnimalNoFato } from '../fatos.js';
 import { conferirSitioLeiteTx } from '../leite/configuracoes.js';
 import { conferirProgramacao } from './aleitamento.calc.js';
+import { sincronizarLocalizacoesBezerreiroTx } from './localizacao.js';
+import { perfilSchema, cancelarFaseSchema } from './schemas.js';
 import { dataCivil, salvarConfiguracaoSchema, type ConsultaBezerreiro, type SalvarConfiguracao } from './schemas.js';
 
 const D = (v: Prisma.Decimal.Value) => new Prisma.Decimal(v);
@@ -70,17 +72,29 @@ export async function salvarConfiguracao(input: SalvarConfiguracao & { proprieda
     return { id: config.id, versao: config.versao };
   }));
 }
-export async function registrarPerfil(input: { chave: string; propriedadeId: number; loteId: string }, usuarioId: number | null) {
+export async function registrarPerfil(input: { chave: string; propriedadeId: number; loteId: string; regularizacao?: { motivo: string; localizacoes: { id: string; animalId: string; desde: string }[] } }, usuarioId: number | null) {
+  input = { ...perfilSchema.parse(input), propriedadeId: input.propriedadeId };
   usuarioId = autor(usuarioId);
   return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, input, usuarioId, 'BEZERREIRO_PERFIL', async () => {
-    await travarPerfil(tx, `lote:${input.loteId}`);
     await conferirSitioLeiteTx(tx, input.propriedadeId, true);
-    const lote = await tx.lote.findFirst({ where: { id: input.loteId, propriedadeId: input.propriedadeId, ativo: true } });
-    if (!lote) throw new RebanhoError('VALIDACAO', 'Selecione um lote ativo deste sítio');
-    const existente = await tx.perfilBezerreiro.findUnique({ where: { loteId: lote.id } });
-    if (existente) return existente;
-    const p = await tx.perfilBezerreiro.create({ data: { loteId: lote.id, propriedadeId: input.propriedadeId, criadoPorId: usuarioId } });
-    await auditar(tx, { entidade: 'PerfilBezerreiro', entidadeId: p.id, propriedadeId: input.propriedadeId, usuarioId, acao: 'REGISTRO', depois: p });
+    // Animais antes do lote, a mesma ordem global de cadastro/movimentação. A lista é
+    // conferida novamente sob o lock do lote; entradas concorrentes invalidam a prévia.
+    const vistos = await tx.localizacaoAnimal.findMany({ where: { loteId: input.loteId, ate: null } });
+    await travarAnimais(tx, vistos.map(l => l.animalId));
+    const lotes = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM pecuaria."Lote" WHERE id=${input.loteId} AND "propriedadeId"=${input.propriedadeId} AND ativo FOR UPDATE`;
+    if (!lotes.length) throw new RebanhoError('VALIDACAO', 'Selecione um lote ativo deste sítio');
+    const locais = await tx.localizacaoAnimal.findMany({ where: { loteId: input.loteId, ate: null }, orderBy: { id: 'asc' } });
+    if (vistos.map(l => l.id).sort().join(',') !== locais.map(l => l.id).sort().join(',')) throw new RebanhoError('CONFLITO', 'A ocupação mudou durante a conferência. Atualize a prévia antes de confirmar.');
+    const existente = await tx.perfilBezerreiro.findUnique({ where: { loteId: input.loteId } });
+    if (existente && !existente.ativo) throw new RebanhoError('CONFLITO', 'O perfil existente está inativo; regularize a configuração antes de incluir animais.');
+    if (locais.length && !input.regularizacao) throw new RebanhoError('CONFLITO', 'Lote ocupado: revise e envie a regularização explícita com os IDs e datas das localizações atuais. Nenhum participante foi criado.');
+    if (input.regularizacao) {
+      const snapshot = (ls: { id: string; animalId: string; desde: string }[]) => JSON.stringify([...ls].sort((a,b) => a.id.localeCompare(b.id)));
+      if (snapshot(input.regularizacao.localizacoes) !== snapshot(locais.map(l => ({ id: l.id, animalId: l.animalId, desde: textoDia(l.desde) })))) throw new RebanhoError('CONFLITO', 'A ocupação do lote mudou ou a prévia está incompleta. Refaça a conciliação antes de confirmar.');
+    }
+    const p = existente ?? await tx.perfilBezerreiro.create({ data: { loteId: input.loteId, propriedadeId: input.propriedadeId, criadoPorId: usuarioId } });
+    if (!existente) await auditar(tx, { entidade: 'PerfilBezerreiro', entidadeId: p.id, propriedadeId: input.propriedadeId, usuarioId, acao: 'REGISTRO', depois: p });
+    if (input.regularizacao) await sincronizarLocalizacoesBezerreiroTx(tx, locais.map(l => l.animalId), usuarioId, [], locais.map(l => l.id), input.regularizacao.motivo);
     return p;
   }));
 }
@@ -100,10 +114,14 @@ export async function registrarParticipacao(input: { chave: string; propriedadeI
     await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
     const local = await tx.localizacaoAnimal.findFirst({ where: { animalId: input.animalId, propriedadeId: input.propriedadeId, loteId: perfil.loteId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
     if (!local) throw new RebanhoError('VALIDACAO', 'Movimente o animal para o lote do bezerreiro antes de registrar a participação');
-    if (await tx.participacaoBezerreiro.findFirst({ where: { animalId: input.animalId, OR: [{ ate: null }, { ate: { gt: data } }] } })) throw new RebanhoError('CONFLITO', 'Animal já possui participação sobreposta no bezerreiro');
-    if (input.faseVersaoId) await faseValidaTx(tx, input.faseVersaoId, input.propriedadeId);
-    const p = await tx.participacaoBezerreiro.create({ data: { perfilId: perfil.id, animalId: input.animalId, desde: data, motivoEntrada: input.motivo, criadoPorId: usuarioId, ...(input.faseVersaoId ? { fases: { create: { faseVersaoId: input.faseVersaoId, desde: data, criadoPorId: usuarioId } } } : {}) } });
-    await auditar(tx, { entidade: 'ParticipacaoBezerreiro', entidadeId: p.id, animalId: p.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: 'ENTRADA', depois: p });
+    if (input.faseVersaoId) throw new RebanhoError('VALIDACAO', 'Regularize a participação sem fase; registre a programação separadamente.');
+    if (data.getTime() !== local.desde.getTime()) throw new RebanhoError('VALIDACAO', 'A regularização deve usar a data inicial comprovada da localização, sem criar movimentação fictícia.');
+    const existente = await tx.participacaoBezerreiro.findFirst({ where: { animalId: input.animalId, perfilId: perfil.id, desde: local.desde, ate: local.ate } });
+    if (existente) return existente;
+    if (!input.motivo?.trim()) throw new RebanhoError('VALIDACAO', 'Informe o motivo e a evidência da regularização.');
+    await sincronizarLocalizacoesBezerreiroTx(tx, [input.animalId], usuarioId, [], [local.id], input.motivo);
+    const p = await tx.participacaoBezerreiro.findFirst({ where: { animalId: input.animalId, perfilId: perfil.id, desde: local.desde, ate: local.ate } });
+    if (!p) throw new RebanhoError('CONFLITO', 'A localização já possui participação divergente; concilie o histórico antes de regularizar.');
     return p;
   }));
 }
@@ -139,10 +157,41 @@ export async function mudarFase(id: string, input: { chave: string; propriedadeI
     return salvo;
   }));
 }
+type CancelamentoFase = { chave: string; propriedadeId: number; versaoEsperada: number; motivo: string };
+
+export async function cancelarFase(id: string, periodoId: string, input: CancelamentoFase, usuarioId: number | null) {
+  const dados = { ...cancelarFaseSchema.parse(input), propriedadeId: input.propriedadeId };
+  usuarioId = autor(usuarioId);
+  return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, { ...dados, id, periodoId }, usuarioId, 'BEZERREIRO_CANCELAR_FASE',
+    () => cancelarFaseTx(tx, id, periodoId, dados, usuarioId)));
+}
+
+/** Regularização explícita, inclusive de permanência encerrada. Compartilha locks com
+ * oferta e movimentação; o período cancelado permanece integralmente na auditoria. */
+export async function cancelarFaseTx(tx: Prisma.TransactionClient, id: string, periodoId: string, input: CancelamentoFase, usuarioId: number | null) {
+  const p = await participacaoTravadaTx(tx, id, input.propriedadeId);
+  if (p.versao !== input.versaoEsperada) throw new RebanhoError('CONFLITO', 'A participação mudou. Atualize a ficha e confira a programação antes de cancelar.');
+  const periodo = await tx.periodoFaseBezerreiro.findFirst({ where: { id: periodoId, participacaoId: id } });
+  if (!periodo) throw new RebanhoError('NAO_ENCONTRADO', 'Programação não encontrada nesta participação. Atualize a ficha.');
+  const oferta = await tx.grupoOfertaBezerreiro.findFirst({ where: {
+    oferta: { perfilId: p.perfilId, status: 'CONFIRMADO', data: { gte: periodo.desde, ...(periodo.ate ? { lt: periodo.ate } : {}) } },
+    participantesSnapshot: { array_contains: [{ animalId: p.animalId }] },
+  } });
+  if (oferta) throw new RebanhoError('CONFLITO', 'Há alimentação confirmada para este animal no período. Confira e estorne as ofertas incompatíveis em Alimentação antes de cancelar a programação.');
+  // Não estende o período anterior nem altera fases posteriores: o intervalo passa
+  // a representar ausência de programação comprovada, sem inventar uma substituta.
+  await tx.periodoFaseBezerreiro.delete({ where: { id: periodo.id } });
+  const salvo = await tx.participacaoBezerreiro.update({ where: { id, versao: input.versaoEsperada }, data: { versao: { increment: 1 } } });
+  await auditar(tx, { entidade: 'PeriodoFaseBezerreiro', entidadeId: periodo.id, animalId: p.animalId, propriedadeId: input.propriedadeId, usuarioId,
+    acao: 'CANCELAMENTO', antes: periodo, depois: { cancelado: true, motivo: input.motivo, participacaoId: id, versaoParticipacao: salvo.versao } });
+  return { id: salvo.id, versao: salvo.versao };
+}
+
 export async function sairParticipacao(id: string, input: { chave: string; propriedadeId: number; versaoEsperada: number; data: string; motivo: string }, usuarioId: number | null) {
   usuarioId = autor(usuarioId);
   return transacaoPecuaria(tx => operacaoIdempotenteTx(tx, { ...input, id }, usuarioId, 'BEZERREIRO_SAIDA', async () => {
     const p = await participacaoTravadaTx(tx, id, input.propriedadeId), data = dataFato(input.data);
+    if (await tx.localizacaoAnimal.findFirst({ where: { animalId: p.animalId, loteId: (await obterPerfilTx(tx, p.perfilId, input.propriedadeId)).loteId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } })) throw new RebanhoError('CONFLITO', 'A saída do Bezerreiro acompanha a localização. Movimente o animal pelo fluxo de Rebanho.');
     if (p.ate || p.versao !== input.versaoEsperada || data <= p.desde) throw new RebanhoError('CONFLITO', 'Confira participação, versão e data posterior à entrada');
     if (await tx.grupoOfertaBezerreiro.findFirst({ where: { oferta: { perfilId: p.perfilId, status: 'CONFIRMADO', data: { gte: data } }, participantesSnapshot: { array_contains: [{ animalId: p.animalId }] } } })) throw new RebanhoError('CONFLITO', 'A saída não pode excluir uma participação já usada em oferta; escolha o dia seguinte');
     if (await tx.periodoFaseBezerreiro.findFirst({ where: { participacaoId: id, desde: { gte: data } } })) throw new RebanhoError('CONFLITO', 'Há uma fase nesta data ou depois dela; confira a programação antes de registrar a saída');

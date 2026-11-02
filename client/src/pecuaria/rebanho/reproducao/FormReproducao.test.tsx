@@ -1,6 +1,8 @@
+import { consultarBezerreiro } from "../bezerreiro/api";
 import { alterarControle } from "@/lib/controles.fixture";
 // @vitest-environment jsdom
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -24,6 +26,7 @@ vi.mock("../api", () => ({
   listarLotes: vi.fn().mockResolvedValue([]),
   listarMaterialGenetico: vi.fn().mockResolvedValue([]),
 }));
+vi.mock("../bezerreiro/api",()=>({consultarBezerreiro:vi.fn()}));
 vi.mock("../nutricao/api",()=>({listarPartidasNutricionais:vi.fn().mockResolvedValue([])}));
 vi.mock("../sanidade/api", () => ({
   listarServicos: vi.fn().mockResolvedValue([]),
@@ -56,7 +59,7 @@ const painel: PainelReprodutivo = {
   restricoes: [],
 };
 afterEach(cleanup);
-beforeEach(() => { vi.clearAllMocks(); vi.mocked(getPropriedadeAtiva).mockReturnValue(1); vi.mocked(reqV4).mockResolvedValue([{ id:"tipo", nome:"Exame reprodutivo", padraoReprodutivo:true, tipoResultado:"MULTIPLO", campos:[], ativo:true }]); });
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(listarLotes).mockResolvedValue([]); vi.mocked(consultarBezerreiro).mockResolvedValue({perfis:[]}); vi.mocked(getPropriedadeAtiva).mockReturnValue(1); vi.mocked(reqV4).mockResolvedValue([{ id:"tipo", nome:"Exame reprodutivo", padraoReprodutivo:true, tipoResultado:"MULTIPLO", campos:[], ativo:true }]); });
 describe("registros reprodutivos", () => {
   it("bloqueia negativo com gestação e preserva os dados/chave no retry de avaliação", async () => {
     vi.mocked(registrarAvaliacao).mockRejectedValueOnce(
@@ -129,6 +132,7 @@ describe("registros reprodutivos", () => {
         onSalvo={vi.fn()}
       />,
     );
+    await waitFor(() => expect(screen.queryByText("Consultando sugestão de Bezerreiro…")).toBeNull());
     fireEvent.submit(document.getElementById("form-reproducao")!);
     await waitFor(() => expect(registrarParto).toHaveBeenCalledTimes(1));
     expect(vi.mocked(registrarParto).mock.calls[0][0].gestacaoId).toBe("g");
@@ -353,3 +357,19 @@ describe("classe comprovada no histórico inicial", () => {
     expect(vi.mocked(reqV4).mock.calls[1][1]).toEqual(primeira);
   });
 });
+
+ it("aguarda catálogo de lotes antes de salvar a sugestão já recebida do Bezerreiro",async()=>{
+  const lote={id:"bez",nome:"Bezerreiro",propriedadeId:7,propriedade:{id:7,nome:"Sede"},ativo:true,observacao:null,animaisAtivos:0};
+  let liberar!:(lotes:typeof lote[])=>void;
+  vi.mocked(listarLotes).mockReturnValue(new Promise(r=>{liberar=r;}));
+  vi.mocked(consultarBezerreiro).mockResolvedValue({perfis:[{id:"perfil",ativo:true,loteId:"bez",lote}]});
+  vi.mocked(registrarParto).mockResolvedValue({id:"p",animalId:"a",data:"2026-10-13"});
+  render(<FormReproducao acao="parto" painel={painel} animalInicial="a" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalledWith("/configuracoes",7));
+  fireEvent.submit(document.getElementById("form-reproducao")!);expect(registrarParto).not.toHaveBeenCalled();
+  await act(async()=>liberar([lote]));
+  await waitFor(()=>expect(screen.getByLabelText("Lote da cria").textContent).toContain("Bezerreiro"));
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await waitFor(()=>expect(registrarParto).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([expect.objectContaining({loteId:"bez"})]);
+ });

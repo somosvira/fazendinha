@@ -1,3 +1,4 @@
+import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { completarContextoCartoes } from "./contexto-cartao.js";
 import { reavaliarContinuidadeAnimalTx } from "../sanidade/alertas/continuidade.js";
 import { ordenarPorPeso } from "./ordenacao-peso.calc.js";
@@ -345,7 +346,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
   }
 
   // animal novo (id ainda não existe): não há trava de animal; lote antes do brinco (ordem em regras.ts)
-  const criado = await prisma.$transaction(async (tx) => {
+  const criado = await transacaoPecuaria(async (tx) => {
     if (input.loteId) await travarLoteAtivo(tx, input.loteId, input.propriedadeId);
     await exigirBrincoLivre(tx, input.brinco, input.propriedadeId);
 
@@ -403,6 +404,7 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
 
     await auditar(tx, { entidade: "Animal", entidadeId: animal.id, animalId: animal.id, acao: "CADASTRO", usuarioId, depois: { ...animal, propriedadeId: input.propriedadeId, loteId: input.loteId ?? null } });
 
+    await sincronizarLocalizacoesBezerreiroTx(tx, [animal.id], usuarioId, [], "INICIAIS");
     await reavaliarContinuidadeAnimalTx(tx, animal.id, usuarioId, "CADASTRO");
     return animal;
   });
@@ -565,7 +567,11 @@ export async function editar(id: string, input: EditarAnimalInput, usuarioId: nu
 
     // Linhas iniciais e pesagens cadastrais comuns acompanham as novas datas; fatos preservados não.
     if (ajuste) {
-      if (ajuste.moverLocalizacao) await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
+      if (ajuste.moverLocalizacao) {
+        const anterior = await tx.localizacaoAnimal.findUniqueOrThrow({ where: { id: ajuste.moverLocalizacao } });
+        await tx.localizacaoAnimal.update({ where: { id: ajuste.moverLocalizacao }, data: { desde: entradaNova } });
+        await sincronizarLocalizacoesBezerreiroTx(tx, [id], usuarioId, [anterior]);
+      }
       if (ajuste.moverDestino) {
         await tx.finalidadeAnimal.update({ where: { id: ajuste.moverDestino }, data: { desde: entradaNova } });
         await conferirFinalidadesComProducaoTx(tx, id, new Date(Math.min(animal.dataEntrada.getTime(), entradaNova.getTime())), new Date(Math.max(animal.dataEntrada.getTime(), entradaNova.getTime())));
@@ -1220,7 +1226,7 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
 
   // Tudo é lido em lote e planejado antes de gravar: poucas queries por requisição, seja 1 animal
   // ou 300 (o laço antigo fazia ~8 queries por animal e estourava o timeout da transação).
-  const movidos = await prisma.$transaction(async (tx) => {
+  const movidos = await transacaoPecuaria(async (tx) => {
     // ordem das travas (regras.ts): animais → lote → brincos; todo o estado é lido depois delas
     await travarAnimais(tx, ids);
     if (input.loteId) await travarLoteAtivo(tx, input.loteId, input.propriedadeId);
@@ -1310,10 +1316,11 @@ export async function movimentar(input: MovimentarInput, usuarioId: number | nul
         })),
       ],
     });
+    await sincronizarLocalizacoesBezerreiroTx(tx, novas.map(l => l.animalId), usuarioId, abertas, novas.map(l => l.id));
     await conferirHistoricoDosFatos(tx, novas.map((l) => l.animalId));
     for (const nova of novas) await reavaliarContinuidadeAnimalTx(tx, nova.animalId, usuarioId, "LOCALIZACAO");
     return novas.length;
-  }, { timeout: 30_000, maxWait: 10_000 });
+  });
 
   return { movimentacaoId, movidos };
 }
@@ -1376,7 +1383,7 @@ function planejarDesfazerOuFalha(linhas: Array<{ id: string; desde: Date; ate: D
 export async function desfazerLocalizacao(animalId: string, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  await prisma.$transaction(async (tx) => {
+  await transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     await exigirAnimalAtivo(tx, animalId);
@@ -1400,6 +1407,7 @@ export async function desfazerLocalizacao(animalId: string, usuarioId: number | 
     exigirAfetadas(await tx.localizacaoAnimal.updateMany({ where: { id: anterior.id, ate: { not: null } }, data: { ate: null } }), 1);
     await conferirFinalidadesComProducaoTx(tx, animalId, removida.desde);
     const reaberta = { ...anterior, ate: null };
+    await sincronizarLocalizacoesBezerreiroTx(tx, [animalId], usuarioId, linhas);
 
     await conferirHistoricoDosFatos(tx, [animalId]);
     await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "LOCALIZACAO");
@@ -1443,7 +1451,7 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
   }
   if (previa.desfeitaEm) throw new RebanhoError("JA_ESTORNADA", "Essa movimentação já foi desfeita");
 
-  return prisma.$transaction(async (tx) => {
+  return transacaoPecuaria(async (tx) => {
     // Os animais da movimentação só diminuem (linhas são apagadas, nunca criadas com este id):
     // travar os de agora cobre os que sobrarem na releitura depois da trava.
     const candidatos = await tx.localizacaoAnimal.findMany({ where: { movimentacaoId: id }, select: { animalId: true } });
@@ -1525,9 +1533,10 @@ export async function desfazerMovimentacao(id: string, motivo: string, usuarioId
       ],
     });
     await conferirHistoricoDosFatos(tx, plano.passos.map((p) => p.animalId));
+    await sincronizarLocalizacoesBezerreiroTx(tx, animalIds, usuarioId, historico);
     for (const passo of plano.passos) await reavaliarContinuidadeAnimalTx(tx, passo.animalId, usuarioId, "LOCALIZACAO");
     return { desfeitos: plano.passos.length };
-  }, { timeout: 30_000, maxWait: 10_000 });
+  });
 }
 
 export async function desfazerDestino(animalId: string, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
@@ -1635,6 +1644,7 @@ export async function registrarBaixaTx(
     },
   });
 
+  await sincronizarLocalizacoesBezerreiroTx(tx, [animalId], usuarioId, localAberta ? [localAberta] : []);
   await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "BAIXA");
   await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, propriedadeId: localAberta?.propriedadeId ?? null, acao: "BAIXA", usuarioId, depois: { ...baixa, cienciaSanitaria: cienciaCarenciaSnapshot } });
   return baixa;
@@ -1651,7 +1661,7 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
 export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, animalId, escopo);
 
-  await prisma.$transaction(async (tx) => {
+  await transacaoPecuaria(async (tx) => {
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     const baixa = await baixaAberta(tx, animalId);
@@ -1664,6 +1674,7 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
       destinoAberto: destAberto ? { id: destAberto.id } : null,
     }));
 
+    const locaisAntes = await tx.localizacaoAnimal.findMany({ where: { animalId } });
     if (plano.reabrirLocalizacao) {
       const linha = await tx.localizacaoAnimal.findUniqueOrThrow({ where: { id: plano.reabrirLocalizacao.id } });
       // o brinco pode ter sido reutilizado no sítio enquanto o animal esteve fora
@@ -1681,6 +1692,7 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
     if (marcada.count !== 1) throw new RebanhoError("JA_ESTORNADA", "Não há baixa ativa para estornar (ou já foi estornada)");
     const atualizada = await tx.baixaAnimal.findUniqueOrThrow({ where: { id: baixa.id } });
 
+    await sincronizarLocalizacoesBezerreiroTx(tx, [animalId], usuarioId, locaisAntes);
     await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "ESTORNO_BAIXA");
     await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "ESTORNO", usuarioId, antes: baixa, depois: atualizada });
   });
