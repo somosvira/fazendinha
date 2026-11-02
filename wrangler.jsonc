@@ -44,6 +44,7 @@
     "staging": { "name": "fazendinha-stg" },
     "producao": { "name": "fazendinha-producao" }
   },
+  "triggers": { "crons": ["*/15 * * * *"] },
 
   "observability": {
     "enabled": true

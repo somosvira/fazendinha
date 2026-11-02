@@ -1,4 +1,5 @@
 import { FinanceiroError } from "../../services/financeiro/regras.js";
+import { nutricaoMensalRouter } from "./nutricao-mensal.js";
 import { ValorizacaoError } from "../../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
 import { zValidator } from "@hono/zod-validator";
@@ -12,6 +13,7 @@ import { EstoqueError } from "../../services/estoque/estoque.js";
 import * as dietas from "../../services/pecuaria/nutricao/dietas.js";
 import { listarReferenciasDisponiveis, revisarReferenciaLeite } from "../../services/pecuaria/leite/referencias.js";
 import * as consumo from "../../services/pecuaria/nutricao/consumo.js";
+import { consultarCustoMedio } from "../../services/pecuaria/nutricao/custo-medio.js";
 import { consultarResumo } from "../../services/pecuaria/nutricao/resumo.js";
 import { consultaFechamentosSchema, listaNutricaoSchema, paginaNutricaoSchema } from "../../services/pecuaria/nutricao/schemas.js";
 
@@ -32,6 +34,11 @@ const contexto = z.object({ loteId: uuid, propriedadeId: z.number().int().positi
 const itemConsumo = z.object({ origensLeite: z.array(uuid).min(1).max(500).optional(), produtoId: uuid, quantidadeConfirmada: z.number().nonnegative().optional(), motivoAjuste: z.string().trim().max(500).nullish(), modoEstoque: z.enum(["BAIXA_ESTOQUE", "SEM_BAIXA_JUSTIFICADA"]), justificativaSemBaixa: z.string().trim().max(500).nullish(), partidas: z.array(z.object({ partidaId: uuid, quantidade: z.number().positive(), cienciaValidadeDesconhecida: z.boolean().optional() })).optional() }).strict();
 
 export const nutricaoRouter = new Hono()
+  .route("/mensal", nutricaoMensalRouter)
+  .get("/custo-medio", async c => {
+    try { return c.json(await consultarCustoMedio(await resolverEscopoLeitura(c), verValores(c))); }
+    catch (e) { return falha(c, e); }
+  })
   .get("/resumo", validarQuery(z.object({ loteId: uuid.optional() })), async c => {
     try { return c.json(await consultarResumo(c.req.valid("query").loteId, await resolverEscopoLeitura(c), verValores(c), verReferencias(c))); }
     catch (e) { return falha(c, e); }

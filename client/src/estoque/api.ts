@@ -35,7 +35,7 @@ function qs(f?: object): string {
 }
 
 // ── Estoque: saldos + movimentos ───────────────────────────
-export interface SaldoDTO { usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; produtoId: string; nome: string; materialGeneticoId: string | null; categoria: { id: string; nome: string; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number;
+export interface SaldoDTO { usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; produtoId: string; nome: string; materialGeneticoId: string | null; categoria: { id: string; nome: string; usoGenetico: boolean } | null; unidade: UnidadeMedida; centrosCusto: { id: string; nome: string }[]; saldo: number; consumoVirtual?: number; saldoProjetado?: number;
   /** Média ponderada das entradas valorizadas no sítio; null sem base (nenhuma compra/inventário com valor). */
   custoMedio: number | null;
   /** saldo × custoMedio (0 quando custoMedio é null). */
@@ -44,6 +44,7 @@ export type OrigemMovimento = "COMPRA" | "CONSUMO_DIRETO" | "TRANSFERENCIA" | "P
 export type VinculoMovimento =
   | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
+  | { tipo: "MES_NUTRICIONAL"; id: string; loteId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: number; produtoId: string; produto: string; materialGeneticoId: string | null; centrosCusto: { id: string; nome: string }[]; tipo: "ENTRADA" | "SAIDA" | "AJUSTE"; origem: OrigemMovimento; status: "CONFIRMADO" | "REVERTIDO"; reversaoDeId: string | null; data: string; quantidade: number; custoUnitario: number | null; valorTotal: number | null; fornecedor: string | null; observacao: string | null;
   estorno?: { id: string } | null;

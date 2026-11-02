@@ -244,6 +244,7 @@ model Produto {
   insumosPreparoColostro InsumoPreparoColostro[]
   conferenciasSaldoLeite ConferenciaSaldoLeite[]
   programacoesRetiradaLeite ProgramacaoRetiradaLeite[]
+  itensConsumoDiario ItemConsumoDiario[]
   id                       String                    @id @default(uuid())
   nome                     String                    @unique
   usoGenetico              Boolean                   @default(false)
@@ -696,6 +697,8 @@ model Propriedade {
   emissoesLeite EmissaoRelatorioLeite[]
   configuracoesOrdenha ConfiguracaoOrdenha[]
   diasProducaoLeite DiaProducaoLeite[]
+  configuracoesNutricao ConfiguracaoNutricao[]
+  mesesNutricao MesNutricao[]
   politicasAcompanhamento PoliticaAcompanhamentoReprodutivo[]
   demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   relatoriosReprodutivos SnapshotRelatorioReprodutivo[]
@@ -793,6 +796,7 @@ model MovimentoEstoque {
   entregaLeite EntregaLeite?
   destinoInternoLeite DestinoInternoLeite? @relation("DestinoLeiteMovimento")
   estornoDestinoInternoLeite DestinoInternoLeite? @relation("DestinoLeiteEstorno")
+  vinculoConsumoDiario MovimentoConsumoDiario?
   id                      String                   @id @default(uuid())
   // Ordem de registro (desempate estável e rótulo "#N").
   seq                     Int                      @unique @default(autoincrement())
@@ -1154,6 +1158,7 @@ model Animal {
   CriaParto                                                  CriaParto?
   parcelasDestinoLeite ParcelaDestinoLeite[]
   participacoesProducaoLeite ParticipanteProducaoLeite[]
+  participacoesConsumoDiario ParticipacaoConsumoDiario[]
   demandasAcompanhamento DemandaAcompanhamentoReprodutivo[]
   ciclosElegibilidade VinculoPoliticaCiclo[]
   id                      String          @id @default(uuid())
@@ -1402,6 +1407,8 @@ model ComposicaoRacial {
 model Lote {
   perfilBezerreiro PerfilBezerreiro?
   ExposicaoTouro     ExposicaoTouro[]
+  configuracoesNutricao ConfiguracaoNutricao[]
+  mesesNutricao MesNutricao[]
   id            String       @id @default(uuid())
   ideagriId     Int?         @unique
   nome          String
@@ -3153,6 +3160,8 @@ model ParcelaValorizacaoEstoque {
 
 // Classificação gerencial e prova documental não alteram o valor do fato original.
 model ClassificacaoCustoPecuaria {
+  participacaoDiariaId String? @unique
+  participacaoDiaria ParticipacaoConsumoDiario? @relation(fields: [participacaoDiariaId], references: [id], onDelete: Restrict)
   manejoId String? @unique
   manejo ManejoAnimal? @relation(fields: [manejoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   participacaoConsumoId String? @unique
@@ -4708,5 +4717,105 @@ model DestinacaoColostro {
   alocacoes AlocacaoFornecimentoColostro[]
   unidades UnidadeBancoColostro[]
   @@index([propriedadeId, data])
+  @@schema("pecuaria")
+}
+
+
+// Configurações versionadas; nenhuma ativação é criada pela migration.
+model ConfiguracaoNutricao {
+  id String @id @default(uuid())
+  escopo String
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  loteId String?
+  lote Lote? @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  desde DateTime @db.Date
+  modelo String
+  diaConferencia Int
+  autorizaValidade Boolean @default(false)
+  usuarioId Int
+  criadoEm DateTime @default(now())
+  meses MesNutricao[]
+  @@unique([escopo, desde])
+  @@index([propriedadeId, desde])
+  @@schema("pecuaria")
+}
+
+model MesNutricao {
+  id String @id @default(uuid())
+  loteId String
+  lote Lote @relation(fields: [loteId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  competencia DateTime @db.Date
+  inicio DateTime @db.Date
+  configuracaoId String
+  configuracao ConfiguracaoNutricao @relation(fields: [configuracaoId], references: [id], onDelete: Restrict)
+  revisao Int @default(1)
+  revisadoEm DateTime?
+  revisadoPorId Int?
+  dias ConsumoDiario[]
+  @@unique([loteId, competencia])
+  @@index([propriedadeId, competencia])
+  @@schema("pecuaria")
+}
+
+model ConsumoDiario {
+  id String @id @default(uuid())
+  mesId String
+  mes MesNutricao @relation(fields: [mesId], references: [id], onDelete: Restrict)
+  data DateTime @db.Date
+  dietaId String?
+  dietaNome String?
+  centroCustoId String?
+  baseHash String
+  situacao String @default("PREVISTO")
+  pendencia String?
+  atualizadoEm DateTime @updatedAt
+  itens ItemConsumoDiario[]
+  participantes ParticipacaoConsumoDiario[]
+  @@unique([mesId, data])
+  @@schema("pecuaria")
+}
+
+model ParticipacaoConsumoDiario {
+  classificacaoCusto ClassificacaoCustoPecuaria?
+  id String @id @default(uuid())
+  diaId String
+  dia ConsumoDiario @relation(fields: [diaId], references: [id], onDelete: Restrict)
+  animalId String
+  animal Animal @relation(fields: [animalId], references: [id], onDelete: Restrict)
+  @@unique([diaId, animalId])
+  @@schema("pecuaria")
+}
+
+model ItemConsumoDiario {
+  id String @id @default(uuid())
+  diaId String
+  dia ConsumoDiario @relation(fields: [diaId], references: [id], onDelete: Restrict)
+  produtoId String
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  nome String
+  unidade String
+  prevista Decimal @db.Decimal(12, 3)
+  confirmada Decimal @default(0) @db.Decimal(12, 3)
+  custoLiquido Decimal @default(0) @db.Decimal(14, 2)
+  origemQuantidade String @default("CALCULADA")
+  movimentos MovimentoConsumoDiario[]
+  @@unique([diaId, produtoId])
+  @@schema("pecuaria")
+}
+
+model MovimentoConsumoDiario {
+  id String @id @default(uuid())
+  itemId String
+  item ItemConsumoDiario @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  movimentoId String @unique
+  movimento MovimentoEstoque @relation(fields: [movimentoId], references: [id], onDelete: Restrict)
+  quantidade Decimal @db.Decimal(12, 3)
+  valor Decimal @db.Decimal(14, 2)
+  motivo String
+  criadoEm DateTime @default(now())
+  @@index([itemId])
   @@schema("pecuaria")
 }

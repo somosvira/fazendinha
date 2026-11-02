@@ -1,3 +1,4 @@
+import { env } from "../../../env.js";
 import { participacaoNoEscopoOperacao, programacaoNoEscopoOperacao } from "../protocolos/operacao.escopo.js";
 import { Prisma, type ClassificacaoCustoPecuaria } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -49,6 +50,16 @@ export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtr
         for(const i of f.itens){const parcela=atribuicao.itens.find(v=>v.produtoId===i.produtoId)!;
           nutricao.push({id:p.id,fechamentoId:f.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio)} a ${dia(f.fim)}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});
         }
+      }
+    }
+  }
+  if(env.NUTRICAO_MENSAL_ENABLED&&!participacoes&&(filtro.animalId||filtro.ids?.NUTRICAO?.length)){
+    const dias=await tx.consumoDiario.findMany({where:{mes:{propriedadeId},situacao:"EFETIVADO",participantes:{some:{...(filtro.animalId?{animalId:filtro.animalId}:{}),...(filtro.ids?.NUTRICAO?{id:{in:filtro.ids.NUTRICAO}}:{})}}},include:{participantes:{include:{classificacaoCusto:true}},itens:{include:{movimentos:true}}}});
+    for(const d of dias){if(!d.participantes.length)continue;
+      const atribuicoes=calcularAtribuicao(d.participantes.map(p=>({...p,dias:1})),d.participantes.length,d.itens.map(i=>({...i,quantidadeConfirmada:i.confirmada,custoConhecido:i.custoLiquido})));
+      for(const p of d.participantes.filter(p=>(!filtro.animalId||p.animalId===filtro.animalId)&&(!filtro.ids?.NUTRICAO||filtro.ids.NUTRICAO.includes(p.id)))){
+        const atribuicao=atribuicoes.participacoes.find(a=>a.animalId===p.animalId)!;
+        for(const i of d.itens)nutricao.push({id:p.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(d.data),descricao:`Nutrição diária · ${i.nome}`,estadoFato:d.situacao,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentos.length===1?i.movimentos[0].movimentoId:null,operacaoServicoId:null,valorMaterial:atribuicao.itens.find(a=>a.produtoId===i.produtoId)!.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(d.data),fim:dia(d.data)}});
       }
     }
   }
@@ -151,7 +162,7 @@ function conferirClassificacao(f:FonteCusto,c:ClassificacaoCusto){
 export async function classificarCusto(input:ClassificacaoCustoInput,usuarioId:number|null){input=classificacaoCustoSchema.parse(input);return transacaoPecuaria(async tx=>operacaoIdempotenteTx(tx,input,usuarioId,"CLASSIFICAR_CUSTO",async()=>{
   let f=await fonteTx(tx,input.tipo,input.fonteId,input.propriedadeId);await travarFonteTx(tx,f);f=await fonteTx(tx,input.tipo,input.fonteId,input.propriedadeId);
   await exigirPeriodoAberto(tx,input.propriedadeId,new Date(f.data));
-  const campo=campoFonte(input.tipo);const antes=await tx.classificacaoCustoPecuaria.findFirst({where:{[campo]:f.id}});
+  const campo=input.tipo==="NUTRICAO"&&env.NUTRICAO_MENSAL_ENABLED&&await tx.participacaoConsumoDiario.findUnique({where:{id:f.id}})?"participacaoDiariaId":campoFonte(input.tipo);const antes=await tx.classificacaoCustoPecuaria.findFirst({where:{[campo]:f.id}});
   if((antes?.versao??0)!==input.versao)throw new RebanhoError("CONFLITO","A classificação mudou; recarregue antes de confirmar");
   const nova:ClassificacaoCusto={finalidade:input.finalidade,materialNaoAplicavel:input.materialNaoAplicavel,servicoNaoAplicavel:input.servicoNaoAplicavel,coberturaServico:input.coberturaServico,valorMaterialDocumentado:input.materialDocumentado?.valor??null};
   conferirClassificacao(f,nova);
