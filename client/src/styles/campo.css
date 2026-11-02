@@ -2,8 +2,7 @@
  *
  * Quem usa: quem administra a fazenda, conferindo pendências e registrando fatos
  * o dia todo. Por isso: leitura antes de decoração, números alinhados, uma única
- * família tipográfica, nenhuma sombra decorativa e um só marcador de destaque
- * (o dourado do colostro) para "onde você está" e "hoje".
+ * família tipográfica e nenhuma sombra decorativa. A paleta é a da cooperativa.
  *
  * Os tokens ficam em cooperativa-theme.css. Este arquivo substitui a antiga
  * camada identidade-rural.css e é carregado por último em App.tsx.

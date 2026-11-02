@@ -1,7 +1,7 @@
 /* Abas compartilhadas. A variante de botões e filtros não recebe esta classe. */
 /* Caderno de campo: abas são marcadores de seção, não pastas. Sem contorno, sem
- * fundo; a seção atual leva o traço dourado (a mesma marca de "você está aqui"
- * usada na navegação lateral). Ícones saem: o rótulo já diz o que é. */
+ * fundo; a seção atual leva o traço turquesa (--campo-ouro). Ícones saem: o
+ * rótulo já diz o que é. */
 :root .app-main [role="tablist"].abas-pasta {
   display: flex;
   flex-wrap: nowrap;

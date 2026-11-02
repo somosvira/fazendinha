@@ -12,7 +12,7 @@ Direção visual: [Financeiro](financeiro-cooperativa/design.md) e [Pecuária](p
 
 Descrições auxiliares, instruções de uso e ressalvas complementares ficam em ajuda contextual shadcn (`AjudaCampo`), sem rodapés explicativos ou textos pequenos soltos sob cartões e títulos. Títulos, rótulos de campos, valores, estados, unidades, datas e ações continuam diretamente visíveis; erros e impedimentos necessários para agir também permanecem explícitos. O rodapé de ações é preservado quando faz parte do fluxo.
 
-- Paleta, tipografia, raios e o marcador de "onde você está" seguem o [caderno de campo](caderno-de-campo.md): fundo branco-cal, verde-pasto nas ações, dourado só na página e aba atuais, Public Sans com números tabulares e nenhuma sombra no que está na página.
+- Paleta da cooperativa: canvas quase branco (#f7f8fa), lateral cinza esverdeada (#dce8e5), ação principal petróleo (#006f68) e turquesa (#009c91) como marcador da aba atual. Tipografia, raios e superfícies seguem o [caderno de campo](caderno-de-campo.md): Public Sans com números tabulares e nenhuma sombra no que está na página.
 - Listas operacionais abrem em tabela; cartões ficam no alternador.
 - Sidebar, menus, seletores e portais de modais recebem os mesmos tokens.
 - Painéis com raio de 8 px; controles com raio de 6 px e alvos de toque de 40–44 px.
