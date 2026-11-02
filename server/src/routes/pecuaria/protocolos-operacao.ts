@@ -62,7 +62,7 @@ protocolosOperacaoRouter.get("/origens-fato", async c => {
   try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); return c.json(await consultas.listarOrigensFatoOperacao(await resolverEscopoLeitura(c), consultaOrigensFatoOperacaoSchema.parse(filtros))); } catch (e) { return falha(c, e); }
 });
 protocolosOperacaoRouter.get("/ficha-animal", async c => {
-  try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); return c.json(await listarProtocolosAnimal(await resolverEscopoLeitura(c), consultaProtocolosAnimalSchema.parse(filtros))); } catch (e) { return falha(c, e); }
+  try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); const consulta = consultaProtocolosAnimalSchema.parse(filtros); return c.json(await listarProtocolosAnimal(await resolverEscopoLeitura(c), consulta)); } catch (e) { return falha(c, e); }
 });
 protocolosOperacaoRouter.get("/vinculos-coletivos", async c => {
   try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); const consulta = consultaVinculosColetivosOperacaoSchema.parse(filtros); return c.json(await consultas.listarVinculosColetivosOperacao(await resolverEscopoLeitura(c), consulta)); } catch (e) { return falha(c, e); }
