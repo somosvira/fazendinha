@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, type Propriedade } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import { prisma } from '../../../db.js';
 import { exigirBancoIntegracaoPecuaria } from '../../../lib/banco-pecuaria-integration.fixture.js';
@@ -17,14 +17,16 @@ const suite = process.env.PECUARIA_DB_INTEGRATION === '1' ? describe : describe.
 const data = new Date('2026-10-26T00:00:00Z'), desde = new Date('2026-10-25T00:00:00Z');
 const rollback = new Error('ROLLBACK_EXCLUSIVO_FIXTURE_ALIMENTACAO');
 
-/** Todas as fixtures ficam na transação, inclusive os fatos imutáveis. Jamais
- * remove fatos do seed, desabilita triggers ou deixa registros commitados. */
+/** Somente o sítio próprio é confirmado para a consulta de propriedadePrincipalId,
+ * que usa outra conexão. Fatos operacionais/imutáveis ficam na transação revertida;
+ * ao final removemos apenas esse sítio, sem depender da seed ou limpar dados alheios. */
 async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<ReturnType<typeof preparar>>) => Promise<void>) {
   exigirBancoIntegracaoPecuaria();
   const nome = `Alimentação R01 ${randomUUID()}`;
+  const sitio = await prisma.propriedade.create({ data: { nome } });
   try {
     await prisma.$transaction(async tx => {
-      const fixture = await preparar(tx, nome);
+      const fixture = await preparar(tx, nome, sitio);
       await conferir(tx);
       await teste(tx, fixture);
       await conferir(tx);
@@ -32,14 +34,16 @@ async function comFixture(teste: (tx: Prisma.TransactionClient, f: Awaited<Retur
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 30_000 });
     throw new Error('A transação de fixture deveria ter sido desfeita');
   } catch (erro) { if (erro !== rollback) throw erro; }
-  finally { expect(await prisma.propriedade.count({ where: { nome } })).toBe(0); }
+  finally {
+    await prisma.propriedade.delete({ where: { id: sitio.id } });
+    expect(await prisma.propriedade.count({ where: { id: sitio.id } })).toBe(0);
+  }
 }
 async function conferir(tx: Prisma.TransactionClient) {
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL IMMEDIATE');
   await tx.$executeRawUnsafe('SET CONSTRAINTS ALL DEFERRED');
 }
-async function preparar(tx: Prisma.TransactionClient, nome: string) {
-  const sitio = await tx.propriedade.create({ data: { nome } });
+async function preparar(tx: Prisma.TransactionClient, nome: string, sitio: Propriedade) {
   const centro = await tx.centroCusto.create({ data: { nome } });
   const lote = await tx.lote.create({ data: { propriedadeId: sitio.id, nome, centroCustoId: centro.id } });
   const animal = await tx.animal.create({ data: { brinco: randomUUID(), sexo: 'F', dataNascimento: new Date('2026-10-01'), dataEntrada: desde, origem: 'COMPRADO' } });
