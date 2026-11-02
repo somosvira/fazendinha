@@ -80,3 +80,26 @@ O card de custo médio usa o último mês civil encerrado: custo conhecido divid
 Em Configurações → Pecuária → Nutrição, o formulário separa aplicação (padrão do sítio ou exceção de lote), modelo de baixa, conferência/vigência e autorização de seleção por validade. Exibe a regra vigente, explica o efeito dos três modelos e exemplifica o prazo no mês seguinte. Uma revisão antecede a escrita, conservando trava contra submissão concorrente, erros e campos. O servidor continua responsável pelas restrições temporais, sobreposições e autorização; a revisão visual não as substitui.
 
 Na configuração, a data de referência é escolhida pelo calendário; seu dia define a recorrência mensal, com vencimento no último dia quando necessário. A vigência é calculada automaticamente: amanhã na primeira ativação ou primeiro dia do próximo mês em alterações. Os campos têm dimensões iguais e o início é somente leitura. A interface usa “lotes de estoque” para identificar os lotes dos produtos.
+
+## Roteiro de homologação operacional
+
+Execute em ambiente de desenvolvimento/homologação, com automação desligada e lotes/produtos de teste identificados. Não reutilize estoque operacional para ensaios. Validação automatizada de serviço não substitui o aceite das pessoas que executarão a rotina.
+
+| Cenário | Ação | Resultado esperado |
+|---|---|---|
+| Visão por lote | Alternar tabela/cartões, buscar dieta e filtrar sem dieta/programação | Mesmos lotes autorizados, dieta e próxima troca identificáveis; ações respeitam a permissão |
+| Atribuição | Selecionar receita publicada e lote; conferir composição e início | Prévia mostra quantidades por unidade, dieta atual, programação e modelo efetivo; falha de consulta impede confirmação |
+| Configuração inicial | Selecionar sítio sem configuração e escolher dia no calendário | Vigência automática amanhã; o dia escolhido define a recorrência; revisão mostra escopo e efeito |
+| Alteração e exceção | Alterar regra existente ou configurar exceção do lote | Início automático no próximo mês; exceção vigente prevalece; histórico permanece intacto |
+| Automático | Processar um dia com 1 animal e 10 kg/dia, custo R$ 2/kg | Uma baixa de 10 kg e R$ 20; confirmar o mês sem diferença não gera outra baixa |
+| Manual | Processar dias; confirmar um dia ou vários com quantidades revisadas | Não há baixa antes da confirmação; somente dias selecionados afetam estoque e custo |
+| Provisório | Processar consumo diário e conferir o mês | Estimativa afeta saldo estimado; estoque confirmado só muda na confirmação mensal |
+| Correção | Reabrir com motivo e corrigir total de 10 kg para 8 kg | Movimento compensatório de 2 kg; total líquido R$ 16; original preservado e justificativa auditada |
+| Reenvio/concorrência | Repetir a mesma confirmação e executar chamadas concorrentes | Nenhuma duplicação de estoque/custo; revisão divergente exige reconferência |
+| Mudança de efetivo/dieta | Alterar presença ou vigência em uma data e conferir dias afetados | Quantidades seguem animais presentes e dieta factual; base já efetivada exige reconciliação explícita |
+| Calendário e alertas | Escolher dia 31 e verificar fevereiro; manter mês sem conferir após o prazo | Vencimento no último dia do mês; pendência fica atrasada até a conferência |
+| Pendências de estoque | Ensaiar saldo insuficiente, lote vencido e valor desconhecido | Pendência explicada; nenhuma baixa forçada ou custo desconhecido transformado em zero |
+| Custo médio | Consultar base completa, parcial, ausente e custo zero comprovado | Média ponderada apenas sobre a base elegível, com período e cobertura explícitos |
+| Acessos | Repetir consultas com perfil restrito e sítio diferente | API impede escrita/escopo indevido e não retorna valores sem permissão |
+
+Antes da liberação, registrar responsável, data, ambiente e evidência de cada cenário; não marcar como homologado com base somente em mocks ou testes unitários. Conferir CI, migration aplicável e flags em staging antes do piloto. Habilitar automação é uma ação separada da publicação do código; acompanhar o primeiro processamento e a primeira conferência mensal.
