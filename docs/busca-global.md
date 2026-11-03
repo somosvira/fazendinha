@@ -2,6 +2,10 @@
 
 A busca global (`Ctrl/⌘ K` ou lupa da navegação) reúne registros reais, páginas e atalhos dos domínios ativos. Os filtros Tudo, Registros, Páginas e Ações conservam o termo digitado. O desenho aprovado está em `client/mockups/busca-global/index.html`; seus dados são ilustrativos e não provam disponibilidade.
 
+## Busca exclusiva de animais
+
+`Ctrl/⌘ Shift K` abre o modal em modo exclusivo de animais. A consulta usa `GET /api/busca?q=&tipos=animal`, com até 20 resultados, preservando sítio, permissões e o destino da ficha exata. Páginas e ações ficam fora desse modo; `tipos` aceita somente `animal`. Repetir o atalho do modo aberto fecha o modal; o outro atalho alterna o modo. A troca limpa a consulta e mantém o foco no campo. O foco da entrada é indicado por uma linha discreta, sem o contorno geral dos campos de formulário. Enter abre a ficha, setas navegam e Escape fecha.
+
 ## Comportamento
 
 Páginas e ações vêm de um catálogo local e aparecem imediatamente. Registros são consultados em `GET /api/busca?q=`, após 200 ms sem digitação. São necessárias duas letras, ou um único dígito para identificadores curtos. A consulta aceita até 60 caracteres, ignora diferenças de caixa e acentos e exige todas as palavras. Caracteres `%`, `_` e `!` são tratados literalmente. Identificadores técnicos são encontrados pela igualdade completa; não entram como fragmentos que produziriam resultados aleatórios numa busca numérica.

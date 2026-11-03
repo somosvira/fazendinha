@@ -212,3 +212,33 @@ it("Enter prioriza o registro encontrado quando a resposta chega depois das pág
   fireEvent.keyDown(input, { key: "Enter" });
   expect(props.onNav).toHaveBeenCalledWith("estoque", "p", "/estoque/produtos/p");
 });
+
+describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
+  it("consulta só animais, sem páginas, ações ou mini abas, e abre a ficha", async () => {
+    const vaca = { tipo: "animal", entidadeId: "a1", label: "DEV-019 — Lactantes 19", sublabel: "Rebanho › Sede", tab: "pec-rebanho", grupo: "Animais", caminho: "/pecuaria/rebanho/animais/a1" };
+    const lote = { tipo: "lote", entidadeId: "l1", label: "Lactantes", sublabel: "Rebanho", tab: "pec-rebanho", grupo: "Lotes de animais", caminho: "/pecuaria/rebanho/lotes/l1" };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [vaca, lote] });
+    vi.stubGlobal("fetch", fetchMock); vi.useFakeTimers();
+    const props = baseProps();
+    render(h(CommandPalette, { ...props, modo: "animais" as const }));
+    const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
+    fireEvent.change(input, { target: { value: "rebanho" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/busca?q=rebanho&tipos=animal");
+    expect(screen.getByText("DEV-019 — Lactantes 19")).toBeTruthy();
+    expect(screen.queryByText("Lactantes")).toBeNull();
+    expect(screen.queryByText("Rebanho")).toBeNull(); // página do catálogo não aparece
+    expect(screen.queryByRole("navigation", { name: "Tipos de resultado" })).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho", "a1", "/pecuaria/rebanho/animais/a1");
+  });
+});
+
+it("trocar para a busca só de animais com a caixa aberta mantém o foco no campo", () => {
+  const props = baseProps();
+  const { rerender } = render(h(CommandPalette, { ...props, modo: "tudo" as const }));
+  rerender(h(CommandPalette, { ...props, modo: "animais" as const }));
+  const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
+  expect(document.activeElement).toBe(input);
+  expect(screen.queryByText("Digite para buscar")).toBeNull();
+});
