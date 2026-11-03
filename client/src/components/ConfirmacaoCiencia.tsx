@@ -25,6 +25,6 @@ export function ConfirmacaoCiencia({ id, checked, onChange, children, erro, disa
       <span>{children}{obrigatorio && <span aria-hidden="true"> *</span>}</span>
     </label>
     {descricao && <p id={`${id}-descricao`} className="text-xs text-ink-3">{descricao}</p>}
-    {erro && <p id={`${id}-erro`} role="alert" className="flex items-start gap-1.5 text-xs text-red-700"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
+    {erro && <p id={`${id}-erro`} role="alert" className="flex items-start gap-1.5 text-xs text-destructive"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
   </div>;
 }

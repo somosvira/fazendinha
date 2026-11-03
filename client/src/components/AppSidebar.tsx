@@ -13,13 +13,14 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { LayoutDashboard, Bell, Baby, GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
+import { LayoutDashboard, Bell, GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
 import { VacaIcon } from "./icons/VacaIcon";
+import { BezerroIcon } from "./icons/BezerroIcon";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
 import { PAPEIS, type User } from "@/data/acessos";
@@ -48,7 +49,7 @@ type IconeNavegacao = ComponentType<SVGProps<SVGSVGElement>>;
 
 const ICON_FINANCEIRO: Partial<Record<Tab, IconeNavegacao>> = { gerencial: LayoutDashboard, gastos: CircleDollarSign, caixinha: Wallet, cadastros: Settings, plano: Settings, relatorio: FileText };
 
-const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-alertas": Bell, "pec-bezerreiro": Baby, "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": GitBranch, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
+const ICON_PECUARIA: Partial<Record<Tab, IconeNavegacao>> = { "pec-alertas": Bell, "pec-bezerreiro": BezerroIcon, "pec-rebanho": VacaIcon, "pec-sanidade": HeartPulse, "pec-nutricao": Leaf, "pec-reproducao": GitBranch, "pec-visitas": ClipboardList, "pec-relatorios": FileText, "pec-leite": Milk };
 
 type AreaTrabalhoId = "pecuaria";
 type NavItem = { id: Tab; label: string };

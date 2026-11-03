@@ -124,7 +124,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       </Panel>}
     </>}
     {produto && sitioId && podeAcessarArea("financeiro") && (!!usuario?.dono || !!usuario?.flags.includes("verValores")) && <ValorizacaoProduto produtoId={produtoId} propriedadeId={sitioId} podeEditar={podeEditar} onSalvo={() => setRevisao(r => r+1)} />}
-    {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="Estoque" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
+    {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
       <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><AjudaCampo rotulo="Ajuda: renomear lote" texto="A alteração ficará no histórico de auditoria." /></div></form>
     </DialogFinanceiro>}
     {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}

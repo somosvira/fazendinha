@@ -8,6 +8,7 @@ import { formatarLitros } from "./modelo";
 import { DialogComercialLeite } from "./ComercialConsultaLeite";
 import { lerValorCorrecao, nomeEstadoVenda, type VendaLeiteHistorico, type VendasLeiteHistorico } from "./vendas-types";
 import "./operacoes.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 interface Props {
   produtoId: string; data: string; de?: string; operacaoInicial?: string;
   propriedadeId: number | null; config: ConfiguracoesFinanceiras | null;
@@ -41,7 +42,7 @@ export function HistoricoVendasLeite({ produtoId, data, de, operacaoInicial, pro
         { chave: "estado", titulo: "Situação", celula: v => nomeEstadoVenda(v.estadoFinanceiro) },
         { chave: "acoes", titulo: "Ações", acoes: true, celula: v => <><Button variant="outline" onClick={() => { setSelecionada(v); setCorrigir(false); }}>Ver venda #{v.numero}</Button>{podeLancar && corrigivel(v) && <Button variant="outline" disabled={!config} onClick={() => { setSelecionada(v); setCorrigir(true); }}>Corrigir venda #{v.numero}</Button>}</> },
       ]} />
-      {!linhas.length && <p>Nenhuma venda registrada para o filtro no período.</p>}
+      {!linhas.length && <Empty>Nenhuma venda registrada para o filtro no período.</Empty>}
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação de versões comerciais" substantivo="versões" idSelect="pagina-versoes-leite" onPagina={setPagina} />
     </>}
     {aviso && <p role="status">{aviso}</p>}

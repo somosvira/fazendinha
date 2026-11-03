@@ -16,6 +16,7 @@ export function EstadoLeite({ texto, pendente = false, anulado = false }: {texto
 }
 export function ComposicaoNaturezas({ itens, rotulo = 'Composição do volume' }: {itens: {natureza:string;litros:number|null}[];rotulo?:string}) {
   const segmentos = segmentosNatureza(itens);
+  if (!segmentos.length && !itens.some(p => p.litros != null)) return <p className="leite-composicao-vazia">Sem volume aferido para distribuir entre comercial, não comercial e colostro.</p>;
   return <div className="leite-composicao-visual">
     {!!segmentos.length && <div className="leite-barra-naturezas" role="img" aria-label={`${rotulo}: ${segmentos.map(s=>`${s.nome??s.natureza}: ${formatarLitros(s.litros)}`).join('; ')}`}>
       {segmentos.map(s=><span key={s.natureza} className={s.cor??'pendente'} style={{flexGrow:s.litros}} />)}

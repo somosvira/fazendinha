@@ -142,7 +142,7 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
       onChange={(e) => digitar(e.target.value)}
       onBlur={() => setConferido(true)}
       onInvalid={() => setConferido(true)}
-      className="block w-full rounded-lg border border-border bg-white p-2.5 pr-11 font-normal tabular-nums disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-red-700"
+      className="block w-full rounded-lg border border-border bg-card p-2.5 pr-11 font-normal tabular-nums disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-ink-3 aria-[invalid=true]:border-destructive"
       {...aria}
       aria-invalid={conferido && erro ? true : aria["aria-invalid"]}
       aria-describedby={[aria["aria-describedby"], conferido && erro ? erroId : null].filter(Boolean).join(" ") || undefined}
@@ -156,10 +156,10 @@ export function DatePicker({ id, value, onChange, min, max, disabled = false, re
       <PopoverContent align="end" collisionPadding={12} className={cn("max-h-[var(--radix-popover-content-available-height)] w-[min(300px,calc(100vw-24px))] overflow-y-auto bg-background p-4", popoverClassName)}>
         <div className="mb-3 flex items-center gap-1.5">
           <Button type="button" variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => mudarVista(vista.getFullYear(), vista.getMonth() - 1)}><ChevronLeft size={16} /></Button>
-          <SelectCampo aria-label="Mês" value={vista.getMonth()} onValueChange={(valorSelecionado) => mudarVista(vista.getFullYear(), Number(valorSelecionado))} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px]">
+          <SelectCampo aria-label="Mês" value={vista.getMonth()} onValueChange={(valorSelecionado) => mudarVista(vista.getFullYear(), Number(valorSelecionado))} className="min-w-0 flex-1 rounded-md border border-border bg-card px-1.5 py-1 font-sans text-[15px]">
             {PT_MONTHS.map((nome, i) => <option key={nome} value={i}>{nome}</option>)}
           </SelectCampo>
-          <SelectCampo aria-label="Ano" value={vista.getFullYear()} onValueChange={(valorSelecionado) => mudarVista(Number(valorSelecionado), vista.getMonth())} className="rounded-md border border-border bg-card px-1.5 py-1 font-serif text-[15px] tabular-nums">
+          <SelectCampo aria-label="Ano" value={vista.getFullYear()} onValueChange={(valorSelecionado) => mudarVista(Number(valorSelecionado), vista.getMonth())} className="rounded-md border border-border bg-card px-1.5 py-1 font-sans text-[15px] tabular-nums">
             {anos.map((a) => <option key={a} value={a}>{a}</option>)}
           </SelectCampo>
           <Button type="button" variant="ghost" size="icon" aria-label="Próximo mês" onClick={() => mudarVista(vista.getFullYear(), vista.getMonth() + 1)}><ChevronRight size={16} /></Button>

@@ -140,7 +140,7 @@ export function AgendaSanitaria({
           >
             <ChevronRight size={16} aria-hidden />
           </Button>
-          <strong aria-live="polite" className="capitalize">
+          <strong aria-live="polite">
             {nomeMes(mes)}
           </strong>
           <Button secondary onClick={() => setMes(hoje.slice(0, 7))}>

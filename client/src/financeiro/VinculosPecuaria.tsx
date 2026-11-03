@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { comPropriedade } from "../propriedadeScope";
 import { navegarPara } from "../router";
 import { podeAcessarArea } from "../estoque/navegacao";
-import { dataBR } from "./financeiro-ui";
+import { dataBR, Empty } from "./financeiro-ui";
 
 type Vinculo = { tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; id: string; propriedadeId: number; animalId: string; animalBrinco: string; data: string; nome: string; situacao: string; quantidadeDestinada: string | null; rateioServico: string | null };
 type Dados = { fatos: Vinculo[]; itensDiretos: Array<{ id: string; descricao: string; unidade: string; quantidadeComprada: string; quantidadeDestinada: string; quantidadeDisponivel: string }> };
@@ -31,7 +31,7 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
     {!dados && !erro && <p className="mt-3 text-sm">Carregando vínculos…</p>}
     {dados && <>
       {dados.itensDiretos.map((i) => <p key={i.id} className="mt-3 rounded-lg bg-surface-2 p-3 text-sm"><strong>{i.descricao}</strong> · comprado {i.quantidadeComprada} {i.unidade} · destinado {i.quantidadeDestinada} {i.unidade} · disponível {i.quantidadeDisponivel} {i.unidade}</p>)}
-      {dados.fatos.length === 0 ? <p className="mt-4 rounded-lg border border-border bg-muted p-4 text-sm text-ink-3">Nenhum procedimento vinculado.</p> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {
+      {dados.fatos.length === 0 ? <Empty>Nenhum procedimento vinculado.</Empty> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {
         const tipo = f.tipo === "APLICACAO" ? "aplicacao" : f.tipo === "EXAME" ? "exame" : "execucao";
         const param = `aba=${f.tipo === "APLICACAO" ? "aplicacoes" : f.tipo === "EXAME" ? "exames" : "agenda"}&detalheTipo=${tipo}&detalheId=${encodeURIComponent(f.id)}`;
         const href = f.tipo === "TENTATIVA" ? `/pecuaria/reproducao?tentativaId=${encodeURIComponent(f.id)}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}` : `/pecuaria/rebanho/sanidade?${param}&animalId=${encodeURIComponent(f.animalId)}&propriedadeId=${f.propriedadeId}`;

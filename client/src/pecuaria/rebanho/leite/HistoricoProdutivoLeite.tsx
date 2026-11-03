@@ -41,7 +41,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
   animalId: string; propriedadeId: number | null; recarregarToken?: number;
   lactacao?: Omit<LactacaoIndividualProps, "animalId" | "recarregarToken" | "compor">;
 }) {
-  const visualizacao = useVisualizacaoConsulta("animalProducaoVisualizacao", "leite");
+  const visualizacao = useVisualizacaoConsulta("animalProducaoVisualizacao", "leite", "visual");
   const [periodo, setPeriodo] = useState(periodoProducao);
   const [pagina, setPagina] = useState(1), [busca, setBusca] = useState(""), [situacao, setSituacao] = useState("todas"), [filtros, setFiltros] = useState(false);
   const [detalhe, setDetalhe] = useState<DiaHistoricoProdutivo | null>(null);

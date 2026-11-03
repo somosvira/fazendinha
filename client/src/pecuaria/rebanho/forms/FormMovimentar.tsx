@@ -83,10 +83,10 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
               <div className="break-words"><strong>{a.brinco}</strong>{a.nome ? ` · ${a.nome}` : ""}</div>
               <div className="mt-0.5 break-words text-sm text-ink-3">{localizacaoAtual(a)}</div>
             </div>
-            <button type="button" aria-label={`Tirar ${a.brinco}`} onClick={() => tirar(a.id)} className="shrink-0 rounded-lg p-1.5 text-ink-2 hover:bg-white hover:text-red-700"><X size={14} /></button>
+            <button type="button" aria-label={`Tirar ${a.brinco}`} onClick={() => tirar(a.id)} className="shrink-0 rounded-lg p-1.5 text-ink-2 hover:bg-white hover:text-destructive"><X size={14} /></button>
           </li>)}
         </ul>
-        {!lista.length && <p role="alert" className="mt-1.5 text-sm text-red-700">Nenhum animal selecionado — tire menos animais ou cancele para escolher outros.</p>}
+        {!lista.length && <p role="alert" className="mt-1.5 text-sm text-destructive">Nenhum animal selecionado — tire menos animais ou cancele para escolher outros.</p>}
       </div>
 
       {destinoFixo

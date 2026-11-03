@@ -20,7 +20,7 @@ describe("App — gate de autenticação", () => {
     history.replaceState(null, "", "/financeiro/operacoes?status=aberta");
     render(<App />);
 
-    expect(screen.getByRole("heading", { name: "Bem-vindo de volta" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Entrar" })).not.toBeNull();
     await waitFor(() => {
       expect(location.pathname).toBe("/signin");
       expect(new URLSearchParams(location.search).get("returnTo")).toBe("/financeiro/operacoes?status=aberta");

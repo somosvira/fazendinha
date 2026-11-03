@@ -8,7 +8,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 interface LinhaProducao { data: string; brinco: string; nome: string | null; ordenha: string; natureza: string; estado: string; litros: number | null; confirmada: boolean; fonte?: string; finalidade?: { estado: string; dataOperacional?: string; regra?: string } | null }
-const naturezas: Record<string,string> = { COMERCIAL: "Comercial", NAO_COMERCIAL: "Descarte", COLOSTRO: "Colostro", A_CLASSIFICAR: "A classificar" };
+const naturezas: Record<string,string> = { COMERCIAL: "Comercial", NAO_COMERCIAL: "Não comercial", COLOSTRO: "Colostro", A_CLASSIFICAR: "A classificar" };
 export function csvProducaoLeite(linhas: LinhaProducao[]) {
   const celula = (v: unknown) => { const texto = v === null || v === undefined ? "Não informado" : String(v); return `"${(/^\s*[=+@-]/.test(texto) ? "'" : "") + texto.replace(/"/g, '""')}"`; };
   return [["Data produção", "Animal ou tanque", "Nome", "Ordenha", "Natureza", "Estado", "Litros medidos", "Confirmada no estoque", "Finalidade na produção", "Data da finalidade", "Regra da finalidade"], ...linhas.map(l => [l.data,l.brinco,l.nome,l.ordenha,naturezas[l.natureza] ?? l.natureza,l.estado,l.litros,l.confirmada ? "Sim" : "Não",l.fonte === "GERAL" ? "Aferição geral do tanque" : l.finalidade?.estado === "COMPROVADA" ? "Leite comprovada na data" : "Finalidade histórica a conciliar",l.finalidade?.dataOperacional ?? l.data,l.finalidade?.regra ?? null])].map(l => l.map(celula).join(";")).join("\r\n");

@@ -424,7 +424,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
 
     <Panel className="rebanho-lista mt-4 overflow-clip">
       <div className="rebanho-filtros-principais"><BarraConsulta>
-        <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
+        <label className="relative w-full min-w-0 flex-[1_1_240px] sm:w-auto"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-card py-2.5 pl-9 pr-3 text-sm" /></label>
         <Button secondary className="consulta-mais-filtros" onClick={abrirFiltros}><Settings2 size={16} /> Filtros</Button>
         <OrdenarConsulta controle={{ campo: opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao, campos: [{ chave: "brinco", rotulo: "Brinco", tipo: "texto" }, { chave: "ultimoPeso", rotulo: "Último peso", tipo: "numero" }, { chave: "gmd", rotulo: "GMD", tipo: "numero" }, { chave: "nascimento", rotulo: "Nascimento", tipo: "data" }, { chave: "entrada", rotulo: "Data de entrada", tipo: "data" }], mudar: v => { setOrdenacao(acharOrdenacao(v.campo, v.direcao)); setPagina(1); setSelecionados(new Map()); }, restaurar: () => { setOrdenacao(ORDENACAO_PADRAO); setPagina(1); setSelecionados(new Map()); } }} />
       </BarraConsulta>
@@ -457,18 +457,18 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         {campoMultiplo("racaIds", "Raça", catalogos?.racas.map(r => ({value:r.id,label:r.nome})) ?? [])}
         <label className="flex min-w-0 flex-col gap-1.5 text-sm">Critério especial de categoria<SelectCampo aria-label="Critério especial de categoria" value={[CATEGORIA_SEM,CATEGORIA_FORCADA].includes(rascunho.categoriaId) ? rascunho.categoriaId : ""} onValueChange={valorSelecionado => { setRascunho(r => r && ({ ...r, categoriaId: valorSelecionado, multiplos: { ...r.multiplos, categoriaIds: [] } })); }}><option value="">Sem critério especial</option><option value={CATEGORIA_SEM}>Sem categoria</option><option value={CATEGORIA_FORCADA}>Só forçadas</option></SelectCampo></label>
         <GrupoCamposFiltro titulo="Idade em meses">
-          <CampoFiltro rotulo="Mínima"><input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={e => editarFiltro("idadeMinMeses", e.target.value)} className="w-full rounded-lg border border-border bg-white px-3" /></CampoFiltro>
-          <CampoFiltro rotulo="Máxima"><input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={e => editarFiltro("idadeMaxMeses", e.target.value)} className="w-full rounded-lg border border-border bg-white px-3" /></CampoFiltro>
+          <CampoFiltro rotulo="Mínima"><input aria-label="Idade mínima (meses)" type="number" min={0} inputMode="numeric" placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={e => editarFiltro("idadeMinMeses", e.target.value)} className="w-full rounded-lg border border-border bg-card px-3" /></CampoFiltro>
+          <CampoFiltro rotulo="Máxima"><input aria-label="Idade máxima (meses)" type="number" min={0} inputMode="numeric" placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={e => editarFiltro("idadeMaxMeses", e.target.value)} className="w-full rounded-lg border border-border bg-card px-3" /></CampoFiltro>
         </GrupoCamposFiltro>
         {campoMultiplo("aptidoes", "Finalidade", [{value:"LEITE",label:"Leite"},{value:"CORTE",label:"Corte"},{value:"REPRODUCAO",label:"Reprodução"}])}
         {campoMultiplo("papeisReprodutivos", "Papel reprodutivo", [{value:"NENHUM",label:"Nenhum"},{value:"RECEPTORA",label:"Receptora"},{value:"DOADORA",label:"Doadora"}])}
 
         {mostrarBaixaRascunho && <>
-          <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<SelectCampo aria-label="Filtrar por tipo de baixa" value={rascunho.tipoBaixa} onValueChange={(valor) => editarFiltro("tipoBaixa", valor as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
+          <label className="flex min-w-0 flex-col gap-1.5 text-sm">Tipo de baixa<SelectCampo aria-label="Filtrar por tipo de baixa" value={rascunho.tipoBaixa} onValueChange={(valor) => editarFiltro("tipoBaixa", valor as TipoBaixa | "")} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-card px-3 text-sm"><option value="">Todos os tipos de baixa</option>{TIPOS_BAIXA_FILTRO.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
           <GrupoCamposFiltro><CampoFiltro rotulo="Baixa de"><DatePicker aria-label="Baixa de" value={rascunho.baixaDe} onChange={valor => editarFiltro("baixaDe", valor)} /></CampoFiltro><CampoFiltro rotulo="Baixa até"><DatePicker aria-label="Baixa até" value={rascunho.baixaAte} onChange={valor => editarFiltro("baixaAte", valor)} /></CampoFiltro></GrupoCamposFiltro>
         </>}
         <label className="flex min-w-0 flex-col gap-1.5 text-sm text-ink-2">Ordenar por
-          <SelectCampo aria-label="Ordenar por" value={rascunho.ordenacao} onValueChange={(valor) => editarFiltro("ordenacao", valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-white px-3 text-sm">
+          <SelectCampo aria-label="Ordenar por" value={rascunho.ordenacao} onValueChange={(valor) => editarFiltro("ordenacao", valor)} className="h-[42px] w-full min-w-0 rounded-lg border border-border bg-card px-3 text-sm">
             {OPCOES_ORDENACAO.map((o) => <option key={o.valor} value={o.valor}>{o.rotulo}</option>)}
           </SelectCampo>
         </label>

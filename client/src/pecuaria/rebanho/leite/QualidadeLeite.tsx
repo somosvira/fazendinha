@@ -41,6 +41,7 @@ import type {
 import { HistoricoParametrosQualidade } from "./HistoricoParametrosQualidade";
 import { CamposDatasQualidade, DatasQualidade } from "./DatasQualidade";
 import { LaudosQualidade } from "./LaudosQualidade";
+import { Empty } from "@/financeiro/financeiro-ui";
 const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
 export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
@@ -218,7 +219,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
 
 
-        {!formatos.length && <p>Nenhum formato configurado.</p>}
+        {!formatos.length && <Empty>Nenhum formato configurado.</Empty>}
         {formatos.map((f) => (
           <div className="leite-form-inline" key={f.id}>
             <span>
@@ -962,7 +963,7 @@ function OrigemQualidade({
             </div>
           ))}
           {dados && !dados.itens.length && (
-            <p>Nenhuma origem registrada neste recorte.</p>
+            <Empty>Nenhuma origem registrada neste recorte.</Empty>
           )}
           {dados && (
             <div className="leite-form-inline">

@@ -32,7 +32,7 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
   const semSubstituto = acao === "VINCULAR_SUBSTITUTO" && (carregando || !!erroConsulta || !selecionado || selecionado.id!==fatoId);
   return <><Button secondary onClick={()=>{setChave(crypto.randomUUID());setMotivo("");setCiencia(false);setErro(null);setAcao("ENCERRAR_SEM_SUBSTITUICAO");setFatoId("");setSelecionado(null);setPagina(1);setBusca("");setAberto(true);}}>Regularizar origem do fato anulado</Button>
     {aberto && <PainelCadastro aberto titulo="Regularizar origem" onFechar={()=>setAberto(false)} bloqueado={ocupado}
-      rodape={<Button type="submit" form={`regularizar-${chave}`} disabled={ocupado || semSubstituto}>Confirmar regularização</Button>}>
+      rodape={fechar => <><Button secondary onClick={fechar}>Cancelar</Button><Button type="submit" form={`regularizar-${chave}`} disabled={ocupado || semSubstituto}>Confirmar regularização</Button></>}>
       <form id={`regularizar-${chave}`} className="grid gap-4" onChange={()=>setChave(crypto.randomUUID())} onSubmit={e=>{
         e.preventDefault();
         if (semSubstituto || ocupado) return;

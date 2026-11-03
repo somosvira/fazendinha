@@ -58,3 +58,10 @@
 .fin-abas [role="tab"] { color: var(--ink-2); border: 1px solid transparent; }
 .fin-abas [role="tab"]:hover { background: color-mix(in srgb, var(--rural) 8%, white); color: var(--ink); }
 .fin-abas [role="tab"][data-state="active"] { background: var(--ink); color: white; border-color: var(--ink); box-shadow: 0 1px 3px #0002; }
+
+/* Estado vazio dentro de listas e seções (componente Empty). */
+.fin-vazio { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px; padding: 24px 20px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-card-2, var(--muted)); text-align: center; }
+.fin-vazio-icone { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); color: var(--muted-foreground); }
+.fin-vazio-texto { max-width: 52ch; font-size: 14px; line-height: 1.5; color: var(--muted-foreground); }
+.fin-vazio-texto :is(strong, h3) { display: block; margin: 0 0 2px; font-size: 15px; font-weight: 600; color: var(--foreground); }
+.fin-vazio-acao { margin-top: 4px; }

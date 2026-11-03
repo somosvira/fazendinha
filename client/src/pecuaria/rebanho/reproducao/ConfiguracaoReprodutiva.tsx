@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
 import { ModalPolitica } from "./ModalPolitica";
 import { getHojeISO } from "../../../lib/hoje";
@@ -142,7 +143,7 @@ export function ConfiguracaoReprodutiva({
       <div className="space-y-3">
         <h3 className="font-semibold">Versões preservadas</h3>
         {carregando && <p role="status">Carregando política…</p>}
-        {!carregando && !erro && !politicas.length && <p>Nenhuma política registrada neste sítio.</p>}
+        {!carregando && !erro && !politicas.length && <Empty>Nenhuma política registrada neste sítio.</Empty>}
         {politicasOrdenadas.map((p) => (
           <details key={p.id} open={p.id === vigente?.id} className="rounded-xl border bg-card p-4">
             <summary className="cursor-pointer font-medium">

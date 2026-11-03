@@ -29,7 +29,7 @@ export function DashboardCompromissos({ itens, href, onLiquidar, resumo, integra
   return <Container data-fin-tom="pendente" className={`${integrado ? "dashboard-agenda" : "fin-painel"} min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none`}>
     <Tabs defaultValue={vencidos.length ? "vencidos" : "proximos"} className="gap-0">
       <div className="fin-cabecalho flex flex-wrap items-center justify-between gap-3 p-4">
-        {integrado ? <h3 className="text-sm font-semibold">Próximos compromissos</h3> : <h2 className="font-serif text-xl">Compromissos</h2>}
+        {integrado ? <h3 className="text-sm font-semibold">Próximos compromissos</h3> : <h2 className="font-sans text-xl">Compromissos</h2>}
         <Button variant="link" asChild><a href={href} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>Ver todos</a></Button>
         {resumo && <div className="w-full">{resumo}</div>}
         <div className="w-full"><TabsList className="h-9 max-w-full">{grupos.map(grupo => <TabsTrigger key={grupo.id} value={grupo.id} className="px-2 text-xs">{grupo.label}</TabsTrigger>)}</TabsList></div>

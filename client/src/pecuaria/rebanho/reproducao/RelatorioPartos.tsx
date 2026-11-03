@@ -16,6 +16,7 @@ import { Panel } from "../../../financeiro/financeiro-ui";
 import { reqV4 } from "./api";
 import { periodoPadrao } from "./periodo-consulta";
 import { registro, textoPreservado } from "./folha-regras";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 export type CriaRelatorio = {
   id: string; animalId: string | null; ordem: number; sexo: string; viva: boolean;
@@ -175,7 +176,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
     {ocupado && !visivel && <div role="status" aria-label="Carregando ficha de partos" className="space-y-3 p-5 print:hidden">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full"/>)}</div>}
     {visivel && <><section className="rel-superficie print:hidden"><header className="rel-resultado-topo"><h2>Partos e acompanhamento</h2></header><PartosVisual key={`${visivel.emitidoEm}:${emissaoId??'atual'}`} snapshot={visivel}/></section><div className="hidden print:block"><FolhaRelatorioPartos snapshot={visivel}/></div></>}
     <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período da ficha de partos</DialogTitle></DialogHeader><form className="rel-form" onSubmit={e => {e.preventDefault();setFiltrosAbertos(false);void consultar();}}><label>Início (inclusive)<DatePicker  required max={fim} value={inicio} onChange={setInicio}/></label><label>Fim (inclusive)<DatePicker  required min={inicio} value={fim} onChange={setFim}/></label>{periodoAlterado && <p role="status">As datas editadas ainda não foram consultadas. O resultado mantém o período exibido até aplicar.</p>}<Button disabled={ocupado}>Consultar ficha de partos</Button></form></DialogContent></Dialog>
-    <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões anteriores de partos</DialogTitle></DialogHeader><div className="rel-emissoes">{emissoes.length ? emissoes.map(e => <Button variant="outline" key={e.id} disabled={ocupado} onClick={() => {setHistoricoAberto(false);void abrir(e.id);}}><History size={18}/><span><strong>Partos e pós-parto · Sítio {propriedadeId}</strong><small>Emitido em {new Date(e.criadoEm).toLocaleString("pt-BR")}</small></span></Button>) : <p>Nenhuma emissão preservada neste sítio.</p>}</div></DialogContent></Dialog>
+    <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões anteriores de partos</DialogTitle></DialogHeader><div className="rel-emissoes">{emissoes.length ? emissoes.map(e => <Button variant="outline" key={e.id} disabled={ocupado} onClick={() => {setHistoricoAberto(false);void abrir(e.id);}}><History size={18}/><span><strong>Partos e pós-parto · Sítio {propriedadeId}</strong><small>Emitido em {new Date(e.criadoEm).toLocaleString("pt-BR")}</small></span></Button>) : <Empty>Nenhuma emissão preservada neste sítio.</Empty>}</div></DialogContent></Dialog>
   </div>;
 }
 
@@ -187,7 +188,7 @@ export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapsh
       {!operacional && <p>Emissão: {snapshot.emitidoEm} · Versão do relatório: {snapshot.versao} · Ordem: data e ID do parto crescentes.</p>}
 
     </header>
-    {snapshot.partos.length === 0 && <p>Nenhum parto válido neste período.</p>}
+    {snapshot.partos.length === 0 && <Empty>Nenhum parto válido neste período.</Empty>}
     {snapshot.partos.map(p => <section key={p.id} className="rounded-md border p-3 print:rounded-none">
       <h3 className="font-semibold">Matriz {p.matriz.brinco} {p.matriz.nome} · {horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado)}</h3>
       <p>Parto {p.id} · Versão {p.versao} · Desfecho: {p.desfecho ?? "Não informado"} · Tipo registrado: {p.tipo}</p>

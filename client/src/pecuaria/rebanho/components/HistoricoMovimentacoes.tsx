@@ -74,7 +74,7 @@ export function HistoricoMovimentacoes({
   if (carregando && !itens.length) return <div className="p-6"><Loader label="Carregando histórico" /></div>;
 
   return <>
-    {erro && <div role="alert" className="p-5 text-sm text-red-700">{erro}</div>}
+    {erro && <div role="alert" className="p-5 text-sm text-destructive">{erro}</div>}
     {itens.length ? <TabelaFinanceira visualizacao={visualizacao} filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
       {chave:"data",titulo:"Data",larguraMinima:110,principal:true,celula:m=>formatarDataBR(m.data)},
       {chave:"animais",titulo:"Animais",larguraMinima:100,celula:m=>m.quantidade},

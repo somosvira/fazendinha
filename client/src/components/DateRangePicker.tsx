@@ -94,7 +94,7 @@ export function CalendarMonth({
   return (
     <div className="flex flex-col">
       {!hideTitle && <div className="pb-3.5 pt-1 text-center">
-        <span className="font-serif text-[17px] tracking-[-0.005em] text-foreground">
+        <span className="font-sans text-[17px] tracking-[-0.005em] text-foreground">
           {PT_MONTHS[month]} <span className="tabular-nums text-ink-3">{year}</span>
         </span>
       </div>}
@@ -119,7 +119,7 @@ export function CalendarMonth({
               key={i}
               type="button"
               className={cn(
-                "group/day relative grid h-9 cursor-pointer place-items-center border-0 bg-transparent p-0 font-serif text-[15px] tabular-nums text-foreground",
+                "group/day relative grid h-9 cursor-pointer place-items-center border-0 bg-transparent p-0 font-sans text-[15px] tabular-nums text-foreground",
                 (!inMonth || disabled) && "text-[color:var(--ink-mute)]",
                 disabled && "cursor-not-allowed",
                 // banda do range (pseudo-elemento); nas pontas cobre só meia célula
@@ -258,7 +258,7 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
         <Button type="button" variant="outline" aria-pressed={personalizadoSelecionado} className={classePeriodo} onClick={() => { setCustom(true); setDraft(value); setStep("start"); }}>Período personalizado{personalizadoSelecionado && <Check size={16} aria-hidden="true" />}</Button>
       </div> : <div className="space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-serif text-xl">Período personalizado</h3>
+          <h3 className="font-sans text-xl">Período personalizado</h3>
           <Button type="button" variant="ghost" disabled={!draft.start && !draft.end} onClick={limpar}>Limpar</Button>
         </div>
         {/* Só leitor de tela: o passo ativo e o intervalo em formação já aparecem nos campos e no calendário. */}
@@ -271,7 +271,7 @@ export function DateRangePicker({ value, onChange, anchor = "left", triggerLabel
         <div data-calendars className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           {[leftView, addMonths(leftView, 1)].map(view => <CalendarMonth key={isoDate(view)} year={view.getFullYear()} month={view.getMonth()} range={draft} hoverEnd={hoverEnd} minDate={step === "end" ? draft.start ?? undefined : undefined} onNavigate={navigate} onPickDay={pickDay} onHoverDay={day => { if (step === "end" && draft.start && !isBefore(day, draft.start)) setHoverEnd(day); }} />)}
         </div>
-        {draft.start && draft.end && !valid && <p role="alert" className="text-sm text-red-800">A data final deve ser igual ou posterior à data inicial.</p>}
+        {draft.start && draft.end && !valid && <p role="alert" className="text-sm text-destructive">A data final deve ser igual ou posterior à data inicial.</p>}
         <div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button type="button" disabled={!valid} onClick={() => { if (valid) { onChange(draft); setOpen(false); } }}>Aplicar período</Button></div>
       </div>}
     </PopoverContent>

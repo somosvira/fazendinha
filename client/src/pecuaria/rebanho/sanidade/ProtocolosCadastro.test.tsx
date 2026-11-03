@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { reqProtocolo } from "../protocolos/api";
@@ -20,7 +21,7 @@ const etapa = { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: "e1", prod
 const pagina = <T,>(itens: T[], total = itens.length, atual = 1) => ({ itens, total, pagina: atual, porPagina: 10 });
 beforeEach(() => {
   vi.resetAllMocks();
-  localStorage.clear();
+  localStorage.clear();preferirCartoes({SANITARIO:["visualCadastroProtocolos"],REPRODUTIVO:["visualCadastroProtocolos"]});
   window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos");
   vi.mocked(reqProtocolo).mockImplementation(async path => { const id=new URL(path,"https://local").searchParams.get("selecionadoId"); return pagina(id ? [{id,nome:id === "e1" ? "CCS" : id === "p1" ? "Produto" : "Hormônio",unidade:"ML"}] : []); });
   vi.mocked(listarProdutos).mockResolvedValue([]);

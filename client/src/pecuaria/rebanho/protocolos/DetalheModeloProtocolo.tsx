@@ -5,6 +5,7 @@ import { Paginacao } from "../ui";
 import { type CadastroProtocoloMeta, type PaginaCadastro } from "./cadastros-api";
 import { obterEstruturaCadastro, obterProcedimentosEtapaCadastro, type EtapaEstruturaCadastro, type ProcedimentoCadastro } from "./estrutura-cadastro-api";
 import { UNIDADES } from "../../../lib/unidades";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 export function intervaloProcedimento(intervalo: number, unidade: string) {
   return `${unidade === "HORAS" ? "H" : "D"}${intervalo.toLocaleString("pt-BR", { maximumFractionDigits: 20 })}`;
@@ -31,7 +32,7 @@ function ProcedimentosEtapa({ origem, etapa }: { origem: CadastroProtocoloMeta; 
       {chave:"quantidade",titulo:"Quantidade por animal",larguraMinima:150,celula:p=>p.quantidade ? `${p.quantidade} ${(Object.entries(UNIDADES).find(([chave])=>chave===p.unidadeQuantidade)?.[1].rotulo ?? p.unidadeQuantidade ?? "(unidade não informada)")}` : p.definirMaterialNoAtendimento ? "Definida no atendimento" : "—"},
     ]}/>}
     {dados.total > 10 && <Paginacao paginaAtual={pagina} totalPaginas={Math.ceil(dados.total/10)} totalItens={dados.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo={`procedimentos de ${etapa.nome}`} idSelect={`procedimentos-${etapa.id}`} />}
-    {!carregando && !erro && !dados.total && <p>Nenhum procedimento cadastrado nesta etapa.</p>}
+    {!carregando && !erro && !dados.total && <Empty>Nenhum procedimento cadastrado nesta etapa.</Empty>}
     {etapa.instrucoesGerais && <p className="modelo-detalhe-instrucoes"><strong>Instruções:</strong> {etapa.instrucoesGerais}</p>}
   </section>;
 }
@@ -53,7 +54,7 @@ export function DetalheModeloProtocolo({ origem, onClose }: { origem: CadastroPr
       <ErrorBox erro={erro}/>{erro && <Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar carregar detalhes novamente</Button>}
       {carregando && <p role="status">Carregando etapas e procedimentos…</p>}
       {dados?.itens.map(e=><ProcedimentosEtapa key={`${pagina}:${e.id}`} origem={origem} etapa={e}/>)}
-      {dados && !dados.total && <p>Nenhuma etapa ou procedimento cadastrado nesta versão.</p>}
+      {dados && !dados.total && <Empty>Nenhuma etapa ou procedimento cadastrado nesta versão.</Empty>}
       {dados && dados.total>10 && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.ceil(dados.total/10)} totalItens={dados.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="etapas e procedimentos individuais" idSelect="estrutura-modelo"/>}
     </div><footer className="modelo-detalhe-rodape"><span>Consulta da versão · até 10 itens por página</span><Button secondary onClick={onClose}>Fechar detalhes</Button></footer>
   </Modal>;

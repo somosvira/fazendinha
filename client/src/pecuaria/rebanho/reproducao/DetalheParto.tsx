@@ -24,6 +24,7 @@ import { registro } from "./folha-regras";
 import { CorrigirFato } from "./CorrigirFato";
 import { AnularFato } from "./AnularFato";
 import { ColostroCria } from "./ColostroCria";
+import { Empty } from "@/financeiro/financeiro-ui";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -107,7 +108,7 @@ function Lista<T extends { id: string }>({
         colunas={colunas}
       />
       {!itens.length && (
-        <p className="p-4 text-sm text-ink-3">Nenhum registro informado.</p>
+        <Empty>Nenhum registro informado.</Empty>
       )}
       {itens.length > 10 && (
         <Paginacao
@@ -427,8 +428,8 @@ export function DetalheParto({
       </div>
       {podeEditar && acao === "corrigir" && <CorrigirFato complementoInicial={complemento} tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
-      {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="Registro do parto" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
-      {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="Parto e pós-parto" onClose={() => setCriaColostro(null)}>
+      {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
+      {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="" onClose={() => setCriaColostro(null)}>
         <div className="p-5"><ColostroCria key={criaSelecionada.id} criaId={criaSelecionada.id} propriedadeId={propriedadeId} dataParto={p.data} podeLancar={podeLancar} onMudou={atualizar}/></div>
       </Modal>}
       <SecaoRecolhivel titulo="Autoria e observações" abertaInicial={false} acoes={podeEditar ? <Button variant="ghost" onClick={() => setAcao("anular")}>Conferir anulação</Button> : undefined}>

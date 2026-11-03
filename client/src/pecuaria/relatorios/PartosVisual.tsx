@@ -12,7 +12,7 @@ import{rotuloRelatorio}from'./fontes';
 import{formatBRDateISO}from'@/lib/hoje';
 import{textoPreservado,registro}from'../rebanho/reproducao/folha-regras';
 export function PartosVisual({snapshot:s}:{snapshot:SnapshotRelatorioPartos}){
- const[modo,setModo]=useState('visual'),[busca,setBusca]=useState(''),[selecionado,setSelecionado]=useState<PartoRelatorio|null>(null),[pagina,setPagina]=useState(1);
+ const[modo,setModo]=useState('tabela'),[busca,setBusca]=useState(''),[selecionado,setSelecionado]=useState<PartoRelatorio|null>(null),[pagina,setPagina]=useState(1);
  const filtrados=[...s.partos].reverse().filter(p=>`${p.matriz.brinco} ${p.matriz.nome??''}`.toLowerCase().includes(busca.toLowerCase()));
  const atual=Math.min(pagina,Math.max(1,Math.ceil(filtrados.length/8))),itens=filtrados.slice((atual-1)*8,atual*8);
  const vivas=s.partos.reduce((n,p)=>n+p.crias.filter(c=>c.viva).length,0),semVida=s.partos.reduce((n,p)=>n+p.crias.filter(c=>!c.viva).length,0);

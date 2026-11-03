@@ -14,9 +14,10 @@ import { custoTexto, CustosLote, EstadoConsulta, LinkNutricional, rotaNutricao }
 import { FechamentosNutricao } from "./FechamentosNutricao";
 import { PaginacaoNutricao } from "./PaginacaoNutricao";
 import "./nutricao.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; propriedadeId?: number; podeLancar: boolean; vista?: "lotes" }) {
-  const visual = useVisualizacaoConsulta("visualDietasLote", "nutricao");
+  const visual = useVisualizacaoConsulta("visualDietasLote", "nutricao", "visual");
   const [pagina, setPagina] = useState(1);
   const consulta = useConsulta(useCallback(() => consultarResumoNutricional(loteId), [loteId]));
   const historico = useConsulta(useCallback(() => listarVigencias(loteId, pagina), [loteId, pagina]));
@@ -36,7 +37,7 @@ export function NutricaoLote({ loteId, podeLancar, vista }: { loteId: string; pr
       <CustosLote resumo={r} />
       {r.referenciaLeite && <Panel><div className="nutricao-card-cabecalho"><h2 className="h3">Referência comercial do leite fornecido <AjudaCampo rotulo="Sobre a referência comercial do leite" texto={"Medida gerencial separada do custo de produção, sem somar um novo gasto da fazenda. Confira a fonte e revise após o fechamento comercial nos detalhes do consumo."} /></h2></div><div className="nutricao-card-corpo grid gap-2"><p>{formatarLitros(Number(r.referenciaLeite.quantidadeLitros))} confirmados · referência conhecida <strong>{custoTexto(r.referenciaLeite.valorConhecido)}</strong></p><p>{r.referenciaLeite.pendentes} fornecimento(s) com preço pendente · {r.referenciaLeite.provisorios} com preço provisório do mês anterior.</p></div></Panel>}
       {completa && <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Histórico de dietas</h2></div><AlternarVisualizacaoConsulta {...visual} visual="Linha do tempo" rotulo="Visualização das dietas do lote" /></div><div className="px-5"><EstadoConsulta erro={historico.erro} carregando={historico.carregando} recarregar={historico.carregar} estrutura="lista" label="Carregando histórico de dietas…" /></div>
-        {historico.dados && <>{!historico.dados.itens.length ? <p className="nutricao-vazio">Nenhuma dieta atribuída.</p> : visual.modo === "visual" ? <LinhaTempoDietas itens={historico.dados.itens} vigenteId={r.vigente?.id} programada={r.programada} escrever={escrever} loteId={loteId} /> : <TabelaFinanceira rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
+        {historico.dados && <>{!historico.dados.itens.length ? <Empty>Nenhuma dieta atribuída.</Empty> : visual.modo === "visual" ? <LinhaTempoDietas itens={historico.dados.itens} vigenteId={r.vigente?.id} programada={r.programada} escrever={escrever} loteId={loteId} /> : <TabelaFinanceira rotulo="Histórico de dietas do lote" itens={historico.dados.itens} chaveDe={(v) => v.id} colunas={[
           { chave: "receita", titulo: "Receita / versão", principal: true, celula: (v) => <strong>{v.dieta.nome} · v{v.dieta.versao}</strong> },
           { chave: "inicio", titulo: "Início", celula: (v) => formatarDataBR(v.desde) },
           { chave: "fim", titulo: "Fim (troca)", celula: (v) => v.ate ? formatarDataBR(v.ate) : "Sem fim programado" },

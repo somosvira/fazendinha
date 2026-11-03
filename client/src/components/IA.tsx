@@ -18,9 +18,9 @@ import * as memoria from "../data/memoria";
 import type { Conversa } from "../data/memoria";
 
 const AI_CARD = "flex flex-col gap-4 border border-border bg-card px-6 py-[22px]";
-const AI_CARD_TITLE = "font-serif text-xl tracking-[-0.005em]";
+const AI_CARD_TITLE = "font-sans text-xl tracking-[-0.005em]";
 const AI_SIGNATURE = "flex items-center gap-2.5 text-[11px] uppercase tracking-[0.18em] text-ink-3";
-const MINI_TABLE = "w-full border-collapse [&_td]:border-b [&_td]:border-[color:var(--rule-soft)] [&_td]:px-2.5 [&_td]:py-2 [&_td]:text-[15px] [&_th]:border-b [&_th]:border-[color:var(--rule-soft)] [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-[0.14em] [&_th]:text-ink-3 [&_td.r]:text-right [&_td.r]:font-serif [&_td.r]:tabular-nums [&_th.r]:text-right";
+const MINI_TABLE = "w-full border-collapse [&_td]:border-b [&_td]:border-[color:var(--rule-soft)] [&_td]:px-2.5 [&_td]:py-2 [&_td]:text-[15px] [&_th]:border-b [&_th]:border-[color:var(--rule-soft)] [&_th]:px-2.5 [&_th]:py-2 [&_th]:text-left [&_th]:text-[11px] [&_th]:font-medium [&_th]:uppercase [&_th]:tracking-[0.14em] [&_th]:text-ink-3 [&_td.r]:text-right [&_td.r]:font-sans [&_td.r]:tabular-nums [&_th.r]:text-right";
 
 /* ===== Reconhecimento de voz (Web Speech API, pt-BR) =====
  * continuous=true + religa no onend enquanto o usuário não clicar em parar:
@@ -179,7 +179,7 @@ function AIResponseKpi({ resp }: { resp: any }) {
       <div className="grid grid-cols-[1fr_1.4fr] items-center gap-8">
         <div>
           <div className="eyebrow mb-2">{resp.kpi.caption}</div>
-          <div className="mono-nums font-serif text-[44px] leading-none tracking-[-0.02em]">{resp.kpi.value}</div>
+          <div className="mono-nums font-sans text-[44px] leading-none tracking-[-0.02em]">{resp.kpi.value}</div>
           <div className="mt-2.5 text-[13px] text-prejuizo">{resp.kpi.delta}</div>
         </div>
         <div>
@@ -199,8 +199,8 @@ function AIResponseYesNo({ resp }: { resp: any }) {
       <div className="grid grid-cols-[auto_1fr] items-center gap-6">
         <div className="border-r border-border pr-6">
           <div className="eyebrow mb-1.5">Veredito</div>
-          <div className="font-serif text-[56px] leading-none text-lucro">{resp.yesno.verdict}</div>
-          <div className="mono-nums mt-2 font-serif text-2xl text-lucro">{resp.yesno.folga}</div>
+          <div className="font-sans text-[56px] leading-none text-lucro">{resp.yesno.verdict}</div>
+          <div className="mono-nums mt-2 font-sans text-2xl text-lucro">{resp.yesno.folga}</div>
         </div>
         <div>
           <div className="eyebrow mb-2">{resp.yesno.caption}</div>
@@ -239,11 +239,11 @@ function AIResponseCompare({ resp }: { resp: any }) {
           (c: { label: string; value: string; sub: string }, i: number) => (
             <Fragment key={i}>
               {i > 0 && (
-                <div className="pb-[18px] font-serif italic text-[color:var(--ink-mute)]">→</div>
+                <div className="pb-[18px] font-sans italic text-[color:var(--ink-mute)]">→</div>
               )}
               <div>
                 <div className="eyebrow mb-2">{c.label}</div>
-                <div className="mono-nums font-serif text-[32px] leading-none tracking-[-0.01em]">{c.value}</div>
+                <div className="mono-nums font-sans text-[32px] leading-none tracking-[-0.01em]">{c.value}</div>
                 <div className="caption mt-1.5">{c.sub}</div>
               </div>
             </Fragment>
@@ -251,7 +251,7 @@ function AIResponseCompare({ resp }: { resp: any }) {
         )}
         <div className="pb-1">
           <div className="eyebrow mb-2">Variação</div>
-          <div className="font-serif text-[26px] text-prejuizo">{resp.delta}</div>
+          <div className="font-sans text-[26px] text-prejuizo">{resp.delta}</div>
         </div>
       </div>
     </div>
@@ -270,7 +270,7 @@ function AIResponseSplit({ resp }: { resp: any }) {
           (s: { share: number; value: number }, i: number) => (
             <div
               key={i}
-              className="relative flex items-center justify-center font-serif text-base text-[color:var(--mast-ink)]"
+              className="relative flex items-center justify-center font-sans text-base text-[color:var(--mast-ink)]"
               style={{
                 width: `${(Math.abs(s.value) / total) * 100}%`,
                 background: i === 0 ? "var(--cafe)" : "var(--outros)",
@@ -295,7 +295,7 @@ function AIResponseSplit({ resp }: { resp: any }) {
               ></span>
               {s.label}
             </div>
-            <div className="mono-nums font-serif text-[28px]">{fmtMoney(s.value)}</div>
+            <div className="mono-nums font-sans text-[28px]">{fmtMoney(s.value)}</div>
           </div>
         ))}
       </div>
@@ -329,7 +329,7 @@ function AIResponseVet({ resp }: { resp: any }) {
                   i < resp.cenarios.length - 1 && "border-b border-[color:var(--rule-soft)]",
                 )}
               >
-                <div className="font-serif text-[15px] text-foreground">{c.quando}</div>
+                <div className="font-sans text-[15px] text-foreground">{c.quando}</div>
                 <div className="text-sm leading-[1.55] text-ink-2">{c.protocolo}</div>
               </div>
             ),
@@ -365,7 +365,7 @@ function AIResponse({ resp }: { resp: any }) {
         <span>Rio Novo · IA analista</span>
         <span className="text-[color:var(--ink-mute)]">· 0,8 s</span>
       </AiSignature>
-      <div className="font-serif text-[19px] leading-[1.5] text-foreground">{resp.narrative}</div>
+      <div className="font-sans text-[19px] leading-[1.5] text-foreground">{resp.narrative}</div>
       {resp.kind === "topGasto" && <AIResponseTopGasto resp={resp} />}
       {resp.kind === "kpi" && <AIResponseKpi resp={resp} />}
       {resp.kind === "yesno" && <AIResponseYesNo resp={resp} />}
@@ -504,7 +504,7 @@ export function IA() {
               {R.promptsSugeridos.map((p: string, i: number) => (
                 <button
                   key={i}
-                  className="cursor-pointer border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2.5 text-left font-serif text-[15px] italic leading-[1.4] tracking-[-0.005em] text-ink-2 hover:text-foreground"
+                  className="cursor-pointer border-0 border-b border-[color:var(--rule-soft)] bg-transparent py-2.5 text-left font-sans text-[15px] italic leading-[1.4] tracking-[-0.005em] text-ink-2 hover:text-foreground"
                   onClick={() => ask(p)}
                 >
                   "{p}"
@@ -558,7 +558,7 @@ export function IA() {
                       <div className="flex items-center gap-2 font-sans text-[11px] uppercase tracking-[0.14em] text-ink-3">
                         <span className="text-sm text-leite">↺</span>Lembrando de {m.recall.data}
                       </div>
-                      <div className="font-serif text-base tracking-[-0.005em] text-foreground">{m.recall.titulo}</div>
+                      <div className="font-sans text-base tracking-[-0.005em] text-foreground">{m.recall.titulo}</div>
                       <div className="text-sm leading-[1.5] text-ink-2">{m.recall.resumo}</div>
                     </div>
                   )}
@@ -696,7 +696,7 @@ export function IA() {
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-baseline justify-between gap-3">
                     <span>{k}</span>
-                    <span className="ml-auto font-serif tabular-nums">{v}</span>
+                    <span className="ml-auto font-sans tabular-nums">{v}</span>
                   </div>
                 ))}
               </div>

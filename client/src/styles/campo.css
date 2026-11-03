@@ -1,0 +1,58 @@
+/* Caderno de campo — decisões visuais globais das áreas operacionais.
+ *
+ * Quem usa: quem administra a fazenda, conferindo pendências e registrando fatos
+ * o dia todo. Por isso: leitura antes de decoração, números alinhados, uma única
+ * família tipográfica e nenhuma sombra decorativa. A paleta é a da cooperativa.
+ *
+ * Os tokens ficam em cooperativa-theme.css. Este arquivo substitui a antiga
+ * camada identidade-rural.css e é carregado por último em App.tsx.
+ */
+
+/* ── Tipografia ─────────────────────────────────────────────────────────── */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content, .sidebar-clara),
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="dialog-content"], [data-slot="sheet-content"], [data-slot="popover-content"]) {
+  font-family: var(--sans);
+  font-variant-numeric: tabular-nums;
+}
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(h1, h2, h3, h4, .h1, .h2, .h3),
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="dialog-title"], [data-slot="sheet-title"]) {
+  font-family: var(--sans);
+  font-weight: 700;
+  letter-spacing: 0;
+  color: var(--campo-tinta);
+}
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(h1, .h1) { font-size: var(--fin-titulo-pagina, 24px); line-height: 1.25; }
+
+/* Nada em caixa alta com espaçamento: rótulos são frases, não etiquetas. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content, .sidebar-clara, .auth-operacional) :is(*, *::before, *::after),
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) :is([data-slot="dialog-content"], [data-slot="sheet-content"]) :is(*, *::before, *::after) {
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+/* Rótulos acima de títulos ("eyebrows") não informam nada que o título já não diga. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-cabecalho-identidade > .eyebrow { display: none; }
+
+/* ── Superfícies ────────────────────────────────────────────────────────── */
+/* Sem sombra no que está na página; só o que flutua (menus e diálogos) tem elevação. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(*, *::before):not(:focus-visible) { box-shadow: none !important; }
+
+/* Ícone em caixa ao lado de cada título repete o rótulo: sai. A ficha do animal
+ * mantém sua identidade visual e fica fora desta regra. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.rotina-titulo > span:first-child, .ger-bloco-icone, .consulta-entidade-icone, .produto-cartao-icone, .fin-section-icon):not(.pec-ficha *) { display: none; }
+:root [data-design-operacional] .rotina-titulo { gap: 0; }
+
+/* Setas no fim de links ("Ver contas →") são enfeite: o sublinhado já diz que é link. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(a, .ger-link) > svg.lucide-arrow-right:last-child { display: none; }
+
+/* Etiquetas de situação: retangulares e discretas, sem pílula. */
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is([data-slot="badge"], .fin-pill, .pill) { border-radius: 4px; }
+
+/* ── Navegação lateral ─────────────────────────────────────────────────── */
+/* Fundo, paisagem e item atual seguem sidebar-clara.css; aqui só a tipografia da marca. */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara .ah-brand > span { font-family: var(--sans); font-weight: 700; color: var(--primary); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .sidebar-clara nav button { border-radius: 4px; }
+
+/* ── Navegador ─────────────────────────────────────────────────────────── */
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) { scrollbar-color: var(--campo-linha-forte) var(--background); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) ::selection { background: var(--campo-pasto-claro); color: var(--campo-tinta); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(input, textarea) { caret-color: var(--primary); }

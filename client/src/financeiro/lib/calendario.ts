@@ -15,7 +15,9 @@ export function deslocarMes(mes: string, deslocamento: number) {
   return new Date(Date.UTC(ano, numero - 1 + deslocamento, 1)).toISOString().slice(0, 7);
 }
 
+/** "Novembro de 2026": só a primeira letra em maiúscula (CSS `capitalize` faria "Novembro De 2026"). */
 export function nomeMes(mes: string) {
-  return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
+  const nome = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })
     .format(new Date(`${mes}-01T00:00:00Z`));
+  return nome.charAt(0).toLocaleUpperCase("pt-BR") + nome.slice(1);
 }

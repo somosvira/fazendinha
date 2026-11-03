@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { Dieta } from "./api";
 import { quantidadeNutricional } from "./quantidades";
 import "./composicao-receita.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 export function ComposicaoReceita({ dieta, titulo = true }: { dieta: Dieta; titulo?: boolean }) {
   const [modo, setModo] = useState<"grafico" | "tabela">("grafico");
@@ -14,6 +15,6 @@ export function ComposicaoReceita({ dieta, titulo = true }: { dieta: Dieta; titu
       const total = itens.reduce((soma, i) => soma + Number(i.quantidadeCabecaDia), 0);
       return <section className="receita-composicao-grupo" key={unidade} aria-label={`Quantidades em ${unidade}`}><div className="receita-composicao-colunas" aria-hidden="true"><span>Ingrediente</span><span>Quantidade ({unidade}/cabeça/dia)</span><span>Matéria seca</span></div>{itens.map((i, indice) => <div className="receita-composicao-item" key={i.produtoId}><span>{i.produto?.nome ?? "Produto indisponível"}</span><div className="receita-composicao-quantidade"><div className="receita-composicao-trilho" aria-hidden="true"><span className={`receita-cor-${indice % 3}`} style={{width: `${maximo > 0 ? Number(i.quantidadeCabecaDia) / maximo * 100 : 0}%`}} /></div><strong>{quantidadeNutricional(i.quantidadeCabecaDia)} {unidade}</strong></div><span className="receita-composicao-ms"><span className="receita-ms-rotulo">Matéria seca: </span>{i.materiaSecaPercentualSnapshot == null ? "Não informada" : `${quantidadeNutricional(i.materiaSecaPercentualSnapshot)}%`}</span></div>)}{Number.isFinite(total) && <div className="receita-composicao-total"><span>Total por cabeça/dia{grupos.size > 1 ? ` (${unidade})` : ""}</span><strong>{quantidadeNutricional(total.toFixed(6))} {unidade}</strong></div>}</section>;
     })}</div>}
-    {!dieta.itens.length && <p>Nenhum ingrediente nesta receita.</p>}
+    {!dieta.itens.length && <Empty>Nenhum ingrediente nesta receita.</Empty>}
   </div>;
 }

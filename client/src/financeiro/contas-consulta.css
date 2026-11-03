@@ -35,7 +35,4 @@
   .contas-saldo-geral { gap: 12px; flex-wrap: wrap; padding: 18px; margin: 20px 0; }
   .contas-saldo-icone { flex-basis: 44px; height: 44px; }
   .contas-saldo-escopo { width: 100%; margin-left: 0; padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--border); }
-  :root .app-main .contas-consulta [role="tablist"].abas-pasta { flex-wrap: nowrap; }
-  :root .app-main .contas-consulta [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 1 1 auto; gap: 6px; min-width: 0; padding: 12px 10px; font-size: 14px; }
-  :root .app-main .contas-consulta [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { width: 17px; height: 17px; }
 }

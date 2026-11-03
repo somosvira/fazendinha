@@ -10,7 +10,7 @@ import { DatePicker } from "@/components/DatePicker";
 import { Checkbox } from "@/components/ui/checkbox";
 // Lista de lotes — duas seções empilhadas (Lotes · Histórico de movimentações),
 // no padrão das seções de DetalheLote.tsx (Panel com cabeçalho <h2 className=
-// "font-serif text-xl">). Antes eram sub-abas; agora o histórico fica sempre
+// "font-sans text-xl">). Antes eram sub-abas; agora o histórico fica sempre
 // visível, então mover/desfazer precisa recarregar as duas seções.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -204,7 +204,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
 
 
     <Panel className="mt-5 overflow-hidden">
-      <div className="border-b border-border p-5"><h2 className="font-serif text-xl">Histórico de movimentações</h2></div>
+      <div className="border-b border-border p-5"><h2 className="font-sans text-xl">Histórico de movimentações</h2></div>
       <BarraConsulta campos={camposHistorico} edicaoFiltros={edicaoHistorico}><DateRangePicker value={{start:dataValida(dataDeHistorico)?dateFromIso(dataDeHistorico):null,end:dataValida(dataAteHistorico)?dateFromIso(dataAteHistorico):null}} onChange={r=>{setPaginaHistorico(1);setDataDeHistorico(r.start?isoDate(r.start):"");setDataAteHistorico(r.end?isoDate(r.end):"");}} triggerAriaLabel="Período das movimentações" triggerLabel={!dataDeHistorico&&!dataAteHistorico?"Todo o histórico":undefined}/></BarraConsulta>
       {(sitiosHistorico.length>0||lotesHistorico.length>0)&&<div className="flex flex-wrap gap-2 p-4 border-b border-border">{sitiosHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setSitiosHistorico(v=>v.filter(x=>x!==id));setLotesHistorico([]);}}>Sítio: {sitiosAtivos.find(s=>String(s.id)===id)?.nome??"Selecionado"} ×</Button>)}{lotesHistorico.map(id=><Button secondary key={id} onClick={()=>{setPaginaHistorico(1);setLotesHistorico(v=>v.filter(x=>x!==id));}}>Lote: {catalogos?.lotes.find(l=>l.id===id)?.nome??"Selecionado"} ×</Button>)}</div>}
 

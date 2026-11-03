@@ -12,3 +12,5 @@
 .consulta-cartao-meta{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:12px;color:var(--muted-foreground)}
 .consulta-cartao>footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--border)}
 @media(max-width:767px){.consulta-cartoes{grid-template-columns:1fr;padding:12px}.consulta-cartao{padding:16px}}
+/* Mesma altura dos controles ao lado (busca, Filtros: 40px), para a barra alinhar. */
+@media (min-width:901px){:root .consulta-visual-alternador{box-sizing:border-box;height:40px;align-items:stretch}:root .consulta-visual-alternador button{min-height:0;height:auto;padding-block:0}}

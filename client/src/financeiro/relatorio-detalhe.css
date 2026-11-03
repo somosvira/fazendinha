@@ -91,9 +91,6 @@
   .relatorio-compromissos-resumo h2 { width: 100%; }
   .relatorio-atalho { min-height: 44px; }
   .relatorio-info-botao.h-auto { width: 36px; height: 36px; }
-  :root .app-main .relatorio-abas [role="tablist"].abas-pasta { flex-wrap: nowrap; overflow-x: auto; }
-  :root .app-main .relatorio-abas [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 0 0 auto; min-width: 0; padding: 10px; min-height: 44px; gap: 5px; font-size: 13px; }
-  :root .app-main .relatorio-abas [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { width: 16px; height: 16px; }
 }
 
 /* Gráficos do resumo: escalas lineares e legendas com valores exatos. */

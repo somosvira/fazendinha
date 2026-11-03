@@ -10,6 +10,7 @@ import type { ParticipanteIatf, TarefaIatf } from "./Iatf";
 import { horarioIatf } from "./CampoDataIatf";
 import { LinkReproducao } from "./ConsultaReproducaoUI";
 import { ProtocoloTimeline } from "./ProtocoloTimeline";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 type Participacao = Omit<ParticipanteIatf, "tarefas"> & { contextoTentativa?: ContextoTentativaParticipacaoDTO };
 /** Consulta individual explícita: nenhuma data coletiva substitui a participação. */
@@ -36,7 +37,7 @@ export function ParticipacoesProgramacao({ id, propriedadeId, revisao }: { id: s
         <div className="repro-participacao-acoes"><Button variant="outline" aria-expanded={aberta === p.id} onClick={() => setAberta(aberta === p.id ? null : p.id)}>{aberta === p.id ? "Recolher etapas" : "Consultar etapas individuais"}</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?participacaoId=${encodeURIComponent(p.id)}&programacaoId=${encodeURIComponent(id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}#reproducao`}>Ficha do animal</LinkReproducao></div>
         {aberta === p.id && <EtapasParticipacao key={`${p.id}:${propriedadeId}:${revisao}`} participante={p} propriedadeId={propriedadeId}/>}
       </article>)}
-      {!dados.total && <p>Nenhuma participação corresponde à busca.</p>}
+      {!dados.total && <Empty>Nenhuma participação corresponde à busca.</Empty>}
       {dados.total > dados.porPagina && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} totalItens={dados.total} itensPorPagina={dados.porPagina} onPaginaChange={setPagina} rotulo="participações" idSelect="participacoes-individuais-programacao"/>}
     </>}
   </section>;

@@ -6,6 +6,7 @@ import type { RelatorioGerencialDTO } from "../components/relatorio-gerencial/ty
 import { ROTULO_MES } from "../components/relatorio-gerencial/export";
 import type { TotalGrupoRelatorio } from "./novo-api";
 import { serieCaixaMensal } from "./lib/relatorio-graficos";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 const CORES = ["#007f79", "#48aeb2", "#436e97", "#ac782b", "#855b88", "#667644", "#bc6650", "#5e7e86"];
 const SAIDAS = "#b57922";
@@ -35,14 +36,14 @@ export function PizzaComprasRelatorio({ titulo, grupos, centro = false }: { titu
         <span className="relatorio-legenda-nome">{podeRepresentar && <i style={{ background: cor(indice) }} aria-hidden="true" />}{ponto.nome}</span>
         <span className="relatorio-legenda-valores"><strong>{fmtMoneyExact(ponto.valor)}</strong><span>{percentual(ponto.pct)}</span></span>
       </li>)}</ul>
-    </div> : <p>Nenhuma compra ou serviço no recorte.</p>}
+    </div> : <Empty>Nenhuma compra ou serviço no recorte.</Empty>}
   </section>;
 }
 
 export function GraficosCaixaRelatorio({ dto, informacao }: { dto: RelatorioGerencialDTO; informacao: (titulo: string, texto: string) => ReactNode }) {
   if (!dto.entradasSaidas) return null;
   const pontos = serieCaixaMensal(dto.entradasSaidas.meses);
-  if (!pontos.length) return <p className="relatorio-vazio">Nenhum mês salvo nesta emissão.</p>;
+  if (!pontos.length) return <Empty>Nenhum mês salvo nesta emissão.</Empty>;
   const minimo = Math.min(0, ...pontos.flatMap(ponto => [ponto.entradas, ponto.saidas, ponto.acumulado]));
   const maximo = Math.max(0, ...pontos.flatMap(ponto => [ponto.entradas, ponto.saidas, ponto.acumulado]));
   const dominio: [number, number] = [minimo, maximo === minimo ? maximo + 1 : maximo];

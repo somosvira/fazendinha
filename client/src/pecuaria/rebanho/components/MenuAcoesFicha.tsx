@@ -16,7 +16,7 @@ export function MenuAcoesFicha({ rotulo = "Mais ações", itens }: { rotulo?: st
   return <DropdownMenu>
     <DropdownMenuTrigger asChild><button type="button" className="menu-acoes-ficha-gatilho">{rotulo}<ChevronDown size={16} aria-hidden="true" /></button></DropdownMenuTrigger>
     <DropdownMenuContent align="end" className="menu-acoes-ficha-lista">
-      {itens.map(({ id, rotulo: texto, icon: Icon, perigo, disabled, onSelect }) => <DropdownMenuItem key={id} disabled={disabled} onSelect={onSelect} className={perigo ? "text-red-800 focus:text-red-800" : undefined}>{Icon && <Icon size={16} aria-hidden="true" />}{texto}</DropdownMenuItem>)}
+      {itens.map(({ id, rotulo: texto, icon: Icon, perigo, disabled, onSelect }) => <DropdownMenuItem key={id} disabled={disabled} onSelect={onSelect} className={perigo ? "text-destructive focus:text-destructive" : undefined}>{Icon && <Icon size={16} aria-hidden="true" />}{texto}</DropdownMenuItem>)}
     </DropdownMenuContent>
   </DropdownMenu>;
 }

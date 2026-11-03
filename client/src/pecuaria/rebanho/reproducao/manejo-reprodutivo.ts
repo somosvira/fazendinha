@@ -28,7 +28,7 @@ export function lerConsultaManejo(): ConsultaManejo {
     fila: fila === "diagnostico" || fila === "pendencias" || fila === "liberadas" || fila === "todas" || fila === "avaliacao" || fila === "agendamento" || fila === "retorno" || fila === "aptidao" ? fila : "manejo",
     busca: p.get("q") ?? "", lote: p.get("lote") ?? "",
     ordem: ["maior-espera", "menor-espera", "animal", "animal-desc"].includes(p.get("ordem") ?? "") ? p.get("ordem")! : "maior-espera",
-    pagina: numero(p.get("pagina"), 1), tamanho: [4, 10, 25, 50].includes(numero(p.get("porPagina"), 4)) ? numero(p.get("porPagina"), 4) : 4,
+    pagina: numero(p.get("pagina"), 1), tamanho: [4, 10, 25, 50].includes(numero(p.get("porPagina"), 25)) ? numero(p.get("porPagina"), 25) : 25,
   };
 }
 

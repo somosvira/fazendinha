@@ -45,6 +45,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [README do frontend](../client/README.md) | Direção de organização, hierarquia, legibilidade e simplificação das telas |
 | [Pesquisa de interfaces agro](design/pesquisa-interfaces-agro.md) | Evidências externas, análise das telas locais e decisões recuperadas das conversas |
 | [Design system](../client/DESIGN.md) | Tokens e componentes observados no código |
+| [Caderno de campo](design/caderno-de-campo.md) | Direção visual vigente: tokens, tipografia e princípios |
 | [Design unificado](design/cooperativa-unificada.md) | Composição e interação compartilhadas, com guias de Financeiro/Pecuária/Leite |
 | [Desenvolvimento](desenvolvimento.md) | Banco local único, seed integrada, dados e importadores |
 | [Guia da seed](../server/prisma/seed/README.md) | Preparação autorizada, retomada e conferência do cenário V5 |

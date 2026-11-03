@@ -78,9 +78,9 @@ export function ConfirmarDesfazerMovimentacao({ movimentacaoId, detalhe, onConfi
         ? <ErrorBox erro={erroCarga} />
         : mov && <div className="space-y-3">
           <p>{fraseResumo(mov, voltam.length)}</p>
-          {voltam.length > 0 && <div className="overflow-x-auto rounded-lg border border-red-200">
+          {voltam.length > 0 && <div className="overflow-x-auto rounded-lg border border-destructive/30">
             <table className="w-full text-left text-sm consulta-tabela">
-              <thead className="text-red-900"><tr><th className="p-2 font-semibold">Brinco</th><th className="p-2 font-semibold">Nome</th><th className="p-2 font-semibold">Volta para</th><th className="p-2 font-semibold">Categoria</th></tr></thead>
+              <thead className="text-destructive"><tr><th className="p-2 font-semibold">Brinco</th><th className="p-2 font-semibold">Nome</th><th className="p-2 font-semibold">Volta para</th><th className="p-2 font-semibold">Categoria</th></tr></thead>
               <tbody className="divide-y divide-red-200">
                 {voltam.map((a) => <tr key={a.animalId}>
                   <td className="p-2"><button type="button" onClick={() => abrirAnimal(a.animalId)} className="font-semibold text-mast hover:underline">{a.brinco}</button></td>

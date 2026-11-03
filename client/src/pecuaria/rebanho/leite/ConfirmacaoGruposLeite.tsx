@@ -4,6 +4,7 @@ import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useState } from "react";
 import type { FolhaLeite } from "./types";
 import { formatarLitros } from "./modelo";
+import { Empty } from "@/financeiro/financeiro-ui";
 export type NaturezaGrupoLeite = "COMERCIAL" | "COLOSTRO" | "NAO_COMERCIAL";
 export const nomeNaturezaGrupo = (natureza: string) =>
   (
@@ -265,7 +266,7 @@ function ConfirmarGrupo({
             </TableBody>
           </Table>
         </div>
-        {!visiveis.length && <p>Nenhum animal nesta busca.</p>}
+        {!visiveis.length && <Empty>Nenhum animal nesta busca.</Empty>}
         <div className="leite-form-inline">
           <Button variant="outline" type="button"
             className="leite-secondary"
