@@ -41,9 +41,16 @@
   "keep_vars": true,
 
   "env": {
-    "staging": { "name": "fazendinha-stg" },
+    "staging": {
+      "name": "fazendinha-stg",
+      "vars": {
+        "NUTRICAO_MENSAL_ENABLED": "true",
+        "NUTRICAO_AUTOMACAO_ENABLED": "false"
+      }
+    },
     "producao": { "name": "fazendinha-producao" }
   },
+  "triggers": { "crons": ["*/15 * * * *"] },
 
   "observability": {
     "enabled": true

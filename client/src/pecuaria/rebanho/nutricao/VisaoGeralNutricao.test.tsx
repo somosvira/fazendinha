@@ -2,12 +2,12 @@
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta, alterarControle } from "@/lib/controles.fixture";
 import "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { VisaoGeralNutricao } from "./VisaoGeralNutricao";
 import { consultarVisaoNutricional, type ResumoNutricional } from "./api";
 import { navegarPara } from "../../../router";
 
-vi.mock("./api", () => ({ consultarVisaoNutricional: vi.fn() }));
+vi.mock("./api", () => ({ consultarCustoMedio: vi.fn(async () => null), consultarVisaoNutricional: vi.fn() }));
 vi.mock("../../../router", () => ({ navegarPara: vi.fn() }));
 function lote(id: string, nome: string, animais: number, comDieta: boolean): ResumoNutricional {
   return { lote: { id, nome, propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, ativo: true, animaisAtivos: animais, observacao: null }, vigente: comDieta ? { id: "v", desde: "2026-09-01", ate: null, dieta: { id: "d", nome: "Dieta atual", versao: 1 } } : null, programada: null, verValores: true, custos: { custoConhecido: "379.50", custoPorAnimalDia: "6.90", animalDias: 55, fechamentos: 1, coberturaCustoCompleta: true } };
@@ -105,15 +105,27 @@ it("alterna cartões e tabela sem perder a busca e oculta custos sem permissão"
   expect(screen.queryByRole("columnheader",{name:"Custo histórico"})).toBeNull();
 });
 
-it("mantém um único link nativo por cartão, com nome acessível e destino do lote", async () => {
+it("mantém links nativos e ações independentes por cartão", async () => {
   window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual");
   const { container } = render(<VisaoGeralNutricao />);
   await screen.findByRole("link", { name: "Matrizes" });
   const cartao = container.querySelector(".dietas-cartao")!;
-  expect(cartao.querySelectorAll("a")).toHaveLength(1);
+  expect(cartao.querySelectorAll("a")).toHaveLength(2);
   const link = cartao.querySelector("a")!;
   expect(link.className).toContain("dietas-cartao-link");
   expect(link.getAttribute("href")).toContain("loteId=mat");
   fireEvent.click(link);
   expect(vi.mocked(navegarPara).mock.calls.at(-1)?.[0]).toContain("loteId=mat");
+});
+
+it("oferece ações por lote e mostra próxima dieta na tabela, sem perder o filtro", async () => {
+  const atual = lote("mat", "Matrizes", 5, true);
+  atual.programada = { id: "futura", desde: "2026-12-01", ate: null, dieta: { id: "nova", nome: "Dieta futura", versao: 2 } };
+  vi.mocked(consultarVisaoNutricional).mockResolvedValue({ lotes: [atual, lote("rec", "Recria", 3, false)], verValores: false });
+  render(<VisaoGeralNutricao podeLancar />);
+  expect((await within(await screen.findByRole("table", { name: "Nutrição por lote" })).findByRole("link", { name: "Atribuir dieta" })).getAttribute("href")).toContain("loteId=rec");
+  expect(within(screen.getByRole("table", { name: "Nutrição por lote" })).getByRole("link", { name: "Trocar dieta" }).getAttribute("href")).toContain("loteId=mat");
+  expect(screen.getAllByText(/Dieta futura/)[0]).toBeTruthy();
+  await alterarControle(screen.getByRole("combobox", { name: "Filtrar lotes por dieta" }), { target: { value: "programada" } });
+  expect(screen.queryByRole("link", { name: "Recria" })).toBeNull();
 });

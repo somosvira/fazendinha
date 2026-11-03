@@ -1,3 +1,4 @@
+import { env as ambienteNutricao } from "../../env.js";
 import { transacaoValidada } from "../../lib/transacao-validada.js";
 import { prisma } from "../../db.js";
 import { Prisma, type OrigemMovimentoEstoque, type TipoMovimento } from "@prisma/client";
@@ -182,16 +183,23 @@ export async function obterCustoMedio(db: DbCusto, produtoId: string, propriedad
 
 const USO_CAMPO = { genetico: "usoGenetico" } as const;
 
-export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO; produtoIds?: string[]; materialGeneticoVisivel?: boolean }) {
+export async function listarSaldos(f?:Parameters<typeof listarSaldosTx>[1]){
+  return ambienteNutricao.NUTRICAO_MENSAL_ENABLED
+    ? prisma.$transaction(tx=>listarSaldosTx(tx,f),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead})
+    : listarSaldosTx(prisma,f);
+}
+
+async function listarSaldosTx(db:Prisma.TransactionClient,f?: { centroCustoId?: string; propriedadeId?: number | null; uso?: keyof typeof USO_CAMPO; produtoIds?: string[]; materialGeneticoVisivel?: boolean }) {
   // O estoque lista os produtos ativos que já tiveram movimento no sítio (qualquer
   // status) — o produto entra no estoque pela operação, não pelo cadastro.
   // Movimento sem propriedade conta como da principal (mesmo escopo do custo médio).
   const sitio = await filtroSitioCusto(f?.propriedadeId ?? null);
-  const produtos = await prisma.produto.findMany({
+  const presenca:Prisma.ProdutoWhereInput=ambienteNutricao.NUTRICAO_MENSAL_ENABLED?{OR:[{movimentos:{some:sitio}},{itensConsumoDiario:{some:{dia:{situacao:{not:"EFETIVADO"},mes:{configuracao:{modelo:"PROVISORIO"},...(f?.propriedadeId==null?{}:{propriedadeId:f.propriedadeId})}}}}}]}:{movimentos:{some:sitio}};
+  const produtos = await db.produto.findMany({
     // com produtoIds, o chamador já sabe quais produtos quer: ignora ativo/uso
     where: f?.produtoIds
-      ? { id: { in: f.produtoIds }, movimentos: { some: sitio } }
-      : { ativo: true, movimentos: { some: sitio }, ...(f?.uso ? { [USO_CAMPO[f.uso]]: true } : {}) },
+      ? { id: { in: f.produtoIds }, ...presenca }
+      : { ativo: true, ...presenca, ...(f?.uso ? { [USO_CAMPO[f.uso]]: true } : {}) },
     orderBy: { nome: "asc" },
     // Saldo por sítio: com filtro, só os movimentos daquela propriedade contam.
     include: {
@@ -201,7 +209,8 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
       materialGenetico: { select: { id: true } },
     },
   });
-  const bases = await obterBasesCusto(prisma, produtos.map((p) => p.id), f?.propriedadeId ?? null);
+  const bases = await obterBasesCusto(db, produtos.map((p) => p.id), f?.propriedadeId ?? null);
+  const previstos = ambienteNutricao.NUTRICAO_MENSAL_ENABLED ? await db.itemConsumoDiario.groupBy({by:["produtoId"],where:{produtoId:{in:produtos.map(p=>p.id)},dia:{situacao:{not:"EFETIVADO"},mes:{revisadoEm:null,configuracao:{modelo:"PROVISORIO"},...(f?.propriedadeId==null?{}:{propriedadeId:f.propriedadeId})}}},_sum:{prevista:true}}) : [];
   const linhas = produtos.map((p) => {
     const movs: MovIn[] = p.movimentos.map((m) => ({
       tipo: m.tipo,
@@ -229,6 +238,8 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
       unidade: p.unidade,
       centrosCusto: p.centrosCusto.map(({ centroCusto }) => ({ id: centroCusto.id, nome: centroCusto.nome })),
       saldo,
+      consumoVirtual:previstos.find(i=>i.produtoId===p.id)?._sum.prevista?.toNumber()??0,
+      saldoProjetado:new Prisma.Decimal(saldo).minus(previstos.find(i=>i.produtoId===p.id)?._sum.prevista??0).toNumber(),
       custoMedio: custo == null ? null : custo.toNumber(),
       valor,
       minimoEstoque: minimo,
@@ -244,6 +255,7 @@ export async function listarSaldos(f?: { centroCustoId?: string; propriedadeId?:
 export type VinculoMovimento =
   | { tipo: "TENTATIVA_REPRODUTIVA"; id: string; animalId: string }
   | { tipo: "APLICACAO_SANITARIA"; id: string; animalId: string }
+  | { tipo: "MES_NUTRICIONAL"; id: string; loteId: string }
   | { tipo: "FECHAMENTO_NUTRICIONAL"; id: string; loteId: string };
 
 /** Quais vínculos operacionais o leitor pode ver (quem só tem financeiro não vê o fato da pecuária). Ausente = todos. */
@@ -314,6 +326,8 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
   ]);
   const idsReproducao = [...new Set(ms.filter((m) => m.origem === "REPRODUCAO" || m.reversaoDeId).map((m) => m.reversaoDeId ?? m.id))];
   const tentativas = idsReproducao.length ? await prisma.tentativaReprodutiva.findMany({ where: { movimentoEstoqueId: { in: idsReproducao } }, select: { id: true, animalId: true, movimentoEstoqueId: true } }) : [];
+  const diarios=ambienteNutricao.NUTRICAO_MENSAL_ENABLED?await prisma.movimentoConsumoDiario.findMany({where:{movimentoId:{in:ms.map(m=>m.id)}},include:{item:{include:{dia:{include:{mes:true}}}}}}):[];
+  const mesPorMovimento=new Map(diarios.map(v=>[v.movimentoId,v.item.dia.mes]));
   const tentativaPorMovimento = new Map(tentativas.map((t) => [t.movimentoEstoqueId, t]));
   const valoresLeite = await valoresMovimentosLeiteTx(prisma, ms.filter(m => m.metodoValorizacao === METODO_LEITE).map(m => m.id));
   const itens = ms.map((original) => {
@@ -324,6 +338,7 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     const parcelasDoGrupo = idsGrupo ? (m.parcelasValorizacao ?? []).filter(p => p.base.partidaId != null && idsGrupo.includes(p.base.partidaId)) : [];
     const valorConsulta = !idsGrupo || quantidadeConsulta.eq(m.quantidade) ? m.valorTotal
       : parcelasDoGrupo.length > 0 ? parcelasDoGrupo.reduce((v,p) => v.plus(p.valorTotal), new Prisma.Decimal(0)).mul(m.tipo === "SAIDA" ? -1 : 1) : null;
+    const mesNutricional=mesPorMovimento.get(m.id);
     let vinculo: VinculoMovimento | null = null;
     let oculto = false;
     const tentativa = tentativaPorMovimento.get(m.reversaoDeId ?? m.id);
@@ -335,6 +350,8 @@ export async function listarMovimentos(f?: FiltroMovimentos) {
     } else if (m.aplicacaoProduto) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "APLICACAO_SANITARIA", id: m.aplicacaoProduto.id, animalId: m.aplicacaoProduto.animalId };
       else oculto = true;
+    } else if(mesNutricional){
+      if(visiveis.pecuaria!==false)vinculo={tipo:"MES_NUTRICIONAL",id:mesNutricional.id,loteId:mesNutricional.loteId};else oculto=true;
     } else if (m.itemFechamentoConsumo?.fechamento) {
       if (visiveis.pecuaria !== false) vinculo = { tipo: "FECHAMENTO_NUTRICIONAL", id: m.itemFechamentoConsumo.fechamento.id, loteId: m.itemFechamentoConsumo.fechamento.loteId };
       else oculto = true;
@@ -517,6 +534,7 @@ export async function estornarMovimentoTx(
   }
   const mov = await tx.movimentoEstoque.findFirst({ where: { id: movimentoId, ...filtroPropriedade }, include: { revertidoPor: true, alocacaoPartidaEstoques: true } });
   if (!mov) throw new EstoqueError("NAO_ENCONTRADO", "movimento não encontrado");
+  if (ambienteNutricao.NUTRICAO_MENSAL_ENABLED && await tx.movimentoConsumoDiario.findUnique({where:{movimentoId}})) throw new EstoqueError("CONFLITO", "Corrija este consumo pelo fechamento mensal da Nutrição");
   const alocacoes = mov.alocacaoPartidaEstoques ?? [];
   if (mov.revertidoPor || mov.status === "REVERTIDO") throw new EstoqueError("ORIGEM_AUTOMATICA", "movimento já estornado");
   if (mov.reversaoDeId != null) throw new EstoqueError("ORIGEM_AUTOMATICA", "um movimento de estorno não pode ser estornado novamente");
