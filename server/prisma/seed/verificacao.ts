@@ -12,6 +12,15 @@ import { calendario, intervalo, ref } from './leite/catalogo.js';
 function exigir(condicao: unknown, mensagem: string): asserts condicao { if (!condicao) throw new Error(`Conferência da seed: ${mensagem}`); }
 const D = (valor: Prisma.Decimal.Value) => new Prisma.Decimal(valor);
 
+export function conferirLactantesSeed(lactacoes: { animalId: string }[], id: (n: number) => string, secasNaBase: { animalId: string }[]) {
+  const secaveis = new Set([id(33), id(34)]);
+  exigir(secasNaBase.every(l => secaveis.has(l.animalId)), 'secagens demonstrativas limitadas às matrizes 33 e 34.');
+  const esperadas = new Set(Array.from({ length: 36 }, (_, i) => id(i + 1)));
+  for (const l of secasNaBase) esperadas.delete(l.animalId);
+  exigir(lactacoes.length === esperadas.size && new Set(lactacoes.map(l => l.animalId)).size === esperadas.size && lactacoes.every(l => esperadas.has(l.animalId)), `${esperadas.size} lactantes distintas no Principal na data-base, respeitando as secagens demonstrativas.`);
+}
+
+
 type ResultadoQualidadeConferencia = { campo: string; unidade: string | null };
 type AmostraQualidadeConferencia = {
   data: Date; sujeito: string; status: string; versao: number; resultados: ResultadoQualidadeConferencia[];
@@ -104,7 +113,11 @@ export async function verificar(c: Contexto) {
   const produtos = await prisma.produto.count(), parceiros = await prisma.parceiro.count();
   exigir(produtos >= 30 && parceiros >= 12, 'pelo menos 30 produtos e 12 parceiros.');
   const lactacoes = await prisma.lactacaoAnimal.findMany({ where: { animalId: { in: principais }, inicio: { lte: data }, OR: [{ encerradaEm: null }, { encerradaEm: { gt: data } }] }, select: { animalId: true } });
-  exigir(lactacoes.length === 36 && new Set(lactacoes.map(l => l.animalId)).size === 36, '36 lactantes atuais distintas no Principal.');
+  const secasNaBase = c.manifesto.etapas.includes('pesagens-secagem') ? await prisma.lactacaoAnimal.findMany({ where: {
+    animalId: { in: [c.id('animal:33'), c.id('animal:34')] }, propriedadeId: principal,
+    inicio: { gte: dia(c.dias(-460)) }, encerradaEm: { lte: data },
+  }, select: { animalId: true } }) : [];
+  conferirLactantesSeed(lactacoes, n => c.id(`animal:${n}`), secasNaBase);
   const crias = await prisma.criaParto.findMany({ where: { animalId: { in: Array.from({ length: 8 }, (_, i) => c.id(`animal:${65 + i}`)) } }, include: { PartoAnimal: true } });
   exigir(crias.length === 8 && crias.every(a => a.viva && a.PartoAnimal.status === 'VALIDO' && a.PartoAnimal.propriedadeId === principal && a.PartoAnimal.data <= data), 'oito crias vivas vinculadas aos partos reais do Principal.');
   for (const n of [15, 16, 17, 18, 19, 20]) {

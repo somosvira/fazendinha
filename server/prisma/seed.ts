@@ -42,11 +42,12 @@ async function main() {
     await c.etapa('sanidade', () => sanidade(c));
     await c.etapa('visitas', () => visitas(c));
     await c.etapa('nutricao', () => nutricaoGeral(c));
+    // A secagem precede a consolidação das origens de leite na mesma data.
+    await c.etapa('pesagens-secagem', () => pesagensSecagem(c));
     await prepararLeite(c);
     await c.etapa('alertas-sanitarios', () => alertasSanitarios(c));
     await c.etapa('bezerreiro', () => bezerreiro(c));
     await c.etapa('nutricao-mensal', () => nutricaoMensal(c));
-    await c.etapa('pesagens-secagem', () => pesagensSecagem(c));
     await c.etapa('leite-interno', () => retiradasInternas(c));
     await c.etapa('financeiro-final', () => financeiroFinal(c));
     if (args.arquivosR2) {
