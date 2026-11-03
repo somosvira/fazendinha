@@ -55,6 +55,8 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
   useEffect(() => {
     if (aberto) { setQuery(""); setFiltro("Tudo"); setResposta(null); setErro(false); }
   }, [aberto, modo]);
+  // Trocar de modo com a caixa aberta (Ctrl/⌘ K ↔ Ctrl/⌘ Shift K) mantém o foco no campo.
+  useEffect(() => { if (aberto) inputRef.current?.focus(); }, [aberto, modo]);
   useEffect(() => {
     if (!aberto || !consultaValida(termo)) { setResposta(null); setBuscando(false); setErro(false); return; }
     const controller = new AbortController();
@@ -100,7 +102,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
           {mostrarRegistros && erro && <div role="alert" className="busca-global-falha"><strong>Não foi possível buscar os registros</strong><p>Confira sua conexão e tente novamente.</p><button type="button" onClick={() => setTentativa(t => t + 1)}>Tentar novamente</button></div>}
           {paginas.length > 0 && <CommandGroup heading={termo ? "Páginas" : "Ir para"}>{paginas.map(c => <CommandItem key={c.id} value={c.id} onSelect={() => escolher(c.tab, undefined, c.caminho)} className="busca-global-linha"><FileText size={19} aria-hidden /><span className="busca-global-texto"><span>{c.label}</span><small>{c.descricao ?? c.grupo}</small></span><span className="busca-global-tipo">Página</span></CommandItem>)}</CommandGroup>}
           {acoes.length > 0 && <CommandGroup heading="Ações">{acoes.map(c => <CommandItem key={c.id} value={c.id} onSelect={() => escolher(c.tab, undefined, c.caminho)} className="busca-global-linha"><CornerDownLeft size={19} aria-hidden /><span className="busca-global-texto"><span>{c.label}</span><small>{c.descricao ?? c.grupo}</small></span><span className="busca-global-tipo">Ação</span></CommandItem>)}</CommandGroup>}
-          {semResultados && <div className="busca-global-vazio"><strong>{termo ? `Nenhum resultado para «${termo}»` : "Digite para buscar"}</strong><p>{!consultaValida(termo) && termo ? "Digite pelo menos duas letras ou um número." : "Tente parte do nome, brinco ou referência do registro."}</p></div>}
+          {semResultados && (termo || !soAnimais) && <div className="busca-global-vazio"><strong>{termo ? `Nenhum resultado para «${termo}»` : "Digite para buscar"}</strong><p>{!consultaValida(termo) && termo ? "Digite pelo menos duas letras ou um número." : "Tente parte do nome, brinco ou referência do registro."}</p></div>}
           {registros.length >= (soAnimais ? 20 : 6) && <p className="busca-global-dica">Resultados limitados por tipo. Refine o termo para localizar outros registros.</p>}
         </CommandList>
         <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span>{soAnimais ? <><kbd>Ctrl/⌘ K</kbd> buscar em tudo</> : <><kbd>Ctrl/⌘ Shift K</kbd> só animais</>}</span></div>

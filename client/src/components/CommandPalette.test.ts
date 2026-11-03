@@ -266,3 +266,12 @@ describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
     expect(props.onNav).toHaveBeenCalledWith("pec-rebanho", "a1", "/pecuaria/rebanho/animais/a1");
   });
 });
+
+it("trocar para a busca só de animais com a caixa aberta mantém o foco no campo", () => {
+  const props = baseProps();
+  const { rerender } = render(h(CommandPalette, { ...props, modo: "tudo" as const }));
+  rerender(h(CommandPalette, { ...props, modo: "animais" as const }));
+  const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
+  expect(document.activeElement).toBe(input);
+  expect(screen.queryByText("Digite para buscar")).toBeNull();
+});
