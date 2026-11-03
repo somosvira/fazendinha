@@ -26,7 +26,8 @@ import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
-import { AssistenteConsulta } from "./components/AssistenteConsulta";
+const PaginaMetas = lazy(() => import("./assistente/PaginaMetas").then(m => ({ default: m.PaginaMetas })));
+const PaginaIATerrano = lazy(() => import("./assistente/PaginaIATerrano").then(m => ({ default: m.PaginaIATerrano })));
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
@@ -69,7 +70,6 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
 // Se a IA legada voltar explicitamente, não sobrepor o novo chat ao composer.
-const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
@@ -552,8 +552,19 @@ export function App() {
     return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
+  const abrirFonteAssistente = (caminho: string, sitio: number | null) => { void executarComGuardaNavegacao(() => {
+    if (!podeAcessarCaminho(usuario, caminho)) return;
+    const destino = new URL(caminho, window.location.origin);
+    const id = Number(destino.searchParams.get("propriedadeId"));
+    const escopo = Number.isInteger(id) && id > 0 && id <= 2147483647 ? id : sitio;
+    setPropriedadeAtiva(escopo); setPropAtiva(escopo); setDeepLinkFiltros(null); navegarPara(caminho);
+  }); };
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : tab === "metas"
+    ? <PaginaMetas propriedadeId={propAtiva} onTrocarPropriedade={trocarPropriedade} onAbrirFonte={abrirFonteAssistente} />
+    : tab === "assistente"
+    ? <PaginaIATerrano propriedadeId={propAtiva} onTrocarPropriedade={trocarPropriedade} onAbrirFonte={abrirFonteAssistente} />
     : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
@@ -662,7 +673,6 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <AssistenteConsulta key={`${token}:${usuario.id}:${propAtiva ?? "all"}:${JSON.stringify([usuario.areas, usuario.abas, usuario.flags, usuario.dono])}`} />}
     </div>
     </>
   );

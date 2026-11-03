@@ -61,3 +61,12 @@ A revisão de responsividade e densidade conserva o catálogo, as fontes, os gat
 A integração automática do Bezerreiro conserva a identidade do animal e os destinos de sua ficha. Participação é um intervalo contextual, não um segundo cadastro pesquisável; a regularização exige conferir lote e localização e não é executada pela busca. A página Bezerreiro permanece no catálogo sob o gate de Pecuária.
 
 O cancelamento de programação do Bezerreiro é uma ação contextual ao período na ficha exata do animal, acessível pelo destino já indexado. Não ganha comando global: exige conferir a fase, o intervalo e a versão da participação antes de escrever. Mantém os gates de Pecuária, lançamento e sítio; não altera URLs ou fontes de registros.
+
+
+
+### Assistente Terrano
+
+Conversas privadas e propostas temporárias de pesagem não são indexadas na busca global: pertencem ao usuário e ao recorte de permissões da conversa, não a uma página pública de registros. São retomadas pelo Histórico do próprio assistente. O catálogo inclui IA Terrano (`/assistente`), Radar (`/assistente?aba=radar`) e Metas (`/metas`), para usuários reais ativos. `/ia` e o legado continuam desativados. O antigo atalho `/assistente?aba=metas` é normalizado para `/metas`. A pesagem confirmada pertence à ficha exata do animal (`/pecuaria/rebanho/animais/:id`), que já é pesquisável por identificação e sítio. Pesagens individuais ainda não têm fonte específica na busca: o resultado do animal abre sua ficha e o histórico de peso, sem prometer localizar uma pesagem pelo texto do chat.
+
+
+Metas individuais e medições ainda não têm fonte de registros na busca: a projeção versionada e os gates conservadores por indicador precisam de integração própria antes de indexar títulos com segurança. Nesta versão, a busca abre a página Metas, onde a lista é filtrada no servidor; não promete abrir uma meta exata a partir de seu título. Snapshots privados do Radar também não são indexados. Fontes do Radar e das medições automáticas abrem as consultas operacionais já filtradas, respeitando sítio e guarda de navegação.

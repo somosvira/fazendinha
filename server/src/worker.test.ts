@@ -1,13 +1,15 @@
 import { describe,it,expect,vi,beforeEach } from "vitest";
-const mock=vi.hoisted(()=>({env:{ALERTAS_CRON_ENABLED:false,NUTRICAO_MENSAL_ENABLED:false,NUTRICAO_AUTOMACAO_ENABLED:false},isolar:vi.fn(),nutricao:vi.fn(),criar:vi.fn(),avaliar:vi.fn(),disconnect:vi.fn(),fetch:vi.fn().mockResolvedValue(new Response("ok"))}));
+const mock=vi.hoisted(()=>({env:{ASSISTENTE_CONSULTA_ENABLED:false,ALERTAS_CRON_ENABLED:false,NUTRICAO_MENSAL_ENABLED:false,NUTRICAO_AUTOMACAO_ENABLED:false},radar:vi.fn(),isolar:vi.fn(),nutricao:vi.fn(),criar:vi.fn(),avaliar:vi.fn(),disconnect:vi.fn(),fetch:vi.fn().mockResolvedValue(new Response("ok"))}));
 vi.mock("./env.js",()=>({env:mock.env}));
 vi.mock("./app.js",()=>({app:{fetch:mock.fetch}}));
 vi.mock("./db.js",()=>({criarPrismaClient:mock.criar,comPrismaPorRequisicao:mock.isolar}));
 vi.mock("./services/pecuaria/sanidade/alertas/avaliador.js",()=>({avaliarAlertasTemporais:mock.avaliar}));
 vi.mock("./services/pecuaria/nutricao/mensal.js",()=>({processarPendentes:mock.nutricao}));
+vi.mock("./services/assistente/radar/servico.js",()=>({processarRadarDiario:mock.radar}));
 import worker from "./worker.js";
 describe("Worker fetch e scheduled",()=>{
- beforeEach(()=>{vi.clearAllMocks();mock.env.ALERTAS_CRON_ENABLED=false;mock.env.NUTRICAO_MENSAL_ENABLED=false;mock.env.NUTRICAO_AUTOMACAO_ENABLED=false;mock.isolar.mockImplementation(f=>f());mock.criar.mockReturnValue({$disconnect:mock.disconnect});});
+ beforeEach(()=>{vi.clearAllMocks();mock.env.ASSISTENTE_CONSULTA_ENABLED=false;mock.env.ALERTAS_CRON_ENABLED=false;mock.env.NUTRICAO_MENSAL_ENABLED=false;mock.env.NUTRICAO_AUTOMACAO_ENABLED=false;mock.isolar.mockImplementation(f=>f());mock.criar.mockReturnValue({$disconnect:mock.disconnect});});
+ it("radar usa contexto isolado e preserva gate",async()=>{mock.env.ASSISTENTE_CONSULTA_ENABLED=true;await worker.scheduled({scheduledTime:123});expect(mock.radar).toHaveBeenCalledWith(new Date(123));expect(mock.isolar).toHaveBeenCalledOnce();});
  it("fetch mantém encaminhamento Hono",async()=>{const r=await worker.fetch(new Request("http://localhost/api/health"));expect(r.status).toBe(200);expect(mock.fetch).toHaveBeenCalledOnce();});
  it("cron fica desligado por padrão sem criar client",async()=>{await worker.scheduled({scheduledTime:0});expect(mock.criar).not.toHaveBeenCalled();});
  it("nutrição exige ambos os gates e usa contexto próprio mesmo sem cron sanitário",async()=>{

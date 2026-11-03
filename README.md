@@ -12,7 +12,7 @@ O deploy usa exclusivamente **Cloudflare Workers**, servindo interface e API no 
 - **Produção de leite V5:** produção geral por parcela/recipiente e controle individual, origens e destinos do leite, qualidade versionada, coletas antes do preço, comercialização e custos com cobertura. Aplicação das migrations e homologação do ambiente permanecem necessárias; consulte o [contrato](docs/pecuaria/leite.md).
 - **Administração:** sítios, usuários, sessões e permissões por área/ação.
 
-Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com contratos próprios e vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. O [assistente de consulta](docs/assistente-consulta.md) oferece leitura financeira e ajuda de uso; perguntas livres exigem configuração OpenAI. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
+Agricultura, Cultivo e Equipe/Ponto foram retirados. Produção e qualidade do leite V5 estão integradas à base operacional, com contratos próprios e vínculos à Reprodução. Laboratório/FIV continuam fora do escopo. A página [IA Terrano](docs/assistente-consulta.md) reúne conversa, leitura financeira, ajuda, pesagem com confirmação e Radar diário; perguntas livres e síntese IA exigem configuração OpenAI. [Metas](docs/metas.md) tem página própria na sidebar, independente da IA, com medições, gráficos e etapas. O bot antigo, `/ia` e WhatsApp continuam suspensos pelas flags do cliente e servidor.
 
 ## Entender o produto
 
