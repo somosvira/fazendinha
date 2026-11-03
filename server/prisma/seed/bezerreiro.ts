@@ -2,6 +2,7 @@ import { prisma } from '../../src/db.js';
 import { salvarConfiguracao, registrarPerfil, mudarFase } from '../../src/services/pecuaria/bezerreiro/gestao.js';
 import { consultarPrevisao, confirmarOferta } from '../../src/services/pecuaria/bezerreiro/aleitamento.js';
 import { registrarRetiradaColostro, confirmarRetiradaColostro, destinarColostro } from '../../src/services/pecuaria/bezerreiro/colostro.js';
+import { fechamentosSobrepostosTx } from '../../src/services/pecuaria/bezerreiro/alimentacao-compartilhada.js';
 import { consultaSchema } from '../../src/services/pecuaria/bezerreiro/schemas.js';
 import { hojeFazendaDate } from '../../src/services/pecuaria/rebanho/regras.js';
 import { chave, iso, type Contexto } from './contexto.js';
@@ -64,14 +65,22 @@ export async function bezerreiro(c: Contexto) {
 
   // Ofertas de hoje, sem horário: a data-base já tem fechamento de Nutrição das crias e o leite tem movimentos até hoje.
   // Manhã conforme o previsto; tarde abaixo do previsto, justificada.
+  // Em uma seed nova, hoje pode coincidir com o fechamento anterior: estas ofertas são consumo adicional explícito.
   const hoje = iso(hojeFazendaDate());
   for (const [ordem, fator] of [[0, 1], [1, 0.8]] as const) {
     const nome = `bezerreiro:oferta:${ordem}`;
     await c.acao(nome, async () => !!await prisma.ofertaBezerreiro.findFirst({ where: { perfilId, data: new Date(`${hoje}T00:00:00Z`), ofertaProgramadaId: fase.ofertas[ordem].id, status: 'CONFIRMADO' } }), async () => {
       const previa = await consultarPrevisao(propriedadeId, consultaSchema.parse({ data: hoje, perfilId }));
+      const sobreposicoes = await prisma.$transaction(tx => fechamentosSobrepostosTx(tx, propriedadeId, new Date(`${hoje}T00:00:00Z`), previa.grupos.flatMap(g => g.participantes.map(p => p.animalId))));
       const grupos = previa.grupos.map(g => {
         const previsto = g.participantes.reduce((n, p) => n + Number(p.litrosDia) * PERCENTUAL_OFERTA[ordem] / 100, 0);
-        return { coleiraId: g.coleiraId, quantidadeLitros: (previsto * fator).toFixed(3), ...(fator === 1 ? {} : { justificativa: 'Sobra no balde da tarde; consumo abaixo do previsto.' }) };
+        const ids = new Set(g.participantes.map(p => p.animalId));
+        const fechamentos = sobreposicoes.filter(f => f.animalIds.some(id => ids.has(id)));
+        const motivos = [
+          ...(fechamentos.length ? [`Oferta demonstrativa adicional ao consumo já registrado na Nutrição; não substitui o fechamento ${fechamentos.map(f => f.fechamentoId).join(', ').slice(0, 200)}.`] : []),
+          ...(fator === 1 ? [] : ['Sobra no balde da tarde; consumo abaixo do previsto.']),
+        ];
+        return { coleiraId: g.coleiraId, quantidadeLitros: (previsto * fator).toFixed(3), ...(fechamentos.length ? { consumoAdicional: true } : {}), ...(motivos.length ? { justificativa: motivos.join(' ') } : {}) };
       }).filter(g => Number(g.quantidadeLitros) > 0);
       if (!grupos.length) throw new Error('Bezerreiro sem participantes hoje.');
       await confirmarOferta({ chave: chave(nome), propriedadeId, perfilId, contextoToken: previa.contextoToken, data: hoje, horarioEstimado: false, ocorridoEm: null,
