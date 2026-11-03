@@ -103,3 +103,7 @@ Execute em ambiente de desenvolvimento/homologação, com automação desligada 
 | Acessos | Repetir consultas com perfil restrito e sítio diferente | API impede escrita/escopo indevido e não retorna valores sem permissão |
 
 Antes da liberação, registrar responsável, data, ambiente e evidência de cada cenário; não marcar como homologado com base somente em mocks ou testes unitários. Conferir CI, migration aplicável e flags em staging antes do piloto. Habilitar automação é uma ação separada da publicação do código; acompanhar o primeiro processamento e a primeira conferência mensal.
+
+### Disponibilidade em staging
+
+O ambiente `staging` define `NUTRICAO_MENSAL_ENABLED=true` e `NUTRICAO_AUTOMACAO_ENABLED=false` no `wrangler.jsonc`: disponibiliza configuração e conferência para homologação, sem processamento agendado de baixas. As regras de permissão e vigência continuam obrigatórias. Produção conserva sua configuração independente; este ajuste não a habilita.
