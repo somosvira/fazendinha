@@ -12,7 +12,7 @@
 :root [data-design-operacional] :is(input:not([type=checkbox],[type=radio]),textarea,select,[data-slot=select-trigger]){border-color:#b9cbbb;background-color:var(--card,#fff)}
 :root [data-design-operacional] :is(button,a,input,textarea,[role=tab]):focus-visible{outline:2px solid #5c9a7c;outline-offset:2px}
 :root [data-design-operacional] :is(dt,.consulta-cartao-meta,.consulta-entidade-detalhe,.ger-muted){font-size:14px;line-height:1.5;color:var(--op-muted)}
-:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) th{background:#f3f7ef;color:#4d6552;font-size:14px;font-weight:600;line-height:1.4;padding:9px 14px;border-inline:0}
+:root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) th{background:var(--muted,#f1f5f4);color:var(--campo-tinta-2,#526863);font-size:14px;font-weight:600;line-height:1.4;padding:9px 14px;border-inline:0}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) td{font-size:15px;line-height:1.45;padding:9px 14px;border-inline:0;vertical-align:middle;font-variant-numeric:tabular-nums}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) td :is(.text-xs,small){font-size:14px;line-height:1.45}
 :root [data-design-operacional] :is(.fin-tabela,[data-slot=table]) tbody tr:hover{background:#f7faf3}
@@ -50,7 +50,7 @@
 /* A malha de divisórias legada não acompanha as consultas operacionais. */
 @media screen {
 :root [data-design-operacional] table:not(.rg-tabela){border:0}
-:root [data-design-operacional] table:not(.rg-tabela)>thead>tr>th{height:40px;padding:8px 14px;font-size:14px;line-height:1.4;background:#f3f7ef;color:#4d6552;border-bottom:1px solid #dbe5d8}
+:root [data-design-operacional] table:not(.rg-tabela)>thead>tr>th{height:40px;padding:8px 14px;font-size:14px;line-height:1.4;background:var(--muted,#f1f5f4);color:var(--campo-tinta-2,#526863);border-bottom:1px solid var(--campo-linha,#dfe7e5)}
 :root [data-design-operacional] table:not(.rg-tabela)>:is(thead,tbody,tfoot)>tr>:is(th,td):not(:last-child){border-inline-end:0}
 :root [data-design-operacional] table:not(.rg-tabela)>tbody>tr>td{font-size:15px;line-height:1.45;padding:9px 14px;font-variant-numeric:tabular-nums;border-bottom:1px solid #e1e9dd}
 :root:has([data-design-operacional]) [data-slot=dialog-content] table:not(.rg-tabela)>:is(thead,tbody,tfoot)>tr>:is(th,td){border-inline:0;font-size:14px;line-height:1.5;padding:13px 16px}
