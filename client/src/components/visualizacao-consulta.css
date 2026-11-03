@@ -14,3 +14,6 @@
 @media(max-width:767px){.consulta-cartoes{grid-template-columns:1fr;padding:12px}.consulta-cartao{padding:16px}}
 /* Mesma altura dos controles ao lado (busca, Filtros: 40px), para a barra alinhar. */
 @media (min-width:901px){:root .consulta-visual-alternador{box-sizing:border-box;height:40px;align-items:stretch}:root .consulta-visual-alternador button{min-height:0;height:auto;padding-block:0}}
+
+/* O grupo controla a altura; os itens dispensam o mínimo global de botões. */
+@media (max-width:900px){.consulta-visual-alternador button{min-height:44px}}
