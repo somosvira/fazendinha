@@ -214,31 +214,28 @@ it("Enter prioriza o registro encontrado quando a resposta chega depois das pág
 });
 
 describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
-  it("consulta só animais, sem páginas, ações ou mini abas, e abre a ficha", async () => {
-    const vaca = { tipo: "animal", entidadeId: "a1", label: "DEV-019 — Lactantes 19", sublabel: "Rebanho › Sede", tab: "pec-rebanho", grupo: "Animais", caminho: "/pecuaria/rebanho/animais/a1" };
-    const lote = { tipo: "lote", entidadeId: "l1", label: "Lactantes", sublabel: "Rebanho", tab: "pec-rebanho", grupo: "Lotes de animais", caminho: "/pecuaria/rebanho/lotes/l1" };
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [vaca, lote] });
-    vi.stubGlobal("fetch", fetchMock); vi.useFakeTimers();
-    const props = baseProps();
-    render(h(CommandPalette, { ...props, modo: "animais" as const }));
-    const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
-    fireEvent.change(input, { target: { value: "rebanho" } });
-    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
-    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/busca?q=rebanho&tipos=animal");
-    expect(screen.getByText("DEV-019 — Lactantes 19")).toBeTruthy();
-    expect(screen.queryByText("Lactantes")).toBeNull();
-    expect(screen.queryByText("Rebanho")).toBeNull(); // página do catálogo não aparece
-    expect(screen.queryByRole("navigation", { name: "Tipos de resultado" })).toBeNull();
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho", "a1", "/pecuaria/rebanho/animais/a1");
+  const vaca = { id: "a1", brinco: "DEV-019", nome: "Lactantes 19", sexo: "F", situacao: "ATIVO", categoria: null, propriedade: {id:7,nome:"Sede"}, lote: null };
+  function prepararFetch() {
+    const mock = vi.fn(async (url: string) => ({ok:true,json:async()=>url.includes("/catalogos")?{propriedades:[],lotes:[],racas:[],motivosBaixa:[]}:url.includes("/categorias")?{itens:[]}:{itens:[vaca],total:1,painel:{}}}));
+    vi.stubGlobal("fetch", mock);return mock;
+  }
+  it("abre a listagem sem termo e Enter navega à ficha exata sem chamar a busca global", async () => {
+    const mock=prepararFetch();const props=baseProps();render(h(CommandPalette,{...props,modo:"animais"}));
+    await act(async()=>{await new Promise(r=>setTimeout(r,0));});
+    expect(screen.getByRole("button",{name:/DEV-019/})).toBeTruthy();
+    expect(mock.mock.calls.some(([url])=>url.startsWith("/api/busca"))).toBe(false);
+    expect(mock.mock.calls.some(([url])=>url.startsWith("/api/pecuaria/rebanho/animais?"))).toBe(true);
+    expect(screen.queryByRole("navigation",{name:"Tipos de resultado"})).toBeNull();
+    fireEvent.keyDown(screen.getByRole("searchbox",{name:"Buscar animal"}),{key:"Enter"});
+    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho","a1",expect.stringContaining("/animais/a1?"));
+    expect(props.onFechar).toHaveBeenCalled();
   });
-});
-
-it("trocar para a busca só de animais com a caixa aberta mantém o foco no campo", () => {
-  const props = baseProps();
-  const { rerender } = render(h(CommandPalette, { ...props, modo: "tudo" as const }));
-  rerender(h(CommandPalette, { ...props, modo: "animais" as const }));
-  const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
-  expect(document.activeElement).toBe(input);
-  expect(screen.queryByText("Digite para buscar")).toBeNull();
+  it("troca entre modos mantendo o foco no campo correspondente", async () => {
+    prepararFetch();const props=baseProps();const {rerender}=render(h(CommandPalette,props));
+    rerender(h(CommandPalette,{...props,modo:"animais"}));
+    expect(document.activeElement).toBe(screen.getByRole("searchbox",{name:"Buscar animal"}));
+    rerender(h(CommandPalette,{...props,modo:"tudo"}));
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(PLACEHOLDER));
+    await act(async()=>{await new Promise(r=>setTimeout(r,0));});
+  });
 });

@@ -4,7 +4,17 @@ A busca global (`Ctrl/⌘ K` ou lupa da navegação) reúne registros reais, pá
 
 ## Busca exclusiva de animais
 
-`Ctrl/⌘ Shift K` abre o modal em modo exclusivo de animais. A consulta usa `GET /api/busca?q=&tipos=animal`, com até 20 resultados, preservando sítio, permissões e o destino da ficha exata. Páginas e ações ficam fora desse modo; `tipos` aceita somente `animal`. Repetir o atalho do modo aberto fecha o modal; o outro atalho alterna o modo. A troca limpa a consulta e mantém o foco no campo. O foco da entrada é indicado por uma linha discreta, sem o contorno geral dos campos de formulário. Enter abre a ficha, setas navegam e Escape fecha.
+`Ctrl/⌘ Shift K` abre um modal centralizado com a tabela do rebanho já carregada, mesmo sem termo. A consulta reutiliza `GET /api/pecuaria/rebanho/animais` com `situacao=TODOS`, `comContexto=true`, ordenação crescente por brinco e páginas de 20 animais. Não carrega o rebanho inteiro no navegador. A busca global `Ctrl/⌘ K` conserva seu catálogo, fontes, limites e endpoint anteriores; o parâmetro `tipos=animal` de `/api/busca` continua disponível, mas não alimenta esta tabela.
+
+Os filtros principais são termo, situação (todos, ativos ou baixados), sexo e lote. Mais filtros expõe sítio, categoria e finalidade, pelos catálogos existentes. O sítio selecionado no shell é obrigatório para a consulta e não pode ser ampliado no modal; em Consolidado, o filtro restringe o recorte sem mudar a preferência do shell até abrir uma ficha. Trocar sítio limpa o lote. Alterar um filtro ou termo retorna à primeira página; o termo tem debounce de 200 ms. Fechar e reabrir limpa os filtros. A montagem da busca é segregada por usuário e sítio no App.
+
+As colunas são brinco/nome, situação, categoria, reprodução, produção, lote e sítio. Reprodução/produção vêm de `contextoCartao`, sem cálculo novo no cliente; ausência permanece não informada e machos mostram não se aplica. O rótulo produtivo reutiliza a regra existente de lactação: ausência de lactação conhecida não comprova secagem. Os identificadores adicionais e a filiação da referência IDEAGRI não viram colunas nesta entrega: não fazem parte do DTO resumido desta listagem. A identificação detalhada permanece na ficha.
+
+Clique na linha ou no brinco abre a ficha exata, com o sítio retornado e o contexto de retorno validado do rebanho. Setas navegam, Enter abre a ficha e Escape fecha. A seleção é anunciada ao leitor de tela; quando o foco já está numa linha, as setas movem também o foco. A entrada usa uma linha discreta de foco. A tabela tem rolagem própria e paginação compartilhada, mantendo os filtros e o fechamento utilizáveis em telas estreitas.
+
+Repetir o atalho do modo aberto fecha; o outro atalho troca entre lista de animais e busca global. Requisições são canceladas ao fechar, desmontar ou alterar o recorte; respostas atrasadas não repõem a lista anterior. Durante a digitação, resultados antigos deixam de poder abrir fichas. Carregamento, ausência e falha de rede são estados distintos, com nova tentativa para a consulta e para as opções dos filtros. O cliente confere a navegação, e as rotas do rebanho continuam autorizadas no servidor por sessão, área e escopo.
+
+Validação automatizada cobre carga inicial, paginação/filtros, debounce, respostas obsoletas, falha/retry, ausência, sítio do shell, restrição de acesso, reabertura e navegação por teclado. A validação manual confere a lista real e a abertura da ficha no servidor local; testes unitários não substituem homologação do ambiente publicado.
 
 ## Comportamento
 
