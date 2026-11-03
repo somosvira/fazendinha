@@ -1,0 +1,32 @@
+{
+  "url": "http://localhost:41875/pecuaria/leite?leiteSecao=relatorios",
+  "title": "[Human] B relatório leite",
+  "injected": "loaded",
+  "logs": [
+    {
+      "kind": "warn",
+      "args": [
+        "[impeccable] scan failed",
+        "{}"
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "id": "",
+      "class": "impeccable-overlay impeccable-visible"
+    },
+    {
+      "id": "",
+      "class": "impeccable-label"
+    },
+    {
+      "id": "",
+      "class": "impeccable-overlay impeccable-visible"
+    },
+    {
+      "id": "",
+      "class": "impeccable-label"
+    }
+  ]
+}

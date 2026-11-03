@@ -1,0 +1,146 @@
+[
+  {
+    "tela": "ordenhas",
+    "info": {
+      "url": "/pecuaria/leite?leiteSecao=ordenhas&ordenhasInicio=2026-10-22&ordenhasFim=2026-10-22&ordenhasVisualizacao=tabela",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Leite ",
+      "alert": []
+    }
+  },
+  {
+    "tela": "producao",
+    "info": {
+      "url": "/pecuaria/leite?leiteSecao=producao&inicio=2026-10-01&fim=2026-10-31&producaoData=2026-10-26&producaoVisao=dia",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Leite ",
+      "alert": []
+    }
+  },
+  {
+    "tela": "sanidade",
+    "info": {
+      "url": "/pecuaria/sanidade?aba=agenda&visaoAgenda=rodadas",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Sanidade",
+      "alert": []
+    }
+  },
+  {
+    "tela": "nutricao",
+    "info": {
+      "url": "/pecuaria/nutricao",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Nutrição",
+      "alert": []
+    }
+  },
+  {
+    "tela": "estoque",
+    "info": {
+      "url": "/estoque",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Estoque",
+      "alert": []
+    }
+  },
+  {
+    "tela": "acessos",
+    "info": {
+      "url": "/acessos",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Acessos",
+      "alert": []
+    }
+  },
+  {
+    "tela": "sitios",
+    "info": {
+      "url": "/configuracoes/sitios",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Sítios",
+      "alert": []
+    }
+  },
+  {
+    "tela": "gerencial",
+    "info": {
+      "url": "/gerencial",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Painel administrativo",
+      "alert": []
+    }
+  },
+  {
+    "tela": "relatorios",
+    "info": {
+      "url": "/pecuaria/relatorios",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Relatórios da Pecuária",
+      "alert": []
+    }
+  },
+  {
+    "tela": "visitas",
+    "info": {
+      "url": "/pecuaria/visitas",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Visitas veterinárias",
+      "alert": []
+    }
+  },
+  {
+    "tela": "config",
+    "info": {
+      "url": "/configuracoes/pecuaria",
+      "escopo": true,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Configurações da Pecuária",
+      "alert": []
+    }
+  },
+  {
+    "tela": "financeiro",
+    "info": {
+      "url": "/financeiro",
+      "escopo": false,
+      "w": 1440,
+      "doc": 1440,
+      "error": false,
+      "title": "Visão geral financeira",
+      "alert": []
+    }
+  }
+]

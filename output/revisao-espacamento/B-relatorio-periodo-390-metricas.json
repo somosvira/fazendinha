@@ -1,0 +1,243 @@
+{
+  "url": "http://localhost:41875/pecuaria/leite?leiteSecao=relatorios",
+  "visibility": "visible",
+  "dialog": true,
+  "title": "Período e emissão de leite",
+  "r": {
+    "x": 12,
+    "y": 63.328125,
+    "width": 366,
+    "height": 717.34375,
+    "top": 63.328125,
+    "right": 378,
+    "bottom": 780.671875,
+    "left": 12
+  },
+  "padding": "0px",
+  "opacity": "1",
+  "scroll": 715,
+  "client": 715,
+  "controls": [
+    {
+      "text": "Sobre produção em csv",
+      "r": {
+        "x": 198.3203125,
+        "y": 172.671875,
+        "width": 14,
+        "height": 44,
+        "top": 172.671875,
+        "right": 212.3203125,
+        "bottom": 216.671875,
+        "left": 198.3203125
+      }
+    },
+    {
+      "text": "Últimos 30 dias\n▾",
+      "r": {
+        "x": 13,
+        "y": 280.671875,
+        "width": 179.4921875,
+        "height": 44,
+        "top": 280.671875,
+        "right": 192.4921875,
+        "bottom": 324.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Natureza da produção\nTodas",
+      "r": {
+        "x": 204.4921875,
+        "y": 265.671875,
+        "width": 167.515625,
+        "height": 74,
+        "top": 265.671875,
+        "right": 372.0078125,
+        "bottom": 339.671875,
+        "left": 204.4921875
+      }
+    },
+    {
+      "text": "Todas",
+      "r": {
+        "x": 204.4921875,
+        "y": 295.671875,
+        "width": 167.515625,
+        "height": 44,
+        "top": 295.671875,
+        "right": 372.0078125,
+        "bottom": 339.671875,
+        "left": 204.4921875
+      }
+    },
+    {
+      "text": "Exportar produção do período",
+      "r": {
+        "x": 13,
+        "y": 351.671875,
+        "width": 233.9375,
+        "height": 44,
+        "top": 351.671875,
+        "right": 246.9375,
+        "bottom": 395.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Sobre as emissões preservadas",
+      "r": {
+        "x": 287.8203125,
+        "y": 421.671875,
+        "width": 14,
+        "height": 44,
+        "top": 421.671875,
+        "right": 301.8203125,
+        "bottom": 465.671875,
+        "left": 287.8203125
+      }
+    },
+    {
+      "text": "Início do relatório",
+      "r": {
+        "x": 13,
+        "y": 497.671875,
+        "width": 174,
+        "height": 74,
+        "top": 497.671875,
+        "right": 187,
+        "bottom": 571.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": null,
+      "r": {
+        "x": 13,
+        "y": 527.671875,
+        "width": 174,
+        "height": 44,
+        "top": 527.671875,
+        "right": 187,
+        "bottom": 571.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Abrir calendário",
+      "r": {
+        "x": 147,
+        "y": 527.671875,
+        "width": 40,
+        "height": 44,
+        "top": 527.671875,
+        "right": 187,
+        "bottom": 571.671875,
+        "left": 147
+      }
+    },
+    {
+      "text": "Fim do relatório",
+      "r": {
+        "x": 203,
+        "y": 497.671875,
+        "width": 174,
+        "height": 74,
+        "top": 497.671875,
+        "right": 377,
+        "bottom": 571.671875,
+        "left": 203
+      }
+    },
+    {
+      "text": null,
+      "r": {
+        "x": 203,
+        "y": 527.671875,
+        "width": 174,
+        "height": 44,
+        "top": 527.671875,
+        "right": 377,
+        "bottom": 571.671875,
+        "left": 203
+      }
+    },
+    {
+      "text": "Abrir calendário",
+      "r": {
+        "x": 337,
+        "y": 527.671875,
+        "width": 40,
+        "height": 44,
+        "top": 527.671875,
+        "right": 377,
+        "bottom": 571.671875,
+        "left": 337
+      }
+    },
+    {
+      "text": "Incluir valores financeiros",
+      "r": {
+        "x": 13,
+        "y": 603.671875,
+        "width": 364,
+        "height": 36,
+        "top": 603.671875,
+        "right": 377,
+        "bottom": 639.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": null,
+      "r": {
+        "x": 13,
+        "y": 603.671875,
+        "width": 20,
+        "height": 36,
+        "top": 603.671875,
+        "right": 33,
+        "bottom": 639.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Emitir relatório preservado",
+      "r": {
+        "x": 13,
+        "y": 671.671875,
+        "width": 208.15625,
+        "height": 44,
+        "top": 671.671875,
+        "right": 221.15625,
+        "bottom": 715.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Consultar produção atual",
+      "r": {
+        "x": 13,
+        "y": 735.671875,
+        "width": 364,
+        "height": 44,
+        "top": 735.671875,
+        "right": 377,
+        "bottom": 779.671875,
+        "left": 13
+      }
+    },
+    {
+      "text": "Fechar",
+      "r": {
+        "x": 317,
+        "y": 80.328125,
+        "width": 44,
+        "height": 44,
+        "top": 80.328125,
+        "right": 361,
+        "bottom": 124.328125,
+        "left": 317
+      }
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "url": "http://localhost:41875/pecuaria/leite?leiteSecao=relatorios",
+  "visibility": "visible",
+  "injected": "loaded",
+  "logs": [
+    {
+      "kind": "log",
+      "args": [
+        "%cundersized-ui-text%c 8.5px functional text \"Sítio\" (below 11px floor)",
+        "color: oklch(84% 0.19 80.46); font-weight: bold",
+        "color: inherit",
+        "{\"__reactFiber$5d9wg18ehjq\":{},\"__reactProps$5d9wg18ehjq\":{},\"_impeccableOverlay\":{}}"
+      ]
+    },
+    {
+      "kind": "log",
+      "args": [
+        "%cundersized-ui-text%c 10.5px functional text \"Proprietário\" (below 11px floor)",
+        "color: oklch(84% 0.19 80.46); font-weight: bold",
+        "color: inherit",
+        "{\"__reactFiber$5d9wg18ehjq\":{},\"__reactProps$5d9wg18ehjq\":{},\"_impeccableOverlay\":{}}"
+      ]
+    },
+    {
+      "kind": "log",
+      "args": [
+        "%cmarquee%c .boot-drive — infinite horizontal loop animation \"boot-drive\"",
+        "color: oklch(84% 0.19 80.46); font-weight: bold",
+        "color: inherit",
+        "{}"
+      ]
+    }
+  ],
+  "overlays": [
+    "undersized functional text",
+    "undersized functional text",
+    "auto-scrolling marquee.boot-drive — infinite horizontal loop animation \"boot-drive\"◉×"
+  ]
+}

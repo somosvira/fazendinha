@@ -1,0 +1,2700 @@
+[
+  {
+    "product": "IDEAGRI",
+    "page": "https://centralderecursos.ideagri.com.br/posts/exemplos-de-alguns-graficos-disponiveis-no-sistema-ideagri-pecuaria-leiteira-e-gestao-economica-e-financeira",
+    "images": [
+      {
+        "url": "https://cdn.izap.com.br/centralderecursos.ideagri.com.br/plus/images?src=tema/plusfiles/Ideagri-Nova-Positiva--1---3-.png&",
+        "alt": "IDEAGRI"
+      },
+      {
+        "url": "https://cdn.izap.com.br/centralderecursos.ideagri.com.br/plus/images?src=site/admin.png&mode=crop&width=35&height=35",
+        "alt": "admin.png"
+      },
+      {
+        "url": "https://cdn.izap.com.br/centralderecursos.ideagri.com.br/plus/images?src=dicas/diversos/graficos.jpg&width=1170&height=610&mode=crop",
+        "alt": "graficos.jpg"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/01X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/02.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/03X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/04X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/05.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/06X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/07X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/08.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/09.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/10.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/11.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/12X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/13X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/14.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/15X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/16X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/17X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/18.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/19X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/20X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/21.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/22.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/23.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/24.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/25.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/27X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/28X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/29X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/30X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/31X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/32X.jpg",
+        "alt": "01"
+      },
+      {
+        "url": "https://cdn.izap.com.br/centralderecursos.ideagri.com.br/plus/images?src=/equipe-unida.jpg&mode=crop&width=368&height=220",
+        "alt": "“Uma andorinha só não faz verão”: time Ideagri, a potência por trás do maior sistema de gestão destinado à pecuária leiteira brasileira "
+      },
+      {
+        "url": "https://cdn.izap.com.br/centralderecursos.ideagri.com.br/plus/images?src=/ideagri.jpg&mode=crop&width=368&height=220",
+        "alt": "Ideagri: conheça o maior hub de integração entre sistemas e equipamentos destinado a fazendas leiteiras "
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-NZQX4D9",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      }
+    ],
+    "links": [
+      "https://rumina.com.br/solucoes/ideagri/",
+      "https://centralderecursos.ideagri.com.br#",
+      "https://rumina.com.br/solucoes/ideagri/",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos",
+      "https://centralderecursos.ideagri.com.br/posts/atualizacoes-ideagri-desktop",
+      "https://centralderecursos.ideagri.com.br/posts/dicas-ideagri-desktop",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-faq",
+      "https://centralderecursos.ideagri.com.br/posts/integracoes-ideagri-desktop",
+      "/posts/ideagri",
+      "https://centralderecursos.ideagri.com.br/posts/relatorios-ideagri-desktop",
+      "https://ideagri.com.br/ideagri-desktop-via-auto-sky",
+      "https://centralderecursos.ideagri.com.br/posts/sql-consultas",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-utilitarios",
+      "http://ideagriplay.com.br/lista.php?var=6",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-ideagri-web",
+      "http://web.ideagri.com.br/ideagriweb/login/Index#",
+      "http://web.ideagri.com.br/ideagriweb/user/ConsultaChaveHabilitacaoFit",
+      "https://centralderecursos.ideagri.com.br/posts/dicas-ideagri-web",
+      "https://centralderecursos.ideagri.com.br/posts/faq-ideagri-web",
+      "https://centralderecursos.ideagri.com.br/posts/manual-em-pdf-ideagri-web",
+      "https://centralderecursos.ideagri.com.br/posts/relatorios-ideagri-web",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-ideagri-app",
+      "https://centralderecursos.ideagri.com.br/posts/dicas-ideagri-app",
+      "/posts/ideagri-app-rebanho-na-palma-da-mao",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-coletor",
+      "https://centralderecursos.ideagri.com.br/posts/informacoes-coletor-ideagri",
+      "/posts/coletor-desktop",
+      "http://ideagriplay.com.br/lista.php?var=7",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-ideagri-analises",
+      "https://centralderecursos.ideagri.com.br/posts/manual-ideagri-analises",
+      "/posts/ideagri-analises-instalador",
+      "https://centralderecursos.ideagri.com.br/posts/video-apresentacao-ideagri-analises",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-ideagri-iatf",
+      "http://sistema.ideagriiatf.com.br/",
+      "/posts/instalador-do-ideagri-iatf-desktop",
+      "https://centralderecursos.ideagri.com.br/posts/relatorios-ideagri-iatf-desktop-e-web",
+      "https://centralderecursos.ideagri.com.br/posts/utilitarios-ideagri-iatf",
+      "http://ideagriplay.com.br/lista.php?var=8",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-techmilk",
+      "/posts/techmilk",
+      "https://centralderecursos.ideagri.com.br/posts/relatorios-techmilk",
+      "http://ideagriplay.com.br/lista.php?var=12",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-iilb",
+      "http://web.ideagri.com.br/ideagriweb/iilb/process/IilbDashboard",
+      "https://centralderecursos.ideagri.com.br/posts/faq-iilb",
+      "/posts/iilb-a-nova-maneira-de-medir-a-eficiencia-da-producao-de-leite",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-ideagri-play",
+      "http://ideagriplay.com.br/",
+      "https://centralderecursos.ideagri.com.br/posts/informacoes-ideagri-play",
+      "/posts/aprimore-seu-conhecimento-com-o-ideagri-play",
+      "https://centralderecursos.ideagri.com.br/central-de-recursos-painel-ideagri",
+      "/posts/acesse-as-solucoes-ideagri-a-partir-do-painel-unificado",
+      "/posts/painel-ideagri-apresentacao-em-video",
+      "#",
+      "/central-de-recursos-procedimentos-internos",
+      "/posts/simulador",
+      "https://www.ideagri.com.br/siteideagridados/New/Biblioteca_para_redes_sociais/ImagensRelatoriosLeite.rar",
+      "https://centralderecursos.ideagri.com.br/posts/time-ideagri-o-maior-sistema-de-gestao-destinado-a-pecuaria-leiteira-brasileira",
+      "https://centralderecursos.ideagri.com.br/posts/time-ideagri-o-maior-sistema-de-gestao-destinado-a-pecuaria-leiteira-brasileira",
+      "https://centralderecursos.ideagri.com.br/posts/agropecuaria-palma-producao-de-leite-gestao",
+      "https://centralderecursos.ideagri.com.br/posts/agropecuaria-palma-producao-de-leite-gestao",
+      "https://centralderecursos.ideagri.com.br/posts/ideagri-conheca-o-maior-hub-de-integracao-entre-sistemas-e-equipamentos-destinado-a-fazendas-leiteiras",
+      "https://centralderecursos.ideagri.com.br/posts/ideagri-conheca-o-maior-hub-de-integracao-entre-sistemas-e-equipamentos-destinado-a-fazendas-leiteiras",
+      "https://www.facebook.com/ideagriagronegocio",
+      "https://instagram.com/ideagribr?igshid=YmMyMTA2M2Y=",
+      "https://www.youtube.com/channel/UCV6G6xF-qW3gEm_Ng_6ZNoA"
+    ]
+  },
+  {
+    "product": "JetBov",
+    "page": "https://jetbov.com/jetbov-de-curral/",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "product": "iRancho",
+    "page": "https://conteudo.irancho.com.br/irancho/confinamento",
+    "images": [
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Ativo%2011.png?width=270&height=52&name=Ativo%2011.png",
+        "alt": "Ativo 11"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Ativo%2011.png?width=180&height=35&name=Ativo%2011.png",
+        "alt": "Ativo 11"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/AUTOMA%C3%87%C3%83O%20KV%202.png",
+        "alt": "AUTOMAÇÃO KV 2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/image-7.webp",
+        "alt": "image-7"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/image-8.webp",
+        "alt": "image-8"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/AUTOMA%C3%87%C3%83O%20KV-1.png?width=1080&height=1350&name=AUTOMA%C3%87%C3%83O%20KV-1.png",
+        "alt": "AUTOMAÇÃO KV-1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/KV%20MOBILE.png",
+        "alt": "KV MOBILE"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image-7.webp?width=158&height=47&name=image-7.webp",
+        "alt": "image-7"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image-8.webp?width=158&height=48&name=image-8.webp",
+        "alt": "image-8"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/AUTOMA%C3%87%C3%83O%20KV-1.png",
+        "alt": "AUTOMAÇÃO KV-1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2033635.png",
+        "alt": "iRancho Confinamento APP"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/card%201-4.png",
+        "alt": "card 1-4"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/card%20tablet.png",
+        "alt": "card tablet"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2033635%20(2).png",
+        "alt": "Frame 33635 (2)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/bloco%20mobile.png",
+        "alt": "bloco mobile"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2033636.png",
+        "alt": "Frame 33636"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/card%20tablet%20mobile%202.png",
+        "alt": "card tablet mobile 2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/card%20tablet%20mobile%201.png",
+        "alt": "card tablet mobile 1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/1.png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Operator%20(1).png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/2.png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Operator%20(5).png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/fala%201.png",
+        "alt": "fala 1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/fala%202.png",
+        "alt": "fala 2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/4.png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Operator%20(9).png",
+        "alt": "iRancho Confinamento Desafios Atendidos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Mob%201.png?width=350&height=104&name=Mob%201.png",
+        "alt": "Mob 1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Operator%20(22).png?width=350&height=128&name=Operator%20(22).png",
+        "alt": "Operator (22)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Mob%202.png?width=350&height=103&name=Mob%202.png",
+        "alt": "Mob 2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Operator%20(24).png?width=350&height=152&name=Operator%20(24).png",
+        "alt": "Operator (24)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/fala1%20%20mob.png?width=350&height=79&name=fala1%20%20mob.png",
+        "alt": "fala1  mob"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/fala%202%20mob.png?width=350&height=201&name=fala%202%20mob.png",
+        "alt": "fala 2 mob"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Mob%204.png?width=350&height=104&name=Mob%204.png",
+        "alt": "Mob 4"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Operator%20(28).png?width=350&height=152&name=Operator%20(28).png",
+        "alt": "Operator (28)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Vector%20(11).png?width=14&height=22&name=Vector%20(11).png",
+        "alt": "Vector (11)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2033642.png",
+        "alt": "iRancho Confinamento no Celular"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033654%201.png?width=551&height=903&name=Frame%2033654%201.png",
+        "alt": "iRancho Confinamento no Celular"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033667-1.png?width=974&height=539&name=Frame%2033667-1.png",
+        "alt": "Planejamento o Confinamento com iRancho"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033684-1.png?width=974&height=539&name=Frame%2033684-1.png",
+        "alt": "Planejamento o Confinamento com iRancho"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Integra%C3%A7%C3%A3o.png?width=974&height=539&name=Integra%C3%A7%C3%A3o.png",
+        "alt": "Integração"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033682-1.png?width=974&height=539&name=Frame%2033682-1.png",
+        "alt": "Planejamento o Confinamento com iRancho"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033683-1.png?width=974&height=539&name=Frame%2033683-1.png",
+        "alt": "Planejamento o Confinamento com iRancho"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033667-2.png?width=429&height=712&name=Frame%2033667-2.png",
+        "alt": "Frame 33667-2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033685-2.png?width=429&height=713&name=Frame%2033685-2.png",
+        "alt": "Frame 33685-2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Integra%C3%A7%C3%A3o%20Mobile.png?width=429&height=713&name=Integra%C3%A7%C3%A3o%20Mobile.png",
+        "alt": "Integração Mobile"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033687-1.png?width=429&height=713&name=Frame%2033687-1.png",
+        "alt": "Frame 33687-1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033688-1.png?width=429&height=713&name=Frame%2033688-1.png",
+        "alt": "Frame 33688-1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(20).png?width=677&height=423&name=image%20(20).png",
+        "alt": "iRancho Confinamento Mapa Gerencial"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(21).png?width=677&height=423&name=image%20(21).png",
+        "alt": "iRancho Confinamento Mapa Gerencial"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(22).png?width=677&height=423&name=image%20(22).png",
+        "alt": "iRancho Confinamento Mapa Gerencial"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(23).png?width=677&height=423&name=image%20(23).png",
+        "alt": "iRancho Confinamento Mapa Gerencial"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2010%20(1).png",
+        "alt": "Frame 10 (1)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Vector%20(12).png?width=24&height=24&name=Vector%20(12).png",
+        "alt": "Vector (12)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Rectangle%205.png?width=76&height=78&name=Rectangle%205.png",
+        "alt": "Rectangle 5"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hubfs/Frame%2012%20(4).png",
+        "alt": "Frame 12 (4)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(18).png?width=527&height=244&name=image%20(18).png",
+        "alt": "image (18)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/image%20(19).png?width=318&height=147&name=image%20(19).png",
+        "alt": "image (19)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/2%20unidades%202.png?width=318&height=147&name=2%20unidades%202.png",
+        "alt": "2 unidades 2"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/a2c29459-220622_rota1_confinamento_estiva_novo_horizonte_sp_44-036-1-1024x577%201.png?width=1024&height=471&name=a2c29459-220622_rota1_confinamento_estiva_novo_horizonte_sp_44-036-1-1024x577%201.png",
+        "alt": "a2c29459-220622_rota1_confinamento_estiva_novo_horizonte_sp_44-036-1-1024x577 1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/renewable-energy-shield-1.png?width=48&height=48&name=renewable-energy-shield-1.png",
+        "alt": "renewable-energy-shield-1"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Perfomance.png?width=97&height=96&name=Perfomance.png",
+        "alt": "Perfomance"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Usuarios.png?width=73&height=72&name=Usuarios.png",
+        "alt": "Usuarios"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Real%20time.png?width=72&height=72&name=Real%20time.png",
+        "alt": "Real time"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Manejos.png?width=73&height=72&name=Manejos.png",
+        "alt": "Manejos"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Conex%C3%A3o.png?width=73&height=72&name=Conex%C3%A3o.png",
+        "alt": "Conexão"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/social.png?width=48&height=48&name=social.png",
+        "alt": "social"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033687.png?width=48&height=48&name=Frame%2033687.png",
+        "alt": "TikTok"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/World_white%20(1).png?width=48&height=48&name=World_white%20(1).png",
+        "alt": "World_white (1)"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%2033686.png?width=310&height=48&name=Frame%2033686.png",
+        "alt": "Chamar n WhatsApp"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame.png?width=48&height=48&name=Frame.png",
+        "alt": "Frame"
+      },
+      {
+        "url": "https://conteudo.irancho.com.br/hs-fs/hubfs/Frame%20(1).png?width=48&height=48&name=Frame%20(1).png",
+        "alt": "Frame (1)"
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-PCX98G9",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      },
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-PCX98G9",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      }
+    ],
+    "links": [
+      "#main-content",
+      "#",
+      "#form",
+      "https://play.google.com/store/apps/details?id=br.com.irancho.iconfinamento&hl=pt_BR",
+      "https://apps.apple.com/us/app/irancho-confinamento/id6743888271",
+      "#form",
+      "#form",
+      "#formmobile",
+      "#form",
+      "#funcionalidades",
+      "#formmobile",
+      "#funcionalidadesmobile",
+      "#form",
+      "#formmobile",
+      "https://www.irancho.com.br/dicas-para-contratar-um-boitel/",
+      "https://www.irancho.com.br/dicas-para-contratar-um-boitel/",
+      "https://www.irancho.com.br/dicas-para-contratar-um-boitel/",
+      "https://www.irancho.com.br/custos-do-confinamento-5-dicas-para-controlar-a-dieta/",
+      "https://www.irancho.com.br/custos-do-confinamento-5-dicas-para-controlar-a-dieta/",
+      "https://www.irancho.com.br/custos-do-confinamento-5-dicas-para-controlar-a-dieta/",
+      "https://www.irancho.com.br/4-custos-que-precisam-ser-avaliados-no-confinamento/",
+      "https://www.irancho.com.br/4-custos-que-precisam-ser-avaliados-no-confinamento/",
+      "https://www.irancho.com.br/4-custos-que-precisam-ser-avaliados-no-confinamento/",
+      "https://www.irancho.com.br/terminacao-de-bovinos/",
+      "https://www.irancho.com.br/terminacao-de-bovinos/",
+      "https://www.irancho.com.br/terminacao-de-bovinos/",
+      "https://www.irancho.com.br/dicas-para-contratar-um-boitel/",
+      "https://www.irancho.com.br/custos-do-confinamento-5-dicas-para-controlar-a-dieta/",
+      "https://www.irancho.com.br/4-custos-que-precisam-ser-avaliados-no-confinamento/",
+      "https://www.irancho.com.br/terminacao-de-bovinos/",
+      "https://www.instagram.com/iranchobr/",
+      "https://www.facebook.com/irancho/",
+      "https://www.linkedin.com/company/irancho/",
+      "https://www.youtube.com/c/irancho",
+      "https://www.tiktok.com/@iranchobr",
+      "https://www.youtube.com/c/irancho",
+      "https://www.irancho.com.br/",
+      "https://www.tiktok.com/@iranchobr",
+      "https://www.instagram.com/iranchobr/",
+      "https://www.facebook.com/irancho/",
+      "https://www.linkedin.com/company/irancho/",
+      "https://www.tiktok.com/@iranchobr",
+      "https://www.irancho.com.br/",
+      "https://www.linkedin.com",
+      "https://www.facebook.com",
+      "https://www.twitter.com",
+      "https://www.instagram.com",
+      "https://www.tiktok.com"
+    ]
+  },
+  {
+    "product": "Leigado",
+    "page": "https://leigado.com.br/software-pecuaria-leiteira",
+    "images": [
+      {
+        "url": "https://i.ytimg.com/vi_webp/UjDCmky3aMQ/maxresdefault.webp",
+        "alt": "Capa no formato de thumbnail com chamada para ação para assistir ao video"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/solucoes/dashboard-leite.webp",
+        "alt": ""
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/bezerras.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://i.ytimg.com/vi_webp/LR6iAu70M4o/maxresdefault.webp",
+        "alt": "Capa no formato de thumbnail com chamada para ação para assistir ao video"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/novilhas.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/vacas-secas.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/vacas-lactacao.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/cuidados-sanitarios.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/qualidade-leite.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/pages/segmentos/pecuaria-leiteira/relatorios.webp",
+        "alt": "Cria - Leigado"
+      },
+      {
+        "url": "https://leigado.com.br/static-files/img/globo-atuacao-leigado.svg",
+        "alt": "Globo mundial representando a abrangência da Leigado"
+      },
+      {
+        "url": "https://site-adm.leigado.com.br/storage/site-configs/attendants/thalita.webp",
+        "alt": "Thalita Guedes"
+      },
+      {
+        "url": "https://site-adm.leigado.com.br/storage/site-configs/attendants/volmir.webp",
+        "alt": "Volmir Pagno"
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-KR3DL7J",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      },
+      {
+        "width": "1920",
+        "height": "1080",
+        "x-bind:src": "'https://www.youtube-nocookie.com/embed/' + youTubeVideoId + '?autoplay=true'",
+        "frameborder": "0",
+        "allow": "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share",
+        "referrerpolicy": "strict-origin-when-cross-origin",
+        "allowfullscreen": null,
+        "class": "w-full h-full"
+      }
+    ],
+    "links": [
+      "https://leigado.com.br/ligamos-para-voce",
+      "https://leigado.com.br/fale-conosco",
+      "https://web.leigado.com.br/login/software-pecuaria-leiteira",
+      "https://leigado.com.br",
+      "https://leigado.com.br/tecnologia-pecuaria-leiteira",
+      "https://leigado.com.br/tecnologia-pecuaria-de-corte",
+      "https://leigado.com.br/software-assistente-tecnico-pecuaria",
+      "https://leigado.com.br/software-tecnologia-laticinios",
+      "https://leigado.com.br/ligamos-para-voce",
+      "https://leigado.com.br/historias-de-sucesso",
+      "https://leigado.com.br/software-pecuaria-leiteira",
+      "https://leigado.com.br/software-gado-de-corte",
+      "https://leigado.com.br/aplicativo-pecuaria-leiteira",
+      "https://leigado.com.br/aplicativo-gado-de-corte",
+      "https://leigado.com.br/software-assistente-tecnico-pecuaria",
+      "https://leigado.com.br/bpo-financeiro",
+      "https://leigado.com.br/curso-gestao-financeira-pecuaria-leiteira",
+      "https://leigado.com.br/pqfl",
+      "https://leigado.com.br/mais-leite-saudavel",
+      "https://leigado.com.br/balanca-vagao-forrageiro",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/solucoes",
+      "https://leigado.com.br/programa-indicacao",
+      "https://leigado.com.br/planos-e-precos",
+      "https://leigado.com.br/cupons",
+      "https://leigado.com.br/blog",
+      "https://leigado.com.br/quem-somos",
+      "https://leigado.com.br/seja-parceiro",
+      "https://leigado.com.br/instituicoes-de-ensino",
+      "https://leigado.com.br/historias-de-sucesso",
+      "https://leigado.com.br/programa-indicacao",
+      "https://leigado.com.br/fale-conosco",
+      "https://leigado.com.br/ligamos-para-voce",
+      "https://leigado.com.br/pedidos-parceiros",
+      "https://leigado.com.br/cupons",
+      "https://leigado.com.br/trabalhe-conosco",
+      "https://leigado.com.br/perguntas-frequentes",
+      "https://web.leigado.com.br/novo-usuario/software-pecuaria-leiteira",
+      "https://leigado.com.br",
+      "https://leigado.com.br/tecnologia-pecuaria-leiteira",
+      "https://leigado.com.br/tecnologia-pecuaria-de-corte",
+      "https://leigado.com.br/software-assistente-tecnico-pecuaria",
+      "https://leigado.com.br/software-tecnologia-laticinios",
+      "https://leigado.com.br/software-pecuaria-leiteira",
+      "https://leigado.com.br/software-gado-de-corte",
+      "https://leigado.com.br/aplicativo-gado-de-corte",
+      "https://leigado.com.br/aplicativo-pecuaria-leiteira",
+      "https://leigado.com.br/pqfl",
+      "https://leigado.com.br/mais-leite-saudavel",
+      "https://leigado.com.br/balanca-vagao-forrageiro",
+      "https://leigado.com.br/curso-gestao-financeira-pecuaria-leiteira",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/solucoes",
+      "https://leigado.com.br/quem-somos",
+      "https://leigado.com.br/seja-parceiro",
+      "https://leigado.com.br/historias-de-sucesso",
+      "https://leigado.com.br/programa-indicacao",
+      "https://leigado.com.br/planos-e-precos",
+      "https://leigado.com.br/cupons",
+      "https://leigado.com.br/fale-conosco",
+      "https://leigado.com.br/politica-privacidade",
+      "https://leigado.com.br/perguntas-frequentes",
+      "https://leigado.com.br/blog",
+      "https://web.leigado.com.br/novo-usuario/software-pecuaria-leiteira",
+      "https://web.leigado.com.br/login/software-pecuaria-leiteira",
+      "https://web.leigado.com.br/novo-usuario/software-pecuaria-leiteira",
+      "https://play.google.com/store/apps/details?id=br.com.leigado.app&hl=pt_BR",
+      "https://apps.apple.com/br/app/leigado-gest%C3%A3o-gado-leiteiro/id1219977035",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/historias-de-sucesso",
+      "https://leigado.com.br/software-pecuaria-leiteira",
+      "https://leigado.com.br/aplicativo-pecuaria-leiteira",
+      "https://leigado.com.br/bpo-financeiro",
+      "https://leigado.com.br/curso-gestao-financeira-pecuaria-leiteira",
+      "https://leigado.com.br/balanca-vagao-forrageiro",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/quem-somos",
+      "https://web.leigado.com.br/novo-usuario/software-pecuaria-leiteira",
+      "https://web.leigado.com.br/novo-usuario/software-pecuaria-leiteira",
+      "https://leigado.com.br",
+      "https://fb.com/sistemaleigado",
+      "https://instagram.com/leigado",
+      "https://www.youtube.com/channel/UC0IUCaW7kfB_XrqLq7ysA2g",
+      "https://www.linkedin.com/company/leigado/posts/?feedView=all",
+      "https://leigado.com.br/fale-conosco",
+      "https://leigado.com.br/tecnologia-pecuaria-leiteira",
+      "https://leigado.com.br/tecnologia-pecuaria-de-corte",
+      "https://leigado.com.br/software-assistente-tecnico-pecuaria",
+      "https://leigado.com.br/software-tecnologia-laticinios",
+      "https://leigado.com.br/software-pecuaria-leiteira",
+      "https://leigado.com.br/software-gado-de-corte",
+      "https://leigado.com.br/aplicativo-pecuaria-leiteira",
+      "https://leigado.com.br/aplicativo-gado-de-corte",
+      "https://leigado.com.br/pqfl",
+      "https://leigado.com.br/mais-leite-saudavel",
+      "https://leigado.com.br/balanca-vagao-forrageiro",
+      "https://leigado.com.br/bpo-financeiro",
+      "https://leigado.com.br/curso-gestao-financeira-pecuaria-leiteira",
+      "https://leigado.com.br/integracoes",
+      "https://leigado.com.br/solucoes",
+      "https://leigado.com.br/quem-somos",
+      "https://leigado.com.br/seja-parceiro",
+      "https://leigado.com.br/programa-indicacao",
+      "https://leigado.com.br/trabalhe-conosco",
+      "https://leigado.com.br/historias-de-sucesso",
+      "https://leigado.com.br/instituicoes-de-ensino",
+      "https://leigado.com.br/pedidos-parceiros",
+      "https://leigado.com.br/perguntas-frequentes",
+      "https://leigado.com.br/cupons",
+      "https://wa.me/5546999828048?text=Ol%C3%A1%2C+Thalita%21+Tudo+bem%3F+Gostaria+de+saber+mais+sobre+as+solu%C3%A7%C3%B5es+da+Leigado",
+      "https://wa.me/5546999119511?text=Ol%C3%A1%2C+Volmir%21+Tudo+bem%3F+Gostaria+de+saber+mais+sobre+as+solu%C3%A7%C3%B5es+da+Leigado",
+      "https://leigado.com.br/politica-privacidade",
+      "https://leigado.com.br/contrato-adesao",
+      "https://leigado.com.br",
+      "https://leigado.com.br/es",
+      "https://wa.me/5546999828048?text=Ol%C3%A1%2C+Thalita%21+Tudo+bem%3F+Gostaria+de+saber+mais+sobre+as+solu%C3%A7%C3%B5es+da+Leigado",
+      "https://wa.me/5546999119511?text=Ol%C3%A1%2C+Volmir%21+Tudo+bem%3F+Gostaria+de+saber+mais+sobre+as+solu%C3%A7%C3%B5es+da+Leigado",
+      "https://leigado.com.br/ligamos-para-voce"
+    ]
+  },
+  {
+    "product": "Pecua",
+    "page": "https://pecua.com.br/",
+    "images": [],
+    "videos": [],
+    "links": [
+      "https://pecua.com.br",
+      "https://pecua.com.br/login"
+    ]
+  },
+  {
+    "product": "UNIFORM",
+    "page": "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-herd-summary/",
+    "images": [
+      {
+        "url": "https://www.uniform-agri.com/wp-content/uploads/2026/02/Sticky-header-125x85-px.png",
+        "alt": "UNIFORM-Agri Logo"
+      },
+      {
+        "url": "https://www.uniform-agri.com/wp-content/uploads/2020/09/2020-09-21_13h38_22.png",
+        "alt": ""
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-KKJVR6N",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      }
+    ],
+    "links": [
+      "#content",
+      "https://www.uniform-agri.com/",
+      "https://www.uniform-agri.com/free-web-demo/",
+      "https://www.uniform-agri.com/why-uniform-agri/",
+      "https://www.uniform-agri.com/solutions/",
+      "https://www.uniform-agri.com/solutions/for-dairy-cow-farmers/",
+      "https://www.uniform-agri.com/solutions/for-beef-farmers/",
+      "https://www.uniform-agri.com/solutions/for-dairy-goat-farmers/",
+      "https://www.uniform-agri.com/solutions/for-consultants/",
+      "https://www.uniform-agri.com/solutions/for-breed-advisors/",
+      "https://www.uniform-agri.com/solutions/for-ai-companies/",
+      "https://www.uniform-agri.com/solutions/for-milk-recording-organizations/",
+      "https://www.uniform-agri.com/solutions/uniform-app/",
+      "https://www.uniform-agri.com/what-does-the-uniform-management-program-interface-with/",
+      "https://www.uniform-agri.com/testimonials/",
+      "https://www.uniform-agri.com/resources/",
+      "https://www.uniform-agri.com/resources/demo-videos/",
+      "https://www.uniform-agri.com/resources/tips-from-the-helpdesk/",
+      "https://www.uniform-agri.com/resources/webinars/",
+      "https://www.uniform-agri.com/resources/knowledge-blog/",
+      "https://www.uniform-agri.com/resources/frequently-asked-questions/",
+      "https://www.uniform-agri.com/resources/uniform-academy/",
+      "https://www.uniform-agri.com/resources/uniform-consultant-users/",
+      "https://www.uniform-agri.com/solutions/for-consultants/release-information/",
+      "https://view.publitas.com/p222-14318/uniform-consultant-cheat-sheet-eng/",
+      "https://view.publitas.com/p222-14318/uniform-consultant-cheat-sheet-eng/",
+      "https://www.uniform-agri.com/wp-content/uploads/2025/10/Analysis-tool-Vets-EN.pdf",
+      "https://www.uniform-agri.com/resources/system-requirements/",
+      "https://www.uniform-agri.com/resources/web-consult/",
+      "https://www.uniform-agri.com/resources/teamviewer/",
+      "https://www.uniform-agri.com/about-us/",
+      "https://www.uniform-agri.com/contact/",
+      "https://www.uniform-agri.com/home/careers/",
+      "https://www.uniform-agri.com/media/",
+      "https://www.uniform-agri.com/celebrating-40-years-of-uniform-agri/",
+      "https://www.uniform-agri.com/dairylive/",
+      "http://Uniform-academy.com",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-herd-summary/",
+      "#",
+      "#",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/start-using-the-uniform-app/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/uniform-app-installatie-gebruik-en-synchronisatie/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/animal-grouping/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/change-dashboard-settings-for-dry-off/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/dashboard-overview-daily-feed-consumption-by-group/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/dashboard-settings-in-uniform-agri-video/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/check-the-dashboard-settings/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/silo-indication/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/health/health-event-analysis-by-days-in-milk/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/health/use-cow-colors-to-make-certain-cows-stand-out-instantly/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/health/helpdesk-tip-archiving-diseases-and-bulls/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/set-up-a-different-dry-off-period-for-1st-lactation-cows/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/health/somatic-cell-count-analysis/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/health/dry-off-analysis-dry-off-treatments/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/action-lists-protocols/vet-checklist-in-uniform-consultant/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/milk-production/milk-recording-report/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-view-milk-test-results-from-previous-lactations/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-herd-summary/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/uniform-app-installatie-gebruik-en-synchronisatie/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/start-using-the-uniform-app/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/customizing-the-buttons-in-the-uniform-app/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/animal-record/how-to-change-an-animals-category/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/animal-record/family-tree/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/grouping/grouping-analysis/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/dashboard/silo-indication/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/feeding/feeding-bonus/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/feeding/feeding-individual-curve/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/economics/cowgrade-sort-your-best-or-worst-animals-fast/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/bulls-breeding/archiving-unused-diseases-and-bulls-in-uniform/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/bulls-breeding/using-your-own-bull-as-a-service-bull/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/bulls-breeding/how-to-archive-bulls/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/fertility-reproduction/use-fertility-analysis-overview-to-track-abortions-over-time/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/fertility-reproduction/estimated-serving-time/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/fertility-reproduction/how-to-record-twin-pregnancies-in-uniform/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/fertility-reproduction/entering-calvings/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/fertility-reproduction/pregnant-from-previous-insemination/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/adding-inseminators-and-review-results/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/bulls-breeding/using-your-own-bull-as-a-service-bull/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/how-to-enroll-new-animals-in-uniform/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/how-to-simplify-data-entry-in-uniform/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/faster-data-entry-with-shortcuts/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/set-up-a-different-dry-off-period-for-1st-lactation-cows/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/data-entry/adding-inseminators-and-review-results/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/action-lists-protocols/view-tasks-and-actions-in-the-action-calendar/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/action-lists-protocols/vet-checklist-in-uniform-consultant/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/herd-reports/animal-movements-summary/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/program-admin-maintenance/automate-task-create-backup/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/general/add-teamviewer-to-toolbar/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/general/making-a-backup-yourself/",
+      "#",
+      "https://www.uniform-agri.com/knowledge-base/",
+      "https://www.uniform-agri.com/knowledge-base/uniform/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-herd-summary.md",
+      "https://chatgpt.com/?hints=search&q=Read%20from%20https%3A%2F%2Fwww.uniform-agri.com%2Fknowledge-base%2Fdairy%2Funiform-app%2Funiform-app-herd-summary%2F%20so%20I%20can%20ask%20questions%20about%20it.",
+      "https://claude.ai/new?q=Read%20from%20https%3A%2F%2Fwww.uniform-agri.com%2Fknowledge-base%2Fdairy%2Funiform-app%2Funiform-app-herd-summary.md%20so%20I%20can%20ask%20questions%20about%20it.",
+      "https://aistudio.google.com/prompts/new_chat?prompt=Read%20from%20https%3A%2F%2Fwww.uniform-agri.com%2Fknowledge-base%2Fdairy%2Funiform-app%2Funiform-app-herd-summary.md%20so%20I%20can%20ask%20questions%20about%20it.",
+      "https://www.uniform-agri.com/docs-tag/helpdesk-tips/",
+      "#",
+      "#",
+      "#betterdocs-form-modal",
+      "#",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-view-milk-test-results-from-previous-lactations/",
+      "https://www.uniform-agri.com/knowledge-base/dairy/starting-with-uniform/uniform-app-installatie-gebruik-en-synchronisatie/",
+      "https://view.publitas.com/p222-14318/terms_and_conditions_english_uniform/",
+      "https://www.uniform-agri.com/bank-details/",
+      "https://www.uniform-agri.com/directdebit/",
+      "https://ddsignup.co.uk/Uniform-Agri/signup.aspx?AspxAutoDetectCookieSupport=1",
+      "https://view.publitas.com/p222-14318/uniform-global-2022/",
+      "https://www.uniform-agri.com/privacy-policy-software/",
+      "https://www.uniform-agri.com/privacy-policy-website/",
+      "https://www.uniform-agri.com/resources/teamviewer/",
+      "mailto:helpdesk@uniform-agri.com",
+      "mailto:ellen@uniform-agri.com",
+      "https://www.uniform-agri.com/solutions/for-dairy-cow-farmers/",
+      "https://www.uniform-agri.com/solutions/for-dairy-goat-farmers/",
+      "https://www.uniform-agri.com/solutions/for-beef-farmers/",
+      "https://www.uniform-agri.com/solutions/for-consultants/",
+      "https://www.uniform-agri.com/solutions/for-ai-companies/",
+      "https://www.uniform-agri.com/solutions/for-breed-advisors/",
+      "https://www.uniform-agri.com/solutions/for-milk-test-companies/",
+      "https://www.uniform-agri.com/uniform-app/",
+      "https://www.facebook.com/UNIFORMAgri",
+      "https://www.tiktok.com/@uniformagri",
+      "https://www.youtube.com/user/UniformAgriNL",
+      "https://www.instagram.com/uniform_agri/",
+      "https://www.linkedin.com/company/1526323",
+      "#",
+      "mailto:helpdesk@uniform-agri.com",
+      "https://www.uniform-agri.com/knowledge-base/dairy/uniform-app/uniform-app-herd-summary/",
+      "#"
+    ]
+  },
+  {
+    "product": "UNIFORM-video",
+    "page": "https://www.uniform-agri.com/demovideos/animal-record/",
+    "images": [
+      {
+        "url": "https://www.uniform-agri.com/wp-content/uploads/2026/02/Sticky-header-125x85-px.png",
+        "alt": "UNIFORM-Agri Logo"
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-KKJVR6N",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      },
+      {
+        "title": "YouTube video player 1",
+        "src": "https://www.youtube.com/embed/SBxIv5zNHuE?wmode=transparent&autoplay=0",
+        "width": "600",
+        "height": "360",
+        "allowfullscreen": null,
+        "allow": "autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture;"
+      }
+    ],
+    "links": [
+      "#content",
+      "https://www.uniform-agri.com/",
+      "https://www.uniform-agri.com/free-web-demo/",
+      "https://www.uniform-agri.com/why-uniform-agri/",
+      "https://www.uniform-agri.com/solutions/",
+      "https://www.uniform-agri.com/solutions/for-dairy-cow-farmers/",
+      "https://www.uniform-agri.com/solutions/for-beef-farmers/",
+      "https://www.uniform-agri.com/solutions/for-dairy-goat-farmers/",
+      "https://www.uniform-agri.com/solutions/for-consultants/",
+      "https://www.uniform-agri.com/solutions/for-breed-advisors/",
+      "https://www.uniform-agri.com/solutions/for-ai-companies/",
+      "https://www.uniform-agri.com/solutions/for-milk-recording-organizations/",
+      "https://www.uniform-agri.com/solutions/uniform-app/",
+      "https://www.uniform-agri.com/what-does-the-uniform-management-program-interface-with/",
+      "https://www.uniform-agri.com/testimonials/",
+      "https://www.uniform-agri.com/resources/",
+      "https://www.uniform-agri.com/resources/demo-videos/",
+      "https://www.uniform-agri.com/resources/tips-from-the-helpdesk/",
+      "https://www.uniform-agri.com/resources/webinars/",
+      "https://www.uniform-agri.com/resources/knowledge-blog/",
+      "https://www.uniform-agri.com/resources/frequently-asked-questions/",
+      "https://www.uniform-agri.com/resources/uniform-academy/",
+      "https://www.uniform-agri.com/resources/uniform-consultant-users/",
+      "https://www.uniform-agri.com/solutions/for-consultants/release-information/",
+      "https://view.publitas.com/p222-14318/uniform-consultant-cheat-sheet-eng/",
+      "https://view.publitas.com/p222-14318/uniform-consultant-cheat-sheet-eng/",
+      "https://www.uniform-agri.com/wp-content/uploads/2025/10/Analysis-tool-Vets-EN.pdf",
+      "https://www.uniform-agri.com/resources/system-requirements/",
+      "https://www.uniform-agri.com/resources/web-consult/",
+      "https://www.uniform-agri.com/resources/teamviewer/",
+      "https://www.uniform-agri.com/about-us/",
+      "https://www.uniform-agri.com/contact/",
+      "https://www.uniform-agri.com/home/careers/",
+      "https://www.uniform-agri.com/media/",
+      "https://www.uniform-agri.com/celebrating-40-years-of-uniform-agri/",
+      "https://www.uniform-agri.com/dairylive/",
+      "http://Uniform-academy.com",
+      "https://www.uniform-agri.com/demovideos/animal-record/",
+      "https://www.uniform-agri.com/en/demo-videos/cow-record/",
+      "https://www.uniform-agri.com/us/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/en-ca/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/nl/demovideos/dierkaart-2/",
+      "https://www.uniform-agri.com/fr/film-demo/la-fiche-animale/",
+      "https://www.uniform-agri.com/ca_fr/videos-formatifs/fiche-animal/",
+      "https://www.uniform-agri.com/de/demo-videos/tierkartei/",
+      "https://www.uniform-agri.com/es/video-demostrativo/registro-animal/",
+      "https://www.uniform-agri.com/it/video-tutorial/scheda-animale/",
+      "https://www.uniform-agri.com/da/demo-film/staldtavle/",
+      "#",
+      "#",
+      "https://www.uniform-agri.com/contact/",
+      "https://www.uniform-agri.com/resources/tips-from-the-helpdesk/",
+      "https://www.uniform-agri.com/resources/webinar/",
+      "https://www.uniform-agri.com/author/webmaster/",
+      "https://view.publitas.com/p222-14318/terms_and_conditions_english_uniform/",
+      "https://www.uniform-agri.com/bank-details/",
+      "https://www.uniform-agri.com/directdebit/",
+      "https://ddsignup.co.uk/Uniform-Agri/signup.aspx?AspxAutoDetectCookieSupport=1",
+      "https://view.publitas.com/p222-14318/uniform-global-2022/",
+      "https://www.uniform-agri.com/privacy-policy-software/",
+      "https://www.uniform-agri.com/privacy-policy-website/",
+      "https://www.uniform-agri.com/resources/teamviewer/",
+      "mailto:helpdesk@uniform-agri.com",
+      "mailto:ellen@uniform-agri.com",
+      "https://www.uniform-agri.com/solutions/for-dairy-cow-farmers/",
+      "https://www.uniform-agri.com/solutions/for-dairy-goat-farmers/",
+      "https://www.uniform-agri.com/solutions/for-beef-farmers/",
+      "https://www.uniform-agri.com/solutions/for-consultants/",
+      "https://www.uniform-agri.com/solutions/for-ai-companies/",
+      "https://www.uniform-agri.com/solutions/for-breed-advisors/",
+      "https://www.uniform-agri.com/solutions/for-milk-test-companies/",
+      "https://www.uniform-agri.com/uniform-app/",
+      "https://www.facebook.com/UNIFORMAgri",
+      "https://www.tiktok.com/@uniformagri",
+      "https://www.youtube.com/user/UniformAgriNL",
+      "https://www.instagram.com/uniform_agri/",
+      "https://www.linkedin.com/company/1526323",
+      "#",
+      "mailto:helpdesk@uniform-agri.com",
+      "https://www.uniform-agri.com/demovideos/animal-record/",
+      "https://www.uniform-agri.com/en/demo-videos/cow-record/",
+      "https://www.uniform-agri.com/us/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/en-ca/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/nl/demovideos/dierkaart-2/",
+      "https://www.uniform-agri.com/fr/film-demo/la-fiche-animale/",
+      "https://www.uniform-agri.com/ca_fr/videos-formatifs/fiche-animal/",
+      "https://www.uniform-agri.com/de/demo-videos/tierkartei/",
+      "https://www.uniform-agri.com/es/video-demostrativo/registro-animal/",
+      "https://www.uniform-agri.com/it/video-tutorial/scheda-animale/",
+      "https://www.uniform-agri.com/da/demo-film/staldtavle/",
+      "https://www.uniform-agri.com/en/demo-videos/cow-record/",
+      "https://www.uniform-agri.com/us/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/en-ca/demo-videos/animal-record/",
+      "https://www.uniform-agri.com/nl/demovideos/dierkaart-2/",
+      "https://www.uniform-agri.com/fr/film-demo/la-fiche-animale/",
+      "https://www.uniform-agri.com/ca_fr/videos-formatifs/fiche-animal/",
+      "https://www.uniform-agri.com/de/demo-videos/tierkartei/",
+      "https://www.uniform-agri.com/es/video-demostrativo/registro-animal/",
+      "https://www.uniform-agri.com/it/video-tutorial/scheda-animale/",
+      "https://www.uniform-agri.com/da/demo-film/staldtavle/",
+      "#"
+    ]
+  },
+  {
+    "product": "Farmbrite",
+    "page": "https://help.farmbrite.com/help/getting-started-guides-getting-started-with-livestock",
+    "images": [
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d366f546f87f73437663a8/n/gslivestokc1.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d368758981d71bd644044e/n/gsls2.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d369ca2b9d067b5a3c8ec4/n/gsls3.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d36ce14d26286bac3f0d97/n/gsls4.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d36e8c8890b1252c61c6af/n/gsls5.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d37220b60dde29971a8691/n/gsls6.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d373f601e35e51e56482be/n/gsls7.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d37e82f813014faf741f1b/n/gsls8.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d381cbbc89c2552712421c/n/gsls9.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d384b1abc31d0a913071b8/n/gsls10.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d3859e794edb03fd176250/n/plchickens.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d38726b9f35c503d1805d1/n/gsls11.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d38a87f91bcf4df5778535/n/gsls13.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/65d387e7398a5a0fad7c8a76/n/gsls12.gif",
+        "alt": ""
+      }
+    ],
+    "videos": [
+      {
+        "width": "640",
+        "height": "360",
+        "src": "https://www.youtube.com/embed/60yH7sFNfqQ?wmode=opaque",
+        "allowfullscreen": "",
+        "class": "fr-draggable"
+      }
+    ],
+    "links": [
+      "https://help.farmbrite.com/help",
+      "https://help.farmbrite.com/help/training",
+      "https://farmbrite.atlassian.net/servicedesk/customer/portals",
+      "https://app.farmbrite.com/signin",
+      "/help",
+      "/help/glossary",
+      "/help/quick-start",
+      "javascript:void(0);",
+      "/help/getting-started-getting-started",
+      "/help/farmbrite-glossary",
+      "/help/dashboard-home",
+      "/help/customizing-dashboard-columns",
+      "/help/quick-add-buttons",
+      "/help/do-you-support-the-metric-system",
+      "/help/can-i-use-farmbrite-in-other-languages",
+      "/help/importing-data",
+      "/help/exporting-data",
+      "/help/custom-fields",
+      "/help/bulk-actions",
+      "/help/can-i-delete-multiple-records-at-once",
+      "/help/electronic-id-tags",
+      "/help/qr-codes",
+      "/help/notes",
+      "/help/filtering-tips-and-tricks",
+      "/help/photos",
+      "/help/files",
+      "/help/how-can-i-save-a-pdf-of-a-page-in-farmbrite",
+      "/help/using-keywords",
+      "javascript:void(0);",
+      "javascript:void(0);",
+      "/help/getting-started-with-timesheets",
+      "/help/manager-view",
+      "/help/employee-view",
+      "/help/main-schedule",
+      "/help/how-do-i-schedule-repeatingreoccurring-events",
+      "/help/how-do-i-get-a-reminder-about-my-scheduled-event",
+      "/help/syncing-your-farmbrite-calendar-with-ical-or-google-calendar",
+      "/help/activity-journals",
+      "javascript:void(0);",
+      "/help/tasks-tasks",
+      "/help/task-templates-and-series",
+      "/help/getting-started-with-tasks-in-farmbrite",
+      "/help/how-do-i-associate-events-with-livestock-or-fields",
+      "/help/adding-task-statuses",
+      "/help/how-do-i-mark-a-task-as-missed-or-skipped",
+      "/help/how-do-i-assign-a-task-to-someone-at-m-faciilty",
+      "/help/unassigned-tasks",
+      "/help/adding-a-check-list-to-a-task-in-farmbrite",
+      "/help/tracking-time-spent-on-tasks",
+      "/help/geolocating-your-tasks-with-gps",
+      "/help/adding-links-and-photos-to-tasks",
+      "/help/mobile-notifications-for-task-assignments",
+      "/help/filtering-and-searching-tasks",
+      "javascript:void(0);",
+      "/help/getting-started-with-livestock",
+      "/help/livestock-dashboard",
+      "javascript:void(0);",
+      "/help/adding-a-different-type-of-animal-to-farmbrite",
+      "/help/creating-animals-creating-animals",
+      "/help/how-do-i-import-animals",
+      "/help/bulk-adding-animals",
+      "/help/animal-details-animal-details",
+      "/help/how-can-i-use-rfid-tags-to-track-my-livestock",
+      "/help/printing-animal-history",
+      "/help/expected-maturity",
+      "/help/gifted-and-donated-animals",
+      "/help/livestock-historical-values",
+      "/help/adding-a-record-alert",
+      "javascript:void(0);",
+      "/help/creating-livestock-groups",
+      "/help/how-do-i-update-the-animals-included-in-a-smart-group",
+      "/help/making-custom-smart-groups-with-keywords-and-custom-fields",
+      "/help/adding-and-removing-animals-from-a-set-group",
+      "/help/removing-animals-from-a-basic-group",
+      "/help/bulk-updates-to-animals-in-a-group",
+      "/help/how-do-i-add-a-bulk-notes-to-animals",
+      "/help/group-actions",
+      "/help/feeding-groups-by-weight",
+      "/help/livestock-group-transactions",
+      "javascript:void(0);",
+      "/help/breeding-animals",
+      "/help/eligible-males",
+      "/help/coefficient-of-inbreeding",
+      "/help/adding-pregnancy-checks",
+      "/help/recording-a-birth",
+      "/help/livestock-siblings",
+      "/help/how-do-i-add-offspring-to-a-parent",
+      "/help/breeding-reporting",
+      "/help/adding-weaning-dates",
+      "/help/livestock-genealogy",
+      "javascript:void(0);",
+      "/help/average-daily-gain",
+      "/help/feeding-livestock-from-inventory",
+      "/help/group-feedings",
+      "/help/repeated-feedings",
+      "javascript:void(0);",
+      "/help/measurements-measurements",
+      "/help/wellness-score",
+      "/help/adding-a-livestock-treatment",
+      "/help/livestock-treatment-templates",
+      "/help/adding-the-withdrawal-date",
+      "/help/body-condition-score",
+      "/help/using-inputs",
+      "javascript:void(0);",
+      "/help/fields-grazing",
+      "/help/grazing",
+      "javascript:void(0);",
+      "/help/livestock-yield",
+      "/help/lay-rate",
+      "/help/harvest-to-inventory-livestock",
+      "javascript:void(0);",
+      "/help/livestock-accounting",
+      "/help/bill-of-sale-livestock-sale",
+      "javascript:void(0);",
+      "/help/creating-custom-livestock-reports",
+      "/help/reporting-c4cebb0-livestock-reports",
+      "/help/livestock-yield-comparison",
+      "/help/livestock-registry-connection",
+      "/help/importing-bulk-measurements-and-yields",
+      "/help/animal-photos",
+      "/help/livestock-files",
+      "/help/how-are-active-animals-counted-for-my-farmbrite-subscription-plan",
+      "javascript:void(0);",
+      "/help/crops-fields",
+      "javascript:void(0);",
+      "/help/plant-details",
+      "/help/create-crop-type",
+      "/help/adding-a-plant-type-that-is-not-on-the-list",
+      "/help/editing-crop-type-details",
+      "/help/creating-plants",
+      "/help/download-crops",
+      "javascript:void(0);",
+      "/help/grow-locations-getting-started",
+      "/help/fields-field-details",
+      "/help/updating-beds",
+      "/help/grow-location-accounting",
+      "javascript:void(0);",
+      "/help/season-start",
+      "/help/using-your-crop-plan",
+      "/help/using-the-yield-calculator",
+      "/help/estimate-seed-order",
+      "/help/adjusting-you-planting-dates",
+      "javascript:void(0);",
+      "/help/fields-crops",
+      "/help/bulk-plantings",
+      "/help/calculating-plantings-needed-synced-copy",
+      "/help/succession-plantings",
+      "/help/tracking-plant-growth-stages",
+      "/help/transplanting-crops",
+      "/help/completing-plantings",
+      "javascript:void(0);",
+      "/help/adding-a-crop-treatment",
+      "/help/treatments-and-nutrients-crop-treatment-templates",
+      "/help/nutrients",
+      "/help/planting-tasks",
+      "/help/watering-and-tilling",
+      "/help/tracking-withdrawal-dates",
+      "javascript:void(0);",
+      "/help/expected-harvests",
+      "/help/updating-harvest-units",
+      "/help/crop-harvests",
+      "/help/harvest-to-inventory",
+      "/help/recording-a-crop-loss",
+      "/help/yield-averages-and-reports",
+      "/help/harvests-traceability-from-harvest-to-sale",
+      "/help/yield-comparison",
+      "javascript:void(0);",
+      "/help/how-do-i-use-farmbrite-to-grow-microgreens",
+      "/help/selling-starts",
+      "/help/field-notes",
+      "/help/images",
+      "/help/crop-type-accounting",
+      "/help/crops-planting-reports",
+      "javascript:void(0);",
+      "/help/inventory-and-resources-overview",
+      "javascript:void(0);",
+      "/help/equipment-getting-started",
+      "/help/creating-equipment",
+      "/help/equipment-details",
+      "/help/equipment-qr-code",
+      "/help/recording-equipment-usage",
+      "/help/equipment-maintenance",
+      "/help/equipment-service-notifications",
+      "/help/equipment-accounting",
+      "/help/equipment-notes",
+      "/help/equipement-calendar",
+      "/help/contacts-equipment-images",
+      "/help/using-equipment-statuses",
+      "/help/printing-equipment-history",
+      "/help/locating-your-equipment",
+      "javascript:void(0);",
+      "/help/setting-up-a-warehouse",
+      "/help/working-with-warehouses",
+      "/help/filtering-your-warehouse",
+      "/help/mapping-warehouses",
+      "/help/warehouse-history",
+      "javascript:void(0);",
+      "/help/setting-up-inventory-in-farmbrite",
+      "/help/inventory-item-categories",
+      "/help/tracking-inventory-in-lots",
+      "/help/connecting-inventory-and-products",
+      "/help/inventory-recipes",
+      "/help/how-do-i-remove-items-from-my-inventory",
+      "/help/how-do-i-move-inventory-to-a-different-storage-location",
+      "/help/using-inventory-for-treatments-and-maintenance",
+      "/help/low-inventory-notifications",
+      "/help/inventory-summary-reports",
+      "/help/how-can-i-see-what-inventory-i-have-in-each-warehouse-or-bin",
+      "/help/tracking-current-inventory",
+      "/help/setting-a-default-warehouse-for-an-item",
+      "/help/inventory-history",
+      "javascript:void(0);",
+      "/help/accounting-overview",
+      "/help/accounting-dashboard",
+      "/help/accounting-categories",
+      "/help/chart-of-accounts",
+      "/help/recording-transactions",
+      "/help/transaction-statuses",
+      "/help/connecting-a-bank-account",
+      "/help/how-can-i-see-accounting-transactions-for-fields-plantings-animals-and-equipment",
+      "/help/scanning-receipts",
+      "/help/how-can-i-split-income-and-expense-between-different-financial-categories",
+      "/help/credit-and-refunds-to-your-chart-of-accounts",
+      "/help/how-do-i-import-my-files-into-farmbrite",
+      "/help/download-transactions",
+      "/help/accounting-accounting-reports",
+      "/help/cost-analysis-tracking",
+      "/help/profit-and-loss-statement",
+      "/help/spending-by-category-report",
+      "/help/cash-flow",
+      "/help/creating-a-balance-sheet",
+      "/help/creating-a-budget",
+      "/help/how-do-i-add-a-starting-cash-balance",
+      "/help/attaching-my-bank-account",
+      "/help/reporting-year",
+      "javascript:void(0);",
+      "/help/market-overview",
+      "javascript:void(0);",
+      "/help/online-store-online-store",
+      "/help/pickup-locations",
+      "/help/basic-tax-setup",
+      "/help/settings-adding-taxes-to-products",
+      "javascript:void(0);",
+      "/help/productsoverview",
+      "/help/creating-a-new-product",
+      "/help/volume-pricing",
+      "/help/product-variations",
+      "/help/importing-products",
+      "/help/product-details",
+      "/help/products-94487b1-connecting-inventory-and-products",
+      "/help/quantities-for-sale",
+      "/help/purchase-increments",
+      "/help/adding-photos-to-my-products",
+      "/help/adding-taxes-to-products",
+      "/help/how-do-i-create-additional-product-categories",
+      "/help/how-can-i-find-see-what-products-are-not-available-in-my-store",
+      "/help/customized-product-accounting",
+      "/help/set-up-your-farm-boxes",
+      "/help/product-ids-for-integrations",
+      "/help/product-custom-reports",
+      "javascript:void(0);",
+      "/help/orders",
+      "/help/order-messages",
+      "/help/setting-order-numbers",
+      "/help/order-details",
+      "/help/creating-point-of-sale-orders",
+      "/help/pay-later-invoiced-orders",
+      "/help/editing-an-existing-order",
+      "/help/how-do-i-enter-a-discount-code",
+      "/help/how-do-i-add-shipping-and-delivery-fees-to-my-orders",
+      "/help/picking-order-from-inventory",
+      "/help/how-do-i-send-an-invoice",
+      "/help/market-refunds",
+      "/help/quick-pay",
+      "/help/viewing-orders-by-source",
+      "/help/wholesale-orders",
+      "javascript:void(0);",
+      "/help/how-do-i-set-up-my-online-shop",
+      "/help/processing-payments",
+      "/help/enabling-online-discount-codes",
+      "/help/using-qr-codes-for-your-store-and-products",
+      "/help/market-dashboard-and-reports",
+      "/help/market-reports",
+      "/help/traceability-from-harvest-to-sale",
+      "javascript:void(0);",
+      "/help/contacts-contacts",
+      "/help/creating-contacts-creating-contacts",
+      "/help/orders-associated-with-contacts",
+      "/help/contact-notes",
+      "/help/importing-contacts-from-a-spreadsheet",
+      "/help/downloading-contacts",
+      "/help/how-can-i-send-an-email-to-a-contact",
+      "/help/reporting-on-contacts",
+      "javascript:void(0);",
+      "/help/getting-started-with-reporting",
+      "/help/what-reports-are-available-in-farmbrite",
+      "/help/how-do-i-create-custom-reports",
+      "/help/accounting-reports",
+      "/help/livestock-reports",
+      "/help/planting-reports",
+      "/help/orders-and-market-reports",
+      "/help/resource-reports",
+      "/help/user-activity-reports",
+      "/help/harvest-report",
+      "/help/reproduction-report",
+      "/help/livestock-yield-report",
+      "/help/reporting-on-livestock-treatments",
+      "/help/who-owes-you-using-the-accounts-receivable-aging-report",
+      "/help/audit-logs",
+      "/help/asset-value-tracking",
+      "javascript:void(0);",
+      "/help/field-map",
+      "/help/how-do-i-change-the-name-of-my-field-on-my-map",
+      "/help/importing-your-map",
+      "/help/filtering-your-map",
+      "/help/recording-notes-and-tasks-from-your-map",
+      "/help/changing-your-default-map-location",
+      "javascript:void(0);",
+      "/help/weather-forecasts",
+      "/help/getting-started-with-climate",
+      "/help/creating-a-gauge",
+      "/help/adding-climate-logs",
+      "/help/importing-climate-logs",
+      "/help/weather-history-and-mapping",
+      "javascript:void(0);",
+      "/help/account-menu",
+      "javascript:void(0);",
+      "/help/users",
+      "/help/how-can-i-create-a-user-with-limited-access-to-my-farmbrite-account",
+      "/help/how-can-i-add-an-avatar-photo-to-my-user-account",
+      "/help/creating-teams",
+      "/help/multi-farm-user-permissions",
+      "/help/multi-factor-authentication",
+      "javascript:void(0);",
+      "/help/how-do-i-update-my-credit-card",
+      "/help/how-do-i-cancel-my-account",
+      "/help/how-do-i-view-past-invoices-charges",
+      "/help/how-do-i-change-my-subscription-plan-type",
+      "/help/vat-tax-information",
+      "/help/account-settings",
+      "/help/background-settings",
+      "/help/how-do-i-add-a-timezone-on-my-account",
+      "/help/account-do-you-support-the-metric-system",
+      "/help/mobile-notifications",
+      "/help/updating-email-addresses",
+      "/help/turn-off-email-notifications-in-your-account",
+      "/help/how-do-i-extend-my-trial",
+      "/help/opening-a-subaccount",
+      "/help/security-and-data-storage",
+      "/help/global-trade-compliance",
+      "javascript:void(0);",
+      "/help/accessing-farmbrite-on-mobile",
+      "/help/using-farmbrite-offline",
+      "/help/mobile",
+      "/help/using-the-mobile-app-on-a-laptop-or-desktop",
+      "javascript:void(0);",
+      "/help/getting-started-with-integrations",
+      "/help/zapier",
+      "/help/working-with-webhooks",
+      "/help/farmbrite-api",
+      "/help/developers-api",
+      "javascript:void(0);",
+      "/help/selling-plant-starts",
+      "/help/whatsnew",
+      "/help/training-videos",
+      "/help/system-status",
+      "/help/contact-us-36e84fd",
+      "/help/accessibility",
+      "/help",
+      "/help/getting-started-guides",
+      "/help/pdfexport/id/65cd03cf47dad7644f0a6c0c",
+      "#",
+      "#",
+      "/help/custom-fields",
+      "/help/how-do-i-import-animals",
+      "https://help.farmbrite.com/help/contact-feedback",
+      "/help/bulk-adding-animals",
+      "/help/wellness-score",
+      "/help/gifted-and-donated-animals",
+      "/help/getting-started-with-livestock",
+      "/help/getting-started-with-reporting",
+      "#",
+      "javascript:void(0);",
+      "https://www.farmbrite.com",
+      "https://www.farmbrite.com"
+    ]
+  },
+  {
+    "product": "Farmbrite-lista",
+    "page": "https://help.farmbrite.com/help/livestock-dashboard",
+    "images": [
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/689a35c244708b7845018d2a/n/lsdash1.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/689a5168c3b9d07837026701/n/lsdash2.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/689b4bcc90898f196a044e0d/n/lsdash3.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/689cd53e437ed370c306015c/n/lsdash5.gif",
+        "alt": ""
+      },
+      {
+        "url": "https://dyzz9obi78pm5.cloudfront.net/app/image/id/68c444ca9cad52effe0e338e/n/bulk-actionslsdash.gif",
+        "alt": ""
+      }
+    ],
+    "videos": [],
+    "links": [
+      "https://help.farmbrite.com/help",
+      "https://help.farmbrite.com/help/training",
+      "https://farmbrite.atlassian.net/servicedesk/customer/portals",
+      "https://app.farmbrite.com/signin",
+      "/help",
+      "/help/glossary",
+      "/help/quick-start",
+      "javascript:void(0);",
+      "/help/getting-started-getting-started",
+      "/help/farmbrite-glossary",
+      "/help/dashboard-home",
+      "/help/customizing-dashboard-columns",
+      "/help/quick-add-buttons",
+      "/help/do-you-support-the-metric-system",
+      "/help/can-i-use-farmbrite-in-other-languages",
+      "/help/importing-data",
+      "/help/exporting-data",
+      "/help/custom-fields",
+      "/help/bulk-actions",
+      "/help/can-i-delete-multiple-records-at-once",
+      "/help/electronic-id-tags",
+      "/help/qr-codes",
+      "/help/notes",
+      "/help/filtering-tips-and-tricks",
+      "/help/photos",
+      "/help/files",
+      "/help/how-can-i-save-a-pdf-of-a-page-in-farmbrite",
+      "/help/using-keywords",
+      "javascript:void(0);",
+      "javascript:void(0);",
+      "/help/getting-started-with-timesheets",
+      "/help/manager-view",
+      "/help/employee-view",
+      "/help/main-schedule",
+      "/help/how-do-i-schedule-repeatingreoccurring-events",
+      "/help/how-do-i-get-a-reminder-about-my-scheduled-event",
+      "/help/syncing-your-farmbrite-calendar-with-ical-or-google-calendar",
+      "/help/activity-journals",
+      "javascript:void(0);",
+      "/help/tasks-tasks",
+      "/help/task-templates-and-series",
+      "/help/getting-started-with-tasks-in-farmbrite",
+      "/help/how-do-i-associate-events-with-livestock-or-fields",
+      "/help/adding-task-statuses",
+      "/help/how-do-i-mark-a-task-as-missed-or-skipped",
+      "/help/how-do-i-assign-a-task-to-someone-at-m-faciilty",
+      "/help/unassigned-tasks",
+      "/help/adding-a-check-list-to-a-task-in-farmbrite",
+      "/help/tracking-time-spent-on-tasks",
+      "/help/geolocating-your-tasks-with-gps",
+      "/help/adding-links-and-photos-to-tasks",
+      "/help/mobile-notifications-for-task-assignments",
+      "/help/filtering-and-searching-tasks",
+      "javascript:void(0);",
+      "/help/getting-started-with-livestock",
+      "/help/livestock-dashboard",
+      "javascript:void(0);",
+      "/help/adding-a-different-type-of-animal-to-farmbrite",
+      "/help/creating-animals-creating-animals",
+      "/help/how-do-i-import-animals",
+      "/help/bulk-adding-animals",
+      "/help/animal-details-animal-details",
+      "/help/how-can-i-use-rfid-tags-to-track-my-livestock",
+      "/help/printing-animal-history",
+      "/help/expected-maturity",
+      "/help/gifted-and-donated-animals",
+      "/help/livestock-historical-values",
+      "/help/adding-a-record-alert",
+      "javascript:void(0);",
+      "/help/creating-livestock-groups",
+      "/help/how-do-i-update-the-animals-included-in-a-smart-group",
+      "/help/making-custom-smart-groups-with-keywords-and-custom-fields",
+      "/help/adding-and-removing-animals-from-a-set-group",
+      "/help/removing-animals-from-a-basic-group",
+      "/help/bulk-updates-to-animals-in-a-group",
+      "/help/how-do-i-add-a-bulk-notes-to-animals",
+      "/help/group-actions",
+      "/help/feeding-groups-by-weight",
+      "/help/livestock-group-transactions",
+      "javascript:void(0);",
+      "/help/breeding-animals",
+      "/help/eligible-males",
+      "/help/coefficient-of-inbreeding",
+      "/help/adding-pregnancy-checks",
+      "/help/recording-a-birth",
+      "/help/livestock-siblings",
+      "/help/how-do-i-add-offspring-to-a-parent",
+      "/help/breeding-reporting",
+      "/help/adding-weaning-dates",
+      "/help/livestock-genealogy",
+      "javascript:void(0);",
+      "/help/average-daily-gain",
+      "/help/feeding-livestock-from-inventory",
+      "/help/group-feedings",
+      "/help/repeated-feedings",
+      "javascript:void(0);",
+      "/help/measurements-measurements",
+      "/help/wellness-score",
+      "/help/adding-a-livestock-treatment",
+      "/help/livestock-treatment-templates",
+      "/help/adding-the-withdrawal-date",
+      "/help/body-condition-score",
+      "/help/using-inputs",
+      "javascript:void(0);",
+      "/help/fields-grazing",
+      "/help/grazing",
+      "javascript:void(0);",
+      "/help/livestock-yield",
+      "/help/lay-rate",
+      "/help/harvest-to-inventory-livestock",
+      "javascript:void(0);",
+      "/help/livestock-accounting",
+      "/help/bill-of-sale-livestock-sale",
+      "javascript:void(0);",
+      "/help/creating-custom-livestock-reports",
+      "/help/reporting-c4cebb0-livestock-reports",
+      "/help/livestock-yield-comparison",
+      "/help/livestock-registry-connection",
+      "/help/importing-bulk-measurements-and-yields",
+      "/help/animal-photos",
+      "/help/livestock-files",
+      "/help/how-are-active-animals-counted-for-my-farmbrite-subscription-plan",
+      "javascript:void(0);",
+      "/help/crops-fields",
+      "javascript:void(0);",
+      "/help/plant-details",
+      "/help/create-crop-type",
+      "/help/adding-a-plant-type-that-is-not-on-the-list",
+      "/help/editing-crop-type-details",
+      "/help/creating-plants",
+      "/help/download-crops",
+      "javascript:void(0);",
+      "/help/grow-locations-getting-started",
+      "/help/fields-field-details",
+      "/help/updating-beds",
+      "/help/grow-location-accounting",
+      "javascript:void(0);",
+      "/help/season-start",
+      "/help/using-your-crop-plan",
+      "/help/using-the-yield-calculator",
+      "/help/estimate-seed-order",
+      "/help/adjusting-you-planting-dates",
+      "javascript:void(0);",
+      "/help/fields-crops",
+      "/help/bulk-plantings",
+      "/help/calculating-plantings-needed-synced-copy",
+      "/help/succession-plantings",
+      "/help/tracking-plant-growth-stages",
+      "/help/transplanting-crops",
+      "/help/completing-plantings",
+      "javascript:void(0);",
+      "/help/adding-a-crop-treatment",
+      "/help/treatments-and-nutrients-crop-treatment-templates",
+      "/help/nutrients",
+      "/help/planting-tasks",
+      "/help/watering-and-tilling",
+      "/help/tracking-withdrawal-dates",
+      "javascript:void(0);",
+      "/help/expected-harvests",
+      "/help/updating-harvest-units",
+      "/help/crop-harvests",
+      "/help/harvest-to-inventory",
+      "/help/recording-a-crop-loss",
+      "/help/yield-averages-and-reports",
+      "/help/harvests-traceability-from-harvest-to-sale",
+      "/help/yield-comparison",
+      "javascript:void(0);",
+      "/help/how-do-i-use-farmbrite-to-grow-microgreens",
+      "/help/selling-starts",
+      "/help/field-notes",
+      "/help/images",
+      "/help/crop-type-accounting",
+      "/help/crops-planting-reports",
+      "javascript:void(0);",
+      "/help/inventory-and-resources-overview",
+      "javascript:void(0);",
+      "/help/equipment-getting-started",
+      "/help/creating-equipment",
+      "/help/equipment-details",
+      "/help/equipment-qr-code",
+      "/help/recording-equipment-usage",
+      "/help/equipment-maintenance",
+      "/help/equipment-service-notifications",
+      "/help/equipment-accounting",
+      "/help/equipment-notes",
+      "/help/equipement-calendar",
+      "/help/contacts-equipment-images",
+      "/help/using-equipment-statuses",
+      "/help/printing-equipment-history",
+      "/help/locating-your-equipment",
+      "javascript:void(0);",
+      "/help/setting-up-a-warehouse",
+      "/help/working-with-warehouses",
+      "/help/filtering-your-warehouse",
+      "/help/mapping-warehouses",
+      "/help/warehouse-history",
+      "javascript:void(0);",
+      "/help/setting-up-inventory-in-farmbrite",
+      "/help/inventory-item-categories",
+      "/help/tracking-inventory-in-lots",
+      "/help/connecting-inventory-and-products",
+      "/help/inventory-recipes",
+      "/help/how-do-i-remove-items-from-my-inventory",
+      "/help/how-do-i-move-inventory-to-a-different-storage-location",
+      "/help/using-inventory-for-treatments-and-maintenance",
+      "/help/low-inventory-notifications",
+      "/help/inventory-summary-reports",
+      "/help/how-can-i-see-what-inventory-i-have-in-each-warehouse-or-bin",
+      "/help/tracking-current-inventory",
+      "/help/setting-a-default-warehouse-for-an-item",
+      "/help/inventory-history",
+      "javascript:void(0);",
+      "/help/accounting-overview",
+      "/help/accounting-dashboard",
+      "/help/accounting-categories",
+      "/help/chart-of-accounts",
+      "/help/recording-transactions",
+      "/help/transaction-statuses",
+      "/help/connecting-a-bank-account",
+      "/help/how-can-i-see-accounting-transactions-for-fields-plantings-animals-and-equipment",
+      "/help/scanning-receipts",
+      "/help/how-can-i-split-income-and-expense-between-different-financial-categories",
+      "/help/credit-and-refunds-to-your-chart-of-accounts",
+      "/help/how-do-i-import-my-files-into-farmbrite",
+      "/help/download-transactions",
+      "/help/accounting-accounting-reports",
+      "/help/cost-analysis-tracking",
+      "/help/profit-and-loss-statement",
+      "/help/spending-by-category-report",
+      "/help/cash-flow",
+      "/help/creating-a-balance-sheet",
+      "/help/creating-a-budget",
+      "/help/how-do-i-add-a-starting-cash-balance",
+      "/help/attaching-my-bank-account",
+      "/help/reporting-year",
+      "javascript:void(0);",
+      "/help/market-overview",
+      "javascript:void(0);",
+      "/help/online-store-online-store",
+      "/help/pickup-locations",
+      "/help/basic-tax-setup",
+      "/help/settings-adding-taxes-to-products",
+      "javascript:void(0);",
+      "/help/productsoverview",
+      "/help/creating-a-new-product",
+      "/help/volume-pricing",
+      "/help/product-variations",
+      "/help/importing-products",
+      "/help/product-details",
+      "/help/products-94487b1-connecting-inventory-and-products",
+      "/help/quantities-for-sale",
+      "/help/purchase-increments",
+      "/help/adding-photos-to-my-products",
+      "/help/adding-taxes-to-products",
+      "/help/how-do-i-create-additional-product-categories",
+      "/help/how-can-i-find-see-what-products-are-not-available-in-my-store",
+      "/help/customized-product-accounting",
+      "/help/set-up-your-farm-boxes",
+      "/help/product-ids-for-integrations",
+      "/help/product-custom-reports",
+      "javascript:void(0);",
+      "/help/orders",
+      "/help/order-messages",
+      "/help/setting-order-numbers",
+      "/help/order-details",
+      "/help/creating-point-of-sale-orders",
+      "/help/pay-later-invoiced-orders",
+      "/help/editing-an-existing-order",
+      "/help/how-do-i-enter-a-discount-code",
+      "/help/how-do-i-add-shipping-and-delivery-fees-to-my-orders",
+      "/help/picking-order-from-inventory",
+      "/help/how-do-i-send-an-invoice",
+      "/help/market-refunds",
+      "/help/quick-pay",
+      "/help/viewing-orders-by-source",
+      "/help/wholesale-orders",
+      "javascript:void(0);",
+      "/help/how-do-i-set-up-my-online-shop",
+      "/help/processing-payments",
+      "/help/enabling-online-discount-codes",
+      "/help/using-qr-codes-for-your-store-and-products",
+      "/help/market-dashboard-and-reports",
+      "/help/market-reports",
+      "/help/traceability-from-harvest-to-sale",
+      "javascript:void(0);",
+      "/help/contacts-contacts",
+      "/help/creating-contacts-creating-contacts",
+      "/help/orders-associated-with-contacts",
+      "/help/contact-notes",
+      "/help/importing-contacts-from-a-spreadsheet",
+      "/help/downloading-contacts",
+      "/help/how-can-i-send-an-email-to-a-contact",
+      "/help/reporting-on-contacts",
+      "javascript:void(0);",
+      "/help/getting-started-with-reporting",
+      "/help/what-reports-are-available-in-farmbrite",
+      "/help/how-do-i-create-custom-reports",
+      "/help/accounting-reports",
+      "/help/livestock-reports",
+      "/help/planting-reports",
+      "/help/orders-and-market-reports",
+      "/help/resource-reports",
+      "/help/user-activity-reports",
+      "/help/harvest-report",
+      "/help/reproduction-report",
+      "/help/livestock-yield-report",
+      "/help/reporting-on-livestock-treatments",
+      "/help/who-owes-you-using-the-accounts-receivable-aging-report",
+      "/help/audit-logs",
+      "/help/asset-value-tracking",
+      "javascript:void(0);",
+      "/help/field-map",
+      "/help/how-do-i-change-the-name-of-my-field-on-my-map",
+      "/help/importing-your-map",
+      "/help/filtering-your-map",
+      "/help/recording-notes-and-tasks-from-your-map",
+      "/help/changing-your-default-map-location",
+      "javascript:void(0);",
+      "/help/weather-forecasts",
+      "/help/getting-started-with-climate",
+      "/help/creating-a-gauge",
+      "/help/adding-climate-logs",
+      "/help/importing-climate-logs",
+      "/help/weather-history-and-mapping",
+      "javascript:void(0);",
+      "/help/account-menu",
+      "javascript:void(0);",
+      "/help/users",
+      "/help/how-can-i-create-a-user-with-limited-access-to-my-farmbrite-account",
+      "/help/how-can-i-add-an-avatar-photo-to-my-user-account",
+      "/help/creating-teams",
+      "/help/multi-farm-user-permissions",
+      "/help/multi-factor-authentication",
+      "javascript:void(0);",
+      "/help/how-do-i-update-my-credit-card",
+      "/help/how-do-i-cancel-my-account",
+      "/help/how-do-i-view-past-invoices-charges",
+      "/help/how-do-i-change-my-subscription-plan-type",
+      "/help/vat-tax-information",
+      "/help/account-settings",
+      "/help/background-settings",
+      "/help/how-do-i-add-a-timezone-on-my-account",
+      "/help/account-do-you-support-the-metric-system",
+      "/help/mobile-notifications",
+      "/help/updating-email-addresses",
+      "/help/turn-off-email-notifications-in-your-account",
+      "/help/how-do-i-extend-my-trial",
+      "/help/opening-a-subaccount",
+      "/help/security-and-data-storage",
+      "/help/global-trade-compliance",
+      "javascript:void(0);",
+      "/help/accessing-farmbrite-on-mobile",
+      "/help/using-farmbrite-offline",
+      "/help/mobile",
+      "/help/using-the-mobile-app-on-a-laptop-or-desktop",
+      "javascript:void(0);",
+      "/help/getting-started-with-integrations",
+      "/help/zapier",
+      "/help/working-with-webhooks",
+      "/help/farmbrite-api",
+      "/help/developers-api",
+      "javascript:void(0);",
+      "/help/selling-plant-starts",
+      "/help/whatsnew",
+      "/help/training-videos",
+      "/help/system-status",
+      "/help/contact-us-36e84fd",
+      "/help/accessibility",
+      "/help",
+      "/help/livestock",
+      "/help/pdfexport/id/5c5075418e121c35493850f2",
+      "#",
+      "#",
+      "/help/creating-animals-creating-animals",
+      "/help/bulk-adding-animals",
+      "/help/how-do-i-import-animals",
+      "/help/creating-livestock-groups",
+      "https://www.farmbrite.com/contact-us",
+      "/help/how-can-i-use-rfid-tags-to-track-my-livestock",
+      "/help/creating-livestock-groups",
+      "/help/bulk-updates-to-animals-in-a-group",
+      "/help/can-i-delete-multiple-records-at-once",
+      "/help/customizing-dashboard-columns",
+      "#",
+      "javascript:void(0);",
+      "https://www.farmbrite.com",
+      "https://www.farmbrite.com"
+    ]
+  },
+  {
+    "product": "AgriWebb",
+    "page": "https://www.agriwebb.com/us/solutions/animal-management/",
+    "images": [
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6aa9e185b0f7dc28a014b27a_US.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6aa9e18e86823904f357b779_AU.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6aa9d99f9c0d59995272a33d_374f41106a4abc84483ce11afbcd99da_UK.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6aa9f94e61dc295e5def3ce0_SA.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a92caf3e47c4cc70fcc2d01_IMG_4076%202.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a92caec21e4e0a4c33c0370_176A8302-scaled%201.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9a87bd3e473bf62c60524f_Frame%201984077622.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9a87b528a2d6f886fe8e86_Frame%201984077623.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9a87acce791596ae1f6381_Frame%201984077624.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6aa0fcc8d83167e10f4a79cb_Easier-to-manage-paddocks-1%201%20(1).png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a93feeb07117569c26c6c9c_cow%202.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a93ff208b8a10c0903a4028_mob%202.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9d4fb227655e4fa56a783b_ADCommodities-2247%201.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9d4fb6f0c4f20f04425046_1-rooterbright%20(8)%20(1)%202.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6ab0ce3c999204b88849dd06_Cricket_Eaton_-_Sunfed_Ranch_photo%201%20(1).avif",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab1f4837b56365951855a04_Average%20Daily%20Gains.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a9383a991bf868baf4d768e_Frame%201984077628.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6a93836c07117569c25d2ef9_Frame%201984077631.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab1f4b38e1b6ca754fac38d_Cost%20of%20Production%20reports.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab1f4ca5909de0e6d4d702c_Livestock%20Gross%20Margins.png",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab1ebe1fc506144126691e2_John_and_Shelby_Bucholz_XH_Land_and_Cattle.jpeg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab0cb517fc14af3a29fea90_Wray_Cattle_Company_Sign.jpeg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6aac9ef5554d7b0ea2d66757_4609664415159688902-e1765846386145.jpeg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8ba48ddbd39f65f61ec132/6ab203f28a90696b5c67b0ef_6aaa38d5f530f6741258ea45_ADCommodities-2384.avif",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6a9d06f033c3d95c9cf6bdb7_387bb1088baee3a41688d76dfeb8462b_Footer%20Vector%202.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://cdn.prod.website-files.com/6a8a57cc236395481fb6123d/6a9d06f08425ed54cd2827bd_3901f0900afa3c695c15565c9cf0f88c_Footer%20Vector%201.svg",
+        "alt": ""
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-MVCQ45",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      }
+    ],
+    "links": [
+      "#",
+      "/us",
+      "/us/feature",
+      "/us/success-and-support",
+      "/us/integrations",
+      "/us/customer-stories",
+      "/us/use-cases/team-management",
+      "/us/use-cases/grazing-management",
+      "/us/use-cases/farm-record-keeping",
+      "/us/use-cases/farm-mapping",
+      "/us/use-cases/animal-management",
+      "/us/sustainability-for-producers",
+      "/us/sustainability-for-enterprises",
+      "/us/pricing",
+      "/us/our-story",
+      "/us/resources",
+      "/us/careers",
+      "/us/contact",
+      "#",
+      "https://portal.agriwebb.com/login?_gl=1*13w876g*_gcl_au*NTM1OTYzMzA3LjE3ODM0Njk4NDg.*_ga*ODkwNjk1NTI5LjE3ODM0Njk4NDg.*_ga_NFYPCZZJEQ*czE3ODg5MjM0MTYkbzEkZzEkdDE3ODg5MjM3NTIkajU4JGwwJGgw",
+      "https://portal.agriwebb.com/login?_gl=1*13w876g*_gcl_au*NTM1OTYzMzA3LjE3ODM0Njk4NDg.*_ga*ODkwNjk1NTI5LjE3ODM0Njk4NDg.*_ga_NFYPCZZJEQ*czE3ODg5MjM0MTYkbzEkZzEkdDE3ODg5MjM3NTIkajU4JGwwJGgw",
+      "/use-cases/animal-management",
+      "/uk/use-cases/animal-management",
+      "/us/use-cases/animal-management",
+      "/za/use-cases/animal-management",
+      "#",
+      "#",
+      "/us/feature",
+      "/us/success-and-support",
+      "/us/integrations",
+      "/us/customer-stories",
+      "/us/use-cases/team-management",
+      "/us/use-cases/grazing-management",
+      "/us/use-cases/farm-record-keeping",
+      "/us/use-cases/farm-mapping",
+      "/us/use-cases/animal-management",
+      "/us/sustainability-for-producers",
+      "/us/sustainability-for-enterprises",
+      "/us/pricing",
+      "/us/our-story",
+      "/us/resources",
+      "/us/careers",
+      "/us/contact",
+      "#",
+      "#",
+      "https://register.agriwebb.com/au/iam/trial?_gl=1*bn4ut4*_gcl_au*MTQ5Njg5ODMyNC4xNzgyMzQzOTM4*_ga*MTg0MjEwOTc4Ny4xNzgyMzQzOTM4*_ga_NFYPCZZJEQ*czE3ODgxNTU4NTAkbzEkZzEkdDE3ODgxNTU4NTEkajU5JGwwJGgw",
+      "https://register.agriwebb.com/trial?_gl=1*fx7280*_gcl_au*MTQ5Njg5ODMyNC4xNzgyMzQzOTM4*_ga*MTg0MjEwOTc4Ny4xNzgyMzQzOTM4*_ga_NFYPCZZJEQ*czE3ODg3NTIzNTUkbzEkZzEkdDE3ODg3NTIzNTUkajYwJGwwJGgw",
+      "#",
+      "#",
+      "/us/get-a-free-demo",
+      "/us/pricing",
+      "/us/get-a-free-demo",
+      "/us/pricing",
+      "/us/get-a-free-demo",
+      "#",
+      "/us/get-a-free-demo",
+      "/us/feature",
+      "/us/feature",
+      "#",
+      "#",
+      "#",
+      "/us",
+      "https://www.facebook.com/agriwebb.au",
+      "https://www.instagram.com/agriwebb/",
+      "https://x.com/AgriWebb",
+      "https://www.linkedin.com/company/agriwebb",
+      "https://www.youtube.com/agriwebb",
+      "/us/integrations",
+      "/us/feature",
+      "https://portal.productboard.com/agriwebb/1-agriwebb/tabs/1-ideas-feedback",
+      "/us/success-and-support",
+      "https://docs.agriwebb.com/?_gl=1*nf4fxy*_gcl_au*NTM1OTYzMzA3LjE3ODM0Njk4NDg.*_ga*ODkwNjk1NTI5LjE3ODM0Njk4NDg.*_ga_NFYPCZZJEQ*czE3ODg2ODc5OTUkbzEkZzEkdDE3ODg2ODc5OTYkajU5JGwwJGgw",
+      "https://help.agriwebb.com/en/?_gl=1*iqc94o*_gcl_au*MTkwMDMwOTc2MC4xNzg4OTMxODM3*_ga*MTg2NTY1MDUyOC4xNzg4OTMxODM4*_ga_NFYPCZZJEQ*czE3ODg5NTgwNTkkbzIkZzEkdDE3ODg5NTgwNjQkajU1JGwwJGgw",
+      "/us/use-cases/team-management",
+      "/us/use-cases/grazing-management",
+      "/us/use-cases/farm-record-keeping",
+      "/us/use-cases/farm-mapping",
+      "/us/use-cases/animal-management",
+      "/us/sustainability-for-enterprises",
+      "/us/sustainability-for-producers",
+      "/us/our-story",
+      "/integrations#our-partners",
+      "/us/careers",
+      "/us/contact",
+      "/us/pricing",
+      "/resources?categories=All&region=All&tab=upcoming-events",
+      "/resources?categories=All&region=All&tab=guides-and-reports",
+      "/resources?tab=blogs&categories=All&region=All",
+      "/us/mobile-app",
+      "/us/customer-agreements",
+      "/us/privacy-policy",
+      "/us/cookies-policy",
+      "/us/website-terms",
+      "https://www.qagency.com.au"
+    ]
+  },
+  {
+    "product": "DelPro",
+    "page": "https://www.delaval.com/en-us/farm-solutions/farm-management/delaval-delpro/applications/delpro-farmmanager/",
+    "images": [],
+    "videos": [],
+    "links": []
+  },
+  {
+    "product": "Lely",
+    "page": "https://ux-design-awards.com/winners/lely-horizon",
+    "images": [
+      {
+        "url": "https://ux-design-awards.com/assets/img/idz.svg",
+        "alt": ""
+      },
+      {
+        "url": "https://ux-design-awards.com/media/pages/winners/lely-horizon/23758f31e1-1625828746/341_bild1.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://ux-design-awards.com/media/pages/winners/lely-horizon/aa5975fdce-1625828746/341_bild2.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://ux-design-awards.com/media/pages/winners/lely-horizon/173c1a0e33-1625828746/341_bild3.jpg",
+        "alt": ""
+      },
+      {
+        "url": "https://ux-design-awards.com/media/site/75a6678020-1740590651/idz_en-schwarz.svg",
+        "alt": ""
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-PMMZ7NS",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      },
+      {
+        "data-src": "https://www.youtube.com/embed/6n4UNxyejAw?autoplay=1&rel=0&showinfo=0",
+        "data-cookiefirst-category": "functional",
+        "loading": "lazy",
+        "frameborder": "0",
+        "allow": "accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+        "allowfullscreen": null,
+        "style": "margin: auto; height: 100%; aspect-ratio: 1920/1080;"
+      }
+    ],
+    "links": [
+      "https://ux-design-awards.com",
+      "https://form.ux-design-awards.com/en/guest/register.html",
+      "https://ux-design-awards.com/enter",
+      "https://ux-design-awards.com/enter/dates",
+      "https://ux-design-awards.com/enter/faq",
+      "https://ux-design-awards.com/enter/get-approval",
+      "https://ux-design-awards.com/jury",
+      "https://ux-design-awards.com/jury/judging-criteria",
+      "https://ux-design-awards.com/jury/ux-ambassadors",
+      "https://ux-design-awards.com/winners",
+      "https://ux-design-awards.com/winners/awards-autumn-2026",
+      "https://ux-design-awards.com/events-media",
+      "https://ux-design-awards.com/about",
+      "https://ux-design-awards.com/about/idz",
+      "https://ux-design-awards.com/about/team",
+      "https://idz.de/en/",
+      "#",
+      "https://2213fbab.sibforms.com/serve/MUIEAIyWMD73m6pfOIWqgaTNpUis0j96kBvbnGayb3C8u88CWaSc7w7tQdGPBDujnc1M-1flE0I-gfXJJcXOmxckqA7ucDXdPyvaAHOd0KE2F8qnK0VXMjMU9JBgjpnQCezHDSLbKgR2zOv3euczaAR5BYMEG9kiy2NxSfKShWKYglyl0ybIVVohnroQD5U0SDb3WPnThWxIijf5",
+      "https://www.linkedin.com/company/ux-design-awards/",
+      "https://www.instagram.com/uxd.awards/",
+      "https://www.youtube.com/channel/UCLyml8V_4nZm016FmuaVHUg",
+      "https://ux-design-awards.com/enter",
+      "https://ux-design-awards.com/enter",
+      "https://ux-design-awards.com/winners?grouped=&search=&filter=Planning%20%26%20Management",
+      "https://ux-design-awards.com/winners?grouped=&search=&filter=Nutrition",
+      "https://www.lely.com/solutions/farming-with-data/horizon/",
+      "javascript:scrollToTop();",
+      "https://idz.de/en/",
+      "https://2213fbab.sibforms.com/serve/MUIEAIyWMD73m6pfOIWqgaTNpUis0j96kBvbnGayb3C8u88CWaSc7w7tQdGPBDujnc1M-1flE0I-gfXJJcXOmxckqA7ucDXdPyvaAHOd0KE2F8qnK0VXMjMU9JBgjpnQCezHDSLbKgR2zOv3euczaAR5BYMEG9kiy2NxSfKShWKYglyl0ybIVVohnroQD5U0SDb3WPnThWxIijf5",
+      "https://ux-design-awards.com/enter",
+      "https://ux-design-awards.com/enter/dates",
+      "https://ux-design-awards.com/enter/faq",
+      "https://ux-design-awards.com/enter/get-approval",
+      "https://ux-design-awards.com/jury",
+      "https://ux-design-awards.com/jury/judging-criteria",
+      "https://ux-design-awards.com/jury/ux-ambassadors",
+      "https://ux-design-awards.com/winners",
+      "https://ux-design-awards.com/winners/awards-autumn-2026",
+      "https://ux-design-awards.com/events-media",
+      "https://ux-design-awards.com/about",
+      "https://ux-design-awards.com/about/idz",
+      "https://ux-design-awards.com/about/team",
+      "https://ux-design-awards.com/downloads",
+      "https://ux-design-awards.com/imprint",
+      "https://ux-design-awards.com/partners",
+      "https://ux-design-awards.com/press",
+      "https://ux-design-awards.com/privacy-policy",
+      "https://ux-design-awards.com/terms",
+      "https://form.ux-design-awards.com/en/guest/register.html",
+      "mailto:contact@ux-design-awards.com"
+    ]
+  },
+  {
+    "product": "Herdwatch",
+    "page": "https://herdwatch.com/solutions/cattle-management-software/",
+    "images": [
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/header/us.svg",
+        "alt": "lang-us"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/header/ie.svg",
+        "alt": "lang-ie"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/header/uk.svg",
+        "alt": "lang-uk"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/header/search.svg",
+        "alt": "search"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/header/user.svg",
+        "alt": "user"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/01/AdobeStock_529337366-scaled.jpeg",
+        "alt": "Herdwatch | "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/kayla.jpg",
+        "alt": "Herdwatch User | "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2025/03/Mike.png",
+        "alt": "Herdwatch User | "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Ranch-Smart_-Farmer-Wants-a-Wife-star-Nathan-Smothers-reveals-how-technology-is-reshaping-his-ranch-frame-at-0m0s.jpg",
+        "alt": "Herdwatch User | "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Calving-Book.png",
+        "alt": "Herdwatch "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Medicines-US.png",
+        "alt": "Herdwatch "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Group.png",
+        "alt": "Herdwatch "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Breeding-US.png",
+        "alt": "Herdwatch "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/Reports-US.png",
+        "alt": "Herdwatch "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2026/02/IMG_2746-1.png",
+        "alt": "Herdwatch | "
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2024/05/email.svg",
+        "alt": "email"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2024/07/qr-code.svg",
+        "alt": "shortcode"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2024/05/twitter-1-2.svg",
+        "alt": "Social Icon"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2024/05/apple-store.svg",
+        "alt": "App Store"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/uploads/2024/05/google-store.svg",
+        "alt": "Google Play"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/search.svg",
+        "alt": "search"
+      },
+      {
+        "url": "https://herdwatch.com/wp-content/themes/herdwatch/images/close.svg",
+        "alt": "close"
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-PRMMX72V",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden",
+        "aria-hidden": "true"
+      }
+    ],
+    "links": [
+      "https://herdwatch.com",
+      "https://herdwatch.com/solutions/cattle-management-software/",
+      "https://herdwatch.com/solutions/pasture-management-software/",
+      "https://herdwatch.com/solutions/sheep-management-software/",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/enterprise/",
+      "https://herdwatch.com/our-story/",
+      "https://herdwatch.com/testimonials/",
+      "https://herdwatch.com/book-a-demo/",
+      "https://herdwatch.com/contact-us/",
+      "https://app.herdwatch.com/login?shouldRegister=true",
+      "https://herdwatch.com/solutions/cattle-management-software",
+      "https://herdwatch.com/en-ie/solutions/cattle-management-software",
+      "https://herdwatch.com/en-uk/solutions/cattle-management-software",
+      "https://app.herdwatch.com/login",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/free-trial/",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/free-trial/",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/free-trial/",
+      "https://herdwatch.com/free-trial/",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/price/",
+      "https://herdwatch.com/free-trial/",
+      "/solutions/cattle/",
+      "/solutions/sheep/",
+      "/solutions/pasture/",
+      "/price/",
+      "/podcast/",
+      "/tutorial/",
+      "/webinar/",
+      "/solutions/",
+      "tel:+1 979-612-2913 (USA)",
+      "tel: +1 343-429-6412 (Canada)",
+      "mailto:howdy@herdwatch.com",
+      "https://www.instagram.com/herdwatch/",
+      "https://twitter.com/herdwatch",
+      "https://www.facebook.com/Herdwatch/",
+      "https://www.youtube.com/user/FRSHerdwatch",
+      "/privacy-policy/",
+      "/terms-conditions/",
+      "https://herdwatch.app.link/go",
+      "https://herdwatch.app.link/go",
+      "https://herdwatch.com/?s=Cattle management software",
+      "https://herdwatch.com/?s=Livestock record keeping",
+      "https://herdwatch.com/?s=How to download and install Herdwatch mobile app",
+      "https://herdwatch.com/?s=Farm compliance and regulation",
+      "https://herdwatch.com/?s=Customer reviews and testimonials",
+      "https://herdwatch.com/?s=How to integrate the app with farm management systems",
+      "https://herdwatch.com/a-quick-guide-to-heat-stress-in-beef-cattle/",
+      "https://herdwatch.com/a-quick-guide-to-heat-stress-in-beef-cattle/",
+      "https://herdwatch.com/connecting-the-old-and-new-how-simple-technology-improves-ranching-for-all-generations/",
+      "https://herdwatch.com/connecting-the-old-and-new-how-simple-technology-improves-ranching-for-all-generations/",
+      "https://herdwatch.com/en-uk/",
+      "https://herdwatch.com/en-ie/"
+    ]
+  },
+  {
+    "product": "Livestocked",
+    "page": "https://www.livestocked.com/",
+    "images": [
+      {
+        "url": "https://www.livestocked.com/images/screen_mobile.png",
+        "alt": ""
+      },
+      {
+        "url": "https://www.livestocked.com/images/screen_desktop.png",
+        "alt": ""
+      }
+    ],
+    "videos": [],
+    "links": [
+      "/",
+      "/pricing",
+      "/livestock-markets",
+      "/download",
+      "/contact-us",
+      "https://app.livestocked.com",
+      "/pricing",
+      "/livestock-markets",
+      "/download",
+      "/contact-us",
+      "https://app.livestocked.com",
+      "/download",
+      "/pricing",
+      "https://apps.microsoft.com/detail/9MT54M8H645F",
+      "https://play.google.com/store/apps/details?id=com.gdb5.livestocked",
+      "https://apps.apple.com/app/livestocked/id982968107",
+      "https://apps.apple.com/app/livestocked/id982968107",
+      "/pricing",
+      "/livestock-markets",
+      "/download",
+      "/blog",
+      "/contact-us",
+      "https://app.livestocked.com",
+      "/privacy-policy"
+    ]
+  },
+  {
+    "product": "CattleMax",
+    "page": "https://help.cattlemax.com/article/705-getting-around-cattlemax",
+    "images": [
+      {
+        "url": "https://d33v4339jhl8k0.cloudfront.net/docs/assets/56055f8c903360177092e121/images/6a3e96786d9f10b34792dc21/file-QfA6ie7P7q.png",
+        "alt": ""
+      },
+      {
+        "url": "https://d33v4339jhl8k0.cloudfront.net/docs/assets/56055f8c903360177092e121/images/6a3e9693c2fe425f947efd32/file-B1jiyRTVe8.png",
+        "alt": ""
+      }
+    ],
+    "videos": [],
+    "links": [
+      "/",
+      "/collection/682-getting-started",
+      "/collection/116-cattlemax-help",
+      "/collection/463-breed-interfaces-help",
+      "#",
+      "#",
+      "javascript:window.print()",
+      "https://calendly.com/d/cwqm-sh8-mzy/30-minute-cattlemax-demo",
+      "#",
+      "#",
+      "/article/704-quick-start-guide",
+      "/category/699-quick-start",
+      "/category/700-inventory",
+      "/category/698-breeding",
+      "https://www.cattlemax.com",
+      "https://www.helpscout.com/docs-refer/?co=CattleMax&utm_source=docs&utm_medium=footerlink&utm_campaign=Docs+Branding"
+    ]
+  },
+  {
+    "product": "Aegro",
+    "page": "https://aegro.com.br/suporte/financeiro/como-funciona-a-aba-fluxo-de-caixa/",
+    "images": [
+      {
+        "url": "https://aegro.com.br/images/suporte/4134207498.gif",
+        "alt": "periodo flux.gif"
+      },
+      {
+        "url": "https://aegro.com.br/images/suporte/4135059462.gif",
+        "alt": "gerar relatorio flux.gif"
+      },
+      {
+        "url": "https://aegro.com.br/images/suporte/4134862852.gif",
+        "alt": "imprimir gráfico.gif"
+      }
+    ],
+    "videos": [
+      {
+        "src": "https://www.googletagmanager.com/ns.html?id=GTM-M66GP5PF",
+        "height": "0",
+        "width": "0",
+        "style": "display:none;visibility:hidden"
+      },
+      {
+        "id": "demo-iframe",
+        "loading": "lazy",
+        "class": "sl-demo",
+        "src": "about:blank",
+        "name": "sl-embed",
+        "title": "Demo Interativa do Produto Aegro",
+        "allow": "fullscreen",
+        "allowfullscreen": null
+      }
+    ],
+    "links": [
+      "#main-content",
+      "/",
+      "/produtos/plano-aegro-lucratividade/",
+      "/produtos/plano-aegro-avancado/",
+      "/produtos/plano-aegro-premium/",
+      "/produtos/modulos-adicionais/",
+      "/produtos/",
+      "/solucoes/gestao-financeira-propriedade-rural",
+      "/solucoes/gestao-rural",
+      "/solucoes/nota-fiscal-produtor-rural",
+      "/solucoes/integracoes-aegro",
+      "https://compare.aegro.com.br/",
+      "/para-voce/produtor-rural",
+      "/para-voce/contabilidade-do-agronegocio",
+      "/para-voce/software-para-consultor-agronomico",
+      "https://treinamento.aegro.com.br/",
+      "/blog",
+      "/cursos",
+      "/blog/categories/historias-de-sucesso/",
+      "/suporte/",
+      "https://app.aegro.com.br/register",
+      "/acesso/",
+      "/produtos/plano-aegro-lucratividade/",
+      "/produtos/plano-aegro-avancado/",
+      "/produtos/plano-aegro-premium/",
+      "/produtos/modulos-adicionais/",
+      "/produtos/",
+      "/solucoes/gestao-financeira-propriedade-rural",
+      "/solucoes/gestao-rural",
+      "/solucoes/nota-fiscal-produtor-rural",
+      "/solucoes/integracoes-aegro",
+      "https://compare.aegro.com.br/",
+      "/para-voce/produtor-rural",
+      "/para-voce/contabilidade-do-agronegocio",
+      "/para-voce/software-para-consultor-agronomico",
+      "https://treinamento.aegro.com.br/",
+      "/blog",
+      "/cursos",
+      "/blog/categories/historias-de-sucesso/",
+      "/suporte/",
+      "https://app.aegro.com.br/register",
+      "/acesso/",
+      "/",
+      "/suporte/",
+      "/suporte/financeiro/",
+      "/suporte/",
+      "/suporte/artigos/",
+      "/suporte/novidades/",
+      "/suporte/videos/",
+      "/suporte/financeiro/",
+      "/suporte/financeiro/abas-a-pagar-e-a-receber/",
+      "/suporte/financeiro/agente-de-conciliacao-bancaria-concilia-o-extrato-sozinho/",
+      "/suporte/financeiro/agrupadores-de-contas-no-aegro/",
+      "/suporte/financeiro/anexos-nas-parcelas-o-comprovante-junto-de-cada-pagamento/",
+      "/suporte/financeiro/categorias-financeiras/",
+      "/suporte/financeiro/classificacao-de-categoria-no-lancamento-de-uma-despesa-ou-receita/",
+      "/suporte/financeiro/como-acusar-o-pagamento-ou-recebimento-de-uma-parcela/",
+      "/suporte/financeiro/como-altero-ou-excluo-um-lancamento-que-fiz-por-engano/",
+      "/suporte/financeiro/como-aparecera-os-ajustes-de-valores-de-acordo-com-o-pagamento-em-dolar/",
+      "/suporte/financeiro/como-conciliar-meu-extrato-com-o-arquivo-ofx-bancario/",
+      "/suporte/financeiro/como-criar-uma-nova-conta-bancaria/",
+      "/suporte/financeiro/como-criar-editar-ou-excluir-contrato-de-venda/",
+      "/suporte/financeiro/como-desconciliar-contas/",
+      "/suporte/financeiro/como-editar-ou-excluir-um-lancamento-do-financeiro/",
+      "/suporte/financeiro/como-editar-uma-conta-ou-parcela-que-ja-foi-paga/",
+      "/suporte/financeiro/como-editar-arquivar-ou-excluir-uma-conta-bancaria/",
+      "/suporte/financeiro/como-exportar-o-arquivo-ofx-do-seu-banco/",
+      "/suporte/financeiro/como-faco-para-registrar-uma-despesa-ou-receita-no-sistema/",
+      "/suporte/financeiro/como-fazer-conciliacao-do-cartao-de-credito/",
+      "/suporte/financeiro/como-funciona-a-aba-extratos/",
+      "/suporte/financeiro/como-funciona-a-aba-fluxo-de-caixa/",
+      "/suporte/financeiro/como-funciona-a-conciliacao-bancaria-manual-no-aegro/",
+      "/suporte/financeiro/como-funcionam-as-parcelas-pendentes/",
+      "/suporte/financeiro/como-funcionam-os-filtros-na-aba-financeiro/",
+      "/suporte/financeiro/como-importar-dados-financeiros-em-planilha-para-o-aegro/",
+      "/suporte/financeiro/como-lancar-custeio-agricola/",
+      "/suporte/financeiro/como-lancar-devolucao-de-compra-ou-venda/",
+      "/suporte/financeiro/como-lancar-emprestimos/",
+      "/suporte/financeiro/como-lancar-os-salarios-e-encargos-dos-meus-funcionarios/",
+      "/suporte/financeiro/como-lancar-seguros-no-aegro/",
+      "/suporte/financeiro/como-lancar-um-financiamento-ou-consorcio/",
+      "/suporte/financeiro/como-lancar-uma-despesa/",
+      "/suporte/financeiro/como-lancar-uma-despesa-de-mao-de-obra-terceirizada/",
+      "/suporte/financeiro/como-lancar-uma-receita/",
+      "/suporte/financeiro/como-o-saldo-inicial-da-conta-afeta-o-extrato-e-o-fluxo-de-caixa/",
+      "/suporte/financeiro/como-realizar-uma-transferencia-bancaria/",
+      "/suporte/financeiro/como-realizar-venda-futura-no-aegro/",
+      "/suporte/financeiro/como-registrar-que-um-insumo-comprado-esta-no-fornecedor/",
+      "/suporte/financeiro/como-registrar-uma-conta-em-dolar/",
+      "/suporte/financeiro/como-registrar-uma-despesa-com-pagamento-em-sacas-barter/",
+      "/suporte/financeiro/como-utilizar-o-rateio-salvo-no-lancamento-financeiro/",
+      "/suporte/financeiro/categoria-sugerida-pelo-historico-na-conciliacao-open-finance/",
+      "/suporte/financeiro/conciliar-o-extrato-do-open-finance/",
+      "/suporte/financeiro/conectar-conta-bancaria-via-open-finance/",
+      "/suporte/financeiro/controle-e-acompanhamento-de-contratos-de-venda/",
+      "/suporte/financeiro/envio-de-nf-para-o-programa-de-pontos-orbia/",
+      "/suporte/financeiro/erros-que-podem-acontecer-na-importacao-do-arquivo-xml-de-nf-e/",
+      "/suporte/financeiro/fechamento-financeiro/",
+      "/suporte/financeiro/fechamento-financeiro-mais-seguranca-e-integridade-para-os-seus-dados/",
+      "/suporte/financeiro/financeiro-no-aegro-negocios/",
+      "/suporte/financeiro/formas-de-pagamento-no-lancamento-financeiro/",
+      "/suporte/financeiro/funcao-repetir-em-lancamentos-financeiros/",
+      "/suporte/financeiro/gerenciamento-de-categorias-financeiras/",
+      "/suporte/financeiro/importar-uma-nf-e-nfs-e-nfc-e-ou-ct-e-com-arquivo-xml/",
+      "/suporte/financeiro/impostos-em-lancamentos-de-receitas-no-financeiro/",
+      "/suporte/financeiro/indicar-no-financeiro-se-a-receitadespesa-vai-para-o-livro-caixa/",
+      "/suporte/financeiro/lancamento-de-previsao-no-financeiro/",
+      "/suporte/financeiro/liquidar-alterar-e-reabrir-parcelas-em-lote/",
+      "/suporte/financeiro/manutencao-de-parcelas-e-pagamento-parcial/",
+      "/suporte/financeiro/o-que-cada-banco-pede-na-conexao-via-open-finance/",
+      "/suporte/financeiro/o-que-sao-e-como-gerenciar-rateios-salvos/",
+      "/suporte/financeiro/os-itens-da-sua-nota-sumiram-entenda-o-porque-e-como-resolver/",
+      "/suporte/financeiro/pedido-de-compra-com-entrega-futura/",
+      "/suporte/financeiro/previsao-financeira-a-safra-inteira-no-fluxo-de-caixa/",
+      "/suporte/financeiro/rateios-salvos-o-jeito-mais-facil-de-organizar-seus-custos/",
+      "/suporte/artigos/",
+      "/suporte/financeiro/como-o-saldo-inicial-da-conta-afeta-o-extrato-e-o-fluxo-de-caixa/",
+      "/suporte/financeiro/como-editar-arquivar-ou-excluir-uma-conta-bancaria/",
+      "/",
+      "https://apps.apple.com/br/app/aegro-campo/id1105392365",
+      "https://play.google.com/store/apps/details?id=com.aegro.aegroapp&hl=pt_BR",
+      "/clube/",
+      "https://conhecimento.aegro.com.br/contato-consultores",
+      "/indicacao-premiada",
+      "/parceiros/programa-de-pontos",
+      "/novidades/",
+      "https://treinamento.aegro.com.br/",
+      "https://blog.aegro.com.br",
+      "https://app.aegro.com.br/register",
+      "/suporte/",
+      "https://conhecimento.aegro.com.br/contato-demonstracao-aegro",
+      "/produtos/plano-aegro-lucratividade/",
+      "/produtos/plano-aegro-avancado/",
+      "/produtos/plano-aegro-premium/",
+      "https://conhecimento.aegro.com.br/contato-demonstracao-aegro",
+      "/produtos/",
+      "/para-voce/contabilidade-do-agronegocio",
+      "/para-voce/software-para-consultor-agronomico",
+      "/para-voce/produtor-rural",
+      "https://play.google.com/store/apps/details?id=com.aegro.aegroapp&hl=pt_BR",
+      "/produtos/aplicativo-aegro-negocios/",
+      "https://compare.aegro.com.br/",
+      "/sobre-nos/",
+      "https://aegro.gupy.io/",
+      "/termos-de-uso/",
+      "/politica-de-privacidade/",
+      "https://www.youtube.com/c/Aegro",
+      "https://www.instagram.com/aegrobrasil",
+      "https://www.facebook.com/aegro",
+      "https://www.linkedin.com/company/aegro",
+      "https://api.whatsapp.com/send/?phone=555199845909&text&type=phone_number&app_absent=0"
+    ]
+  },
+  {
+    "product": "Nedap",
+    "page": "https://nedap-livestockmanagement.com/wp-content/uploads/sites/2/2024/02/2024-Nedap-CowControl-Extended-EN.pdf",
+    "images": [],
+    "videos": [],
+    "links": []
+  }
+]

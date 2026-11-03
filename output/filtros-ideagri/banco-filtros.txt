@@ -1,0 +1,2189 @@
+
+TOTAL                           52
+
+
+
+TOTAL_VINCULOS                  54
+
+
+
+CDRELATORIO                     26
+TITULO                          Incidência diária de novos cios
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     27
+TITULO                          Histórico de produção de leite do rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Produção completa de leite da propriedade e outras informações. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;dblSetor=2;edtInicio=01/06/24;edtFim=17/07/24;bsSkinRadioGroup2=2;chkLegenda=1;edtBST=14;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     28
+TITULO                          Diagnóstico reprodutivo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja informações da vida reprodutiva das matrizes como: inseminações, diagnóstico de gestação entre outras. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;dblCriterio2=-1;dblCriterio1=0;chkLegendas=1;edtData=21/09/26;rdgEventos=0;rdgData=0;chkExibirNumero=0;ckgCategoria=0;chkVazias=1;edtVazias=30;chkIACobImp=1;edtIACobImp=30;chkGestantes1=0;chkGestantes2=0;chkGestantes3=0;chkGestantes4=0;chkNovilhasVazias=1;cgTipo=0;cgTipo=1;cgTipo=2;chkVacasVazias=1;rgbDiasExibir=0;chkDesconsiderarProtocoladas=0;chkExibirFecunVacasVazia=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     29
+TITULO                          Controle leiteiro
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Produção de leite com quantidade de quilos produzidos p/ ordenha, produção total, etc. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;dblSetor=2;edtData=28/09/26;chkGrid=1;chkLegenda=1;dblTipoGrupo=3;edtDias=0;dblEspacamento=1;chkSepararAmojadas=0;chkRelatorioCompleto=-1;chkRelatorioResumido=0;dblOrdenacao=1;speLinhasEmBrancos=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     30
+TITULO                          Curva de lactação do rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja a curva de lactação da 1ª, 2ª e 3ª ou mais lactações. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;dblSetor=2;edtInicioIni=01/01/26;edtInicioFim=28/09/26;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     31
+TITULO                          Estoque de rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Relatório sintético que mostra a quantidade de animais separados por categoria. Apresenta também um gráfico. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;edtData=20/10/26;rgLayout=2;chkAssociacao=1;chkGeral=1;chkPorGrupo=0;chkPorSetor=1;chkMostrarLegenda=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     32
+TITULO                          Matrizes a inseminar/cobrir/implantar
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     33
+TITULO                          Ficha completa
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Todos os acontecimentos na vida do animal (informações de cadastro, produção, reprodução, sanidade e movimentações ocorridas). Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;dblSetor=2;chkBaixado=0;rgPertence=0;rgSexo=2;rgTipo=0;dblTipoGrupo=3;dblGrupo=19;cgAnimal=0;cgAnimal=1;cgProducao=0;cgProducao=1;cgProducao=2;cgProducao=3;cgProducao=4;cgReproducao=0;cgReproducao=1;cgSanidade=0;cgSanidade=1;cgSanidade=2;cgSanidade=3;cgSanidade=4;cgMovimentacao=0;cgMovimentacao=1;cgMovimentacao=2;ckGrafico=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     34
+TITULO                          Acompanhamento geral de matrizes leiteiras
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja informações reprodutivas das matrizes e de controles leiteiros. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=0;dblSetor=2;edtData=20/10/26;ckgCategoria=0;ckgCategoria=1;ckgSReprodutiva=0;ckgSReprodutiva=1;ckgSReprodutiva=2;ckgSProdutiva=0;ckgSProdutiva=1;chkLegendas=1;chkGrid=1;rgMatriz=0;cgTipo=0;chkConsiderarDMenos7TE=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     35
+TITULO                          Taxa de concepção
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Este relatório faz uma análise geral de uma estação de monta ou de um determinado período de coberturas, mostrando informações de taxa de concepção por inseminador, touro, tipo de cobertura entre outras informações.;chkMostrarFiltros=1;chkPorECC=0;chkPorOrdemTentativa=0;chkPorInseminador=1;chkPorProtocolo=0;chkPorCondicao=0;chkPorMuco=0;chkPorLoteSemen=1;chkPorTouro=1;dblTouro=1;dblSemen=1;dblMuco=2;dblCondicaoIA=1;dblProtocoloIATF=1;dblInseminador=1;dblOrdemTentativa=1;dblECC=1;edtInicio=01/09/26;edtFim=30/09/26;chkGrafico=1;chkLegenda=1;rgTentativas=0;rgTipo=0;chkBarrasPreenchidas=0;chkFasePosParto=0;dblPosParto=1;chkOrdemParto=0;dblOrdemParto=1;chkDestaca=0;chkPorTempRetal=0;dblTempRetal=1;fraFaixaValor10.edtValorDe=39;fraFaixaValor10.edtValorAte=50;fraFaixaValor10.chkMarcado=0;fraFaixaValor7.edtValorDe=39;fraFaixaValor7.edtValorAte=39;fraFaixaValor7.chkMarcado=0;fraFaixaValor8.edtValorDe=38;fraFaixaValor8.edtValorAte=39;fraFaixaValor8.chkMarcado=0;fraFaixaValor9.edtValorDe=30;fraFaixaValor9.edtValorAte=38;fraFaixaValor9.chkMarcado=0;fraFaixaValor1.edtValorDe=121;fraFaixaValor1.edtValorAte=150;fraFaixaValor1.chkMarcado=0;fraFaixaValor2.edtValorDe=91;fraFaixaValor2.edtValorAte=120;fraFaixaValor2.chkMarcado=0;fraFaixaValor3.edtValorDe=61;fraFaixaValor3.edtValorAte=90;fraFaixaValor3.chkMarcado=0;fraFaixaValor4.edtValorDe=;fraFaixaValor4.edtValorAte=60;fraFaixaValor4.chkMarcado=0;fraFaixaValor5.edtValorDe=181;fraFaixaValor5.edtValorAte=9999;fraFaixaValor5.chkMarcado=0;fraFaixaValor6.edtValorDe=151;fraFaixaValor6.edtValorAte=180;fraFaixaValor6.chkMarcado=0;chkConsiderarRetoque=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     36
+TITULO                          Mapa de entradas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     37
+TITULO                          Mapa de saídas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     38
+TITULO                          Índice de retorno reprodutivo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Este relatório faz uma análise dos índices alcançados numa estação de monta ou em um determinado período de coberturas, mostrando resultados de taxa de concepção por inseminador, touro, tipo de cobertura entre outras informações.;chkMostrarFiltros=1;dblSetor=2;cgOpcoes=0;cgOpcoes=1;cgOpcoes=2;cgOpcoes=3;cgOpcoes=4;cgOpcoes=5;cgOpcoes=6;cgOpcoes=7;cgOpcoes=8;dblTouro=1;dblSemen=1;dblMuco=2;dblCondicaoIA=1;dblProtocoloIATF=1;dblInseminador=1;dblPosParto=1;dblOrdemParto=1;chkDestaca=0;dblOrdemTentativa=1;edtInicio=01/01/26;edtFim=28/09/26;chkGrafico=1;chkLegenda=1;rgTentativas=2;rgTipo=0;chkBarrasPreenchidas=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     39
+TITULO                          Dinâmica de rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Este relatório mostra a dinâmica do rebanho dentro de um determinado período, trazendo informações de nascimentos, vendas e mortes entre outras. OBS: Se a opção "Mostrar assoc. (Doadora, Receptora e Descarte)" estiver marcada, algumas novilhas e vacas serão contabilizadas em "Doadoras, Receptoras e Descartes" na página "Comparativo de estoque por categoria".;chkMostrarFiltros=1;edtDataIni=01/09/26;edtDataFim=20/10/26;chkGrafico=1;chkBaixa=1;chkLegenda=1;chkAssociacao=0;chkConsideraCategoria=1;[90/F/5//1][180/F/5//1][365/F/5//1][9999/F/5//1][365/F/6//1][550/F/6//1][730/F/6//1][9999/F/6//1][1095/F/7//1][1460/F/7//1][1825/F/7//1][9999/F/7//1][365/M/1//1][730/M/1//1][9999/M/1//1][9999/M/2//1];
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     40
+TITULO                          Analítico por produto
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     41
+TITULO                          Inventário
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     42
+TITULO                          Acompanhamento do fluxo de caixa
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Apresentação das entradas e saidas, em períodos diários (até 30 dias) ou mensais. Combine os inúmeros critérios de geração e obtenha visões diferenciadas do acompanhamento. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.
+;chkMostrarFiltros=1;chkDespesa=1;chkReceita=1;dblNivelConta=1;chkFluxoDiaRes=1;chkFluxoMesRes=1;chkFluxoMesDet=1;dblFluxoDiaRes=2;dblFluxoMesRes=2;dblFluxoMesDet=2;chkMostraGrafico=1;chkResumidoPeriodo=0;chkComprasAlmoxarifado=0;chkVendasAlmoxarifado=0;chkNaoEntregue=0;chkContaNaoInformada=1;dblExibicao=1;dblLancamentos=2;chkExibirContaNum=0;edtInicio=01/01/26;edtFim=31/01/26;edtDuracao=1;rgSituacao=3;chkOcultaZerada=1;chkConsideraSaldoAnterior=0;chkConsideraSaldoAnteriorDireto=0;chkConsiderarTransferencias=1;chkConsideraSaldoNaoCompensadoDireto=0;chkConsideraSaldoNaoCompensado=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     43
+TITULO                          Taxa de prenhez
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja aqui o resultado de taxa de serviço, concepção e prenhez das matrizes num ciclo de 21 dias.;chkMostrarFiltros=0;edtFim=01/10/26;edtInicio=01/01/26;chkMostraGrafico=0;rdgCategoria=1;chkLegendas=0;bsTipo=0;chkListagemDetalhamento=0;rdgTipoRelatorio=0;rdgTipoMarcado=-1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     44
+TITULO                          Repetição de cios
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja aqui a repetição de cios dentro de um período ou de uma estação monta. Pode ser alterado também o intervalo das repetições, conforme o usuário desejar.;chkMostrarFiltros=1;rdgPeriodo=0;dblSetor=2;edtFim=28/09/26;edtInicio=01/02/06;ckgRelatorio=0;edtFaixa1=17;edtFaixa2=24;edtFaixa3=38;edtFaixa4=45;chkMostraGrafico=1;ckgCondicao=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     45
+TITULO                          Desempenho reprodutivo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja o resultado final ou parcial de um período de coberturas ou estação de monta. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;rdgPeriodo=0;edtFim=28/09/26;edtInicio=01/01/26;ckgCondicao=0;ckgCondicao=1;ckgCondicao=2;chkMostraGraficos=1;ckgRelatorio=0;ckgRelatorio=1;ckgRelatorio=2;chkBaixadas=0;chkLegendas=1;edtNuliparas=420;edtPrimiparas=420;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     46
+TITULO                          Extrato bancário
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     60
+TITULO                          Avaliação da situação reprodutiva
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=O relatório permite a visualização de eventos referentes à avaliação reprodutiva por animal, nas modalidades 'completa' e 'resumida'. Selecione os dados a serem exibidos, incluindo a Opção 'Mais Filtros'. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=0;dblCriterio2=-1;dblCriterio1=0;ckgCategoria=0;ckgCategoria=1;chkLegendas=1;edtData=22/10/26;chkVazias=1;edtVazias=25;chkIACobImp=1;edtIACobImp=26;chkGestantes1=1;edtGestantes1Ini=63;edtGestantes2Ini=135;chkGestantes2=1;chkGestantes3=1;chkGestantes4=0;edtGestantes2Fim=150;edtGestantes1Fim=70;edtGestantes3Ini=185;edtGestantes3Fim=210;chkNovilhasVazias=0;cgTipo=0;cgTipo=1;cgTipo=2;chkVacasVazias=0;chkRelatorioResumido=-1;chkRelatorioCompleto=0;speLinhasEmBrancos=10;speLinhasEmBrancos=10;rgbDiasExibir=1;chkDesconsiderarProtocoladas=1;chkExibirFecunVacasVazia=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     61
+TITULO                          Prevalência de mastite clínica
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Análise individual dos casos de mastite clínica ocorridos no rebanho em relação ao total de vacas em lactação no período avaliado. Consulte a ajuda clicando no botão "F1" do seu teclado ou na barra "?" à direita desta caixa, para obter mais detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;edtInicio=01/11/25;edtFim=01/04/26;bsSkinRadioGroup2=0;dblSetor=2;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     62
+TITULO                          Produção de arrobas(@), taxa de desfrute e arrobas produzidas por hectare (ha) no período
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      chkMostrarFiltros=1;chkExportarListagemCSV=1;chkConsideraCategoria=1;edtDesfruteMeta=30;edtValorProduzidasMeta=15,0;edtValorDesfruteRuim=10;edtValorDesfruteRegular=20;edtValorDesfruteBom=30;edtValorProduzidasRuim=5,0;edtValorProduzidasRegular=10,0;edtValorProduzidasBom=15,0;edtValorProduzidasOtimo=20,0;edtValorDesfruteOtimo=100;chkMarcarDesmarcar=0;chkSelecaoRelatorioAnaliseBasePesossApurados=1;chkArrobaProduzida=1;chkVelocimetroTaxaDesfrute=1;chkVelocimetroArrobaProduzida=1;chkMostrarLegendas=1;edtLimiteCorrecao=180;[90/F/5/][180/F/5/][365/F/5/][9999/F/5/][365/F/6/][550/F/6/][730/F/6/][9999/F/6/][1095/F/7/][1460/F/7/][1825/F/7/][9999/F/7/][365/M/1/][730/M/1/][9999/M/1/][9999/M/2/];
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     63
+TITULO                          Análises avançadas de desmama
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     64
+TITULO                          Acompanhamento do rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Visualize a situação atual do rebanho, tendo informações individuais, como situação reprodutiva dos animais, data do último parto, parto previsto, pico de lactação, dentre outras, e informações coletivas, como filtros de matrizes inseminadas/cobertas/implantadas a um determinado número de dias, matrizes a secar, e outros mais. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento do relatório.;chkMostrarFiltros=0;chkInseminadas=1;chkLactacao=1;chkAsecar=1;chkVaziaAtrasada=1;edtMatrizesAtrasadas=1;chkVaziaParida=1;edtMinimoVaziaParida=1;chkVaziaParidaMenos=1;edtParidaVaziaMenos=1;chkInseminadaMenos=1;edtInsemindaMenos=1;edtMatrizesASecar=1;chkMarcarDesmarcar=1;bsRadioCategoria=2;edtInicio=01/08/19;edtFim=12/08/25;chkSecas=1;chkSecasVazia=1;edtMaximoInseminada=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     65
+TITULO                          Análise de resultados de exames
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     66
+TITULO                          Custo por animal
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1000
+TITULO                          Lista de análises de leite
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1001
+TITULO                          Lista p/ coleta de pesagens e medidas dos animais
+CDFILTRO                        <null>
+FILTROPADRAO                    A.DTBAIXA IS NULL AND A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1
+DESCRICAOFILTROPADRAO           Animais ativos pertencentes à fazenda
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1002
+TITULO                          Lista completa de animais baixados
+CDFILTRO                        <null>
+FILTROPADRAO                    (A.DTBAIXA IS NOT NULL) AND A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1
+DESCRICAOFILTROPADRAO           Animais baixados
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1003
+TITULO                          Lista completa de animais vendidos
+CDFILTRO                        <null>
+FILTROPADRAO                    EXISTS (SELECT * FROM NOTAANIMAL NA JOIN NOTAITEM NI ON NA.CDNOTAITEM = NI.CDNOTAITEM 
+JOIN NOTA N ON N.CDNOTA = NI.CDNOTA AND N.TIPONOTA = 'S' AND NA.CDANIMAL = A.CDANIMAL) AND 
+A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1 
+DESCRICAOFILTROPADRAO           Animais associados à qualquer nota de receitas, independente de baixados ou não
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1004
+TITULO                          Lista completa de animais vivos
+CDFILTRO                        <null>
+FILTROPADRAO                    A.DTBAIXA IS NULL AND A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1
+DESCRICAOFILTROPADRAO           Animais ativos pertencentes à fazenda
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1006
+TITULO                          Lista de centros de custos cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1007
+TITULO                          Lista de contas correntes cadastradas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1008
+TITULO                          Lista de doenças lançadas para os animais
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1009
+TITULO                          Lista de exames cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1010
+TITULO                          Lista de exames lançados para os animais
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1011
+TITULO                          Lista de grupos cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1012
+TITULO                          Lista de lactações
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1013
+TITULO                          Lista de medicamentos aplicados nos animais
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1014
+TITULO                          Lista de medidas lançadas para os animais
+CDFILTRO                        <null>
+FILTROPADRAO                    A.DTBAIXA IS NULL AND A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1
+DESCRICAOFILTROPADRAO           Animais ativos pertencentes à fazenda
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1015
+TITULO                          Lista de níveis cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1016
+TITULO                          Lista de patrimônios cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1017
+TITULO                          Lista de pesagens lançadas para os animais
+CDFILTRO                        <null>
+FILTROPADRAO                    A.DTBAIXA IS NULL AND A.TIPOANIMAL = 'A' AND A.ANIMALREBANHO = 1
+DESCRICAOFILTROPADRAO           Animais ativos pertencentes à fazenda
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1018
+TITULO                          Lista de plano de contas gerenciais
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1019
+TITULO                          Lista de setores cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1020
+TITULO                          Lista de tipo de grupos cadastrados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1021
+TITULO                          Lista de tipo de medidas cadastradas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1022
+TITULO                          Agendas: parto, secagem e desmama
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Gere formuários, com lacunas para preenchimento, para acompanhar as rotinas sobre: previsão de parto, secagem e desmama. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.
+Consulte a ajuda clicando no botão "F1" do seu teclado ou na barra "?" à direita desta caixa, para obter mais detalhes sobre o funcionamento da tela.;chkMostrarFiltros=0;edtData=26/10/26;chkPartoSimplesNomePai=0;chkPartoDetalhado=1;dblPartoOrdenacao=2;chkPartoSimplesNumeroPai=0;chkAgruparSetor=0;chkAgruparDataPrevista=0;chkSecagemSimples=0;chkSecagemDesmama=0;dblSecagemOrdenacao=3;edtDias=300;chkGrid=1;chkLegenda=0;chkDesmamaNatural=1;chkDesmamaArtificial=0;dblDesmamaOrdenacao=2;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1023
+TITULO                          Coleta de dados de mastite clínica
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1024
+TITULO                          Ganho de peso e previsão para abate
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1025
+TITULO                          Acompanhamento do planejamento financeiro
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1026
+TITULO                          Movimentação financeira por conta gerencial
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Veja neste relatório informações das movimentações por conta gerencial, podendo optar por ver movimentações somente de despesas, receitas ou dos dois ao mesmo tempo. Use também os outros filtros disponíveis como: situação, cliente/fornecedor, produto/serviço entre outros, para refinar ainda mais o seu relatório.
+Consulte a ajuda clicando no botão "F1" do seu teclado ou na barra "?" à direita desta caixa, para obter mais detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;chkComprasAlmoxarifado=0;chkVendasAlmoxarifado=0;chkApropriarPatrimoniosCentroCusto=0;chkAgruparPatrimoniosCentroCusto=0;chkExibirContaNum=1;dblLancamentos=2;chkContaNaoInformada=1;edtInicioEmissao=01/01/26;edtFimEmissao=31/01/26;cmbSitVenc=0;cmbSitPagto=0;cmbSitComp=0;chkDespesa=1;chkReceita=1;dblNivelConta=1;dblOrdenacao=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1027
+TITULO                          Curva ABC
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1028
+TITULO                          Perda de prenhez
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Visualize nesse relatório as perdas de prenhez e o período em que ocorreram. Considera-se perda de prenhez de uma matriz quando: após o diagnóstico POSITIVO a matriz receba um diagnóstico negativo, seja novamente inseminada/cob/TE, tenha um aborto ou tenha um cio não inseminado.;chkMostrarFiltros=1;edtInicio=01/26;edtFim=09/26;ckgCondicao=0;ckgCondicao=1;ckgCondicao=2;ckgRelatorio=0;ckgRelatorio=1;rgCategoria=0;ckgLactacao=0;ckgLactacao=1;ckgLactacao=2;rgEpoca=1;chkGrid=1;chkGrafico=1;dia1=35;dia2=42;dia4=90;dia6=180;chkLegenda=1;chkListagemPerda=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1029
+TITULO                          Historico individual - qualidade do leite
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1030
+TITULO                          Apuração de custos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1031
+TITULO                          Acompanhamento individual de matrizes leiteiras
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1032
+TITULO                          Mapa de saídas diretas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1033
+TITULO                          Acompanhamento de peso e crescimento
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1034
+TITULO                          Projeção de matrizes em lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Oferece uma estimativa do número médio de matrizes em lactação por mês, em função das prenhezes confirmadas, do período de descanso e da duração média das lactações. Consulte a ajuda clicando no botão "F1" do seu teclado ou na barra "?" à direita desta caixa, para obter mais detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;chkGrafico=1;chkMostrarListagem=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1035
+TITULO                          Consolidado da alocação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1036
+TITULO                          Acompanhamento do planejamento econômico
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1037
+TITULO                          Levantamento de custos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1038
+TITULO                          Avaliação FIV/TE
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Visualize a avaliação do desempenho de doadoras pelas técnicas de FIV (Fertilização in vitro) e TE (Transferência de embrião). Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;edtInicio=01/01/26;edtFim=28/09/26;cgTipo=0;cgTipo=1;rgPesqDoadora=0;rgPesqReprodutor=0;rgPesqReceptora=0;rgPesqAnimalEmbriao=0;chkListagemDetalhada=1;chkConsolidado=1;chkMostrarGrafico=1;chkListarPorNome=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1039
+TITULO                          Produção total de leite
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1040
+TITULO                          Consolidado do rebanho quantitativo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Acompanhe os lançamentos realizados no 'Rebanho Quantitativo'. Controle o estoque de rebanho por grupos sem especificação individual. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;chkEstoqueQuantitativo=1;chkSintetico=1;chkAnalitico=1;dblOrdenacaoAnalitico=0;dblOrdenacaoSintetico=0;chkMovimentacaoProduto=1;chkEstoqueConsolidado=1;edtInicio=01/01/23;edtFim=26/10/26;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1041
+TITULO                          Distribuição de concepção por dias pós parto
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1042
+TITULO                          Taxa de concepção concatenada
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1043
+TITULO                          Análise consolidada programação IATF/TETF
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1044
+TITULO                          Impacto da CCS individual na CCS total
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1045
+TITULO                          Posição consolidada por conta corrente
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1046
+TITULO                          Agenda de atividades: programação IATF/TETF
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Confira a previsão de implantes, aplicações e retiradas. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;bscRetirada=536870912;bscAplicacao=536870912;bscImplante=536870912;dblSetor=2;ckgTipoEvento=0;edtIni=01/07/23;edtFim=21/09/23;dblOrdenacao1=7;dblOrdenacao2=5;chkResumoDiario=1;chkNaoExibeAnimaisPerda=0;chkExibeAnimaisBaixados=0;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1047
+TITULO                          Acompanhamento de dados de clima
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1048
+TITULO                          Carta débito
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1049
+TITULO                          Fechamento de produção de @
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1050
+TITULO                          Estoque de rebanho por categoria de @
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1051
+TITULO                          Acompanhamento da sobrevivência
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Acompanhe de forma quantitativa e qualitativa os animais em diferentes idades. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento da tela.;chkMostrarFiltros=1;edtData=20/10/26;edtDataIni=01/09/26;edtDataFim=30/09/26;chkMarcarDesmarcar=0;chkMostrarGraficos=1;chkListagem=1;chkLimite1=1;edtLimite1=90;chkLimite2=1;edtLimite2=180;chkLimite3=1;edtLimite3=365;chkLimite4=1;edtLimite4=700;chkLimite5=0;chkLimite6=0;chkLimite7=0;chkLimite8=0;chkLimite9=0;chkLimite10=0;chkExportarListagem=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1052
+TITULO                          Lista de doadoras por pool
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1053
+TITULO                          Persistência de lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1055
+TITULO                          Atestado de teste de Brucelose e Tuberculose
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1057
+TITULO                          Período de serviço
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1059
+TITULO                          Extrato bancário consolidado por documento
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1061
+TITULO                          Extrato bancário (múltiplas contas)
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1063
+TITULO                          Análise econômica de apropriações de itens de custo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1064
+TITULO                          Eficiência na produção de embriões
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Com o relatório 'Eficiência na produção de embriões', é possível avaliar a produção de embriões tanto pelo critério de transferências realizadas quanto pela avaliação específica da eficiência dos touros. Veja mais detalhes sobre os campos disponíveis. Clique em F1 ou no botão '?' desta barra para obter detalhes sobre o funcionamento do relatório.;chkMostrarFiltros=1;edtInicio=01/01/26;edtFim=28/09/26;chkTransferenciasRealizadas=1;chkEficienciaTouros=1;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1065
+TITULO                          Média de produção/dia do rebanho em lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1066
+TITULO                          DEL médio do rebanho
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1067
+TITULO                          IEP médio
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1068
+TITULO                          Animais em lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1069
+TITULO                          Animais ativos gestantes
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1070
+TITULO                          Animais com previsão de parto
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1071
+TITULO                          Animais ativos inseminados/cobertos/implantados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1072
+TITULO                          Animais ativos em PEV
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1073
+TITULO                          Animais ativos vazios
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1074
+TITULO                          Animais ativos aptos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1075
+TITULO                          Animais ativos atrasados
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1076
+TITULO                          Animais a secar
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1077
+TITULO                          Fêmeas ativas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1078
+TITULO                          Animais a desmamar
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1079
+TITULO                          IEP médio previsto
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1080
+TITULO                          Animais ativos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1084
+TITULO                          TESTE
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1086
+TITULO                          PRENHAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1089
+TITULO                          lote 2
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1090
+TITULO                          lote
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1091
+TITULO                          lotee
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1092
+TITULO                          lote
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1094
+TITULO                          NOVILHAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1095
+TITULO                          secagem
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1096
+TITULO                          vacas lactação +60
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1097
+TITULO                          NOVILHAS PRENHAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1098
+TITULO                          Puputi 26/10
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1099
+TITULO                          PUPUTI 26/10
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1100
+TITULO                          vazia novilhas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1101
+TITULO                          BEZERRAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1102
+TITULO                          lotes
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1103
+TITULO                          lote
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1104
+TITULO                          Relatório puputi
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1105
+TITULO                          vacas protocolo
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1106
+TITULO                          NHDTYJGJ
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1107
+TITULO                          anmais paridos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1108
+TITULO                          VACA
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1109
+TITULO                          DIAS POS PARTO
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1110
+TITULO                          LOTES
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1111
+TITULO                          ANIMAIS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1112
+TITULO                          VACAS SUMIDAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1113
+TITULO                          rdhcgfhc
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1114
+TITULO                          uhvou
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1115
+TITULO                          fdgzdfgdg
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1116
+TITULO                          GBWFW
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1117
+TITULO                          Relação de partos
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1118
+TITULO                          wcscs
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1119
+TITULO                          Vacas para toque
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1120
+TITULO                          Vacas par toque
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1121
+TITULO                          VACAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1122
+TITULO                          ANIMAL
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1123
+TITULO                          LOTE
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1124
+TITULO                          ANIMAL
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1125
+TITULO                          FRGFG
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1126
+TITULO                          TOTAL VACAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1127
+TITULO                          BLHFY
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1128
+TITULO                          HJGKUY
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1129
+TITULO                          RILIHH
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1130
+TITULO                          GFHYJ
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1132
+TITULO                          VACAS VAZIAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1134
+TITULO                          VACAS VAZIAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1135
+TITULO                          VACAS VAZIAS
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1147
+TITULO                          Bezerras
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1148
+TITULO                          Média de GMD
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1149
+TITULO                          Estoque de arrobas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1150
+TITULO                          Fêmeas prenhas
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1151
+TITULO                          Entrada de animais no mês passado
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1152
+TITULO                          Saída de animais no mês passado
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1153
+TITULO                          Ficha de protocolo IATF
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Confira os detalhes do protocolo. Clique em F1 ou no botão '?' 
+ desta barra para obter detalhes sobre o funcionamento da 
+ tela.;chkMostrarFiltros=1;bscRetirada=16763904;bscAplicacao=39423;bscImplante=13209;dblSetor=15;ckgTipoEvento=0;ckgTipoEvento=1;ckgTipoEvento=2;dblProduto=700;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1154
+TITULO                          Animais ativos em lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1155
+TITULO                          Conferência do Livro Caixa (LCDPR)
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      TipMemo=Confira os detalhes do livro caixa. Clique em F1 ou no botão '?' 
+ desta barra para obter detalhes sobre o funcionamento da tela.;
+SOLICITARMAISFILTROS            0
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1159
+TITULO                          Análise Zootécnica
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1160
+TITULO                          Agrupamento Vacas Lactação
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1164
+TITULO                          Transporte de Recria
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1166
+TITULO                          Separação de Lote - Recria
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1167
+TITULO                          Vacina
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1175
+TITULO                          Qualidade do Leite - Clínica do Leite
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      <null>
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+CDRELATORIO                     1176
+TITULO                          Taxa de prenhez
+CDFILTRO                        <null>
+FILTROPADRAO                    <null>
+DESCRICAOFILTROPADRAO           <null>
+FILTROTELA                      {"modelo":"ideagri","categoria":"vaca","setores":[2],"tipos":["padrao"],"periodoInicio":"2026-01-09","periodoFim":"2026-09-17","taxaConcepcaoManual":38.0,"gerarDetalhamento":true,"saida":["grafico","legendas","listagem","filtrosfinal"]}
+SOLICITARMAISFILTROS            <null>
+ANIMAISATIVOS                   <null>
+
+
+
+CDFILTRO                        1
+NOME                            LACTAÇAO
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckCategoria=1;bsCheckSituacaoReprodutiva=1;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;edtInicioLactacaoIni=01/06/24;edtInicioLactacaoFim=17/06/24;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=LACTAÇAO;edtData=20/06/21;
+PADRAO                          <null>
+
+CDFILTRO                        2
+NOME                            Animais com 2 partos ou mais
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;edtNumPartoFim=99;edtNumPartoIni=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais com 2 partos ou mais;
+ edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos em lactação;edtData=28/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        4
+NOME                            Animais ativos gestantes
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos gestantes;edtData=20/06/21;
+qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        5
+NOME                            Animais ins./cob./impl.
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=1;bsCheckSituacaoReprodutiva=2;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;
+bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;
+edtNome=Animais ins./cob./impl.;edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        6
+NOME                            Animais ativos em PEV
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=0;bsRadioSexo=2;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos em PEV;edtData=20/06/21;
+qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        7
+NOME                            Animais ativos vazios
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos vazios;edtData=20/06/21;
+qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        8
+NOME                            Animais ativos aptos
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=1;bsRadioSexo=2;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;
+edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos aptos;
+edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        9
+NOME                            Animais ativos atrasados
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=2;bsRadioSexo=2;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos atrasados;edtData=20/06/21;
+qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        10
+NOME                            Animais gestantes em lactação
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;bsRadioSexo=2;
+bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;
+edtNome=Animais gestantes em lactação;edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        11
+NOME                            Fêmeas ativas
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Fêmeas ativas;edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        12
+NOME                            Animais ativos mamando
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=0;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos mamando;edtData=20/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        13
+NOME                            Animais gestantes com parto
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;
+bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;edtNumPartoFim=99;edtNumPartoIni=1;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;
+chkUltimoEventoQualidade=0;edtNome=Animais gestantes com parto;edtData=28/06/21;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        14
+NOME                            gestantes fev
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckCategoria=1;bsCheckCategoria=2;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;edtDataPartoProvavelIni=20/10/23;edtDataPartoProvavelFim=30/03/24;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=gestantes fev;edtData=20/06/21;
+PADRAO                          <null>
+
+CDFILTRO                        15
+NOME                            FILTROCADASTRORECEITADESPESA
+FILTRO                          
+PADRAO                          3
+
+CDFILTRO                        16
+NOME                            Agenda de eventos
+FILTRO                          2:2
+PADRAO                          2
+
+CDFILTRO                        17
+NOME                            Tela de análise
+FILTRO                          2:2
+PADRAO                          1
+
+CDFILTRO                        18
+NOME                            DG MAIOR QUE 30 DIAS
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckCategoria=1;bsCheckCategoria=2;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=1;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;bsCheckFecundacao=0;bsCheckFecundacao=1;edtDiasIAIni=30;edtDiasIAFim=1000;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=DG MAIOR QUE 30 DIAS;edtData=29/08/23;
+PADRAO                          <null>
+
+CDFILTRO                        23
+NOME                            ANIMAS REPRODUÇÃO
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=2;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=ANIMAS REPRODUÇÃO;edtData=16/10/23;
+PADRAO                          <null>
+
+CDFILTRO                        24
+NOME                            FILTRO PRENHA
+FILTRO                          bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=FILTRO PRENHA;edtData=17/10/23;
+PADRAO                          <null>
+
+CDFILTRO                        41
+NOME                            vacas vazias
+FILTRO                          bsCheckTipo=0;bsCheckCategoria=2;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=vacas vazias;edtData=23/11/23;
+PADRAO                          <null>
+
+CDFILTRO                        42
+NOME                            vacas
+FILTRO                          bsCheckTipo=0;bsCheckCategoria=2;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=vacas;edtData=23/11/23;
+PADRAO                          <null>
+
+CDFILTRO                        44
+NOME                            VAZIAS
+FILTRO                          bsCheckTipo=0;bsCheckCategoria=2;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=VAZIAS;edtData=04/01/24;
+PADRAO                          <null>
+
+CDFILTRO                        45
+NOME                            Vacas vazias
+FILTRO                          bsCheckTipo=0;bsCheckCategoria=2;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Vacas vazias;edtData=15/01/24;
+PADRAO                          <null>
+
+CDFILTRO                        48
+NOME                            VACAS
+FILTRO                          bsCheckTipo=0;bsCheckCategoria=2;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=VACAS;edtData=18/01/24;
+PADRAO                          <null>
+
+CDFILTRO                        50
+NOME                            VACAS LACT
+FILTRO                          bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=VACAS LACT;edtData=18/01/24;
+PADRAO                          <null>
+
+CDFILTRO                        52
+NOME                            DATA PARTOS
+FILTRO                          bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;edtDataPartoOcorridoIni=01/06/24;edtDataPartoOcorridoFim=17/06/24;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=DATA PARTOS;edtData=18/07/24;
+PADRAO                          <null>
+
+CDFILTRO                        53
+NOME                            Lista de animais ativos
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;
+ chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;
+ bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Lista de animais ativos;edtData=19/08/21;qrySetor= -1,1;qryFaseAnimal= -1,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        54
+NOME                            Fêmeas prenhas
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Fêmeas prenhas;edtData=20/06/21;qrySetor= -1,1;qryFaseAnimal= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        55
+NOME                            Entrada de animais
+FILTRO                          bsCheckTipo=0;edtEntradaIni=01/06/21;edtEntradaFim=30/06/21;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;
+chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Entrada de animais;edtData=20/08/21;qrySetor= -1,1;qryFaseAnimal= -1,3,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        56
+NOME                            Saída de animais
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=1;edtBaixaIni=01/06/21;edtBaixaFim=30/06/21;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;
+bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Saída de animais;edtData=20/08/21;qrySetor= -1,1;qryFaseAnimal= -1,3,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        57
+NOME                            Animais em lactação
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;
+ chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;
+ bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais em lactação;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        58
+NOME                            Animais com 2 partos ou mais
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;edtNumPartoFim=99;edtNumPartoIni=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais com 2 partos ou mais;
+  edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        59
+NOME                            Animais ativos em lactação
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos em lactação;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        60
+NOME                            Animais ativos gestantes
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+ chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos gestantes;edtData=25/04/2025;
+ qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        61
+NOME                            Animais ins./cob./impl.
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=1;bsCheckSituacaoReprodutiva=2;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;
+ bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+ edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;
+ edtNome=Animais ins./cob./impl.;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        62
+NOME                            Animais ativos em PEV
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=0;bsRadioSexo=2;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+ chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos em PEV;edtData=25/04/2025;
+ qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        63
+NOME                            Animais ativos vazios
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+ chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos vazios;edtData=25/04/2025;
+ qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        64
+NOME                            Animais ativos aptos
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=1;bsRadioSexo=2;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;
+ edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos aptos;
+ edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        65
+NOME                            Animais ativos atrasados
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsCheckSituacaoVazia=2;bsRadioSexo=2;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+ chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos atrasados;edtData=25/04/2025;
+ qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        66
+NOME                            Animais gestantes em lactação
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;bsRadioSexo=2;
+ bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+ edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;
+ edtNome=Animais gestantes em lactação;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        67
+NOME                            Fêmeas ativas
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Fêmeas ativas;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        68
+NOME                            Animais ativos mamando
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=0;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos mamando;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        69
+NOME                            Animais gestantes com parto
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;
+ bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;
+ edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;edtNumPartoFim=99;edtNumPartoIni=1;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;
+ chkUltimoEventoQualidade=0;edtNome=Animais gestantes com parto;edtData=25/04/2025;qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        70
+NOME                            Animais ativos
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;
+ chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Animais ativos;edtData=25/04/2025;
+ qrySetor= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        71
+NOME                            Lista de animais ativos
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;
+  chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;
+  bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Lista de animais ativos;edtData=25/04/2025;qrySetor= -1,1;qryFaseAnimal= -1,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        72
+NOME                            Fêmeas prenhas
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckSituacaoReprodutiva=3;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Fêmeas prenhas;edtData=25/04/2025;qrySetor= -1,1;qryFaseAnimal= -1,1;
+PADRAO                          <null>
+
+CDFILTRO                        73
+NOME                            Entrada de animais
+FILTRO                          bsCheckTipo=0;edtEntradaIni=01/06/21;edtEntradaFim=30/06/21;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;bsRadioResultados=-1;
+ chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;
+ chkUltimoEventoQualidade=0;edtNome=Entrada de animais;edtData=25/04/2025;qrySetor= -1,1;qryFaseAnimal= -1,3,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        74
+NOME                            Saída de animais
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=1;edtBaixaIni=01/06/21;edtBaixaFim=30/06/21;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;bsRadioSexo=2;bsCheckProtocolada=-1;
+ bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;
+ chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;
+ chkUltimoEventoQualidade=0;edtNome=Saída de animais;edtData=25/04/2025;qrySetor= -1,1;qryFaseAnimal= -1,3,2,1;
+PADRAO                          <null>
+
+CDFILTRO                        76
+NOME                            Luma
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Luma;edtData=13/06/25;
+PADRAO                          <null>
+
+CDFILTRO                        78
+NOME                            Descarga dos animais
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=4;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;chkUltimoEventoQualidade=0;edtNome=Descarga dos animais;edtData=29/07/25;qrySetor= -1,2;qryGrupo= -1,22;
+PADRAO                          <null>
+
+CDFILTRO                        80
+NOME                            Para agrupar
+FILTRO                          bsCheckTipo=0;bsCheckSituacao=0;bsCheckCategoria=2;bsRadioRegistrado=2;bsRadioNascidoTE=2;bsRadioSituacaoProdutiva=3;fraIdadeAtual.edtAnoIni=;fraIdadeAtual.edtMesIni=;fraIdadeAtual.edtDiaIni=;fraIdadeAtual.edtAnoFim=;fraIdadeAtual.edtMesFim=;fraIdadeAtual.edtDiaFim=;fraIdadeDesmama.edtAnoIni=;fraIdadeDesmama.edtMesIni=;fraIdadeDesmama.edtDiaIni=;fraIdadeDesmama.edtAnoFim=;fraIdadeDesmama.edtMesFim=;fraIdadeDesmama.edtDiaFim=;fraPermanencia.edtAnoIni=;fraPermanencia.edtMesIni=;fraPermanencia.edtDiaIni=;fraPermanencia.edtAnoFim=;fraPermanencia.edtMesFim=;fraPermanencia.edtDiaFim=;bsRadioSexo=1;bsCheckProtocolada=-1;bsRadioResultados=-1;chkSemAplicacao=0;chkComAplicacao=1;bsRadioPai=0;bsRadioMae=0;bsRadioAvo=0;bsRadioBisavo=0;bsRadioProducao=2;chkUltimoEventoProducao=0;bsRadioPeriodoPeso=0;edtHoraPesoIni=__:__;edtHoraPesoFim=__:__;chkUltimoEventoPesagem=0;chkUltimoEventoMedida=0;bsRadioSexoBezerro=2;fraIdadeParto.edtAnoIni=;fraIdadeParto.edtMesIni=;fraIdadeParto.edtDiaIni=;fraIdadeParto.edtAnoFim=;fraIdadeParto.edtMesFim=;fraIdadeParto.edtDiaFim=;bsRadioPlacenta=2;CHECKCioUtilizado=0;bsRadioResultadoDiagnostico=2;bsRadioComplementoDiagnostico=-1;chkUltimoEventoQualidade=0;edtNome=Para agrupar;edtData=20/09/25;
+PADRAO                          <null>
+
+
+
+CDRELATORIO                     1065
+TITULO                          Média de produção/dia do rebanho em lactação
+CDFILTRO                        57
+NOME                            Animais em lactação
+POSICAO                         1
+
+CDRELATORIO                     1066
+TITULO                          DEL médio do rebanho
+CDFILTRO                        57
+NOME                            Animais em lactação
+POSICAO                         1
+
+CDRELATORIO                     1067
+TITULO                          IEP médio
+CDFILTRO                        58
+NOME                            Animais com 2 partos ou mais
+POSICAO                         1
+
+CDRELATORIO                     1068
+TITULO                          Animais em lactação
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1069
+TITULO                          Animais ativos gestantes
+CDFILTRO                        60
+NOME                            Animais ativos gestantes
+POSICAO                         1
+
+CDRELATORIO                     1070
+TITULO                          Animais com previsão de parto
+CDFILTRO                        60
+NOME                            Animais ativos gestantes
+POSICAO                         1
+
+CDRELATORIO                     1071
+TITULO                          Animais ativos inseminados/cobertos/implantados
+CDFILTRO                        61
+NOME                            Animais ins./cob./impl.
+POSICAO                         1
+
+CDRELATORIO                     1072
+TITULO                          Animais ativos em PEV
+CDFILTRO                        62
+NOME                            Animais ativos em PEV
+POSICAO                         1
+
+CDRELATORIO                     1073
+TITULO                          Animais ativos vazios
+CDFILTRO                        63
+NOME                            Animais ativos vazios
+POSICAO                         1
+
+CDRELATORIO                     1074
+TITULO                          Animais ativos aptos
+CDFILTRO                        64
+NOME                            Animais ativos aptos
+POSICAO                         1
+
+CDRELATORIO                     1075
+TITULO                          Animais ativos atrasados
+CDFILTRO                        65
+NOME                            Animais ativos atrasados
+POSICAO                         1
+
+CDRELATORIO                     1076
+TITULO                          Animais a secar
+CDFILTRO                        66
+NOME                            Animais gestantes em lactação
+POSICAO                         1
+
+CDRELATORIO                     1077
+TITULO                          Fêmeas ativas
+CDFILTRO                        67
+NOME                            Fêmeas ativas
+POSICAO                         1
+
+CDRELATORIO                     1078
+TITULO                          Animais a desmamar
+CDFILTRO                        68
+NOME                            Animais ativos mamando
+POSICAO                         1
+
+CDRELATORIO                     1079
+TITULO                          IEP médio previsto
+CDFILTRO                        69
+NOME                            Animais gestantes com parto
+POSICAO                         1
+
+CDRELATORIO                     1080
+TITULO                          Animais ativos
+CDFILTRO                        70
+NOME                            Animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1084
+TITULO                          TESTE
+CDFILTRO                        8
+NOME                            Animais ativos aptos
+POSICAO                         1
+
+CDRELATORIO                     1086
+TITULO                          PRENHAS
+CDFILTRO                        24
+NOME                            FILTRO PRENHA
+POSICAO                         1
+
+CDRELATORIO                     1092
+TITULO                          lote
+CDFILTRO                        1
+NOME                            LACTAÇAO
+POSICAO                         1
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        4
+NOME                            Animais ativos gestantes
+POSICAO                         1
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        7
+NOME                            Animais ativos vazios
+POSICAO                         1
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        10
+NOME                            Animais gestantes em lactação
+POSICAO                         2
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        5
+NOME                            Animais ins./cob./impl.
+POSICAO                         3
+
+CDRELATORIO                     1093
+TITULO                          TESTE 123
+CDFILTRO                        13
+NOME                            Animais gestantes com parto
+POSICAO                         4
+
+CDRELATORIO                     1094
+TITULO                          NOVILHAS
+CDFILTRO                        1
+NOME                            LACTAÇAO
+POSICAO                         1
+
+CDRELATORIO                     1096
+TITULO                          vacas lactação +60
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1100
+TITULO                          vazia novilhas
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1101
+TITULO                          BEZERRAS
+CDFILTRO                        52
+NOME                            DATA PARTOS
+POSICAO                         1
+
+CDRELATORIO                     1104
+TITULO                          Relatório puputi
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1107
+TITULO                          anmais paridos
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1111
+TITULO                          ANIMAIS
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1113
+TITULO                          rdhcgfhc
+CDFILTRO                        5
+NOME                            Animais ins./cob./impl.
+POSICAO                         1
+
+CDRELATORIO                     1114
+TITULO                          uhvou
+CDFILTRO                        5
+NOME                            Animais ins./cob./impl.
+POSICAO                         1
+
+CDRELATORIO                     1116
+TITULO                          GBWFW
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1117
+TITULO                          Relação de partos
+CDFILTRO                        52
+NOME                            DATA PARTOS
+POSICAO                         1
+
+CDRELATORIO                     1118
+TITULO                          wcscs
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1121
+TITULO                          VACAS
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1122
+TITULO                          ANIMAL
+CDFILTRO                        12
+NOME                            Animais ativos mamando
+POSICAO                         1
+
+CDRELATORIO                     1132
+TITULO                          VACAS VAZIAS
+CDFILTRO                        7
+NOME                            Animais ativos vazios
+POSICAO                         1
+
+CDRELATORIO                     1132
+TITULO                          VACAS VAZIAS
+CDFILTRO                        41
+NOME                            vacas vazias
+POSICAO                         2
+
+CDRELATORIO                     1134
+TITULO                          VACAS VAZIAS
+CDFILTRO                        7
+NOME                            Animais ativos vazios
+POSICAO                         1
+
+CDRELATORIO                     1135
+TITULO                          VACAS VAZIAS
+CDFILTRO                        7
+NOME                            Animais ativos vazios
+POSICAO                         1
+
+CDRELATORIO                     1148
+TITULO                          Média de GMD
+CDFILTRO                        71
+NOME                            Lista de animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1149
+TITULO                          Estoque de arrobas
+CDFILTRO                        53
+NOME                            Lista de animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1150
+TITULO                          Fêmeas prenhas
+CDFILTRO                        72
+NOME                            Fêmeas prenhas
+POSICAO                         1
+
+CDRELATORIO                     1151
+TITULO                          Entrada de animais no mês passado
+CDFILTRO                        73
+NOME                            Entrada de animais
+POSICAO                         1
+
+CDRELATORIO                     1152
+TITULO                          Saída de animais no mês passado
+CDFILTRO                        74
+NOME                            Saída de animais
+POSICAO                         1
+
+CDRELATORIO                     1154
+TITULO                          Animais ativos em lactação
+CDFILTRO                        59
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1159
+TITULO                          Análise Zootécnica
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+CDRELATORIO                     1160
+TITULO                          Agrupamento Vacas Lactação
+CDFILTRO                        80
+NOME                            Para agrupar
+POSICAO                         1
+
+CDRELATORIO                     1164
+TITULO                          Transporte de Recria
+CDFILTRO                        70
+NOME                            Animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1166
+TITULO                          Separação de Lote - Recria
+CDFILTRO                        70
+NOME                            Animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1167
+TITULO                          Vacina
+CDFILTRO                        70
+NOME                            Animais ativos
+POSICAO                         1
+
+CDRELATORIO                     1175
+TITULO                          Qualidade do Leite - Clínica do Leite
+CDFILTRO                        3
+NOME                            Animais ativos em lactação
+POSICAO                         1
+
+

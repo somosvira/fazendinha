@@ -1,0 +1,263 @@
+[
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 8,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 37,
+    "snippet": "Undocumented color #eed7a8 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#eed7a8"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 37,
+    "snippet": "Undocumented color #fff6e6 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fff6e6"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 37,
+    "snippet": "Undocumented color #805114 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#805114"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 37,
+    "snippet": "border-radius: 7px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "7px"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 38,
+    "snippet": "Undocumented color #fbe8c5 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fbe8c5"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 40,
+    "snippet": "Undocumented color #fff0ef is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fff0ef"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 40,
+    "snippet": "Undocumented color #edc6c3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edc6c3"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 45,
+    "snippet": "Undocumented color #805114 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#805114"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 47,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 57,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px"
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 57,
+    "snippet": "font-size: 38px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "38px"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-theme.css",
+    "line": 59,
+    "snippet": "border-radius: 14px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "14px"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 1,
+    "snippet": "Undocumented color #a66c16 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#a66c16",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 1,
+    "snippet": "Undocumented color #b02b2b is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#b02b2b",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 1,
+    "snippet": "Undocumented color #8c4c13 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#8c4c13",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 1,
+    "snippet": "border-radius: 9px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 1,
+    "snippet": "font-size: 25px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "25px",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 5,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/estoque/estoque-visual.css",
+    "line": 5,
+    "snippet": "font-size: 29px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "29px",
+    "importedBy": [
+      "CartoesProdutos.tsx"
+    ]
+  }
+]

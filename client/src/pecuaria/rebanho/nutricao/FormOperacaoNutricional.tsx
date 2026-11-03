@@ -5,7 +5,7 @@ import { ClipboardCheck, Leaf } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, hoje, Pill } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { buscarLote, listarLotes } from "../api";
@@ -13,7 +13,7 @@ import type { Lote } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { atribuirDieta, corrigirVigencia, listarCentrosNutricionais, listarDietas, obterVigencia } from "./api";
 import { useConsulta } from "./consulta";
-import { EstadoConsulta } from "./componentes";
+import { EstadoConsulta, LinkNutricional, rotaNutricao } from "./componentes";
 import { ConferenciaPeriodos } from "./ConferenciaPeriodos";
 
 type Acao = "atribuir" | "corrigir" | "consumo";
@@ -24,15 +24,44 @@ export function FormOperacaoNutricional({ acao, loteId, vigenciaId, dietaInicial
   const [selecao, setSelecao] = useState(loteId ?? "");
   const [ocupado, setOcupado] = useState(false);
   const lote = contexto.dados?.find((l) => l.id === selecao);
-  return <PainelCadastro aberto titulo={acao === "consumo" ? "Conferir consumo" : acao === "corrigir" ? "Corrigir vigência" : "Atribuir dieta ao lote"} icon={acao === "consumo" ? ClipboardCheck : Leaf} onFechar={onVoltar} bloqueado={ocupado} alteracoesExternas={alterado} largura="sm:max-w-6xl" rodape={fechar => <Button secondary disabled={ocupado} onClick={fechar}>Cancelar</Button>}><div className="nutricao-formulario" onChangeCapture={marcarAlterado}><div className="nutricao-card-cabecalho"><p className="nutricao-nota">{acao === "consumo" ? "Confira o período e os ingredientes antes de confirmar o consumo." : acao === "corrigir" ? "Fechamentos afetados devem ser estornados antes da correção." : "Confira a dieta e a data de início antes de aplicar ao lote."} <AjudaCampo rotulo="Sobre a operação nutricional" texto={acao === "consumo" ? "A prévia separa o período por mês e vigência, considerando os dias de permanência dos animais. Produtos com a mesma validade compartilham o lote de estoque, independentemente do fornecedor." : acao === "corrigir" ? "A correção ajusta também o fim da vigência anterior contígua. Fechamentos afetados devem ser estornados antes." : "Somente versões publicadas podem ser atribuídas. A troca encerra a dieta anterior na data informada."} /></p></div><div className="nutricao-card-corpo"><EstadoConsulta erro={contexto.erro} carregando={contexto.carregando} recarregar={contexto.carregar} />
+  return <PainelCadastro aberto titulo={acao === "consumo" ? "Novo fechamento" : acao === "corrigir" ? "Corrigir vigência" : "Atribuir dieta ao lote"} icon={acao === "consumo" ? ClipboardCheck : Leaf} onFechar={onVoltar} bloqueado={ocupado} alteracoesExternas={alterado} largura="sm:max-w-6xl" rodape={fechar => <Button secondary disabled={ocupado} onClick={fechar}>Cancelar</Button>}><div className="nutricao-formulario" onChangeCapture={marcarAlterado}><div className="nutricao-card-cabecalho"><p className="nutricao-nota">{acao === "consumo" ? (loteId ? "Confira como este lote é fechado antes de confirmar o consumo." : "Escolha o lote para ver como ele é fechado.") : acao === "corrigir" ? "Fechamentos afetados devem ser estornados antes da correção." : "Confira a dieta e a data de início antes de aplicar ao lote."} <AjudaCampo rotulo="Sobre a operação nutricional" texto={acao === "consumo" ? "A prévia separa o período por mês e vigência, considerando os dias de permanência dos animais. Produtos com a mesma validade compartilham o lote de estoque, independentemente do fornecedor." : acao === "corrigir" ? "A correção ajusta também o fim da vigência anterior contígua. Fechamentos afetados devem ser estornados antes." : "Somente versões publicadas podem ser atribuídas. A troca encerra a dieta anterior na data informada."} /></p></div><div className="nutricao-card-corpo"><EstadoConsulta erro={contexto.erro} carregando={contexto.carregando} recarregar={contexto.carregar} />
     {contexto.dados && <>{loteId ? <p className="nutricao-contexto"><strong>{lote?.nome}</strong> · {lote?.propriedade.nome} · {lote?.animaisAtivos} animais ativos hoje</p> : <label>Lote<SelectCampo className={classeInput} disabled={ocupado} value={selecao} onValueChange={(valorSelecionado) => { marcarAlterado(); setSelecao(valorSelecionado); }}><option value="">Selecione o lote</option>{contexto.dados.map((l) => <option key={l.id} value={l.id}>{l.nome} · {l.propriedade.nome}</option>)}</SelectCampo></label>}
       {lote && (lote.ativo ? acao === "consumo" ? <FormConsumo key={lote.id} lote={lote} onOcupado={setOcupado} onSalvo={() => onSalvo(lote.id)} /> : <FormVigencia key={`${lote.id}:${vigenciaId}`} acao={acao} lote={lote} vigenciaId={vigenciaId} dietaInicialId={dietaInicialId} onAlterar={marcarAlterado} onOcupado={setOcupado} onSalvo={() => onSalvo(lote.id)} /> : <p role="alert" className="nutricao-aviso">Este lote está inativo. Seu histórico permanece disponível para consulta.</p>)}
     </>}
   </div></div></PainelCadastro>;
 }
+const MODELOS: Record<ConfiguracaoMensal["modelo"], { rotulo: string; texto: string }> = {
+  AUTOMATICO: { rotulo: "Baixa automática diária", texto: "O processamento diário efetua as baixas; a conferência mensal permite ajustes." },
+  MANUAL: { rotulo: "Confirmar antes de baixar", texto: "O estoque é baixado depois da confirmação dos dias." },
+  PROVISORIO: { rotulo: "Estimar e baixar no fechamento", texto: "O consumo diário é virtual; o estoque é baixado na confirmação mensal." },
+};
+/** Configuração mensal do lote na data: exceção do lote antes do padrão do sítio. */
+function configuracaoNaData(configuracoes: ConfiguracaoMensal[], lote: Lote, data: string) {
+  const vigentes = configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && c.desde.slice(0, 10) <= data).sort((a, b) => b.desde.localeCompare(a.desde));
+  return vigentes.find(c => c.loteId === lote.id) ?? vigentes.find(c => c.loteId === null);
+}
 function FormConsumo({ lote, onSalvo, onOcupado }: { lote: Lote; onSalvo: () => void; onOcupado: (v: boolean) => void }) {
   const centros = useConsulta(useCallback(listarCentrosNutricionais, []));
-  return <><EstadoConsulta erro={centros.erro} carregando={centros.carregando} recarregar={centros.carregar} />{centros.dados && <ConferenciaPeriodos loteId={lote.id} propriedadeId={lote.propriedadeId} centros={centros.dados.filter((c) => c.ativo)} onOcupado={onOcupado} onSalvo={async () => onSalvo()} />}</>;
+  const modelo = useConsulta(useCallback(async () => {
+    const status = await statusMensal();
+    return { ...status, configuracoes: status.habilitada ? await configuracoesMensais() : [] as ConfiguracaoMensal[] };
+  }, []));
+  const dia = hoje();
+  const configuracoes = modelo.dados?.configuracoes ?? [];
+  const mensal = configuracaoNaData(configuracoes, lote, dia);
+  // O servidor recusa fechamento por período que alcance a adoção mensal; antes dela os períodos seguem fechando aqui.
+  const adocao = configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && (c.loteId === null || c.loteId === lote.id)).map(c => c.desde.slice(0, 10)).sort()[0];
+  const futura = !mensal ? configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && (c.loteId === null || c.loteId === lote.id) && c.desde.slice(0, 10) > dia).sort((a, b) => a.desde.localeCompare(b.desde))[0] : undefined;
+  const conferencia = centros.dados && <ConferenciaPeriodos loteId={lote.id} propriedadeId={lote.propriedadeId} centros={centros.dados.filter((c) => c.ativo)} onOcupado={onOcupado} onSalvo={async () => onSalvo()} />;
+  return <><EstadoConsulta erro={modelo.erro} carregando={modelo.carregando} recarregar={modelo.carregar} /><EstadoConsulta erro={centros.erro} carregando={centros.carregando} recarregar={centros.carregar} />
+    {modelo.dados && <>
+      {modelo.dados.habilitada && <section className="nutricao-formas-fechamento" aria-labelledby="formas-fechamento"><h3 id="formas-fechamento">Forma de fechamento</h3><ul>
+        <li data-aplicavel={!mensal || undefined}><div><strong>Por período</strong>{!mensal && <Pill tone="green">Aplica-se a este lote</Pill>}</div><p>Você escolhe o intervalo, confere os ingredientes por vigência e confirma a baixa de estoque.{futura && ` Vale até ${formatarDataBR(futura.desde)}, quando o lote passa ao fechamento mensal.`}</p></li>
+        <li data-aplicavel={mensal ? true : undefined}><div><strong>Mensal{(mensal ?? futura) && ` · ${MODELOS[(mensal ?? futura)!.modelo].rotulo}`}</strong>{mensal ? <Pill tone="green">Aplica-se a este lote</Pill> : futura ? <Pill tone="blue">A partir de {formatarDataBR(futura.desde)}</Pill> : <Pill tone="neutral">Não configurado</Pill>}</div><p>{mensal ? <>{MODELOS[mensal.modelo].texto} Conferência no dia {mensal.diaConferencia} do mês seguinte · {mensal.loteId ? "exceção do lote" : "padrão do sítio"}.{!modelo.dados.automacao && " O processamento automático diário está desativado neste ambiente."}</> : futura ? `${MODELOS[futura.modelo].texto} Conferência no dia ${futura.diaConferencia} do mês seguinte.` : "O consumo é acompanhado dia a dia e conferido uma vez por mês. Defina o modelo nas configurações da Nutrição."}</p></li>
+      </ul></section>}
+      {mensal ? <><div className="nutricao-acoes"><LinkNutricional className="nutricao-botao" href={rotaNutricao({ aba: "fechamentos" })}>Abrir fechamento mensal</LinkNutricional><LinkNutricional className="nutricao-botao-secundario" href="/configuracoes/pecuaria/nutricao">Configurações</LinkNutricional></div>
+        {conferencia && <details className="nutricao-composicao-recolhida mt-5"><summary>Fechar períodos anteriores a {formatarDataBR(adocao)}</summary>{conferencia}</details>}</> : conferencia}
+    </>}</>;
 }
 function FormVigencia({ acao, lote, vigenciaId, dietaInicialId, onSalvo, onOcupado, onAlterar }: { acao: "atribuir" | "corrigir"; lote: Lote; vigenciaId?: string; dietaInicialId?: string; onAlterar: () => void; onSalvo: () => void; onOcupado: (v: boolean) => void }) {
   const consulta = useConsulta(useCallback(async () => {
@@ -50,8 +79,7 @@ function FormVigencia({ acao, lote, vigenciaId, dietaInicialId, onSalvo, onOcupa
     return { ...status, configuracoes: status.habilitada ? await configuracoesMensais() : [] };
   }, [acao, lote.id]));
   const [desde, setDesde] = useState(hoje());
-  const configuracoesVigentes = modelo.dados?.configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && c.desde.slice(0, 10) <= desde).sort((a, b) => b.desde.localeCompare(a.desde)) ?? [];
-  const configuracao = configuracoesVigentes.find(c => c.loteId === lote.id) ?? configuracoesVigentes.find(c => c.loteId === null);
+  const configuracao = configuracaoNaData(modelo.dados?.configuracoes ?? [], lote, desde);
   const previaPronta = Boolean(resumo.dados && !resumo.carregando && !resumo.erro && modelo.dados && !modelo.carregando && !modelo.erro);
   const [motivo, setMotivo] = useState("");
   const [ocupado, setOcupado] = useState(false);
@@ -83,8 +111,8 @@ function FormVigencia({ acao, lote, vigenciaId, dietaInicialId, onSalvo, onOcupa
       {desde && resumo.dados && <p className="nutricao-nota">{desde > hoje() ? `Dieta programada para ${formatarDataBR(desde)}.` : `Início em ${formatarDataBR(desde)}.`} {resumo.dados?.vigente ? "A troca encerra a dieta anterior na data informada." : desde > hoje() ? "Até essa data, o lote continuará sem dieta vigente cadastrada." : "Esta será a dieta do lote a partir da data informada."} A atribuição não confirma consumo nem efetua baixa de estoque.</p>}
       <EstadoConsulta erro={modelo.erro} carregando={modelo.carregando} recarregar={modelo.carregar} />
       {modelo.dados && <p className="nutricao-nota">{!modelo.dados.habilitada ? "Nutrição mensal não habilitada. O consumo segue a conferência de períodos existente." : !configuracao ? "Sem configuração mensal vigente na data informada. O consumo segue a conferência de períodos existente." : <>
-        <strong>{configuracao.modelo === "AUTOMATICO" ? "Baixa automática diária" : configuracao.modelo === "MANUAL" ? "Confirmar antes de baixar" : "Estimar e baixar no fechamento"} · Conferência dia {configuracao.diaConferencia} do mês seguinte.</strong>{" "}
-        {configuracao.loteId ? "Exceção do lote" : "Padrão do sítio"} na data de início. {configuracao.modelo === "AUTOMATICO" ? "O processamento diário efetua as baixas; a conferência mensal permite ajustes." : configuracao.modelo === "MANUAL" ? "O estoque será baixado após a confirmação dos dias." : "O consumo diário será virtual; o estoque será baixado na confirmação mensal."}
+        <strong>{MODELOS[configuracao.modelo].rotulo} · Conferência dia {configuracao.diaConferencia} do mês seguinte.</strong>{" "}
+        {configuracao.loteId ? "Exceção do lote" : "Padrão do sítio"} na data de início. {MODELOS[configuracao.modelo].texto}
         {!modelo.dados.automacao && " O processamento automático diário está desativado neste ambiente."}
       </>}</p>}
       {resumo.dados?.programada && <p className="nutricao-aviso">Já existe uma dieta programada: {resumo.dados.programada.dieta.nome}, em {formatarDataBR(resumo.dados.programada.desde)}. A nova vigência precisa respeitar essa programação; o servidor validará os conflitos antes de salvar.</p>}

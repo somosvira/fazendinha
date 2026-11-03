@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { prisma } from '../../src/db.js';
 import { salvarConfiguracao, registrarPerfil, mudarFase } from '../../src/services/pecuaria/bezerreiro/gestao.js';
 import { consultarPrevisao, confirmarOferta } from '../../src/services/pecuaria/bezerreiro/aleitamento.js';
@@ -17,13 +16,13 @@ const PERCENTUAL_OFERTA = [50, 50] as const;
 export async function bezerreiro(c: Contexto) {
   const uid = c.usuarioId, propriedadeId = c.sitioIds.principal;
 
+  // A rotina tem uma única lista de ofertas compartilhada pelas fases, como na tela de Configurações.
+  const ofertas = PERCENTUAL_OFERTA.map((percentual, ordem) => ({ identidadeId: chave(`bezerreiro:oferta:${ordem}`), ordem, percentual: String(percentual), horarioPrevisto: ordem ? '16:00' : '06:00' }));
   await c.acao('bezerreiro:configuracao', async () => !!await prisma.configuracaoBezerreiro.findFirst({ where: { propriedadeId } }), () => salvarConfiguracao({
     chave: chave('bezerreiro:configuracao'), propriedadeId, versaoEsperada: 0, brixReferencia: '22', percentualPesoColostro: '10', imunidade: null,
     fases: [
-      { nome: 'Aleitamento inicial', coleiraNome: 'Azul', cor: '#2563eb', litrosDia: '6', publicada: true, criteriosTransicao: { idadeDias: 30, automatico: false },
-        ofertas: PERCENTUAL_OFERTA.map((percentual, ordem) => ({ identidadeId: randomUUID(), ordem, percentual: String(percentual), horarioPrevisto: ordem ? '16:00' : '06:00' })) },
-      { nome: 'Desaleitamento', coleiraNome: 'Amarela', cor: '#ca8a04', litrosDia: '3', publicada: true, criteriosTransicao: { idadeDias: 60, automatico: false },
-        ofertas: [{ identidadeId: randomUUID(), ordem: 0, percentual: '100', horarioPrevisto: '06:00' }] },
+      { nome: 'Aleitamento inicial', coleiraNome: 'Azul', cor: '#2563eb', litrosDia: '6', publicada: true, criteriosTransicao: { idadeDias: 30, automatico: false }, ofertas },
+      { nome: 'Desaleitamento', coleiraNome: 'Amarela', cor: '#ca8a04', litrosDia: '3', publicada: true, criteriosTransicao: { idadeDias: 60, automatico: false }, ofertas },
     ],
   }, uid));
   const fase = await prisma.faseBezerreiroVersao.findFirstOrThrow({ where: { propriedadeId, nome: 'Aleitamento inicial', publicada: true }, orderBy: { versao: 'desc' }, include: { ofertas: { orderBy: { ordem: 'asc' } } } });

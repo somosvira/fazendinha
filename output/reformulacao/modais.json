@@ -1,0 +1,162 @@
+[
+  {
+    "nome": "ordenha",
+    "viewport": 1440,
+    "abriu": true,
+    "pagina": 1440,
+    "dialogos": [
+      {
+        "titulo": "Registro de ordenha",
+        "largura": 1100,
+        "altura": 960,
+        "scroll": 1626,
+        "visivel": 958
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "receita",
+    "viewport": 1440,
+    "abriu": true,
+    "pagina": 1440,
+    "dialogos": [
+      {
+        "titulo": "Nova receita",
+        "largura": 1024,
+        "altura": 655,
+        "scroll": 653,
+        "visivel": 653
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "ocorrencia",
+    "viewport": 1440,
+    "abriu": true,
+    "pagina": 1440,
+    "dialogos": [
+      {
+        "titulo": "Nova ocorrência",
+        "largura": 896,
+        "altura": 565,
+        "scroll": 563,
+        "visivel": 563
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "transferencia",
+    "viewport": 1440,
+    "abriu": true,
+    "pagina": 1440,
+    "dialogos": [
+      {
+        "titulo": "Transferir estoque entre sítios",
+        "largura": 576,
+        "altura": 852,
+        "scroll": 850,
+        "visivel": 850
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "sitio",
+    "viewport": 1440,
+    "abriu": true,
+    "pagina": 1440,
+    "dialogos": [
+      {
+        "titulo": "Novo sítio",
+        "largura": 512,
+        "altura": 543,
+        "scroll": 541,
+        "visivel": 541
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "ordenha",
+    "viewport": 390,
+    "abriu": true,
+    "pagina": 390,
+    "dialogos": [
+      {
+        "titulo": "Registro de ordenha",
+        "largura": 366,
+        "altura": 820,
+        "scroll": 2818,
+        "visivel": 818
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "receita",
+    "viewport": 390,
+    "abriu": true,
+    "pagina": 390,
+    "dialogos": [
+      {
+        "titulo": "Nova receita",
+        "largura": 358,
+        "altura": 820,
+        "scroll": 818,
+        "visivel": 818
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "ocorrencia",
+    "viewport": 390,
+    "abriu": true,
+    "pagina": 390,
+    "dialogos": [
+      {
+        "titulo": "Nova ocorrência",
+        "largura": 358,
+        "altura": 820,
+        "scroll": 818,
+        "visivel": 818
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "transferencia",
+    "viewport": 390,
+    "abriu": true,
+    "pagina": 390,
+    "dialogos": [
+      {
+        "titulo": "Transferir estoque entre sítios",
+        "largura": 358,
+        "altura": 820,
+        "scroll": 818,
+        "visivel": 818
+      }
+    ],
+    "erros": []
+  },
+  {
+    "nome": "sitio",
+    "viewport": 390,
+    "abriu": true,
+    "pagina": 390,
+    "dialogos": [
+      {
+        "titulo": "Novo sítio",
+        "largura": 358,
+        "altura": 695,
+        "scroll": 693,
+        "visivel": 693
+      }
+    ],
+    "erros": []
+  }
+]

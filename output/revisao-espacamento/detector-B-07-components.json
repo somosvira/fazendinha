@@ -1,0 +1,437 @@
+[
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #d7e2d3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#d7e2d3",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #28745d is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#28745d",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #edf4e8 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf4e8",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #49744d is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#49744d",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #edf5e7 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf5e7",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #e8f0e0 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#e8f0e0",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #5c7058 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#5c7058",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #546b51 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#546b51",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #eff3e7 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#eff3e7",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #526939 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#526939",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #e3eadd is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#e3eadd",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #5b7055 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#5b7055",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #956721 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#956721",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #edf2e7 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf2e7",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #59764f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#59764f",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #5f7358 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#5f7358",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #fbf5e9 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#fbf5e9",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #eadfc4 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#eadfc4",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #765727 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#765727",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #85652f is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#85652f",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #e2eadd is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#e2eadd",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "Undocumented color #5c7353 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#5c7353",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "border-radius: 5px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "5px",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "border-radius: 14px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "14px",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/cartao-animal.css",
+    "line": 1,
+    "snippet": "font-size: 24px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "24px",
+    "importedBy": [
+      "CartaoAnimal.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/secao-recolhivel.css",
+    "line": 1,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "SecaoRecolhivel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/secao-recolhivel.css",
+    "line": 5,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "SecaoRecolhivel.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/components/secao-recolhivel.css",
+    "line": 54,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "SecaoRecolhivel.tsx"
+    ]
+  }
+]

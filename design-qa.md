@@ -129,3 +129,61 @@ Revisão independente corrigiu rótulo do período nutricional, referência/cont
 Validação: suíte completa do cliente com 1.444 testes; reexecuções focadas após integração com 32 e 47 testes; agente de custos executou 182 testes backend e 26 client; cálculo do resumo clínico com 12 testes. Builds de cliente e servidor passaram. Build frontend conserva aviso de bundle acima de 500 kB. `git diff --check` passou. Roteiro manual atualizado para 176 casos, com validação offline de persistência/importação/exportação e sem alterar marcações existentes.
 
 Sem escrita no banco, migrations, recarga de seed, cópia ou backup. Apenas consultas no ambiente local existente; R2 continua pendente. Validação visual pontual não substitui homologação manual completa, nem comprova execução de ações clínicas ou financeiras.
+
+
+---
+
+# Telas entregues após 18/10 — alertas, bezerreiro, nutrição mensal, leite V5, relatórios, ficha e busca — 03/11/2026
+
+final result: passed
+
+## Referência e evidência
+
+Telas sem registro desde a bateria de 18/10 e as que mudaram depois dela: Central de alertas e participantes; regras e programações sanitárias (Configurações › Sanidade); Agenda de Sanidade; módulo Bezerreiro (Animais, Alimentação, Colostragem, Sanidade, Custos, Acompanhamento) e Configurações › Bezerreiro e colostro; Nutrição mensal (Fechamentos, Alertas) e Configurações › Nutrição › Modelo e prazo de fechamento; Leite V5 fora das ordenhas (Vendas, Estoque, Alimentação e descarte/Casa e Funcionários); Relatórios da Pecuária (partos e catálogo); ficha do animal (Geral, Produção, Reprodução e auditoria, reorganizadas por #344/#348) e busca global.
+
+Referências aprovadas: `docs/design/alertas/mockup-v1/capturas/feedback-user-1888-central.png`, `feedback-mobile-central.png` e `agenda-desktop-mes.png`; `docs/design/alertas/mockup-configuracao/capturas/`; prévia `docs/design/bezerreiro/index.html` (`#animais`, `#colostragem`); `docs/design/nutricao/mockup-fechamento.html`; `client/mockups/busca-global/desktop.png`; `client/mockups/catalogo-relatorios`; direção visual vigente `docs/design/caderno-de-campo.md` (02/11), que prevalece sobre paleta e tipografia dos mockups anteriores. As prévias HTML foram servidas localmente e capturadas no mesmo viewport.
+
+Evidências em `output/auditoria-ui-2026-11-03/`: capturas `NN-*-desktop.png`, `NN-*-mobile.png`, pós-correção `*-final.png`, referências `ref-*.png` e o registro de trabalho `achados.md`. Desktop 1440 × 1050 e celular 390 × 844 (touch), densidade 1, em Chrome isolado via DevTools com sessão local do dono; escopo Sítio principal, exceto a primeira captura da central (Consolidado). Algumas capturas são de página inteira: nelas a lateral fixa termina na altura do viewport, artefato da captura e não da página. Dados da seed única local, inclusive os cenários novos de 03/11; não se escreveram fatos para produzir aparência.
+
+## Cinco superfícies de fidelidade
+
+| Superfície | Resultado |
+| --- | --- |
+| Composição e hierarquia | Central, agenda, bezerreiro e configuração da nutrição conservam a composição das referências (barra de consulta, situações, tabela horizontal, detalhe lateral, abas por rotina). Corrigidos critérios de transição sem agrupamento por fase e configuração agendada invisível. |
+| Tipografia | Public Sans e números tabulares do caderno em todas as telas. Removidos textos técnicos visíveis: enums crus no catálogo, nomes de entidades na auditoria da ficha, UUID da pesagem na secagem. |
+| Espaçamento e densidade | Ações empilhadas na colostragem (linhas de 160–200 px) e nas programações (≈110 px) voltaram a uma linha (≈64 px). Cabeçalho do Leite em uma linha a 1440 px. Listas do Leite abrem em tabela. |
+| Cor e superfícies | Tokens do caderno; marcador turquesa nas abas. Ações indisponíveis deixaram de aparecer como botões desabilitados de aparência primária. |
+| Imagens e ícones | Ícone em caixa ao lado do título do Leite e folha no título da Nutrição removidos, conforme o caderno. Ficha mantém a identidade da vaca, fora da regra. |
+
+## Achados e correções
+
+P0/P1: nenhum. P2 corrigidos:
+
+- **Central de alertas:** situações sem contagem (a referência mostra quantidades). A consulta passa a devolver `cuidadosPorDisposicao` com os mesmos filtros (sem consulta extra no histórico); os chips mostram "Demandam atenção (n)" e conservam a última contagem durante o recarregamento.
+- **Programações sanitárias:** coluna Programação com ≈120 px e ações empilhadas; larguras de referência e ações à direita.
+- **Bezerreiro › Colostragem:** ações em coluna dentro da célula e ações sem efeito exibidas desabilitadas; ações em linha a partir de 900 px e Destinar/Enriquecer/Fornecer só com saldo livre.
+- **Bezerreiro › Custos:** "Alimentação registrada R$ 0,00" com 26 pendências; rótulo "Alimentação · custo conhecido" e contagem de pendências a apurar.
+- **Configurações › Bezerreiro:** nome da fase ocupava uma célula do grid; `fieldset`/`legend` por fase em três colunas (uma no celular).
+- **Configurações › Nutrição:** configuração agendada não aparecia; linha "Agendada: … a partir de". No celular, painéis e tabela de configurações cortados à direita (até 447 px); grid limitado e tabela com rolagem própria.
+- **Leite V5:** ícone de título fora da regra do caderno; ações do cabeçalho quebrando linha a 1440 px; listas genéricas abrindo em cartões. `ListaConsultaLeite` passa a ter padrão tabela, com `padrao="visual"` explícito; Ordenhas conservam cartões pelo controle próprio e preferências salvas continuam valendo.
+- **Relatórios:** enums crus ("LEITE") no catálogo; tradução de enums conhecidos do rebanho em `formatarCelula`, sem alterar siglas e códigos. Seletor de relatório 6 px além da tela no celular; agora trunca.
+- **Ficha do animal:** auditoria com nomes técnicos de entidades novas (levantadas no banco local: pesagem da secagem, colostro, necessidade sanitária, medição/qualidade/destino do leite, bezerreiro); rótulos no registro do servidor, sem colocar bezerreiro no eixo Nutrição, que tem filtro próprio de participação. UUID da pesagem removido do bloco de peso na secagem.
+- **Busca global:** contexto "Sítio selecionado" sem nome; o nome do sítio ativo é buscado ao abrir.
+
+Dado da seed, não da interface: as fases do bezerreiro tinham identidades de oferta distintas, gerando "Oferta 3" e total de 200% na configuração. A seed passou a usar a lista única de ofertas, como a tela de Configurações; o banco local conserva a versão anterior, porque fatos não são apagados.
+
+P3 abertos (detalhe em `achados.md`): chips longos quebrando no celular; ordenação "Nome A–Z" e resumo por bezerro da colostragem ausentes; horário estimado sem marcação; paginação e seletor nativo no estado vazio da nutrição mensal; dois estados vazios em Vendas; "Custo a apurar" em litros; concordância "1 atividades/1 cuidados"; busca de partos sem lupa; anel de foco duplo e retorno de foco ao body na busca global; botões do cabeçalho do Leite a 246 px no celular (pré-existente); "Cancelar programação" exibido com oferta confirmada (o servidor recusa).
+
+## Interações e validação
+
+Navegador: troca de abas e seções, filtros de situação, "Ver animais", Ctrl+K/Esc na busca, clique de aba por teclado na ficha (hash atualizado), consultas de colostro, custos e acompanhamento. Overflow global medido em 1440 e 390 px nas telas auditadas: nenhum transbordamento de página; elementos fora da área sem rolagem própria foram corrigidos na configuração da nutrição e no catálogo. Nenhum lançamento, estorno, ativação ou decisão foi confirmado durante a inspeção.
+
+A nutrição mensal fica atrás de `NUTRICAO_MENSAL_ENABLED`. O servidor local foi reiniciado com a flag só no processo, sem alterar `.env`; o processamento automático continua desligado e a tela informa isso.
+
+Testes: suíte completa do cliente com 2.649 testes em 400 arquivos, executada também depois da última correção; focados de bezerreiro (61), nutrição (97), leite (242), reprodução (442), relatórios (61), alertas (39) e busca/App (48), contagens sobrepostas. Servidor: 3.317 testes aprovados e 340 pulados. 12 arquivos de integração/legado não carregam sem `DATABASE_URL` no ambiente de teste, independentemente desta entrega. Builds de cliente e servidor aprovados (aviso conhecido de bundle acima de 500 kB); `seed:typecheck` e `git diff --check` passaram.
+
+## Limites e preservação
+
+Somente o banco local `fazendinha_seedatev3`, por consultas, além da sessão de auditoria criada e removida ao final. Sem migrations, recarga de seed, backup ou banco extra; R2 pendente. Leitor de tela, zoom real de 200%, Safari e dispositivos físicos não foram conferidos. As telas de Coletas, Qualidade, Produção e Configurações do Leite, Indicadores reprodutivos, a montagem de relatório e os formulários de baixa histórica, toque de aptidão e encerramento de lactação não foram abertos nesta bateria e ficam para a próxima. A validação visual não substitui a homologação manual nem comprova a execução de ações clínicas, financeiras ou de estoque.
+
+final result: passed

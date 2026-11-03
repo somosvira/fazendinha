@@ -6,3 +6,5 @@
 p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(--border);border-radius:10px;background:var(--bg-card-2,var(--muted));text-align:center;line-height:1.5}
 /* A regra geral de inputs do bezerreiro acima tem especificidade maior que a da BuscaLista e cobria o espaço da lupa. */
 .bezerreiro label.busca-lista>input:not([type=checkbox]){padding-left:38px}
+.bezerreiro fieldset.bez-criterios{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:20px}.bez-criterios legend{font-size:15px;font-weight:700;margin-bottom:12px;padding:0}@media(max-width:600px){.bezerreiro fieldset.bez-criterios{grid-template-columns:1fr}}
+@media(min-width:900px){.bezerreiro td .bez-acoes{flex-wrap:nowrap;gap:8px;justify-content:flex-end}}

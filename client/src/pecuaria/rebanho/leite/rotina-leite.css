@@ -74,3 +74,5 @@
 }
 /* Fora de painel, o vazio acompanha a largura do conteúdo vizinho. */
 .leite-rotina-reformulada .fin-vazio,.leite-superficie .fin-vazio,.leite-grafico-producao .fin-vazio{margin-inline:0}
+/* Títulos curtos das rotinas: a identidade cede espaço às ações do cabeçalho em vez de quebrá-las. */
+@media(min-width:801px){.leite-rotina-reformulada .fin-cabecalho-identidade{flex:1 1 auto}}

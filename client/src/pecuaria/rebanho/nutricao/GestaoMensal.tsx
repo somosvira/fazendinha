@@ -14,7 +14,6 @@ import {
   type DistribuicaoPartida,
 } from "../../../estoque/SelecaoPartidas";
 import * as api from "./mensal-api";
-import { LinkNutricional } from "./componentes";
 import "./mensal.css";
 import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
 const quantidade = (v: string) =>
@@ -114,7 +113,6 @@ export function GestaoMensal({
     navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
   return (
     <div className="nutricao-mensal">
-      {vista !== "configuracao" && <div className="mensal-acoes"><LinkNutricional className="nutricao-botao" href="/configuracoes/pecuaria/nutricao/fechamento">Configurar nutrição</LinkNutricional></div>}
       {vista === "alertas" && <LotesSemDieta podeLancar={podeLancar} />}
       <ErrorBox erro={erro} />
       {erro && (

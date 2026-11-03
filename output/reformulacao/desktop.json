@@ -1,0 +1,127 @@
+[
+  {
+    "tela": "ordenhas",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Ordenhas "
+    ],
+    "erros": []
+  },
+  {
+    "tela": "producao",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Produção ",
+      "Produção registrada ",
+      "Custos da produção"
+    ],
+    "erros": []
+  },
+  {
+    "tela": "sanidade",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Sanidade",
+      "Casos abertos por doença",
+      "Retenção de placenta",
+      "Mastite",
+      "Mastite",
+      "Mastite",
+      "Mastite",
+      "Mastite"
+    ],
+    "erros": []
+  },
+  {
+    "tela": "nutricao",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Nutrição "
+    ],
+    "erros": []
+  },
+  {
+    "tela": "visitas",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Visitas veterinárias",
+      "Visitas em aberto",
+      "Visitas encerradas"
+    ],
+    "erros": []
+  },
+  {
+    "tela": "relatorios",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [],
+    "erros": []
+  },
+  {
+    "tela": "estoque",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Estoque",
+      "Agulhas demonstrativas",
+      "Antisséptico sintético de teste",
+      "Bicarbonato demonstrativo",
+      "Detergente de ordenha demonstrativo",
+      "Embrião sintético — seed única",
+      "Farelo de soja demonstrativo",
+      "Feno demonstrativo"
+    ],
+    "erros": []
+  },
+  {
+    "tela": "sitios",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": false,
+    "titulos": [],
+    "erros": []
+  },
+  {
+    "tela": "acessos",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": true,
+    "titulos": [
+      "Acessos",
+      "Equipe e convidados"
+    ],
+    "erros": []
+  },
+  {
+    "tela": "gerencial",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": false,
+    "titulos": [],
+    "erros": []
+  },
+  {
+    "tela": "financeiro",
+    "largura": 1440,
+    "conteudo": 1440,
+    "design": false,
+    "titulos": [
+      "Contas e extratos",
+      "Distribuição do saldo entre as contas incluídas",
+      "Entradas e saídas"
+    ],
+    "erros": []
+  }
+]

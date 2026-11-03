@@ -1,0 +1,114 @@
+{
+  "url": "http://localhost:41875/pecuaria/leite?leiteSecao=relatorios",
+  "styles": [],
+  "nodes": [
+    {
+      "s": ".rel-periodo-compacto",
+      "r": {
+        "x": 256,
+        "y": 164,
+        "width": 1088,
+        "height": 178,
+        "top": 164,
+        "right": 1344,
+        "bottom": 342,
+        "left": 256
+      },
+      "display": "flex",
+      "padding": "24px 0px",
+      "gap": "24px",
+      "font": "14px",
+      "flexDirection": "column"
+    },
+    {
+      "s": ".rel-resumo",
+      "r": {
+        "x": 256,
+        "y": 480,
+        "width": 1088,
+        "height": 84,
+        "top": 480,
+        "right": 1344,
+        "bottom": 564,
+        "left": 256
+      },
+      "display": "block",
+      "padding": "0px",
+      "gap": "normal",
+      "font": "14px",
+      "flexDirection": "row"
+    },
+    {
+      "s": ".rel-resumo span",
+      "r": {
+        "x": 256,
+        "y": 481,
+        "width": 122.9609375,
+        "height": 18.5,
+        "top": 481,
+        "right": 378.9609375,
+        "bottom": 499.5,
+        "left": 256
+      },
+      "display": "inline",
+      "padding": "0px",
+      "gap": "normal",
+      "font": "14px",
+      "flexDirection": "row"
+    },
+    {
+      "s": ".rel-resumo strong",
+      "r": {
+        "x": 378.9609375,
+        "y": 481,
+        "width": 57.6328125,
+        "height": 18.5,
+        "top": 481,
+        "right": 436.59375,
+        "bottom": 499.5,
+        "left": 378.9609375
+      },
+      "display": "inline",
+      "padding": "0px",
+      "gap": "normal",
+      "font": "14px",
+      "flexDirection": "row"
+    },
+    {
+      "s": ".rel-leite-grafico",
+      "r": {
+        "x": 256,
+        "y": 590,
+        "width": 1088,
+        "height": 576.890625,
+        "top": 590,
+        "right": 1344,
+        "bottom": 1166.890625,
+        "left": 256
+      },
+      "display": "block",
+      "padding": "0px",
+      "gap": "normal",
+      "font": "14px",
+      "flexDirection": "row"
+    },
+    {
+      "s": ".rel-resultado-topo",
+      "r": {
+        "x": 256,
+        "y": 428,
+        "width": 1088,
+        "height": 40,
+        "top": 428,
+        "right": 1344,
+        "bottom": 468,
+        "left": 256
+      },
+      "display": "block",
+      "padding": "0px",
+      "gap": "normal",
+      "font": "14px",
+      "flexDirection": "row"
+    }
+  ]
+}

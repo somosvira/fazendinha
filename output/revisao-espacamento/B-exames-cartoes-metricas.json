@@ -1,0 +1,90 @@
+{
+  "url": "http://localhost:41875/pecuaria/sanidade?aba=exames",
+  "pageHeight": 9931,
+  "cards": 37,
+  "heights": [
+    338,
+    338,
+    317,
+    317,
+    317,
+    317,
+    338,
+    338,
+    338,
+    338,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    338,
+    338,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557,
+    557
+  ],
+  "raw": [
+    {
+      "text": "DEV-017 · Lactantes 17\nV5 · Qualidade demonstrativa\nResultado informado\nColeta\n20/10/2026\nResultado\nContagem de células somáticas: 240 · Contagem padrão em placas: 18 · Gordura: 3.8 · Proteína: 3.3 · Nitrogênio ureico: 12 · Extrato seco: 12.4 · Lactose: 4.7 · Observação: Demonstração sintética V5; não representa produção real nem recomendação técnica. · Amostra íntegra: Sim · Método demonstrativo: ROTINA",
+      "r": {
+        "x": 269,
+        "y": 2057.3984375,
+        "width": 522,
+        "height": 557,
+        "top": 2057.3984375,
+        "right": 791,
+        "bottom": 2614.3984375,
+        "left": 269
+      },
+      "facts": [
+        {
+          "r": {
+            "x": 291,
+            "y": 2177.3984375,
+            "width": 231,
+            "height": 339,
+            "top": 2177.3984375,
+            "right": 522,
+            "bottom": 2516.3984375,
+            "left": 291
+          },
+          "font": "16px",
+          "text": "Coleta\n20/10/2026"
+        },
+        {
+          "r": {
+            "x": 538,
+            "y": 2177.3984375,
+            "width": 231,
+            "height": 339,
+            "top": 2177.3984375,
+            "right": 769,
+            "bottom": 2516.3984375,
+            "left": 538
+          },
+          "font": "16px",
+          "text": "Resultado\nContagem de células somáticas: 240 · Contagem padrão em placas: 18 · Gordura: 3.8 · Proteína: 3.3 · Nitrogênio ureico: 12 · Extrato seco: 12.4 · Lactose: 4.7 · Observação: Demonstração sintética V5; não representa produção real nem recomendação técnica. · Amostra íntegra: Sim · Método demonstrativo: ROTINA"
+        }
+      ]
+    }
+  ],
+  "helps": []
+}

@@ -315,3 +315,12 @@
  .nutricao-receitas > .consulta-barra .consulta-acoes { margin-left:0; }
 }
 @media (max-width: 767px) { .nutricao-link { display: inline-flex; align-items: center; min-height: 32px; } }
+.nutricao-cabecalho-acoes{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.nutricao-formas-fechamento { margin-top: 1.25rem; }
+.nutricao-formas-fechamento h3 { font-size: 1rem; font-weight: 600; }
+.nutricao-formas-fechamento ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .75rem; margin-top: .75rem; }
+.nutricao-formas-fechamento li { border: 1px solid var(--border); border-radius: 8px; padding: .875rem 1rem; color: var(--ink-3); }
+.nutricao-formas-fechamento li[data-aplicavel] { border-color: var(--pos); background: var(--bg-card); color: var(--ink); }
+.nutricao-formas-fechamento li > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.nutricao-formas-fechamento p { margin-top: .4rem; font-size: .875rem; line-height: 1.6; }
+.nutricao-lote-fechamentos > h2 { margin-bottom: .75rem; }

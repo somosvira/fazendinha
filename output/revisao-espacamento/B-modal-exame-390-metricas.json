@@ -1,0 +1,22 @@
+{
+  "url": "http://localhost:41875/pecuaria/sanidade?aba=exames",
+  "visibility": "visible",
+  "dialog": true,
+  "title": "Registrar exame",
+  "r": {
+    "x": 16,
+    "y": 12,
+    "width": 358,
+    "height": 820,
+    "top": 12,
+    "right": 374,
+    "bottom": 832,
+    "left": 16
+  },
+  "padding": "0px",
+  "opacity": "1",
+  "scroll": 819,
+  "client": 818,
+  "text": "Registrar exame\n\nRegistrar exame\n\nAnimal e data do registro\nData\n*\nBuscar animal\nAnimal\nSelecione\nSelecione\nDEV-001 · Lactantes 1\nDEV-002 · Lactantes 2\nDEV-003 · Lactantes 3\nDEV-004 · Lactantes 4\nDEV-005 · Lactantes 5\nDEV-006 · Lactantes 6\nDEV-007 · Lactantes 7\nDEV-008 · Lactantes 8\nDEV-009 · Lactantes 9\nDEV-010 · Lactantes 10\nDEV-011 · Lactantes 11\nDEV-012 · Lactantes 12\nDEV-013 · Lactantes 13\nDEV-014 · Lactantes 14\nDEV-015 · Lactantes 15\nDEV-016 · Lactantes 16\nDEV-017 · Lactantes 17\nDEV-018 · Lactantes 18\nDEV-019 · Lactantes 19\nDEV-020 · Lactantes 20\nDEV-021 · Lactantes 21\nDEV-022 · Lactantes 22\nDEV-023 · Lactantes 23\nDEV-024 · Lactantes 24\nDEV-025 · Lactantes 25\nDEV-026 · Lactantes 26\nDEV-027 · Lactantes 27\nDEV-028 · Lactantes 28\nDEV-029 · Lactantes 29\nDEV-030 · Lactantes 30\nDEV-031 · Lactantes 31\nDEV-032 · Lactantes 32\nDEV-033 · Lactantes 33\nDEV-034 · Lactantes 34\nDEV-035 · Lactantes 35\nDEV-036 · Lactantes 36\nDEV-037 · Secas 37\nDEV-038 · Secas 38\nDEV-039 · Secas 39\nDEV-040 · Secas 40\nDEV-041 · Secas 41\nDEV-042 · Secas 42\nDEV-043 · Secas 43\nDEV-044 · Secas 44\nDEV-045 · Secas 45\nDEV-046 · Secas 46\nDEV-047 · Secas 47\nDEV-048 · Secas 48\nDEV-049 · Novilhas 49\nDEV-050 · Novilhas 50\nDEV-051 · Novilhas 51\nDEV-052 · Novilhas 52\nDEV-053 · Novilhas 53\nDEV-054 · Novilhas 54\nDEV-055 · Novilhas 55\nDEV-056 · Novilhas 56\nDEV-057 · Novilhas 57\nDEV-058 · Novilhas 58\nDEV-059 · Reprodução 59\nDEV-060 · Reprodução 60\nDEV-061 · Reprodução 61\nDEV-062 · Reprodução 62\nDEV-063 · Reprodução 63\nDEV-064 · Reprodução 64\nDEV-065 · Cria 65\nDEV-066 · Cria 66\nDEV-067 · Cria 67\nDEV-068 · Cria 68\nDEV-069 · Cria 69\nDEV-070 · Cria 70\nDEV-071 · Cria 71\nDEV-072 · Cria 72\n\nSítio na data: Não localizado\n\nExame e resultado\nTipo de exame\nSelecione\nSelecione\nBrucelose\nCetose subclínica\nEscore corporal · avaliação estruturada\nHipocalcemia\nTriagem demonstrativa\nTuberculose\nServiço associado (opcional)\nSem Serviço\nSem Serviço\nOcorrência associada (opcional)\nSem ocorrência\nSem ocorrência\nResponsável (opcional)\nResultado (opcional)\nCancelar\nConfirmar\nFechar",
+  "overflows": []
+}

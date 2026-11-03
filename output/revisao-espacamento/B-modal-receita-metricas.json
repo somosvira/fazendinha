@@ -1,0 +1,79 @@
+{
+  "url": "http://localhost:41875/pecuaria/nutricao?aba=receitas&formReceita=nova",
+  "visibility": "visible",
+  "dialog": true,
+  "title": "Nova receita",
+  "r": {
+    "x": 208,
+    "y": 172.30078125,
+    "width": 1024,
+    "height": 655.3984375,
+    "top": 172.30078125,
+    "right": 1232,
+    "bottom": 827.69921875,
+    "left": 208
+  },
+  "padding": "0px",
+  "opacity": "1",
+  "scroll": 653,
+  "client": 653,
+  "text": "Nova receita\n\nNova receita\n\nSalve o rascunho e publique a versão para usá-la nos lotes. \n\nIdentificação da receita\nNome da dieta\nIngredientes por cabeça/dia \nIngrediente 1\nSelecione o produto\nSelecione o produto\nBicarbonato demonstrativo (KG)\nFarelo de soja demonstrativo (KG)\nFeno demonstrativo (KG)\nMilho moído demonstrativo (KG)\nMineral demonstrativo (KG)\nNúcleo mineral demonstrativo (KG)\nPolpa cítrica demonstrativa (KG)\nRação lactação demonstrativa (KG)\nSal comum demonstrativo (KG)\nSilagem demonstrativa (KG)\nV5 · Leite comercial (L)\nV5 · Leite nao-comercial (L)\nQuantidade por cabeça/dia · ingrediente 1\n—\nRemover\nAdicionar ingrediente\nCancelar\nCriar rascunho\nFechar",
+  "children": [
+    {
+      "tag": "DIV",
+      "r": {
+        "x": 209,
+        "y": 173.30078125,
+        "width": 1022,
+        "height": 77,
+        "top": 173.30078125,
+        "right": 1231,
+        "bottom": 250.30078125,
+        "left": 209
+      },
+      "padding": "20px 48px 20px 20px"
+    },
+    {
+      "tag": "DIV",
+      "r": {
+        "x": 209,
+        "y": 250.30078125,
+        "width": 1022,
+        "height": 503.3984375,
+        "top": 250.30078125,
+        "right": 1231,
+        "bottom": 753.69921875,
+        "left": 209
+      },
+      "padding": "16px"
+    },
+    {
+      "tag": "DIV",
+      "r": {
+        "x": 209,
+        "y": 753.69921875,
+        "width": 1022,
+        "height": 73,
+        "top": 753.69921875,
+        "right": 1231,
+        "bottom": 826.69921875,
+        "left": 209
+      },
+      "padding": "16px"
+    },
+    {
+      "tag": "BUTTON",
+      "r": {
+        "x": 1175,
+        "y": 189.30078125,
+        "width": 40,
+        "height": 40,
+        "top": 189.30078125,
+        "right": 1215,
+        "bottom": 229.30078125,
+        "left": 1175
+      },
+      "padding": "0px"
+    }
+  ]
+}

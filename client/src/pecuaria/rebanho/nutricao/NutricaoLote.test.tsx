@@ -19,7 +19,7 @@ describe("nutrição do lote", () => {
     const tela = render(<NutricaoLote loteId="lote" podeLancar />);
     const trocar = await screen.findByRole("link", { name: "Trocar dieta" });
     expect(trocar.getAttribute("href")).toContain("acao=atribuir");
-    expect(screen.getByRole("link", { name: "Conferir consumo" }).getAttribute("href")).toContain("acao=consumo");
+    expect(screen.getByRole("link", { name: "Novo fechamento" }).getAttribute("href")).toContain("acao=consumo");
     tela.unmount();
     vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, vigente: null, programada: null });
     const consulta = render(<NutricaoLote loteId="lote" podeLancar={false} />);

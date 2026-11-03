@@ -1,0 +1,228 @@
+[
+  {
+    "tela": "acessos-modal",
+    "acaoEncontrada": false,
+    "desktop": {
+      "dialog": [],
+      "error": false
+    }
+  },
+  {
+    "tela": "sitio-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Novo sítio",
+          "w": 512,
+          "x": 464,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        }
+      ]
+    }
+  },
+  {
+    "tela": "produto-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Novo produto",
+          "w": 768,
+          "x": 336,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        }
+      ]
+    }
+  },
+  {
+    "tela": "receita-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Nova receita",
+          "w": 1024,
+          "x": 208,
+          "overflow": false
+        },
+        {
+          "w": 320,
+          "x": 469,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        },
+        {
+          "w": 320,
+          "x": 0,
+          "overflow": false
+        }
+      ]
+    }
+  },
+  {
+    "tela": "protocolo-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Como deseja começar?",
+          "w": 1152,
+          "x": 144,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": true
+        }
+      ]
+    }
+  },
+  {
+    "tela": "builder-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Configurar relatório",
+          "w": 900,
+          "x": 270,
+          "overflow": false
+        },
+        {
+          "w": 320,
+          "x": 307,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        },
+        {
+          "w": 320,
+          "x": -54,
+          "overflow": false
+        }
+      ]
+    }
+  },
+  {
+    "tela": "ciclo-modal",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Iniciar ciclo de protocolo",
+          "w": 768,
+          "x": 336,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        }
+      ]
+    }
+  },
+  {
+    "tela": "ordenha-modal",
+    "acaoEncontrada": false,
+    "desktop": {
+      "dialog": [],
+      "error": false
+    }
+  },
+  {
+    "tela": "qualidade-modal",
+    "acaoEncontrada": false,
+    "desktop": {
+      "dialog": [],
+      "error": false
+    }
+  },
+  {
+    "tela": "painel-periodo",
+    "acaoEncontrada": true,
+    "desktop": {
+      "dialog": [
+        {
+          "titulo": "Período do painel",
+          "w": 520,
+          "x": 460,
+          "overflow": false
+        }
+      ],
+      "error": false
+    },
+    "mobile": {
+      "w": 390,
+      "doc": 390,
+      "dialogs": [
+        {
+          "w": 358,
+          "x": 16,
+          "overflow": false
+        }
+      ]
+    }
+  }
+]

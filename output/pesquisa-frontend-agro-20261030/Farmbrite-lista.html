@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+
+<html >
+	<head>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<title>Livestock Dashboard | Farmbrite - Help Center</title>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="description" content="Find critical herd information on your Farmbrite Livestock Dashboard - Grazing, births, charts, and more.">
+    
+		<link rel="stylesheet" href="https://d3s179bfexmwfe.cloudfront.net/min/css/koFontawesome-cbbff8bfba.css" type="text/css">
+            <link rel="stylesheet" href="https://d3s179bfexmwfe.cloudfront.net/min/css/ko-c7774e282b.css" type="text/css">
+		<link href="https://d1whm9yla4elqy.cloudfront.net/open-sans/open-sans.css" rel="stylesheet" type="text/css">
+		<style type="text/css">.documentation-body{background-color:#ffffff}.hg-classic-theme .documentation-categories{background-color:#ffffff}.hg-site .hg-header{background-color:#ffffff}.hg-widget-page .pager{background-color:#ffffff}.hg-site > .navbar{color:#444444}.navbar-default .navbar-nav > li > a.hg-header-link{color:#444444}.toc-toggle{color:#444444}.navbar-default .navbar-toggle:before{color:#444444}.cat-icon{color:#222222}.home-icon{color:#222222}.alt-icon{color:#222222}.form-group.focus .form-control{color:#222222}.form-group.focus .select2-search input[type=text]{color:#222222}.hg-site:not(.hg-modern-theme) .documentation-categories li a{color:#212121}.documentation-article h1, .cke_editable h1{color:#212121}.documentation-article h2, .cke_editable h2{color:#212121}.documentation-article h3, .cke_editable h3{color:#212121}.documentation-article h4, .cke_editable h4{color:#212121}.documentation-article h5, .cke_editable h5{color:#212121}.documentation-article h6, .cke_editable h6{color:#212121}.documentation-article h7, .cke_editable h7{color:#212121}.navbar-default{border-bottom-color:#909090}.documentation-outter-list > .article-container{border-bottom-color:#909090}.level-0{border-bottom-color:#909090}.article-container:hover{background-color:rgb(216,216,216) }.category-link-container:hover{background-color:rgb(216,216,216) }.documentation-categories li a:hover{background-color:rgb(216,216,216) }.category-link-container.active{background-color:rgb(216,216,216) }.documentation-categories li.active{background-color:rgb(216,216,216) }.form-control:focus{border-color:#222222 }.select2-search input[type=text]:focus{border-color:#222222 }.btn-danger{background-color:#222222 }.hg-ratings .hg-helpful{color:#222222 }.hg-search-bar input:focus + .input-group-btn .btn{border-color:#222222 }.hg-minimalist-theme a:not(.btn):hover, .hg-minimalist-theme a:not(.btn):hover, .hg-minimalist-theme a:not(.btn):focus{color:#222222 }.faq-cat-container:hover a{color:#222222 }.ko-article-actions a{color:#222222 }.faq-cat-panel:hover{border-color:#222222 }.btn-success{color:#444444 }.btn-primary{color:#444444 }.btn-danger{color:#444444 }.btn-success:hover{color:#444444 }.btn-primary:hover{color:#444444 }.btn-danger:hover{color:#444444 }.navbar-default .navbar-toggle:hover:before, .navbar-default .navbar-toggle:focus:before{color:#444444 }.btn-success{background-color:rgb(34,34,34) }.btn-primary{background-color:rgb(34,34,34) }.hg-ratings .hg-unhelpful{color:rgb(34,34,34) }.hg-minimalist-theme a:not(.btn){color:rgb(-6,-6,-6) }.btn-primary:hover{background-color:rgb(54,54,54) }.btn-primary:focus{background-color:rgb(54,54,54) }.btn-primary:active{background-color:rgb(54,54,54) }.btn-success:hover{background-color:rgb(54,54,54) }.btn-success:focus{background-color:rgb(54,54,54) }.btn-success:active{background-color:rgb(54,54,54) }.hg-ratings .hg-unhelpful:hover{color:rgb(54,54,54) }.ko-article-actions a:hover{color:rgb(54,54,54) }.pager li>a:hover, .pager li>span:hover, .pager li>a:focus, .pager li>span:focus{background-color:rgb(54,54,54) }.btn-danger:hover{background-color:rgb(54,54,54) }.btn-danger:focus{background-color:rgb(54,54,54) }.btn-danger:active{background-color:rgb(54,54,54) }.hg-ratings .hg-helpful:hover{color:rgb(54,54,54) }.documentation-article h1, .cke_editable h1{font-family:Open Sans;font-size:24px;font-weight:700;}.documentation-article h2, .cke_editable h2{font-family:Open Sans;font-size:18px;font-weight:700;}.documentation-article h3, .cke_editable h3{font-family:Open Sans;font-size:12px;font-weight:700;}.documentation-article h4, .cke_editable h4{font-family:Open Sans;font-size:12px;font-weight:700;}.documentation-article h5, .cke_editable h5{font-family:Open Sans;font-size:12px;font-weight:700;}.documentation-article h6, .cke_editable h6{font-family:Open Sans;font-size:12px;font-weight:700;}.documentation-article h7, .cke_editable h7{font-family:Open Sans;font-size:12px;font-weight:700;}.hg-article-body, .hg-article-body p, .cke_editable, .cke_editable p{font-family:Open Sans;font-size:16px;font-weight:400;}.hg-site .hg-project-name, body{font-family:Open Sans;}.hg-site{
+  background: #FFF;
+	max-width: 1200px;
+  margin: 0 auto;
+}
+.navbar-default{
+  border:none;
+}
+.navbar-default .navbar-nav>li>a{
+ color: #333; 
+}
+.btn.btn-primary{
+  background: rgb(34,34,34);
+  color:#FFF;
+}
+.btn.btn-default{
+  background: #FFF;
+  color:#222;
+  border: 1px solid #DDD;
+}
+.hg-site-body .documentation-article{
+  padding-top:0;
+  box-shadow:none;
+  -webkit-box-shadow:none;
+}
+.hg-minimalist-theme a:not(.btn), a,
+.navbar-default .navbar-nav>li>a:hover,
+.navbar-default .navbar-nav>li>a:focus{
+  color:#337ab7;
+}
+.hg-minimalist-theme .navbar-brand{
+  padding: 3px 15px 10px 10px;
+}
+.hg-minimalist-theme .navbar-brand .documentation-logo-image{
+  height:50px;
+}
+a:hover,
+a:focus{
+  color:#337ab7;
+}
+.stat-list{
+  padding-left:0;
+}
+.stat-list li {
+  padding: 4px 0;
+  font-size: 14px;
+}
+.hg-search-bar .input-group{
+  box-shadow: 0px 2px 20px rgb(0 0 0 / 5%); 
+}
+.hg-search-bar input{
+  border: 1px solid #bdc3c7;
+}
+.hg-search-bar .input-group-btn .btn{
+  background:#FFF;
+  color:#ccc;
+  border: 1px solid #bdc3c7;
+  border-left:none;
+}
+.documentation-article h1{
+  font-size:40px;
+}
+.documentation-article h2{
+  font-size: 24px;
+}
+.documentation-article h3{
+  font-size: 20px;
+}
+.documentation-article h4{
+  font-size: 18px;
+  margin-top: 9px;
+}
+.hg-minimalist-theme .documentation-article .fr-img-caption .fr-img-wrap a>span{
+  background: #222;
+}
+.documentation-article span.fr-img-caption{
+  border:none;
+}
+/***CATEGORY PAGE***/
+.faq-nav-wrapper .article-block{
+  font-size:0.8em;
+  color:#777;
+	margin-bottom: 5px;
+  border-bottom: 1px solid #DDD;
+  padding-bottom: 10px;
+}
+.faq-nav-wrapper .article-block a{
+  font-size:18px;
+}
+/***CATEGORY PAGE***/
+/***SIDE NAV***/
+.hg-site .documentation-categories{
+  border-right:none; 
+  background: transparent;
+  /*max-width:300px;*/
+  top:80px;
+  bottom:0;
+  padding-top:30px;
+}
+.hg-site .article-container:hover,
+.hg-site .category-link-container:hover,
+.hg-site .documentation-categories li a:hover{
+  background:none;
+}
+.documentation-category,
+.article-link{
+  font-size:14px;
+}
+.hg-site .documentation-articles li a.article-link{
+  color:#1580A5;
+}
+.hg-site .documentation-categories li a.article-link:hover{
+	color:#1580A5;
+  text-decoration: underline;
+}
+/*.home-icon,
+.category-link-container .cat-icon{
+  font-size:12px;
+  margin-top:2px;
+}*/
+.documentation-outter-list > .article-container{
+  border:none;
+}
+.level-0{
+  border-bottom: none;
+  padding-top:1px;
+  padding-bottom:1px;
+}
+/* Change faq icon */
+.documentation-categories .category-link-container[data-id='61c3686680c372c0467b244f'] .fa-chevron-right:before {
+    content: "\f05a" !important;
+}
+/* Change video tutorials icon */
+.documentation-categories .category-link-container[data-id='66a11b12a6749ee0b10707b9'] .fa-chevron-right:before {
+    content: "\f03d" !important;
+}
+/* Change change what's new icon*/
+.documentation-categories .category-link-container[data-id='6450185e3242c744dc6974f0'] .fa-chevron-right:before {
+    content: "\f005" !important;
+}
+/***SIDE NAV****/
+/***HOME PAGE***/
+.ko-homepage-top{
+  padding: 40px 40px 60px 40px;
+  background: #285b53;
+  border-radius: 15px;
+  margin: 20px 0 0 0;
+}
+.ko-homepage-top h1.hg-article-title{
+  text-align:left;
+  font-weight: 500;
+  color:#FFF;
+}
+.ko-homepage-top .hg-search-bar .form-control{
+  font-size:18px;
+}
+.ko-homepage-top .ko-large-search{
+  margin:0;
+  max-width:100%;
+}
+.ko-homepage-top .hg-search-bar .input-group .input-group-btn .btn{
+    color: #333;
+}
+.hg-classic-theme .ko-homepage-top{
+  margin-left: 0;
+  margin-right: 0;
+}
+.hg-minimalist-theme.hg-home-page a:not(.btn){
+  color:#444;
+}
+.hg-minimalist-theme.hg-home-page a:not(.btn):hover{
+  text-decoration:underline;
+}
+.hg-home-page .hg-article{
+  max-width: 100%; 
+}
+.hg-home-page .hg-article .hg-article-body h2{
+  font-weight:500;
+}
+.hg-home-page .list-unstyled li{
+  margin-bottom:8px;
+}
+.ko-homepage-top .hg-article-title{
+  color: #222;
+  font-size: 42px;
+}
+/*.hg-home-page.hg-1column-layout .hg-article{
+  margin:inherit;
+  max-width: 100%;
+}
+.hg-home-page.hg-classic-theme.hg-2column-layout .hg-article,
+.hg-classic-theme.hg-3column-layout .hg-article{
+  margin-left: 0;
+}
+*/
+/*.home-categories{
+  text-align:left;
+  margin-bottom: 40px;
+}
+.home-categories a{
+  color: #222 !important;
+  font-weight: bold;
+  font-size:20px;
+  display:block;
+}
+.home-categories a:hover,
+.home-categories a:focus{
+  color:#1580A5;
+  text-decoration:underline;
+}
+.home-categories .category-logo{
+  font-size:24px;
+  text-align:left;
+}*/
+/***HOME PAGE***/</style>
+		<script type="text/javascript" charset="utf-8" src="https://d3s179bfexmwfe.cloudfront.net/min/js/kbJquery3-56abf90ae1.js"></script>
+		
+		<link rel="canonical" href="https://help.farmbrite.com/help/livestock-dashboard" /><link href="https://dyzz9obi78pm5.cloudfront.net/app/image/id/61b3c93636cf58277b7b249a/n/favicon-96.png" rel="shortcut icon" type="image/x-icon" />
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-97J79G7BWJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-97J79G7BWJ');
+</script>
+		
+	</head>
+	<body class='hg-site hg-minimalist-theme  hg-article-page hg-basic-child-article hg-2column-layout  '>
+		
+		
+		
+		<nav class="hg-header navbar navbar-default navbar-fixed-top" role="navigation">
+	<div class="ko-nav-wrapper">
+		<div class="navbar-header">
+	<button type="button" class="ko-slideout-left-toggle"><i class="fa fa-bars fa-2x"></i></button>
+	<a class="navbar-brand" href="https://help.farmbrite.com/help" title="Farmbrite"><img class="documentation-logo-image" alt="Knowledge Base Logo" src="//dyzz9obi78pm5.cloudfront.net/app/image/id/61b3c83f36cf58557a7b259a/n/logo.png" /></a>
+	<h1 class="hg-project-name hidden">Farmbrite - Help Center</h1>
+  	<div class="nav-left-searchbar hidden-xs">
+		<form action="/help/search" method="GET" class="hg-search-bar">
+	<div class="input-group">
+				<input type="search" role="search" title="Search" aria-label="Search for articles" class="form-control" placeholder='Search for articles...' name="phrase" />
+		<span class="input-group-btn"><button class="btn btn-default" title="Search" name="Search" aria-label="Search" type="submit"><i class="fa fa-search"></i></button></span>
+	</div>
+</form>
+	</div>
+	<button type="button" class="navbar-toggle toc-toggle pull-left clear-left" data-toggle="collapse" data-target=".documentation-categories">
+		<span class="sr-only">Table of Contents</span>
+		<span class="browse"></span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+	</button>
+	
+	<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+		<span class="sr-only">Toggle navigation</span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+		<span class="icon-bar"></span>
+	</button>
+</div>
+<div class="navbar-collapse collapse" id="navbar-collapse">
+	
+   <ul class="nav navbar-nav">
+        
+    </ul>
+	<ul class="nav navbar-nav navbar-right">
+		<li><form action="/help/search" method="GET" class="hg-search-bar">
+	<div class="input-group">
+				<input type="search" role="search" title="Search" aria-label="Search for articles" class="form-control" placeholder='Search for articles...' name="phrase" />
+		<span class="input-group-btn"><button class="btn btn-default" title="Search" name="Search" aria-label="Search" type="submit"><i class="fa fa-search"></i></button></span>
+	</div>
+</form></li>
+      	<li><a href="https://help.farmbrite.com/help/training">Video Tutorials</a></li>
+		<li><a href="https://farmbrite.atlassian.net/servicedesk/customer/portals">Contact Support</a></li>
+      	<li>
+          <a href="https://app.farmbrite.com/signin">Login</a>
+        </li>
+		<li></li>
+	</ul>
+</div>
+	</div>
+</nav>
+		<div class="documentation-body">
+	<div >
+		<div class="row hg-site-body">
+	<div id="ko-documentation-categories" class="documentation-categories sidebar-nav nav-collapse hide col-md-4 col-lg-3">
+	<ul class="list-unstyled top-outter-list">
+		<li class="category-container search-header nav-header nav-header-sub level-0 hide">
+			<form action="/help/search" method="GET" class="hg-search-bar">
+	<div class="input-group">
+				<input type="search" role="search" title="Search" aria-label="Search for articles" class="form-control" placeholder='Search for articles...' name="phrase" />
+		<span class="input-group-btn"><button class="btn btn-default" title="Search" name="Search" aria-label="Search" type="submit"><i class="fa fa-search"></i></button></span>
+	</div>
+</form>
+		</li>
+	</ul>
+	<ul class="list-unstyled documentation-outter-list" data-level="0">
+		<li data-type="category" class="category-container nav-header nav-header-sub level-0 hide">
+			<div class="category-link-container ">
+				<i class="home-icon fa fa-home"></i><a class="documentation-category" href="/help">Home</a>
+			</div>
+		</li>
+		<li data-type="category" class="category-container nav-header nav-header-sub level-0 hide">
+			<div class="category-link-container ">
+				<i class="home-icon fa fa-book"></i><a class="documentation-category" href="/help/glossary">Glossary</a>
+			</div>
+		</li>
+		<li data-type="article" data-id="61c3642580c372ba427b24ba" class="article-container"><a href="/help/quick-start" class="article-link">Getting Started</a></li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="609c52146e121c506b105dbd"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Fundamentals<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c7ec3448e121c6f308e66ee" class="article-container" external><a href="/help/getting-started-getting-started" rel="noopener noreferrer" target="_blank" class="article-link">Getting Started</a></li><li data-type="article" data-id="620e421949245368687b278c" class="article-container"><a href="/help/farmbrite-glossary" class="article-link">Farmbrite Glossary</a></li><li data-type="article" data-id="5c4f9c2d6e121c51487a6c2f" class="article-container"><a href="/help/dashboard-home" class="article-link">Dashboard (Home)</a></li><li data-type="article" data-id="6ad103419781e42aa30523fc" class="article-container"><a href="/help/customizing-dashboard-columns" class="article-link">Customizing Columns</a></li><li data-type="article" data-id="61f84bce6958c8a45a7b2648" class="article-container"><a href="/help/quick-add-buttons" class="article-link">Quick Add Buttons</a></li><li data-type="article" data-id="5ca3a412ec161c7c06962390" class="article-container"><a href="/help/do-you-support-the-metric-system" class="article-link">Metric Measurements</a></li><li data-type="article" data-id="652806e6b865ac59fe31d054" class="article-container"><a href="/help/can-i-use-farmbrite-in-other-languages" class="article-link">Multi-Language Options</a></li><li data-type="article" data-id="61c3767cce13248c227b253f" class="article-container"><a href="/help/importing-data" class="article-link">Importing Data</a></li><li data-type="article" data-id="61c38440365bac32427b2494" class="article-container"><a href="/help/exporting-data" class="article-link">Exporting Data</a></li><li data-type="article" data-id="655640610d50966f3c02bab4" class="article-container"><a href="/help/custom-fields" class="article-link">Creating Custom Fields</a></li><li data-type="article" data-id="68ac95fbcfd791c971000b09" class="article-container"><a href="/help/bulk-actions" class="article-link">Bulk Actions</a></li><li data-type="article" data-id="646f53376a63c705281503c8" class="article-container"><a href="/help/can-i-delete-multiple-records-at-once" class="article-link">Bulk Deletes</a></li><li data-type="article" data-id="66465dfdf625d033de1761fb" class="article-container"><a href="/help/electronic-id-tags" class="article-link">Electronic ID Tags</a></li><li data-type="article" data-id="5c50c6b28e121c7b6d385104" class="article-container"><a href="/help/qr-codes" class="article-link">QR Codes</a></li><li data-type="article" data-id="61c36a54365bacb52c7b2599" class="article-container"><a href="/help/notes" class="article-link">Adding Notes</a></li><li data-type="article" data-id="60ccfc71ef8f79ee3d7b2455" class="article-container"><a href="/help/filtering-tips-and-tricks" class="article-link">Filtering your Data</a></li><li data-type="article" data-id="5c507d3e6e121ce2327a6c28" class="article-container"><a href="/help/photos" class="article-link">Photos &amp; Images</a></li><li data-type="article" data-id="5c507da66e121c5f2f7a6d0a" class="article-container"><a href="/help/files" class="article-link">Files &amp; Documents</a></li><li data-type="article" data-id="62c5e3b1d4f91041e359765b" class="article-container"><a href="/help/how-can-i-save-a-pdf-of-a-page-in-farmbrite" class="article-link">Saving PDFs</a></li><li data-type="article" data-id="6a047b6af5fa29d61b03c777" class="article-container"><a href="/help/using-keywords" class="article-link">Using Keywords</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="61c368f480c37280447b2e3a"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Schedule<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66bf588f08c58fd4cb07dcf6"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Timesheets<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="66bf58b0938ab62272038b15" class="article-container"><a href="/help/getting-started-with-timesheets" class="article-link">Getting Started with Timesheets</a></li><li data-type="article" data-id="66bf605c9719a4d9a0095c43" class="article-container"><a href="/help/manager-view" class="article-link">Manager View</a></li><li data-type="article" data-id="66bf60738c6a1c831106f0a2" class="article-container"><a href="/help/employee-view" class="article-link">Employee View</a></li></ul>
+				</li><li data-type="article" data-id="5c7ebd9c6e121c7356e4f28f" class="article-container"><a href="/help/main-schedule" class="article-link">Getting Started</a></li><li data-type="article" data-id="5c6487358e121c23427784b3" class="article-container"><a href="/help/how-do-i-schedule-repeatingreoccurring-events" class="article-link">Reoccurring Events</a></li><li data-type="article" data-id="5c648bcdec161c8b32683cc8" class="article-container"><a href="/help/how-do-i-get-a-reminder-about-my-scheduled-event" class="article-link">Reminders</a></li><li data-type="article" data-id="645bcd231a6b422ab44cd69d" class="article-container"><a href="/help/syncing-your-farmbrite-calendar-with-ical-or-google-calendar" class="article-link">Calendar Integrations</a></li><li data-type="article" data-id="66fefca83f836323c5087513" class="article-container"><a href="/help/activity-journals" class="article-link">Activity Journals</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c4ddf168e121c230838517b"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Tasks<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50719bec161cd4394c0d1f" class="article-container"><a href="/help/tasks-tasks" class="article-link">Creating Tasks</a></li><li data-type="article" data-id="66620335afc6f06ae3626e39" class="article-container"><a href="/help/task-templates-and-series" class="article-link">Task Templates and Series</a></li><li data-type="article" data-id="66044dcbabafcd392774c4a8" class="article-container"><a href="/help/getting-started-with-tasks-in-farmbrite" class="article-link">Task Views</a></li><li data-type="article" data-id="5c648a4e8e121c2b45778488" class="article-container"><a href="/help/how-do-i-associate-events-with-livestock-or-fields" class="article-link">Tasks and Events for Records</a></li><li data-type="article" data-id="611d7cd6a96aaeb03e7b23c7" class="article-container"><a href="/help/adding-task-statuses" class="article-link">Tasks Statuses</a></li><li data-type="article" data-id="64ac5ad2599c2914510aec04" class="article-container"><a href="/help/how-do-i-mark-a-task-as-missed-or-skipped" class="article-link">Missed and Skipped Tasks</a></li><li data-type="article" data-id="5fda500eec161c113f327791" class="article-container"><a href="/help/how-do-i-assign-a-task-to-someone-at-m-faciilty" class="article-link">Assigning Tasks</a></li><li data-type="article" data-id="6278fe2b9c4a6e0b376429cb" class="article-container"><a href="/help/unassigned-tasks" class="article-link">Unassigned Tasks</a></li><li data-type="article" data-id="6048db77ec161ca123f96bb2" class="article-container"><a href="/help/adding-a-check-list-to-a-task-in-farmbrite" class="article-link">Checklists</a></li><li data-type="article" data-id="61c086acb6c25681527b2642" class="article-container"><a href="/help/tracking-time-spent-on-tasks" class="article-link">Time Tracking</a></li><li data-type="article" data-id="6463afe4cf668f7e210899e6" class="article-container"><a href="/help/geolocating-your-tasks-with-gps" class="article-link">Geolocating Your Tasks</a></li><li data-type="article" data-id="64adc2816024934cc83c434b" class="article-container"><a href="/help/adding-links-and-photos-to-tasks" class="article-link">Links and Attachments</a></li><li data-type="article" data-id="66a3e6bab311d009d60eae15" class="article-container"><a href="/help/mobile-notifications-for-task-assignments" class="article-link">Mobile Notifications for Task Assignments</a></li><li data-type="article" data-id="6920df88b50119b4a60cf7db" class="article-container"><a href="/help/filtering-and-searching-tasks" class="article-link">Keywords, Filtering, and Searching</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c5074166e121ce5327a6bdd"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Livestock<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="617edf334cd96e2d507b26e4" class="article-container"><a href="/help/getting-started-with-livestock" class="article-link">Getting Started</a></li><li data-type="article" data-id="5c5075418e121c35493850f2" class="article-container"><a href="/help/livestock-dashboard" class="article-link">Livestock Dashboard</a></li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3a4edc5264ab6ff05e3d8"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Records<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="602d34ffec161cb4299aff23" class="article-container"><a href="/help/adding-a-different-type-of-animal-to-farmbrite" class="article-link">Animal Types</a></li><li data-type="article" data-id="5c50786c6e121ce2327a6bfe" class="article-container"><a href="/help/creating-animals-creating-animals" class="article-link">Creating Animals</a></li><li data-type="article" data-id="5d94f0496e121c5403a773f5" class="article-container"><a href="/help/how-do-i-import-animals" class="article-link">Importing Animals</a></li><li data-type="article" data-id="65f8a5c6c364e406050a77b6" class="article-container"><a href="/help/bulk-adding-animals" class="article-link">Bulk Adding Animals</a></li><li data-type="article" data-id="5c5078e98e121cdc45385169" class="article-container"><a href="/help/animal-details-animal-details" class="article-link">Animal Details</a></li><li data-type="article" data-id="613790e2d5a4ef5e127b23c7" class="article-container"><a href="/help/how-can-i-use-rfid-tags-to-track-my-livestock" class="article-link">Using Electronic IDs</a></li><li data-type="article" data-id="6606c5ef03db5c1f5e447ab9" class="article-container"><a href="/help/printing-animal-history" class="article-link">Printing Animal History</a></li><li data-type="article" data-id="67c73db96bb93861e8069b73" class="article-container"><a href="/help/expected-maturity" class="article-link">Expected Maturity</a></li><li data-type="article" data-id="67c73de1fb46e61031029bed" class="article-container"><a href="/help/gifted-and-donated-animals" class="article-link">Gifted and Donated Animals</a></li><li data-type="article" data-id="67e2f26e8af566cfaa0190b0" class="article-container"><a href="/help/livestock-historical-values" class="article-link">Livestock Historical Values</a></li><li data-type="article" data-id="68029c0743b78a8972096691" class="article-container"><a href="/help/adding-a-record-alert" class="article-link">Warnings and Alerts</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="614de34309faad6b637b255d"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Groups<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="614de37309faad61647b23cf" class="article-container"><a href="/help/creating-livestock-groups" class="article-link">Creating Livestock Groups</a></li><li data-type="article" data-id="61535cc31cf8ce4f0d7b260b" class="article-container"><a href="/help/how-do-i-update-the-animals-included-in-a-smart-group" class="article-link">Smart Group Updates</a></li><li data-type="article" data-id="6a1f25de15bd6713b600ccc8" class="article-container"><a href="/help/making-custom-smart-groups-with-keywords-and-custom-fields" class="article-link">Custom Smart Groups</a></li><li data-type="article" data-id="62b4527380de091c271fd19c" class="article-container"><a href="/help/adding-and-removing-animals-from-a-set-group" class="article-link">Set Group Updates</a></li><li data-type="article" data-id="6463b4912ae8a75323594174" class="article-container"><a href="/help/removing-animals-from-a-basic-group" class="article-link">Basic Group Updates</a></li><li data-type="article" data-id="615364f8f7adbc053f7b23ca" class="article-container"><a href="/help/bulk-updates-to-animals-in-a-group" class="article-link">Bulk Updating Animals</a></li><li data-type="article" data-id="5c64960cec161c8c32683d2a" class="article-container"><a href="/help/how-do-i-add-a-bulk-notes-to-animals" class="article-link">Adding Bulk Notes</a></li><li data-type="article" data-id="67b39c31d9cd217ea504341b" class="article-container"><a href="/help/group-actions" class="article-link">Group Actions</a></li><li data-type="article" data-id="65732b6f2e7a556b1a6ef812" class="article-container"><a href="/help/feeding-groups-by-weight" class="article-link">Feeding Your Groups</a></li><li data-type="article" data-id="69ceb710673ee02fdb00e227" class="article-container"><a href="/help/livestock-group-transactions" class="article-link">Livestock Group Transactions</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="63b32e7c2aa07a668139f542"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Breeding<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="63a1cd472bcfae24034aa513" class="article-container"><a href="/help/breeding-animals" class="article-link">Breeding Animals</a></li><li data-type="article" data-id="697a61f3977d3cf1c90a79de" class="article-container"><a href="/help/eligible-males" class="article-link">Eligible Sires and Dams</a></li><li data-type="article" data-id="69b84fdec2660a83dd09bc89" class="article-container"><a href="/help/coefficient-of-inbreeding" class="article-link">Coefficient of Inbreeding</a></li><li data-type="article" data-id="63b6bfebdc3d952fb56ff970" class="article-container"><a href="/help/adding-pregnancy-checks" class="article-link">Adding Pregnancy Checks</a></li><li data-type="article" data-id="63b874278e630d668e54701f" class="article-container"><a href="/help/recording-a-birth" class="article-link">Recording a Birth</a></li><li data-type="article" data-id="64a8167b0dc02415ce0cfbe9" class="article-container"><a href="/help/livestock-siblings" class="article-link">Tracking Siblings</a></li><li data-type="article" data-id="5de2899dec161c4d06a6c5b8" class="article-container"><a href="/help/how-do-i-add-offspring-to-a-parent" class="article-link">Adding Offspring</a></li><li data-type="article" data-id="63c5717ae0591d2de2394308" class="article-container"><a href="/help/breeding-reporting" class="article-link">Breeding Reporting</a></li><li data-type="article" data-id="64637da8efcbcc65e52ab693" class="article-container"><a href="/help/adding-weaning-dates" class="article-link">Weaning Dates</a></li><li data-type="article" data-id="5c507cb68e121cd94538517a" class="article-container"><a href="/help/livestock-genealogy" class="article-link">Genealogy</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="69f8bff49b9eee4f1207416a"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Feedings<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="6573652bf7485c00c4637ed2" class="article-container"><a href="/help/average-daily-gain" class="article-link">Average Daily Gain</a></li><li data-type="article" data-id="6202ced93b086cfd1b7b2c4c" class="article-container"><a href="/help/feeding-livestock-from-inventory" class="article-link">Feeding Livestock </a></li><li data-type="article" data-id="69f8c0c1f7554368ce001255" class="article-container"><a href="/help/group-feedings" class="article-link">Feedings to Groups</a></li><li data-type="article" data-id="69f8c1b896447fed9b0eb730" class="article-container"><a href="/help/repeated-feedings" class="article-link">Repeated Feedings</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a39ebb6bc9c70ac90a2384"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Health and Wellness<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c507b278e121c384938511f" class="article-container"><a href="/help/measurements-measurements" class="article-link">Growth &amp; Measurements</a></li><li data-type="article" data-id="66f6e9c056648ef84d0bbf76" class="article-container"><a href="/help/wellness-score" class="article-link">Wellness Score</a></li><li data-type="article" data-id="5ebc6012ec161ca51f46c92c" class="article-container"><a href="/help/adding-a-livestock-treatment" class="article-link">Adding a Treatment</a></li><li data-type="article" data-id="67505d5eedb708f5ca0a7044" class="article-container"><a href="/help/livestock-treatment-templates" class="article-link">Livestock Treatment Templates</a></li><li data-type="article" data-id="6008613dec161c9e4ebc9544" class="article-container"><a href="/help/adding-the-withdrawal-date" class="article-link">Tracking Livestock Withdrawal Dates</a></li><li data-type="article" data-id="6318f8670ec5775dec16dd42" class="article-container"><a href="/help/body-condition-score" class="article-link">Body Condition Score</a></li><li data-type="article" data-id="66994e04d5dc47e1e60cd712" class="article-container"><a href="/help/using-inputs" class="article-link">Using Inputs</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3a1f75eb7f1b9350c37c2"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Grazing<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50c5afad121c6a48511210" class="article-container"><a href="/help/fields-grazing" class="article-link">Managing Grazing Location</a></li><li data-type="article" data-id="5c507ba5ec161c49374c0d94" class="article-container"><a href="/help/grazing" class="article-link">Manage Grazing</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3a1d2c25a736d8f0d5337"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Yields<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c507a968e121cd945385169" class="article-container"><a href="/help/livestock-yield" class="article-link">Tracking Yield</a></li><li data-type="article" data-id="603fcb65ec161c3b6bdea767" class="article-container"><a href="/help/lay-rate" class="article-link">Yield Rates</a></li><li data-type="article" data-id="69e0d2d9d7e7456e3a0aea9b" class="article-container"><a href="/help/harvest-to-inventory-livestock" class="article-link">Yield to Inventory</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3a54094a423a60904c782"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Accounting<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c507c488e121cd845385173" class="article-container" external><a href="/help/livestock-accounting" class="article-link">Accounting cost tracking</a></li><li data-type="article" data-id="5c8983278e121c6e4a6f71f0" class="article-container"><a href="/help/bill-of-sale-livestock-sale" class="article-link">Selling Livestock / Bill of Sale</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3a786fe9b5339f207e4a5"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Reporting<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="62baeaa819fb2f004f554ea3" class="article-container"><a href="/help/creating-custom-livestock-reports" class="article-link">Custom Reports</a></li><li data-type="article" data-id="66a3a7aefcdebab7de094763" class="article-container"><a href="/help/reporting-c4cebb0-livestock-reports" class="article-link">Livestock Reports</a></li><li data-type="article" data-id="67b88c4459398490550ffd37" class="article-container"><a href="/help/livestock-yield-comparison" class="article-link">Livestock Yield Comparison</a></li></ul>
+				</li><li data-type="article" data-id="6ae1090f673c9da7660a7b4c" class="article-container"><a href="/help/livestock-registry-connection" class="article-link">Livestock Registry Connections</a></li><li data-type="article" data-id="6920b908fdf63479250b2166" class="article-container"><a href="/help/importing-bulk-measurements-and-yields" class="article-link">Importing Bulk Measurements and Yields</a></li><li data-type="article" data-id="61c36c9380c372d84a7b2447" class="article-container"><a href="/help/animal-photos" class="article-link">Animal Photos</a></li><li data-type="article" data-id="61c386ac365bac59447b2479" class="article-container"><a href="/help/livestock-files" class="article-link">Storing Files</a></li><li data-type="article" data-id="62d00d0cc028fb0e132bd359" class="article-container"><a href="/help/how-are-active-animals-counted-for-my-farmbrite-subscription-plan" class="article-link">Active Animal Count</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c4ddf0fec161c25054c0d41"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Crops<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c507f2f8e121c0b4c385114" class="article-container"><a href="/help/crops-fields" class="article-link">Getting Started</a></li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3f0ee68a852184002f0be"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">My Crops<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50c75bad121cc044511260" class="article-container"><a href="/help/plant-details" class="article-link">My Crops</a></li><li data-type="article" data-id="5c50aba4ad121c243e51122a" class="article-container"><a href="/help/create-crop-type" class="article-link">Creating a Crop Type</a></li><li data-type="article" data-id="5dcb3a2aad121c8963a7110a" class="article-container"><a href="/help/adding-a-plant-type-that-is-not-on-the-list" class="article-link">Custom Crop Types</a></li><li data-type="article" data-id="68e946e95409f5c15d0b34ca" class="article-container"><a href="/help/editing-crop-type-details" class="article-link">Editing Crop Type Details</a></li><li data-type="article" data-id="5c50c71bec161c4b5e4c0d51" class="article-container"><a href="/help/creating-plants" class="article-link">Importing Crop Types</a></li><li data-type="article" data-id="5c50afff6e121cb3497a6c4e" class="article-container"><a href="/help/download-crops" class="article-link">Exporting Crop Types</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5c5080148e121c024f3850f6"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Grow Locations<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c507fbd8e121c2c46385190" class="article-container"><a href="/help/grow-locations-getting-started" class="article-link">Getting Started</a></li><li data-type="article" data-id="5c5080258e121c0c4c38511c" class="article-container"><a href="/help/fields-field-details" class="article-link">Working with Grow Locations</a></li><li data-type="article" data-id="6931b5a14c2d7f440e088124" class="article-container"><a href="/help/updating-beds" class="article-link">Updating Beds</a></li><li data-type="article" data-id="650decdd86520c54fd409712" class="article-container" external><a href="/help/grow-location-accounting" class="article-link">Grow Location Accounting</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3f25c35f5e034a00ac902"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Planning<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="68d551726d0217b8260de51a" class="article-container"><a href="/help/season-start" class="article-link">Season Start Date</a></li><li data-type="article" data-id="620a57e91a7c9d3d027b258e" class="article-container"><a href="/help/using-your-crop-plan" class="article-link">Using Your Crop Plan</a></li><li data-type="article" data-id="62bce55de5052f6aa94ea81c" class="article-container"><a href="/help/using-the-yield-calculator" class="article-link">Calculating Plantings </a></li><li data-type="article" data-id="5c50c7f46e121cd6597a6bdd" class="article-container"><a href="/help/estimate-seed-order" class="article-link">Estimate Seed Order</a></li><li data-type="article" data-id="69961f0eb4b9458d90094c04" class="article-container"><a href="/help/adjusting-you-planting-dates" class="article-link">Adjusting Your Planting Dates</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3f297a985a1960406cdb3"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Plantings<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c5080d1ec161c653a4c0dad" class="article-container"><a href="/help/fields-crops" class="article-link">Adding Plantings</a></li><li data-type="article" data-id="64a87edbf0283848e95fb9a1" class="article-container"><a href="/help/bulk-plantings" class="article-link">Bulk Plantings</a></li><li data-type="article" data-id="68e95059744cdbf18a05be70" class="article-container"><a href="/help/calculating-plantings-needed-synced-copy" class="article-link">Calculated Plantings</a></li><li data-type="article" data-id="688a862b8f7c4cbd0c05b4a0" class="article-container"><a href="/help/succession-plantings" class="article-link">Succession Plantings</a></li><li data-type="article" data-id="62a8748f658fba12d522138b" class="article-container"><a href="/help/tracking-plant-growth-stages" class="article-link">Tracking Plant Growth Stages</a></li><li data-type="article" data-id="68e953d982190e8c7902da85" class="article-container"><a href="/help/transplanting-crops" class="article-link">Transplanting Crops</a></li><li data-type="article" data-id="66d23efcefe69444310a91e9" class="article-container"><a href="/help/completing-plantings" class="article-link">Completing Plantings</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3f2e3852d8c0ece0fb2c3"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Treatments and Care<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="64553690156945615a2b89c0" class="article-container"><a href="/help/adding-a-crop-treatment" class="article-link">Crop Treatments</a></li><li data-type="article" data-id="6751ac3cab2fdba927041301" class="article-container"><a href="/help/treatments-and-nutrients-crop-treatment-templates" class="article-link">Crop Treatment Templates</a></li><li data-type="article" data-id="5c50c66c6e121cd6597a6bd1" class="article-container"><a href="/help/nutrients" class="article-link">Nutrients &amp; Soil Samples</a></li><li data-type="article" data-id="65b7db948db30843f6023013" class="article-container"><a href="/help/planting-tasks" class="article-link">Automatic Planting Tasks</a></li><li data-type="article" data-id="6616f3af4360e56171738e12" class="article-container"><a href="/help/watering-and-tilling" class="article-link">Watering and Tilling</a></li><li data-type="article" data-id="6a34545083e711ba240c3456" class="article-container"><a href="/help/tracking-withdrawal-dates" class="article-link">Tracking Planting and Field Withdrawal Dates</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="66a3f2f0b5bb59a790079e9d"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Harvests<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="68e9563716069897120b79e4" class="article-container"><a href="/help/expected-harvests" class="article-link">Expected Harvests</a></li><li data-type="article" data-id="68e95588110b09c887073d3c" class="article-container"><a href="/help/updating-harvest-units" class="article-link">Harvest Units</a></li><li data-type="article" data-id="5c50ad9e8e121c7263385109" class="article-container"><a href="/help/crop-harvests" class="article-link">Harvesting Crops</a></li><li data-type="article" data-id="68e955bd44edb38dbb0827e3" class="article-container"><a href="/help/harvest-to-inventory" class="article-link">Harvest to Inventory</a></li><li data-type="article" data-id="68d3f41bc936888c830ba054" class="article-container"><a href="/help/recording-a-crop-loss" class="article-link">Recording a Crop Loss</a></li><li data-type="article" data-id="68ac9f9d2bf11dc654031f9f" class="article-container"><a href="/help/yield-averages-and-reports" class="article-link">Yield Averages and Reports</a></li><li data-type="article" data-id="68e955feafddd174aa05f7e1" class="article-container"><a href="/help/harvests-traceability-from-harvest-to-sale" class="article-link">Traceability from Harvest to Sale</a></li><li data-type="article" data-id="68fbaab1e7da1e8f48055737" class="article-container"><a href="/help/yield-comparison" class="article-link">Crop Variety Yield Comparison</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="68e94184eb433b150d01df75"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Crop Scenarios and Examples<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="634848b86481ea48e17cc32a" class="article-container"><a href="/help/how-do-i-use-farmbrite-to-grow-microgreens" class="article-link"> Working wit Microgreens</a></li><li data-type="article" data-id="6a2023104fd2d6a6620693a6" class="article-container"><a href="/help/selling-starts" class="article-link">Split Plantings</a></li></ul>
+				</li><li data-type="article" data-id="5c50c6288e121cfa69385138" class="article-container"><a href="/help/field-notes" class="article-link">Crop Notes</a></li><li data-type="article" data-id="5c894489ad121cf756442923" class="article-container"><a href="/help/images" class="article-link">Images and Files</a></li><li data-type="article" data-id="650ded0a8f6e0d714873d5f2" class="article-container" external><a href="/help/crop-type-accounting" class="article-link">Crop Type Accounting</a></li><li data-type="article" data-id="68e952ff9960061d2c0874ae" class="article-container"><a href="/help/crops-planting-reports" class="article-link">Planting Reports</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5fff26e7ec161c8e73e20995"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Resources<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5fff272cec161c4173e20de2" class="article-container"><a href="/help/inventory-and-resources-overview" class="article-link">Getting Started</a></li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5c4ddf38ec161cdf024c0d6e"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Equipment<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50c841ec161c135b4c0dce" class="article-container"><a href="/help/equipment-getting-started" class="article-link">Starting with Equipment</a></li><li data-type="article" data-id="5c50c8b28e121c3c6d385118" class="article-container"><a href="/help/creating-equipment" class="article-link">Adding Equipment</a></li><li data-type="article" data-id="5c50c8f0ad121c314b5111eb" class="article-container"><a href="/help/equipment-details" class="article-link">Equipment Details</a></li><li data-type="article" data-id="5c50cd5d6e121c94567a6d23" class="article-container"><a href="/help/equipment-qr-code" class="article-link">Equipment QR Codes</a></li><li data-type="article" data-id="67290300c64154eb80000688" class="article-container"><a href="/help/recording-equipment-usage" class="article-link">Recording Equipment Usage</a></li><li data-type="article" data-id="5c50cca96e121c3a5c7a6be9" class="article-container"><a href="/help/equipment-maintenance" class="article-link">Equipment Maintenance</a></li><li data-type="article" data-id="672a2d66aec6f56ab80029e8" class="article-container"><a href="/help/equipment-service-notifications" class="article-link">Equipment Service Notifications</a></li><li data-type="article" data-id="623866d457fc5757657b27e2" class="article-container"><a href="/help/equipment-accounting" class="article-link">Equipment Accounting</a></li><li data-type="article" data-id="5c50c976ec161cde614c0d1b" class="article-container"><a href="/help/equipment-notes" class="article-link">Equipment Notes</a></li><li data-type="article" data-id="5c50c92cad121c5745511231" class="article-container"><a href="/help/equipement-calendar" class="article-link">Equipment Calendar &amp; Tasks</a></li><li data-type="article" data-id="5c8944c5ec161c711cd3c464" class="article-container"><a href="/help/contacts-equipment-images" class="article-link">Equipment Photos and Files</a></li><li data-type="article" data-id="646282287aa19d642941c497" class="article-container"><a href="/help/using-equipment-statuses" class="article-link">Equipment Statuses</a></li><li data-type="article" data-id="67819d31897e3965900fcff8" class="article-container"><a href="/help/printing-equipment-history" class="article-link">Printing Equipment History</a></li><li data-type="article" data-id="69387811c33dc42b420fb5d2" class="article-container"><a href="/help/locating-your-equipment" class="article-link">Locating Your Equipment</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="698f910a897992935205652b"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Warehouses<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5fff2d68ec161cd276e20c02" class="article-container"><a href="/help/setting-up-a-warehouse" class="article-link">Creating Warehouses</a></li><li data-type="article" data-id="6991e81ae466198e9d0e8637" class="article-container"><a href="/help/working-with-warehouses" class="article-link">Working with Warehouses</a></li><li data-type="article" data-id="698f938d7090a122a506bc2d" class="article-container"><a href="/help/filtering-your-warehouse" class="article-link">Filtering Warehouses</a></li><li data-type="article" data-id="698f93a81d6cf877d0023282" class="article-container"><a href="/help/mapping-warehouses" class="article-link">Mapping Warehouses</a></li><li data-type="article" data-id="698f93c754a9b978f404c992" class="article-container"><a href="/help/warehouse-history" class="article-link">Warehouse History</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5fff2a49ec161c8376e20852"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Inventory<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5fff2a6aec161c8d73e20fdc" class="article-container"><a href="/help/setting-up-inventory-in-farmbrite" class="article-link">Creating Inventory Items</a></li><li data-type="article" data-id="698fa5d141d8e82e8d08479a" class="article-container"><a href="/help/inventory-item-categories" class="article-link">Inventory Item Categories</a></li><li data-type="article" data-id="67b398d8fbeb33a9ef078831" class="article-container"><a href="/help/tracking-inventory-in-lots" class="article-link">Tracking Inventory in Lots</a></li><li data-type="article" data-id="6718fec148644faa570dd598" class="article-container"><a href="/help/connecting-inventory-and-products" class="article-link">Connecting Inventory to Products</a></li><li data-type="article" data-id="675857b97ab522cb9e0c9e28" class="article-container"><a href="/help/inventory-recipes" class="article-link">Inventory Recipes</a></li><li data-type="article" data-id="6164809d3151991a0e7b23c7" class="article-container"><a href="/help/how-do-i-remove-items-from-my-inventory" class="article-link">Removing from Inventory</a></li><li data-type="article" data-id="6164a8d9496cc860427b265b" class="article-container"><a href="/help/how-do-i-move-inventory-to-a-different-storage-location" class="article-link">Moving Inventory</a></li><li data-type="article" data-id="645544205887640aad388973" class="article-container"><a href="/help/using-inventory-for-treatments-and-maintenance" class="article-link">Using Inventory</a></li><li data-type="article" data-id="64b6b59934ed332d005e5a67" class="article-container"><a href="/help/low-inventory-notifications" class="article-link">Low Inventory Notifications</a></li><li data-type="article" data-id="645a4e4c4230c22700714388" class="article-container"><a href="/help/inventory-summary-reports" class="article-link">Inventory Summary Reports</a></li><li data-type="article" data-id="64cd077e8e91c672c348a08d" class="article-container"><a href="/help/how-can-i-see-what-inventory-i-have-in-each-warehouse-or-bin" class="article-link">Viewing Inventory in Bins</a></li><li data-type="article" data-id="65b7e3177b272c1c874ac628" class="article-container"><a href="/help/tracking-current-inventory" class="article-link">Available Inventory</a></li><li data-type="article" data-id="67f0444b4705d5688409ecb2" class="article-container"><a href="/help/setting-a-default-warehouse-for-an-item" class="article-link">Setting Default Warehouses</a></li><li data-type="article" data-id="69eb98d6b34b42a64f0b3d7a" class="article-container"><a href="/help/inventory-history" class="article-link">Inventory History</a></li></ul>
+				</li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c4ddf3dad121c227951125b"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Accounting<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50cd9b6e121c1c5d7a6bd1" class="article-container"><a href="/help/accounting-overview" class="article-link">Getting Started</a></li><li data-type="article" data-id="62430943dab752817e7b23e1" class="article-container"><a href="/help/accounting-dashboard" class="article-link">Accounting Dashboard</a></li><li data-type="article" data-id="5ea36160ad121c4157fd2051" class="article-container"><a href="/help/accounting-categories" class="article-link">Accounting Categories</a></li><li data-type="article" data-id="650defc123922f572972c952" class="article-container"><a href="/help/chart-of-accounts" class="article-link">Custom  Categories</a></li><li data-type="article" data-id="5c50ce008e121c9370385167" class="article-container"><a href="/help/recording-transactions" class="article-link">Adding Transactions</a></li><li data-type="article" data-id="6aaa8d7a5a898913eb093682" class="article-container"><a href="/help/transaction-statuses" class="article-link">Transaction Statuses</a></li><li data-type="article" data-id="6a8c66df80f1c55e9e0534e2" class="article-container"><a href="/help/connecting-a-bank-account" class="article-link">Connecting a Bank Account</a></li><li data-type="article" data-id="64f9be4f0642fa3b5264a9b2" class="article-container"><a href="/help/how-can-i-see-accounting-transactions-for-fields-plantings-animals-and-equipment" class="article-link">Accounting For Items</a></li><li data-type="article" data-id="6a2713451edc48826b0e2c51" class="article-container"><a href="/help/scanning-receipts" class="article-link">Scanning Receipts</a></li><li data-type="article" data-id="64eccd85700efa5b9e56db4e" class="article-container"><a href="/help/how-can-i-split-income-and-expense-between-different-financial-categories" class="article-link">Splitting Transactions</a></li><li data-type="article" data-id="67b363a0da70fe8b30086241" class="article-container"><a href="/help/credit-and-refunds-to-your-chart-of-accounts" class="article-link">Credit and Refunds </a></li><li data-type="article" data-id="5c7eb85dec161ccf193fd6e1" class="article-container"><a href="/help/how-do-i-import-my-files-into-farmbrite" class="article-link">Importing Bank Transactions</a></li><li data-type="article" data-id="5c50cee18e121c3173385106" class="article-container"><a href="/help/download-transactions" class="article-link">Exporting Transactions</a></li><li data-type="article" data-id="662c03b16e2f7b133a3f0401" class="article-container"><a href="/help/accounting-accounting-reports" class="article-link">Accounting Reports</a></li><li data-type="article" data-id="6a74afe2ee7b0136a2065bfd" class="article-container"><a href="/help/cost-analysis-tracking" class="article-link">Cost Analysis Tracking (Breakeven)</a></li><li data-type="article" data-id="5c50ce76ec161cde614c0d60" class="article-container"><a href="/help/profit-and-loss-statement" class="article-link">Profit &amp; Loss</a></li><li data-type="article" data-id="65146fd2f0a46d0cc421f743" class="article-container"><a href="/help/spending-by-category-report" class="article-link">Spending By Category</a></li><li data-type="article" data-id="6246f39921ab912c037b2779" class="article-container"><a href="/help/cash-flow" class="article-link">Cash Flow Report</a></li><li data-type="article" data-id="650b5ac5bf26d7130301a4a2" class="article-container"><a href="/help/creating-a-balance-sheet" class="article-link">Creating a Balance Sheet</a></li><li data-type="article" data-id="657cb29e7fe4b511e90e1673" class="article-container"><a href="/help/creating-a-budget" class="article-link">Creating a Budget</a></li><li data-type="article" data-id="60c122ff390a1e19167b253e" class="article-container"><a href="/help/how-do-i-add-a-starting-cash-balance" class="article-link">Starting Cash Balance</a></li><li data-type="article" data-id="5ebc50408e121cfe267d309c" class="article-container"><a href="/help/attaching-my-bank-account" class="article-link">Bank Accounts</a></li><li data-type="article" data-id="69397f1680ea93bc940b356f" class="article-container"><a href="/help/reporting-year" class="article-link">Reporting Year</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5df3b0196e121c764881a545"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Market<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5e3dba2f8e121c80575eb472" class="article-container"><a href="/help/market-overview" class="article-link">Getting Started</a></li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="6814c043009037ece602b670"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Market<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50ec01ec161c4a684c0d5c" class="article-container"><a href="/help/online-store-online-store" class="article-link">Market Settings</a></li><li data-type="article" data-id="5c50ed016e121cfe6c7a6bd1" class="article-container"><a href="/help/pickup-locations" class="article-link">Adding Pickup Locations</a></li><li data-type="article" data-id="6814ca00be6bafa63e0dd7ea" class="article-container"><a href="/help/basic-tax-setup" class="article-link">Basic Tax Setup</a></li><li data-type="article" data-id="6814c9d306eb476f740626ba" class="article-container"><a href="/help/settings-adding-taxes-to-products" class="article-link">Advanced Tax Setup</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5c55c378ad121c9e04511246"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Products<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50ec6cec161c4a684c0d5d" class="article-container"><a href="/help/productsoverview" class="article-link">Getting Started</a></li><li data-type="article" data-id="616889942811e8240a7b259f" class="article-container"><a href="/help/creating-a-new-product" class="article-link">Adding Products</a></li><li data-type="article" data-id="69fbc84c07e209f258093beb" class="article-container"><a href="/help/volume-pricing" class="article-link">Volume Pricing</a></li><li data-type="article" data-id="6838948ea11f3d36410e99f5" class="article-container"><a href="/help/product-variations" class="article-link">Product Variations</a></li><li data-type="article" data-id="61687f36c8507f0e027b2666" class="article-container"><a href="/help/importing-products" class="article-link">Importing Products</a></li><li data-type="article" data-id="5c50ecafad121c8554511218" class="article-container"><a href="/help/product-details" class="article-link">Editing Product Details</a></li><li data-type="article" data-id="671a78d6c5b4da5f5a0f3cd2" class="article-container"><a href="/help/products-94487b1-connecting-inventory-and-products" class="article-link">Connecting Inventory and Products</a></li><li data-type="article" data-id="64db815f134b355fdc4b4545" class="article-container"><a href="/help/quantities-for-sale" class="article-link">Quantities Available For Sale</a></li><li data-type="article" data-id="6814cb5d13ad768ce9045b02" class="article-container"><a href="/help/purchase-increments" class="article-link">Purchase Increments</a></li><li data-type="article" data-id="5ed65ffcec161cc34cfe16d3" class="article-container"><a href="/help/adding-photos-to-my-products" class="article-link">Adding Photos</a></li><li data-type="article" data-id="64511ddbf645005a50345951" class="article-container"><a href="/help/adding-taxes-to-products" class="article-link">Taxes</a></li><li data-type="article" data-id="6168a6f9b754dc70017b2486" class="article-container"><a href="/help/how-do-i-create-additional-product-categories" class="article-link">Product Categories</a></li><li data-type="article" data-id="62a725da2ef7365a80029c05" class="article-container"><a href="/help/how-can-i-find-see-what-products-are-not-available-in-my-store" class="article-link">Product Statuses</a></li><li data-type="article" data-id="6690072e057a9d8d88019049" class="article-container"><a href="/help/customized-product-accounting" class="article-link">Customized Product Accounting</a></li><li data-type="article" data-id="5f05f9fc8e121c6c19e46e5b" class="article-container"><a href="/help/set-up-your-farm-boxes" class="article-link">Selling CSA Memberships</a></li><li data-type="article" data-id="668400ba9905e4d346042f93" class="article-container"><a href="/help/product-ids-for-integrations" class="article-link">Product IDs for Integrations</a></li><li data-type="article" data-id="6ac3b39f2112e06e3c0fff14" class="article-container"><a href="/help/product-custom-reports" class="article-link">Product Custom Reports</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5c55c3cbec161cbe3d4c0d2f"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Orders<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50ed468e121ca47d3850f3" class="article-container"><a href="/help/orders" class="article-link">Getting Started</a></li><li data-type="article" data-id="68ffc21da1a4db8ea007200b" class="article-container"><a href="/help/order-messages" class="article-link">Order Messages</a></li><li data-type="article" data-id="647e167883a6522585619f67" class="article-container"><a href="/help/setting-order-numbers" class="article-link">Order Numbers</a></li><li data-type="article" data-id="5c50ed898e121c917d3850f4" class="article-container"><a href="/help/order-details" class="article-link">Creating Orders</a></li><li data-type="article" data-id="6818fec16ac22d27db0a7047" class="article-container"><a href="/help/creating-point-of-sale-orders" class="article-link">Creating Point of Sale Orders</a></li><li data-type="article" data-id="67f55a745879540625007202" class="article-container"><a href="/help/pay-later-invoiced-orders" class="article-link">Pay Later</a></li><li data-type="article" data-id="63fcb7fc48fdd47eeb2d840a" class="article-container"><a href="/help/editing-an-existing-order" class="article-link">Updating Orders</a></li><li data-type="article" data-id="60353fe1ec161ce873065ff2" class="article-container"><a href="/help/how-do-i-enter-a-discount-code" class="article-link">Adding Discounts</a></li><li data-type="article" data-id="63ff5dd6cf81723ca21bb2d4" class="article-container"><a href="/help/how-do-i-add-shipping-and-delivery-fees-to-my-orders" class="article-link">Shipping and Delivery Fees</a></li><li data-type="article" data-id="63fcb88048fdd47eeb2d8511" class="article-container"><a href="/help/picking-order-from-inventory" class="article-link">Picking Orders</a></li><li data-type="article" data-id="5df3b0576e121cb94a81a4fd" class="article-container"><a href="/help/how-do-i-send-an-invoice" class="article-link">Sending Invoices</a></li><li data-type="article" data-id="5ebc6e068e121c02367d2f90" class="article-container"><a href="/help/market-refunds" class="article-link">Refunds and Cancellations</a></li><li data-type="article" data-id="5f1b1349ec161c965368819e" class="article-container"><a href="/help/quick-pay" class="article-link">Quick Pay</a></li><li data-type="article" data-id="6849c1734eb700ba7e059dc5" class="article-container"><a href="/help/viewing-orders-by-source" class="article-link">Viewing Orders by Source</a></li><li data-type="article" data-id="6a04a94798587618fa0f4f8e" class="article-container"><a href="/help/wholesale-orders" class="article-link">Wholesale Orders</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="5c50ebf3ec161c1e6f4c0d20"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Online Store<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="60d4e6400da2edde587b23c8" class="article-container"><a href="/help/how-do-i-set-up-my-online-shop" class="article-link">Getting Started</a></li><li data-type="article" data-id="5c50edd26e121cfe6c7a6bd6" class="article-container"><a href="/help/processing-payments" class="article-link">Processing Online Payments</a></li><li data-type="article" data-id="6452bada7cefe5516806fbb2" class="article-container"><a href="/help/enabling-online-discount-codes" class="article-link">Promo Codes</a></li><li data-type="article" data-id="63f5308fcd97f706873f9c2c" class="article-container"><a href="/help/using-qr-codes-for-your-store-and-products" class="article-link">Using QR Codes</a></li></ul>
+				</li><li data-type="article" data-id="63ff61060a97f01c416f1f44" class="article-container"><a href="/help/market-dashboard-and-reports" class="article-link">Market Dashboard</a></li><li data-type="article" data-id="6421942c0a1f4a1289239a53" class="article-container"><a href="/help/market-reports" class="article-link">Market Reports</a></li><li data-type="article" data-id="64b18491cc8ff06863239812" class="article-container"><a href="/help/traceability-from-harvest-to-sale" class="article-link">Traceability</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c4ddf48ec161c09064c0d14"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Contacts<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50ee67ad121c745751120b" class="article-container"><a href="/help/contacts-contacts" class="article-link">Getting Started</a></li><li data-type="article" data-id="5c50eebcec161cd46a4c0d74" class="article-container"><a href="/help/creating-contacts-creating-contacts" class="article-link">Adding Contacts</a></li><li data-type="article" data-id="5c50ef51ec161cf36d4c0d58" class="article-container"><a href="/help/orders-associated-with-contacts" class="article-link">Viewing Orders</a></li><li data-type="article" data-id="5c50efa5ec161c92744c0d1f" class="article-container"><a href="/help/contact-notes" class="article-link">Contact Notes</a></li><li data-type="article" data-id="60ff35611889285f427b2664" class="article-container"><a href="/help/importing-contacts-from-a-spreadsheet" class="article-link">Importing Contacts</a></li><li data-type="article" data-id="60ff38761889284a457b2603" class="article-container"><a href="/help/downloading-contacts" class="article-link">Downloading Contacts</a></li><li data-type="article" data-id="62ed16a12dc94620fd2ff38c" class="article-container"><a href="/help/how-can-i-send-an-email-to-a-contact" class="article-link">Sending Emails</a></li><li data-type="article" data-id="6ac3b35bb260c0c3950c1503" class="article-container"><a href="/help/reporting-on-contacts" class="article-link">Reporting on Contacts</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5e04c9ddad121c120a328c95"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Reports<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="625412257bfe97d2487b29b7" class="article-container"><a href="/help/getting-started-with-reporting" class="article-link">Starting With Reports</a></li><li data-type="article" data-id="5e04ca41ec161c303a04b290" class="article-container"><a href="/help/what-reports-are-available-in-farmbrite" class="article-link">Reports Glossary</a></li><li data-type="article" data-id="5e41cce7ad121c784e6a175d" class="article-container"><a href="/help/how-do-i-create-custom-reports" class="article-link">Creating Custom Reports</a></li><li data-type="article" data-id="662a666174c1ba2af266b1d7" class="article-container"><a href="/help/accounting-reports" class="article-link">Accounting Reports</a></li><li data-type="article" data-id="662a666ff443fa5fa5343477" class="article-container"><a href="/help/livestock-reports" class="article-link">Livestock Reports</a></li><li data-type="article" data-id="662a6679f61dc227fd64b495" class="article-container"><a href="/help/planting-reports" class="article-link">Planting Reports</a></li><li data-type="article" data-id="662c0636885da442494cf6d2" class="article-container"><a href="/help/orders-and-market-reports" class="article-link">Orders and Market Reports</a></li><li data-type="article" data-id="662a669414f7b8254456ac78" class="article-container"><a href="/help/resource-reports" class="article-link">Resource Reports</a></li><li data-type="article" data-id="662a66a1011f403cd114c07e" class="article-container"><a href="/help/user-activity-reports" class="article-link">User Activity Reports</a></li><li data-type="article" data-id="5c50c7bb6e121cd6597a6bda" class="article-container"><a href="/help/harvest-report" class="article-link">Harvest Reports</a></li><li data-type="article" data-id="5c507dfead121c8c25511255" class="article-container"><a href="/help/reproduction-report" class="article-link">Reproduction Performance</a></li><li data-type="article" data-id="5c507e5e6e121ce5327a6c69" class="article-container"><a href="/help/livestock-yield-report" class="article-link">Livestock Yield Report</a></li><li data-type="article" data-id="612d686af3a51b9c3f7b2755" class="article-container"><a href="/help/reporting-on-livestock-treatments" class="article-link">Livestock Treatments</a></li><li data-type="article" data-id="61c32ceff58acc33797b2470" class="article-container"><a href="/help/who-owes-you-using-the-accounts-receivable-aging-report" class="article-link">Accounts Receivable</a></li><li data-type="article" data-id="65b8fd880ea9065ac170b3ee" class="article-container"><a href="/help/audit-logs" class="article-link">Audit Trail Report</a></li><li data-type="article" data-id="69cff99dc51a780a470074c6" class="article-container"><a href="/help/asset-value-tracking" class="article-link">Asset Value Tracking</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="61c367ee365bacae297b2786"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Farm Map<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50806b8e121c824c385110" class="article-container"><a href="/help/field-map" class="article-link">Mapping your Farm</a></li><li data-type="article" data-id="62decc632a15f3664468e675" class="article-container"><a href="/help/how-do-i-change-the-name-of-my-field-on-my-map" class="article-link">Editing Your Map</a></li><li data-type="article" data-id="64daa4e713b769311058d0a9" class="article-container"><a href="/help/importing-your-map" class="article-link">Importing Your Map</a></li><li data-type="article" data-id="65495ab6e20bd8008d389a79" class="article-container"><a href="/help/filtering-your-map" class="article-link">Map Filters</a></li><li data-type="article" data-id="68c04cfda9ab0d72b203f4b9" class="article-container"><a href="/help/recording-notes-and-tasks-from-your-map" class="article-link">Field Logs</a></li><li data-type="article" data-id="676437410fbfcc12f500b241" class="article-container"><a href="/help/changing-your-default-map-location" class="article-link">Default Map Location</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="647e4b72c300d332c20bda34"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Climate<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c648030ad121cc32ac56f19" class="article-container"><a href="/help/weather-forecasts" class="article-link">Weather Forecasts</a></li><li data-type="article" data-id="647e4b9a1b33f93cb4287791" class="article-container"><a href="/help/getting-started-with-climate" class="article-link">Getting Started</a></li><li data-type="article" data-id="647e4babf9d5d4277351c70b" class="article-container"><a href="/help/creating-a-gauge" class="article-link">Adding Gauges</a></li><li data-type="article" data-id="647e4bbb975b4d355d79e485" class="article-container"><a href="/help/adding-climate-logs" class="article-link">Adding Climate Logs</a></li><li data-type="article" data-id="647f9ea150a23016c825a43e" class="article-container"><a href="/help/importing-climate-logs" class="article-link">Importing Logs</a></li><li data-type="article" data-id="647e4c01b5647e35261ebd7d" class="article-container"><a href="/help/weather-history-and-mapping" class="article-link">History and Mapping</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5c4ddf646e121c08767a6c4e"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Your Account<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50f05cad121c4b5d5111e3" class="article-container"><a href="/help/account-menu" class="article-link">Getting Started with Settings</a></li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="61c3a8d780c3722a7c7b2481"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Users, Roles, and Teams<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c50f1e28e121c917d385104" class="article-container"><a href="/help/users" class="article-link">Creating New Users</a></li><li data-type="article" data-id="61a670ede686da42787b26d3" class="article-container"><a href="/help/how-can-i-create-a-user-with-limited-access-to-my-farmbrite-account" class="article-link">Roles and Permissions</a></li><li data-type="article" data-id="61a651c9e686da045d7b23dd" class="article-container"><a href="/help/how-can-i-add-an-avatar-photo-to-my-user-account" class="article-link">User Settings</a></li><li data-type="article" data-id="6852c6304fb8a4ecfb08cb93" class="article-container"><a href="/help/creating-teams" class="article-link">Working with Teams</a></li><li data-type="article" data-id="69a8688a593b38502f0ac527" class="article-container"><a href="/help/multi-farm-user-permissions" class="article-link">Multi-Farm User Permissions</a></li><li data-type="article" data-id="69a896490e23d6638700f092" class="article-container"><a href="/help/multi-factor-authentication" class="article-link">Multi-Factor Authentication</a></li></ul>
+				</li><li data-type="category" class="category-container nav-header nav-header-sub">
+					<div class="category-link-container" data-id="61c3a90480c372bd7b7b265f"><i class="cat-icon fa fa-chevron-right"></i> <a class="documentation-category" href="javascript:void(0);">Billing<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+					</div>
+					<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="5c7997c1ec161c3c2ddbb59c" class="article-container"><a href="/help/how-do-i-update-my-credit-card" class="article-link">Update Credit Card</a></li><li data-type="article" data-id="5c799c486e121c4f6cb9ddb1" class="article-container"><a href="/help/how-do-i-cancel-my-account" class="article-link">Cancelling your Account</a></li><li data-type="article" data-id="5c799ef98e121c8b4319665f" class="article-container"><a href="/help/how-do-i-view-past-invoices-charges" class="article-link">View Past Invoices</a></li><li data-type="article" data-id="5c9007bfad121cea6024187c" class="article-container"><a href="/help/how-do-i-change-my-subscription-plan-type" class="article-link">Upgrade your Plan Type</a></li><li data-type="article" data-id="65f9e639dce0127ead729df4" class="article-container"><a href="/help/vat-tax-information" class="article-link">Tax and VAT Information</a></li></ul>
+				</li><li data-type="article" data-id="5c50f2a7ec161cb9714c0d50" class="article-container"><a href="/help/account-settings" class="article-link">Account Settings</a></li><li data-type="article" data-id="68f006b4e942ed4e07097157" class="article-container"><a href="/help/background-settings" class="article-link">Background Settings</a></li><li data-type="article" data-id="5c6494af8e121c01487784ad" class="article-container"><a href="/help/how-do-i-add-a-timezone-on-my-account" class="article-link">Address and Time Zone</a></li><li data-type="article" data-id="66a3e7d4cacef904ec0304a8" class="article-container"><a href="/help/account-do-you-support-the-metric-system" class="article-link">Metric Measurements</a></li><li data-type="article" data-id="664775199d560b45ef5b57d3" class="article-container"><a href="/help/mobile-notifications" class="article-link">Mobile Notifications</a></li><li data-type="article" data-id="5ebc74c9ad121c981bc34a84" class="article-container"><a href="/help/updating-email-addresses" class="article-link">Updating Email Addresses</a></li><li data-type="article" data-id="5edac992ad121c122b352556" class="article-container"><a href="/help/turn-off-email-notifications-in-your-account" class="article-link">Email Notifications</a></li><li data-type="article" data-id="5c78610e6e121cd235b9dde8" class="article-container"><a href="/help/how-do-i-extend-my-trial" class="article-link">How do I extend my trial?</a></li><li data-type="article" data-id="672e4b26c390fd7ebd0c9bb1" class="article-container"><a href="/help/opening-a-subaccount" class="article-link">Opening a Subaccount</a></li><li data-type="article" data-id="68d45c9b8b5a17b0f2084aae" class="article-container"><a href="/help/security-and-data-storage" class="article-link">Security and Data Storage</a></li><li data-type="article" data-id="699e2352b088fd44240ec831" class="article-container"><a href="/help/global-trade-compliance" class="article-link">Global Trade Compliance</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="5d83c3b9ad121cc52ab50384"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Mobile App<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="62556dc123adac8a007b269b" class="article-container"><a href="/help/accessing-farmbrite-on-mobile" class="article-link">Mobile Access</a></li><li data-type="article" data-id="5c8968e9ad121c396a4428cb" class="article-container"><a href="/help/using-farmbrite-offline" class="article-link">Using Offline</a></li><li data-type="article" data-id="664b7682e5cba95581470e75" class="article-container"><a href="/help/mobile" class="article-link">Mobile Notifications</a></li><li data-type="article" data-id="626fcb29868e75546b012851" class="article-container"><a href="/help/using-the-mobile-app-on-a-laptop-or-desktop" class="article-link">Other Device Access </a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="6466789660646b28103d6796"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Integrations<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="6466792af6a299391a3d792a" class="article-container"><a href="/help/getting-started-with-integrations" class="article-link">Getting Started</a></li><li data-type="article" data-id="6466790c8feaf642a33b6e62" class="article-container"><a href="/help/zapier" class="article-link">Zapier Integrations</a></li><li data-type="article" data-id="646678fd400d4f7833334f07" class="article-container"><a href="/help/working-with-webhooks" class="article-link">Working with Webhooks</a></li><li data-type="article" data-id="627505247ae13625e27e9782" class="article-container"><a href="/help/farmbrite-api" class="article-link">API Access</a></li><li data-type="article" data-id="636c0df4a2d32e74eb3ade65" class="article-container" external><a href="/help/developers-api" rel="noopener noreferrer" target="_blank" class="article-link">API Documentation</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="6a2174ef6f22a987380b9169"><i class="cat-icon fa fa-chevron-right"></i><a class="documentation-category" href="javascript:void(0);">Farming Use Scenarios<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"><li data-type="article" data-id="6a217554306f56a5db039e92" class="article-container"><a href="/help/selling-plant-starts" class="article-link">Selling Plant Starts</a></li></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="6450185e3242c744dc6974f0"><i class="alt-icon fa fa-chevron-right"></i><a class="documentation-category" href="/help/whatsnew">What&#039;s New in Farmbrite<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1 hide" style="display:none;"></ul>
+							</li><li data-type="category" class="category-container nav-header nav-header-sub level-0">
+						<div class="category-link-container" data-id="66a11b12a6749ee0b10707b9"><i class="alt-icon fa fa-chevron-right"></i><a class="documentation-category" href="/help/training-videos">Video Tutorials<span class="badge badge-new pull-right"></span><span class="badge badge-updated pull-right"></span></a>
+						</div>
+						<ul class="list-unstyled documentation-articles level-1" style="display:none;"></ul>
+							</li><li data-type="article" data-id="66a16a422c2271ae210a35c9" class="article-container" external><a href="/help/system-status" rel="noopener noreferrer" target="_blank" class="article-link">System Status</a></li><li data-type="article" data-id="64baa92c029c0140890a2fea" class="article-container"><a href="/help/contact-us-36e84fd" class="article-link">Contact Support</a></li><li data-type="article" data-id="6ad8a98433af29fe040842f8" class="article-container"><a href="/help/accessibility" class="article-link">Accessibility Statement</a></li>	</ul>
+	<ul class="list-unstyled bottom-outter-list">
+			</ul>
+	<div class="clear-both"></div>
+</div>
+<script>
+$(function () {
+  //set the active article if there is one
+  var curArtID = $("#object-id").val();
+  $('[data-id="' + curArtID + '"]')
+    .not(".article-favorite")
+    .not(".ko-js-favorites")
+    .addClass("active");
+
+  $(".article-container").on("click", function (e) {
+    e.preventDefault();
+    var href = $(this).find("a");
+    // if redirect or user does a cmnd/cntrl  + click
+    if (e.ctrlKey || e.metaKey || href.attr("target") == "_blank")
+      window.open(href.attr("href"), "_blank");
+    else window.location = href.attr("href");
+  });
+
+  if (
+    $(".article-container.active").length > 0 &&
+    $(".article-container.active").closest("ul").hasClass("hide")
+  ) {
+    $(".article-container.active").length > 0 &&
+      $(".article-container.active")
+        .closest("ul")
+        .siblings(".category-link-container")
+        .addClass("active");
+  }
+
+  if ($(".documentation-categories").find(".active").length > 0) {
+    $(".documentation-categories")
+      .find(".active")
+      .parents(".category-container")
+      .each(function () {
+        $(this)
+          .find(".cat-icon")
+          .first()
+          .not(".fa-chevron-down")
+          .toggleClass("fa-chevron-down")
+          .toggleClass("fa-chevron-right");
+        $(this).find(".documentation-articles").first().show();
+      });
+  }
+
+  if ($(".documentation-category").find(".active").length > 0) {
+    $(".documentation-categories").scrollTop(
+      $(".documentation-categories .active").position().top
+    );
+  }
+
+  $(".documentation-category").on("click", function () {
+    if ($(this).attr("href") == "javascript:void(0);") {
+      $(this).siblings(".cat-icon").click();
+    }
+  });
+
+  $(".article-container .badge-new").each(function () {
+    $(this)
+      .parents(".category-container")
+      .each(function () {
+        $(this)
+          .find(".badge-new")
+          .first()
+          .text($(this).find(".badge-new").first().text() * 1 + 1);
+      });
+  });
+
+  $(".article-container .badge-updated").each(function () {
+    $(this)
+      .parents(".category-container")
+      .each(function () {
+        $(this)
+          .find(".badge-updated")
+          .first()
+          .text($(this).find(".badge-updated").first().text() * 1 + 1);
+      });
+  });
+
+  $(".cat-icon").on("click", function () {
+    var show = $(this).hasClass("fa-chevron-right");
+
+    if (show) {
+      if (
+        $(this)
+          .closest(".nav-header")
+          .find(".article-container")
+          .hasClass("active")
+      ) {
+        $(this).closest(".category-link-container").removeClass("active");
+      }
+
+      //badges
+      $(this)
+        .closest(".category-link-container")
+        .find(".badge-new")
+        .first()
+        .hide();
+      $(this)
+        .closest(".category-link-container")
+        .find(".badge-updated")
+        .first()
+        .hide();
+
+      $(this)
+        .closest(".nav-header")
+        .find("ul")
+        .first()
+        .slideDown(200, function () {
+          $(this).closest(".nav-header").find("ul").first().attr("style", "");
+        });
+    } else {
+      $(this).closest(".nav-header").find("ul").first().slideUp(200);
+
+      //badges
+      if (
+        $(this)
+          .closest(".category-link-container")
+          .find(".badge-new")
+          .first()
+          .text() != ""
+      )
+        $(this)
+          .closest(".category-link-container")
+          .find(".badge-new")
+          .first()
+          .show();
+      if (
+        $(this)
+          .closest(".category-link-container")
+          .find(".badge-updated")
+          .first()
+          .text() != ""
+      )
+        $(this)
+          .closest(".category-link-container")
+          .find(".badge-updated")
+          .first()
+          .show();
+
+      if ($(this).closest(".nav-header").find("li.active").length > 0) {
+        $(this).closest(".category-link-container").addClass("active");
+      }
+    }
+
+    $(this).toggleClass("fa-chevron-down").toggleClass("fa-chevron-right");
+  });
+});
+
+</script>
+<div id="ko-article-cntr" data-vis="public" data-groups="" class="hg-2-col documentation-article">
+	<div class="ko-content-cntr">
+					<ul class="hg-breadcrumbs">
+				<li><a href="/help">Home</a></li>
+										<li><i class="fa fa-angle-double-right"></i></li>
+						<li title="Livestock"><a href="/help/livestock">Livestock</a>				
+							    </ul>
+			<input id="object-id" type="hidden" value="5c5075418e121c35493850f2" />
+		<input type="hidden" id="flag_type" value="none" />
+		<input type="hidden" id="flag_expiry" value="04/29/2026" />
+		<div class="hg-article">
+	<div class="hg-article-header">
+		<h1 class="hg-article-title">Livestock Dashboard<span class="ko-article-actions"><span class="pdf"><a href="/help/pdfexport/id/5c5075418e121c35493850f2" class="hg-article-pdf pdf" name="Download PDF" title="Download PDF"><i class="fa fa-file-pdf-o fa-fw"></i></a></span><a href="#" class="ko-js-print"><i class="fa fa-print fa-fw"></i></a><a href="#" onclick="javascript:window.location='mailto:?subject=Livestock Dashboard&body=' + window.location;"><i class="fa fa-envelope-o fa-fw"></i></a></span></h1>
+		<div class="metadata">Last Modified on 04/22/2026 3:34 pm MDT</div>
+	</div>
+	<div class="hg-article-body">
+		
+<p>The Livestock Dashboard page is your main access hub to all of your animal records. If you have created or imported any animals already, you&#39;ll see them listed here. You can always return to this page to find and access them, and the m make edits or perform actions on them. &nbsp;You can also use many different filters to find the exact animals you are looking for, and a helpful statistics bar is shown at the top that reflects your animal counts by type, gender, and more. &nbsp;You can even work with multiple animals at once by using the bulk actions feature incorporated into this page.&nbsp;</p><p><strong>To get started, just click Livestock in the main menu.</strong> You&#39;ll be brought here immediately.&nbsp;</p><p><img src="//dyzz9obi78pm5.cloudfront.net/app/image/id/689a35c244708b7845018d2a/n/lsdash1.gif" style="width: auto;" class="img-responsive" alt=""></p><h3>Creating Animal Records</h3><p><strong>If you have never been to this page previously, you&#39;ll first see the opportunity to add new animal records at the top.</strong> You can accomplish this in four ways:</p><ol><li><u>Adding animals individually</u> -Click the button to <a href="/help/creating-animals-creating-animals" name="How%20do%20I%20create%20a%20new%20animal?" title="How do I create a new animal?">Add Animal</a>&nbsp;and you&#39;ll be able to add details about a single new animal.&nbsp;</li><li><u>Adding animals in bulk </u>- Click the ellipsis actions button and then select&nbsp;<a href="/help/bulk-adding-animals" name="Bulk%20Adding%20Animals" title="Bulk Adding Animals">Bulk Add animals</a> to add basic data about up to 15 animals at a time. &nbsp;</li><li><u>Adding animals via import</u> - Click the same ellipsis actions button and choose <a href="/help/how-do-i-import-animals" name="How%20do%20I%20add%20or%20update%20animals%20via%20import?" title="How do I add or update animals via import?">Import records</a>&nbsp;to supply a spreadsheet of animal data and create up to 1000 animals at once.&nbsp;</li><li><u>Adding animals in a Set group</u> - You can use the New Group button to <a href="/help/creating-livestock-groups" name="Creating%20Livestock%20Groups" title="Creating Livestock Groups">create Set groups</a>, which could be useful for animals you track as a unit like chickens, fish, and bees.&nbsp;</li></ol><p>The choice between these is entirely up to you, and you can use a combination of all of these however you see fit for you needs.&nbsp;</p><p><img src="//dyzz9obi78pm5.cloudfront.net/app/image/id/689a5168c3b9d07837026701/n/lsdash2.gif" style="width: auto;" class="img-responsive" alt=""></p><h3>Viewing Animal Records</h3><p><strong>Now that you have created some animal records, you&#39;ll see them displayed when you access the Livestock Dashboard.</strong> Each animal displays important information at-a-glance, like name, breed, tag numbers, status, and a lot more.&nbsp; You&#39;ll also see an Actions menu icon on the right to access additional features for each animal; you can modify the animal&#39;s basic information, and record notes, treatments, measurements, and yields, and more. &nbsp;You can click on the name of the animal to view or edit it.</p><p>You can sort the items in the grid by clicking on any of the column headers. An arrow next to the column header indicates that column is being sorted and in what direction the data is ordered. If you have a lot of animals, you may need to page through the list to find the one you&#39;re looking for. Use the paging buttons at the bottom right of the grid to move between pages of animals.</p><p><img src="//dyzz9obi78pm5.cloudfront.net/app/image/id/689b4bcc90898f196a044e0d/n/lsdash3.gif" style="width: auto;" class="img-responsive" alt=""></p><h3>Searching and Filtering </h3><p>You can filter and search your animal records to find just the ones you are looking for. You&#39;ll see a search bar in the upper right, and you can use it look for animals based on many different data points like name, tag numbers, electronic Ids, animal type and breed, or even the keywords you associate with animal records.</p><p> </p><p>You can also access the filters menu in the upper right to refine your livestock list based on animal type, breed, gender, status, and dozens of other filter criteria. You&#39;ll use this in combination with each the to whittle your list to just the specific animals you are looking for.&nbsp;</p><p>Be aware that the search overrides the filters, so you can always use the search to find animals that do not meet your filter criteria. When you want to go back to your full list, you can select to reset or clear the filters. Reset restores the defaults, like seeing active statuses and not sold, butchered, and archived. Clearing removes all filters and shows all of your records without any filters applied.&nbsp;</p><p><img src="//dyzz9obi78pm5.cloudfront.net/app/image/id/689cd53e437ed370c306015c/n/lsdash5.gif" style="width: auto;" class="img-responsive" alt=""></p><h3>Bulk Actions</h3><p>You can also use the bulk actions on the page to work with multiple animals at the same time. This might be a great way to take a note, add a task, or record treatments for several unique individual animals. Just check the boxes next to the animals you&#39;d like to work with, and you&#39;ll see a bulk Actions menu shown at the bottom of the page. You can choose as many animals as you need, or Select All to pick all of them on the page. Note that you&#39;ll work with a single page of animals at a time; you cannot select animals from multiple pages. However, you can absolutely use the filters we referenced above to find just the animals you are looking for, and then work with them in bulk from the first page!&nbsp;</p><p><img src="//dyzz9obi78pm5.cloudfront.net/app/image/id/68c444ca9cad52effe0e338e/n/bulk-actionslsdash.gif" style="width: auto;" class="img-responsive" alt=""></p><p>Still need help? <a href="https://www.farmbrite.com/contact-us" name="" title="">Contact us here.</a></p><script type="text/javascript">window.ko_glossary_terms = {"import":"A way of getting data into your Farmbrite system. Sometimes it's easier to upload an Excel sheet with lots of data rather than adding each record one by one. You can import crops, animals, resources, accounting transactions, contacts, and more.","set group":"A type of livestock group that is used when you don't need to track every individual animal in the group - the group itself itself is effectively the \"animal\".  A good example of this might be bees - you would not track every individual bee in a hive, but rather think of the hive as a whole.","keywords":"Searchable words and phrases to make finding a particular record easier. For example, you might add keywords to notes to be able to search for all notes with that keyword in the future. "}; window.ko_glossary_count = 1;</script>
+	</div>
+	<div class="hg-article-footer">
+		<div class="ko-related-articles text-center">
+			<h3>Related Articles</h3>
+			<ul class="list-unstyled stat-list ko-related-list">
+						<li data-ko-rel="how-can-i-use-rfid-tags-to-track-my-livestock">
+						<div><a href="/help/how-can-i-use-rfid-tags-to-track-my-livestock">Using Electronic IDs For Livestock						</a></div>
+					</li>
+									<li data-ko-rel="creating-livestock-groups">
+						<div><a href="/help/creating-livestock-groups">Creating Livestock Groups						</a></div>
+					</li>
+									<li data-ko-rel="bulk-updates-to-animals-in-a-group">
+						<div><a href="/help/bulk-updates-to-animals-in-a-group">Bulk Updates to Animals in a Group						</a></div>
+					</li>
+									<li data-ko-rel="can-i-delete-multiple-records-at-once">
+						<div><a href="/help/can-i-delete-multiple-records-at-once">Bulk Deletes						</a></div>
+					</li>
+									<li data-ko-rel="customizing-dashboard-columns">
+						<div><a href="/help/customizing-dashboard-columns">Customizing Columns						</a></div>
+					</li>
+				</ul>
+
+		</div>
+			<div class="hg-rating-container text-center">
+	<input type="hidden" class="ko-rating-rootpath" value="help" />
+	<input type="hidden" class="ko-rating-pid" value="5c47ce35ec161cb925a0a8f5" />
+	<input type="hidden" class="ko-rating-acntID" value="5c47ce22ec161cc122a0a937" />
+	<input type="hidden" class="ko-rating-aid" value="5c5075418e121c35493850f2" />
+	<div class="hg-rating-label">
+		Was this article helpful?	</div>
+	<div class="hg-ratings ">
+					<a href="#" class="hg-helpful" data-rating="helpful" name="Helpful" title="Helpful">
+				<i class="fa fa-thumbs-o-up fa-2x fa-fw"></i>
+			</a>
+			<a href="javascript:void(0);" class="hg-unhelpful" data-rating="unhelpful" name="Unhelpful" title="Unhelpful">
+				<i class="fa fa-thumbs-o-down fa-2x fa-fw"></i>
+			</a>
+			</div>
+</div>
+<div class="hg-rating-success text-center hide">
+	Thank you for your feedback!
+</div>
+		
+	</div>
+</div> <script>
+	$(function(){
+		var searchID = '';
+		var articleID = '5c5075418e121c35493850f2';
+
+					//only do this if we have a view ID
+			setTimeout(function(){
+				$.ajax({
+					url: '/help/quality-view/aid/' + articleID + '/sid/' + searchID
+				});
+			}, 60000);
+			});
+</script>
+	</div>
+</div>
+</div>
+<div class="row ko-site-footer text-center xsize">
+	©2026 <a href="https://www.farmbrite.com">Farmbrite</a> <a href="https://www.farmbrite.com">farm management software</a>. All rights reserved.
+</div>
+<script>
+$(function() {
+	$(".hg-search-bar .form-control").attr("placeholder","Search help articles, tutorials and more");
+});
+</script>
+
+	</div>
+</div>
+
+		
+		<script>var translationsForJs = {"search":{"autocomplete-call-to-action":"Hit enter to search","search-unavailable-text":"Update in progress. Please wait a minute and try again."},"table-of-contents":[],"top-navigation":[],"article-lists":[],"reader-login":[],"article":{"favorite-icon-name":"Favorite Article","unfavorite-icon-name":"Unfavorite Article"},"contact-form":[],"miscellaneous":[],"required-reading":[],"chatbot":[]};</script>
+		<script type="text/javascript" charset="utf-8" src='https://d3s179bfexmwfe.cloudfront.net/min/js/publicFooter-ce30b27932.js'></script>
+		<script src="https://d3s179bfexmwfe.cloudfront.net/min/js/prismJs-2720813128.js" type="text/javascript"></script>
+    
+    
+		<script type="text/javascript" charset="utf-8" src='https://d3s179bfexmwfe.cloudfront.net/min/js/slideoutJs-dd70f0026a.js'></script>
+		<script>
+			$(function(){
+				if($('.slideout-new').length > 0 && $('.hg-minimalist-theme').length > 0)
+{
+  // for css consistency
+  $('#ko-documentation-categories').addClass('slideout-menu').addClass('slideout-menu-left').removeClass('hide');
+  $('.documentation-article').addClass('slideout-panel').addClass('slideout-panel-left');
+
+  $('.ko-slideout-left-toggle').on('click', function(){
+    $("html").toggleClass('slideout-open');
+    $('.ko-slideout-left-toggle i').toggleClass('fa-bars fa-times');
+    $('#ko-documentation-categories').toggleClass('open');
+    $('.documentation-article').toggleClass('open');
+  });
+}
+else
+{
+  //resize content instead of pushing it
+  var slideResize = $('.slideout-resize').length > 0;
+  var slideWidth = $('.slideout-width').length > 0 ? $('.slideout-width').val() : 360;
+  slideout = new Slideout({
+    'panel': document.getElementById("ko-article-cntr"),
+    'menu': document.getElementById('ko-documentation-categories'),
+    'padding': slideWidth,
+    'tolerance': 70,
+    'resize': slideResize,
+    'touch': false
+  });
+  //open on load if specified and not on a small screen
+  if($('.slideout-open-onload').length > 0 && screen.width >= 992) {
+    $('.ko-slideout-left-toggle i').not('fa-times').toggleClass('fa-bars fa-times');
+    $('.slideout-panel').toggleClass('open');
+    slideout.open();
+  }
+  $('.documentation-categories').removeClass('hide');
+  slideout.on('beforeopen', function(){
+    $('.ko-slideout-left-toggle i').not('fa-times').toggleClass('fa-bars fa-times');
+    $('.slideout-panel').toggleClass('open');
+  });
+  slideout.on('open', function(){
+    $('.slideout-menu').toggleClass('open');
+  });
+  slideout.on('beforeclose', function(){
+    $('.ko-slideout-left-toggle i').not('fa-bars').toggleClass('fa-times fa-bars');
+    $('.slideout-panel').toggleClass('open');
+    $('.slideout-menu').toggleClass('open');
+  });
+  $('.ko-slideout-left-toggle').on('click', function(){
+      slideout.toggle();
+  });
+}
+			});
+		</script>
+	</body>
+</html>

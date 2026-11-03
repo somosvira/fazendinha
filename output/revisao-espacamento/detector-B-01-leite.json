@@ -1,0 +1,715 @@
+[
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/componentes-producao.css",
+    "line": 4,
+    "snippet": "font-size: 28px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "28px"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/componentes-producao.css",
+    "line": 6,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/consultas-leite.css",
+    "line": 16,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "ConsultasProducaoLeite.tsx",
+      "DialogConsultaLeite.tsx",
+      "ListaConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/consultas-leite.css",
+    "line": 68,
+    "snippet": "border-radius: 2px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "2px",
+    "importedBy": [
+      "ConsultasProducaoLeite.tsx",
+      "DialogConsultaLeite.tsx",
+      "ListaConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/distribuicao-consumo.css",
+    "line": 1,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "DistribuicaoConsumoLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/distribuicao-consumo.css",
+    "line": 1,
+    "snippet": "border-radius: 1px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "1px",
+    "importedBy": [
+      "DistribuicaoConsumoLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/distribuicao-consumo.css",
+    "line": 1,
+    "snippet": "border-radius: 3px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "3px",
+    "importedBy": [
+      "DistribuicaoConsumoLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/distribuicao-consumo.css",
+    "line": 1,
+    "snippet": "border-radius: 14px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "14px",
+    "importedBy": [
+      "DistribuicaoConsumoLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/distribuicao-consumo.css",
+    "line": 1,
+    "snippet": "font-size: 24px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "24px",
+    "importedBy": [
+      "DistribuicaoConsumoLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/historico-produtivo.css",
+    "line": 65,
+    "snippet": "font-size: 28px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "28px",
+    "importedBy": [
+      "HistoricoProdutivoLeite.tsx",
+      "QualidadeAnimalLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/ordenhas-gerais.css",
+    "line": 237,
+    "snippet": "font-size: 28px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "28px"
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/refino-operacional.css",
+    "line": 5,
+    "snippet": "border-radius: 9px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/refino-operacional.css",
+    "line": 86,
+    "snippet": "font-size: 24px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "24px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/registro-ordenha.css",
+    "line": 23,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "RegistroOrdenha.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #e8efe1 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#e8efe1",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #527649 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#527649",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 2,
+    "snippet": "border-radius: 14px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "14px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 10,
+    "snippet": "Undocumented color #f0f4e9 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f0f4e9",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 23,
+    "snippet": "Undocumented color #edf1e3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf1e3",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 23,
+    "snippet": "Undocumented color #6d8049 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#6d8049",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 33,
+    "snippet": "Undocumented color #edf3e7 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf3e7",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 34,
+    "snippet": "font-size: 28px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "28px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 36,
+    "snippet": "border-radius: 14px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "14px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 46,
+    "snippet": "Undocumented color #f0f4e9 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f0f4e9",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 50,
+    "snippet": "Undocumented color #edf1e3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edf1e3",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/rotina-leite.css",
+    "line": 51,
+    "snippet": "font-size: 28px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "28px",
+    "importedBy": [
+      "LeiteModulo.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/selecao-sitio.css",
+    "line": 2,
+    "snippet": "font-size: 21px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "21px"
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #f8f2e7 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f8f2e7",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #805c2a is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#805c2a",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #e8dbc6 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#e8dbc6",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #f8eeed is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#f8eeed",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #914841 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#914841",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "Undocumented color #edd6d3 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#edd6d3",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 2,
+    "snippet": "font-size: 27px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "27px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "Undocumented color #4f8073 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#4f8073",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "Undocumented color #9b8066 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#9b8066",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "Undocumented color #bead72 is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#bead72",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-color",
+    "name": "Color outside DESIGN.md",
+    "description": "A literal color is outside the DESIGN.md palette and sidecar tonal ramps. This may be legitimate, but it should be an intentional design-system addition rather than drift.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "Undocumented color #c9cfcb is outside DESIGN.md colors",
+    "advisory": true,
+    "ignoreValue": "#c9cfcb",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "border-radius: 4px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "4px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 3,
+    "snippet": "border-radius: 1px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "1px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 4,
+    "snippet": "border-radius: 9px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 4,
+    "snippet": "font-size: 34px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "34px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 5,
+    "snippet": "border-radius: 7px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "7px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 6,
+    "snippet": "border-radius: 10px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "10px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 10,
+    "snippet": "font-size: 27px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "27px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 11,
+    "snippet": "border-radius: 7px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "7px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-radius",
+    "name": "Radius outside DESIGN.md",
+    "description": "A border-radius value is outside the DESIGN.md rounded scale. Use a documented radius token or update the design system if the new shape is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 11,
+    "snippet": "border-radius: 9px is outside the DESIGN.md rounded scale",
+    "advisory": true,
+    "ignoreValue": "9px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  },
+  {
+    "antipattern": "design-system-font-size",
+    "name": "Font size outside DESIGN.md",
+    "description": "A literal font-size is off the type ramp documented in DESIGN.md typography. Use a documented size step or update the design system if the new step is intentional.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/Users/toledo/fazendinha/client/src/pecuaria/rebanho/leite/visuais-consulta-leite.css",
+    "line": 13,
+    "snippet": "font-size: 23px is off the DESIGN.md type ramp",
+    "advisory": true,
+    "ignoreValue": "23px",
+    "importedBy": [
+      "VisuaisConsultaLeite.tsx"
+    ]
+  }
+]
