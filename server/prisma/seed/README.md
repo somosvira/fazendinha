@@ -13,7 +13,7 @@ pnpm --filter rionovo-server run seed --verificar
 pnpm --filter rionovo-server run seed:typecheck
 ```
 
-O manifesto `server/.seed/manifesto.json` guarda identidade do banco, checksum, data-base Brasil, IDs, ações e etapas. Uma carga nova congela o histórico até o dia anterior em America/Sao_Paulo, reservando o dia de execução para as ações posteriores (como secagens com peso), sem invalidar produção do mesmo dia. Manifestos existentes conservam sua data-base; fatos operacionais conflitantes exigem conciliação explícita, sem recuar datas ou apagar registros. Reexecutar retoma sem duplicar fatos ou restaurar alterações legítimas da interface. IDs removidos, referências desconhecidas ou identidade incompatível interrompem a carga antes de novas escritas. `--interromper-apos=estoque` permite testar retomada; a interrupção retorna erro de propósito.
+O manifesto `server/.seed/manifesto.json` guarda identidade do banco, checksum, data-base Brasil, IDs, ações e etapas. Reexecutar retoma sem duplicar fatos ou restaurar alterações legítimas da interface. IDs removidos, referências desconhecidas ou identidade incompatível interrompem a carga antes de novas escritas. `--interromper-apos=estoque` permite testar retomada; a interrupção retorna erro de propósito.
 
 `--preflight` e `--verificar` usam conexões somente de leitura. O modo de verificação não modifica manifesto ou guia. Ao concluir a execução normal, `server/.seed/guia.html` e `verificacao.json` apresentam o cenário e links de consulta.
 

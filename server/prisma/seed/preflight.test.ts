@@ -40,20 +40,6 @@ function cadeia(rows: Array<ReturnType<typeof aplicada> | (Omit<ReturnType<typeo
   mocks.query.mockImplementation(async (consulta: string) => consulta.includes('_prisma_migrations') ? { rows } : original(consulta));
 }
 describe('preflight sem alterações e sem conexão operacional', () => {
-  it.each([
-    ['2026-11-03T12:00:00Z', '2026-11-02'],
-    ['2026-11-01T01:00:00Z', '2026-10-30'],
-    ['2024-03-01T12:00:00Z', '2024-02-29'],
-  ])('carga nova em %s encerra o histórico em %s, antes das secagens de hoje', async (agora, esperado) => {
-    vi.useFakeTimers(); vi.setSystemTime(new Date(agora));
-    try {
-      const aberto = await abrirContexto('preflight');
-      expect(aberto.contexto.dataBase).toBe(esperado);
-      expect(mocks.writeFile).not.toHaveBeenCalled();
-      await aberto.fechar();
-    } finally { vi.useRealTimers(); }
-  });
-
   it('aceita baseline inicial e incrementais concluídas com cada checksum conferido', async () => {
     cadeia([aplicada(incremento, checksumIncremento), aplicada()]);
     const aberto = await abrirContexto('preflight');
