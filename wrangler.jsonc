@@ -48,7 +48,13 @@
         "NUTRICAO_AUTOMACAO_ENABLED": "false"
       }
     },
-    "producao": { "name": "fazendinha-producao" }
+    "producao": {
+      "name": "fazendinha-producao",
+      "vars": {
+        "NUTRICAO_MENSAL_ENABLED": "true",
+        "NUTRICAO_AUTOMACAO_ENABLED": "false"
+      }
+    }
   },
   "triggers": { "crons": ["*/15 * * * *"] },
 
