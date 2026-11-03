@@ -576,9 +576,9 @@ export function App() {
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
     : tab === "metas"
-    ? <PaginaMetas propriedadeId={propAtiva} onTrocarPropriedade={trocarPropriedade} onAbrirFonte={abrirFonteAssistente} />
+    ? <PaginaMetas propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
     : tab === "assistente"
-    ? <PaginaIATerrano propriedadeId={propAtiva} onTrocarPropriedade={trocarPropriedade} onAbrirFonte={abrirFonteAssistente} />
+    ? <PaginaIATerrano propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
     : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"

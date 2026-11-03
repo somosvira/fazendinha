@@ -56,7 +56,6 @@ function abrir() {
   render(
     <PaginaIATerrano
       propriedadeId={7}
-      onTrocarPropriedade={vi.fn()}
       onAbrirFonte={vi.fn()}
     />,
   );

@@ -38,7 +38,7 @@ describe("Metas", () => {
       podeEditar: true,
     });
     render(<Metas propriedadeId={1} />);
-    await screen.findByText("O próximo alvo começa aqui");
+    await screen.findByText("Nenhuma meta cadastrada");
     expect(screen.queryByText(/3.600/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Nova meta" }));
     expect(screen.getByRole("dialog")).toBeTruthy();
@@ -58,8 +58,9 @@ describe("Metas", () => {
       podeEditar: false,
     });
     render(<Metas propriedadeId={1} />);
-    await screen.findByText("O próximo alvo começa aqui");
+    await screen.findByText("Nenhuma meta cadastrada");
     expect(screen.queryByRole("button", { name: "Nova meta" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Criar a primeira meta" })).toBeNull();
   });
   it("abre fonte da meta consolidada pelo callback com a fazenda correta", async () => {
     const fonte =
@@ -192,7 +193,7 @@ describe("Metas", () => {
         "Falha de conexão",
       ),
     );
-    expect(screen.queryByText("O próximo alvo começa aqui")).toBeNull();
+    expect(screen.queryByText("Nenhuma meta cadastrada")).toBeNull();
     expect(
       screen.getByRole("button", { name: "Tentar novamente" }),
     ).toBeTruthy();

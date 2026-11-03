@@ -151,14 +151,14 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
         {erroCatalogos && <div className="busca-animais-aviso" role="status">Não foi possível carregar as opções de lote, sítio e categoria. <Button variant="link" onClick={() => setTentativaCatalogos(v => v + 1)}>Tentar carregar filtros</Button></div>}
         <div className="busca-animais-resultados" aria-busy={carregando}>
           {carregando ? <p className="busca-animais-estado" role="status">Consultando animais…</p> : erro ? <div className="busca-animais-estado" role="alert"><h3>{erro}</h3><p>Confira sua conexão e tente novamente.</p><Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button></div> : dados && !itens.length ? <div className="busca-animais-estado"><h3>Nenhum animal encontrado</h3><p>Altere o termo ou os filtros para tentar novamente.</p><Button variant="outline" onClick={limpar}>Limpar busca e filtros</Button></div> : <table id={`${id}-tabela`} aria-label="Animais encontrados">
-            <thead><tr>{["Brinco / nome","Situação","Categoria","Reprodução","Produção","Lote","Sítio"].map(t => <th key={t} scope="col">{t}</th>)}</tr></thead>
+            <thead><tr>{["Brinco / nome","Situação","Categoria","Reprodução","Produção","Lote",...(sitioDoShell == null ? ["Sítio"] : [])].map(t => <th key={t} scope="col">{t}</th>)}</tr></thead>
             <tbody ref={corpoTabela}>{itens.map((animal,i) => <tr key={animal.id} data-selecionado={i === selecionado || undefined} onClick={() => abrir(animal)}>
               <td><button type="button" data-animal-id={animal.id} onFocus={() => setSelecionado(i)} onKeyDown={navegar} onClick={e => { e.stopPropagation(); abrir(animal); }} disabled={podeVerCaminho && !podeVerCaminho(caminhoAnimal(animal))} aria-label={`Abrir ficha de ${animal.brinco}${animal.nome ? ` — ${animal.nome}` : ""}`}>{animal.brinco}</button><small>{animal.nome ?? "Nome não informado"}</small></td>
               <td><span className={`busca-animais-situacao ${animal.situacao === "ATIVO" ? "ativa" : ""}`}>{ROTULO_SITUACAO[animal.situacao]}</span></td>
               <td>{animal.categoria?.nome ?? "Não informada"}</td>
               <td>{animal.sexo === "M" ? "Não se aplica" : REPRODUCAO[animal.contextoCartao?.situacaoReprodutiva ?? ""] ?? "Não informada"}</td>
               <td>{animal.sexo === "M" ? "Não se aplica" : rotuloLactacao(animal.contextoCartao?.produtivo?.situacaoProdutiva)}</td>
-              <td>{animal.lote?.nome ?? "Sem lote"}</td><td>{animal.propriedade?.nome ?? "Não informado"}</td>
+              <td>{animal.lote?.nome ?? "Sem lote"}</td>{sitioDoShell == null && <td>{animal.propriedade?.nome ?? "Não informado"}</td>}
             </tr>)}</tbody>
           </table>}
         </div>

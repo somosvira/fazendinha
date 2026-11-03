@@ -8,6 +8,9 @@ import {
 } from "../../pecuaria/sanidade/alertas/consulta-alertas.js";
 import type { ContextoAssistente } from "../tipos.js";
 import type { RadarDTO } from "./tipos.js";
+const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
+const dataBR = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+
 export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
   const dia = hojeLocal(ctx.agora);
   const r: RadarDTO = {
@@ -71,12 +74,12 @@ export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
     ]);
     r.leitura.push({
       titulo: "Rebanho no sítio atual",
-      texto: `${animais} animais com localização aberta.`,
+      texto: `${plural(animais, "animal", "animais")} neste sítio hoje.`,
       fonte: fonte("Rebanho · localização atual", "/pecuaria/rebanho/animais"),
     });
     r.cobertura.push({
       titulo: "Pesagens de hoje",
-      texto: `${pesados} de ${animais} animais da localização atual têm pesagem registrada hoje neste recorte. Não representa uma meta de pesagem.`,
+      texto: `${pesados} de ${plural(animais, "animal", "animais")} com pesagem registrada hoje.`,
       fonte: fonte(
         "Pesagens · registros por animal",
         "/pecuaria/rebanho/animais",
@@ -85,8 +88,8 @@ export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
     r.cobertura.push({
       titulo: "Registro de produção",
       texto: leite
-        ? `Último dia operacional cadastrado: ${leite.dataOperacional.toISOString().slice(0, 10)}. Dia cadastrado não comprova medição nem entrada confirmada.`
-        : "Nenhum dia operacional cadastrado neste recorte. Produção desconhecida.",
+        ? `Último dia de produção cadastrado: ${dataBR(leite.dataOperacional.toISOString())}. Confira na ordenha as medições confirmadas.`
+        : "Nenhum dia de produção cadastrado neste sítio.",
       fonte: fonte(
         "Leite · ordenha",
         `/pecuaria/leite?leiteSecao=ordenhas&leiteModo=geral&ordenhasInicio=${leite?.dataOperacional.toISOString().slice(0, 10) ?? dia}&ordenhasFim=${leite?.dataOperacional.toISOString().slice(0, 10) ?? dia}`,
@@ -94,7 +97,7 @@ export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
     });
     r.cobertura.push({
       titulo: "Avaliação sanitária",
-      texto: `${({ ATUALIZADA: "Avaliação atualizada", DESATUALIZADA: "Avaliação desatualizada", NAO_AVALIADO: "Avaliação ainda não realizada", FALHA: "A avaliação não foi concluída" } as Record<string, string>)[alertas.cobertura.estado] ?? "Cobertura não informada"}. ${alertas.cobertura.diaCoberto ? `Dia coberto: ${alertas.cobertura.diaCoberto}.` : "Sem dia coberto; a lista pode estar incompleta."}`,
+      texto: `${({ ATUALIZADA: "Avaliação atualizada", DESATUALIZADA: "Avaliação desatualizada", NAO_AVALIADO: "Avaliação ainda não realizada", FALHA: "A avaliação não foi concluída" } as Record<string, string>)[alertas.cobertura.estado] ?? "Cobertura não informada"}. ${alertas.cobertura.diaCoberto ? `Dia coberto: ${dataBR(alertas.cobertura.diaCoberto)}.` : "Sem dia coberto; a lista pode estar incompleta."}`,
       fonte: fonte(
         "Alertas · atenção",
         "/pecuaria/rebanho/alertas?disposicao=ATENCAO",
@@ -105,7 +108,7 @@ export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
       r.prioridades.push({
         id: `sanidade:${a.chave}`,
         titulo: a.titulo,
-        descricao: `${a.necessidades} necessidades registradas; ${a.animais} animais. Não é diagnóstico.`,
+        descricao: `${plural(a.necessidades, "necessidade registrada", "necessidades registradas")} em ${plural(a.animais, "animal", "animais")}.`,
         fonte: fonte(
           "Alertas · grupo registrado",
           `/pecuaria/rebanho/alertas/participantes?disposicao=ATENCAO&cuidado=${encodeURIComponent(a.chave)}`,
@@ -126,26 +129,26 @@ export async function coletarRadar(ctx: ContextoAssistente): Promise<RadarDTO> {
     const url = `/financeiro/compromissos?inicio=${inicio.toISOString().slice(0, 10)}&fim=${dia}&situacao=pagar`;
     r.leitura.push({
       titulo: "Vencimentos financeiros",
-      texto: `${cs.length} compromissos a pagar pendentes com vencimento nos últimos 30 dias até hoje. Não inclui pendências mais antigas.`,
+      texto: `${plural(cs.length, "compromisso a pagar pendente", "compromissos a pagar pendentes")} com vencimento nos últimos 30 dias.`,
       fonte: fonte("Compromissos · período consultado", url),
     });
     if (cs.length)
       r.prioridades.push({
         id: "financeiro:vencimentos",
         titulo: "Conferir compromissos a pagar",
-        descricao: `${cs.length} compromissos pendentes neste período. Compromisso não significa dinheiro movimentado.`,
+        descricao: `${plural(cs.length, "compromisso pendente", "compromissos pendentes")} com vencimento nos últimos 30 dias.`,
         fonte: fonte("Compromissos · período consultado", url),
         pergunta: `Quais os compromissos a pagar de ${inicio.toISOString().slice(0, 10)} até ${dia}?`,
       });
     r.cobertura.push({
       titulo: "Financeiro",
       texto:
-        "Pendências por vencimento nos últimos 30 dias. Saldos e resultado realizado não foram consultados.",
+        "Pendências por vencimento nos últimos 30 dias. Saldos e resultado realizado não entram nesta leitura.",
       fonte: fonte("Compromissos · período consultado", url),
     });
   }
   r.sintese.texto = r.leitura.length
-    ? `${r.prioridades.length} prioridades apresentadas a partir dos registros autorizados. Confira as fontes e a cobertura antes de decidir. Não há inferência clínica ou causal.`
+    ? `${plural(r.prioridades.length, "prioridade", "prioridades")} a partir dos registros que você pode consultar. Confira as fontes antes de decidir.`
     : "Não há fontes habilitadas para este acesso. Solicite ao administrador a revisão das permissões.";
   return r;
 }

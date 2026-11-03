@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { History, Plus, Sparkles } from "lucide-react";
+import { History, Plus } from "lucide-react";
 import { AssistenteConsulta } from "../components/AssistenteConsulta";
 import { Button } from "../components/ui/button";
 import { SubTabs } from "../components/SubTabs";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { navegarPara } from "../router";
 import { Radar } from "./Radar";
-import { SeletorFazenda } from "./SeletorFazenda";
 import "./pagina-ia.css";
 
 type Aba = "conversa" | "radar";
@@ -16,11 +15,9 @@ function abaAtual(): Aba {
 }
 export function PaginaIATerrano({
   propriedadeId,
-  onTrocarPropriedade,
   onAbrirFonte,
 }: {
   propriedadeId: number | null;
-  onTrocarPropriedade: (id: number | null) => void;
   onAbrirFonte: (url: string, sitio: number | null) => void;
 }) {
   const [aba, setAba] = useState<Aba>(abaAtual);
@@ -68,11 +65,8 @@ export function PaginaIATerrano({
   return (
     <section className="pagina-ia cooperativa-content">
       <header className="pagina-ia-cabecalho">
-        <h1>
-          <Sparkles size={28} aria-hidden />
-          IA Terrano
-        </h1>
-        <div>
+        <h1>IA Terrano</h1>
+        {aba === "conversa" && <div>
           <Button
             variant="outline"
             onClick={() => {
@@ -93,7 +87,7 @@ export function PaginaIATerrano({
             <Plus size={16} aria-hidden />
             Nova conversa
           </Button>
-        </div>
+        </div>}
       </header>
       <SubTabs<Aba>
         tabs={[
@@ -105,10 +99,6 @@ export function PaginaIATerrano({
         ariaLabel="IA Terrano"
         idDaAba={(id) => `ia-aba-${id}`}
         idDoPainel={(id) => `ia-painel-${id}`}
-      />
-      <SeletorFazenda
-        propriedadeId={propriedadeId}
-        onTrocar={onTrocarPropriedade}
       />
       <div
         role="tabpanel"

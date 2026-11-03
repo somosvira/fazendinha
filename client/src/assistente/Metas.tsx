@@ -13,7 +13,7 @@ import {
   ReferenceLine,
   ReferenceArea,
 } from "recharts";
-import { Target, Plus, Pencil, History, CalendarCheck } from "lucide-react";
+import { Plus, Pencil, History, CalendarCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ import {
   DialogDescription,
 } from "../components/ui/dialog";
 import { Button } from "../components/ui/button";
+import { SelectCampo } from "../financeiro/SelectCampo";
+import { DatePicker } from "../components/DatePicker";
 import {
   obterCatalogoMetas,
   obterMetas,
@@ -185,10 +187,7 @@ export default function Metas({
     <section className="terrano-metas" aria-label="Metas da fazenda">
       <div className="metas-abertura">
         <div>
-          <h1>
-            <Target size={25} aria-hidden />
-            Metas da fazenda
-          </h1>
+          <h1>Metas da fazenda</h1>
           <p>Acompanhe a evolução dos registros em relação ao alvo.</p>
         </div>
         {podeEditar && (
@@ -223,14 +222,20 @@ export default function Metas({
         <div className="metas-vazio">
           <h3>
             {indicadores.length
-              ? "O próximo alvo começa aqui"
+              ? "Nenhuma meta cadastrada"
               : "Nenhum indicador disponível neste acesso"}
           </h3>
           <p>
             {indicadores.length
-              ? "Crie uma meta e registre uma medição ou apure a produção geral diária. A evolução aparece quando houver dados."
+              ? "Defina um alvo para um indicador da fazenda. A evolução aparece quando houver medições."
               : "As metas acompanham as permissões de cada área."}
           </p>
+          {indicadores.length > 0 && podeEditar && propriedadeId !== null && (
+            <Button variant="outline" onClick={() => setModal({ tipo: "definicao" })}>
+              <Plus size={17} aria-hidden />
+              Criar a primeira meta
+            </Button>
+          )}
         </div>
       ) : (
         <div className="metas-lista">
@@ -670,13 +675,13 @@ function ModalMeta({
                   </label>
                   <label>
                     Indicador
-                    <select
+                    <SelectCampo
                       value={d.indicadorId}
                       disabled={!!modal.meta}
-                      onChange={(e) => {
-                        const marco = e.target.value === "marco_operacional";
+                      onValueChange={(valor) => {
+                        const marco = valor === "marco_operacional";
                         alterar({
-                          indicadorId: e.target.value,
+                          indicadorId: valor,
                           tipo: marco ? "marco" : "minimo",
                           minimo: null,
                           maximo: null,
@@ -691,19 +696,24 @@ function ModalMeta({
                           {i.nome} · {i.unidade}
                         </option>
                       ))}
-                    </select>
+                    </SelectCampo>
                   </label>
-                  <p className="metas-formula">
-                    {indicador?.formula} · Versão {indicador?.versao}
-                  </p>
+                  {indicador?.formula && (
+                    <details className="metas-formula">
+                      <summary>Como o indicador é calculado</summary>
+                      <p>
+                        {indicador.formula} · Versão {indicador.versao}
+                      </p>
+                    </details>
+                  )}
                   <div className="metas-dupla">
                     <label>
                       Alvo
-                      <select
+                      <SelectCampo
                         value={d.tipo}
-                        onChange={(e) =>
+                        onValueChange={(valor) =>
                           alterar({
-                            tipo: e.target.value as DefinicaoMeta["tipo"],
+                            tipo: valor as DefinicaoMeta["tipo"],
                             minimo: null,
                             maximo: null,
                           })
@@ -718,15 +728,15 @@ function ModalMeta({
                             <option value="faixa">Faixa</option>
                           </>
                         )}
-                      </select>
+                      </SelectCampo>
                     </label>
                     <label>
                       Período
-                      <select
+                      <SelectCampo
                         value={d.periodo}
-                        onChange={(e) =>
+                        onValueChange={(valor) =>
                           alterar({
-                            periodo: e.target.value as DefinicaoMeta["periodo"],
+                            periodo: valor as DefinicaoMeta["periodo"],
                             fonte: "manual",
                           })
                         }
@@ -736,7 +746,7 @@ function ModalMeta({
                             {n}
                           </option>
                         ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                   </div>
                   <div className="metas-dupla">
@@ -790,12 +800,11 @@ function ModalMeta({
                     )}
                     <label>
                       Prazo {d.tipo === "marco" ? "" : "(opcional)"}
-                      <input
-                        type="date"
+                      <DatePicker
                         required={d.tipo === "marco"}
                         value={d.prazo ?? ""}
-                        onChange={(e) =>
-                          alterar({ prazo: e.target.value || null })
+                        onChange={(valor) =>
+                          alterar({ prazo: valor || null })
                         }
                       />
                     </label>
@@ -830,11 +839,11 @@ function ModalMeta({
                   )}
                   <label>
                     Fonte
-                    <select
+                    <SelectCampo
                       value={d.fonte}
-                      onChange={(e) =>
+                      onValueChange={(valor) =>
                         alterar({
-                          fonte: e.target.value as DefinicaoMeta["fonte"],
+                          fonte: valor as DefinicaoMeta["fonte"],
                         })
                       }
                     >
@@ -845,7 +854,7 @@ function ModalMeta({
                             Produção geral diária confirmada
                           </option>
                         )}
-                    </select>
+                    </SelectCampo>
                   </label>
                   <p className="metas-formula">{indicador?.motivoManual}</p>
                   <label>
@@ -872,12 +881,11 @@ function ModalMeta({
                   </p>
                   <label>
                     Data de referência
-                    <input
-                      type="date"
+                    <DatePicker
                       required
                       value={data}
-                      onChange={(e) => {
-                        setData(e.target.value);
+                      onChange={(valor) => {
+                        setData(valor);
                         setSujo(true);
                       }}
                     />

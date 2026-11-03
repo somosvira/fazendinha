@@ -773,10 +773,10 @@ export function AssistenteConsulta({
             </div>
           </div>
         </DialogHeader>
-        {pagina && config && !carregandoConfig && !modoVoz && <div className="assistente-atalhos" aria-label="Mensagens sugeridas">
+        {pagina && config && !carregandoConfig && !modoVoz && mensagens.length > 0 && <div className="assistente-atalhos" aria-label="Mensagens sugeridas">
           {CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" size="sm" disabled={bloqueado} onClick={() => { setModo("consultar"); setInput(c.pergunta); inputRef.current?.focus(); }}>{c.titulo}</Button>)}
           {config.podeEditar && <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { mudarModo("editar"); setInput("Quero registrar uma pesagem de rotina."); inputRef.current?.focus(); }}>Registrar pesagem</Button>}
-          <Button variant="ghost" size="sm" disabled={bloqueado} onClick={() => { setInput("Como posso usar o Terrano?"); inputRef.current?.focus(); }}>Ajuda com o Terrano</Button>
+          <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { setInput("Como posso usar o Terrano?"); inputRef.current?.focus(); }}>Ajuda com o Terrano</Button>
         </div>}
         <div className="assistente-corpo">
           {carregandoConfig && (

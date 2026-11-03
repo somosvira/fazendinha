@@ -439,7 +439,7 @@
   padding-bottom: 8px;
 }
 .assistente-aviso {
-  color: var(--destructive);
+  color: var(--ink-3, var(--muted-foreground));
   font-size: 13px;
   padding: 8px 0;
   line-height: 1.5;
