@@ -28,6 +28,29 @@ export function verificarQualidadeSeed(registros: readonly AmostraQualidadeConfe
 }
 
 /** Confere fatos atuais por leitura; manifesto e roteiro de homologação não são alterados. */
+/** Etapas posteriores à baseline: só conferidas depois de executadas, para não bloquear bancos anteriores. */
+async function verificarNovidades(c: Contexto) {
+  const feita = (etapa: string) => c.manifesto.etapas.includes(etapa);
+  const s = c.sitioIds;
+  const alertas = feita('alertas-sanitarios') ? {
+    regrasAtivas: await prisma.regraAlertaSanitario.count({ where: { ativo: true } }),
+    programacoesAtivas: await prisma.programacaoSanitaria.count({ where: { ativo: true } }),
+    abertos: await prisma.alerta.count({ where: { ciclo: 'ABERTO' } }),
+    encerrados: await prisma.alerta.count({ where: { ciclo: 'ENCERRADO' } }),
+  } : 'Pendente';
+  if (typeof alertas === 'object') exigir(alertas.regrasAtivas >= 2 && alertas.programacoesAtivas >= 2 && alertas.abertos > 0 && alertas.encerrados >= 2, 'alertas sanitários publicados e atendidos.');
+  const bezerreiro = feita('bezerreiro') ? {
+    participantes: await prisma.participacaoBezerreiro.count({ where: { perfil: { propriedadeId: s.principal }, ate: null } }),
+    ofertas: await prisma.ofertaBezerreiro.count({ where: { propriedadeId: s.principal, status: 'CONFIRMADO' } }),
+    colostroDestinado: await prisma.destinacaoColostro.count({ where: { propriedadeId: s.principal } }),
+    bancoColostro: await prisma.unidadeBancoColostro.count({ where: { propriedadeId: s.principal } }),
+  } : 'Pendente';
+  if (typeof bezerreiro === 'object') exigir(bezerreiro.participantes > 0 && bezerreiro.ofertas >= 2 && bezerreiro.colostroDestinado >= 1, 'bezerreiro com participantes, ofertas e colostro.');
+  const nutricaoMensal = feita('nutricao-mensal') ? await prisma.configuracaoNutricao.count() : 'Pendente';
+  const pesosSecagem = feita('pesagens-secagem') ? await prisma.vinculoPesagemSecagem.count() : 'Pendente';
+  const retiradasInternas = feita('leite-interno') ? await prisma.retiradaInternaLeite.count({ where: { propriedadeId: s.principal } }) : 'Pendente';
+  return { alertas, bezerreiro, nutricaoMensal, pesosSecagem, retiradasInternas };
+}
 export async function verificar(c: Contexto) {
   const data = dia(c.dataBase), principal = c.numero('sitio:Principal'), cal = calendario(c.dataBase);
   const sitios = await prisma.propriedade.findMany({ orderBy: { id: 'asc' } });
@@ -143,8 +166,9 @@ export async function verificar(c: Contexto) {
   exigir(Number(negativos[0].total) === 0, 'nenhum saldo de estoque negativo.');
   const { verificarCoberturaParcelas } = await import('./leite/cobertura-parcelas.js');
   const coberturaParcelas = await verificarCoberturaParcelas(c);
+  const novidades = await verificarNovidades(c);
   const entradas = await prisma.entradaProducaoLeite.count(), pendentes = await prisma.medicaoGeralLeite.count({ where: { entradasEstoque: { none: { status: 'CONFIRMADA' } } } }), relatorios = await prisma.emissaoRelatorioLeite.count();
-  return { dataBase: c.dataBase, sitios: sitios.map(s => ({ id: s.id, nome: s.nome })), distribuicao, animaisAtivos: todosAtivos.size, lactantesAtuais: lactacoes.length, criasVivas: crias.length, bancos: contas.length, operacoes, operacoesNegocio, comprasComLastro: compras.length, produtos, parceiros, vacinas: vacinacoes.length, carencias: { conhecidas: emCarencia.length, desconhecidas: desconhecida.length }, amostras: amostras.length, qualidade, entradas, producaoGeral: { dias: dias.length, turnosConfirmados, litrosComerciaisConfirmados: litrosComerciais.toString(), entradasIndividuaisDuplicadas: duplicacoesIndividuais }, comerciais, nutricaoLeite: { fornecimentoId: fornecimento.id, litros: fornecimento.quantidadeLitros.toString(), referenciasR07: fornecimento.referencias.length }, custos: { situacao: custos.consolidado.situacao, custoPorLitro: custos.consolidado.custoPorLitro, motivos: custos.consolidado.motivos }, parcelasSemEntrada: pendentes, coberturaParcelas, relatorios, arquivosR2: c.manifesto.acoes.includes(ref('arquivos:verificados')) ? 'Verificados' : 'Pendentes: etapa opcional não executada' };
+  return { dataBase: c.dataBase, sitios: sitios.map(s => ({ id: s.id, nome: s.nome })), distribuicao, animaisAtivos: todosAtivos.size, lactantesAtuais: lactacoes.length, criasVivas: crias.length, bancos: contas.length, operacoes, operacoesNegocio, comprasComLastro: compras.length, produtos, parceiros, vacinas: vacinacoes.length, carencias: { conhecidas: emCarencia.length, desconhecidas: desconhecida.length }, amostras: amostras.length, qualidade, entradas, producaoGeral: { dias: dias.length, turnosConfirmados, litrosComerciaisConfirmados: litrosComerciais.toString(), entradasIndividuaisDuplicadas: duplicacoesIndividuais }, comerciais, nutricaoLeite: { fornecimentoId: fornecimento.id, litros: fornecimento.quantidadeLitros.toString(), referenciasR07: fornecimento.referencias.length }, custos: { situacao: custos.consolidado.situacao, custoPorLitro: custos.consolidado.custoPorLitro, motivos: custos.consolidado.motivos }, parcelasSemEntrada: pendentes, coberturaParcelas, novidades, relatorios, arquivosR2: c.manifesto.acoes.includes(ref('arquivos:verificados')) ? 'Verificados' : 'Pendentes: etapa opcional não executada' };
 }
 export async function gerarGuia(c: Contexto, resumo: Awaited<ReturnType<typeof verificar>>) {
   const escape=(s:string)=>s.replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));

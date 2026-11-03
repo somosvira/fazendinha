@@ -29,6 +29,11 @@ async function main() {
     const { visitas } = await import('./seed/visitas.js');
     const { nutricaoGeral } = await import('./seed/nutricao.js');
     const { prepararLeite } = await import('./seed/leite/index.js');
+    const { alertasSanitarios } = await import('./seed/alertas.js');
+    const { bezerreiro } = await import('./seed/bezerreiro.js');
+    const { nutricaoMensal } = await import('./seed/nutricao-mensal.js');
+    const { pesagensSecagem } = await import('./seed/pesagens.js');
+    const { retiradasInternas } = await import('./seed/retiradas-internas.js');
     await c.etapa('catalogos', () => catalogos(c));
     await c.etapa('financeiro', () => financeiro(c));
     await c.etapa('estoque', () => estoque(c));
@@ -38,6 +43,11 @@ async function main() {
     await c.etapa('visitas', () => visitas(c));
     await c.etapa('nutricao', () => nutricaoGeral(c));
     await prepararLeite(c);
+    await c.etapa('alertas-sanitarios', () => alertasSanitarios(c));
+    await c.etapa('bezerreiro', () => bezerreiro(c));
+    await c.etapa('nutricao-mensal', () => nutricaoMensal(c));
+    await c.etapa('pesagens-secagem', () => pesagensSecagem(c));
+    await c.etapa('leite-interno', () => retiradasInternas(c));
     await c.etapa('financeiro-final', () => financeiroFinal(c));
     if (args.arquivosR2) {
       const { prepararArquivos } = await import('./seed/leite/index.js');
