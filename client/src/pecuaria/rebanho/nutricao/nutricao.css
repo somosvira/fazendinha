@@ -314,3 +314,4 @@
  .nutricao-receitas > .consulta-barra .consulta-linha { padding:0 12px; gap:8px; }
  .nutricao-receitas > .consulta-barra .consulta-acoes { margin-left:0; }
 }
+@media (max-width: 767px) { .nutricao-link { display: inline-flex; align-items: center; min-height: 32px; } }

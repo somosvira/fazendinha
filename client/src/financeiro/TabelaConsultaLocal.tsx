@@ -6,7 +6,7 @@ import type { CriterioConsulta } from "./BarraConsulta";
 import { useId, useState } from "react";
 import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "./BarraConsulta";
-import { Paginacao, TabelaFinanceira } from "./financeiro-ui";
+import { Paginacao, TabelaFinanceira, Empty } from "./financeiro-ui";
 import { useFiltrosTabelaLocal, type DefinicaoFiltroLocal } from "./useFiltrosTabelaLocal";
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0] & {
@@ -40,7 +40,7 @@ export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], busc
       <BuscaLista rotulo={`Buscar ${tabela.rotulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar registros…" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} />
     </BarraConsulta>
     <TabelaFinanceira {...tabela} ordenacao={ordem.controle} itens={filtrados.slice((atual - 1) * porPagina, atual * porPagina)} filtrosColunas={filtrosDasColunas(campos,edicao,consulta.erro)} />
-    {!filtrados.length && <p className="p-4 text-sm text-muted-foreground">Nenhum registro corresponde aos filtros.</p>}
+    {!filtrados.length && <Empty>Nenhum registro corresponde aos filtros.</Empty>}
     <Paginacao pagina={atual} totalPaginas={totalPaginas} total={filtrados.length} porPagina={porPagina} onPagina={setPagina} substantivo="registros" rotulo={`Paginação de ${tabela.rotulo.toLocaleLowerCase("pt-BR")}`} idSelect={`pagina-consulta-${id}`} />
   </>;
 }

@@ -78,7 +78,7 @@ export function FormComposicao({ animal, racas, onSalvo, onFechar }: {
         {(!herdada || limite > 0 || excecao) && <CampoComposicao racas={opcoes} itens={itens} onChange={setItens} erro={erro ?? undefined} limite64={excecao ? 64 : limite} />}
         {herdada && <button type="button" className="w-fit text-sm font-semibold text-mast hover:underline" onClick={() => { setExcecao(!excecao); setItens(!excecao ? animal.composicao.map(({ racaId, fracao64 }) => ({ racaId, fracao64 })) : parcelaInformada(animal.composicao, fixos)); setErro(null); }}>{excecao ? "Voltar ao cálculo pelos genitores" : "Registrar exceção à composição calculada"}</button>}
         {excecao && <label className="text-sm font-medium">Justificativa da exceção<textarea value={justificativa} maxLength={500} onChange={(e) => setJustificativa(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-3" rows={3} placeholder="Explique a fonte ou a correção necessária" /></label>}
-        {erro && !itens.length && <p role="alert" className="text-sm text-red-700">{erro}</p>}
+        {erro && !itens.length && <p role="alert" className="text-sm text-destructive">{erro}</p>}
       </>}
     </form>
   </PainelCadastro>;

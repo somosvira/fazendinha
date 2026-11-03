@@ -20,7 +20,7 @@
 .operacoes-filtro-corpo, .operacoes-contexto-corpo { padding: 16px; }
 .operacoes-filtro-corpo { display: grid; gap: 16px; }
 .operacoes-filtro-corpo label { display: flex; flex-direction: column; min-width: 0; gap: 6px; font-size: 14px; }
-.operacoes-filtro-corpo input:not([type=radio]):not([type=checkbox]) { min-height: 44px; width: 100%; }
+.operacoes-filtro-corpo input:not([type=radio]):not([type=checkbox]) { min-height: var(--campo-altura); width: 100%; }
 .operacoes-filtro-opcoes { display: flex; flex-direction: column; max-height: 275px; overflow-y: auto; gap: 3px; }
 .operacoes-filtro-opcoes label { flex-direction: row; align-items: center; min-height: 40px; padding: 8px; gap: 10px; border-radius: 6px; cursor: pointer; line-height: 1.4; }
 .operacoes-filtro-opcoes label { transition: background-color 120ms, color 120ms; }

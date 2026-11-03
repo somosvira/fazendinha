@@ -17,7 +17,7 @@ import { concluirEdicaoRascunhoRelatorio, contextoEdicaoRascunhoRelatorio, enfil
 import { SEM_VINCULO } from "../lib/ids";
 import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
-const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-white px-3 py-2.5 text-sm font-normal";
+const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-normal";
 const TITULO_SECAO = "mb-3 text-sm font-semibold text-ink";
 const mensagem = (falha: unknown) => falha instanceof Error ? falha.message : String(falha);
 const dateFromIso = (iso: string): Date | null => {
@@ -181,7 +181,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
     <div className="fin-criacao-layout">
       <div className="fin-criacao-form space-y-5 rounded-[var(--fin-radius-panel)] border border-border bg-card p-4">
         <PageHeader titulo="Novo relatório">
-          {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-red-700" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
+          {temRascunho && <p aria-live="polite" className={`mt-2 text-xs font-medium ${estado === "ERRO" ? "text-destructive" : "text-ink-3"}`}>{estado === "SALVANDO" ? "Salvando…" : estado === "SALVO" ? "Rascunho salvo" : estado === "ERRO" ? "Falha ao salvar" : "Alterações não salvas"}</p>}
         </PageHeader>
         <ErrorBox erro={erro} />
         <ErrorBox erro={erroRascunho} />
@@ -195,7 +195,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
           <DateRangePicker value={range} triggerAriaLabel="Período do relatório" onChange={({ start, end }) => {
             if (start && end) setConfig(atual => ({ ...atual, dataInicio: isoLocal(start), dataFim: isoLocal(end) }));
           }} />
-          {problemaPeriodo && <p role="alert" className="mt-2 text-sm text-red-700">{problemaPeriodo}</p>}
+          {problemaPeriodo && <p role="alert" className="mt-2 text-sm text-destructive">{problemaPeriodo}</p>}
         </section>
 
         <fieldset className="border-t border-border pt-4">
@@ -227,7 +227,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
         <div className="flex flex-col">
           <div className="min-h-0 p-4">
           <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><h2 className="text-sm font-semibold text-ink">Resumo do relatório<AjudaCampo rotulo="Ajuda: geração do relatório" texto="O PDF é baixado ao gerar e fica salvo no histórico da propriedade." /></h2></div>
-          <div className="mt-2 break-words font-serif text-xl">{config.nome.trim() || "Sem nome"}</div>
+          <div className="mt-2 break-words font-sans text-xl">{config.nome.trim() || "Sem nome"}</div>
           <dl className="mt-3 grid grid-cols-1 gap-3 border-y border-border py-3 text-sm sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-xs font-medium text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
           <div className="mt-3"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>
           </div>

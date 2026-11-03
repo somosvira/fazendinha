@@ -25,7 +25,7 @@ const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ?
 const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "mes" ? "mes" : "dia"; const periodo = datasVisao(data, q.has("producaoVisao") ? visao : "mes"); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
 
 export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: { podeExportar?: boolean }) {
-  const visualizacao = useVisualizacaoConsulta("producaoVisualizacao", "leite");
+  const visualizacao = useVisualizacaoConsulta("producaoVisualizacao", "leite", "visual");
   const [filtros, setFiltros] = useState(iniciais);
   const [dados, setDados] = useState<Consulta | null>(null), [erro, setErro] = useState(""), [revisao, setRevisao] = useState(0);
   const [pagina, setPagina] = useState(1);

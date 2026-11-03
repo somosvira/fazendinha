@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { listarCadastrosProtocolos, type CadastroProtocoloMeta, type PaginaCadastro } from "../protocolos/cadastros-api";
 import {
   act,
@@ -56,7 +57,7 @@ const paginaCatalogo = (itens: CadastroProtocoloMeta[]) => ({ itens, total: iten
 const paginaProgramacoes = (itens: ProgramacaoIatf[]) => ({ itens: itens.map(cabecalho), total: itens.length, pagina: 1, porPagina: 10 });
 beforeEach(() => {
   vi.clearAllMocks();
-  localStorage.clear();
+  localStorage.clear();preferirCartoes({reproducao:["visualProtocolosReproducao"],REPRODUTIVO:["visualCadastroProtocolos"],SANITARIO:["visualCadastroProtocolos"]});
   setPropriedadeAtiva(null);
   window.history.replaceState(null, "", "/pecuaria/reproducao");
   vi.mocked(reqV4).mockResolvedValue([]);

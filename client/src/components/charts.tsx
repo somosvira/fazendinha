@@ -252,7 +252,7 @@ export function Donut({
         <ChartTooltip formatter={(value) => [fmt(Number(value ?? 0)), "Quantidade"]} />
       </PieChart>
     </ChartContainer>
-    {label && <span className="pointer-events-none absolute inset-0 grid place-items-center font-serif text-lg text-ink">{label}</span>}
+    {label && <span className="pointer-events-none absolute inset-0 grid place-items-center font-sans text-lg text-ink">{label}</span>}
   </div>;
 }
 
@@ -352,7 +352,7 @@ export function MonetaryDonutChart({ data, label, emptyLabel, compacto = false, 
   const positiveTotal = points.reduce((sum, point) => sum + Math.round(point.value * 100), 0) / 100;
   const config: ChartConfig = Object.fromEntries(points.map(point => [point.key, { label: point.label, color: point.color }]));
   return <div className={compacto ? "p-4 pt-2" : "p-5"}>
-    <p className="text-xs text-ink-3">Total do período</p><strong className="mt-1 block font-serif text-2xl">{fmtMoneyExact(total)}</strong>
+    <p className="text-xs text-ink-3">Total do período</p><strong className="mt-1 block font-sans text-2xl">{fmtMoneyExact(total)}</strong>
     {points.length ? <div className={`grid min-w-0 items-center gap-3 ${compacto ? "@min-[440px]:grid-cols-[140px_minmax(0,1fr)]" : "md:grid-cols-[minmax(200px,.8fr)_minmax(0,1fr)]"}`}>
       <ChartContainer config={config} className={`${compacto ? "h-[170px]" : "h-[260px]"} w-full aspect-auto overflow-hidden`} role="img" aria-label={label}>
         <PieChart accessibilityLayer><Pie data={points} dataKey="value" nameKey="label" innerRadius="58%" outerRadius="85%" stroke="none" paddingAngle={points.length > 1 ? 2 : 0} isAnimationActive={false}>

@@ -12,7 +12,7 @@ export function SeletorPeriodoGmd({ id, valor, onChange }: {
 }) {
   return <label htmlFor={id} className="inline-flex items-center gap-2 text-sm font-medium text-ink-2">
     Período do GMD
-    <SelectCampo id={id} value={String(valor)} onValueChange={(valorSelecionado) => onChange(valorSelecionado === "entrada" ? "entrada" : (Number(valorSelecionado) as PeriodoGmd))} className="h-9 rounded-lg border border-border bg-white px-2 text-sm font-normal text-ink">
+    <SelectCampo id={id} value={String(valor)} onValueChange={(valorSelecionado) => onChange(valorSelecionado === "entrada" ? "entrada" : (Number(valorSelecionado) as PeriodoGmd))} className="h-9 rounded-lg border border-border bg-card px-2 text-sm font-normal text-ink">
       {PERIODOS_GMD.map((p) => <option key={String(p.valor)} value={String(p.valor)}>{p.rotulo}</option>)}
     </SelectCampo>
   </label>;

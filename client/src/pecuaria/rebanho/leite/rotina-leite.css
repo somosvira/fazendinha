@@ -72,3 +72,5 @@
  .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-mais-filtros{grid-column:2;grid-row:2;min-width:0;margin:0}
  .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-acoes{grid-column:1;grid-row:2;justify-self:start;order:0}
 }
+/* Fora de painel, o vazio acompanha a largura do conteúdo vizinho. */
+.leite-rotina-reformulada .fin-vazio,.leite-superficie .fin-vazio,.leite-grafico-producao .fin-vazio{margin-inline:0}

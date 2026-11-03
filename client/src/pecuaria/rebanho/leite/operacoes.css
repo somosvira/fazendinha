@@ -169,7 +169,7 @@
   .leite-modulo-acoes .leite-configurar span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
 
-  .leite-superficie { padding: 16px; }
+  .leite-superficie { padding: 16px 0 0; }
   .leite-operacoes :is(button, input, select, textarea) { min-height: 44px; }
   .leite-operacoes :is(input, select, textarea) { font-size: 16px; }
   .leite-operacoes input[type="checkbox"] { min-height: 20px; }
@@ -201,27 +201,12 @@
 .leite-cabecalho-acoes, .leite-ferramentas { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .leite-ferramentas { justify-content: flex-end; margin-top: 20px; }
 .leite-sete-rotinas > .abas-navegacao { width: 100%; }
-.leite-sete-rotinas [role="tablist"] { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); }
-.leite-sete-rotinas [role="tab"] { grid-column: span 3; white-space: normal; justify-content: center; }
-.leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 4; }
-@media (max-width: 640px) {
-  .leite-sete-rotinas [role="tab"] { grid-column: span 6; }
-  .leite-sete-rotinas [role="tab"]:nth-child(n+5) { grid-column: span 6; }
-  .leite-sete-rotinas [role="tab"]:last-child { grid-column: span 12; }
-}
-
-/* O tablist compartilhado tem altura de uma linha; sete rotinas usam duas. */
-:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: grid; height: auto; min-height: 44px; width: 100%; align-items: stretch; }
-:root .app-main .leite-sete-rotinas [role="tab"] { min-width: 0; }
 
 /* Abas contínuas à superfície, como na proposta de consultas aprovada. */
 .leite-modulo { padding: 28px 32px; }
 .leite-modulo > .fin-cabecalho-pagina { margin-bottom: 24px; }
 .leite-modulo > .fin-cabecalho-pagina .fin-cabecalho-descricao { max-width: 72ch; font-size: 14px; }
-:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 4px; justify-content: flex-start; width: 100%; background: transparent; padding: 0; }
-:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta > [role="tab"][aria-selected] { flex: 0 0 auto; min-height: 42px; padding: 10px 12px; white-space: nowrap; font-size:14px; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: var(--muted); color: var(--muted-foreground); }
-:root .app-main .leite-sete-rotinas [role="tablist"].abas-pasta > [role="tab"][aria-selected][data-state="active"] { background: var(--card); color: var(--primary); border-bottom-color: var(--card); }
-.leite-superficie { padding: 22px; border-radius: 0 12px 12px 12px; }
+.leite-superficie { padding: 20px 0 0; border: 0; border-radius: 0; background: transparent; }
 .leite-superficie > .leite-operacoes > .fin-cabecalho-pagina { margin-bottom: 16px; }
 .leite-superficie > .leite-operacoes > .fin-cabecalho-pagina h1 { font-size: 18px; line-height: 1.4; }
 .leite-superficie > .leite-operacoes > .fin-cabecalho-pagina .fin-cabecalho-descricao { display: none; }
@@ -231,10 +216,9 @@
 .leite-superficie .leite-modos { margin-bottom: 18px; }
 @media(max-width: 900px) {
   .leite-modulo { padding: 56px 16px 24px; }
-  .leite-superficie { padding: 16px; }
+  .leite-superficie { padding: 16px 0 0; }
 }
 @media(max-width: 640px) {
-  :root .app-main .leite-sete-rotinas [role="tab"] { padding: 8px 11px; min-height: 42px; font-size:14px; }
   .leite-superficie .leite-operacoes :is(input:not([type="checkbox"]), select, textarea) { min-height: 44px; font-size: 16px; }
 }
 .leite-configuracoes-consulta > .grid { padding: 16px 0 20px; gap: 16px; }

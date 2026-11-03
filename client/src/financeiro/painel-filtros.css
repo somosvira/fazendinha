@@ -16,9 +16,9 @@
 .filtros-modal-campos > :only-child { grid-column: 1 / -1; }
 .filtros-modal-campos > *, .filtros-modal-grade > * { min-width: 0; max-width: 100%; }
 .filtros-modal-campos label { display: grid; gap: 8px; margin: 0; font-size: 14px; line-height: 1.4; font-weight: 500; }
-.filtros-modal-campos label:has(input[type="checkbox"], [role="checkbox"]) { display: flex; flex-direction: row; align-items: center; align-self: end; min-height: 44px; gap: 8px; }
+.filtros-modal-campos label:has(input[type="checkbox"], [role="checkbox"]) { display: flex; flex-direction: row; align-items: center; align-self: end; min-height: 40px; gap: 8px; }
 .filtros-modal-campos label > :is(button, div) { margin-top: 0; }
-.filtros-modal-campos :is([data-slot="select-trigger"], input:not([type="checkbox"], [type="radio"]), select) { width: 100%; height: 44px; min-height: 44px; font-size: 14px; font-weight: 400; }
+.filtros-modal-campos :is([data-slot="select-trigger"], input:not([type="checkbox"], [type="radio"]), select) { width: 100%; height: var(--campo-altura); min-height: var(--campo-altura); font-size: 14px; font-weight: 400; }
 .filtros-modal-campos [data-slot="select-trigger"] { max-width: none; }
 .filtros-modal-campos [data-slot="select-trigger"] > span { min-width: 0; }
 .filtros-modal-campos select { border: 1px solid var(--input); border-radius: var(--radius); background: var(--card); color: var(--foreground); padding-inline: 12px; }

@@ -11,7 +11,7 @@
   flex-wrap: wrap;
 }
 .assistente-consulta .assistente-titulo h2 {
-  font-family: Manrope, sans-serif;
+  font-family: var(--sans);
   font-size: 22px;
   font-weight: 750;
   letter-spacing: -0.025em;
@@ -40,8 +40,7 @@
 .assistente-boas-vindas h3,
 .assistente-voz h3 {
   font:
-    750 24px/1.3 Manrope,
-    sans-serif;
+    750 24px/1.3 var(--sans);
   letter-spacing: -0.02em;
 }
 .assistente-boas-vindas p {

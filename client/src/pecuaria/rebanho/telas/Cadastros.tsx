@@ -363,7 +363,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
       : <>
         {aba === "categorias" && <>
           <section className="cadastro-regras-contexto" aria-label="Regras de classificação"><div><h2>Regras de classificação<AjudaCampo rotulo="Sobre as regras de classificação" texto="A primeira regra compatível define a categoria; a escolha manual na ficha tem prioridade até ser desfeita. Evite sobrepor faixas de idade e parto do mesmo sexo. Reordenar pode reclassificar animais: confira a simulação antes de confirmar. “Padrão” identifica regras do IDEAGRI."/></h2><p>A ordem define qual regra se aplica primeiro. Mudanças passam pela simulação antes de reclassificar animais.</p></div><dl><div><dt>Automáticas ativas</dt><dd>{(categorias ?? []).filter(c=>c.ativo&&c.automatica).length}</dd></div><div><dt>Somente manuais ativas</dt><dd>{(categorias ?? []).filter(c=>c.ativo&&!c.automatica).length}</dd></div></dl></section>
-          {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+          {sobrepostas.length > 0 && <div role="alert" className="mt-4 rounded-lg border border-destructive/30 bg-[color:var(--fin-danger-bg)] px-4 py-3 text-sm text-destructive">
             <strong>Regras sobrepostas:</strong> nesses casos só a primeira da ordem vale e a outra nunca é aplicada. Corrija a faixa de uma delas.
             <ul className="mt-1.5 list-disc pl-5">{sobrepostas.map((par) => <li key={`${par.a.id}-${par.b.id}`}>{par.mensagem}</li>)}</ul>
           </div>}

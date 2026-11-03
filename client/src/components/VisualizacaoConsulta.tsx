@@ -7,11 +7,22 @@ export type ModoConsulta = "visual" | "tabela";
 function chavePreferencia(chave: string, dominio: string) {
   try { const usuario = JSON.parse(localStorage.getItem("rionovo:usuario") ?? "null"); return `terrano:${dominio}:${usuario?.id ?? "sessao"}:${chave}`; } catch { return `terrano:${dominio}:sessao:${chave}`; }
 }
-export function useVisualizacaoConsulta(chave: string, dominio = "consultas", padrao: ModoConsulta = "visual") {
+/**
+ * Listas operacionais abrem em tabela: quem administra a fazenda compara linhas,
+ * não cartões. `padrao = "visual"` fica para visualizações que mostram algo que a
+ * tabela não mostra (calendário, linha do tempo, prazos, gráficos, ordenhas do dia).
+ * Abaixo de 768px a tabela mostra uma ou duas colunas e pede rolagem lateral: sem
+ * escolha salva, o padrão ali é o cartão.
+ */
+function padraoNaLargura(padrao: ModoConsulta): ModoConsulta {
+  try { return padrao === "tabela" && window.matchMedia("(max-width: 767px)").matches ? "visual" : padrao; } catch { return padrao; }
+}
+export function useVisualizacaoConsulta(chave: string, dominio = "consultas", padraoAmplo: ModoConsulta = "tabela") {
+  const padrao = padraoNaLargura(padraoAmplo);
   const ler = (): ModoConsulta => {
     const url = new URLSearchParams(window.location.search).get(chave);
     if (url === "visual" || url === "tabela") return url;
-    try { const salvo = localStorage.getItem(chavePreferencia(chave, dominio)); return salvo === "tabela" || salvo === "visual" ? salvo : padrao; } catch { return padrao; }
+    try { const salvo = localStorage.getItem(chavePreferencia(chave, dominio)); return salvo === "visual" || salvo === "tabela" ? salvo : padrao; } catch { return padrao; }
   };
   const [modo, setModo] = useState<ModoConsulta>(ler);
   useEffect(() => { const restaurar = () => setModo(ler()); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, [chave, dominio, padrao]);

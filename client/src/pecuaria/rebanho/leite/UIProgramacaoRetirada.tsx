@@ -32,6 +32,7 @@ import {
 } from "./programacao-types";
 import "./operacoes.css";
 import "./leite.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 const dataPt = (data: string) =>
   new Date(`${data}T12:00:00Z`).toLocaleDateString("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -42,7 +43,7 @@ const dataPt = (data: string) =>
   });
 export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
   const Titulo = tituloPagina ? "h1" : "h2";
-  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite");
+  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite", "visual");
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
   const [dados, setDados] = useState<ConsultaProgramacaoDTO | null>(null);
@@ -117,7 +118,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
               {dataPt(dados.vigente.vigenteDesde)}
             </p>
           ) : (
-            <p>Nenhuma programação vigente nesta data.</p>
+            <Empty>Nenhuma programação vigente nesta data.</Empty>
           )}
           {dados.meta && (
             <div>
@@ -212,7 +213,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
                 </Table>
               </div>
             ) : (
-              <p>Ainda não há versões registradas.</p>
+              <Empty>Ainda não há versões registradas.</Empty>
             )}
           </SecaoDetalhesLeite>
           {config && (

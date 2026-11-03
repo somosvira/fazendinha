@@ -228,7 +228,7 @@ function SimSlider({
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <span className="text-sm text-ink-2">{label}</span>
-        <span className="mono-nums font-serif text-[17px] tabular-nums text-foreground">{fmt(value)}</span>
+        <span className="mono-nums font-sans text-[17px] tabular-nums text-foreground">{fmt(value)}</span>
       </div>
       <input
         type="range"
@@ -282,7 +282,7 @@ export function Simulador({ R }: { R: R }) {
         <div className="flex flex-col gap-[22px] border-r border-[color:var(--rule)] bg-card px-[22px] py-6 max-[1100px]:border-b max-[1100px]:border-r-0">
           <div className="flex flex-col gap-1">
             <span className="eyebrow">Ajuste as variáveis</span>
-            <h3 className="m-0 font-serif text-2xl font-normal tracking-[-0.01em]">Cenário</h3>
+            <h3 className="m-0 font-sans text-2xl font-normal tracking-[-0.01em]">Cenário</h3>
           </div>
           <SimSlider label="Preço do leite" value={precoLeite} min={3.0} max={4.5} step={0.05} onChange={setPreco} fmt={(v) => "R$ " + v.toFixed(2).replace(".", ",") + "/L"} hint="média CEPEA recente ~R$ 3,50" />
           <SimSlider label="Crescimento do volume" value={volGrowth} min={0} max={12} step={0.5} onChange={setVolGrowth} fmt={(v) => "+" + v.toFixed(1).replace(".", ",") + "%/mês"} hint="matrizes entrando em produção" />
@@ -307,17 +307,17 @@ export function Simulador({ R }: { R: R }) {
           <div className="grid grid-cols-3 border border-[color:var(--rule)] bg-card max-[1100px]:grid-cols-1">
             <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
               <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Break-even do leite</span>
-              <span className="mono-nums font-serif text-[32px] leading-none tracking-[-0.015em]">{sim.breakEvenMes || "—"}</span>
+              <span className="mono-nums font-sans text-[32px] leading-none tracking-[-0.015em]">{sim.breakEvenMes || "—"}</span>
               <span className="text-xs text-[color:var(--ink-mute)]">{sim.breakEvenIdx >= 0 ? `em ${sim.breakEvenIdx + 1} meses` : "fora de 12m"}</span>
             </div>
             <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
               <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Fôlego de caixa</span>
-              <span className={"mono-nums font-serif text-[32px] leading-none tracking-[-0.015em] " + (folegoSev === "neg" ? "text-prejuizo" : folegoSev === "warn" ? "text-atencao" : "text-lucro")}>{folegoTxt}</span>
+              <span className={"mono-nums font-sans text-[32px] leading-none tracking-[-0.015em] " + (folegoSev === "neg" ? "text-prejuizo" : folegoSev === "warn" ? "text-atencao" : "text-lucro")}>{folegoTxt}</span>
               <span className="text-xs text-[color:var(--ink-mute)]">{sim.caixaZeraMes ? "zera em " + sim.caixaZeraMes : "não zera no período"}</span>
             </div>
             <div className="flex flex-col gap-[5px] border-r border-[color:var(--rule-soft)] px-[22px] py-[18px] last:border-r-0">
               <span className="text-[11px] uppercase tracking-[0.14em] text-ink-3">Caixa em 12 meses</span>
-              <span className={"mono-nums font-serif text-[32px] leading-none tracking-[-0.015em] " + (sim.caixaFinal < 0 ? "text-prejuizo" : "text-lucro")}>{fmtBRLsim(sim.caixaFinal)}</span>
+              <span className={"mono-nums font-sans text-[32px] leading-none tracking-[-0.015em] " + (sim.caixaFinal < 0 ? "text-prejuizo" : "text-lucro")}>{fmtBRLsim(sim.caixaFinal)}</span>
               <span className="text-xs text-[color:var(--ink-mute)]">vs base {fmtBRLsim(base.caixaFinal)}</span>
             </div>
           </div>
@@ -328,7 +328,7 @@ export function Simulador({ R }: { R: R }) {
               <span>Rio Novo · IA analista</span>
               <span style={{ color: "var(--ink-mute)" }}>· simulação ao vivo</span>
             </div>
-            <div className="flex flex-col gap-2 [&_p]:m-0 [&_p]:font-serif [&_p]:text-[17px] [&_p]:leading-[1.5] [&_p]:text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
+            <div className="flex flex-col gap-2 [&_p]:m-0 [&_p]:font-sans [&_p]:text-[17px] [&_p]:leading-[1.5] [&_p]:text-ink-2 [&_strong]:font-medium [&_strong]:text-foreground">
               {narrativa.map((f, i) => (
                 <p key={i} dangerouslySetInnerHTML={{ __html: f.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") }}></p>
               ))}

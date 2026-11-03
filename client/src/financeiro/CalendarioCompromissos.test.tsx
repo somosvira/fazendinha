@@ -35,7 +35,7 @@ describe("calendário de compromissos", () => {
   it("navega entre meses e apresenta meses vazios", () => {
     render(<Calendario />);
     fireEvent.click(screen.getByRole("button", { name: "Próximo mês" }));
-    expect(screen.getByRole("heading", { name: "outubro de 2026" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Outubro de 2026" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("Nenhum compromisso neste mês");
     fireEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
     expect(screen.getByRole("button", { name: /Venda de leite, a receber/ })).toBeTruthy();

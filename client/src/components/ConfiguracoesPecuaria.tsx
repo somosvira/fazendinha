@@ -17,6 +17,7 @@ import { navegarPara } from "../router";
 import { Cadastros, type AbaCadastroRebanho } from "../pecuaria/rebanho/telas/Cadastros";
 import { CadastrosSanitarios, type AbaCadastroSanitario } from "../pecuaria/rebanho/sanidade/CadastrosSanitarios";
 import { BuscaLista } from "./BuscaLista";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 
 const GRUPOS = [
@@ -24,7 +25,7 @@ const GRUPOS = [
   { id: "rebanho", nome: "Rebanho", icon: Beef, itens: [{ id: "categorias", nome: "Categorias de animais", rebanho: "categorias" }, { id: "motivos", nome: "Motivos de baixa", rebanho: "motivos" }] },
   { id: "genetica", nome: "Genética", icon: Dna, itens: [{ id: "racas", nome: "Raças", rebanho: "racas" }, { id: "genitores", nome: "Genitores externos", rebanho: "genitores" }, { id: "material-genetico", nome: "Materiais genéticos", rebanho: "material-genetico" }] },
   { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "alertas", nome: "Alertas", href: "/configuracoes/pecuaria/sanidade/alertas" }, { id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
-  { id: "reproducao", nome: "Reprodução", icon: Dna, itens: [{ id: "politica", nome: "Política reprodutiva", reproducao: "politica" }, { id: "protocolos", nome: "Protocolos reprodutivos", reproducao: "protocolos" }, { id: "tipos-exame", nome: "Tipos de exame reprodutivo", reproducao: "exames" }, { id: "regras-sanitarias", nome: "Regras sanitárias por doença", reproducao: "regras" }, { id: "materiais", nome: "Materiais genéticos", href: "/configuracoes/pecuaria/genetica/material-genetico" }, { id: "genitores", nome: "Genitores externos", href: "/configuracoes/pecuaria/genetica/genitores" }, { id: "produtos", nome: "Produtos", href: "/financeiro/configuracoes?aba=produtos" }] },
+  { id: "reproducao", nome: "Reprodução", icon: Dna, itens: [{ id: "politica", nome: "Política reprodutiva", reproducao: "politica" }, { id: "protocolos", nome: "Protocolos reprodutivos", reproducao: "protocolos" }, { id: "tipos-exame", nome: "Tipos de exame reprodutivo", reproducao: "exames" }, { id: "regras-sanitarias", nome: "Regras sanitárias por doença", reproducao: "regras" }] },
 ] satisfies { id: string; nome: string; icon: typeof Beef; itens: { id: string; nome: string; rebanho?: AbaCadastroRebanho; sanitario?: AbaCadastroSanitario; reproducao?: string; href?: string }[] }[];
 
 function LinkCadastro({ href, children }: { href: string; children: React.ReactNode }) {
@@ -67,6 +68,6 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
  return <><div className="pec-config-busca"><BuscaLista rotulo="Buscar configuração" placeholder="Buscar categoria, raça, protocolo…" valor={busca} onChange={setBusca} /></div><div className="pec-config-grid">
   {grupos.map(({ icon: Icon, ...g }) => <section key={g.id} className="pec-config-grupo"><h2><span className="fin-section-icon"><Icon size={20} aria-hidden /></span>{g.nome}</h2>{g.itens.map(i => <LinkCadastro key={i.id} href={"href" in i && i.href ? i.href : "/configuracoes/pecuaria/"+g.id+"/"+i.id}><span>{i.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>)}
   {mostrarNutricao && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2><LinkCadastro href="/configuracoes/pecuaria/nutricao/fechamento"><span>Modelo e prazo de fechamento</span><ChevronRight size={16} aria-hidden /></LinkCadastro><LinkCadastro href="/pecuaria/nutricao?aba=receitas"><span>Receitas de dieta</span><ChevronRight size={16} aria-hidden /></LinkCadastro></section>}
-  {!grupos.length && !mostrarNutricao && <p className="p-5 text-sm text-ink-3">Nenhuma configuração corresponde à busca.</p>}
+  {!grupos.length && !mostrarNutricao && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
  </div></>;
 }

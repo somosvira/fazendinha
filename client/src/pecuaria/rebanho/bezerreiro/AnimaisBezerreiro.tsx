@@ -1,5 +1,6 @@
 import { RegularizarParticipacao } from "./RegularizarParticipacao";
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BuscaLista } from '@/components/BuscaLista';
 import { Button } from '@/components/ui/button';
 import { BarraConsulta, SituacoesConsulta } from '@/financeiro/BarraConsulta';
 import { CampoFiltro } from '@/financeiro/PainelFiltros';
@@ -14,6 +15,8 @@ import { ColeiraBadge, EstadoConsulta, PaginacaoBezerreiro, useConsultaBezerreir
 import type { Configuracao, Pagina, Participacao } from './types';
 export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,params,mudar}: {sitio:number;podeLancar:boolean;config:Configuracao;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(valores:Record<string,string>)=>void}) {
   const [entrada,setEntrada]=useState(false), [busca,setBusca]=useState(params.get('busca')??'');
+  // Busca enquanto digita, como as demais listas; a espera evita uma consulta por tecla.
+  useEffect(()=>{if(busca===(params.get('busca')??''))return;const t=setTimeout(()=>mudar({busca,pagina:''}),300);return()=>clearTimeout(t);},[busca]); // eslint-disable-line react-hooks/exhaustive-deps
   const [rascunho,setRascunho]=useState({coleira:params.get('coleira')??'',fase:params.get('fase')??''});
   const historico=params.get('historico')==='true', pagina=Math.max(1,Number(params.get('pagina'))||1);
   const q=consultaBezerreiro({historico,pagina,busca:params.get('busca'),coleiraId:params.get('coleira'),faseVersaoId:params.get('fase'),perfilId:params.get('perfil')});
@@ -22,7 +25,7 @@ export function AnimaisBezerreiro({sitio,podeLancar,config,revisao,aoSalvar,para
     <BarraConsulta resumo={`${consulta.dados?.total??'…'} animais`} criterios={[...(params.get('coleira')?[{id:'coleira',rotulo:`Coleira: ${config.coleiras.find(c=>c.id===params.get('coleira'))?.nome??'Selecionada'}`,limpar:()=>mudar({coleira:'',pagina:''})}]:[]),...(params.get('fase')?[{id:'fase',rotulo:`Fase: ${config.fases.find(c=>c.id===params.get('fase'))?.nome??'Selecionada'}`,limpar:()=>mudar({fase:'',pagina:''})}]:[])]} onLimpar={()=>mudar({coleira:'',fase:'',busca:'',pagina:''})}
       edicaoFiltros={{iniciar:()=>setRascunho({coleira:params.get('coleira')??'',fase:params.get('fase')??''}),aplicar:()=>mudar({...rascunho,pagina:''}),limpar:()=>setRascunho({coleira:'',fase:''})}}
       adicionais={<><CampoFiltro rotulo="Coleira"><SelectCampo value={rascunho.coleira} onValueChange={v=>setRascunho({...rascunho,coleira:v})}><option value="">Todas</option>{config.coleiras.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro><CampoFiltro rotulo="Fase"><SelectCampo value={rascunho.fase} onValueChange={v=>setRascunho({...rascunho,fase:v})}><option value="">Todas</option>{config.fases.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></CampoFiltro></>}>
-      <form className="bez-busca" onSubmit={e=>{e.preventDefault();mudar({busca,pagina:''});}}><input aria-label="Buscar animal" placeholder="Buscar brinco ou nome" value={busca} onChange={e=>setBusca(e.target.value)}/><Button variant="outline">Buscar</Button></form>
+      <BuscaLista rotulo="Buscar animal" placeholder="Buscar brinco ou nome" valor={busca} onChange={setBusca}/>
       <SituacoesConsulta valor={historico?'historico':'presentes'} rotulo="Participação no bezerreiro" opcoes={[{valor:'presentes',texto:'Presentes'},{valor:'historico',texto:'Histórico de saídas'}]} onChange={v=>mudar({historico:v==='historico'?'true':'',pagina:''})}/>
     </BarraConsulta>
     <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&(consulta.dados.total===0?<p className="bez-estado">{params.get('busca')||params.get('coleira')||params.get('fase')?'Nenhum animal corresponde aos filtros. Ajuste ou limpe os critérios.':historico?'Nenhuma saída registrada.':'Nenhum animal participa do bezerreiro neste sítio.'}</p>:<><TabelaFinanceira rotulo={historico?'Histórico de saídas do bezerreiro':'Animais presentes no bezerreiro'} itens={consulta.dados.itens} chaveDe={p=>p.id} colunas={[

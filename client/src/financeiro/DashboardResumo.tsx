@@ -19,7 +19,7 @@ export function IndicadorFinanceiro({ label, valor, detalhe, icon: Icon, alerta 
 }) {
   const card = <Card data-fin-tom={tom} className={`fin-indicador dashboard-indicador w-full text-left h-full @container min-w-0 gap-1 rounded-lg border-border p-3 shadow-none ${href || onClick ? "" : className}`}>
     <div className="flex items-center gap-2 text-sm text-muted-foreground"><Icon size={16} aria-hidden="true" />{label}{(href || onClick) && <ChevronRight className="ml-auto" size={14} aria-hidden="true" />}</div>
-    <strong className="whitespace-nowrap font-serif text-[clamp(18px,10cqw,26px)] leading-tight tabular-nums">{brl(valor)}</strong>
+    <strong className="whitespace-nowrap font-sans text-[clamp(18px,10cqw,26px)] leading-tight tabular-nums">{brl(valor)}</strong>
     <p className={`text-xs ${alerta ? "text-destructive" : "text-muted-foreground"}`}>{detalhe}</p>
   </Card>;
   return onClick ? <Button variant="ghost" aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} onClick={onClick} className={`h-auto min-w-0 w-full whitespace-normal p-0 text-left ${className}`}>{card}</Button> : href ? <a href={href} aria-label={`Ver ${label.toLocaleLowerCase("pt-BR")}`} className={`min-w-0 rounded-lg outline-none transition hover:brightness-95 focus-visible:ring-2 focus-visible:ring-ring ${className}`} onClick={event => { if (!event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { event.preventDefault(); navegarPara(href); } }}>{card}</a> : card;
@@ -39,7 +39,7 @@ export function ContasDisponibilidade({ contas, onAbrir, onAbrirConta }: { conta
   const excluidas = contas.filter(conta => !conta.incluirNoSaldoGeral);
   const saldo = incluidas.reduce((total, conta) => total + Math.round(Number(conta.saldoAtual) * 100), 0) / 100;
   return <Card data-fin-tom="entrada" className="fin-painel h-full min-w-0 gap-0 overflow-hidden rounded-lg border-border py-0 shadow-none">
-    <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-serif text-xl">Contas e disponibilidade<AjudaCampo rotulo="Ajuda: saldo disponível" texto="Saldos atuais das contas incluídas" /></h2></div></div>
+    <div className="fin-cabecalho flex items-center gap-3 p-4"><span className="fin-section-icon"><Landmark aria-hidden="true" /></span><div><h2 className="font-sans text-xl">Contas e disponibilidade<AjudaCampo rotulo="Ajuda: saldo disponível" texto="Saldos atuais das contas incluídas" /></h2></div></div>
     <div className="px-4 pb-3"><p className="text-xs text-muted-foreground">Saldo disponível · {incluidas.length} {incluidas.length === 1 ? "conta incluída" : "contas incluídas"}</p><strong className={`text-2xl tabular-nums ${saldo < 0 ? "text-destructive" : "text-[var(--pos)]"}`}>{brl(saldo)}</strong></div>
     {incluidas.length ? <ListaContas contas={incluidas} onAbrir={onAbrirConta} /> : <p className="px-4 pb-4 text-sm text-muted-foreground">Nenhuma conta incluída no saldo disponível.</p>}
     {!!excluidas.length && <Collapsible className="border-t border-border">

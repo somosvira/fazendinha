@@ -54,7 +54,7 @@
 /* Identificação A: brinco, nome e lote na mesma linha de base; estados abaixo. */
 .pecuaria-content .rebanho-content .pec-ficha.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns:72px minmax(0,1fr) auto; align-items:center; gap:16px; }
 .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identidade { display:flex; flex-direction:column; justify-content:center; gap:8px; min-height:72px; }
-.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identificacao { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 12px; font-family:"Manrope","DM Sans",sans-serif; line-height:24px; margin:0; min-width:0; }
+.pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-identificacao { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px 12px; font-family:var(--sans); line-height:24px; margin:0; min-width:0; }
 .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-brinco { font-size:20px; font-weight:750; overflow-wrap:anywhere; }
 .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-nome { font-size:18px; font-weight:600; }
 .pecuaria-content .pec-ficha.ficha-animal-geral .ficha-animal-lote { font-size:16px; font-weight:500; color:var(--muted-foreground); border-left:1px solid var(--border); padding-left:12px; overflow-wrap:anywhere; }

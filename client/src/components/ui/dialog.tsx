@@ -49,7 +49,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       data-slot="dialog-content"
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-[460px] -translate-x-1/2 -translate-y-1/2 gap-0 border border-border bg-card shadow-[0_24px_56px_rgba(20,25,26,0.28)] duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-1.5rem)] max-w-[460px] -translate-x-1/2 -translate-y-1/2 gap-0 border border-border bg-card shadow-[0_24px_56px_rgba(20,25,26,0.28)] duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
         className,
       )}
       {...props}
@@ -59,7 +59,7 @@ const DialogContent = React.forwardRef<
       {showCloseButton && (
         <DialogPrimitive.Close
           data-slot="dialog-close"
-          className="absolute right-4 top-4 cursor-pointer opacity-70 outline-none transition-opacity hover:opacity-100 disabled:pointer-events-none [&_svg]:size-4"
+          className="absolute right-3 top-3 grid size-9 cursor-pointer place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none [&_svg]:size-[18px]"
         >
           <X />
           <span className="sr-only">Fechar</span>
@@ -98,7 +98,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     data-slot="dialog-title"
-    className={cn("font-serif text-xl tracking-[-0.005em] text-foreground", className)}
+    className={cn("font-sans text-xl font-semibold leading-snug text-foreground", className)}
     {...props}
   />
 ));

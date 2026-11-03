@@ -32,7 +32,7 @@ export function AlertasAnimal({ animalId, propriedadeId, revisao = 0 }: {
   const [erroGrupo, setErroGrupo] = useState<string | null>(null);
   const [tentativaGrupo, setTentativaGrupo] = useState(0);
   const [detalhe, setDetalhe] = useState<ParticipanteAlerta | null>(null);
-  const visual = useVisualizacaoConsulta("visualAlertasAnimal");
+  const visual = useVisualizacaoConsulta("visualAlertasAnimal", "consultas", "visual");
 
   useEffect(() => {
     const atualizar = () => setVersao(v => v + 1);

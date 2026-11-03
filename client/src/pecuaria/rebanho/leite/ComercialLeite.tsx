@@ -24,6 +24,7 @@ import { NovaEntregaComercialLeite } from "./NovaEntregaComercialLeite";
 import { NovoDemonstrativoLeite } from "./NovoDemonstrativoLeite";
 import { ComprovantesEntregaLeite } from "./ComprovantesEntregaLeite";
 import "./operacoes.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 const dataPt = (valor: string) =>
   valor.slice(0, 10).split("-").reverse().join("/");
 const moeda = (valor: string) =>
@@ -215,7 +216,7 @@ export function ComercialLeite({
         {chave:"situacao",titulo:"Situação",celula:e => nomeSituacaoEntrega(e.situacao)},
         {chave:"acao",titulo:"Ações",acoes:true,celula:e => <><Button variant="outline" onClick={() => setDetalheEntrega(e)}>Ver entrega</Button>{podeLancar && Number(e.quantidadeFaturada) === 0 && <Button variant="outline" onClick={() => setConferir(e)}>Conferir {e.referencia}</Button>}</>},
       ]} />
-      {!entregas.itens.length && <p>Nenhuma entrega registrada no período.</p>}
+      {!entregas.itens.length && <Empty>Nenhuma entrega registrada no período.</Empty>}
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(entregas.total/entregas.porPagina))} total={entregas.total} porPagina={entregas.porPagina} rotulo="Paginação de entregas" substantivo="entregas" idSelect="pagina-entregas-leite" onPagina={setPagina} />
     </>}
     {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" ajuda="Composição documental e alocações das entregas." rotuloAjuda="Sobre demonstrativos do comprador" />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
@@ -227,7 +228,7 @@ export function ComercialLeite({
         {chave:"estado",titulo:"Situação",celula:d => <Pill tone={d.status === "ANULADO" ? "red" : "green"}>{d.status === "ANULADO" ? "Anulado" : "Válido"}</Pill>},
         {chave:"acao",titulo:"Ação",acoes:true,celula:d => <Button variant="outline" onClick={() => setDetalheDoc(d)}>Ver demonstrativo</Button>},
       ]} />
-      {!docs.itens.length && <p>Nenhum demonstrativo registrado no período.</p>}
+      {!docs.itens.length && <Empty>Nenhum demonstrativo registrado no período.</Empty>}
       <Paginacao pagina={paginaDoc} totalPaginas={Math.max(1,Math.ceil(docs.total/docs.porPagina))} total={docs.total} porPagina={docs.porPagina} rotulo="Paginação de demonstrativos" substantivo="demonstrativos" idSelect="pagina-docs-leite" onPagina={setPaginaDoc} />
     </>}</>}
     <DialogComercialLeite titulo="Registrar entrega" aberto={novaEntrega && podeLancar} onFechar={() => setNovaEntrega(false)}>{resolvido !== null && <NovaEntregaComercialLeite key={`${sitio}:${de}:${ate}`} sitio={resolvido} de={de} ate={ate} podeFinanceiro={podeFinanceiro} config={config} aoCancelar={() => setNovaEntrega(false)} aoSalvar={() => { setNovaEntrega(false); setAviso("Entrega registrada. O vínculo físico e comercial foi preservado sem duplicar a retirada."); atualizar(); }} />}</DialogComercialLeite>

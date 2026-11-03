@@ -85,6 +85,7 @@ export function HistoricoSanitario({
   const visual = useVisualizacaoConsulta(
     "visualHistoricoSanitario",
     "pecuaria",
+    "visual",
   );
   const registros = [
     ...(ocorrencias.dados ?? []).map((f) => ({

@@ -14,6 +14,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { listarAnimais, listarGenitores, listarLotes } from "../api";
 import type { AnimalResumo, GenitorDTO, Lote } from "../types";
 import { obterReproducao, reqV4 } from "./api";
+import { Empty } from "@/financeiro/financeiro-ui";
 type Exposicao = {
   id: string;
   loteId: string;
@@ -113,7 +114,7 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
           </div>
         ))}
         {!lista.length && (
-          <p className="text-sm">Nenhuma exposição registrada.</p>
+          <Empty>Nenhuma exposição registrada.</Empty>
         )}
       </div>
       {encerrando && (

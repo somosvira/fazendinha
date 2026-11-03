@@ -1,4 +1,3 @@
-@import "./protocolos-tema.css";
 
 /* O tema completo acompanha as páginas; na ficha, permanece dentro do protocolo. */
 :root:has(.protocolos-pagina) .sidebar-clara {

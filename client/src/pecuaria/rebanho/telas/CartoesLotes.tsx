@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { MapPin, TrendingUp, Weight } from "lucide-react";
-import { Button, Pill } from "@/financeiro/financeiro-ui";
+import { Button, Pill, Empty } from "@/financeiro/financeiro-ui";
 import { buscarResumoLote } from "../api";
 import type { Lote, ResumoLote } from "../types";
 import { formatarGmd, formatarKg } from "../lib/peso";
@@ -22,7 +22,7 @@ function Cartao({lote:l,acoes,onAbrir}:{lote:Lote;acoes:ReactNode;onAbrir:(id:st
  </article>;
 }
 export function CartoesLotes({lotes,todos,acoes,onAbrir}:{lotes:Lote[];todos:Lote[];acoes:(l:Lote)=>ReactNode;onAbrir:(id:string)=>void}){
- if(!todos.length)return <p className="p-5 text-sm text-muted-foreground">Nenhum lote corresponde aos filtros atuais.</p>;
+ if(!todos.length)return <Empty>Nenhum lote corresponde aos filtros atuais.</Empty>;
  const comparacao=[...todos].sort((a,b)=>b.animaisAtivos-a.animaisAtivos||a.nome.localeCompare(b.nome)).slice(0,8);const maior=Math.max(1,...comparacao.map(l=>l.animaisAtivos));
  return <><div className="consulta-cartoes lotes-cartoes">{lotes.map(l=><Cartao key={l.id} lote={l} acoes={acoes(l)} onAbrir={onAbrir}/>)}</div>{comparacao.length>1&&<section className="lote-distribuicao"><h2>Distribuição do efetivo por lote</h2><p>{comparacao.length===todos.length?"Todos os lotes do recorte filtrado":`${comparacao.length} de ${todos.length} lotes do recorte filtrado`}</p>{comparacao.map(l=><button type="button" key={l.id} onClick={()=>onAbrir(l.id)}><span>{l.nome}</span><span className="lote-distribuicao-barra"><i style={{width:`${l.animaisAtivos/maior*100}%`}}/></span><strong>{l.animaisAtivos}</strong></button>)}</section>}</>;
 }

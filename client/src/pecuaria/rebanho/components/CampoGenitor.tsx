@@ -96,7 +96,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
     </SelectCampo>}
 
     {modo === "NENHUM" && <p className="text-sm text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
-    {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
+    {erro && <p role="alert" className="text-sm text-destructive">{erro}</p>}
   </div>;
 }
 

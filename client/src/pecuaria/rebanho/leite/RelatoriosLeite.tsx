@@ -22,6 +22,7 @@ import { hojeOperacional, formatarLitros } from "./modelo";
 import { RitmoLeite, type DiaRitmoLeite } from "./RitmoLeite";
 import { DatasQualidade } from "./DatasQualidade";
 import type { AmostraQualidade } from "./qualidade-types";
+import { Empty } from "@/financeiro/financeiro-ui";
 interface ListaEmissoes {
   propriedadeId: number;
   total: number;
@@ -406,7 +407,7 @@ export function RelatoriosLeite({
               </Table>
             </div>
           ) : (
-            <p>Nenhum relatório emitido neste sítio.</p>
+            <Empty>Nenhum relatório emitido neste sítio.</Empty>
           )}
           <div className="leite-form-inline">
             <Button variant="outline" className="leite-secondary"
@@ -436,7 +437,7 @@ export function RelatoriosLeite({
   );
 }
 function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFinanceiro: boolean }) {
-  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite");
+  const visualizacaoBalanco = useVisualizacaoConsulta("balancoRelatorioLeiteVisualizacao", "leite", "visual");
   const ancora = (secao: string) => `leite-relatorio-${emissao.id}-${secao}`;
   const s = { ...emissao.snapshot, valores: podeFinanceiro ? emissao.snapshot.valores : null };
   const [paginaAnimal, setPaginaAnimal] = useState(1),
@@ -807,7 +808,7 @@ function ComercialPreservado({
         </dl>
       )}
       {!dados.demonstrativos.length && (
-        <p>Nenhum demonstrativo alocado às entregas deste período.</p>
+        <Empty>Nenhum demonstrativo alocado às entregas deste período.</Empty>
       )}
       {dados.demonstrativos.slice((pagina - 1) * 50, pagina * 50).map((d) => {
         const v = valores?.demonstrativos.find((v) => v.id === d.id);
@@ -886,7 +887,7 @@ function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriod
     <h2>Operações comerciais por período integral  <AjudaCampo rotulo="Sobre o período comercial integral" texto={"Vendas legadas por data da retirada e faturamento documental têm recortes próprios. Seus valores não compõem um total combinado com estes acordos. Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento."} /></h2>
 
 
-    {!dados.length ? <p>Nenhuma operação comercial com período sobreposto ao filtro.</p> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Operações por período integral, com rolagem horizontal">
+    {!dados.length ? <Empty>Nenhuma operação comercial com período sobreposto ao filtro.</Empty> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Operações por período integral, com rolagem horizontal">
       <Table semContainer>
         <TableCaption>Operações e última versão de fechamento no corte da emissão</TableCaption>
         <TableHeader><TableRow><TableHead>Comprador e referência</TableHead><TableHead>Período integral</TableHead><TableHead>Abrangência</TableHead><TableHead>Situação</TableHead><TableHead>Venda nº</TableHead><TableHead>Versão do fechamento</TableHead><TableHead>Data financeira</TableHead><TableHead>Estado financeiro</TableHead><TableHead>Volume reconhecido integral (L)</TableHead>{valores && <><TableHead>Preço negociado (BRL/L)</TableHead><TableHead>Ajuste (BRL)</TableHead><TableHead>Valor integral da venda (BRL)</TableHead></>}</TableRow></TableHeader>

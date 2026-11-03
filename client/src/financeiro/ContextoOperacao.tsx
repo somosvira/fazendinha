@@ -23,7 +23,7 @@ export function InformacoesParceiro({ parceiro }: { parceiro: ParceiroBase & Par
   </dl>;
 }
 export function DetalheParceiroConsulta({ parceiro, onFechar }: { parceiro: Parceiro; onFechar: () => void }) {
-  return <Modal titulo={parceiro.nome} eyebrow="Parceiro" onClose={onFechar}><div className="p-5"><InformacoesParceiro parceiro={parceiro} /></div></Modal>;
+  return <Modal titulo={parceiro.nome} eyebrow="" onClose={onFechar}><div className="p-5"><InformacoesParceiro parceiro={parceiro} /></div></Modal>;
 }
 function Contexto({ titulo, icone, acionador, children, classe = "", rotulo }: { titulo: string; icone: ReactNode; acionador: ReactNode; children: ReactNode; classe?: string; rotulo: string }) {
   const [aberto, setAberto] = useState(false);

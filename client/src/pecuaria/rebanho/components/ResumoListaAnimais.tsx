@@ -4,6 +4,7 @@ import { ChartContainer, ChartTooltip } from "../../../components/ui/chart";
 import { VacaIcon } from "../../../components/icons/VacaIcon";
 import type { CategoriaDTO, PainelServidor } from "../types";
 import { CORES_REBANHO, percentualRebanho } from "./GraficosRebanho";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 type FatiaCategoria = { id: string | null; nome: string; total: number; outras?: boolean; detalhe?: string };
 export type IndicadorListaAnimais = "ativos" | "femeas" | "receptoras" | "lotes";
@@ -60,7 +61,7 @@ export function ResumoListaAnimais({ painel, categorias, lotesDisponiveis, onCat
       </button>)}</div>
     <div className="animais-composicao">
       <header><h2><ChartNoAxesCombined size={17} aria-hidden="true" /> Composição do efetivo</h2><small>{atualizando ? "Atualizando recorte…" : fatias.some(f => f.outras) ? "5 maiores + outras · ativos nos filtros" : "Ativos nos filtros · antes da paginação"}</small></header>
-      {!fatias.length || painel.totalAtivos <= 0 ? <p className="animais-composicao-vazia">Não há animais ativos neste recorte.</p> : <>
+      {!fatias.length || painel.totalAtivos <= 0 ? <Empty>Não há animais ativos neste recorte.</Empty> : <>
         <ChartContainer config={config} className="animais-composicao-chart" role="img" aria-label="Distribuição dos animais ativos por categoria. Valores na legenda.">
           <BarChart data={dados} layout="vertical" margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
             <XAxis type="number" hide domain={[0, painel.totalAtivos]} /><YAxis type="category" hide />

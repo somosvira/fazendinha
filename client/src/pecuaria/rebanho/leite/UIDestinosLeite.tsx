@@ -24,6 +24,7 @@ import {
   type ParcelaDestinoDraft,
 } from "./destinos-types";
 import "./operacoes.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 interface HistoricoDestinos {
   itens: DestinoLeiteDTO[];
   total: number;
@@ -225,7 +226,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
 </div> },
           ]} />
           {!historico.itens.length && (
-            <p>Nenhum destino registrado no período.</p>
+            <Empty>Nenhum destino registrado no período.</Empty>
           )}
           <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação dos destinos" substantivo="fornecimentos" idSelect="pagina-destinos-leite" onPagina={setPagina} />
         </>

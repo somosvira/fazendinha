@@ -10,9 +10,10 @@ import { consultarResumo, periodoGerencial, hojeGerencial, type Bloco, type Resu
 import "../financeiro/financeiro-theme.css";
 import "./painel-gerencial.css";
 import { ResumoLeitePainel } from "../pecuaria/rebanho/leite/ResumoLeitePainel";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 const dinheiro = (v: string | null) => v == null ? "Não apurado" : brl(v);
-const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(Number(v));
+const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v));
 const numero = (v: string | number) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 const contagem = (n: number, singular: string, plural: string) => `${numero(n)} ${n === 1 ? singular : plural}`;
 const media = (v: string) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -95,7 +96,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
             {c.mensal.some(m => Number(m.entradas) !== 0 || Number(m.saidas) !== 0) ? <div className="ger-grafico" aria-hidden="true"><ResponsiveContainer width="100%" height="100%"><BarChart accessibilityLayer={false} data={c.mensal.map(m => ({...m, nome: `${mesBR(m.mes)}${m.incompleto ? "*" : ""}`, Recebido:Number(m.entradas), Pago:Number(m.saidas)}))} margin={{top:12,right:8,left:0,bottom:5}}><CartesianGrid vertical={false} stroke="var(--ger-borda)" /><XAxis dataKey="nome" tick={{fontSize:11}} interval="preserveStartEnd" /><YAxis width={68} tickFormatter={eixoMonetario} tick={{fontSize:10}} /><ReferenceLine y={0} stroke="var(--ger-suave)" /><Legend /><Bar dataKey="Recebido" fill="var(--ger-verde)" isAnimationActive={false} /><Bar dataKey="Pago" fill="var(--ger-saida)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div> : <p className="ger-caixa-zerado">Entradas e saídas líquidas zeradas neste período.</p>}
             <div className="ger-tabela" tabIndex={0} role="region" aria-label="Valores mensais do caixa"><table className="consulta-tabela"><caption>Caixa por mês · * mês parcial</caption><thead><tr><th scope="col">Mês</th><th scope="col">Recebido</th><th scope="col">Pago</th></tr></thead><tbody>{c.mensal.map(m => <tr key={m.mes}><th scope="row">{mesBR(m.mes)}{m.incompleto ? " · parcial" : ""}</th><td>{brl(m.entradas)}</td><td>{brl(m.saidas)}</td></tr>)}</tbody></table></div>
             {!c.fontes.length && <p className="ger-muted">Sem recebimentos ou pagamentos registrados neste período.</p>}
-          </> : <p className="ger-vazio">Sem recebimentos ou pagamentos registrados neste período.</p>}
+          </> : <Empty>Sem recebimentos ou pagamentos registrados neste período.</Empty>}
         </>}</BlocoPainel>
         <BlocoPainel titulo="Pagamentos por centro de custo" bloco={dados.caixa} className="ger-centros">{c => <>
           <p className="ger-muted">Total pago no período: {brl(c.saidas)} · líquido de estornos.</p>
