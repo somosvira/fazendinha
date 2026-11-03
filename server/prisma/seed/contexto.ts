@@ -131,7 +131,7 @@ export async function abrirContexto(modo: ModoSeed = 'executar', interromperApos
       if (modo === 'verificar') throw new Error('Manifesto da seed única inexistente.');
       const fatos = await cliente.query<{ total: string }>(`SELECT (SELECT count(*) FROM public."Operacao") + (SELECT count(*) FROM pecuaria."Animal") + (SELECT count(*) FROM public."Usuario") + (SELECT count(*) FROM public."Produto") + (SELECT count(*) FROM public."Parceiro") + (SELECT count(*) FROM public."ContaFinanceira") + (SELECT count(*) FROM public."Propriedade" WHERE nome <> 'Propriedade principal') AS total`);
       if (fatos.rows[0].total !== '0') throw new Error('Banco contém fatos ou usuários sem manifesto da seed única. Preserve os dados e prepare a substituição separadamente.');
-      manifesto = { versao: VERSAO, banco: BANCO, identidade, baseline: { nome, checksum }, fuso: 'America/Sao_Paulo', dataBase: hojeBrasil(), ids: {}, etapas: [], acoes: [], criadoEm: new Date().toISOString() };
+      manifesto = { versao: VERSAO, banco: BANCO, identidade, baseline: { nome, checksum }, fuso: 'America/Sao_Paulo', dataBase: deslocar(hojeBrasil(), -1), ids: {}, etapas: [], acoes: [], criadoEm: new Date().toISOString() };
     }
     if (manifesto.identidade !== identidade || manifesto.baseline.nome !== nome || manifesto.baseline.checksum !== checksum) throw new Error('Manifesto pertence a outra instância ou baseline.');
     await verificarReferenciasPg(cliente, manifesto);
