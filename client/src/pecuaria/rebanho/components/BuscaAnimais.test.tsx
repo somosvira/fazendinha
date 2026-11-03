@@ -73,7 +73,32 @@ it("o filtro de sítio em consolidado restringe a consulta e limpa o lote",async
  catalogos.mockResolvedValue({propriedades:[{id:7,nome:"Sede"},{id:8,nome:"Outra"}],lotes:[{id:"l1",nome:"Lote da Sede",propriedadeId:7}],racas:[],motivosBaixa:[]});
  render(<BuscaAnimais {...props()}/>);await screen.findByRole("option",{name:"Lote da Sede"});
  fireEvent.change(screen.getByRole("combobox",{name:"Lote"}),{target:{value:"l1"}});fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
- fireEvent.change(screen.getByRole("combobox",{name:"Sítio"}),{target:{value:"8"}});
+ fireEvent.change(screen.getByRole("combobox",{name:"Sítio"}),{target:{value:"8"}});fireEvent.click(screen.getByRole("button",{name:"Aplicar filtros"}));
  await waitFor(()=>expect(listar).toHaveBeenLastCalledWith(expect.objectContaining({propriedadeId:8,loteId:undefined,page:1}),undefined,expect.any(AbortSignal)));
  expect(screen.getByRole("combobox",{name:"Lote"})).toHaveProperty("value","");
+});
+it("só aplica os filtros avançados ao confirmar e descarta o rascunho ao cancelar",async()=>{
+ render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});const chamadas=listar.mock.calls.length;
+ fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));expect(screen.getByRole("dialog",{name:"Mais filtros"})).toBeTruthy();
+ fireEvent.change(screen.getByRole("combobox",{name:"Origem"}),{target:{value:"COMPRADO"}});
+ expect(listar).toHaveBeenCalledTimes(chamadas);fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
+ fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));expect(screen.getByRole("combobox",{name:"Origem"})).toHaveProperty("value","");
+ fireEvent.change(screen.getByRole("combobox",{name:"Origem"}),{target:{value:"COMPRADO"}});
+ fireEvent.change(screen.getByRole("spinbutton",{name:"Mínima, em meses"}),{target:{value:"0"}});
+ fireEvent.click(screen.getByRole("button",{name:"Aplicar filtros"}));
+ await waitFor(()=>expect(listar).toHaveBeenLastCalledWith(expect.objectContaining({origem:"COMPRADO",idadeMinMeses:0,page:1}),undefined,expect.any(AbortSignal)));
+ expect(screen.getByRole("button",{name:"Mais filtros (2)"})).toBeTruthy();
+});
+it("Escape fecha somente o modal de filtros e devolve o foco ao acionador",async()=>{
+ const p=props();render(<BuscaAnimais {...p}/>);await screen.findByRole("button",{name:/DEV-019/});fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
+ fireEvent.keyDown(document.activeElement!,{key:"Escape"});
+ await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Mais filtros"})).toBeNull());expect(p.onFechar).not.toHaveBeenCalled();
+ expect(document.activeElement).toBe(screen.getByRole("button",{name:"Mais filtros"}));
+});
+it("valida intervalos antes de aplicar e Limpar só altera o rascunho",async()=>{
+ render(<BuscaAnimais {...props()}/>);await screen.findByRole("button",{name:/DEV-019/});fireEvent.click(screen.getByRole("button",{name:"Mais filtros"}));
+ const chamadas=listar.mock.calls.length;
+ fireEvent.change(screen.getByRole("spinbutton",{name:"Mínima, em meses"}),{target:{value:"50"}});fireEvent.change(screen.getByRole("spinbutton",{name:"Máxima, em meses"}),{target:{value:"10"}});
+ fireEvent.click(screen.getByRole("button",{name:"Aplicar filtros"}));expect(screen.getByRole("alert").textContent).toContain("máxima");expect(listar).toHaveBeenCalledTimes(chamadas);
+ fireEvent.click(screen.getByRole("button",{name:"Limpar filtros"}));expect(screen.getByRole("spinbutton",{name:"Mínima, em meses"})).toHaveProperty("value","");expect(listar).toHaveBeenCalledTimes(chamadas);
 });
