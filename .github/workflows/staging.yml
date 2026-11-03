@@ -44,6 +44,9 @@ jobs:
       PECUARIA_DB_INTEGRATION: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          # histórico completo: `vitest --changed` compara com a base do PR ou com o push anterior
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4 # lê packageManager (pnpm@10.7.1) do package.json
       - uses: actions/setup-node@v4
         with:
@@ -61,19 +64,35 @@ jobs:
           pnpm --filter rionovo-server run import:pecuaria:v4:typecheck
           pnpm --filter rionovo-server run import:pecuaria:stg:typecheck
           pnpm --filter rionovo-server run seed:typecheck
+      # Testes só do que mudou: o vitest segue o grafo de imports a partir dos arquivos
+      # alterados e roda tudo quando muda configuração (package.json, lockfile, vitest config).
+      # PR → compara com a base; push → com o commit anterior; disparo manual ou push sem
+      # referência (branch nova, force-push) → suíte completa. Build e typecheck acima
+      # continuam cobrindo todos os arquivos.
+      - name: Definir alcance dos testes
+        env:
+          BASE_PR: ${{ github.event.pull_request.base.sha }}
+          ANTERIOR: ${{ github.event.before }}
+        run: |
+          ref=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then ref="$BASE_PR"; fi
+          if [ "${{ github.event_name }}" = "push" ] && [ -n "$ANTERIOR" ] && [ "$ANTERIOR" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$ANTERIOR^{commit}" 2>/dev/null; then ref="$ANTERIOR"; fi
+          # schema/migrations e o próprio CI não entram no grafo de imports: mudou, roda tudo
+          if [ -n "$ref" ] && git diff --name-only "$ref" HEAD | grep -qE '^(server/prisma/|\.github/workflows/)'; then echo "Schema, migrations ou CI alterados"; ref=""; fi
+          if [ -n "$ref" ]; then echo "ALCANCE=--changed=$ref" >> "$GITHUB_ENV"; echo "Testes afetados desde $ref"; else echo "Suíte completa"; fi
       - name: Testes da interface
-        run: pnpm --filter rionovo-client exec vitest run --fileParallelism=false
+        run: pnpm --filter rionovo-client exec vitest run $ALCANCE --passWithNoTests
       # migrate deploy (e não db push): os índices únicos parciais da pecuária ("uma linha
       # aberta por animal") e as categorias padrão só existem no SQL da migration da
       # pecuária v1 — db push os apagaria e o banco de teste divergiria do de produção.
       - name: Preparar banco isolado dos testes
         run: pnpm --filter rionovo-server exec prisma migrate deploy
       - name: Testes (server)
-        run: pnpm --filter rionovo-server test
+        run: pnpm --filter rionovo-server exec vitest run $ALCANCE --passWithNoTests
       - name: Testes da carga técnica V4
-        run: pnpm --filter rionovo-server run test:import:pecuaria:v4
+        run: pnpm --filter rionovo-server run test:import:pecuaria:v4 $ALCANCE --passWithNoTests
       - name: Testes da conciliação histórica STG
-        run: pnpm --filter rionovo-server run test:import:pecuaria:stg
+        run: pnpm --filter rionovo-server run test:import:pecuaria:stg $ALCANCE --passWithNoTests
 
   financeiro-integration:
     name: financeiro (bateria de invariantes, banco real)
