@@ -1,0 +1,51 @@
+/* Contrato visual dos componentes de relatório, independente da rota consumidora. */
+.rel-consulta-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 20px;min-width:0}
+.rel-consulta-contexto{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap;min-width:0}
+.rel-consulta-toolbar .rel-periodo-compacto{display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--card);box-shadow:none;min-width:0}
+.rel-periodo-compacto>svg{flex-shrink:0}
+.rel-periodo-compacto>strong{font-size:15px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rel-consulta-toolbar .rel-periodo-compacto>button{width:auto;min-height:44px;margin:0}
+.rel-acoes-icones{display:flex;align-items:center;gap:8px}
+.rel-acoes-icones>button{min-width:44px;min-height:44px}
+.rel-detalhe-dialog[data-slot=dialog-content]{width:calc(100vw - 32px);max-width:900px;padding:24px;gap:20px;overflow-y:auto}
+.rel-detalhe-dialog>[data-slot=dialog-header]{padding-right:32px}
+.rel-leite{display:grid;gap:20px;min-width:0}
+.rel-leite>.rel-consulta-toolbar{margin-bottom:0}
+.rel-leite .rel-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px;padding:20px 24px}
+.rel-leite .rel-resumo span{display:block;font-size:14px;margin-bottom:8px}
+.rel-leite .rel-resumo strong{display:block;font-size:28px;line-height:1.2}
+.rel-leite .rel-resumo .rel-numero-menor{font-size:20px}
+.rel-leite .rel-leite-grafico{display:grid;grid-template-columns:minmax(0,2fr) minmax(200px,1fr);gap:24px;padding:20px 24px;align-items:start}
+.rel-leite .rel-leite-grafico>*{min-width:0}
+.rel-leite .rel-composicao{display:grid;gap:14px;margin-top:16px}
+.rel-leite .rel-composicao>div{display:flex;justify-content:space-between;gap:12px}
+.rel-leite .rel-composicao dd{margin:0;font-weight:600}
+.rel-emissao-grupos{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.rel-emissao-grupos>section{display:grid;gap:16px;min-width:0}
+.rel-emissao-grupos>section+section{border-left:1px solid var(--border);padding-left:24px}
+.rel-emissao-grupos h3{font-size:18px;margin:0}
+.rel-emissao-grupos .leite-form-inline{display:grid;grid-template-columns:1fr;gap:16px;margin:0;padding:0}
+.rel-emissao-grupos .leite-form-inline>label{min-width:0}
+.rel-emissao-grupos label:not(.leite-checkbox){display:grid;gap:8px}
+.rel-emissao-grupos button{white-space:normal}
+@media(max-width:760px){
+ .rel-detalhe-dialog[data-slot=dialog-content]{padding:20px;gap:20px}
+ .rel-consulta-contexto{flex-basis:100%}
+ .rel-consulta-toolbar .rel-periodo-compacto{width:100%;gap:8px;padding:10px 12px}
+ .rel-consulta-toolbar .rel-periodo-compacto>button{margin-left:auto}
+ .rel-leite .rel-resumo{grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;padding:18px}
+ .rel-leite .rel-resumo>div{border:0}
+ .rel-leite .rel-resumo strong{font-size:24px}
+ .rel-leite .rel-leite-grafico{grid-template-columns:1fr;padding:18px;gap:24px}
+ .rel-emissao-grupos{grid-template-columns:1fr;gap:24px}
+ .rel-emissao-grupos>section+section{border-left:0;border-top:1px solid var(--border);padding:24px 0 0}
+}
+
+.rel-detalhe-dialog .rel-emissao-grupos .leite-form-inline>label.leite-checkbox{display:flex;align-items:center;gap:8px;margin:0}
+.rel-emissao-grupos .leite-checkbox input{width:20px;height:20px;min-height:20px;flex-shrink:0}
+.rel-emissao-grupos .leite-comercial-consulta>.fin-tabela-cabecalho{padding:0 0 16px;margin:0 0 16px}
+.rel-emissao-grupos>section>h3{display:flex;align-items:center;gap:8px;min-height:28px}
+/* A tabela rola dentro do modal; as ações e o rodapé continuam na janela. */
+.rel-detalhe-dialog[data-slot=dialog-content]{grid-template-columns:minmax(0,1fr)}
+.rel-detalhe-dialog>section{min-width:0;max-width:100%}
+.leite-relatorio-dialog .leite-tabela-scroll{min-width:0;max-width:100%;overflow-x:auto}

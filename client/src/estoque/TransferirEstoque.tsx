@@ -1,3 +1,4 @@
+import "./estoque-theme.css";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { ArrowRightLeft, TriangleAlert } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -50,20 +51,20 @@ export function TransferirEstoque({ onFechar, onSalvo, perda = false }: { perda?
       onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
-  return <PainelCadastro largura="sm:max-w-xl" icon={perda ? TriangleAlert : ArrowRightLeft} aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} bloqueado={ocupado} rodape={<Button type="submit" form="transferir-estoque" carregando={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button>}>
+  return <PainelCadastro largura="sm:max-w-xl" icon={perda ? TriangleAlert : ArrowRightLeft} aberto titulo={perda ? "Registrar perda de estoque" : "Transferir estoque entre sítios"} onFechar={() => { if (!ocupado) onFechar(); }} bloqueado={ocupado} rodape={fechar => <><Button secondary disabled={ocupado} onClick={fechar}>Cancelar</Button><Button type="submit" form="transferir-estoque" carregando={ocupado}>{perda ? "Confirmar perda" : "Confirmar transferência"}</Button></>}>
     <form ref={formularioRef} id="transferir-estoque" className="grid gap-4" noValidate onChange={() => setChave(crypto.randomUUID())} onSubmit={(e) => { e.preventDefault(); void confirmar(); }}>
       <fieldset disabled={ocupado} className="contents">
       <ErrorBox erro={erro} />
-      <p className="text-sm">{perda ? "Baixa somente a quantidade perdida, com justificativa e lotes selecionados. Não cria nova despesa." : "Conserva a quantidade, unidade, lotes e valor; não cria despesa financeira."} Para estornar, abra a operação pelo Histórico do estoque no sítio de origem.</p>
-      <label>Data<DatePicker required value={data} onChange={(v) => { setData(v); setChave(crypto.randomUUID()); }} /></label>
+      <p className="estoque-movimento-aviso">{perda ? "Baixa somente a quantidade perdida, com justificativa e lotes selecionados. Não cria nova despesa." : "Conserva a quantidade, unidade, lotes e valor; não cria despesa financeira."} Para estornar, abra a operação pelo Histórico do estoque no sítio de origem.</p>
+      <section className="estoque-form-secao"><h2>Local e data</h2><div className="estoque-form-campos"><label>Data<DatePicker required value={data} onChange={(v) => { setData(v); setChave(crypto.randomUUID()); }} /></label>
       <label>Sítio de origem<SelectCampo required className={classeInput} value={origemId} onValueChange={(valorSelecionado) => { setOrigemId(valorSelecionado); if (destinoId === valorSelecionado) setDestinoId(""); setPartidas([]); }}><option value="">Selecione</option>{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></label>
       {!perda && <label>Sítio de destino<SelectCampo required className={classeInput} value={destinoId} onValueChange={(valorSelecionado) => setDestinoId(valorSelecionado)}><option value="">Selecione</option>{sitios.filter((s) => s.id !== Number(origemId)).map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo></label>}
-      <label>Produto<SelectCampo required className={classeInput} value={produtoId} onValueChange={(valorSelecionado) => { setProdutoId(valorSelecionado); setPartidas([]); }}><option value="">Selecione</option>{produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
+      </div></section><section className="estoque-form-secao"><h2>Produto e quantidade</h2><div className="estoque-form-campos"><label>Produto<SelectCampo required className={classeInput} value={produtoId} onValueChange={(valorSelecionado) => { setProdutoId(valorSelecionado); setPartidas([]); }}><option value="">Selecione</option>{produtos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
       <label>Quantidade ({produto ? rotuloUnidade(produto.unidade) : "unidade do Produto"})<input required type="number" min="0.001" step="0.001" className={classeInput} value={quantidade} onChange={(e) => setQuantidade(e.target.value)} /></label>
-      {produto?.rastrearPartidas && origemId && <SelecaoPartidas key={`${produto.id}:${origemId}`} produtoId={produto.id} propriedadeId={Number(origemId)} dataFato={data} quantidade={quantidade} unidade={rotuloUnidade(produto.unidade)} saida valor={partidas} onChange={(p) => { setPartidas(p); setChave(crypto.randomUUID()); }} />}
-      <CampoFormulario id="motivo-estoque" rotulo={perda ? "Motivo da perda" : "Motivo"} erro={erroMotivo} obrigatorio>
+      </div>{produto?.rastrearPartidas && origemId && <SelecaoPartidas key={`${produto.id}:${origemId}`} produtoId={produto.id} propriedadeId={Number(origemId)} dataFato={data} quantidade={quantidade} unidade={rotuloUnidade(produto.unidade)} saida valor={partidas} onChange={(p) => { setPartidas(p); setChave(crypto.randomUUID()); }} />}
+      </section><section className="estoque-form-secao"><h2>Justificativa</h2><CampoFormulario id="motivo-estoque" rotulo={perda ? "Motivo da perda" : "Motivo"} erro={erroMotivo} obrigatorio>
         {(props) => <textarea {...props} ref={motivoRef} required maxLength={200} className={classeInput} value={motivo} onChange={(e) => { setMotivo(e.target.value); setErroMotivo(undefined); }} />}
-      </CampoFormulario>
+      </CampoFormulario></section>
       </fieldset>
     </form>
   </PainelCadastro>;

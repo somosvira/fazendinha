@@ -5,6 +5,8 @@ import { comPropriedade } from "../../propriedadeScope";
 import type {
   AnimalFicha,
   BaixaInput,
+  RegularizarBaixaHistoricaInput,
+  RevisarClassificacaoBaixaInput,
   CadastrarAnimalInput,
   CadastrarAnimalResultado,
   Catalogos,
@@ -188,6 +190,12 @@ export const desfazerDestinoAnimal = (id: string) =>
 
 export const darBaixaAnimal = (id: string, input: BaixaInput) =>
   req<AnimalFicha>(`/animais/${id}/baixa`, { method: "POST", body: JSON.stringify(input) });
+
+export const regularizarBaixaHistorica = (id: string, input: RegularizarBaixaHistoricaInput) =>
+  req<{ id: string }>(`/animais/${id}/baixa/regularizacao-historica`, { method: "POST", body: JSON.stringify(input) });
+
+export const revisarClassificacaoBaixa = (id: string, baixaId: string, input: RevisarClassificacaoBaixaInput) =>
+  req<{ id: string }>(`/animais/${id}/baixas/${baixaId}/classificacao`, { method: "POST", body: JSON.stringify(input) });
 
 export const estornarBaixaAnimal = (id: string, input: EstornoBaixaInput) =>
   req<AnimalFicha>(`/animais/${id}/baixa/estorno`, { method: "POST", body: JSON.stringify(input) });

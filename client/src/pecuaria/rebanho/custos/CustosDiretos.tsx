@@ -2,16 +2,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { DateRangePicker, formatRangeLabel, isoDate, type DateRange } from "../../../components/DateRangePicker";
 import { getHoje } from "../../../lib/hoje";
 import { descricaoCusto, ultimosDozeMeses } from "./apresentacao";
-import { classeInput } from "../../../financeiro/PainelCadastro";
+import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { getUsuario } from "../../../lib/auth";
 import { temAcessoArea } from "../../../lib/areas";
 import { obterCustos, type CustosDTO, type EscopoCustos, type Componente } from "./api";
 import { ResumoCustosDiretos } from "./ResumoCustosDiretos";
 import { EditorClassificacaoCusto } from "./EditorClassificacaoCusto";
 import { VinculosPreparatorios } from "./VinculosPreparatorios";
-import { Button } from "../../../financeiro/financeiro-ui";
+import { Button } from "../../../components/ui/button";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import "./custos-diretos.css";
 
-type Props = { fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; linksJaExibidos?: readonly string[]; mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
+type Props = { mediaPorTentativa?: boolean; somenteClassificacao?: boolean; aoAlterarRascunho?: (alterado: boolean) => void; aoGravar?: (ocupado: boolean) => void; aoSalvar?: () => void; fatoEmConsulta?: Pick<Componente, "tipoFonte" | "fonteId">; linksJaExibidos?: readonly string[]; mostrarTitulo?: boolean; propriedadeId: number; podeLancar: boolean; finalidadeInicial?: "REPRODUCAO" | "SANIDADE" | "ROTINA" } & EscopoCustos;
 
 export function CustosDiretos(props: Props) {
   // Uma nova identidade inicia filtros e rascunhos próprios, sem herdar o sítio anterior.
@@ -19,7 +21,9 @@ export function CustosDiretos(props: Props) {
   return <ComposicaoCustos key={chave} {...props} />;
 }
 
-function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
+function ComposicaoCustos({ mediaPorTentativa = false, somenteClassificacao = false, aoAlterarRascunho, aoGravar, aoSalvar, propriedadeId, podeLancar, finalidadeInicial, mostrarTitulo = true, fatoEmConsulta, linksJaExibidos, ...escopo }: Props) {
+  const [ajustando,setAjustando]=useState(false);
+  const [rascunhoLocal,setRascunhoLocal]=useState(false);
   const [resposta, setResposta] = useState<CustosDTO | null>(null);
   const [respostaIdentidade, setRespostaIdentidade] = useState("");
   const [erro, setErro] = useState("");
@@ -76,20 +80,21 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     setFontesPagina(1);setPreparosPagina(1);setMotivo(""); setErro(""); setOcupado(false); setPagina(1); setChave(crypto.randomUUID());
   }, [identidade]);
 
-  const alterar = () => setChave(crypto.randomUUID());
+  const alterar = () => { setRascunhoLocal(true); setChave(crypto.randomUUID()); aoAlterarRascunho?.(true); };
   async function gravar(acao: () => Promise<unknown>) {
-    setOcupado(true);
+    setOcupado(true); aoGravar?.(true);
     setErro("");
     try {
       await acao();
       if (contexto === contextoAtual.current) {
+        setRascunhoLocal(false); aoAlterarRascunho?.(false); aoSalvar?.();
         setAtualizacao(v => v + 1);
         setChave(crypto.randomUUID());
       }
     } catch (e) {
       if (contexto === contextoAtual.current) setErro(e instanceof Error ? e.message : String(e));
     } finally {
-      if (contexto === contextoAtual.current) setOcupado(false);
+      if (contexto === contextoAtual.current) { setOcupado(false); aoGravar?.(false); }
     }
   }
 
@@ -101,27 +106,30 @@ function ComposicaoCustos({ propriedadeId, podeLancar, finalidadeInicial, mostra
     setErroPeriodo(""); setPeriodo(range); setAtalho("personalizado"); setPagina(1);
   }
   const visivel = !!dados && !carregando;
-  return <section className={mostrarTitulo ? "space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" : "space-y-4"} aria-label="Composição dos custos diretos">
+  return <section className={mostrarTitulo ? "custos-diretos space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5" : "custos-diretos space-y-4"} aria-label="Composição dos custos diretos">
     {mostrarTitulo && <h3 className="text-lg font-semibold">Custos diretos</h3>}
-    <div className="flex flex-wrap items-end gap-3">
-      <label className="min-w-56 text-sm">Período<select className={classeInput} value={atalho} onChange={e => {
-        setAtalho(e.target.value); setErroPeriodo(""); setPagina(1);
-        if (e.target.value === "12m") setPeriodo(ultimosDozeMeses(getHoje()));
-        if (e.target.value === "todos") setPeriodo({ start: null, end: null });
+    {!somenteClassificacao && !mediaPorTentativa && <div className="custos-diretos-filtros">
+      <label className="min-w-56 text-sm">Período<SelectCampo className={classeInput} value={atalho} onValueChange={valorSelecionado => {
+        setAtalho(valorSelecionado); setErroPeriodo(""); setPagina(1);
+        if (valorSelecionado === "12m") setPeriodo(ultimosDozeMeses(getHoje()));
+        if (valorSelecionado === "todos") setPeriodo({ start: null, end: null });
       }}>
         <option value="12m">Últimos 12 meses</option><option value="todos">Todo o período</option><option value="personalizado" disabled>Personalizado</option>
-      </select></label>
-      <label className="min-w-48 text-sm">Finalidade do custo<select className={classeInput} value={finalidade} onChange={e => { setFinalidade(e.target.value); setPagina(1); }}>
+      </SelectCampo></label>
+      <label className="min-w-48 text-sm">Finalidade do custo<SelectCampo className={classeInput} value={finalidade} onValueChange={valorSelecionado => { setFinalidade(valorSelecionado); setPagina(1); }}>
         <option value="">Todas as finalidades</option><option value="REPRODUCAO">Reprodução</option><option value="SANIDADE">Sanidade</option><option value="ROTINA">Rotina/manutenção</option><option value="SEM_CLASSIFICACAO">Sem classificação</option>
-      </select></label>
+      </SelectCampo></label>
       <DateRangePicker value={periodo} onChange={mudarPeriodo} showPresets={false} triggerAriaLabel="Personalizar período dos custos" triggerLabel={<>Personalizar período{periodo.start && periodo.end ? ` · ${formatRangeLabel(periodo)}` : ""}</>} />
-    </div>
+    </div>}
+    {mediaPorTentativa && !somenteClassificacao && <div className="custos-ficha-controles"><DateRangePicker value={periodo} onChange={range=>{if(!range.start&&!range.end){setPeriodo(range);setAtalho("todos");setPagina(1);setErroPeriodo("");}else mudarPeriodo(range);}} allowAll showIcon triggerAriaLabel="Período dos custos" triggerLabel={atalho==="12m"?"Últimos 12 meses":"Período dos custos"}/>{podeEditar&&<Button variant="outline" onClick={()=>setAjustando(true)}>Ajustar custos</Button>}</div>}
     {erroPeriodo && <p role="alert" className="text-destructive">{erroPeriodo}</p>}
     {carregando && <p role="status">Consultando custos…</p>}
-    {erro && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button secondary disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
-    {dados && visivel && <ResumoCustosDiretos fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
+    {erro && !ajustando && <div role="alert" className="flex flex-wrap items-center gap-3 text-destructive"><p>{erro}</p><Button variant="outline" disabled={carregando} onClick={() => void carregar()}>Tentar novamente</Button></div>}
+    {!somenteClassificacao && dados && visivel && <ResumoCustosDiretos mostrarMediaPorTentativa={mediaPorTentativa} fatoEmConsulta={fatoEmConsulta} linksJaExibidos={linksJaExibidos} dados={dados} propriedadeId={propriedadeId} porAnimal={!!animalId} tentativaId={tentativaId} comRecorte={!!(inicio || fim || finalidade)} pagina={pagina} aoMudarPagina={setPagina} aoMudarPaginaPreparos={setPreparosPagina} />}
     {/* Os editores conservam rascunhos durante a recarga e reiniciam ao trocar o alvo/sítio. */}
-    <EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} />
+    {(!mediaPorTentativa || ajustando) && <PainelAjusteCustos emModal={mediaPorTentativa} aberto={ajustando} onFechar={()=>{setAjustando(false);setRascunhoLocal(false);setMotivo("");aoAlterarRascunho?.(false);}} ocupado={ocupado} alterado={rascunhoLocal}>{ajustando&&erro&&<p role="alert" className="text-destructive">{erro}</p>}<EditorClassificacaoCusto key={`classificacao:${identidade}`} dados={dados} aoMudarPagina={setFontesPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} gravar={gravar} /></PainelAjusteCustos>}
     {tentativaId && <VinculosPreparatorios key={`preparatorios:${identidade}`} dados={dados} aoMudarPaginaVinculos={setPreparosPagina} visivel={visivel && podeEditar} propriedadeId={propriedadeId} tentativaId={tentativaId} chave={chave} ocupado={ocupado} motivo={motivo} aoMudarMotivo={setMotivo} aoAlterar={alterar} aoErro={setErro} gravar={gravar} />}
   </section>;
 }
+
+function PainelAjusteCustos({emModal,aberto,onFechar,ocupado,alterado,children}:{emModal:boolean;aberto:boolean;onFechar:()=>void;ocupado:boolean;alterado:boolean;children:import("react").ReactNode}){return emModal?<PainelCadastro aberto={aberto} titulo="Ajustar custos" onFechar={onFechar} bloqueado={ocupado} alteracoesExternas={alterado} rodape={null}>{children}</PainelCadastro>:children;}

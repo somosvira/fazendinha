@@ -12,7 +12,7 @@ import { emitirRelatorioLeiteSchema, type EmitirRelatorioLeiteInput } from "./re
 import { amostraQualidadeDTO } from "./qualidade.js";
 
 export class RelatorioLeiteAcessoError extends Error {}
-export const VERSAO_CALCULO_RELATORIO_LEITE = "LEITE_GERENCIAL_V5";
+export const VERSAO_CALCULO_RELATORIO_LEITE = "LEITE_GERENCIAL_V6";
 const data = (s: string) => new Date(`${s}T00:00:00Z`);
 const texto = (d: Date) => d.toISOString().slice(0, 10);
 const json = (valor: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(valor));
@@ -47,6 +47,8 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
     select: { id: true, entradaId: true, movimentoId: true, data: true, natureza: true, quantidadeLitros: true, versao: true,
       parcelas: { where: { ativo: true }, select: { id: true, animalId: true, quantidadeLitros: true, fornecimentoColostroId: true, animal: { select: { brinco: true, nome: true } } } } },
     orderBy: [{ data: "asc" }, { id: "asc" }], take: MAX_FATOS + 1 });
+  const retiradasInternas = await tx.retiradaInternaLeite.findMany({where:{propriedadeId,data:periodo,status:"CONFIRMADO",movimento:{status:"CONFIRMADO"}},select:{id:true,entradaId:true,movimentoId:true,data:true,destino:true,responsavel:true,quantidadeLitros:true,versao:true},orderBy:[{data:"asc"},{id:"asc"}],take:MAX_FATOS+1});
+  conferirLimite(retiradasInternas.length);
   const fornecimentoWhere = { propriedadeId, data: periodo, status: "CONFIRMADO" };
   const quantidadeParcelasNutricionais = await tx.parcelaFornecimentoNutricionalLeite.count({ where: { fornecimento: fornecimentoWhere } });
   const quantidadeOrigensNutricionais = await tx.movimentoFornecimentoNutricionalLeite.count({ where: { fornecimento: fornecimentoWhere } });
@@ -136,7 +138,7 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
     referenciasProducao: folhasFonte.map(f => ({ ...f, dataOperacional: texto(f.dataOperacional) })),
     unidades: { producao: "L", destinos: "L", balanco: "L", qualidade: "UNIDADE_DO_CAMPO_NO_FORMATO", custos: "BRL", custoPorLitro: "BRL/L" },
     fontes: { producao: ["DiaProducaoLeite", "ParticipanteProducaoLeite", "MedicaoLeite", "MedicaoGeralLeite", "TanqueLeite"], custos: ["Componentes de custo pecuário documentados"],
-      qualidade: ["AmostraQualidadeLeite", "ExameAnimal", "Resultados vigentes e formato snapshot"], destinos: ["DestinoInternoLeite", "ParcelaDestinoLeite", "FornecimentoNutricionalLeite", "MovimentoFornecimentoNutricionalLeite", "ParcelaFornecimentoNutricionalLeite"],
+      qualidade: ["AmostraQualidadeLeite", "ExameAnimal", "Resultados vigentes e formato snapshot"], destinos: ["RetiradaInternaLeite", "DestinoInternoLeite", "ParcelaDestinoLeite", "FornecimentoNutricionalLeite", "MovimentoFornecimentoNutricionalLeite", "ParcelaFornecimentoNutricionalLeite"],
       comercial: ["OperacaoComercialLeite (sobreposição do período integral)", "FechamentoOperacaoLeite (última versão e estado financeiro no corte)", "RetiradaOperacaoLeite (preço pode estar pendente)", "MovimentoEstoque", "VersaoComercialVendaLeite", "EntregaLeite", "ConferenciaEntregaLeite", "DemonstrativoLeite válido e alocações ativas"], descarte: ["DescarteLeite"], balanco: ["Razão MovimentoEstoque confirmado/revertido com inversos", "ConferenciaSaldoLeite versionada, observação manual sem ajuste"] },
     escopos: { producaoCustos: "SITIO_PERIODO_ANIMAL_ORDENHA", qualidade: input.animalId ? "INDIVIDUAL_DO_ANIMAL_NO_PERIODO" : "INDIVIDUAL_E_COLETIVO_NO_SITIO_PERIODO",
       destinosComercialBalanco: "SITIO_PERIODO_INDEPENDENTE_DO_FILTRO_PRODUTOR", ordenhaQualidade: "NAO_ATRIBUIDA", operacoesComerciais: "SITIO_SOBREPOSICAO_PERIODO_COMERCIAL_INTEGRAL_SEM_RATEIO" },
@@ -146,7 +148,7 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
     dados: {
       producao: { propriedadeId, periodo: custos.periodo, posicaoId: custos.posicaoId, coberturaPeriodo: custos.coberturaPeriodo, ritmo: custos.ritmo,
         animais: custos.animais.map(a => ({ animalId: a.animalId, brinco: a.brinco, nome: a.nome, producao: a.producao })), consolidado: custos.consolidado.producao },
-      qualidade, destinos: [...destinos.map(d => ({ ...d, fonte: "DESTINO_INTERNO", data: texto(d.data), quantidadeLitros: d.quantidadeLitros.toString(), parcelas: d.parcelas.map(p => ({ ...p, quantidadeLitros: p.quantidadeLitros.toString() })) })),
+      qualidade, destinos: [...retiradasInternas.map(r=>({...r,fonte:"RETIRADA_INTERNA",natureza:r.destino,data:texto(r.data),quantidadeLitros:r.quantidadeLitros.toString(),parcelas:[]})), ...destinos.map(d => ({ ...d, fonte: "DESTINO_INTERNO", data: texto(d.data), quantidadeLitros: d.quantidadeLitros.toString(), parcelas: d.parcelas.map(p => ({ ...p, quantidadeLitros: p.quantidadeLitros.toString() })) })),
         ...fornecimentos.map(f => ({ id: f.id, fonte: "NUTRICAO", itemId: f.itemId, data: texto(f.data), quantidadeLitros: f.quantidadeLitros.toString(),
           natureza: [...new Set(f.movimentos.map(m => m.natureza))].length === 1 ? f.movimentos[0]?.natureza ?? "NAO_INFORMADA" : "MISTA",
           origens: f.movimentos.map(m => ({ entradaId: m.entradaId, movimentoId: m.movimentoId, natureza: m.natureza, quantidadeLitros: m.quantidadeLitros.toString() })),
@@ -182,7 +184,7 @@ export async function montarSnapshotRelatorioLeiteTx(tx: Prisma.TransactionClien
     limitacoes: ["Operações comerciais usam período integral por sobreposição, sem rateio diário; não somar seus valores com vendas legadas por data de retirada ou faturamento documental de outra competência. Valores de referência gerencial do fornecimento nutricional não integram a emissão; consulte Nutrição para as referências gerenciais", "Razão e observação manual são fontes separadas; ausência de conferência permanece desconhecida. Observação anterior informa sua data, sem presumir abertura atual ou ajuste automático", "Custo direto parcial não é lucro", "Qualidade preservada por amostra/formato/versão/unidade, sem média incompatível", "Destinos/comercial/balanço usam sítio e período, sem atribuição automática ao produtor filtrado"] };
 }
 export type SnapshotRelatorioLeite = Awaited<ReturnType<typeof montarSnapshotRelatorioLeiteTx>>;
-const envelopeSchema = z.object({ versao: z.literal(1), versaoCalculo: z.enum(["LEITE_GERENCIAL_V1", "LEITE_GERENCIAL_V2", "LEITE_GERENCIAL_V3", "LEITE_GERENCIAL_V4", VERSAO_CALCULO_RELATORIO_LEITE]), corteEm: z.string().datetime(), valoresIncluidos: z.boolean(), valores: z.object({}).passthrough().nullable(), dados: z.object({}).passthrough(), propriedade: z.object({ id: z.number(), nome: z.string() }) }).passthrough();
+const envelopeSchema = z.object({ versao: z.literal(1), versaoCalculo: z.enum(["LEITE_GERENCIAL_V1", "LEITE_GERENCIAL_V2", "LEITE_GERENCIAL_V3", "LEITE_GERENCIAL_V4", "LEITE_GERENCIAL_V5", VERSAO_CALCULO_RELATORIO_LEITE]), corteEm: z.string().datetime(), valoresIncluidos: z.boolean(), valores: z.object({}).passthrough().nullable(), dados: z.object({}).passthrough(), propriedade: z.object({ id: z.number(), nome: z.string() }) }).passthrough();
 function dto(registro: { id: string; criadoEm: Date; criadoPorId: number | null; snapshot: Prisma.JsonValue }, verValores: boolean) {
   // A validação de envelope impede abrir uma versão desconhecida como se fosse a atual.
   const snapshot = envelopeSchema.parse(registro.snapshot);

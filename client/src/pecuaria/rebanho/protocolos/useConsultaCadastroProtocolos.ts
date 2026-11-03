@@ -4,7 +4,7 @@ export function useConsultaCadastroProtocolos(ativo = true) {
   const ler = () => {
     const p = new URLSearchParams(window.location.search);
     const situacao = p.get("cadastroSituacao");
-    return { busca: p.get("cadastroBusca") ?? "", pagina: Math.max(1, Math.floor(Number(p.get("cadastroPagina")) || 1)), situacao: situacao && ["TODAS", "ATIVA", "INATIVA", "RASCUNHO", "PUBLICADA"].includes(situacao) ? situacao : "ATIVA" };
+    return { busca: p.get("cadastroBusca") ?? p.get("busca") ?? "", pagina: Math.max(1, Math.floor(Number(p.get("cadastroPagina")) || 1)), situacao: situacao && ["TODAS", "ATIVA", "INATIVA", "RASCUNHO", "PUBLICADA"].includes(situacao) ? situacao : "ATIVA" };
   };
   const [inicial] = useState(ler);
   const [busca, setBusca] = useState(inicial.busca);

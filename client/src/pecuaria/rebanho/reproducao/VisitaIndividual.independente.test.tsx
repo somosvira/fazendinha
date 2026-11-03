@@ -49,12 +49,15 @@ describe("seleção livre individual — contraprovas independentes", () => {
   fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));
   fireEvent.click(screen.getByText("Filtrar atendimentos"));
   fireEvent.change(screen.getByRole("combobox", { name: "Atendimento" }), { target: { value: "CONFIRMADO" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concluir filtros" }));
   fireEvent.click(screen.getByRole("button", { name: "Voltar à lista de animais" }));
   await screen.findByText("Nenhum animal nesta seleção.");
+  fireEvent.click(screen.getByRole("button", { name: /Filtrar atendimentos/ }));
   const filtro = screen.getByRole("combobox", { name: "Atendimento" });
   expect(filtro).toHaveProperty("value", "CONFIRMADO");
   expect(new URLSearchParams(window.location.search).get("atividade-at-status")).toBe("CONFIRMADO");
   fireEvent.change(filtro, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concluir filtros" }));
   await screen.findByRole("button", { name: "Abrir atendimento de 100 · Aurora" });
   expect(screen.getByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeTruthy();
   expect(new URLSearchParams(window.location.search).has("atividade-at-status")).toBe(false);
@@ -73,6 +76,7 @@ describe("seleção livre individual — contraprovas independentes", () => {
   const motivo = screen.getByRole("checkbox", { name: "Retorno previsto" });
   expect(motivo).toHaveProperty("checked", true);
   fireEvent.click(motivo);
+  fireEvent.click(screen.getByRole("button", { name: "Concluir filtros" }));
   expect(screen.getByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeTruthy();
   expect(new URLSearchParams(window.location.search).getAll("atividade-at-motivo")).toEqual([]);
   fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));

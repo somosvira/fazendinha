@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { GitBranch, ListChecks, ShieldCheck } from "lucide-react";
 import { Button, ErrorBox, Modal, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
 import { type CadastroProtocoloMeta, type PaginaCadastro } from "./cadastros-api";
@@ -43,8 +44,9 @@ export function DetalheModeloProtocolo({ origem, onClose }: { origem: CadastroPr
     obterEstruturaCadastro(origem,pagina).then(p=>{if(vivo){setDados(p);if(p.pagina!==pagina)setPagina(p.pagina);}}).catch(e=>{if(vivo)setErro(e instanceof Error ? e.message : String(e));}).finally(()=>{if(vivo)setCarregando(false);});
     return ()=>{vivo=false;};
   },[origem.id,origem.atualizadoEm,pagina,revisao]);
-  return <Modal titulo={origem.nome} eyebrow={`Versão ${origem.versao}${!origem.ativo ? " · Inativo" : ""} · Estrutura do modelo`} onClose={onClose} width="max-w-5xl">
+  return <Modal titulo={origem.nome} eyebrow="" onClose={onClose} width="max-w-5xl">
     <div className="modelo-detalhe">
+      <dl className="modelo-detalhe-identidade"><div><dt><GitBranch size={18} aria-hidden="true" />Versão</dt><dd>{origem.versao}</dd></div><div><dt><ListChecks size={18} aria-hidden="true" />Procedimentos</dt><dd>{origem.totalEtapas}</dd></div><div><dt><ShieldCheck size={18} aria-hidden="true" />Situação</dt><dd>{!origem.ativo ? "Inativo" : origem.publicado || origem.publicadoEm ? "Disponível para uso" : "Cadastro não concluído"}</dd></div></dl>
       {origem.descricao && <p className="modelo-detalhe-descricao">{origem.descricao}</p>}
       {!origem.publicado && !origem.publicadoEm && <p className="modelo-detalhe-aviso">Cadastro antigo não concluído. Os procedimentos e suas configurações originais permanecem preservados.</p>}
       {origem.referenciaTecnica?.fonte && <p><a href={origem.referenciaTecnica.fonte.url} target="_blank" rel="noreferrer">{origem.referenciaTecnica.fonte.titulo}</a>{origem.referenciaTecnica.versaoReferencia && ` · referência ${origem.referenciaTecnica.versaoReferencia}`}</p>}

@@ -12,6 +12,7 @@ describe("rotulos", () => {
     expect(rotuloSituacao("ATIVO")).toBe("Ativo");
     expect(rotuloSituacao("BAIXADO")).toBe("Baixado");
     expect(rotuloTipoBaixa("VENDA")).toBe("Venda");
+    expect(rotuloTipoBaixa("NAO_DETERMINADO")).toBe("Tipo não determinado na origem");
     expect(rotuloTipoBaixa("DESCONHECIDO")).toBe("DESCONHECIDO");
     expect(rotuloClasseMotivo("DESCARTE_VOLUNTARIO")).toBe("Descarte voluntário");
     expect(rotuloClasseMotivo("DESCARTE_INVOLUNTARIO")).toBe("Descarte involuntário");
@@ -28,6 +29,7 @@ describe("rotulos", () => {
     expect(motivoAceito("MORTE", "DESCARTE_VOLUNTARIO")).toBe(false);
     expect(motivoAceito("EXTRAVIO", "DESCARTE_VOLUNTARIO")).toBe(false);
     expect(motivoAceito("CADASTRO_INDEVIDO", "MORTE")).toBe(false);
+    expect(motivoAceito("NAO_DETERMINADO", "MORTE")).toBe(false);
   });
 
   it("formata idade em anos e meses", () => {

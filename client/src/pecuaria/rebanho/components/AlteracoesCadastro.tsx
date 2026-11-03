@@ -83,13 +83,13 @@ export function AlteracoesCadastro({ entidade, entidadeId, recarregarToken }: { 
               {temAlteracoes && (aberto ? <ChevronDown size={16} className="shrink-0 text-ink-3" /> : <ChevronRight size={16} className="shrink-0 text-ink-3" />)}
               <div className="min-w-0">
                 <strong className="break-words">{entrada.resumo}</strong>
-                <div className="mt-0.5 text-xs text-ink-3">{entrada.usuarioNome ?? "Sistema"}</div>
+                <div className="mt-0.5 text-sm text-ink-3">{entrada.usuarioNome ?? "Sistema"}</div>
               </div>
             </div>
-            <span className="shrink-0 text-xs text-ink-3">{formatarDataHoraBR(entrada.em)}</span>
+            <span className="shrink-0 text-sm text-ink-3">{formatarDataHoraBR(entrada.em)}</span>
           </button>
           {aberto && temAlteracoes && <div className="overflow-x-auto px-4 pb-4">
-            <table className="w-full text-left text-xs consulta-tabela">
+            <table className="w-full text-left text-sm consulta-tabela">
               <thead className="text-ink-3"><tr><th className="py-1 pr-3 font-semibold">Campo</th><th className="py-1 pr-3 font-semibold">Antes</th><th className="py-1 pr-3 font-semibold">Depois</th></tr></thead>
               <tbody className="divide-y divide-border">
                 {entrada.alteracoes.map((alt) => <tr key={alt.campo}><td className="py-1.5 pr-3">{alt.rotulo}</td><td className="py-1.5 pr-3 break-words">{alt.antes ?? "—"}</td><td className="py-1.5 pr-3 break-words">{alt.depois ?? "—"}</td></tr>)}

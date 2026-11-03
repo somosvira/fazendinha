@@ -12,7 +12,7 @@ const procedimento:ProcedimentoCadastro={id:"a",nome:"Aplicação inicial",proce
 const etapa:EtapaEstruturaCadastro={id:"m",nome:"Preparo",agrupada:true,modoAtendimento:"AUTOMATIZADA",instrucoesGerais:"Conferir identificação",procedimentos:pagina([procedimento])};
 function props(tipo:CadastroProtocoloMeta["tipo"]="REPRODUTIVO") {return {tipo,protocolos:[{...modelo,tipo}],total:11,pagina:1,carregando:false,erro:null,ocupado:false,podeLancar:false,busca:"preparo",situacao:"ATIVA",onBusca:vi.fn(),onSituacao:vi.fn(),onPagina:vi.fn(),onRecarregar:vi.fn(),onNovo:vi.fn(),onNovaVersao:vi.fn(),onConcluir:vi.fn(),onInativar:vi.fn()};}
 beforeEach(()=>{vi.resetAllMocks();localStorage.clear();window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos");vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([etapa]));});
-afterEach(cleanup);
+afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 it("apresenta intervalos fracionários sem arredondar o calendário cadastrado",()=>{
   expect(intervaloProcedimento(1.23456,"HORAS")).toBe("H1,23456");
   expect(intervaloProcedimento(7.5,"DIAS")).toBe("D7,5");
@@ -30,12 +30,45 @@ it.each(["SANITARIO","REPRODUTIVO"] as const)("%s: alterna cards/tabela preserva
   expect(screen.getByText("Confirmação do previsto")).toBeTruthy();expect(screen.getByText("Conferir identificação")).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Fechar detalhes"}));expect(screen.queryByRole("dialog")).toBeNull();
 });
-it("inclui inativos sem oferecer publicação e mantém ações explícitas de conclusão/versão",()=>{
+it("inclui inativos e reúne conclusão e versão no menu do modelo correto",async()=>{
   const p={...props(),podeLancar:true,protocolos:[{...modelo,publicado:false,publicadoEm:null,utilizada:false}]};render(<CatalogoModelosProtocolos {...p}/>);
   expect(screen.queryByRole("combobox",{name:"Situação"})).toBeNull();expect(screen.queryByRole("button",{name:"Atualizar protocolos"})).toBeNull();expect(screen.queryByRole("button",{name:/Publicar/})).toBeNull();
   fireEvent.click(screen.getByRole("checkbox",{name:"Mostrar inativos"}));expect(p.onSituacao).toHaveBeenCalledWith("TODAS");
-  fireEvent.click(screen.getByRole("button",{name:/Concluir cadastro de/}));expect(p.onConcluir).toHaveBeenCalledWith(p.protocolos[0]);
-  fireEvent.click(screen.getByRole("button",{name:/Nova versão de/}));expect(p.onNovaVersao).toHaveBeenCalledWith(p.protocolos[0]);
+  const abrirMenu=()=>fireEvent.keyDown(screen.getByRole("button",{name:/Mais ações de/}),{key:"ArrowDown"});
+  abrirMenu();
+  fireEvent.click(await screen.findByRole("menuitem",{name:/Concluir cadastro de/}));expect(p.onConcluir).toHaveBeenCalledWith(p.protocolos[0]);
+  abrirMenu();
+  fireEvent.click(await screen.findByRole("menuitem",{name:/Nova versão de/}));expect(p.onNovaVersao).toHaveBeenCalledWith(p.protocolos[0]);
+});
+it("mantém a tabela sanitária no celular, sem finalidade redundante nem menu de escrita para consulta",()=>{
+  vi.stubGlobal("innerWidth",390);
+  const p=props("SANITARIO");render(<CatalogoModelosProtocolos {...p}/>);
+  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
+  const tabela=screen.getByRole("table",{name:"Protocolos sanitários"});
+  expect(tabela.closest("[data-fin-visualizacao]")?.getAttribute("data-fin-visualizacao")).toBe("tabela");
+  expect(within(tabela).queryByRole("columnheader",{name:"Finalidade"})).toBeNull();
+  expect(within(tabela).getByRole("columnheader",{name:"Situação"})).toBeTruthy();
+  expect(screen.queryByRole("button",{name:/Mais ações de/})).toBeNull();
+  expect(screen.getByRole("searchbox")).toHaveProperty("value","preparo");
+  expect(p.onPagina).not.toHaveBeenCalled();
+});
+it("preserva finalidade reprodutiva e bloqueia o menu durante uma gravação",()=>{
+  render(<CatalogoModelosProtocolos {...props()} podeLancar ocupado/>);
+  expect(screen.getByRole("button",{name:/Mais ações de/})).toHaveProperty("disabled",true);
+  fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
+  expect(within(screen.getByRole("table")).getByRole("columnheader",{name:"Finalidade"})).toBeTruthy();
+});
+it("modelo publicado/inativo conserva somente os comandos permitidos e Escape devolve o foco",async()=>{
+  const p={...props(),podeLancar:true,protocolos:[{...modelo,ativo:false}]};
+  render(<CatalogoModelosProtocolos {...p}/>);
+  const botao=screen.getByRole("button",{name:/Mais ações de/});
+  botao.focus();fireEvent.keyDown(botao,{key:"ArrowDown"});
+  const menu=await screen.findByRole("menu");
+  expect(within(menu).queryByRole("menuitem",{name:/Concluir cadastro|Inativar/})).toBeNull();
+  expect(within(menu).getByRole("menuitem",{name:/Nova versão/})).toBeTruthy();
+  fireEvent.keyDown(menu,{key:"Escape"});
+  await waitFor(()=>expect(screen.queryByRole("menu")).toBeNull());
+  await waitFor(()=>expect(document.activeElement).toBe(botao));
 });
 it("pagina estrutura e procedimentos separadamente em até10, preservando modo e material definido no atendimento",async()=>{
   const muitas=Array.from({length:10},(_,i)=>({...procedimento,id:`a${i}`,nome:`Aplicação ${i}`}));

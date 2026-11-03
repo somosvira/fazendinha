@@ -1,3 +1,4 @@
+import { iaPrevistaNoModelo } from "./historico-participacao.calc.js";
 import { sqlDemandaPendenteTarefa } from "../reproducao/acompanhamento.js";
 import { nomeEtapaOperacao } from "./operacao.rotulos.js";
 import { participacaoNoEscopoOperacao, programacaoNoEscopoOperacao, tarefaNoEscopoOperacao, sqlTarefaNoEscopoOperacao } from "./operacao.escopo.js";
@@ -16,6 +17,14 @@ import { sqlSituacaoOperacional, sqlAtrasoOperacional, ultimoEventoOperacional, 
 type Tx = Prisma.TransactionClient;
 export type UsuarioOperacao = { dono: boolean; areas: string[]; flags: string[] } | null;
 const protocoloSelect = { id:true, nome:true, versao:true, tipo:true } as const;
+const protocoloResumoSelect = { ...protocoloSelect, etapas: { select: { tipo: true, configuracao: true } } } as const;
+function contagemVinculosTentativa(propriedadeId: number | null) {
+  const escopo = propriedadeId == null ? {} : { propriedadeId };
+  return { select: { tarefas: { where: { OR: [
+    { tentativas: { some: escopo } },
+    { vinculos: { some: { tentativa: { is: escopo } } } },
+  ] } } } } satisfies Prisma.ParticipacaoProtocoloCountOutputTypeDefaultArgs;
+}
 const animalSelect = { id:true, brinco:true, nome:true } as const;
 const pendentes = ["NAO_ATENDIDO", "SEM_REGISTRO", "ADIADO", "REGULARIZACAO_PENDENTE"];
 export function paginaOperacao(total:number,pagina:number,porPagina:number) { return Math.min(pagina,Math.max(1,Math.ceil(total/porPagina))); }
@@ -166,8 +175,8 @@ export async function listarParticipantesOperacao(contexto:ContextoOperacao,prop
     if(c.modo!=="COLETIVO")throw new RebanhoError("VALIDACAO","Selecione uma programação coletiva");
     const where:Prisma.ParticipacaoProtocoloWhereInput={...c.where,...(f.busca?{animal:{OR:[{brinco:{contains:f.busca,mode:"insensitive"}},{nome:{contains:f.busca,mode:"insensitive"}}]}}:{})};
     const total=await tx.participacaoProtocolo.count({where});const pagina=paginaOperacao(total,f.pagina,f.porPagina);
-    const participacoes=await tx.participacaoProtocolo.findMany({where,select:{id:true,animalId:true,animal:{select:animalSelect},canceladaEm:true,motivoCancelamento:true,inicio:true,inicioEfetivo:true,precisaoTemporal:true,precisaoInicioEfetivo:true},orderBy:[{inicio:"asc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
-    return {itens:participacoes.map(p=>({id:p.id,animalId:p.animalId,animal:p.animal,encerradoEm:p.canceladaEm?.toISOString()??null,motivoEncerramento:p.motivoCancelamento,inicioPrevisto:p.inicio.toISOString(),inicioEfetivo:p.inicioEfetivo?.toISOString()??null,precisaoTemporal:p.precisaoTemporal,precisaoInicioEfetivo:p.precisaoInicioEfetivo})),total,pagina,porPagina:f.porPagina};
+    const participacoes=await tx.participacaoProtocolo.findMany({where,select:{id:true,animalId:true,animal:{select:animalSelect},protocolo:{select:protocoloResumoSelect},_count:contagemVinculosTentativa(propriedadeId),canceladaEm:true,motivoCancelamento:true,inicio:true,inicioEfetivo:true,precisaoTemporal:true,precisaoInicioEfetivo:true},orderBy:[{inicio:"asc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
+    return {itens:participacoes.map(p=>({id:p.id,animalId:p.animalId,animal:p.animal,encerradoEm:p.canceladaEm?.toISOString()??null,motivoEncerramento:p.motivoCancelamento,inicioPrevisto:p.inicio.toISOString(),inicioEfetivo:p.inicioEfetivo?.toISOString()??null,precisaoTemporal:p.precisaoTemporal,precisaoInicioEfetivo:p.precisaoInicioEfetivo,...(c.protocolo.tipo==="REPRODUTIVO"?{contextoTentativa:{iaPrevista:iaPrevistaNoModelo(p.protocolo?.etapas??[]),possuiTentativaVinculada:(p._count?.tarefas??0)>0}}:{})})),total,pagina,porPagina:f.porPagina};
   });
 }
 
@@ -178,10 +187,10 @@ export async function listarVinculosColetivosOperacao(propriedadeId:number|null,
   return leitura(async tx=>{
     const where:Prisma.ParticipacaoProtocoloWhereInput={rodadaId:{not:null},animalId:f.animalId,...(f.participacaoId?{id:f.participacaoId}:{}),protocolo:{tipo:f.tipo},AND:[participacaoNoEscopoOperacao(propriedadeId)],...(f.busca?{OR:[{protocolo:{nome:{contains:f.busca,mode:"insensitive"}}},{rodada:{nome:{contains:f.busca,mode:"insensitive"}}}]}:{})};
     const total=await tx.participacaoProtocolo.count({where});const pagina=paginaOperacao(total,f.pagina,f.porPagina);
-    const participacoes=await tx.participacaoProtocolo.findMany({where,select:{id:true,animalId:true,animal:{select:animalSelect},protocolo:{select:protocoloSelect},rodada:{select:{id:true,nome:true}},inicio:true,inicioEfetivo:true,precisaoTemporal:true,precisaoInicioEfetivo:true,canceladaEm:true,motivoCancelamento:true},orderBy:[{inicio:"desc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
+    const participacoes=await tx.participacaoProtocolo.findMany({where,select:{id:true,animalId:true,animal:{select:animalSelect},protocolo:{select:protocoloResumoSelect},_count:contagemVinculosTentativa(propriedadeId),rodada:{select:{id:true,nome:true}},inicio:true,inicioEfetivo:true,precisaoTemporal:true,precisaoInicioEfetivo:true,canceladaEm:true,motivoCancelamento:true},orderBy:[{inicio:"desc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
     const itens=participacoes.map(p=>{
       if(!p.rodada)throw new RebanhoError("CONFLITO","Vínculo coletivo sem programação; atualize a consulta");
-      return {id:p.id,animalId:p.animalId,animal:p.animal,protocolo:p.protocolo,programacao:p.rodada,inicioReferencia:p.inicio.toISOString(),precisaoTemporal:p.precisaoTemporal,precisaoInicioEfetivo:p.precisaoInicioEfetivo,inicioEfetivo:p.inicioEfetivo?.toISOString()??null,encerradoEm:p.canceladaEm?.toISOString()??null,motivoEncerramento:p.motivoCancelamento,modo:"COLETIVO" as const};
+      return {id:p.id,animalId:p.animalId,animal:p.animal,protocolo:{id:p.protocolo.id,nome:p.protocolo.nome,versao:p.protocolo.versao,tipo:p.protocolo.tipo},contextoTentativa:{iaPrevista:iaPrevistaNoModelo(p.protocolo.etapas??[]),possuiTentativaVinculada:(p._count?.tarefas??0)>0},programacao:p.rodada,inicioReferencia:p.inicio.toISOString(),precisaoTemporal:p.precisaoTemporal,precisaoInicioEfetivo:p.precisaoInicioEfetivo,inicioEfetivo:p.inicioEfetivo?.toISOString()??null,encerradoEm:p.canceladaEm?.toISOString()??null,motivoEncerramento:p.motivoCancelamento,modo:"COLETIVO" as const};
     });
     return {itens,total,pagina,porPagina:f.porPagina};
   });

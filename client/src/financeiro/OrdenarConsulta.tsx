@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useId, useState } from "react";
 import { ArrowDownUp, Check, ChevronDown, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,10 +20,10 @@ export function OrdenarConsulta({ controle }: { controle: ControleOrdenacao }) {
   const atual = controle.campos.find(c => c.chave === controle.campo);
   const texto = atual ? `${atual.rotulo} · ${rotuloDirecao(atual.tipo, controle.direcao).toLocaleLowerCase("pt-BR")}` : "Ordenar";
   return <Popover open={aberto} onOpenChange={setAberto}><PopoverTrigger asChild><Button type="button" variant="outline" className="consulta-ordenar" aria-label={`Ordenar: ${texto}`}><ArrowDownUp size={16} aria-hidden />{texto}<ChevronDown size={14} aria-hidden /></Button></PopoverTrigger>
-    <PopoverContent align="end" className="financeiro-colorido ordenar-popover" aria-label="Ordenação da tabela"><div className="ordenar-cabecalho"><h2>Ordenar por</h2><Button variant="ghost" size="icon" aria-label="Fechar ordenação" onClick={() => setAberto(false)}><X size={16} /></Button></div>
+    <PopoverContent align="end" className="financeiro-colorido ordenar-popover" aria-label="Ordenação da tabela"><div className="ordenar-cabecalho"><h2>Ordenar por<AjudaCampo rotulo="Ajuda: ordem de informações ausentes" texto="Sem informação ficam no final." /></h2><Button variant="ghost" size="icon" aria-label="Fechar ordenação" onClick={() => setAberto(false)}><X size={16} /></Button></div>
       <fieldset className="ordenar-opcoes"><legend className="sr-only">Campo da ordenação</legend>{controle.campos.map(c => <label key={c.chave} data-selecionado={c.chave === controle.campo || undefined}><input type="radio" name={`ordenar-${id}`} value={c.chave} checked={c.chave === controle.campo} onChange={() => controle.mudar({ campo: c.chave, direcao: controle.direcao })} /><span>{c.rotulo}</span>{c.chave === controle.campo && <Check size={16} aria-hidden />}</label>)}</fieldset>
       <fieldset className="ordenar-direcao"><legend>Direção</legend><div>{(["asc", "desc"] as const).map(d => <Button type="button" variant={controle.direcao === d ? "default" : "outline"} aria-pressed={controle.direcao === d} key={d} onClick={() => controle.mudar({ campo: atual?.chave ?? controle.campos[0].chave, direcao: d })}>{rotuloDirecao(atual?.tipo ?? "numero", d)}</Button>)}</div></fieldset>
-      <div className="ordenar-rodape"><Button type="button" variant="ghost" onClick={controle.restaurar}><RotateCcw size={15} aria-hidden />Restaurar padrão</Button><p>Sem informação ficam no final.</p></div>
+      <div className="ordenar-rodape"><Button type="button" variant="ghost" onClick={controle.restaurar}><RotateCcw size={15} aria-hidden />Restaurar padrão</Button></div>
     </PopoverContent><span className="sr-only" aria-live="polite">{atual ? `Ordenação: ${texto}` : "Ordenação padrão"}</span></Popover>;
 }
 

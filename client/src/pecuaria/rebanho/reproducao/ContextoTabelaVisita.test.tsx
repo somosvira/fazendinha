@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { CabecalhoContextoVisita, CelulasContextoVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
+import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
 
 describe("contexto tabular da visita", () => {
   it("mantém nove cabeçalhos e células, com zero distinto de dado ausente", () => {
@@ -51,4 +51,15 @@ describe("contexto tabular da visita", () => {
       expect(html).not.toContain("Sem parto");
     }
   });
+});
+
+
+it("SEM_LACTACAO explícito prevalece sobre booleano legado de seca e DEL contraditório", () => {
+  const contexto = { situacaoProdutiva: "SEM_LACTACAO", seca: true, del: 12 };
+  for (const Componente of [CelulasContextoVisita, ContextoInlineVisita]) {
+    const html = renderToStaticMarkup(createElement(Componente, { contexto }));
+    expect(html).not.toContain(">Seca<");
+    expect(html).not.toContain(">12<");
+    expect(html).toContain("Não informada");
+  }
 });

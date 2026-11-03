@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FormPesagem } from "./FormPesagem";
@@ -52,4 +53,13 @@ describe("FormPesagem — edição", () => {
     fireEvent.click(screen.getByRole("button", { name: "Registrar pesagem" }));
     await waitFor(() => expect(registrarPesagemAnimal).toHaveBeenCalledWith("animal-1", expect.objectContaining({ pesoKg: 50 })));
   });
+});
+
+it.each([["PARTO", "Parto"], ["SECAGEM", "Secagem"]] as const)("mantém o tipo %s ao editar a pesagem", async (tipo, rotulo) => {
+  vi.mocked(editarPesagem).mockResolvedValue({ ...pesagem, tipo });
+  render(<FormPesagem animalId="animal-1" pesagem={{ ...pesagem, tipo }} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  expect(screen.getByLabelText("Tipo").textContent).toContain(rotulo);
+  await alterarControle(screen.getByLabelText("Tipo"), { target: { value: tipo } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar pesagem" }));
+  await waitFor(() => expect(editarPesagem).toHaveBeenCalledWith("pesagem-1", expect.objectContaining({ tipo })));
 });

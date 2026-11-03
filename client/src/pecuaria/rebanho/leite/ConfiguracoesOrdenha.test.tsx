@@ -142,3 +142,18 @@ it("Cancelar fecha a configuração intacta sem aviso", () => {
   expect(aoFechar).toHaveBeenCalledOnce();
   expect(screen.queryByText("Descartar alterações?")).toBeNull();
 });
+
+for (const entrada of ["31/02/2026", "12/1", ""]) it(`não grava configuração com vigência digitada inválida (${entrada || "vazia"})`, async () => {
+  const aoSalvar = vi.fn();
+  render(<ConfiguracoesOrdenha configuracao={configuracao} data="2026-10-20" aoFechar={vi.fn()} aoSalvar={aoSalvar} />);
+  const campo = screen.getByLabelText("Vigente desde") as HTMLInputElement;
+  fireEvent.change(campo, { target: { value: entrada } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar configuração" }));
+  expect(salvarConfiguracao).not.toHaveBeenCalled();
+  expect(aoSalvar).not.toHaveBeenCalled();
+  expect(campo.value).toBe(entrada);
+  fireEvent.change(campo, { target: { value: "21/10/2026" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar configuração" }));
+  await waitFor(() => expect(aoSalvar).toHaveBeenCalledTimes(1));
+  expect(salvarConfiguracao).toHaveBeenCalledWith(expect.objectContaining({ vigenteDesde: "2026-10-21" }));
+});

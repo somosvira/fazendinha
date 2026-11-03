@@ -1,3 +1,4 @@
+import { AjudaCampo } from "../../../components/Dica";
 import { useId } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -28,7 +29,7 @@ export function CamposMomentoAcao({ momento, momentos, onChange, onRenomear, onI
   const idErro = useId();
   const existentes = [...new Map(momentos.map(m => [m.ordem, m])).values()].sort((a, b) => a.ordem - b.ordem);
   return <div className="grid gap-3 sm:grid-cols-2">
-    <label>Momento da ação
+    <label className="relative">Momento da ação
       <select className={classeInput} value={momento?.ordem ?? ""} onChange={e => {
         const escolhido = existentes.find(m => m.ordem === Number(e.target.value));
         if (escolhido) onChange({ ...escolhido });
@@ -36,7 +37,7 @@ export function CamposMomentoAcao({ momento, momentos, onChange, onRenomear, onI
         {!momento && <option value="">Etapa legada sem momento</option>}
         {existentes.map(m => <option key={m.ordem} value={m.ordem}>{m.nome || `Momento ${m.ordem}`}</option>)}
       </select>
-    </label>
+    <span className="absolute right-0 top-0"> <AjudaCampo rotulo="Ajuda sobre momentos do protocolo" texto="Ações do mesmo momento continuam independentes. Duas ações no dia zero só ficam juntas quando você escolhe o mesmo momento."/></span></label>
     {momento && <label>Nome do momento
       <input className={classeInput} required minLength={1} maxLength={160} value={momento.nome} onChange={e => onRenomear(e.target.value)} />
     </label>}
@@ -46,7 +47,7 @@ export function CamposMomentoAcao({ momento, momentos, onChange, onRenomear, onI
       const ordem = Math.max(0, ...existentes.map(m => m.ordem)) + 1;
       onChange({ nome: `Momento ${ordem}`, ordem, modoAtendimento: "MANUAL" });
     }}>Criar outro momento</Button></div>
-    <p className="text-sm text-ink-3 sm:col-span-2">Ações do mesmo momento continuam independentes. Duas ações no dia zero só ficam juntas quando você escolhe o mesmo momento.</p>
+
     {aplicacao && <label className="sm:col-span-2">Procedimento de aplicação
       <select className={classeInput} value={subtipo ?? "APLICACAO"} onChange={e => onSubtipoChange(e.target.value as SubtipoAplicacaoCadastro)}>
         <option value="APLICACAO">Aplicação de produto</option>

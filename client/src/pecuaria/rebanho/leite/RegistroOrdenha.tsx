@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Milk, Droplets, ShieldCheck, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/DatePicker";
 import { CabecalhoTabela, TabelaFinanceira } from "@/financeiro/financeiro-ui";
@@ -27,7 +27,7 @@ export function lerRascunhoOrdenha(chave: string): Rascunho | null {
 }
 function guardar(chave: string, rascunho: Rascunho) { try { sessionStorage.setItem(chave, JSON.stringify(rascunho)); } catch { /* Formulário permanece em memória. */ } }
 
-export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoVoltar }: { sitio: number; podeLancar: boolean; registroId: string; rascunhoId: string; aoVoltar: () => void }) {
+export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoVoltar, aoOcupadoChange }: { sitio: number; podeLancar: boolean; registroId: string; rascunhoId: string; aoVoltar: () => void; aoOcupadoChange?: (ocupado: boolean) => void }) {
   const chave = chaveRascunhoOrdenha(sitio, registroId || rascunhoId);
   const [rascunho, setRascunho] = useState<Rascunho>(() => lerRascunhoOrdenha(chave) ?? { data: new URLSearchParams(location.search).get("dataOperacional") || hojeOperacional(), posicao: new URLSearchParams(location.search).get("ordenha") ?? "", parcelas: [], alterado: false, registroId: registroId || undefined, contextoData: "" });
   const [contexto, setContexto] = useState<ContextoParcelas | null>(null);
@@ -35,7 +35,10 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const [erroContexto, setErroContexto] = useState("");
   const [revisao, setRevisao] = useState(0);
   const [ocupado, setOcupado] = useState(false);
+  useEffect(() => { aoOcupadoChange?.(ocupado); return () => aoOcupadoChange?.(false); }, [ocupado, aoOcupadoChange]);
   const salvandoRef = useRef(false);
+  const campoDataRef = useRef<HTMLLabelElement>(null);
+  const validarData = () => campoDataRef.current?.querySelector("input")?.reportValidity() ?? false;
   const [origens, setOrigens] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState(false);
   const [conferido, setConferido] = useState(false);
@@ -99,7 +102,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     setRascunho(r => ({ ...r, alterado: true, parcelas: [...r.parcelas, novaParcela(natureza, ids, direta)] }));
   }
   async function salvar(confirmar = false) {
-    if (!contexto || salvandoRef.current) return;
+    if (!contexto || salvandoRef.current || !validarData()) return;
     salvandoRef.current = true;
     setErro(""); setOcupado(true);
     try {
@@ -131,7 +134,7 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
     finally { salvandoRef.current = false; setOcupado(false); }
   }
   function abrirConfirmacao() {
-    if (!contexto) return;
+    if (!contexto || !validarData()) return;
     setErro("");
     if (emConflito) { setErro("Confira as alterações do servidor antes de confirmar. Seus campos continuam preservados."); return; }
     try { prepararParcelas(rascunho.parcelas, contexto, rascunho.posicao, true); setConferido(false); setConfirmando(true); }
@@ -142,33 +145,52 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
   const idsAtuais = new Set(animaisAtuais.map(a => a.animalId));
   const animais: { animalId: string; brinco: string; nome: string | null; ausente?: boolean }[] = [...animaisAtuais, ...[...new Set(rascunho.parcelas.flatMap(p => p.animais))].filter(id => !idsAtuais.has(id)).map(id => ({ animalId: id, brinco: id, nome: null, ausente: true }))];
   const soma = rascunho.parcelas.filter(p => p.litros.trim());
-  return <div className="leite-page leite-registro">
-    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
+  return <div className="leite-page leite-registro" data-confirmada={confirmada || undefined}>
+    <CabecalhoTabela titulo={confirmada ? "Consultar ordenha" : "Registrar ordenha"} acao={<Button variant="outline" disabled={ocupado} onClick={aoVoltar}><ArrowLeft size={16} aria-hidden />Voltar à consulta</Button>} />
     <div className="leite-registro-corpo">
       <div className="leite-registro-campos">
-        <label>Data da ordenha<DatePicker aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
+        <label ref={campoDataRef}>Data da ordenha<DatePicker required aria-label="Data da ordenha" max={hojeOperacional()} disabled={travado || !!rascunho.registroId} value={rascunho.data} onChange={data => { if (dataValida(data)) setRascunho(r => ({ ...r, data, alterado: true })); }} /></label>
         <label>Ordenha<SelectCampo aria-label="Ordenha" disabled={travado || !!rascunho.registroId || !contexto} value={rascunho.posicao} onValueChange={posicao => setRascunho(r => ({ ...r, posicao, alterado: true }))}><option value="">Selecione</option>{contexto?.sessoes.map(s => <option key={s.posicaoId} value={s.posicaoId}>{s.nome}</option>)}</SelectCampo></label>
       </div>
       {erroContexto ? <div role="alert">{erroContexto}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !contexto ? <p role="status">Consultando contexto da ordenha…</p> : <>
         {emConflito && <section role="alert"><h3>Alterações no servidor</h3>{rascunho.conflitos?.map(c => <p key={c}>{c}</p>)}<div className="leite-registro-linha"><Button variant="outline" disabled={ocupado} onClick={() => setRevisao(r => r + 1)}>Reconsultar versões</Button>{registroDisponivel && <Button variant="outline" disabled={ocupado} onClick={() => setSubstituindoRascunho(true)}>Usar versão do servidor</Button>}</div></section>}
         {rascunho.parcelas.some(p => p.classificacaoPendente) && <section><h3>Classificação pendente</h3>{rascunho.parcelas.filter(p => p.classificacaoPendente).map(p => <p key={p.chave}>{formatarLitros(Number(p.litros))} · Natureza histórica não comprovada. Consulte a regularização em Estoque.</p>)}</section>}
         {rascunho.contextoData && rascunho.contextoData !== rascunho.data && <p role="status">Data alterada. Confira as origens preservadas e justifique as parcelas sem contexto compatível.</p>}
+        <div className="leite-registro-layout"><div className="leite-registro-parcelas">
         {(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(natureza => {
           const grupo = rascunho.parcelas.filter(p => !p.classificacaoPendente && p.natureza === natureza);
           const sugestao = natureza === "NAO_COMERCIAL" ? carenciasSessao(contexto, rascunho.posicao).some(a => a.estado !== "SEM_RESTRICAO_REGISTRADA") : natureza === "COLOSTRO" && !!contexto.contexto?.origensColostro.length;
           if (!grupo.length) return (sugestao || natureza === "COMERCIAL") && !travado ? <div className="leite-registro-sugestao" key={natureza}>{natureza !== "COMERCIAL" && <span>{natureza === "COLOSTRO" ? "Há partos compatíveis com o critério de colostro." : "Há animais com carência ou contexto sanitário pendente."}</span>}<Button variant="outline" onClick={() => adicionar(natureza)}>Incluir {nomesNatureza[natureza]}</Button></div> : null;
-          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
+          return <section className="leite-registro-natureza" key={natureza} aria-label={`Parcelas de ${nomesNatureza[natureza]}`}><div className="leite-registro-linha"><h3>{natureza === "COMERCIAL" ? <Milk size={20} aria-hidden/> : natureza === "COLOSTRO" ? <Droplets size={20} aria-hidden/> : <ShieldCheck size={20} aria-hidden/>}{nomesNatureza[natureza]}</h3>{!travado && <Button variant="outline" onClick={() => adicionar(natureza, natureza !== "COMERCIAL" && !sugestao)}><Plus size={16} aria-hidden />Incluir outra origem</Button>}</div>
             {grupo.map((p, indice) => {
               const leitura = travado || !!p.entradaId;
               const direta = natureza !== "COMERCIAL" && (p.direta || !possuiContexto(p, contexto, rascunho.posicao));
               const tanques = [...new Map([...contexto.tanques, ...contexto.medicoes.flatMap(m => m.tanque ? [m.tanque] : [])].map(t => [t.id, t])).values()];
+              if (p.entradaId) {
+                const tanque = tanques.find(t => t.id === p.tanqueId);
+                const alertaSanitario = p.animais.some(id => carenciasSessao(contexto, rascunho.posicao).some(a => a.animalId === id && a.estado !== "SEM_RESTRICAO_REGISTRADA"));
+                return <article key={p.chave} className="leite-registro-origem-confirmada" aria-label={`Origem ${indice + 1} confirmada de ${nomesNatureza[natureza]}`}>
+                  <h4>Origem {indice + 1} · Confirmada</h4>
+                  <dl>
+                    <div className="origem-confirmada-volume"><dt>Litros informados manualmente</dt><dd>{formatarLitros(Number(p.litros.replace(",", ".")))}</dd></div>
+                    <div><dt>Régua</dt><dd>{p.regua.trim() ? `${p.regua.replace(".", ",")} mm` : "Não informada"}</dd></div>
+                    <div className="origem-confirmada-fisica"><dt>Tanque ou recipiente</dt><dd>{tanque ? `${tanque.nome} · v${tanque.versao} · ${formatarLitros(tanque.capacidadeLitros)}` : p.tanqueId ? "Tanque registrado não disponível nesta consulta" : p.recipiente || "Não informado"}</dd></div>
+                    <div><dt>Responsável</dt><dd>{p.responsavel || "Não informado"}</dd></div>
+                    {natureza === "COLOSTRO" && p.primeira != null && <div><dt>Primeira ordenha após parto</dt><dd>{p.primeira ? "Declarada" : "Não declarada"}</dd></div>}
+                    {direta && <div className="origem-confirmada-justificativa"><dt>Justificativa do registro direto</dt><dd>{p.justificativa || "Não informada"}</dd></div>}
+                  </dl>
+                  {p.direta && <p className="origem-confirmada-contexto">Registro direto com justificativa</p>}
+                  {alertaSanitario && <p className="origem-confirmada-alerta">Há animais com carência ou contexto sanitário pendente. Consulte os animais de origem.</p>}
+                  <div className="leite-registro-linha"><span>{p.animais.length} animais identificados</span><Button type="button" variant="outline" disabled={ocupado} onClick={() => setOrigens(p.chave)}>Consultar animais</Button></div>
+                </article>;
+              }
               return <fieldset key={p.chave} className="leite-registro-parcela" disabled={ocupado}><legend>Origem {indice + 1}{p.entradaId ? " · Confirmada" : ""}</legend>
                 {p.direta && <p>Registro direto com justificativa</p>}
                 <div className="leite-registro-campos">
                   <label>Tanque ou recipiente<SelectCampo aria-label={`Tanque ou recipiente · ${nomesNatureza[natureza]} ${indice + 1}`} disabled={leitura} value={p.tanqueId} onValueChange={tanqueId => mudarParcela(p.chave, { tanqueId })}><option value="">Outro recipiente segregado</option>{tanques.filter(t => t.ativo || t.id === p.tanqueId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versao} · {formatarLitros(t.capacidadeLitros)}</option>)}</SelectCampo></label>
                   {!p.tanqueId && <label>Identificação do recipiente<input className={classeInput} disabled={leitura} maxLength={160} value={p.recipiente} onChange={e => mudarParcela(p.chave, { recipiente: e.target.value })} /></label>}
                   <label>Régua (mm) · opcional<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.regua} onChange={e => mudarParcela(p.chave, { regua: e.target.value })} /></label>
-                  <label>Litros informados manualmente<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.litros} onChange={e => mudarParcela(p.chave, { litros: e.target.value })} /></label>
+                  <label className="ordenha-campo-volume">Litros informados manualmente<input className={classeInput} disabled={leitura} inputMode="decimal" value={p.litros} onChange={e => mudarParcela(p.chave, { litros: e.target.value })} /></label>
                   <label>Responsável<input className={classeInput} disabled={leitura} maxLength={160} value={p.responsavel} onChange={e => mudarParcela(p.chave, { responsavel: e.target.value })} /></label>
                 </div>
                 <div className="leite-registro-linha"><span>{p.animais.length} animais identificados</span><Button type="button" variant="outline" onClick={() => setOrigens(p.chave)}>{leitura ? "Consultar animais" : "Conferir animais"}</Button>{!leitura && !p.id && <Button type="button" variant="ghost" aria-label={`Remover origem ${indice + 1} de ${nomesNatureza[natureza]}`} onClick={() => setRascunho(r => ({ ...r, alterado: true, parcelas: r.parcelas.filter(a => a.chave !== p.chave) }))}><Trash2 size={16} aria-hidden />Remover</Button>}</div>
@@ -178,7 +200,15 @@ export function RegistroOrdenha({ sitio, podeLancar, registroId, rascunhoId, aoV
             })}</section>;
         })}
         {!travado && <div className="leite-registro-linha"><span>Registrar diretamente com justificativa</span><Button variant="outline" onClick={() => adicionar("NAO_COMERCIAL", true)}>Descarte</Button><Button variant="outline" onClick={() => adicionar("COLOSTRO", true)}>Colostro</Button></div>}
-        <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
+        </div><aside className="leite-registro-conferencia" aria-label="Conferência da ordenha"><h3><ClipboardCheck size={20} aria-hidden/>Conferência</h3>
+          <div className="leite-registro-linha leite-registro-total"><span>Total informado</span><strong>{soma.length ? formatarLitros(soma.reduce((v, p) => v + (Number(p.litros.replace(",", ".")) || 0), 0)) : "Não informado"}</strong></div>
+          <dl>{(["COMERCIAL", "NAO_COMERCIAL", "COLOSTRO"] as const).map(n => {
+            const parcelas = soma.filter(p => !p.classificacaoPendente && p.natureza === n);
+            const volumes = parcelas.map(p => Number(p.litros.replace(",", ".")));
+            return <div key={n}><dt>{nomesNatureza[n]}</dt><dd>{volumes.length && volumes.every(v => Number.isFinite(v) && v >= 0) ? formatarLitros(volumes.reduce((a, b) => a + b, 0)) : "Não informado"}</dd></div>;
+          })}</dl>
+          <p>Salvar a medição não movimenta o estoque. Confira as origens, a segregação e os produtos antes de confirmar a entrada.</p>
+        </aside></div>
         {mensagem && <p role="status">{mensagem}</p>}{erro && <p role="alert" className="leite-erro">{erro}</p>}
         {!confirmada && podeLancar && <div className="leite-registro-rodape"><Button variant="outline" disabled={ocupado || emConflito} onClick={() => void salvar()}>Salvar ordenha</Button><Button disabled={ocupado || emConflito} onClick={abrirConfirmacao}>Conferir entrada no estoque</Button></div>}
       </>}

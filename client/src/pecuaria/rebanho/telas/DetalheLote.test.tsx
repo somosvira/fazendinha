@@ -200,7 +200,7 @@ describe("DetalheLote — resumo do lote", () => {
     await screen.findByText("Peso médio");
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
     expect(screen.getByText("2 fêmeas · 0 machos")).toBeTruthy();
-    expect(screen.getByText("250 kg")).toBeTruthy();
+    expect(screen.getAllByText("250 kg").length).toBeGreaterThan(0);
     expect(screen.getByText("200 kg – 300 kg · 1 sem peso")).toBeTruthy();
     expect(screen.getAllByText("+0,512 kg/dia").length).toBeGreaterThan(0);
     expect(screen.getByText("1 de 2 animais com pesagem suficiente")).toBeTruthy();

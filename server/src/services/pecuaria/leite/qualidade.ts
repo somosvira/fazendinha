@@ -3,7 +3,7 @@ import { prisma } from "../../../db.js";
 import { auditar, hojeFazendaDate, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { hashDados, operacaoIdempotenteTx } from "../reproducao/operacoes.js";
-import { criarTipoExameTx, editarTipoExame, registrarExameTx, corrigirExameTx, travarTiposExame } from "../sanidade/exames.js";
+import { criarTipoExameTx, editarTipoExame, registrarExameTx, corrigirExameTx, travarTiposExame, type OrigemHistoricaExame } from "../sanidade/exames.js";
 import { ocultarCustosDetalhe } from "../sanidade/detalhes.js";
 import { camposExameSchema, validarObservacoesExame } from "../exames/formatos.js";
 import { conferirSitioLeiteTx } from "./configuracoes.js";
@@ -85,9 +85,8 @@ export async function obterAmostraQualidadeTx(tx: Db, id: string, propriedadeId:
 export async function obterAmostraQualidade(id: string, propriedadeId: number) {
   return amostraQualidadeDTO(await obterAmostraQualidadeTx(prisma, id, propriedadeId));
 }
-export async function registrarQualidade(input: RegistrarQualidadeInput, usuarioId: number | null) {
+export async function registrarQualidadeTx(tx: Prisma.TransactionClient, input: RegistrarQualidadeInput, usuarioId: number | null, historico?: OrigemHistoricaExame) {
   input = registrarQualidadeSchema.parse(input);
-  return transacaoPecuaria(async tx => {
     // A ordem é a mesma do executor comum: animal, tipo; o reenvio tem chave própria.
     if (input.sujeito.tipo === "ANIMAL") await travarAnimais(tx, [input.sujeito.animalId]);
     const resultado = await operacaoIdempotenteTx(tx, input, usuarioId, "QUALIDADE_LEITE_REGISTRAR", async () => {
@@ -101,7 +100,8 @@ export async function registrarQualidade(input: RegistrarQualidadeInput, usuario
       const resultados = validarObservacoesExame(tipo.campos, input.resultados, input.resultados.length > 0);
       let exameAnimalId: string | null = null;
       if (input.sujeito.tipo === "ANIMAL") {
-        const exame = await registrarExameTx(tx, { animalId: input.sujeito.animalId, propriedadeId: input.propriedadeId, tipoExameId: tipo.id, data: input.data, resultados: input.resultados, responsavel: input.responsavel }, usuarioId, true);
+        const dadosExame = { animalId: input.sujeito.animalId, propriedadeId: input.propriedadeId, tipoExameId: tipo.id, data: input.data, resultados: input.resultados, responsavel: input.responsavel };
+        const exame = historico ? await registrarExameTx(tx, dadosExame, usuarioId, true, historico) : await registrarExameTx(tx, dadosExame, usuarioId, true);
         exameAnimalId = exame.id;
         await tx.exameAnimal.update({ where: { id: exame.id }, data: { finalidades: ["QUALIDADE_LEITE"], finalidadePrincipal: "QUALIDADE_LEITE", anotacaoOriginal: input.anotacaoOriginal ?? null } });
       } else if (input.sujeito.entradaId) {
@@ -124,7 +124,9 @@ export async function registrarQualidade(input: RegistrarQualidadeInput, usuario
       return { id: criado.id };
     });
     return amostraQualidadeDTO(await obterAmostraQualidadeTx(tx, resultado.id, input.propriedadeId));
-  });
+}
+export async function registrarQualidade(input: RegistrarQualidadeInput, usuarioId: number | null) {
+  return transacaoPecuaria(tx => registrarQualidadeTx(tx, input, usuarioId));
 }
 export async function corrigirQualidade(id: string, input: CorrigirQualidadeInput, usuarioId: number | null) {
   input = corrigirQualidadeSchema.parse(input);
@@ -209,7 +211,7 @@ export async function consultarParametrosQualidade(propriedadeId: number, input:
         skip: (filtro.pagina - 1) * filtro.tamanho, take: filtro.tamanho }),
       tx.amostraQualidadeLeite.count({ where }),
     ]);
-    const itens = amostras.map(amostraQualidadeDTO).map(a => {
+    const montar = (lista: typeof amostras) => lista.map(amostraQualidadeDTO).map(a => {
       const r = a.resultados.find(r => r.campo === filtro.campo);
       const campo = a.formatoSnapshot.campos.find(c => c.codigo === filtro.campo);
       if (!r || !campo) throw new RebanhoError("CONFLITO", "Resultado incompatível com o formato preservado da amostra");
@@ -218,11 +220,20 @@ export async function consultarParametrosQualidade(propriedadeId: number, input:
         campo: filtro.campo, unidade: r.unidade, sujeito: a.sujeito });
       return { amostraId: a.id, dataAmostra: a.data, registradoEm: r.criadoEm,
         dataResultadoLaboratorial: a.dataResultadoLaboratorial, dataRecebimentoLaudo: a.dataRecebimentoLaudo, sujeito: a.sujeito, animal: a.animal,
-        campo: r.campo, rotulo: campo.rotulo ?? campo.codigo, valor: r.valor, unidade: r.unidade,
+        campo: r.campo, tipo: campo.tipo, rotulo: campo.rotulo ?? campo.codigo, valor: r.valor, unidade: r.unidade,
         formato: { id: a.tipoExameId, nome: a.formatoSnapshot.nome, versao: a.formatoSnapshot.versao },
         serie, versaoAmostra: a.versao };
     });
+    const itens = montar(amostras);
+    // A série é do recorte completo, nunca somente da página. Um recorte muito
+    // grande continua paginável, mas pede refinamento antes de desenhar o gráfico.
+    const serieCompleta = filtro.incluirSerie ? total <= 2000 : undefined;
+    const serieItens = filtro.incluirSerie ? serieCompleta ? montar(await tx.amostraQualidadeLeite.findMany({
+      where, include: incluirAmostra, orderBy: [{ data: "asc" }, { criadoEm: "asc" }, { id: "asc" }], skip: 0, take: 2000,
+    })) : [] : undefined;
     return { propriedadeId, periodo: { inicio: filtro.inicio, fim: filtro.fim }, campo: filtro.campo,
-      itens, total, pagina: filtro.pagina, tamanho: filtro.tamanho };
+      itens, total, pagina: filtro.pagina, tamanho: filtro.tamanho,
+      ...(filtro.incluirSerie ? { serieCompleta, serieItens } : {}) };
+
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }

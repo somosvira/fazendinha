@@ -1,3 +1,5 @@
+import { calcularPrazoCarencia } from "./carencia.calc.js";
+import { custoAplicacao } from "./custo-aplicacao.js";
 import { situacaoTarefaComum } from "../protocolos/situacao.js";
 import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import { prisma } from "../../../db.js";
@@ -27,7 +29,8 @@ export async function obterOcorrencia(id: string, propriedadeId: number | null) 
 
 export async function obterAplicacao(id: string, propriedadeId: number | null) {
   const fato = await prisma.aplicacaoProduto.findFirst({ where: escopo(id, propriedadeId), include: {
-    animal, propriedade, ocorrencia, tarefa,
+    animal, propriedade, ocorrencia, tarefa, classificacaoCusto: true,
+    operacaoServico: { select: { id: true, numero: true, descricao: true } },
     produto: { select: { id: true, nome: true, unidade: true } },
     itemCompraDireta: { select: { id: true, quantidade: true, unidade: true, valorTotal: true,
       operacao: { select: { id: true, numero: true, descricao: true, data: true } } } },
@@ -35,10 +38,10 @@ export async function obterAplicacao(id: string, propriedadeId: number | null) {
       alocacaoPartidaEstoques: { select: { partidaId: true, quantidade: true, partida: { select: { nome: true, codigo: true, validade: true, lotePrincipalId: true, lotePrincipal: { select: { nome: true } } } } } } } },
   } });
   if (!fato) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada neste sítio");
-  const { itemCompraDireta, ...historico } = fato;
+  const { itemCompraDireta, classificacaoCusto: _classificacao, ...historico } = fato;
   const soma = itemCompraDireta ? await prisma.aplicacaoProduto.aggregate({ where: { itemCompraDiretaId: itemCompraDireta.id, status: "VALIDO" }, _sum: { quantidadeCompraDireta: true } }) : null;
   const quantidadeDestinada = soma?._sum.quantidadeCompraDireta ?? new Prisma.Decimal(0);
-  return { ...historico, ...loteAplicacaoDTO(fato), estorno: fato.movimentoEstoque?.revertidoPor ?? null, compraDireta: itemCompraDireta ? {
+  return { ...historico, prazosRegistrados: { leite: calcularPrazoCarencia([fato], "LEITE"), carne: calcularPrazoCarencia([fato], "CARNE") }, resumoCusto: custoAplicacao(fato), ...loteAplicacaoDTO(fato), estorno: fato.movimentoEstoque?.revertidoPor ?? null, compraDireta: itemCompraDireta ? {
     ...itemCompraDireta, quantidade: itemCompraDireta.quantidade.toString(),
     quantidadeDestinada: quantidadeDestinada.toString(), quantidadeDisponivel: itemCompraDireta.quantidade.minus(quantidadeDestinada).toString(),
   } : null };
@@ -71,8 +74,9 @@ export function ocultarCustosDetalhe(valor: unknown, verCustosOperacionais = fal
       // ResultadoExame.valor é dado clínico, inclusive nos snapshots antes/depois.
       // Preserve o JSON inteiro; a exceção não se aplica a outros campos "valor".
       if (campo === "valor" && caminho.at(-2) === "resultados" && caminho.at(-1) === "[]") return [campo, v];
+      if (campo === "resumoCusto" && !verCustosOperacionais) return [campo, null];
       const financeiro = ["valor", "valorProdutoAtribuido", "valorServicoAtribuido", "valorTotal", "valorUnitario", "custoUnitario", "evidenciaValor"].includes(campo);
-      const operacional = verCustosOperacionais && CAMPOS_CUSTO_OPERACIONAL.has(campo) && (v == null || ["string", "number"].includes(typeof v) || v instanceof Prisma.Decimal);
+      const operacional = verCustosOperacionais && (CAMPOS_CUSTO_OPERACIONAL.has(campo) || campo === "valor" && caminho[0] === "resumoCusto" && caminho.at(-2) === "componentes" && caminho.at(-1) === "[]") && (v == null || ["string", "number"].includes(typeof v) || v instanceof Prisma.Decimal);
       return [campo, financeiro && !operacional ? null : ocultar(v, [...caminho, campo])];
     }));
   }

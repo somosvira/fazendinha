@@ -2,6 +2,12 @@
 
 Este contrato descreve o núcleo de alertas e seu primeiro produtor, Sanidade: regras por idade/data fixa, programação por meses, consultas e vínculos de atendimento. Backend e interfaces estão codificados localmente; integrações com PostgreSQL foram exercitadas com fixtures próprias. A validação visual integrada e a liberação operacional conservam os gates abaixo. Isso não comprova disponibilidade em ambiente publicado ou homologação da fazenda.
 
+## Alertas na ficha do animal
+
+A ficha oferece a aba `Alertas` (`#alertas`) e mantém seu conteúdo montado ao alternar entre domínios. O resumo que ocupava espaço acima das abas foi substituído pelo acesso no cabeçalho, antes de Mais ações: ícone, rótulo Alertas e total de cuidados que demandam atenção para o animal no sítio consultado. Esse botão só aparece com cobertura `ATUALIZADA` e total positivo retornado pelo servidor; carregamento, falha, cobertura desconhecida/desatualizada e ausência de cuidados não exibem contador. A aba permanece disponível e distingue esses estados, sem tratar falta de avaliação como ausência de alertas.
+
+A consulta usa as disposições Demandam atenção, Próximos, Programados e Histórico, busca, lista/tabela e paginação de dez cuidados. O contador do cabeçalho independe da busca, disposição e página selecionadas. Ver cuidado consulta os registros individuais do agrupamento no mesmo animal/sítio: um registro abre o detalhe existente; mais de um exige seleção paginada, sem descartar necessidades. Datas e situações vêm da consulta, sem inferência clínica. Detalhes e ações preservam autorização do servidor e o contexto da ficha; alterações notificadas atualizam consulta e contador. Nenhuma regra, avaliação ou atendimento é criado pela abertura da aba.
+
 ## Conceitos e responsabilidades
 
 Um **cuidado** agrupa necessidades individuais de uma regra ou edição, dentro do sítio operacional. Uma **necessidade** identifica o atendimento de um sujeito naquela origem; realizar um participante não realiza o grupo. O **alerta** é a publicação persistida dessa necessidade, com identidade, resumo, evidência do disparo e histórico próprios. Nenhum desses registros comprova, sozinho, uma aplicação, exame ou tarefa realizada.

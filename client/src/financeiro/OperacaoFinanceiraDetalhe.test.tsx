@@ -103,7 +103,9 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.getByRole("link", { name: "Entrada #32 · Confirmada" }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(32)}&propriedadeId=4`);
     expect(screen.queryByText("Deslocamentos de estoque")).toBeNull();
     expect(screen.getByRole("heading", { name: "Valor do estoque transferido" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ajuda: transferência de estoque" }));
     expect(screen.getByText(/Não gera pagamento nem nova despesa financeira/)).toBeTruthy();
+    fireEvent.mouseLeave(screen.getByRole("button", { name: "Ajuda: transferência de estoque" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar operação" }));
     const dialog = within(screen.getByRole("dialog", { name: "Cancelar operação" }));
     expect(dialog.getByText(/Reverter 1 deslocamento de estoque/)).toBeTruthy();
@@ -179,7 +181,9 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.getByText(/Vacina outubro · 1,5 mL · Validade 31\/12\/2026/)).toBeTruthy();
     expect(screen.getByText(/LEGADO · 0,5 mL · Validade não informada/)).toBeTruthy();
     expect(screen.queryByText(/Não classificada/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ajuda: custo da perda" }));
     expect(screen.getByText(/Não gera nova despesa financeira/)).toBeTruthy();
+    fireEvent.mouseLeave(screen.getByRole("button", { name: "Ajuda: custo da perda" }));
   });
   it("preserva contexto físico após cancelamento e mostra motivo antigo não informado, sem inventar custo", async () => {
     obterOperacao.mockResolvedValue({ ...operacao, status: "CANCELADA", tipo: "AJUSTE_ESTOQUE", descricao: "Perda antiga", valorTotal: null, itens: [], transacoes: [], perdas: [{

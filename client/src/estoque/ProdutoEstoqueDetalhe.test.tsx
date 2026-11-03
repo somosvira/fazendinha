@@ -13,6 +13,7 @@ vi.mock("./PartidasProduto", () => ({ PartidasProduto: () => <p>Controle avança
 const produto = { id: "p", nome: "Ração", unidade: "KG" as const, rastrearPartidas: true, saldo: "25", custoMedio: null, valor: null, propriedadeId: null, totalLotes: 1, lotesComSaldo: 1 };
 const lote = { id: "l", nome: "Vence dezembro", codigo: "AUTO", validade: "2026-12-31", saldo: "25", origemRastreio: "INFORMADA" };
 beforeEach(() => {
+  history.replaceState(null, "", "/estoque/produtos/p");
   vi.clearAllMocks(); setPropriedadeAtiva(null); vi.mocked(getUsuario).mockReturnValue(null);
   vi.mocked(obterProdutoEstoque).mockResolvedValue(produto);
   vi.mocked(listarLotesProduto).mockResolvedValue({ itens: [lote], total: 16, pagina: 1, porPagina: 15 });
@@ -102,4 +103,12 @@ describe("ficha do produto", () => {
     expect((await screen.findAllByRole("link", { name: "Compra OP-0005" }))[0].getAttribute("href")).toBe("/financeiro/operacoes/op");
     expect(screen.getAllByRole("link", { name: "Consultar fornecedor" })[0].getAttribute("href")).toBe("/financeiro/configuracoes?aba=parceiros&parceiroId=f");
   });
+});
+
+it("recebe lote do produto por link e consulta seus movimentos exatos", async () => {
+  history.replaceState(null, "", "/estoque/produtos/p?partidaId=l");
+  render(<ProdutoEstoqueDetalhe produtoId="p" />);
+  await waitFor(() => expect(listarMovimentosProduto).toHaveBeenCalledWith("p", expect.objectContaining({ partidaId: "l" })));
+  history.pushState(null, "", "/estoque/produtos/p?partidaId=outro"); fireEvent.popState(window);
+  await waitFor(() => expect(listarMovimentosProduto).toHaveBeenLastCalledWith("p", expect.objectContaining({ partidaId: "outro" })));
 });

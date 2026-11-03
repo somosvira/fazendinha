@@ -159,7 +159,7 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
     });
   });
 
-  it("desfazer retorno ao sítio não desloca o peso pós-parto; desvínculo explícito libera a alteração", async () => {
+  it("desfazer retorno preserva o sítio factual do peso pós-parto mesmo após desvinculá-lo", async () => {
     await emRollback(async tx => {
       const { sitio, matriz } = await fixtures(tx);
       const destino = await tx.propriedade.create({ data: { nome: `Destino peso histórico ${randomUUID()}` } });
@@ -171,6 +171,8 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
       const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
         data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado no cenário fictício desta validação", iniciarLactacao: false, crias: [],
         pesoMatriz: { acao: "REGISTRAR", data: "2026-01-05", pesoKg: 520 } }, null);
+      const pesagemId = p.vinculosPesagem[0].pesagemId;
+      const pesoOriginal = await tx.pesagem.findUniqueOrThrow({ where: { id: pesagemId } });
       await expect(conferirHistoricoDosFatos(tx, [matriz.id])).resolves.toBeUndefined();
       await tx.$executeRawUnsafe("SAVEPOINT desfazer_peso");
       await tx.localizacaoAnimal.delete({ where: { id: retorno.id } });
@@ -179,8 +181,19 @@ suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
       await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT desfazer_peso");
       await corrigirPartoTx(tx, p.id, { propriedadeId: sitio.id, motivo: "Revisar contexto da pesagem", versaoEsperada: p.versao,
         pesoMatriz: { acao: "DESVINCULAR", vinculoId: p.vinculosPesagem[0].id, motivo: "Revisar contexto da pesagem" } }, null);
+      expect(await tx.vinculoPesagemParto.count({ where: { pesagemId, revogadoEm: null } })).toBe(0);
+      expect(await tx.pesagem.findUniqueOrThrow({ where: { id: pesagemId } })).toEqual(pesoOriginal);
+      // Revogar a associação não muda o sítio comprovado da pesagem comum.
+      await tx.$executeRawUnsafe("SAVEPOINT desfazer_peso_desvinculado");
       await tx.localizacaoAnimal.delete({ where: { id: retorno.id } });
       await tx.localizacaoAnimal.update({ where: { id: intermediaria.id }, data: { ate: null } });
+      await expect(conferirHistoricoDosFatos(tx, [matriz.id])).rejects.toMatchObject({
+        code: "CONFLITO", campo: "propriedadeId", message: expect.stringContaining(pesagemId),
+      });
+      await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT desfazer_peso_desvinculado");
+      expect(await tx.localizacaoAnimal.findUniqueOrThrow({ where: { id: retorno.id } })).toEqual(retorno);
+      expect(await tx.localizacaoAnimal.findUniqueOrThrow({ where: { id: intermediaria.id } })).toEqual(intermediaria);
+      expect(await tx.pesagem.findUniqueOrThrow({ where: { id: pesagemId } })).toEqual(pesoOriginal);
       await expect(conferirHistoricoDosFatos(tx, [matriz.id])).resolves.toBeUndefined();
     });
   });

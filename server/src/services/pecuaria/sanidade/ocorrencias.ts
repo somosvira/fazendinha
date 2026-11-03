@@ -1,3 +1,4 @@
+import { validarContextoHistoricoAnimalTx, type ContextoHistoricoAnimalInput } from "../importacao/pesagens.js";
 import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -63,23 +64,23 @@ export async function listarOcorrenciasPaginadas(animalId: string | undefined, p
 
 export type CriarOcorrenciaInput = { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null };
 /** Executor compartilhado: o chamador mantém a transação do fato de origem. */
-export async function criarOcorrenciaTx(tx: Prisma.TransactionClient, input: CriarOcorrenciaInput, usuarioId: number | null) {
+export async function criarOcorrenciaTx(tx: Prisma.TransactionClient, input: CriarOcorrenciaInput, usuarioId: number | null, historico?: ContextoHistoricoAnimalInput) {
   await travarAnimais(tx, [input.animalId]);
   const inicio = dia(input.inicio);
-  await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, inicio, "inicio");
+  if (historico) await validarContextoHistoricoAnimalTx(tx, historico);
+  else await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, inicio, "inicio");
   const doenca = await tx.doenca.findFirst({ where: { id: input.doencaId, ativo: true } });
   if (!doenca) throw new RebanhoError("VALIDACAO", "Selecione uma doença ativa", "doencaId");
-  const criada = await tx.ocorrenciaSanitaria.create({ data: { animalId: input.animalId, propriedadeId: input.propriedadeId,
+  const criada = await tx.ocorrenciaSanitaria.create({ data: { animalId: input.animalId, propriedadeId: historico?.contexto === "EXTERNO" ? null : input.propriedadeId, ...(historico ? { origem: "IDEAGRI" } : {}),
     doencaId: input.doencaId, doencaNomeSnapshot: doenca.nome, inicio, observacao: input.observacao?.trim() || null } });
-  await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
+  await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: criada.id, animalId: input.animalId, propriedadeId: criada.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
   return criada;
 }
 export async function criarOcorrencia(input: CriarOcorrenciaInput, usuarioId: number | null) {
   return transacaoPecuaria((tx) => criarOcorrenciaTx(tx, input, usuarioId));
 }
 
-export async function encerrarOcorrencia(id: string, propriedadeId: number, input: { fim: string; desfecho: string }, usuarioId: number | null) {
-  return transacaoPecuaria(async (tx) => {
+export async function encerrarOcorrenciaTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number | null, input: { fim: string; desfecho: string | null }, usuarioId: number | null) {
     const original = await tx.ocorrenciaSanitaria.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!original) throw new RebanhoError("NAO_ENCONTRADO", "Ocorrência não encontrada");
     await travarAnimais(tx, [original.animalId]);
@@ -90,11 +91,13 @@ export async function encerrarOcorrencia(id: string, propriedadeId: number, inpu
     if (fim < atual.inicio) throw new RebanhoError("VALIDACAO", "O fim não pode anteceder o início", "fim");
     const baixa = await tx.baixaAnimal.findFirst({ where: { animalId: atual.animalId, estornadaEm: null } });
     if (fim > new Date() || (baixa && fim > baixa.data)) throw new RebanhoError("VALIDACAO", "O desfecho não pode ocorrer no futuro ou após a baixa", "fim");
-    const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { fim, desfecho: input.desfecho.trim() } });
+    const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { fim, desfecho: input.desfecho?.trim() || null } });
     await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: id, animalId: atual.animalId, propriedadeId, acao: "ENCERRAMENTO", usuarioId,
       antes: atual, depois: salva });
     return salva;
-  });
+}
+export async function encerrarOcorrencia(id: string, propriedadeId: number, input: { fim: string; desfecho: string }, usuarioId: number | null) {
+  return transacaoPecuaria(tx => encerrarOcorrenciaTx(tx, id, propriedadeId, input, usuarioId));
 }
 
 export async function anularOcorrencia(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {

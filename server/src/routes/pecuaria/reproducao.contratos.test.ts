@@ -3,15 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn() }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+vi.mock("../../services/pecuaria/reproducao/manejo-aptidao.js", () => ({ consultarManejoAptidao: mocks.manejoAptidao }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
-vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao }));
+vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao, encerrarLactacao: mocks.encerrarLactacao }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
 vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), consultarAgenda: mocks.agenda, previaGrupoPlanner: mocks.previaPlanner }));
 vi.mock("../../services/pecuaria/reproducao/emissoes-relatorios.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/emissoes-relatorios.js")>(), criarEmissaoReprodutiva: mocks.emitir, obterEmissaoReprodutiva: mocks.obterEmissao }));
 vi.mock("../../services/pecuaria/reproducao/indicadores.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/indicadores.js")>(), consultarIndicadoresReprodutivos: mocks.indicadores }));
 vi.mock("../../services/pecuaria/reproducao/relatorio-partos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/relatorio-partos.js")>(), emitirRelatorioPartos: mocks.partos }));
+vi.mock("../../services/pecuaria/reproducao/peso-secagem.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/peso-secagem.js")>(), manterPesoSecagem: mocks.pesoSecagem }));
 import { rebanhoRouter } from "./rebanho.js";
 import { PropriedadeError } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
@@ -191,4 +193,38 @@ it("participações da ficha exigem animal válido e sessão, aplicam escopo e a
   expect(resposta.status).toBe(200);
   expect(mocks.programacoes).toHaveBeenCalledWith(2,undefined,uid(2));
   expect(await resposta.json()).toMatchObject([{participantes:[{tarefas:[{realizadoSnapshot:{valorServicoAtribuido:"30"}}]}]}]);
+});
+
+describe("peso da secagem: rota e contrato autorizado", () => {
+  const caminho = `/reproducao/lactacoes/${uid(2)}/peso-secagem`;
+  const input = { chave: uid(1), propriedadeId: 2, motivo: "Vincular peso conferido no encerramento", pesoSecagem: { acao: "VINCULAR", pesagemId: uid(3) } };
+  it("conserva sessão/área/lançar, escopo e autoria reais no envelope", async () => {
+    expect((await app(null).request(caminho,{method:"POST",headers:json,body:JSON.stringify(input)})).status).toBe(401);
+    expect((await app({...usuario,flags:[]}).request(caminho,{method:"POST",headers:json,body:JSON.stringify(input)})).status).toBe(403);
+    expect(mocks.pesoSecagem).not.toHaveBeenCalled();
+    mocks.pesoSecagem.mockResolvedValue({id:uid(2),vinculosPesagemSecagem:[]});
+    expect((await app().request(caminho,{method:"POST",headers:json,body:JSON.stringify(input)})).status).toBe(200);
+    expect(mocks.pesoSecagem).toHaveBeenCalledWith(uid(2),expect.objectContaining(input),7);
+  });
+  it("valida chave e preserva conflito de associação como 409", async () => {
+    expect((await app().request(caminho,{method:"POST",headers:json,body:JSON.stringify({...input,chave:undefined})})).status).toBe(422);
+    expect(mocks.pesoSecagem).not.toHaveBeenCalled();
+    mocks.pesoSecagem.mockRejectedValue(new RebanhoError("CONFLITO","Outro peso ativo neste encerramento","pesoSecagem"));
+    expect((await app().request(caminho,{method:"POST",headers:json,body:JSON.stringify(input)})).status).toBe(409);
+  });
+  it("encerramento encaminha a opção opcional de peso e a chave sem mudar sua identidade", async () => {
+    mocks.encerrarLactacao.mockResolvedValue({id:uid(2)});
+    const r=await app().request(`/reproducao/lactacoes/${uid(2)}/encerramento`,{method:"POST",headers:json,body:JSON.stringify({...input,data:"2026-10-20"})});
+    expect(r.status).toBe(200);
+    expect(mocks.encerrarLactacao).toHaveBeenCalledWith(uid(2),2,"2026-10-20",input.motivo,7,{chave:uid(1),pesoSecagem:input.pesoSecagem});
+  });
+});
+
+it("consulta filas de aptidão no sítio autorizado, sem exigir lançamento e com data válida", async () => {
+  mocks.leitura.mockResolvedValue(2);
+  mocks.manejoAptidao.mockResolvedValue({ propriedadeId: 2, dataReferencia: "2026-10-29", itens: [] });
+  const resposta = await app({ ...usuario, flags: [] }).request("/reproducao/filas-aptidao?data=2026-10-29&propriedadeId=999");
+  expect(resposta.status).toBe(200);
+  expect(mocks.manejoAptidao).toHaveBeenCalledWith(2, "2026-10-29");
+  expect((await app().request("/reproducao/filas-aptidao?data=invalida")).status).toBe(422);
 });

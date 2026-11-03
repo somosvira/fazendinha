@@ -41,9 +41,22 @@
   "keep_vars": true,
 
   "env": {
-    "staging": { "name": "fazendinha-stg" },
-    "producao": { "name": "fazendinha-producao" }
+    "staging": {
+      "name": "fazendinha-stg",
+      "vars": {
+        "NUTRICAO_MENSAL_ENABLED": "true",
+        "NUTRICAO_AUTOMACAO_ENABLED": "false"
+      }
+    },
+    "producao": {
+      "name": "fazendinha-producao",
+      "vars": {
+        "NUTRICAO_MENSAL_ENABLED": "true",
+        "NUTRICAO_AUTOMACAO_ENABLED": "false"
+      }
+    }
   },
+  "triggers": { "crons": ["*/15 * * * *"] },
 
   "observability": {
     "enabled": true

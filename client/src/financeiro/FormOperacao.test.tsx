@@ -463,7 +463,11 @@ describe("FormOperacao", () => {
   it("explica e configura os compromissos derivados da condição a prazo", async () => {
     montar();
     await alterarControle(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
-    expect(screen.getByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeTruthy();
+    expect(screen.queryByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeNull();
+    const ajudaParcelas = screen.getByRole("button", { name: "Ajuda: parcelas do compromisso" });
+    fireEvent.click(ajudaParcelas);
+    expect(await screen.findByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeTruthy();
+    fireEvent.mouseLeave(ajudaParcelas);
     expect(screen.getByRole("spinbutton", { name: "Valor da parcela 1" })).toBeTruthy();
     expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
   });

@@ -241,3 +241,7 @@ A persistência incorpora na baseline as antigas migrations `20261021210000_mane
 ### Consulta operacional de grupos
 
 A lista comum de programações aceita situação `ABERTA|ENCERRADA` e ordem `RECENTES|NOME`, além da busca por nome do grupo ou do protocolo versionado. Filtros e ordem são executados antes de paginar, com o mesmo escopo autorizado na contagem e na página. A aba Reprodução usa o nome Protocolos e oferece cartões/tabela; isso não funde modelo (`Protocolo`) e grupo (`ProgramacaoProtocolo`) nem altera seus fluxos de escrita.
+
+### Apresentação do editor
+
+A criação/edição de protocolo usa modal centralizado com largura para etapas e revisão. O formulário e a revisão permanecem no mesmo contexto, com rolagem própria para tabelas em telas estreitas. URLs, versões publicadas, guarda de saída e validação do executor permanecem os mesmos; a apresentação não altera uma versão publicada nem transforma abrir o editor em gravação.

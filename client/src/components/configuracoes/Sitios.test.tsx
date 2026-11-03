@@ -21,7 +21,9 @@ vi.mock("../../api/propriedades", () => ({
 const primeiro = (role: string, name: string | RegExp) => screen.getAllByRole(role, { name })[0];
 
 beforeEach(() => {
+  history.replaceState(null, "", "/configuracoes/sitios");
   vi.clearAllMocks();
+  localStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(usePropriedades).mockReturnValue({ data: sitiosMock, loading: false, recarregar: vi.fn() });
   vi.mocked(criarPropriedade).mockResolvedValue({ ...sitiosMock[1], id: 3, nome: "Nova" });
@@ -32,6 +34,9 @@ afterEach(cleanup);
 describe("Configurações > Sítios", () => {
   it("lista sítios pelo nome, com cidade, principal e situação", () => {
     render(<Sitios />);
+    expect(screen.getByRole("heading", { name: "Mexicana" })).toBeTruthy();
+    expect(screen.getByText("Localização não informada")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
     const tabela = screen.getByRole("table", { name: "Sítios" });
     expect(within(tabela).getByText("Principal", { selector: "strong" })).toBeTruthy();
     expect(within(tabela).queryByText("Sede")).toBeNull();
@@ -84,4 +89,11 @@ describe("Configurações > Sítios", () => {
     fireEvent.click(screen.getByRole("button", { name: "Desativar" }));
     await waitFor(() => expect(editarPropriedade).toHaveBeenCalledWith(1, { nome: "Principal", ativo: false }));
   });
+});
+
+it("recebe busca de sítio inativo sem precisar remontar a consulta", async () => {
+  render(<Sitios />);
+  history.pushState(null, "", "/configuracoes/sitios?busca=Mexicana"); fireEvent.popState(window);
+  await waitFor(() => expect(usePropriedades).toHaveBeenLastCalledWith({ incluirInativos: true }));
+  expect(screen.getByRole("searchbox", { name: "Buscar sítio" })).toHaveProperty("value", "Mexicana");
 });

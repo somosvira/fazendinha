@@ -1,3 +1,4 @@
+import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { SelectCampo } from "@/financeiro/SelectCampo";
@@ -33,7 +34,7 @@ const lerAba = (): AbaCadastroSanitario => {
 export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, contextoExames = "SANITARIO" }: { podeLancar: boolean; cadastro?: AbaCadastroSanitario; embutido?: boolean; contextoExames?: "SANITARIO" | "REPRODUTIVO" }) {
   const [aba, setAba] = useState<AbaCadastroSanitario>(() => cadastro ?? lerAba());
   const [itens, setItens] = useState<Item[]>([]);
-  const [busca, setBusca] = useState("");
+  const [busca, setBusca] = useBuscaUrl("busca");
   const [versao, setVersao] = useState(0);
   const [painel, setPainel] = useState<{ tipo: Tipo; id?: string; versaoAnteriorId?: string } | null>(null);
   const [nome, setNome] = useState("");

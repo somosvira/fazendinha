@@ -43,7 +43,8 @@ describe("nutrição do lote", () => {
   });
   it("separa vigente/futura e pagina o histórico sem permissão de escrita", async () => {
     render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
-    await screen.findByText(/Programada: Dieta futura/);
+    await screen.findByText("Próxima dieta");
+    expect(screen.getByText(/Dieta futura · v2/)).toBeTruthy();
     expect(screen.getByText("Em uso")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Trocar dieta" })).toBeNull();
     fireEvent.click(screen.getByText("Mais dietas"));

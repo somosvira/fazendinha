@@ -1,3 +1,4 @@
+import { Input } from "@/components/ui/input";
 import { formatarDataBR } from "../lib/rotulos";
 
 export function DatasQualidade({ dataResultadoLaboratorial, dataRecebimentoLaudo, criadoEm }: {
@@ -17,7 +18,7 @@ export function CamposDatasQualidade({ resultado, recebimento, onResultado, onRe
   onResultado: (valor: string) => void; onRecebimento: (valor: string) => void;
 }) {
   return <div className="leite-form-inline">
-    <label>Data do resultado laboratorial (opcional)<input type="date" value={resultado} onChange={e => onResultado(e.target.value)} /></label>
-    <label>Data de recebimento do laudo (opcional)<input type="date" value={recebimento} onChange={e => onRecebimento(e.target.value)} /></label>
+    <label>Data do resultado laboratorial (opcional)<Input type="date" value={resultado} onChange={e => onResultado(e.target.value)} /></label>
+    <label>Data de recebimento do laudo (opcional)<Input type="date" value={recebimento} onChange={e => onRecebimento(e.target.value)} /></label>
   </div>;
 }

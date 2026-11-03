@@ -1,5 +1,6 @@
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, TriangleAlert } from "lucide-react";
 import { Button, ErrorBox } from "@/financeiro/financeiro-ui";
 import { reqSanidade } from "./api";
 import { consultaRodadas, type PaginaSanitaria } from "./rodadas-api";
@@ -51,7 +52,7 @@ export function AgendaSemanal<T extends TarefaVisual>({ filtros, revisao, ...aco
   useEffect(() => { const voltar = () => setInicio(ler()); window.addEventListener("popstate", voltar); return () => window.removeEventListener("popstate", voltar); }, []);
   function mudar(data: string) { setInicio(data); const url = new URL(window.location.href); url.searchParams.set("semanaSanitaria", data); window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash); }
   const contexto = consultaRodadas(filtros);
-  const cabecalhoGrupo = useRef<HTMLHeadingElement>(null);
+  const cabecalhoGrupo = useRef<HTMLParagraphElement>(null);
   const [grupo, setGrupo] = useState<Grupo<T> | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   useEffect(() => { setGrupo(null); setSelecionadas(new Set()); }, [contexto, inicio, revisao]);
@@ -59,14 +60,14 @@ export function AgendaSemanal<T extends TarefaVisual>({ filtros, revisao, ...aco
   function abrirGrupo(valor: Grupo<T>) { setGrupo(valor); setSelecionadas(new Set()); }
 
   const mostrarAtrasadas = !filtros.situacao || ["PENDENTE", "ATRASADA"].includes(String(filtros.situacao));
-  return <div className="san-agenda-semanal"><div className="san-semana-navegacao"><h2>Semana de trabalho</h2><div><Button secondary aria-label="Semana anterior" onClick={() => mudar(somarDiasSanitarios(inicio,-7))}><ChevronLeft size={17}/></Button><Button secondary onClick={() => mudar(inicioSemanaSanitaria(hojeSanidade()))}>Hoje</Button><Button secondary aria-label="Próxima semana" onClick={() => mudar(somarDiasSanitarios(inicio,7))}><ChevronRight size={17}/></Button><strong>{dataSanitaria(inicio)} a {dataSanitaria(somarDiasSanitarios(inicio,6))}</strong></div></div>
+  return <div className="san-agenda-semanal"><div className="san-semana-navegacao"><h2 className="flex items-center gap-2"><CalendarDays size={22} aria-hidden />Semana de trabalho</h2><div><Button secondary aria-label="Semana anterior" onClick={() => mudar(somarDiasSanitarios(inicio,-7))}><ChevronLeft size={17}/></Button><Button secondary onClick={() => mudar(inicioSemanaSanitaria(hojeSanidade()))}>Hoje</Button><Button secondary aria-label="Próxima semana" onClick={() => mudar(somarDiasSanitarios(inicio,7))}><ChevronRight size={17}/></Button><strong>{dataSanitaria(inicio)} a {dataSanitaria(somarDiasSanitarios(inicio,6))}</strong></div></div>
     <div className={`san-semana-corpo ${mostrarAtrasadas ? "" : "san-semana-sem-atrasadas"}`}>
       {mostrarAtrasadas && <FaixaTarefas<T> key={`atrasadas-${contexto}`} dia={hojeSanidade()} atrasadas filtros={filtros} revisao={revisao} onGrupo={abrirGrupo}/>}
       <div className="san-semana-rolagem"><div className="san-semana-grade">{Array.from({length:7},(_,i)=>somarDiasSanitarios(inicio,i)).map(dia => <FaixaTarefas<T> key={`${dia}-${contexto}`} dia={dia} filtros={filtros} revisao={revisao} onGrupo={abrirGrupo}/>)}</div></div>
     </div>
-    {grupo && <section className="san-semana-grupo-aberto" aria-label="Tarefas do grupo selecionado"><header><div><h3 ref={cabecalhoGrupo} tabIndex={-1}>{grupo.nome} · {dataSanitaria(grupo.data)}</h3><p>{grupo.ciclo} · {grupo.itens.length} tarefas nesta página</p></div><Button secondary onClick={()=>setGrupo(null)}>Fechar grupo</Button></header>
+    {grupo && <PainelCadastro aberto titulo={`${grupo.nome} · ${dataSanitaria(grupo.data)}`} icon={CalendarDays} onFechar={() => setGrupo(null)} largura="sm:max-w-4xl" rodape={<Button secondary onClick={() => setGrupo(null)}>Fechar grupo</Button>}><section className="san-semana-grupo-aberto" aria-label="Tarefas do grupo selecionado"><header><p ref={cabecalhoGrupo} tabIndex={-1}>{grupo.ciclo} · {grupo.itens.length} tarefas nesta página</p></header>
       {grupo.itens.map(t=><div className="san-grupo-animal" key={t.id}><div className="san-grupo-identificacao">{acoes.podeLancar && t.situacao === "PENDENTE" && <input type="checkbox" aria-label={`Selecionar tarefa de ${t.execucao.animal?.brinco ?? t.execucao.animalId}`} checked={selecionadas.has(t.id)} onChange={e=>setSelecionadas(v=>{const novo=new Set(v);if(e.target.checked)novo.add(t.id);else novo.delete(t.id);return novo;})}/>}<strong>{t.execucao.animal ? nomeAnimalSanitario(t.execucao.animal) : t.execucao.animalId}</strong></div><EstadoSanitario tom={t.situacao === "PENDENTE" ? t.previstaPara.slice(0,10) < hojeSanidade() ? "alerta" : "atencao" : t.situacao === "REALIZADA" ? "verde" : "neutro"}>{rotuloTarefaSanitaria(t.situacao,t.previstaPara,hojeSanidade())}</EstadoSanitario>{acoes.regularizacao(t)}<div className="san-grupo-acoes">{acoes.acoes(t)}</div></div>)}
       {acoes.podeLancar && selecionadas.size > 0 && <footer><Button disabled={selecionadas.size > 100} onClick={()=>acoes.onExecutar(grupo.itens.filter(t=>selecionadas.has(t.id) && t.situacao === "PENDENTE"))}>Executar selecionadas ({selecionadas.size})</Button></footer>}
-    </section>}
+    </section></PainelCadastro>}
   </div>;
 }

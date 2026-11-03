@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Reproducao, ReproducaoAnimal } from "./Reproducao";
@@ -60,8 +61,8 @@ it.each(["partos", "indicadores"])("consolidado oferece seletor dentro da págin
   window.history.replaceState(null, "", `/pecuaria/reproducao?rotina=${rotina}`);
   render(<Reproducao podeLancar />);
   const seletor = await screen.findByLabelText("Sítio da consulta");
-  await screen.findByRole("option", { name: "Escola" });
-  fireEvent.change(seletor, { target: { value: "7" } });
+  await screen.findByText("Escolha um sítio");
+  await alterarControle(seletor, { target: { value: "7" } });
   await screen.findByText(rotina === "partos" ? "Partos do sítio 7" : "Indicadores do sítio 7");
   expect(obterReproducao).not.toHaveBeenCalled();
 });

@@ -11,7 +11,7 @@ import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeir
 import { DatePicker } from "../../../components/DatePicker";
 
 const ROTULO_TIPO_PESAGEM: Record<TipoPesagem, string> = {
-  NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída",
+  NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída", PARTO: "Parto", SECAGEM: "Secagem",
 };
 
 export function FormPesagem({ animalId, pesagem = null, onSalvo, onFechar }: {

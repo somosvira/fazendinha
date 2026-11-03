@@ -13,6 +13,7 @@ import { consultaFinanceiraSchema, podeConsultarFinanceiro } from "../services/a
 import { executarFerramenta } from "../services/assistente/registro.js";
 import { apresentar, AssistenteError, type ContextoAssistente } from "../services/assistente/tipos.js";
 import { MAX_AUDIO_BYTES, transcreverAudio } from "../services/assistente/midia.js";
+import { sintetizarResposta } from "../services/assistente/voz.js";
 
 const entradaSchema = z.union([
   perguntaAssistenteSchema,
@@ -62,6 +63,19 @@ export const assistenteRouter = new Hono()
       return c.json({ texto: await transcreverAudio(new Uint8Array(await arquivo.arrayBuffer())) });
     } catch (e) { return falha(c, e); }
   })
+  .post("/assistente/conversar", bodyLimit({ maxSize: 32_000, onError: c => c.json({ error: "Pergunta muito grande." }, 413) }),
+    zValidator("json", perguntaAssistenteSchema.omit({ imagem: true }), (resultado, c) => { if (!resultado.success) return c.json({ error: "Envie uma pergunta de até 2.000 caracteres.", code: "VALIDACAO" }, 422); }), async c => {
+      if (!limite.consumir(String(getUsuario(c)!.id))) return c.json({ error: "Aguarde um minuto antes de continuar a conversa.", code: "LIMITE" }, 429, { "Retry-After": "60" });
+      try {
+        const ctx = await contexto(c);
+        const conteudo = await responderPergunta(c.req.valid("json"), ctx);
+        const resposta = apresentar(conteudo, ctx);
+        // Resultado negado fica escrito; o cliente encerra a voz e limpa dados anteriores.
+        if (conteudo.modo === "acesso_negado") return c.json({ ...resposta, audio: null });
+        try { return c.json({ ...resposta, audio: await sintetizarResposta(conteudo.resposta) }); }
+        catch { return c.json({ ...resposta, audio: null, avisoVoz: "Não foi possível gerar a voz. Confira a resposta escrita e retome quando quiser." }); }
+      } catch (e) { return falha(c, e); }
+    })
   .post("/assistente/consultar", bodyLimit({ maxSize: 3_000_000, onError: c => c.json({ error: "Pergunta ou print muito grande." }, 413) }),
     zValidator("json", entradaSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: "Envie uma pergunta de até 2.000 caracteres ou uma consulta válida.", code: "VALIDACAO" }, 422); }), async c => {
       if (!limite.consumir(String(getUsuario(c)!.id))) return c.json({ error: "Você fez muitas consultas. Aguarde um minuto e tente novamente.", code: "LIMITE" }, 429, { "Retry-After": "60" });

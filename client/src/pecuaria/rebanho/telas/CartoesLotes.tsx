@@ -7,7 +7,7 @@ import { formatarGmd, formatarKg } from "../lib/peso";
 import "./lotes-visuais.css";
 const cores=["#007f78","#43aaa4","#90c7c2","#285c6c","#6b929f","#b0cecc"];
 export function corCategoriaLote(nome:string){let h=0;for(const c of nome)h=(h*31+c.charCodeAt(0))>>>0;return cores[h%cores.length];}
-function Composicao({resumo:r}:{resumo:ResumoLote}){
+export function Composicao({resumo:r}:{resumo:ResumoLote}){
  const agrupadas = new Map<string,number>();for(const c of r.porCategoria)agrupadas.set(c.categoria,(agrupadas.get(c.categoria)??0)+c.qtd);const categorias=[...agrupadas].map(([categoria,qtd])=>({categoria,categoriaId:categoria,qtd}));
  const total=categorias.reduce((s,c)=>s+c.qtd,0);let acumulado=0;
  if(!total)return <p className="consulta-cartao-meta">Sem animais ativos para distribuir.</p>;
@@ -24,5 +24,5 @@ function Cartao({lote:l,acoes,onAbrir}:{lote:Lote;acoes:ReactNode;onAbrir:(id:st
 export function CartoesLotes({lotes,todos,acoes,onAbrir}:{lotes:Lote[];todos:Lote[];acoes:(l:Lote)=>ReactNode;onAbrir:(id:string)=>void}){
  if(!todos.length)return <p className="p-5 text-sm text-muted-foreground">Nenhum lote corresponde aos filtros atuais.</p>;
  const comparacao=[...todos].sort((a,b)=>b.animaisAtivos-a.animaisAtivos||a.nome.localeCompare(b.nome)).slice(0,8);const maior=Math.max(1,...comparacao.map(l=>l.animaisAtivos));
- return <><div className="consulta-cartoes">{lotes.map(l=><Cartao key={l.id} lote={l} acoes={acoes(l)} onAbrir={onAbrir}/>)}</div>{comparacao.length>1&&<section className="lote-distribuicao"><h2>Distribuição do efetivo por lote</h2><p>{comparacao.length===todos.length?"Todos os lotes do recorte filtrado":`${comparacao.length} de ${todos.length} lotes do recorte filtrado`}</p>{comparacao.map(l=><button type="button" key={l.id} onClick={()=>onAbrir(l.id)}><span>{l.nome}</span><span className="lote-distribuicao-barra"><i style={{width:`${l.animaisAtivos/maior*100}%`}}/></span><strong>{l.animaisAtivos}</strong></button>)}</section>}</>;
+ return <><div className="consulta-cartoes lotes-cartoes">{lotes.map(l=><Cartao key={l.id} lote={l} acoes={acoes(l)} onAbrir={onAbrir}/>)}</div>{comparacao.length>1&&<section className="lote-distribuicao"><h2>Distribuição do efetivo por lote</h2><p>{comparacao.length===todos.length?"Todos os lotes do recorte filtrado":`${comparacao.length} de ${todos.length} lotes do recorte filtrado`}</p>{comparacao.map(l=><button type="button" key={l.id} onClick={()=>onAbrir(l.id)}><span>{l.nome}</span><span className="lote-distribuicao-barra"><i style={{width:`${l.animaisAtivos/maior*100}%`}}/></span><strong>{l.animaisAtivos}</strong></button>)}</section>}</>;
 }

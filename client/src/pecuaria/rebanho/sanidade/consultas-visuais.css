@@ -1,0 +1,26 @@
+.carencias-prazos-rolagem{overflow-x:auto;padding:16px}.carencias-prazos{min-width:760px;border:1px solid var(--border);border-radius:10px;overflow:hidden}.carencias-prazos-eixo,.carencias-prazos-animal{display:grid;grid-template-columns:210px minmax(0,1fr)}.carencias-prazos-eixo{background:var(--accent);font-size:14px;font-weight:600;padding:13px 16px;border-bottom:1px solid var(--border)}.carencias-prazos-eixo>div{display:flex;justify-content:space-between;gap:12px}.carencias-prazos-animal{border-bottom:1px solid var(--border)}.carencias-prazos-animal:last-child{border-bottom:0}.carencias-prazos-animal h3{display:flex;align-items:center;font-size:14px;font-weight:600;padding:16px;border-right:1px solid var(--border)}.carencias-prazos-animal h3 button{text-align:left;color:var(--primary);text-decoration:underline;text-underline-offset:3px}.carencias-prazo{display:grid;grid-template-columns:125px minmax(0,1fr);min-height:80px;border-bottom:1px solid var(--border);padding:10px 16px;gap:12px}.carencias-prazo:last-child{border:0}.carencias-prazo>span{display:flex;gap:8px;align-items:center;font-size:14px}.carencias-prazo-trilho{position:relative;min-width:0;padding:12px 0}.carencias-prazo-trilho:before{content:"";position:absolute;top:10px;left:0;right:0;height:1px;background:var(--border)}.carencias-prazo-hoje{position:absolute;top:0;bottom:0;border-left:1px dashed var(--primary)}.carencias-prazo-marco{position:absolute;top:6px;width:9px;height:9px;border-radius:50%;background:var(--primary);transform:translateX(-50%)}.carencias-prazo-marco[data-vigente=true]{background:var(--fin-pendente)}.carencias-prazo-texto{position:relative;margin-top:10px;background:var(--card);width:fit-content;font-size:14px;padding-right:8px}
+
+.carencias-prazos-eixo>div{padding-left:137px}.carencias-prazos-eixo>div>strong{font-weight:600;color:var(--primary)}
+
+.carencias-prazos-eixo>div{position:relative;padding-top:16px}.carencias-prazos-eixo>div>strong{position:absolute;top:0;transform:translateX(-100%)}
+
+/* A consulta de exames aproxima a coleta do resultado; o laudo completo abre no detalhe. */
+.san-exames-cartoes { align-items:start; gap:14px; }
+:root [data-design-operacional] .sanidade-pagina .san-exame-cartao { padding:16px; }
+.san-exame-cartao > header { gap:10px; flex-wrap:wrap; }
+:root [data-design-operacional] .san-exames-cartoes .consulta-entidade-icone { width:36px; height:36px; border-radius:8px; }
+.san-exame-cartao .consulta-entidade-identidade { flex:1 1 170px; }
+.san-exame-cartao .consulta-entidade-status { margin-left:auto; }
+.san-exame-cartao .consulta-entidade-conteudo { margin-top:12px; }
+.san-exame-fatos { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; padding-top:12px; }
+.san-exame-fatos > .consulta-fato:first-child { display:flex; align-items:baseline; gap:8px; }
+.san-exame-fatos > .consulta-fato:first-child > span { margin:0; }
+.san-exame-resumo dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr)); gap:10px 16px; }
+.san-exame-resumo dl > div { min-width:0; }
+.san-exame-resumo dt { font-size:14px; color:var(--muted-foreground); margin-bottom:3px; }
+.san-exame-resumo dd { font-size:16px; font-weight:600; overflow-wrap:anywhere; }
+.san-exame-abrir { min-height:44px; margin-top:8px; text-align:left; font-size:14px; color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
+.san-exame-abrir:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+:root [data-design-operacional] .san-exame-cartao footer { margin-top:12px; padding-top:10px; }
+.san-exame-fatos .consulta-escala { margin-top:0; }
+@media(max-width:600px) { .san-exames-cartoes { padding:12px 0; }.san-exame-cartao .consulta-entidade-identidade { flex-basis:170px; }.san-exame-cartao .consulta-entidade-status { max-width:none; }.san-exame-cartao .consulta-entidade-seta { display:none; } }

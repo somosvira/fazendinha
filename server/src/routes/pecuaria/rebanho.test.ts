@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   buscarMovimentacao: vi.fn(),
   leitura: vi.fn(),
   darBaixa: vi.fn(),
+  regularizarBaixaHistorica: vi.fn(),
+  revisarClassificacaoBaixa: vi.fn(),
   estornarBaixa: vi.fn(),
   buscarFicha: vi.fn(),
   buscarAuditoriaAnimal: vi.fn(),
@@ -54,6 +56,10 @@ vi.mock("../../services/pecuaria/rebanho/animais.js", () => ({
   composicaoSugerida: mocks.composicaoSugerida,
   preverComposicao: mocks.preverComposicao,
   substituirComposicao: mocks.substituirComposicao,
+}));
+vi.mock("../../services/pecuaria/rebanho/baixas-historicas.js", () => ({
+  regularizarBaixaHistorica: mocks.regularizarBaixaHistorica,
+  revisarClassificacaoBaixa: mocks.revisarClassificacaoBaixa,
 }));
 vi.mock("../../services/pecuaria/rebanho/genitores.js", () => ({
   listarGenitores: mocks.listarGenitores,
@@ -330,6 +336,18 @@ describe("rebanhoRouter — ficha do animal: `periodoDias` do GMD", () => {
 });
 
 describe("rebanhoRouter — auditoria do animal: paginação", () => {
+  it("repassa identidade do fato sem alterar o escopo autorizado", async () => {
+    const params = new URLSearchParams({ entidade: "FinalidadeAnimal", entidadeId: ID, page: "2" });
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?${params}`);
+    expect(res.status).toBe(200);
+    expect(mocks.buscarAuditoriaAnimal).toHaveBeenCalledWith(ID, 1, 2, 20, { entidade: "FinalidadeAnimal", entidadeId: ID }, false);
+  });
+  it.each(["entidade=Pesagem", `entidadeId=${ID}`, "entidade=Pesagem&entidadeId=invalido"])("recusa identidade incompleta/inválida sem consultar: %s", async query => {
+    const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria?${query}`);
+    expect(res.status).toBe(422);
+    expect(mocks.buscarAuditoriaAnimal).not.toHaveBeenCalled();
+  });
+
   it("sem query: usa os defaults (page 1, pageSize 20)", async () => {
     const res = await app(usuario({ flags: [] })).request(`/animais/${ID}/auditoria`);
     expect(res.status).toBe(200);
@@ -597,5 +615,37 @@ describe("rebanhoRouter — composição do animal", () => {
     });
     expect(res.status).toBe(200);
     expect(mocks.substituirComposicao).toHaveBeenCalledWith(ID, { itens: [{ racaId: ID, fracao64: 56 }] }, 7, expect.anything(), "CALCULADA");
+  });
+});
+
+
+describe("rebanhoRouter — regularização histórica isolada", () => {
+  const entrada = { data: "2024-08-12", bancoOrigem: "IDEAGRI", chaveOrigem: "BAIXA:1", evidencia: "Extrato de saída comprovada", motivo: "Tipo ausente na origem" };
+  it("rota comum recusa desconhecido mesmo com flag de regularização no corpo", async () => {
+    const res = await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa`, jsonBody({ data: entrada.data, tipo: "NAO_DETERMINADO", regularizacaoHistorica: entrada }));
+    expect(res.status).toBe(422);
+  });
+  it("histórico exige lançamento e usuário real; referência sem evidência é rejeitada", async () => {
+    expect((await app(usuario({ flags: [] })).request(`/animais/${ID}/baixa/regularizacao-historica`, jsonBody(entrada))).status).toBe(403);
+    expect((await app(usuario({ id: -1, flags: ["lancar"] })).request(`/animais/${ID}/baixa/regularizacao-historica`, jsonBody(entrada))).status).toBe(403);
+    expect((await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixa/regularizacao-historica`, jsonBody({ ...entrada, evidencia: "" }))).status).toBe(422);
+  });
+  it("rota histórica delega com sítio e autoria, sem escolher tipo", async () => {
+    mocks.leitura.mockResolvedValueOnce(3);
+    mocks.regularizarBaixaHistorica.mockResolvedValueOnce({ id: ID, tipo: "NAO_DETERMINADO" });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/animais/${ID}/baixa/regularizacao-historica`, jsonBody(entrada));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ tipo: "NAO_DETERMINADO" });
+    expect(mocks.regularizarBaixaHistorica).toHaveBeenCalledWith(ID, entrada, 7, 3);
+  });
+  it("revisão exige lançamento e valida a identidade da baixa", async () => {
+    const corpo = { chave: ID, tipo: "VENDA", evidencia: "Documento localizado", motivo: "Revisão da origem" };
+    expect((await app(usuario({ flags: [] })).request(`/animais/${ID}/baixas/${ID}/classificacao`, jsonBody(corpo))).status).toBe(403);
+    expect((await app(usuario({ flags: ["lancar"] })).request(`/animais/${ID}/baixas/invalido/classificacao`, jsonBody(corpo))).status).toBe(404);
+    mocks.leitura.mockResolvedValueOnce(3);
+    mocks.revisarClassificacaoBaixa.mockResolvedValueOnce({ id: ID, tipo: "VENDA" });
+    const res = await app(usuario({ id: 7, flags: ["lancar"] })).request(`/animais/${ID}/baixas/${ID}/classificacao`, jsonBody(corpo));
+    expect(res.status).toBe(200);
+    expect(mocks.revisarClassificacaoBaixa).toHaveBeenCalledWith(ID, ID, corpo, 7, 3);
   });
 });

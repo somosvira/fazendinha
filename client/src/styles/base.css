@@ -58,7 +58,7 @@
   --ts-label:  14px;
 
   /* spacing */
-  --gutter: 32px;
+  --gutter: 24px;
 
   /* sidebar (trilho escuro; abriga marca + seletor de fazenda no topo) */
   --side-w: 256px;
@@ -92,9 +92,7 @@
     font-size: 16px;
   }
 }
-@media (min-width: 901px) {
-  .app-main:has(~ button[aria-label="Abrir assistente do Terrano"]) { padding-right: 64px; }
-}
+.app-main:has(~ button[aria-label="Abrir assistente do Terrano"]) { padding-bottom: 72px; }
 /* Colapso MANUAL da sidebar (toggle no header): estreita o trilho p/ ícone-only
    em qualquer largura ≥901px. O header e o main acompanham via --side-w. As
    labels/chevrons somem pelas variantes [.side-collapsed_&]:hidden no AppSidebar. */
@@ -651,7 +649,8 @@ input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
 
 @media (max-width: 1100px) {
   /* shells largos passam a respirar com o viewport */
-  .shell, .shell-wide { padding: 0 24px; max-width: 100%; }
+  :root { --gutter: 20px; }
+  .shell, .shell-wide { padding-inline: var(--gutter); max-width: 100%; }
 
   /* hero do dashboard: 3 colunas (saldos | sep | título) vira pilha */
   .hero-band { grid-template-columns: 1fr !important; gap: 22px !important; }
@@ -670,12 +669,12 @@ input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
 }
 
 @media (max-width: 900px) {
-  :root { --gutter: 14px; }
+  :root { --gutter: 16px; }
 
   /* sidebar vira drawer; main perde offset e recebe um acionador flutuante */
   .app-main { margin-left: 0; }
 
-  .shell, .shell-wide { padding: 0 14px; }
+  .shell, .shell-wide { padding-inline: var(--gutter); }
 
   /* títulos um tom menor */
   .h1, h1.h1 { font-size: 26px; line-height: 1.15; }
@@ -720,9 +719,9 @@ input:focus-visible:not([data-slot="input"]):not([cmdk-input]) {
 }
 
 @media (max-width: 600px) {
-  :root { --gutter: 10px; }
+  :root { --gutter: 16px; }
   .h1, h1.h1 { font-size: 22px; }
-  .shell, .shell-wide { padding: 0 10px; }
+  .shell, .shell-wide { padding-inline: var(--gutter); }
   .section-title { font-size: 21px; }
   .section-lede { font-size: 15px; }
 

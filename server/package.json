@@ -31,7 +31,10 @@
     "previa:pecuaria:padronizacao": "tsx --env-file=.env scripts/previa-padronizacao.ts",
     "seed:typecheck": "tsc -p tsconfig.seed.json",
     "import:rio-novo": "tsx --env-file=.env prisma/import-rio-novo.ts",
-    "import:rio-novo:typecheck": "tsc -p tsconfig.import-rio-novo.json"
+    "import:rio-novo:typecheck": "tsc -p tsconfig.import-rio-novo.json",
+    "import:pecuaria:stg": "tsx --env-file=.env prisma/import-pecuaria-stg.ts",
+    "import:pecuaria:stg:typecheck": "tsc -p tsconfig.import-stg.json",
+    "test:import:pecuaria:stg": "vitest run --config vitest.import-stg.config.ts"
   },
   "prisma": {
     "seed": "tsx --env-file=.env prisma/seed.ts"

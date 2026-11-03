@@ -1,3 +1,5 @@
+import { Composicao } from "./CartoesLotes";
+import { ResumoPesagensLote } from "./ResumoPesagensLote";
 // Página do lote — resumo (efetivo, peso, GMD, idade), animais do lote (com
 // movimentação individual/em massa e "trazer animais" de outros lotes),
 // animais que saíram por baixa, histórico de movimentações e alterações do
@@ -27,6 +29,7 @@ import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { AlteracoesCadastro } from "../components/AlteracoesCadastro";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { NutricaoLote } from "../nutricao/NutricaoLote";
+import { AgendaSanitaria } from "../sanidade/AgendaSanitaria";
 import { HistoricoSanitario } from "../sanidade/HistoricoSanitario";
 import { linkFichaAnimal } from "../lib/navegacao";
 
@@ -156,10 +159,10 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
 
   const COLUNAS_ANIMAIS: ColunaTabela<AnimalResumo>[] = [
     ...(podeLancar ? [{ chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item: AnimalResumo) => <label className="flex items-center" onClick={(e: React.MouseEvent) => e.stopPropagation()}><input type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> }] as ColunaTabela<AnimalResumo>[] : []),
-    { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
-    { chave: "categoria", titulo: "Categoria / perfil", larguraMinima: 150, celula: (item) => <><CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /><div className="mt-1 text-xs text-ink-3">{rotuloSexo(item.sexo)} · {formatarIdade(item.idadeMeses)}</div></> },
+    { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> },
+    { chave: "categoria", titulo: "Categoria / perfil", larguraMinima: 150, celula: (item) => <><CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /><div className="mt-1 text-sm text-ink-3">{rotuloSexo(item.sexo)} · {formatarIdade(item.idadeMeses)}</div></> },
     { chave: "papel", titulo: "Finalidade/Papel", larguraMinima: 140, celula: (item) => <>{rotuloAptidao(item.aptidao)}{item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? ` · ${rotuloPapelReprodutivo(item.papelReprodutivo)}` : ""}</> },
-    { chave: "peso", titulo: "Peso / GMD", larguraMinima: 160, celula: (item) => <>{item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "Sem pesagem"}<div className="mt-1 text-xs text-ink-3">GMD {formatarGmd(item.gmdRecente)}</div></> },
+    { chave: "peso", titulo: "Peso / GMD", larguraMinima: 160, celula: (item) => <>{item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-sm text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "Sem pesagem"}<div className="mt-1 text-sm text-ink-3">GMD {formatarGmd(item.gmdRecente)}</div></> },
     { chave: "noLote", titulo: "No lote desde", larguraMinima: 130, celula: (item) => formatarDataBR(item.noLocalDesde) },
     ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", alinhamento: "direita" as const, larguraMinima: 96, acoes: true, celula: (item: AnimalResumo) => <div className="flex justify-end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink" aria-label={`Movimentar ${item.brinco}`} title="Movimentar" onClick={() => setMovimentando({ animais: [item], usarLoteAtual: true })}><ArrowRightLeft size={16} /></button>
@@ -167,7 +170,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
   ];
 
   const COLUNAS_BAIXADOS: ColunaTabela<AnimalResumo>[] = [
-    { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "brinco", titulo: "Brinco", larguraMinima: 140, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> },
     { chave: "baixa", titulo: "Baixa", larguraMinima: 170, celula: (item) => item.baixa ? <>{rotuloTipoBaixa(item.baixa.tipo)} <span className="text-ink-3">· {formatarDataBR(item.baixa.data)}</span></> : "—" },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
   ];
@@ -217,7 +220,8 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
         <Metric label="GMD do período" valor={formatarGmd(resumo.gmd.medio)} detalhe={`${resumo.gmd.comGmd} de ${resumo.ativos} animais com pesagem suficiente`} icon={TrendingUp} />
         <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} icon={Calendar} />
       </div>
-
+      <div className="mt-4 grid gap-4 xl:grid-cols-2"><Panel className="p-5"><h2 className="h3 mb-3">Composição do lote</h2><Composicao resumo={resumo} /></Panel><ResumoPesagensLote resumo={resumo} /></div>
+      <Panel className="mt-4 overflow-hidden"><div className="consulta-visual-barra"><h2 className="h3">Animais do lote</h2><Button secondary onClick={() => document.getElementById("lote-aba-animais")?.click()}>Ver todos</Button></div>{animais.length ? <TabelaFinanceira rotulo="Prévia dos animais do lote" itens={animais.slice(0, 3)} colunas={COLUNAS_ANIMAIS.filter(c => !["selecionar", "acoes"].includes(c.chave))} chaveDe={a => a.id} onAbrir={a => navegarPara(linkFichaAnimal(a.id))} /> : <p className="p-5 text-sm">Nenhum animal disponível nesta consulta.</p>}</Panel>
     </>}
     </div>
 
@@ -226,7 +230,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
     <div id="lote-painel-animais" role="tabpanel" aria-labelledby="lote-aba-animais" hidden={secaoAtiva !== "animais"}>
     <Panel className="mt-6 overflow-hidden">
       <span id="lote-animais" />
-      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center justify-end gap-3 border-b border-border p-4 text-xs">
+      {podeLancar && animais.length > 0 && <div className="flex flex-wrap items-center justify-end gap-3 border-b border-border p-4 text-sm">
         <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span>
           <Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>
@@ -272,7 +276,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
     </div>
 
     <div id="lote-painel-sanidade" role="tabpanel" aria-labelledby="lote-aba-sanidade" hidden={secaoAtiva !== "sanidade"}>
-    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /></div>
+    <div id="lote-sanidade" style={{ scrollMarginTop: 120 }}><HistoricoSanitario loteId={lote.id} /><AgendaSanitaria loteId={lote.id} /></div>
     </div>
     <div id="lote-painel-nutricao" role="tabpanel" aria-labelledby="lote-aba-nutricao" hidden={secaoAtiva !== "nutricao"}>
     <div id="lote-nutricao" style={{ scrollMarginTop: 120 }}><NutricaoLote loteId={lote.id} propriedadeId={lote.propriedadeId} podeLancar={podeLancar && lote.ativo} /></div>

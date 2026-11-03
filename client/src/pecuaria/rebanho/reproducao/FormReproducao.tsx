@@ -1,3 +1,7 @@
+import { Button } from "../../../components/ui/button";
+import { DatePicker } from "../../../components/DatePicker";
+import { Input } from "../../../components/ui/input";
+import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { getUsuario } from "../../../lib/auth";
 import { podeAcessarArea } from "../../../estoque/navegacao";
@@ -7,7 +11,7 @@ import { CamposResultadoExame, type ObservacaoExame } from "../sanidade/CamposEx
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { AlertasSanitarios } from "./AlertasSanitarios";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import {
   CampoFormulario,
   classeInput,
@@ -42,7 +46,10 @@ import {
   reqV4,
   type TentativaInput,
   type PartoInput,
+  type SituacaoInicialInput,
 } from "./api";
+
+import "./registro-reprodutivo.css";
 
 export type AcaoReprodutiva =
   | "tentativa"
@@ -102,6 +109,7 @@ export function FormReproducao({
   const [touros, setTouros] = useState<AnimalResumo[]>([]);
   const [genitores, setGenitores] = useState<GenitorDTO[]>([]);
   const [lotes, setLotes] = useState<Lote[]>([]);
+  const [catalogosCarregando, setCatalogosCarregando] = useState(true);
   const [servicos, setServicos] = useState<ServicoSanitario[]>([]);
   const [tipo, setTipo] = useState<string>(tentativaInicial?.tipo ?? "IA");
   const [origem, setOrigem] = useState("DOCUMENTADA");
@@ -140,11 +148,13 @@ export function FormReproducao({
   const [previsao, setPrevisao] = useState("");
   useEffect(() => setCienciaSanitaria(false), [animalId, data, tipo, conduta]);
   const [dadosParto, setDadosParto] = useState(dadosPartoVazios);
+  const [destinoCriaPendente, setDestinoCriaPendente] = useState(false);
   const [crias, setCrias] = useState<CriaInput[]>([
     { viva: true, sexo: "F", aptidao: "LEITE" },
   ]);
   const [lactacao, setLactacao] = useState(false);
-  const [situacao, setSituacao] = useState("VAZIA");
+  const [situacao, setSituacao] = useState<SituacaoInicialInput["situacao"]>("VAZIA");
+  const [classeReprodutiva, setClasseReprodutiva] = useState("");
   const [aptaDesde, setAptaDesde] = useState("");
   const [restricaoAte, setRestricaoAte] = useState("");
   const [acoesRestritas, setAcoesRestritas] = useState([
@@ -160,13 +170,16 @@ export function FormReproducao({
   const gestacaoDoFato = gestacoesClinicas.find(g => g.animalId === animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= data) && (!g.encerradaEm || (acao === "avaliacao" && resultado === "NEGATIVO" ? g.encerradaEm.slice(0,10) > data : g.encerradaEm.slice(0,10) >= data)));
   const negativoBloqueado =
     acao === "avaliacao" && resultado === "NEGATIVO" && !!gestacaoDoFato;
+  const exigeEvidenciaClasse = acao === "situacao" && !!classeReprodutiva;
   const exigeMotivo =
+    exigeEvidenciaClasse ||
     acao === "restricao" ||
     (acao === "tentativa" && origem === "DOCUMENTADA") ||
     conduta === "DESCARTE" ||
     (acao === "avaliacao" && resultado === "NEGATIVO" && !!gestacaoDoFato);
   useEffect(() => {
     let ativo = true;
+    setCatalogosCarregando(true); setLotes([]);
     Promise.all([
       listarMaterialGenetico({}, propriedadeId ?? undefined),
       listarGenitores({ sexo: "M" }, propriedadeId ?? undefined),
@@ -185,7 +198,7 @@ export function FormReproducao({
       })
       .catch((e) => {
         if (ativo) setErro(e instanceof Error ? e.message : String(e));
-      });
+      }).finally(() => {if (ativo) setCatalogosCarregando(false);});
     return () => {
       ativo = false;
     };
@@ -216,8 +229,8 @@ export function FormReproducao({
     inputType = "text",
   ) => (
     <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required}>
-      {(p) => (
-        <input
+      {(p) => inputType === "date" ? <DatePicker {...p} value={valor} onChange={setter} required={required}/> : (
+        <Input
           {...p}
           className={classeInput}
           value={valor}
@@ -236,23 +249,25 @@ export function FormReproducao({
     setter: (s: string) => void,
     opcoes: [string, string][],
     required = true,
+    rotuloVazio = "Selecione",
   ) => (
-    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required}>
+    <CampoFormulario id={`rep-${id}`} rotulo={rotulo} obrigatorio={required} ajuda={id === "servico" ? "A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente." : id === "classe-reprodutiva" ? "A classificação não registra um parto nem libera o animal para reprodução." : undefined}>
       {(p) => (
-        <select
+        <SelectCampo
+          key={id === "tipo-exame" ? `${id}:${opcoes.length}` : id}
           {...p}
           className={classeInput}
           value={valor}
-          onChange={(e) => setter(e.target.value)}
+          onValueChange={valor => setter(valor)}
           required={required}
         >
-          <option value="">Selecione</option>
+          <option value="">{rotuloVazio}</option>
           {opcoes.map(([v, r]) => (
             <option key={v} value={v}>
               {r}
             </option>
           ))}
-        </select>
+        </SelectCampo>
       )}
     </CampoFormulario>
   );
@@ -268,15 +283,16 @@ export function FormReproducao({
       return;
     }
     if (exigeMotivo && motivo.trim().length < 5) {
-      setErro("Informe um motivo com pelo menos 5 caracteres.");
+      setErro(exigeEvidenciaClasse ? "Descreva a evidência da classe reprodutiva com pelo menos 5 caracteres." : "Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
     if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
+    if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); return; }
     if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); return; } }
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, aptaDesde, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -337,9 +353,10 @@ export function FormReproducao({
         await reqV4("/reproducao/situacoes-iniciais", {
           ...base,
           situacao,
+          ...(classeReprodutiva === "NOVILHA" || classeReprodutiva === "VACA" ? { classeReprodutiva } : {}),
           observacao: motivo || undefined,
           aptaDesde: aptaDesde || undefined,
-        }, "POST", propriedadeId);
+        } satisfies SituacaoInicialInput, "POST", propriedadeId);
       if (acao === "restricao")
         await reqV4("/reproducao/restricoes", {
           ...base,
@@ -363,7 +380,7 @@ export function FormReproducao({
       bloqueado={ocupado}
       rodape={
         <>
-          <Button secondary disabled={ocupado} onClick={onFechar}>
+          <Button variant="outline" disabled={ocupado} onClick={onFechar}>
             Cancelar
           </Button>
           <Button
@@ -378,7 +395,7 @@ export function FormReproducao({
     >
       <form
         id="form-reproducao"
-        className="grid gap-4"
+        className="repro-registro"
         onSubmit={(e) => {
           e.preventDefault();
           void salvar();
@@ -386,6 +403,7 @@ export function FormReproducao({
       >
         {conteudoExtra}
         <ErrorBox erro={erro} />
+        <section className="repro-registro-identidade" aria-label="Animal e data do fato">
         {seletor(
           "animal",
           "Animal",
@@ -397,6 +415,8 @@ export function FormReproducao({
           ]),
         )}
         {campo("data", "Data do fato", data, setData, true, "date")}
+        </section>
+        <section className="repro-registro-dados" aria-labelledby="repro-dados-titulo"><h2 id="repro-dados-titulo">{{tentativa:"Procedimento e material",avaliacao:"Resultado e acompanhamento",parto:"Parto e crias",situacao:"Referências da situação inicial",restricao:"Alcance da restrição"}[acao]}</h2><div className="repro-registro-campos">
         {acao === "tentativa" && (
           <>
             {seletor(
@@ -532,10 +552,10 @@ export function FormReproducao({
                   `#${s.numero} ${s.descricao ?? "Serviço"}`,
                 ]),
               )}
-            <p className="text-xs text-ink-3">A contratação do procedimento independe da origem do material. Estoque e Serviço podem compor a mesma tentativa. Sem parcela atribuída, o custo do Serviço permanece pendente.</p>
-            {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)">
-              {p => <><input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
-                <small>Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.</small></>}
+
+            {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)" ajuda="Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.">
+              {p => <><Input {...p} className={classeInput} type="number" min="0" step="0.01" value={valorServico} onChange={e => setValorServico(e.target.value)} />
+                </>}
             </CampoFormulario>}
             {campo("responsavel", "Responsável", responsavel, setResponsavel)}
           </>
@@ -617,13 +637,18 @@ export function FormReproducao({
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && <PartoCampos valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
+        {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
-          seletor("situacao", "Situação inicial", situacao, setSituacao, [
+          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],
             ["DESCONHECIDA", "Desconhecida"],
             ["APTA", "Apta"],
           ])}
+        {acao === "situacao" &&
+          seletor("classe-reprodutiva", "Classe na data do registro", classeReprodutiva, setClasseReprodutiva, [
+            ["NOVILHA", "Novilha — nunca pariu, conforme evidência"],
+            ["VACA", "Vaca — já pariu, conforme evidência"],
+          ], false, "Não determinada")}
         {acao === "situacao" &&
           situacao === "APTA" &&
           campo(
@@ -674,7 +699,8 @@ export function FormReproducao({
             ["PERMANENTE", "Permanente"],
             ["DESCARTE", "Descarte reprodutivo"],
           ])}
-        {acao !== "parto" && campo("motivo", "Motivo / observação", motivo, setMotivo, exigeMotivo)}
+        </div></section>
+        {acao !== "parto" && campo("motivo", acao === "situacao" ? "Evidência ou referência" : "Motivo / observação", motivo, setMotivo, exigeMotivo)}
       </form>
     </FormShellReproducao>
   );

@@ -37,11 +37,13 @@ export function rotaFechamento(id: string, loteId?: string, acao?: "estorno") {
   return `/pecuaria/nutricao?${params}`;
 }
 
-export function rotaOperacaoNutricional(acao: "atribuir" | "corrigir" | "consumo", loteId?: string, vigenciaId?: string) {
+export function rotaOperacaoNutricional(acao: "atribuir" | "corrigir" | "consumo", loteId?: string, vigenciaId?: string, dietaId?: string) {
   const params = new URLSearchParams(window.location.search);
   preservarOrigemFicha(params);
   params.set("acao", acao); params.delete("fechamentoId"); params.delete("vigenciaId");
   if (loteId) params.set("loteId", loteId);
+  params.delete("dietaId");
+  if (dietaId) { params.set("dietaId", dietaId); if (!loteId) params.delete("loteId"); }
   if (vigenciaId) params.set("vigenciaId", vigenciaId);
   return `/pecuaria/nutricao?${params}`;
 }
@@ -54,6 +56,6 @@ export function rotaRetornoNutricional() {
   const retorno = retornoFichaNutricional();
   if (retorno) return retorno;
   if (params.get("fechamentoId")) params.set("aba", "fechamentos");
-  ["acao", "fechamentoId", "vigenciaId", "retorno"].forEach((k) => params.delete(k));
+  ["acao", "fechamentoId", "vigenciaId", "dietaId", "retorno"].forEach((k) => params.delete(k));
   return `/pecuaria/nutricao${params.size ? `?${params}` : ""}`;
 }

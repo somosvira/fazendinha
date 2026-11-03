@@ -1,0 +1,12 @@
+import{beforeEach,expect,it,vi}from'vitest';
+import{consultarFonte}from'./fontes';
+import{reqV4}from'../rebanho/reproducao/api';
+import{consultarParcelas}from'../rebanho/leite/parcelas-api';
+import{consultarIndicadores}from'../rebanho/reproducao/indicadores-api';
+vi.mock('../rebanho/reproducao/indicadores-api',()=>({consultarIndicadores:vi.fn()}));
+vi.mock('../rebanho/reproducao/api',()=>({reqV4:vi.fn(),obterReproducao:vi.fn()}));vi.mock('../rebanho/leite/parcelas-api',()=>({consultarParcelas:vi.fn()}));
+beforeEach(()=>vi.clearAllMocks());
+it('fontes complementares recusam resposta de outro sítio antes de adaptar dados',async()=>{vi.mocked(consultarIndicadores).mockResolvedValue({filtros:{propriedadeId:99}} as Awaited<ReturnType<typeof consultarIndicadores>>);await expect(consultarFonte('iep',1,'2026-01-01','2026-10-27')).rejects.toThrow('sítio')});
+it('não aceita snapshot de outro sítio',async()=>{vi.mocked(reqV4).mockResolvedValue({propriedadeId:2,partos:[]});await expect(consultarFonte('partos',1,'2026-10-01','2026-10-27')).rejects.toThrow('sítio')});
+it('conserva paginação e desconhecido nas ordenhas',async()=>{vi.mocked(consultarParcelas).mockResolvedValue({propriedadeId:1,pagina:2,porPagina:12,total:30,itens:[{id:'x',nome:'Noite',dataOperacional:'2026-10-26',litros:null,situacao:'SEM_AFERICAO',fonteProducao:'GERAL',porNatureza:[],parcelas:[],diaId:'d',posicaoId:'p',ordem:3}],periodo:{inicio:'2026-10-01',fim:'2026-10-27'},resumo:{totalLitros:0,sessoes:30,semAfericao:1,pendentesEstoque:0,porNatureza:[]}});const r=await consultarFonte('ordenhas',1,'2026-10-01','2026-10-27',2);expect(r).toMatchObject({paginado:true,total:30,pagina:2});expect(r.linhas[0]).toMatchObject({total:null,comercial:null,situacao:'Sem aferição'})});
+it('envia filtros tipados, população e página para a consulta completa no servidor',async()=>{vi.mocked(reqV4).mockResolvedValue({propriedadeId:1,linhas:[],total:0,pagina:2,porPagina:12,paginado:true,consultadoEm:''});const filtros=[{campo:'tentativas',operador:'maiorIgual' as const,valor:2}];await consultarFonte('concepcoes',1,'2026-01-01','2026-10-27',2,{filtros,tiposTentativa:['IA'],papeis:['RECEPTORA']});const chamada=vi.mocked(reqV4).mock.calls[0];const params=new URLSearchParams(chamada[0].split('?')[1]);expect(JSON.parse(params.get('filtros')!)).toEqual(filtros);expect(params.get('tiposTentativa')).toBe('IA');expect(params.get('papeis')).toBe('RECEPTORA');expect(params.get('pagina')).toBe('2');expect(chamada[3]).toBe(1)});

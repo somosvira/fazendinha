@@ -46,3 +46,22 @@ describe("produtoSchema", () => {
     expect(patchProdutoSchema.parse({ perfilNutricional: { materiaSecaPercentual: valor } }).perfilNutricional?.materiaSecaPercentual).toBe(valor);
   });
 });
+
+
+describe("carência explícita no novo produto sanitário", () => {
+  const base = { nome: "Produto sanitário", categoriaId: uid(3), usoSanitario: true };
+  it.each([undefined, { carenciaLeiteHoras: null, carenciaCarneHoras: 24 }, { carenciaLeiteHoras: 0, carenciaCarneHoras: null }])("recusa carência incompleta na criação: %j", (perfilSanitario) => {
+    const resultado = produtoSchema.safeParse({ ...base, perfilSanitario });
+    expect(resultado.success).toBe(false);
+    expect(resultado.error?.issues.some(i => i.path[0] === "perfilSanitario")).toBe(true);
+  });
+  it("aceita zero explícito e prazo positivo em horas", () => {
+    expect(produtoSchema.parse({ ...base, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } }).perfilSanitario).toMatchObject({ carenciaLeiteHoras: 0, carenciaCarneHoras: 48 });
+  });
+  it.each([-1, 1.5, "", "0"])("recusa prazo inválido %j", (carenciaLeiteHoras) => {
+    expect(produtoSchema.safeParse({ ...base, perfilSanitario: { carenciaLeiteHoras, carenciaCarneHoras: 0 } }).success).toBe(false);
+  });
+  it("mantém null disponível no patch para conferência com o registro persistido", () => {
+    expect(patchProdutoSchema.parse({ perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0 } }).perfilSanitario?.carenciaLeiteHoras).toBeNull();
+  });
+});

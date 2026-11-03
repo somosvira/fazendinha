@@ -1,3 +1,4 @@
+import { consultarBezerreiro } from "../bezerreiro/api";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +7,8 @@ import { NovoAnimal } from "./NovoAnimal";
 import { cadastrarAnimal, listarCategorias, listarGenitores, obterCatalogos, preverComposicaoAnimal } from "../api";
 import type { Catalogos } from "../types";
 import { navegarPara } from "../../../router";
+
+vi.mock("../bezerreiro/api",()=>({consultarBezerreiro:vi.fn()}));
 
 const toastMocks = vi.hoisted(() => ({ warn: vi.fn() }));
 vi.mock("../../../components/Toast", () => ({ useToast: () => toastMocks }));
@@ -36,6 +39,7 @@ const catalogos: Catalogos = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(consultarBezerreiro).mockResolvedValue({perfis:[]});
   Element.prototype.scrollIntoView = vi.fn();
   vi.mocked(obterCatalogos).mockResolvedValue(catalogos);
   vi.mocked(listarCategorias).mockResolvedValue({ itens: [], semCategoria: 0 });
@@ -171,3 +175,19 @@ describe("NovoAnimal", () => {
     expect(navegarPara).toHaveBeenCalledWith("/pecuaria/rebanho/animais/animal-aviso?retorno=%2Fpecuaria%2Frebanho%2Fanimais");
   });
 });
+
+ describe("sugestão de Bezerreiro no cadastro", () => {
+  const perfil={id:"p",ativo:true,loteId:"lote-1",lote:{id:"lote-1",nome:"Lote A"}};
+  const categoria={id:"cat-bezerra",nome:"Bezerra",sexo:"F" as const,automatica:true,ativo:true,ordem:1,idadeMinMeses:null,idadeMaxMeses:12,partos:"SEM" as const,ideagriId:null,padrao:false,regra:"menos de 12 meses",animaisAtivos:0,manuaisAbertas:0};
+  it("sugere somente para categoria Bezerra e preserva Sem lote após escolha", async()=>{
+   vi.mocked(listarCategorias).mockResolvedValue({itens:[categoria],semCategoria:0});vi.mocked(consultarBezerreiro).mockResolvedValue({perfis:[perfil]});await montar();
+   await alterarControle(screen.getByLabelText("Sítio"),{target:{value:"1"}});
+   await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalled()); await waitFor(()=>expect(screen.getByLabelText("Lote").textContent).toContain("Lote A"));
+   await alterarControle(screen.getByLabelText("Lote"),{target:{value:"__sem_lote__"}});
+   fireEvent.change(screen.getByLabelText("Nome"),{target:{value:"Luz"}});expect(screen.getByLabelText("Lote").textContent).toContain("Sem lote");
+  });
+  it("não sugere para categoria adulta apesar de perfil único",async()=>{
+   vi.mocked(listarCategorias).mockResolvedValue({itens:[{...categoria,nome:"Vaca",idadeMaxMeses:null}],semCategoria:0});vi.mocked(consultarBezerreiro).mockResolvedValue({perfis:[perfil]});await montar();await alterarControle(screen.getByLabelText("Sítio"),{target:{value:"1"}});
+   await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalled());expect(screen.getByLabelText("Lote").textContent).toContain("Sem lote");
+  });
+ });

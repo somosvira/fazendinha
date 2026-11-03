@@ -1,3 +1,7 @@
+import { permiteAvaliacaoAptidao } from "./elegibilidade.calc.js";
+import { obterElegibilidadesNaDataTx } from "./elegibilidade.js";
+import { registrarToqueAptidaoTx } from "./toque-aptidao.js";
+import { registrarToqueAptidaoSchema } from "./toque-aptidao.schemas.js";
 import { prepararContextoInicioIatfTx, confirmarInicioIatfVisitaTx } from "./inicio-iatf-visita.js";
 import { prepararProtocolosVisitaTx, executarProtocolosVisitaTx, type LinhaProtocoloVisita } from "./visitas-protocolos.js";
 import { paginaExecucao } from "../protocolos/execucao.calc.js";
@@ -142,6 +146,7 @@ export async function adicionarAtividadeTx(
       atividadeId: { in: idsAtividades.map(a => a.id) }, tarefaId: { in: tarefas.map(t => t.id) },
     }, select: { tarefaId: true } })).flatMap(p => p.tarefaId ? [p.tarefaId] : []));
     const cache = await carregarContextosVisitaTx(tx, input.participantes.map(p => p.animalId), v.data);
+    const aptidoes = input.contexto.finalidade === "APTIDAO_REPRODUTIVA" ? await obterElegibilidadesNaDataTx(tx, input.participantes.map(p => p.animalId), input.propriedadeId, v.data) : null;
     for (const [i, item] of input.participantes.entries()) {
       const animal = cache.animais.find(a => a.id === item.animalId);
       if (!animal) erro("Animal não encontrado", "participantes");
@@ -168,6 +173,16 @@ export async function adicionarAtividadeTx(
       if (tarefaComumId && tarefasJaIncluidas.has(tarefaComumId)) erro("Esta tarefa já está incluída na visita", "participantes");
       if (tarefaComumId) tarefasJaIncluidas.add(tarefaComumId);
       const snapshot = await contextoAnimalVisitaTx(tx, animal.id, input.propriedadeId, v.data, cache);
+      const aptidao = aptidoes?.get(animal.id);
+      if (aptidoes) {
+        const necessidadeId = aptidao?.necessidadeAptidao?.necessidadeId ?? `APTIDAO:${animal.id}:${aptidao?.ciclo?.chaveCiclo ?? "INICIAL"}`;
+        const informada = (input.contexto.necessidadesPorAnimal as Record<string, unknown> | undefined)?.[animal.id];
+        if (input.tipo !== "EXAME_SANITARIO" || animal.sexo !== "F" || !aptidao || !permiteAvaliacaoAptidao(aptidao) || informada !== necessidadeId) erro("A necessidade de aptidão mudou; refaça a prévia", "contexto");
+        const agendada = await tx.participanteVisita.findFirst({ where: { animalId: animal.id, status: "PENDENTE", snapshot: { path: ["necessidadeAptidaoId"], equals: necessidadeId },
+          AtividadeVisita: { VisitaVeterinaria: { propriedadeId: input.propriedadeId, encerradaEm: null } } } });
+        if (agendada) erro("A avaliação de aptidão já está agendada em visita aberta; use o atendimento existente", "animalId");
+        Object.assign(snapshot, { necessidadeAptidaoId: necessidadeId, aptidaoClinica: aptidao?.aptidaoClinica });
+      }
       const retornoOrigem=(input.contexto.retornosPorAnimal as Record<string,unknown>|undefined)?.[animal.id] as {avaliacaoId:string;tentativaId:string|null;gestacaoId:string|null;finalidade:string;tipoExameId:string|null}|undefined;
       if(retornoOrigem){
         const origem=await tx.avaliacaoReprodutiva.findFirst({where:{id:retornoOrigem.avaliacaoId,animalId:animal.id,status:"VALIDO",data:{lte:v.data}}});
@@ -198,6 +213,7 @@ export async function adicionarAtividadeTx(
       dadosParticipantes.push({
         atividadeId: atividade.id, animalId: animal.id, ordem: i + 1,
         tarefaId: tarefaComumId, snapshot: json(snapshot),
+        ...(aptidoes ? { rascunho: json({ tipoExameId: input.contexto.tipoExameId, responsavel: v.responsavel ?? "" }) } : {}),
         ...(!demanda&&retornoOrigem?{rascunho:json({...(retornoOrigem.tentativaId?{tentativaId:retornoOrigem.tentativaId}:{}),...(retornoOrigem.gestacaoId?{gestacaoId:retornoOrigem.gestacaoId}:{}),...(["DIAGNOSTICO","RECONFIRMACAO","SEXAGEM"].includes(retornoOrigem.finalidade)?{finalidade:retornoOrigem.finalidade}:{}),...(retornoOrigem.tipoExameId?{tipoExameId:retornoOrigem.tipoExameId}:{})})}:{}),
         ...(demanda?{rascunho:json({demandaAcompanhamentoId:demanda.id,finalidade:demanda.finalidade,...(demanda.tentativaId?{tentativaId:demanda.tentativaId}:{}),...(demanda.gestacaoId?{gestacaoId:demanda.gestacaoId}:{}),...((demanda.regraSnapshot as Record<string,unknown>).tipoExameId?{tipoExameId:(demanda.regraSnapshot as Record<string,unknown>).tipoExameId}:{})})}:{}),
       });
@@ -544,16 +560,15 @@ export async function confirmarAtividadeTx(
                   observacao: z.string().trim().max(1000).nullish(),
                 });
               const { chave: _c, ...camposExame } = dados;
-              fato = await registrarExameTx(
-                tx,
-                exameSchema.parse({
-                  ...camposExame,
-                  ...(p.tarefaId
-                    ? { tarefaId: p.tarefaId }
-                    : {}),
-                }),
-                usuarioId,
-              );
+              const aptidaoClinica = (atividade.contexto as Record<string, unknown>).finalidade === "APTIDAO_REPRODUTIVA";
+              const { retornoEm, ...dadosExame } = camposExame;
+              const exameInput = exameSchema.parse({ ...(aptidaoClinica ? dadosExame : camposExame), ...(p.tarefaId ? { tarefaId: p.tarefaId } : {}) });
+              if (aptidaoClinica) {
+                const toque = registrarToqueAptidaoSchema.parse({ chave: input.chave, animalId: p.animalId, propriedadeId: v.propriedadeId,
+                  data: exameInput.data, resultado: exameInput.resultadoOpcao, responsavel: exameInput.responsavel, retornoEm,
+                  observacao: exameInput.observacao, ...(p.tarefaId ? { tarefaId: p.tarefaId } : {}) });
+                fato = await registrarToqueAptidaoTx(tx, toque, usuarioId);
+              } else fato = await registrarExameTx(tx, exameInput, usuarioId);
               fatoTipo = "ExameAnimal";
             } else if (atividade.tipo === "INICIAR_SANITARIO") {
               const contexto = atividade.contexto as { protocoloId?: string };

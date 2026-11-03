@@ -384,15 +384,20 @@ describe("Cadastros do rebanho — motivos de baixa", () => {
 describe("Cadastros do rebanho — histórico de alterações", () => {
   it("busca o histórico da entidade certa em cada sub-aba", async () => {
     await montarCategorias();
+    fireEvent.click(screen.getByRole("button", { name: "Histórico de alterações" }));
     await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("CategoriaAnimal", { entidadeId: undefined, page: 1, pageSize: 10 }));
 
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     fireEvent.click(screen.getByRole("button", { name: "Raças" }));
     await screen.findAllByText("Holandesa");
+    fireEvent.click(screen.getByRole("button", { name: "Histórico de alterações" }));
     await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("Raca", { entidadeId: undefined, page: 1, pageSize: 10 }));
 
     vi.mocked(listarMotivosBaixa).mockResolvedValue(motivosMock);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     fireEvent.click(screen.getByRole("button", { name: "Motivos de baixa" }));
     await screen.findAllByText("Morte por doença");
+    fireEvent.click(screen.getByRole("button", { name: "Histórico de alterações" }));
     await waitFor(() => expect(listarAuditoriaCadastro).toHaveBeenCalledWith("MotivoBaixa", { entidadeId: undefined, page: 1, pageSize: 10 }));
   });
 
@@ -410,6 +415,7 @@ describe("Cadastros do rebanho — histórico de alterações", () => {
       total: 2,
     });
     await montarCategorias();
+    fireEvent.click(screen.getByRole("button", { name: "Histórico de alterações" }));
 
     const entrada = await screen.findByRole("button", { name: /Categoria "Vaca" editada/ });
     expect(within(entrada).getByText(/Ana/)).toBeTruthy();
@@ -435,6 +441,7 @@ describe("Cadastros do rebanho — histórico de alterações", () => {
 
   it("sem alterações registradas mostra o estado vazio", async () => {
     await montarCategorias();
+    fireEvent.click(screen.getByRole("button", { name: "Histórico de alterações" }));
     expect(await screen.findByText("Nenhuma alteração registrada.")).toBeTruthy();
   });
 });

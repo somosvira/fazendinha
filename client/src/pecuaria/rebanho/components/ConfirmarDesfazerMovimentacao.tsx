@@ -79,7 +79,7 @@ export function ConfirmarDesfazerMovimentacao({ movimentacaoId, detalhe, onConfi
         : mov && <div className="space-y-3">
           <p>{fraseResumo(mov, voltam.length)}</p>
           {voltam.length > 0 && <div className="overflow-x-auto rounded-lg border border-red-200">
-            <table className="w-full text-left text-xs consulta-tabela">
+            <table className="w-full text-left text-sm consulta-tabela">
               <thead className="text-red-900"><tr><th className="p-2 font-semibold">Brinco</th><th className="p-2 font-semibold">Nome</th><th className="p-2 font-semibold">Volta para</th><th className="p-2 font-semibold">Categoria</th></tr></thead>
               <tbody className="divide-y divide-red-200">
                 {voltam.map((a) => <tr key={a.animalId}>
@@ -91,8 +91,8 @@ export function ConfirmarDesfazerMovimentacao({ movimentacaoId, detalhe, onConfi
               </tbody>
             </table>
           </div>}
-          {jaDesfeitos.length > 0 && <p className="text-xs">Já desfeitos (não mudam): {jaDesfeitos.map((a) => a.brinco).join(", ")}</p>}
-          <p className="text-xs">O registro da movimentação continua no histórico, marcado como desfeito.</p>
+          {jaDesfeitos.length > 0 && <p className="text-sm">Já desfeitos (não mudam): {jaDesfeitos.map((a) => a.brinco).join(", ")}</p>}
+          <p className="text-sm">O registro da movimentação continua no histórico, marcado como desfeito.</p>
         </div>}
     labelManter="Manter"
     labelConfirmar="Desfazer movimentação"

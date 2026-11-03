@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
   return { tx, prisma };
 });
 vi.mock("../../../db.js", () => ({ prisma: mocks.prisma }));
+import { auditoriaAnimalQuerySchema } from "./schemas.js";
 import { consultarAuditoriaAnimal } from "./auditoria-animal.js";
 import { buscarAuditoriaAnimal } from "./animais.js";
 
@@ -37,6 +38,32 @@ beforeEach(() => {
 });
 
 describe("auditoria individual: filtros, cobertura e projeção", () => {
+  it("valida o par entidade/id e recusa identificador inválido", () => {
+    expect(auditoriaAnimalQuerySchema.safeParse({ entidade: "Pesagem" }).success).toBe(false);
+    expect(auditoriaAnimalQuerySchema.safeParse({ entidadeId: "00000000-0000-4000-8000-000000000001" }).success).toBe(false);
+    expect(auditoriaAnimalQuerySchema.safeParse({ entidade: "Pesagem", entidadeId: "outro" }).success).toBe(false);
+    expect(auditoriaAnimalQuerySchema.safeParse({ entidade: "Pesagem", entidadeId: "00000000-0000-4000-8000-000000000001" }).success).toBe(true);
+  });
+  it.each(["DestinoAnimal", "FinalidadeAnimal"])("filtra %s pela identidade e conserva o vínculo autorizado com animal", async entidade => {
+    await consultarAuditoriaAnimal("animal-1", { page: 3, pageSize: 20, entidade, entidadeId: "finalidade-1" }, false);
+    const pagina = mocks.tx.auditoriaPecuaria.findMany.mock.calls.find(([q]) => q.include)![0];
+    expect(pagina.where.AND[0].OR).toContainEqual({ animalId: "animal-1" });
+    expect(pagina.where.AND[1]).toEqual({ entidade: { in: ["FinalidadeAnimal", "DestinoAnimal"] }, entidadeId: "finalidade-1" });
+    expect(mocks.tx.auditoriaPecuaria.count).toHaveBeenCalledWith({ where: pagina.where });
+    expect(pagina).toMatchObject({ skip: 40, take: 20 });
+  });
+  it("projeção original independe da página e não retorna valores ou campos arbitrários", async () => {
+    mocks.tx.auditoriaPecuaria.findMany.mockImplementation(async q => q.include ? [entrada] : q.select?.antes ? [{
+      entidade: "FinalidadeAnimal", entidadeId: "finalidade-1", antes: { aptidao: "CORTE", segredo: "SEGREDO", custo: "99999" }, depois: { aptidao: "LEITE", usuarioId: 88 },
+    }] : opcoes);
+    const r = await consultarAuditoriaAnimal("animal-1", { page: 5, pageSize: 20, eixo: "SANIDADE" }, false);
+    expect(r.transicoes).toEqual([{ entidade: "FinalidadeAnimal", entidadeId: "finalidade-1", antes: { aptidao: "CORTE" }, depois: { aptidao: "LEITE" } }]);
+    const projecao = mocks.tx.auditoriaPecuaria.findMany.mock.calls.find(([q]) => q.select?.antes)![0];
+    expect(projecao.skip).toBeUndefined(); expect(projecao.take).toBeUndefined();
+    expect(projecao.where.AND[0].OR).toContainEqual({ animalId: "animal-1" });
+    expect(JSON.stringify(r.transicoes)).not.toMatch(/SEGREDO|99999|usuarioId/);
+  });
+
   it.each(["DestinoAnimal", "FinalidadeAnimal"])("conserva leitura e filtros da finalidade registrada como %s", async entidade => {
     mocks.tx.auditoriaPecuaria.findMany.mockImplementation(async q => q.include ? [{
       ...entrada, entidade, acao: "MUDANCA_DESTINO", antes: { aptidao: "LEITE" }, depois: { aptidao: "REPRODUCAO" },

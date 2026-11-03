@@ -1,0 +1,4 @@
+.form-dados-animal :is(input:not([type="checkbox"]),[data-slot="select-trigger"]){height:44px;min-height:44px;font-size:14px;line-height:20px}
+.form-dados-animal [data-slot="select-trigger"]{align-items:center;padding-block:10px}
+.form-dados-animal :is(.grid)>*{min-width:0}
+.form-dados-animal .campo-formulario-rotulo{display:flex;min-height:40px}

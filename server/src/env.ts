@@ -31,12 +31,16 @@ const envSchema = z
     // quando escalar além do piloto. Mínimo 16 chars para evitar brute force trivial.
     SHARED_ACCESS_TOKEN: z.string().min(16).optional(),
 
+    NUTRICAO_MENSAL_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+    NUTRICAO_AUTOMACAO_ENABLED: z.enum(["true", "false"]).default("false").transform(v => v === "true"),
+
     // --- OpenAI (provider único do app) ---
     // Interpretação das perguntas do assistente de consulta. Sem a chave,
     // consultas rápidas e guias seguem reais; pergunta livre fica indisponível.
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().trim().min(1).default("gpt-5-nano"),
     OPENAI_TRANSCRIBE_MODEL: z.string().trim().min(1).default("gpt-4o-mini-transcribe"),
+    OPENAI_SPEECH_MODEL: z.literal("gpt-4o-mini-tts").default("gpt-4o-mini-tts"),
     // Novo chat de leitura. Não reativa o bot/WhatsApp suspensos.
     ASSISTENTE_CONSULTA_ENABLED: z.enum(["true", "false"]).default("true").transform(v => v === "true"),
 

@@ -1,3 +1,8 @@
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import type { ReactNode } from "react";
+import { VacaIcon } from "../../../components/icons/VacaIcon";
+import { CartaoAnimal } from "../components/CartaoAnimal";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -35,6 +40,7 @@ import { Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceir
 import { NavRebanho } from "./NavRebanho";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import "./lista-animais.css";
+import "./rotinas-aprovadas.css";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -43,7 +49,7 @@ const CATEGORIA_SEM = "__sem_categoria__";
 const CATEGORIA_FORCADA = "__so_forcadas__";
 
 /** tipos de baixa oferecidos no filtro — CADASTRO_INDEVIDO é interno do "excluir cadastro" e não aparece aqui */
-const TIPOS_BAIXA_FILTRO: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"];
+const TIPOS_BAIXA_FILTRO: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "NAO_DETERMINADO"];
 
 type OpcaoOrdenacao = { valor: string; ordenar: "brinco" | "nascimento" | "entrada" | "ultimoPeso" | "gmd"; direcao: "asc" | "desc"; rotulo: string };
 const OPCOES_ORDENACAO: OpcaoOrdenacao[] = [
@@ -103,7 +109,14 @@ function pillSituacao(situacao: Situacao) {
   return <Pill tone={situacao === "ATIVO" ? "green" : "neutral"}>{rotuloSituacao(situacao)}</Pill>;
 }
 
+function AjudaCelula({ texto, children }: { texto: string; children: ReactNode }) {
+  return <Popover><PopoverTrigger asChild>
+    <button type="button" className="animal-ajuda-celula h-auto" aria-label={texto} onClick={e => e.stopPropagation()}>{children}</button>
+  </PopoverTrigger><PopoverContent className="w-auto max-w-xs rounded-lg text-sm" aria-label={texto} onClick={e => e.stopPropagation()}>{texto}</PopoverContent></Popover>;
+}
+
 export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, variante = "rebanho" }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean; variante?: "rebanho" | "pesagem" }) {
+  const visual = useVisualizacaoConsulta("visualAnimais");
   const pesagem = variante === "pesagem";
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [mostrarColunasAdicionais, setMostrarColunasAdicionais] = useState(false);
@@ -198,6 +211,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       racaIds: multiplos.racaIds.length ? multiplos.racaIds : undefined,
     };
     listarAnimais({
+      comContexto: !pesagem,
       ...listas,
       busca: busca.trim() || undefined,
       propriedadeId: listas.propriedadeIds ? undefined : propriedadeId ? Number(propriedadeId) : undefined,
@@ -251,6 +265,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   // (o roteamento por aba olha só `window.location.pathname` — ver router.ts)
   useEffect(() => {
     const params = new URLSearchParams();
+    const preferenciaVisual = new URLSearchParams(window.location.search).get("visualAnimais");
+    if (preferenciaVisual === "visual" || preferenciaVisual === "tabela") params.set("visualAnimais", preferenciaVisual);
     if (busca) params.set("busca", busca);
     if (sitioGlobal == null && propriedadeId) params.set("propriedadeId", propriedadeId);
     if (loteId) params.set("loteId", loteId);
@@ -358,8 +374,8 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   ];
   const filtrosColunas = filtrosDasColunas(camposColunas,{iniciar:iniciarFiltros,aplicar:aplicarFiltros,limpar:limparRascunho});
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
-    { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
-    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-xs text-ink-3">{item.nome}</div>}</> },
+    { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="animal-checkbox" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
+    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
     { chave: "sitio", titulo: "Sítio", larguraMinima: 140, celula: (item) => item.propriedade?.nome ?? "—" },
@@ -368,8 +384,24 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       : "—" },
     { chave: "aptidao", titulo: "Finalidade", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
     { chave: "papel", titulo: "Papel", larguraMinima: 110, celula: (item) => item.papelReprodutivoEstado === "CONFLITO" ? <Pill tone="amber">Papel em revisão</Pill> : item.papelReprodutivo && item.papelReprodutivo !== "NENHUM" ? <Pill tone="amber">{rotuloPapelReprodutivo(item.papelReprodutivo)}</Pill> : "—" },
-    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-xs text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
+    { chave: "peso", titulo: "Último peso", larguraMinima: 130, celula: (item) => item.ultimoPeso ? <>{item.ultimoPeso.kg.toLocaleString("pt-BR")} kg<div className="text-sm text-ink-3">{formatarDataBR(item.ultimoPeso.data)}</div></> : "—" },
     { chave: "gmd", titulo: "GMD", larguraMinima: 110, celula: (item) => formatarGmd(item.gmdRecente) },
+    ...(!pesagem ? [
+      { chave: "reproducao", titulo: "Reprodução", larguraMinima: 120, celula: (item: AnimalResumo) => {
+        if (item.sexo === "M") return <AjudaCelula texto="Não se aplica">—</AjudaCelula>;
+        const situacaoReprodutiva = item.contextoCartao?.situacaoReprodutiva;
+        const rotulos: Record<string, string> = { GESTANTE: "Gestante", VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "DG pend." };
+        const rotulo = rotulos[situacaoReprodutiva ?? ""];
+        if (!rotulo) return <AjudaCelula texto="Sem informação">—</AjudaCelula>;
+        return situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO" ? <AjudaCelula texto="Aguardando diagnóstico"><Pill tone="amber">{rotulo}</Pill></AjudaCelula> : <Pill tone={situacaoReprodutiva === "GESTANTE" ? "green" : "neutral"}>{rotulo}</Pill>;
+      } },
+      { chave: "del", titulo: "DEL", larguraMinima: 90, celula: (item: AnimalResumo) => {
+        const produtivo = item.contextoCartao?.produtivo;
+        return item.sexo === "F" && produtivo?.situacaoProdutiva === "LACTANTE" && produtivo.del != null
+          ? <AjudaCelula texto="Dias em lactação">{produtivo.del.toLocaleString("pt-BR")} dias</AjudaCelula>
+          : <AjudaCelula texto={item.sexo === "M" ? "Não se aplica" : produtivo?.situacaoProdutiva === "SECA" ? "Sem lactação vigente" : "Sem informação de lactação vigente"}>—</AjudaCelula>;
+      } },
+    ] : []),
     { chave: "situacao", titulo: "Situação", larguraMinima: 110, celula: (item) => pillSituacao(item.situacao) },
     { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 96, acoes: true, celula: (item) => item.situacao !== "ATIVO" ? null : <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <button type="button" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink disabled:opacity-50" aria-label={`Editar ${item.brinco}`} title="Editar dados" disabled={carregandoEdicaoId === item.id} onClick={() => { void editar(item.id); }}><Pencil size={16} /></button>
@@ -377,7 +409,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     </div> },
   ];
   // sem permissão de lançar: sem seleção em massa e sem ações de linha
-  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "peso", "gmd", "situacao", "acoes"];
+  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "reproducao", "del", "situacao", "acoes"];
   const colunasVisiveis = mostrarColunasAdicionais ? COLUNAS_TODAS : principais.flatMap((chave) => COLUNAS_TODAS.filter((c) => c.chave === chave));
   const exibirSituacao = mostrarColunasAdicionais || situacao !== "ATIVO" || multiplos.situacoes.some(s => s !== "ATIVO") || itens.some(item => item.situacao !== "ATIVO");
   const colunasContexto = colunasVisiveis.filter(c => c.chave !== "situacao" || exibirSituacao);
@@ -385,7 +417,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
 
 
   return <PaginaFinanceira><div className={pesagem ? undefined : "animais-pagina-refinada"}>
-    <PageHeader titulo={pesagem ? "Pesagem e manejo" : "Animais"} descricao={pesagem ? "Registre pesagens e manejos dos animais selecionados." : "Consulte os animais, filtre o efetivo e acompanhe peso e desempenho."} acao={!pesagem && podeLancar ? <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
+    <PageHeader titulo={pesagem ? "Pesagem e manejo" : <span className="rotina-titulo"><span><VacaIcon/></span>Animais</span>} acao={!pesagem && podeLancar ? <Button onClick={onNovoAnimal}><Plus size={16} /> Novo animal</Button> : undefined} />
     {!pesagem && <NavRebanho ativa="animais" comIcones />}
     <ErrorBox erro={erro} />
 
@@ -399,16 +431,17 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
       <div className="flex flex-wrap gap-2 px-4 py-4" aria-label="Filtros selecionados">{(Object.keys(FAMILIAS) as Familia[]).flatMap(f => multiplos[f].map(v => {
         const nomes: Record<Familia,string> = { propriedadeIds:"Sítio",loteIds:"Lote",categoriaIds:"Categoria",aptidoes:"Finalidade",papeisReprodutivos:"Papel",situacoes:"Situação",sexos:"Sexo",origens:"Origem",racaIds:"Raça" };
         const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",REPRODUCAO:"Reprodução",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
-        return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
-      }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-xs text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
-      {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="h-4 w-4 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}</div>
+        return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
+      }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
+      {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página" ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }} checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}</div>
       {podeLancar && itensSelecionaveis.length > 0 && (pesagem || selecionados.size > 0) && <div className="animais-acoes-coletivas flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         {selecionados.size > 0 && <><Button secondary={!pesagem} onClick={() => setPesando(true)}>Pesagem coletiva</Button>{!pesagem && <><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}</>}
-        {pesagem && <label className="flex items-center gap-2 font-medium"><input className="h-5 w-5 cursor-pointer accent-[var(--mast)]" type="checkbox" aria-label="Selecionar todos os animais desta página" checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
+        {pesagem && <label className="flex items-center gap-2 font-medium"><input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página" ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }} checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
+      {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        <TabelaFinanceira ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />
+        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}/>)}</div> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>

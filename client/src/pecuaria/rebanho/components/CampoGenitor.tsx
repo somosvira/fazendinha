@@ -73,7 +73,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
       ]).map((opcao) => <button
         key={opcao.valor} type="button" onClick={() => trocarModo(opcao.valor)}
         aria-pressed={modo === opcao.valor}
-        className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${modo === opcao.valor ? "border-mast bg-mast text-white" : "border-border text-ink-2 hover:bg-surface-2"}`}
+        className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${modo === opcao.valor ? "border-mast bg-mast text-white" : "border-border text-ink-2 hover:bg-surface-2"}`}
       >{opcao.rotulo}</button>)}
     </div>
 
@@ -95,7 +95,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
       {(genitoresExternos ?? []).map((g) => <option key={g.id} value={g.id}>{g.nome}{g.fornecedor ? ` (${g.fornecedor})` : ""}</option>)}
     </SelectCampo>}
 
-    {modo === "NENHUM" && <p className="text-xs text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
+    {modo === "NENHUM" && <p className="text-sm text-ink-3">{sexo === "F" ? `${rotulo} não informada.` : `${rotulo} não informado.`}</p>}
     {erro && <p role="alert" className="text-sm text-red-600">{erro}</p>}
   </div>;
 }

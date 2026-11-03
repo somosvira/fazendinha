@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
@@ -244,3 +245,6 @@ it("retorna à aba do extrato com período e movimento preservados", async () =>
   fireEvent.click(screen.getByRole("link", { name: "Voltar para contas" }));
   expect(screen.getByRole("tab", { name: "Extrato geral" }).getAttribute("aria-selected")).toBe("true");
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

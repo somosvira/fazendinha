@@ -44,3 +44,21 @@ export function formatarKg(kg: number | null | undefined): string {
   if (kg == null || !Number.isFinite(kg)) return "—";
   return `${kg.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} kg`;
 }
+
+/** A mesma cobertura do indicador do servidor: estimativa, informação e fato
+ * externo permanecem no histórico, mas não comprovam ganho interno. */
+export function pesoCompativelIndicador(peso: { precisao?: string; contextoHistorico?: string }): boolean {
+  return !["ESTIMADO", "INFORMADO"].includes(peso.precisao ?? "") && peso.contextoHistorico !== "EXTERNO";
+}
+
+export function rotuloPrecisaoPeso(precisao?: string): string {
+  return ({ MEDIDO: "Medido", ESTIMADO: "Estimado", INFORMADO: "Informado" } as Record<string, string>)[precisao ?? ""] ?? "Precisão não informada";
+}
+
+export function rotuloContextoPeso(contexto?: string): string {
+  return ({ INTERNO: "Interno", EXTERNO: "Externo" } as Record<string, string>)[contexto ?? ""] ?? "Contexto não informado";
+}
+
+export function rotuloOrigemPesagem(origem: string): string {
+  return ({ BALANCA: "Balança", MANUAL: "Manual" } as Record<string, string>)[origem] ?? "Origem não informada";
+}

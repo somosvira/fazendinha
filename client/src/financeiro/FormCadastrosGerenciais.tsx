@@ -52,9 +52,9 @@ export function FormCategoria({ categoria, grupos = [], ordemInicial, onSalvo, o
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="categoria-grupo" rotulo="Grupo de categorias" erro={erros.grupoId} ajuda="O grupo é definido neste cadastro e acompanha a categoria nos relatórios.">{(p) => <SelectCampo {...p} value={grupoId} onValueChange={setGrupoId} className={classeInput}><option value="">Sem grupo</option>{grupos.filter(g => g.ativo || g.id === categoria?.grupoId).map(g => <option key={g.id} value={g.id} disabled={!g.ativo && g.id !== grupoId}>{g.nome}{!g.ativo ? " (inativo)" : ""}</option>)}</SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="categoria-grupo" rotulo="Grupo de categorias" erro={erros.grupoId} ajuda="O grupo é definido neste cadastro e acompanha a categoria nos relatórios. A categoria organiza relatórios e classificação financeira. Os tipos de uso são escolhidos em cada produto.">{(p) => <SelectCampo {...p} value={grupoId} onValueChange={setGrupoId} className={classeInput}><option value="">Sem grupo</option>{grupos.filter(g => g.ativo || g.id === categoria?.grupoId).map(g => <option key={g.id} value={g.id} disabled={!g.ativo && g.id !== grupoId}>{g.nome}{!g.ativo ? " (inativo)" : ""}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <SelectCampo {...p} value={classificacao} onValueChange={(valor) => setClassificacao(valor as typeof classificacao)} className={classeInput}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></SelectCampo>}</CampoFormulario>
-      <p className="text-sm text-ink-3">A categoria organiza relatórios e classificação financeira. Os tipos de uso são escolhidos em cada produto.</p>
+
     </form>
   </PainelCadastro>;
 }

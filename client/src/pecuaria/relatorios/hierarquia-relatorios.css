@@ -1,0 +1,91 @@
+/* Hierarquia de consulta aprovada: contexto, resultado, cobertura e detalhamento. */
+.relatorios-pecuaria .fin-cabecalho-pagina{padding-bottom:0;margin-bottom:16px;align-items:center}
+.relatorios-pecuaria .fin-cabecalho-pagina .h1{font-size:25px;font-weight:650;line-height:1.25;letter-spacing:-.025em}
+.relatorios-pecuaria .rel-cabecalho-acoes>button,.relatorios-pecuaria .rel-sitio-controle>button{height:36px;min-height:36px;font-size:14px}
+.relatorios-pecuaria .rel-tabs{gap:20px;margin-bottom:16px}
+.relatorios-pecuaria .rel-tabs [role=tab]{font-size:14px}
+.relatorios-pecuaria .rel-consulta-toolbar{margin:0 0 16px;gap:12px;min-height:48px;align-items:center}
+.relatorios-pecuaria .rel-consulta-contexto{display:flex;align-items:center;flex:1;gap:10px;flex-wrap:wrap;min-width:0}
+.relatorios-pecuaria .rel-periodo-compacto{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px;padding:7px 9px 7px 13px;border-radius:8px;box-shadow:none;border:1px solid var(--border);background:var(--card);min-width:0}
+.relatorios-pecuaria .rel-periodo-compacto>strong{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.relatorios-pecuaria .rel-periodo-compacto>svg{flex-shrink:0}
+.relatorios-pecuaria .rel-periodo-compacto button{height:32px;min-height:32px;font-size:14px}
+.relatorios-pecuaria .rel-acoes-icones>button{height:34px;width:34px;min-height:34px}
+.relatorios-pecuaria .rel-superficie,.relatorios-pecuaria [data-slot=financeiro-panel],.relatorios-pecuaria .repro-indicadores-resultado{box-shadow:none;border-radius:10px}
+.relatorios-pecuaria .rel-resultado-topo{padding:17px 20px 12px;gap:12px}
+.relatorios-pecuaria .rel-resultado-topo h2,.relatorios-pecuaria .repro-consulta-titulo h2{font-size:17px;font-weight:650;letter-spacing:-.01em}
+.relatorios-pecuaria .rel-resumo{background:var(--card);padding:14px 20px 20px;gap:20px;border-top:0;border-bottom:0}
+.relatorios-pecuaria .rel-resumo strong{font-size:30px;font-weight:650}
+.relatorios-pecuaria .rel-resumo .rel-numero-menor{font-size:19px}
+.relatorios-pecuaria .rel-resumo>div{border-right:1px solid var(--border)}
+.relatorios-pecuaria .rel-resumo>div:last-child{border:0}
+.relatorios-pecuaria .rel-resumo span{font-size:14px}
+.relatorios-pecuaria .rel-leitura{padding-top:18px;border-top:1px solid var(--border);gap:12px}
+/* O resultado consolidado permanece acima de todas as abas de indicadores. */
+.relatorios-pecuaria .repro-indicadores-resultado .repro-consulta-titulo{padding:17px 20px 7px}
+.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas{border:0;padding:14px 0 20px}
+.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas>section{padding:0 22px}
+.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas h2{font-size:14px;font-weight:500;color:var(--muted-foreground)}
+.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas strong{font-size:38px;letter-spacing:-.025em;margin:10px 0 16px}
+.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas .indicador-sem-base{font-size:19px;min-height:46px;letter-spacing:-.01em}
+.relatorios-pecuaria .rel-cobertura-unica{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding:10px 16px;border-top:1px solid var(--border);background:#faf9f5;color:#715c3e;font-size:14px}
+.relatorios-pecuaria .rel-cobertura-unica>strong{font-size:14px;font-weight:600}
+.relatorios-pecuaria .rel-cobertura-unica>button:last-child{margin-left:auto;font-size:14px;height:30px}
+:root .app-main .relatorios-pecuaria .rel-indicadores [role=tablist].abas-pasta{margin:22px 0 16px;background:transparent;gap:18px}
+:root .app-main .relatorios-pecuaria .rel-indicadores [role=tablist].abas-pasta>[role=tab][aria-selected]{background:transparent;border:0;border-bottom:2px solid transparent;border-radius:0;padding:0 3px;height:40px;min-height:40px;font-size:14px;box-shadow:none}
+:root .app-main .relatorios-pecuaria .rel-indicadores [role=tablist].abas-pasta>[role=tab][aria-selected=true]{border-bottom-color:var(--primary);color:var(--primary)}
+.relatorios-pecuaria .repro-indicadores-painel{border:0;background:transparent;overflow:visible}
+.relatorios-pecuaria .repro-desempenho-cabecalho{padding:0 0 16px;gap:12px}
+.relatorios-pecuaria .repro-desempenho-cabecalho h2{font-size:15px}
+.relatorios-pecuaria .repro-desempenho-cabecalho p{display:none}
+.relatorios-pecuaria .repro-periodos-visuais{padding:0;gap:12px}
+.relatorios-pecuaria .repro-periodo-visual{padding:15px;border-radius:9px;box-shadow:none;background:var(--card)}
+.relatorios-pecuaria .repro-periodo-visual>header{margin-bottom:16px}
+.relatorios-pecuaria .repro-periodo-visual>header h3{font-size:14px}
+.relatorios-pecuaria .repro-periodo-servico strong{font-size:23px}
+.relatorios-pecuaria .repro-periodo-visual>button{height:32px;min-height:32px;font-size:14px}
+/* Catálogo e complementares conservam a escolha de fonte ao lado da consulta. */
+.relatorios-pecuaria .rel-complementar-resultado{border:0;overflow:visible;background:transparent}
+.relatorios-pecuaria .rel-complementar-resultado>.rel-resultado-topo{background:var(--card);border:1px solid var(--border);border-bottom:0;border-radius:10px 10px 0 0}
+.relatorios-pecuaria .rel-complementar-resumo,.relatorios-pecuaria .rel-catalogo-contagem{background:var(--card);padding:14px 20px 20px;border:1px solid var(--border);border-top:0;border-radius:0 0 10px 10px;margin-bottom:18px;gap:24px}
+.relatorios-pecuaria .rel-complementar-resumo dd{font-size:28px;font-weight:650;line-height:1.3}
+.relatorios-pecuaria .rel-complementar-resultado>.rel-leitura{padding:0 0 16px;border:0}
+.relatorios-pecuaria .rel-complementar-cartoes{padding:0;gap:12px}
+.relatorios-pecuaria .rel-complementar-cartoes article{padding:16px;background:var(--card);border-radius:9px}
+.relatorios-pecuaria .rel-complementar-resultado .rel-rodape{margin-top:16px;padding:12px 0;border-top:0}
+.relatorios-pecuaria .rel-catalogo-posicao{padding:0 20px 14px;margin:0;background:var(--card);justify-content:flex-start;border-inline:1px solid var(--border)}
+.relatorios-pecuaria .rel-complementar-resultado>.rel-consulta-toolbar{min-height:48px}
+.rel-detalhe-dialog .rel-complementar-periodo{padding:0;justify-content:flex-start;margin-top:4px;gap:16px}
+.rel-detalhe-dialog .rel-complementar-periodo>label{flex:1;max-width:none;font-size:14px}
+.rel-detalhe-dialog .rel-complementar-periodo>button{margin-left:auto}
+/* No builder, configuração à esquerda e prioridade para a prévia. */
+.relatorios-pecuaria .builder-config .builder-nome{margin-top:16px}
+.relatorios-pecuaria .builder-config .builder-ordem{padding:16px;border:0;border-bottom:1px solid var(--border);border-radius:0;box-shadow:none}
+.relatorios-pecuaria .builder-config .builder-chips{display:grid;gap:6px}
+.relatorios-pecuaria .builder-config .builder-chips>div{min-width:0;display:flex;gap:4px;max-width:100%}
+.relatorios-pecuaria .builder-config .builder-chips>div>span{flex:1;white-space:normal;overflow-wrap:anywhere}
+.relatorios-pecuaria .builder-config .builder-filtros{display:grid;grid-template-columns:1fr}
+.relatorios-pecuaria .builder-ajustes{display:flex;align-items:center;flex-wrap:wrap;padding:0;border:0;box-shadow:none;background:transparent;gap:10px}
+.relatorios-pecuaria .builder-previa{box-shadow:none;border-radius:10px}
+.relatorios-pecuaria .builder-previa-acoes{display:flex;align-items:center;gap:12px}
+.relatorios-pecuaria .builder-resumo{display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:14px;padding:0 18px 16px;color:var(--muted-foreground)}
+.relatorios-pecuaria .builder-resumo>strong{font-size:15px;color:var(--foreground)}
+.relatorios-pecuaria .builder-previa>footer:empty{display:none}
+@media(max-width:900px){.relatorios-pecuaria .fin-cabecalho-pagina .h1{font-size:23px}.relatorios-pecuaria .rel-consulta-toolbar{flex-wrap:wrap}.relatorios-pecuaria .rel-consulta-contexto{flex-basis:100%}.relatorios-pecuaria .rel-acoes-icones{margin-left:auto}.relatorios-pecuaria .rel-cobertura-unica>button:last-child{margin-left:0}}
+@media(max-width:700px){.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas>section{padding:18px 20px}.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas>section+section{border-left:0;border-top:1px solid var(--border)}.relatorios-pecuaria .repro-indicadores-resultado .indicadores-taxas{padding:0}.relatorios-pecuaria .repro-periodos-visuais{grid-template-columns:1fr}.relatorios-pecuaria .rel-complementar-resumo dd{font-size:24px}.relatorios-pecuaria .builder-previa-acoes{flex-wrap:wrap}}
+@media print{.relatorios-pecuaria .rel-consulta-toolbar{display:none!important}.relatorios-pecuaria .rel-complementar-resultado{background:white}.relatorios-pecuaria .rel-cobertura-unica{break-inside:avoid}}
+.relatorios-pecuaria .rel-complementar-resumo .rel-valor-ausente{font-size:19px;line-height:1.35}
+.relatorios-pecuaria .rel-catalogo .rel-catalogo-contagem{gap:10px;padding:10px 20px 16px}
+.relatorios-pecuaria .rel-catalogo-contagem>strong{font-size:28px;font-weight:650;line-height:1.2}
+.relatorios-pecuaria .rel-catalogo-contagem>.rel-contagem-rotulo{margin-left:0;font-size:14px;color:var(--muted-foreground)}
+.relatorios-pecuaria .rel-catalogo .rel-catalogo-posicao{min-height:0;padding-bottom:8px}
+.relatorios-pecuaria .repro-indicadores-resultado .repro-consulta-titulo h2{display:flex;align-items:center;gap:6px}
+.rel-identificacao-impressao{font-size:14px}
+@media(min-width:1100px){
+ .relatorios-pecuaria .rel-indicadores .repro-indicadores-conjunto:has(>.repro-indicadores-painel){position:relative}
+ .relatorios-pecuaria .rel-indicadores .repro-indicadores-painel>.repro-desempenho-cabecalho{position:absolute;right:0;top:-60px;padding:0}
+ .relatorios-pecuaria .rel-indicadores .repro-indicadores-painel>.repro-desempenho-cabecalho>div:first-child{display:none}
+ :root .app-main .relatorios-pecuaria .rel-indicadores:has(.repro-indicadores-painel) [role=tablist].abas-pasta{padding-right:205px}
+}
+@media print{.relatorios-pecuaria .fin-cabecalho-pagina,.relatorios-pecuaria .rel-tabs,.relatorios-pecuaria .rel-builder-sitio{display:none!important}.relatorios-pecuaria .builder-previa-acoes{display:none!important}.rel-identificacao-impressao{margin:0 0 12px}}
+.relatorios-pecuaria .rel-base-valida{border:0;padding:0;font-size:14px;font-weight:500;color:var(--muted-foreground)}

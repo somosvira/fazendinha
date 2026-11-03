@@ -1,3 +1,4 @@
+import { selecionarCampoLeite } from "./select-campo-teste";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -18,20 +19,20 @@ it("consulta independente por período e parâmetro, preserva zero e distingue d
   vi.mocked(consultarLeite).mockResolvedValue({ itens: [{ amostraId: "a", dataAmostra: "2026-10-01", registradoEm: "2026-10-03T12:00:00Z", valor: 0, unidade: null, sujeito: { tipo: "COLETIVO", origem: "Tanque A" }, formato: { nome: "Laudo", versao: 1 }, versaoAmostra: 2 }], total: 21, tamanho: 20, pagina: 1 });
   render(<HistoricoParametrosQualidade sitio={2} formatos={formatos} data="2026-10-21" revisao={0} />);
   expect(consultarLeite).not.toHaveBeenCalled();
-  fireEvent.change(tela.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
+  await selecionarCampoLeite("Parâmetro do laudo", "NU");
   await tela.findByText("Tanque A");
   expect(tela.getByText("0 (unidade não informada)")).toBeTruthy();
   fireEvent.click(tela.getByRole("button", { name: "Ver resultado" }));
   expect(tela.getByText("Resultado laboratorial: Não informado")).toBeTruthy();
   fireEvent.click(tela.getByRole("button", { name: "Fechar" }));
-  expect(consultarLeite).toHaveBeenCalledWith("/qualidade/parametros?campo=NU&inicio=2026-10-01&fim=2026-10-21&pagina=1&tamanho=20", 2);
+  expect(consultarLeite).toHaveBeenCalledWith("/qualidade/parametros?campo=NU&inicio=2026-10-01&fim=2026-10-21&pagina=1&tamanho=20&incluirSerie=true", 2);
   fireEvent.click(tela.getByRole("button", { name: "Próxima" }));
   await waitFor(() => expect(consultarLeite).toHaveBeenLastCalledWith(expect.stringContaining("pagina=2"), 2));
 });
 it("mostra falha e permite consultar outro parâmetro sem resultados antigos", async () => {
   vi.mocked(consultarLeite).mockRejectedValue(new Error("Serviço indisponível"));
   render(<HistoricoParametrosQualidade sitio={2} formatos={formatos} data="2026-10-21" revisao={0} />);
-  fireEvent.change(tela.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
+  await selecionarCampoLeite("Parâmetro do laudo", "NU");
   await tela.findByRole("alert");
   expect(tela.getByText("Serviço indisponível")).toBeTruthy();
 });
@@ -39,7 +40,7 @@ it("mostra falha e permite consultar outro parâmetro sem resultados antigos", a
 it("exibe resultado laboratorial e recebimento separados do registro no sistema", async () => {
   vi.mocked(consultarLeite).mockResolvedValue({ itens: [{ amostraId: "a", dataAmostra: "2026-10-10", dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", registradoEm: "2026-10-23T12:00:00Z", valor: 1, unidade: "%", sujeito: { tipo: "COLETIVO", origem: "Tanque A" }, formato: { nome: "Laudo", versao: 1 }, versaoAmostra: 2 }], total: 1, tamanho: 20, pagina: 1 });
   render(<HistoricoParametrosQualidade sitio={2} formatos={formatos} data="2026-10-23" revisao={0} />);
-  fireEvent.change(tela.getByLabelText("Parâmetro do laudo"), { target: { value: "NU" } });
+  await selecionarCampoLeite("Parâmetro do laudo", "NU");
   await tela.findByText("Tanque A");
   fireEvent.click(tela.getByRole("button", { name: "Ver resultado" }));
   expect(await tela.findByText("Resultado laboratorial: 15/10/2026")).toBeTruthy();

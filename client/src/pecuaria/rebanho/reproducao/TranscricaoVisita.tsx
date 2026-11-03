@@ -293,7 +293,7 @@ export function Transcricao({
     if (!preparar) return;
     const p = preparar;
     rascunhosAtuais.current[p.id] = {
-      ...rascunhosAtuais.current[p.id], dados: { ...(p.tarefaSanitariaId ? { desvio: rascunhosAtuais.current[p.id]?.dados?.desvio } : {}), ...dados }, status: "CONFIRMADO",
+      ...rascunhosAtuais.current[p.id], dados: { ...(atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" ? { retornoEm: rascunhosAtuais.current[p.id]?.dados?.retornoEm } : {}), ...(p.tarefaSanitariaId ? { desvio: rascunhosAtuais.current[p.id]?.dados?.desvio } : {}), ...dados }, status: "CONFIRMADO",
     };
     rascunhosSujos.current.add(p.id);
     setRascunhos({ ...rascunhosAtuais.current });
@@ -694,7 +694,7 @@ export function Transcricao({
               </fieldset>{r.sexoFetal && <small>Sexo fetal: {r.sexoFetal === "F" ? "Fêmea" : "Macho"}</small>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
               <td className="p-3 min-w-36 space-y-2">
                 <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
-                <p role="status" className="text-xs">{avisos[p.id]}</p>
+                <p role="status" className="text-sm">{avisos[p.id]}</p>
                 {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
               </td>
             </tr>
@@ -706,7 +706,7 @@ export function Transcricao({
         })}</tbody>
       </table>
       {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
-      <p className="p-4 text-xs text-ink-3">RP refere-se ao último parto válido até a visita. Informações não preenchidas continuam pendentes. Gestação e tentativa exibidas são contexto; o vínculo clínico exige confirmação.</p>
+      <p className="p-4 text-sm text-ink-3">RP refere-se ao último parto válido até a visita. Informações não preenchidas continuam pendentes. Gestação e tentativa exibidas são contexto; o vínculo clínico exige confirmação.</p>
     </div>;
   }
   function detalhesAvaliacao(p: ParticipanteVisita, r: RascunhoVisita, bloqueado: boolean, ausente: boolean) {
@@ -762,7 +762,7 @@ export function Transcricao({
         }} />}
       </div>}
       {!confirmado(p) && podeLancar && <Button secondary disabled={ocupado} onClick={()=>setRevisao([p.id])}>Revisar animal</Button>}
-      {p.snapshot.pendenciasContexto?.length ? <ul className="text-xs">{p.snapshot.pendenciasContexto.map(m => <li key={m}>{m}</li>)}</ul> : null}
+      {p.snapshot.pendenciasContexto?.length ? <ul className="text-sm">{p.snapshot.pendenciasContexto.map(m => <li key={m}>{m}</li>)}</ul> : null}
     </div>;
   }
   function campoDesvioSanitario(p: ParticipanteVisita) {
@@ -894,9 +894,9 @@ export function Transcricao({
                 <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}><CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={(r.dados ?? {}) as RascunhoVisita} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/></fieldset> : <select aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onChange={e=>{atualizar(p,"status",e.target.value);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></select>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
                 <td className="p-3 min-w-36 space-y-2">
                   <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
-                  <p role="status" className="text-xs">{avisos[p.id]}</p>
+                  <p role="status" className="text-sm">{avisos[p.id]}</p>
                   {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
-                  {p.fatoId && <p className="text-xs text-ink-3">Fato registrado</p>}
+                  {p.fatoId && <p className="text-sm text-ink-3">Fato registrado</p>}
                 </td>
               </tr>
               {expandido && <tr id={`detalhes-${p.id}`} className="visita-detalhes"><td colSpan={contarColunasContextoVisita() + 3} className="p-4">
@@ -937,8 +937,8 @@ export function Transcricao({
                       const referenciaIndisponivel = !!r.participanteIatfId && !compativeis.some(t => t.id === r.participanteIatfId);
                       return <>
                         {referenciaIndisponivel ? <>
-                          <p role="alert" className="text-xs">A participação salva no rascunho deixou de estar disponível. Resolva o vínculo antes de confirmar, escolhendo uma opção compatível.</p>
-                          {!temProtocolo && compativeis.length === 0 && <p className="text-xs">Nenhuma participação pendente compatível está disponível. Este início antigo exige uma participação existente.</p>}
+                          <p role="alert" className="text-sm">A participação salva no rascunho deixou de estar disponível. Resolva o vínculo antes de confirmar, escolhendo uma opção compatível.</p>
+                          {!temProtocolo && compativeis.length === 0 && <p className="text-sm">Nenhuma participação pendente compatível está disponível. Este início antigo exige uma participação existente.</p>}
                           <label>Participação IATF<select aria-label={`Participação IATF · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={bloqueado} value={r.participanteIatfId ?? ""} onChange={e => { atualizar(p, "participanteIatfId", e.target.value); void persistir(p); }} onBlur={() => void persistir(p)}>
                             <option value={r.participanteIatfId} disabled>Participação anterior indisponível · selecione uma opção</option>
                             {temProtocolo && compativeis.length === 0 && <option value="">Criar nova participação</option>}
@@ -947,8 +947,8 @@ export function Transcricao({
                             {(!temProtocolo || compativeis.length > 1) && compativeis.map(t => <option key={t.id} value={t.id}>{t.protocoloNome ?? "Protocolo"} · v{t.protocoloVersao ?? "?"} · {t.programacaoNome ?? "Programação"} · previsto {t.inicioPrevisto.slice(0, 10)}</option>)}
                           </select></label>
                         </> : <>
-                          {temProtocolo && compativeis.length === 0 && <p className="text-xs">A participação e as tarefas serão criadas ao confirmar este início.</p>}
-                          {compativeis.length === 1 && <p className="text-xs">Participação pendente: {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"} · previsto {compativeis[0].inicioPrevisto.slice(0, 10)}. Será reutilizada na confirmação.</p>}
+                          {temProtocolo && compativeis.length === 0 && <p className="text-sm">A participação e as tarefas serão criadas ao confirmar este início.</p>}
+                          {compativeis.length === 1 && <p className="text-sm">Participação pendente: {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"} · previsto {compativeis[0].inicioPrevisto.slice(0, 10)}. Será reutilizada na confirmação.</p>}
                           {(compativeis.length > 1 || !temProtocolo) && select(p, "participanteIatfId", "Participação IATF", compativeis.map(t => [t.id, `${t.protocoloNome ?? "Protocolo"} · v${t.protocoloVersao ?? "?"} · ${t.programacaoNome ?? "Programação"} · previsto ${t.inicioPrevisto.slice(0, 10)}`]))}
                         </>}
                       </>;
@@ -956,7 +956,7 @@ export function Transcricao({
                     <div><AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label className="flex gap-2 text-sm my-2"><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.cienciaSanitaria === true} disabled={bloqueado} onChange={e => atualizar(p, "cienciaSanitaria", e.target.checked)} onBlur={() => void persistir(p)} />Revisei os alertas sanitários informados para este procedimento.</label></div>
                   </>}
                   {p.tarefaSanitariaId && preparar?.id !== p.id && campoDesvioSanitario(p)}
-                  {atividade.tipo !== "INICIAR_IATF" && <div><Button secondary disabled={bloqueado} onClick={() => { setPreparar(p); setDetalhes(prev => [...new Set([...prev, p.id])]); }}>Preencher procedimento</Button>{r.dados && <p className="text-xs mt-2">Procedimento preparado no rascunho</p>}</div>}
+                  {atividade.tipo !== "INICIAR_IATF" && <div><Button secondary disabled={bloqueado} onClick={() => { setPreparar(p); setDetalhes(prev => [...new Set([...prev, p.id])]); }}>Preencher procedimento</Button>{r.dados && <p className="text-sm mt-2">Procedimento preparado no rascunho</p>}</div>}
                   <label>Anotação original{input(p, "anotacaoOriginal", "Anotação original")}</label>
                   <label>Motivo de perda, correção, descarte ou pendência{input(p, "motivo", "Motivo de perda, correção, descarte ou pendência")}</label>
                   {podeLancar && !p.fatoId && <Button secondary disabled={ocupado} onClick={() => setRevisao([p.id])}>Conferir animal</Button>}
@@ -1033,7 +1033,7 @@ export function Transcricao({
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
-            conteudoExtra={preparar.tarefaSanitariaId ? campoDesvioSanitario(preparar) : undefined}
+            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<input className={classeInput} type="date" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={e => atualizarDados(preparar, { retornoEm: e.target.value || undefined })}/></label>}</>}
             dataInicial={visita.data.slice(0, 10)}
             tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}

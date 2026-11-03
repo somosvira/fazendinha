@@ -12,7 +12,7 @@ it("consulta somente o parto solicitado e apresenta dados clínicos sem chaves t
  vi.mocked(reqV4).mockResolvedValue(parto);render(<DetalheParto id="p" propriedadeId={1}/>);
  await screen.findByRole("heading",{name:"Parto de V4-011"});
  expect(reqV4).toHaveBeenCalledWith("/reproducao/partos/p",undefined,"GET",1);
- expect(screen.getByText("Distócico")).toBeTruthy();expect(screen.queryByText("ESCALA_MAX")).toBeNull();
+ expect(screen.getByText(/Nascimento · Distócico/)).toBeTruthy();expect(screen.queryByText("ESCALA_MAX")).toBeNull();
  expect(screen.getAllByText("Máximo da escala").length).toBeGreaterThan(0);
  expect(screen.getAllByText("0").length).toBeGreaterThan(0);
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
@@ -69,6 +69,6 @@ it("inicia retirada no bezerreiro conservando o parto e sem gravar produção",a
  vi.mocked(reqV4).mockResolvedValue(parto);render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
  fireEvent.click(await screen.findByRole("button",{name:"Registrar retirada de colostro"}));
  expect(location.pathname).toBe("/pecuaria/bezerreiro");
- const params=new URLSearchParams(location.search);expect(params.get("aba")).toBe("colostragem");expect(params.get("partoId")).toBe("p");expect(params.get("novaRetirada")).toBe("1");
+ const params=new URLSearchParams(location.search);expect(params.get("aba")).toBe("colostragem");expect(params.get("partoId")).toBe("p");expect(params.get("propriedadeId")).toBe("1");expect(params.get("novaRetirada")).toBe("1");
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });

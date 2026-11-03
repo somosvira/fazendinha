@@ -140,12 +140,12 @@ export async function buscarResumoLote(id: string, periodoDias: number | null, e
 
   const ids = animais.map((a) => a.id);
   const pesagens = ids.length
-    ? await prisma.pesagem.findMany({ where: { animalId: { in: ids } }, orderBy: [{ animalId: "asc" }, { data: "desc" }], select: { animalId: true, data: true, pesoKg: true } })
+    ? await prisma.pesagem.findMany({ where: { animalId: { in: ids } }, orderBy: [{ animalId: "asc" }, { data: "desc" }], select: { animalId: true, data: true, pesoKg: true, precisao: true, contextoHistorico: true } })
     : [];
   const pesagensPorAnimal = new Map<string, Array<{ data: Date; pesoKg: number }>>();
   for (const p of pesagens) {
     const lista = pesagensPorAnimal.get(p.animalId) ?? [];
-    lista.push({ data: p.data, pesoKg: Number(p.pesoKg) });
+    lista.push({ ...p, pesoKg: Number(p.pesoKg) });
     pesagensPorAnimal.set(p.animalId, lista);
   }
 

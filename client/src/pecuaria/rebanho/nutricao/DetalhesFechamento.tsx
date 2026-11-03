@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { ReferenciaLeite } from "./ReferenciaLeite";
 import { DistribuicaoCustoFechamento } from "./DistribuicaoCustoFechamento";
 import { TabelaConsultaLocal } from "@/financeiro/TabelaConsultaLocal";
@@ -17,7 +18,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
       <div><dt>Custo por animal-dia</dt><dd>{custoTexto(f.custoConhecido != null && f.animalDias > 0 ? String(Number(f.custoConhecido) / f.animalDias) : null)}</dd><p>Média do fechamento{f.coberturaCustoCompleta ? "" : " · parcial"}</p></div>
     </dl>}
     {f.status === "ESTORNADO" && <p className="nutricao-aviso mx-5 mb-5">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}</Panel>
-    <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque</h2><p>Quantidade prevista, conferida e origem dos ingredientes.</p></div></div>
+    <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque <AjudaCampo rotulo="Sobre o consumo e estoque" texto={"Quantidade prevista, conferida e origem dos ingredientes."} /></h2></div></div>
       <div className="nutricao-consumo-composicao"><div className="min-w-0"><TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
         {chave:"ingrediente",rotulo:"Ingrediente",tipo:"texto",obter:i=>i.produto.nome},
         ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(i: Fechamento["itens"][number])=>Number(i.quantidadeConfirmada)===0?"0":i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??null,limiteSugerido:Math.max(1,...f.itens.map(i=>Number(i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??0)))}]:[]),
@@ -30,7 +31,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
       ]} />
     </div><DistribuicaoCustoFechamento fechamento={f} /></div></Panel>
     {f.itens.filter(i => i.leite).map(i => <Panel key={i.produtoId}><div className="nutricao-card-cabecalho"><h2 className="h3">Leite fornecido · {i.produto.nome}</h2></div><div className="nutricao-card-corpo"><ReferenciaLeite leite={i.leite!} propriedadeId={f.propriedadeId} verValores={f.verValores} verReferenciasComerciais={f.verReferenciasComerciais ?? false} animais={f.participacoes.map(p => ({ animalId: p.animalId, brinco: p.animal.brinco }))} podeLancar={podeLancar && f.status === "CONFIRMADO"} onRecarregar={onRecarregar} /></div></Panel>)}
-    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais</h2><p>Estimativa proporcional aos dias no lote; não mede a ingestão individual.</p></div><Pill>{f.participacoes.length} animais</Pill></div>
+    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais <AjudaCampo rotulo="Sobre a atribuição aos animais" texto={"Estimativa proporcional aos dias no lote; não mede a ingestão individual."} /></h2></div><Pill>{f.participacoes.length} animais</Pill></div>
       <TabelaConsultaLocal camposOrdenaveis={[{chave:"dias",rotulo:"Dias no lote",tipo:"numero",obter:p=>p.dias},...(f.verValores?[{chave:"medio",rotulo:"Custo por animal-dia",tipo:"numero" as const,obter:(p:Fechamento["participacoes"][number])=>p.custoConhecidoPorDia}]:[])]} buscarPor={p=>p.animal.brinco} definicoes={[
         {chave:"animal",rotulo:"Animal",tipo:"texto",obter:p=>p.animal.brinco},
         ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(p: Fechamento["participacoes"][number])=>p.custoConhecido,limiteSugerido:Math.max(1,...f.participacoes.map(p=>Number(p.custoConhecido??0)))}]:[]),

@@ -76,8 +76,8 @@ export function BuscaAnimal({ sexo, excluirId, valor, onSelecionar, ariaLabel }:
         : resultados.length ? resultados.map((a) => (
           <button key={a.id} type="button" onClick={() => selecionar(a)} className="flex w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm hover:bg-surface-2">
             <strong>{a.brinco}</strong>
-            {a.nome && <span className="text-xs text-ink-3">{a.nome}</span>}
-            {a.situacao === "BAIXADO" && <span className="text-xs text-ink-3">Baixado</span>}
+            {a.nome && <span className="text-sm text-ink-3">{a.nome}</span>}
+            {a.situacao === "BAIXADO" && <span className="text-sm text-ink-3">Baixado</span>}
           </button>
         ))
         : <p className="p-3 text-sm text-ink-3">Nenhum animal encontrado.</p>}

@@ -6,7 +6,7 @@ import { consultarLeite } from "./operacoes-api";
 vi.mock("./operacoes-api", () => ({ consultarLeite: vi.fn() }));
 vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: () => 2 }));
 const producao = { grupos: [{ periodo: "2026-10", litros: 10, completa: false, turnos: [{ posicaoId: "t", litros: 10 }, { posicaoId: "n", litros: null }] }], ordenhas: [{ posicaoId: "t", nome: "Tarde" }, { posicaoId: "n", nome: "Noturna" }], coberturaCompleta: false, mesEmAndamento: true };
-beforeEach(() => { HTMLElement.prototype.scrollIntoView = vi.fn(); HTMLElement.prototype.hasPointerCapture = vi.fn(() => false); HTMLElement.prototype.releasePointerCapture = vi.fn(); vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] }, porClassificacao: [] } : producao); });
+beforeEach(() => { localStorage.clear(); localStorage.setItem("terrano:leite:sessao:producaoVisualizacao", "tabela"); HTMLElement.prototype.scrollIntoView = vi.fn(); HTMLElement.prototype.hasPointerCapture = vi.fn(() => false); HTMLElement.prototype.releasePointerCapture = vi.fn(); vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/controles-historicos") ? { propriedadeId: 2, periodo: { inicio: "2026-10-01", fim: "2026-10-31" }, itens: [], total: 0, pagina: 1, tamanho: 20 } : caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] }, porClassificacao: [] } : producao); });
 afterEach(() => { cleanup(); vi.resetAllMocks(); history.replaceState(null, "", "/"); });
 it("consulta produção e custos no mesmo recorte com turnos históricos e ausência distinta de zero", async () => {
   history.replaceState(null, "", "/?leiteSecao=producao&producaoData=2026-10-31&producaoVisao=mes");
@@ -42,14 +42,26 @@ it("separa classificação pendente das três naturezas e envia o contrato legad
   fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
   fireEvent.click(screen.getByRole("combobox", { name: "Natureza" }));
   expect(screen.queryByRole("option", { name: "A classificar" })).toBeNull();
-  fireEvent.click(await screen.findByRole("option", { name: "Descarte" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Não comercial" }));
   expect((screen.getByRole("checkbox", { name: /Classificação/ }) as HTMLInputElement).checked).toBe(false);
 });
 it("pagina os grupos completos sem refazer consulta do servidor", async () => {
-  vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] } } : { ...producao, grupos: Array.from({ length: 31 }, (_, i) => ({ ...producao.grupos[0], periodo: `2026-10-${String(i + 1).padStart(2, "0")}` })) });
+  vi.mocked(consultarLeite).mockImplementation(async caminho => caminho.startsWith("/controles-historicos") ? { propriedadeId: 2, periodo: { inicio: "2026-10-01", fim: "2026-10-31" }, itens: [], total: 0, pagina: 1, tamanho: 20 } : caminho.startsWith("/custos") ? { consolidado: { situacao: "OCULTO", motivos: [] } } : { ...producao, grupos: Array.from({ length: 31 }, (_, i) => ({ ...producao.grupos[0], periodo: `2026-10-${String(i + 1).padStart(2, "0")}` })) });
   render(<ConsultasProducaoLeite />); await screen.findByRole("navigation", { name: "Paginação da produção" });
   const chamadas = vi.mocked(consultarLeite).mock.calls.length;
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
   expect(screen.getByText("16–30 de 31 períodos")).toBeTruthy();
   expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
+});
+it("agrupamento direto Dia/Mês conserva o intervalo, os filtros e a leitura dos custos", async () => {
+  history.replaceState(null, "", "/pecuaria/leite?leiteSecao=producao&inicio=2026-10-01&fim=2026-10-26&natureza=COLOSTRO");
+  render(<ConsultasProducaoLeite />);
+  await screen.findByRole("table", { name: "Volumes de produção" });
+  expect(consultarLeite).toHaveBeenCalledWith("/consultas-producao?inicio=2026-10-01&fim=2026-10-26&agrupamento=DIA&natureza=COLOSTRO", 2);
+  const custosAntes = vi.mocked(consultarLeite).mock.calls.filter(([c]) => c.startsWith("/custos")).length;
+  fireEvent.mouseDown(screen.getByRole("tab", { name: "Mês" }), { button: 0, ctrlKey: false });
+  await waitFor(() => expect(consultarLeite).toHaveBeenCalledWith("/consultas-producao?inicio=2026-10-01&fim=2026-10-26&agrupamento=MES&natureza=COLOSTRO", 2));
+  expect(new URLSearchParams(location.search).get("inicio")).toBe("2026-10-01");
+  expect(new URLSearchParams(location.search).get("fim")).toBe("2026-10-26");
+  expect(vi.mocked(consultarLeite).mock.calls.filter(([c]) => c.startsWith("/custos")).length).toBe(custosAntes);
 });

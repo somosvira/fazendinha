@@ -26,15 +26,15 @@
   justify-content: center;
   gap: 8px;
   height: auto;
-  min-height: 48px;
+  min-height: 40px;
   max-width: 100%;
-  padding: 12px 20px;
+  padding: 8px 12px;
   margin: 0 0 -1px;
   border: 1px solid var(--border);
   border-radius: 8px 8px 0 0;
   background: var(--muted);
   color: var(--muted-foreground);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
   white-space: normal;
@@ -62,9 +62,8 @@
 .pecuaria-content .sanidade-navegacao:has(.abas-pasta) { margin-bottom: 0; }
 .pecuaria-content .sanidade-navegacao:has(.abas-pasta) ~ .sanidade-lista { border-top-left-radius: 0; }
 .pecuaria-content .rebanho-nav:has(.abas-pasta) ~ .rebanho-lista,
-.pecuaria-content .rebanho-nav:has(.abas-pasta) + [data-slot="financeiro-panel"] { margin-top: 0; border-top-left-radius: 0; }
+.pecuaria-content .rebanho-nav:has(.abas-pasta) + [data-slot="financeiro-panel"] { margin-top: 0; }
 .pecuaria-content .pec-painel-rebanho > .rebanho-nav:has(.abas-pasta) ~ .pec-panorama-grid { margin-top: 0; }
-.pecuaria-content .pec-panorama-principal > [data-slot="financeiro-panel"]:first-child { border-top-left-radius: 0; }
 .pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo { margin-top: 0; }
 .pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo > [data-slot="financeiro-panel"]:first-of-type,
 .pecuaria-content .nutricao-pagina > .abas-navegacao + [data-slot="financeiro-panel"],
@@ -83,3 +82,5 @@
 @media print {
   :root .app-main [role="tablist"].abas-pasta.print\:hidden { display: none; }
 }
+
+@media (max-width: 900px) { :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] { min-height: 44px; } }

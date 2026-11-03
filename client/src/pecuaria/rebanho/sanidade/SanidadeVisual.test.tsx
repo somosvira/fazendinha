@@ -32,6 +32,8 @@ describe("visões operacionais de Sanidade",()=>{
   expect(urls.filter(p=>p.get("situacao")!=="ATRASADA").map(p=>p.get("de"))).toEqual(["2026-10-20","2026-10-21","2026-10-22"]);
   fireEvent.click(screen.getAllByRole("button",{name:/Vacinação.*Ver tarefas/})[0]);
   fireEvent.click(screen.getByRole("checkbox",{name:"Selecionar tarefa de a"}));fireEvent.click(screen.getByRole("button",{name:"Executar selecionadas (1)"}));expect(executar.mock.calls[0][0].map((t:TarefaVisual)=>t.id)).toEqual(["a"]);
+  expect(screen.getByRole("dialog",{name:/Vacinação/})).toBeTruthy();
+  fireEvent.click(screen.getByRole("button",{name:"Fechar grupo"}));
   const atrasos=screen.getByRole("region",{name:"Tarefas atrasadas"});fireEvent.click(within(atrasos).getByRole("button",{name:"Próxima página"}));await waitFor(()=>expect(req.mock.calls.some(c=>String(c[0]).includes("pagina=2"))).toBe(true));
  });
  it("mostra agregado do servidor independente da quantidade de cartões e filtra por doença",()=>{

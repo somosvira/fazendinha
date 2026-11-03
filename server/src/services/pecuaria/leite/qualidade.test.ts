@@ -197,3 +197,15 @@ describe("datas da qualidade sem duplicar resultados", () => {
     expect(await historicoQualidade(uid(3), 1)).toMatchObject({ itens: [{ antes: { data: "2026-10-10" }, depois: datas, motivo: correcao.motivo }] });
   });
 });
+
+ it("entrega série completa do recorte sem confundir com a página de resultados", async () => {
+ m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([amostra()]);m.tx.amostraQualidadeLeite.count.mockResolvedValue(1);
+ const r=await consultarParametrosQualidade(1,{campo:"DADO",inicio:"2026-10-01",fim:"2026-10-31",pagina:1,tamanho:20,incluirSerie:true});
+ expect(r).toMatchObject({serieCompleta:true,serieItens:[{tipo:"NUMERO",valor:"0"}]});
+ expect(m.tx.amostraQualidadeLeite.findMany).toHaveBeenCalledWith(expect.objectContaining({take:2000,skip:0}));
+ });
+ it("não apresenta série truncada como evolução completa", async () => {
+ m.tx.amostraQualidadeLeite.findMany.mockResolvedValue([amostra()]);m.tx.amostraQualidadeLeite.count.mockResolvedValue(2001);
+ const r=await consultarParametrosQualidade(1,{campo:"DADO",inicio:"2026-10-01",fim:"2026-10-31",pagina:1,tamanho:20,incluirSerie:true});
+ expect(r).toMatchObject({serieCompleta:false,serieItens:[]});
+ });

@@ -9,16 +9,21 @@ export type Aptidao = "LEITE" | "CORTE" | "REPRODUCAO";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
 export type Situacao = "ATIVO" | "BAIXADO";
-export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "CADASTRO_INDEVIDO";
+export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "NAO_DETERMINADO" | "CADASTRO_INDEVIDO";
 export type ClasseMotivoBaixa = "DESCARTE_VOLUNTARIO" | "DESCARTE_INVOLUNTARIO" | "MORTE";
 export type PeriodoGmd = 30 | 90 | 180 | 365 | "entrada";
-export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA";
+export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA" | "PARTO" | "SECAGEM";
 export type OrigemPesagem = "MANUAL" | "BALANCA";
 
 export type PropriedadeRef = { id: number; nome: string };
 export type LoteRef = { id: string; nome: string };
 
 export type AnimalResumo = {
+  contextoCartao?: {
+    situacaoReprodutiva?: string | null;
+    produtivo: AnimalFicha["contextoProdutivo"];
+    ocorrencias: Array<{id:string;nome:string;inicio:string}>;
+  };
   papelReprodutivoEstado?: "CONHECIDO" | "DESCONHECIDO" | "CONFLITO";
   identificacaoProvisoria?: boolean;
   id: string;
@@ -77,10 +82,25 @@ export type HistoricoDestino = {
   ate: string | null;
 };
 
-export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null };
+export type HistoricoPesagem = { id: string; data: string; pesoKg: number; tipo: string; origem: string; observacao: string | null; precisao?: "MEDIDO" | "ESTIMADO" | "INFORMADO" | "NAO_INFORMADO"; contextoHistorico?: "INTERNO" | "EXTERNO" | "NAO_INFORMADO"; propriedadeId?: number | null; referenciaHistorica?: string | null };
 
 /** Item de `historicoCategoriasManuais` na ficha — mais recente primeiro. */
 export type HistoricoCategoriaManual = { id: string; categoria: CategoriaRef; desde: string; ate: string | null; motivo: string; motivoEncerramento: string | null };
+
+export type RegularizarBaixaHistoricaInput = {
+  data: string; bancoOrigem: string; chaveOrigem: string; evidencia: string; motivo: string;
+  cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
+};
+export type RevisarClassificacaoBaixaInput = {
+  chave: string; tipo: Exclude<TipoBaixa, "NAO_DETERMINADO" | "CADASTRO_INDEVIDO">;
+  motivoId?: string | null; evidencia: string; motivo: string;
+  cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
+};
+export type RegularizacaoHistoricaBaixa = {
+  bancoOrigem: string; chaveOrigem: string; evidencia: string; motivo: string;
+  usuarioId: number; registradaEm: string;
+  revisao: { dados: RevisarClassificacaoBaixaInput; usuarioId: number; registradaEm: string } | null;
+};
 
 export type BaixaAnimalResumo = {
   id: string;
@@ -135,6 +155,7 @@ export type AnimalFicha = AnimalResumo & {
     estornadaEm: string | null;
     estornoMotivo: string | null;
     criadoPor: string | null;
+    regularizacaoHistorica?: RegularizacaoHistoricaBaixa | null;
   }>;
 };
 
@@ -252,6 +273,7 @@ export type Pesagem = {
 };
 
 export type ListarFiltros = {
+  comContexto?: boolean;
   propriedadeIds?: number[]; loteIds?: string[]; categoriaIds?: string[];
   sexos?: Sexo[]; origens?: Origem[]; racaIds?: string[]; aptidoes?: Aptidao[];
   papeisReprodutivos?: PapelReprodutivo[]; situacoes?: Situacao[];
@@ -294,6 +316,7 @@ export type ListarResultado = { itens: AnimalResumo[]; total: number; painel: Pa
 
 /** Entrada de GET /animais/:id/auditoria. */
 export type EntradaAuditoria = {
+  anteriorEstado?: "DISPONIVEL" | "SEM_ANTERIOR" | "NAO_INFORMADO";
   id?: string;
   eixo?: "REBANHO" | "REPRODUCAO" | "SANIDADE" | "NUTRICAO" | null;
   acaoRotulo?: string;
@@ -308,6 +331,8 @@ export type EntradaAuditoria = {
 };
 
 export type FiltrosAuditoriaAnimal = {
+  entidade?: string;
+  entidadeId?: string;
   page?: number;
   pageSize?: number;
   inicio?: string;
@@ -317,7 +342,9 @@ export type FiltrosAuditoriaAnimal = {
   responsavel?: number | "sem";
   busca?: string;
 };
+export type TransicaoFatoAnimal = { auditoriaId?: string; entidade: string; entidadeId: string; antes: Record<string, string | number | null> | null; depois: Record<string, string | number | null> | null };
 export type ResultadoAuditoriaAnimal = {
+  transicoes?: TransicaoFatoAnimal[];
   itens: EntradaAuditoria[];
   total: number;
   filtros?: {

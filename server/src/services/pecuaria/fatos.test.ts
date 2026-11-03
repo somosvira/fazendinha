@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
-import { conferirFinalidadesComProducaoTx, conferirAnimalNoFato, conferirFatosNaBaixa, conferirHistoricoDosFatos, conferirLocalizacoesComProducaoTx } from "./fatos.js";
+import { conferirCadastroIndevidoSemFatosTx, conferirFinalidadesComProducaoTx, conferirAnimalNoFato, conferirFatosNaBaixa, conferirHistoricoDosFatos, conferirLocalizacoesComProducaoTx } from "./fatos.js";
 
 const dia = (s: string) => new Date(s);
 const animal = { id: "animal", sexo: "M", dataNascimento: dia("2024-01-01"), dataEntrada: dia("2026-08-01") };
@@ -27,11 +27,14 @@ const db = {
   ocorrenciaSanitaria: { count: vi.fn(), findMany: vi.fn() },
   fornecimentoColostro: { count: vi.fn(), findMany: vi.fn() },
   vinculoPesagemParto: { findMany: vi.fn() },
+  vinculoPesagemSecagem: { findMany: vi.fn() },
   finalidadeAnimal: { findMany: vi.fn() },
   medicaoGeralLeite: { count: vi.fn() },
   $queryRaw: vi.fn(),
   participanteProducaoLeite: { count: vi.fn(), findMany: vi.fn() },
   parcelaDestinoLeite: { count: vi.fn(), findMany: vi.fn() },
+  controleHistoricoLeite: { count: vi.fn(), findMany: vi.fn() },
+  pesagem: { findMany: vi.fn() },
 };
 // Fronteira de mock: somente os métodos usados pelas guardas são necessários.
 const tx = db as unknown as Prisma.TransactionClient;
@@ -44,16 +47,105 @@ beforeEach(() => {
   db.baixaAnimal.findFirst.mockResolvedValue(null);
   db.baixaAnimal.findMany.mockResolvedValue([]);
   db.vinculoPesagemParto.findMany.mockResolvedValue([]);
+  db.vinculoPesagemSecagem.findMany.mockResolvedValue([]);
   db.participanteProducaoLeite.count.mockResolvedValue(0);
   db.participanteProducaoLeite.findMany.mockResolvedValue([]);
   db.medicaoGeralLeite.count.mockResolvedValue(0);
   db.$queryRaw.mockResolvedValue([]);
+  db.controleHistoricoLeite.count.mockResolvedValue(0);
+  db.controleHistoricoLeite.findMany.mockResolvedValue([]);
+  db.pesagem.findMany.mockResolvedValue([]);
   db.parcelaDestinoLeite.count.mockResolvedValue(0);
   db.parcelaDestinoLeite.findMany.mockResolvedValue([]);
   for (const modelo of [db.fornecimentoColostro, db.aplicacaoProduto, db.exameAnimal, db.manejoAnimal, db.ocorrenciaSanitaria, db.tentativaReprodutiva, db.avaliacaoReprodutiva, db.partoAnimal, db.situacaoInicialReprodutiva, db.restricaoReprodutiva, db.gestacaoAnimal, db.lactacaoAnimal, db.criaParto, db.participanteIatf, db.participanteVisita, db.participacaoExposicao, db.periodoReprodutivoAnimal]) {
     modelo.count.mockResolvedValue(0);
     modelo.findMany.mockResolvedValue([]);
   }
+});
+
+describe("contexto factual das pesagens após revisão de cadastro/localizações", () => {
+  const animalId = "7be84110-86c2-49b0-bf27-70f666c711ee";
+  const sujeito = { ...animal, id: animalId, origem: "COMPRADO", dataNascimento: dia("2020-01-01"), dataEntrada: dia("2025-01-10") };
+  const peso = { id: "peso-historico", animalId, data: dia("2025-01-05"), propriedadeId: null, contextoHistorico: "EXTERNO", tipo: "ROTINA" };
+  const localInicial: Omit<typeof local, "ate"> & { ate: Date | null } = { ...local, animalId, desde: sujeito.dataEntrada };
+  let proposta: typeof sujeito;
+  let locais: typeof localInicial[];
+
+  beforeEach(() => {
+    proposta = { ...sujeito };
+    locais = [{ ...localInicial }];
+    db.animal.findUnique.mockImplementation(async () => proposta);
+    db.animal.findMany.mockImplementation(async () => [proposta]);
+    db.localizacaoAnimal.findMany.mockImplementation(async ({ where }: { where: { desde?: { lte: Date } } }) => {
+      const data = where.desde?.lte;
+      return data ? locais.filter(l => l.desde <= data && (!l.ate || l.ate > data)) : locais;
+    });
+    db.pesagem.findMany.mockResolvedValue([peso]);
+  });
+
+  it("recusa antecipar entrada/localização que transforma peso externo em interno", async () => {
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    proposta.dataEntrada = dia("2025-01-01");
+    locais[0].desde = proposta.dataEntrada;
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({ code: "CONFLITO", campo: "contexto", message: expect.stringMatching(/peso-historico.*2025-01-05.*externo contradiz localização/) });
+    expect(peso.contextoHistorico).toBe("EXTERNO");
+    expect(peso.data).toEqual(dia("2025-01-05"));
+  });
+
+  it("permite correção compatível conservando peso externo antes da entrada", async () => {
+    proposta.dataEntrada = dia("2025-01-06");
+    locais[0].desde = proposta.dataEntrada;
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+  });
+
+  it("NASCIMENTO histórico interno não pode anteceder nova entrada de comprado", async () => {
+    proposta.dataEntrada = dia("2025-01-01");
+    locais[0].desde = proposta.dataEntrada;
+    db.pesagem.findMany.mockResolvedValue([{ ...peso, data: dia("2025-01-01"), tipo: "NASCIMENTO", contextoHistorico: "INTERNO", propriedadeId: 1 }]);
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    proposta.dataEntrada = dia("2025-01-10");
+    locais[0].desde = proposta.dataEntrada;
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({ code: "CONFLITO", campo: "data", message: expect.stringMatching(/peso-historico.*interno não pode anteceder a entrada/) });
+  });
+
+  it("mudança retroativa de sítio não pode retirar o contexto interno comprovado do peso", async () => {
+    db.pesagem.findMany.mockResolvedValue([{ ...peso, data: dia("2025-01-15"), contextoHistorico: "INTERNO", propriedadeId: 1 }]);
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    locais[0].ate = dia("2025-01-14");
+    locais.push({ ...localInicial, id: "destino", propriedadeId: 2, desde: dia("2025-01-14") });
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({ code: "CONFLITO", campo: "propriedadeId", message: expect.stringContaining("peso-historico") });
+  });
+
+  it("peso interno sem vínculo ativo com parto conserva o sítio factual ao desfazer retorno", async () => {
+    const pesoDesvinculado = { ...peso, data: dia("2025-01-15"), contextoHistorico: "INTERNO", propriedadeId: 1 };
+    const original = structuredClone(pesoDesvinculado);
+    db.pesagem.findMany.mockResolvedValue([pesoDesvinculado]);
+    db.vinculoPesagemParto.findMany.mockResolvedValue([]);
+    locais[0].ate = dia("2025-01-12");
+    locais.push(
+      { ...localInicial, id: "intermediaria", propriedadeId: 2, desde: dia("2025-01-12"), ate: dia("2025-01-14") },
+      { ...localInicial, id: "retorno", desde: dia("2025-01-14") },
+    );
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    const retorno = locais.pop()!;
+    locais[1].ate = null;
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).rejects.toMatchObject({
+      code: "CONFLITO", campo: "propriedadeId", message: expect.stringContaining(pesoDesvinculado.id),
+    });
+    expect(pesoDesvinculado).toEqual(original);
+    locais[1].ate = retorno.desde;
+    locais.push(retorno);
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+  });
+
+  it("preserva legado NAO_INFORMADO sem atribuir ou exigir sítio inferido", async () => {
+    db.pesagem.findMany.mockResolvedValue([]);
+    await expect(conferirHistoricoDosFatos(tx, [animalId])).resolves.toBeUndefined();
+    expect(db.pesagem.findMany).toHaveBeenCalledWith({
+      where: { animalId: { in: [animalId] }, contextoHistorico: { in: ["INTERNO", "EXTERNO"] } },
+      select: { id: true, animalId: true, data: true, contextoHistorico: true, propriedadeId: true },
+    });
+  });
 });
 
 describe("datas e sítio dos fatos pecuários", () => {
@@ -210,5 +302,43 @@ describe("origens identificadas da produção geral", () => {
     db.animal.findMany.mockResolvedValue([{ ...animal, sexo: "F" }]);
     db.$queryRaw.mockResolvedValue([geral([animal.id], "2026-10-20", 2)]);
     await expect(conferirHistoricoDosFatos(tx, [animal.id])).rejects.toThrow(/sítio de fatos/);
+  });
+});
+it("vínculo ativo de secagem conserva o sítio histórico ao revisar localização/entrada", async () => {
+  db.animal.findMany.mockResolvedValue([{...animal,sexo:"F"}]);
+  db.vinculoPesagemSecagem.findMany.mockResolvedValue([{propriedadeId:1,pesagem:{animalId:animal.id,data:dia("2026-09-15")}}]);
+  await expect(conferirHistoricoDosFatos(tx,[animal.id])).resolves.toBeUndefined();
+  db.localizacaoAnimal.findMany.mockResolvedValue([{...local,propriedadeId:2}]);
+  await expect(conferirHistoricoDosFatos(tx,[animal.id])).rejects.toThrow(/sítio de fatos/);
+});
+
+
+describe("documentos individuais nas guardas inversas", () => {
+  it("controle posterior sem lactação impede baixa e cadastro indevido", async () => {
+    db.controleHistoricoLeite.count.mockResolvedValue(1);
+    await expect(conferirFatosNaBaixa(tx, animal.id, dia("2026-10-19"))).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(db.controleHistoricoLeite.count).toHaveBeenCalledWith({ where: { animalId: animal.id, fim: { gt: dia("2026-10-19") } } });
+    await expect(conferirCadastroIndevidoSemFatosTx(tx, animal.id)).rejects.toMatchObject({ code: "CONFLITO" });
+    expect(db.controleHistoricoLeite.count).toHaveBeenCalledWith({ where: { animalId: animal.id } });
+  });
+  it("revalida documentos ao conferir o histórico proposto", async () => {
+    // UUID real para atravessar a mesma validação de contexto usada na criação.
+    const id = "e7f44110-86c2-49b0-bf27-70f666c711ee";
+    const fêmea = { ...animal, id, sexo: "F" };
+    db.animal.findUnique.mockResolvedValue(fêmea);
+    db.animal.findMany.mockResolvedValue([fêmea]);
+    db.localizacaoAnimal.findMany.mockResolvedValue([{ ...local, animalId: id }]);
+    db.controleHistoricoLeite.findMany.mockResolvedValue([{
+      id: "controle-preservado", animalId: id, propriedadeId: 1, lactacaoId: null,
+      inicio: dia("2026-10-20"), fim: dia("2026-10-20"), contextoHistorico: "INTERNO",
+    }]);
+    await expect(conferirHistoricoDosFatos(tx, [id])).resolves.toBeUndefined();
+    db.animal.findUnique.mockResolvedValue({ ...fêmea, sexo: "M" });
+    await expect(conferirHistoricoDosFatos(tx, [id])).rejects.toMatchObject({ code: "CONFLITO", campo: "sexo" });
+    db.animal.findUnique.mockResolvedValue({ ...fêmea, dataEntrada: dia("2026-10-21") });
+    await expect(conferirHistoricoDosFatos(tx, [id])).rejects.toThrow(/controle-preservado.*entrada/);
+    db.animal.findUnique.mockResolvedValue(fêmea);
+    db.localizacaoAnimal.findMany.mockResolvedValue([{ ...local, animalId: id, propriedadeId: 2 }]);
+    await expect(conferirHistoricoDosFatos(tx, [id])).rejects.toThrow(/controle-preservado.*localização/);
   });
 });

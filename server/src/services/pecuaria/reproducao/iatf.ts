@@ -1,3 +1,4 @@
+import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
 import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
 import { validarReferenciasCusto } from "../custos/referencias-planejadas.js";
 import { executarManejoDaTarefaIatfTx } from "../protocolos/execucao.manejos.js";
@@ -434,6 +435,7 @@ export async function iniciarParticipanteTx(
       "inicioEfetivo",
     );
   }
+  await conferirAptidaoParaAcaoTx(tx, participante.animalId, propriedadeId, dia(temporal.data), "PROTOCOLO");
   if (acaoInicial) await conferirMatrizTx(tx, participante.animalId, propriedadeId, dia(temporal.data));
   else await conferirDisponibilidadeTx(
     tx,

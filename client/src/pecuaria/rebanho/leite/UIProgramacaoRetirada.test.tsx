@@ -131,3 +131,11 @@ describe("Programação de retirada", () => {
     await waitFor(() => expect(screen.queryByText(/Meta atingida/)).toBeNull());
   });
 });
+it("data compartilhada recebe formato brasileiro e salva a vigência ISO com versão e sítio", async () => {
+  vi.mocked(registrarLeite).mockResolvedValue({});
+  render(<ProgramacaoRetirada podeLancar />);
+  fireEvent.click(await screen.findByRole("button", { name: /Configurar rotina de coleta/ }));
+  fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "20/10/2026" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar rotina de coleta" }));
+  await waitFor(() => expect(registrarLeite).toHaveBeenCalledWith("/programacao", 2, { propriedadeId: 2, versaoEsperada: 0, vigenteDesde: "2026-10-20", tipo: "DIARIA" }));
+});

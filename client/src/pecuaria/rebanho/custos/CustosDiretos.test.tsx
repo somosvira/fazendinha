@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach,beforeEach,describe,it,expect,vi } from "vitest";
 import { cleanup,render,screen,fireEvent,waitFor } from "@testing-library/react";
 import { CustosDiretos } from "./CustosDiretos";
@@ -10,13 +11,13 @@ const dados=():CustosDTO=>({rotulo:"Custo direto registrado",cobertura:"COMPLETO
 beforeEach(()=>{vi.clearAllMocks();localStorage.setItem("usuario-custos",JSON.stringify({dono:true,areas:[],flags:[]}));vi.mocked(obterCustos).mockResolvedValue(dados());vi.mocked(escreverCustos).mockResolvedValue({});vi.mocked(obterPreparatorios).mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10});});
 afterEach(()=>{cleanup();localStorage.clear();});
 describe("composição de custos",()=>{
- it("mostra o custo direto e a limitação sem somar a visão inteira novamente",async()=>{render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);expect(screen.getByText(/Estas visões consultam os mesmos fatos/)).toBeTruthy();expect(screen.getByText("Logística não atribuída")).toBeTruthy();expect(obterCustos).toHaveBeenCalledWith({tentativaId:"t"},1,"","",1,"",1,1);});
+ it("mostra o custo direto e a limitação sem somar a visão inteira novamente",async()=>{render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);expect(screen.queryByText("Logística não atribuída")).toBeNull();fireEvent.click(screen.getByRole("button",{name:"Ajuda sobre cobertura dos custos"}));expect(screen.getByText(/Mesmos fatos da tentativa ou protocolo/)).toBeTruthy();expect(screen.getByText("Logística não atribuída")).toBeTruthy();expect(obterCustos).toHaveBeenCalledWith({tentativaId:"t"},1,"","",1,"",1,1);});
  it("leitor de Pecuária vê valores, navega por link com aparência secundária e conserva edição restrita",async()=>{
   localStorage.setItem("usuario-custos",JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));
   const d=dados();d.componentes[0]={...d.componentes[0],natureza:"SERVICO",origemId:"servico"};vi.mocked(obterCustos).mockResolvedValue(d);
   render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);
   await screen.findByText(/100,00/);
-  expect(screen.queryByText("Classificar finalidade e composição")).toBeNull();
+  expect(screen.queryByText("Classificação dos registros")).toBeNull();
   expect(screen.queryByText("Vincular preparatório à tentativa")).toBeNull();
   const origem=screen.getByRole("link",{name:"Ver fato de origem"});
   expect(origem.getAttribute("href")).toBe("/pecuaria/reproducao?animalId=a&propriedadeId=1&fatoId=t");
@@ -25,10 +26,10 @@ describe("composição de custos",()=>{
   expect(screen.getByText("Ver Serviço").getAttribute("aria-disabled")).toBe("true");
   expect(screen.getByText("Ver Serviço").getAttribute("title")).toBe("Sem acesso a esta área");
  });
- it("valor oculto conserva estado próprio e não oferece editor monetário",async()=>{localStorage.setItem("usuario-custos",JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));vi.mocked(obterCustos).mockResolvedValue({...dados(),situacao:"OCULTO",totalConhecido:null,componentes:dados().componentes.map(c=>({...c,valor:null,origemId:null}))});render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText("Valores ocultos",{selector:"strong"});expect(screen.queryByText(/100,00/)).toBeNull();expect(screen.queryByText("Classificar finalidade e composição")).toBeNull();});
- it("desconhecido não aparece como custo zero e permite filtrar por data do fato",async()=>{vi.mocked(obterCustos).mockResolvedValue({...dados(),cobertura:"DESCONHECIDO",situacao:"DESCONHECIDO",totalConhecido:null});render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar/>);await screen.findByText(/Valor ainda não comprovado/);fireEvent.click(screen.getByRole("button",{name:"Personalizar período dos custos"}));fireEvent.change(screen.getByLabelText("Data inicial"),{target:{value:"2026-09-01"}});fireEvent.click(screen.getByRole("button",{name:"Aplicar período"}));await waitFor(()=>expect(obterCustos).toHaveBeenLastCalledWith({animalId:"a"},1,"2026-09-01","2026-10-18",1,"",1,1));expect(screen.queryByText(/^R\$\s*0,00$/)).toBeNull();});
- it("corrige finalidade com versão e preserva prova documental de zero",async()=>{render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);fireEvent.change(screen.getByLabelText("Fato a classificar"),{target:{value:"TENTATIVA:t"}});fireEvent.change(screen.getByLabelText("Finalidade gerencial"),{target:{value:"SANIDADE"}});fireEvent.change(screen.getByLabelText("Motivo da classificação"),{target:{value:"Finalidade conferida no atendimento"}});fireEvent.click(screen.getByRole("button",{name:"Salvar classificação"}));await waitFor(()=>expect(escreverCustos).toHaveBeenCalled());expect(vi.mocked(escreverCustos).mock.calls[0]).toEqual(["/classificacao",expect.objectContaining({fonteId:"t",tipo:"TENTATIVA",versao:2,finalidade:"SANIDADE",materialDocumentado:{valor:"0.00",referencia:"NF 10",evidencia:"Gratuidade comprovada"}}),1,"PUT"]);});
- it("preserva valores e chave depois da rejeição de uma parcela compartilhada",async()=>{vi.mocked(obterPreparatorios).mockResolvedValue({total:1,pagina:1,porPagina:10,itens:[{id:"h",tipo:"APLICACAO",descricao:"Hormônio",data:"2026-09-30",rotulo:"Custo direto registrado",cobertura:"COMPLETO",situacao:"COMPLETO",totalConhecido:"30.00",componentesPendentes:0,componentes:[],limitacoes:[]}]});vi.mocked(escreverCustos).mockRejectedValueOnce(new Error("Origem já atribuída"));render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);const det=screen.getByText("Vincular preparatório à tentativa").parentElement!;det.setAttribute("open","");fireEvent(det,new Event("toggle"));await screen.findByRole("option",{name:/Hormônio/});fireEvent.change(screen.getByLabelText("Preparatório"),{target:{value:"APLICACAO:h"}});fireEvent.change(screen.getByLabelText("Atribuição"),{target:{value:"PARCELA"}});fireEvent.change(screen.getByLabelText("Parcela do material (R$)"),{target:{value:"10.25"}});fireEvent.change(screen.getByLabelText("Motivo do vínculo"),{target:{value:"Preparo compartilhado explicitamente"}});fireEvent.click(screen.getByRole("button",{name:"Confirmar vínculo"}));await screen.findByText("Origem já atribuída");const primeira=vi.mocked(escreverCustos).mock.calls[0][1];expect(screen.getByLabelText("Parcela do material (R$)")).toHaveProperty("value","10.25");fireEvent.click(screen.getByRole("button",{name:"Confirmar vínculo"}));await waitFor(()=>expect(escreverCustos).toHaveBeenCalledTimes(2));expect(vi.mocked(escreverCustos).mock.calls[1][1]).toEqual(primeira);});
+ it("valor oculto conserva estado próprio e não oferece editor monetário",async()=>{localStorage.setItem("usuario-custos",JSON.stringify({dono:false,areas:["pecuaria"],flags:["lancar"]}));vi.mocked(obterCustos).mockResolvedValue({...dados(),situacao:"OCULTO",totalConhecido:null,componentes:dados().componentes.map(c=>({...c,valor:null,origemId:null}))});render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText("Valores ocultos",{selector:"strong"});expect(screen.queryByText(/100,00/)).toBeNull();expect(screen.queryByText("Classificação dos registros")).toBeNull();});
+ it("desconhecido não aparece como custo zero e permite filtrar por data do fato",async()=>{vi.mocked(obterCustos).mockResolvedValue({...dados(),cobertura:"DESCONHECIDO",situacao:"DESCONHECIDO",totalConhecido:null});render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar/>);await screen.findByText(/Valor ainda não comprovado/);fireEvent.click(screen.getByRole("button",{name:"Personalizar período dos custos"}));await alterarControle(screen.getByLabelText("Data inicial"),{target:{value:"2026-09-01"}});fireEvent.click(screen.getByRole("button",{name:"Aplicar período"}));await waitFor(()=>expect(obterCustos).toHaveBeenLastCalledWith({animalId:"a"},1,"2026-09-01","2026-10-18",1,"",1,1));expect(screen.queryByText(/^R\$\s*0,00$/)).toBeNull();});
+ it("corrige finalidade com versão e preserva prova documental de zero",async()=>{render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);await alterarControle(screen.getByLabelText("Fato a classificar"),{target:{value:"TENTATIVA:t"}});await alterarControle(screen.getByLabelText("Finalidade gerencial"),{target:{value:"SANIDADE"}});await alterarControle(screen.getByLabelText("Motivo da classificação"),{target:{value:"Finalidade conferida no atendimento"}});fireEvent.click(screen.getByRole("button",{name:"Salvar classificação"}));await waitFor(()=>expect(escreverCustos).toHaveBeenCalled());expect(vi.mocked(escreverCustos).mock.calls[0]).toEqual(["/classificacao",expect.objectContaining({fonteId:"t",tipo:"TENTATIVA",versao:2,finalidade:"SANIDADE",materialDocumentado:{valor:"0.00",referencia:"NF 10",evidencia:"Gratuidade comprovada"}}),1,"PUT"]);});
+ it("preserva valores e chave depois da rejeição de uma parcela compartilhada",async()=>{vi.mocked(obterPreparatorios).mockResolvedValue({total:1,pagina:1,porPagina:10,itens:[{id:"h",tipo:"APLICACAO",descricao:"Hormônio",data:"2026-09-30",rotulo:"Custo direto registrado",cobertura:"COMPLETO",situacao:"COMPLETO",totalConhecido:"30.00",componentesPendentes:0,componentes:[],limitacoes:[]}]});vi.mocked(escreverCustos).mockRejectedValueOnce(new Error("Origem já atribuída"));render(<CustosDiretos tentativaId="t" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);const det=screen.getByText("Vincular preparatório à tentativa").parentElement!;det.setAttribute("open","");fireEvent(det,new Event("toggle"));await screen.findByRole("option",{name:/Hormônio/});await alterarControle(screen.getByLabelText("Preparatório"),{target:{value:"APLICACAO:h"}});await alterarControle(screen.getByLabelText("Atribuição"),{target:{value:"PARCELA"}});await alterarControle(screen.getByLabelText("Parcela do material (R$)"),{target:{value:"10.25"}});await alterarControle(screen.getByLabelText("Motivo do vínculo"),{target:{value:"Preparo compartilhado explicitamente"}});fireEvent.click(screen.getByRole("button",{name:"Confirmar vínculo"}));await screen.findByText("Origem já atribuída");const primeira=vi.mocked(escreverCustos).mock.calls[0][1];expect(screen.getByLabelText("Parcela do material (R$)")).toHaveProperty("value","10.25");fireEvent.click(screen.getByRole("button",{name:"Confirmar vínculo"}));await waitFor(()=>expect(escreverCustos).toHaveBeenCalledTimes(2));expect(vi.mocked(escreverCustos).mock.calls[1][1]).toEqual(primeira);});
 });
 
 it("ignora resposta antiga de outro alvo e sítio",async()=>{
@@ -44,7 +45,7 @@ it("falha no segundo sítio não mantém custo do primeiro",async()=>{
  vi.mocked(obterCustos).mockResolvedValueOnce(dados()).mockRejectedValueOnce(new Error("Sítio sem leitura autorizada"));
  const {rerender}=render(<CustosDiretos tentativaId="a" propriedadeId={1} podeLancar/>);await screen.findByText(/100,00/);
  rerender(<CustosDiretos tentativaId="b" propriedadeId={2} podeLancar/>);
- await screen.findByText("Sítio sem leitura autorizada");expect(screen.queryByText(/100,00/)).toBeNull();expect(screen.queryByText("Classificar finalidade e composição")).toBeNull();
+ await screen.findByText("Sítio sem leitura autorizada");expect(screen.queryByText(/100,00/)).toBeNull();expect(screen.queryByText("Classificação dos registros")).toBeNull();
 });
 it("não reaproveita preparatórios carregados para outra tentativa",async()=>{
  const candidato=(id:string)=>({id,tipo:"APLICACAO" as const,descricao:`Hormônio ${id}`,data:"2026-09-30",rotulo:"Custo direto registrado",cobertura:"COMPLETO",situacao:"COMPLETO",totalConhecido:"30.00",componentesPendentes:0,componentes:[],limitacoes:[]});
@@ -89,15 +90,15 @@ it("mantém paginação no servidor e reinicia ao trocar finalidade",async()=>{
  await screen.findByRole("table");
  fireEvent.click(screen.getByRole("button",{name:"Próxima"}));
  await waitFor(()=>expect(obterCustos).toHaveBeenLastCalledWith({animalId:"a"},1,"2025-10-19","2026-10-18",2,"",1,1));
- fireEvent.change(screen.getByLabelText("Finalidade do custo"),{target:{value:"SANIDADE"}});
+ await alterarControle(screen.getByLabelText("Finalidade do custo"),{target:{value:"SANIDADE"}});
  await waitFor(()=>expect(obterCustos).toHaveBeenLastCalledWith({animalId:"a"},1,"2025-10-19","2026-10-18",1,"SANIDADE",1,1));
 });
 it("período invertido fica no rascunho do seletor, sem consultar datas inválidas",async()=>{
  render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar={false}/>);
  await screen.findByRole("table");
  fireEvent.click(screen.getByRole("button",{name:"Personalizar período dos custos"}));
- fireEvent.change(screen.getByLabelText("Data inicial"),{target:{value:"2026-10-18"}});
- fireEvent.change(screen.getByLabelText("Data final"),{target:{value:"2026-10-01"}});
+ await alterarControle(screen.getByLabelText("Data inicial"),{target:{value:"2026-10-18"}});
+ await alterarControle(screen.getByLabelText("Data final"),{target:{value:"2026-10-01"}});
  expect(screen.getByRole("button",{name:"Aplicar período"})).toHaveProperty("disabled",true);
  expect(obterCustos).toHaveBeenCalledTimes(1);
 });
@@ -153,4 +154,27 @@ it("remove a coluna sem ações somente no detalhe que já apresenta ambos os de
  rerender(<CustosDiretos aplicacaoId="aplicacao" propriedadeId={1} podeLancar={false}/>);
  expect(await screen.findByRole("link",{name:"Ver fato de origem"})).toBeTruthy();
  expect(screen.getByRole("link",{name:"Ver movimento"})).toBeTruthy();
+});
+
+it("apresenta classificação diretamente e agrupa limitações junto ao resumo", async () => {
+  render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar/>);
+  expect(await screen.findByRole("heading", { name: "Classificação dos registros" })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fato a classificar" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", {name:"Ajuda sobre cobertura dos custos"}));
+  expect(screen.getByText("Logística não atribuída")).toBeTruthy();
+});
+
+it("mantém preparatórios pendentes legíveis e dispensa controles sem outra página", async () => {
+  const d=dados();
+  d.fontesPaginadas={total:1,pagina:1,porPagina:10};
+  d.atribuicoesPaginadas={total:1,pagina:1,porPagina:10};
+  d.atribuicoesPreparos=[{fonteId:"preparo1",tipo:"APLICACAO",descricao:"Preparo hormonal",aAtribuir:true,vinculos:[],parcelas:[{natureza:"MATERIAL",valorOrigem:"30.00",valorAtribuido:"10.00",restante:"20.00"}]}];
+  vi.mocked(obterCustos).mockResolvedValue(d);
+  render(<CustosDiretos animalId="a" propriedadeId={1} podeLancar/>);
+  await screen.findByRole("table");
+  expect(screen.getByText("Preparo hormonal")).toBeTruthy();
+  expect(screen.getByText(/Material:.*20,00 a atribuir/)).toBeTruthy();
+  expect(screen.queryByRole("button",{name:"Anterior"})).toBeNull();
+  expect(screen.queryByRole("button",{name:"Próxima"})).toBeNull();
+  expect(screen.getByText("1 componente")).toBeTruthy();
 });

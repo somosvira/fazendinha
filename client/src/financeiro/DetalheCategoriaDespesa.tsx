@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState } from "react";
 import { ArrowDownRight, CornerUpLeft, ChartPie, ChevronRight, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,8 +54,8 @@ export function DetalheCategoriaDespesa({ categorias, inicio, fim, onClose }: {
   return <DialogFinanceiro icon={ChartPie} tom="saida" titulo={categorias.length === 1 ? categorias[0].label : "Outras categorias"} eyebrow={`Despesas realizadas · ${dataBR(inicio)} a ${dataBR(fim)}`} onClose={onClose} className="max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
     <div className="min-h-0 min-w-0 overflow-auto p-4 sm:p-5">
       {erro ? <div role="alert" className="text-sm"><p>{erro}</p><Button variant="outline" onClick={() => setTentativa(valor => valor + 1)}>Tentar novamente</Button></div> : !dados ? <SkeletonCategorias /> : <>
-        <div data-fin-tom="saida" className="fin-cabecalho fin-painel mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"><div><p className="text-sm text-muted-foreground">Total líquido</p><strong className="fin-valor font-serif text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>
-        <p className="mb-4 text-sm text-muted-foreground">Estornos abatem o total. Clique em um lançamento para consultar seus documentos e detalhes completos.</p>
+        <div data-fin-tom="saida" className="fin-cabecalho fin-painel mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"><div><p className="text-sm text-muted-foreground">Total líquido</p><AjudaCampo rotulo="Ajuda: total da categoria" texto={<>Estornos abatem o total. Clique em um lançamento para consultar seus documentos e detalhes completos.</>} /><strong className="fin-valor font-serif text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>
+
         {linhas.length ? <ul aria-label="Lançamentos da categoria" className="space-y-3">{linhas.slice((pagina - 1) * 15, pagina * 15).map((linha, indice) => <li key={`${linha.movimentoId ?? linha.operacaoId}-${indice}`}><LancamentoCategoria linha={linha} inicio={inicio} fim={fim} /></li>)}</ul> : <p role="status" className="py-6">Nenhum lançamento nesta categoria no período.</p>}
         {linhas.length > 15 && <nav aria-label="Paginação dos lançamentos" className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm"><span>{(pagina - 1) * 15 + 1}–{Math.min(pagina * 15, linhas.length)} de {linhas.length} lançamentos</span><div className="flex gap-2"><Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(atual => atual - 1)}>Anterior</Button><Button variant="outline" disabled={pagina * 15 >= linhas.length} onClick={() => setPagina(atual => atual + 1)}>Próxima</Button></div></nav>}
       </>}

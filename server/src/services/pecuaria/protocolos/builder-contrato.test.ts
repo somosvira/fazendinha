@@ -5,7 +5,7 @@ import { etapasReprodutivasDoContrato } from "./reproducao.js";
 import { calendarioIatf } from "../reproducao/regras.calc.js";
 import { momentosDasAcoes, snapshotMomento } from "./momentos.js";
 import { resolverTipoAplicacaoCadastroTx } from "./cadastros-produtos.js";
-import { produtoSchema } from "../../estoque/produtos.schemas.js";
+import { patchProdutoSchema } from "../../estoque/produtos.schemas.js";
 
 const id = "c0000000-0000-4000-8000-000000000001";
 const aplicacao = { nome: "Aplicação", tipo: "APLICACAO" as const, intervalo: 7.5, unidade: "DIAS" as const, planoAplicacao: { produtoId: id, dose: "2", unidadeDose: "ML" as const } };
@@ -64,7 +64,7 @@ it("resolve classificação explícita antes do padrão e deixa ausência dispon
 });
 
 it("aceita metadados opcionais no perfil e valida identificadores sem exigir via ou orientação", () => {
-  const perfil = produtoSchema.shape.perfilSanitario;
+  const perfil = patchProdutoSchema.shape.perfilSanitario;
   expect(perfil.safeParse({ carenciaLeiteHoras: null, carenciaCarneHoras: null, tipoAplicacaoId: id }).success).toBe(true);
   expect(perfil.safeParse({ carenciaLeiteHoras: null, carenciaCarneHoras: null, tipoAplicacaoId: "nome de vacina" }).success).toBe(false);
 });

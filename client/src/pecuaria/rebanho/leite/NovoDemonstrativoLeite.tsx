@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { useEffect, useRef, useState } from "react";
@@ -198,11 +199,8 @@ export function NovoDemonstrativoLeite({
       }}
     >
       <fieldset disabled={ocupado}>
-        <legend>Registrar demonstrativo do comprador</legend>
-        <p>
-          Este documento relaciona entregas e versões de vendas existentes. Não
-          cria outra venda, baixa física ou recebimento.
-        </p>
+        <legend>Registrar demonstrativo do comprador <AjudaCampo rotulo="Sobre o demonstrativo do comprador" texto={"Este documento relaciona entregas e versões de vendas existentes. Não cria outra venda, baixa física ou recebimento."} /></legend>
+
         <div className="leite-form-inline">
           <label>
             Comprador do demonstrativo
@@ -300,12 +298,8 @@ export function NovoDemonstrativoLeite({
           Pagamento vazio permanece desconhecido. O valor informado neste
           documento não confirma recebimento em conta.
         </small>
-        <h3>Composição informada</h3>
-        <p>
-          Bônus, desconto, retenção e adiantamento são registrados
-          separadamente. A composição é manual e não gera pagamentos ou
-          descontos automáticos no Financeiro.
-        </p>
+        <h3>Composição informada <AjudaCampo rotulo="Sobre a composição do demonstrativo" texto={"Bônus, desconto, retenção e adiantamento são registrados separadamente. A composição é manual e não gera pagamentos ou descontos automáticos no Financeiro."} /></h3>
+
         {componentes.map((c, i) => (
           <div className="leite-form-inline" key={i}>
             <label>

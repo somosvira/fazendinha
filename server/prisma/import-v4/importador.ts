@@ -2,6 +2,7 @@ import { registrarEvidenciaAvaliacaoTx } from "../../src/services/pecuaria/exame
 import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type { CargaV4, FatoV4, MapeamentoV4 } from "./contrato.js";
+import { criarManifesto, executarPlano, separarChave, type ItemManifesto, type ReciboItem } from "./plano.js";
 
 type Tx = Prisma.TransactionClient;
 type Item = {
@@ -11,6 +12,8 @@ type Item = {
   gravacao: (tx: Tx) => Promise<string>;
 };
 export interface RelatorioV4 {
+  manifesto: ReturnType<typeof criarManifesto>;
+  recibo: ReciboItem[];
   modo: "PREVIA" | "EXECUCAO";
   planejados: number;
   importados: number;
@@ -36,8 +39,12 @@ export async function importarV4(
   carga: CargaV4,
   mapa: MapeamentoV4,
   executar = false,
+  manifestoConfirmado?: string,
+  destino?: { ambiente: string; host: string; banco: string },
 ): Promise<RelatorioV4> {
   const relatorio: RelatorioV4 = {
+    manifesto: criarManifesto(mapa.bancoOrigem, []),
+    recibo: [],
     modo: executar ? "EXECUCAO" : "PREVIA",
     planejados: 0,
     importados: 0,
@@ -104,6 +111,13 @@ export async function importarV4(
       .map((f) => f.animalId),
   );
   const planos: Item[] = [];
+  const itensManifesto: ItemManifesto[] = [];
+  const reutilizados: ReciboItem[] = [];
+  const chavesRecebidas = new Set<string>();
+  const dependencias = new Map<string, string[]>([
+    ...carga.fatos.map((f): [string, string[]] => [f.chaveExterna, f.tentativaChave ? [f.tentativaChave] : []]),
+    ...carga.lactacoes.map((l): [string, string[]] => [l.chaveExterna, l.partoChave ? [l.partoChave] : []]),
+  ]);
   const destinos = new Map(
     vinculos.map((v) => [`${v.tabelaOrigem}:${v.chaveOrigem}`, v.destinoId]),
   );
@@ -122,7 +136,17 @@ export async function importarV4(
     entidade: string,
     gravacao: Item["gravacao"],
   ) => {
+    if (chavesRecebidas.has(chave)) {
+      bloquear(chave, "Chave de origem duplicada no lote; revisão explícita exigida.");
+      return;
+    }
+    chavesRecebidas.add(chave);
+    try { separarChave(chave); } catch (e) {
+      bloquear(chave, e instanceof Error ? e.message : String(e));
+      return;
+    }
     const h = hash(fonte);
+    itensManifesto.push({ chave, hash: h, entidade, dependencias: dependencias.get(chave) ?? [], operacao: vinculoPorChave.has(chave) ? "REUTILIZAR" : "CRIAR", destinoId: vinculoPorChave.get(chave)?.destinoId ?? null });
     const existente = vinculoPorChave.get(chave);
     if (existente) {
       if (existente.hashOrigem !== h)
@@ -130,7 +154,10 @@ export async function importarV4(
           chave,
           "Origem/mapeamento diverge da carga anterior; revisão explícita exigida.",
         );
-      else relatorio.existentes++;
+      else {
+        relatorio.existentes++;
+        reutilizados.push({ chave, estado: "REUTILIZADO", destinoId: existente.destinoId });
+      }
       return;
     }
     planos.push({ chave, hash: h, entidade, gravacao });
@@ -703,15 +730,29 @@ export async function importarV4(
         l.chaveExterna,
         "Parto vinculado não está disponível para importação.",
       );
+  relatorio.manifesto = criarManifesto(mapa.bancoOrigem, itensManifesto, {
+    autorId: mapa.autorId,
+    destino: destino ?? null,
+    // Congela a resolução por identidade/localização/genética, sem mudar o hash
+    // de origem já persistido. Uma nova resolução exige outra revisão.
+    animais: [...animais].sort((a, b) => a.id.localeCompare(b.id)).map((a) => ({
+      ...a,
+      localizacoes: [...a.localizacoes].sort((x, y) => x.id.localeCompare(y.id)),
+    })),
+  });
   relatorio.planejados = planos.length;
   if (!executar) return relatorio;
+  if (manifestoConfirmado !== undefined && manifestoConfirmado !== relatorio.manifesto.hash)
+    bloquear("MANIFESTO", "Manifesto diverge da prévia revisada; gere e confira uma nova prévia.");
   // Conflitos impedem a execução inteira; prévia deve ser revisada antes de autorizar a carga.
   if (relatorio.conflitos.length) return relatorio;
-  for (const item of planos) {
-    try {
-      const destinoId = await db.$transaction(
+  const reciboExecucao = await executarPlano(planos.map((item) => ({
+    chave: item.chave,
+    dependencias: dependencias.get(item.chave) ?? [],
+    gravar: async () => {
+      const resultado = await db.$transaction(
         async (tx) => {
-          const [tabelaOrigem, chaveOrigem] = item.chave.split(":");
+          const { tabelaOrigem, chaveOrigem } = separarChave(item.chave);
           const existente = await tx.vinculoImportacaoPecuaria.findUnique({
             where: {
               bancoOrigem_tabelaOrigem_chaveOrigem: {
@@ -724,7 +765,7 @@ export async function importarV4(
           if (existente) {
             if (existente.hashOrigem !== item.hash)
               throw new Error("Origem alterada durante execução.");
-            return existente.destinoId;
+            return { destinoId: existente.destinoId, reutilizado: true };
           }
           const id = await item.gravacao(tx);
           await tx.vinculoImportacaoPecuaria.create({
@@ -737,18 +778,22 @@ export async function importarV4(
               destinoId: id,
             },
           });
-          return id;
+          return { destinoId: id, reutilizado: false };
         },
         {
           isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
           timeout: 30000,
         },
       );
-      destinos.set(item.chave, destinoId);
-      relatorio.importados++;
-    } catch (e) {
-      bloquear(item.chave, e instanceof Error ? e.message : String(e));
-    }
+      destinos.set(item.chave, resultado.destinoId);
+      return resultado;
+    },
+  })), new Set(vinculoPorChave.keys()));
+  relatorio.recibo = [...reutilizados, ...reciboExecucao];
+  for (const item of reciboExecucao) {
+    if (item.estado === "CRIADO") relatorio.importados++;
+    else if (item.estado === "REUTILIZADO") relatorio.existentes++;
+    else if ("motivo" in item) bloquear(item.chave, item.motivo);
   }
   return relatorio;
 }

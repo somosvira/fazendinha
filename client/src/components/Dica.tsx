@@ -21,7 +21,7 @@ export function Dica({ conteudo, rotulo, children, className }: {
       <button
         type="button"
         aria-label={rotulo}
-        className={cn("inline-flex items-center align-middle text-ink-3 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2", className)}
+        className={cn("dica-gatilho inline-flex items-center align-middle text-ink-3 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2", className)}
         onMouseEnter={() => setAberto(true)}
         onMouseLeave={() => setAberto(false)}
         onFocus={() => setAberto(true)}

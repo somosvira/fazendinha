@@ -60,3 +60,21 @@ it("agrupa por mês com turnos dinâmicos e total conhecido de todo o recorte", 
   expect(r.grupos[0].turnos[0]).toMatchObject({ posicaoId: "manhã", nome: "Manhã", litros: 10 });
   expect(r.total).toBe(4); expect(r.itens).toHaveLength(1);
 });
+
+it("conta vacas ordenhadas únicas só nas medições válidas e não inventa média com pendências", async () => {
+  const r = await consultarProducaoLeite(2, filtro);
+  expect(r.grupos[0]).toMatchObject({ vacasOrdenhadas: 1, mediaPorVaca: null });
+  const mensal = await consultarProducaoLeite(2, { ...filtro, agrupamento: "MES" });
+  expect(mensal.grupos.every(g => g.vacasOrdenhadas === null && g.mediaPorVaca === null)).toBe(true);
+});
+it("aferição geral exige origem explícita em cada parcela medida para contar vacas", async () => {
+  m.dias.mockResolvedValue(["geral"]);
+  m.folha.mockReturnValue({ dataOperacional: "2026-10-31", configuracao: { fonteProducao: "GERAL" }, sessoes: [], animais: [] });
+  const base = { fonte: "GERAL", data: "2026-10-31", animalId: null, brinco: "Tanque", nome: "Tanque", finalidade: null, posicaoId: "m", ordenha: "Manhã", natureza: "COMERCIAL", estado: "MEDIDO", litros: 20, confirmada: true };
+  m.gerais.mockResolvedValue([{ ...base, animaisOrigem: ["a", "b"] }]);
+  const conhecido = await consultarProducaoLeite(2, { ...filtro, fim: filtro.inicio });
+  expect(conhecido.grupos[0]).toMatchObject({ vacasOrdenhadas: 2, mediaPorVaca: 10 });
+  m.gerais.mockResolvedValue([{ ...base, animaisOrigem: ["a", "b"] }, { ...base, animaisOrigem: [] }]);
+  const desconhecido = await consultarProducaoLeite(2, { ...filtro, fim: filtro.inicio });
+  expect(desconhecido.grupos[0]).toMatchObject({ vacasOrdenhadas: null, mediaPorVaca: null });
+});

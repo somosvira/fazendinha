@@ -1,12 +1,14 @@
 import type { SVGProps } from "react";
 
-/** Ícone compartilhado de vaca de perfil, já usado na navegação do Rebanho. */
+/** Cabeça de bovino no mesmo padrão de traço dos ícones Lucide da interface. */
 export function VacaIcon(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props}>
-      <path d="M3 10h3l1-3h7l1.5 2 2-2 2 .5-.7 1.4 1.7.5-1.4 1.3 1 1.3-2.2.5L16 11v2h-1v4h-2v-4H9v4H7v-4H5.5A2.5 2.5 0 0 1 3 10Z" />
-      <path d="m6 10-2-2-1 1M16.5 7l.8-2 1.2.8M18 10h.01" />
-      <path d="M11 13v1.5h2V13" />
+    <svg viewBox="0 0 24 24" width={20} height={20} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" {...props}>
+      <path d="M8 7C6 6 6 4 7 3m9 4c2-1 2-3 1-4" />
+      <path d="M7 9C5 7 2 7 2 8c0 3 3 4 5 3m10-2c2-2 5-2 5-1 0 3-3 4-5 3" />
+      <path d="M7 14v-4c0-4 10-4 10 0v4" />
+      <rect x={6} y={14} width={12} height={7} rx={3} />
+      <path d="M9 11v1m6-1v1M9 17.5h.01m5.99 0h.01" />
     </svg>
   );
 }

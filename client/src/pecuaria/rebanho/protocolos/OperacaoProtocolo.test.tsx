@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { OperacaoProtocolo } from "./OperacaoProtocolo";
@@ -102,4 +103,38 @@ it("conserva registro legado sem inventar fato individual e mostra snapshot hist
   fireEvent.click(screen.getByRole("button", { name: "Ver atendimento" }));
   expect(screen.getByText("Responsável registrado: Registro antigo")).toBeTruthy();
   expect(screen.getByText("Observação registrada: Manejo histórico")).toBeTruthy();
+});
+
+it.each(["NAO_ATENDIDO", "ADIAMENTO", "RETIFICACAO_JUSTIFICATIVA"] as const)("invalida o resumo externo após %s e preserva-o se a gravação falhar", async tipo => {
+  api.evento.mockRejectedValueOnce(new Error("Gravação indisponível")).mockResolvedValue({ id: "evento" });
+  api.tarefas.mockResolvedValue({ itens: [{ ...tarefa(1), ultimoEvento: tipo === "RETIFICACAO_JUSTIFICATIVA" ? { id: "anterior", tipo: "NAO_ATENDIDO", motivo: "Motivo anterior", ocorridaEm: "2026-10-19" } : null, acoes: { atender: false, justificar: true, adiar: true, retificar: true, regularizar: false } }], total: 1, pagina: 1, porPagina: 10 });
+  function Tela() {
+    const [salvos, setSalvos] = useState(0);
+    return <><p>Resumo atualizado {salvos} vezes</p><OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoSalvar={() => setSalvos(v => v + 1)}/></>;
+  }
+  render(<Tela/>);
+  await screen.findByRole("link", { name: "Animal 1" });
+  if (tipo === "RETIFICACAO_JUSTIFICATIVA") {
+    fireEvent.click(screen.getByRole("button", { name: "Ver motivo" }));
+    fireEvent.click(screen.getByRole("button", { name: "Editar justificativa" }));
+  } else fireEvent.click(screen.getByRole("button", { name: tipo === "ADIAMENTO" ? "Adiar" : "Justificar" }));
+  if (tipo === "ADIAMENTO") fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "21/10/2026" } });
+  fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível para manejo" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+  await screen.findByText("Gravação indisponível");
+  expect(screen.getByText("Resumo atualizado 0 vezes")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+  expect(await screen.findByText("Resumo atualizado 1 vezes")).toBeTruthy();
+});
+it("invalida o contexto externo também após execução delegada e regularização", async () => {
+  api.tarefas.mockResolvedValue({ itens: [{ ...tarefa(1), acoes: { atender: true, justificar: false, adiar: false, retificar: false, regularizar: true } }], total: 1, pagina: 1, porPagina: 10 });
+  function Tela() {
+    const [salvos, setSalvos] = useState(0);
+    return <><p>Resumo atualizado {salvos} vezes</p><OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoSalvar={() => setSalvos(v => v + 1)} aoExecutar={(_tarefas, aoSalvar) => aoSalvar()} regularizacao={(_tarefa, aoSalvar) => <button onClick={aoSalvar}>Concluir regularização</button>}/></>;
+  }
+  render(<Tela/>);
+  fireEvent.click(await screen.findByRole("button", { name: "Atender" }));
+  expect(await screen.findByText("Resumo atualizado 1 vezes")).toBeTruthy();
+  fireEvent.click(await screen.findByRole("button", { name: "Concluir regularização" }));
+  expect(await screen.findByText("Resumo atualizado 2 vezes")).toBeTruthy();
 });

@@ -8,16 +8,17 @@ const mocks = vi.hoisted(() => {
     $executeRaw: vi.fn(),
     visitaVeterinaria: { findFirst: vi.fn(), update: vi.fn() },
     atividadeVisita: { ...lista(), aggregate: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
-    participanteVisita: { ...lista(), createMany: vi.fn(), findUnique: vi.fn() },
+    participanteVisita: { ...lista(), createMany: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn() },
     tarefaProtocolo: { ...lista(), findFirst: vi.fn() },
     animal: lista(), localizacaoAnimal: lista(), categoriaAnimal: lista(), categoriaManualAnimal: lista(), finalidadeAnimal: lista(),
     ocorrenciaSanitaria: lista(), regraSanitariaReprodutiva: lista(), periodoReprodutivoAnimal: lista(), tarefaIatf: lista(),
     programacaoIatf: lista(), protocolo: lista(), protocoloIatf: lista(), participanteIatf: lista(),
     avaliacaoReprodutiva: lista(), gestacaoAnimal: lista(), tentativaReprodutiva: lista(), auditoriaPecuaria: { create: vi.fn() },
   };
-  return { tx, estados: vi.fn(), contextos: vi.fn(), retornos: vi.fn() };
+  return { tx, estados: vi.fn(), contextos: vi.fn(), retornos: vi.fn(), aptidoes: vi.fn() };
 });
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: (f: (tx: typeof mocks.tx) => unknown) => f(mocks.tx) } }));
+vi.mock("./elegibilidade.js", async original => ({ ...await original<typeof import("./elegibilidade.js")>(), obterElegibilidadesNaDataTx: mocks.aptidoes }));
 vi.mock("./registros.js", async original => ({ ...await original<typeof import("./registros.js")>(), obterEstadosReprodutivosTx: mocks.estados }));
 vi.mock("./contexto-animal.js", async original => ({ ...await original<typeof import("./contexto-animal.js")>(), obterContextosAnimaisNaDataTx: mocks.contextos }));
 vi.mock("./contexto-retorno.js", async original => ({ ...await original<typeof import("./contexto-retorno.js")>(), carregarRetornosNaDataTx: mocks.retornos }));
@@ -36,6 +37,7 @@ beforeEach(() => {
   mocks.tx.atividadeVisita.aggregate.mockResolvedValue({ _max: { ordem: 0 } });
   mocks.tx.atividadeVisita.create.mockResolvedValue({ id: atividadeId });
   mocks.tx.atividadeVisita.findFirst.mockResolvedValue({ id: atividadeId, tipo: "APLICACAO_SANITARIA" });
+  mocks.tx.participanteVisita.findFirst.mockResolvedValue(null);
   mocks.tx.participanteVisita.findUnique.mockResolvedValue({ id: participanteId, atividadeId, animalId, tarefaId });
   mocks.tx.tarefaProtocolo.findFirst.mockResolvedValue(tarefa());
   mocks.tx.tarefaProtocolo.findMany.mockResolvedValue([tarefa()]);
@@ -68,5 +70,22 @@ describe("parâmetros sanitários nos três retornos de visita", () => {
     }));
     mocks.tx.tarefaProtocolo.findFirst.mockResolvedValue(null);
     await expect(tarefaParticipanteVisita(visitaId, participanteId, 2)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
+  });
+});
+
+
+describe("admissão de avaliação de aptidão na visita", () => {
+  const necessidadeId = `APTIDAO:${animalId}:INICIAL`;
+  const atividade = () => atividadeSchema.parse({ propriedadeId: 2, tipo: "EXAME_SANITARIO", nome: "Avaliação de aptidão", participantes: [{ animalId }],
+    contexto: { finalidade: "APTIDAO_REPRODUTIVA", tipoExameId: uid(8), necessidadesPorAnimal: { [animalId]: necessidadeId } } });
+  it("permite fêmea em PEV ainda sem liberação e conserva a identidade da necessidade", async () => {
+    mocks.aptidoes.mockResolvedValue(new Map([[animalId, { animalId, elegivel: false, motivos: ["EM_ESPERA_PARA_LIBERACAO"], necessidadeAptidao: { necessidadeId }, aptidaoClinica: { estado: "NAO_DETERMINADA" } }]]));
+    await adicionarAtividadeTx(mocks.tx as unknown as Prisma.TransactionClient, visitaId, atividade(), 7);
+    expect(mocks.tx.participanteVisita.createMany).toHaveBeenCalledWith(expect.objectContaining({ data: [expect.objectContaining({ snapshot: expect.objectContaining({ necessidadeAptidaoId: necessidadeId }) })] }));
+  });
+  it.each(["ANIMAL_NAO_FEMEA", "ANIMAL_BAIXADO", "FORA_DO_SITIO", "LOCALIZACOES_CONFLITANTES"])("usa a mesma exclusão da fila para %s", async motivo => {
+    mocks.aptidoes.mockResolvedValue(new Map([[animalId, { animalId, motivos: [motivo], necessidadeAptidao: { necessidadeId } }]]));
+    await expect(adicionarAtividadeTx(mocks.tx as unknown as Prisma.TransactionClient, visitaId, atividade(), 7)).rejects.toMatchObject({ code: "VALIDACAO", campo: "contexto" });
+    expect(mocks.tx.participanteVisita.createMany).not.toHaveBeenCalled();
   });
 });

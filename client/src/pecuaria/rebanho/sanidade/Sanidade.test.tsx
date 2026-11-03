@@ -1,3 +1,5 @@
+import { beforeEach } from "vitest";
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { alterarControle } from "../../../lib/controles.fixture";
@@ -252,6 +254,8 @@ it("conserva a aba de participantes do ciclo ao sincronizar a URL", async () => 
   await waitFor(() => expect(new URLSearchParams(window.location.search).get("abaCiclo")).toBe("participantes"));
 });
 
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);
 it('abre Todos os cuidados pela URL sem substituir o calendário ou o contrato de Tarefas',async()=>{
  mocks.req.mockImplementation(async(path:string)=>path.startsWith('/programacoes/agenda-unificada')?{itens:[],total:0,pagina:1,tamanho:50}:[]);
  window.history.replaceState(null,'','/pecuaria/sanidade?aba=agenda&visaoAgenda=cuidados&de=2026-10-01&ate=2026-10-31');

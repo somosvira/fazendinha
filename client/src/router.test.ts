@@ -236,3 +236,9 @@ describe("rotas individuais dos protocolos", () => {
     expect(isSubrotaPecuaria("pec-sanidade", `/pecuaria/sanidade/participacoes/${uid(601)}`)).toBe(true);
   });
 });
+
+it("unifica links antigos da Nutrição preservando contexto e detalhes", () => {
+ expect(normalizarRotaPecuaria("/pecuaria/nutricao?aba=mensal&mesId=m&propriedadeId=1#dias")).toBe("/pecuaria/nutricao?aba=fechamentos&mesId=m&propriedadeId=1#dias");
+ expect(normalizarRotaPecuaria("/pecuaria/rebanho/nutricao?aba=configuracao&propriedadeId=2")).toBe("/configuracoes/pecuaria/nutricao/fechamento?propriedadeId=2");
+ expect(pathToTab("/configuracoes/pecuaria/nutricao/fechamento")).toBe("config");
+});

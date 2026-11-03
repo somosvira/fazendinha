@@ -1,6 +1,7 @@
+import { FileSearch } from "lucide-react";
+import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
 import { useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { registrarLeite } from "./operacoes-api";
@@ -126,13 +127,10 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
     }
   }
   return (
-    <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Conferir importação de leite</h2>
-      <p>
-        Prepare o lote a partir dos registros reais da fazenda. Esta prévia
-        compara animais, ordenhas, datas e medições existentes. Não importa
-        registros nem movimenta leite, vendas ou dinheiro.
-      </p>
+    <section className="leite-operacoes leite-importacao">
+      <h2 className="leite-titulo-secao"><FileSearch size={20} aria-hidden />Conferir importação de leite <AjudaCampo rotulo="Sobre a prévia da importação" texto={"Prepare o lote a partir dos registros reais da fazenda. Esta prévia compara animais, ordenhas, datas e medições existentes. Não importa registros nem movimenta leite, vendas ou dinheiro."} /></h2>
+
+      <ol className="leite-etapas-importacao" aria-label="Etapas da conferência"><li><b>1</b>Arquivo e origem</li><li><b>2</b>Validação de unidades</li><li><b>3</b>Prévia e pendências</li></ol>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -184,7 +182,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           <p>
             {arquivo
               ? `${arquivo} · ${linhas.length} linha(s) lida(s)`
-              : "Nenhum arquivo selecionado. Preserve os registros originais e prepare uma linha por animal, dia e ordenha."}
+              : "Nenhum arquivo selecionado."}
           </p>
           <label className="leite-checkbox">
             <input
@@ -309,21 +307,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           </ul>
         </>
       )}
-      <SecaoDetalhesLeite  titulo={<>Como preparar o arquivo</>}>
-
-        <p>
-          O arquivo de preparação contém uma lista chamada “linhas”. Cada linha
-          conserva seu identificador de origem, brinco literal, data, nome da
-          ordenha, estado e litros, além de motivo e responsável quando
-          documentados. Zeros só devem ser informados quando medidos; ausências
-          permanecem sem volume. O mapeamento usa a rotina e a localização na
-          data, sem retirar zeros à esquerda do brinco.
-        </p>
-        <p>
-          O formato deve ser preparado após inspecionar a planilha ou folha
-          real. Ainda não há execução automática da carga neste fluxo.
-        </p>
-      </SecaoDetalhesLeite>
+      <div className="flex items-center gap-2"><span>Como preparar o arquivo</span><AjudaCampo rotulo="Sobre a preparação do arquivo" texto={"O arquivo de preparação contém uma lista chamada “linhas”. Cada linha conserva seu identificador de origem, brinco literal, data, nome da ordenha, estado e litros, além de motivo e responsável quando documentados. Zeros só devem ser informados quando medidos; ausências permanecem sem volume. O mapeamento usa a rotina e a localização na data, sem retirar zeros à esquerda do brinco. O formato deve ser preparado após inspecionar a planilha ou folha real. Ainda não há execução automática da carga neste fluxo."} /></div>
     </section>
   );
 }

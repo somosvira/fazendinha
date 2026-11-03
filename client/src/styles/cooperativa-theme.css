@@ -29,6 +29,8 @@
   --fin-control-border: #7a928d;
   --fin-overlay: rgba(32,60,57,.38);
   --font-display: "Manrope", var(--sans);
+  --fin-titulo-pagina: 24px;
+  --fin-titulo-pagina-movel: 22px;
   --fin-brand-accent: #009c91;
   --fin-shadow: 0 3px 12px rgba(32,60,57,.045);
   --fin-panel-shadow: 0 4px 18px rgba(32,60,57,.065), 0 1px 3px rgba(32,60,57,.025);
@@ -100,6 +102,13 @@
   --outros: #818568;
   --cafe-2: #ac987e;
   --outros-2: #aab0a6;
+}
+
+/* A escala de página acompanha o mesmo limite da navegação móvel. */
+@media (max-width: 900px) {
+  :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
+    --fin-titulo-pagina: var(--fin-titulo-pagina-movel);
+  }
 }
 
 /* Escolha persistente e navegação por hover/teclado têm estados distintos. */

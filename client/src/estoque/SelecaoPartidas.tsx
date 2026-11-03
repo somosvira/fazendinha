@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
 import { CircleAlert } from "lucide-react";
@@ -59,10 +60,10 @@ export function SelecaoPartidas({ produtoId, propriedadeId, dataFato, quantidade
   const comErro = !!erroValidacao;
   const erroDeLinha = erroValidacao?.campo.startsWith(`${campo}.`) ? erroValidacao.campo.slice(campo.length + 1).split(".")[0] : undefined;
   const mensagemErro = erroValidacao && <p id={`erro-${campo}`} role="alert" tabIndex={-1} className="flex items-start gap-1.5 text-sm font-semibold text-red-700 outline-none"><CircleAlert size={16} className="mt-px shrink-0" aria-hidden /><span>{erroValidacao.mensagem}</span></p>;
-  return <fieldset id={`campo-${campo}`} tabIndex={-1} aria-invalid={comErro || undefined} aria-describedby={comErro ? `erro-${campo}` : undefined} className={`mt-3 grid gap-3 outline-none ${compacto ? "border-t pt-3" : "rounded-lg border p-3"} ${comErro ? "border-red-400 ring-2 ring-red-200" : "border-border"}`}><legend className="px-1 text-sm font-semibold">Lotes por validade</legend><ErrorBox erro={erro} />{carregando && <p className="text-sm">Carregando lotes…</p>}
+  return <fieldset id={`campo-${campo}`} tabIndex={-1} aria-invalid={comErro || undefined} aria-describedby={comErro ? `erro-${campo}` : undefined} className={`mt-3 grid gap-3 outline-none ${compacto ? "border-t pt-3" : "rounded-lg border p-3"} ${comErro ? "border-red-400 ring-2 ring-red-200" : "border-border"}`}><legend className="px-1 text-sm font-semibold">Lotes por validade<AjudaCampo rotulo="Ajuda: agrupamento dos lotes" texto={<>O mesmo produto e a mesma validade compartilham o lote, independentemente do fornecedor.</>} /></legend><ErrorBox erro={erro} />{carregando && <p className="text-sm">Carregando lotes…</p>}
     {erro && <Button secondary onClick={() => setRevisao((r) => r + 1)}>Tentar novamente</Button>}
     {saida && !carregando && !erro && !partidas.length && <p className="text-sm">Sem lotes disponíveis. Confira as entradas do produto no Estoque.</p>}
-    {!compacto && <p className="text-sm text-ink-3">O mesmo produto e a mesma validade compartilham o lote, independentemente do fornecedor.</p>}
+
     {saida && sugerida && <p className="text-sm">Vencimento conhecido mais próximo: <strong>{nomeLoteProduto(sugerida)}</strong> · {dataBR(sugerida.validade!)}. Confirme a escolha abaixo.</p>}
     {valor.map((v, i) => {
       const existente = v.validade !== undefined ? previas[v.validade ?? "nao-informada"] : undefined;

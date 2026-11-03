@@ -1,3 +1,4 @@
+import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
@@ -129,13 +130,9 @@ export function ConferenciaSaldoLeite({
     }
   }
   return (
-    <SecaoDetalhesLeite  titulo={<>Conferência física do tanque em {data}</>}>
+    <SecaoDetalhesLeite  titulo={<>Conferência física do tanque em {data}</>} acoes={<AjudaCampo rotulo="Sobre a conferência física" texto={"Informe o volume realmente observado para este produto no encerramento do dia. A conferência não cria entrada, saída nem ajuste no estoque. A comparação com o razão fica preservada ao emitir o relatório."} />}>
 
-      <p>
-        Informe o volume realmente observado para este produto no encerramento
-        do dia. A conferência não cria entrada, saída nem ajuste no estoque. A
-        comparação com o razão fica preservada ao emitir o relatório.
-      </p>
+
       {atual ? (
         <p>
           Última conferência: {formatarLitros(atual.litrosObservados)} · versão{" "}

@@ -1,0 +1,3027 @@
+{
+  "animais": [
+    {
+      "id": "e821156d-8c58-40ab-852d-4fcc7878bbbc",
+      "brinco": "DEV-001",
+      "nome": "Lactantes 1",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 510,
+      "pesoData": "2026-10-26",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "623da33d-0f7b-415a-adce-9cbba768ab5c",
+      "brinco": "DEV-002",
+      "nome": "Lactantes 2",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 510,
+      "pesoData": "2026-10-25",
+      "gmd": 0.5,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "cc7a5a03-45f4-43b7-b58b-aa9287f1684b",
+      "brinco": "DEV-003",
+      "nome": "Lactantes 3",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 510,
+      "pesoData": "2026-10-25",
+      "gmd": 0.5,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "f5dea51b-b78c-44cd-96e8-1d951412dbc4",
+      "brinco": "DEV-004",
+      "nome": "Lactantes 4",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 510,
+      "pesoData": "2026-10-24",
+      "gmd": 0.667,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "e89e2521-3681-447c-9f05-a0167a7dea02",
+      "brinco": "DEV-005",
+      "nome": "Lactantes 5",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 510,
+      "pesoData": "2026-10-22",
+      "gmd": 2,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "83106a8c-f7d9-4da5-a0dc-ccc6b4aea281",
+      "brinco": "DEV-006",
+      "nome": "Lactantes 6",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": -1,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "751b54b5-49d2-467e-8fbc-7a8dc8fe9c98",
+      "brinco": "DEV-007",
+      "nome": "Lactantes 7",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": -0.286,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "f2d3fb5d-1af0-4a4d-860b-68dc334bc3e6",
+      "brinco": "DEV-008",
+      "nome": "Lactantes 8",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": -0.133,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "93303550-eed2-4ed8-a5d8-18b660151225",
+      "brinco": "DEV-009",
+      "nome": "Lactantes 9",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "ac047644-fbc4-4b7b-8a92-900696a78c8b",
+      "brinco": "DEV-010",
+      "nome": "Lactantes 10",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "ff16b77a-0e90-4663-ac8b-dc81da103ccd",
+      "brinco": "DEV-011",
+      "nome": "Lactantes 11",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "46018285-3c10-4fbf-9df1-072c99c48f09",
+      "brinco": "DEV-012",
+      "nome": "Lactantes 12",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "2664cc26-4716-4845-bdeb-474c5948b3a5",
+      "brinco": "DEV-013",
+      "nome": "Lactantes 13",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "27c78715-ea48-41c4-bb18-a092782e6aef",
+      "brinco": "DEV-014",
+      "nome": "Lactantes 14",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "01ea7c69-04f4-4f5c-a5b7-aff92040f966",
+      "brinco": "DEV-015",
+      "nome": "Lactantes 15",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "0de2124f-6616-463d-9454-ad01271e8b4f",
+      "brinco": "DEV-016",
+      "nome": "Lactantes 16",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "02beaee7-5c1d-4d5e-b263-1e9cdaaf28e4",
+      "brinco": "DEV-017",
+      "nome": "Lactantes 17",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "1801e1cb-dee8-457e-abd4-13fc63c74623",
+      "brinco": "DEV-018",
+      "nome": "Lactantes 18",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "fd412f44-a912-4e84-a13b-40265fec3cd5",
+      "brinco": "DEV-019",
+      "nome": "Lactantes 19",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "cb83d247-8173-4c26-97aa-1172cd703173",
+      "brinco": "DEV-020",
+      "nome": "Lactantes 20",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b4b77832-755b-4a15-a60c-4b2e951a20cd",
+      "brinco": "DEV-021",
+      "nome": "Lactantes 21",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "ef83aebd-bbfd-4ddc-af82-b3e126591363",
+      "brinco": "DEV-022",
+      "nome": "Lactantes 22",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "8b381b97-2186-4507-9005-a3024cc8b4d1",
+      "brinco": "DEV-023",
+      "nome": "Lactantes 23",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "7759d012-53ee-43da-8d90-937d0328295a",
+      "brinco": "DEV-024",
+      "nome": "Lactantes 24",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "19b86de2-cbd5-40e0-8fdc-dec260f6d0e4",
+      "brinco": "DEV-025",
+      "nome": "Lactantes 25",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "d226bc60-fa66-41ef-9375-f21b3a2e7a10",
+      "brinco": "DEV-026",
+      "nome": "Lactantes 26",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "20b79ae5-699d-488b-9827-6760384fb54f",
+      "brinco": "DEV-027",
+      "nome": "Lactantes 27",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "eac449a0-fbf4-4f5e-a61f-f0e453b6ae79",
+      "brinco": "DEV-028",
+      "nome": "Lactantes 28",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b479e8df-2b99-4fe5-be4d-8173d5806f7c",
+      "brinco": "DEV-029",
+      "nome": "Lactantes 29",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "035b28d8-5a76-48f5-8db0-10807440006d",
+      "brinco": "DEV-030",
+      "nome": "Lactantes 30",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "497b3375-70c3-43b8-b50b-57062b245d01",
+      "brinco": "DEV-031",
+      "nome": "Lactantes 31",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b8f86fa9-a039-4838-9b42-1731a20ed79c",
+      "brinco": "DEV-032",
+      "nome": "Lactantes 32",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "e1a7ba74-978b-467f-83ed-af9e061af2d0",
+      "brinco": "DEV-033",
+      "nome": "Lactantes 33",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "9a7874d2-b42a-4aae-b23c-b49fbca4db65",
+      "brinco": "DEV-034",
+      "nome": "Lactantes 34",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b8b8dcea-b8df-41b1-af26-e4c32715133a",
+      "brinco": "DEV-035",
+      "nome": "Lactantes 35",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "a1d36482-46e1-4ce8-a0ea-d65d49fbabb9",
+      "brinco": "DEV-036",
+      "nome": "Lactantes 36",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Lactantes",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "c0373a14-7cbf-4bde-b935-68a198ff4904",
+      "brinco": "DEV-037",
+      "nome": "Secas 37",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "6c44d302-d7af-4d0d-9bae-e6711ad92062",
+      "brinco": "DEV-038",
+      "nome": "Secas 38",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "7d7ef87e-a22d-46b7-b5bd-daf8e73558a4",
+      "brinco": "DEV-039",
+      "nome": "Secas 39",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "dab9f3a2-e704-42a5-870f-aa25678b9222",
+      "brinco": "DEV-040",
+      "nome": "Secas 40",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "9c02f112-d4b3-4657-84da-4c92cdc5eaeb",
+      "brinco": "DEV-041",
+      "nome": "Secas 41",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "e3df84d4-9cc4-4af5-9f12-f02d7e9ef04f",
+      "brinco": "DEV-042",
+      "nome": "Secas 42",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "4ac05f07-a655-43cc-8249-f74971fb6fb0",
+      "brinco": "DEV-043",
+      "nome": "Secas 43",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "26243da7-0628-4c05-9a22-a34095cb73b2",
+      "brinco": "DEV-044",
+      "nome": "Secas 44",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "cf9e59d7-e668-4dda-afd0-b663161f0f6f",
+      "brinco": "DEV-045",
+      "nome": "Secas 45",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "2597cbce-ebdb-4850-9c8e-6ec09ed1f205",
+      "brinco": "DEV-046",
+      "nome": "Secas 46",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "22cc226a-17fa-423b-b57b-0fac560c7b04",
+      "brinco": "DEV-047",
+      "nome": "Secas 47",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "133c347f-07ce-4883-80db-9fe6bbaf9480",
+      "brinco": "DEV-048",
+      "nome": "Secas 48",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Secas",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "909b0d88-525d-4a4c-bda2-ca48f493958f",
+      "brinco": "DEV-049",
+      "nome": "Novilhas 49",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "a7edf171-8bd7-477e-a92b-3d60c0d7764d",
+      "brinco": "DEV-050",
+      "nome": "Novilhas 50",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "6a84894a-d5e0-450a-a613-13948b9bd63f",
+      "brinco": "DEV-051",
+      "nome": "Novilhas 51",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b29f0bd6-c383-4edd-a51b-d431c883a52e",
+      "brinco": "DEV-052",
+      "nome": "Novilhas 52",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "c772a9e8-a495-4411-b29f-991fc391e635",
+      "brinco": "DEV-053",
+      "nome": "Novilhas 53",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b30f3f56-bf83-4eb7-b8ae-7fbba51e894b",
+      "brinco": "DEV-054",
+      "nome": "Novilhas 54",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "797f932d-2fae-47b1-ae55-4b7c2e22b4ef",
+      "brinco": "DEV-055",
+      "nome": "Novilhas 55",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "b15097e5-c2ca-4a7e-ab99-5b63840142e9",
+      "brinco": "DEV-056",
+      "nome": "Novilhas 56",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "76808732-01a1-455c-a1c7-0bf5dd4f8c0a",
+      "brinco": "DEV-057",
+      "nome": "Novilhas 57",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "c9198611-a205-4157-a834-d5409d63e04f",
+      "brinco": "DEV-058",
+      "nome": "Novilhas 58",
+      "sexo": "F",
+      "categoria": "Novilha",
+      "lote": "Novilhas",
+      "peso": 328,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "3d8a15ef-95e8-430f-ba6c-aeb0fdc32dcd",
+      "brinco": "DEV-059",
+      "nome": "Reprodução 59",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "7874c34f-b490-4fe9-ae25-424eedcb0e58",
+      "brinco": "DEV-060",
+      "nome": "Reprodução 60",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "aa1dd09c-f470-43ca-a902-c79997953768",
+      "brinco": "DEV-061",
+      "nome": "Reprodução 61",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "e46751a5-a4f4-4deb-88cb-e2b25bf8e9f5",
+      "brinco": "DEV-062",
+      "nome": "Reprodução 62",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "f03a8f48-e2cc-4419-946a-099791fb8870",
+      "brinco": "DEV-063",
+      "nome": "Reprodução 63",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "46529552-ddaa-4dbc-8b0e-3fb578c6387b",
+      "brinco": "DEV-064",
+      "nome": "Reprodução 64",
+      "sexo": "F",
+      "categoria": "Vaca",
+      "lote": "Reprodução",
+      "peso": 508,
+      "pesoData": "2026-10-21",
+      "gmd": 0.4,
+      "finalidade": "REPRODUCAO"
+    },
+    {
+      "id": "fe17ead5-d3db-4049-9e4e-cee43ec756d0",
+      "brinco": "DEV-065",
+      "nome": "Cria 65",
+      "sexo": "F",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-26",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "a18c69bc-6d79-48c4-a894-785e0ee03930",
+      "brinco": "DEV-066",
+      "nome": "Cria 66",
+      "sexo": "M",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-26",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "f3a4fdd7-450a-4b85-a82c-befa92446c76",
+      "brinco": "DEV-067",
+      "nome": "Cria 67",
+      "sexo": "F",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-25",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "e66556cc-5acc-4994-b1cf-cd357b9f2857",
+      "brinco": "DEV-068",
+      "nome": "Cria 68",
+      "sexo": "M",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-25",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "0e8f6bc0-7440-413e-974a-53f374306ada",
+      "brinco": "DEV-069",
+      "nome": "Cria 69",
+      "sexo": "F",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-24",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "9a12fdfd-d5bd-48e3-82c9-3bd1b02c78b8",
+      "brinco": "DEV-070",
+      "nome": "Cria 70",
+      "sexo": "M",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-22",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "0d11993e-c803-4c27-a44b-e2cff951812c",
+      "brinco": "DEV-071",
+      "nome": "Cria 71",
+      "sexo": "F",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-19",
+      "gmd": null,
+      "finalidade": "LEITE"
+    },
+    {
+      "id": "6356225d-71aa-4237-8c4e-07c95a12fe9d",
+      "brinco": "DEV-072",
+      "nome": "Cria 72",
+      "sexo": "M",
+      "categoria": "Em crescimento",
+      "lote": "Crias",
+      "peso": 34,
+      "pesoData": "2026-10-14",
+      "gmd": null,
+      "finalidade": "LEITE"
+    }
+  ],
+  "filas": {
+    "liberadas": [
+      {
+        "animalId": "e1a7ba74-978b-467f-83ed-af9e061af2d0",
+        "brinco": "DEV-033",
+        "nome": "Lactantes 33",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2024-12-05",
+        "dias": 694,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA"
+      },
+      {
+        "animalId": "9a7874d2-b42a-4aae-b23c-b49fbca4db65",
+        "brinco": "DEV-034",
+        "nome": "Lactantes 34",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2024-12-05",
+        "dias": 694,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA"
+      },
+      {
+        "animalId": "a1d36482-46e1-4ce8-a0ea-d65d49fbabb9",
+        "brinco": "DEV-036",
+        "nome": "Lactantes 36",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2025-01-14",
+        "dias": 654,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA"
+      },
+      {
+        "animalId": "b8b8dcea-b8df-41b1-af26-e4c32715133a",
+        "brinco": "DEV-035",
+        "nome": "Lactantes 35",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2025-01-14",
+        "dias": 654,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA"
+      },
+      {
+        "animalId": "909b0d88-525d-4a4c-bda2-ca48f493958f",
+        "brinco": "DEV-049",
+        "nome": "Novilhas 49",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": "2026-09-26",
+        "dias": 34,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA"
+      }
+    ],
+    "diagnostico": [
+      {
+        "animalId": "01ea7c69-04f4-4f5c-a5b7-aff92040f966",
+        "brinco": "DEV-015",
+        "nome": "Lactantes 15",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "86add4d1-6fa1-44ae-b2e4-b349a9cd439e",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "a60e2156-09fb-4b71-8cb5-c1a3b802cee3",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "0de2124f-6616-463d-9454-ad01271e8b4f",
+        "brinco": "DEV-016",
+        "nome": "Lactantes 16",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "44c27246-fb78-4656-b73a-0aff00d46d49",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "b0f91620-3e13-42f9-87ba-5e3c173d3b09",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "02beaee7-5c1d-4d5e-b263-1e9cdaaf28e4",
+        "brinco": "DEV-017",
+        "nome": "Lactantes 17",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "540f327a-5085-417e-bec9-84d653dbd55a",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "7b30d2eb-c457-4acd-bec8-07342fbcb1b2",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "1801e1cb-dee8-457e-abd4-13fc63c74623",
+        "brinco": "DEV-018",
+        "nome": "Lactantes 18",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "848bd4d9-b20d-4e4f-99ca-92b02e636954",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "1d391293-5e28-4330-bb62-080fdc315523",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "fd412f44-a912-4e84-a13b-40265fec3cd5",
+        "brinco": "DEV-019",
+        "nome": "Lactantes 19",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "6b38dc9c-dfc9-4bd3-b47a-3f093d6d85dc",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "fdde8795-c4f6-4e87-adb7-b2772b67eee8",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "cb83d247-8173-4c26-97aa-1172cd703173",
+        "brinco": "DEV-020",
+        "nome": "Lactantes 20",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-11-15",
+        "dias": null,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "19ab009c-3ce9-4c03-885f-cd172e4ccec1",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "69d502b7-a31f-4127-820c-4e5696fd6cc8",
+            "gestacaoId": null,
+            "dataReferencia": "2026-10-16",
+            "previstaPara": "2026-11-15",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "3d8a15ef-95e8-430f-ba6c-aeb0fdc32dcd",
+        "brinco": "DEV-059",
+        "nome": "Reprodução 59",
+        "lote": {
+          "id": "13267cec-4149-4178-b787-1c2dbf6a3738",
+          "nome": "Reprodução"
+        },
+        "data": "2026-10-26",
+        "dias": 4,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "aab58ff3-0f09-479d-9eb6-5b8cf9d5a0e9",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "7d6fa11d-c5f8-40ac-ac78-524c298a8ec0",
+            "gestacaoId": null,
+            "dataReferencia": "2026-09-26",
+            "previstaPara": "2026-10-26",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "7874c34f-b490-4fe9-ae25-424eedcb0e58",
+        "brinco": "DEV-060",
+        "nome": "Reprodução 60",
+        "lote": {
+          "id": "13267cec-4149-4178-b787-1c2dbf6a3738",
+          "nome": "Reprodução"
+        },
+        "data": "2026-10-26",
+        "dias": 4,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "368df123-2380-4a8f-813c-f27ea84cd4fa",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "c8d44ca2-bca5-4e96-8c00-57e53c9e1b6b",
+            "gestacaoId": null,
+            "dataReferencia": "2026-09-26",
+            "previstaPara": "2026-10-26",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "aa1dd09c-f470-43ca-a902-c79997953768",
+        "brinco": "DEV-061",
+        "nome": "Reprodução 61",
+        "lote": {
+          "id": "13267cec-4149-4178-b787-1c2dbf6a3738",
+          "nome": "Reprodução"
+        },
+        "data": "2026-10-16",
+        "dias": 14,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "81cfd812-7219-411a-8df3-82d9ce81fae9",
+            "finalidade": "DIAGNOSTICO",
+            "ocorrencia": 1,
+            "tentativaId": "e9fdcd89-cd34-4f6c-9399-19c99464c488",
+            "gestacaoId": null,
+            "dataReferencia": "2026-09-16",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "035b28d8-5a76-48f5-8db0-10807440006d",
+        "brinco": "DEV-030",
+        "nome": "Lactantes 30",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "978c8ad6-9d68-408e-987d-a3071330e74e",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "6c20465a-05f8-4df5-8ea3-8609d1664310",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "0ea617ed-6908-44ad-9f8b-5f4e0c11452d",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "6c20465a-05f8-4df5-8ea3-8609d1664310",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "133c347f-07ce-4883-80db-9fe6bbaf9480",
+        "brinco": "DEV-048",
+        "nome": "Secas 48",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "e89cfb41-8c34-43d4-8dda-0628f17f1381",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "128f6800-3254-4425-abca-e05a97b68561",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "28f98513-0ce4-4ed0-9898-7afbdd31578d",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "128f6800-3254-4425-abca-e05a97b68561",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "19b86de2-cbd5-40e0-8fdc-dec260f6d0e4",
+        "brinco": "DEV-025",
+        "nome": "Lactantes 25",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "466c7f56-62bc-4bcd-94b5-45a238b2df7b",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "54ca3557-7c07-4930-a23d-8c4de211fb76",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "52561617-64a0-48e7-bad4-9b844a298ae5",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "54ca3557-7c07-4930-a23d-8c4de211fb76",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "20b79ae5-699d-488b-9827-6760384fb54f",
+        "brinco": "DEV-027",
+        "nome": "Lactantes 27",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "070db9a6-0d08-40b8-bb34-96202089d877",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "e87d8f72-ebc4-44cd-a353-95da9e0c9fcf",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "d5112b5d-6848-4d34-a26d-78c4f7d80173",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "e87d8f72-ebc4-44cd-a353-95da9e0c9fcf",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "22cc226a-17fa-423b-b57b-0fac560c7b04",
+        "brinco": "DEV-047",
+        "nome": "Secas 47",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "46f11623-848a-4970-bfc2-b577f9954b2a",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "7fd268f4-9c40-4ce4-ad91-8ed2be43d549",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "03de1636-bfd3-4869-b07d-5eb492d90c30",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "7fd268f4-9c40-4ce4-ad91-8ed2be43d549",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "2597cbce-ebdb-4850-9c8e-6ec09ed1f205",
+        "brinco": "DEV-046",
+        "nome": "Secas 46",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "10272e47-97e1-470f-b6b0-0e1267b8e6c2",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "929ac26c-f32e-45e9-9687-55e95e3013b8",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "eb9dfe0c-c326-4267-9186-0eeec2bd6f4e",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "929ac26c-f32e-45e9-9687-55e95e3013b8",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "26243da7-0628-4c05-9a22-a34095cb73b2",
+        "brinco": "DEV-044",
+        "nome": "Secas 44",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "009d472d-9d06-45f6-9c99-a083587b476e",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "1c921664-a91c-47da-8626-b53fb9fb0001",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "fd1c08c3-571e-4484-9612-9eb4ccf9a1b4",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "1c921664-a91c-47da-8626-b53fb9fb0001",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "497b3375-70c3-43b8-b50b-57062b245d01",
+        "brinco": "DEV-031",
+        "nome": "Lactantes 31",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "9f0eb61a-8795-4817-b918-91f021259634",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "4a0509d5-71f9-4d51-8b93-6c099ec5a2e5",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "9d898e8a-c08d-4aaf-880b-fc5320b41ffb",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "4a0509d5-71f9-4d51-8b93-6c099ec5a2e5",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "4ac05f07-a655-43cc-8249-f74971fb6fb0",
+        "brinco": "DEV-043",
+        "nome": "Secas 43",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "11969648-fd57-415d-bf0d-ab3957d96daa",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "6a984d06-30a6-4a31-afc9-99137fd45113",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "610be5ba-1311-4cd6-9a15-e309fdb9e5a2",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "6a984d06-30a6-4a31-afc9-99137fd45113",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "6c44d302-d7af-4d0d-9bae-e6711ad92062",
+        "brinco": "DEV-038",
+        "nome": "Secas 38",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "e2631702-5d6b-4162-bc2b-9e67ae4055aa",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "2190db3e-e720-4f47-9ba8-8d1645eea905",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "99c72daf-4d9c-4804-bd7f-e6c2980fe784",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "2190db3e-e720-4f47-9ba8-8d1645eea905",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "7759d012-53ee-43da-8d90-937d0328295a",
+        "brinco": "DEV-024",
+        "nome": "Lactantes 24",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "e550b665-4d9a-4563-a305-ec054a8d6847",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "97da896b-f189-4be1-b199-61279b03e906",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "c98af8b8-331d-432b-9902-c3dfe44374d6",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "97da896b-f189-4be1-b199-61279b03e906",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "7d7ef87e-a22d-46b7-b5bd-daf8e73558a4",
+        "brinco": "DEV-039",
+        "nome": "Secas 39",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "d41ffa19-da33-4785-9a07-d289d8baa038",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "cb66f124-9472-4f59-b107-137948e2ba10",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "31d6084e-85ce-4302-9fe5-1865158afa17",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "cb66f124-9472-4f59-b107-137948e2ba10",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "8b381b97-2186-4507-9005-a3024cc8b4d1",
+        "brinco": "DEV-023",
+        "nome": "Lactantes 23",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "2bbdd2c1-2b52-4d88-832b-80bb561f7f42",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "37b262d1-353c-4583-ac69-8260c4322d75",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "7888df60-63b3-43c1-bd0b-3a4c0ee5133b",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "37b262d1-353c-4583-ac69-8260c4322d75",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "9c02f112-d4b3-4657-84da-4c92cdc5eaeb",
+        "brinco": "DEV-041",
+        "nome": "Secas 41",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "6b5bed14-2370-4aea-ba00-1fd1721adb7d",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "bd7ff4e9-7d0a-49cd-b8dd-813450917b15",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "54577cca-f6e6-482a-94ec-313877fbd1e7",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "bd7ff4e9-7d0a-49cd-b8dd-813450917b15",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "b479e8df-2b99-4fe5-be4d-8173d5806f7c",
+        "brinco": "DEV-029",
+        "nome": "Lactantes 29",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "ac548200-f859-4f1f-95de-8d15715896e4",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "278d1c13-02dd-4a2f-89cc-d7efd6ee42fb",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "94a47dad-8105-4fdc-afb7-05c607455885",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "278d1c13-02dd-4a2f-89cc-d7efd6ee42fb",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "b4b77832-755b-4a15-a60c-4b2e951a20cd",
+        "brinco": "DEV-021",
+        "nome": "Lactantes 21",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-10-16",
+        "dias": 14,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "54705d00-1d3d-43f6-a20c-42b3c64c66ac",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "8a0fdea6-3748-4f00-8ade-3a53f7137a71",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "b8f86fa9-a039-4838-9b42-1731a20ed79c",
+        "brinco": "DEV-032",
+        "nome": "Lactantes 32",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "2d91482d-a1b7-434d-b0d3-25433184ee98",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "60b954d2-e45c-43bc-9f17-79da698659c8",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "cde8dc5e-8367-45aa-aa0f-2070e9c7033d",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "60b954d2-e45c-43bc-9f17-79da698659c8",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "c0373a14-7cbf-4bde-b935-68a198ff4904",
+        "brinco": "DEV-037",
+        "nome": "Secas 37",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "56d3c078-4de8-45ae-92b1-c8d20b5d860a",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "24e8762b-d431-41c7-81ed-a4e3e31b72e8",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "6b4d7a4d-8610-48a8-ae7b-88aa03381a3a",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "24e8762b-d431-41c7-81ed-a4e3e31b72e8",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "cf9e59d7-e668-4dda-afd0-b663161f0f6f",
+        "brinco": "DEV-045",
+        "nome": "Secas 45",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "280ff70a-60e9-44b0-8d52-579baeb67f12",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "586ff0e5-637f-4653-8b4e-2d12a6419f42",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "91252571-6016-48b4-a5b4-850c3f2ac125",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "586ff0e5-637f-4653-8b4e-2d12a6419f42",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "d226bc60-fa66-41ef-9375-f21b3a2e7a10",
+        "brinco": "DEV-026",
+        "nome": "Lactantes 26",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "6cec5c24-654b-4c5e-9da0-0e5386479519",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "8f85c837-8948-48dc-b65a-793f920212f4",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "33211afe-1584-43de-9357-4b4a378c0d7a",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "8f85c837-8948-48dc-b65a-793f920212f4",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "dab9f3a2-e704-42a5-870f-aa25678b9222",
+        "brinco": "DEV-040",
+        "nome": "Secas 40",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "83ae3fcd-7792-48d9-8b30-9b4d6f10c9a8",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "6f45f790-152a-4ee8-81dd-76d5cf8ca0f7",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "a8506e84-e93b-4393-8cb0-d796b088fda1",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "6f45f790-152a-4ee8-81dd-76d5cf8ca0f7",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "e3df84d4-9cc4-4af5-9f12-f02d7e9ef04f",
+        "brinco": "DEV-042",
+        "nome": "Secas 42",
+        "lote": {
+          "id": "36aef776-8e54-4d33-bcfe-0bc2c1a5794a",
+          "nome": "Secas"
+        },
+        "data": "2026-06-08",
+        "dias": 144,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "91149cb1-94d2-48b5-a6ea-a2d1bb592858",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "20a8c506-7f04-4884-b9ca-ef9197b921c2",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-06-08",
+            "pendencias": []
+          },
+          {
+            "id": "bc9dd0b7-391b-4f76-aa52-18f7f5e920b5",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "20a8c506-7f04-4884-b9ca-ef9197b921c2",
+            "dataReferencia": "2026-05-09",
+            "previstaPara": "2026-07-08",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "eac449a0-fbf4-4f5e-a61f-f0e453b6ae79",
+        "brinco": "DEV-028",
+        "nome": "Lactantes 28",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "17730b39-541a-41f3-b229-d250fd79067e",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "ec5d76c0-fdb5-4911-8ccf-590b51a1cb25",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "df6fe95f-b8fc-4219-bcb9-7fef0520be42",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "ec5d76c0-fdb5-4911-8ccf-590b51a1cb25",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      },
+      {
+        "animalId": "ef83aebd-bbfd-4ddc-af82-b3e126591363",
+        "brinco": "DEV-022",
+        "nome": "Lactantes 22",
+        "lote": {
+          "id": "a96191e1-a1e5-45bf-9c39-6488136a1f31",
+          "nome": "Lactantes"
+        },
+        "data": "2026-09-16",
+        "dias": 44,
+        "motivos": [],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": [],
+        "demandasAcompanhamento": [
+          {
+            "id": "728a1b55-8032-489b-80af-9cf0d5e3329a",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 1,
+            "tentativaId": null,
+            "gestacaoId": "7eb42044-a866-4662-bc92-bebc84cd2074",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-09-16",
+            "pendencias": []
+          },
+          {
+            "id": "d27929f4-64fd-4ef7-84de-7d0f5415b3d6",
+            "finalidade": "RECONFIRMACAO",
+            "ocorrencia": 2,
+            "tentativaId": null,
+            "gestacaoId": "7eb42044-a866-4662-bc92-bebc84cd2074",
+            "dataReferencia": "2026-08-17",
+            "previstaPara": "2026-10-16",
+            "pendencias": []
+          }
+        ]
+      }
+    ],
+    "pendencias": [
+      {
+        "animalId": "6a84894a-d5e0-450a-a613-13948b9bd63f",
+        "brinco": "DEV-051",
+        "nome": "Novilhas 51",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "76808732-01a1-455c-a1c7-0bf5dd4f8c0a",
+        "brinco": "DEV-057",
+        "nome": "Novilhas 57",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "797f932d-2fae-47b1-ae55-4b7c2e22b4ef",
+        "brinco": "DEV-055",
+        "nome": "Novilhas 55",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "a7edf171-8bd7-477e-a92b-3d60c0d7764d",
+        "brinco": "DEV-050",
+        "nome": "Novilhas 50",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "b15097e5-c2ca-4a7e-ab99-5b63840142e9",
+        "brinco": "DEV-056",
+        "nome": "Novilhas 56",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "b29f0bd6-c383-4edd-a51b-d431c883a52e",
+        "brinco": "DEV-052",
+        "nome": "Novilhas 52",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "b30f3f56-bf83-4eb7-b8ae-7fbba51e894b",
+        "brinco": "DEV-054",
+        "nome": "Novilhas 54",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "c772a9e8-a495-4411-b29f-991fc391e635",
+        "brinco": "DEV-053",
+        "nome": "Novilhas 53",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      },
+      {
+        "animalId": "c9198611-a205-4157-a834-d5409d63e04f",
+        "brinco": "DEV-058",
+        "nome": "Novilhas 58",
+        "lote": {
+          "id": "6d1df4a8-e0b2-4f3a-98ef-8de01b8001a1",
+          "nome": "Novilhas"
+        },
+        "data": null,
+        "dias": null,
+        "motivos": [
+          "Não há parto ou situação inicial que comprove o início do acompanhamento."
+        ],
+        "aptidaoClinica": "NAO_DETERMINADA",
+        "visitas": []
+      }
+    ],
+    "avaliacao": [],
+    "agendamento": [],
+    "retorno": [],
+    "aptidao": []
+  },
+  "ordenhas": [
+    {
+      "id": "8c56c89e-b20a-45b4-8989-a2512cb29443",
+      "diaId": "01842c3a-867d-401e-8fdc-20c82cf0cb4b",
+      "dataOperacional": "2026-10-26",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 472,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "2105aa05-e068-437c-9dc8-3936231d7f87",
+          "tanqueId": "bde2e241-6e7a-4721-8391-0c716e5553bd",
+          "recipiente": null,
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "82d0f439-7f55-45d7-a4da-2486ed0e533e",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "a42bffd4-a411-4bc9-8e9c-eff37e01677d",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "a217631e-a98c-4b51-8f7c-2695738688f5",
+      "diaId": "01842c3a-867d-401e-8fdc-20c82cf0cb4b",
+      "dataOperacional": "2026-10-26",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 425,
+      "situacao": "PARCIAL_ESTOQUE",
+      "porNatureza": [
+        {
+          "natureza": "NAO_COMERCIAL",
+          "litros": 53
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "17f180e9-56c7-493e-a939-ea5c01a32d01",
+          "tanqueId": "bde2e241-6e7a-4721-8391-0c716e5553bd",
+          "recipiente": null,
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "5c03ddc3-7cd3-4321-a1fc-9545d40578d3",
+          "tanqueId": null,
+          "recipiente": "V5 · Parcela regularizada",
+          "natureza": "NAO_COMERCIAL",
+          "litros": 8,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "8a9da0e8-4b30-46a0-a2db-86dc3df91566",
+          "tanqueId": null,
+          "recipiente": "V5 · Zero explícito segregado",
+          "natureza": "NAO_COMERCIAL",
+          "litros": 0,
+          "confirmada": false
+        },
+        {
+          "medicaoGeralId": "8d920da8-1d88-4206-be24-c2c0cfaa5892",
+          "tanqueId": null,
+          "recipiente": "V5 · Inclusão posterior segregada",
+          "natureza": "NAO_COMERCIAL",
+          "litros": 2,
+          "confirmada": false
+        },
+        {
+          "medicaoGeralId": "90a758eb-2849-48c9-8b6a-720dfd395651",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": false
+        },
+        {
+          "medicaoGeralId": "94745c0d-9676-4389-8dcb-550fd6efd87e",
+          "tanqueId": null,
+          "recipiente": "V5 · Origem desconhecida segregada",
+          "natureza": "NAO_COMERCIAL",
+          "litros": 3,
+          "confirmada": false
+        },
+        {
+          "medicaoGeralId": "a204be8c-f8b8-4a4d-b27a-12abfe132cd1",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "f964ff59-276b-491f-8065-c6230726e2a1",
+      "diaId": "01842c3a-867d-401e-8fdc-20c82cf0cb4b",
+      "dataOperacional": "2026-10-26",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": null,
+      "situacao": "SEM_AFERICAO",
+      "porNatureza": [
+        {
+          "natureza": "A_CLASSIFICAR",
+          "litros": null
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": null,
+          "tanqueId": null,
+          "recipiente": null,
+          "natureza": "A_CLASSIFICAR",
+          "litros": null,
+          "confirmada": false
+        }
+      ]
+    },
+    {
+      "id": "3a2f8431-2d02-4fec-ac3d-18e8c34f65d6",
+      "diaId": "3c68d753-ca30-429d-b121-9d70d816dd03",
+      "dataOperacional": "2026-10-25",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "08b35816-b1fa-451b-94ac-31cd9730c7c6",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "e5548b6e-1629-4657-b363-adfa4f0d05b9",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "7b06b51b-7a9a-46db-afa9-d8d35afeb803",
+      "diaId": "3c68d753-ca30-429d-b121-9d70d816dd03",
+      "dataOperacional": "2026-10-25",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 412,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        },
+        {
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "38a4e22c-4467-4e5f-ac20-1bf19cf8fe49",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "848a5157-8e03-481a-8a9b-b926a85d583b",
+          "tanqueId": "bde2e241-6e7a-4721-8391-0c716e5553bd",
+          "recipiente": null,
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "917049fe-6f81-4bff-a00b-847392851f0e",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "4722f074-4d8e-4985-ba42-9add42576daf",
+      "diaId": "3c68d753-ca30-429d-b121-9d70d816dd03",
+      "dataOperacional": "2026-10-25",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": 352,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 300
+        },
+        {
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "3135ef29-cc58-4ae2-9b0d-99ad69c7412d",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 300,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "639cd486-ef66-4c8e-b4c6-db1c9e20bcc6",
+          "tanqueId": "bde2e241-6e7a-4721-8391-0c716e5553bd",
+          "recipiente": null,
+          "natureza": "NAO_COMERCIAL",
+          "litros": 40,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "724f9a5a-cd77-42f8-8e02-1fde4fa491ec",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "2b87c558-39ac-4ef8-9036-3cf14d8f05b6",
+      "diaId": "b7e7e3b5-fc91-4f30-a6dd-12d9c3218a08",
+      "dataOperacional": "2026-10-24",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "3261cbf6-5608-4ac0-a932-1b441f4c4a58",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "6f76f9b1-475a-4297-87ba-a3769398bac9",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "b7d2082f-54da-4539-b5c9-681a3c308c7b",
+      "diaId": "b7e7e3b5-fc91-4f30-a6dd-12d9c3218a08",
+      "dataOperacional": "2026-10-24",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 372,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "2673f9cd-5263-4a27-9803-fb2b15199028",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "3a80eac1-538e-479a-a28c-8d199fc7567b",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "a9619433-6434-4c3a-9c60-06355a1fb372",
+      "diaId": "b7e7e3b5-fc91-4f30-a6dd-12d9c3218a08",
+      "dataOperacional": "2026-10-24",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": 312,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 300
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "6f7d5b90-8267-4f08-bacc-6443098381b4",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "97de15eb-6e45-416d-a86a-6284560b665c",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 300,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "ab3b1f00-09ca-40fa-ac7e-8cc1bfc99181",
+      "diaId": "a2bf636b-ba1f-4c5f-8fce-3ef880aa4419",
+      "dataOperacional": "2026-10-23",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "0393a5a8-631e-4e18-a52d-5c6b2dc5f671",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "d19f951a-9b82-4785-b786-16f2896f7512",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "10707930-18df-4c2e-90db-e71de505ca7a",
+      "diaId": "a2bf636b-ba1f-4c5f-8fce-3ef880aa4419",
+      "dataOperacional": "2026-10-23",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 372,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "81abac52-2464-4432-8ff6-a44aed5e4e83",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "c7119312-0537-4984-bb5d-b4893d579436",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "e84e0015-3dff-4100-b190-d94fc844c981",
+      "diaId": "a2bf636b-ba1f-4c5f-8fce-3ef880aa4419",
+      "dataOperacional": "2026-10-23",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": 312,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 300
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "2ea59df7-dc24-4d73-9a0d-64b30db766d7",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 300,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "92c565d6-6f54-4653-a0bc-a4e9a0e89622",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "e0f2f701-6efe-4b81-9b30-824712b7e677",
+      "diaId": "ff482b88-7525-4b00-8bbc-c84dc0f04db7",
+      "dataOperacional": "2026-10-22",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "a38af496-8ab8-4ae3-8b74-1748cd428e3c",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "bf8b071f-5082-488e-98d0-0890d3e02cbf",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "46d15f98-0bf4-4dd7-8380-9a2f43b07b24",
+      "diaId": "ff482b88-7525-4b00-8bbc-c84dc0f04db7",
+      "dataOperacional": "2026-10-22",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 372,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "622a7743-d259-48d7-bd5b-24433390e7dd",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "c957ce2c-5b83-4995-b42e-62b6a83f4917",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "9e080a51-87a5-4ebc-b7cb-f8e4a3eb9fd0",
+      "diaId": "ff482b88-7525-4b00-8bbc-c84dc0f04db7",
+      "dataOperacional": "2026-10-22",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": 312,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 300
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "1cdaef47-1f11-4c53-abd4-11287bd6c250",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 300,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "27201814-5774-4f79-bc44-5e8ef9103e44",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "fcadac5b-8bcf-450d-a751-93c15b3558e5",
+      "diaId": "23873630-eedf-4318-86f8-5ee5bb676ba2",
+      "dataOperacional": "2026-10-21",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "286164fc-66ee-4d0e-803c-f1b710c73bf4",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "e2dc8406-45b0-403e-8b73-5a2f477acae6",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "9bf9588d-8228-46d8-af8c-3455a7c1e0ba",
+      "diaId": "23873630-eedf-4318-86f8-5ee5bb676ba2",
+      "dataOperacional": "2026-10-21",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 372,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        },
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "32f9d709-0e9a-4cec-b0d5-559db73c3971",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "c15574ad-2c2c-4d98-b407-d77a634a6c27",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "ddcef1a8-24e0-4ddf-9b0c-7cf4b70c8de4",
+      "diaId": "23873630-eedf-4318-86f8-5ee5bb676ba2",
+      "dataOperacional": "2026-10-21",
+      "posicaoId": "db8cf181-2b73-4f10-af30-ffb6cf77929d",
+      "nome": "Noite",
+      "ordem": 3,
+      "fonteProducao": "GERAL",
+      "litros": 312,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 300
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "033eba5d-5ad8-4384-a020-8cf3c7e6ef71",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "ef6bdacb-b21b-4cdb-9bfe-a4753a9f1853",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 300,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "808f25f0-9b54-462b-a1e3-cbdba3b56282",
+      "diaId": "45404a42-f10b-4f8e-aade-bf2d668d9653",
+      "dataOperacional": "2026-10-20",
+      "posicaoId": "b0b65534-640c-4d7d-abfc-84e9f6da64ac",
+      "nome": "Manhã",
+      "ordem": 1,
+      "fonteProducao": "GERAL",
+      "litros": 432,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 420
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "31ccb390-bc2d-4c81-b0d9-c40cd1129609",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "f72cc279-a456-4251-b07b-9a9e9a32db09",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 420,
+          "confirmada": true
+        }
+      ]
+    },
+    {
+      "id": "d8e50e31-f305-4090-9497-58acd2c5166a",
+      "diaId": "45404a42-f10b-4f8e-aade-bf2d668d9653",
+      "dataOperacional": "2026-10-20",
+      "posicaoId": "3b610582-5bd0-4033-a9e7-4598230d076a",
+      "nome": "Tarde",
+      "ordem": 2,
+      "fonteProducao": "GERAL",
+      "litros": 372,
+      "situacao": "CONFIRMADA",
+      "porNatureza": [
+        {
+          "natureza": "COLOSTRO",
+          "litros": 12
+        },
+        {
+          "natureza": "COMERCIAL",
+          "litros": 360
+        }
+      ],
+      "parcelas": [
+        {
+          "medicaoGeralId": "64fea4d1-fd91-45a5-9f2c-e94b8e3fcfa9",
+          "tanqueId": null,
+          "recipiente": "Recipiente segregado de colostro",
+          "natureza": "COLOSTRO",
+          "litros": 12,
+          "confirmada": true
+        },
+        {
+          "medicaoGeralId": "b20bb461-15df-4c7b-9f1f-9775a2515068",
+          "tanqueId": "e83be45b-2d53-4afa-b11b-4100a1e849ba",
+          "recipiente": null,
+          "natureza": "COMERCIAL",
+          "litros": 360,
+          "confirmada": true
+        }
+      ]
+    }
+  ]
+}

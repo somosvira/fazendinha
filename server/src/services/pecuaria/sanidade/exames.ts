@@ -1,3 +1,4 @@
+import { validarContextoHistoricoAnimalTx, type ContextoHistoricoAnimalInput } from "../importacao/pesagens.js";
 import { reconciliarExameProtocoladoTx } from "./alertas/protocolos.js";
 import { marcarReavaliacaoDestinoTx } from "./alertas/avaliador.js";
 import { vincularExameProgramacaoTx, revisarFatoProgramacaoTx } from "./programacoes/atendimento.js";
@@ -101,7 +102,7 @@ export async function listarExames(animalId: string | undefined, propriedadeId: 
   const aguardando = filtro?.situacao === "AGUARDANDO_RESULTADO";
   const informado = filtro?.situacao === "RESULTADO_INFORMADO";
   const lista = await prisma.exameAnimal.findMany({ where: { tipoExame: { contexto: { not: "REPRODUTIVO" } }, ...filtrosFatos(filtro), ...(aguardando ? { resultadoTexto: null, resultadoNumero: null, resultadoOpcao: null, resultados: { none: { vigente: true } } } : informado ? { OR: [{ resultadoTexto: { not: null } }, { resultadoNumero: { not: null } }, { resultadoOpcao: { not: null } }, { resultados: { some: { vigente: true } } }] } : {}), ...(animalId ? { animalId } : {}), ...(propriedadeId == null ? {} : { propriedadeId }) },
-    include: { resultados: { where: { vigente: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], ...limites(filtro) });
+    include: { resultados: { where: { vigente: true } }, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "asc" }], ...limites(filtro) });
   return lista.map((e) => ({ ...e, tipoExame: { nome: nomeExameHistorico(e.formatoSnapshot, e.tipoExame.nome) } }));
 }
 
@@ -113,10 +114,18 @@ export type ExameInput = OrigemAlertaAplicacao & { observacao?: string | null; f
   resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[];
   responsavel?: string | null; ocorrenciaId?: string | null; tarefaId?: string | null; operacaoServicoId?: string | null; desvio?: DesvioInput };
 
-export async function prepararExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, previa = false, qualidadeLeite = false) {
+export type OrigemHistoricaExame = ContextoHistoricoAnimalInput & { bancoOrigem: string; chaveOrigem: string; snapshotOrigem?: unknown };
+
+export async function prepararExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, previa = false, qualidadeLeite = false, historico?: OrigemHistoricaExame) {
     await travarAnimais(tx, [input.animalId]);
     const data = dia(input.data);
-    await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
+    if (historico) {
+      if (!usuarioId || historico.animalId !== input.animalId || historico.data !== input.data)
+        throw new RebanhoError("VALIDACAO", "Histórico exige autoria e identidade/data comprovadas");
+      if (input.tarefaId || input.ocorrenciaId || input.operacaoServicoId)
+        throw new RebanhoError("VALIDACAO", "Incorporação histórica não executa tarefa, consumo ou Serviço atual");
+      await validarContextoHistoricoAnimalTx(tx, { animalId: historico.animalId, data: historico.data, contexto: historico.contexto, propriedadeId: historico.propriedadeId, evidencia: historico.evidencia });
+    } else await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
     await travarTiposExame(tx, [input.tipoExameId]);
     const tipo = await tx.tipoExame.findFirst({ where: { id: input.tipoExameId, ativo: true, contexto: { not: "REPRODUTIVO" } }, include: { formatoQualidadeLeite: { select: { tipoExameId: true } } } });
     if (!tipo) throw new RebanhoError("VALIDACAO", "Tipo de exame não encontrado", "tipoExameId");
@@ -152,7 +161,8 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     if (operacaoServicoId && !(await tx.operacao.findFirst({ where: { id: operacaoServicoId, propriedadeId: input.propriedadeId, tipo: "SERVICO", status: "CONFIRMADA" } }))) {
       throw new RebanhoError("VALIDACAO", "Serviço inválido para este sítio", "operacaoServicoId");
     }
-    const dadosCriacao: Prisma.ExameAnimalUncheckedCreateInput = { animalId: input.animalId, propriedadeId: input.propriedadeId,
+    const dadosCriacao: Prisma.ExameAnimalUncheckedCreateInput = { animalId: input.animalId, propriedadeId: historico?.contexto === "EXTERNO" ? null : input.propriedadeId,
+      ...(historico ? { origem: "IDEAGRI", anotacaoOriginal: JSON.stringify(historico) } : {}),
       tipoExameId: tipo.id, data, observacao: input.observacao?.trim() || null, resultadoTexto: input.resultadoTexto?.trim() || null,
       resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null,
       formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, unidade: tipo.unidade, opcoes: tipo.opcoes },
@@ -163,11 +173,11 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     return { dadosCriacao, desvioProtocoloSnapshot };
 }
 
-export async function registrarExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, qualidadeLeite = false) {
-    const { dadosCriacao } = await prepararExameTx(tx, input, usuarioId, false, qualidadeLeite);
+export async function registrarExameTx(tx: Prisma.TransactionClient, input: ExameInput, usuarioId: number | null, qualidadeLeite = false, historico?: OrigemHistoricaExame) {
+    const { dadosCriacao } = await prepararExameTx(tx, input, usuarioId, false, qualidadeLeite, historico);
     const criado = await tx.exameAnimal.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { exameId: criado.id }, usuarioId);
-    await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criado });
+    await auditar(tx, { entidade: "ExameAnimal", entidadeId: criado.id, animalId: input.animalId, propriedadeId: dadosCriacao.propriedadeId ?? null, acao: "REGISTRO", usuarioId, depois: criado });
     await vincularExameProgramacaoTx(tx, input, criado, usuarioId);
     return criado;
 }
@@ -183,7 +193,7 @@ export async function registrarExameColetivo(input: { chave: string; propriedade
   });
 }
 
-export async function corrigirExameTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number, input: { motivo: string; resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[]; anular?: boolean }, usuarioId: number | null, amostraQualidadeId?: string) {
+export async function corrigirExameTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number, input: { motivo: string; resultadoTexto?: string | null; resultadoNumero?: number | null; resultadoOpcao?: string | null; resultados?: ObservacaoExame[]; anular?: boolean }, usuarioId: number | null, amostraQualidadeId?: string, toqueAptidao = false) {
     const referencia = await tx.exameAnimal.findFirst({ where: { id, propriedadeId }, select: { animalId: true } });
     if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Exame não encontrado ou anulado");
     await travarAnimais(tx, [referencia.animalId]);
@@ -192,7 +202,7 @@ export async function corrigirExameTx(tx: Prisma.TransactionClient, id: string, 
     if (original.amostraQualidadeLeite && original.amostraQualidadeLeite.id !== amostraQualidadeId) throw new RebanhoError("CONFLITO", "Corrija este laudo pelo fluxo de qualidade do leite", "exameId");
     if (amostraQualidadeId && original.amostraQualidadeLeite?.id !== amostraQualidadeId) throw new RebanhoError("CONFLITO", "Exame não pertence à amostra informada", "exameId");
     if (original.partoPosPartoId) throw new RebanhoError("CONFLITO", "Revise este escore pela correção do parto", "exameId");
-    if (original.interpretacao) throw new RebanhoError("CONFLITO", "Este exame tem efeitos reprodutivos. Revise a avaliação e seus vínculos de gestação antes de corrigir ou anular", "exameId");
+    if (original.interpretacao && !(toqueAptidao && original.finalidadePrincipal === "APTIDAO_REPRODUTIVA")) throw new RebanhoError("CONFLITO", "Este exame tem efeitos reprodutivos. Revise a avaliação e seus vínculos de gestação antes de corrigir ou anular", "exameId");
     const formato = original.formatoSnapshot as { tipoResultado: string; opcoes?: string[]; campos?: unknown };
     const multiplos = !input.anular && formato.tipoResultado === "MULTIPLO" ? validarObservacoesExame(formato.campos, input.resultados ?? []) : null;
     if (multiplos && !multiplos.length) throw new RebanhoError("VALIDACAO", "Informe os resultados do exame", "resultados");

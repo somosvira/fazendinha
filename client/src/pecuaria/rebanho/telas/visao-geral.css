@@ -8,14 +8,14 @@
 .pec-composicao-grid--sitio .pec-legenda-categorias { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 16px; }
 .pec-atividade-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
 .pec-grafico-cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; border-bottom: 1px solid var(--border); }
-.pec-grafico-cabecalho p { margin: 5px 0 0; font-size: 12px; color: var(--muted-foreground); }
+.pec-grafico-cabecalho p { margin: 5px 0 0; font-size:14px; color: var(--muted-foreground); }
 .pec-grafico-cabecalho > svg { flex-shrink: 0; color: var(--primary); }
-.pec-painel-rebanho .pec-consulta-ativos { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--primary); padding: 8px; border-radius: 8px; }
+.pec-painel-rebanho .pec-consulta-ativos { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; font-size:14px; font-weight: 600; color: var(--primary); padding: 8px; border-radius: 8px; }
 .pec-painel-rebanho :is(.pec-consulta-ativos,.pec-receptoras-link):hover { background: var(--muted); }
 .pec-painel-rebanho :is(.pec-consulta-ativos,.pec-receptoras-link,summary):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .pec-composicao-contexto { border-top: 1px solid var(--border); padding: 12px 22px; }
-.pec-composicao-contexto p { margin: 0; font-size: 13px; color: var(--muted-foreground); }
-.pec-painel-rebanho .pec-receptoras-link { display: inline-flex; align-items: center; text-align: left; gap: 12px; padding: 6px 8px; border-radius: 8px; font-size: 13px; color: var(--primary); }
+.pec-composicao-contexto p { margin: 0; font-size:14px; color: var(--muted-foreground); }
+.pec-painel-rebanho .pec-receptoras-link { display: inline-flex; align-items: center; text-align: left; gap: 12px; padding: 6px 8px; border-radius: 8px; font-size:14px; color: var(--primary); }
 .pec-receptoras-link > span { display: grid; gap: 3px; }
 .pec-receptoras-link > span > span { color: var(--muted-foreground); }
 .pec-composicao-corpo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 24px 22px; }
@@ -23,12 +23,12 @@
 .pec-rosca .pec-rosca-chart { width: 100%; height: 250px; aspect-ratio: auto; }
 .pec-rosca-centro { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; pointer-events: none; }
 .pec-rosca-centro strong { font-size: 38px; font-weight: 650; line-height: 1.15; font-variant-numeric: tabular-nums; }
-.pec-rosca-centro span { font-size: 12px; color: var(--muted-foreground); margin-top: 5px; }
+.pec-rosca-centro span { font-size:14px; color: var(--muted-foreground); margin-top: 5px; }
 .pec-legenda-categorias { min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
-.pec-categoria-linha { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; font-size: 13px; }
+.pec-categoria-linha { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; font-size:14px; }
 .pec-categoria-linha strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 .pec-legenda-ponto { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
-.pec-participacao { font-size: 12px; color: var(--muted-foreground); font-weight: 400; }
+.pec-participacao { font-size:14px; color: var(--muted-foreground); font-weight: 400; }
 .pec-sitios-corpo { padding: 22px; }
 .pec-sitios-resumo { display: flex; gap: 3px; height: 12px; border-radius: 6px; overflow: hidden; margin-bottom: 18px; background: var(--muted); }
 .pec-sitios-resumo span { height: 100%; }
@@ -36,8 +36,8 @@
 .pec-sitio-linha strong { white-space: nowrap; }
 .pec-distribuicao-trilho { height: 8px; margin-top: 9px; background: var(--muted); border-radius: 4px; overflow: hidden; }
 .pec-distribuicao-trilho > div { height: 100%; border-radius: inherit; }
-.pec-sitio-rodape { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; margin-top: 7px; color: var(--muted-foreground); }
-.pec-nota-distribuicao { border-top: 1px solid var(--border); padding-top: 15px; margin-top: 14px; font-size: 12px; color: var(--muted-foreground); line-height: 1.6; }
+.pec-sitio-rodape { display: flex; justify-content: space-between; gap: 12px; font-size:14px; margin-top: 7px; color: var(--muted-foreground); }
+.pec-nota-distribuicao { border-top: 1px solid var(--border); padding-top: 15px; margin-top: 14px; font-size:14px; color: var(--muted-foreground); line-height: 1.6; }
 .pec-baixas-corpo { display: grid; gap: 16px; padding: 16px; }
 .pec-baixas-corpo .pec-baixas-chart { width: 100%; height: 180px; aspect-ratio: auto; }
 .pec-baixas-legenda { display: grid; gap: 6px; }
@@ -45,10 +45,10 @@
 .pec-baixa-tipo strong { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
 .pec-baixas-rodape { grid-column: 1 / -1; display: flex; justify-content: flex-end; }
 .pec-baixas-detalhes { grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 14px; }
-.pec-baixas-detalhes summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--primary); padding: 8px 0; }
+.pec-baixas-detalhes summary { cursor: pointer; font-size:14px; font-weight: 600; color: var(--primary); padding: 8px 0; }
 .pec-baixas-motivos { display: grid; gap: 8px; margin-top: 12px; }
-.pec-baixas-motivos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
-.pec-baixas-detalhes p { margin: 14px 0 0; padding: 12px; background: var(--muted); border-radius: 8px; font-size: 12px; color: var(--muted-foreground); line-height: 1.65; }
+.pec-baixas-motivos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size:14px; }
+.pec-baixas-detalhes p { margin: 14px 0 0; padding: 12px; background: var(--muted); border-radius: 8px; font-size:14px; color: var(--muted-foreground); line-height: 1.65; }
 .pec-baixas-detalhes p strong { color: var(--foreground); }
 .pec-baixas-corpo > :only-child { grid-column: 1 / -1; }
 .pec-eventos { padding: 12px 14px; }
@@ -101,7 +101,7 @@
 .pec-panorama-principal, .pec-panorama-contexto { display: grid; gap: 16px; min-width: 0; }
 .pec-baixas-motivos-secao { border-top: 1px solid var(--border); padding-top: 16px; }
 .pec-baixas-motivos-secao h3 { font-size: 14px; font-weight: 600; }
-.pec-baixas-classificacao { display: grid; gap: 4px; margin-top: 12px; font-size: 12px; color: var(--muted-foreground); line-height: 1.5; }
+.pec-baixas-classificacao { display: grid; gap: 4px; margin-top: 12px; font-size:14px; color: var(--muted-foreground); line-height: 1.5; }
 .pec-baixas-classificacao strong { font-weight: 500; color: var(--foreground); }
 .pec-painel-rebanho .pec-baixas-rodape { border-top: 1px solid var(--border); padding-top: 8px; }
 @media(max-width:1100px) { .pec-panorama-grid { grid-template-columns: minmax(0,1fr); } }
@@ -121,4 +121,4 @@
 .pec-painel-rebanho .pec-baixas-legenda .pec-participacao { min-width: 38px; text-align: right; }
 .pec-painel-rebanho .pec-painel-link:hover { background: var(--accent); }
 @media(max-width:1100px) { .rebanho-content .pec-painel-rebanho .pec-panorama-grid { grid-template-columns: minmax(0,1fr); } }
-@media(max-width:600px) { .rebanho-content .pec-painel-rebanho .pec-categoria-linha { grid-template-columns: minmax(110px,1fr) minmax(32px,.7fr) 28px 42px 12px; gap: 6px; font-size: 12px; } }
+@media(max-width:600px) { .rebanho-content .pec-painel-rebanho .pec-categoria-linha { grid-template-columns: minmax(110px,1fr) minmax(32px,.7fr) 28px 42px 12px; gap: 6px; font-size:14px; } }

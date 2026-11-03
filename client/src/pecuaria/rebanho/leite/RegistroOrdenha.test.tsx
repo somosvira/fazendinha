@@ -9,7 +9,6 @@ import { novaParcela, parcelaSalva } from "./registro-parcelas-modelo";
 import type { ContextoParcelas, ParcelaOrdenha } from "./parcelas-types";
 vi.mock("./parcelas-api", () => ({ contextoParcelas: vi.fn(), salvarParcelas: vi.fn(), confirmarParcelas: vi.fn() }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn() }));
-vi.mock("@/components/DatePicker", () => ({ DatePicker: ({ onChange, ...props }: { onChange: (v: string) => void }) => <input type="date" {...props} onChange={e => onChange(e.target.value)} /> }));
 vi.mock("@/financeiro/SelectCampo", () => ({ SelectCampo: ({ onValueChange, ...props }: SelectHTMLAttributes<HTMLSelectElement> & { onValueChange: (v: string) => void }) => <select {...props} onChange={e => onValueChange(e.target.value)} /> }));
 const medicao: ParcelaOrdenha = { id: "m1", sessaoId: "s1", tanque: null, recipiente: "Balde segregado", litros: 25, reguaMm: 10, origemLitros: "MANUAL", natureza: "NAO_COMERCIAL", animaisOrigem: [], responsavel: "Maria", observacao: null, versao: 1, entradaId: null, declaracaoDireta: { justificativa: "Origem declarada diretamente em campo" }, primeiraOrdenhaColostro: null, criterioColostroSnapshot: null };
 function contexto(medicoes: ParcelaOrdenha[]): ContextoParcelas { return { configuracao: { id: "c1", propriedadeId: 1, vigenteDesde: "2026-10-01", inicial: false, fonteProducao: "GERAL", ordenhas: [{ posicaoId: "manha", nome: "Manhã", ordem: 1 }] }, sessoes: [{ id: "s1", posicaoId: "manha", nome: "Manhã", ordem: 1 }], medicoes, tanques: [], animais: [], origensAutomaticas: [], contexto: { carencias: [], partos: [], origensColostro: [], criterioColostro: null } }; }
@@ -185,4 +184,85 @@ it("corrige só a parcela alterada e não regrava após salvar ou mudar somente 
   fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
   await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
   expect(salvarParcelas).toHaveBeenCalledTimes(1);
+});
+
+for (const entrada of ["31/02/2026", "12/1", "31/12/2099", ""]) it(`bloqueia salvar e conferir com data digitada inválida (${entrada || "vazia"}), preservando parcelas até corrigir`, async () => {
+  const p = { ...novaParcela("NAO_COMERCIAL", [], true), recipiente: "Balde separado", litros: "30", responsavel: "Maria", justificativa: "Registro direto conferido em campo" };
+  armazenar([p], true, "novo");
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([]));
+  vi.mocked(salvarParcelas).mockResolvedValue({ sessaoId: "s1", parcelas: [{ ...medicao, litros: 30 }] });
+  abrir("novo");
+  await screen.findByLabelText("Litros informados manualmente");
+  const campo = screen.getByLabelText("Data da ordenha") as HTMLInputElement;
+  fireEvent.change(campo, { target: { value: entrada } });
+  fireEvent.blur(campo);
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  expect(salvarParcelas).not.toHaveBeenCalled();
+  expect(screen.queryByText("Ordenha salva. A entrada no estoque permanece pendente.")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Conferir entrada no estoque" }));
+  expect(screen.queryByRole("dialog", { name: "Confirmar parcelas no estoque" })).toBeNull();
+  expect(confirmarParcelas).not.toHaveBeenCalled();
+  expect(campo.value).toBe(entrada);
+  expect(campo.checkValidity()).toBe(false);
+  expect((screen.getByLabelText("Litros informados manualmente") as HTMLInputElement).value).toBe("30");
+  fireEvent.change(campo, { target: { value: "23/10/2026" } });
+  await waitFor(() => expect(contextoParcelas).toHaveBeenLastCalledWith(1, "2026-10-23"));
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
+  expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-23", "manha", [expect.objectContaining({ recipiente: "Balde separado", litros: 30 })]);
+});
+
+it("consulta origem confirmada como fatos legíveis preservando volume, régua, responsável e justificativa", async () => {
+  const confirmada = { ...medicao, entradaId: "e1", litros: 25.125, reguaMm: 0 };
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([confirmada]));
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
+  expect(within(resumo).getByText("25,125 L")).toBeTruthy();
+  expect(within(resumo).getByText("0 mm")).toBeTruthy();
+  expect(within(resumo).getByText("Maria")).toBeTruthy();
+  expect(within(resumo).getByText("Balde segregado")).toBeTruthy();
+  expect(within(resumo).getByText("Origem declarada diretamente em campo")).toBeTruthy();
+  expect(within(resumo).queryByRole("textbox")).toBeNull();
+  expect(within(resumo).queryByRole("combobox")).toBeNull();
+  expect(within(resumo).getByRole("button", { name: "Consultar animais" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Salvar ordenha" })).toBeNull();
+});
+
+it("adiciona e salva outra origem na ordenha confirmada sem reenviar a parcela já confirmada", async () => {
+  const confirmada = { ...medicao, entradaId: "e1" };
+  vi.mocked(contextoParcelas).mockResolvedValue(contexto([confirmada]));
+  vi.mocked(salvarParcelas).mockResolvedValue({ sessaoId: "s1", parcelas: [{ ...medicao, id: "m-nova", recipiente: "Novo balde", litros: 12, responsavel: "Ana", declaracaoDireta: { justificativa: "Origem separada conferida" } }] });
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
+  const grupo = screen.getByRole("region", { name: "Parcelas de Descarte" });
+  fireEvent.click(within(grupo).getByRole("button", { name: "Incluir outra origem" }));
+  fireEvent.change(screen.getByLabelText("Identificação do recipiente"), { target: { value: "Novo balde" } });
+  fireEvent.change(screen.getByLabelText("Litros informados manualmente"), { target: { value: "12" } });
+  fireEvent.change(screen.getByLabelText("Responsável"), { target: { value: "Ana" } });
+  fireEvent.change(screen.getByLabelText("Justificativa do registro direto"), { target: { value: "Origem separada conferida" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
+  await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
+  expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-24", "manha", [expect.objectContaining({ recipiente: "Novo balde", litros: 12, responsavel: "Ana", versaoEsperada: 0 })]);
+  expect(within(screen.getByRole("article", { name: "Origem 1 confirmada de Descarte" })).getByText("25 L")).toBeTruthy();
+});
+
+it("mantém tanque versionado, régua ausente e alerta sanitário na consulta da origem confirmada", async () => {
+  const tanque: NonNullable<ParcelaOrdenha["tanque"]> = { id: "t1", identidadeId: "ti1", versao: 3, propriedadeId: 1, nome: "Tanque principal", fabricante: null, modelo: null, numeroSerie: null, capacidadeLitros: 2000, vigenteDesde: "2026-01-01", ativo: false, referenciaTabela: null, tabelaConversao: [] };
+  const confirmada: ParcelaOrdenha = { ...medicao, natureza: "COMERCIAL", entradaId: "e1", tanque, recipiente: null, reguaMm: null, animaisOrigem: ["a1"], declaracaoDireta: null };
+  const base = contexto([confirmada]);
+  vi.mocked(contextoParcelas).mockResolvedValue({ ...base, animais: [{ animalId: "a1", brinco: "118", nome: "Estrela" }], contexto: { ...base.contexto, carencias: [{ posicaoId: "manha", horario: null, animais: [{ animalId: "a1", estado: "VIGENTE", evidencias: [] }] }] } });
+  armazenar([parcelaSalva(confirmada)]);
+  abrir();
+  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Comercial" });
+  expect(within(resumo).getByText("Tanque principal · v3 · 2.000 L")).toBeTruthy();
+  expect(within(resumo).getByText("Não informada")).toBeTruthy();
+  expect(within(resumo).getByText(/Há animais com carência/)).toBeTruthy();
+  fireEvent.click(within(resumo).getByRole("button", { name: "Consultar animais" }));
+  const animal = screen.getByRole("checkbox", { name: "118 · Estrela · Carência / revisão sanitária" });
+  expect(animal).toHaveProperty("checked", true);
+  expect(animal).toHaveProperty("disabled", true);
+  expect(salvarParcelas).not.toHaveBeenCalled();
+  expect(confirmarParcelas).not.toHaveBeenCalled();
 });

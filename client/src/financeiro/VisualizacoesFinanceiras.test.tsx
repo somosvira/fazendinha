@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { alterarControle, alterarFiltroAdicional, abrirFiltrosConsulta, aplicarFiltrosConsulta } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { baseFinanceiraVazia } from "./dashboard.fixture";
@@ -304,3 +305,6 @@ it("abre diretamente cada conta, inclusive fora do saldo, e reserva o botão ger
   fireEvent.click(screen.getByRole("button", { name: "Ver contas e extratos" }));
   expect(onNav).toHaveBeenCalledWith("caixinha");
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

@@ -26,7 +26,7 @@ export interface PainelGeralDTO {
   ultimosEventos: EventoPainel[];
 }
 
-const ORDEM_TIPO_BAIXA: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO"];
+const ORDEM_TIPO_BAIXA: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "NAO_DETERMINADO"];
 const ORDEM_CLASSE_BAIXA: Array<ClasseMotivoBaixa | "SEM_MOTIVO"> = ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE", "SEM_MOTIVO"];
 
 /** Visão geral do rebanho: contagens + últimos eventos, escopados por sítio quando aplicável. */

@@ -1,3 +1,4 @@
+import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { z } from "zod";
@@ -114,6 +115,23 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
     grupo.membros.push({ animalId: avaliacao.animalId, tarefaId: null, contexto: {...contextos.get(avaliacao.animalId)!,retornoOrigem:{avaliacaoId:avaliacao.id,tentativaId:avaliacao.tentativaId,gestacaoId:avaliacao.gestacaoId,finalidade,tipoExameId:exameRetorno?.tipoExameId??null}}, motivos: [`Retorno agendado para ${retorno}`],
       estadoTarefa: { avaliacaoId: avaliacao.id, retornoEm: avaliacao.retornoEm }, visitasAbertas: [] });
   }
+  const aptidoes = await carregarFilasAptidaoTx(tx, ids, propriedadeId, referencia);
+  for (const a of aptidoes) {
+    if (!a.tipoExameId || !["AVALIACAO_DEVIDA", "RETORNO", "AGENDAMENTO"].includes(a.fila)) continue;
+    const retorno = a.fila === "RETORNO" ? a.clinica?.retornoEm ?? null : null;
+    const identidade = hashDados({ origem: "APTIDAO", fila: a.fila, retorno, tipoExameId: a.tipoExameId });
+    let grupo = grupos.get(identidade);
+    if (!grupo) {
+      grupo = { grupo: { origem: "APTIDAO", identidade }, nome: a.fila === "RETORNO" ? "Retorno de aptidão" : a.fila === "AGENDAMENTO" ? "Avaliação de aptidão em visita aberta" : "Avaliação de aptidão devida",
+        secao: "REPRODUCAO", janela: retorno ? janelaPlanner(dia(retorno), "DIA", false, data) : "SEM_PREVISAO", tipo: "EXAME_SANITARIO",
+        protocolo: null, turma: null, etapa: null, previstaPara: retorno, precisaoTemporal: "DIA", criterios: null,
+        contexto: { finalidade: "APTIDAO_REPRODUTIVA", tipoExameId: a.tipoExameId, necessidadesPorAnimal: {} }, membros: [] };
+      grupos.set(identidade, grupo);
+    }
+    (grupo.contexto.necessidadesPorAnimal as Record<string, string>)[a.animalId] = a.necessidadeId;
+    grupo.membros.push({ animalId: a.animalId, tarefaId: null, contexto: { ...contextos.get(a.animalId)!, necessidadeAptidaoId: a.necessidadeId, aptidaoClinica: a.clinica, necessidadeAptidao: a.necessidade },
+      motivos: [a.fila === "RETORNO" ? `Retorno de aptidão informado para ${retorno}` : "Avaliação devida não comprova aptidão nem agendamento"], estadoTarefa: { necessidadeId: a.necessidadeId, clinica: a.clinica }, visitasAbertas: a.visitasAbertas });
+  }
   return { contextos, grupos };
 }
 function grupoSelecao(grupo: GrupoPlannerInput, nome: string, criterios: CriteriosSelecao, contextos: Map<string, Contexto>): Grupo {
@@ -129,7 +147,7 @@ function grupoSelecao(grupo: GrupoPlannerInput, nome: string, criterios: Criteri
 }
 async function resolverGrupoTx(tx: Prisma.TransactionClient, propriedadeId: number, data: string, input: GrupoPlannerInput, base?: Awaited<ReturnType<typeof carregarBaseTx>>) {
   const dados = base ?? await carregarBaseTx(tx, propriedadeId, data, input.origem === "LIVRE");
-  if (input.origem === "PROTOCOLO" || input.origem === "RETORNO") {
+  if (input.origem === "PROTOCOLO" || input.origem === "RETORNO" || input.origem === "APTIDAO") {
     const grupo = dados.grupos.get(input.identidade);
     if (!grupo || grupo.grupo.origem !== input.origem) throw new RebanhoError("CONFLITO", "O grupo mudou ou não tem mais pendências. Atualize o planner");
     return { ...grupo, membros: ordenarMembrosPorBrinco(grupo.membros) };
@@ -275,7 +293,7 @@ export async function incluirGrupoPlannerTx(tx: Prisma.TransactionClient, visita
     for (const [indice, lote] of lotes.entries()) {
       const nome = grupo.nome.slice(0, lotes.length > 1 ? 95 : 120) + (lotes.length > 1 ? ` (${indice + 1}/${lotes.length})` : "");
       const atividade = atividadeSchema.parse({ propriedadeId: input.propriedadeId, tipo: grupo.tipo, nome, extra: input.grupo.origem === "EXTRA" || input.grupo.origem === "LIVRE",
-        contexto: { ...grupo.contexto, retornosPorAnimal:Object.fromEntries(lote.filter(m=>m.contexto.retornoOrigem).map(m=>[m.animalId,m.contexto.retornoOrigem])), percursoVisita: { versao: 1, origem: input.grupo.origem === "PROTOCOLO" || input.grupo.origem === "RETORNO" ? "AGENDA" : "LIVRE" }, assinaturaPreparacao: hashDados({ fingerprint: input.fingerprint, excluidos: [...excluidos].sort() }), grupoPlanner: input.grupo, fingerprint: input.fingerprint, selecaoCriterios: grupo.criterios, excluidos: input.excluidos,
+        contexto: { ...grupo.contexto, retornosPorAnimal:Object.fromEntries(lote.filter(m=>m.contexto.retornoOrigem).map(m=>[m.animalId,m.contexto.retornoOrigem])), percursoVisita: { versao: 1, origem: input.grupo.origem === "PROTOCOLO" || input.grupo.origem === "RETORNO" || input.grupo.origem === "APTIDAO" ? "AGENDA" : "LIVRE" }, assinaturaPreparacao: hashDados({ fingerprint: input.fingerprint, excluidos: [...excluidos].sort() }), grupoPlanner: input.grupo, fingerprint: input.fingerprint, selecaoCriterios: grupo.criterios, excluidos: input.excluidos,
           ajustesManuais: { incluidos: input.grupo.origem === "LIVRE" ? grupo.membros.filter(m=>input.grupo.origem === "LIVRE" && input.grupo.incluidosManualmente.includes(m.animalId)).map(m=>({animalId:m.animalId,brinco:m.contexto.brinco,nome:m.contexto.nome})) : [],
             excluidos: grupo.membros.filter(m=>excluidos.has(m.animalId)).map(m=>({animalId:m.animalId,brinco:m.contexto.brinco,nome:m.contexto.nome})) } },
         participantes: lote.map(m => ({ animalId: m.animalId, ...(m.tarefaId ? grupo.tipo === "TAREFA_IATF" ? { tarefaIatfId: m.tarefaId } : { tarefaSanitariaId: m.tarefaId } : {}), motivos: m.motivos.slice(0, 20).map(motivo => motivo.slice(0, 300)) })) });

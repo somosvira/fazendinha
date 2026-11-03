@@ -137,3 +137,10 @@ describe("manutenção sanitária preserva fatos e decisões", () => {
     expect(ocultarCustosDetalhe({ data, dose, aplicacoes: [{ valorProdutoAtribuido: "10", valorServicoAtribuido: "20", nomeProdutoAplicado: "Vacina" }], execucoes: [{ valorServicoAtribuido: "30" }] })).toEqual({ data, dose, aplicacoes: [{ valorProdutoAtribuido: null, valorServicoAtribuido: null, nomeProdutoAplicado: "Vacina" }], execucoes: [{ valorServicoAtribuido: null }] });
   });
 });
+
+it("resumo da aplicação segue a autorização operacional sem expor documento financeiro", () => {
+  const resumoCusto = { totalConhecido: "19.70", componentes: [{ natureza: "MATERIAL", valor: "12.30" }, { natureza: "SERVICO", valor: "7.40" }] };
+  const detalhe = { resumoCusto, operacaoServico: { numero: 42, valorTotal: "1000.00" } };
+  expect(ocultarCustosDetalhe(detalhe)).toEqual({ resumoCusto: null, operacaoServico: { numero: 42, valorTotal: null } });
+  expect(ocultarCustosDetalhe(detalhe, true)).toEqual({ resumoCusto, operacaoServico: { numero: 42, valorTotal: null } });
+});

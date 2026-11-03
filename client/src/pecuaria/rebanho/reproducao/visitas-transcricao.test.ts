@@ -49,7 +49,7 @@ it("contexto mantém DEL zero, RP não e dados históricos desconhecidos", async
     tentativa: { id: "t", data: "2026-09-13", tipo: "IA" },
   }, "2026-10-13")).toMatchObject({ lactacao: "DEL 0", rp: "Não", tentativa: "IA há 30 dias" });
   expect(contextoTranscricao({ ultimoParto: { id: "p", data: "2026-10-13", tipo: "NORMAL" } }, "2026-10-13"))
-    .toMatchObject({ rp: "Não informado", lactacao: "Lactação não informada" });
+    .toMatchObject({ rp: "Não informado", lactacao: "Não informada" });
   expect(contextoTranscricao({}, "2026-10-13").rp).toBe("Sem parto registrado");
 });
 
@@ -70,4 +70,9 @@ it("situação desconhecida não vira diagnóstico pendente pela tentativa nem �
 it("só apresenta diagnóstico pendente quando preservado no estado canônico", () => {
   expect(contextoTranscricao({ situacao: "AGUARDANDO_DIAGNOSTICO" }, "2026-10-13").situacao).toBe("Aguardando diagnóstico");
   expect(contextoTranscricao({ tentativa: { id: "t", data: "2026-09-13", tipo: "IA" } }, "2026-10-13").situacao).toBe("Situação não preservada");
+});
+
+
+it.each(["SEM_LACTACAO", "NAO_INFORMADA", undefined] as const)("situação de lactação %s continua não informada, sem presumir seca", (situacaoProdutiva) => {
+  expect(contextoTranscricao({ situacaoProdutiva }, "2026-10-13").lactacao).toBe("Não informada");
 });

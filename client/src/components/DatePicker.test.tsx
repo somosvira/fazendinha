@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { DatePicker, formatarDataDigitada, interpretarDataDigitada } from "./DatePicker";
 
 afterEach(cleanup);
@@ -40,12 +40,46 @@ describe("DatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith("2025-05-01");
   });
 
-  it("ao sair do campo com data incompleta, volta ao último valor válido", () => {
+  it("mantém a entrada incompleta e bloqueia o formulário até a correção", () => {
     render(<Controlado inicial="2025-05-01" onChange={vi.fn()} />);
     const campo = screen.getByLabelText("Nascimento") as HTMLInputElement;
     fireEvent.change(campo, { target: { value: "12/1" } });
     fireEvent.blur(campo);
-    expect(campo.value).toBe("01/05/2025");
+    expect(campo.value).toBe("12/1");
+    expect(campo.validity.customError).toBe(true);
+    expect(campo.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText("Informe uma data válida no formato dd/mm/aaaa.")).toBeTruthy();
+    fireEvent.change(campo, { target: { value: "12/11/2025" } });
+    expect(campo.validity.valid).toBe(true);
+    expect(campo.getAttribute("aria-invalid")).not.toBe("true");
+  });
+
+  it("não troca data inexistente pela anterior ao sair do campo", () => {
+    const onChange = vi.fn();
+    render(<form><Controlado inicial="2026-10-26" onChange={onChange}/></form>);
+    const campo = screen.getByLabelText("Nascimento") as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "31/02/2026" } });
+    fireEvent.blur(campo);
+    expect(campo.value).toBe("31/02/2026");
+    expect(campo.form?.checkValidity()).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("respeita os limites também na digitação e permite corrigir pelo calendário", async () => {
+    const onChange = vi.fn();
+    render(<DatePicker aria-label="Data limitada" value="2025-05-15" min="2025-05-10" max="2025-05-20" onChange={onChange}/>);
+    const campo = screen.getByLabelText("Data limitada") as HTMLInputElement;
+    fireEvent.change(campo, { target: { value: "09/05/2025" } });
+    expect(campo.checkValidity()).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.change(campo, { target: { value: "21/05/2025" } });
+    expect(campo.checkValidity()).toBe(false);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Abrir calendário" }));
+    fireEvent.click(await screen.findByRole("button", { name: "16 de maio de 2025" }));
+    expect(campo.checkValidity()).toBe(true);
+    expect(campo.value).toBe("16/05/2025");
+    expect(onChange).toHaveBeenLastCalledWith("2025-05-16");
   });
 
   it("escolher um dia no calendário preenche o campo", async () => {
@@ -56,4 +90,18 @@ describe("DatePicker", () => {
     expect(onChange).toHaveBeenLastCalledWith("2025-05-15");
     expect((screen.getByLabelText("Nascimento") as HTMLInputElement).value).toBe("15/05/2025");
   });
+});
+
+it("impede submit inválido mesmo quando o formulário usa validação própria", () => {
+  const salvar = vi.fn((evento: FormEvent) => evento.preventDefault());
+  render(<form noValidate onSubmit={salvar}><Controlado inicial="2026-10-26" onChange={vi.fn()}/><button type="submit">Salvar</button></form>);
+  const campo = screen.getByLabelText("Nascimento") as HTMLInputElement;
+  fireEvent.change(campo, { target: { value: "31/02/2026" } });
+  fireEvent.submit(campo.form!);
+  expect(salvar).not.toHaveBeenCalled();
+  expect(campo.value).toBe("31/02/2026");
+  expect(screen.getByText("Informe uma data válida no formato dd/mm/aaaa.")).toBeTruthy();
+  fireEvent.change(campo, { target: { value: "25/10/2026" } });
+  fireEvent.submit(campo.form!);
+  expect(salvar).toHaveBeenCalledTimes(1);
 });

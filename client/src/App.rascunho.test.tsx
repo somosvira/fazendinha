@@ -1,3 +1,4 @@
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -250,3 +251,6 @@ it("não exclui em outro sítio se o contexto mudou depois de abrir a confirmaç
   expect(await screen.findByText("O sítio ou a sessão mudou. Reabra o trabalho antes de excluir.")).toBeTruthy();
   expect(exclusoes).toBe(0);
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

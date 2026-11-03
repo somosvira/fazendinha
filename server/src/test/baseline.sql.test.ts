@@ -10,10 +10,12 @@ describe("instalação do estado final na baseline unificada", () => {
     }
   });
 
-  it("mantém baseline inicial única seguida de migrations aditivas, sem transportar histórico ou dados operacionais", () => {
-    const migrations = readdirSync(new URL("../../prisma/migrations/", import.meta.url)).filter(n => /^\d+_/.test(n)).sort();
-    expect(migrations[0]).toBe("20261025000000_base_unificada");
-    expect(migrations.filter(n => n.endsWith("_base_unificada"))).toEqual(["20261025000000_base_unificada"]);
+  it("mantém uma cadeia única e não transporta histórico Prisma ou dados operacionais", () => {
+    const cadeia = readdirSync(new URL("../../prisma/migrations/", import.meta.url)).filter(n => /^\d+_/.test(n)).sort();
+    // Uma baseline inicial, seguida de evoluções incrementais: não reintroduzir
+    // a cadeia anterior nem impedir a criação das próximas migrations.
+    expect(cadeia[0]).toBe("20261025000000_base_unificada");
+    expect(cadeia.filter(n => /base_unificada/.test(n))).toEqual(["20261025000000_base_unificada"]);
     expect(sql).not.toMatch(/_prisma_migrations|OWNER TO|GRANT |REVOKE |^COPY |^UPDATE |^DELETE FROM|^TRUNCATE /m);
     const catalogos = [...sql.matchAll(/^INSERT INTO (.+?) \(/gm)].map(m => m[1]);
     expect(catalogos).toEqual(['"pecuaria"."CategoriaAnimal"', 'pecuaria."TipoAplicacaoSanitaria"', '"public"."Categoria"', 'pecuaria."TipoExame"', 'pecuaria."TipoExame"']);

@@ -58,10 +58,12 @@ it("consulta o catálogo apenas ao editar ou abrir referência e mantém a lista
 });
 it("encaminha conclusão ao builder e inativa pelo contrato existente, reconsultando a lista", async () => {
   render(<ProtocolosCadastro podeLancar />);
-  fireEvent.click(await screen.findByRole("button", { name: "Concluir cadastro de Controle CCS v1" }));
+  fireEvent.keyDown(await screen.findByRole("button", { name: "Mais ações de Controle CCS v1" }), { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Concluir cadastro de Controle CCS v1" }));
   expect(new URL(vi.mocked(navegarPara).mock.calls.at(-1)![0],"http://local").searchParams.get("editar")).toBe("p1");
   expect(screen.queryByRole("button",{name:/Publicar/})).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Inativar Controle CCS v1" }));
+  fireEvent.keyDown(screen.getByRole("button", { name: "Mais ações de Controle CCS v1" }), { key: "ArrowDown" });
+  fireEvent.click(await screen.findByRole("menuitem", { name: "Inativar Controle CCS v1" }));
   await screen.findByText("Versão inativada.");
   expect(listarCadastrosProtocolos).toHaveBeenCalledTimes(2);
 });

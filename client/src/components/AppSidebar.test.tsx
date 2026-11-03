@@ -117,7 +117,7 @@ describe("TrabalhoAtivo", () => {
     expect(botao.getAttribute("aria-current")).toBeNull();
     // Descrição e tipo ficam no mesmo bloco, escondido inteiro no trilho recolhido.
     const bloco = screen.getByText("Ração para o gado").parentElement!;
-    expect(bloco.className).toContain("[.side-collapsed_&]:hidden");
+    expect(bloco.className).toContain("sidebar-trilho-bloco");
     expect(bloco.contains(screen.getByText("Compra para estoque"))).toBe(true);
   });
 
@@ -144,6 +144,13 @@ describe("TrabalhoAtivo", () => {
 
 
 describe("AppSidebar — orientação por área", () => {
+  it("identifica o Painel administrativo também pelo ícone no trilho", () => {
+    const { onNav } = renderSidebar({ colapsada: true });
+    const painel = screen.getByRole("button", { name: "Painel administrativo" });
+    expect(painel.querySelector("svg")?.childElementCount).toBeGreaterThan(0);
+    fireEvent.click(painel);
+    expect(onNav).toHaveBeenCalledWith("gerencial");
+  });
   it("ao trocar de área abre o grupo atual e recolhe o anterior", () => {
     const { rerender, ...props } = renderSidebar({ areas: ["financeiro", "pecuaria"] });
     expect(screen.getByRole("button", { name: "Recolher Financeiro" }).getAttribute("aria-expanded")).toBe("true");

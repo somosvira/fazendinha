@@ -1,4 +1,4 @@
-.sanidade-animal{min-width:0;display:grid;gap:14px}.sanidade-animal>.secao-recolhivel,.sanidade-animal .historico-sanitario-animal>.secao-recolhivel{margin-top:0}.sanidade-animal-acoes{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ficha-titulo-com-icone{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}.ficha-titulo-com-icone>svg{flex-shrink:0}.sanidade-animal .ficha-link-contorno{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:7px 16px;border:1px solid var(--primary);border-radius:6px;color:var(--primary);background:var(--card);font-size:13px;font-weight:600;text-decoration:none;white-space:nowrap}.sanidade-animal .ficha-link-contorno:hover{background:var(--muted)}.sanidade-animal .ficha-link-contorno:focus-visible{outline:2px solid var(--ring);outline-offset:3px}.carencia-destino{display:flex;align-items:center;gap:16px;padding:14px;border:1px solid var(--border);border-radius:7px}.carencia-destino>svg{color:var(--primary);flex-shrink:0}.carencia-destino strong{display:block;font-weight:500;margin-bottom:4px}.protocolo-sanitario-animal{border:1px solid var(--border);border-radius:7px;padding:14px}.protocolo-sanitario-animal>header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.protocolo-sanitario-animal h3{font-weight:650;font-size:16px}.protocolo-sanitario-dados{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}.protocolo-sanitario-dados>p{display:flex;gap:12px;align-items:center;font-size:13px;min-width:0}.protocolo-sanitario-dados>p+p{border-left:1px solid var(--border);padding-left:14px}.protocolo-sanitario-dados svg{flex-shrink:0}.historico-sanitario-animal{display:grid;gap:14px}.historico-sanitario-registro{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border:1px solid var(--border);border-radius:7px;padding:12px;font-size:13px}.historico-sanitario-vazio{border:1px solid var(--border);border-radius:7px;padding:24px;text-align:center;font-size:13px;color:var(--ink-3)}
+.sanidade-animal{min-width:0;display:grid;gap:14px}.sanidade-animal>.secao-recolhivel,.sanidade-animal .historico-sanitario-animal>.secao-recolhivel{margin-top:0}.sanidade-animal-acoes{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.ficha-titulo-com-icone{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}.ficha-titulo-com-icone>svg{flex-shrink:0}.sanidade-animal .ficha-link-contorno{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:7px 16px;border:1px solid var(--primary);border-radius:6px;color:var(--primary);background:var(--card);font-size:14px;font-weight:600;text-decoration:none;white-space:nowrap}.sanidade-animal .ficha-link-contorno:hover{background:var(--muted)}.sanidade-animal .ficha-link-contorno:focus-visible{outline:2px solid var(--ring);outline-offset:3px}.carencia-destino{display:flex;align-items:center;gap:16px;padding:14px;border:1px solid var(--border);border-radius:7px}.carencia-destino>svg{color:var(--primary);flex-shrink:0}.carencia-destino strong{display:block;font-weight:500;margin-bottom:4px}.protocolo-sanitario-animal{border:1px solid var(--border);border-radius:7px;padding:14px}.protocolo-sanitario-animal>header{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.protocolo-sanitario-animal h3{font-weight:650;font-size:16px}.protocolo-sanitario-dados{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px}.protocolo-sanitario-dados>p{display:flex;gap:12px;align-items:center;font-size:14px;min-width:0}.protocolo-sanitario-dados>p+p{border-left:1px solid var(--border);padding-left:14px}.protocolo-sanitario-dados svg{flex-shrink:0}.historico-sanitario-animal{display:grid;gap:14px}.historico-sanitario-registro{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;border:1px solid var(--border);border-radius:7px;padding:12px;font-size:14px}.historico-sanitario-vazio{border:1px solid var(--border);border-radius:7px;padding:24px;text-align:center;font-size:14px;color:var(--ink-3)}
 @media(max-width:760px){.protocolo-sanitario-dados{grid-template-columns:repeat(2,minmax(0,1fr))}.protocolo-sanitario-dados>p+p{border-left:0;padding-left:0}.sanidade-animal-acoes{justify-content:stretch}.sanidade-animal-acoes>button{width:100%}}
 
 /* Acompanhamento reúne cada registro uma vez, sem cartões dentro de cartões. */
@@ -7,7 +7,7 @@
 .sanidade-acompanhamento-secao>header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .sanidade-animal .carencia-destino{border:0;border-radius:0;padding:4px 0;gap:10px}
 .sanidade-animal .carencia-destino strong{display:inline;margin-right:4px}
-.sanidade-animal .carencia-destino>svg{width:18px;height:18px}
+.sanidade-animal .carencia-destino>svg{width:24px;height:24px}
 .sanidade-animal .protocolo-sanitario-animal{border:0;border-top:1px solid var(--border);border-radius:0;padding:12px 0}
 .sanidade-animal .protocolo-sanitario-animal:first-child{border-top:0;padding-top:0}
 @media(max-width:1000px){.sanidade-acompanhamento-secoes{grid-template-columns:1fr}.sanidade-acompanhamento-secao>header{flex-wrap:nowrap}}
@@ -25,3 +25,44 @@
 .sanidade-carencias-consulta .carencias-sanitarias-integradas{padding:16px 18px}
 .pecuaria-content .sanidade-carencias-consulta .sanidade-animal>.secao-ficha-direta{border:0;border-top:1px solid var(--border);border-radius:0}
 .sanidade-carencias-consulta .sanidade-animal{gap:0}
+
+/* Registros e consulta sanitária mantêm o mesmo respiro da Reprodução. */
+.ficha-v4 #ficha-painel-sanidade > .sanidade-animal { gap: 24px; }
+.ficha-v4 .sanidade-animal-acoes {
+  justify-content: flex-start;
+  margin: 0;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+.ficha-v4 .sanidade-acoes-diretas { gap: 10px; }
+.ficha-v4 .sanidade-animal .protocolo-sanitario-dados { gap: 20px; margin-top: 18px; margin-bottom: 18px; }
+
+/* Carências continuam separadas; protocolos e aplicações usam divisórias, sem painéis vazios aninhados. */
+.ficha-v4 #ficha-painel-sanidade > .sanidade-animal { gap:16px; }
+.ficha-v4 .sanidade-animal-acoes { padding-bottom:12px; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; overflow:visible; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-cabecalho { padding:12px 0 6px; border:0; }
+.pecuaria-content .sanidade-animal > .secao-ficha-direta:not(.carencias-sanitarias) > .secao-recolhivel-conteudo { padding:6px 0 0; }
+.pecuaria-content .sanidade-animal > .historico-sanitario-animal { border:0; border-top:1px solid var(--border); border-radius:0; background:transparent; padding:16px 0 0; }
+
+.ficha-v4 .sanidade-animal > .secao-ficha-direta > .secao-recolhivel-cabecalho h2, .ficha-v4 .historico-sanitario-animal > div > h3 { font-size:16px; }
+
+/* Ficha: carências pertencem às aplicações; o restante mantém seções irmãs. */
+.sanidade-animal .carencias-sanitarias-integradas { margin-bottom:20px; }
+.carencias-resumo-aplicacoes { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); background:var(--surface-2,var(--muted)); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.carencia-destino-integrada { min-width:0; display:grid; align-content:start; gap:10px; padding:20px 24px; }
+.carencia-destino-integrada + .carencia-destino-integrada { border-left:1px solid var(--border); }
+.carencia-destino-integrada > span { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted-foreground); }
+.carencia-destino-integrada > span > svg { flex-shrink:0; color:var(--primary); }
+.carencia-destino-integrada > p { padding-left:32px; font-size:14px; line-height:22px; color:var(--muted-foreground); }
+.sanidade-animal .fin-tabela-desktop { border:1px solid var(--border); border-radius:8px; }
+.sanidade-animal .sanitario-custo-resumo > p { display:grid; gap:4px; }
+.sanidade-animal .sanidade-aplicacoes-vazio { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:28px 20px; text-align:center; color:var(--muted-foreground); background:var(--surface-2,var(--muted)); border-radius:10px; }
+.sanidade-aplicacoes-vazio > svg { width:32px; height:32px; color:var(--primary); }
+.sanidade-animal .sanidade-acao-anular { color:var(--destructive); }
+@media(max-width:600px) { .carencias-resumo-aplicacoes { grid-template-columns:1fr; } .carencia-destino-integrada { padding:16px; } .carencia-destino-integrada + .carencia-destino-integrada { border-left:0; border-top:1px solid var(--border); } }
+:root [data-design-operacional] .sanidade-animal .fin-tabela thead th { background:var(--table-header,#e2e7ea); color:var(--table-heading,#34434b); }
+.sanidade-animal .sanidade-acoes-linha { flex-wrap:wrap; gap:6px; }
+.sanidade-animal .sanidade-acao-anular { background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+
+.carencia-destino-integrada > small { padding-left:32px; color:var(--muted-foreground); }

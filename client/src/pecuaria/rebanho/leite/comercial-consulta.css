@@ -1,7 +1,7 @@
 .leite-comercial-consulta { display: grid; gap: 20px; min-width: 0; }
-.leite-comercial-busca { display: flex; align-items: center; gap: 8px; min-width: min(290px,100%); color: var(--fin-text-muted, #52616b); }
+.leite-comercial-busca { display: flex; align-items: center; gap: 8px; min-width: min(290px,100%); color: var(--muted-foreground); }
 .leite-comercial-busca input { min-width: 0; width: 100%; }
-.leite-comercial-dialog { width: min(1120px, calc(100vw - 32px)); max-width: 1120px; max-height: calc(100dvh - 40px); overflow: auto; padding: 24px; background: white; color: var(--fin-text, #203139); }
+.leite-comercial-dialog { width: min(1120px, calc(100vw - 32px)); max-width: 1120px; max-height: calc(100dvh - 40px); overflow: auto; padding: 24px; background: var(--card); color: var(--foreground); }
 .leite-comercial-dialog > .leite-operacoes { margin: 0; padding: 0; border: 0; box-shadow: none; min-width: 0; }
 .leite-comercial-dialog .leite-form-inline { gap: 16px; align-items: end; }
 .leite-comercial-dialog .leite-form-inline label { flex: 1 1 220px; min-width: 0; }
@@ -10,9 +10,9 @@
 .leite-comercial-dialog p { max-width: 75ch; }
 .leite-comercial-rodape { display: flex; justify-content: flex-end; padding-top: 16px; }
 .leite-comercial-fatos { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
-.leite-comercial-fatos dt { color: #52616b; font-size: 14px; }
+.leite-comercial-fatos dt { color: var(--muted-foreground); font-size: 14px; }
 .leite-comercial-fatos dd { margin: 4px 0 0; font-weight: 600; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .leite-comercial-acoes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
 @media(max-width:900px) { .leite-comercial-dialog { padding: 20px 16px; max-height: calc(100dvh - 24px); } .leite-comercial-fatos { grid-template-columns: minmax(0,1fr); } .leite-comercial-busca { width: 100%; } }
 .leite-comercial-dialog [data-slot="dialog-header"] { margin-bottom: 20px; padding-right: 32px; }
-.leite-comercial-dialog [data-slot="dialog-title"] { margin: 0; font-family: var(--font-sans); }
+.leite-comercial-dialog [data-slot="dialog-title"] { margin: 0; font-family: var(--font-display); }

@@ -1,3 +1,4 @@
+import { KeyRound } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,13 +34,13 @@ export function RecuperarSenha() {
   };
 
   return (
-    <main className="cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6 font-[family-name:var(--sans)]">
+    <main data-design-operacional="" className="auth-operacional cooperativa-content financeiro-colorido grid min-h-screen place-items-center bg-background p-6 font-[family-name:var(--sans)]">
       <section className="w-full max-w-[420px] rounded-[14px] border border-border bg-card px-7 py-8 shadow-[0_4px_20px_rgba(0,0,0,0.05)]">
         <div className="mb-7 flex items-center gap-2.5">
           <TerranoSymbol size={28} tone="light" strokeWidth={4.4} />
           <span className="text-[22px] font-semibold text-foreground">Terrano</span>
         </div>
-        <h1 className="text-[30px] font-semibold tracking-[-0.02em] text-foreground">
+        <span className="auth-operacional-icone"><KeyRound size={29} aria-hidden/></span><h1 className="text-[30px] font-semibold tracking-[-0.02em] text-foreground">
           Recuperar senha
         </h1>
 

@@ -8,3 +8,11 @@ export const consultarHistoricoProdutivoSchema = z.object({
     ctx.addIssue({ code: "custom", path: ["fim"], message: "Escolha um período de até 366 dias, com fim posterior ao início" });
 });
 export type ConsultaHistoricoProdutivo = z.infer<typeof consultarHistoricoProdutivoSchema>;
+export const consultarControlesColetivosSchema = z.object({
+  inicio: dataLeiteSchema, fim: dataLeiteSchema,
+  pagina: z.coerce.number().int().positive().max(1000000).default(1),
+  tamanho: z.coerce.number().int().min(1).max(100).default(20),
+}).strict().refine(v => v.inicio <= v.fim && Date.parse(v.fim) - Date.parse(v.inicio) <= 365 * 86400000, {
+  path: ["fim"], message: "Escolha um período de até 366 dias, com fim posterior ao início",
+});
+export type ConsultaControlesColetivos = z.infer<typeof consultarControlesColetivosSchema>;

@@ -81,17 +81,17 @@ export function FormMovimentar({ animais, propriedades, lotes, propriedadeInicia
           {lista.map((a) => <li key={a.id} className="flex items-center justify-between gap-3 border-b border-border py-2 text-sm">
             <div className="min-w-0">
               <div className="break-words"><strong>{a.brinco}</strong>{a.nome ? ` · ${a.nome}` : ""}</div>
-              <div className="mt-0.5 break-words text-xs text-ink-3">{localizacaoAtual(a)}</div>
+              <div className="mt-0.5 break-words text-sm text-ink-3">{localizacaoAtual(a)}</div>
             </div>
             <button type="button" aria-label={`Tirar ${a.brinco}`} onClick={() => tirar(a.id)} className="shrink-0 rounded-lg p-1.5 text-ink-2 hover:bg-white hover:text-red-700"><X size={14} /></button>
           </li>)}
         </ul>
-        {!lista.length && <p role="alert" className="mt-1.5 text-xs text-red-700">Nenhum animal selecionado — tire menos animais ou cancele para escolher outros.</p>}
+        {!lista.length && <p role="alert" className="mt-1.5 text-sm text-red-700">Nenhum animal selecionado — tire menos animais ou cancele para escolher outros.</p>}
       </div>
 
       {destinoFixo
         ? <div className="rounded-lg border border-border bg-surface-2 p-3 text-sm">
-            <div className="text-xs font-semibold uppercase tracking-wider text-ink-3">Destino</div>
+            <div className="text-sm font-semibold uppercase tracking-wider text-ink-3">Destino</div>
             <div className="mt-1 font-medium">{destinoFixo.rotulo}</div>
           </div>
         : <>

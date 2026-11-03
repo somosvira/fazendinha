@@ -9,7 +9,7 @@ vi.mock("../../../api/propriedades", () => ({ usePropriedades: () => ({ data: [{
 vi.mock("../../../propriedadeScope", async original => ({ ...await original<typeof import("../../../propriedadeScope")>(), getPropriedadeAtiva: () => escopo.propriedadeId }));
 vi.mock("./visitas-api", async original => ({ ...await original<typeof import("./visitas-api")>(), listarVisitas: vi.fn(), obterSugestoesVisita: vi.fn() }));
 const vazio: SugestoesVisita = { animais: [], tarefasSanitarias: [], tarefasIatf: [], protocolosSanitarios: [], protocolosIatf: [], retornos: [] };
-beforeEach(() => { vi.resetAllMocks(); escopo.propriedadeId = null; window.history.replaceState({}, "", "/pecuaria/visitas"); });
+beforeEach(() => { vi.resetAllMocks(); localStorage.clear(); escopo.propriedadeId = null; window.history.replaceState({}, "", "/pecuaria/visitas"); });
 afterEach(cleanup);
 it("lista distingue carregamento, ausência consolidada e ausência no sítio", async () => {
   let resolver!: (v: []) => void;
@@ -36,7 +36,7 @@ it("lista apresenta datas brasileiras e situação legível", async () => {
   vi.mocked(listarVisitas).mockResolvedValue([{ id: "v1", propriedadeId: 7, nome: "Manejo das matrizes", data: "2026-10-17", status: "ABERTA", responsavel: "Veterinária" }]);
   render(<Visitas podeLancar={false}/>);
   await screen.findByText("Manejo das matrizes");
-  expect(screen.getByText("17/10/2026")).toBeTruthy();
+  expect(screen.getByLabelText("17/10/2026")).toBeTruthy();
   expect(screen.getByText("Aberta")).toBeTruthy();
   expect(screen.getByText("Veterinária")).toBeTruthy();
   expect(screen.queryByText("ABERTA")).toBeNull();
@@ -74,12 +74,13 @@ it("agenda mantém sem previsão ao final nas duas ordens e retorna com contexto
   ] });
   render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
   await screen.findAllByText("20/10/2026");
+  fireEvent.click(screen.getByRole("button", { name: "Tabela" }));
   expect(screen.getAllByRole("row")[1].textContent).toContain("20/10/2026");
   expect(screen.getAllByRole("row")[2].textContent).toContain("Previsão a definir");
   fireEvent.click(screen.getByRole("button", { name: "Data crescente" }));
   expect(screen.getAllByRole("row")[2].textContent).toContain("Previsão a definir");
   expect(new URLSearchParams(window.location.search).get("agendaOrdem")).toBe("desc");
-  fireEvent.click(screen.getAllByRole("button", { name: "Ver ação" })[1]);
+  fireEvent.click(screen.getAllByRole("link", { name: "Ver ação" })[1]);
   expect(window.location.pathname).toBe("/pecuaria/reproducao/programacoes/p");
   const retorno=new URLSearchParams(window.location.search).get("retorno");
   expect(retorno).toContain("rotina=agenda"); expect(retorno).toContain("agendaOrdem=desc");
@@ -94,6 +95,7 @@ it("agenda filtra o dia exibido em São Paulo para HORA e preserva o dia civil p
  ]});
  render(<AcompanhamentoReprodutivo atualizacao={0} propriedadeId={7}/>);
  await screen.findAllByText("18/10/2026, 21:30");
+ fireEvent.click(screen.getByRole("button", {name:"Tabela"}));
  expect(screen.getAllByRole("row")).toHaveLength(3);
  expect(screen.getAllByText("18/10/2026 · horário não informado").length).toBeGreaterThan(0);
 });

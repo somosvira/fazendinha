@@ -53,4 +53,15 @@ describe("painel geral do rebanho", () => {
     expect(await buscarPainelGeral(null)).toMatchObject({ ativos: 0, receptorasPct: 0, receptorasAtivas: 0, femeasAtivas: 0, porCategoria: [] });
     expect(prisma.categoriaAnimal.findMany).not.toHaveBeenCalled();
   });
+  it("conta a baixa não determinada sem somar à morte ou excluí-la do total", async () => {
+    vi.mocked(prisma.baixaAnimal.findMany).mockResolvedValueOnce([
+      { tipo: "NAO_DETERMINADO", data: new Date("2026-10-01T12:00:00Z"), motivo: null },
+      { tipo: "MORTE", data: new Date("2026-10-01T12:00:00Z"), motivo: { classe: "MORTE" } },
+    ] as never);
+    const painel = await buscarPainelGeral(7, 365);
+    expect(painel.baixas30d).toBe(2);
+    expect(painel.baixasPorTipo).toEqual([{ tipo: "MORTE", qtd: 1 }, { tipo: "NAO_DETERMINADO", qtd: 1 }]);
+    expect(painel.baixasPorClasse).toEqual([{ classe: "MORTE", qtd: 1 }, { classe: "SEM_MOTIVO", qtd: 1 }]);
+  });
+
 });

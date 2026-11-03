@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 vi.mock('../../services/propriedade.js',()=>({resolverEscopoLeitura:vi.fn(async()=>7),resolverEscopoEscrita:vi.fn(async()=>7),PropriedadeError:class extends Error{code='ESCOPO_INVALIDO'}}));
-vi.mock('../../services/pecuaria/bezerreiro/gestao.js',()=>({consultarConfiguracao:vi.fn(async()=>({vigente:null,coleiras:[],fases:[],perfis:[]})),registrarPerfil:vi.fn(async()=>({id:'perfil'})),listarParticipantes:vi.fn(async()=>({itens:[],total:0})),salvarConfiguracao:vi.fn(),registrarParticipacao:vi.fn(),mudarFase:vi.fn(),sairParticipacao:vi.fn()}));
+vi.mock('../../services/pecuaria/bezerreiro/gestao.js',()=>({consultarConfiguracao:vi.fn(async()=>({vigente:null,coleiras:[],fases:[],perfis:[]})),registrarPerfil:vi.fn(async()=>({id:'perfil'})),listarParticipantes:vi.fn(async()=>({itens:[],total:0})),salvarConfiguracao:vi.fn(),registrarParticipacao:vi.fn(),mudarFase:vi.fn(),cancelarFase:vi.fn(async()=>({id:"participacao",versao:2})),sairParticipacao:vi.fn()}));
 vi.mock('../../services/pecuaria/bezerreiro/aleitamento.js',()=>({consultarPrevisao:vi.fn(),consultarOfertas:vi.fn(async(_p,_q,verValores)=>({itens:[],verValores})),confirmarOferta:vi.fn(async()=>({id:'oferta'})),estornarOferta:vi.fn()}));
 vi.mock('../../services/pecuaria/bezerreiro/consultas.js',()=>({consultarPartosColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,porPagina:20,selecionado:null})),consultarContexto:vi.fn(),consultarCustosBezerreiro:vi.fn(async(_p,_q,verValores)=>({totalConhecido:verValores?'12.00':null})),consultarSanidade:vi.fn(),consultarAcompanhamento:vi.fn(),vincularExame:vi.fn()}));
 vi.mock('../../services/pecuaria/bezerreiro/colostro.js',()=>({listarHistoricoColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,tamanho:30})),listarFornecimentosColostro:vi.fn(async()=>({itens:[],total:0,pagina:1,porPagina:20})),listarRetiradasColostro:vi.fn(),listarOrigensColostro:vi.fn(),consultarOrigemColostro:vi.fn(),registrarRetiradaColostro:vi.fn(),confirmarRetiradaColostro:vi.fn(),registrarBrixColostro:vi.fn(),destinarColostro:vi.fn(),consultarDestinacaoColostro:vi.fn(),enriquecerColostro:vi.fn(),consultarPreparoColostro:vi.fn(),estornarDestinacaoColostro:vi.fn(),estornarPreparoColostro:vi.fn(),estornarRetiradaColostro:vi.fn(),listarProducoesRetiradaColostro:vi.fn()}));
 import { bezerreiroRouter } from './bezerreiro.js';
-import { registrarPerfil } from '../../services/pecuaria/bezerreiro/gestao.js';
+import { registrarPerfil, cancelarFase } from '../../services/pecuaria/bezerreiro/gestao.js';
 import { consultarPartosColostro } from '../../services/pecuaria/bezerreiro/consultas.js';
 import { listarHistoricoColostro, listarFornecimentosColostro } from '../../services/pecuaria/bezerreiro/colostro.js';
 import { consultarOfertas } from '../../services/pecuaria/bezerreiro/aleitamento.js';
@@ -24,4 +24,21 @@ describe('contrato público Bezerreiro',()=>{
  it('valida payload e UUID antes de escrever',async()=>{const r=await app('pecuaria',['lancar']).request('/perfis',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chave:'x',loteId:perfil})});expect(r.status).toBe(422);expect(registrarPerfil).not.toHaveBeenCalled()});
  it('passa máscara a consultas auxiliares',async()=>{const r=await app().request('/ofertas');expect(r.status).toBe(200);expect(consultarOfertas).toHaveBeenCalledWith(7,expect.anything(),false);const c=await app().request('/custos');expect(await c.json()).toEqual({totalConhecido:null})});
  it('não trata horário como obrigatório para oferta real',async()=>{const r=await app('pecuaria',['lancar']).request('/ofertas',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chave:perfil,perfilId:perfil,data:'2026-10-28',contextoToken:'a'.repeat(64),responsavel:'Equipe',grupos:[{coleiraId:perfil,quantidadeLitros:'8',justificativa:'Oferta avulsa confirmada'}]})});expect(r.status).toBe(201)});
+ it('cancelamento de programação exige área e lançamento',async()=>{
+  const path=`/participantes/${perfil}/fases/${perfil}/cancelamento`, request={method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({chave:perfil,versaoEsperada:1,motivo:'Programação equivocada'})};
+  expect((await app().request(path,request)).status).toBe(403);
+  expect((await app('financeiro',['lancar']).request(path,request)).status).toBe(403);
+  expect(cancelarFase).not.toHaveBeenCalled();
+ });
+ it('cancelamento valida IDs/motivo/versão e usa escopo/autoria resolvidos no servidor',async()=>{
+  const path=`/participantes/${perfil}/fases/${perfil}/cancelamento`, dados={chave:perfil,versaoEsperada:1,motivo:'Programação equivocada',propriedadeId:999};
+  const post=(url:string,body:unknown)=>app('pecuaria',['lancar']).request(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  expect((await post(path.replace(`/fases/${perfil}`, '/fases/invalido'),dados)).status).toBe(422);
+  expect((await post(path,{...dados,motivo:' '})).status).toBe(422);
+  expect((await post(path,{...dados,versaoEsperada:0})).status).toBe(422);
+  expect(cancelarFase).not.toHaveBeenCalled();
+  expect((await post(path,dados)).status).toBe(201);
+  expect(cancelarFase).toHaveBeenCalledWith(perfil,perfil,{...dados,propriedadeId:7},3);
+ });
+
 });

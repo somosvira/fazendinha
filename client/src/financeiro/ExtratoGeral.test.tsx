@@ -1,3 +1,5 @@
+import { beforeEach } from "vitest";
+import { preferirTabelas } from "@/lib/visualizacao.fixture";
 import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
@@ -120,3 +122,6 @@ it("busca o rótulo visível do estorno e preserva a pesquisa pela descrição r
   fireEvent.change(screen.getByRole("searchbox", { name: "Buscar movimento" }), { target: { value: "Conferência do lançamento 16" } });
   expect(screen.getByRole("table", { name: "Extrato geral" })).toBeTruthy();
 });
+
+// A consulta continua disponível em tabela; estes cenários verificam suas colunas e comandos.
+beforeEach(preferirTabelas);

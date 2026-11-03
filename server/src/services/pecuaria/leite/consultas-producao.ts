@@ -74,7 +74,13 @@ export async function consultarProducaoLeite(propriedadeId: number, input: Consu
     const grupos = [...gruposPorPeriodo].map(([periodo, diasGrupo]) => {
       const datas = new Set(diasGrupo.map(d => d.data));
       const selecionadas = linhas.filter(l => datas.has(l.data));
-      return { periodo, ...resumirProducao(selecionadas),
+      const medidas = selecionadas.filter(l => l.estado === "MEDIDO" && l.litros !== null);
+      const origensComprovadas = medidas.length > 0 && medidas.every(l => l.fonte === "INDIVIDUAL" ? !!l.animalId : "animaisOrigem" in l && l.animaisOrigem.length > 0);
+      const vacasOrdenhadas = filtro.agrupamento === "MES" || !origensComprovadas ? null : new Set(medidas.flatMap(l => l.fonte === "INDIVIDUAL" ? [l.animalId!] : "animaisOrigem" in l ? l.animaisOrigem : [])).size;
+      const resumo = resumirProducao(selecionadas);
+      const completa = diasGrupo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS");
+      const mediaPorVaca = completa && vacasOrdenhadas !== null && vacasOrdenhadas > 0 && resumo.litros !== null ? new Prisma.Decimal(resumo.litros).div(vacasOrdenhadas).toNumber() : null;
+      return { periodo, ...resumo, vacasOrdenhadas, mediaPorVaca,
         completa: diasGrupo.every(d => d.estado === "COMPLETA" || d.estado === "SEM_ANIMAIS_ELEGIVEIS"),
         turnos: ordenhas.filter(o => !filtro.posicaoId || filtro.posicaoId === o.posicaoId).map(o => ({
           ...o, ...resumirProducao(selecionadas.filter(l => l.posicaoId === o.posicaoId)),

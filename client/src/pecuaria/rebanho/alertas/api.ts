@@ -15,9 +15,9 @@ export async function requisicaoAlertas<T>(caminho: string, init?: RequestInit, 
  return body as T;
 }
 export function consultaParametros(filtros: FiltrosAlertas): string { const p=new URLSearchParams(); for(const [k,v]of Object.entries(filtros))if(v!==undefined&&v!=="")p.set(k,String(v));return p.toString(); }
-export const consultarAlertas=(f: FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ConsultaAlertas>(`?${consultaParametros(f)}`,undefined,signal);
-export const resumirAlertas=(f: FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ConsultaAlertas>(`/resumo?${consultaParametros(f)}`,undefined,signal);
-export const consultarParticipantes=(chave:string,f:FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ParticipantesAlertas>(`/cuidados/${encodeURIComponent(chave)}/participantes?${consultaParametros(f)}`,undefined,signal);
+export const consultarAlertas=(f: FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ConsultaAlertas>(`?${consultaParametros(f)}`,undefined,signal,f.propriedadeId);
+export const resumirAlertas=(f: FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ConsultaAlertas>(`/resumo?${consultaParametros(f)}`,undefined,signal,f.propriedadeId);
+export const consultarParticipantes=(chave:string,f:FiltrosAlertas,signal?:AbortSignal)=>requisicaoAlertas<ParticipantesAlertas>(`/cuidados/${encodeURIComponent(chave)}/participantes?${consultaParametros(f)}`,undefined,signal,f.propriedadeId);
 export const avisarAlteracaoAlertas=()=>window.dispatchEvent(new Event("pecuaria:alertas-atualizados"));
 export interface EventoHistoricoAlerta {id:string;revisao:number;comando:string;criadoEm:string;autorUsuarioId:number|null;autorTecnico:string|null;payload:{situacao?:string;motivo?:string;dataReferencia?:string|null;prazo?:string|null}}
 export interface DetalheAlerta {

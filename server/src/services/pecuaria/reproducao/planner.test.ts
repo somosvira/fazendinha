@@ -1,3 +1,5 @@
+import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
+vi.mock("./filas-aptidao.js", () => ({ carregarFilasAptidaoTx: vi.fn(async () => []) }));
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -160,4 +162,18 @@ describe("agenda independente e preparação livre", () => {
     await incluirGrupoPlannerTx(tx,visita.id,input,null);await incluirGrupoPlannerTx(tx,visita.id,input,null);
     expect(mocks.adicionar).toHaveBeenCalledOnce();expect(mocks.adicionar.mock.calls[0][2].contexto).toMatchObject({percursoVisita:{versao:1,origem:"LIVRE"},selecaoCriterios:{versao:2}});
   });
+});
+
+it("aptidão devida aparece sem agendamento, separada do DG, com identidade compartilhada", async () => {
+  const { tx, animais } = fonte(1);
+  const necessidadeId = `APTIDAO:${animais[0].id}:INICIAL`;
+  vi.mocked(carregarFilasAptidaoTx).mockResolvedValueOnce([{ animalId: animais[0].id, necessidadeId, fila: "AVALIACAO_DEVIDA", tipoExameId: randomUUID(),
+    clinica: { estado: "NAO_DETERMINADA", exameId: null, data: null, retornoEm: null, resultado: null },
+    necessidade: { necessidadeId, estado: "AVALIACAO_DEVIDA", devidaDesde: "2026-10-01", pendencias: [], criteriosNaoAtingidos: [], evidenciaIds: [] },
+    visitasAbertas: [], pevOriginalAte: "2026-10-20" }]);
+  const planner = await consultarPlannerTx(tx, consulta);
+  const aptidao = planner.grupos.find(g => g.grupo.origem === "APTIDAO");
+  expect(aptidao).toMatchObject({ nome: "Avaliação de aptidão devida", secao: "REPRODUCAO", tipo: "EXAME_SANITARIO", previstaPara: null,
+    contexto: { finalidade: "APTIDAO_REPRODUTIVA", necessidadesPorAnimal: { [animais[0].id]: necessidadeId } } });
+  expect(planner.grupos.some(g => g.grupo.origem === "PROTOCOLO")).toBe(true);
 });

@@ -110,8 +110,8 @@ export function StatusOperacionaisAnimal({
         <Pill tone="green">
           <ClipboardList size={13} aria-hidden="true" />
           {protocolo === "iniciado"
-            ? "Em protocolo reprodutivo"
-            : "Protocolo reprodutivo programado"}
+            ? "Em protocolo"
+            : "Protocolo programado"}
         </Pill>
       )}
       {falhas.map((f) => (

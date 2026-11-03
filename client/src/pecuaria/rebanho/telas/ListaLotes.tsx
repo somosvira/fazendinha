@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 // visível, então mover/desfazer precisa recarregar as duas seções.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRightLeft, Plus } from "lucide-react";
+import { ArrowRightLeft, Layers, Plus } from "lucide-react";
 import { MultiSelect } from "../../../components/MultiSelect";
 import { dataValida } from "../reproducao/periodo-consulta";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
@@ -181,7 +181,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
   const propriedadeInicial = getPropriedadeAtiva() ?? sitiosAtivos[0]?.id ?? null;
 
   return <PaginaFinanceira>
-    <PageHeader titulo="Lotes" descricao="Organize os grupos de animais e acompanhe as transferências entre lotes e sítios." acao={podeLancar ? <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button> : undefined} />
+    <PageHeader titulo={<span className="rotina-titulo"><span><Layers aria-hidden/></span>Lotes</span>} acao={podeLancar ? <Button onClick={abrirNovo}><Plus size={16} /> Novo lote</Button> : undefined} />
     <NavRebanho ativa="lotes" />
     <ErrorBox erro={erro} />
 

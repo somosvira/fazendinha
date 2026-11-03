@@ -29,6 +29,7 @@ suite("painel reprodutivo — identidade histórica com fixtures próprias", () 
     }
     const animal = await prisma.animal.create({ data: { brinco: `QA-${randomUUID()}`, nome: "Matriz transferida", sexo: "F", origem: "COMPRADO", dataNascimento: dia("2020-01-01"), dataEntrada: dia("2025-01-01") } });
     animais.push(animal.id);
+    expect((await painelReproducao(null, animal.id)).animais[0]).toMatchObject({ temHistoricoReprodutivo: false });
     await transacaoValidada(async tx => {
       await tx.localizacaoAnimal.createMany({ data: [
         { animalId: animal.id, propriedadeId: sitios[0], desde: dia("2025-01-01"), ate: dia("2026-02-01") },
@@ -45,6 +46,7 @@ suite("painel reprodutivo — identidade histórica com fixtures próprias", () 
     const destino = await painelReproducao(sitios[1]);
     expect(destino.animais.map(a => a.animalId)).toEqual([animal.id]);
     expect(destino.gestacoes).toEqual([]);
+    expect(destino.animais[0]).toMatchObject({ temHistoricoReprodutivo: true });
   });
   it("consulta ficha histórica sem fatos sem incluir matriz na população atual e sem ampliar sítio", async () => {
     exigirBancoIntegracaoPecuaria();

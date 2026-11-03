@@ -1,3 +1,5 @@
+import { AjudaCampo } from "../../../components/Dica";
+import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { BuscaLista } from "../../../components/BuscaLista";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
@@ -14,7 +16,7 @@ import { listarCadastrosProtocolos, type CadastroProtocoloMeta } from "../protoc
 import { CatalogoModelosProtocolos } from "../protocolos/CatalogoModelosProtocolos";
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
 import { GestaoParticipantes } from "../protocolos/GestaoParticipantes";
-import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
+import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
@@ -95,6 +97,8 @@ export type ProtocoloIatf = {
   etapas: EtapaIatf[];
 };
 export type TarefaIatf = {
+  situacaoOperacional?: TarefaOperacional["situacao"];
+  motivoOperacional?: string | null;
   precisaoTemporal?: "DIA" | "HORA";
   precisaoRealizacao?: "DIA" | "HORA" | null;
   previsaoPendente?: boolean;
@@ -405,6 +409,7 @@ export function Iatf({
           <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos em acompanhamento"/>
         </>}><BuscaLista rotulo="Buscar programação" placeholder="Protocolo ou grupo" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
         <div className="space-y-3">
+          <div className="repro-consulta-titulo"><div><h2>Grupos programados</h2><p>Modelo versionado e participação individual preservados.</p></div></div>
           {carregando && (
             <p role="status" className="rounded-lg bg-muted p-3 text-sm">
               {consultaVisivel
@@ -414,7 +419,7 @@ export function Iatf({
           )}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          <>{visual.modo === "visual" ? <div className="reproducao-cartoes">{filtradas.map(p => <CartaoProtocoloReprodutivo key={p.id} grupo={p} sitio={sitioEfetivo ?? undefined} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}/>)}</div> : <TabelaFinanceira rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
+          <>{visual.modo === "visual" ? <div className="reproducao-cartoes">{filtradas.map(p => <CartaoProtocoloReprodutivo key={p.id} grupo={p} sitio={sitioEfetivo ?? undefined} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}/>)}</div> : <TabelaFinanceira visualizacao="tabela" rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
             {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=><a href={`/pecuaria/reproducao/programacoes/${encodeURIComponent(p.id)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}${sitioEfetivo ? `&sitio=${sitioEfetivo}` : ""}`} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); } }}>{p.nome}</a>},
             {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioReferencia,p.precisaoTemporal)},
             {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantesTotal ?? "—"},
@@ -471,7 +476,10 @@ export function Iatf({
         </div>
       )}
       {modo === "operacao" && detalhe && (
-        <div>
+        <div className="repro-programacao-detalhe">
+          <header className="repro-programacao-identidade"><div><h2>{detalhe.nome}</h2><p>{detalhe.protocolo.nome} · versão {detalhe.protocolo.versao}</p><p>Início de referência: {horarioIatf(detalhe.inicioReferencia, detalhe.precisaoTemporal)}</p></div><Pill>{detalhe.status === "ABERTA" ? "Aberta" : detalhe.status === "ENCERRADA" ? "Encerrada" : "A conferir"}</Pill></header>
+          <dl className="repro-programacao-resumo"><div><dt>Participantes</dt><dd>{detalhe.participantesTotal ?? "Não informado"}</dd></div><div><dt>Procedimentos atendidos</dt><dd>{detalhe.contagens.atendidos}</dd></div><div><dt>Procedimentos pendentes</dt><dd>{detalhe.contagens.pendentes}</dd></div></dl>
+          <ParticipacoesProgramacao key={`${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao}/>
           {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>Fechar detalhes</Button></div>}
           <OperacaoProtocolo programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
             acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined}
@@ -840,5 +848,5 @@ export function PlanoEtapa({
 }
 export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});
- return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa</legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}<p className="text-sm">Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas.</p></>}</fieldset>;
+ return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa <AjudaCampo rotulo="Ajuda sobre orientação temporal" texto="Alerta apenas. Sem a hora da referência ou da execução, o intervalo fica não aferível. A orientação não altera as próximas etapas."/></legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<select className={classeInput} value={r.referencia} onChange={e=>mudar({referencia:e.target.value as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></select></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}</>}</fieldset>;
 }

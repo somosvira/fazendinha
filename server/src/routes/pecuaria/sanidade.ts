@@ -65,7 +65,7 @@ const escopoDetalhe = async (c: Context) => {
   return resolverEscopoEscrita(c, id);
 };
 const ocultarCustos = <T extends { valorProdutoAtribuido: unknown; valorServicoAtribuido: unknown }>(item: T, c: Context): T =>
-  podeConsultarCustos(c) ? item : { ...item, valorProdutoAtribuido: null, valorServicoAtribuido: null };
+  podeConsultarCustos(c) ? item : { ...item, valorProdutoAtribuido: null, valorServicoAtribuido: null, ...("resumoCusto" in item ? { resumoCusto: null } : {}) };
 
 export const sanidadeRouter = new Hono()
   .route("/", rodadasRouter)

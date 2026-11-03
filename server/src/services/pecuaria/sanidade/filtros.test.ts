@@ -59,7 +59,13 @@ describe("filtros operacionais antes da paginação", () => {
   });
   it("conta todos os fatos filtrados e devolve identificação do animal na página", async () => {
     const animal = { id: "animal", brinco: "GV3-01", nome: "Mimosa" };
-    mocks.aplicacoes.mockResolvedValue([{ id: "fato", animal, movimentoEstoque: null }]);
+    mocks.aplicacoes.mockResolvedValue([{
+      id: "fato", animal, animalId: animal.id, propriedadeId: 2,
+      data: new Date("2026-10-06T00:00:00Z"), nomeProdutoAplicado: "Produto de teste",
+      status: "VALIDO", consumoMantido: false, origemInsumo: "SEM_ORIGEM_JUSTIFICADA",
+      movimentoEstoque: null, movimentoEstoqueId: null, operacaoServicoId: null,
+      valorProdutoAtribuido: null, valorServicoAtribuido: null, classificacaoCusto: null,
+    }]);
     mocks.contarAplicacoes.mockResolvedValue(51);
     const filtro = consultaSanitariaSchema.parse({ pagina: "2", situacao: "ORIGEM_PENDENTE" });
     expect(await listarAplicacoesPaginadas(undefined, 2, filtro)).toMatchObject({ total: 51, pagina: 2, porPagina: 50, itens: [{ id: "fato", animal }] });

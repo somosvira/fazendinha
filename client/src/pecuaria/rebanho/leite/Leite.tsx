@@ -1,3 +1,12 @@
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Info, ArrowUpRight } from "lucide-react";
+import { navegarPara } from "../../../router";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
+import { DatePicker } from "@/components/DatePicker";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
@@ -75,6 +84,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
   const [sujo, setSujo] = useState(false);
   const [falhasAnimais, setFalhasAnimais] = useState<string[]>([]);
   const [config, setConfig] = useState(false);
+  const [verImpedimentos, setVerImpedimentos] = useState(false);
   const [incluir, setIncluir] = useState(false);
   const [adicionais, setAdicionais] = useState<
     import("./types").AnimalFolhaLeite[]
@@ -233,6 +243,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
     u.searchParams.set("ordenha", posicao);
     history.replaceState(history.state, "", u);
   }, [folha, data, posicao]);
+  const campoDataRef = useRef<HTMLDivElement>(null);
   function navegar(d: string, p = posicao) {
     const u = new URL(location.href);
     u.searchParams.set("dataOperacional", d);
@@ -270,7 +281,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
     setErro("");
   }
   async function salvar(animalId?: string) {
-    if (!folha || !podeEditar || invalidos.some(id => !animalId || id === `${animalId}:${posicao}`)) return;
+    if (!folha || !podeEditar || !campoDataRef.current?.querySelector("input")?.reportValidity() || invalidos.some(id => !animalId || id === `${animalId}:${posicao}`)) return;
     const noRecorte = (c: MedicaoInput) => !animalId || (c.animalId === animalId && c.posicaoId === posicao);
     const contexto = escopo.current;
     const atual = geracao.current;
@@ -414,19 +425,18 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
         </div>
         <div className="leite-header-acoes">
           {acoesContainer ? createPortal(acaoConfigurar, acoesContainer) : acaoConfigurar}
-        <div className="leite-data">
+        <div ref={campoDataRef} className="leite-data">
           <Button className="leite-icon"
             onClick={() => dia(-1)}
             aria-label="Dia anterior">
             <ChevronLeft />
           </Button>
-          <input
+          <DatePicker
+            className="leite-data-seletor"
             aria-label="Data operacional"
-            type="date"
+            required
             value={data}
-            onChange={(e) => {
-              if (dataValida(e.target.value)) navegar(e.target.value);
-            }}
+            onChange={valor => { if (dataValida(valor)) navegar(valor); }}
           />
           <Button className="leite-icon"
             onClick={() => dia(1)}
@@ -469,11 +479,8 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
       )}
       {folha && (
         <>
-          {folha.impedimentos?.length > 0 && <SecaoDetalhesLeite className="leite-aviso" titulo={<>Animais fora da ordenha nesta data ({folha.impedimentos.length})</>}>
-
-            <p>A finalidade e os demais requisitos são conferidos pelo servidor na data da produção. Confira o cadastro antes de tentar incluir.</p>
-            <ul>{folha.impedimentos.map(a => <li key={a.animalId}>{a.nome || a.brinco} · Brinco {a.brinco}: {a.motivo}</li>)}</ul>
-          </SecaoDetalhesLeite>}
+          {folha.impedimentos?.length > 0 && <><div className="leite-impedimentos-faixa"><Info size={18} aria-hidden/><div><strong>{folha.impedimentos.length} animais fora da ordenha</strong><span>Consulte os motivos e abra o cadastro para conferir.</span></div><Button variant="outline" onClick={()=>setVerImpedimentos(true)}>Ver animais<ArrowUpRight size={14} aria-hidden/></Button></div>
+          <Dialog open={verImpedimentos} onOpenChange={setVerImpedimentos}><DialogContent className="leite-consulta-dialog leite-impedimentos-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Animais fora da ordenha</DialogTitle></DialogHeader><div className="leite-impedimentos-contexto"><Badge variant="outline">{folha.impedimentos.length} animais</Badge><span>Ordenha de {data.split("-").reverse().join("/")}</span></div><div className="leite-impedimentos-lista">{folha.impedimentos.map(a=><article key={a.animalId}><Milk size={18} aria-hidden/><div><strong>{a.nome||a.brinco}</strong><span>Brinco {a.brinco}</span></div><p>{a.motivo}</p><Button variant="outline" onClick={()=>void executarComGuardaNavegacao(()=>navegarPara(`/pecuaria/rebanho/animais/${encodeURIComponent(a.animalId)}?retorno=${encodeURIComponent(location.pathname+location.search)}`))}>Abrir cadastro<ArrowUpRight size={14} aria-hidden/></Button></article>)}</div><Button variant="outline" onClick={()=>setVerImpedimentos(false)}>Voltar à ordenha</Button></DialogContent></Dialog></>}
           <div
             className="leite-sessoes"
             ref={sessoesRef}
@@ -487,7 +494,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
               const Icon = i === 2 ? Moon : Sun;
               return (
                 <Button aria-pressed={s.posicaoId === posicao}
-                  className={`leite-sessao ${s.posicaoId === posicao ? "selecionada" : ""}`}
+                  className={`leite-sessao h-auto whitespace-normal ${s.posicaoId === posicao ? "selecionada" : ""}`}
                   key={s.posicaoId}
                   onClick={() => navegar(data, s.posicaoId)}>
                   <Icon size={28} />
@@ -520,7 +527,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                 )}
                 <div className="leite-busca-campo">
                   <label htmlFor="leite-busca">Buscar animal</label>
-                  <input
+                  <Input
                     id="leite-busca"
                     type="search"
                     value={busca}
@@ -577,7 +584,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               </span>
                             </div>
                             {podeLancar && folha.congelada && (
-                              <Button className="leite-excluir"
+                              <Button variant="outline" size="sm" className="leite-excluir"
                                 disabled={!podeEditar}
                                 onClick={() => {
                                   if (
@@ -599,13 +606,13 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                     setExcluir((ids) => [...ids, a.animalId]);
                                   setSujo(true);
                                 }}>
-                                Excluir do dia
+                                <CircleMinus size={14} aria-hidden />Excluir do dia
                               </Button>
                             )}
                           </TableCell>
                           <TableCell>
                             <div className="leite-valor">
-                              <input
+                              <Input
                                 ref={(el) => {
                                   inputRefs.current[a.animalId] = el;
                                 }}
@@ -704,14 +711,13 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                           </TableCell>
                           <TableCell>
                             {podeLancar ? (
-                              <select
+                              <SelectCampo
                                 data-estado={c.estado}
                                 aria-label={`Situação de ${a.nome ? `${a.nome}, brinco ${a.brinco}` : `brinco ${a.brinco}`}`}
                                 value={c.estado}
                                 disabled={!podeEditar}
-                                onChange={(e) => {
-                                  const estado = e.target
-                                    .value as MedicaoInput["estado"];
+                                onValueChange={valor => {
+                                  const estado = valor as MedicaoInput["estado"];
                                   mudar(a.animalId, {
                                     estado,
                                     litros:
@@ -743,7 +749,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                                 <option value="NAO_ORDENHADO">
                                   Não ordenhado
                                 </option>
-                              </select>
+                              </SelectCampo>
                             ) : (
                               <span className="leite-status" data-estado={c.estado}>
                                 {c.estado === "MEDIDO" ? (
@@ -775,7 +781,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                               </Button>
                             )}
                             {c.estado === "NAO_ORDENHADO" && (
-                              <input
+                              <Input
                                 className="leite-motivo-animal"
                                 aria-label={`Motivo de ${a.nome ? `${a.nome}, brinco ${a.brinco}` : `brinco ${a.brinco}`}`}
                                 placeholder="Por que não foi ordenhado?"
@@ -835,7 +841,7 @@ export function Leite({ podeLancar, acoesContainer }: { podeLancar: boolean; aco
                 <label className="leite-correcao">
                   Motivo da alteração (correção, inclusão ou exclusão de
                   população guardada)
-                  <textarea
+                  <Textarea
                     value={motivo}
                     maxLength={500}
                     disabled={!podeEditar}

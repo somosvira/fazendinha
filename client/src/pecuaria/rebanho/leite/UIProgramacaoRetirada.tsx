@@ -1,3 +1,8 @@
+import "./programacao-retirada.css";
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { AjudaCampo } from "@/components/Dica";
+import { DatePicker } from "@/components/DatePicker";
+import { Input } from "@/components/ui/input";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -35,7 +40,9 @@ const dataPt = (data: string) =>
     month: "2-digit",
     year: "numeric",
   });
-export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
+export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
+  const Titulo = tituloPagina ? "h1" : "h2";
+  const visualizacao = useVisualizacaoConsulta("previsaoColetaVisualizacao", "leite");
   const sitio = getPropriedadeAtiva();
   const [data, setData] = useState(hojeOperacional);
   const [dados, setDados] = useState<ConsultaProgramacaoDTO | null>(null);
@@ -77,20 +84,13 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
     };
   }, [data, sitio, revisao]);
   return (
-    <section className="leite-operacoes">
-      <h2 className="leite-titulo-secao">Rotina de coleta</h2>
-      <p>
-        Configure a frequência e consulte as próximas previsões. A rotina não cria
-        retirada, venda, alerta ou movimento automático.
-      </p>
+    <section className="leite-operacoes leite-programacao-retirada">
+      <Titulo className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></Titulo>
+
       <div className="leite-form-inline">
         <label>
           Data de referência
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-          />
+          <DatePicker aria-label="Data de referência" value={data} onChange={setData} />
         </label>
         <Button variant="outline" className="leite-secondary"
           disabled={carregando}
@@ -121,7 +121,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
           )}
           {dados.meta && (
             <div>
-              <h2>Conferência da meta</h2>
+              <h2>Conferência da meta <AjudaCampo rotulo="Sobre a conferência da meta" texto={"A conferência usa o produto configurado neste sítio. Uma retirada parcial altera o saldo na próxima consulta. Não há alerta persistente ou retirada automática."} /></h2>
               <p>
                 {dados.meta.estado === "NAO_AFERIVEL"
                   ? "Meta não aferível"
@@ -144,17 +144,14 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 </div>
               </dl>
               {dados.meta.motivo && <p>{dados.meta.motivo}</p>}
-              <small>
-                A conferência usa o produto configurado neste sítio. Uma
-                retirada parcial altera o saldo na próxima consulta. Não há
-                alerta persistente ou retirada automática.
-              </small>
+
             </div>
           )}
           <h2>
             <CalendarDays size={20} aria-hidden /> Próximos 14 dias · previsão
           </h2>
-          {dados.previsoes.length ? (
+          <div className="leite-lista-opcoes"><AlternarVisualizacaoConsulta modo={visualizacao.modo} mudar={visualizacao.mudar} rotulo="Visualização das previsões de coleta"/></div>
+          {dados.previsoes.length ? (visualizacao.modo === "visual" ? <ol className="leite-previsoes-grade" aria-label="Datas previstas de coleta">{dados.previsoes.map(p=><li key={p.data}><time dateTime={p.data}>{dataPt(p.data)}</time><span>{nomeProgramacao(dados.historico.find(h=>h.id===p.programacaoId)!)}</span><span>Previsão</span></li>)}</ol> : (
             <div className="leite-tabela-scroll">
               <Table semContainer>
                 <TableCaption>Datas previstas de coleta</TableCaption>
@@ -182,7 +179,7 @@ export function ProgramacaoRetirada({ podeLancar }: { podeLancar: boolean }) {
                 </TableBody>
               </Table>
             </div>
-          ) : (
+          )) : (
             <p>
               {dados.vigente?.tipo === "META_LITROS"
                 ? "A meta de litros não determina uma data de retirada."
@@ -362,13 +359,7 @@ function ConfigurarRetirada({
           <fieldset disabled={salvando}>
             <label>
               Vigente desde
-              <input
-                type="date"
-                required
-                min={minima}
-                value={vigencia}
-                onChange={(e) => setVigencia(e.target.value)}
-              />
+              <DatePicker aria-label="Vigente desde" required min={minima} disabled={salvando} value={vigencia} onChange={setVigencia} />
             </label>
             <label>
               Frequência da coleta
@@ -410,7 +401,7 @@ function ConfigurarRetirada({
                       gap: 10,
                     }}
                   >
-                    <input
+                    <Input
                       style={{ width: 20, minHeight: 20 }}
                       type="checkbox"
                       checked={dias.includes(i)}
@@ -456,7 +447,7 @@ function ConfigurarRetirada({
                 )}
                 <label>
                   Meta de litros
-                  <input
+                  <Input
                     inputMode="decimal"
                     required
                     value={meta}

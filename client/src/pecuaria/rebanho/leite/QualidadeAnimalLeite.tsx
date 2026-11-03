@@ -1,12 +1,18 @@
+import { DetalheProducao, VazioProducao } from "./ProducaoAnimalUI";
+import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
-import { DatePicker } from "@/components/DatePicker";
+import { DateRangePicker, dateFromIso, isoDate } from "@/components/DateRangePicker";
 import "./ordenhas-gerais.css";
 import { useEffect, useState } from "react";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
 import { DatasQualidade } from "./DatasQualidade";
+import { dataSanitaria } from "../sanidade/rotulos";
+import { SecaoGeralAnimal } from "../components/SecaoGeralAnimal";
+import { FlaskConical } from "lucide-react";
 import type { AmostraQualidade } from "./qualidade-types";
 import "./operacoes.css";
+import "./historico-produtivo.css";
 
 type Consulta = {
   itens: AmostraQualidade[];
@@ -24,6 +30,7 @@ export function QualidadeAnimalLeite({
   propriedadeId: number | null;
   recarregarToken?: number;
 }) {
+  const [selecionada, setSelecionada] = useState<AmostraQualidade | null>(null);
   const [inicio, setInicio] = useState("");
   const [fim, setFim] = useState(hojeOperacional);
   const [pagina, setPagina] = useState(1);
@@ -31,8 +38,8 @@ export function QualidadeAnimalLeite({
   const [erro, setErro] = useState("");
   const [revisao, setRevisao] = useState(0);
   useEffect(() => {
-    setPagina(1);
-  }, [animalId, propriedadeId]);
+    setPagina(1); setSelecionada(null);
+  }, [animalId, propriedadeId, recarregarToken]);
   useEffect(() => {
     let vigente = true;
     setDados(null);
@@ -67,45 +74,21 @@ export function QualidadeAnimalLeite({
     };
   }, [animalId, propriedadeId, inicio, fim, pagina, revisao, recarregarToken]);
   return (
-    <section
+    <SecaoGeralAnimal icon={FlaskConical}
+      id="qualidade-individual-leite"
       className="leite-qualidade-animal"
-      aria-label="Qualidade individual do leite"
+      titulo="Qualidade do leite"
+
     >
-      <h2>Qualidade individual do leite</h2>
-      <p>
-        Resultados das amostras deste animal, independentes da frequência da
-        medição de litros.
-      </p>
+      <div className="producao-barra"><strong>Amostras individuais</strong>{<><AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." />{propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel="Período" triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
+        setInicio(start ? isoDate(start) : "");
+        setFim(end ? isoDate(end) : "");
+        setPagina(1);
+      }} /> : undefined}</>}</div>
       {propriedadeId == null ? (
-        <p>
-          Selecione o sítio autorizado para consultar as amostras individuais.
-        </p>
+        <p>Selecione o sítio autorizado para consultar as amostras individuais.</p>
       ) : (
         <>
-          <div className="leite-form-inline">
-            <label>
-              Amostras desde
-              <DatePicker
-                aria-label="Amostras desde"
-                value={inicio}
-                onChange={(v) => {
-                  setInicio(v);
-                  setPagina(1);
-                }}
-              />
-            </label>
-            <label>
-              Amostras até
-              <DatePicker
-                aria-label="Amostras até"
-                value={fim}
-                onChange={(v) => {
-                  setFim(v);
-                  setPagina(1);
-                }}
-              />
-            </label>
-          </div>
           {erro ? (
             <div role="alert">
               {erro}{" "}
@@ -121,49 +104,16 @@ export function QualidadeAnimalLeite({
             <p role="status">Carregando análises individuais…</p>
           ) : (
             <>
-              <p>{dados.total} amostra(s) no período e sítio consultados.</p>
+              {dados.itens.length > 0 && <p className="producao-ficha-nota">{dados.total} amostra(s) deste animal no período e sítio consultados.</p>}
               {!dados.itens.length && (
-                <p>Nenhuma análise individual registrada neste recorte.</p>
+                <VazioProducao>Nenhuma análise individual registrada neste recorte.</VazioProducao>
               )}
-              {dados.itens.map((a) => (
-                <article key={a.id} className="leite-qualidade-amostra">
-                  <h3>
-                    {a.data.split("-").reverse().join("/")} ·{" "}
-                    {a.formatoSnapshot.nome}
-                  </h3>
-                  <p>
-                    {a.status === "ANULADO" || a.status === "ANULADA"
-                      ? "Anulada — preservada no histórico"
-                      : a.resultados.length
-                        ? "Resultado registrado"
-                        : "Aguardando laudo"}{" "}
-                    · Versão {a.versao}
-                  </p>
-                  <DatasQualidade {...a} />
-                  <dl>
-                    {a.resultados.map((r) => {
-                      const campo = a.formatoSnapshot.campos.find(
-                        (c) => c.codigo === r.campo,
-                      );
-                      return (
-                        <div key={r.campo}>
-                          <dt>{campo?.rotulo || r.campo}</dt>
-                          <dd>
-                            {typeof r.valor === "boolean"
-                              ? r.valor
-                                ? "Sim"
-                                : "Não"
-                              : r.valor}{" "}
-                            {campo?.unidade ?? ""}
-                          </dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                  {a.responsavel && <p>Responsável: {a.responsavel}</p>}
-                </article>
-              ))}
-              <div className="leite-form-inline">
+              {dados.itens.map(a => <article key={a.id} className="producao-amostra">
+                <div><FlaskConical size={20} aria-hidden="true"/><strong>{dataSanitaria(a.data)}</strong></div>
+                <div><strong>{a.formatoSnapshot.nome}</strong><span> — {situacaoAmostra(a)}</span></div>
+                <Button onClick={() => setSelecionada(a)}>Detalhes</Button>
+              </article>)}
+              {dados.total > dados.tamanho && <nav className="historico-produtivo-paginas" aria-label="Páginas das análises individuais">
                 <Button
                   variant="outline"
                   type="button"
@@ -181,11 +131,23 @@ export function QualidadeAnimalLeite({
                 >
                   Próximas análises
                 </Button>
-              </div>
+              </nav>}
             </>
           )}
         </>
       )}
-    </section>
+      {selecionada && <DetalheProducao titulo="Detalhes da amostra" fechar={() => setSelecionada(null)}>
+        <section><h3>Amostra individual</h3><dl className="producao-dados"><div><dt>Animal</dt><dd>{selecionada.animal ? `${selecionada.animal.brinco}${selecionada.animal.nome ? ` · ${selecionada.animal.nome}` : ""}` : "Não informado"}</dd></div>
+        <div><dt>Data de coleta</dt><dd>{dataSanitaria(selecionada.data)}</dd></div><div><dt>Formato</dt><dd>{selecionada.formatoSnapshot.nome}</dd></div><div><dt>Situação</dt><dd>{situacaoAmostra(selecionada)}</dd></div>
+        <div><dt>Versão do registro</dt><dd>{selecionada.versao}</dd></div><div><dt>Responsável</dt><dd>{selecionada.responsavel ?? "Não informado"}</dd></div></dl><DatasQualidade {...selecionada}/></section>
+        <section><h3>Resultados</h3>{selecionada.resultados.length ? <div className="producao-tabela"><table><thead><tr><th>Parâmetro</th><th>Resultado</th><th>Unidade</th></tr></thead><tbody>{selecionada.resultados.map(r => {
+          const campo = selecionada.formatoSnapshot.campos.find(c => c.codigo === r.campo);
+          return <tr key={r.campo}><td>{campo?.rotulo || r.campo}</td><td>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor}</td><td>{campo?.unidade ?? "—"}</td></tr>;
+        })}</tbody></table></div> : <VazioProducao>Aguardando resultado do laudo</VazioProducao>}</section>
+        {selecionada.anotacaoOriginal && <section><h3>Observação</h3><p>{selecionada.anotacaoOriginal}</p></section>}
+      </DetalheProducao>}
+    </SecaoGeralAnimal>
   );
 }
+
+function situacaoAmostra(a: AmostraQualidade) { return a.status === "ANULADO" || a.status === "ANULADA" ? "Anulada — preservada no histórico" : a.resultados.length ? "Resultado registrado" : "Aguardando laudo"; }

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Prisma } from "@prisma/client";
 import { conferirLactacaoComProducaoTx } from "./guardas.js";
-const findMany = vi.fn(), lactacoes = vi.fn(), gerais = vi.fn();
-const tx = { $queryRaw: gerais, participanteProducaoLeite: { findMany }, lactacaoAnimal: { findMany: lactacoes } } as unknown as Prisma.TransactionClient;
+const findMany = vi.fn(), lactacoes = vi.fn(), gerais = vi.fn(), controles = vi.fn();
+const tx = { controleHistoricoLeite: { findMany: controles }, $queryRaw: gerais, participanteProducaoLeite: { findMany }, lactacaoAnimal: { findMany: lactacoes } } as unknown as Prisma.TransactionClient;
 const dia = (data: string) => new Date(`${data}T00:00:00Z`);
-beforeEach(() => { gerais.mockResolvedValue([]); findMany.mockResolvedValue([]); lactacoes.mockResolvedValue([]); });
+beforeEach(() => { controles.mockResolvedValue([]); gerais.mockResolvedValue([]); findMany.mockResolvedValue([]); lactacoes.mockResolvedValue([]); });
 describe("lactação com produção medida", () => {
   it("recusa fim no mesmo dia de uma medição preservada e não apaga a origem", async () => {
     findMany.mockResolvedValue([{ lactacaoId: "lactacao", dia: { dataOperacional: dia("2026-10-01") } }]);
@@ -48,5 +48,22 @@ describe("lactação identificada na produção geral", () => {
     await expect(conferirLactacaoComProducaoTx(tx, "animal", "antiga", dia("2026-01-01"), dia("2026-08-01"))).resolves.toBeUndefined();
     lactacoes.mockResolvedValue([]);
     await expect(conferirLactacaoComProducaoTx(tx, "animal", "futura", dia("2026-10-21"), null)).resolves.toBeUndefined();
+  });
+});
+
+
+describe("lactação protege controles documentais vinculados", () => {
+  beforeEach(() => controles.mockResolvedValue([{ id: "documento", inicio: dia("2026-10-20"), fim: dia("2026-10-20") }]));
+  it.each([
+    ["2026-10-21", null],
+    ["2026-01-01", "2026-10-20"],
+    ["2026-01-01", "2026-10-19"],
+  ])("recusa intervalo %s a %s sem precisar de produção operacional", async (inicio, fim) => {
+    await expect(conferirLactacaoComProducaoTx(tx, "animal", "lactacao", dia(inicio!), fim ? dia(fim) : null)).rejects.toMatchObject({ code: "CONFLITO" });
+  });
+  it("aceita data inicial inclusiva, fim posterior e reabertura", async () => {
+    for (const fim of [dia("2026-10-21"), null])
+      await expect(conferirLactacaoComProducaoTx(tx, "animal", "lactacao", dia("2026-10-20"), fim)).resolves.toBeUndefined();
+    expect(controles).toHaveBeenCalledWith({ where: { lactacaoId: "lactacao" }, select: { id: true, inicio: true, fim: true } });
   });
 });

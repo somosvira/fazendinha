@@ -73,6 +73,8 @@ describe("tipos de uso e validação dos perfis", () => {
   it.each([["0", 0], ["100", 100], ["90,25", 90.25], ["", null]])("aceita MS %s preservando o significado", async (valor, esperado) => {
     await montar(); await alterarControle(screen.getByLabelText("Matéria seca (%)"), { target: { value: valor } });
     fireEvent.click(screen.getByLabelText("Sanitário"));
+    fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
     fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
@@ -200,9 +202,63 @@ it("configura tipo padrão e orientação opcionais no produto compartilhado", a
   await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Produto sanitário" } });
   await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
   fireEvent.click(screen.getByLabelText("Sanitário"));
+  fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
+  fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
   fireEvent.click(screen.getByRole("button", { name: "Selecionar Tipo de aplicação padrão (opcional)" }));
   fireEvent.click(await screen.findByRole("button", { name: "Usar Hormônio" }));
   fireEvent.change(screen.getByLabelText("Orientação de uso (opcional)"), { target: { value: "Conferir o rótulo do produto" } });
   fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
   await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ perfilSanitario: expect.objectContaining({ tipoAplicacaoId: uid(77), orientacaoUso: "Conferir o rótulo do produto", viaPadrao: null }) })));
+});
+
+
+describe("carência explícita do produto sanitário", () => {
+  beforeEach(() => { vi.clearAllMocks(); mocks.criarProduto.mockResolvedValue(produtoCriado); });
+  const novoSanitario = async () => {
+    render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    await alterarControle(screen.getByLabelText("Nome do produto"), { target: { value: "Produto sanitário" } });
+    await alterarControle(screen.getByLabelText("Categoria"), { target: { value: uid(11) } });
+    fireEvent.click(screen.getByLabelText("Sanitário"));
+  };
+  it("exige escolher separadamente leite e carne sem presumir zero", async () => {
+    await novoSanitario();
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    expect(await screen.findByText("Escolha a carência de leite.")).toBeTruthy();
+    expect(screen.getByText("Escolha a carência de carne.")).toBeTruthy();
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" })));
+    fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+  });
+  it("exige prazo positivo só para com carência e envia zero explícito", async () => {
+    await novoSanitario();
+    fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Com carência de carne" }));
+    expect(screen.queryByLabelText("Prazo de leite (horas)")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    expect(await screen.findByText("Informe um prazo de carne em horas inteiras, maior que zero.")).toBeTruthy();
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Prazo de carne (horas)"), { target: { value: "48" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: 0, carenciaCarneHoras: 48 }) })));
+  });
+  it.each(["0", "-1", "1.5"])("recusa prazo positivo inválido %s", async (valor) => {
+    await novoSanitario();
+    fireEvent.click(screen.getByRole("radio", { name: "Com carência de leite" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
+    fireEvent.change(screen.getByLabelText("Prazo de leite (horas)"), { target: { value: valor } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
+    expect(await screen.findByText("Informe um prazo de leite em horas inteiras, maior que zero.")).toBeTruthy();
+    expect(mocks.criarProduto).not.toHaveBeenCalled();
+  });
+  it("mantém não informado do legado ao editar outro campo", async () => {
+    const produto = { ...produtoCriado, unidade: "ML" as const, usoSanitario: true, perfilSanitario: { carenciaLeiteHoras: null, carenciaCarneHoras: 0, viaPadrao: null, referenciaTecnica: null } };
+    mocks.editarProduto.mockResolvedValue(produto);
+    render(<FormProduto produto={produto} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    expect((screen.getByRole("radio", { name: "Não informado para leite (legado)" }) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole("radio", { name: "Não informado para carne (legado)" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: null, carenciaCarneHoras: 0 }) })));
+  });
 });
