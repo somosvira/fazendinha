@@ -22,6 +22,14 @@ describe("multiseleção do rebanho", () => {
       { sexo: { in: ["F", "M"] } }, { origem: { in: ["NASCIDO"] } }, { composicao: { some: { racaId: { in: [a, b] } } } },
     ]);
   });
+  it("aceita situações calculadas e lista de brincos da seleção de animais", () => {
+    const f = listarFiltrosSchema.parse({ situacoesReprodutivas: "GESTANTE", situacoesProdutivas: ["LACTANTE", "SECA"], brincos: [" 0012 ", "0035", "0012"] });
+    expect(f.situacoesReprodutivas).toEqual(["GESTANTE"]);
+    expect(f.situacoesProdutivas).toEqual(["LACTANTE", "SECA"]);
+    expect(f.brincos).toEqual(["0012", "0035"]);
+    expect(listarFiltrosSchema.safeParse({ situacoesReprodutivas: ["PRENHE"] }).success).toBe(false);
+    expect(listarFiltrosSchema.safeParse({ brincos: Array.from({ length: 501 }, (_, i) => String(i)) }).success).toBe(false);
+  });
   it("rejeita período invertido nas movimentações", () => {
     expect(listarMovimentacoesSchema.safeParse({ dataDe: "2026-10-20", dataAte: "2026-10-18" }).success).toBe(false);
   });

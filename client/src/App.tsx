@@ -153,6 +153,7 @@ export function App() {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [modoBusca, setModoBusca] = useState<"tudo" | "animais">("tudo");
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
   const [sideColapsada, setSideColapsada] = useState<boolean>(() => {
     try { return localStorage.getItem("side-collapsed") === "1"; } catch { return false; }
@@ -311,12 +312,18 @@ export function App() {
     return () => { vivo = false; };
   }, []);
 
-  // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
+  // atalhos globais: ⌘K / Ctrl+K busca em tudo; ⌘⇧K / Ctrl+Shift+K busca só animais.
+  // Repetir o atalho do modo aberto fecha; o outro atalho troca de modo (Esc é tratado dentro dela).
+  const buscaRef = useRef({ aberta: false, modo: "tudo" as "tudo" | "animais" });
+  buscaRef.current = { aberta: buscaAberta, modo: modoBusca };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
         e.preventDefault();
-        setBuscaAberta((v) => !v);
+        const modo = e.shiftKey ? "animais" : "tudo";
+        const atual = buscaRef.current;
+        if (atual.aberta && atual.modo === modo) { setBuscaAberta(false); return; }
+        setModoBusca(modo); setBuscaAberta(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -624,7 +631,7 @@ export function App() {
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
-        onAbrirBusca={() => setBuscaAberta(true)}
+        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
         user={effectiveUser}
@@ -653,6 +660,7 @@ export function App() {
         podeVerValores={podeVerValores}
         podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
+        modo={modoBusca}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, _entidadeId, caminho) => {
           if (!caminho) { navegarTab(t); return; }

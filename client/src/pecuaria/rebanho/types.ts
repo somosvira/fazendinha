@@ -272,11 +272,19 @@ export type Pesagem = {
   observacao?: string | null;
 };
 
+export type SituacaoReprodutivaFiltro = "VAZIA" | "GESTANTE" | "AGUARDANDO_DIAGNOSTICO" | "APTA" | "DESCONHECIDA";
+export type SituacaoProdutivaFiltro = "LACTANTE" | "SECA" | "SEM_LACTACAO" | "NAO_INFORMADA";
 export type ListarFiltros = {
   comContexto?: boolean;
   propriedadeIds?: number[]; loteIds?: string[]; categoriaIds?: string[];
   sexos?: Sexo[]; origens?: Origem[]; racaIds?: string[]; aptidoes?: Aptidao[];
   papeisReprodutivos?: PapelReprodutivo[]; situacoes?: Situacao[];
+  /** situação reprodutiva calculada hoje (só fêmeas ativas) */
+  situacoesReprodutivas?: SituacaoReprodutivaFiltro[];
+  /** situação produtiva calculada hoje (só fêmeas ativas) */
+  situacoesProdutivas?: SituacaoProdutivaFiltro[];
+  /** brincos exatos (sem diferença de caixa), até 500 */
+  brincos?: string[];
   propriedadeId?: number;
   loteId?: string;
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */

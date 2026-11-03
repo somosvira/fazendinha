@@ -257,6 +257,12 @@ export const listarFiltrosSchema = z.object({
   aptidoes: listaQuery(z.enum(["LEITE", "CORTE", "REPRODUCAO"])),
   papeisReprodutivos: listaQuery(z.enum(["NENHUM", "RECEPTORA", "DOADORA"])),
   situacoes: listaQuery(z.enum(["ATIVO", "BAIXADO"])),
+  /** situação reprodutiva calculada hoje (fêmeas ativas); mesma regra da ficha */
+  situacoesReprodutivas: listaQuery(z.enum(["VAZIA", "GESTANTE", "AGUARDANDO_DIAGNOSTICO", "APTA", "DESCONHECIDA"])),
+  /** situação produtiva calculada hoje (fêmeas ativas); mesma regra da ficha */
+  situacoesProdutivas: listaQuery(z.enum(["LACTANTE", "SECA", "SEM_LACTACAO", "NAO_INFORMADA"])),
+  /** brincos exatos, sem diferença de caixa — lista digitada/colada na seleção de animais */
+  brincos: z.preprocess(v => typeof v === "string" ? [v] : v, z.array(z.string().trim().min(1).max(60)).min(1).max(500).transform(v => [...new Set(v)])).optional(),
   propriedadeId: propriedadeIdOpcional,
   loteId: z.string().uuid().optional(),
   /** exclui da lista os animais cuja localização aberta está neste lote (ex.: "Trazer animais") */

@@ -1145,8 +1145,22 @@ export async function listar(filtros: ListarEntrada, propriedadeEscopo: number |
       ] } : {},
       // "Trazer animais": exclui quem já está com a localização aberta neste lote (U1)
       filtros.excluirLoteId ? { NOT: { localizacoes: { some: { ate: null, loteId: filtros.excluirLoteId } } } } : {},
+      filtros.brincos?.length ? { OR: filtros.brincos.map(brinco => ({ brinco: { equals: brinco, mode: "insensitive" as const } })) } : {},
     ],
   };
+  // Situações reprodutiva/produtiva são calculadas, não colunas: resolvidas sobre o conjunto já filtrado
+  // (fêmeas ativas, como nos cartões) antes de paginar, para total e páginas refletirem o filtro.
+  if (filtros.situacoesReprodutivas?.length || filtros.situacoesProdutivas?.length) {
+    const candidatos = await prisma.animal.findMany({ where: { AND: [where, { sexo: "F" }, { baixas: { none: { estornadaEm: null } } }] }, select: { id: true } });
+    const contextos = await obterContextosAnimaisNaDataTx(prisma, candidatos.map(c => c.id), hoje);
+    const ids = candidatos.filter(({ id }) => {
+      const contexto = contextos.get(id);
+      if (!contexto) return false;
+      return (!filtros.situacoesReprodutivas?.length || filtros.situacoesReprodutivas.includes(contexto.situacaoReprodutiva as never))
+        && (!filtros.situacoesProdutivas?.length || filtros.situacoesProdutivas.includes(contexto.situacaoProdutiva as never));
+    }).map(c => c.id);
+    (where.AND as Prisma.AnimalWhereInput[]).push({ id: { in: ids } });
+  }
 
   async function consultarPagina() {
     const ordenar = filtros.ordenar ?? "brinco";

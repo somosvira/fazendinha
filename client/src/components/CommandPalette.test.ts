@@ -212,3 +212,66 @@ it("Enter prioriza o registro encontrado quando a resposta chega depois das pág
   fireEvent.keyDown(input, { key: "Enter" });
   expect(props.onNav).toHaveBeenCalledWith("estoque", "p", "/estoque/produtos/p");
 });
+
+describe("mini abas por tipo de registro", () => {
+  const vaca = { tipo: "animal", entidadeId: "a1", label: "DEV-035 — Estrela", sublabel: "Rebanho › Sede", tab: "pec-rebanho", grupo: "Animais", caminho: "/pecuaria/rebanho/animais/a1" };
+  const exame = { tipo: "exame", entidadeId: "e1", label: "Brucelose — DEV-035 — Estrela", sublabel: "Exames › Sede", tab: "pec-sanidade", grupo: "Exames", caminho: "/pecuaria/sanidade?aba=exames&detalheTipo=exame&detalheId=e1" };
+  const documento = { tipo: "documento", entidadeId: "d1", label: "Atestado — Estrela", sublabel: "Documentos › Sede", tab: "lancar", grupo: "Documentos financeiros", caminho: "/financeiro/operacoes/o1" };
+  async function abrirCom(itens: unknown[]) {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => itens }));
+    vi.useFakeTimers(); const props = baseProps(); render(h(CommandPalette, props));
+    fireEvent.change(screen.getByPlaceholderText(PLACEHOLDER), { target: { value: "estrela" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    return props;
+  }
+  it("agrupa por família com o animal primeiro, mesmo quando o servidor manda o documento antes", async () => {
+    await abrirCom([documento, exame, vaca]);
+    const abas = screen.getByRole("navigation", { name: "Tipos de registro" });
+    expect([...abas.querySelectorAll("button")].map(b => b.textContent)).toEqual(["Todos3", "Animais1", "Sanidade1", "Financeiro1"]);
+    expect(screen.getByText("DEV-035 — Estrela").closest("[cmdk-item]")?.getAttribute("data-selected")).toBe("true");
+  });
+  it("a mini aba mostra só os registros da família e volta para todos", async () => {
+    await abrirCom([vaca, exame, documento]);
+    fireEvent.click(screen.getByRole("button", { name: "Sanidade1" }));
+    expect(screen.getByText("Brucelose — DEV-035 — Estrela")).toBeTruthy();
+    expect(screen.queryByText("DEV-035 — Estrela")).toBeNull();
+    expect(screen.queryByText("Atestado — Estrela")).toBeNull();
+    expect(screen.getByText("Brucelose — DEV-035 — Estrela").closest("[cmdk-item]")?.getAttribute("data-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Todos3" }));
+    expect(screen.getByText("Atestado — Estrela")).toBeTruthy();
+  });
+  it("não mostra mini abas com uma única família", async () => {
+    await abrirCom([vaca]);
+    expect(screen.queryByRole("navigation", { name: "Tipos de registro" })).toBeNull();
+  });
+});
+
+describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
+  it("consulta só animais, sem páginas, ações ou mini abas, e abre a ficha", async () => {
+    const vaca = { tipo: "animal", entidadeId: "a1", label: "DEV-019 — Lactantes 19", sublabel: "Rebanho › Sede", tab: "pec-rebanho", grupo: "Animais", caminho: "/pecuaria/rebanho/animais/a1" };
+    const lote = { tipo: "lote", entidadeId: "l1", label: "Lactantes", sublabel: "Rebanho", tab: "pec-rebanho", grupo: "Lotes de animais", caminho: "/pecuaria/rebanho/lotes/l1" };
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => [vaca, lote] });
+    vi.stubGlobal("fetch", fetchMock); vi.useFakeTimers();
+    const props = baseProps();
+    render(h(CommandPalette, { ...props, modo: "animais" as const }));
+    const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
+    fireEvent.change(input, { target: { value: "rebanho" } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(String(fetchMock.mock.calls[0][0])).toBe("/api/busca?q=rebanho&tipos=animal");
+    expect(screen.getByText("DEV-019 — Lactantes 19")).toBeTruthy();
+    expect(screen.queryByText("Lactantes")).toBeNull();
+    expect(screen.queryByText("Rebanho")).toBeNull(); // página do catálogo não aparece
+    expect(screen.queryByRole("navigation", { name: "Tipos de resultado" })).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho", "a1", "/pecuaria/rebanho/animais/a1");
+  });
+});
+
+it("trocar para a busca só de animais com a caixa aberta mantém o foco no campo", () => {
+  const props = baseProps();
+  const { rerender } = render(h(CommandPalette, { ...props, modo: "tudo" as const }));
+  rerender(h(CommandPalette, { ...props, modo: "animais" as const }));
+  const input = screen.getByPlaceholderText("Buscar animal por brinco ou nome…");
+  expect(document.activeElement).toBe(input);
+  expect(screen.queryByText("Digite para buscar")).toBeNull();
+});
