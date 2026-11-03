@@ -1,7 +1,8 @@
 import { consultarFornecimentosNutricionaisTx } from "../pecuaria/leite/nutricao.js";
+import { env } from "../../env.js";
 import { Prisma } from "@prisma/client";
 import { intervalosPresenca, textoDia } from "./presenca.calc.js";
-import { calcularNutricao, diasIntervalos, type PresencaDia } from "./nutricao.calc.js";
+import { calcularNutricao, diasIntervalos, type FechamentoAnalise, type PresencaDia } from "./nutricao.calc.js";
 export async function consultarNutricaoTx(tx:Prisma.TransactionClient,propriedadeId:number|null,inicio:Date,fim:Date){
   const fechamentos=await tx.fechamentoConsumo.findMany({where:{...(propriedadeId==null?{}:{propriedadeId}),status:"CONFIRMADO",inicio:{lte:fim},fim:{gte:inicio}},
     include:{centroCusto:{select:{nome:true}},participacoes:{include:{classificacaoCusto:true}},itens:{include:{movimentoEstoque:{select:{valorTotal:true}}}}}});
@@ -17,8 +18,16 @@ export async function consultarNutricaoTx(tx:Prisma.TransactionClient,propriedad
       for(const d of diasIntervalos([s]))presencas.push({...d,animalId:animal.id,propriedadeId:local.propriedadeId});
     }
   }
-  return calcularNutricao(presencas,fechamentos.map(f=>({...f,centroCustoNome:f.centroCusto.nome,
+  const diarios:FechamentoAnalise[]=[];
+  if(env.NUTRICAO_MENSAL_ENABLED){
+    const dias=await tx.consumoDiario.findMany({where:{mes:propriedadeId==null?{}:{propriedadeId},data:{gte:inicio,lte:fim},situacao:"EFETIVADO",participantes:{some:{}}},include:{mes:true,participantes:{include:{classificacaoCusto:true}},itens:{include:{movimentos:true}}}});
+    const centros=await tx.centroCusto.findMany({where:{id:{in:dias.flatMap(d=>d.centroCustoId?[d.centroCustoId]:[])}}});
+    for(const d of dias){if(!d.centroCustoId)continue;diarios.push({id:d.id,propriedadeId:d.mes.propriedadeId,centroCustoId:d.centroCustoId,centroCustoNome:centros.find(c=>c.id===d.centroCustoId)?.nome??"Centro histórico",inicio:d.data,fim:d.data,animalDias:d.participantes.length,
+      participacoes:d.participantes.map(p=>({...p,dias:1,finalidade:p.classificacaoCusto?.finalidade??null,intervalos:[{desde:d.data,ate:new Date(+d.data+86400000),vaca:presencas.find(v=>v.animalId===p.animalId&&v.propriedadeId===d.mes.propriedadeId&&v.data===textoDia(d.data))?.vaca??null}]})),
+      itens:d.itens.map(i=>({id:i.id,produtoId:i.produtoId,unidade:i.unidade,quantidadeConfirmada:i.confirmada.toFixed(3),custoConhecido:i.custoLiquido.toFixed(2),movimentoEstoqueId:i.movimentos.length===1?i.movimentos[0].movimentoId:null}))});}
+  }
+  return calcularNutricao(presencas,[...diarios,...fechamentos.map(f=>({...f,centroCustoNome:f.centroCusto.nome,
     participacoes:f.participacoes.map(p=>({...p,finalidade:p.classificacaoCusto?.finalidade??null,
       intervalos:animais.has(p.animalId)?intervalosPresenca(animais.get(p.animalId)!,locais.filter(l=>l.propriedadeId===f.propriedadeId&&l.loteId===f.loteId),f.inicio,f.fim):[]})),
-    itens:f.itens.map(i=>({...i,quantidadeConfirmada:i.quantidadeConfirmada.toString(),custoConhecido:i.quantidadeConfirmada.isZero()?"0":leites.has(i.id)?leites.get(i.id)!.custoProducao:i.situacaoCusto==="CONHECIDO"?i.movimentoEstoque?.valorTotal?.toFixed(2)??null:null}))})),textoDia(inicio),textoDia(fim));
+    itens:f.itens.map(i=>({...i,quantidadeConfirmada:i.quantidadeConfirmada.toString(),custoConhecido:i.quantidadeConfirmada.isZero()?"0":leites.has(i.id)?leites.get(i.id)!.custoProducao:i.situacaoCusto==="CONHECIDO"?i.movimentoEstoque?.valorTotal?.toFixed(2)??null:null}))}))],textoDia(inicio),textoDia(fim));
 }

@@ -25,7 +25,7 @@ export function useVisualizacaoConsulta(chave: string, dominio = "consultas", pa
     try { const salvo = localStorage.getItem(chavePreferencia(chave, dominio)); return salvo === "visual" || salvo === "tabela" ? salvo : padrao; } catch { return padrao; }
   };
   const [modo, setModo] = useState<ModoConsulta>(ler);
-  useEffect(() => { const restaurar = () => setModo(ler()); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, [chave, dominio]);
+  useEffect(() => { const restaurar = () => setModo(ler()); window.addEventListener("popstate", restaurar); return () => window.removeEventListener("popstate", restaurar); }, [chave, dominio, padrao]);
   const mudar = (valor: ModoConsulta) => {
     setModo(valor);
     try { localStorage.setItem(chavePreferencia(chave, dominio), valor); } catch { /* A preferência em memória continua disponível. */ }

@@ -75,6 +75,13 @@ export function normalizarRotaPecuaria(caminho: string): string {
   if (path === "/pecuaria/rebanho/sanidade") url.pathname = "/pecuaria/sanidade";
   if (path === "/pecuaria/rebanho/sanidade/calendario") url.pathname = "/pecuaria/sanidade/calendario";
   if (path === "/pecuaria/rebanho/nutricao") url.pathname = "/pecuaria/nutricao";
+  if (url.pathname === "/pecuaria/nutricao") {
+    if (url.searchParams.get("aba") === "mensal") url.searchParams.set("aba", "fechamentos");
+    if (url.searchParams.get("aba") === "configuracao") {
+      url.pathname = "/configuracoes/pecuaria/nutricao/fechamento";
+      url.searchParams.delete("aba");
+    }
+  }
   if (path === "/pecuaria/rebanho/cadastros") {
     const rebanho: Record<string, string> = { categorias: "rebanho/categorias", motivos: "rebanho/motivos", racas: "genetica/racas", genitores: "genetica/genitores", "material-genetico": "genetica/material-genetico" };
     const sanidade: Record<string, string> = { protocolos: "protocolos", doenca: "doencas", aplicacao: "tipos-aplicacao", exame: "tipos-exame" };

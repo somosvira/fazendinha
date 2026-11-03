@@ -23,6 +23,7 @@ export function destinoDoMovimento(m: Pick<MovimentoDTO, "operacaoId" | "operaca
   if (!v) return null;
   if (v.tipo === "TENTATIVA_REPRODUTIVA") return { href: `/pecuaria/reproducao?animalId=${encodeURIComponent(v.animalId)}&tentativaId=${encodeURIComponent(v.id)}${m.propriedadeId ? `&propriedadeId=${m.propriedadeId}` : ""}`, rotulo: "Procedimento reprodutivo", area: "pecuaria" };
   if (v.tipo === "APLICACAO_SANITARIA") return { href: `/pecuaria/rebanho/sanidade?aba=aplicacoes&animalId=${encodeURIComponent(v.animalId)}&aplicacaoId=${encodeURIComponent(v.id)}&detalheTipo=aplicacao&detalheId=${encodeURIComponent(v.id)}${m.propriedadeId ? `&propriedadeId=${m.propriedadeId}` : ""}`, rotulo: "Aplicação sanitária", area: "pecuaria" };
+  if(v.tipo === "MES_NUTRICIONAL") return {href:`/pecuaria/nutricao?aba=fechamentos&mesId=${encodeURIComponent(v.id)}`,rotulo:"Fechamento mensal",area:"pecuaria"};
   if (v.tipo === "FECHAMENTO_NUTRICIONAL") return { href: `/pecuaria/rebanho/nutricao?aba=fechamentos&loteId=${encodeURIComponent(v.loteId)}&fechamentoId=${encodeURIComponent(v.id)}`, rotulo: "Fechamento nutricional", area: "pecuaria" };
   return null;
 }
