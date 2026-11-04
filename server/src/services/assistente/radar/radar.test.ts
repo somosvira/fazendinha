@@ -13,7 +13,7 @@ beforeEach(()=>{vi.clearAllMocks();m.local.mockResolvedValue(3);m.leite.mockReso
 describe('Radar autorizado',()=>{
  it('acesso pecuário nunca coleta nem menciona financeiro',async()=>{const r=await coletarRadar(ctx);expect(m.compromissos).not.toHaveBeenCalled();expect(JSON.stringify(r)).not.toMatch(/financeiro|compromisso|saldo|custo/i);expect(r.cobertura.some(c=>c.texto.includes('Nenhum dia de produção cadastrado'))).toBe(true);});
  it('sem todas as flags financeiras não coleta agregados',async()=>{await coletarRadar({...ctx,usuario:{...ctx.usuario,areas:['financeiro'],abas:['gastos'],flags:['verValores','verInvestimento']}});expect(m.compromissos).not.toHaveBeenCalled();});
- it('todas as flags e aba habilitam somente fonte autorizada',async()=>{const r=await coletarRadar({...ctx,usuario:{...ctx.usuario,areas:['financeiro'],abas:['gastos'],flags:['verValores','verInvestimento','verSalarios']}});expect(m.compromissos).toHaveBeenCalledOnce();expect(r.leitura[0].titulo).toContain('financeiros');expect(m.local).not.toHaveBeenCalled();});
+ it('todas as flags e aba habilitam somente fonte autorizada',async()=>{const r=await coletarRadar({...ctx,usuario:{...ctx.usuario,areas:['financeiro'],abas:['gastos'],flags:['verValores','verInvestimento','verSalarios']}});expect(m.compromissos).toHaveBeenCalledTimes(2);expect(r.leitura[0].titulo).toContain('financeiros');expect(m.local).not.toHaveBeenCalled();});
  it('sem chave conserva fatos e rotula síntese determinística',async()=>{const r=await coletarRadar(ctx);expect((await sintetizarRadar(r)).sintese.modo).toBe('deterministica');});
  it('revalida status real antes de usar snapshot',async()=>{m.usuario.mockResolvedValue({...ctx.usuario,status:'INATIVO'});await expect(revalidarContexto(ctx)).rejects.toThrow('indisponível');});
  it('cron não consulta assinaturas antes de 7h local',async()=>{await processarRadarDiario(new Date('2026-11-03T09:59:00Z'));expect(m.query).not.toHaveBeenCalled();});
@@ -46,10 +46,10 @@ it('falha da coleta remove reserva vazia para permitir nova leitura',async()=>{
 
 it('vencimentos incluem a meia-noite do primeiro dos 30 dias e usam o mesmo período na fonte',async()=>{
  const primeiroDia=new Date('2026-10-05T00:00:00.000Z');
- m.compromissos.mockImplementation(async(_sitio:number,{inicio,fim}:{inicio:Date;fim:Date})=>primeiroDia>=inicio&&primeiroDia<=fim?[{tipo:'PAGAR',status:'PENDENTE'}]:[]);
+ m.compromissos.mockImplementation(async(_sitio:number,{inicio,fim}:{inicio:Date;fim:Date})=>primeiroDia>=inicio&&primeiroDia<=fim?[{tipo:'PAGAR',status:'PENDENTE',dataVencimento:primeiroDia,saldoPendente:120,parceiro:{nome:'Ração'}}]:[]);
  const r=await coletarRadar({...ctx,propriedadeId:3,usuario:{...ctx.usuario,areas:['financeiro'],abas:['gastos'],flags:['verValores','verInvestimento','verSalarios']}});
  expect(m.compromissos).toHaveBeenCalledWith(3,{inicio:primeiroDia,fim:new Date('2026-11-03T23:59:59.999Z')});
- expect(r.prioridades[0].descricao).toContain('1 compromisso pendente');
+ expect(r.prioridades[0]).toMatchObject({descricao:'Ração · R$\u00a0120,00',urgencia:'atrasado',prazo:'Atrasado desde 05/10',quantidade:{valor:1,unidade:'conta'}});
  const url=new URL(r.prioridades[0].fonte.url,'https://terrano.test');
  expect(Object.fromEntries(url.searchParams)).toEqual({inicio:'2026-10-05',fim:'2026-11-03',situacao:'pagar',propriedadeId:'3'});
 });

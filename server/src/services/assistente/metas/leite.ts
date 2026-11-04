@@ -57,6 +57,17 @@ export function calcularVolumeGeral(dia: DiaGeral | null) {
     },
   };
 }
+/** Relações que `calcularVolumeGeral` lê de um dia de produção. */
+export const incluirDiaGeral = {
+  configuracao: { include: { ordenhas: { select: { posicaoId: true } } } },
+  sessoes: {
+    include: {
+      medicoesGerais: {
+        include: { entradasEstoque: { select: { status: true } } },
+      },
+    },
+  },
+} satisfies Prisma.DiaProducaoLeiteInclude;
 export async function apurarVolumeGeral(
   tx: Prisma.TransactionClient,
   propriedadeId: number,
@@ -70,16 +81,7 @@ export async function apurarVolumeGeral(
         dataOperacional: new Date(`${data}T00:00:00Z`),
       },
     },
-    include: {
-      configuracao: { include: { ordenhas: { select: { posicaoId: true } } } },
-      sessoes: {
-        include: {
-          medicoesGerais: {
-            include: { entradasEstoque: { select: { status: true } } },
-          },
-        },
-      },
-    },
+    include: incluirDiaGeral,
   });
   const apuracao = calcularVolumeGeral(dia);
   return {

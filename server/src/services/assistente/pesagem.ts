@@ -151,6 +151,12 @@ export const ferramentaPesagem: FerramentaAssistente = {
       pesoKg: payload.pesoKg,
       expiraEm: Date.now() + 15 * 60_000,
     });
+    // Comparação com a pesagem anterior ajuda a conferir peso digitado errado.
+    const anterior = await prisma.pesagem.findFirst({
+      where: { animalId: animal.id, data: { lt: data } },
+      orderBy: { data: "desc" },
+      select: { data: true, pesoKg: true },
+    });
     return {
       modo: "proposta",
       resposta: "Confira os dados antes de registrar esta pesagem.",
@@ -163,6 +169,14 @@ export const ferramentaPesagem: FerramentaAssistente = {
         tipo: "Rotina",
         origem: "Manual",
         precisao: "Não informada",
+        ...(anterior
+          ? {
+              anterior: {
+                data: anterior.data.toISOString().slice(0, 10),
+                pesoKg: Number(anterior.pesoKg),
+              },
+            }
+          : {}),
       },
     };
   },

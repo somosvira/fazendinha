@@ -5,10 +5,11 @@ const m = vi.hoisted(() => ({
   confirmar: vi.fn(),
   registrar: vi.fn(),
   tx: vi.fn(),
+  anterior: vi.fn(),
 }));
 vi.mock("../../env.js", () => ({ env: { JWT_SECRET: "segredo-de-teste" } }));
 vi.mock("../../db.js", () => ({
-  prisma: { animal: { findMany: m.animais }, $transaction: m.tx },
+  prisma: { animal: { findMany: m.animais }, pesagem: { findFirst: m.anterior }, $transaction: m.tx },
 }));
 vi.mock("../pecuaria/fatos.js", () => ({ conferirAnimalNoFato: m.conferir }));
 vi.mock("../pecuaria/idempotencia.js", () => ({ confirmarFato: m.confirmar }));
@@ -44,6 +45,7 @@ beforeEach(() => {
   m.animais.mockResolvedValue([
     { id: "animal", brinco: "1058", nome: "Estrela" },
   ]);
+  m.anterior.mockResolvedValue({ data: new Date("2026-09-01T00:00:00Z"), pesoKg: 468 });
 });
 it("não publica ferramenta no modo consultar nem a quem não pode lançar", () => {
   expect(ferramentaPesagem.permitida({ ...ctx, modo: "consultar" })).toBe(
@@ -84,6 +86,7 @@ it("identifica no sítio e data, valida o fato e apenas propõe; não grava", as
   );
   expect(r.modo).toBe("proposta");
   expect(r.proposta?.animal).toBe("1058 · Estrela");
+  expect(r.proposta?.anterior).toEqual({ data: "2026-09-01", pesoKg: 468 });
   expect(m.animais.mock.calls[0][0].where.localizacoes.some.propriedadeId).toBe(
     7,
   );

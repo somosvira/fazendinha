@@ -13,7 +13,20 @@ export interface FonteAssistente {
   url: string;
   periodo?: { inicio: string; fim: string };
 }
+/** Leitura estruturada de uma consulta; `resposta` continua como texto para voz, cópia e modelo. */
+export interface DadosResposta {
+  titulo: string;
+  contexto: string;
+  numeros: { rotulo: string; valor: string; detalhe?: string; destaque?: boolean }[];
+  leitura?: string;
+  tabela?: {
+    colunas: { titulo: string; valor?: boolean }[];
+    linhas: { celulas: string[]; atraso?: boolean }[];
+    nota?: string;
+  };
+}
 export interface RespostaAssistente {
+  dados?: DadosResposta;
   proposta?: PropostaPesagem;
   modo: ModoResposta;
   resposta: string;
@@ -37,8 +50,10 @@ export interface PropostaPesagem {
   tipo: string;
   origem: string;
   precisao: string;
+  anterior?: { data: string; pesoKg: number };
 }
 export interface ConteudoAssistente {
+  dados?: DadosResposta;
   proposta?: PropostaPesagem;
   modo: ModoResposta;
   resposta: string;

@@ -13,6 +13,39 @@ const resposta = z.object({
     "proposta",
   ]),
   resposta: z.string().max(12000),
+  dados: z
+    .object({
+      titulo: z.string().max(200),
+      contexto: z.string().max(300),
+      numeros: z
+        .array(
+          z.object({
+            rotulo: z.string().max(100),
+            valor: z.string().max(100),
+            detalhe: z.string().max(200).optional(),
+            destaque: z.boolean().optional(),
+          }),
+        )
+        .max(6),
+      leitura: z.string().max(600).optional(),
+      tabela: z
+        .object({
+          colunas: z
+            .array(z.object({ titulo: z.string().max(60), valor: z.boolean().optional() }))
+            .max(6),
+          linhas: z
+            .array(
+              z.object({
+                celulas: z.array(z.string().max(200)).max(6),
+                atraso: z.boolean().optional(),
+              }),
+            )
+            .max(30),
+          nota: z.string().max(300).optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   fontes: z
     .array(
       z.object({

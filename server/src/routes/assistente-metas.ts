@@ -8,6 +8,7 @@ import {
   falhaAssistente,
 } from "../services/assistente/contexto-http.js";
 import {
+  apurarMetasAutomaticas,
   catalogoMetas,
   gravarMeta,
   listarMetas,
@@ -41,6 +42,18 @@ export const assistenteMetasRouter = new Hono()
   .get("/metas", async (c) => {
     try {
       return c.json(await listarMetas(await contextoAssistente(c)));
+    } catch (e) {
+      return falha(c, e);
+    }
+  })
+  // Abrir Metas apura os dias pendentes do sítio sem esperar o cron diário.
+  .post("/metas/apuracao", async (c) => {
+    try {
+      const ctx = await contextoAssistente(c);
+      const { podeEditar } = catalogoMetas(ctx);
+      if (podeEditar && ctx.propriedadeId !== null)
+        await apurarMetasAutomaticas(ctx.propriedadeId, ctx.agora);
+      return c.json(await listarMetas(ctx));
     } catch (e) {
       return falha(c, e);
     }
