@@ -54,7 +54,9 @@ export async function consultarAlertas(propriedadeId:number|null, filtro:Consult
     prisma.$queryRaw<TotaisRow[]>(Prisma.sql`${base} ${totalsSql}`), coberturaAlertas(agora),
   ]);
   const itens:GrupoAlertaDTO[]=linhas.map(l=>({...l,necessidades:Number(l.necessidades),animais:Number(l.animais),primeiraData:l.primeiraData?.toISOString().slice(0,10)??null}));
-  return {itens,total:Number(filtrados[0]?.cuidados??0),pagina:filtro.pagina,tamanho:filtro.tamanho,totaisGerais:totals(gerais[0]),totaisFiltrados:totals(filtrados[0]),cobertura,tiposDisponiveis};
+  const cuidadosPorDisposicao = filtro.disposicao === "HISTORICO" ? undefined : Object.fromEntries(await Promise.all((["ATENCAO","PROXIMOS","PROGRAMADOS"] as const).map(async d =>
+    [d, d === filtro.disposicao ? Number(filtrados[0]?.cuidados ?? 0) : Number((await prisma.$queryRaw<TotaisRow[]>(Prisma.sql`${baseConsulta(propriedadeId,{...filtro,disposicao:d},agora)} ${totalsSql}`))[0]?.cuidados ?? 0)]))) as Record<"ATENCAO"|"PROXIMOS"|"PROGRAMADOS",number>;
+  return {itens,total:Number(filtrados[0]?.cuidados??0),pagina:filtro.pagina,tamanho:filtro.tamanho,totaisGerais:totals(gerais[0]),totaisFiltrados:totals(filtrados[0]),cobertura,tiposDisponiveis,...(cuidadosPorDisposicao?{cuidadosPorDisposicao}:{})};
 }
 export async function consultarParticipantes(propriedadeId:number|null,chave:string,filtro:ConsultaAlertas,agora=new Date()) {
   const base=baseConsulta(propriedadeId,filtro,agora);

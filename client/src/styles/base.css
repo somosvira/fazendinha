@@ -1192,9 +1192,9 @@ body.no-scroll { overflow: hidden; }
   display: block;
   background: linear-gradient(
     90deg,
-    var(--rule-soft) 25%,
-    var(--bg-card-2) 37%,
-    var(--rule-soft) 63%
+    color-mix(in srgb, var(--ink-3) 15%, transparent) 25%,
+    color-mix(in srgb, var(--ink-3) 7%, transparent) 37%,
+    color-mix(in srgb, var(--ink-3) 15%, transparent) 63%
   );
   background-size: 400% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
@@ -1331,3 +1331,14 @@ body.no-scroll { overflow: hidden; }
 /* Select de uma linha: valor longo termina em reticências em vez de quebrar e crescer. */
 :root [data-slot="select-trigger"] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 :root :is([data-design-operacional], [data-slot="dialog-content"], [data-slot="sheet-content"]) :is(label, .filtros-campo, .campo-formulario-rotulo + *) > [data-slot="select-trigger"] { height: var(--campo-altura); min-height: var(--campo-altura); }
+
+/* Recolhíveis nativos (<details>): troca o triângulo do navegador por uma seta
+ * fina, na cor do texto do resumo. Resumos que já trazem ícone próprio ficam como estão. */
+summary { list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary:not(:has(svg))::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 10px 2px 2px;
+  border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg); transition: transform .15s ease; vertical-align: middle;
+}
+details[open] > summary:not(:has(svg))::before { transform: rotate(45deg); margin-bottom: 4px; }

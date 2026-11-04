@@ -11,6 +11,7 @@ import { usePeriodoConsulta } from "./periodo-consulta";
 import { consultarIndicadores, type FiltrosIndicadores, type SnapshotIndicadoresReprodutivos } from "./indicadores-api";
 import { reqV4 } from "./api";
 import { PainelIndicadores } from "./PainelIndicadores";
+import { EsqueletoPainel } from "../../../components/Esqueleto";
 
 type Criterios = { lote: string; tipos: string[]; papeis: string[]; te: string; estimativa: string; perdas: string; iep: string };
 const padrao: Criterios = { lote: "", tipos: [], papeis: [], te: "7", estimativa: "", perdas: "", iep: "VIVOS_NATIMORTOS" };
@@ -64,7 +65,7 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
     ]}><DateRangePicker value={periodo.range} onChange={periodo.alterar}/></BarraConsulta>
     {periodo.aviso&&<p role="status" className="text-sm">{periodo.aviso}</p>}{erroLotes&&<p role="status" className="text-sm">{erroLotes}</p>}
     <ErrorBox erro={erro}/>{erro&&<Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button>}
-    {carregando&&<p role="status">Carregando indicadores…</p>}
+    {carregando&&<EsqueletoPainel label="Carregando indicadores" />}
     {!carregando&&snapshot?.filtros.propriedadeId===propriedadeId&&<PainelIndicadores key={JSON.stringify(snapshot.filtros)} snapshot={snapshot}/>}
   </section>;
 }

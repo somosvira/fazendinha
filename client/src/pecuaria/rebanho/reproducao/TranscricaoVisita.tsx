@@ -53,6 +53,7 @@ import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { FormReproducao } from "./FormReproducao";
 import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
 export function Transcricao({
   visita,
@@ -980,7 +981,7 @@ export function Transcricao({
           painel={painel} podeLancar={podeLancar} onMudou={onMudou} />
       </section>}
       {carregandoTarefa && <div role="status" className="p-4 space-y-2">
-        <p>Carregando os parâmetros desta tarefa…</p>
+        <EsqueletoFormulario label="Carregando os parâmetros desta tarefa" />
         <Button secondary onClick={() => setPreparar(null)}>Cancelar carregamento</Button>
       </div>}
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&

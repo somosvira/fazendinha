@@ -20,12 +20,12 @@ const ENTIDADES = {
     ExposicaoTouro: "Exposição ao touro", ParticipanteVisita: "Participação em visita", ParticipanteIatf: "Participação IATF",
     TarefaIatf: "Tarefa IATF", DecisaoElegibilidadeCiclo: "Decisão de elegibilidade",
     VinculoPesagemParto: "Pesagem do parto", DemandaAcompanhamentoReprodutivo: "Demanda de acompanhamento reprodutivo",
-    VinculoPoliticaCiclo: "Política reprodutiva aplicada",
+    VinculoPoliticaCiclo: "Política reprodutiva aplicada", VinculoPesagemSecagem: "Pesagem da secagem", LoteColostro: "Retirada de colostro",
   },
   SANIDADE: {
     OcorrenciaSanitaria: "Ocorrência sanitária", AplicacaoProduto: "Aplicação sanitária", ExameAnimal: "Exame",
     ExecucaoProtocoloSanitario: "Execução de protocolo sanitário", TarefaSanitaria: "Tarefa sanitária",
-    TarefaProtocolo: "Tarefa de protocolo", ParticipacaoProtocolo: "Participação em protocolo",
+    TarefaProtocolo: "Tarefa de protocolo", ParticipacaoProtocolo: "Participação em protocolo", NecessidadeSanitaria: "Necessidade sanitária (alerta)",
   },
   NUTRICAO: { FechamentoConsumo: "Fechamento de consumo nutricional" },
 } satisfies Record<string, Record<string, string>>;
@@ -35,6 +35,9 @@ const REGISTROS: Record<string, { eixo: Eixo | null; nome: string }> = {
   ...Object.fromEntries(Object.entries(ENTIDADES).flatMap(([eixo, entidades]) => Object.entries(entidades).map(([entidade, nome]) => [entidade, { eixo: eixo as Eixo, nome }]))),
   // Finalidade gerencial não determina o eixo operacional do fato de origem.
   ClassificacaoCustoPecuaria: { eixo: null, nome: "Classificação de custo" },
+  // Fatos do leite ainda sem eixo próprio na ficha: legíveis, sem inventar classificação.
+  MedicaoLeite: { eixo: null, nome: "Medição de leite" }, AmostraQualidadeLeite: { eixo: null, nome: "Amostra de qualidade do leite" },
+  ParcelaDestinoLeite: { eixo: null, nome: "Destino do leite" }, ParticipacaoBezerreiro: { eixo: null, nome: "Participação no bezerreiro" },
 };
 const ACOES: Record<string, string> = {
   CADASTRO: "Cadastro", REGISTRO: "Registro", REGISTRO_MANEJO: "Registro por manejo", CONFIRMACAO: "Confirmação",

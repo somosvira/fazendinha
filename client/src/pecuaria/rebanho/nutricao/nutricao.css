@@ -5,7 +5,7 @@
 .nutricao-link { color: var(--pos); font-weight: 500; text-align: left; }
 .nutricao-link:hover { text-decoration: underline; }
 .nutricao-link:focus-visible, .nutricao-botao:focus-visible, .nutricao-botao-secundario:focus-visible, .nutricao-abas button:focus-visible { outline: 2px solid var(--pos); outline-offset: 4px; }
-.nutricao-botao, .nutricao-botao-secundario { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; border-radius: 8px; padding: .6rem 1rem; font-size: .875rem; font-weight: 600; text-align: center; }
+.nutricao-botao, .nutricao-botao-secundario { display: inline-flex; gap: .5rem; min-height: 40px; align-items: center; justify-content: center; border-radius: 8px; padding: .6rem 1rem; font-size: .875rem; font-weight: 600; text-align: center; }
 .nutricao-botao { background: var(--mast-bg); color: white; }
 .nutricao-botao-secundario { border: 1px solid var(--border); background: white; color: var(--ink); }
 .nutricao-botao:hover { opacity: .9; }
@@ -181,9 +181,11 @@
 .nutricao-dieta-vigente .nutricao-card-corpo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .nutricao-dieta-vigente .nutricao-acoes { margin-top: 0; }
 .nutricao-consumo-resumo .nutricao-fatos { grid-template-columns: repeat(2,minmax(0,1fr)); }
-.nutricao-consumo-composicao { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,1fr); align-items: start; }
-.nutricao-consumo-composicao:not(:has(.nutricao-custo-distribuicao)) { grid-template-columns: minmax(0,1fr); }
-.nutricao-custo-distribuicao { padding: 20px; border-left: 1px solid var(--border); }
+.nutricao-consumo-composicao { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; }
+.nutricao-custo-distribuicao { padding: 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 12px 24px; }
+.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: 1 / -1; }
+.nutricao-custo-distribuicao ul { align-content: center; }
+@media(max-width:640px) { .nutricao-custo-distribuicao { grid-template-columns: minmax(0,1fr); } }
 .nutricao-custo-distribuicao h3 { font-size: 15px; font-weight: 600; }
 .nutricao-custo-grafico { width: 100%; max-width: 250px; margin: 10px auto; }
 .nutricao-custo-grafico > div { height: 180px; aspect-ratio: auto; }
@@ -192,7 +194,7 @@
 .nutricao-custo-legenda { width: 8px; height: 8px; border-radius: 2px; }
 .nutricao-consumo-atribuido summary { color: var(--primary); cursor: pointer; padding: 8px 0; font-weight: 500; }
 .nutricao-consumo-atribuido summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-@media(max-width:1350px) { .nutricao-consumo-composicao { grid-template-columns: minmax(0,1fr); }.nutricao-custo-distribuicao { border-left: 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 12px 24px; }.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: 1 / -1; }.nutricao-custo-distribuicao ul { align-content: center; } }
+
 @media(max-width:600px) { .nutricao-formulario .nutricao-ingrediente-form,.nutricao-custo-distribuicao { grid-template-columns: minmax(0,1fr); }.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: auto; }.nutricao-receita-linha { padding: 16px; }.nutricao-consumo-resumo .nutricao-fatos { grid-template-columns: minmax(0,1fr); } }
 .nutricao-fechamento-resumo { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); }
 .nutricao-fechamento-resumo > .nutricao-card-cabecalho,.nutricao-fechamento-resumo > .nutricao-aviso { grid-column: 1 / -1; }
@@ -205,7 +207,7 @@
 .nutricao-dietas-panorama .nutricao-dietas-distribuicao { flex: 1 1 260px; }
 .nutricao-dietas-panorama .nutricao-dietas-efetivo { flex: 0 1 220px; font-size: 14px; }
 
-@media(min-width:1100px){.nutricao-lote-visual{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:stretch}.nutricao-lote-visual > :nth-child(n+3){grid-column:1 / -1}}
+@media(min-width:1100px){.nutricao-lote-visual{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start}.nutricao-lote-visual > :nth-child(n+3){grid-column:1 / -1}}
 .nutricao-lote-visual .nutricao-dieta-vigente .nutricao-card-corpo{padding-top:12px}.nutricao-lote-visual .nutricao-dieta-vigente .font-serif{font-family:inherit;font-weight:600}
 
 .dietas-linha-tempo{padding:20px}.dietas-linha-eixo{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted-foreground);padding-bottom:12px;border-bottom:1px solid var(--border)}.dietas-linha-registro{padding:16px 0;border-bottom:1px solid var(--border)}.dietas-linha-registro:last-child{border:0}.dietas-linha-registro>header{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dietas-linha-registro h3{font-size:15px;font-weight:600;flex:1}.dietas-linha-registro h3 span{font-weight:400;color:var(--muted-foreground)}.dietas-linha-trilho{height:12px;background:var(--accent);border-radius:6px;margin:18px 0;overflow:hidden}.dietas-linha-trilho>span{display:block;height:100%;background:var(--primary);border-radius:6px;min-width:3px}.dietas-linha-trilho>span[data-futura=true]{background:var(--muted-foreground)}.dietas-linha-registro footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}
@@ -315,3 +317,15 @@
  .nutricao-receitas > .consulta-barra .consulta-acoes { margin-left:0; }
 }
 @media (max-width: 767px) { .nutricao-link { display: inline-flex; align-items: center; min-height: 32px; } }
+.nutricao-cabecalho-acoes{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.nutricao-formas-fechamento { margin-top: 1.25rem; }
+.nutricao-formas-fechamento h3 { font-size: 1rem; font-weight: 600; }
+.nutricao-formas-fechamento ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .75rem; margin-top: .75rem; }
+.nutricao-formas-fechamento li { border: 1px solid var(--border); border-radius: 8px; padding: .875rem 1rem; color: var(--ink-3); }
+.nutricao-formas-fechamento li[data-aplicavel] { border-color: var(--pos); background: var(--bg-card); color: var(--ink); }
+.nutricao-formas-fechamento li > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.nutricao-formas-fechamento p { margin-top: .4rem; font-size: .875rem; line-height: 1.6; }
+.nutricao-lote-fechamentos > h2 { margin-bottom: .75rem; }
+
+/* Detalhe no modal: o envelope já tem respiro; os conteúdos aninhados não somam margem. */
+.nutricao-conteudo .nutricao-conteudo, [data-slot="dialog-content"] .nutricao-conteudo:first-child { margin-top: 0; }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { NutricaoLote } from "./NutricaoLote";
 import * as api from "./api";
 vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), listarVigencias: vi.fn() }));
@@ -19,7 +19,7 @@ describe("nutrição do lote", () => {
     const tela = render(<NutricaoLote loteId="lote" podeLancar />);
     const trocar = await screen.findByRole("link", { name: "Trocar dieta" });
     expect(trocar.getAttribute("href")).toContain("acao=atribuir");
-    expect(screen.getByRole("link", { name: "Conferir consumo" }).getAttribute("href")).toContain("acao=consumo");
+    expect(screen.getByRole("link", { name: "Novo fechamento" }).getAttribute("href")).toContain("acao=consumo");
     tela.unmount();
     vi.mocked(api.consultarResumoNutricional).mockResolvedValue({ ...resumo, vigente: null, programada: null });
     const consulta = render(<NutricaoLote loteId="lote" podeLancar={false} />);
@@ -44,7 +44,7 @@ describe("nutrição do lote", () => {
   it("separa vigente/futura e pagina o histórico sem permissão de escrita", async () => {
     render(<NutricaoLote loteId="lote" podeLancar={false} vista="lotes" />);
     await screen.findByText("Próxima dieta");
-    expect(screen.getByText(/Dieta futura · v2/)).toBeTruthy();
+    expect(within(document.querySelector(".lote-dieta-programada") as HTMLElement).getByText(/Dieta futura · v2/)).toBeTruthy();
     expect(screen.getByText("Em uso")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Trocar dieta" })).toBeNull();
     fireEvent.click(screen.getByText("Mais dietas"));

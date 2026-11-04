@@ -5,6 +5,7 @@ import { Paginacao } from "../ui";
 import type { MomentoCadastro } from "./CamposMomentoAcao";
 import { obterAcoesCadastro, type CadastroProtocoloMeta } from "./cadastros-api";
 import "./BuilderEtapasProtocolo.css";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export type AcaoBuilderEtapas = { chaveEdicao?: string; ordem?: number; momento?: MomentoCadastro | null };
 export type BuilderEtapasProtocoloProps<T extends AcaoBuilderEtapas> = {
@@ -159,7 +160,7 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAu
   return <div ref={raiz} className="builder-etapas" tabIndex={-1}>
     {!completo && <div className="builder-etapas-carga"><p role="status">{itens.length} de {origem?.totalEtapas} procedimentos carregados. Carregue todos para salvar, adicionar ou remover sem perder ações.</p><Button secondary type="button" disabled={carregando} onClick={() => void carregar(paginas + 1)}>{erroCarga ? "Tentar carregar novamente" : "Carregar próximos 10 procedimentos"}</Button></div>}
     <ErrorBox erro={erroCarga} />
-    {carregando && <p role="status">Carregando procedimentos…</p>}
+    {carregando && <EsqueletoLista label="Carregando procedimentos" />}
     {(origem?.totalEtapas ?? itens.length) > 100 && <p role="alert">Esta versão excede o limite de 100 procedimentos deste editor.</p>}
     <div className="builder-etapas-layout">
       <section className="builder-etapas-lista" aria-labelledby={`${id}-lista`}>

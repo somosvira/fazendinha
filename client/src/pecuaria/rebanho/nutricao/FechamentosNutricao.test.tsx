@@ -43,8 +43,7 @@ describe("fechamentos gerais", () => {
     render(<FechamentosNutricao loteId="lote" />);
     await screen.findByText("Falha de rede");
     expect(screen.queryByLabelText("Lote")).toBeNull();
-    expect(screen.getByRole("link", { name: "Matrizes" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Todos os lotes" }).getAttribute("href")).toBe("/pecuaria/nutricao?aba=fechamentos");
+    expect(screen.getByRole("link", { name: "Ver fechamentos de todos os lotes" }).getAttribute("href")).toBe("/pecuaria/nutricao?aba=fechamentos");
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByText(/Página 1 · 51 fechamentos/);
     expect(api.listarFechamentos).toHaveBeenLastCalledWith("lote", 1, undefined);

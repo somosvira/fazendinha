@@ -15,7 +15,6 @@ import "./estoque-theme.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History, ArrowLeftRight, ChevronDown } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
-import { Loader } from "../components/Loading";
 import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
@@ -28,6 +27,7 @@ import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEst
 import { SEM_VINCULO } from "../lib/ids";
 import { ROTULO_ORIGEM } from "./rotulos";
 import { getPropriedadeAtiva } from "../propriedadeScope";
+import { EsqueletoLinhas, EsqueletoTabela } from "../components/Esqueleto";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-sm";
@@ -261,7 +261,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </BarraConsulta>
       <div className="consulta-visual-barra"><span>{saldosVisiveis.length} produtos no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos produtos" {...visual}/></div>
       <div className="min-w-0">
-        {saldos.loading ? <div className="p-6"><Loader /></div>
+        {saldos.loading ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
@@ -287,7 +287,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
       </BarraConsulta>
       <div className="min-w-0">
-        {movimentos.loading && movimentos.data.length === 0 ? <div className="p-6"><Loader /></div>
+        {movimentos.loading && movimentos.data.length === 0 ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
           : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
           : <>
@@ -301,7 +301,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <section className="estoque-entradas mt-3 rounded-xl border border-border bg-card" aria-label="Últimas entradas">
       <h2 className="flex items-center gap-2 px-4 pt-4 text-base font-semibold"><PackagePlus size={17} aria-hidden="true" />Últimas entradas</h2>
       <div className="border-t border-border p-4">
-        {entradas.loading && ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Carregando…</p>
+        {entradas.loading && ultimasEntradas.length === 0 ? <EsqueletoLinhas label="Carregando entradas" className="mt-3" />
           : ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Nenhuma entrada registrada ainda.</p>
           : <ul className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">{ultimasEntradas.map((m) => {
               const destino = destinoDoMovimento(m);

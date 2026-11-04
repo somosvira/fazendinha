@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { usePropriedades } from "../api/propriedades";
+import { EsqueletoLinhas } from "./Esqueleto";
 
 function Chevron({ className }: { className?: string }) {
   return (
@@ -56,7 +57,7 @@ function FarmMenuItems({
         {ativos.length >= 2 ? "Sítios da fazenda" : "Fazenda"}
       </DropdownMenuLabel>
       {loading ? (
-        <div className="px-3.5 py-2.5 text-xs italic text-ink-3">Carregando…</div>
+        <EsqueletoLinhas label="Carregando propriedades" className="px-3.5 py-2.5" />
       ) : (
         <>
           {ativos.length >= 2 && (

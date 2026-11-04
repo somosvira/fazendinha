@@ -18,6 +18,7 @@ import { chaveGrupo, type GrupoPlannerInput } from "./planner-api";
 import { EntradaVisita } from "./EntradaVisita";
 import { ConsultaVisitas } from "./ConsultaVisitas";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -139,7 +140,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   return <PaginaFinanceira><div className={`print:hidden${mostraAtendimento ? " visita-fluxo visita-atendimento" : ""}`}>
     {rota.tipo === "lista" ? <>
       <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><CalendarDays aria-hidden/></span>Visitas veterinárias</span>} acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); setPropriedadeId(getPropriedadeAtiva() ?? ""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}><Plus size={18} aria-hidden/>Nova visita</Button>}/>
-      <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visitas…</p>}
+      <ErrorBox erro={erro}/>{carregando && <EsqueletoTabela label="Carregando visitas" />}
       {!carregando && !erro && <ConsultaVisitas visitas={lista} propriedades={propriedades} podeLancar={podeLancar} sitioSelecionado={!!getPropriedadeAtiva()} onAbrir={id => { navegarPara(`/pecuaria/visitas/${encodeURIComponent(id)}`); setRota(parseRotaVisita(window.location.pathname, window.location.search)!); }}/>}
     </> : rota.tipo === "nova" ? <>
       <ErrorBox erro={erro}/><EntradaVisita ocupado={ocupado} podeLancar={podeLancar} onVoltar={voltarLista} onContinuar={modo=>void executar(async()=>{
@@ -155,7 +156,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       </>}/>
     </> : <>
       {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={()=>void executarComGuardaNavegacao(()=>{void executar(async()=>{await reqV4(`/visitas/${visita.id}/encerramento`,{propriedadeId:propDaVisita()});await carregar();});})}>Encerrar visita</Button>}</div>}/>}
-      <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visita…</p>}
+      <ErrorBox erro={erro}/>{carregando && <EsqueletoFicha label="Carregando visita" />}
 
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
         <dl><div><dt>Nome da visita</dt><dd>{visita.nome}</dd></div><div><dt>Data da visita</dt><dd>{dataBR(visita.data)}</dd></div><div><dt>Sítio</dt><dd>{rotuloSitio}</dd></div><div><dt>Responsável</dt><dd>{visita.responsavel??"Não informado"}</dd></div></dl>

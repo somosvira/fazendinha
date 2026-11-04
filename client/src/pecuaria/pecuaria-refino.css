@@ -264,3 +264,4 @@
 @media (max-width: 900px) {
   .pecuaria-content .sanidade-pagina .fin-abas [role="tab"] { min-height: 44px; }
 }
+.pec-config-nutricao{max-width:720px}.pec-config-nutricao a>span{display:grid;gap:2px}.pec-config-nutricao small{color:var(--campo-tinta-2,#526863);font-size:13px;font-weight:400}

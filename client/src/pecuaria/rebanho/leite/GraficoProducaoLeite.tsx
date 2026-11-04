@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { useId } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatarLitros } from "./modelo";
@@ -9,7 +8,7 @@ export interface GrupoProducaoGrafico { periodo: string; litros: number | null; 
 /** Null permanece ausente; zero é uma aferição conhecida, sem barra de volume. */
 export function GraficoProducaoLeite({ grupos }: { grupos: GrupoProducaoGrafico[] }) {
   const padraoParcial = `leite-parcial-${useId().replace(/:/g, "")}`;
-  const titulo = <h2>Produção registrada <AjudaCampo rotulo="Sobre os volumes de produção" texto={"Volumes conhecidos em litros. Ausência de aferição não significa zero; períodos parciais podem ter registros faltantes."} /></h2>;
+  const titulo = <h2>Produção registrada </h2>;
   if (!grupos.some(g => g.litros != null)) return <figure className="leite-grafico-producao" aria-label="Evolução da produção em litros"><figcaption>{titulo}</figcaption><Empty icone={BarChart3}>Nenhum volume aferido neste período. Ausência de aferição não significa produção zero.</Empty></figure>;
   return <figure className="leite-grafico-producao" aria-label="Evolução da produção em litros">
     <figcaption>{titulo}<span><i />Cobertura completa <i className="parcial" />Cobertura parcial</span></figcaption>

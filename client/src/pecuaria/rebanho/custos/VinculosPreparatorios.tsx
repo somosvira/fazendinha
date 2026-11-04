@@ -1,4 +1,3 @@
-import { AjudaCampo } from "../../../components/Dica";
 import { Paginacao } from "../ui";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
@@ -56,7 +55,7 @@ export function VinculosPreparatorios({ dados, aoMudarPaginaVinculos,visivel, pr
       <Paginacao paginaAtual={paginada.pagina} totalPaginas={Math.max(1,Math.ceil(paginada.total/10))} totalItens={paginada.total} itensPorPagina={10} onPaginaChange={p=>void carregarPreparos(p)} rotulo="candidatos" idSelect="custos-candidatos-preparo"/>
       <label className="relative">Atribuição<select className={classeInput} value={modo} onChange={e => setModo(e.target.value)}>
         <option value="INTEGRAL">Integral, exclusiva desta tentativa</option><option value="PARCELA">Parcelas explícitas compartilhadas</option>
-      </select><span className="absolute right-0 top-0"> <AjudaCampo rotulo="Ajuda sobre atribuição de preparatórios" texto="O restante fica a atribuir no protocolo. Nenhuma despesa ou consumo é criado."/></span></label>
+      </select></label>
       {modo === "PARCELA" && <>
         <label>Parcela do material (R$)<input className={classeInput} type="number" min="0" step="0.01" value={material} onChange={e => setMaterial(e.target.value)} /></label>
         <label>Parcela do Serviço (R$)<input className={classeInput} type="number" min="0" step="0.01" value={servico} onChange={e => setServico(e.target.value)} /></label>

@@ -4,6 +4,7 @@ import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { obterReproducao, type PainelReprodutivo } from "./api";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import "./reproducao-individual.css";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 export type LactacaoIndividualProps = {
   animalId: string; propriedadeId?: number | null; podeLancar: boolean;
@@ -28,7 +29,7 @@ function ConteudoLactacao({ animalId, propriedadeId, podeLancar, recarregarToken
     finally { if (pedido === geracao.current) setCarregando(false); }
   }, [animalId, propriedadeId]);
   useEffect(() => { void carregar(); return () => { geracao.current++; }; }, [carregar, recarregarToken]);
-  const aviso = <><ErrorBox erro={erro}/>{erro && <Button variant="outline" onClick={() => void carregar()}>Tentar carregar lactação novamente</Button>}{carregando && <p role="status">Carregando lactação…</p>}</>;
+  const aviso = <><ErrorBox erro={erro}/>{erro && <Button variant="outline" onClick={() => void carregar()}>Tentar carregar lactação novamente</Button>}{carregando && <EsqueletoFicha label="Carregando lactação" />}</>;
   return painel ? <AcoesReprodutivas modo="lactacao" painel={painel} animalId={animalId} propriedadeId={propriedadeId ?? undefined} podeLancar={podeLancar} comporLactacao={compor ? (conteudo, acoes) => compor(<>{aviso}{conteudo}</>, acoes) : undefined} onMudou={async () => { await carregar(); onMudou?.(); }}/>
     : compor ? compor(aviso, null) : <div className="repro-individual lactacao-individual">{aviso}</div>;
 }

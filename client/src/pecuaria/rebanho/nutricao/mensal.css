@@ -1,14 +1,14 @@
 .nutricao-mensal {
   color: var(--ink-1, #243e36);
 }
-.nutricao-mensal section {
+.nutricao-mensal section:not(.nutricao-ultimos, .nutricao-ultimos section) {
   background: #fff;
   border: 1px solid var(--border, #d9e1dd);
   border-radius: 8px;
   padding: 24px;
   margin: 18px 0;
 }
-.nutricao-mensal h2 {
+.nutricao-mensal section:not(.nutricao-ultimos, .nutricao-ultimos section) h2 {
   font-size: 1.3rem;
   font-weight: 650;
   margin: 16px 0;
@@ -118,7 +118,7 @@
   font-weight: 600;
 }
 @media (max-width: 650px) {
-  .nutricao-mensal section {
+  .nutricao-mensal section:not(.nutricao-ultimos, .nutricao-ultimos section) {
     padding: 16px;
   }
   .mensal-linha {
@@ -126,6 +126,17 @@
     flex-direction: column;
   }
 }
-.nutricao-configuracao{display:grid;gap:20px}.nutricao-configuracao form>fieldset{border:0;padding:0;display:grid;gap:20px;min-width:0}.nutricao-configuracao section>p{color:var(--fin-text-muted,#526863);margin:8px 0 16px}.nutricao-configuracao section>fieldset{border:0;padding:0}.nutricao-config-contexto{background:var(--fin-surface-subtle,#edf5f4);padding:14px 16px;border-radius:8px;font-size:13px}.nutricao-config-contexto p{margin:6px 0 0}.nutricao-config-check{display:flex;align-items:center;gap:10px}.nutricao-config-rodape{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;background:white;padding:16px;border-top:1px solid var(--fin-border,#dfe7e5)}.nutricao-config-rodape span{margin-right:auto;font-size:12px;color:var(--fin-text-muted,#526863)}.nutricao-config-resumo dt{font-size:12px;color:var(--fin-text-muted,#526863)}.nutricao-config-resumo dd{margin:3px 0 14px;font-weight:600}.mensal-opcao small{display:block;margin-top:8px;color:var(--fin-text-muted,#526863)}
+.nutricao-configuracao{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}.nutricao-configuracao form>fieldset{border:0;padding:0;display:grid;gap:20px;min-width:0}.nutricao-configuracao section>p{color:var(--fin-text-muted,#526863);margin:8px 0 16px}.nutricao-configuracao section>fieldset{border:0;padding:0}.nutricao-config-contexto{background:var(--fin-surface-subtle,#edf5f4);padding:14px 16px;border-radius:8px;font-size:13px}.nutricao-config-contexto p{margin:6px 0 0}.nutricao-config-check{display:flex;align-items:center;gap:10px}.nutricao-config-rodape{display:flex;gap:12px;align-items:center;justify-content:flex-end;flex-wrap:wrap;background:white;padding:16px;border-top:1px solid var(--fin-border,#dfe7e5)}.nutricao-config-rodape span{margin-right:auto;font-size:12px;color:var(--fin-text-muted,#526863)}.nutricao-config-resumo dt{font-size:12px;color:var(--fin-text-muted,#526863)}.nutricao-config-resumo dd{margin:3px 0 14px;font-weight:600}.mensal-opcao small{display:block;margin-top:8px;color:var(--fin-text-muted,#526863)}
 
 .nutricao-config-calendario{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:start}.nutricao-config-calendario>label{display:grid;grid-template-rows:auto 44px auto;gap:8px;min-width:0}.nutricao-config-calendario small{font-size:12px;font-weight:400}.nutricao-config-calendario input,.nutricao-config-calendario button{height:44px;border-radius:0!important}.nutricao-config-calendario input{width:100%;box-sizing:border-box}.nutricao-config-calendario input[readonly]{background:#f2f5f4}.nutricao-config-data{width:100%;height:44px;border-radius:0!important}@media(max-width:640px){.nutricao-config-calendario{grid-template-columns:1fr}}
+.nutricao-configuracao .nutricao-tabela-scroll{overflow-x:auto;max-width:100%}
+
+/* Aba Fechamentos: próximos por lote, meses, últimos e o processamento manual recolhido no fim. */
+.nutricao-proximos { display: grid; gap: 12px; margin-bottom: 28px; }
+.nutricao-proximos-cabecalho h2, .nutricao-ultimos > h2 { font-size: 18px; font-weight: 600; }
+.nutricao-proximos-cabecalho p, .nutricao-ultimos > p { color: var(--ink-3); margin-top: 4px; }
+.nutricao-ultimos { display: grid; gap: 4px; margin-top: 28px; }
+.nutricao-ultimos > p { margin-bottom: 12px; }
+.mensal-processar { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 14px; }
+.mensal-processar > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
+.mensal-processar[open] > summary { margin-bottom: 12px; }

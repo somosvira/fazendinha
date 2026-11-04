@@ -1,6 +1,5 @@
 import { LembretesAutomaticos } from "./LembretesAutomaticos";
 import { agruparAgendaReprodutiva } from "./agenda-grupos";
-import { AjudaCampo } from "../../../components/Dica";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Button } from "../../../components/ui/button";
 import { LinkReproducao } from "./ConsultaReproducaoUI";
@@ -21,6 +20,7 @@ import { Paginacao } from "../ui";
 import { obterSugestoesVisita, type SugestoesVisita } from "./visitas-api";
 import { dataValida } from "./periodo-consulta";
 import { navegarPara } from "../../../router";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 const origens: Record<string, string> = {
   DIAGNOSTICO_PENDENTE: "Diagnóstico pendente",
   TENTATIVA: "Diagnóstico pendente",
@@ -227,11 +227,11 @@ export function AcompanhamentoReprodutivo({
             Tentar novamente
           </Button>
         )}
-        {carregando && <p role="status">Carregando acompanhamento…</p>}
+        {carregando && <EsqueletoTabela label="Carregando acompanhamento" />}
         {!carregando && !erro && dados && (
           <>
             {propriedadeId != null && <LembretesAutomaticos propriedadeId={propriedadeId} data={diaAgenda || hoje()} />}
-            <div className="repro-consulta-titulo"><div><h2>Próximas atividades <AjudaCampo rotulo="Ajuda sobre a agenda reprodutiva" texto="Datas registradas e ações pendentes. Registros sem previsão ficam ao final; ausência de diagnóstico não significa resultado negativo."/> <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
+            <div className="repro-consulta-titulo"><div><h2>Próximas atividades  <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
             {visual.modo === "visual" ? <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades">{diaAgenda && <div className="mb-4 flex flex-wrap items-center gap-3"><strong>{dataBR(diaAgenda)}</strong><Button variant="outline" onClick={() => { setDiaAgenda(""); setPagina(1); }}>Ver todos os dias</Button></div>}<ol className="repro-agenda-lista">{gruposAgenda.slice((atual - 1) * 10, atual * 10).map(g => {
               const r = g.itens[0];
               const a = animais.find(a => a.animalId === r.animalId);

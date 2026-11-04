@@ -14,6 +14,7 @@ import { reqSanidade } from '../sanidade/api';
 import { ColeiraBadge, EstadoConsulta, ModalBezerreiro, useComando, useConsultaBezerreiro } from './ui';
 import { brixFornecimentoColostro, coleiraHistoricaFase, faseParticipacao, litros, numero } from './modelo';
 import type { AcompanhamentoAnimal, Configuracao, Participacao } from './types';
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 export function AcompanhamentoBezerreiro({animalId,sitio,podeLancar,revisao=0,embutido=false,dadosIniciais}: {animalId:string;sitio:number;podeLancar:boolean;revisao?:number;embutido?:boolean;dadosIniciais?:AcompanhamentoAnimal}) {
   const [atualizacao,setAtualizacao]=useState(0),consulta=useConsultaBezerreiro<AcompanhamentoAnimal>(dadosIniciais&&atualizacao===0?null:`/animais/${animalId}/acompanhamento`,sitio,revisao+atualizacao),dados=dadosIniciais&&atualizacao===0?dadosIniciais:consulta.dados;
   const config=useConsultaBezerreiro<Configuracao>('/configuracoes',sitio),[alteracao,setAlteracao]=useState<{tipo:'fase';participacao:Participacao}|null>(null),[exame,setExame]=useState(false),[vinculo,setVinculo]=useState(false);
@@ -39,7 +40,7 @@ export function AcompanhamentoBezerreiro({animalId,sitio,podeLancar,revisao=0,em
     ]}/></section>)}{!dados.participacoes.length&&<p className="bez-estado">Acompanhamento de colostragem registrado, sem participação em lote de bezerreiro.</p>}</section>
     <div className="bez-acoes bez-secao"><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Sanidade do animal</Button><Button variant="outline" onClick={()=>navegarPara(`/pecuaria/bezerreiro?aba=alimentacao&animalId=${animalId}`)}>Alimentação</Button></div></>:<p className="bez-estado">Nenhuma passagem ou acompanhamento de bezerreiro registrado para este animal.</p>}
   </>}</EstadoConsulta>
-    {movimentando&&!movimento&&<div role={erroMovimento?'alert':'status'}>{erroMovimento||'Carregando movimentação…'}<Button variant="outline" onClick={()=>setMovimentando(false)}>Fechar</Button></div>}
+    {movimentando&&!movimento&&(erroMovimento?<div role="alert">{erroMovimento}<Button variant="outline" onClick={()=>setMovimentando(false)}>Fechar</Button></div>:<EsqueletoFormulario label="Carregando movimentação"/>)}
     {movimentando&&movimento&&<FormMovimentar animais={[movimento.animal]} propriedades={movimento.catalogos.propriedades} lotes={movimento.catalogos.lotes} propriedadeInicial={sitio} loteInicial={movimento.animal.lote?.id} onFechar={()=>setMovimentando(false)} onSalvo={()=>{setMovimentando(false);salvo();}}/>}
     {podeLancar&&cancelamento?.animalId===animalId&&cancelamento.sitio===sitio&&<CancelamentoProgramacao key={`${sitio}:${animalId}:${cancelamento.periodo.id}`} sitio={sitio} participacao={cancelamento.participacao} periodo={cancelamento.periodo} aoFechar={()=>setCancelamento(null)} aoSalvar={()=>{setCancelamento(null);salvo();}}/>}
     {alteracao&&<AlteracaoParticipacao sitio={sitio} config={config.dados} participacao={alteracao.participacao} aoFechar={()=>setAlteracao(null)} aoSalvar={()=>{setAlteracao(null);salvo();}}/>}

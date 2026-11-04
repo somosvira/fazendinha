@@ -1,4 +1,3 @@
-import { AjudaCampo } from "../../../components/Dica";
 import { useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "../../../components/ui/button";
@@ -21,7 +20,7 @@ export function CalendarioAgenda<T>({ itens, dataDe, chaveDe, render, dataSeleci
   const diasComAtividades = [...new Set(itens.map(dataDe).filter((d): d is string => !!d).map(d => d.slice(0, 10)))].filter(d => d.startsWith(isoDate(mes).slice(0, 7))).sort();
   function navegar(data: Date) { setMes(data); }
   return <aside className="repro-agenda-calendario" aria-label="Calendário da agenda">
-    <header><h2>{mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} <AjudaCampo rotulo="Ajuda sobre o calendário da agenda" texto="Previsões a definir permanecem na lista. O calendário considera os filtros da consulta."/></h2><div><Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => navegar(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}><ChevronLeft/></Button><Button variant="ghost" size="icon" aria-label="Próximo mês" onClick={() => navegar(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}><ChevronRight/></Button></div></header>
+    <header><h2>{mes.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })} </h2><div><Button variant="ghost" size="icon" aria-label="Mês anterior" onClick={() => navegar(new Date(mes.getFullYear(), mes.getMonth() - 1, 1))}><ChevronLeft/></Button><Button variant="ghost" size="icon" aria-label="Próximo mês" onClick={() => navegar(new Date(mes.getFullYear(), mes.getMonth() + 1, 1))}><ChevronRight/></Button></div></header>
     <div data-calendars><CalendarMonth year={mes.getFullYear()} month={mes.getMonth()} hideTitle range={{ start: dia, end: dia }} hoverEnd={null} onHoverDay={() => {}} onPickDay={d => setSelecionada(isoDate(d))} onNavigate={navegar}/></div>
     <div className="repro-agenda-dias"><span>Dias com atividades</span>{diasComAtividades.length ? diasComAtividades.map(d => <Button key={d} variant={d === selecionada ? "default" : "outline"} size="sm" aria-label={`Consultar atividades de ${formatBRDateISO(d)}`} onClick={() => setSelecionada(d)}>{Number(d.slice(8))}</Button>) : <Empty>Nenhuma atividade datada neste mês com os critérios atuais.</Empty>}</div>
     <Button variant="outline" size="sm" onClick={() => { const d = getHojeISO(); setSelecionada(d); setMes(dateFromIso(d)!); }}>Hoje</Button>

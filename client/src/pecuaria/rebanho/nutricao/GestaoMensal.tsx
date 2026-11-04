@@ -1,5 +1,5 @@
 import { LotesSemDieta } from "./LotesSemDieta";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { listarLotes } from "../api";
 import type { Lote } from "../types";
@@ -9,14 +9,15 @@ import {
 } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
+import { LinkNutricional, rotaNutricao } from "./componentes";
 import {
   SelecaoPartidas,
   type DistribuicaoPartida,
 } from "../../../estoque/SelecaoPartidas";
 import * as api from "./mensal-api";
-import { LinkNutricional } from "./componentes";
 import "./mensal.css";
 import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
     minimumFractionDigits: 3,
@@ -26,9 +27,12 @@ const data = (v: string) => v.slice(0, 10).split("-").reverse().join("/");
 export function GestaoMensal({
   podeLancar,
   vista,
+  children,
 }: {
   podeLancar: boolean;
   vista: "mensal" | "configuracao" | "alertas";
+  /** Conteúdo exibido depois dos meses e antes do processamento manual. */
+  children?: ReactNode;
 }) {
   const escopo = getPropriedadeAtiva();
   const [status, setStatus] = useState<{
@@ -49,7 +53,8 @@ export function GestaoMensal({
   const [lote, setLote] = useState("");
   const enviando = useRef(false);
   const url = new URLSearchParams(window.location.search),
-    id = url.get("mesId");
+    id = url.get("mesId"),
+    filtroLote = url.get("loteId") ?? undefined;
   const [mes, setMes] = useState<api.MesNutricional | null>(null);
   useEffect(() => {
     setLote("");
@@ -70,7 +75,7 @@ export function GestaoMensal({
         listarLotes({ incluirInativos: true }),
         listarPropriedades(),
         api.configuracoesMensais(),
-        api.mesesNutricionais(pagina, undefined, vista === "alertas"),
+        api.mesesNutricionais(pagina, filtroLote, vista === "alertas"),
       ]);
       if (!vivo) return;
       setLotes(ls);
@@ -92,7 +97,7 @@ export function GestaoMensal({
     return () => {
       vivo = false;
     };
-  }, [escopo, recarregar, pagina, id, vista]);
+  }, [escopo, recarregar, pagina, id, vista, filtroLote]);
   async function executar(acao: () => Promise<unknown>) {
     if (enviando.current) return;
     enviando.current = true;
@@ -114,7 +119,6 @@ export function GestaoMensal({
     navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
   return (
     <div className="nutricao-mensal">
-      {vista !== "configuracao" && <div className="mensal-acoes"><LinkNutricional className="nutricao-botao" href="/configuracoes/pecuaria/nutricao/fechamento">Configurar nutrição</LinkNutricional></div>}
       {vista === "alertas" && <LotesSemDieta podeLancar={podeLancar} />}
       <ErrorBox erro={erro} />
       {erro && (
@@ -124,8 +128,8 @@ export function GestaoMensal({
       )}
       <p role="status">{mensagem}</p>
       {carregando ? (
-        <p role="status">Carregando nutrição mensal…</p>
-      ) : status && !status.habilitada ? (
+        <EsqueletoTabela label="Carregando nutrição mensal" />
+      ) : status && !status.habilitada && vista !== "mensal" ? (
         <section>
           <h2>Nutrição mensal ainda não habilitada</h2>
           <p>
@@ -133,9 +137,9 @@ export function GestaoMensal({
             preparação do ambiente.
           </p>
         </section>
-      ) : (
+      ) : status && !status.habilitada ? null : (
         <>
-          {status && !status.automacao && (
+          {status && !status.automacao && vista !== "mensal" && (
             <p className="mensal-aviso">
               O processamento automático está desligado neste ambiente. As
               configurações não iniciam baixas sozinhas.
@@ -151,13 +155,15 @@ export function GestaoMensal({
               ocupado={ocupado}
               executar={executar}
             />
-          ) : (
+          ) : vista === "mensal" && !lista.length && !filtroLote ? null : (
             <section>
               <h2>
                 {vista === "alertas"
                   ? "O que precisa de atenção"
                   : "Fechamentos mensais"}
+                {filtroLote && <> · {lotes.find((l) => l.id === filtroLote)?.nome ?? "lote selecionado"}</>}
               </h2>
+              {filtroLote && <p><LinkNutricional href={rotaNutricao({ aba: "fechamentos" })}>Ver fechamentos de todos os lotes</LinkNutricional></p>}
               {!lista.length && (
                 <p>
                   Nenhum mês processado neste contexto. Configure a nutrição e
@@ -189,7 +195,7 @@ export function GestaoMensal({
                     </Button>
                   </article>
                 ))}
-              <div className="mensal-acoes">
+              {total > 10 && <div className="mensal-acoes">
                 <Button
                   secondary
                   disabled={pagina === 1}
@@ -207,12 +213,16 @@ export function GestaoMensal({
                 >
                   Próxima
                 </Button>
-              </div>
+              </div>}
             </section>
           )}
-          {podeLancar && vista !== "configuracao" && (
-            <section>
-              <h3>Processar dias encerrados</h3>
+        </>
+      )}
+      {!mes && children}
+          {!carregando && status?.habilitada !== false && podeLancar && vista !== "configuracao" && (
+            <details className="mensal-processar">
+              <summary>Processar dias encerrados</summary>
+              {status && !status.automacao && vista === "mensal" && <p className="mensal-aviso">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
               <p className="mensal-ajuda">
                 Recupera dias não processados e tenta novamente as baixas
                 pendentes, sem repetir as já efetivadas.
@@ -245,10 +255,8 @@ export function GestaoMensal({
                   Processar pendências
                 </Button>
               </div>
-            </section>
+            </details>
           )}
-        </>
-      )}
     </div>
   );
 }

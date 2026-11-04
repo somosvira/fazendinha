@@ -21,6 +21,7 @@ import { nomeLoteProduto } from "./SelecaoPartidas";
 import { destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, abrirAjusteEstoque } from "./navegacao";
 import { ROTULO_ORIGEM } from "./rotulos";
 import { obterProdutoEstoque, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type LoteProdutoDTO, type MovimentoDTO, type OrigemProdutoDTO, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
+import { EsqueletoFicha } from "../components/Esqueleto";
 
 type Aba = "resumo" | "lotes" | "movimentos" | "origens";
 export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produtoId: string; onSelecionarSitio?: (id: number) => void }) {
@@ -103,7 +104,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     <SubTabs variant="financeiro" ariaLabel="Ficha do produto" tabs={[{ id: "resumo", label: "Resumo" }, { id: "lotes", label: "Lotes" }, { id: "movimentos", label: "Movimentos" }, { id: "origens", label: "Origens das entradas" }]} active={aba} onSelect={abrirAba} className="mt-5" />
 
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}
-    {carregando ? <p role="status" className="mt-5">Carregando produto…</p> : produto && dados && <>
+    {carregando ? <EsqueletoFicha label="Carregando produto" className="mt-5" /> : produto && dados && <>
       {aba === "resumo" && <Panel className="mt-5 overflow-hidden">
         <div className="estoque-secao-cabecalho"><span className="fin-section-icon"><Package aria-hidden="true" /></span><h2 className="h2">Saldo {sitioId ? `em ${sitios.find(s => s.id === sitioId)?.nome ?? "sítio selecionado"}` : "consolidado"}</h2></div>
         <div className="estoque-ficha-resumo">
@@ -125,7 +126,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     </>}
     {produto && sitioId && podeAcessarArea("financeiro") && (!!usuario?.dono || !!usuario?.flags.includes("verValores")) && <ValorizacaoProduto produtoId={produtoId} propriedadeId={sitioId} podeEditar={podeEditar} onSalvo={() => setRevisao(r => r+1)} />}
     {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
-      <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label><AjudaCampo rotulo="Ajuda: renomear lote" texto="A alteração ficará no histórico de auditoria." /></div></form>
+      <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label></div></form>
     </DialogFinanceiro>}
     {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
   </div></PaginaFinanceira>;

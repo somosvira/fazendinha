@@ -1,7 +1,7 @@
-import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { DatePicker } from "../../../components/DatePicker";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -13,7 +13,8 @@ import { fmtMoneyExact } from "../../../components/charts";
 import { navegarPara } from "../../../router";
 
 type Escolha = { origensLeite: string[]; quantidade: string; motivo: string; modo: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativa: string; partidas: DistribuicaoPartida[] };
-export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void }) {
+/** Com `acoes`, o passo atual (conferir ou confirmar) vai para o rodapé do painel que hospeda a conferência. */
+export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado, acoes }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void; acoes?: HTMLElement | null }) {
   const [inicio, setInicio] = useState(hoje().slice(0, 7) + "-01");
   const [fim, setFim] = useState(hoje());
   const [centroCustoId, setCentro] = useState("");
@@ -51,6 +52,8 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
       await confirmarPeriodos({ chave, revisao: previa.revisao, loteId, propriedadeId, inicio, fim, centroCustoId: centroCustoId || null, periodos }); setPrevia(null); setSalvo(true); await onSalvo();
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
+  const botaoConferir = <Button disabled={ocupado} onClick={() => void conferir()}>Conferir período</Button>;
+  const botaoConfirmar = previa && <Button disabled={ocupado || !!previa.lacunas.length || !previa.periodos.length || leiteSemConciliacao} onClick={() => void confirmar()}>Confirmar conjunto conferido</Button>;
   return <section className="nutricao-conferencia mt-4 grid gap-4">
     <ErrorBox erro={erro} />
     {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte os fechamentos para ver os detalhes e participantes.</p>}
@@ -58,7 +61,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
       <label>De<DatePicker value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
       <label>Até<DatePicker value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>
       <label>Centro de custo<SelectCampo className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => { setCentro(valorSelecionado); setPrevia(null); }}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
-      <div className="flex items-end"><Button disabled={ocupado} onClick={() => void conferir()}>Conferir período</Button></div>
+      {!acoes && <div className="flex items-end">{botaoConferir}</div>}
     </fieldset>
     {previa && <>
       <p className="text-sm">A confirmação inclui {previa.periodos.length} fechamento(s), separados por mês e vigência. Consumo/custo por animal são atribuições por permanência.</p>
@@ -96,7 +99,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
                 <p className="text-sm" title={p.orientacaoLeiteBezerreiro ?? undefined}>Concilie o leite já fornecido. Os demais ingredientes permanecem neste fechamento.</p>
                 <div><Button secondary onClick={() => mudar(k, { quantidade: '0', motivo: 'Leite já registrado nas ofertas do Bezerreiro; sem novo fornecimento neste fechamento.' })}>Usar ofertas já registradas · zerar leite</Button></div>
               </div>}
-              {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta <AjudaCampo rotulo="Sobre a atribuição do leite na dieta" texto="A quantidade por animal será atribuída pelos dias no lote. Custo de produção e preço de referência podem ficar pendentes; os litros comprovados continuam registráveis." /></legend>
+              {i.leite && <fieldset className="grid gap-2"><legend className="font-semibold">Leite produzido para esta dieta </legend>
                 <p className="text-sm">Previsto {formatarLitros(Number(i.leite.quantidadePrevistaLitros))} · disponível {formatarLitros(Number(i.leite.quantidadeDisponivelLitros))} · atendível {formatarLitros(Number(i.leite.quantidadeAtendivelLitros))}. Selecione as origens autorizadas; o fornecimento usa primeiro o não comercial e completa com o comercial.</p>
                 {i.leite.origens.length === 0 && <p role="status">Sem origem disponível. Registre apenas os litros efetivamente fornecidos e justifique a diferença.</p>}
                 {i.leite.origens.map(o => <label key={o.entradaId} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={e.origensLeite.includes(o.entradaId)} onChange={ev => mudar(k, { origensLeite: ev.target.checked ? [...e.origensLeite,o.entradaId] : e.origensLeite.filter(id => id !== o.entradaId) })} /><span>{o.produtoNome} · {o.natureza === "NAO_COMERCIAL" ? "Não comercial" : "Comercial"} · {formatarDataBR(o.data)} · {formatarLitros(Number(o.quantidadeDisponivelLitros))}</span></label>)}
@@ -113,7 +116,8 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
           })}
         </fieldset>;
       })}
-      <Button disabled={ocupado || !!previa.lacunas.length || !previa.periodos.length || leiteSemConciliacao} onClick={() => void confirmar()}>Confirmar conjunto conferido</Button>
+      {!acoes && botaoConfirmar}
     </>}
+    {acoes && createPortal(previa ? botaoConfirmar : botaoConferir, acoes)}
   </section>;
 }

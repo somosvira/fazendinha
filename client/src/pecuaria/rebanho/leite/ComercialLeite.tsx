@@ -219,7 +219,7 @@ export function ComercialLeite({
       {!entregas.itens.length && <Empty>Nenhuma entrega registrada no período.</Empty>}
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(entregas.total/entregas.porPagina))} total={entregas.total} porPagina={entregas.porPagina} rotulo="Paginação de entregas" substantivo="entregas" idSelect="pagina-entregas-leite" onPagina={setPagina} />
     </>}
-    {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" ajuda="Composição documental e alocações das entregas." rotuloAjuda="Sobre demonstrativos do comprador" />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
+    {podeFinanceiro && <><CabecalhoTabela titulo="Demonstrativos do comprador" rotuloAjuda="Sobre demonstrativos do comprador" />{erroDoc && <p role="alert">{erroDoc}</p>}{docs && <>
       <TabelaFinanceira rotulo="Demonstrativos e anulações preservados" itens={docs.itens} chaveDe={d => d.id} colunas={[
         {chave:"referencia",titulo:"Documento",principal:true,celula:d => <strong>{d.referencia}</strong>},
         {chave:"comprador",titulo:"Comprador",celula:d => config?.parceiros.find(p => p.id === d.parceiroId)?.nome ?? "Comprador do documento"},

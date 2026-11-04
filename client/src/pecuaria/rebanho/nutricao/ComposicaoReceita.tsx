@@ -4,12 +4,13 @@ import { quantidadeNutricional } from "./quantidades";
 import "./composicao-receita.css";
 import { Empty } from "@/financeiro/financeiro-ui";
 
-export function ComposicaoReceita({ dieta, titulo = true }: { dieta: Dieta; titulo?: boolean }) {
+/** No cartão da receita a composição é fixa: a alternância Gráfico/Tabela fica para o detalhe e a contagem já aparece no cartão. */
+export function ComposicaoReceita({ dieta, titulo = true, alternavel = true }: { dieta: Dieta; titulo?: boolean; alternavel?: boolean }) {
   const [modo, setModo] = useState<"grafico" | "tabela">("grafico");
   const grupos = new Map<string, Dieta["itens"]>();
   for (const item of dieta.itens) grupos.set(item.unidade, [...(grupos.get(item.unidade) ?? []), item]);
   return <div className="receita-composicao">
-    <div className="receita-composicao-topo">{titulo && <div><h4>Composição por cabeça/dia</h4><p>{dieta.itens.length} ingredientes</p></div>}<div className="receita-composicao-modos" role="group" aria-label={`Visualização de ${dieta.nome}`}><button type="button" aria-pressed={modo === "grafico"} onClick={() => setModo("grafico")}>Gráfico</button><button type="button" aria-pressed={modo === "tabela"} onClick={() => setModo("tabela")}>Tabela</button></div></div>
+    {(titulo || alternavel) && <div className="receita-composicao-topo">{titulo && <div><h4>Composição por cabeça/dia</h4>{alternavel && <p>{dieta.itens.length} ingredientes</p>}</div>}{alternavel && <div className="receita-composicao-modos" role="group" aria-label={`Visualização de ${dieta.nome}`}><button type="button" aria-pressed={modo === "grafico"} onClick={() => setModo("grafico")}>Gráfico</button><button type="button" aria-pressed={modo === "tabela"} onClick={() => setModo("tabela")}>Tabela</button></div>}</div>}
     {modo === "tabela" ? <div className="nutricao-tabela-scroll"><table className="nutricao-tabela consulta-tabela"><caption className="sr-only">Ingredientes de {dieta.nome} · versão {dieta.versao}</caption><thead><tr><th>Ingrediente</th><th>Quantidade por cabeça/dia</th><th>Matéria seca</th></tr></thead><tbody>{dieta.itens.map(i => <tr key={i.produtoId}><td>{i.produto?.nome ?? "Produto indisponível"}</td><td>{quantidadeNutricional(i.quantidadeCabecaDia)} {i.unidade}</td><td>{i.materiaSecaPercentualSnapshot == null ? "Não informada" : `${quantidadeNutricional(i.materiaSecaPercentualSnapshot)}%`}</td></tr>)}</tbody></table></div> : <div>{[...grupos].map(([unidade, itens]) => {
       const maximo = Math.max(0, ...itens.map(i => Number(i.quantidadeCabecaDia)));
       const total = itens.reduce((soma, i) => soma + Number(i.quantidadeCabecaDia), 0);
