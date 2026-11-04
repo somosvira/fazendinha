@@ -383,3 +383,4 @@
 .nutricao-receita-card .receita-acoes-novas { display: flex; justify-content: flex-end; gap: 8px; }
 .receita-compacta li small { text-align: right; color: var(--muted-foreground); font-size: 13px; font-variant-numeric: tabular-nums; }
 .receita-uso-compacto { margin: 12px 0 16px; }
+.nutricao-estoque-dieta td a.text-primary,.nutricao-alerta-secao td a.text-primary{color:var(--campo-pasto,#006f68)}

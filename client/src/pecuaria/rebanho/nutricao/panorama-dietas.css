@@ -15,3 +15,28 @@
 .dietas-resumo-filtro[aria-pressed=true]{color:var(--primary)}
 .dietas-resumo-filtro:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .dietas-cartao header{display:block}
+/* Cartões no padrão compartilhado (consulta-cartao), três por linha como Lotes e Estoque. */
+.consulta-cartoes.dietas-cartoes{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:12px;padding:16px;background:transparent}
+.dieta-cartao{padding:16px;gap:12px}
+.dieta-cartao h2{font-size:16px}
+.dieta-cartao header p{margin-top:4px}
+.dieta-cartao-destaque{display:grid;gap:2px;padding:10px 12px;border-radius:8px;background:var(--campo-papel,#f7f8fa)}
+.dieta-cartao-destaque strong{font-size:15px;font-weight:650;overflow-wrap:anywhere}
+.dieta-cartao-destaque small{font-size:13px;color:var(--muted-foreground)}
+.dieta-cartao-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
+.dieta-cartao-vazia{color:var(--campo-atencao,#775930)}
+.dieta-cartao-medidas{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:12px;margin:0}
+.dieta-cartao-medidas>div{display:grid;gap:2px;align-content:start;min-width:0}
+.dieta-cartao-medidas>div+div{padding-left:12px;border-left:1px solid var(--border)}
+.dieta-cartao-medidas dt{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
+.dieta-cartao-medidas dd{margin:0;font-weight:650;font-variant-numeric:tabular-nums}
+.dieta-cartao-medidas small{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.dieta-cartao-alerta{color:var(--campo-atraso,#8d3931)}
+.dieta-cartao>footer a:not([class]){color:var(--primary);font-weight:600;font-size:14px}
+.dieta-cartao .dietas-programada{margin:0;border-radius:8px}
+.dieta-cartao-medidas{grid-template-columns:repeat(2,minmax(0,1fr))}
+.dieta-cartao-estoque{display:flex;align-items:flex-start;gap:6px;margin:0;font-size:13px;color:var(--muted-foreground)}
+.dieta-cartao-estoque svg{margin-top:3px;flex-shrink:0}
+.dieta-cartao-estoque strong{color:var(--foreground);font-weight:650}
+.dieta-cartao-estoque strong.dieta-cartao-alerta{color:var(--campo-atraso,#8d3931)}
+.dieta-cartao>footer>a:first-child{color:var(--primary);font-weight:600;font-size:14px}

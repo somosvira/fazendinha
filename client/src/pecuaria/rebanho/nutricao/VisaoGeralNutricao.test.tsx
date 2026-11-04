@@ -109,9 +109,9 @@ it("mantém links nativos e ações independentes por cartão", async () => {
   window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual");
   const { container } = render(<VisaoGeralNutricao />);
   await screen.findByRole("link", { name: "Matrizes" });
-  const cartao = container.querySelector(".dietas-cartao")!;
-  // O nome do lote é o único link do cartão; "Ver lote" repetia o mesmo destino.
-  expect(cartao.querySelectorAll("a")).toHaveLength(1);
+  const cartao = container.querySelector(".dieta-cartao")!;
+  // Mesmo padrão dos cartões de Lotes e Estoque: o nome e "Ver lote" no rodapé.
+  expect(cartao.querySelectorAll("a")).toHaveLength(2);
   const link = cartao.querySelector("a")!;
   expect(link.className).toContain("dietas-cartao-link");
   expect(link.getAttribute("href")).toContain("loteId=mat");
