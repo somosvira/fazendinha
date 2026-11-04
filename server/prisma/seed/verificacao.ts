@@ -12,6 +12,15 @@ import { calendario, intervalo, ref } from './leite/catalogo.js';
 function exigir(condicao: unknown, mensagem: string): asserts condicao { if (!condicao) throw new Error(`Conferência da seed: ${mensagem}`); }
 const D = (valor: Prisma.Decimal.Value) => new Prisma.Decimal(valor);
 
+export function conferirLactantesSeed(lactacoes: { animalId: string }[], id: (n: number) => string, secasNaBase: { animalId: string }[]) {
+  const secaveis = new Set([id(33), id(34)]);
+  exigir(secasNaBase.every(l => secaveis.has(l.animalId)), 'secagens demonstrativas limitadas às matrizes 33 e 34.');
+  const esperadas = new Set(Array.from({ length: 36 }, (_, i) => id(i + 1)));
+  for (const l of secasNaBase) esperadas.delete(l.animalId);
+  exigir(lactacoes.length === esperadas.size && new Set(lactacoes.map(l => l.animalId)).size === esperadas.size && lactacoes.every(l => esperadas.has(l.animalId)), `${esperadas.size} lactantes distintas no Principal na data-base, respeitando as secagens demonstrativas.`);
+}
+
+
 type ResultadoQualidadeConferencia = { campo: string; unidade: string | null };
 type AmostraQualidadeConferencia = {
   data: Date; sujeito: string; status: string; versao: number; resultados: ResultadoQualidadeConferencia[];
@@ -28,6 +37,29 @@ export function verificarQualidadeSeed(registros: readonly AmostraQualidadeConfe
 }
 
 /** Confere fatos atuais por leitura; manifesto e roteiro de homologação não são alterados. */
+/** Etapas posteriores à baseline: só conferidas depois de executadas, para não bloquear bancos anteriores. */
+async function verificarNovidades(c: Contexto) {
+  const feita = (etapa: string) => c.manifesto.etapas.includes(etapa);
+  const s = c.sitioIds;
+  const alertas = feita('alertas-sanitarios') ? {
+    regrasAtivas: await prisma.regraAlertaSanitario.count({ where: { ativo: true } }),
+    programacoesAtivas: await prisma.programacaoSanitaria.count({ where: { ativo: true } }),
+    abertos: await prisma.alerta.count({ where: { ciclo: 'ABERTO' } }),
+    encerrados: await prisma.alerta.count({ where: { ciclo: 'ENCERRADO' } }),
+  } : 'Pendente';
+  if (typeof alertas === 'object') exigir(alertas.regrasAtivas >= 2 && alertas.programacoesAtivas >= 2 && alertas.abertos > 0 && alertas.encerrados >= 2, 'alertas sanitários publicados e atendidos.');
+  const bezerreiro = feita('bezerreiro') ? {
+    participantes: await prisma.participacaoBezerreiro.count({ where: { perfil: { propriedadeId: s.principal }, ate: null } }),
+    ofertas: await prisma.ofertaBezerreiro.count({ where: { propriedadeId: s.principal, status: 'CONFIRMADO' } }),
+    colostroDestinado: await prisma.destinacaoColostro.count({ where: { propriedadeId: s.principal } }),
+    bancoColostro: await prisma.unidadeBancoColostro.count({ where: { propriedadeId: s.principal } }),
+  } : 'Pendente';
+  if (typeof bezerreiro === 'object') exigir(bezerreiro.participantes > 0 && bezerreiro.ofertas >= 2 && bezerreiro.colostroDestinado >= 1, 'bezerreiro com participantes, ofertas e colostro.');
+  const nutricaoMensal = feita('nutricao-mensal') ? await prisma.configuracaoNutricao.count() : 'Pendente';
+  const pesosSecagem = feita('pesagens-secagem') ? await prisma.vinculoPesagemSecagem.count() : 'Pendente';
+  const retiradasInternas = feita('leite-interno') ? await prisma.retiradaInternaLeite.count({ where: { propriedadeId: s.principal } }) : 'Pendente';
+  return { alertas, bezerreiro, nutricaoMensal, pesosSecagem, retiradasInternas };
+}
 export async function verificar(c: Contexto) {
   const data = dia(c.dataBase), principal = c.numero('sitio:Principal'), cal = calendario(c.dataBase);
   const sitios = await prisma.propriedade.findMany({ orderBy: { id: 'asc' } });
@@ -81,7 +113,11 @@ export async function verificar(c: Contexto) {
   const produtos = await prisma.produto.count(), parceiros = await prisma.parceiro.count();
   exigir(produtos >= 30 && parceiros >= 12, 'pelo menos 30 produtos e 12 parceiros.');
   const lactacoes = await prisma.lactacaoAnimal.findMany({ where: { animalId: { in: principais }, inicio: { lte: data }, OR: [{ encerradaEm: null }, { encerradaEm: { gt: data } }] }, select: { animalId: true } });
-  exigir(lactacoes.length === 36 && new Set(lactacoes.map(l => l.animalId)).size === 36, '36 lactantes atuais distintas no Principal.');
+  const secasNaBase = c.manifesto.etapas.includes('pesagens-secagem') ? await prisma.lactacaoAnimal.findMany({ where: {
+    animalId: { in: [c.id('animal:33'), c.id('animal:34')] }, propriedadeId: principal,
+    inicio: { gte: dia(c.dias(-460)) }, encerradaEm: { lte: data },
+  }, select: { animalId: true } }) : [];
+  conferirLactantesSeed(lactacoes, n => c.id(`animal:${n}`), secasNaBase);
   const crias = await prisma.criaParto.findMany({ where: { animalId: { in: Array.from({ length: 8 }, (_, i) => c.id(`animal:${65 + i}`)) } }, include: { PartoAnimal: true } });
   exigir(crias.length === 8 && crias.every(a => a.viva && a.PartoAnimal.status === 'VALIDO' && a.PartoAnimal.propriedadeId === principal && a.PartoAnimal.data <= data), 'oito crias vivas vinculadas aos partos reais do Principal.');
   for (const n of [15, 16, 17, 18, 19, 20]) {
@@ -143,8 +179,9 @@ export async function verificar(c: Contexto) {
   exigir(Number(negativos[0].total) === 0, 'nenhum saldo de estoque negativo.');
   const { verificarCoberturaParcelas } = await import('./leite/cobertura-parcelas.js');
   const coberturaParcelas = await verificarCoberturaParcelas(c);
+  const novidades = await verificarNovidades(c);
   const entradas = await prisma.entradaProducaoLeite.count(), pendentes = await prisma.medicaoGeralLeite.count({ where: { entradasEstoque: { none: { status: 'CONFIRMADA' } } } }), relatorios = await prisma.emissaoRelatorioLeite.count();
-  return { dataBase: c.dataBase, sitios: sitios.map(s => ({ id: s.id, nome: s.nome })), distribuicao, animaisAtivos: todosAtivos.size, lactantesAtuais: lactacoes.length, criasVivas: crias.length, bancos: contas.length, operacoes, operacoesNegocio, comprasComLastro: compras.length, produtos, parceiros, vacinas: vacinacoes.length, carencias: { conhecidas: emCarencia.length, desconhecidas: desconhecida.length }, amostras: amostras.length, qualidade, entradas, producaoGeral: { dias: dias.length, turnosConfirmados, litrosComerciaisConfirmados: litrosComerciais.toString(), entradasIndividuaisDuplicadas: duplicacoesIndividuais }, comerciais, nutricaoLeite: { fornecimentoId: fornecimento.id, litros: fornecimento.quantidadeLitros.toString(), referenciasR07: fornecimento.referencias.length }, custos: { situacao: custos.consolidado.situacao, custoPorLitro: custos.consolidado.custoPorLitro, motivos: custos.consolidado.motivos }, parcelasSemEntrada: pendentes, coberturaParcelas, relatorios, arquivosR2: c.manifesto.acoes.includes(ref('arquivos:verificados')) ? 'Verificados' : 'Pendentes: etapa opcional não executada' };
+  return { dataBase: c.dataBase, sitios: sitios.map(s => ({ id: s.id, nome: s.nome })), distribuicao, animaisAtivos: todosAtivos.size, lactantesAtuais: lactacoes.length, criasVivas: crias.length, bancos: contas.length, operacoes, operacoesNegocio, comprasComLastro: compras.length, produtos, parceiros, vacinas: vacinacoes.length, carencias: { conhecidas: emCarencia.length, desconhecidas: desconhecida.length }, amostras: amostras.length, qualidade, entradas, producaoGeral: { dias: dias.length, turnosConfirmados, litrosComerciaisConfirmados: litrosComerciais.toString(), entradasIndividuaisDuplicadas: duplicacoesIndividuais }, comerciais, nutricaoLeite: { fornecimentoId: fornecimento.id, litros: fornecimento.quantidadeLitros.toString(), referenciasR07: fornecimento.referencias.length }, custos: { situacao: custos.consolidado.situacao, custoPorLitro: custos.consolidado.custoPorLitro, motivos: custos.consolidado.motivos }, parcelasSemEntrada: pendentes, coberturaParcelas, novidades, relatorios, arquivosR2: c.manifesto.acoes.includes(ref('arquivos:verificados')) ? 'Verificados' : 'Pendentes: etapa opcional não executada' };
 }
 export async function gerarGuia(c: Contexto, resumo: Awaited<ReturnType<typeof verificar>>) {
   const escape=(s:string)=>s.replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
