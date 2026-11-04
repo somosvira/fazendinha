@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listarLotes } from "../api";
 import type { Lote } from "../types";
 import {
@@ -50,6 +51,7 @@ export function GestaoMensal({
     [recarregar, setRecarregar] = useState(0),
     [mensagem, setMensagem] = useState("");
   const [lote, setLote] = useState("");
+  const [processando, setProcessando] = useState(false);
   const enviando = useRef(false);
   const url = new URLSearchParams(window.location.search),
     id = url.get("mesId"),
@@ -97,8 +99,10 @@ export function GestaoMensal({
       vivo = false;
     };
   }, [escopo, recarregar, pagina, id, vista, filtroLote]);
+  const podeProcessar = !carregando && status?.habilitada !== false && podeLancar && vista === "mensal";
+  const abrirProcessamento = (loteId?: string) => { setLote(loteId ?? ""); setErro(null); setProcessando(true); };
   async function executar(acao: () => Promise<unknown>) {
-    if (enviando.current) return;
+    if (enviando.current) return false;
     enviando.current = true;
     setOcupado(true);
     setErro(null);
@@ -107,8 +111,10 @@ export function GestaoMensal({
       await acao();
       setMensagem("Operação concluída.");
       setRecarregar((v) => v + 1);
+      return true;
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       enviando.current = false;
       setOcupado(false);
@@ -163,10 +169,10 @@ export function GestaoMensal({
               </h2>
               {filtroLote && <p><LinkNutricional href={rotaNutricao({ aba: "fechamentos" })}>Ver fechamentos de todos os lotes</LinkNutricional></p>}
               {!lista.length && (
-                <p>
-                  Nenhum mês processado neste contexto. Configure a nutrição e
-                  processe os dias encerrados.
-                </p>
+                <Empty acao={podeProcessar ? <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button> : undefined}>
+                  {filtroLote ? "Nenhum mês de fechamento para este lote ainda." : "Nenhum mês de fechamento ainda."}{" "}
+                  Os meses aparecem depois que os dias encerrados são processados.
+                </Empty>
               )}
               {lista
                 .filter((m) => vista !== "alertas" || !m.revisadoEm)
@@ -217,44 +223,45 @@ export function GestaoMensal({
         </>
       )}
       {!mes && children}
-          {!carregando && status?.habilitada !== false && podeLancar && vista === "mensal" && (
-            <details className="mensal-processar">
-              <summary>Processar dias encerrados</summary>
-              {status && !status.automacao && vista === "mensal" && <p className="mensal-aviso">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
-              <p className="mensal-ajuda">
-                Recupera dias não processados e tenta novamente as baixas
-                pendentes, sem repetir as já efetivadas.
-              </p>
-              <div className="mensal-campos">
-                <label>
-                  Lote
-                  <select
-                    value={lote}
-                    onChange={(e) => setLote(e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {lotes.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.nome} · {l.propriedade.nome}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+          {podeProcessar && (
+            <div className="mensal-processar">
+              <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button>
+            </div>
+          )}
+          <Dialog open={processando} onOpenChange={(v) => { if (!ocupado) setProcessando(v); }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Processar dias encerrados</DialogTitle>
+                <DialogDescription>Recupera dias não processados e tenta novamente as baixas pendentes, sem repetir as já efetivadas.</DialogDescription>
+              </DialogHeader>
+              <ErrorBox erro={erro} />
+              {status && !status.automacao && <p className="mensal-aviso">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
+              <label className="mensal-campo-modal">
+                Lote de animais
+                <select value={lote} onChange={(e) => setLote(e.target.value)}>
+                  <option value="">Selecione</option>
+                  {lotes.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome} · {l.propriedade.nome}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <DialogFooter>
+                <Button secondary disabled={ocupado} onClick={() => setProcessando(false)}>Cancelar</Button>
                 <Button
                   disabled={!lote || ocupado}
-                  onClick={() => {
+                  onClick={async () => {
                     const l = lotes.find((l) => l.id === lote);
-                    if (l)
-                      void executar(() =>
-                        api.reprocessarMensal(l.propriedade.id, l.id),
-                      );
+                    if (!l) return;
+                    if (await executar(() => api.reprocessarMensal(l.propriedade.id, l.id))) setProcessando(false);
                   }}
                 >
                   Processar pendências
                 </Button>
-              </div>
-            </details>
-          )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
     </div>
   );
 }
@@ -267,7 +274,7 @@ function RevisaoMensal({
   mes: api.MesNutricional;
   podeLancar: boolean;
   ocupado: boolean;
-  executar: (f: () => Promise<unknown>) => Promise<void>;
+  executar: (f: () => Promise<unknown>) => Promise<unknown>;
 }) {
   const [quantidades, setQuantidades] = useState(
       Object.fromEntries(
