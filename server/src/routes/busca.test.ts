@@ -17,6 +17,11 @@ describe("GET /api/busca", () => {
   });
   it("entrega usuário e escopo resolvido ao serviço", async () => {
     const r = await app().request("/api/busca?q=184", { headers: { "X-Propriedade-Id": "7" } });
-    expect(r.status).toBe(200); expect(buscar).toHaveBeenCalledWith("184", usuario, 7);
+    expect(r.status).toBe(200); expect(buscar).toHaveBeenCalledWith("184", usuario, 7, undefined);
+  });
+  it("restringe a busca a animais e recusa tipo desconhecido", async () => {
+    expect((await app().request("/api/busca?q=dev019&tipos=animal")).status).toBe(200);
+    expect(buscar).toHaveBeenCalledWith("dev019", usuario, 7, ["animal"]);
+    expect((await app().request("/api/busca?q=dev019&tipos=usuario")).status).toBe(400);
   });
 });

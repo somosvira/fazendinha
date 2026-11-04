@@ -131,13 +131,13 @@ export function fontesAutorizadas(u: UsuarioContexto): FonteBusca[] {
 export const normalizarTermoBusca = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 export const escaparTermoBusca = (s: string) => s.replace(/[!%_]/g, c => `!${c}`);
 const normalizado = (campo: Prisma.Sql) => sql`translate(lower(normalize(${campo}, NFC)), 'áàâãäéèêëíìîïóòôõöúùûüçñ', 'aaaaaeeeeiiiiooooouuuucn')`;
-export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedadeId: number | null): Prisma.Sql {
+export function montarConsultaBusca(q: string, fontes: FonteBusca[], propriedadeId: number | null, limitePorFonte = 6): Prisma.Sql {
   const termos = normalizarTermoBusca(q.trim()).split(/\s+/).filter(Boolean);
   const inteira = escaparTermoBusca(normalizarTermoBusca(q.trim()));
   const consultas = fontes.map(f => sql`(SELECT ${f.tipo}::text AS tipo, b.id, b.label, b.contexto, b."alvoId", b."propriedadeId",
     CASE WHEN b.id = ${q.trim()} OR split_part(${normalizado(sql`regexp_replace(b.label, '^(Movimento |Compromisso )', '')`)}, ' — ', 1) = ${normalizarTermoBusca(q.trim())} THEN 0 WHEN ${normalizado(sql`b.label`)} LIKE ${inteira + '%'} ESCAPE '!' THEN 1 ELSE 2 END AS ordem
     FROM (${f.consulta}) b WHERE (${Prisma.join(termos.map(t => sql`${normalizado(sql`concat_ws(' ', b.texto, ${f.grupo}::text, ${f.tipo}::text)`)} LIKE ${'%' + escaparTermoBusca(t) + '%'} ESCAPE '!'`), ' AND ')} OR b.id = ${q.trim()})
     ${propriedadeId == null || f.global ? Prisma.empty : sql`AND b."propriedadeId" = ${propriedadeId}`}
-    ORDER BY ordem, b.label, b.id LIMIT 6)`);
+    ORDER BY ordem, b.label, b.id LIMIT ${limitePorFonte})`);
   return sql`SELECT tipo, id, label, contexto, "alvoId", "propriedadeId" FROM (${Prisma.join(consultas, ' UNION ALL ')}) resultados ORDER BY ordem, label, tipo, id LIMIT 120`;
 }

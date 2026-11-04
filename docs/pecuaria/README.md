@@ -348,3 +348,9 @@ O [contrato do Bezerreiro](bezerreiro.md) descreve participação, coleiras, ale
 ## Nutrição mensal configurável
 
 O [contrato de nutrição mensal](nutricao-mensal.md) descreve os três modelos, vigências por sítio/lote, prazo de conferência, consumo virtual, ajustes compensatórios, reconciliação, efeitos nos custos e gates de ativação. O fluxo anterior e suas URLs permanecem para o histórico e os lotes que ainda não adotaram o mensal. A implementação é protegida por flags desligadas por padrão; aplicação da migration e homologação do ambiente são necessárias antes da ativação. A integração PostgreSQL está validada localmente com fixtures próprias.
+
+
+
+### Pesagem pelo assistente
+
+O Assistente Terrano pode preparar uma pesagem individual de rotina no modo Editar para perfis com Pecuária e `lancar`. A conferência de animal, sítio, data e peso antecede a confirmação humana; não há gravação ao ditar/anexar. Reutiliza `registrarPesagemTx`, validação do sítio na data, autoria/auditoria e idempotência de `confirmarFato`. Outros tipos de pesagem continuam nos seus fluxos. Contrato e limites em [assistente](../assistente-consulta.md#editar-pesagem-individual-com-confirmação).
