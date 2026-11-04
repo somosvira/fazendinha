@@ -4,8 +4,10 @@ type Marco={id:"PARTO"|"FIM_PEV"|"LIBERACAO"|"PRIMEIRO_SERVICO"|"DG_POSITIVO";ro
 export function construirMarcosReprodutivos(dados:DadosAcompanhamentoIndicadores,animalId:string,estado:string,corte:string){
  const ciclo=dados.ciclos.filter(c=>c.animalId===animalId&&c.inicio<=corte).sort((a,b)=>b.inicio.localeCompare(a.inicio))[0];
  const liberacao=ciclo?primeiraLiberacaoValidaIndicador(ciclo,corte).primeira:null;
- const servicos=ciclo?.servicos.filter(s=>s.valido&&s.data<=corte).sort((a,b)=>a.data.localeCompare(b.data)||(a.ordem??0)-(b.ordem??0))??[];
- const gestacoes=dados.gestacoes.filter(g=>g.animalId===animalId&&g.valida&&g.primeiroDgPositivo&&g.primeiroDgPositivo.data<=corte&&(!ciclo||g.primeiroDgPositivo.data>=ciclo.inicio)).sort((a,b)=>a.primeiroDgPositivo!.data.localeCompare(b.primeiroDgPositivo!.data));
+ // Parto reinicia tentativas no dia seguinte; situação inicial admite fatos na própria data.
+ const pertenceAoCiclo=(data:string)=>!ciclo|| (ciclo.partoId?data>ciclo.inicio:data>=ciclo.inicio);
+ const servicos=ciclo?.servicos.filter(s=>s.valido&&s.data<=corte&&pertenceAoCiclo(s.data)).sort((a,b)=>a.data.localeCompare(b.data)||(a.ordem??0)-(b.ordem??0))??[];
+ const gestacoes=dados.gestacoes.filter(g=>g.animalId===animalId&&g.valida&&g.primeiroDgPositivo&&g.primeiroDgPositivo.data<=corte&&pertenceAoCiclo(g.primeiroDgPositivo.data)).sort((a,b)=>a.primeiroDgPositivo!.data.localeCompare(b.primeiroDgPositivo!.data));
  const marco=(id:Marco["id"],rotulo:string,data:string|null,previsto=false):Marco=>({id,rotulo,data,estado:data?data>corte||previsto?"PREVISTO":"REALIZADO":"DESCONHECIDO"});
  const marcos:Marco[]=[marco("PARTO","Parto",ciclo?.partoEm??null),marco("FIM_PEV","Fim do PEV",ciclo?.fimPev??null),marco("LIBERACAO","Liberação",liberacao?.data??null),marco("PRIMEIRO_SERVICO","Primeiro serviço",servicos[0]?.data??null),marco("DG_POSITIVO","Primeiro DG positivo",gestacoes[0]?.primeiroDgPositivo?.data??null)];
  const eventos:Array<{id:string;data:string|null;titulo:string;detalhe?:string;pendente?:boolean}>=[];

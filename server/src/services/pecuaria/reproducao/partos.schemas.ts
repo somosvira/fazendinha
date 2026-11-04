@@ -26,7 +26,7 @@ const campos = {
   gestacaoId: uuid.nullish(), tipo: z.enum(["NORMAL", "DISTOCICO", "ABORTO", "NATIMORTO", "NASCIMENTO"]).optional(),
   desfecho: z.enum(["NASCIMENTO", "ABORTO"]).nullish(), induzido: z.boolean().nullish(), dificuldade: z.boolean().nullish(),
   assistenciaDescricao: texto, ocorridoEm: z.string().datetime({ offset: true }).nullish(), horarioEstimado: z.boolean().optional(),
-  retencaoPlacenta: z.boolean().nullish(), responsavel: z.string().trim().max(160).nullish(), observacao: texto,
+  retencaoPlacenta: z.boolean().nullish(), grauRetencaoPlacenta: z.number().int().min(1).max(3).nullish(), responsavel: z.string().trim().max(160).nullish(), observacao: texto,
   ocorrenciaRetencao: ocorrenciaRetencaoSchema.optional(), pesoMatriz: pesoPartoSchema.optional(), escoreMatriz: escorePartoSchema.optional(),
 };
 function validarHorario(v: { ocorridoEm?: string | null; horarioEstimado?: boolean }, ctx: z.RefinementCtx) {
@@ -38,6 +38,7 @@ export const partoAmpliadoSchema = z.object({
   crias: z.array(z.object({ viva: z.boolean(), sexo: z.enum(["F", "M"]), aptidao: z.enum(["LEITE", "CORTE", "REPRODUCAO"]), brinco: z.string().trim().min(1).max(39).nullish(), nome: z.string().trim().max(120).nullish(), loteId: uuid.nullish(), pesoKg: peso.nullish() }).strict()).max(10).default([]),
 }).strict().superRefine((v, ctx) => {
   validarHorario(v, ctx);
+  if (v.grauRetencaoPlacenta != null && v.retencaoPlacenta !== true) ctx.addIssue({ code: "custom", path: ["grauRetencaoPlacenta"], message: "Grau exige retenção de placenta Sim" });
   if((v.desfecho==="ABORTO"||v.tipo==="ABORTO")&&(v.observacao?.trim().length??0)<5)ctx.addIssue({code:"custom",path:["observacao"],message:"Explique a observação e o contexto do aborto (ao menos 5 caracteres); a causa clínica pode ser desconhecida"});
   if (!v.tipo && !v.desfecho) ctx.addIssue({ code: "custom", path: ["desfecho"], message: "Informe o desfecho do parto" });
   if (v.escoreMatriz && v.escoreMatriz.acao !== "REGISTRAR") ctx.addIssue({ code: "custom", path: ["escoreMatriz"], message: "Criação do parto admite registro de escore; revisões exigem parto existente" });

@@ -59,3 +59,11 @@ describe("correções independentes preservam a ausência de explicação de abo
     expect(await corrigirPartoTx(f.tx, f.parto.id, input, 7)).toMatchObject({ tipo: "ABORTO", observacao: "Aborto observado; causa desconhecida" });
   });
 });
+
+it("persiste e audita o grau de RP sem alterar o histórico anterior", async () => {
+  const f=fixture("NORMAL");
+  const input=correcaoPartoAmpliadaSchema.parse({propriedadeId:7,motivo:"Avaliação clínica de retenção",retencaoPlacenta:true,grauRetencaoPlacenta:2});
+  await corrigirPartoTx(f.tx,uid(1),input,null);
+  expect(f.db.partoAnimal.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({retencaoPlacenta:true,grauRetencaoPlacenta:2})}));
+  expect(f.db.auditoriaPecuaria.create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({depois:expect.objectContaining({grauRetencaoPlacenta:2})})}));
+});

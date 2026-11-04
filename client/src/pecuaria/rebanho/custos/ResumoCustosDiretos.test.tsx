@@ -10,7 +10,7 @@ const dados:CustosDTO={rotulo:"Custo direto registrado",cobertura:"PARCIAL",situ
 afterEach(cleanup);
 it("mostra média do servidor e uma linha por fato; detalhes abrem composição exata em modal",()=>{
  render(<ResumoCustosDiretos mostrarMediaPorTentativa dados={dados} propriedadeId={1} porAnimal comRecorte pagina={1} aoMudarPagina={vi.fn()}/>);
- expect(screen.getByText(/90,00/)).toBeTruthy();expect(screen.getByText(/2 tentativas no período/)).toBeTruthy();
+ expect(screen.getByText(/90,00/)).toBeTruthy();expect(screen.getByText(/2 tentativas na base da média/)).toBeTruthy();
  const tabela=screen.getByRole("table",{name:"Custos diretos por fato"});expect(within(tabela).getAllByRole("row")).toHaveLength(2);
  fireEvent.click(within(tabela).getByRole("button",{name:"Detalhes"}));expect(screen.getByRole("dialog")).toBeTruthy();expect(screen.getByText("Composição da tentativa t")).toBeTruthy();
 });

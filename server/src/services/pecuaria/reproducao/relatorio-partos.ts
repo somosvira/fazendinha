@@ -1,3 +1,4 @@
+import { consultarColetasPartoTx } from "../bezerreiro/colostro.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -33,7 +34,7 @@ export async function emitirRelatorioPartosTx(tx: Prisma.TransactionClient, inpu
     const linhas = partos.map(p => ({
       id: p.id, versao: p.versao, matriz: p.animal, data: p.data.toISOString().slice(0, 10), ocorridoEm: p.ocorridoEm?.toISOString() ?? null,
       horarioEstimado: p.horarioEstimado, desfecho: p.desfecho, tipo: p.tipo, induzido: p.induzido,
-      dificuldade: p.dificuldade, assistenciaDescricao: p.assistenciaDescricao, retencaoPlacenta: p.retencaoPlacenta,
+      dificuldade: p.dificuldade, assistenciaDescricao: p.assistenciaDescricao, retencaoPlacenta: p.retencaoPlacenta, grauRetencaoPlacenta: p.grauRetencaoPlacenta ?? null,
       responsavel: p.responsavel, observacao: p.observacao, lancador: p.criadoPorId == null ? null : { id: p.criadoPorId, nome: autoresPorId.get(p.criadoPorId) ?? null },
       criadoEm: p.criadoEm.toISOString(), ocorrenciasRetencaoPlacenta: p.ocorrenciasRetencaoPlacenta,
       pesosMatriz: p.vinculosPesagem.filter(v => v.sujeito === "MATRIZ" && !v.criaId).map(v => ({ id: v.pesagem.id, data: v.pesagem.data.toISOString().slice(0, 10), pesoKg: v.pesagem.pesoKg.toString() })),
@@ -69,7 +70,8 @@ export async function obterPartoOperacional(id: string, propriedadeId: number) {
     const externos = idsExternos.length ? await tx.genitorExterno.findMany({ where: { id: { in: idsExternos } }, select: { id: true, nome: true, codigo: true } }) : [];
     const rotulo = (interno?: string | null, externo?: string | null) => interno ? internos.find(a => a.id === interno)?.brinco ?? "Identificação indisponível" : externo ? externos.find(a => a.id === externo)?.nome ?? "Genitor externo não identificado" : null;
     const acompanhamentos = await tx.exameAnimal.findMany({ where: { partoPosPartoId: id, propriedadeId }, select: { id: true, data: true, realizacao: true, status: true, tipoExame: { select: { nome: true } } }, orderBy: [{ data: "desc" }, { id: "asc" }] });
-    return { ...parto, propriedadeId, status: origem.status,
+    const coletasColostro = await consultarColetasPartoTx(tx, id, propriedadeId);
+    return { ...parto, propriedadeId, status: origem.status, coletasColostro,
       crias: parto.crias.map((c, index) => { const i = identidades[index]; return { ...c, filiacao: i.success ? { mae: rotulo(i.data.maeId, i.data.maeExternaId), pai: rotulo(i.data.paiId, i.data.paiExternoId), receptora: rotulo(i.data.receptoraId) } : { mae: null, pai: null, receptora: null } }; }),
       acompanhamentos: acompanhamentos.map(e => ({ id: e.id, data: e.data.toISOString().slice(0, 10), tipo: e.tipoExame.nome, realizacao: e.realizacao, status: e.status })),
     };

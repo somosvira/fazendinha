@@ -2630,6 +2630,7 @@ model PartoAnimal {
   ocorridoEm DateTime? @db.Timestamptz(3)
   horarioEstimado Boolean @default(false)
   retencaoPlacenta Boolean?
+  grauRetencaoPlacenta Int?
   versao Int @default(1)
   ocorrenciasRetencaoPlacenta OcorrenciaSanitaria[]
   vinculosPesagem VinculoPesagemParto[]

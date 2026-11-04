@@ -715,3 +715,21 @@ export async function listarHistoricoColostro(propriedadeId: number, filtro: Con
     return {itens:itens.map(({origemResultado,...d})=>({...d,data:d.data.toISOString().slice(0, 10),origemId:origemResultado?.id??null})),total,pagina:dados.pagina,tamanho:dados.tamanho};
   });
 }
+
+/** Coletas da matriz no parto, sem valores monetários ou inferência de produção. */
+export async function consultarColetasPartoTx(tx: Prisma.TransactionClient, partoId: string, propriedadeId: number) {
+  const lotes = await tx.loteColostro.findMany({ where: { partoId, propriedadeId, status: { not: "ESTORNADO" } },
+    include: { origem: { include: incluirOrigem } }, orderBy: [{ data: "asc" }, { criadoEm: "asc" }, { id: "asc" }] });
+  return lotes.map(lote => {
+    // Origem é opcional para retiradas ainda em rascunho.
+    const origem = lote.origem?.propriedadeId === propriedadeId ? lote.origem : null;
+    const destinos: Array<{ id: string; tipo: "FORNECIMENTO" | "BANCO" | "PREPARO"; descricao: string; quantidadeLitros: string; data: string; viaBanco: boolean }> = [];
+    if (origem) {
+      for (const unidade of origem.unidades.filter(u => u.propriedadeId === propriedadeId && u.status !== "ESTORNADA")) destinos.push({ id: unidade.id, tipo: "BANCO", descricao: unidade.codigo, quantidadeLitros: unidade.volumeLitros.toString(), data: unidade.dataCongelamento.toISOString().slice(0, 10), viaBanco: false });
+      for (const alocacao of origem.fornecimentos.filter(a => a.fornecimento.propriedadeId === propriedadeId && a.fornecimento.status === "VALIDO")) destinos.push({ id: alocacao.id, tipo: "FORNECIMENTO", descricao: "Fornecimento à cria", quantidadeLitros: alocacao.quantidadeLitros.toString(), data: alocacao.fornecimento.data.toISOString().slice(0, 10), viaBanco: alocacao.unidadeId != null });
+      for (const alocacao of origem.preparos.filter(a => a.preparo.propriedadeId === propriedadeId && a.preparo.status === "CONFIRMADO")) destinos.push({ id: alocacao.id, tipo: "PREPARO", descricao: "Preparo de colostro", quantidadeLitros: alocacao.quantidadeLitros.toString(), data: alocacao.preparo.data.toISOString().slice(0, 10), viaBanco: alocacao.unidadeId != null });
+    }
+    return { id: lote.id, data: lote.data.toISOString().slice(0, 10), ocorridoEm: lote.ocorridoEm?.toISOString() ?? null, horarioEstimado: lote.horarioEstimado,
+      quantidadeLitros: lote.quantidadeLitros.toString(), status: lote.status, primeiraRetirada: lote.primeiraRetirada, brix: origem ? brixOrigem(origem) : null, destinos };
+  });
+}

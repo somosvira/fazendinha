@@ -6,7 +6,7 @@ import { registrarPesagemTx, editarPesagemTx } from "../rebanho/animais.js";
 import type { CorrecaoPartoAmpliadaInput, PartoAmpliadoInput } from "./partos.schemas.js";
 
 function erro(mensagem: string, campo?: string): never { throw new RebanhoError("VALIDACAO", mensagem, campo); }
-type DetalhesParto = Pick<PartoAmpliadoInput, "tipo" | "desfecho" | "induzido" | "dificuldade" | "assistenciaDescricao" | "ocorridoEm" | "horarioEstimado" | "retencaoPlacenta">;
+type DetalhesParto = Pick<PartoAmpliadoInput, "tipo" | "desfecho" | "induzido" | "dificuldade" | "assistenciaDescricao" | "ocorridoEm" | "horarioEstimado" | "retencaoPlacenta" | "grauRetencaoPlacenta">;
 type PartoPersistido = Prisma.PartoAnimalGetPayload<Record<string, never>>;
 /** Compatibilidade antiga informa somente o que o código legado comprovava. */
 export function normalizarDetalhesParto(input: DetalhesParto, data: string, anterior?: PartoPersistido) {
@@ -26,7 +26,10 @@ export function normalizarDetalhesParto(input: DetalhesParto, data: string, ante
     if (`${obter("year")}-${obter("month")}-${obter("day")}` !== data) erro("O horário deve pertencer à data do parto em São Paulo", "ocorridoEm");
     if (ocorridoEm > new Date()) erro("Horário do parto não pode estar no futuro", "ocorridoEm");
   }
-  return { tipo, desfecho, dificuldade, ocorridoEm, horarioEstimado, induzido: input.induzido === undefined ? anterior?.induzido ?? null : input.induzido,
+  const retencaoPlacenta = input.retencaoPlacenta === undefined ? anterior?.retencaoPlacenta ?? null : input.retencaoPlacenta;
+  const grauRetencaoPlacenta = input.grauRetencaoPlacenta === undefined ? anterior?.grauRetencaoPlacenta ?? null : input.grauRetencaoPlacenta;
+  if (grauRetencaoPlacenta != null && (![1, 2, 3].includes(grauRetencaoPlacenta) || retencaoPlacenta !== true)) erro("Grau 1, 2 ou 3 exige retenção de placenta Sim; remova o grau ao corrigir a retenção", "grauRetencaoPlacenta");
+  return { tipo, desfecho, dificuldade, ocorridoEm, horarioEstimado, grauRetencaoPlacenta, induzido: input.induzido === undefined ? anterior?.induzido ?? null : input.induzido,
     assistenciaDescricao: input.assistenciaDescricao === undefined ? anterior?.assistenciaDescricao ?? null : input.assistenciaDescricao,
     retencaoPlacenta: input.retencaoPlacenta === undefined ? anterior?.retencaoPlacenta ?? null : input.retencaoPlacenta };
 }

@@ -93,6 +93,10 @@
 .repro-parto-grade>.secao-recolhivel{margin:0;min-width:0}
 .repro-parto-grade>.secao-recolhivel:nth-child(3){grid-column:1/-1}
 .repro-parto-detalhe .secao-recolhivel-cabecalho{padding:14px 16px}
+.repro-parto-detalhe .secao-recolhivel-seta-final{padding-right:64px;border-bottom:1px solid var(--border)}
+.repro-parto-detalhe .secao-recolhivel-titulo{display:flex;align-items:center;gap:10px}
+.repro-parto-detalhe .pec-icone{display:inline-flex;flex-shrink:0}
+.repro-parto-detalhe .ficha-subcabecalho{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;font-weight:600}
 .repro-parto-detalhe .secao-recolhivel-conteudo{padding:16px}
 .repro-indicadores-painel>.indicadores-taxas{margin:0 20px;border:1px solid var(--border);border-radius:10px}
 .repro-indicadores-painel>.reproducao-pendencias{margin:16px 20px 0}

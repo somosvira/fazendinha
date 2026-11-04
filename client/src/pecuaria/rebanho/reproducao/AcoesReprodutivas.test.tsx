@@ -102,3 +102,12 @@ it("oculta gestação atual encerrada sem eliminar o histórico", () => {
  render(<AcoesReprodutivas modo="gestacao" animalId="a" painel={painel} propriedadeId={7} podeLancar={false} onMudou={vi.fn()}/>);
  expect(screen.queryByRole("heading",{name:"Gestação atual"})).toBeNull();
 });
+
+it.each([true, false])("preserva vínculo da gestação ao editar, tentativa visível: %s", async visivel => {
+ const painel: PainelReprodutivo = {animais:[{animalId:"a",brinco:"100",nome:null,situacao:"GESTANTE",partos:0,tentativasCiclo:1,gestacao:{id:"g",status:"VALIDO"},restricoes:[]}],tentativas:visivel?[{id:"t",animalId:"a",data:"2026-10-04",tipo:"IA",status:"VALIDO"}]:[],avaliacoes:[],partos:[],restricoes:[],gestacoes:[{id:"g",animalId:"a",status:"VALIDO",tentativaId:"t",previsaoParto:"2027-07-01"}]};
+ render(<AcoesReprodutivas modo="gestacao" animalId="a" painel={painel} propriedadeId={7} podeLancar onMudou={vi.fn()}/>);
+ fireEvent.keyDown(screen.getByRole("button",{name:"Gerenciar gestação"}), {key:"Enter"});
+ fireEvent.click(await screen.findByText("Corrigir vínculo da tentativa"));
+ expect((screen.getByLabelText("Tentativa comprovada") as HTMLSelectElement).value).toBe("t");
+ if (!visivel) expect(screen.getByText("Vínculo atual fora deste histórico")).toBeTruthy();
+});

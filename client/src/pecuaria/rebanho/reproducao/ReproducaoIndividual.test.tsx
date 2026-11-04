@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getHojeISO } from "../../../lib/hoje";
@@ -23,22 +22,15 @@ function painel(animalId = "a"): PainelReprodutivo {
 function contagemTentativas() { return screen.getByText("Tentativas no ciclo").parentElement!.querySelector("dd")!.textContent; }
 function secao(nome: string) { return screen.getByRole("heading", { name: nome }).closest("section")!; }
 
-it("separa tentativas e partos do restante histórico, conserva paginação e exclui marcos previstos", async () => {
+it("apresenta um acompanhamento contínuo e não duplica fatos no histórico anterior", async () => {
  vi.mocked(obterReproducao).mockResolvedValue(painel());
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
  await screen.findByRole("heading", { name: "Histórico reprodutivo" });
- expect(contagemTentativas()).toBe("12");
- expect(screen.queryByRole("heading", { name: /Tentativas deste ciclo/ })).toBeNull();
+ expect(contagemTentativas()).toBe("12ª tentativa");
  expect(screen.queryByText("Fim do PEV")).toBeNull();
- expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(20);
- expect(within(secao("Histórico reprodutivo")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(1);
- expect(within(secao("Histórico de partos")).queryAllByRole("button", { name: "Detalhes" })).toHaveLength(0);
- fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", { name: "Próxima" }));
- expect(within(secao("Tentativas reprodutivas")).getAllByRole("button", { name: "Detalhes" })).toHaveLength(4);
- await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
- fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Avaliações"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
- await aplicarFiltrosConsulta();
- expect(within(secao("Tentativas reprodutivas")).getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
+ expect(within(secao("Acompanhamento atual")).getAllByRole("listitem")).toHaveLength(13);
+ expect(within(secao("Histórico reprodutivo")).queryAllByRole("button", { name: "Detalhes" })).toHaveLength(0);
+ expect(screen.queryByRole("tablist")).toBeNull();
 });
 it("conserva deep links e detalhes, filtra período e mantém rascunho ao atualizar", async () => {
  window.history.replaceState(null, "", "/?fatoId=t0#reproducao");
@@ -50,11 +42,7 @@ it("conserva deep links e detalhes, filtra período e mantém rascunho ao atuali
  const criterio = screen.getByLabelText("Critérios completos") as HTMLInputElement;
  fireEvent.change(criterio, { target: { value: "alterado" } });
  expect((screen.getByLabelText("Critérios completos") as HTMLInputElement).value).toBe("alterado");
- expect(screen.getByText("Não aferido")).toBeTruthy();
- fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", {name:"Período do histórico reprodutivo"}));
- fireEvent.change(screen.getByLabelText("Data inicial"), { target: { value: "2020-09-10" } });
- fireEvent.click(screen.getByRole("button", {name:"Aplicar período"}));
- expect(screen.getByText("1–3 de 3 registros")).toBeTruthy();
+ expect(screen.getByText("Sem liberação comprovada e primeira tentativa")).toBeTruthy();
  expect(screen.getByText("Custos REPRODUCAO")).toBeTruthy();
  rerender(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={true} recarregarToken={1}/>);
  await waitFor(() => expect(obterReproducao).toHaveBeenCalledTimes(2));
@@ -71,7 +59,7 @@ it("não deduz início ou IATF de tentativa avulsa e não usa contagem técnica 
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
  expect(await screen.findByText("Início não comprovado")).toBeTruthy();
- expect(contagemTentativas()).toBe("12");
+ expect(contagemTentativas()).toBe("12ª tentativa");
  expect(await screen.findByText(/Nenhum protocolo reprodutivo encontrado/)).toBeTruthy();
  expect(screen.queryByText("999")).toBeNull();
  expect(vi.mocked(reqV4).mock.calls.some(([url]) => url.includes("/reproducao/participacoes"))).toBe(false);
@@ -81,7 +69,7 @@ it("usa último desfecho factual válido incluindo aborto como referência", asy
  dados.animais[0].resumoAcompanhamento={dataReferencia:getHojeISO(),tentativas:2,referencia:{tipo:"ABORTO",data:"2020-09-10"}};
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
- await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("2");
+ await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("2ª tentativa");
  expect(screen.getByText("Aborto registrado · 10/09/2020")).toBeTruthy();
 });
 it("ignora painel e protocolos obsoletos ao trocar animal e sítio", async () => {
@@ -111,11 +99,8 @@ it.each([0,1,2,3])("conserva %s tentativas factuais sem completar lacunas", asyn
  const dados = painel();dados.tentativas=dados.tentativas.slice(0,quantidade);dados.animais[0].resumoAcompanhamento!.tentativas=quantidade;
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
- await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe(String(quantidade));
- await abrirFiltrosConsulta(secao("Tentativas reprodutivas"));
- fireEvent.click(screen.getByRole("button",{name:"Tipos de registro"}));fireEvent.click(screen.getByRole("option",{name:"Tentativas"}));fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
- await aplicarFiltrosConsulta();
- expect(within(secao("Tentativas reprodutivas")).queryAllByRole("button",{name:"Detalhes"})).toHaveLength(quantidade*2);
+ await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe(quantidade ? `${quantidade}ª tentativa` : "Sem tentativa registrada");
+ expect(within(secao("Acompanhamento atual")).getAllByRole("listitem")).toHaveLength(quantidade + 1);
 });
 const paginaDemandas = <T extends { estado: string },>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10, resumo: { total: itens.length, pendentes: itens.filter(d => d.estado === "PENDENTE").length, resolvidas: itens.filter(d => d.estado === "RESOLVIDA").length, encerradas: 0, semData: 0 } });
 const demandaPendente = { id:"d", finalidade:"DIAGNOSTICO",ocorrencia:1,tentativaId:"t0",gestacaoId:null,previstaPara:"2020-10-01",estado:"PENDENTE",motivoEncerramento:null,regraSnapshot:{politicaVersao:1},exameResolucaoId:null };
@@ -152,7 +137,7 @@ it("inclui tentativa no dia da situação inicial válida e ignora referências 
  dados.tentativas.push({id:"pendente-t",animalId:"a",data:"2020-09-12",tipo:"IA",status:"PENDENTE"});
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" podeLancar={false}/>);
- await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("3");
+ await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("3ª tentativa");
  expect(screen.getByText("Situação inicial · 10/09/2020")).toBeTruthy();
 });
 it("adoção explícita reconsulta o pai e torna demanda avulsa e situação descobríveis", async () => {
@@ -172,7 +157,7 @@ it("adoção explícita reconsulta o pai e torna demanda avulsa e situação des
  await screen.findByRole("button",{name:"Confirmar criação conferida"});
  fireEvent.change(screen.getByLabelText("Motivo obrigatório"),{target:{value:"Acompanhamento explicitamente adotado"}});
  fireEvent.click(screen.getByRole("button",{name:"Confirmar criação conferida"}));
- expect(await screen.findByRole("heading",{name:"Avaliações e retornos"})).toBeTruthy();
+ expect(await screen.findByRole("heading",{name:"Agendamentos reprodutivos"})).toBeTruthy();
  expect(screen.getByText("Pendentes")).toBeTruthy();
  expect(await screen.findByRole("button",{name:"Registrar avaliação"})).toBeTruthy();
  expect(obterReproducao).toHaveBeenCalledTimes(2);
@@ -193,7 +178,7 @@ it("não consulta aptidão de hoje nem acompanhamentos de animal fora do efetivo
  expect(await screen.findByText(/Consulta histórica neste sítio/)).toBeTruthy();
  expect(screen.queryByLabelText("Critérios completos")).toBeNull();
  expect(vi.mocked(reqV4).mock.calls.some(([url])=>url.startsWith("/reproducao/acompanhamento?"))).toBe(false);
- expect(within(secao("Tentativas reprodutivas")).getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
+ expect(within(secao("Acompanhamento atual")).getByText("Sem fatos registrados neste acompanhamento.")).toBeTruthy();
 });
 
 it("transferência conserva resumo clínico transversal sem acrescentar fatos ao histórico do sítio", async () => {
@@ -201,9 +186,9 @@ it("transferência conserva resumo clínico transversal sem acrescentar fatos ao
  dados.animais[0].resumoAcompanhamento={dataReferencia:getHojeISO(),tentativas:2,referencia:{tipo:"ABORTO",data:"2020-09-10"}};
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" propriedadeId={2} podeLancar={false}/>);
- await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("2");
+ await screen.findByText("Tentativas no ciclo");expect(contagemTentativas()).toBe("2ª tentativa");
  expect(screen.getByText("Aborto registrado · 10/09/2020")).toBeTruthy();
- expect(within(secao("Tentativas reprodutivas")).getByText("Nenhum evento registrado neste período e tipo.")).toBeTruthy();
+ expect(within(secao("Acompanhamento atual")).getByText("Sem fatos registrados neste acompanhamento.")).toBeTruthy();
  expect(screen.queryByRole("button", {name:"Detalhes"})).toBeNull();
  expect(screen.queryByText("999")).toBeNull();
  expect(vi.mocked(reqV4).mock.calls.some(([url]) => url.includes("/reproducao/participacoes"))).toBe(false);
@@ -216,45 +201,35 @@ it("resumo clínico ausente permanece desconhecido, sem inferir zero pelas lista
  expect(screen.getByText("Referência não informada")).toBeTruthy();
 });
 
-it("preserva filtros e páginas independentes de tentativas, partos e histórico na URL", async () => {
- window.history.replaceState(null, "", "/?historicoTipos=Situa%C3%A7%C3%A3o+inicial&partosInicio=2019-01-01#reproducao");
- vi.mocked(obterReproducao).mockResolvedValue(painel());
- render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
- await screen.findByRole("heading", { name: "Tentativas reprodutivas" });
- fireEvent.click(within(secao("Tentativas reprodutivas")).getByRole("button", { name: "Próxima" }));
- let url = new URL(window.location.href);
- expect(url.searchParams.get("tentativasPagina")).toBe("2");
- expect(url.searchParams.get("historicoTipos")).toBe("Situação inicial");
- expect(url.searchParams.get("partosInicio")).toBe("2019-01-01");
- expect(within(secao("Histórico reprodutivo")).getByText("1–1 de 1 registros")).toBeTruthy();
- window.history.replaceState(null, "", "/?tentativasInicio=2020-09-10&partosInicio=2019-01-01&historicoTipos=Situa%C3%A7%C3%A3o+inicial#reproducao");
- fireEvent.popState(window);
- await waitFor(() => expect(within(secao("Tentativas reprodutivas")).getByText("1–3 de 3 registros")).toBeTruthy());
- url = new URL(window.location.href);
- expect(url.searchParams.get("historicoTipos")).toBe("Situação inicial");
- expect(url.searchParams.get("partosInicio")).toBe("2019-01-01");
-});
-
-it.each([["Tentativa", "Tentativas reprodutivas"], ["Parto", "Histórico de partos"]])("restaura link legado filtrado por %s no cartão correspondente", async (tipo, titulo) => {
- window.history.replaceState(null, "", `/?historicoTipos=${tipo}&historicoInicio=2020-09-10#reproducao`);
+it("restaura filtros legados no histórico consolidado sem duplicar fatos atuais", async () => {
+ window.history.replaceState(null, "", "/?tentativasInicio=2020-09-01&partosInicio=2019-01-01#reproducao");
  const dados = painel();
- dados.partos = [{ id: "parto", animalId: "a", data: "2020-09-11", desfecho: "NASCIMENTO", status: "VALIDO" }];
+ dados.animais[0].resumoAcompanhamento!.referencia = {tipo:"ABORTO",data:"2020-09-10"};
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
- await screen.findByRole("heading", { name: titulo });
- expect(within(secao(titulo)).getByText(tipo === "Tentativa" ? "1–3 de 3 registros" : "1–1 de 1 registros")).toBeTruthy();
+ await screen.findByRole("heading", {name:"Histórico reprodutivo"});
+ expect(within(secao("Histórico reprodutivo")).getByText("1–10 de 10 registros")).toBeTruthy();
+ expect(within(secao("Acompanhamento atual")).getAllByRole("listitem")).toHaveLength(2);
+ const p = new URLSearchParams(window.location.search);
+ expect(p.get("historicoInicio")).toBe("2020-09-01");
+ expect(p.get("historicoTipos")).toBe("Tentativa");
+ expect(p.get("partosInicio")).toBe("2019-01-01");
+});
+it("gestante conserva resultado e bloqueia nova tentativa ou protocolo antes do clique", async () => {
+ const dados=painel();dados.animais[0].situacao="GESTANTE";
+ dados.avaliacoes=[{id:"dg",animalId:"a",data:"2020-10-01",resultado:"POSITIVO",status:"VALIDO"}];
+ vi.mocked(obterReproducao).mockResolvedValue(dados);
+ render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar/>);
+ await screen.findByText("Positivo");
+ for (const name of ["Registrar tentativa", "Iniciar protocolo individual"]) expect((screen.getByRole("button",{name}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole("button",{name:"Ver resultado"}));
+ expect(screen.getByText("Fato dg")).toBeTruthy();
 });
 
-it("restaura período legado sem tipo nas tentativas e partos", async () => {
- window.history.replaceState(null, "", "/?historicoInicio=2020-09-10&historicoFim=2020-09-30#reproducao");
- const dados = painel();
- dados.partos = [{ id: "parto", animalId: "a", data: "2020-09-11", desfecho: "NASCIMENTO", status: "VALIDO" }];
+it("traduz situação aguardando diagnóstico no resumo da ficha", async () => {
+ const dados=painel();dados.animais[0].situacao="AGUARDANDO_DIAGNOSTICO";
  vi.mocked(obterReproducao).mockResolvedValue(dados);
  render(<ReproducaoIndividual animalId="a" propriedadeId={1} podeLancar={false}/>);
- await screen.findByRole("heading", { name: "Histórico de partos" });
- const parametros = new URLSearchParams(window.location.search);
- for (const prefixo of ["tentativas", "partos"]) {
-   expect(parametros.get(`${prefixo}Inicio`)).toBe("2020-09-10");
-   expect(parametros.get(`${prefixo}Fim`)).toBe("2020-09-30");
- }
+ expect(await screen.findByText("Aguardando diagnóstico")).toBeTruthy();
+ expect(screen.queryByText("AGUARDANDO_DIAGNOSTICO")).toBeNull();
 });

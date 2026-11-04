@@ -1,3 +1,4 @@
+import { VacaIcon } from "../../../components/icons/VacaIcon";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -7,7 +8,7 @@ import { useEffect, useState } from "react";
 import { dataValida } from "./periodo-consulta";
 import { navegarPara } from "../../../router";
 import { MultiSelect } from "../../../components/MultiSelect";
-import { Baby, CalendarDays, ClipboardList, HeartPulse, History, Syringe } from "lucide-react";
+import { CalendarDays, ClipboardList, HeartPulse, History, Syringe } from "lucide-react";
 import { CartaoConsulta, LinhaTempoConsulta } from "../../../components/ConsultaVisual";
 import { Button } from "../../../components/ui/button";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
@@ -21,12 +22,22 @@ import "./historico-reprodutivo.css";
 import { Empty } from "@/financeiro/financeiro-ui";
 
 export type FatoHistorico = FatoReprodutivo & { grupo: string; chaveHistorico?: string; registro?: string; urlDetalhe?: string };
-export const rotulosReprodutivos: Record<string, string> = { VAZIA: "Vazia", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", POSITIVO: "Positivo", NEGATIVO: "Negativo", INCONCLUSIVO: "Inconclusivo", IA: "Inseminação artificial", TE: "Transferência de embrião", COBERTURA: "Cobertura", NAO_AVALIADO: "Não avaliado", ABORTO: "Aborto registrado", NASCIMENTO: "Nascimento", NATIMORTO: "Natimorto", NORMAL: "Parto", DISTOCICO: "Parto distócico", PARTO_DISTOCICO: "Parto distócico", PARTO_NORMAL: "Parto normal", GESTACAO_ENCERRADA_PARTO: "Gestação encerrada pelo parto", GESTACAO_ENCERRADA_PERDA: "Gestação encerrada por perda", PERDA: "Perda gestacional", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem", ANULADO: "Anulado", ENCERRADA: "Encerrada", ATIVA: "Confirmada" };
+export const rotulosReprodutivos: Record<string, string> = { VAZIA: "Vazia", APTA: "Apta", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", POSITIVO: "Positivo", NEGATIVO: "Negativo", INCONCLUSIVO: "Inconclusivo", IA: "Inseminação artificial", TE: "Transferência de embrião", COBERTURA: "Cobertura", NAO_AVALIADO: "Não avaliado", ABORTO: "Aborto registrado", NASCIMENTO: "Nascimento", NATIMORTO: "Natimorto", NORMAL: "Parto", DISTOCICO: "Parto distócico", PARTO_DISTOCICO: "Parto distócico", PARTO_NORMAL: "Parto normal", GESTACAO_ENCERRADA_PARTO: "Gestação encerrada pelo parto", GESTACAO_ENCERRADA_PERDA: "Gestação encerrada por perda", PERDA: "Perda gestacional", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem", ANULADO: "Anulado", ENCERRADA: "Encerrada", ATIVA: "Confirmada" };
 const filtros = [["Todos", ""], ["Tentativas", "Tentativa"], ["Avaliações", "Avaliação"], ["Gestações e perdas", "Gestação"], ["Partos", "Parto"], ["Restrições", "Restrição"], ["Situações iniciais", "Situação inicial"], ["Protocolos", "Protocolo"]] as const;
 export function tituloFato(f: FatoHistorico) { return f.grupo === "Tentativa" ? rotulosReprodutivos[f.tipo ?? ""] ?? "Tentativa" : f.grupo === "Parto" ? rotulosReprodutivos[f.desfecho ?? f.tipo ?? ""] ?? "Parto" : f.grupo; }
 /** Preserva links da ficha anteriores à separação de tentativas e partos. */
 function parametrosHistorico(chave: string) {
   const p = new URLSearchParams(window.location.search);
+  if (chave === "historico" && !["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(s => p.has(`historico${s}`))) {
+    const origem = ["tentativas", "partos"].find(prefixo => ["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(s => p.has(`${prefixo}${s}`)));
+    if (origem) {
+      p.set("historicoTipos", origem === "tentativas" ? "Tentativa" : "Parto");
+      for (const sufixo of ["Inicio", "Fim", "Pagina", "Tamanho"]) {
+        const valor = p.get(`${origem}${sufixo}`);
+        if (valor !== null) p.set(`historico${sufixo}`, valor);
+      }
+    }
+  }
   const legados = p.getAll("historicoTipos");
   const tipo = chave === "tentativas" ? "Tentativa" : chave === "partos" ? "Parto" : null;
   if (tipo && ["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(sufixo => p.has(`historico${sufixo}`)) && (!legados.length || legados.includes(tipo)) && !["Tipos", "Inicio", "Fim", "Pagina", "Tamanho"].some(sufixo => p.has(`${chave}${sufixo}`))) {
@@ -76,7 +87,7 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, 
 
     </BarraConsulta>
     {invalido && <p role="alert">O início deve ser anterior ou igual ao fim do período.</p>}
-    {chaveUrl==="historico"&&visual==="linha"?<LinhaTempoConsulta rotulo="Histórico reprodutivo por data" itens={itens} dataDe={f=>f.data} chaveDe={f=>f.chaveHistorico??`${f.grupo}:${f.id}`} complementoData={data=><span className="font-normal text-ink-3"> - {dataRelativaFato(data)}</span>} render={f=><CartaoConsulta titulo={f.grupo} icon={f.grupo==="Protocolo"?ClipboardList:f.grupo==="Avaliação"?HeartPulse:f.grupo==="Tentativa"?Syringe:f.grupo==="Parto"?Baby:History} acoes={acoes(f)}><div className="flex flex-wrap gap-2 text-sm"><strong>{registro(f)}</strong><span>- {resultado(f)}</span></div></CartaoConsulta>}/>:<TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao,erroFiltro)} rotulo="Histórico reprodutivo" itens={itens} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
+    {chaveUrl==="historico"&&visual==="linha"?<LinhaTempoConsulta rotulo="Histórico reprodutivo por data" itens={itens} dataDe={f=>f.data} chaveDe={f=>f.chaveHistorico??`${f.grupo}:${f.id}`} complementoData={data=><span className="font-normal text-ink-3"> - {dataRelativaFato(data)}</span>} render={f=><CartaoConsulta titulo={f.grupo} icon={f.grupo==="Protocolo"?ClipboardList:f.grupo==="Avaliação"?HeartPulse:f.grupo==="Tentativa"?Syringe:f.grupo==="Parto"?VacaIcon:History} acoes={acoes(f)}><div className="flex flex-wrap gap-2 text-sm"><strong>{registro(f)}</strong><span>- {resultado(f)}</span></div></CartaoConsulta>}/>:<TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao,erroFiltro)} rotulo="Histórico reprodutivo" itens={itens} chaveDe={f => f.chaveHistorico ?? `${f.grupo}:${f.id}`} colunas={[
       { chave: "data", titulo: "Data", principal: true, celula: f => f.data ? <><strong>{formatBRDateISO(f.data)}</strong><small className="block text-ink-3">{dataRelativaFato(f.data)}</small></> : "Não informada" },
       { chave: "evento", titulo: "Evento", larguraFlexivel: true, celula: tituloFato },
       ...(chaveUrl==="partos"?[{chave:"crias",titulo:"Cria",celula:(f:FatoHistorico)=><div className="grid gap-1">{f.crias?.length?f.crias.map((c,i)=>{const id=c.animal?.id??c.animalId;return id?<a key={c.id??i} className="text-primary underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(id)}${propriedadeId!=null?`?sitio=${propriedadeId}`:""}`}>{c.animal?.brinco??c.brinco??"Ver cria"} · {c.sexo==="FEMEA"?"Fêmea":c.sexo==="MACHO"?"Macho":c.sexo}</a>:<span key={c.id??i}>{c.brinco??"Cria sem cadastro"} · {c.viva?"Viva":"Natimorta"}</span>; }):"Sem cria registrada"}</div>},{chave:"responsavel",titulo:"Responsável",celula:(f:FatoHistorico)=>f.responsavel??"Não informado"}]:[{ chave: "protocolo", titulo: "Protocolo / programação", celula: (f:FatoHistorico) => f.grupo === "Tentativa" || f.grupo === "Avaliação" ? <OrigensFatoProtocolo animalId={animalId} fatoId={f.id} exameId={f.exame?.id} propriedadeId={propriedadeId}/> : f.registro??"Sem vínculo registrado" }]),

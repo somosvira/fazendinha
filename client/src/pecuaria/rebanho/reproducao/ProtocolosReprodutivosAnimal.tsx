@@ -47,7 +47,7 @@ export function useHistoricoProtocolosReprodutivos(animalId:string,propriedadeId
   const [eventos,setEventos]=useState<FatoHistorico[]>([]);const [erro,setErro]=useState<string|null>(null);
   useEffect(()=>{let vivo=true;setEventos([]);setErro(null);
     void (async()=>{const participacoes:ParticipacaoFicha[]=[];let pagina=1;let total=1;while(participacoes.length<total){const d=await listar(animalId,propriedadeId,pagina);participacoes.push(...d.itens);total=d.total;if(!d.itens.length)break;pagina++;if(!vivo)return;}
-      const fatos=participacoes.flatMap(p=>{const base={id:p.id,animalId,grupo:"Protocolo",propriedadeId:p.propriedadeId,registro:p.protocolo.nome,urlDetalhe:urlParticipacaoReprodutiva(p,propriedadeId)};
+      const fatos=participacoes.flatMap(p=>{const base={id:p.id,animalId,grupo:"Protocolo",propriedadeId:p.propriedadeId,registro:`${p.protocolo.nome} · v${p.protocolo.versao}${p.programacao ? ` · ${p.programacao.nome}` : ""}`,urlDetalhe:urlParticipacaoReprodutiva(p,propriedadeId)};
         return [...(p.inicioEfetivo?[{...base,data:p.dataInicio??p.inicioEfetivo,tipo:"PROTOCOLO_INICIADO",resultado:"Iniciado",chaveHistorico:`protocolo:inicio:${p.id}`}]:[]),...(p.encerradoEm?[{...base,data:p.encerradoEm,tipo:"PROTOCOLO_ENCERRADO",resultado:"Participação encerrada",motivo:p.motivoEncerramento,chaveHistorico:`protocolo:encerramento:${p.id}`}]:[])];});if(vivo)setEventos(fatos);
     })().catch(e=>{if(vivo)setErro(e instanceof Error?e.message:String(e));});return()=>{vivo=false;};
   },[animalId,propriedadeId,revisao]);

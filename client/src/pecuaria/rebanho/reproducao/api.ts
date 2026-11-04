@@ -81,6 +81,7 @@ export type CamposParto = {
   ocorridoEm?: string | null;
   horarioEstimado?: boolean;
   retencaoPlacenta?: boolean | null;
+  grauRetencaoPlacenta?: 1 | 2 | 3 | null;
   responsavel?: string | null;
   observacao?: string | null;
 };
