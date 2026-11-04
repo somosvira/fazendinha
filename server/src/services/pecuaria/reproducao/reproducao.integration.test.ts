@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { corrigirExame } from "../sanidade/exames.js";
 import crypto from "node:crypto";
@@ -70,6 +71,7 @@ async function animal(sexo: "F" | "M" = "F", loteId?: string, papelReprodutivo?:
     null,
   );
   animais.push(a.id);
+  if (sexo === "F") await criarAptidaoFixture(prisma, a.id, propriedadeId, new Date("2026-01-01"));
   return a.id;
 }
 async function material(
@@ -148,6 +150,7 @@ afterAll(async () => {
     where: { gestacaoId: { in: gs.map((g) => g.id) } },
   });
   await prisma.gestacaoAnimal.deleteMany({ where: { propriedadeId: props } });
+  await limparAptidaoFixture(prisma, animais);
   await prisma.vinculoTarefaProtocolo.deleteMany({ where: { tentativa: { propriedadeId: props } } }); await prisma.tentativaReprodutiva.deleteMany({
     where: { propriedadeId: props },
   });
@@ -1257,7 +1260,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
     const a = await animal();
     const avaliacao = await criarAvaliacao({ ...base(a, "2026-09-01"), resultado: "POSITIVO", sexoFetal: "F", motivoVinculoDesconhecido: "Tentativa desconhecida documentada na visita" }, null);
     const interpretacao = await prisma.interpretacaoReprodutiva.findUniqueOrThrow({ where: { id: avaliacao.id }, include: { exame: { include: { resultados: true } } } });
-    expect(await prisma.exameAnimal.count({ where: { animalId: a } })).toBe(1);
+    expect(await prisma.exameAnimal.count({ where: { animalId: a, finalidadePrincipal: { not: "APTIDAO_REPRODUTIVA" } } })).toBe(1);
     expect(interpretacao.exame.finalidades).toEqual(["DIAGNOSTICO", "SEXAGEM"]);
     expect(interpretacao.exame.resultados).toEqual(expect.arrayContaining([expect.objectContaining({ campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO" }), expect.objectContaining({ campo: "SEXO_FETAL", valor: "F" })]));
     await expect(corrigirExame(interpretacao.exameId, propriedadeId, { anular: true, motivo: "Correção exige revisar gestação" }, null)).rejects.toMatchObject({ code: "CONFLITO" });

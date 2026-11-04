@@ -137,7 +137,7 @@ describe("automação e consultas agrupadas", () => {
   it("revisão e exceção exigem motivo e conservam escopo e autoria", async () => {
     automacoes.revisar.mockResolvedValue({ id, configuracao: { valorServicoAtribuido: "99" } }); automacoes.excecao.mockResolvedValue({ id });
     expect((await app(true).request(`/automacoes/${id}/revisao`, post(entrada))).status).toBe(422);
-    const revista = await app(true).request(`/automacoes/${id}/revisao`, post({ ...entrada, motivo: "Correção do lote selecionado" }));
+    const revista = await app(true).request(`/automacoes/${id}/revisao`, post({ ...entrada, revisaoEsperada: 1, motivo: "Correção do lote selecionado" }));
     expect(revista.status).toBe(200);
     expect(await revista.json()).not.toHaveProperty("configuracao");
     expect(automacoes.revisar).toHaveBeenCalledWith(id, expect.objectContaining({ propriedadeId: 114 }), 7);

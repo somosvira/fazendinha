@@ -11,14 +11,15 @@ export function incorporarAptidaoManejo(base: Pick<FilasComAptidao, "liberadas" 
   const porId = new Map(animais.map(a => [a.id, a]));
   const projecoes = new Map(itens.map(e => [e.animalId, e]));
   const pendencias = new Map<string, LinhaManejo>();
-  const filas: FilasComAptidao = { liberadas: base.liberadas.filter(a => projecoes.get(a.animalId)?.elegivel === true), diagnostico: [], pendencias: [], avaliacao: [], agendamento: [], retorno: [], aptidao: [] };
+  const filas: FilasComAptidao = { liberadas: [], diagnostico: [], pendencias: [], avaliacao: [], agendamento: [], retorno: [], aptidao: [] };
   const linha = (e: ElegibilidadeNaData, data: string | null, motivos: string[] = []): LinhaManejo | null => {
     const a = porId.get(e.animalId);
     if (!a || a.sexo !== "F" || a.situacao !== "ATIVO") return null;
-    return { animalId: a.id, brinco: a.brinco, nome: a.nome, lote: a.lote, data, dias: diasManejo(data, hoje), motivos, aptidaoClinica: e.aptidaoClinica?.estado ?? "NAO_DETERMINADA", necessidadeId: e.acompanhamentoAptidao?.necessidadeId ?? e.necessidadeAptidao?.necessidadeId, visitas: e.acompanhamentoAptidao?.visitasAbertas ?? [] };
+    return { situacaoReprodutiva: e.situacaoReprodutiva, animalId: a.id, brinco: a.brinco, nome: a.nome, lote: a.lote, data, dias: diasManejo(data, hoje), motivos, aptidaoClinica: e.aptidaoClinica?.estado ?? "NAO_DETERMINADA", necessidadeId: e.acompanhamentoAptidao?.necessidadeId ?? e.necessidadeAptidao?.necessidadeId, visitas: e.acompanhamentoAptidao?.visitasAbertas ?? [] };
   };
   const diagnosticos = new Map(base.diagnostico.map(a => [a.animalId, a]));
   for (const e of itens) {
+    if (e.elegivel === true) { const apta = linha(e, e.aptaDesde); if (apta) filas.liberadas.push(apta); }
     if (e.demandasAcompanhamento?.length) {
       const demandas = [...new Map(e.demandasAcompanhamento.map(d => [d.id, d])).values()]
         .sort((a, b) => (a.previstaPara ?? "9999").localeCompare(b.previstaPara ?? "9999") || a.ocorrencia - b.ocorrencia || a.id.localeCompare(b.id));
@@ -43,6 +44,6 @@ export function incorporarAptidaoManejo(base: Pick<FilasComAptidao, "liberadas" 
   }
   filas.diagnostico = [...diagnosticos.values()];
   filas.pendencias = [...pendencias.values()];
-  for (const fila of ["liberadas", "diagnostico"] as const) filas[fila] = filas[fila].map(a => { const e = projecoes.get(a.animalId); return e ? { ...a, aptidaoClinica: e.aptidaoClinica?.estado ?? "NAO_DETERMINADA" } : a; });
+  for (const fila of ["liberadas", "diagnostico"] as const) filas[fila] = filas[fila].map(a => { const e = projecoes.get(a.animalId); return e ? { ...a, situacaoReprodutiva: e.situacaoReprodutiva, aptidaoClinica: e.aptidaoClinica?.estado ?? "NAO_DETERMINADA" } : a; });
   return filas;
 }

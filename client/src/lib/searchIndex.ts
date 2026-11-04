@@ -109,7 +109,7 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["genetica/material-genetico", "Material genético", "sêmen embriões doadoras touros genética"],
     ["sanidade/protocolos", "Protocolos sanitários", "modelos etapas versão"], ["sanidade/doencas", "Doenças", "sanidade diagnósticos"],
     ["sanidade/tipos-exame", "Tipos de exame", "formatos resultados sanidade"], ["sanidade/tipos-aplicacao", "Tipos de aplicação", "vacinas medicamentos sanidade"],
-    ["reproducao/politica", "Política reprodutiva", "reprodução elegibilidade"],
+    ["reproducao/politica", "Política reprodutiva", "reprodução aptidão idade peso PEV"],
   ].map(([rota, label, termos]) => ({ id: `config-pec-${rota}`, tab: "config" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/configuracoes/pecuaria/${rota}`, sinonimos: termos.split(" ") })),
   { id: "acao-nova-operacao", tab: "lancar", label: "Nova operação", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/financeiro/operacoes/nova", sinonimos: ["registrar compra", "registrar venda", "lançar despesa"] },
   { id: "acao-nova-visita", tab: "pec-visitas", label: "Planejar visita", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/pecuaria/visitas/nova", sinonimos: ["nova visita", "veterinário"] },

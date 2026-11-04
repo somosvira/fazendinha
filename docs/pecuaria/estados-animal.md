@@ -12,8 +12,8 @@ O animal não tem um único status capaz de representar sua vida. O estado exibi
 | Categoria | Resultado das regras configuráveis ou exceção manual vigente | CategoriaAnimal/CategoriaManualAnimal; não é gestação ou finalidade |
 | Finalidade | LEITE, CORTE, REPRODUCAO; evidência temporal pode faltar/conflitar | FinalidadeAnimal; indica destinação operacional por período |
 | Papel reprodutivo | NENHUM, DOADORA, RECEPTORA; estado da resolução CONHECIDO, DESCONHECIDO, CONFLITO | PeriodoReprodutivoAnimal; função naquele intervalo, sem substituir genética ou finalidade |
-| Situação reprodutiva | DESCONHECIDA, VAZIA, APTA, AGUARDANDO_DIAGNOSTICO, GESTANTE | Projeção de situação inicial, tentativa, exame/interpretação, gestação e parto |
-| Elegibilidade | ELEGIVEL, NAO_ELEGIVEL, PENDENTE; motivos, política e decisão | Cálculo temporal da aptidão operacional; diagnóstico não basta |
+| Situação reprodutiva | DESCONHECIDA, VAZIA, AGUARDANDO_DIAGNOSTICO, GESTANTE | Projeção de situação inicial, tentativa, exame/interpretação, gestação e parto |
+| Aptidão reprodutiva | APTA, NAO_APTA, PENDENTE | Exame de aptidão e condições vigentes; vale para protocolo e tentativa. Diagnóstico negativo não basta; não há decisão adicional |
 | Restrição reprodutiva | Restrições vigentes e marcação DESCARTE; encerramento/reversão explícitos | RestricaoReprodutiva e regras sanitárias; impede/alerta ações sem dar baixa |
 | Produção biológica registrada | LACTANTE, SECA, NAO_INFORMADA | LactacaoAnimal e validade do parto; mede evidência produtiva, não volume |
 | Sanidade | Ocorrências vigentes/encerradas, aplicações, exames e revisões | Conjunto de fatos; não existe conclusão global automática de saudável |
@@ -27,9 +27,9 @@ Os nomes de leitura “ativo”, “baixado”, “ocorrência vigente” e “d
 
 | Origem | Evento | Resultado possível | Eixos que não mudam por esse evento isolado |
 |---|---|---|---|
-| Desconhecida | Situação inicial comprovada | Vazia ou Apta inicial | Lactação, carência, finalidade |
+| Desconhecida | Situação inicial comprovada | Vazia ou desconhecida | Lactação, carência, finalidade |
 | Vazia/apta com guardas satisfeitas | IA, TE ou cobertura observada | Aguarda diagnóstico | Não confirma gestação; não encerra lactação |
-| Aguarda diagnóstico | Negativo conclusivo | Vazia | Não prova liberação clínica |
+| Aguarda diagnóstico | Negativo conclusivo | Vazia | Não determina aptidão |
 | Aguarda diagnóstico | Positivo | Gestante | Não muda finalidade/papel nem interrompe produção |
 | Gestante | Reconfirmação ou sexagem | Mesma gestação acompanhada | Não cria nova tentativa/cria |
 | Gestante | Perda comprovada | Vazia após encerramento | Não reinicia ciclo de tentativas como parto nem libera intervenção por si só |
@@ -76,7 +76,7 @@ Se for necessário destacar anestro, cio observado, pré-parto, histórico nunca
 
 - `server/src/services/pecuaria/reproducao/regras.calc.ts`: situação e contadores.
 - `server/src/services/pecuaria/reproducao/contexto-animal.calc.ts`: lactação, DEL, localização, gestação e pendências na data.
-- `server/src/services/pecuaria/reproducao/elegibilidade.calc.ts`: política, decisão, restrição e elegibilidade.
+- `server/src/services/pecuaria/reproducao/elegibilidade.calc.ts`: projeção de aptidão geral, motivos e contexto do PEV.
 - `server/src/services/pecuaria/rebanho/papel-reprodutivo.calc.ts`: papel e evidências por período.
 - `server/src/services/pecuaria/leite/finalidade.calc.ts`: finalidade histórica e exceção comprovada da baixa.
 - `server/src/services/pecuaria/sanidade/carencia.calc.ts` e `leite/carencia-producao.ts`: prazos e elegibilidade comercial.

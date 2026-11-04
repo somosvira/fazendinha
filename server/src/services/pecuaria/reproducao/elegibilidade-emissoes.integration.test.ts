@@ -1,3 +1,4 @@
+import { criarAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
@@ -51,7 +52,7 @@ async function animalFixture(tx: Prisma.TransactionClient) {
 }
 
 suite("integração local — elegibilidade e emissões com rollback", () => {
-  it("congela a política do ciclo, mantém gestante inelegível e usa liberação explícita após perda", async () => {
+  it("congela a política do ciclo, mantém gestante inelegível e exige exame após perda apesar da decisão legada", async () => {
     await emRollback(async tx => {
       const { propriedade, animal } = await animalFixture(tx);
       const inicial = await tx.situacaoInicialReprodutiva.create({ data: {
@@ -81,12 +82,14 @@ suite("integração local — elegibilidade e emissões com rollback", () => {
       expect(duranteGestacao.get(animal.id)).toMatchObject({ estado: "NAO_ELEGIVEL", politicaId: politicaInicial.id });
       expect(duranteGestacao.get(animal.id)?.motivos).toContain("GESTACAO_CONFIRMADA");
 
-      const decisao = await tx.decisaoElegibilidadeCiclo.create({ data: {
+      await tx.decisaoElegibilidadeCiclo.create({ data: {
         vinculoCicloId: ciclo.id, data: dia("2025-02-11"), tipo: "LIBERAR", aptaDesde: dia("2025-02-11"), motivo: "Perda confirmada e liberação revisada",
       } });
+      expect((await obterElegibilidadesNaDataTx(tx, [animal.id], propriedade.id, dia("2025-02-11"))).get(animal.id)?.aptidao.estado).toBe("PENDENTE");
+      await criarAptidaoFixture(tx, animal.id, propriedade.id, dia("2025-02-11"));
       const aposLiberacao = await obterElegibilidadesNaDataTx(tx, [animal.id], propriedade.id, dia("2025-02-11"));
       expect(aposLiberacao.get(animal.id)).toMatchObject({
-        estado: "ELEGIVEL", politicaId: politicaInicial.id, politicaVersao: 1, decisaoId: decisao.id, aptaDesde: "2025-02-11",
+        estado: "ELEGIVEL", politicaId: politicaInicial.id, politicaVersao: 1, aptaDesde: "2025-02-11",
       });
     });
   });

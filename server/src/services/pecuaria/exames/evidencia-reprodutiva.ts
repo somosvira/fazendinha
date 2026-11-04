@@ -6,11 +6,15 @@ import { RebanhoError } from "../rebanho/regras.js";
 
 export const TIPO_EXAME_REPRODUTIVO = "b0400000-0000-4000-8000-000000000001";
 type DadosAvaliacao = Pick<AvaliacaoReprodutiva, "animalId" | "data" | "resultado"> &
-  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null; responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
+  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: Date | null; decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null; responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
 
 /** Valida formato versionado e resultados sem gravar a evidência. */
 export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao) {
   if (!["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(dados.resultado)) throw new RebanhoError("VALIDACAO", "Resultado reprodutivo não reconhecido", "resultado");
+  if (dados.resultadoAptidao && (!dados.responsavel || dados.responsavel.trim().length < 2)) throw new RebanhoError("VALIDACAO", "Informe o responsável pela avaliação de aptidão", "responsavel");
+  if (dados.retornoAptidaoEm && (!dados.resultadoAptidao || dados.retornoAptidaoEm <= dados.data)) throw new RebanhoError("VALIDACAO", "Retorno de aptidão exige avaliação e data posterior ao exame", "retornoAptidaoEm");
+  if (dados.resultado === "NAO_AVALIADO" && dados.resultadoAptidao) throw new RebanhoError("VALIDACAO", "Use o toque de aptidão quando não houver avaliação gestacional", "resultado");
+  if (dados.resultadoAptidao === "APTO" && ["POSITIVO", "RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado)) throw new RebanhoError("VALIDACAO", "Gestação confirmada impede aptidão para nova reprodução", "resultadoAptidao");
   const tipoExameId = dados.tipoExameId ?? TIPO_EXAME_REPRODUTIVO;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-tipo-exame:${tipoExameId}`}))`;
   const tipo = await tx.tipoExame.findUnique({ where: { id: tipoExameId } });
@@ -21,6 +25,7 @@ export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient,
     throw new RebanhoError("CONFLITO", "O formato do exame mudou desde o preenchimento. Atualize o formulário e revise os resultados antes de confirmar", "tipoExameId");
   const finalidade = dados.finalidade ?? (["RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado) ? dados.resultado : "DIAGNOSTICO");
   const finalidades = dados.sexoFetal && finalidade !== "SEXAGEM" ? [finalidade, "SEXAGEM"] : [finalidade];
+  if (dados.resultadoAptidao) finalidades.push("APTIDAO_REPRODUTIVA");
   const observacoes: ObservacaoExame[] = [];
   if (["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(dados.resultado)) observacoes.push({ campo: "CONCLUSAO_GESTACIONAL", valor: dados.resultado });
   if (dados.resultado === "RECONFIRMACAO") observacoes.push({ campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO" });
@@ -32,7 +37,7 @@ export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient,
 }
 
 /** Persiste somente a evidência e sua interpretação. Efeitos clínicos pertencem ao executor de domínio. */
-export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva & { decisaoIatf: "INDICAR" | "NAO_INDICAR" | null }> {
+export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva & { resultadoAptidao: string | null; retornoAptidaoEm: Date | null; decisaoIatf: "INDICAR" | "NAO_INDICAR" | null }> {
   const { tipoExameId, tipo, finalidade, finalidades, resultados } = await prepararEvidenciaAvaliacaoTx(tx, dados);
   const id = dados.id ?? crypto.randomUUID();
   await tx.exameAnimal.create({ data: {
@@ -47,9 +52,9 @@ export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient
     interpretacao: { create: { id, referenciaExterna: dados.referenciaExterna,
       gestacaoCriada: dados.gestacaoCriada, restricaoId: dados.restricaoId,
       tentativaId: dados.tentativaId, gestacaoId: dados.gestacaoId,
-      conduta: dados.conduta, decisaoIatf: dados.decisaoIatf, motivo: dados.motivo, retornoEm: dados.retornoEm } },
+      resultadoAptidao: dados.resultadoAptidao, retornoAptidaoEm: dados.retornoAptidaoEm, conduta: dados.conduta, decisaoIatf: dados.decisaoIatf, motivo: dados.motivo, retornoEm: dados.retornoEm } },
   } });
-  return { ...await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } }), decisaoIatf:dados.decisaoIatf??null };
+  return { ...await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } }), decisaoIatf:dados.decisaoIatf??null, resultadoAptidao:dados.resultadoAptidao??null, retornoAptidaoEm:dados.retornoAptidaoEm??null };
 }
 
 export async function anularEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, id: string, data: { status: "ANULADO"; motivoAnulacao: string; anuladoEm: Date }) {

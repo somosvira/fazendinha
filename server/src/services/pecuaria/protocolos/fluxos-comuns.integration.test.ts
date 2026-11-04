@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { paginaSubstitutosTarefa } from "./substitutos.js";
 import { criarRodada } from "../sanidade/rodadas.js";
 import { obterCabecalhoOperacao, listarEtapasOperacao, listarTarefasOperacao, listarEventosTarefaOperacao, listarParticipacoesOperacao, listarVersoesOperacao, listarParticipantesOperacao, listarOrigensFatoOperacao } from "./operacao.js";
@@ -38,6 +39,7 @@ const campos: CampoExame[] = [
 // Fixtures exclusivas; nenhuma alteração no catálogo global, seed ou banco auxiliar.
 afterAll(async () => {
   if (!sitio) return;
+  await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: [sitio, ...sitiosExtras] } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: sitio }, { animalId: { in: animais } }, { entidadeId: { in: [...tipos, ...protocolos] } }] } });
   await prisma.participanteVisita.deleteMany({ where: { animalId: { in: animais } } });
@@ -69,7 +71,7 @@ afterAll(async () => {
 });
 async function animal() {
   const a = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `FC${animais.length}${run}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio }), null);
-  animais.push(a.id); return a.id;
+  animais.push(a.id); await criarAptidaoFixture(prisma, a.id, sitio, new Date("2026-08-01")); return a.id;
 }
 async function tipo(reprodutivo = false) {
   const t = await criarTipoExame({ nome: `Fluxo ${tipos.length} ${run}`, tipoResultado: reprodutivo ? "MULTIPLO" : "NUMERO", ...(reprodutivo ? { campos } : { unidade: "mg" }) }, null, reprodutivo ? "REPRODUTIVO" : "SANITARIO");

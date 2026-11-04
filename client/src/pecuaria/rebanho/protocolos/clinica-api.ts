@@ -16,6 +16,7 @@ export type DadosClinicos = {
   touroId: string; touroExternoId: string; tentativaId: string; gestacaoId: string; sexoFetal: string; finalidade: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   motivoVinculoDesconhecido: string; retornoEm: string; previsaoParto: string; cienciaSanitaria: boolean; cienciaRecalendarioLegado: boolean;
   reprodutorExterno: boolean;
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: string | null;
   decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   demandaAcompanhamentoId?: string; reavaliacao?: boolean;
 };

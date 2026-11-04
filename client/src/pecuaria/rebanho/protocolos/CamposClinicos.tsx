@@ -1,3 +1,4 @@
+import { CamposAptidao } from "../reproducao/CamposAptidao";
 import { AjudaCampo } from "../../../components/Dica";
 import { useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -36,6 +37,7 @@ export function CamposAvaliacaoClinica({ tarefa: t, dados: d, onChange }: Props)
     <label>{rotulo("Retorno definido pelo responsável (opcional)")}<input className={classeInput} type="date" value={d.retornoEm} onChange={e => onChange({ retornoEm: e.target.value })} /></label>
     <label>{rotulo("Previsão de parto informada (opcional)")}<input className={classeInput} type="date" value={d.previsaoParto} onChange={e => onChange({ previsaoParto: e.target.value })} /></label>
     {d.resultado === "INCONCLUSIVO" && <p className="text-sm">O exame inconclusivo permanece como fato. Acompanhamento e nova avaliação preservam esse histórico.</p>}
+    <CamposAptidao dados={d} onChange={onChange}/>
     <ReavaliacaoClinica tarefa={t} dados={d} onChange={onChange} />
   </div>;
 }

@@ -37,7 +37,7 @@ function resultado(itens: AnimalResumo[], total = itens.length): ListarResultado
   return { itens, total, painel: { totalAtivos: total, porCategoria: [], porSitio: [], femeasAtivas: total, receptorasAtivas: 0 } };
 }
 function elegibilidade(id: string, patch: Partial<ElegibilidadeNaData> = {}): ElegibilidadeNaData {
-  return { animalId: id, propriedadeId: 7, dataReferencia: hoje, estado: "ELEGIVEL", baseElegivel: true, elegivel: true, aptaDesde: "2026-10-01", ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null, metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: null, motivos: id === "9" ? ["CICLO_DESCONHECIDO"] : [], alertas: [], restricaoIds: [], ...patch };
+  return { animalId: id, propriedadeId: 7, dataReferencia: hoje, estado: ["3", "4", "9"].includes(id) ? "PENDENTE" : "ELEGIVEL", baseElegivel: ["3", "4", "9"].includes(id) ? null : true, elegivel: ["3", "4", "9"].includes(id) ? null : true, aptaDesde: id === "2" ? hoje : "2026-10-01", ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null, metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: null, motivos: id === "9" ? ["CICLO_DESCONHECIDO"] : [], alertas: [], restricaoIds: [], ...patch };
 }
 let painel: PainelReprodutivo;
 beforeEach(() => {
@@ -56,7 +56,7 @@ it("separa liberação comprovada de diagnóstico e pendências, sem projetar da
   await screen.findAllByText("V4-1");
   expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(screen.queryByText("V4-9")).toBeNull();
-  expect(screen.getByText("Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.")).toBeTruthy();
+  expect(screen.getByText("Situação reprodutiva e aptidão são acompanhadas em conjunto. Um animal pode ter mais de um acompanhamento.")).toBeTruthy();
   expect(screen.queryByText("V4-3")).toBeNull(); expect(screen.getAllByText("V4-4")[0]).toBeTruthy();
   expect(screen.getAllByText("0 dias sem serviço")[0]).toBeTruthy(); expect(screen.queryByText("Registrar evento")).toBeNull();
   expect(consultarIndicadores).toHaveBeenCalledWith({ propriedadeId: 7, inicio: hoje, fim: hoje, corte: hoje, deslocamentoTeDias: 7 });
@@ -73,6 +73,7 @@ it("separa liberação comprovada de diagnóstico e pendências, sem projetar da
 });
 it("filtra contagens globais antes de paginar, muda ordem e preserva URL e tamanho da página", async () => {
   const ids = ["1", "2", "5", "6", "7", "8"];
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: ids.map((id, i) => elegibilidade(id, { aptaDesde: `2026-10-${String(i + 1).padStart(2, "0")}` })) });
   vi.mocked(listarAnimais).mockResolvedValue(resultado(ids.map(id => animal(id, id === "2" ? "l2" : "l1"))));
   vi.mocked(consultarIndicadores).mockImplementation(async f => { const s = snapshot(f); s.acompanhamento!.espera.filaAtual = ids.map((id,i) => espera(id, `2026-10-${String(i + 1).padStart(2,"0")}`)); return s; });
   window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=ciclos&sitio=7&porPagina=4");
@@ -131,6 +132,7 @@ it("não faz consulta consolidada implícita e mantém ação de registro quando
   fireEvent.click(screen.getByRole("button", { name: "Registrar evento" })); expect(registrar).toHaveBeenCalledOnce();
 });
 it("exclui baixadas, servidas e gestantes e mantém pendências de escopo da fila fora das liberadas", async () => {
+  vi.mocked(consultarManejoAptidao).mockResolvedValue({ propriedadeId: 7, dataReferencia: hoje, itens: [elegibilidade("1"), elegibilidade("2", { elegivel: false, estado: "NAO_ELEGIVEL" }), elegibilidade("3"), elegibilidade("4"), elegibilidade("9")] });
   painel.animais = [estado("1"), estado("2", "GESTANTE"), estado("3"), estado("4"), estado("9")];
   vi.mocked(listarAnimais).mockResolvedValue(resultado([animal("1"), animal("2"), { ...animal("3"), situacao: "BAIXADO" }, animal("4"), animal("9")]));
   vi.mocked(consultarIndicadores).mockImplementation(async f => {

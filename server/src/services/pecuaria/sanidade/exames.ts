@@ -1,3 +1,4 @@
+import { validarResultadosEscore, TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { validarContextoHistoricoAnimalTx, type ContextoHistoricoAnimalInput } from "../importacao/pesagens.js";
 import { reconciliarExameProtocoladoTx } from "./alertas/protocolos.js";
 import { marcarReavaliacaoDestinoTx } from "./alertas/avaliador.js";
@@ -133,6 +134,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     if (input.formatoExameHash && input.formatoExameHash !== hashFormatoExame(tipo)) throw new RebanhoError("CONFLITO", "O formato do exame mudou. Atualize e confira os resultados", "tipoExameId");
     const resultados = tipo.tipoResultado === "MULTIPLO" ? validarObservacoesExame(tipo.campos, input.resultados ?? [], (input.resultados?.length ?? 0) > 0) : [];
     if (tipo.tipoResultado !== "MULTIPLO" && input.resultados?.length) throw new RebanhoError("VALIDACAO", "Este exame usa o resultado simples do formato histórico", "resultados");
+    if (tipo.id === TIPO_EXAME_ESCORE_CORPORAL && resultados.length) validarResultadosEscore(resultados);
     const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v !== undefined && v !== null && v !== "");
     if (preenchidos.length > 0 && (tipo.tipoResultado === "MULTIPLO" || preenchidos.length !== 1 || (tipo.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim())
       || (tipo.tipoResultado === "NUMERO" && input.resultadoNumero == null)
@@ -163,6 +165,7 @@ export async function prepararExameTx(tx: Prisma.TransactionClient, input: Exame
     }
     const dadosCriacao: Prisma.ExameAnimalUncheckedCreateInput = { animalId: input.animalId, propriedadeId: historico?.contexto === "EXTERNO" ? null : input.propriedadeId,
       ...(historico ? { origem: "IDEAGRI", anotacaoOriginal: JSON.stringify(historico) } : {}),
+      ...(tipo.id === TIPO_EXAME_ESCORE_CORPORAL ? { finalidades: ["ESCORE_CORPORAL"], finalidadePrincipal: "ESCORE_CORPORAL" } : {}),
       tipoExameId: tipo.id, data, observacao: input.observacao?.trim() || null, resultadoTexto: input.resultadoTexto?.trim() || null,
       resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null,
       formatoSnapshot: { nome: tipo.nome, tipoResultado: tipo.tipoResultado, unidade: tipo.unidade, opcoes: tipo.opcoes },
@@ -212,6 +215,7 @@ export async function corrigirExameTx(tx: Prisma.TransactionClient, id: string, 
       const preenchidos = [input.resultadoTexto, input.resultadoNumero, input.resultadoOpcao].filter((v) => v != null && v !== "");
       if (preenchidos.length !== 1 || (formato.tipoResultado === "TEXTO" && !input.resultadoTexto?.trim()) || (formato.tipoResultado === "NUMERO" && input.resultadoNumero == null) || (formato.tipoResultado === "OPCAO" && !formato.opcoes?.includes(input.resultadoOpcao ?? ""))) throw new RebanhoError("VALIDACAO", "Informe resultado no formato preservado na coleta", "resultado");
     }
+    if (multiplos && original.tipoExameId === TIPO_EXAME_ESCORE_CORPORAL) validarResultadosEscore(multiplos);
     if (multiplos) await tx.resultadoExame.updateMany({ where: { exameId: id, vigente: true }, data: { vigente: false, substituidoEm: new Date() } });
     const salvo = await tx.exameAnimal.update({ where: { id }, include: { resultados: { where: { vigente: true } } }, data: input.anular ? { status: "ANULADO", motivoAnulacao: input.motivo, anuladoEm: new Date() } : { realizacao: "REALIZADO", ...(multiplos ? { resultados: { create: multiplos.map(r => ({ ...r, criadoPorId: usuarioId })) } } : { resultadoTexto: input.resultadoTexto?.trim() || null, resultadoNumero: input.resultadoNumero ?? null, resultadoOpcao: input.resultadoOpcao ?? null }) } });
     await revisarFatoProgramacaoTx(tx, { exameId: id }, input.motivo, usuarioId);

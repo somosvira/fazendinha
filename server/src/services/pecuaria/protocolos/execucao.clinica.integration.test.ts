@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -27,7 +28,8 @@ const uuid=()=>crypto.randomUUID();
 // Somente IDs criados por esta suíte; nenhuma limpeza global/seed/estrutura.
 afterAll(async()=>{
  if(!sitios.length)return;
- await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
+ await limparAptidaoFixture(prisma, animais);
+  await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
  await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}},{entidadeId:{in:protocolos}}]}});
  await prisma.vinculoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
  await prisma.demandaAcompanhamentoReprodutivo.updateMany({where:{animalId:{in:animais}},data:{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:undefined}});
@@ -63,7 +65,7 @@ async function fixture(acao:"EXAME"|"TENTATIVA"|"AVALIACAO",quantidade=2,saldo=1
  const etapa={nome:`Ação ${acao}`,tipo:acao,intervalo:0,unidade:"DIAS",...(acao==="EXAME"?{planoExame:{tipoExameId:tipo.id}}:acao==="AVALIACAO"?{planoAvaliacao:{tipo:finalidade,tipoExameId:TIPO_EXAME_REPRODUTIVO}}:{planoTentativa:{tipo:"IA",materialId:material.id,quantidade:1}})};
  const protocolo=await criarProtocolo(protocoloSchema.parse({nome:`Clínica ${acao} ${run}`,versao:1,publicado:true,etapas:[etapa,...(acao!=="TENTATIVA"?[{nome:"Tentativa planejada",tipo:"TENTATIVA",intervalo:10,unidade:"DIAS",planoTentativa:{tipo:"IA",materialId:material.id,quantidade:1}}]:[])]}),null);protocolos.push(protocolo.id);
  const ids:string[]=[];
- for(let n=0;n<quantidade;n++){const animal=await cadastrar(cadastrarAnimalSchema.parse({brinco:`CL${run}${n}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(animal.id);ids.push(animal.id);}
+ for(let n=0;n<quantidade;n++){const animal=await cadastrar(cadastrarAnimalSchema.parse({brinco:`CL${run}${n}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(animal.id);ids.push(animal.id);await criarAptidaoFixture(prisma, animal.id, sitio.id, new Date("2026-08-01"));}
  const grupo=await criarProgramacao(programacaoSchema.parse({chave:uuid(),propriedadeId:sitio.id,protocoloId:protocolo.id,nome:`Clínica grupo ${run}`,inicioPrevisto:data,animais:ids.map(animalId=>({animalId}))}),null);
  const participacoes=await prisma.participacaoProtocolo.findMany({where:{rodadaId:grupo.id},include:{tarefas:{orderBy:{etapa:{ordem:"asc"}}}},orderBy:{animalId:"asc"}});
  await criarEntradaValorizadaFixture({data:{produtoId:produto.id,propriedadeId:sitio.id,data:new Date(`${data}T00:00:00Z`),tipo:"ENTRADA",origem:"INVENTARIO_INICIAL",quantidade:saldo,custoUnitario:1,valorTotal:saldo}});

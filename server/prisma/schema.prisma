@@ -2238,6 +2238,8 @@ model ResultadoExame {
 }
 
 model InterpretacaoReprodutiva {
+  resultadoAptidao String?
+  retornoAptidaoEm DateTime? @db.Date
   decisaoIatf String?
   TentativaReprodutiva TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_tentativaId_fkey")
   RestricaoReprodutiva RestricaoReprodutiva? @relation(fields: [restricaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_restricaoId_fkey")
@@ -2637,6 +2639,7 @@ model PartoAnimal {
   assistenciaDescricao String?
   ocorridoEm DateTime? @db.Timestamptz(3)
   horarioEstimado Boolean @default(false)
+  grauRetencaoPlacenta Int?
   retencaoPlacenta Boolean?
   versao Int @default(1)
   ocorrenciasRetencaoPlacenta OcorrenciaSanitaria[]

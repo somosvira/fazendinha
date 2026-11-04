@@ -16,3 +16,15 @@ describe("persistência da decisão posterior ao DG",()=>{
   expect(r.decisaoIatf).toBe(decisaoIatf);
  });
 });
+
+it("um único exame persiste DG e aptidão independentes, sem decisão extra", async () => {
+ const create = vi.fn().mockResolvedValue({});
+ const tx = { $executeRaw: vi.fn(), tipoExame: { findUnique: vi.fn().mockResolvedValue({ id: "exame", nome: "DG", tipoResultado: "MULTIPLO", contexto: "REPRODUTIVO", ativo: true, versaoFormato: 1, campos }) }, exameAnimal: { create }, avaliacaoReprodutiva: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "dg", resultado: "NEGATIVO" }) } } as unknown as Prisma.TransactionClient;
+ const dados = { id: "dg", animalId: "a", data: new Date("2026-11-03"), resultado: "NEGATIVO", resultadoAptidao: "APTO" as const, responsavel: "Veterinária", decisaoIatf: "NAO_INDICAR" as const };
+ const r = await registrarEvidenciaAvaliacaoTx(tx, dados);
+ expect(create).toHaveBeenCalledTimes(1);
+ expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ finalidades: expect.arrayContaining(["DIAGNOSTICO", "APTIDAO_REPRODUTIVA"]), interpretacao: { create: expect.objectContaining({ resultadoAptidao: "APTO", decisaoIatf: "NAO_INDICAR" }) } }) }));
+ expect(r).toMatchObject({ resultado: "NEGATIVO", resultadoAptidao: "APTO", decisaoIatf: "NAO_INDICAR" });
+ await expect(registrarEvidenciaAvaliacaoTx(tx, { ...dados, responsavel: null })).rejects.toThrow(/responsável/);
+ await expect(registrarEvidenciaAvaliacaoTx(tx, { ...dados, resultado: "POSITIVO" })).rejects.toThrow(/Gestação confirmada/);
+});

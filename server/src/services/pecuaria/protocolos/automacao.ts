@@ -159,15 +159,16 @@ export async function processarAutomacoes(agora = new Date()) {
   return resultados;
 }
 
-export const revisarAutomacaoSchema = ativarAutomacaoSchema.extend({ motivo: z.string().trim().min(5).max(1000) }).strict();
+export const revisarAutomacaoSchema = ativarAutomacaoSchema.extend({ revisaoEsperada: z.number().int().nonnegative(), motivo: z.string().trim().min(5).max(1000) }).strict();
 export async function revisarAutomacao(id: string, entrada: unknown, usuarioId: number) {
-  const { motivo, ...input } = revisarAutomacaoSchema.parse(entrada);
+  const { motivo, revisaoEsperada, ...input } = revisarAutomacaoSchema.parse(entrada);
   return transacaoPecuaria(async tx => {
     const ator = await autorizarTx(tx, usuarioId);
     const contexto = await contextoTx(tx, input);
     await tx.$queryRaw`SELECT id FROM pecuaria."AutomacaoProtocolo" WHERE id = ${id} FOR UPDATE`;
     const antes = await tx.automacaoProtocolo.findFirst({ where: { id, propriedadeId: input.propriedadeId, participacaoId: input.participacaoId, momentoId: input.momentoId } });
     if (!antes || !["AGENDADA", "FALHOU"].includes(antes.estado)) throw new RebanhoError("CONFLITO", "Automação executada ou encerrada não pode ser reativada");
+    if (antes.revisao !== revisaoEsperada) throw new RebanhoError("CONFLITO", "A automação foi revisada por outra pessoa. Reabra e confira a configuração atual antes de salvar", "revisaoEsperada");
     if (!podeVerValoresFinanceiros(ator)) {
       const anterior = ativarAutomacaoSchema.parse(antes.configuracao);
       input.itens = input.itens.map(item => {
@@ -357,5 +358,5 @@ export async function obterPreparacaoAutomacao(id: string, propriedadeId: number
   const job = await prisma.automacaoProtocolo.findFirst({ where: { id, propriedadeId } });
   if (!job) throw new RebanhoError("NAO_ENCONTRADO", "Automação não encontrada neste sítio");
   const configuracao = ativarAutomacaoSchema.parse(job.configuracao);
-  return { id: job.id, estado: job.estado, programadaPara: job.programadaPara, configuracao: { ...configuracao, itens: configuracao.itens.map(item => { if (verValores || !("valorServicoAtribuido" in item)) return item; const { valorServicoAtribuido: _, ...dados } = item; return dados; }) } };
+  return { id: job.id, revisao: job.revisao, estado: job.estado, programadaPara: job.programadaPara, configuracao: { ...configuracao, itens: configuracao.itens.map(item => { if (verValores || !("valorServicoAtribuido" in item)) return item; const { valorServicoAtribuido: _, ...dados } = item; return dados; }) } };
 }

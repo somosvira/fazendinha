@@ -133,6 +133,8 @@ export function FormReproducao({
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
     useState<AvaliacaoInput["resultado"] | "">("");
+  const [resultadoAptidao, setResultadoAptidao] = useState<AvaliacaoInput["resultadoAptidao"]>(null);
+  const [retornoAptidaoEm, setRetornoAptidaoEm] = useState<string | null>(null);
   const [decisaoIatf, setDecisaoIatf] = useState<AvaliacaoInput["decisaoIatf"]>(null);
   const [conduta, setConduta] = useState<AvaliacaoInput["conduta"] | null>(null);
   const [sexoFetal, setSexoFetal] = useState<"F" | "M" | "">("");
@@ -161,7 +163,6 @@ export function FormReproducao({
   const [lactacao, setLactacao] = useState(false);
   const [situacao, setSituacao] = useState<SituacaoInicialInput["situacao"]>("VAZIA");
   const [classeReprodutiva, setClasseReprodutiva] = useState("");
-  const [aptaDesde, setAptaDesde] = useState("");
   const [restricaoAte, setRestricaoAte] = useState("");
   const [acoesRestritas, setAcoesRestritas] = useState([
     "IA",
@@ -302,7 +303,7 @@ export function FormReproducao({
     setErro(null);
     const unidadeMaterial = materiais.find(m => m.id === materialId)?.produto.unidade;
     const quantidadeEfetiva = quantidade !== "" ? Number(quantidade) : unidadeMaterial === "DOSE" || unidadeMaterial === "UN" ? 1 : undefined;
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -338,6 +339,7 @@ export function FormReproducao({
         await (onRegistrar ?? registrarAvaliacao)({
           ...base,
           ...(demandaInicial?{demandaAcompanhamentoId:demandaInicial.id}:{}),
+          resultadoAptidao, retornoAptidaoEm, responsavel: responsavel || undefined,
           resultado, finalidade, tipoExameId, resultados, formatoExameHash: tipoExame?.formatoExameHash,
           cienciaSanitaria,
           conduta: conduta ?? undefined,
@@ -367,7 +369,6 @@ export function FormReproducao({
           situacao,
           ...(classeReprodutiva === "NOVILHA" || classeReprodutiva === "VACA" ? { classeReprodutiva } : {}),
           observacao: motivo || undefined,
-          aptaDesde: aptaDesde || undefined,
         } satisfies SituacaoInicialInput, "POST", propriedadeId);
       if (acao === "restricao")
         await reqV4("/reproducao/restricoes", {
@@ -571,8 +572,11 @@ export function FormReproducao({
           <>
             {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
             {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
-            <CamposAvaliacao indicacaoExplicita dados={{ resultado, finalidade, sexoFetal, conduta: conduta === "IATF" ? null : conduta }} onChange={mudanca => {
-              if (mudanca.resultado !== undefined) { setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | ""); setDecisaoIatf(null); if(conduta === "IATF") setConduta(null); }
+            {campo("responsavel-exame", "Responsável pelo exame", responsavel, setResponsavel, Boolean(resultadoAptidao))}
+            <CamposAvaliacao indicacaoExplicita dados={{ resultadoAptidao, retornoAptidaoEm, resultado, finalidade, sexoFetal, conduta: conduta === "IATF" ? null : conduta }} onChange={mudanca => {
+              if (mudanca.resultadoAptidao !== undefined) setResultadoAptidao(mudanca.resultadoAptidao);
+              if (mudanca.retornoAptidaoEm !== undefined) setRetornoAptidaoEm(mudanca.retornoAptidaoEm);
+              if (mudanca.resultado !== undefined) { setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | ""); setDecisaoIatf(null); if (mudanca.resultado === "NAO_AVALIADO") { setResultadoAptidao(null); setRetornoAptidaoEm(""); } if(conduta === "IATF") setConduta(null); }
               if (mudanca.finalidade !== undefined) setFinalidade(mudanca.finalidade as AvaliacaoInput["finalidade"]);
               if (mudanca.sexoFetal !== undefined) setSexoFetal((mudanca.sexoFetal ?? "") as "F" | "M" | "");
               if (mudanca.conduta !== undefined) { setConduta(mudanca.conduta as AvaliacaoInput["conduta"]); if(decisaoIatf === "INDICAR") setDecisaoIatf(null); }
@@ -647,26 +651,15 @@ export function FormReproducao({
         )}
         {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
-          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
+          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],
             ["DESCONHECIDA", "Desconhecida"],
-            ["APTA", "Apta"],
           ])}
         {acao === "situacao" &&
           seletor("classe-reprodutiva", "Classe na data do registro", classeReprodutiva, setClasseReprodutiva, [
             ["NOVILHA", "Novilha — nunca pariu, conforme evidência"],
             ["VACA", "Vaca — já pariu, conforme evidência"],
           ], false, "Não determinada")}
-        {acao === "situacao" &&
-          situacao === "APTA" &&
-          campo(
-            "apta-desde",
-            "Apta desde",
-            aptaDesde,
-            setAptaDesde,
-            false,
-            "date",
-          )}
         {acao === "restricao" && (
           <>
             {" "}

@@ -64,3 +64,13 @@ describe("vínculos atômicos do parto", () => {
     await expect(corrigirPesosCriasTx(db, parto(), { propriedadeId: 1, motivo: "Conferência", pesosCrias: [{ criaId: id, pesoKg: 32 }] }, null)).rejects.toThrow(/pesagem vinculada/);
   });
 });
+
+it("grau de RP é opcional, restrito a RP presente e preservado na correção parcial", () => {
+  for (const grau of [1, 2, 3]) expect(partoAmpliadoSchema.parse({ ...base, retencaoPlacenta: true, grauRetencaoPlacenta: grau }).grauRetencaoPlacenta).toBe(grau);
+  for (const rp of [false, null, undefined]) expect(partoAmpliadoSchema.safeParse({ ...base, retencaoPlacenta: rp, grauRetencaoPlacenta: 1 }).success).toBe(false);
+  expect(partoAmpliadoSchema.safeParse({ ...base, retencaoPlacenta: true, grauRetencaoPlacenta: 4 }).success).toBe(false);
+  const anterior = parto({ retencaoPlacenta: true, grauRetencaoPlacenta: 2 });
+  expect(normalizarDetalhesParto({}, "2026-01-01", anterior).grauRetencaoPlacenta).toBe(2);
+  expect(() => normalizarDetalhesParto({ retencaoPlacenta: false }, "2026-01-01", anterior)).toThrow(/remova explicitamente/);
+  expect(normalizarDetalhesParto({ retencaoPlacenta: false, grauRetencaoPlacenta: null }, "2026-01-01", anterior).grauRetencaoPlacenta).toBeNull();
+});

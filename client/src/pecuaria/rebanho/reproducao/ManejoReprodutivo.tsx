@@ -26,12 +26,12 @@ import { consultarManejoAptidao, descreverMotivo } from "./elegibilidade-api";
 import { carregarAnimaisManejo, filtrarManejo, lerConsultaManejo, montarFilasManejo, type ConsultaManejo, type FilaManejo, type LinhaManejo } from "./manejo-reprodutivo";
 
 const FILAS = [
-  { id: "liberadas", titulo: "Liberadas sem serviço", descricao: "Matrizes com liberação comprovada até hoje.", Icone: Venus },
+  { id: "liberadas", titulo: "Aptas", descricao: "Fêmeas com aptidão comprovada até hoje.", Icone: Venus },
   { id: "diagnostico", titulo: "Diagnóstico e reconfirmação", descricao: "Diagnósticos e reconfirmações pendentes, com a previsão registrada no acompanhamento.", Icone: Stethoscope },
-  { id: "avaliacao", titulo: "Avaliação devida", descricao: "Critérios de avaliação atingidos; o toque não libera o animal automaticamente.", Icone: Stethoscope },
+  { id: "avaliacao", titulo: "Avaliação devida", descricao: "Aviso para avaliar o animal; idade e peso não determinam aptidão.", Icone: Stethoscope },
   { id: "agendamento", titulo: "Agendadas", descricao: "Avaliações de aptidão incluídas em visitas abertas.", Icone: ClipboardList },
   { id: "retorno", titulo: "Retornos de aptidão", descricao: "Retornos informados no exame, sem presumir resultado.", Icone: Stethoscope },
-  { id: "aptidao", titulo: "Aptidão avaliada", descricao: "Conclusão clínica comprovada pelo toque; disponibilidade operacional é conferida separadamente.", Icone: Venus },
+  { id: "aptidao", titulo: "Aptidão avaliada", descricao: "Aptidão para protocolos e tentativas, considerando o exame e as restrições vigentes.", Icone: Venus },
   { id: "pendencias", titulo: "Pendências de dados", descricao: "Evidências que precisam de conferência para aplicar as regras selecionadas.", Icone: ClipboardList },
 ] as const;
 type DadosManejo = { propriedadeId: number; hoje: string; filas: Record<FilaManejo, LinhaManejo[]> };
@@ -80,8 +80,9 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     : filtradas[consulta.fila];
   const filasDe = (id: string) => FILAS.filter(f => filas?.[f.id].some(a => a.animalId === id));
   const filaDe = (id: string) => filasDe(id).find(f => f.id === consulta.fila)?.id ?? filasDe(id)[0]?.id;
-  const rotuloAptidao = (a: LinhaManejo) => a.aptidaoClinica === "APTA" ? "Apta" : a.aptidaoClinica === "NAO_APTA" ? "Não apta" : "Não determinada";
+  const rotuloAptidao = (a: LinhaManejo) => a.aptidaoClinica === "APTA" ? "Apta" : a.aptidaoClinica === "NAO_APTA" ? "Não apta" : "Pendente de avaliação";
   const prazo = (a: LinhaManejo) => a.data && a.data > hoje ? `Prevista para ${formatBRDateISO(a.data)}` : a.dias === null ? "Prazo não informado" : `${a.dias} dias ${descricaoData(a)}`;
+  const rotuloSituacao = (a: LinhaManejo) => ({ VAZIA: "Vazia", GESTANTE: "Gestante", AGUARDANDO_DIAGNOSTICO: "Aguardando diagnóstico" }[a.situacaoReprodutiva ?? ""] ?? "Desconhecida");
   const descricaoData = (a: LinhaManejo) => filaDe(a.animalId) === "diagnostico" ? a.demandasAcompanhamento?.length ? "desde a previsão" : "desde a tentativa" : filaDe(a.animalId) === "liberadas" ? "sem serviço" : "desde a referência";
   const detalhesDiagnostico = (a: LinhaManejo) => a.demandasAcompanhamento?.length ? <ul className="space-y-1 text-sm">{a.demandasAcompanhamento.map(d => <li key={d.id}>{d.finalidade === "RECONFIRMACAO" ? "Reconfirmação" : "Diagnóstico"} · ocorrência {d.ocorrencia} · {d.previstaPara ? `Previsão: ${formatBRDateISO(d.previstaPara)}` : "Previsão não definida"}{d.pendencias.length > 0 && <span> · {d.pendencias.map(descreverMotivo).join("; ")}</span>}</li>)}</ul> : null;
   const paginas = Math.max(1, Math.ceil(linhas.length / consulta.tamanho));
@@ -108,7 +109,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   return <section className="manejo-v4 space-y-5" aria-label="Manejo reprodutivo">
     <ErrorBox erro={erro}/>
     {erro && <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
-    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de dados</strong><p>Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
+    {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de dados</strong><p>Situação reprodutiva e aptidão são acompanhadas em conjunto. Um animal pode ter mais de um acompanhamento.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
 
     <Panel className="overflow-hidden">
       <header>
@@ -121,8 +122,8 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
         {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
           const fila = filaDe(a.animalId);
           return <article className="reproducao-cartao" key={a.animalId}>
-            <header><span className="repro-animal-icone"><VacaIcon/></span><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p className="repro-lote"><Layers size={15}/>{a.lote?.nome ?? "Lote não informado"}</p></div><div className="repro-aptidao-clinica"><span>Aptidão clínica</span><Pill tone={a.aptidaoClinica === "APTA" ? "green" : "amber"}>{rotuloAptidao(a)}</Pill></div></header>
-            <dl><div><dt>Fila de manejo</dt><dd>{filasDe(a.animalId).map(f => f.titulo).join(" · ") || "Não informada"}</dd></div><div><dt><CalendarDays size={15}/>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
+            <header><span className="repro-animal-icone"><VacaIcon/></span><div><IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/><p className="repro-lote"><Layers size={15}/>{a.lote?.nome ?? "Lote não informado"}</p></div><div className="repro-aptidao-clinica"><span>Aptidão</span><Pill tone={a.aptidaoClinica === "APTA" ? "green" : "amber"}>{rotuloAptidao(a)}</Pill></div></header>
+            <dl><div><dt>Situação reprodutiva</dt><dd>{rotuloSituacao(a)}</dd></div><div><dt>Fila de manejo</dt><dd>{filasDe(a.animalId).map(f => f.titulo).join(" · ") || "Não informada"}</dd></div><div><dt><CalendarDays size={15}/>Data de referência</dt><dd>{a.data ? formatBRDateISO(a.data) : "Não comprovada"}</dd></div></dl>
             {detalhesDiagnostico(a)}
             <div className="reproducao-cartao-acompanhamento">{fila === "pendencias" ? <ul>{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <strong>{prazo(a)}</strong>}</div>
             <footer><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</footer>
@@ -132,7 +133,8 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-sm text-muted-foreground">{prazo(a)}</p></div> : "Não comprovada" },
           { chave: "situacao", titulo: "Fila de manejo", celula: a => <div><span>{filasDe(a.animalId)[0]?.titulo ?? "Conferência necessária"}</span>{filasDe(a.animalId).length > 1 && <span className="block text-sm text-muted-foreground">+{filasDe(a.animalId).length - 1} acompanhamentos</span>}</div> },
-          { chave: "aptidao", titulo: "Aptidão clínica", celula: a => rotuloAptidao(a) },
+          { chave: "situacaoReprodutiva", titulo: "Situação reprodutiva", celula: a => rotuloSituacao(a) },
+          { chave: "aptidao", titulo: "Aptidão", celula: a => rotuloAptidao(a) },
           { chave: "acao", titulo: "Ação", acoes: true, celula: a => <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => setDetalhe(a)}>Ver acompanhamento</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</div> },
         ]}/>}
         <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <SelectCampo className="ml-2" aria-label="Animais por página" value={String(consulta.tamanho)} onValueChange={v => mudar({ tamanho: Number(v) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</SelectCampo></label></div>

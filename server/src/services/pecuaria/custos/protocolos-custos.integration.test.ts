@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -24,6 +25,7 @@ const referencias = (valorMaterial = "0.00", valorServico = "5.00"): Referencias
 // Apenas IDs próprios. Esta suíte não redefine estrutura, cria banco ou usa seed.
 afterAll(async () => {
   if (!sitios.length) return;
+  await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: { in: sitios } }, { animalId: { in: animais } }, { entidadeId: { in: protocolos } }] } });
   await prisma.classificacaoCustoPecuaria.deleteMany({ where: { OR: [{ aplicacao: { animalId: { in: animais } } }, { manejo: { animalId: { in: animais } } }] } });
@@ -52,7 +54,7 @@ async function base() {
 }
 async function animal(f: Awaited<ReturnType<typeof base>>, ordem = 0) {
   const a = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `C10${f.run}${ordem}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: f.sitio.id }), null);
-  animais.push(a.id); return a;
+  animais.push(a.id); await criarAptidaoFixture(prisma, a.id, f.sitio.id, new Date("2026-08-01")); return a;
 }
 async function consultar(contexto: ContextoOperacao, sitio: number, filtro: Record<string, unknown> = {}) {
   return listarProcedimentosOperacao(contexto, sitio, consultaOperacaoSchema.parse(filtro), usuario);

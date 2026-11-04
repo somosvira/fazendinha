@@ -175,6 +175,7 @@ export function mapearContextoProdutivoFicha(contexto: ContextoProdutivoFicha): 
 }
 
 export interface AnimalFicha extends AnimalResumo {
+  historicoEcc?: import("../reproducao/escore-corporal.calc.js").EscoreCorporalFicha[];
   contextoProdutivo?: ContextoProdutivoFicha | null;
   historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
   brincoEletronico: string | null;

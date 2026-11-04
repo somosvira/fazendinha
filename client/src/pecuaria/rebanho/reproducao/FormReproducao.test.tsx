@@ -342,7 +342,7 @@ describe("classe comprovada no histórico inicial", () => {
     expect(reqV4).not.toHaveBeenCalled();
     await alterarControle(screen.getByLabelText("Evidência ou referência"), { target: { value: "Nuliparidade conferida na origem" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
-    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.objectContaining({ classeReprodutiva: "NOVILHA", observacao: "Nuliparidade conferida na origem", situacao: "VAZIA", aptaDesde: undefined }), "POST", 1));
+    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.objectContaining({ classeReprodutiva: "NOVILHA", observacao: "Nuliparidade conferida na origem", situacao: "VAZIA" }), "POST", 1));
   });
   it("preserva evidência e classe no erro e reutiliza chave somente para o mesmo conteúdo", async () => {
     abrir();

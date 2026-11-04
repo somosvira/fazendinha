@@ -21,7 +21,7 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou, emMod
       const input = { animalId, propriedadeId, data, resultado, retornoEm: retorno || null, responsavel, observacao: observacao || null };
       const assinatura = JSON.stringify(input);
       if (chave.current?.assinatura !== assinatura) chave.current = { assinatura, chave: crypto.randomUUID() };
-      try { await registrarToqueAptidao({ ...input, chave: chave.current.chave }); setMensagem("Exame registrado. Liberação depende de decisão individual explícita."); onMudou(); }
+      try { await registrarToqueAptidao({ ...input, chave: chave.current.chave }); setMensagem("Exame registrado. A aptidão considera esta conclusão e as condições vigentes."); onMudou(); }
       catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível registrar o exame."); }
       finally { setOcupado(false); }
     }}>
@@ -30,7 +30,7 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou, emMod
         <label>Retorno informado<Input type="date" min={data} value={retorno} onChange={e => setRetorno(e.target.value)}/></label>
         <label>Responsável pelo toque<Input required minLength={2} maxLength={160} value={responsavel} onChange={e => setResponsavel(e.target.value)}/></label></div>
       <label className="block">Observações do toque<textarea className="mt-1 min-h-24 w-full rounded border bg-background p-3" maxLength={4000} value={observacao} onChange={e => setObservacao(e.target.value)}/></label>
-      <p className="text-sm text-muted-foreground">Inconclusivo não equivale a negativo. Toque de aptidão e DG são exames distintos. O retorno conserva a identidade da necessidade.</p>
+      <p className="text-sm text-muted-foreground">Inconclusivo mantém a aptidão pendente. Para registrar também DG no mesmo exame, use o atendimento de avaliação reprodutiva.</p>
       {erro && <p role="alert">{erro}</p>}{mensagem && <p role="status">{mensagem}</p>}
       <Button type="submit" disabled={ocupado || !resultado}>{ocupado ? "Registrando…" : "Registrar exame de aptidão"}</Button>
     </form>;

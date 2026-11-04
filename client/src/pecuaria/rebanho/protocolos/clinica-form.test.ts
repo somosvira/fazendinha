@@ -28,3 +28,7 @@ it("preparação usa indicadas de todas as páginas e exclui outras decisões/re
  expect(animaisIndicadosParaIatf({versao:1,propriedadeId:7,itens})).toEqual(["a0","a11"]);
  expect(animaisIndicadosParaIatf(null)).toEqual([]);
 });
+
+it("DG e aptidão seguem independentes no mesmo exame e sem indicação de protocolo", () => {
+ expect(montarItemClinico(tarefa,{...avaliacao(),resultado:"NEGATIVO",resultadoAptidao:"APTO",retornoAptidaoEm:"2026-11-12",decisaoIatf:"NAO_INDICAR"})).toMatchObject({resultado:"NEGATIVO",resultadoAptidao:"APTO",retornoAptidaoEm:"2026-11-12",decisaoIatf:"NAO_INDICAR"});
+});

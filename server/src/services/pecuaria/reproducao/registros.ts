@@ -3,7 +3,7 @@ import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.j
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
 import type { PesoSecagemInput } from "./peso-secagem.schemas.js";
-import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
+import { conferirAptidaoParaAcaoTx, conferirConclusaoAptidaoTx } from "./elegibilidade.js";
 import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
@@ -87,7 +87,6 @@ export async function conferirDisponibilidadeTx(
   cienciaSanitaria = false,
 ) {
   const animal = await conferirMatrizTx(tx, animalId, propriedadeId, data);
-  if (["IA", "TE", "IATF"].includes(acao)) await conferirAptidaoParaAcaoTx(tx, animalId, propriedadeId, data, acao === "IATF" ? "PROTOCOLO" : acao as "IA" | "TE");
   const restricoes = await tx.restricaoReprodutiva.findMany({
     where: {
       animalId,
@@ -159,6 +158,7 @@ export async function conferirDisponibilidadeTx(
       "Confirme ciência dos alertas sanitários configurados para esta ação",
       "cienciaSanitaria",
     );
+  if (["IA", "TE", "IATF", "COBERTURA"].includes(acao)) await conferirAptidaoParaAcaoTx(tx, animalId, propriedadeId, data, acao === "IATF" ? "PROTOCOLO" : acao as "IA" | "TE" | "COBERTURA");
   return animal;
 }
 /** Projeção clínica acompanha o animal; o chamador autoriza sua localização na data consultada. */
@@ -548,8 +548,10 @@ export async function prepararAvaliacaoTx(
     erro("Retorno não pode anteceder a avaliação", "retornoEm");
   if (input.previsaoParto && dia(input.previsaoParto) < data)
     erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
+  await conferirConclusaoAptidaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data, resultadoAptidao: input.resultadoAptidao, resultadoGestacional: input.resultado });
   const evidencia = await prepararEvidenciaAvaliacaoTx(tx, {
     ...input, data, resultado: input.resultado, gestacaoCriada,
+    retornoAptidaoEm: input.retornoAptidaoEm ? dia(input.retornoAptidaoEm) : null,
     retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
   });
   return { data, tentativa, gestacao, gestacaoCriada, evidencia };
@@ -617,6 +619,8 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       sexoFetal: input.sexoFetal,
       conduta: input.conduta,
       decisaoIatf: input.decisaoIatf,
+      resultadoAptidao: input.resultadoAptidao,
+      retornoAptidaoEm: input.retornoAptidaoEm ? dia(input.retornoAptidaoEm) : null,
       motivo: input.motivo ?? input.motivoVinculoDesconhecido,
       anotacaoOriginal: input.anotacaoOriginal,
       retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
@@ -648,9 +652,9 @@ export const criarAvaliacao = (
     criarAvaliacaoTx,
     async (tx, id) => {
       const avaliacao = await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } });
-      const interpretacao = await tx.interpretacaoReprodutiva.findUnique({ where: { id }, select: { decisaoIatf: true } });
+      const interpretacao = await tx.interpretacaoReprodutiva.findUnique({ where: { id }, select: { decisaoIatf: true, resultadoAptidao: true, retornoAptidaoEm: true } });
       const decisaoIatf = interpretacao?.decisaoIatf === "INDICAR" ? "INDICAR" as const : interpretacao?.decisaoIatf === "NAO_INDICAR" ? "NAO_INDICAR" as const : null;
-      return { ...avaliacao, decisaoIatf };
+      return { ...avaliacao, decisaoIatf, resultadoAptidao: interpretacao?.resultadoAptidao ?? null, retornoAptidaoEm: interpretacao?.retornoAptidaoEm ?? null };
     },
   );
 export async function criarPartoTx(
@@ -1398,10 +1402,10 @@ export async function painelReproducao(
   });
   const evidencias = await prisma.interpretacaoReprodutiva.findMany({
     where: { id: { in: avaliacoes.map(a => a.id) } },
-    select: { id: true, decisaoIatf:true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
+    select: { id: true, decisaoIatf:true, resultadoAptidao:true, retornoAptidaoEm:true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
   });
   const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
-  const decisoesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.decisaoIatf]));
+  const decisoesPorAvaliacao = new Map(evidencias.map(e => [e.id, e]));
   let marcos:ReturnType<typeof construirMarcosReprodutivos>|null=null;
   if(animalId&&propriedadeId!=null&&estados.has(animalId)){
     const elegibilidade=await carregarDadosElegibilidadeTx(prisma,[animalId],hoje);
@@ -1438,7 +1442,7 @@ export async function painelReproducao(
       };
     }),
     tentativas,
-    avaliacoes: avaliacoes.map(a => ({ ...a, decisaoIatf:decisoesPorAvaliacao.get(a.id)??null, exame: examesPorAvaliacao.get(a.id) ?? null })),
+    avaliacoes: avaliacoes.map(a => ({ ...a, decisaoIatf:decisoesPorAvaliacao.get(a.id)?.decisaoIatf??null, resultadoAptidao:decisoesPorAvaliacao.get(a.id)?.resultadoAptidao??null, retornoAptidaoEm:decisoesPorAvaliacao.get(a.id)?.retornoAptidaoEm??null, exame: examesPorAvaliacao.get(a.id) ?? null })),
     partos: partos.map((p) => ({
       ...p,
       crias: crias

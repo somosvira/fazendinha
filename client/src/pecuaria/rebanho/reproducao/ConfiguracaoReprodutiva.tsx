@@ -130,7 +130,7 @@ export function ConfiguracaoReprodutiva({
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Elegibilidade reprodutiva <AjudaCampo rotulo="Ajuda sobre elegibilidade reprodutiva" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
+        <h2 className="text-xl font-semibold">Aptidão e acompanhamento <AjudaCampo rotulo="Ajuda sobre aptidão e acompanhamento" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
         {podeLancar && <Button type="button" onClick={() => setFormularioAberto(true)}>Nova versão da política</Button>}
       </div>
       {erro && !formularioAberto && (
@@ -164,7 +164,7 @@ export function ConfiguracaoReprodutiva({
                 <dd>
                   {p.parametros.aborto === "PEV_CONFIGURADO"
                     ? `${p.parametros.pevAposAbortoDias} dias de PEV`
-                    : "Liberação individual"}
+                    : "Avaliação individual (regra histórica)"}
                 </dd>
               </div>
               <div>
@@ -185,7 +185,7 @@ export function ConfiguracaoReprodutiva({
                 <dt>Perda gestacional</dt>
                 <dd>
                   {p.parametros.perdaGestacional === "EXIGE_LIBERACAO"
-                    ? "Exigir liberação"
+                    ? "Exigir avaliação individual (regra histórica)"
                     : "Retomar ciclo"}
                 </dd>
               </div>
@@ -204,9 +204,9 @@ export function ConfiguracaoReprodutiva({
                 </dd>
               </div>
             </dl>
-            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios indicam necessidade de avaliação; liberação exige toque apto e decisão individual.</p></div>}
+            {p.parametros.criteriosAptidao && <div className="mt-4 space-y-3 border-t pt-3"><p>{p.parametros.criteriosAptidao.diasAvaliacaoPosParto === null ? "Sem disparo por dias pós-parto." : `Avaliação devida após ${p.parametros.criteriosAptidao.diasAvaliacaoPosParto} dias de parto comprovado.`}</p><ResumoCriteriosAptidao titulo="Vacas" valor={p.parametros.criteriosAptidao.vacas}/><ResumoCriteriosAptidao titulo="Novilhas" valor={p.parametros.criteriosAptidao.novilhas}/><p className="text-sm">Critérios geram aviso para avaliação. A aptidão vem do exame e das condições vigentes.</p></div>}
             <p className="mt-3 text-sm text-muted-foreground">
-              Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com avaliação e decisão explícitas" : "histórica"}
+              Base IDEAGRI/IILB — política de critérios {p.parametros.versao === 2 ? "com critérios de aviso" : "histórica"}
             </p>
           </details>
         ))}
@@ -219,7 +219,7 @@ export function ConfiguracaoReprodutiva({
           className="space-y-4"
         >
           <fieldset disabled={ocupado} className="space-y-4 min-w-0">
-          <p className="text-sm">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. Ciclos antigos exigem associação explícita na ficha do animal."/></p>
+          <p className="text-sm">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. O PEV original só é exibido quando existe vínculo com a política do ciclo."/></p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
@@ -253,13 +253,14 @@ export function ConfiguracaoReprodutiva({
                 onChange={(e) => setMultiparas(e.target.value)}
               />
             </label>
+            <p className="sm:col-span-2 lg:col-span-3 text-sm">As regras abaixo preservam o cálculo dos indicadores históricos. Na operação, aborto e perda exigem novo exame; descarte e condições impeditivas vigentes tornam o animal não apto, independentemente destas opções.</p>
             <Escolha
               rotulo="Após aborto"
               valor={aborto}
               mudar={setAborto}
               opcoes={[
                 ["PEV_CONFIGURADO", "Cumprir PEV específico"],
-                ["LIBERACAO_EXPLICITA", "Exigir liberação individual"],
+                ["LIBERACAO_EXPLICITA", "Exigir avaliação individual"],
               ]}
             />
             {aborto === "PEV_CONFIGURADO" && (
@@ -298,7 +299,7 @@ export function ConfiguracaoReprodutiva({
               valor={perda}
               mudar={setPerda}
               opcoes={[
-                ["EXIGE_LIBERACAO", "Exigir nova liberação"],
+                ["EXIGE_LIBERACAO", "Exigir nova avaliação"],
                 ["RETOMAR_CICLO", "Retomar regras do ciclo"],
               ]}
             />
@@ -313,7 +314,7 @@ export function ConfiguracaoReprodutiva({
             <label className="mt-4 block">Motivo da nova versão<Input required minLength={5} maxLength={1000} value={motivoVersao} onChange={e => setMotivoVersao(e.target.value)}/></label>
           </div>
           <fieldset>
-            <legend className="mb-2">Papéis incluídos na elegibilidade <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Novilhas dependem da situação inicial com “apta desde” ou de liberação individual. Idade e DEL não liberam automaticamente."/></legend>
+            <legend className="mb-2">Papéis incluídos nos indicadores <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Este recorte pertence aos indicadores históricos. O papel reprodutivo não determina a aptidão atual."/></legend>
             {(
               [
                 ["NENHUM", "Nenhum"],

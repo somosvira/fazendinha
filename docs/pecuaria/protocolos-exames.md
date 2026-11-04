@@ -122,6 +122,8 @@ O escopo não inclui prescrição automática, laboratório/FIV, produção/qual
 
 ## Exame e interpretação
 
+O mesmo exame pode concluir DG e aptidão: `InterpretacaoReprodutiva.resultadoAptidao` e `retornoAptidaoEm` são opcionais e independentes da conclusão gestacional/indicação IATF. A finalidade adicional identifica aptidão sem duplicar `ExameAnimal`. Exame exclusivamente de aptidão usa a finalidade própria, sem criar DG. A conclusão exige responsável; positivo não admite aptidão para nova reprodução. Protocolos, IA, TE e cobertura consultam a mesma aptidão geral. Veja o [contrato dos dois eixos](reproducao.md#situação-reprodutiva-e-aptidão).
+
 `TipoExame` define o contexto SANITARIO/REPRODUTIVO/COMPARTILHADO e uma versão de formato. Uma realização em `ExameAnimal` guarda animal, sítio, data, responsável, autoria, finalidades, realização/não realização, anotação original e snapshot do formato. `ResultadoExame` permite várias observações estruturadas na mesma realização: campo, valor, unidade e autoria.
 
 Formatos históricos TEXTO/NUMERO/OPCAO conservam os campos escalares existentes; o formato MULTIPLO usa as observações. O banco impede misturar resultado escalar e estruturado na mesma realização. Resultado ausente é diferente de zero, falso e negativo. Correção de resultado conserva as observações substituídas e audita o antes/depois, usando o formato da coleta.
@@ -266,3 +268,5 @@ A interface consulta `POST /automacoes/:id/previa-excecao` antes de confirmar o 
 O início coletivo usa **Conferir calendário**, seguido de **Confirmar programação**. `POST /programacoes/previa` valida até cem participantes distintos no sítio, consulta o calendário da versão para o início comum e mostra os horários automáticos configurados. A conferência não grava participantes nem atendimentos; as validações operacionais continuam na confirmação. Alterar a preparação invalida sua conferência, preservando o rascunho. Nome do grupo, modelo/versão, participantes e revisões de etapas vencidas permanecem visíveis antes da gravação.
 
 Consultas `/:contexto/:id/custos-etapas` e `/:contexto/:id/agenda-etapas` agrupam no servidor antes da paginação. Custos distinguem participantes, atendimento completo e apuração parcial, sem somar novamente uma fonte compartilhada. `verValores` protege também estimativas e origens financeiras do DTO. Ausência de custo não recebe zero fictício. Os endpoints de automação são contextuais a programações/participações; autorização, revisão e exceção exigem sessão real, Pecuária, lançamento e sítio.
+
+A revisão de autorização automática recebe `revisaoEsperada` carregada na preparação. Sob a trava do job, uma revisão concorrente é recusada antes de atualizar dose, produto ou calendário; o editor deve recarregar a autorização atual. Isso complementa a revisão monotônica usada pelo executor.

@@ -120,7 +120,8 @@ function resultadoTarefa(t: TarefaOperacional): string | undefined {
   if (resultado.realizacao === "COLETA_REGISTRADA") return "Coleta registrada";
   if (resultado.realizacao === "NAO_REALIZADO") return "Registro legado de exame não realizado";
   const conclusao = resultado.resultados.find(r => r.campo === "CONCLUSAO_GESTACIONAL")?.valor;
-  return typeof conclusao === "string" ? ({ POSITIVO: "Gestação confirmada", NEGATIVO: "Gestação não confirmada", INCONCLUSIVO: "Exame inconclusivo" } as Record<string,string>)[conclusao] ?? "Exame realizado" : "Exame realizado";
+  const rotulo = typeof conclusao === "string" ? ({ POSITIVO: "Gestação confirmada", NEGATIVO: "Gestação não confirmada", INCONCLUSIVO: "Exame inconclusivo" } as Record<string,string>)[conclusao] ?? "Exame realizado" : "Exame realizado";
+  return resultado.resultadoAptidao ? `${rotulo} · Aptidão: ${({ APTO: "Apta", NAO_APTO: "Não apta", INCONCLUSIVO: "Pendente" } as Record<string,string>)[resultado.resultadoAptidao] ?? "Não informada"}` : rotulo;
 }
 
 function registroLegadoSemFato(t: TarefaOperacional): boolean {
