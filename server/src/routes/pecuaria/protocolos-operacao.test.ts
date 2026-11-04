@@ -4,12 +4,14 @@ import type { UsuarioContexto } from "../../services/auth/sessao.js";
 import { uid } from "../../lib/uid.fixture.js";
 const ficha=vi.hoisted(()=>vi.fn());
 vi.mock("../../services/pecuaria/protocolos/ficha-animal.js",async original=>({...await original<typeof import("../../services/pecuaria/protocolos/ficha-animal.js")>(),listarProtocolosAnimal:ficha}));
-const mocks = vi.hoisted(() => ({ cabecalho: vi.fn(), momentos: vi.fn(), previaComum: vi.fn(), confirmarComum: vi.fn(), reciboComum: vi.fn(), etapas: vi.fn(), tarefas: vi.fn(), procedimentos: vi.fn(), eventos: vi.fn(), previa: vi.fn(), participacoes: vi.fn(), programacoes: vi.fn(), versoes: vi.fn(), origensFato: vi.fn(), vinculosColetivos: vi.fn(), participantes: vi.fn(), previaExecucao: vi.fn(), registrar: vi.fn(), individual: vi.fn(), sanitario: vi.fn() }));
-vi.mock("../../services/pecuaria/protocolos/operacao.js", () => ({ obterCabecalhoOperacao: mocks.cabecalho, listarMomentosOperacao: mocks.momentos, listarEtapasOperacao: mocks.etapas, listarTarefasOperacao: mocks.tarefas, listarProcedimentosOperacao: mocks.procedimentos, listarEventosTarefaOperacao: mocks.eventos, preverParticipacaoIndividual: mocks.previa, listarParticipacoesOperacao: mocks.participacoes, listarProgramacoesOperacao: mocks.programacoes, listarVersoesOperacao: mocks.versoes, listarOrigensFatoOperacao: mocks.origensFato, listarVinculosColetivosOperacao: mocks.vinculosColetivos, listarParticipantesOperacao: mocks.participantes }));
+const mocks = vi.hoisted(() => ({ custosEtapas: vi.fn(), agendaEtapas: vi.fn(), cabecalho: vi.fn(), momentos: vi.fn(), previaComum: vi.fn(), confirmarComum: vi.fn(), reciboComum: vi.fn(), etapas: vi.fn(), tarefas: vi.fn(), procedimentos: vi.fn(), eventos: vi.fn(), previa: vi.fn(), participacoes: vi.fn(), programacoes: vi.fn(), versoes: vi.fn(), origensFato: vi.fn(), vinculosColetivos: vi.fn(), participantes: vi.fn(), previaExecucao: vi.fn(), registrar: vi.fn(), individual: vi.fn(), sanitario: vi.fn() }));
+vi.mock("../../services/pecuaria/protocolos/operacao.js", () => ({ listarCustosEtapasOperacao: mocks.custosEtapas, listarAgendaEtapasOperacao: mocks.agendaEtapas, obterCabecalhoOperacao: mocks.cabecalho, listarMomentosOperacao: mocks.momentos, listarEtapasOperacao: mocks.etapas, listarTarefasOperacao: mocks.tarefas, listarProcedimentosOperacao: mocks.procedimentos, listarEventosTarefaOperacao: mocks.eventos, preverParticipacaoIndividual: mocks.previa, listarParticipacoesOperacao: mocks.participacoes, listarProgramacoesOperacao: mocks.programacoes, listarVersoesOperacao: mocks.versoes, listarOrigensFatoOperacao: mocks.origensFato, listarVinculosColetivosOperacao: mocks.vinculosColetivos, listarParticipantesOperacao: mocks.participantes }));
 vi.mock("../../services/pecuaria/protocolos/eventos.js", async original => ({ ...await original<typeof import("../../services/pecuaria/protocolos/eventos.js")>(), registrarEventoTarefa: mocks.registrar }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), criarParticipacaoIndividualReprodutiva: mocks.individual, preverInicioExecucaoTarefa: mocks.previaExecucao }));
 vi.mock("../../services/pecuaria/sanidade/protocolos.js", () => ({ iniciarExecucao: mocks.sanitario }));
 vi.mock("../../services/pecuaria/protocolos/execucao.js",()=>({preverExecucaoProtocolo:mocks.previaComum,confirmarExecucaoProtocolo:mocks.confirmarComum,obterReciboExecucaoProtocolo:mocks.reciboComum}));
+const automacoes = vi.hoisted(() => ({ lembretes: vi.fn(), preparacao: vi.fn(), previa: vi.fn(), listar: vi.fn(), ativar: vi.fn(), revisar: vi.fn(), excecao: vi.fn() }));
+vi.mock("../../services/pecuaria/protocolos/automacao.js", async original => ({ ...await original<typeof import("../../services/pecuaria/protocolos/automacao.js")>(), listarLembretesAutomacoes: automacoes.lembretes, obterPreparacaoAutomacao: automacoes.preparacao, preverAutomacoesAdesao: automacoes.previa, listarAutomacoes: automacoes.listar, ativarAutomacao: automacoes.ativar, revisarAutomacao: automacoes.revisar, registrarExcecaoAutomacao: automacoes.excecao }));
 import { protocolosOperacaoRouter } from "./protocolos-operacao.js";
 const id = uid(401), animalId = uid(402), protocoloId = uid(403);
 function app(lancar = false, area = true, autenticado = true) {
@@ -120,4 +122,53 @@ describe("operação comum de protocolos", () => {
     expect(mocks.momentos).toHaveBeenCalledWith({programacaoId:id},114,expect.objectContaining({pagina:2,porPagina:10}));
   });
 
+});
+
+describe("automação e consultas agrupadas", () => {
+  const entrada = { propriedadeId: 114, participacaoId: id, momentoId: uid(420), itens: [{ tipo: "APLICACAO", tarefaId: uid(421), animalId, propriedadeId: 114, data: "2026-11-05", nomeProdutoAplicado: "Produto", dose: "2", unidadeDose: "ML", origemInsumo: "BAIXA_ESTOQUE" }] };
+  it("exige lançamento, autoria de sessão e validação antes de autorizar", async () => {
+    automacoes.ativar.mockResolvedValue({ id: uid(422), estado: "AGENDADA" });
+    expect((await app().request("/automacoes/ativar", post(entrada))).status).toBe(403);
+    expect(automacoes.ativar).not.toHaveBeenCalled();
+    expect((await app(true).request("/automacoes/ativar", post({ ...entrada, usuarioId: 99 }))).status).toBe(422);
+    expect((await app(true).request("/automacoes/ativar", post(entrada))).status).toBe(201);
+    expect(automacoes.ativar).toHaveBeenCalledWith(entrada, 7);
+  });
+  it("revisão e exceção exigem motivo e conservam escopo e autoria", async () => {
+    automacoes.revisar.mockResolvedValue({ id, configuracao: { valorServicoAtribuido: "99" } }); automacoes.excecao.mockResolvedValue({ id });
+    expect((await app(true).request(`/automacoes/${id}/revisao`, post(entrada))).status).toBe(422);
+    const revista = await app(true).request(`/automacoes/${id}/revisao`, post({ ...entrada, motivo: "Correção do lote selecionado" }));
+    expect(revista.status).toBe(200);
+    expect(await revista.json()).not.toHaveProperty("configuracao");
+    expect(automacoes.revisar).toHaveBeenCalledWith(id, expect.objectContaining({ propriedadeId: 114 }), 7);
+    const excecao = { chave: uid(423), propriedadeId: 114, motivo: "Animal retirado do programa", retirarDoProtocolo: true };
+    expect((await app().request(`/automacoes/${id}/excecao`, post(excecao))).status).toBe(403);
+    expect((await app(true).request(`/automacoes/${id}/excecao`, post(excecao))).status).toBe(200);
+    expect(automacoes.excecao).toHaveBeenCalledWith(id, { ...excecao, reversoes: [] }, 7);
+  });
+  it("consulta automações e custos com sítio explícito e contexto correto", async () => {
+    automacoes.listar.mockResolvedValue([]); mocks.custosEtapas.mockResolvedValue({ itens: [] }); mocks.agendaEtapas.mockResolvedValue({ itens: [] });
+    expect((await app().request(`/programacoes/${id}/automacoes?propriedadeId=114`)).status).toBe(200);
+    expect(automacoes.listar).toHaveBeenCalledWith(114, { programacaoId: id });
+    expect((await app().request(`/participacoes/${id}/custos-etapas?propriedadeId=114`)).status).toBe(200);
+    expect(mocks.custosEtapas).toHaveBeenCalledWith({ participacaoId: id }, 114, expect.objectContaining({ porPagina: 10 }), expect.objectContaining({ id: 7 }));
+    expect((await app().request(`/programacoes/${id}/agenda-etapas?propriedadeId=114`)).status).toBe(200);
+    expect(mocks.agendaEtapas).toHaveBeenCalledWith({ programacaoId: id }, 114, expect.objectContaining({ porPagina: 10 }));
+  });
+  it("não aceita valor de serviço na adesão sem verValores", async () => {
+    expect((await app(true).request("/participacoes", post({ ...individual, automacoes: [{ animalId, etapaId: uid(424), dados: { valorServicoAtribuido: "10" } }] }))).status).toBe(403);
+    expect(mocks.individual).not.toHaveBeenCalled();
+  });
+});
+
+it("prévia e lembretes são leitura, e preparação protege valores financeiros", async () => {
+  automacoes.previa.mockResolvedValue({ itens: [], automacaoHabilitada: false }); automacoes.lembretes.mockResolvedValue([]); automacoes.preparacao.mockResolvedValue({ id });
+  const entrada = { propriedadeId: 114, protocoloId, animais: [{ animalId, inicioPrevisto: "2026-11-05" }] };
+  expect((await app().request("/automacoes/previa-adesao", post(entrada))).status).toBe(200);
+  expect(automacoes.previa).toHaveBeenCalledWith(entrada);
+  expect((await app().request("/automacoes/lembretes?propriedadeId=114&data=2026-11-05")).status).toBe(200);
+  expect(automacoes.lembretes).toHaveBeenCalledWith(114, "2026-11-05");
+  expect((await app().request("/automacoes/lembretes?propriedadeId=114&data=invalida")).status).toBe(422);
+  expect((await app().request(`/automacoes/${id}/preparacao?propriedadeId=114`)).status).toBe(200);
+  expect(automacoes.preparacao).toHaveBeenCalledWith(id, 114, false);
 });

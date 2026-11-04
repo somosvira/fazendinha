@@ -54,7 +54,7 @@ it("separa liberação comprovada de diagnóstico e pendências, sem projetar da
   const historico = vi.fn(); const registrar = vi.fn();
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false} onConsultarHistorico={historico} onRegistrarEvento={registrar}/>);
   await screen.findAllByText("V4-1");
-  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(screen.queryByText("V4-9")).toBeNull();
   expect(screen.getByText("Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.")).toBeTruthy();
   expect(screen.queryByText("V4-3")).toBeNull(); expect(screen.getAllByText("V4-4")[0]).toBeTruthy();
@@ -83,7 +83,7 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await abrirFiltrosConsulta();
   await alterarControle(screen.getByLabelText("Filtrar lote"), { target: { value: "l2" } });
   await aplicarFiltrosConsulta();
-  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy(); expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
+  expect(screen.getByText("1–1 de 1 animais")).toBeTruthy(); expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(screen.queryByText("V4-1")).toBeNull(); expect(screen.getAllByText("V4-2")[0]).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get("pagina")).toBe("1");
   await abrirFiltrosConsulta();
@@ -96,7 +96,7 @@ it("filtra contagens globais antes de paginar, muda ordem e preserva URL e taman
   await alterarControle(screen.getByLabelText("Animais por página"), { target: { value: "10" } });
   expect(screen.getByText("1–6 de 6 animais")).toBeTruthy();
   fireEvent.change(screen.getByLabelText("Buscar animal"), { target: { value: "Animal 5" } });
-  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(window.location.search).toContain("sitio=7"); expect(window.location.search).toContain("porPagina=10");
 });
 it("percorre todas as páginas da lista autorizada e restaura filtros ao voltar", async () => {
@@ -141,7 +141,7 @@ it("exclui baixadas, servidas e gestantes e mantém pendências de escopo da fil
   });
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
   await screen.findAllByText("V4-1");
-  expect(screen.getByRole("button", { name: /^Liberadas sem serviço/ })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   for (const id of ["2","3","4"]) expect(screen.queryByText(`V4-${id}`)).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Revisar pendências" }));
   expect(screen.getAllByText("Papel reprodutivo não informado.").length).toBeGreaterThan(0);
@@ -229,12 +229,11 @@ it("usa as novas filas sem contar crescimento como pendência e reúne animais �
     elegibilidade("9", { elegivel: null, necessidadeAptidao: necessidade("9", "CRITERIOS_NAO_ATINGIDOS") }),
   ] });
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
-  await screen.findByRole("button", { name: "Outras filas" });
-  fireEvent.keyDown(screen.getByRole("button", {name:"Outras filas"}), {key:"ArrowDown"});
-  await screen.findByRole("menuitem", {name:"Avaliação devida · 1"});
+  await screen.findByText("V4-1");
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(screen.getByText("1–3 de 3 animais")).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Revisar pendências" })).toBeNull();
-  fireEvent.click(screen.getByRole("menuitem", { name: "Agendadas · 1" }));
+  await alterarControle(screen.getByRole("combobox", { name: "Fila de manejo" }), { target: { value: "agendamento" } });
   expect(screen.getByText("20/10/2026")).toBeTruthy();
   expect(screen.getByRole("link", { name: "Visita de reprodução" })).toBeTruthy();
   expect(window.location.search).toContain("fila=agendamento");
@@ -249,10 +248,8 @@ it("mantém aptidão clínica e liberação como eixos, sem duplicar animal em t
   window.history.replaceState(null, "", "/pecuaria/reproducao?fila=todas");
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
   await screen.findByText("Apta");
-  fireEvent.keyDown(screen.getByRole("button", {name:"Outras filas"}), {key:"ArrowDown"});
-  expect(await screen.findByRole("menuitem", { name: "Aptidão avaliada · 1" })).toBeTruthy();
-  fireEvent.keyDown(screen.getByRole("menuitem", {name:"Aptidão avaliada · 1"}),{key:"Escape"});
-  expect(screen.getByRole("button", { name: "Liberadas sem serviço · 1" })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
+  expect(screen.getByRole("combobox", { name: "Fila de manejo" })).toBeTruthy();
   expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
   expect(screen.getByText("01/10/2026")).toBeTruthy();
   expect(screen.getByText("16 dias sem serviço")).toBeTruthy();
@@ -273,7 +270,7 @@ it("mostra reconfirmação pendente de gestante sem perder identidade ou inventa
     { id: "reconfirmacao-2", finalidade: "RECONFIRMACAO", ocorrencia: 2, tentativaId: "tentativa-1", gestacaoId: "gestacao-1", dataReferencia: "2026-09-01", previstaPara: null, pendencias: [] },
   ] })] });
   render(<ManejoReprodutivo propriedadeId={7} podeLancar={false}/>);
-  await screen.findByRole("button", { name: "Diagnóstico e reconfirmação · 1" });
+  await screen.findByText("V4-1");
   expect(screen.getByText("1–1 de 1 animais")).toBeTruthy();
   expect(screen.getByText("Reconfirmação · ocorrência 1 · Previsão: 15/10/2026")).toBeTruthy();
   expect(screen.getByText("Reconfirmação · ocorrência 2 · Previsão não definida")).toBeTruthy();

@@ -9,7 +9,7 @@ export function EditorModeloReprodutivo({ origemCadastro, etapas, setEtapas, set
   origemCadastro: CadastroProtocoloMeta | null; etapas: EtapaIatf[]; setEtapas: Dispatch<SetStateAction<EtapaIatf[]>>;
   setAcoesCompletas: (valor: boolean) => void; acoesCompletas: boolean; indiceErroCadastro: number | null; sitioEfetivo?: number | null; contratoNovo?: boolean;
 }) {
-  return <BuilderEtapasProtocolo<EtapaIatf>
+  return <BuilderEtapasProtocolo<EtapaIatf> permitirAutomacao
                   origem={origemCadastro} itens={etapas} onChange={setEtapas} onCompletoChange={setAcoesCompletas}
                   indiceErro={indiceErroCadastro}
                   criarAcao={(momento, referencia) => ({ chaveEdicao: crypto.randomUUID(), nome: "Aplicação de produto", tipo: "APLICACAO", intervalo: referencia?.intervalo ?? 0, unidade: referencia?.unidade ?? "DIAS", orientacaoTemporal: referencia?.orientacaoTemporal, momento: { ...momento } })}

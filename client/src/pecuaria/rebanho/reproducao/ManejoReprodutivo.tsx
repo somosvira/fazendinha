@@ -1,6 +1,5 @@
 import "../telas/rotinas-aprovadas.css";
-import {DropdownMenu,DropdownMenuTrigger,DropdownMenuContent,DropdownMenuItem} from "../../../components/ui/dropdown-menu";
-import {ChevronDown,Plus,Layers,CalendarDays} from "lucide-react";
+import {Plus,Layers,CalendarDays} from "lucide-react";
 import {VacaIcon} from "../../../components/icons/VacaIcon";
 import { incorporarAptidaoManejo } from "./manejo-aptidao";
 import { listarCategorias } from "../api";
@@ -17,7 +16,7 @@ import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import { useEffect, useState } from "react";
 import { ClipboardList, Search, Stethoscope, TriangleAlert, Venus } from "lucide-react";
 import { ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
-import { classeInput } from "../../../financeiro/PainelCadastro";
+import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { Paginacao } from "../ui";
 import { obterReproducao } from "./api";
@@ -40,6 +39,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   propriedadeId?: number; podeLancar: boolean; onRegistrarEvento?: () => void; onConsultarHistorico?: () => void; recarregarToken?: number;
 }) {
   const visual = useVisualizacaoConsulta("visualAnimaisReproducao", "reproducao");
+  const [detalhe, setDetalhe] = useState<LinhaManejo | null>(null);
   const [consulta, setConsulta] = useState(lerConsultaManejo);
   const [dados, setDados] = useState<DadosManejo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
   }
     const edicaoFiltros = useRascunhoConsulta({fila:consulta.fila,busca:consulta.busca,lote:consulta.lote,ordem:consulta.ordem},{fila:"manejo" as ConsultaManejo["fila"],busca:"",lote:"",ordem:"maior-espera" as ConsultaManejo["ordem"]},v=>mudar(v));
   const campos: CampoConsulta[] = [
-    {chave:"situacao",ativo:consulta.fila!=="manejo",limpar:()=>edicaoFiltros.editar("fila","manejo"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="manejo">Manejo: avaliações e serviços</option><option value="todas">Todas as filas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
+    {chave:"situacao",naBarra:true,ativo:consulta.fila!=="manejo",limpar:()=>edicaoFiltros.editar("fila","manejo"),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação do manejo" value={edicaoFiltros.rascunho.fila} onValueChange={v=>edicaoFiltros.editar("fila",v as ConsultaManejo["fila"])}><option value="manejo">Manejo: avaliações e serviços</option><option value="todas">Todas as filas</option>{FILAS.map(f=><option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"animal", naBarra: true,ativo:!!consulta.busca,limpar:()=>edicaoFiltros.editar("busca",""),conteudo:<CampoFiltro rotulo="Animal"><Input className={classeInput} aria-label="Buscar animal no filtro" value={edicaoFiltros.rascunho.busca} onChange={e=>edicaoFiltros.editar("busca",e.target.value)}/></CampoFiltro>},
     {chave:"lote",ativo:!!consulta.lote,limpar:()=>edicaoFiltros.editar("lote",""),conteudo:<CampoFiltro rotulo="Lote"><SelectCampo aria-label="Filtrar lote" value={edicaoFiltros.rascunho.lote} onValueChange={v=>edicaoFiltros.editar("lote",v)}><option value="">Todos os lotes</option><option value="sem-lote">Sem lote informado</option>{consulta.lote && consulta.lote!=="sem-lote" && !lotes.some(l=>l.id===consulta.lote) && <option value={consulta.lote}>Lote selecionado sem animais nesta consulta</option>}{lotes.map(l=><option key={l.id} value={l.id}>{l.nome}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"ordem",colunas:[],ativo:consulta.ordem!=="maior-espera",limpar:()=>edicaoFiltros.editar("ordem","maior-espera"),conteudo:<CampoFiltro rotulo="Ordenar por"><SelectCampo aria-label="Ordenar animais" value={edicaoFiltros.rascunho.ordem} onValueChange={v=>edicaoFiltros.editar("ordem",v as ConsultaManejo["ordem"])}><option value="maior-espera">Maior espera</option><option value="menor-espera">Menor espera</option><option value="animal">Identificação do animal · A–Z</option><option value="animal-desc">Identificação do animal · Z–A</option></SelectCampo></CampoFiltro>},
@@ -109,11 +109,11 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
     <ErrorBox erro={erro}/>
     {erro && <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Tentar novamente</Button>}
     {visivel && filtradas.pendencias.length > 0 && <aside className="reproducao-pendencias"><TriangleAlert aria-hidden size={20}/><div><strong>{filtradas.pendencias.length} animais com pendências de dados</strong><p>Avaliação, liberação e diagnóstico são acompanhamentos separados. Um animal pode aparecer em mais de uma fila.</p></div><Button variant="outline" onClick={() => mudar({ fila: "pendencias" })}>Revisar pendências</Button></aside>}
-    {visivel && <nav aria-label="Filas de manejo" className="repro-filas-visuais">{[FILAS[0], FILAS[1], FILAS[6]].map(f => <button type="button" key={f.id} aria-label={`${f.titulo} · ${filtradas[f.id].length}`} aria-pressed={consulta.fila === f.id} onClick={() => mudar({fila:f.id})}><span className="repro-fila-icone"><f.Icone size={22}/></span><span>{f.titulo}</span><strong>{filtradas[f.id].length}</strong></button>)}<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline">{atual && !["liberadas","diagnostico","pendencias"].includes(atual.id) ? atual.titulo : "Outras filas"}<ChevronDown size={17}/></Button></DropdownMenuTrigger><DropdownMenuContent>{FILAS.slice(2,6).map(f=><DropdownMenuItem key={f.id} onSelect={()=>mudar({fila:f.id})}><f.Icone size={17}/>{f.titulo} · {filtradas[f.id].length}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu></nav>}
+
     <Panel className="overflow-hidden">
       <header>
 
-        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}><Plus size={18}/>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="manejo"?[{id:"fila",rotulo:atual?.titulo??"Todas as filas",limpar:()=>mudar({fila:"manejo"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
+        <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}><Plus size={18}/>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="manejo"?[{id:"fila",rotulo:atual?.titulo??"Todas as filas",limpar:()=>mudar({fila:"manejo"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label><label className="min-w-56 text-sm">Fila de manejo<SelectCampo aria-label="Fila de manejo" value={consulta.fila} onValueChange={v => mudar({ fila: v as ConsultaManejo["fila"] })}><option value="manejo">Avaliações e serviços</option><option value="todas">Todas as filas</option>{FILAS.map(f => <option key={f.id} value={f.id}>{f.titulo}</option>)}</SelectCampo></label></BarraConsulta>
       </header>
       {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
       {visivel && <>
@@ -131,13 +131,14 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
           { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 160, celula: a => <IdentificacaoReproducao id={a.animalId} brinco={a.brinco} nome={a.nome} sitio={propriedadeId}/> },
           { chave: "lote", titulo: "Lote", larguraMinima: 110, celula: a => a.lote?.nome ?? "Não informado" },
           { chave: "data", titulo: "Data de referência", celula: a => a.data ? <div>{formatBRDateISO(a.data)}<p className="text-sm text-muted-foreground">{prazo(a)}</p></div> : "Não comprovada" },
-          { chave: "situacao", titulo: consulta.fila === "pendencias" ? "Conferência necessária" : "Situação", celula: a => filaDe(a.animalId) === "pendencias" ? <ul className="max-w-sm space-y-1 text-sm">{a.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul> : <div><span>{filasDe(a.animalId).map(f => f.titulo).join(" · ")}</span>{detalhesDiagnostico(a)}</div> },
+          { chave: "situacao", titulo: "Fila de manejo", celula: a => <div><span>{filasDe(a.animalId)[0]?.titulo ?? "Conferência necessária"}</span>{filasDe(a.animalId).length > 1 && <span className="block text-sm text-muted-foreground">+{filasDe(a.animalId).length - 1} acompanhamentos</span>}</div> },
           { chave: "aptidao", titulo: "Aptidão clínica", celula: a => rotuloAptidao(a) },
-          { chave: "acao", titulo: "Ação", acoes: true, celula: a => <div className="flex flex-wrap justify-end gap-2"><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</div> },
+          { chave: "acao", titulo: "Ação", acoes: true, celula: a => <div className="flex flex-wrap justify-end gap-2"><Button variant="outline" onClick={() => setDetalhe(a)}>Ver acompanhamento</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${a.animalId}#reproducao`}>Abrir ficha</LinkReproducao>{a.visitas?.map(v => <LinkReproducao key={v.id} botao sitio={propriedadeId} href={`/pecuaria/visitas/${v.id}`}>{v.nome}</LinkReproducao>)}</div> },
         ]}/>}
         <div className="flex flex-wrap items-center justify-end border-t border-border px-4 pt-3"><label className="text-sm">Animais por página <SelectCampo className="ml-2" aria-label="Animais por página" value={String(consulta.tamanho)} onValueChange={v => mudar({ tamanho: Number(v) })}>{[4,10,25,50].map(n => <option key={n} value={n}>{n} por página</option>)}</SelectCampo></label></div>
         <Paginacao paginaAtual={pagina} totalPaginas={paginas} totalItens={linhas.length} itensPorPagina={consulta.tamanho} onPaginaChange={pagina => mudar({ pagina })} rotulo="animais" idSelect="pagina-manejo"/>
       </>}
     </Panel>
+    {detalhe && <PainelCadastro icon={ClipboardList} aberto titulo={`Acompanhamento · ${detalhe.brinco}`} onFechar={() => setDetalhe(null)} rodape={<Button variant="outline" onClick={() => setDetalhe(null)}>Fechar</Button>}><div className="grid gap-4"><p>{filasDe(detalhe.animalId).map(f => f.titulo).join(" · ")}</p><p>{detalhe.data ? formatBRDateISO(detalhe.data) : "Data não comprovada"} · {prazo(detalhe)}</p>{detalhesDiagnostico(detalhe)}{detalhe.motivos.length > 0 && <ul className="list-inside list-disc">{detalhe.motivos.map(m => <li key={m}>{descreverMotivo(m)}</li>)}</ul>}<LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${detalhe.animalId}#reproducao`}>Abrir ficha do animal</LinkReproducao></div></PainelCadastro>}
   </section>;
 }

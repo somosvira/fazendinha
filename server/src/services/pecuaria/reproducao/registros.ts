@@ -1,3 +1,4 @@
+import { resolverDecisaoIatf, quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
@@ -313,8 +314,9 @@ export async function prepararTentativaTx(
     codigo: string;
     validade: Date | null;
   } | null = null;
-  const quantidade: Prisma.Decimal | null =
-    input.quantidade == null ? null : new Prisma.Decimal(input.quantidade);
+  const quantidadeInformada = quantidadePadraoTentativa(input.tipo, input.quantidade, material?.produto.unidade);
+  validarConsumoExcepcionalTentativa(input.tipo, quantidadeInformada, material?.produto.unidade, input.motivoQuantidadeExcepcional);
+  const quantidade = quantidadeInformada == null ? null : new Prisma.Decimal(quantidadeInformada);
   if (input.tipo === "COBERTURA") {
     if (input.origem === "ESTOQUE" || quantidade || input.partidaId)
       erro("Cobertura não possui baixa de insumo", "origem");
@@ -430,6 +432,8 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
     depois: {
       ...criada,
       cienciaSanitaria: input.cienciaSanitaria === true,
+      quantidadeExcepcional: input.tipo !== "COBERTURA" && criada.quantidade != null && !criada.quantidade.eq(1),
+      motivoQuantidadeExcepcional: input.motivoQuantidadeExcepcional ?? null,
       cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida === true,
       documentacaoExcepcional: input.documentacaoExcepcional === true,
       motivoDocumentacaoExcepcional:
@@ -457,6 +461,7 @@ export async function prepararAvaliacaoTx(
   input: AvaliacaoInput,
   usuarioId: number | null,
 ) {
+  input = { ...input, ...resolverDecisaoIatf(input) };
   await travarAnimais(tx, [input.animalId]);
   const data = dia(input.data);
   if (input.sexoFetal && ["NAO_AVALIADO", "NEGATIVO"].includes(input.resultado)) erro("Sexo fetal exige exame realizado com evidência de gestação", "sexoFetal");
@@ -550,6 +555,7 @@ export async function prepararAvaliacaoTx(
   return { data, tentativa, gestacao, gestacaoCriada, evidencia };
 }
 export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, usuarioId: number | null) {
+  input = { ...input, ...resolverDecisaoIatf(input) };
   const preparada = await prepararAvaliacaoTx(tx, input, usuarioId);
   const { data, tentativa, gestacaoCriada } = preparada;
   let gestacao = preparada.gestacao;
@@ -610,6 +616,7 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       gestacaoId: gestacao?.id,
       sexoFetal: input.sexoFetal,
       conduta: input.conduta,
+      decisaoIatf: input.decisaoIatf,
       motivo: input.motivo ?? input.motivoVinculoDesconhecido,
       anotacaoOriginal: input.anotacaoOriginal,
       retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
@@ -623,7 +630,7 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     propriedadeId: input.propriedadeId,
     acao: "REGISTRO",
     usuarioId,
-    depois: { ...criada, cienciaSanitaria: input.cienciaSanitaria === true },
+    depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true },
   });
   if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
   if (gestacaoCriada && gestacao) await criarDemandasDoFatoTx(tx, { gestacaoId: gestacao.id, animalId: input.animalId, propriedadeId: input.propriedadeId, data, exameOrigemId: criada.id }, usuarioId);
@@ -639,7 +646,12 @@ export const criarAvaliacao = (
     usuarioId,
     "AVALIACAO_REPRODUTIVA",
     criarAvaliacaoTx,
-    (tx, id) => tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } }),
+    async (tx, id) => {
+      const avaliacao = await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } });
+      const interpretacao = await tx.interpretacaoReprodutiva.findUnique({ where: { id }, select: { decisaoIatf: true } });
+      const decisaoIatf = interpretacao?.decisaoIatf === "INDICAR" ? "INDICAR" as const : interpretacao?.decisaoIatf === "NAO_INDICAR" ? "NAO_INDICAR" as const : null;
+      return { ...avaliacao, decisaoIatf };
+    },
   );
 export async function criarPartoTx(
   tx: Prisma.TransactionClient,
@@ -1386,9 +1398,10 @@ export async function painelReproducao(
   });
   const evidencias = await prisma.interpretacaoReprodutiva.findMany({
     where: { id: { in: avaliacoes.map(a => a.id) } },
-    select: { id: true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
+    select: { id: true, decisaoIatf:true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
   });
   const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
+  const decisoesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.decisaoIatf]));
   let marcos:ReturnType<typeof construirMarcosReprodutivos>|null=null;
   if(animalId&&propriedadeId!=null&&estados.has(animalId)){
     const elegibilidade=await carregarDadosElegibilidadeTx(prisma,[animalId],hoje);
@@ -1425,7 +1438,7 @@ export async function painelReproducao(
       };
     }),
     tentativas,
-    avaliacoes: avaliacoes.map(a => ({ ...a, exame: examesPorAvaliacao.get(a.id) ?? null })),
+    avaliacoes: avaliacoes.map(a => ({ ...a, decisaoIatf:decisoesPorAvaliacao.get(a.id)??null, exame: examesPorAvaliacao.get(a.id) ?? null })),
     partos: partos.map((p) => ({
       ...p,
       crias: crias

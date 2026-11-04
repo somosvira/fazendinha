@@ -1,3 +1,4 @@
+import { abrirPreparacaoIatf } from "./preparar-iatf";
 import { GitBranch } from "lucide-react";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -143,7 +144,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   if(detalheRota) {
     const [,tipo,id]=detalheRota;
     const voltar=()=>{const retorno=new URLSearchParams(window.location.search).get("retorno");navegarPara(retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`));};
-    return <PaginaFinanceira><PageHeader titulo={tipo==="partos"?"Parto e pós-parto":"Programação IATF"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
+    return <PaginaFinanceira><PageHeader titulo={tipo==="partos"?"Parto e pós-parto":"Programação do protocolo"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
   }
   return (
     <PaginaFinanceira>
@@ -500,7 +501,7 @@ function ConteudoReproducao({
         </>
       )}
       {acao && painel && (
-        <FormReproducao
+        <FormReproducao onPrepararIatf={propriedadeId ? ids => abrirPreparacaoIatf(ids, propriedadeId) : undefined}
           acao={acao}
           painel={painel}
           animalInicial={animalAcao}

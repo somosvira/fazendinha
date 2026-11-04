@@ -1,6 +1,6 @@
 import { dataHoraISO } from "../reproducao/CampoDataIatf";
 import type { TarefaOperacional } from "./api";
-import type { DadosClinicos, ItemClinico } from "./clinica-api";
+import type { DadosClinicos, ItemClinico, EntradaClinica } from "./clinica-api";
 export function dadosClinicosIniciais(tarefa: TarefaOperacional): DadosClinicos {
   const p = tarefa.tarefaOrigem.planejadoSnapshot?.etapa;
   return { momento: "", responsavel: "", tipoExameId: p?.planoExame?.tipoExameId ?? p?.planoAvaliacao?.tipoExameId ?? tarefa.tarefaOrigem.parametros?.tipoExameId ?? "",
@@ -24,7 +24,8 @@ export function montarItemClinico(tarefa: TarefaOperacional, d: DadosClinicos): 
       }
     }
   } else if (tipo === "TENTATIVA") {
-    Object.assign(item, { tipoTentativa: d.tipoTentativa, origem: d.origem, cienciaSanitaria: d.cienciaSanitaria,
+    if (d.tipoTentativa !== "COBERTURA" && d.quantidade && Number(d.quantidade) !== 1 && (d.motivoQuantidadeExcepcional?.trim().length ?? 0) < 5) throw new Error("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres).");
+    Object.assign(item, { tipoTentativa: d.tipoTentativa, ...(d.motivoQuantidadeExcepcional?.trim() ? { motivoQuantidadeExcepcional: d.motivoQuantidadeExcepcional.trim() } : {}), origem: d.origem, cienciaSanitaria: d.cienciaSanitaria,
       ...(d.tipoTentativa !== "COBERTURA" && d.materialId ? { materialId: d.materialId } : {}), ...(d.tipoTentativa === "COBERTURA" ? { touroId: d.touroId || undefined, touroExternoId: d.touroExternoId || undefined } : {}),
       ...(d.tipoTentativa !== "COBERTURA" && d.quantidade ? { quantidade: d.quantidade } : {}), ...(d.tipoTentativa !== "COBERTURA" && d.origem === "ESTOQUE" && d.partidaId ? { partidaId: d.partidaId } : {}), ...(d.operacaoServicoId ? { operacaoServicoId: d.operacaoServicoId } : {}),
       ...(d.justificativaSemOrigem.trim() ? { justificativaSemOrigem: d.justificativaSemOrigem.trim() } : {}), cienciaValidadeDesconhecida: d.cienciaValidadeDesconhecida,
@@ -32,10 +33,17 @@ export function montarItemClinico(tarefa: TarefaOperacional, d: DadosClinicos): 
   } else if (tipo === "AVALIACAO") {
     if (!d.resultado || d.resultado === "NAO_AVALIADO") throw new Error(`Informe o resultado da avaliação de ${tarefa.animal.brinco}. Não atendimento exige justificativa própria na tarefa.`);
     if (!d.tipoExameId || !d.formato?.formatoExameHash) throw new Error(`Selecione o tipo e confira o formato da avaliação de ${tarefa.animal.brinco}.`);
-    Object.assign(item, { resultado: d.resultado, finalidade: d.finalidade, tipoExameId: d.tipoExameId, formatoExameHash: d.formato.formatoExameHash, cienciaSanitaria: d.cienciaSanitaria,
-      ...(d.resultados.length ? { resultados: d.resultados } : {}), ...(d.tentativaId ? { tentativaId: d.tentativaId } : {}), ...(d.gestacaoId ? { gestacaoId: d.gestacaoId } : {}), ...(d.sexoFetal ? { sexoFetal: d.sexoFetal } : {}),
+    if (["SEXAGEM", "RECONFIRMACAO"].includes(d.finalidade) && !d.gestacaoId) throw new Error(`Vincule a gestação conhecida de ${tarefa.animal.brinco}.`);
+    if (d.resultado === "SEXAGEM" && !d.sexoFetal) throw new Error(`Informe o sexo fetal observado de ${tarefa.animal.brinco}.`);
+    Object.assign(item, { resultado: d.resultado, ...(d.resultado === "NEGATIVO" && d.decisaoIatf ? { decisaoIatf: d.decisaoIatf } : {}), finalidade: d.finalidade, tipoExameId: d.tipoExameId, formatoExameHash: d.formato.formatoExameHash, cienciaSanitaria: d.cienciaSanitaria,
+      ...(d.resultados.length ? { resultados: d.resultados } : {}), ...(d.tentativaId ? { tentativaId: d.tentativaId } : {}), ...(d.gestacaoId ? { gestacaoId: d.gestacaoId } : {}), ...(d.resultado !== "NEGATIVO" && d.sexoFetal ? { sexoFetal: d.sexoFetal } : {}),
       ...(d.motivoVinculoDesconhecido.trim() ? { motivoVinculoDesconhecido: d.motivoVinculoDesconhecido.trim() } : {}), ...(d.retornoEm ? { retornoEm: d.retornoEm } : {}), ...(d.previsaoParto ? { previsaoParto: d.previsaoParto } : {}), ...(d.observacao.trim() ? { observacao: d.observacao.trim() } : {}),
       ...(d.demandaAcompanhamentoId ? { demandaAcompanhamentoId: d.demandaAcompanhamentoId, reavaliacao: true } : {}) });
   } else throw new Error("Esta ação não possui formulário clínico compatível.");
   return item;
+}
+
+/** A entrada confirmada contém todas as páginas; o recibo é paginado. */
+export function animaisIndicadosParaIatf(entrada: EntradaClinica | null): string[] {
+  return entrada?.itens.filter(i => i.tipo === "AVALIACAO" && i.resultado === "NEGATIVO" && i.decisaoIatf === "INDICAR").map(i => i.animalId) ?? [];
 }

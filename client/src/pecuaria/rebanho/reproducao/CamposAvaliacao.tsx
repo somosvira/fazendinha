@@ -5,8 +5,9 @@ import { classeInput } from "../../../financeiro/PainelCadastro";
 type Dados = { resultado?: unknown; finalidade?: unknown; sexoFetal?: unknown; conduta?: unknown };
 export type AlteracaoAvaliacao = { resultado?: string; finalidade?: string; sexoFetal?: string | null; conduta?: string | null };
 /** Finalidade, observações e conduta são independentes; as siglas da fazenda não são resultados obrigatórios. */
-export function CamposAvaliacao({ dados, onChange, secao, identificacao, administrativo }: {
+export function CamposAvaliacao({ dados, onChange, secao, identificacao, administrativo, indicacaoExplicita = false }: {
   dados: Dados;
+  indicacaoExplicita?: boolean;
   onChange: (dados: AlteracaoAvaliacao) => void;
   secao?: "resultado" | "conduta" | "detalhes";
   identificacao?: string;
@@ -44,7 +45,7 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao, adminis
       value={typeof dados.conduta === "string" ? dados.conduta : ""}
       onValueChange={valor => onChange({ conduta: valor || null })}>
       <option value="">Sem conduta informada</option>
-      {Object.entries(rotulosCondutaAvaliacao).filter(([valor]) => valor !== "IATF" || resultado === "NEGATIVO")
+      {Object.entries(rotulosCondutaAvaliacao).filter(([valor]) => valor !== "IATF" || resultado === "NEGATIVO" && !indicacaoExplicita)
         .map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
     </SelectCampo>
   );
@@ -56,7 +57,7 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao, adminis
             onValueChange={valor => {
               const nova = valor;
               onChange({ finalidade: nova,
-                resultado: nova === "SEXAGEM" ? "SEXAGEM"
+                resultado: resultado === "INCONCLUSIVO" ? "INCONCLUSIVO" : nova === "SEXAGEM" ? "SEXAGEM"
                   : nova === "RECONFIRMACAO" && ["POSITIVO", "SEXAGEM"].includes(resultado) ? "RECONFIRMACAO"
                     : nova === "DIAGNOSTICO" && ["RECONFIRMACAO", "SEXAGEM"].includes(resultado) ? "POSITIVO" : resultado,
               });
@@ -80,9 +81,9 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao, adminis
     <label>Atendimento<SelectCampo className={classeInput} value={realizacao} onValueChange={valor => { setRealizacao(valor); onChange(valor === "NAO_REALIZADO" ? { resultado: "NAO_AVALIADO", sexoFetal: null, ...(dados.conduta === "IATF" ? { conduta: null } : {}) } : { resultado: "", finalidade }); }}><option value="">Informe o atendimento</option><option value="REALIZADO">Exame realizado</option><option value="NAO_REALIZADO">Exame não realizado</option></SelectCampo></label>
     {realizacao === "REALIZADO" && <>
       <label>Finalidade do exame<SelectCampo className={classeInput} value={finalidade} onValueChange={valor => onChange({ finalidade: valor, resultado: valor === "SEXAGEM" ? "SEXAGEM" : "", ...(dados.conduta === "IATF" ? { conduta: null } : {}) })}><option value="DIAGNOSTICO">Diagnóstico de gestação</option><option value="RECONFIRMACAO">Reconfirmação de gestação conhecida</option><option value="SEXAGEM">Sexagem fetal de gestação conhecida</option></SelectCampo></label>
-      {finalidade !== "SEXAGEM" && <label>Conclusão sobre a gestação<SelectCampo className={classeInput} value={conclusao} onValueChange={valor => mudarConclusao(valor)}><option value="">Informe a conclusão</option><option value="POSITIVO">Gestação confirmada</option><option value="NEGATIVO">Gestação não confirmada</option><option value="INCONCLUSIVO">Inconclusivo</option></SelectCampo></label>}
-      {conclusao !== "NEGATIVO" && <label>Sexo fetal {finalidade === "SEXAGEM" ? "(obrigatório)" : "(se observado)"}<SelectCampo className={classeInput} value={typeof dados.sexoFetal === "string" ? dados.sexoFetal : ""} onValueChange={valor => onChange({ sexoFetal: valor || null })}><option value="">Não informado</option><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo></label>}
+      {finalidade === "SEXAGEM" && <label>Resultado da sexagem<SelectCampo className={classeInput} value={resultado} onValueChange={valor => onChange({ resultado: valor, ...(valor === "INCONCLUSIVO" ? { sexoFetal: null } : {}) })}><option value="SEXAGEM">Sexo observado</option><option value="INCONCLUSIVO">Inconclusivo</option></SelectCampo></label>}{finalidade !== "SEXAGEM" && <label>Conclusão sobre a gestação<SelectCampo className={classeInput} value={conclusao} onValueChange={valor => mudarConclusao(valor)}><option value="">Informe a conclusão</option><option value="POSITIVO">Gestação confirmada</option><option value="NEGATIVO">Gestação não confirmada</option><option value="INCONCLUSIVO">Inconclusivo</option></SelectCampo></label>}
+      {conclusao !== "NEGATIVO" && <label>Sexo fetal {resultado === "SEXAGEM" ? "(obrigatório)" : "(se observado)"}<SelectCampo className={classeInput} value={typeof dados.sexoFetal === "string" ? dados.sexoFetal : ""} onValueChange={valor => onChange({ sexoFetal: valor || null })}><option value="">Não informado</option><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo></label>}
     </>}
-    <label>Conduta<SelectCampo className={classeInput} value={typeof dados.conduta === "string" ? dados.conduta : ""} onValueChange={valor => onChange({ conduta: valor || null })}><option value="">Sem conduta informada</option><option value="AGUARDAR">Aguardar / organizar retorno</option>{resultado === "NEGATIVO" && <option value="IATF">Indicar protocolo IATF</option>}<option value="DESCARTE">Restringir reprodução / descarte</option></SelectCampo></label>
+    <label>Conduta<SelectCampo className={classeInput} value={typeof dados.conduta === "string" ? dados.conduta : ""} onValueChange={valor => onChange({ conduta: valor || null })}><option value="">Sem conduta informada</option><option value="AGUARDAR">Aguardar / organizar retorno</option>{resultado === "NEGATIVO" && !indicacaoExplicita && <option value="IATF">Indicar protocolo IATF</option>}<option value="DESCARTE">Restringir reprodução / descarte</option></SelectCampo></label>
   </div>;
 }

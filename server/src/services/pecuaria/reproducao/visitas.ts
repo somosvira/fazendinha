@@ -833,6 +833,13 @@ export async function sugestoesVisita(
     },
     orderBy: { previstaEm: "asc" },
   });
+  // O identificador do núcleo é o mesmo exposto pela view de leitura IATF.
+  // Somente vínculos explícitos permitem agrupar a agenda; datas iguais não criam uma etapa.
+  const tarefasAgenda = tarefasIatf.length ? await prisma.tarefaProtocolo.findMany({
+    where: { id: { in: tarefasIatf.map(t => t.id) } },
+    select: { id: true, etapaId: true, execucaoId: true, etapa: { select: { nome: true, momento: { select: { id: true, nome: true } } } } },
+  }) : [];
+  const etapaAgendaPorTarefa = new Map(tarefasAgenda.map(t => [t.id, { etapaId: t.etapaId, etapaNome: t.etapa.nome, momentoId: t.etapa.momento?.id ?? null, momentoNome: t.etapa.momento?.nome ?? null, participacaoId: t.execucaoId }]));
   const cache = await carregarContextosVisitaTx(prisma, locais.map(l => l.animalId), dia(data));
   const candidatos: Array<Record<string, unknown>> = await Promise.all(locais.map(l => contextoAnimalVisitaTx(prisma, l.animalId, l.propriedadeId, dia(data), cache).then(a => ({ ...a, motivos: motivosCriterios(criterios), criterios }))));
   const [avaliacoesHistorico, gestacoesPrevistas, tentativasDiagnostico] = await Promise.all([
@@ -869,7 +876,7 @@ export async function sugestoesVisita(
     retornos: [
       ...tentativasDiagnostico.filter(t => candidatos.some(a => a.animalId === t.animalId && a.situacao === "AGUARDANDO_DIAGNOSTICO" && (a.ultimaTentativa as {id:string})?.id === t.id)).map(t => ({ origem: "TENTATIVA", origemConsultavel:propriedadeId == null || t.propriedadeId === propriedadeId, origemId:propriedadeId == null || t.propriedadeId === propriedadeId ? t.id : null, animalId:t.animalId, propriedadeId:locais.find(l=>l.animalId === t.animalId)!.propriedadeId, data:null, status:"AGUARDANDO_DIAGNOSTICO" })),
       ...avaliacoesRetorno.map(a => ({ origem: "AVALIACAO", origemConsultavel: propriedadeId == null || a.propriedadeId === propriedadeId, origemId: propriedadeId == null || a.propriedadeId === propriedadeId ? a.id : null, animalId: a.animalId, propriedadeId: locais.find(l => l.animalId === a.animalId)!.propriedadeId, data: a.retornoEm, status: a.retornoEm! < dia(data) ? "ATRASADO" : "PENDENTE" })),
-      ...tarefasIatf.map(t => ({ origem: "TAREFA_IATF", origemConsultavel: true, origemId: t.id, programacaoId: participantes.find(p => p.id === t.participanteId)?.programacaoId, animalId: participantes.find(p => p.id === t.participanteId)?.animalId, propriedadeId: programacoes.find(p => p.id === participantes.find(a => a.id === t.participanteId)?.programacaoId)?.propriedadeId, data: t.previstaEm, precisaoTemporal: t.precisaoTemporal, previsaoPendente: t.previsaoPendente, status: t.previsaoPendente ? "PREVISAO_PENDENTE" : diaIatf(t.previstaEm, t.precisaoTemporal) < data ? "ATRASADO" : "PENDENTE" })),
+      ...tarefasIatf.map(t => ({ ...etapaAgendaPorTarefa.get(t.id), programacaoNome: programacoes.find(g => g.id === participantes.find(p => p.id === t.participanteId)?.programacaoId)?.nome ?? null, origem: "TAREFA_IATF", origemConsultavel: true, origemId: t.id, programacaoId: participantes.find(p => p.id === t.participanteId)?.programacaoId, animalId: participantes.find(p => p.id === t.participanteId)?.animalId, propriedadeId: programacoes.find(p => p.id === participantes.find(a => a.id === t.participanteId)?.programacaoId)?.propriedadeId, data: t.previstaEm, precisaoTemporal: t.precisaoTemporal, previsaoPendente: t.previsaoPendente, status: t.previsaoPendente ? "PREVISAO_PENDENTE" : diaIatf(t.previstaEm, t.precisaoTemporal) < data ? "ATRASADO" : "PENDENTE" })),
       ...gestacoesPrevistas.map(g => ({ origem: "PREVISAO_PARTO", origemConsultavel: propriedadeId == null || g.propriedadeId === propriedadeId, origemId: propriedadeId == null || g.propriedadeId === propriedadeId ? g.id : null, animalId: g.animalId, propriedadeId: locais.find(l => l.animalId === g.animalId)!.propriedadeId, data: g.previsaoParto, status: "PREVISTO" })),
     ],
   };

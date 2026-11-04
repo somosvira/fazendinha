@@ -6,7 +6,7 @@ import { RebanhoError } from "../rebanho/regras.js";
 
 export const TIPO_EXAME_REPRODUTIVO = "b0400000-0000-4000-8000-000000000001";
 type DadosAvaliacao = Pick<AvaliacaoReprodutiva, "animalId" | "data" | "resultado"> &
-  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
+  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null; responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
 
 /** Valida formato versionado e resultados sem gravar a evidência. */
 export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao) {
@@ -32,7 +32,7 @@ export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient,
 }
 
 /** Persiste somente a evidência e sua interpretação. Efeitos clínicos pertencem ao executor de domínio. */
-export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva> {
+export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao): Promise<AvaliacaoReprodutiva & { decisaoIatf: "INDICAR" | "NAO_INDICAR" | null }> {
   const { tipoExameId, tipo, finalidade, finalidades, resultados } = await prepararEvidenciaAvaliacaoTx(tx, dados);
   const id = dados.id ?? crypto.randomUUID();
   await tx.exameAnimal.create({ data: {
@@ -47,9 +47,9 @@ export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient
     interpretacao: { create: { id, referenciaExterna: dados.referenciaExterna,
       gestacaoCriada: dados.gestacaoCriada, restricaoId: dados.restricaoId,
       tentativaId: dados.tentativaId, gestacaoId: dados.gestacaoId,
-      conduta: dados.conduta, motivo: dados.motivo, retornoEm: dados.retornoEm } },
+      conduta: dados.conduta, decisaoIatf: dados.decisaoIatf, motivo: dados.motivo, retornoEm: dados.retornoEm } },
   } });
-  return tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } });
+  return { ...await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } }), decisaoIatf:dados.decisaoIatf??null };
 }
 
 export async function anularEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, id: string, data: { status: "ANULADO"; motivoAnulacao: string; anuladoEm: Date }) {

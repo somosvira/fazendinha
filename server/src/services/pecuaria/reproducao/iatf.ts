@@ -1,3 +1,5 @@
+import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
+import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
 import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
 import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
 import { validarReferenciasCusto } from "../custos/referencias-planejadas.js";
@@ -251,6 +253,7 @@ export async function criarProgramacaoTx(
   usuarioId: number | null,
 ) {
   const ids = input.animais.map((a) => a.animalId);
+  if (input.automacoes?.some(i => !ids.includes(i.animalId)) || input.revisaoRetroativa?.some(i => !ids.includes(i.animalId))) erro("Automação de animal fora da programação", "automacoes");
   if (new Set(ids).size !== ids.length)
     erro("Participantes duplicados", "animais");
   await travarAnimais(tx, ids);
@@ -310,6 +313,7 @@ export async function criarProgramacaoTx(
         dadosTarefa(participante.id, e, inicioPrevisto),
       ),
     });
+    await (await import("../protocolos/automacao.js")).ativarAutomacoesAdesaoTx(tx, participante.id, input.propriedadeId, input.automacoes, usuarioId, input.revisaoRetroativa);
   }
   await auditar(tx, {
     entidade: "ProgramacaoIatf",
@@ -337,6 +341,7 @@ export const criarProgramacao = (
 export const dataNoBrasil = diaIatf;
 /** Adesão individual usa a mesma versão e os mesmos executores, sem criar um grupo. */
 export const participacaoIndividualReprodutivaSchema = z.object({
+  automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(),
   chave: z.string().uuid(), protocoloId: z.string().uuid(), animalId: z.string().uuid(),
   propriedadeId: z.number().int().positive().max(2147483647), inicioReferencia: dataOuHorario,
   cienciaSanitaria: z.boolean().optional(), confirmarSobreposicao: z.boolean().optional(),
@@ -369,6 +374,8 @@ export async function criarParticipacaoIndividualReprodutiva(entrada: z.infer<ty
         origemCalendario: "REFERENCIA_PROGRAMADA", criadoPorId: usuarioId } });
       await criarTarefasReprodutivasTx(tx, { data: calendarioIatf(temporal.instante, protocolo.etapas as EtapaFonte[], temporal.precisao)
         .map(e => dadosTarefa(participante.id, e, temporal.instante)) });
+      if (input.automacoes?.some(i => i.animalId !== input.animalId) || input.revisaoRetroativa?.some(i => i.animalId !== input.animalId)) erro("Automação de outro animal", "automacoes");
+      await (await import("../protocolos/automacao.js")).ativarAutomacoesAdesaoTx(tx, participante.id, input.propriedadeId, input.automacoes, usuarioId, input.revisaoRetroativa);
       await auditar(tx, { entidade: "ParticipacaoProtocolo", entidadeId: participante.id, animalId: input.animalId,
         propriedadeId: input.propriedadeId, acao: "ADESAO_INDIVIDUAL", usuarioId,
         depois: { ...participante, ...(sobreposta ? { sobreposicao: { participacaoId: sobreposta.id, motivo: input.justificativaSobreposicao } } : {}) } });
@@ -383,6 +390,8 @@ export async function criarParticipacaoPlanejadaTx(
   animalId: string,
   inicioPrevisto: string,
   usuarioId: number | null,
+  automacoes?: z.infer<typeof automacoesAdesaoSchema>,
+  revisaoRetroativa?: z.infer<typeof revisaoRetroativaSchema>,
 ) {
   const programacao = await tx.programacaoIatf.findUniqueOrThrow({ where: { id: programacaoId } });
   const protocolo = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: programacao.protocoloId } });
@@ -393,6 +402,7 @@ export async function criarParticipacaoPlanejadaTx(
   } });
   await criarTarefasReprodutivasTx(tx, { data: calendarioIatf(temporal.instante, protocolo.etapas as EtapaFonte[], temporal.precisao)
     .map(e => dadosTarefa(participante.id, e, temporal.instante)) });
+  await (await import("../protocolos/automacao.js")).ativarAutomacoesAdesaoTx(tx, participante.id, programacao.propriedadeId, automacoes, usuarioId, revisaoRetroativa);
   await auditar(tx, { entidade: "ParticipanteIatf", entidadeId: participante.id, animalId,
     propriedadeId: programacao.propriedadeId, acao: "PARTICIPACAO_ADICIONADA", usuarioId, depois: participante });
   return participante;
@@ -594,6 +604,7 @@ export async function prepararExecucaoTarefaTx(
     cienciaRecalendarioLegado?: boolean;
   },
   usuarioId: number | null,
+  planejamentoFuturo = false,
 ) {
   const referencia = await contextoTarefaTx(tx, id, input.propriedadeId);
   await travarAnimais(tx, [referencia.participante.animalId]);
@@ -624,7 +635,7 @@ export async function prepararExecucaoTarefaTx(
   const temporal = lerDataIatf(input.realizadaEm);
   const realizada = temporal.instante;
   const data = temporal.data;
-  if (anteriorIatf(new Date(), "HORA", realizada, temporal.precisao) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo!, participante.precisaoInicioEfetivo ?? "HORA"))
+  if ((!planejamentoFuturo && anteriorIatf(new Date(), "HORA", realizada, temporal.precisao)) || anteriorIatf(realizada, temporal.precisao, participante.inicioEfetivo!, participante.precisaoInicioEfetivo ?? "HORA"))
     erro("Execução deve ocorrer após início efetivo e até agora", "realizadaEm");
   if (tarefa.tipo === "TENTATIVA")
     await conferirDisponibilidadeTx(
@@ -698,6 +709,13 @@ export async function prepararExecucaoTarefaTx(
       plano.referenciaTemporalEfetiva=anterior?.realizadaEm&&lastro?{data:anterior.realizadaEm.toISOString(),precisao:anterior.precisaoRealizacao??"DIA",fatoId:anterior.id}:null;
     }
   }
+  // O padrão operacional deve participar da comparação e do snapshot, além do consumo.
+  const materialRealizado = tarefa.tipo === "TENTATIVA" && typeof preparado.materialId === "string"
+    ? await tx.materialGenetico.findUnique({ where: { id: preparado.materialId }, include: { produto: true } }) : null;
+  if (tarefa.tipo === "TENTATIVA" && materialRealizado) {
+    preparado.quantidade = quantidadePadraoTentativa(tentativaSchema.shape.tipo.parse(preparado.tipo), tentativaSchema.shape.quantidade.parse(preparado.quantidade), materialRealizado.produto.unidade);
+    validarConsumoExcepcionalTentativa(tentativaSchema.shape.tipo.parse(preparado.tipo), preparado.quantidade as number | null, materialRealizado.produto.unidade, typeof preparado.motivoQuantidadeExcepcional === "string" ? preparado.motivoQuantidadeExcepcional : undefined);
+  }
   const desvio = compararExecucaoIatf(
     plano,
     input.realizadaEm,
@@ -705,10 +723,7 @@ export async function prepararExecucaoTarefaTx(
   );
   const referenciasRealizadas: Record<string, unknown> = {};
   if (tarefa.tipo === "TENTATIVA" && typeof preparado.materialId === "string") {
-    const m = await tx.materialGenetico.findUnique({
-      where: { id: preparado.materialId },
-      include: { produto: true },
-    });
+    const m = materialRealizado;
     if (m) {
       referenciasRealizadas.material = {
         id: m.id,
@@ -901,6 +916,7 @@ export async function retirarParticipante(
       where: { id: participanteId },
     });
     if (atual.encerradoEm) return atual;
+    await (await import("../protocolos/automacao.js")).conferirDispositivoAntesRetiradaTx(tx, participanteId);
     const salva = await atualizarParticipacaoReprodutivaTx(tx, {
       where: { id: participanteId },
       data: { encerradoEm: new Date(), motivoEncerramento: motivo },
@@ -909,6 +925,7 @@ export async function retirarParticipante(
       where: { participanteId, realizadaEm: null, dispensadaEm: null },
       data: { dispensadaEm: new Date(), motivo },
     });
+    await tx.automacaoProtocolo.updateMany({ where: { participacaoId: participanteId, estado: { in: ["AGENDADA", "FALHOU"] } }, data: { estado: "CANCELADA", erro: motivo } });
     await auditar(tx, {
       entidade: "ParticipanteIatf",
       entidadeId: participanteId,
@@ -973,11 +990,14 @@ export async function adicionarParticipantes(
     chave: string;
     animais: { animalId: string; inicioPrevisto: string }[];
     cienciaSanitaria?: boolean;
+    automacoes?: z.infer<typeof automacoesAdesaoSchema>;
+    revisaoRetroativa?: z.infer<typeof revisaoRetroativaSchema>;
   },
   usuarioId: number | null,
 ) {
   return transacaoPecuaria(async (tx) => {
     const ids = input.animais.map((a) => a.animalId);
+    if (input.automacoes?.some(i => !ids.includes(i.animalId)) || input.revisaoRetroativa?.some(i => !ids.includes(i.animalId))) erro("Automação de animal fora da programação", "automacoes");
     if (new Set(ids).size !== ids.length)
       erro("Participante duplicado", "animais");
     await travarAnimais(tx, ids);
@@ -1041,6 +1061,7 @@ export async function adicionarParticipantes(
               (e) => dadosTarefa(p.id, e, inicio),
             ),
           });
+          await (await import("../protocolos/automacao.js")).ativarAutomacoesAdesaoTx(tx, p.id, input.propriedadeId, input.automacoes, usuarioId, input.revisaoRetroativa);
           participantes.push(p);
           await auditar(tx, {
             entidade: "ParticipanteIatf",

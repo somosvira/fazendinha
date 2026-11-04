@@ -11,12 +11,14 @@ vi.mock("../protocolos/api", async original => ({ ...await original<typeof impor
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([]) }));
 vi.mock("../api", () => ({ listarMaterialGenetico: vi.fn().mockResolvedValue([]) }));
 
+vi.mock("../protocolos/useAcoesInicioProtocolo",()=>({useAcoesInicioProtocolo:()=>({etapas:[],erro:null,recarregar:vi.fn()})}));
 const animal = (i: number): AnimalReprodutivo => ({
   animalId: `a${i}`, brinco: String(100 + i), nome: null, situacao: "VAZIA",
   partos: 0, tentativasCiclo: 0, gestacao: null, restricoes: [],
 });
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(reqProtocolo).mockImplementation(async (path, _sitio, body) => path === "/programacoes/previa" ? { protocolo:{nome:"Protocolo publicado",versao:2}, itens:[{id:"e1",nome:"Aplicação",previstaPara:"2026-10-18T00:00:00Z",precisaoTemporal:"DIA"}],total:1,pagina:1,porPagina:10,participantes:(body as {animaisIds:string[]}).animaisIds.map(id=>({id,brinco:id,nome:null})),avisos:["Conferência sem gravação"] } : path.startsWith("/versoes") ? {itens:[{id:"protocolo",nome:"Protocolo publicado",versao:2}],total:1,pagina:1,porPagina:10} : {itens:[],total:0,pagina:1,porPagina:10});
   window.history.replaceState(null, "", "/pecuaria/visitas/v");
   setPropriedadeAtiva(99);
   vi.mocked(reqV4).mockImplementation(async (path, body) => path.includes("/protocolos")
@@ -28,7 +30,7 @@ afterEach(() => { cleanup(); setPropriedadeAtiva(null); });
 it("abre programação com indicados, permite editar a seleção e grava no sítio explícito", async () => {
   render(<Iatf animais={[animal(0), animal(1)]} animaisIndicadosInicialmente={["a0", "a1"]}
     propriedadeId={7} podeLancar />);
-  await screen.findByRole("dialog", { name: "Nova programação IATF" });
+  await screen.findByRole("dialog", { name: "Programar protocolo" });
   expect(screen.getByRole("checkbox", { name: "100" })).toHaveProperty("checked", true);
   expect(screen.getByRole("checkbox", { name: "101" })).toHaveProperty("checked", true);
   expect(vi.mocked(reqV4).mock.calls.every(([, body]) => !body)).toBe(true);
@@ -37,7 +39,11 @@ it("abre programação com indicados, permite editar a seleção e grava no sít
   await screen.findByRole("option", { name: "Protocolo publicado · v2" });
   fireEvent.change(screen.getByRole("combobox", { name: "Versão publicada" }), { target: { value: "protocolo" } });
   fireEvent.change(screen.getByLabelText("Início previsto"), { target: { value: "2026-10-18" } });
-  fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Conferir calendário" }));
+  await screen.findByRole("button", {name:"Confirmar programação"});
+  expect(vi.mocked(reqV4).mock.calls.filter(([,body]) => body)).toHaveLength(0);
+  expect(reqProtocolo).toHaveBeenCalledWith("/programacoes/previa",7,expect.objectContaining({animaisIds:["a0"],protocoloId:"protocolo"}));
+  fireEvent.click(screen.getByRole("button", {name:"Confirmar programação"}));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/programacoes", expect.objectContaining({
     propriedadeId: 7, nome: "Turma após visita", protocoloId: "protocolo", inicioPrevisto: "2026-10-18",
     animais: [{ animalId: "a0" }],
@@ -49,11 +55,57 @@ it("abre programação com indicados, permite editar a seleção e grava no sít
 it("limita a primeira programação a 100 e mantém todos os indicados disponíveis", async () => {
   const animais = Array.from({ length: 101 }, (_, i) => animal(i));
   render(<Iatf animais={animais} animaisIndicadosInicialmente={animais.map(a => a.animalId)} propriedadeId={7} podeLancar />);
-  await screen.findByRole("dialog", { name: "Nova programação IATF" });
+  await screen.findByRole("dialog", { name: "Programar protocolo" });
   expect(screen.getByText("Participantes: 100/100")).toBeTruthy();
   expect(screen.getAllByRole("checkbox").length).toBeLessThanOrEqual(11);
   fireEvent.change(screen.getByLabelText("Buscar animais disponíveis"), { target: { value: "200" } });
   expect(screen.getByRole("checkbox", { name: "200" })).toHaveProperty("checked", false);
   expect(screen.getByText(/os demais indicados continuam disponíveis/)).toBeTruthy();
   expect(vi.mocked(reqV4).mock.calls.every(([, body]) => !body)).toBe(true);
+});
+
+it("consome indicação da URL e não reabre os animais ao mudar de sítio", async () => {
+ window.history.replaceState(null,"","/pecuaria/reproducao?rotina=programacoes&sitio=7&acao=prepararIatf&animalIndicado=a1&retorno=%2Fpecuaria%2Freproducao");
+ const view=render(<Iatf animais={[animal(0),animal(1)]} propriedadeId={7} podeLancar/>);
+ await screen.findByRole("dialog",{name:"Programar protocolo"});
+ expect(screen.getByRole("checkbox",{name:"101"})).toHaveProperty("checked",true);
+ expect(screen.getByRole("checkbox",{name:"100"})).toHaveProperty("checked",false);
+ expect(window.location.search).not.toContain("animalIndicado");
+ expect(window.location.search).toContain("retorno=");
+ view.rerender(<Iatf animais={[animal(0)]} propriedadeId={8} podeLancar/>);
+ await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
+});
+
+it("aceita uma segunda preparação pós-DG na mesma montagem sem reaproveitar o pedido anterior",async()=>{
+ const url=(pedido:string,id:string)=>`/pecuaria/reproducao?rotina=programacoes&sitio=7&acao=prepararIatf&pedidoPreparacao=${pedido}&animalIndicado=${id}`;
+ window.history.replaceState(null,"",url("primeiro","a0"));
+ const view=render(<Iatf animais={[animal(0),animal(1)]} propriedadeId={7} podeLancar/>);
+ await screen.findByRole("dialog",{name:"Programar protocolo"});
+ fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
+ window.history.replaceState(null,"",url("segundo","a1"));
+ view.rerender(<Iatf animais={[animal(0),animal(1)]} propriedadeId={7} podeLancar/>);
+ await screen.findByRole("dialog",{name:"Programar protocolo"});
+ expect(screen.getByRole("checkbox",{name:"101"})).toHaveProperty("checked",true);
+ expect(screen.getByRole("checkbox",{name:"100"})).toHaveProperty("checked",false);
+ expect(window.location.search).not.toContain("pedidoPreparacao");
+});
+
+it("preserva o rascunho se a API devolver calendário sem identificação do modelo",async()=>{
+ const respostaNormal=vi.mocked(reqProtocolo).getMockImplementation()!;
+ vi.mocked(reqProtocolo).mockImplementation(async (...args)=>args[0]==="/programacoes/previa" ? {itens:[],participantes:[],avisos:[],total:0,pagina:1,porPagina:10} : respostaNormal(...args));
+ render(<Iatf animais={[animal(0)]} animaisIndicadosInicialmente={["a0"]} propriedadeId={7} podeLancar/>);
+ await screen.findByRole("dialog",{name:"Programar protocolo"});
+ fireEvent.change(screen.getByRole("textbox",{name:"Nome"}),{target:{value:"Grupo preservado"}});
+ await screen.findByRole("option",{name:"Protocolo publicado · v2"});
+ fireEvent.change(screen.getByRole("combobox",{name:"Versão publicada"}),{target:{value:"protocolo"}});
+ fireEvent.change(screen.getByLabelText("Início previsto"),{target:{value:"2026-10-18"}});
+ fireEvent.click(screen.getByRole("button",{name:"Conferir calendário"}));
+ await screen.findAllByText(/A conferência retornou dados incompletos/);
+ expect(screen.getByRole("textbox",{name:"Nome"})).toHaveProperty("value","Grupo preservado");
+ expect(screen.getByRole("checkbox",{name:"100"})).toHaveProperty("checked",true);
+ expect(screen.queryByRole("button",{name:"Confirmar programação"})).toBeNull();
+ expect(vi.mocked(reqV4).mock.calls.filter(([,body])=>body)).toHaveLength(0);
+ vi.mocked(reqProtocolo).mockImplementation(respostaNormal);
+ fireEvent.click(screen.getByRole("button",{name:"Conferir calendário"}));
+ await screen.findByRole("button",{name:"Confirmar programação"});
 });

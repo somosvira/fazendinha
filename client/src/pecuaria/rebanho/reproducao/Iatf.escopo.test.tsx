@@ -52,6 +52,7 @@ it.each([99, null])('custos da programação inteira conservam sítio explícito
   setPropriedadeAtiva(ativo);
   render(<Iatf propriedadeId={7} podeLancar />);
   fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
+  fireEvent.click(await screen.findByRole('button', { name: 'Custos' }));
   expect(await screen.findByTestId('custos-programacao')).toHaveProperty('textContent', '7 · programa');
   expect(screen.queryByTestId('custos-participacao')).toBeNull();
 });

@@ -660,6 +660,7 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  automacoesProtocolos AutomacaoProtocolo[]
   vinculosPesagemSecagem VinculoPesagemSecagem[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   pesagensHistoricas Pesagem[] @relation("PesagemSitioFato")
@@ -933,6 +934,7 @@ enum TipoToken {
 }
 
 model Usuario {
+  automacoesProtocolos AutomacaoProtocolo[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   VisitaVeterinaria                VisitaVeterinaria[]
   VinculoTarefaProtocolo           VinculoTarefaProtocolo[]
@@ -1936,6 +1938,10 @@ model Protocolo {
 }
 
 model MomentoProtocolo {
+  automacoes AutomacaoProtocolo[]
+  politicaExecucao String @default("CONFIRMACAO_OBRIGATORIA")
+  horarioPadrao String?
+  fusoHorario String?
   instrucoesGerais String?
   modoAtendimento String?
   id String @id @default(uuid())
@@ -2005,6 +2011,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  automacoes AutomacaoProtocolo[]
   Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   origemCalendario OrigemCalendarioProtocolo @default(REFERENCIA_PROGRAMADA)
   destinosPreparoCusto VinculoPreparoTentativa[]
@@ -2231,6 +2238,7 @@ model ResultadoExame {
 }
 
 model InterpretacaoReprodutiva {
+  decisaoIatf String?
   TentativaReprodutiva TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_tentativaId_fkey")
   RestricaoReprodutiva RestricaoReprodutiva? @relation(fields: [restricaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_restricaoId_fkey")
   GestacaoAnimal       GestacaoAnimal?       @relation(fields: [gestacaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_gestacaoId_fkey")
@@ -4817,5 +4825,31 @@ model MovimentoConsumoDiario {
   motivo String
   criadoEm DateTime @default(now())
   @@index([itemId])
+  @@schema("pecuaria")
+}
+
+/// Unidade de execução atômica: um momento para um animal. Recibo e efeitos na mesma transação.
+model AutomacaoProtocolo {
+  id String @id @default(uuid())
+  participacaoId String
+  participacao ParticipacaoProtocolo @relation(fields: [participacaoId], references: [id], onDelete: Restrict)
+  momentoId String
+  momento MomentoProtocolo @relation(fields: [momentoId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  usuarioId Int
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  estado String @default("AGENDADA")
+  programadaPara DateTime
+  configuracao Json
+  resultado Json?
+  erro String?
+  revisao Int @default(1)
+  tentativas Int @default(0)
+  criadaEm DateTime @default(now())
+  atualizadaEm DateTime @updatedAt
+  executadaEm DateTime?
+  @@unique([participacaoId, momentoId])
+  @@index([estado, programadaPara])
   @@schema("pecuaria")
 }

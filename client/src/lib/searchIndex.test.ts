@@ -100,3 +100,8 @@ describe("destinos atuais da busca", () => {
      expect(destino?.acao).not.toBe(true);
    }
  });
+
+it("localiza o fluxo de automação e atendimento coletivo sem executar ações", () => {
+  expect(buscar(COMANDOS, "automação").find(c => c.id === "repro-programacoes")?.caminho).toBe("/pecuaria/reproducao?rotina=programacoes");
+  expect(buscar(COMANDOS, "atendimento coletivo").map(c => c.id)).toContain("repro-programacoes");
+});

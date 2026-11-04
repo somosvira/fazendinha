@@ -3,11 +3,14 @@ import { useId } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 
-export type MomentoCadastro = { nome: string; ordem: number; instrucoesGerais?: string | null; modoAtendimento?: "AUTOMATIZADA" | "MANUAL" | null };
+export type MomentoCadastro = { politicaExecucao?: "CONFIRMACAO_OBRIGATORIA" | "AUTOMATICA_EXCECAO"; horarioPadrao?: string | null; fusoHorario?: string | null; nome: string; ordem: number; instrucoesGerais?: string | null; modoAtendimento?: "AUTOMATIZADA" | "MANUAL" | null };
 /** Remove IDs e campos de leitura antes de enviar uma nova versão. */
 export function momentoParaCadastro(momento: MomentoCadastro): MomentoCadastro {
   return { nome: momento.nome, ordem: momento.ordem,
     ...(momento.instrucoesGerais !== undefined ? { instrucoesGerais: momento.instrucoesGerais } : {}),
+    ...(momento.politicaExecucao !== undefined ? { politicaExecucao: momento.politicaExecucao } : {}),
+    ...(momento.horarioPadrao !== undefined ? { horarioPadrao: momento.horarioPadrao } : {}),
+    ...(momento.fusoHorario !== undefined ? { fusoHorario: momento.fusoHorario } : {}),
     ...(momento.modoAtendimento !== undefined ? { modoAtendimento: momento.modoAtendimento } : {}),
   };
 }

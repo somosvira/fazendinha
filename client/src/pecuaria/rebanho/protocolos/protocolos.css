@@ -149,3 +149,34 @@
 .protocolo-custos-cards article:last-child { background:transparent; }
 .protocolo-custos-cards strong { font-size:26px; }
 .protocolos-superficie .protocolo-detalhe-linha > td { font-size:16px; }
+
+/* Etapas permanecem acima do atendimento, inclusive em telas estreitas. */
+.protocolo-etapas { display:flex; flex-wrap:nowrap; overflow-x:auto; scroll-snap-type:x proximity; }
+.protocolo-etapas > button { flex:1 0 184px; max-width:280px; min-height:112px; padding:14px 16px; gap:6px; scroll-snap-align:start; }
+.protocolo-etapas strong { font-size:16px; }
+.protocolo-etapas > button:nth-child(even) { border-right:1px solid var(--border); }
+.protocolo-etapas > button:last-child { border-right:0; }
+.protocolo-etapas small { font-size:13px; }
+@media(max-width:760px) { .protocolo-etapas > button { flex:0 0 190px; min-height:120px; } }
+
+@media(min-width:760px) {
+  .clinica-dados-comuns { grid-template-columns: minmax(0,2fr) minmax(0,1fr); }
+  .clinica-dados-comuns > .clinica-campos-tentativa, .clinica-dados-comuns > label:has(input[type=checkbox]) { grid-column:1 / -1; }
+  .clinica-campos-tentativa { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .clinica-campos-tentativa > :is(div,p,details), .clinica-campos-tentativa > label:has(textarea), .clinica-campos-tentativa > label:has(input[type=checkbox]) { grid-column:1 / -1; }
+}
+
+.protocolos-superficie .protocolo-operacao-compacta > .secao-recolhivel-cabecalho { display:none; }
+.protocolos-superficie .protocolo-operacao-compacta { overflow:hidden; }
+.repro-programacao-detalhe > .protocolos-superficie.protocolo-conteudo { padding-top:12px; border-top:0; }
+.repro-programacao-detalhe .repro-programacao-identidade { padding-bottom:8px; border-bottom:0; gap:8px; }
+.repro-programacao-detalhe .repro-programacao-identidade p { margin-top:4px; }
+.repro-programacao-detalhe .repro-programacao-resumo { padding:8px 0 12px; gap:20px; margin-bottom:0; }
+.repro-programacao-detalhe .repro-programacao-resumo > div { flex-direction:row-reverse; align-items:baseline; gap:6px; }
+.repro-programacao-detalhe .repro-programacao-resumo dd { font-size:14px; }
+:root:has(.protocolos-pagina) .fin-cabecalho-pagina .h1 { font-size:24px; }
+
+.protocolo-custos-resumo { display:flex; flex-wrap:wrap; gap:16px 32px; padding-block:12px; }
+.protocolo-custos-resumo > div { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; }
+.protocolo-custos-resumo strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.protocolo-custos-resumo span { font-size:14px; color:var(--muted-foreground); }

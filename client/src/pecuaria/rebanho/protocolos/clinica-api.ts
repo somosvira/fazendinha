@@ -11,11 +11,12 @@ export type DadosClinicos = {
   momento: string; responsavel: string; tipoExameId: string; formato?: FormatoClinico;
   informarResultado: boolean; resultado: string; resultados: ObservacaoExame[]; valorResultado: string; observacao: string; motivoDesvio: string;
   tipoTentativa: "IA" | "TE" | "COBERTURA"; origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";
-  materialId: string; partidaId: string; operacaoServicoId: string; quantidade: string; justificativaSemOrigem: string;
+  materialId: string; partidaId: string; operacaoServicoId: string; quantidade: string; motivoQuantidadeExcepcional?: string; justificativaSemOrigem: string;
   cienciaValidadeDesconhecida: boolean; documentacaoExcepcional: boolean; motivoDocumentacaoExcepcional: string;
   touroId: string; touroExternoId: string; tentativaId: string; gestacaoId: string; sexoFetal: string; finalidade: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   motivoVinculoDesconhecido: string; retornoEm: string; previsaoParto: string; cienciaSanitaria: boolean; cienciaRecalendarioLegado: boolean;
   reprodutorExterno: boolean;
+  decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   demandaAcompanhamentoId?: string; reavaliacao?: boolean;
 };
 export type ItemClinico = { tarefaId: string; animalId: string; propriedadeId: number; tipo: TipoClinico; data: string; realizadaEm: string; [campo: string]: unknown };

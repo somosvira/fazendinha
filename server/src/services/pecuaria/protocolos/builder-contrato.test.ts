@@ -46,8 +46,8 @@ it("conserva fração, horas, referência e tolerâncias na persistência e no c
 
 it("congela instruções e modo e rejeita metadados contraditórios no mesmo momento", () => {
   const momento = { nome: "Preparo", ordem: 1, instrucoesGerais: "Conferir identificação", modoAtendimento: "MANUAL" as const };
-  expect(snapshotMomento({ id, ...momento })).toEqual({ id, ...momento });
-  expect(momentosDasAcoes([{ momento }, { momento }])).toEqual([momento]);
+  expect(snapshotMomento({ id, ...momento })).toEqual({ id, ...momento, politicaExecucao: "CONFIRMACAO_OBRIGATORIA" });
+  expect(momentosDasAcoes([{ momento }, { momento }])).toEqual([{ ...momento, politicaExecucao: "CONFIRMACAO_OBRIGATORIA" }]);
   expect(() => momentosDasAcoes([{ momento }, { momento: { ...momento, instrucoesGerais: "Outro texto" } }])).toThrow("conservar");
   expect(() => momentosDasAcoes([{ momento: { ...momento, instrucoesGerais: "x".repeat(2001) } }])).toThrow();
 });

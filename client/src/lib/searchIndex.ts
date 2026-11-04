@@ -88,8 +88,8 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["configuracoes", "Configurações de produção", "tanques recipientes ordenha posições vigência"],
   ].map(([secao, label, termos]) => ({ id: `leite-${secao}`, tab: "pec-leite" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/leite?leiteSecao=${secao}`, sinonimos: termos.split(" ") })),
   ...[
-    ["ciclos", "Manejo reprodutivo", "tentativas avaliação gestação inseminação cobertura"],
-    ["programacoes", "Programações de protocolos", "iatf rodadas tarefas agenda"],
+    ["ciclos", "Manejo reprodutivo", "tentativas avaliação gestação inseminação cobertura diagnóstico DG"],
+    ["programacoes", "Programações de protocolos", "iatf rodadas tarefas agenda etapas automação atendimento coletivo"],
     ["partos", "Partos", "nascimentos crias aborto natimorto"],
     ["indicadores", "Indicadores reprodutivos", "fertilidade concepção iep"],
   ].map(([rotina, label, termos]) => ({ id: `repro-${rotina}`, tab: "pec-reproducao" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/reproducao?rotina=${rotina}`, sinonimos: termos.split(" ") })),

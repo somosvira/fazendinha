@@ -410,3 +410,18 @@ Testes de serviço e interface verificam opcionalidade, reuso, incompatibilidade
 Política reprodutiva e acompanhamento apresentam a versão vigente antes do formulário de nova versão. A criação abre em modal centralizado; alterações de campos e das regras de reconfirmação protegem o rascunho ao fechar, navegar ou trocar o sítio. Durante a gravação, a saída fica bloqueada; falhas conservam os dados e a chave idempotente, e sucesso encerra o formulário. A consulta da política e os destinos de busca existentes continuam nos mesmos endereços.
 
 O aviso de base parcial dos indicadores tem apresentação própria também na rotina de Reprodução, sem depender do carregamento do hub de relatórios. Contagens de pendências, denominadores e acesso aos animais continuam preservados.
+
+
+## Atendimento individual e coletivo
+
+Tentativas IA/TE usam uma unidade como padrão somente quando a unidade do Produto é compatível (`DOSE` ou `UN`). Quantidades históricas explícitas são preservadas. A interface oferece consumo excepcional separado, com motivo; não cria outra tentativa para representar perda. Produto, material genético, origem, lote e dados reais continuam obrigatórios conforme o executor. O registro individual abre modal; quando aberto dentro do atendimento coletivo, aplica mudanças ao rascunho antes da confirmação transacional.
+
+Nas novas gravações, quantidade diferente de uma unidade exige motivo explícito também no servidor. TE em `DOSE`/`UN` aceita um embrião por transferência: múltiplos embriões não são representados pelo simples aumento da quantidade, pois exigiriam rastreabilidade individual não contemplada neste fluxo. Quantidade documental em outra unidade permanece explícita e não é convertida em número de embriões. Consultar registros antigos não revalida ou modifica suas quantidades. Perda física continua sendo registrada no estoque, separada da tentativa.
+
+Em DG negativo, `decisaoIatf` pode ser `INDICAR`, `NAO_INDICAR` ou nula (não informada). Indicar mantém a conduta IATF; não indicar é incompatível com essa conduta. A decisão fica na interpretação e no histórico, sem iniciar outra programação automaticamente. DG inconclusivo, gestação já aberta e correções continuam sujeitos às regras clínicas existentes, sem converter ausência de resultado em negativo.
+
+Após a confirmação do DG, o recibo oferece **Preparar próxima IATF** somente para os animais com decisão explícita `INDICAR`. O comando abre a preparação com esses animais; não repete o diagnóstico nem confirma uma participação. Fechar o recibo ou escolher não indicar não inicia uma programação. A conferência e o recibo mostram a decisão de cada animal, inclusive a decisão ainda pendente.
+
+No atendimento protocolar, resultado e finalidade de sexagem/reconfirmação permanecem coerentes. Sexagem conclusiva exige sexo observado e gestação conhecida; resultado inconclusivo conserva sua finalidade sem inventar sexo. DG positivo pode registrar sexo fetal no mesmo atendimento. DG negativo limpa o sexo do rascunho, sem apagar informações de fatos anteriores. A validação clínica e os vínculos continuam no servidor.
+
+Retirar uma participação de protocolo encerra somente esse vínculo e suas pendências conforme o contrato comum. Não cria suspensão reprodutiva, decisão de aptidão ou alteração do eixo de elegibilidade. A decisão de não indicar outra IATF também não equivale a bloqueio reprodutivo.

@@ -28,20 +28,20 @@ export async function conferirServicosManejosTx(tx:Tx,itens:ItemExecucaoManejo[]
 }
 
 /** Sem fatos, auditoria, início de participação ou estoque. */
-export async function prepararExecucaoManejoTx(tx:Tx,entrada:ItemExecucaoManejo,usuarioId:number|null) {
+export async function prepararExecucaoManejoTx(tx:Tx,entrada:ItemExecucaoManejo,usuarioId:number|null,planejamentoFuturo=false) {
   const item=itemExecucaoManejoSchema.parse(entrada);
   await travarAnimais(tx,[item.animalId]);
   const t=await tx.tarefaProtocolo.findFirst({where:{id:item.tarefaId,execucao:{animalId:item.animalId,propriedadeId:item.propriedadeId}},include:{etapa:true,execucao:{include:{protocolo:true,rodada:true}},manejos:true,vinculos:{include:{manejo:true}}}});
   if(!t)throw new RebanhoError("NAO_ENCONTRADO","Tarefa não encontrada para este animal e sítio");
   if(t.etapa.tipo!==item.tipo||t.execucao.canceladaEm||t.dispensadaEm||t.realizadaEm||t.regularizacaoPendente||t.execucao.rodada&&t.execucao.rodada.status!=="ABERTA"||t.manejos.some(m=>m.status==="VALIDO"||m.realizacaoMantida)||t.vinculos.some(v=>v.estado==="ENCERRADO"||v.manejo?.realizacaoMantida))throw new RebanhoError("CONFLITO","A tarefa já foi realizada ou exige regularização","tarefaId");
   const temporal=lerDataIatf(item.realizadaEm??item.data);
-  if(temporal.data!==item.data||anteriorIatf(new Date(),"HORA",temporal.instante,temporal.precisao))throw new RebanhoError("VALIDACAO","Confira a data realizada e, quando conhecido, o horário até agora","realizadaEm");
+  if(temporal.data!==item.data||(!planejamentoFuturo&&anteriorIatf(new Date(),"HORA",temporal.instante,temporal.precisao)))throw new RebanhoError("VALIDACAO","Confira a data realizada e, quando conhecido, o horário até agora","realizadaEm");
   await conferirAnimalNoFato(tx,item.animalId,item.propriedadeId,new Date(item.data));
   let comparacao;
   let inicioLegado={exigeCiencia:false,total:0};
   let impactos:unknown=null;
   if(t.execucao.protocolo.tipo==="REPRODUTIVO"){
-    const p=await prepararExecucaoTarefaTx(tx,t.id,origem(item),usuarioId);
+    const p=await prepararExecucaoTarefaTx(tx,t.id,origem(item),usuarioId,planejamentoFuturo);
     comparacao=p.desvio;impactos=p.impactosInicio;
     inicioLegado={exigeCiencia:p.impactosInicio.itens.length>0,total:p.impactosInicio.itens.length};
   }else comparacao=compararParametros({tipo:t.etapa.tipo,data:t.previstaPara.toISOString().slice(0,10)},{tipo:item.tipo,data:item.data},t.parametros!==null);

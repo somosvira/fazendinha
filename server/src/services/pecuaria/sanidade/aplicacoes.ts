@@ -76,14 +76,14 @@ export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, it
   if (produtosEstoque.length) await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${produtosEstoque}::text[]) AS k) AS chaves ORDER BY h`;
 }
 
-async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
+async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput, planejamentoFuturo = false) {
   const data = dia(input.data);
   await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
   const momento = input.aplicadaEm ? new Date(input.aplicadaEm) : null;
   if (momento && (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data)) {
     erro("A data e o horário da aplicação devem corresponder ao mesmo dia no Brasil", "aplicadaEm");
   }
-  if (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
+  if (!planejamentoFuturo && (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()))) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
   if (input.ocorrenciaId) {
     const ocorrencia = await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } });
     if (!ocorrencia) erro("Ocorrência não pertence a este animal", "ocorrenciaId");
@@ -103,7 +103,7 @@ async function validarServico(tx: Prisma.TransactionClient, id: string, propried
 
 export { obterSaldo } from "../consumo.js";
 
-async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false) {
+async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false, planejamentoFuturo = false) {
   if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
   const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
   if (input.produtoId && !produto) erro("Produto não encontrado", "produtoId");
@@ -171,9 +171,9 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     partidaValidadeSnapshot: partidaValidade };
 }
 
-export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false) {
+export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false, planejamentoFuturo = false) {
     await travarAnimais(tx, [input.animalId]);
-    const data = await conferirLocalizacao(tx, input);
+    const data = await conferirLocalizacao(tx, input, previa && planejamentoFuturo);
     const destino = await tx.finalidadeAnimal.findFirst({ where: { animalId: input.animalId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
     const tipoLegadoId = tipoAplicacaoLegadaId(input.finalidade);
     const tipoAplicacao = await tx.tipoAplicacaoSanitaria.findFirst({ where: {
@@ -359,7 +359,10 @@ export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: s
 }
 
 export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null, destinoConsumo?: "DEVOLVER_ESTOQUE" | "MANTER_CONSUMO", administracaoMantida?: boolean | null) {
-  return transacaoPecuaria(async (tx) => {
+  return transacaoPecuaria(tx => anularAplicacaoTx(tx, id, propriedadeId, motivo, usuarioId, destinoConsumo, administracaoMantida));
+}
+
+export async function anularAplicacaoTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number, motivo: string, usuarioId: number | null, destinoConsumo?: "DEVOLVER_ESTOQUE" | "MANTER_CONSUMO", administracaoMantida?: boolean | null) {
     const existente = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada ou já anulada");
     await travarAnimais(tx, [existente.animalId]);
@@ -378,7 +381,6 @@ export async function anularAplicacao(id: string, propriedadeId: number, motivo:
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
       antes: existente, depois: { status: salva.status, motivo, destinoConsumo: destino, consumoMantido: salva.consumoMantido, administracaoMantida: salva.administracaoMantida } });
     return salva;
-  });
 }
 
 export async function corrigirCarencia(id: string, propriedadeId: number, input: Pick<AplicacaoInput, "estadoCarenciaLeite" | "estadoCarenciaCarne" | "carenciaLeiteHoras" | "carenciaCarneHoras" | "justificativaCarenciaCarne" | "justificativaCarenciaLeite"> & { motivo: string }, usuarioId: number | null) {

@@ -209,6 +209,7 @@ export type SituacaoInicialInput = FatoBase & {
   aptaDesde?: string | null;
 };
 export type TentativaInput = FatoBase & {
+  motivoQuantidadeExcepcional?: string;
   tipo: "IA" | "TE" | "COBERTURA";
   origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";
   materialId?: string;
@@ -244,6 +245,7 @@ export type AvaliacaoInput = FatoBase & {
   gestacaoId?: string;
   sexoFetal?: "F" | "M";
   conduta?: "AGUARDAR" | "IATF" | "DESCARTE";
+  decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   motivo?: string;
   anotacaoOriginal?: string;
   retornoEm?: string;

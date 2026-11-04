@@ -13,7 +13,7 @@ const origem: CadastroProtocoloMeta = { id: "p", nome: "Modelo", descricao: null
 const completo = vi.fn();
 function Editor({ iniciais, fonte = null, indiceErro, aoMudar }: { iniciais: Acao[]; fonte?: CadastroProtocoloMeta | null; indiceErro?: number; aoMudar?: (itens: Acao[]) => void }) {
   const [itens, setItens] = useState(iniciais);
-  return <BuilderEtapasProtocolo origem={fonte} itens={itens} onChange={novos => { setItens(novos); aoMudar?.(novos); }} converter={item => ({ ...item, chaveEdicao: `acao-${item.ordem! - 1}` })} onCompletoChange={completo} criarAcao={(m, referencia) => ({ ...acao(itens.length), dia: referencia?.dia ?? 0, momento: m })} indiceErro={indiceErro} renderizarCalendario={(item, indices) => <label>Intervalo da etapa<input type="number" value={item.dia} onChange={e => setItens(itens.map((v, i) => indices.includes(i) ? { ...v, dia: Number(e.target.value) } : v))} /></label>} renderizarAcao={(item, indice) => <label>Nome {item.chaveEdicao}<input value={item.nome} onChange={e => setItens(itens.map((v, i) => i === indice ? { ...v, nome: e.target.value } : v))} /></label>} />;
+  return <BuilderEtapasProtocolo permitirAutomacao origem={fonte} itens={itens} onChange={novos => { setItens(novos); aoMudar?.(novos); }} converter={item => ({ ...item, chaveEdicao: `acao-${item.ordem! - 1}` })} onCompletoChange={completo} criarAcao={(m, referencia) => ({ ...acao(itens.length), dia: referencia?.dia ?? 0, momento: m })} indiceErro={indiceErro} renderizarCalendario={(item, indices) => <label>Intervalo da etapa<input type="number" value={item.dia} onChange={e => setItens(itens.map((v, i) => indices.includes(i) ? { ...v, dia: Number(e.target.value) } : v))} /></label>} renderizarAcao={(item, indice) => <label>Nome {item.chaveEdicao}<input value={item.nome} onChange={e => setItens(itens.map((v, i) => i === indice ? { ...v, nome: e.target.value } : v))} /></label>} />;
 }
 const editor = () => within(screen.getByRole("region", { name: "Etapa selecionada" }));
 beforeEach(() => { vi.clearAllMocks(); });
@@ -31,7 +31,7 @@ it("agrupa pelo momento explícito e sua ordem, nunca pela data coincidente", ()
   expect(editor().queryByLabelText("Nome da etapa")).toBeNull();
   fireEvent.click(editor().getByRole("button", { name: "Organizar como etapa" }));
   expect(editor().getByLabelText("Nome da etapa")).toHaveProperty("value", "Etapa 5");
-  expect(editor().getByRole("radio", { name: /Manual/ })).toHaveProperty("checked", true);
+  expect(editor().getByRole("radio", { name: /Confirmação obrigatória/ })).toHaveProperty("checked", true);
 });
 
 it("pagina 11 procedimentos em 10+1 e conserva edições e página ao trocar de etapa", () => {
@@ -78,7 +78,7 @@ it("pagina 11 etapas, adiciona com modo manual e foca o nome", () => {
   fireEvent.click(screen.getByRole("button", { name: "Adicionar etapa" }));
   expect(editor().getByLabelText("Nome da etapa")).toHaveProperty("value", "Etapa 12");
   expect(document.activeElement).toBe(editor().getByLabelText("Nome da etapa"));
-  expect(editor().getByRole("radio", { name: /Manual/ })).toHaveProperty("checked", true);
+  expect(editor().getByRole("radio", { name: /Confirmação obrigatória/ })).toHaveProperty("checked", true);
 });
 
 it("bloqueia inclusões no teto de cem sem fracionar o modelo", () => {
@@ -111,7 +111,7 @@ it("carrega páginas de dez explicitamente e preserva edição e revisão ao ane
   fireEvent.change(editor().getByLabelText("Nome acao-0"), { target: { value: "Editada durante carga" } });
   fireEvent.change(editor().getByLabelText("Nome da etapa"), { target: { value: "Etapa renomeada" } });
   fireEvent.change(editor().getByLabelText("Instruções gerais da etapa (opcional)"), { target: { value: "Orientação editada" } });
-  fireEvent.click(editor().getByRole("radio", { name: /Automatizada/ }));
+  fireEvent.click(editor().getByRole("radio", { name: /Automática com reversão/ }));
   fireEvent.click(screen.getByRole("button", { name: "Carregar próximos 10 procedimentos" }));
   await waitFor(() => expect(completo).toHaveBeenLastCalledWith(true));
   expect(obterAcoesCadastro).toHaveBeenLastCalledWith(origem, 2);

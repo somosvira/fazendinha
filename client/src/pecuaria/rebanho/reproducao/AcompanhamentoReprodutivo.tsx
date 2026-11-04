@@ -1,3 +1,5 @@
+import { LembretesAutomaticos } from "./LembretesAutomaticos";
+import { agruparAgendaReprodutiva } from "./agenda-grupos";
 import { AjudaCampo } from "../../../components/Dica";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { Button } from "../../../components/ui/button";
@@ -42,6 +44,7 @@ export function AcompanhamentoReprodutivo({
   propriedadeId?: number;
   podeLancar?: boolean;
 }) {
+  const [diaAgenda, setDiaAgenda] = useState(() => new URLSearchParams(window.location.search).get("agendaDia") ?? "");
   const visual = useVisualizacaoConsulta("visualAgendaReproducao", "reproducao", "visual");
   const [dados, setDados] = useState<SugestoesVisita | null>(null),
     [erro, setErro] = useState<string | null>(null),
@@ -90,9 +93,10 @@ export function AcompanhamentoReprodutivo({
   }, [atualizacao, propriedadeId, revisao]);
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    ["agendaInicio", "agendaFim", "agendaOrdem", "agendaPagina"].forEach((k) =>
+    ["agendaInicio", "agendaFim", "agendaOrdem", "agendaPagina", "agendaDia"].forEach((k) =>
       p.delete(k),
     );
+    if (diaAgenda) p.set("agendaDia", diaAgenda);
     if (!crescente) p.set("agendaOrdem", "desc");
     if (pagina > 1) p.set("agendaPagina", String(pagina));
     if (inicio) p.set("agendaInicio", inicio);
@@ -102,10 +106,11 @@ export function AcompanhamentoReprodutivo({
       "",
       `${window.location.pathname}?${p}${window.location.hash}`,
     );
-  }, [inicio, fim, crescente, pagina]);
+  }, [inicio, fim, crescente, pagina, diaAgenda]);
   useEffect(() => {
     const restaurar = () => {
       const p = new URLSearchParams(window.location.search);
+      setDiaAgenda(p.get("agendaDia") ?? "");
       setInicio(p.get("agendaInicio") ?? "");
       setFim(p.get("agendaFim") ?? "");
       setPagina(Math.max(1, Math.floor(Number(p.get("agendaPagina")) || 1)));
@@ -132,7 +137,7 @@ export function AcompanhamentoReprodutivo({
     {chave:"origem",rotulo:"Origem",tipo:"opcoes",obter:r=>r.origem,opcoes:Object.entries(origens).map(([valor,texto])=>({valor,texto}))},
     {chave:"situacao",rotulo:"Situação",tipo:"opcoes",obter:r=>r.status,opcoes:Object.entries(situacoes).map(([valor,texto])=>({valor,texto}))},
   ],()=>setPagina(1));
-  const retornos = consulta.filtrar(dados?.retornos ?? []).filter(r=>{const a=animais.find(a=>a.animalId===r.animalId);return `${a?.brinco??""} ${a?.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"));})
+  const retornosPeriodo = consulta.filtrar(dados?.retornos ?? []).filter(r=>{const a=animais.find(a=>a.animalId===r.animalId);return `${a?.brinco??""} ${a?.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"));})
     .filter(
       (r) =>
         !invalido &&
@@ -152,7 +157,10 @@ export function AcompanhamentoReprodutivo({
         )
       );
     });
-  const totalPaginas = Math.max(1, Math.ceil(retornos.length / 10)),
+  const retornos = diaAgenda ? retornosPeriodo.filter(r => referenciaRetorno(r)?.slice(0, 10) === diaAgenda) : retornosPeriodo;
+  const gruposAgenda = agruparAgendaReprodutiva(retornos, referenciaRetorno);
+  const totalLista = visual.modo === "visual" ? gruposAgenda.length : retornos.length;
+  const totalPaginas = Math.max(1, Math.ceil(totalLista / 10)),
     atual = Math.min(pagina, totalPaginas);
   function destino(r: NonNullable<SugestoesVisita["retornos"]>[number]) {
     const retorno = new URL(window.location.href);
@@ -222,11 +230,13 @@ export function AcompanhamentoReprodutivo({
         {carregando && <p role="status">Carregando acompanhamento…</p>}
         {!carregando && !erro && dados && (
           <>
+            {propriedadeId != null && <LembretesAutomaticos propriedadeId={propriedadeId} data={diaAgenda || hoje()} />}
             <div className="repro-consulta-titulo"><div><h2>Próximas atividades <AjudaCampo rotulo="Ajuda sobre a agenda reprodutiva" texto="Datas registradas e ações pendentes. Registros sem previsão ficam ao final; ausência de diagnóstico não significa resultado negativo."/> <span>{retornos.length} acompanhamentos</span></h2><p>Datas registradas, sem presumir resultado clínico.</p></div><AlternarVisualizacaoConsulta {...visual} visual="Calendário" rotulo="Visualização da agenda reprodutiva"/></div>
-            {visual.modo === "visual" ? <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades"><ol className="repro-agenda-lista">{retornos.slice((atual - 1) * 10, atual * 10).map(r => {
+            {visual.modo === "visual" ? <div className="repro-agenda-grade"><section aria-label="Lista de próximas atividades">{diaAgenda && <div className="mb-4 flex flex-wrap items-center gap-3"><strong>{dataBR(diaAgenda)}</strong><Button variant="outline" onClick={() => { setDiaAgenda(""); setPagina(1); }}>Ver todos os dias</Button></div>}<ol className="repro-agenda-lista">{gruposAgenda.slice((atual - 1) * 10, atual * 10).map(g => {
+              const r = g.itens[0];
               const a = animais.find(a => a.animalId === r.animalId);
-              return <li key={`${r.animalId}:${r.origem}:${r.origemId}`}><time>{r.status === "PREVISAO_PENDENTE" ? "Previsão a definir" : r.data ? r.origem === "TAREFA_IATF" ? horarioIatf(r.data, r.precisaoTemporal) : dataBR(r.data) : "Sem data informada"}</time><div><h3>{origens[r.origem] ?? "Acompanhamento"}</h3><p>{a ? `${a.brinco ?? "Sem brinco"}${a.nome ? ` · ${a.nome}` : ""}` : "Animal não identificado"}</p><Pill tone={r.status === "ATRASADO" ? "red" : "amber"}>{situacoes[r.status] ?? "A conferir"}</Pill></div><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Ver ação</LinkReproducao></li>;
-            })}</ol></section><CalendarioAgenda itens={retornos} dataDe={referenciaRetorno} chaveDe={r => `${r.animalId}:${r.origem}:${r.origemId}`} render={r => <div><strong>{origens[r.origem] ?? "Acompanhamento"}</strong><p>{animais.find(a => a.animalId === r.animalId)?.brinco ?? "Animal não identificado"}</p><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Abrir origem</LinkReproducao></div>}/></div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}
+              return <li key={g.id}><time>{r.status === "PREVISAO_PENDENTE" ? "Previsão a definir" : r.data ? r.origem === "TAREFA_IATF" ? horarioIatf(r.data, r.precisaoTemporal) : dataBR(r.data) : "Sem data informada"}</time><div><h3>{r.momentoNome ?? r.etapaNome ?? origens[r.origem] ?? "Acompanhamento"}</h3>{r.programacaoNome && <p>{r.programacaoNome}</p>}<p>{g.animais > 1 ? `${g.animais} animais · ${g.itens.length} procedimentos` : a ? `${a.brinco ?? "Sem brinco"}${a.nome ? ` · ${a.nome}` : ""}` : "Animal não identificado"}</p><Pill tone={r.status === "ATRASADO" ? "red" : "amber"}>{situacoes[r.status] ?? "A conferir"}</Pill></div><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Ver ação</LinkReproducao></li>;
+            })}</ol></section><CalendarioAgenda itens={retornosPeriodo} dataSelecionada={diaAgenda} onSelecionarData={d => { setDiaAgenda(d); setPagina(1); }} dataDe={referenciaRetorno} chaveDe={r => `${r.animalId}:${r.origem}:${r.origemId}`} render={r => <div><strong>{origens[r.origem] ?? "Acompanhamento"}</strong><p>{animais.find(a => a.animalId === r.animalId)?.brinco ?? "Animal não identificado"}</p><LinkReproducao botao href={destino(r)} sitio={propriedadeId}>Abrir origem</LinkReproducao></div>}/></div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}
               rotulo="Agenda reprodutiva"
               itens={retornos.slice((atual - 1) * 10, atual * 10)}
               chaveDe={(r) => `${r.animalId}:${r.origem}:${r.origemId}`}
@@ -289,10 +299,10 @@ export function AcompanhamentoReprodutivo({
             <Paginacao
               paginaAtual={atual}
               totalPaginas={totalPaginas}
-              totalItens={retornos.length}
+              totalItens={totalLista}
               itensPorPagina={10}
               onPaginaChange={setPagina}
-              rotulo="acompanhamentos"
+              rotulo={visual.modo === "visual" ? "atividades" : "acompanhamentos"}
               idSelect="pagina-agenda-reprodutiva"
             />
           </>

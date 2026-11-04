@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { FormParticipacaoIndividual } from "./FormParticipacaoIndividual";
 import { reqProtocolo } from "./api";
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), reqProtocolo: vi.fn() }));
+vi.mock("./useAcoesInicioProtocolo",()=>({useAcoesInicioProtocolo:()=>({etapas:[],erro:null,recarregar:vi.fn()})}));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it("confere calendário individual e retry preserva chave sem criar programação artificial", async () => {
   let gravacoes = 0;
