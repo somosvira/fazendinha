@@ -96,8 +96,8 @@ describe("formulários próprios de nutrição", () => {
     vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-25" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
     expect(await screen.findByRole("heading", { name: "Novo fechamento · Matrizes" })).toBeTruthy();
-    await screen.findByText("Fechamento mensal desde 01/11/2026");
-    expect(screen.getByText(/confirmar antes de baixar · conferência no dia 5/)).toBeTruthy();
+    await screen.findByText("Fechamento diário manual desde 01/11/2026");
+    expect(screen.getByText(/conferência no dia 5 do mês seguinte/)).toBeTruthy();
     expect(screen.getByText("Consumo lote no sítio 2 de 2026-10-26 a 2026-10-31")).toBeTruthy();
   });
   it("lote mensal sem dias anteriores pendentes leva aos fechamentos mensais", async () => {
@@ -107,7 +107,7 @@ describe("formulários próprios de nutrição", () => {
     vi.mocked(api.consultarResumoNutricional).mockResolvedValue(comDieta("2026-10-01"));
     vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-31" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
-    const link = await screen.findByRole("link", { name: "Ver fechamentos mensais do lote" });
+    const link = await screen.findByRole("link", { name: "Ver fechamentos do lote" });
     expect(link.getAttribute("href")).toContain("aba=fechamentos&loteId=lote");
     expect(screen.queryByText(/Consumo lote/)).toBeNull();
   });
@@ -143,9 +143,9 @@ it("resolve o modelo pela data e prioriza exceção do lote sobre padrão mais r
     { id: "futura", propriedadeId: 2, loteId: "lote", modelo: "PROVISORIO", diaConferencia: 12, autorizaValidade: false, desde: "2030-01-01" },
   ]);
   render(<FormOperacaoNutricional acao="atribuir" loteId="lote" dietaInicialId="publicada" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByText(/Confirmar antes de baixar · Conferência dia 9/);
+  await screen.findByText(/Diário manual · Conferência dia 9/);
   await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/01/2030" } });
-  expect(screen.getByText(/Estimar e baixar no fechamento · Conferência dia 12/)).toBeTruthy();
+  expect(screen.getByText(/Mensal · Conferência dia 12/)).toBeTruthy();
   await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/07/2026" } });
   expect(screen.getByText(/Sem configuração mensal vigente/)).toBeTruthy();
 });

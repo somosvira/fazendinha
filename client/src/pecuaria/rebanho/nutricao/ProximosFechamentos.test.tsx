@@ -38,6 +38,6 @@ describe("Próximos fechamentos", () => {
     const linhas = await screen.findAllByRole("row");
     expect(within(linhas[1]).getByText("6 dias")).toBeTruthy();
     expect(within(linhas[1]).getByText("26/10 a 31/10/2026")).toBeTruthy();
-    expect(within(linhas[1]).getByText("Mensal a partir de 01/11").getAttribute("title")).toBe("Baixa automática diária · conferência no dia 5");
+    expect(within(linhas[1]).getByText("Diário automático a partir de 01/11").getAttribute("title")).toBe("Todo dia o estoque é descontado sozinho; na conferência mensal, ajuste as diferenças. Conferência no dia 5.");
   });
 });

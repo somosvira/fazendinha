@@ -10,9 +10,9 @@ A implementação está protegida por `NUTRICAO_MENSAL_ENABLED=false` e `NUTRICA
 
 | Modelo apresentado | Rotina | Quando altera o estoque confirmado | Conferência mensal |
 |---|---|---|---|
-| Baixa automática diária — recomendado | Calcula dieta × animais presentes em cada dia encerrado | A cada processamento diário bem-sucedido | Aceita o total ou registra diferença justificada |
-| Confirmar antes de baixar | Mantém o cálculo aguardando conferência; permite selecionar vários dias juntos e corrigir quantidades | Na confirmação dos dias selecionados | Revisa o conjunto; não repete as baixas |
-| Estimar e baixar no fechamento | Calcula consumo virtual diário | Somente ao confirmar o mês | Converte o total revisado em movimentos reais |
+| Diário automático — recomendado | Calcula dieta × animais presentes em cada dia encerrado | A cada processamento diário bem-sucedido | Aceita o total ou registra diferença justificada |
+| Diário manual | Mantém o cálculo aguardando conferência; permite selecionar vários dias juntos e corrigir quantidades | Na confirmação dos dias selecionados | Revisa o conjunto; não repete as baixas |
+| Mensal | Calcula consumo virtual diário | Somente ao confirmar o mês | Converte o total revisado em movimentos reais |
 
 O terceiro modelo conserva dois números: **saldo confirmado** e **saldo estimado**, este igual ao saldo confirmado menos o consumo virtual ainda não efetivado. A estimativa pode revelar falta de alimento; não permite saída física sem saldo ou sem base de valor. Não altera caixa nem cria compra. O cálculo representa atribuição por permanência no lote, não medição de ingestão de cada animal.
 

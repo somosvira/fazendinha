@@ -158,7 +158,7 @@ export function GestaoMensal({
               <h2>
                 {vista === "alertas"
                   ? "Meses para conferir"
-                  : "Fechamentos mensais"}
+                  : "Meses de fechamento"}
                 {filtroLote && <> · {lotes.find((l) => l.id === filtroLote)?.nome ?? "lote selecionado"}</>}
               </h2>
               {filtroLote && <p><LinkNutricional href={rotaNutricao({ aba: "fechamentos" })}>Ver fechamentos de todos os lotes</LinkNutricional></p>}
@@ -397,6 +397,7 @@ function RevisaoMensal({
             <details key={i.produtoId}>
               <summary>Selecionar lotes físicos de {i.nome}</summary>
               <SelecaoPartidas
+                deEstoque
                 compacto
                 produtoId={i.produtoId}
                 propriedadeId={mes.propriedadeId}
@@ -570,6 +571,7 @@ function RevisaoMensal({
                               Selecionar lotes físicos da saída complementar
                             </summary>
                             <SelecaoPartidas
+                deEstoque
                               compacto
                               produtoId={i.produtoId}
                               propriedadeId={mes.propriedadeId}

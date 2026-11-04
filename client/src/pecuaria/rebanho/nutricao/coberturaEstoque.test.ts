@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calcularCobertura, ingredientesEmFalta } from "./coberturaEstoque";
-import type { Dieta, ResumoNutricional } from "./api";
+import { calcularCobertura, ingredientesEmFalta, perdaPorValidade } from "./coberturaEstoque";
+import type { Dieta, PartidaNutricional, ResumoNutricional } from "./api";
 import type { SaldoDTO } from "../../../estoque/api";
 
 const resumo = (id: string, sitio: number, animais: number, dietaId: string | null) => ({
@@ -28,5 +28,16 @@ describe("cobertura de estoque das dietas", () => {
     expect(c.get("a")!.ingredientes.find(i => i.produtoId === "racao")!.dias).toBe(4);
     expect(c.get("a")!.limitante).toMatchObject({ produtoId: "mineral", dias: 0 });
     expect(ingredientesEmFalta(c, lotes).map(i => [i.produtoId, i.dias])).toEqual([["mineral", 0], ["racao", 4]]);
+  });
+  it("desconta o que vence antes do uso, gastando primeiro o lote de estoque que vence antes", () => {
+    const partida = (id: string, validade: string | null, saldo: number) => ({ id, codigo: id, validade, saldo: String(saldo), origemRastreio: "ENTRADA" }) as PartidaNutricional;
+    // 10 kg/dia a partir de 04/11: até 06/11 (3 dias) usa 30 de 50; até 30/11 cabem mais 240, que gasta os 100 do segundo lote.
+    const partidas = [partida("b", "2026-11-30", 100), partida("a", "2026-11-06", 50), partida("sem", null, 500)];
+    expect(perdaPorValidade(partidas, 10, "2026-11-04")).toEqual({ vencendo: 20, proximaValidade: "2026-11-06" });
+    const lotes = [resumo("a", 1, 10, "d")];
+    const c = calcularCobertura(lotes, [dieta("d", [["racao", "1"]])], new Map([[1, [saldo("racao", 650)]]]), new Map([["1:racao", partidas]]), "2026-11-04");
+    // 650 − 20 vencendo = 630 utilizáveis a 10 kg/dia.
+    expect(c.get("a")!.ingredientes[0]).toMatchObject({ vencendo: 20, dias: 63 });
+    expect(ingredientesEmFalta(c, lotes).map(i => i.produtoId)).toEqual(["racao"]);
   });
 });

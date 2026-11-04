@@ -4,9 +4,9 @@ import { consultarVisaoNutricional, ultimoFechamentoConfirmado, type ResumoNutri
 import { configuracoesMensais, statusMensal, type ConfiguracaoMensal } from "./mensal-api";
 
 export const MODELOS: Record<ConfiguracaoMensal["modelo"], { rotulo: string; texto: string }> = {
-  AUTOMATICO: { rotulo: "Baixa automática diária", texto: "O processamento diário efetua as baixas; a conferência mensal permite ajustes." },
-  MANUAL: { rotulo: "Confirmar antes de baixar", texto: "O estoque é baixado depois da confirmação dos dias." },
-  PROVISORIO: { rotulo: "Estimar e baixar no fechamento", texto: "O consumo diário é virtual; o estoque é baixado na confirmação mensal." },
+  AUTOMATICO: { rotulo: "Diário automático", texto: "Todo dia o estoque é descontado sozinho; na conferência mensal, ajuste as diferenças." },
+  MANUAL: { rotulo: "Diário manual", texto: "Todo dia alguém confirma as quantidades, e o estoque é descontado na confirmação." },
+  PROVISORIO: { rotulo: "Mensal", texto: "O consumo diário fica estimado; o estoque é descontado ao fechar o mês." },
 };
 
 export const somarDias = (iso: string, dias: number) => { const d = new Date(`${iso.slice(0, 10)}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + dias); return d.toISOString().slice(0, 10); };
@@ -18,7 +18,7 @@ export function configuracaoNaData(configuracoes: ConfiguracaoMensal[], lote: Lo
   const vigentes = configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && c.desde.slice(0, 10) <= data).sort((a, b) => b.desde.localeCompare(a.desde));
   return vigentes.find(c => c.loteId === lote.id) ?? vigentes.find(c => c.loteId === null);
 }
-/** Primeira data em que o lote passa ao fechamento mensal; antes dela, o consumo fecha por período. */
+/** Primeira data em que o lote passa a um tipo de fechamento (diário automático, diário manual ou mensal); antes dela, o consumo fecha por período. */
 export function adocaoMensal(configuracoes: ConfiguracaoMensal[], lote: LoteRef) {
   return configuracoes.filter(c => c.propriedadeId === lote.propriedadeId && (c.loteId === null || c.loteId === lote.id)).map(c => c.desde.slice(0, 10)).sort()[0];
 }
@@ -29,8 +29,10 @@ export type SituacaoLote = {
   ultimoFim: string | null;
   /** Intervalo que ainda falta fechar por período, até ontem e antes da adoção mensal. */
   inicio: string; fim: string; dias: number;
-  /** Fechamento mensal que vale hoje, quando houver. */
+  /** Tipo de fechamento que vale hoje, quando houver. */
   mensal?: ConfiguracaoMensal;
+  /** Tipo de fechamento que passa a valer na adoção. */
+  configuracaoAdocao?: ConfiguracaoMensal;
   adocao?: string;
 };
 
@@ -41,7 +43,7 @@ export function situacaoDoLote(resumo: ResumoNutricional, ultimoFim: string | nu
   const adocao = adocaoMensal(configuracoes, resumo.lote);
   const ontem = somarDias(dia, -1);
   const fim = adocao && somarDias(adocao, -1) < ontem ? somarDias(adocao, -1) : ontem;
-  return { resumo, ultimoFim, inicio, fim, dias: inicio > fim ? 0 : diasEntre(inicio, fim), mensal: configuracaoNaData(configuracoes, resumo.lote, dia), adocao };
+  return { resumo, ultimoFim, inicio, fim, dias: inicio > fim ? 0 : diasEntre(inicio, fim), mensal: configuracaoNaData(configuracoes, resumo.lote, dia), adocao, configuracaoAdocao: adocao ? configuracaoNaData(configuracoes, resumo.lote, adocao) : undefined };
 }
 
 export async function consultarModelosFechamento() {

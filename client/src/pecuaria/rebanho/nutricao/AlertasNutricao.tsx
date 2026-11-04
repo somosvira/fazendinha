@@ -51,10 +51,10 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
         ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: (s: SituacaoLote) => <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", s.resumo.lote.id)}>Fechar período</LinkNutricional> }] : []),
       ]} />
     </Secao>}
-    {d.estoque.length > 0 && <Secao titulo="Estoque acabando" descricao={`Ingredientes das dietas vigentes que cobrem menos de ${DIAS_ATENCAO} dias com o efetivo de hoje, somando todos os lotes do sítio.`}>
-      <TabelaFinanceira rotulo="Ingredientes com estoque acabando" itens={d.estoque} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
+    {d.estoque.length > 0 && <Secao titulo="Estoque acabando ou vencendo" descricao={`Ingredientes das dietas vigentes que cobrem menos de ${DIAS_ATENCAO} dias com o efetivo de hoje, somando todos os lotes de animais do sítio, ou que têm lotes de estoque vencendo antes do uso.`}>
+      <TabelaFinanceira rotulo="Ingredientes com estoque acabando ou vencendo" itens={d.estoque} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
         { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: Falta) => <LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno> },
-        { chave: "cobre", titulo: "Cobre", celula: (i: Falta) => <strong className="nutricao-alerta-texto">{textoCobertura(i.dias)}</strong> },
+        { chave: "cobre", titulo: "Cobre", celula: (i: Falta) => <><strong className={i.dias != null && i.dias < DIAS_ATENCAO ? "nutricao-alerta-texto" : undefined}>{textoCobertura(i.dias)}</strong>{i.vencendo > 0 && <p className="nutricao-secundario nutricao-alerta-texto">{quantidadeNutricional(String(Math.round(i.vencendo * 1000) / 1000))} {i.unidade} vencem antes do uso</p>}</> },
         { chave: "saldo", titulo: "Saldo e consumo", celula: (i: Falta) => <>{quantidadeNutricional(String(i.saldo))} {i.unidade}<p className="nutricao-secundario">{quantidadeNutricional(String(Math.round(i.consumoSitioDia * 1000) / 1000))} {i.unidade}/dia</p></> },
         { chave: "lotes", titulo: "Lotes", larguraFlexivel: true, celula: (i: Falta) => i.lotes.join(", ") },
         { chave: "acao", titulo: "Ação", acoes: true, celula: (i: Falta) => <LinkInterno area="estoque" aparencia="botao-secundario" href={hrefProdutoEstoque(i.produtoId)}>Ver no Estoque</LinkInterno> },

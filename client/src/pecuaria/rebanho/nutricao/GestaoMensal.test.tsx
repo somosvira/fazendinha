@@ -46,7 +46,7 @@ describe("configuração nutricional", () => {
     expect(
       (
         screen.getByRole("radio", {
-          name: /Baixa automática diária/,
+          name: /Diário automático/,
         }) as HTMLInputElement
       ).checked,
     ).toBe(true);

@@ -7,11 +7,12 @@ import type { Lote } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import * as api from "./mensal-api";
 import { LinkNutricional } from "./componentes";
+import { MODELOS } from "./situacaoFechamento";
 
 export const modelosNutricionais: Record<api.ModeloMensal, { nome: string; descricao: string; efeito: string }> = {
-  AUTOMATICO: { nome: "Baixa automática diária", descricao: "O estoque é descontado diariamente. No fechamento mensal, confira os totais e ajuste diferenças com justificativa.", efeito: "O estoque confirmado muda a cada baixa diária bem-sucedida." },
-  MANUAL: { nome: "Confirmar antes de baixar", descricao: "Confira um dia ou vários dias juntos, corrija quantidades e confirme a baixa. A conferência mensal revisa o conjunto, sem repetir as baixas.", efeito: "O estoque confirmado muda quando os dias são confirmados." },
-  PROVISORIO: { nome: "Estimar e baixar no fechamento", descricao: "A estimativa diária reduz o saldo disponível estimado. No fechamento mensal, confira as quantidades e confirme a baixa.", efeito: "O estoque confirmado muda somente ao confirmar o mês. O saldo estimado permanece separado." },
+  AUTOMATICO: { nome: MODELOS.AUTOMATICO.rotulo, descricao: "Todo dia o estoque é descontado conforme a dieta e os animais presentes. No fechamento mensal, confira os totais e ajuste diferenças com justificativa.", efeito: "O estoque confirmado muda a cada baixa diária bem-sucedida." },
+  MANUAL: { nome: MODELOS.MANUAL.rotulo, descricao: "Confirme as quantidades de cada dia (ou de vários dias juntos), corrija quantidades e confirme a baixa. A conferência mensal revisa o conjunto, sem repetir as baixas.", efeito: "O estoque confirmado muda quando os dias são confirmados." },
+  PROVISORIO: { nome: MODELOS.PROVISORIO.rotulo, descricao: "A estimativa diária reduz o saldo disponível estimado. No fechamento mensal, confira as quantidades e confirme a baixa.", efeito: "O estoque confirmado muda somente ao confirmar o mês. O saldo estimado permanece separado." },
 };
 function inicioMinimo(alteracao: boolean) {
   const d = new Date(hoje() + "T12:00:00Z");
