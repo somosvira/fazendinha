@@ -16,3 +16,11 @@ describe("média nutricional com base conhecida", () => {
     expect(consultarResumo).not.toHaveBeenCalled();
   });
 });
+describe("custo médio do mês atual", () => {
+  it("consulta do primeiro dia do mês até ontem", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-04T15:00:00Z"));
+    vi.mocked(consultarResumo).mockResolvedValue({ lotes: [], verValores: true } as never);
+    expect(await consultarCustoMedio(7, true, "atual")).toMatchObject({ inicio: "2026-11-01", fim: "2026-11-03" });
+    vi.useRealTimers();
+  });
+});

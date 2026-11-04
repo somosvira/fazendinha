@@ -12,11 +12,13 @@ export function calcularCustoMedio(lotes: BaseCusto[]) {
     custoConhecido: animalDias ? total.toFixed(2) : null, animalDias,
     lotesIncluidos: elegiveis.length, lotesTotal: lotes.length };
 }
-export async function consultarCustoMedio(propriedadeId: number | null, permitido: boolean) {
+/** Mês anterior fechado ou mês atual até ontem, com o que já foi baixado e confirmado. */
+export async function consultarCustoMedio(propriedadeId: number | null, permitido: boolean, mes: "anterior" | "atual" = "anterior") {
   if (!permitido) return null;
   const hoje = hojeFazendaDate();
-  const inicio = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - 1, 1));
-  const fim = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 0));
+  const atual = mes === "atual";
+  const inicio = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - (atual ? 0 : 1), 1));
+  const fim = atual ? new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() - 1)) : new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 0));
   const resumo = await consultarResumo(undefined, propriedadeId, true, false, { inicio, fim });
   return { inicio: inicio.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10), ...calcularCustoMedio(resumo.lotes) };
 }

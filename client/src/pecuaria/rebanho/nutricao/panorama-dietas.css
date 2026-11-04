@@ -25,9 +25,9 @@
 .dieta-cartao-destaque small{font-size:13px;color:var(--muted-foreground)}
 .dieta-cartao-rotulo{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
 .dieta-cartao-vazia{color:var(--campo-atencao,#775930)}
-.dieta-cartao-medidas{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:12px;margin:0}
+.dieta-cartao-medidas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0}
 .dieta-cartao-medidas>div{display:grid;gap:2px;align-content:start;min-width:0}
-.dieta-cartao-medidas>div+div{padding-left:12px;border-left:1px solid var(--border)}
+.dieta-cartao-medidas>div:nth-child(2n){padding-left:12px;border-left:1px solid var(--border)}
 .dieta-cartao-medidas dt{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
 .dieta-cartao-medidas dd{margin:0;font-weight:650;font-variant-numeric:tabular-nums}
 .dieta-cartao-medidas small{font-size:12px;color:var(--muted-foreground);overflow-wrap:anywhere}

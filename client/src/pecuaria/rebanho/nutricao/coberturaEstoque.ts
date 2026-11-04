@@ -12,6 +12,8 @@ export type CoberturaIngrediente = {
   consumoLoteDia: number; consumoSitioDia: number;
   /** Saldo disponível no sítio (descontado o consumo estimado ainda não baixado). */
   saldo: number;
+  /** Custo médio do produto no sítio (média das entradas valorizadas); null sem base. */
+  custoUnitario: number | null;
   /** Quantidade que vence antes de ser usada, consumindo primeiro o lote de estoque que vence antes. */
   vencendo: number;
   /** Validade mais próxima entre os lotes de estoque com saldo. */
@@ -19,7 +21,8 @@ export type CoberturaIngrediente = {
   /** Dias que o saldo utilizável cobre o consumo do sítio; null quando não há consumo previsto. */
   dias: number | null;
 };
-export type CoberturaLote = { dias: number | null; limitante: CoberturaIngrediente | null; ingredientes: CoberturaIngrediente[] };
+/** `custoDia` é o custo previsto das baixas diárias do lote (consumo × custo médio do estoque); `custoParcial` quando algum ingrediente não tem custo. */
+export type CoberturaLote = { dias: number | null; limitante: CoberturaIngrediente | null; ingredientes: CoberturaIngrediente[]; custoDia: number | null; custoParcial: boolean };
 
 const disponivel = (s: SaldoDTO) => s.saldoProjetado ?? s.saldo;
 
@@ -57,12 +60,15 @@ export function calcularCobertura(lotes: ResumoNutricional[], dietas: Dieta[], s
       const utilizavel = Math.max(0, saldo - vencendo);
       return {
         produtoId: i.produtoId, nome: i.produto?.nome ?? saldoProduto?.nome ?? "Produto", unidade: i.unidade, propriedadeId: r.lote.propriedadeId,
-        consumoLoteDia: Number(i.quantidadeCabecaDia) * r.lote.animaisAtivos, consumoSitioDia, saldo, vencendo: Math.min(vencendo, saldo), proximaValidade,
+        consumoLoteDia: Number(i.quantidadeCabecaDia) * r.lote.animaisAtivos, consumoSitioDia, saldo, vencendo: Math.min(vencendo, saldo), proximaValidade, custoUnitario: saldoProduto?.custoMedio ?? null,
         dias: consumoSitioDia > 0 ? Math.floor(utilizavel / consumoSitioDia) : null,
       };
     });
     const limitante = ingredientes.filter(i => i.dias !== null).sort((a, b) => a.dias! - b.dias!)[0] ?? null;
-    resultado.set(r.lote.id, { dias: limitante?.dias ?? null, limitante, ingredientes });
+    const comCusto = ingredientes.filter(i => i.custoUnitario != null);
+    resultado.set(r.lote.id, { dias: limitante?.dias ?? null, limitante, ingredientes,
+      custoDia: comCusto.length ? comCusto.reduce((s, i) => s + i.consumoLoteDia * i.custoUnitario!, 0) : null,
+      custoParcial: comCusto.length > 0 && comCusto.length < ingredientes.length });
   }
   return resultado;
 }
@@ -90,6 +96,19 @@ export function ingredientesEmFalta(cobertura: Map<string, CoberturaLote>, lotes
     porProduto.set(chave, atual);
   }
   return [...porProduto.values()].sort((a, b) => (a.dias ?? Infinity) - (b.dias ?? Infinity) || b.vencendo - a.vencendo);
+}
+
+/** Consumo diário somado de todas as dietas vigentes, um por produto e sítio, com a projeção do mês corrente. */
+export function consumoDasDietas(cobertura: Map<string, CoberturaLote>, dia = hoje()) {
+  const [ano, mes] = dia.split("-").map(Number);
+  const diasNoMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+  const porProduto = new Map<string, CoberturaIngrediente>();
+  for (const c of cobertura.values()) for (const i of c.ingredientes) porProduto.set(`${i.propriedadeId}:${i.produtoId}`, i);
+  return { diasNoMes, itens: [...porProduto.values()].map(i => ({
+    ...i, mesPrevisto: i.consumoSitioDia * diasNoMes,
+    custoDia: i.custoUnitario == null ? null : i.consumoSitioDia * i.custoUnitario,
+    custoMes: i.custoUnitario == null ? null : i.consumoSitioDia * diasNoMes * i.custoUnitario,
+  })).sort((a, b) => (b.custoMes ?? -1) - (a.custoMes ?? -1) || a.nome.localeCompare(b.nome, "pt-BR")) };
 }
 
 export const textoCobertura = (dias: number | null) => dias === null ? "Sem consumo previsto" : dias === 0 ? "Sem saldo" : `${dias.toLocaleString("pt-BR")} ${dias === 1 ? "dia" : "dias"}`;

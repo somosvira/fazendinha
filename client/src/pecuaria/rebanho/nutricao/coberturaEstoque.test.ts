@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { calcularCobertura, ingredientesEmFalta, perdaPorValidade } from "./coberturaEstoque";
+import { calcularCobertura, consumoDasDietas, ingredientesEmFalta, perdaPorValidade } from "./coberturaEstoque";
+import { custoPrevisto } from "./CustoMedioNutricao";
 import type { Dieta, PartidaNutricional, ResumoNutricional } from "./api";
 import type { SaldoDTO } from "../../../estoque/api";
 
@@ -8,7 +9,7 @@ const resumo = (id: string, sitio: number, animais: number, dietaId: string | nu
   vigente: dietaId ? { id: `v-${id}`, desde: "2026-10-01", ate: null, dieta: { id: dietaId, nome: dietaId, versao: 1 } } : null,
 }) as unknown as ResumoNutricional;
 const dieta = (id: string, itens: Array<[string, string]>) => ({ id, nome: id, versao: 1, publicadaEm: "2026-10-01", itens: itens.map(([produtoId, q]) => ({ produtoId, quantidadeCabecaDia: q, unidade: "KG", produto: { nome: produtoId } })) }) as Dieta;
-const saldo = (produtoId: string, saldo: number, saldoProjetado?: number) => ({ produtoId, nome: produtoId, saldo, saldoProjetado }) as SaldoDTO;
+const saldo = (produtoId: string, saldo: number, saldoProjetado?: number, custoMedio: number | null = null) => ({ produtoId, nome: produtoId, saldo, saldoProjetado, custoMedio }) as SaldoDTO;
 
 describe("cobertura de estoque das dietas", () => {
   it("soma o consumo de todos os lotes do sítio e limita o lote pelo ingrediente que acaba primeiro", () => {
@@ -39,5 +40,18 @@ describe("cobertura de estoque das dietas", () => {
     // 650 − 20 vencendo = 630 utilizáveis a 10 kg/dia.
     expect(c.get("a")!.ingredientes[0]).toMatchObject({ vencendo: 20, dias: 63 });
     expect(ingredientesEmFalta(c, lotes).map(i => i.produtoId)).toEqual(["racao"]);
+  });
+  it("custo diário previsto por lote, consumo somado das dietas e projeção do mês", () => {
+    const lotes = [resumo("lactantes", 1, 10, "lactacao"), resumo("novilhas", 1, 5, "crescimento")];
+    const dietas = [dieta("lactacao", [["racao", "3"], ["silagem", "10"]]), dieta("crescimento", [["silagem", "4"], ["mineral", "0.1"]])];
+    const c = calcularCobertura(lotes, dietas, new Map([[1, [saldo("racao", 300, undefined, 2), saldo("silagem", 1200, undefined, 0.5), saldo("mineral", 10)]]]));
+    // Lactantes: 30 kg ração × 2 + 100 kg silagem × 0,5 = 110 por dia.
+    expect(c.get("lactantes")).toMatchObject({ custoDia: 110, custoParcial: false });
+    // Novilhas: só a silagem tem custo (20 × 0,5); o mineral não tem custo no estoque.
+    expect(c.get("novilhas")).toMatchObject({ custoDia: 10, custoParcial: true });
+    expect(custoPrevisto(lotes, c)).toEqual({ porAnimalDia: 8, totalDia: 120, parcial: true });
+    const consumo = consumoDasDietas(c, "2026-11-04");
+    expect(consumo.diasNoMes).toBe(30);
+    expect(consumo.itens.find(i => i.produtoId === "silagem")).toMatchObject({ consumoSitioDia: 120, mesPrevisto: 3600, custoDia: 60, custoMes: 1800 });
   });
 });

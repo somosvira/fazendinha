@@ -36,7 +36,7 @@ const itemConsumo = z.object({ origensLeite: z.array(uuid).min(1).max(500).optio
 export const nutricaoRouter = new Hono()
   .route("/mensal", nutricaoMensalRouter)
   .get("/custo-medio", async c => {
-    try { return c.json(await consultarCustoMedio(await resolverEscopoLeitura(c), verValores(c))); }
+    try { return c.json(await consultarCustoMedio(await resolverEscopoLeitura(c), verValores(c), c.req.query("mes") === "atual" ? "atual" : "anterior")); }
     catch (e) { return falha(c, e); }
   })
   .get("/resumo", validarQuery(z.object({ loteId: uuid.optional() })), async c => {
