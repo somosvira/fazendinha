@@ -667,6 +667,7 @@ export function App() {
       <CommandPalette
         key={`busca:${usuario.id}:${propAtiva ?? "all"}`}
         escopo={propAtiva == null ? "Consolidado · Todos os sítios" : "Sítio selecionado"}
+        propriedadeId={propAtiva}
         podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
         podeVerValores={podeVerValores}
         podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}

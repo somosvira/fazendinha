@@ -3,6 +3,7 @@ import { FileText, MapPin, X, CornerDownLeft } from "lucide-react";
 import type { Tab } from "./Shell";
 import { COMANDOS, buscar, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
+import { listarPropriedades } from "../api/propriedades";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import "./busca-global.css";
@@ -16,6 +17,8 @@ type Props = {
   podeVerCaminho?: (caminho: string) => boolean;
   podeLancar?: boolean; podeVerValores?: boolean; escopo?: string;
   modo?: "tudo" | "animais";
+  /** Sítio ativo: o contexto mostra seu nome em vez de um rótulo genérico. */
+  propriedadeId?: number | null;
 };
 const filtros: FiltroBusca[] = ["Tudo", "Registros", "Páginas", "Ações"];
 const consultaValida = (q: string) => q.length >= 2 || /^\d$/.test(q);
@@ -26,7 +29,14 @@ function eResultadoBusca(v: unknown): v is ResultadoBusca {
     && (r.caminho as string).startsWith("/") && !(r.caminho as string).startsWith("//");
 }
 
-function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado" }: Props) {
+function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null }: Props) {
+  const [nomeSitio, setNomeSitio] = useState<string | null>(null);
+  useEffect(() => {
+    if (!aberto || propriedadeId == null || nomeSitio) return;
+    let vivo = true;
+    listarPropriedades().then(lista => { if (vivo) setNomeSitio(lista.find(p => p.id === propriedadeId)?.nome ?? null); }).catch(() => undefined);
+    return () => { vivo = false; };
+  }, [aberto, propriedadeId, nomeSitio]);
   const [query, setQuery] = useState("");
   const [filtro, setFiltro] = useState<FiltroBusca>("Tudo");
   const [valorSelecionado, setValorSelecionado] = useState("");
@@ -79,7 +89,7 @@ function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLan
           <CommandInput ref={inputRef} value={query} onValueChange={setQuery} placeholder="Buscar em tudo…" maxLength={60} aria-label="Buscar em tudo" />
           <button type="button" onClick={onFechar} aria-label="Fechar busca" className="busca-global-fechar"><X size={18} aria-hidden /></button>
         </div>
-        <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{escopo}</span></div>
+        <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{nomeSitio ?? escopo}</span></div>
         <nav className="busca-global-filtros" aria-label="Tipos de resultado">{filtros.map(f => <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}>{f}</button>)}</nav>
         <CommandList ref={listaRef} className="busca-global-lista" aria-label="Resultados da busca" aria-busy={mostrarRegistros && buscando}>
           {!termo && <p className="busca-global-dica">Busque por nome, brinco, número ou referência.</p>}

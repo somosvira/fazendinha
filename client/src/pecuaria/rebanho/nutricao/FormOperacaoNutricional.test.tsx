@@ -75,6 +75,16 @@ describe("formulários próprios de nutrição", () => {
     await screen.findByText("Consumo lote no sítio 2");
     expect(screen.queryByText("Histórico de fechamentos")).toBeNull();
   });
+  it("novo fechamento indica a forma mensal do lote e guarda o período anterior à adoção", async () => {
+    vi.mocked(mensal.statusMensal).mockResolvedValue({ habilitada: true, automacao: true });
+    vi.mocked(mensal.configuracoesMensais).mockResolvedValue([{ id: "c", propriedadeId: 2, loteId: null, modelo: "MANUAL", diaConferencia: 5, autorizaValidade: false, desde: "2026-01-01" }, { id: "e", propriedadeId: 2, loteId: "lote", modelo: "PROVISORIO", diaConferencia: 5, autorizaValidade: false, desde: "2099-01-01" }]);
+    render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
+    expect(await screen.findByRole("heading", { name: "Novo fechamento · Matrizes" })).toBeTruthy();
+    await screen.findByText("Mensal · Confirmar antes de baixar");
+    expect(screen.getByRole("link", { name: "Abrir fechamento mensal" }).getAttribute("href")).toContain("aba=fechamentos&loteId=lote");
+    expect(screen.getByText(/A partir de 01\/01\/2099, exceção do lote: estimar e baixar no fechamento\./)).toBeTruthy();
+    expect(screen.getByText("Fechar períodos anteriores a 01/01/2026")).toBeTruthy();
+  });
 });
 
 it("não confirma sem resumo nem interpreta falha como ausência de dieta", async () => {
