@@ -16,7 +16,7 @@ export function apresentarResumoCusto(r: Agregado | undefined, verValores: boole
 }
 
 /** Resposta cresce com os lotes, não com itens/participações de todo o histórico. */
-export async function consultarResumo(loteId: string | undefined, propriedadeId: number | null, verValores: boolean, verReferenciasComerciais = false, periodo?: { inicio: Date; fim: Date }) {
+export async function consultarResumo(loteId: string | undefined, propriedadeId: number | null, verValores: boolean, verReferenciasComerciais = false, periodo?: { inicio: Date; fim: Date }, somenteBaixado = false) {
   const hoje = hojeFazendaDate();
   return prisma.$transaction(async tx => {
     const lotes = await tx.lote.findMany({ where: { ...(loteId ? { id: loteId } : { ativo: true }), ...(propriedadeId == null ? {} : { propriedadeId }) }, select: { id: true } });
@@ -100,7 +100,9 @@ export async function consultarResumo(loteId: string | undefined, propriedadeId:
           SUM(CASE WHEN d.situacao='EFETIVADO' THEN COALESCE((SELECT SUM(i."custoLiquido") FROM pecuaria."ItemConsumoDiario" i WHERE i."diaId"=d.id),0) END) AS "custoConhecido",
           BOOL_AND(d.situacao='EFETIVADO' AND d.pendencia IS NULL) AS "coberturaCustoCompleta"
         FROM pecuaria."MesNutricao" m JOIN pecuaria."ConsumoDiario" d ON d."mesId"=m.id
-        WHERE m."loteId" IN (${Prisma.join(ids)}) ${periodo ? Prisma.sql`AND d.data >= ${periodo.inicio} AND d.data <= ${periodo.fim}` : Prisma.empty} GROUP BY m."loteId"`);
+        WHERE m."loteId" IN (${Prisma.join(ids)})
+          ${somenteBaixado ? Prisma.sql`AND d.situacao='EFETIVADO' AND d.pendencia IS NULL` : Prisma.empty}
+          ${periodo ? Prisma.sql`AND d.data >= ${periodo.inicio} AND d.data <= ${periodo.fim}` : Prisma.empty} GROUP BY m."loteId"`);
       for(const d of diarios){const antigo=porLote.get(d.loteId);porLote.set(d.loteId,antigo?{...d,fechamentos:antigo.fechamentos+d.fechamentos,animalDias:antigo.animalDias+d.animalDias,custoConhecido:antigo.custoConhecido===null&&d.custoConhecido===null?null:new Prisma.Decimal(antigo.custoConhecido??0).plus(d.custoConhecido??0),coberturaCustoCompleta:antigo.coberturaCustoCompleta&&d.coberturaCustoCompleta}:d);}
     }
     return { verValores, lotes: ids.map(id => ({ loteId: id, vigente: vigentes.get(id) ?? null, programada: programadas.get(id) ?? null, custos: apresentarResumoCusto(porLote.get(id), verValores), referenciaLeite: apresentarResumoReferenciaLeite(referenciasPorLote.get(id), verReferenciasComerciais) })) };

@@ -19,6 +19,7 @@ export async function consultarCustoMedio(propriedadeId: number | null, permitid
   const atual = mes === "atual";
   const inicio = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - (atual ? 0 : 1), 1));
   const fim = atual ? new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate() - 1)) : new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 0));
-  const resumo = await consultarResumo(undefined, propriedadeId, true, false, { inicio, fim });
+  // No mês atual entram também as baixas diárias já efetivadas, cada uma com seus animal-dias.
+  const resumo = await consultarResumo(undefined, propriedadeId, true, false, { inicio, fim }, atual);
   return { inicio: inicio.toISOString().slice(0, 10), fim: fim.toISOString().slice(0, 10), ...calcularCustoMedio(resumo.lotes) };
 }

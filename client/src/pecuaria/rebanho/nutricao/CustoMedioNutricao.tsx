@@ -29,12 +29,12 @@ export function CustoMedioNutricao({ lotes, cobertura }: { lotes: ResumoNutricio
   return <div>
     <dt>Custo de {mes} <AjudaCampo rotulo="Como o custo é calculado" texto={<>
       <strong>Previsto</strong>: consumo diário das dietas vigentes com o efetivo de hoje, valorizado pelo custo médio de cada ingrediente no estoque, por animal e dia. Acompanha as baixas diárias e muda quando a dieta, o efetivo ou o custo do estoque mudam.{" "}
-      <strong>Já baixado</strong>: fechamentos confirmados de {mes} até ontem, com custo totalmente apurado, divididos pelos animal-dias.
+      <strong>Já baixado</strong>: o que já saiu do estoque em {mes} até ontem — baixas diárias efetivadas e fechamentos confirmados com custo apurado — dividido pelos animal-dias desses dias.
     </>} /></dt>
     {cobertura === undefined ? <dd><Skeleton className="h-7 w-28" /></dd> : <dd>{previsto ? <>{custoTexto(previsto.porAnimalDia.toFixed(2))}<span className="dietas-resumo-unidade"> /animal/dia previsto</span></> : "Sem custo previsto"}</dd>}
     {previsto && <small>{custoTexto(previsto.totalDia.toFixed(2))} por dia nos lotes{previsto.parcial ? " · há ingredientes sem custo" : ""}</small>}
     {consulta.carregando ? <small><Skeleton className="h-4 w-36" /></small> : consulta.erro ? <small>Baixado indisponível</small> : <>
-      <small>Já baixado: {atual?.custoPorAnimalDia != null ? <strong>{custoTexto(atual.custoPorAnimalDia)}/animal/dia</strong> : "nenhum fechamento confirmado no mês"}</small>
+      <small>Já baixado: {atual?.custoPorAnimalDia != null ? <strong>{custoTexto(atual.custoPorAnimalDia)}/animal/dia</strong> : "nada baixado no mês ainda"}</small>
       {anterior?.custoPorAnimalDia != null && <small>{MESES[Number(anterior.inicio.slice(5, 7)) - 1][0].toUpperCase() + MESES[Number(anterior.inicio.slice(5, 7)) - 1].slice(1)}: {custoTexto(anterior.custoPorAnimalDia)}/animal/dia</small>}
     </>}
   </div>;

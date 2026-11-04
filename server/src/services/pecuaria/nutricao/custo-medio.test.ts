@@ -21,6 +21,7 @@ describe("custo médio do mês atual", () => {
     vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-04T15:00:00Z"));
     vi.mocked(consultarResumo).mockResolvedValue({ lotes: [], verValores: true } as never);
     expect(await consultarCustoMedio(7, true, "atual")).toMatchObject({ inicio: "2026-11-01", fim: "2026-11-03" });
+    expect(vi.mocked(consultarResumo).mock.calls.at(-1)?.[5]).toBe(true);
     vi.useRealTimers();
   });
 });
