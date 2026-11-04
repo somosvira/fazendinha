@@ -48,7 +48,7 @@ export function MovimentoEstoqueModal({ movimentoId, propriedadeId, unidade, onF
           <div><dt className="text-ink-3">Origem</dt><dd className="mt-1 font-medium">{ORIGEM[m.origem] ?? m.origem}{m.operacaoNumero != null && ` · operação #${m.operacaoNumero}`}</dd></div>
           {m.fornecedor && <div><dt className="text-ink-3">Fornecedor</dt><dd className="mt-1 font-medium">{m.fornecedor}</dd></div>}
           {m.centrosCusto.length > 0 && <div><dt className="text-ink-3">Centro de custo</dt><dd className="mt-1 font-medium">{m.centrosCusto.map(c => c.nome).join(", ")}</dd></div>}
-          {m.observacao && <div className="sm:col-span-2"><dt className="text-ink-3">Observação</dt><dd className="mt-1">{m.observacao}</dd></div>}
+          {m.observacao && <div className="sm:col-span-2"><dt className="text-ink-3">Observação</dt><dd className="mt-1">{m.observacao.replace(/\b(\d{4})-(\d{2})-(\d{2})\b/g, "$3/$2/$1")}</dd></div>}
         </dl>
         {!!m.partidas?.length && <section className="border-t border-border pt-4">
           <h3 className="text-sm font-semibold">Lotes de estoque</h3>
