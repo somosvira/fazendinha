@@ -96,7 +96,8 @@ describe("formulários próprios de nutrição", () => {
     vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-25" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
     expect(await screen.findByRole("heading", { name: "Novo fechamento · Matrizes" })).toBeTruthy();
-    await screen.findByText("Fechamento diário manual desde 01/11/2026");
+    await screen.findByText(/Desde 01\/11\/2026, o lote usa o fechamento/);
+    expect(screen.getByText("diário manual")).toBeTruthy();
     expect(screen.getByText(/conferência no dia 5 do mês seguinte/)).toBeTruthy();
     expect(screen.getByText("Consumo lote no sítio 2 de 2026-10-26 a 2026-10-31")).toBeTruthy();
   });

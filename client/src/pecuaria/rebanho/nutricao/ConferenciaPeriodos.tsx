@@ -62,8 +62,8 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
     <ErrorBox erro={erro} />
     {salvo && <p role="status" className="text-sm font-medium">Fechamento salvo. Consulte os fechamentos para ver os detalhes e participantes.</p>}
     <fieldset disabled={ocupado} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <label>De<DatePicker value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
-      <label>Até<DatePicker value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>
+      <label>De<DatePicker className="mt-1.5" value={inicio} onChange={(v) => { setInicio(v); setPrevia(null); }} /></label>
+      <label>Até<DatePicker className="mt-1.5" value={fim} onChange={(v) => { setFim(v); setPrevia(null); }} /></label>
       <label>Centro de custo<SelectCampo className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => { setCentro(valorSelecionado); setPrevia(null); }}><option value="">Usar o centro do lote</option>{centros.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
       {!acoes && <div className="flex items-end">{botaoConferir}</div>}
     </fieldset>
