@@ -6,13 +6,13 @@ import type { FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 // à página 1. Uma linha desfeita continua na lista (o histórico nunca apaga nada).
 
 import { useEffect, useState } from "react";
-import { Loader } from "../../../components/Loading";
 import { Button, Empty, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { RebanhoApiError } from "../api";
 import type { MovimentacaoResumo } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { Paginacao } from "../ui";
 import { ConfirmarDesfazerMovimentacao } from "./ConfirmarDesfazerMovimentacao";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -71,7 +71,7 @@ export function HistoricoMovimentacoes({
 
   const totalPaginas = Math.max(1, Math.ceil(total / ITENS_POR_PAGINA));
 
-  if (carregando && !itens.length) return <div className="p-6"><Loader label="Carregando histórico" /></div>;
+  if (carregando && !itens.length) return <EsqueletoTabela label="Carregando histórico" className="p-6" />;
 
   return <>
     {erro && <div role="alert" className="p-5 text-sm text-destructive">{erro}</div>}

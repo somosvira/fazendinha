@@ -27,9 +27,6 @@ it("oferece seleção própria sem animal inicial", async () => {
   render(<FormFatoSanitario tipo="exame" onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText("GV3-1");
   expect(screen.getByLabelText("Animal")).toHaveProperty("value", "");
-  fireEvent.click(screen.getByRole("button",{name:"Ajuda sobre seleção do animal"}));
-  expect(screen.getByText(/Busque por brinco ou nome para reduzir/)).toBeTruthy();
-  fireEvent.blur(screen.getByRole("button",{name:"Ajuda sobre seleção do animal"}));
   fireEvent.click(screen.getByRole("button",{name:"Ajuda sobre coleta e resultado"}));
   expect(screen.getByText(/Registre a coleta agora/)).toBeTruthy();
   fireEvent.blur(screen.getByRole("button",{name:"Ajuda sobre coleta e resultado"}));

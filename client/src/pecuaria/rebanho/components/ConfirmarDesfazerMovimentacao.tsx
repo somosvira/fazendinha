@@ -5,13 +5,13 @@
 // `animais`, inclusive os de uma movimentação já desfeita).
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader } from "../../../components/Loading";
 import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { buscarMovimentacao, desfazerMovimentacao, RebanhoApiError } from "../api";
 import type { MovimentacaoDetalhe } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { ModalMotivo } from "../ui";
 import { navegarPara } from "../../../router";
+import { EsqueletoLinhas } from "../../../components/Esqueleto";
 
 function mensagemErro(e: unknown): string {
   return e instanceof RebanhoApiError ? e.message : e instanceof Error ? e.message : String(e);
@@ -73,7 +73,7 @@ export function ConfirmarDesfazerMovimentacao({ movimentacaoId, detalhe, onConfi
     titulo="Desfazer movimentação?"
     eyebrow={mov ? `Movimentação de ${formatarDataBR(mov.data)}` : "Movimentação"}
     impacto={carregando
-      ? <Loader label="Carregando movimentação" size="sm" />
+      ? <EsqueletoLinhas label="Carregando movimentação" />
       : erroCarga
         ? <ErrorBox erro={erroCarga} />
         : mov && <div className="space-y-3">

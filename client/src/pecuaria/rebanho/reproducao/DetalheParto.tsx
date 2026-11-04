@@ -25,6 +25,7 @@ import { CorrigirFato } from "./CorrigirFato";
 import { AnularFato } from "./AnularFato";
 import { ColostroCria } from "./ColostroCria";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -178,7 +179,7 @@ export function DetalheParto({
         </Button>
       </div>
     );
-  if (!parto) return <p role="status">Carregando parto…</p>;
+  if (!parto) return <EsqueletoFicha label="Carregando parto" />;
   const p = parto;
   const podeEditar = podeLancar && p.status === "VALIDO";
   const criaSelecionada = p.crias.find(c => c.id === criaColostro && c.viva);

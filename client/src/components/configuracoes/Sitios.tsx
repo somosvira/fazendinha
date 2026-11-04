@@ -15,12 +15,12 @@ import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../Visual
 import "./sitios.css";
 import { Plus, MapPin, Pencil } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Loader } from "@/components/Loading";
 import { editarPropriedade, usePropriedades, type PropriedadeDTO } from "../../api/propriedades";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../financeiro/financeiro-ui";
 import { FormSitio } from "./FormSitio";
 import { BuscaLista } from "../BuscaLista";
 import { PaginacaoLocal, usePaginacaoLocal } from "../PaginacaoLocal";
+import { EsqueletoTabela } from "../Esqueleto";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: number } | null;
 
@@ -84,7 +84,7 @@ export function Sitios() {
 
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
       {carregando
-        ? <div className="mt-5"><Loader label="Carregando sítios" /></div>
+        ? <EsqueletoTabela label="Carregando sítios" colunas={3} linhas={4} className="mt-5" />
         : <Panel className="mt-5 overflow-hidden">
           <BarraConsulta campos={campos} edicaoFiltros={edicao} criterios={[...consulta.criterios,...(mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[])]}>
             <BuscaLista rotulo="Buscar sítio" placeholder="Buscar sítio ou cidade" valor={busca} onChange={setBusca} />

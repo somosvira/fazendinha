@@ -70,6 +70,9 @@ const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechament
   return { ...resultado, itens: resultado.itens.map((f) => ({ ...f, propriedade: f.propriedade ?? lotes.find((l) => l.id === f.lote.id)?.propriedade ?? { id: f.propriedadeId, nome: "Sítio do registro" } })) };
 };
 export const listarFechamentos = paginaFechamentos;
+/** Último fechamento confirmado do lote (a lista vem do mais recente para o mais antigo). */
+export const ultimoFechamentoConfirmado = (loteId: string) =>
+  req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?loteId=${encodeURIComponent(loteId)}&pagina=1&status=CONFIRMADO`).then(r => r.itens[0] ?? null);
 export const obterFechamento = async (id: string): Promise<Fechamento> => {
   const fechamento = await req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
   if (fechamento.propriedade) return fechamento;

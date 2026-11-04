@@ -27,6 +27,7 @@ import {
   type FiltrosIndicadores,
   type SnapshotIndicadoresReprodutivos,
 } from "./indicadores-api";
+import { EsqueletoLinhas, EsqueletoPainel } from "../../../components/Esqueleto";
 const PreviaIndicadoresPDF=lazy(()=>import("./PreviaIndicadoresPDF"));
 function GrupoFiltrosIndicadores({ relatorio, children }: { relatorio: boolean; children: ReactNode }) {
   return relatorio ? <div>{children}</div> : <details><summary className="w-fit cursor-pointer rounded-lg border bg-card px-4 py-2 text-sm font-semibold">Filtros avançados</summary>{children}</details>;
@@ -448,7 +449,7 @@ function RelatorioIndicadores({
         <div className={modo === "relatorio" ? "rel-consulta-toolbar" : undefined}>
 
         {modo === "relatorio" ? <Card className="rel-periodo-compacto">{visivel&&<><CalendarDays size={19} aria-hidden/><strong>{data(visivel.filtros.inicio)} a {data(visivel.filtros.fim)}</strong><span className="sr-only">{emissao ? `Emissão preservada em ${new Date(emissao.criadoEm).toLocaleString("pt-BR")}` : "Consulta atual"}</span></>}{formularioPeriodo}{filtrosAlterados&&<AjudaCampo rotulo="Filtros ainda não aplicados" texto="Há filtros editados ainda não aplicados. O resultado mantém o período consultado."/>}</Card> : formularioPeriodo}
-        {ocupado && <p role="status">Carregando indicadores…</p>}
+        {ocupado && <EsqueletoPainel label="Carregando indicadores" />}
         {erro && (
           <Button variant="outline" onClick={() => ultimaOperacao.current?.()}>
             Tentar novamente
@@ -474,7 +475,7 @@ function RelatorioIndicadores({
             </DropdownMenuContent></DropdownMenu>
           </div>}><Panel className="space-y-3 p-5 print:hidden">
             <div><h3 className="font-semibold">Histórico de emissões e exportação</h3><p className="text-sm text-muted-foreground">Emissões preservadas mantêm os dados e critérios originais, sem recalcular os fatos atuais.</p></div>
-            {carregandoEmissoes && <p role="status" className="text-sm text-muted-foreground">Carregando emissões…</p>}
+            {carregandoEmissoes && <EsqueletoLinhas label="Carregando emissões" linhas={2} />}
             {erroEmissoes && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{erroEmissoes}</p><Button variant="outline" onClick={() => void carregarEmissoes()}>Tentar carregar emissões</Button></div>}
           <div className="flex flex-wrap items-end gap-3">
             <label>

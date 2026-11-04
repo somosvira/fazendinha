@@ -2,7 +2,7 @@ import { AjudaCampo } from "@/components/Dica";
 import { ReferenciaLeite } from "./ReferenciaLeite";
 import { DistribuicaoCustoFechamento } from "./DistribuicaoCustoFechamento";
 import { TabelaConsultaLocal } from "@/financeiro/TabelaConsultaLocal";
-import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { type ColunaTabela, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { formatarDataBR } from "../lib/rotulos";
 import type { Fechamento } from "./api";
 import { custoTexto, LinkNutricional, rotaNutricao, SituacaoFechamento } from "./componentes";
@@ -10,6 +10,14 @@ import { custoTexto, LinkNutricional, rotaNutricao, SituacaoFechamento } from ".
 import { quantidadeNutricional } from "./quantidades";
 
 export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarregar }: { fechamento: Fechamento; podeLancar?: boolean; onRecarregar?: () => Promise<void> }) {
+  // Até 8 ingredientes a tabela vai direta, sem busca, filtros nem ordenação.
+  const colunasItens: ColunaTabela<Fechamento["itens"][number]>[] = [
+        { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
+        { chave: "previsto", alinhamento: "direita" as const, titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${i.unidade}` },
+        { chave: "conferido", alinhamento: "direita" as const, titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${i.unidade}` },
+        { chave: "origem", titulo: "Origem", larguraMinima: 220, celula: (i) => <>{i.leite ? <Pill tone="green">Origens de leite produzido</Pill> : i.movimentoEstoque ? <><Pill tone="green">Baixa de estoque</Pill>{i.movimentoEstoque.alocacaoPartidaEstoques.map((a, idx) => <p className="nutricao-secundario mt-2" key={idx}>Partida {a.partida.nome || a.partida.codigo}: {quantidadeNutricional(a.quantidade)} {i.unidade}</p>)}</> : <Pill tone={Number(i.quantidadeConfirmada) === 0 ? "neutral" : "amber"}>{Number(i.quantidadeConfirmada) === 0 ? "Sem consumo" : "Sem baixa de estoque"}</Pill>}</> },
+        ...(f.verValores ? [{ chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (i: Fechamento["itens"][number]) => custoTexto(Number(i.quantidadeConfirmada) === 0 ? "0" : i.leite?.custoProducao ?? i.movimentoEstoque?.valorTotal ?? null) }] : []),
+      ];
   return <div className="nutricao-conteudo">
     <Panel className="nutricao-fechamento-resumo"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Resumo do fechamento</h2><p>{formatarDataBR(f.inicio)} – {formatarDataBR(f.fim)} · {f.animalDias} animal-dias</p></div><SituacaoFechamento status={f.status} /></div><div className="nutricao-card-corpo nutricao-resumo">
       <div><span>Lote</span><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional></div><div><span>Sítio</span><strong>{f.propriedade.nome}</strong></div><div><span>Receita</span><strong>{f.vigencia.dieta.nome} · v{f.vigencia.dieta.versao}</strong></div><div><span>Centro de custo</span><strong>{f.centroCusto.nome}</strong></div>
@@ -18,17 +26,11 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
       <div><dt>Custo por animal-dia</dt><dd>{custoTexto(f.custoConhecido != null && f.animalDias > 0 ? String(Number(f.custoConhecido) / f.animalDias) : null)}</dd><p>Média do fechamento{f.coberturaCustoCompleta ? "" : " · parcial"}</p></div>
     </dl>}
     {f.status === "ESTORNADO" && <p className="nutricao-aviso mx-5 mb-5">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}</Panel>
-    <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque <AjudaCampo rotulo="Sobre o consumo e estoque" texto={"Quantidade prevista, conferida e origem dos ingredientes."} /></h2></div></div>
-      <div className="nutricao-consumo-composicao"><div className="min-w-0"><TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
+    <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque </h2></div></div>
+      <div className="nutricao-consumo-composicao"><div className="min-w-0">{f.itens.length > 8 ? <TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
         {chave:"ingrediente",rotulo:"Ingrediente",tipo:"texto",obter:i=>i.produto.nome},
         ...(f.verValores?[{chave:"custo",rotulo:"Custo conhecido",tipo:"valor" as const,obter:(i: Fechamento["itens"][number])=>Number(i.quantidadeConfirmada)===0?"0":i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??null,limiteSugerido:Math.max(1,...f.itens.map(i=>Number(i.leite?.custoProducao??i.movimentoEstoque?.valorTotal??0)))}]:[]),
-      ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={[
-        { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
-        { chave: "previsto", alinhamento: "direita" as const, titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${i.unidade}` },
-        { chave: "conferido", alinhamento: "direita" as const, titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${i.unidade}` },
-        { chave: "origem", titulo: "Origem", larguraMinima: 220, celula: (i) => <>{i.leite ? <Pill tone="green">Origens de leite produzido</Pill> : i.movimentoEstoque ? <><Pill tone="green">Baixa de estoque</Pill>{i.movimentoEstoque.alocacaoPartidaEstoques.map((a, idx) => <p className="nutricao-secundario mt-2" key={idx}>lote {a.partida.nome || a.partida.codigo}: {quantidadeNutricional(a.quantidade)} {i.unidade}</p>)}</> : <Pill tone={Number(i.quantidadeConfirmada) === 0 ? "neutral" : "amber"}>{Number(i.quantidadeConfirmada) === 0 ? "Sem consumo" : "Sem baixa de estoque"}</Pill>}</> },
-        ...(f.verValores ? [{ chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (i: Fechamento["itens"][number]) => custoTexto(Number(i.quantidadeConfirmada) === 0 ? "0" : i.leite?.custoProducao ?? i.movimentoEstoque?.valorTotal ?? null) }] : []),
-      ]} />
+      ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} /> : <TabelaFinanceira rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} />}
     </div><DistribuicaoCustoFechamento fechamento={f} /></div></Panel>
     {f.itens.filter(i => i.leite).map(i => <Panel key={i.produtoId}><div className="nutricao-card-cabecalho"><h2 className="h3">Leite fornecido · {i.produto.nome}</h2></div><div className="nutricao-card-corpo"><ReferenciaLeite leite={i.leite!} propriedadeId={f.propriedadeId} verValores={f.verValores} verReferenciasComerciais={f.verReferenciasComerciais ?? false} animais={f.participacoes.map(p => ({ animalId: p.animalId, brinco: p.animal.brinco }))} podeLancar={podeLancar && f.status === "CONFIRMADO"} onRecarregar={onRecarregar} /></div></Panel>)}
     <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais <AjudaCampo rotulo="Sobre a atribuição aos animais" texto={"Estimativa proporcional aos dias no lote; não mede a ingestão individual."} /></h2></div><Pill>{f.participacoes.length} animais</Pill></div>

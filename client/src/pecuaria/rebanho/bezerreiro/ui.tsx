@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { consultarBezerreiro } from './api';
 import { RebanhoApiError } from '../api';
+import { EsqueletoFormulario, EsqueletoTabela } from "../../../components/Esqueleto";
 export function useConsultaBezerreiro<T>(path: string | null, sitio: number | null, revisao = 0) {
   const [dados, setDados] = useState<T | null>(null), [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
@@ -14,7 +15,7 @@ export function useConsultaBezerreiro<T>(path: string | null, sitio: number | nu
   return {dados, erro, tentar: () => setTentativa(n => n+1)};
 }
 export function EstadoConsulta({erro, carregando, tentar, children}: {erro: string; carregando: boolean; tentar: () => void; children: ReactNode}) {
-  return erro ? <div className="bez-estado" role="alert"><p>{erro}</p><Button type="button" variant="outline" onClick={tentar}>Tentar novamente</Button></div> : carregando ? <div className="bez-estado" role="status" aria-live="polite">Carregando registros…</div> : <>{children}</>;
+  return erro ? <div className="bez-estado" role="alert"><p>{erro}</p><Button type="button" variant="outline" onClick={tentar}>Tentar novamente</Button></div> : carregando ? <EsqueletoTabela label="Carregando registros" className="bez-estado" /> : <>{children}</>;
 }
 /** `alvo` inclui recurso/data/animal para invalidar respostas ao mudar o formulário. */
 export function useComando(sitio: number, aoSalvar: () => void, alvo = '') {
@@ -91,7 +92,7 @@ export function RecuperacaoConflito({conflito, carregando, erro, atualizado, con
     <Button type="button" variant="outline" disabled={carregando} onClick={aoAtualizar}>{carregando ? 'Atualizando contexto…' : 'Atualizar contexto'}</Button>
     {erro && <p role="alert" className="bez-erro">{erro}</p>}
     {atualizado && <><div aria-live="polite">{children}</div><Button type="button" variant="outline" disabled={conferido} onClick={aoConferir}>{conferido ? 'Alterações conferidas' : 'Conferi as alterações'}</Button></>}
-    {carregando && <p role="status">Carregando a versão atual…</p>}
+    {carregando && <EsqueletoFormulario label="Carregando a versão atual" />}
   </section>;
 }
 export function ModalBezerreiro({titulo, aoFechar, children, ocupado = false, erro, form, textoSalvar = 'Salvar', textoCancelar = 'Cancelar'}: {titulo: string; aoFechar: () => void; children: ReactNode; ocupado?: boolean; erro?: string; form: string; textoSalvar?: string; textoCancelar?: string}) {

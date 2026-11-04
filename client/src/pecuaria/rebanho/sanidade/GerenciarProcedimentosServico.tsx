@@ -8,6 +8,7 @@ import { getUsuario } from "../../../lib/auth";
 import { podeAcessarArea } from "../../../estoque/navegacao";
 import { dataHoraSanitaria, dataSanitaria, origemSanitaria } from "./rotulos";
 import { SanidadeApiError } from "./api";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export function podeGerenciarProcedimentosServico() {
   const usuario = getUsuario();
@@ -80,7 +81,7 @@ export function GerenciarProcedimentosServico({ servicoId, propriedadeId, onFech
       <fieldset disabled={salvando} className="space-y-3"><legend className={contextoFinanceiro ? "mb-3 text-sm font-semibold" : "sr-only"}>Filtrar procedimentos</legend><div className="flex flex-wrap gap-2">{(["VINCULADOS", "ELEGIVEIS"] as const).map((g) => <Button key={g} type="button" secondary={grupo !== g} onClick={() => { setGrupo(g); setPagina(1); }}>{g === "VINCULADOS" ? "Vinculados" : "Adicionar realizados"}</Button>)}</div>
         <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Animal<input className={classeInput} placeholder="Brinco ou nome" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} /></label><label className="text-sm">Tipo<SelectCampo className={classeInput} value={tipo} onValueChange={(valorSelecionado) => { setTipo(valorSelecionado); setPagina(1); }}><option value="">Todos</option>{Object.entries(rotuloTipo).map(([v, nome]) => <option key={v} value={v}>{nome}</option>)}</SelectCampo></label><label className="text-sm">Início<input type="date" className={classeInput} value={inicio} onChange={(e) => { setInicio(e.target.value); setPagina(1); }} /></label><label className="text-sm">Fim<input type="date" className={classeInput} value={fim} onChange={(e) => { setFim(e.target.value); setPagina(1); }} /></label></div>
       </fieldset>
-      {loading ? <p role="status">Carregando procedimentos…</p> : dados?.itens.length ? <div className="space-y-3">{dados.itens.map((item) => {
+      {loading ? <EsqueletoLista label="Carregando procedimentos" /> : dados?.itens.length ? <div className="space-y-3">{dados.itens.map((item) => {
         const escolha = escolhas[chaveItem(item)]; const indice = Object.keys(escolhas).indexOf(chaveItem(item));
         const erroItem = escolha && (campoErro === "itens" || campoErro?.startsWith(`itens.${indice}.`)) ? erro : null;
         return <LinhaProcedimento key={chaveItem(item)} item={item} escolha={escolha} podeLancar={podeLancar} podeValores={podeValores} salvando={salvando} erro={erroItem} onSelecionar={(valor) => selecionar(item, valor)} onValor={(valor) => { if (escolha) setEscolhas((antes) => ({ ...antes, [chaveItem(item)]: { ...escolha, valor } })); }} />;

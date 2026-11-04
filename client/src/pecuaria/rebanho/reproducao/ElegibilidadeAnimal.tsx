@@ -1,6 +1,5 @@
 import { RevisarToqueAptidao } from "./RevisarToqueAptidao";
 import { ToqueAptidaoFormulario } from "./ToqueAptidaoFormulario";
-import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { SecaoReproducaoAnimal } from "./SecaoReproducaoAnimal";
 import { MenuAcoesFicha } from "../components/MenuAcoesFicha";
@@ -156,7 +155,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     {podeLancar && r?.aptidaoClinica?.exameId && <RevisarToqueAptidao key={`${contexto}:${r.aptidaoClinica.exameId}`} exameId={r.aptidaoClinica.exameId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
     {podeLancar && <ToqueAptidaoFormulario key={contexto} emModal={naFicha} aberto={toqueAberto} onFechar={() => setToqueAberto(false)} animalId={animalId} propriedadeId={propriedadeId} onMudou={() => { setAtualizacao(v => v + 1); onMudou?.(); }}/>}
     {podeLancar && <EditorDecisao emModal={naFicha} aberto={editando} onFechar={() => setEditando(false)} ocupado={ocupado}><div id={editorId} className="space-y-3">
-      <h3>Decisão individual <AjudaCampo rotulo="Ajuda sobre decisão individual" texto="Informe a data do registro. A consulta acima é independente; restrições, papel e situação gestacional continuam sendo considerados."/></h3>
+      <h3>Decisão individual </h3>
 
       <label>Data da decisão<Input type="date" value={dataDecisao} disabled={ocupado} onChange={e => setDataDecisao(e.target.value)}/></label>
       {carregandoDecisao && <p role="status">Conferindo acompanhamento na data da decisão…</p>}

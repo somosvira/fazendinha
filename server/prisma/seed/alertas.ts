@@ -75,10 +75,11 @@ export async function alertasSanitarios(c: Contexto) {
   await decidir('dispensar', abertas[2], { acao: 'DISPENSAR', motivo: 'Dispensa demonstrativa: dose registrada fora do sistema.' });
   const atendida = abertas[0];
   const data = iso(hojeFazendaDate());
+  // Meio-dia UTC de hoje na fazenda pode ainda estar no futuro de madrugada; a aplicação nunca passa de agora.
   if (atendida) await c.registro('fato:aplicacao:alerta', id => prisma.aplicacaoProduto.findFirst({ where: id ? { id } : { animalId: atendida.animalId, produtoId: c.id('produto:vacina'), data: dia(data) } }), async () => {
     const p = await prisma.produto.findUniqueOrThrow({ where: { id: c.id('produto:vacina') } });
     const sitio = atendida.propriedadeId === s.principal ? 'Principal' : 'Test';
-    return criarAplicacao({ chave: chave('aplicacao:alerta'), animalId: atendida.animalId, propriedadeId: atendida.propriedadeId, data, aplicadaEm: `${data}T12:00:00Z`,
+    return criarAplicacao({ chave: chave('aplicacao:alerta'), animalId: atendida.animalId, propriedadeId: atendida.propriedadeId, data, aplicadaEm: new Date(Math.min(Date.parse(`${data}T12:00:00Z`), Date.now() - 1000)).toISOString(),
       produtoId: p.id, nomeProdutoAplicado: p.nome, origemInsumo: 'BAIXA_ESTOQUE', tipoAplicacaoId: c.id('aplicacao:Vacina'), dose: '2', unidadeDose: 'ML', via: 'Subcutânea',
       ...(p.rastrearPartidas ? { partidaId: c.id(`partida:${sitio}:vacina`) } : {}), estadoCarenciaLeite: 'INFORMADO', estadoCarenciaCarne: 'INFORMADO', carenciaLeiteHoras: 0, carenciaCarneHoras: 0,
       referenciaCarencia: AVISO, alertaId: atendida.alertaId!, alertaRevisao: atendida.revisao, confirmarCuidadoAlerta: true }, uid);

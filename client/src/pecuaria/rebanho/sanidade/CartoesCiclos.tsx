@@ -3,6 +3,7 @@ import { CalendarDays, Check, Circle, Users } from "lucide-react";
 import { Button } from "@/financeiro/financeiro-ui";
 import { dataSanitaria } from "./rotulos";
 import { listarEtapasRodada, type EtapaRodada, type RodadaSanitaria } from "./rodadas-api";
+import { EsqueletoLinhas } from "../../../components/Esqueleto";
 
 function CartaoCiclo({ ciclo: r, onAbrir, revisao }: { ciclo: RodadaSanitaria; onAbrir: (id: string) => void; revisao: number }) {
   const [etapas, setEtapas] = useState<{ itens: EtapaRodada[]; total: number } | null>(null);
@@ -14,7 +15,7 @@ function CartaoCiclo({ ciclo: r, onAbrir, revisao }: { ciclo: RodadaSanitaria; o
     <p className="san-visual-meta"><CalendarDays size={15} aria-hidden />Início em {dataSanitaria(r.inicioReferencia)}</p>
     {c ? <div className="san-ciclo-progresso"><div className="san-ciclo-progresso-titulo"><span>Tarefas do ciclo no sítio consultado</span><strong>{c.realizadas} de {c.total} realizadas</strong></div><div className="san-ciclo-barra" aria-label={partes.map(p => `${p.qtd} ${p.nome.toLowerCase()}`).join(", ")}>{partes.filter(p => p.qtd > 0).map(p => <span key={p.classe} className={`san-progresso-${p.classe}`} style={{ flex: p.qtd }} />)}</div><div className="san-ciclo-legenda">{partes.filter(p=>p.qtd>0).map(p=><span key={p.classe}><i className={`san-progresso-${p.classe}`}/>{p.qtd} {p.qtd === 1 ? p.singular : p.nome.toLowerCase()}</span>)}</div>{((c.regularizacoes ?? 0)>0 || (c.encerradasSemSubstituicao ?? 0)>0) && <p className="san-visual-meta">{c.regularizacoes ?? 0} a regularizar · {c.encerradasSemSubstituicao ?? 0} encerradas sem substituição</p>}</div> : <p className="san-visual-meta">Contagens indisponíveis</p>}
     <div className="san-ciclo-etapas-visuais" aria-label={`Etapas de ${r.nome}`}>
-      {!etapas && !erro && <p className="san-visual-meta">Carregando etapas…</p>}
+      {!etapas && !erro && <EsqueletoLinhas label="Carregando etapas" linhas={2} />}
       {erro && <p className="san-visual-meta">Consulte as etapas em Ver ciclo.</p>}
       {etapas?.itens.map(e => { const completa = e.contagens.total > 0 && e.contagens.realizadas === e.contagens.total; return <div key={e.id} className={completa ? "san-etapa-concluida" : ""}><span className="san-etapa-marca">{completa ? <Check size={17} aria-hidden /> : <Circle size={17} aria-hidden />}</span><strong>Dia {e.diaRelativo}</strong><span>{e.tipo === "APLICACAO" ? "Aplicação" : "Exame"}</span><small>{e.contagens.realizadas} de {e.contagens.total} realizadas</small></div>; })}
       {etapas && etapas.total > etapas.itens.length && <span className="san-etapas-restantes">+{etapas.total - etapas.itens.length} etapas no ciclo</span>}

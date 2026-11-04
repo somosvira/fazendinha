@@ -6,6 +6,7 @@ import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
 import { Paginacao } from "../ui";
 import "./protocolos.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export type EtapaApresentacao = { id: string; nome: string; referencia: string; previsao: string; resumo: string };
 export type LinhaProtocolo = { id: string; identificacao: string; href: string; situacao: string; realizada: string; excecaoPrevisao?: string; resultado?: string; pendencia?: string };
@@ -25,7 +26,7 @@ type Props<T extends LinhaProtocolo> = {
 export function EtapasProtocolo<T extends LinhaProtocolo>({ individual, referencia, etapas, etapaId, aoSelecionarEtapa, aoPaginarEtapas, tarefas, aoPaginar, busca, aoBuscar, pendentes, aoFiltrarPendentes, acompanhamentos, aoFiltrarAcompanhamentos, acompanhamentosEtapa, totalEtapa, pendentesEtapa, erro, aoTentarNovamente, acoes, acoesLinha, detalhesLinha, expandida, atendimento }: Props<T>) {
   return <SecaoRecolhivel titulo={individual ? "Etapas desta participação" : "Etapas e animais"} resumo={referencia} acoes={acoes} recolherAposAcoes className="protocolo-operacao">
     {erro && <div className="p-4"><ErrorBox erro={erro} /><Button secondary onClick={aoTentarNovamente}>Tentar novamente</Button></div>}
-    {!etapas && !erro && <p role="status">Carregando etapas…</p>}
+    {!etapas && !erro && <EsqueletoLista label="Carregando etapas" />}
     {etapas && <><div className="protocolo-etapas" role="group" aria-label="Etapas do protocolo">{etapas.itens.map(e => <button type="button" key={e.id} aria-label={`${e.referencia} ${e.nome} · ${e.previsao} · ${e.resumo}`} aria-pressed={e.id === etapaId} onClick={() => aoSelecionarEtapa(e.id)}><small>{e.referencia}</small><strong>{e.nome}</strong><span>{e.previsao}</span><small>{e.resumo}</small></button>)}</div>{etapas.total > etapas.porPagina && <Paginacao paginaAtual={etapas.pagina} totalPaginas={Math.ceil(etapas.total / etapas.porPagina)} totalItens={etapas.total} itensPorPagina={etapas.porPagina} onPaginaChange={aoPaginarEtapas} rotulo="etapas" idSelect="protocolo-pagina-etapas" />}{!etapas.total && <Empty>Nenhuma etapa disponível neste contexto.</Empty>}</>}
     {etapaId && <><div className="protocolo-filtros"><div role="group" aria-label="Filtrar tarefas da etapa" className="protocolo-situacoes flex flex-wrap gap-2">
         <BotaoUI variant={pendentes || acompanhamentos ? "outline" : "default"} onClick={() => aoFiltrarPendentes(false)} aria-pressed={!pendentes && !acompanhamentos}>Todos{totalEtapa != null ? ` (${totalEtapa})` : ""}</BotaoUI>

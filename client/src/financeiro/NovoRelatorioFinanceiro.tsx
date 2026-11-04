@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { PageHeader } from "./financeiro-ui";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -208,12 +207,12 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
 
         <SecaoFinanceira titulo="Filtros avançados" detalhe={`${config.tipos.length + config.status.length + config.centroCustoIds.length + config.parceiroIds.length + config.categoriaIds.length + config.classificacoes.length} selecionados`}>
         <div className="grid gap-4 md:grid-cols-2">
-          <MultiSelect label="Tipos de operação" placeholder="Todos os tipos" ajuda="Sem seleção, inclui todos os tipos." options={opcoesMultiSelect(tipos)} value={config.tipos} onValueChange={(value) => alterar("tipos", value)} />
+          <MultiSelect label="Tipos de operação" placeholder="Todos os tipos" options={opcoesMultiSelect(tipos)} value={config.tipos} onValueChange={(value) => alterar("tipos", value)} />
           <MultiSelect label="Situação da operação" placeholder="Todas as situações" ajuda="O filtro vale para operações e itens; o caixa inclui todo movimento." options={opcoesMultiSelect(STATUS_RELATORIO)} value={config.status} onValueChange={(value) => alterar("status", value)} />
-          <MultiSelect label="Centro de custo" placeholder="Todos os centros de custo" ajuda="Sem seleção, inclui todos os centros." options={opcoesMultiSelect(centros)} value={config.centroCustoIds} onValueChange={(value) => alterar("centroCustoIds", value)} />
-          <MultiSelect label="Parceiro" placeholder="Todos os parceiros" ajuda="Sem seleção, inclui todos os parceiros." options={opcoesMultiSelect(parceiros)} value={config.parceiroIds} onValueChange={(value) => alterar("parceiroIds", value)} />
+          <MultiSelect label="Centro de custo" placeholder="Todos os centros de custo" options={opcoesMultiSelect(centros)} value={config.centroCustoIds} onValueChange={(value) => alterar("centroCustoIds", value)} />
+          <MultiSelect label="Parceiro" placeholder="Todos os parceiros" options={opcoesMultiSelect(parceiros)} value={config.parceiroIds} onValueChange={(value) => alterar("parceiroIds", value)} />
           <MultiSelect label="Categoria dos itens" placeholder="Todas as categorias" ajuda="Sem seleção, inclui todas as categorias. Categoria e classificação valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro." options={opcoesMultiSelect(categorias)} value={config.categoriaIds} onValueChange={(value) => alterar("categoriaIds", value)} />
-          <MultiSelect label="Classificação" placeholder="Todas as classificações" ajuda="Sem seleção, inclui todas as classificações." options={opcoesMultiSelect(CLASSIFICACOES_RELATORIO)} value={config.classificacoes} onValueChange={(value) => alterar("classificacoes", value)} />
+          <MultiSelect label="Classificação" placeholder="Todas as classificações" options={opcoesMultiSelect(CLASSIFICACOES_RELATORIO)} value={config.classificacoes} onValueChange={(value) => alterar("classificacoes", value)} />
         </div>
         </SecaoFinanceira>
 
@@ -226,7 +225,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       <aside aria-label="Resumo do relatório" className="fin-criacao-resumo overflow-hidden rounded-[var(--fin-radius-panel)] border border-border bg-card text-ink">
         <div className="flex flex-col">
           <div className="min-h-0 p-4">
-          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><h2 className="text-sm font-semibold text-ink">Resumo do relatório<AjudaCampo rotulo="Ajuda: geração do relatório" texto="O PDF é baixado ao gerar e fica salvo no histórico da propriedade." /></h2></div>
+          <div className="flex items-center gap-3"><span className="fin-section-icon" aria-hidden="true"><FileText /></span><h2 className="text-sm font-semibold text-ink">Resumo do relatório</h2></div>
           <div className="mt-2 break-words font-sans text-xl">{config.nome.trim() || "Sem nome"}</div>
           <dl className="mt-3 grid grid-cols-1 gap-3 border-y border-border py-3 text-sm sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">{(destino ? [["Propriedade", destino] as [string, string], ...resumo] : resumo).map(([rotulo, valor]) => <div key={rotulo}><dt className="text-xs font-medium text-ink-3">{rotulo}</dt><dd className="mt-0.5 break-words leading-5 text-ink">{valor}</dd></div>)}</dl>
           <div className="mt-3"><SecaoFinanceira titulo="Conteúdo do PDF"><div className="space-y-2 text-sm">{secoesDoRelatorio(config).map(secao => <p key={secao}>{secao}</p>)}</div></SecaoFinanceira></div>

@@ -38,7 +38,6 @@ import { FormPesagem } from "../forms/FormPesagem";
 import { FormBaixa } from "../forms/FormBaixa";
 import { FormBaixaHistorica } from "../forms/FormBaixaHistorica";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira, Pill } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
@@ -57,6 +56,7 @@ import { StatusOperacionaisAnimal } from "../components/StatusOperacionaisAnimal
 import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
 import type { CarenciaAnimal } from "../sanidade/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 const ABAS_FICHA = [["geral", "Geral"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["bezerreiro", "Bezerreiro"], ["alertas", "Alertas"]] as const;
 const ICONES_FICHA = {geral: IdCard, producao: Milk, reproducao: GitBranch, sanidade: HeartPulse, nutricao: Leaf, bezerreiro: Baby, alertas: TriangleAlert, cadastro: IdCard};
@@ -249,7 +249,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       <h1 id="animal-indisponivel" className="text-xl font-semibold">{getPropriedadeAtiva() == null ? "Animal não encontrado" : "Animal não disponível no sítio selecionado"}</h1>
       <p className="text-ink-3">{getPropriedadeAtiva() == null ? "Volte à lista para localizar um animal disponível." : "Confira o sítio no seletor lateral ou volte à lista de animais deste sítio."}</p>
       <Button secondary onClick={onVoltar}><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button>
-    </section> : <><Button secondary onClick={onVoltar} className="mt-6"><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button><ErrorBox erro={erro}/>{!erro && <Loader label="Carregando animal"/>}</>}
+    </section> : <><Button secondary onClick={onVoltar} className="mt-6"><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button><ErrorBox erro={erro}/>{!erro && <EsqueletoFicha label="Carregando animal" campos={8} />}</>}
   </div></PaginaFinanceira>;
 
   const ativo = animal.situacao === "ATIVO";
