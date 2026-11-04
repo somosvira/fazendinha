@@ -19,6 +19,16 @@ const numero = (n: number | null) => n === null ? "Sem base suficiente" : n.toLo
 const taxa = (n: number | null) => n === null ? "Sem base suficiente" : `${numero(n)}%`;
 const pendente = (a: DetalheAnimalIndicador) => a.incluidaNaBase === false || a.incluidaNaBase === undefined && a.contribuicaoElegiveis === null;
 
+/** Nome legível de uma referência a partir do endereço: o último trecho do caminho, sem hífens. */
+function tituloFonte(url: string) {
+  try {
+    const arquivo = decodeURIComponent(new URL(url).pathname.split("/").filter(Boolean).pop() ?? "");
+    const trecho = arquivo.replace(/\.pdf$/i, "").replace(/[-_]+/g, " ").trim().toLowerCase();
+    if (!trecho) return new URL(url).hostname;
+    return trecho.charAt(0).toUpperCase() + trecho.slice(1) + (/\.pdf$/i.test(arquivo) ? " (PDF)" : "");
+  } catch { return url; }
+}
+
 export function PainelIndicadores({ snapshot: s, mostrarMetodo = true, exibirResultado = true, exibirDesempenho = true, mostrarPeriodo = true }: { snapshot: SnapshotIndicadoresReprodutivos; mostrarMetodo?: boolean; exibirResultado?: boolean; exibirDesempenho?: boolean; mostrarPeriodo?: boolean }) {
   const visualizacao=useVisualizacaoConsulta("indicadoresVisualizacao","reproducao","visual");
   const [pagina, setPagina] = useState(1);
@@ -53,7 +63,7 @@ export function PainelIndicadores({ snapshot: s, mostrarMetodo = true, exibirRes
     ]}/>}
     {!periodos.length && <p role="status" className="p-5">Nenhum período completo de 21 dias. Amplie o intervalo para consultar o desempenho.</p>}
     {periodos.length>10 && <Paginacao paginaAtual={atual} totalPaginas={totalPaginas} totalItens={periodos.length} itensPorPagina={10} onPaginaChange={setPagina} rotulo="períodos" idSelect="pagina-periodos-indicadores"/>}
-    {mostrarMetodo && <details className="repro-indicadores-metodo"><summary>Método e critérios do cálculo</summary><h3>{s.metodologia.rotulo}</h3><p>Versão {s.versaoMetodologia} · deslocamento TE: {s.metodologia.deslocamentoTeDias} dias · concepção estimada: {s.metodologia.concepcaoEstimada === null ? "não informada" : `${s.metodologia.concepcaoEstimada}%`}</p><ul>{s.metodologia.regras.map((regra, i) => <li key={i}>{regra}</li>)}</ul><p>Fontes: {s.metodologia.fontes.join("; ")}</p></details>}
+    {mostrarMetodo && <details className="repro-indicadores-metodo"><summary>Como as taxas são calculadas</summary><ul>{s.metodologia.regras.map((regra, i) => <li key={i}>{regra}</li>)}</ul>{s.metodologia.fontes.length > 0 && <><h3>Referências</h3><ul className="repro-indicadores-fontes">{s.metodologia.fontes.map(fonte => <li key={fonte}><a href={fonte} target="_blank" rel="noreferrer">{tituloFonte(fonte)}</a></li>)}</ul></>}</details>}
     </Panel>}
     {consulta && <Modal eyebrow="" titulo={consulta === "pendencias" ? "Pendências fora da base de cálculo" : "Animais da base válida"} onClose={()=>setConsulta(null)}>
       <div className="p-4 space-y-4">{periodo && <p>{formatBRDateISO(periodo.inicio)} – {formatBRDateISO(periodo.fim)}</p>}

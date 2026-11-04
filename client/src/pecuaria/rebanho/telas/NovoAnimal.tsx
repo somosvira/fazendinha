@@ -18,6 +18,7 @@ import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira } from "../../../f
 import { CampoFormulario, classeInput } from "../../../financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { useToast } from "../../../components/Toast";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 
 type Erros = Record<string, string>;
 
@@ -191,7 +192,7 @@ function FormNovoAnimal({ onVoltar }: { onVoltar: () => void }) {
   return <PaginaFinanceira><div className="pb-10">
     <PageHeader titulo={<span className="rotina-titulo"><span><Beef aria-hidden/></span>Novo animal</span>} />
     <ErrorBox erro={erroCatalogos} />
-    {!catalogos && !erroCatalogos && <div className="rebanho-carregamento" role="status">Carregando cadastro…</div>}
+    {!catalogos && !erroCatalogos && <EsqueletoFormulario label="Carregando cadastro" campos={8} />}
     {catalogos && <form onSubmit={submeter} noValidate className="pec-novo-animal">
       <div className="pec-form-corpo space-y-7 p-5 md:p-7">
         <div className="rebanho-origem-cadastro"><span>Animal comprado</span><Button secondary type="button" onClick={() => navegarPara("/pecuaria/reproducao?acao=parto")}>Registrar nascimento pelo parto</Button></div>

@@ -1,6 +1,5 @@
 import { Input } from "@/components/ui/input";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { AjudaCampo } from "@/components/Dica";
 import { useId } from "react";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 export type CampoExame = { codigo: string; rotulo?: string; tipo: "TEXTO" | "NUMERO" | "OPCAO" | "BOOLEANO"; unidade?: string | null; obrigatorio?: boolean; opcoes?: string[] };
@@ -13,7 +12,7 @@ export function CamposResultadoExame({ campos, valores, onChange, usarShadcn = f
     const valor = valores.find(v => v.campo === c.codigo)?.valor;
     if (usarShadcn) {
       const rotulo = `${nomeCampoExame(c)}${c.unidade ? ` · ${c.unidade}` : ""}${c.obrigatorio ? " (obrigatório ao informar o resultado)" : " (opcional)"}`;
-      return <label key={c.codigo} htmlFor={`${prefixo}-${c.codigo}`} data-tipo={c.tipo}><span className="leite-campo-rotulo">{nomeCampoExame(c)}{c.unidade ? ` · ${c.unidade}` : ""}<AjudaCampo rotulo={`Sobre ${nomeCampoExame(c)}`} texto={c.obrigatorio ? "Obrigatório ao informar o resultado. Preencha conforme o laudo e a unidade deste formato." : "Informação opcional do formato. Ausência de informação não significa zero."}/></span>
+      return <label key={c.codigo} htmlFor={`${prefixo}-${c.codigo}`} data-tipo={c.tipo}><span className="leite-campo-rotulo">{nomeCampoExame(c)}{c.unidade ? ` · ${c.unidade}` : ""}</span>
       {c.tipo === "OPCAO" || c.tipo === "BOOLEANO" ? <SelectCampo id={`${prefixo}-${c.codigo}`} aria-label={rotulo} value={valor==null?"":String(valor)} onValueChange={v=>mudar(c.codigo,c.tipo==="BOOLEANO"&&v!==""?v==="true":v)}><option value="">Não informado</option>{c.tipo==="BOOLEANO"?<><option value="true">Sim</option><option value="false">Não</option></>:c.opcoes?.map(o=><option key={o} value={o}>{o}</option>)}</SelectCampo> : <Input id={`${prefixo}-${c.codigo}`} aria-label={rotulo} inputMode={c.tipo==="NUMERO"?"decimal":undefined} value={valor==null?"":String(valor)} onChange={e=>mudar(c.codigo,c.tipo==="NUMERO"?e.target.value.replace(",","."):e.target.value)}/>}
       </label>;
     }

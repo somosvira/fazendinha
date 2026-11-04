@@ -14,6 +14,7 @@ import {
   type PapelElegibilidade,
   type PoliticaElegibilidade,
 } from "./elegibilidade-api";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 export function ConfiguracaoReprodutiva({
   propriedadeId,
   podeLancar,
@@ -142,7 +143,7 @@ export function ConfiguracaoReprodutiva({
 
       <div className="space-y-3">
         <h3 className="font-semibold">Versões preservadas</h3>
-        {carregando && <p role="status">Carregando política…</p>}
+        {carregando && <EsqueletoFormulario label="Carregando política" />}
         {!carregando && !erro && !politicas.length && <Empty>Nenhuma política registrada neste sítio.</Empty>}
         {politicasOrdenadas.map((p) => (
           <details key={p.id} open={p.id === vigente?.id} className="rounded-xl border bg-card p-4">

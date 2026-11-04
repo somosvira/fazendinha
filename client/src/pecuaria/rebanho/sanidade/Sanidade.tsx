@@ -61,6 +61,7 @@ import {
   FormAplicacaoServico,
   type TarefaAplicacao,
 } from "./FormAplicacaoServico";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 type Ocorrencia = {
   id: string;
@@ -837,7 +838,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => setRevisao((v) => v + 1)}
         />
       )}
-      {rateando && (carregandoServicos || erroServicos) && <PainelCadastro aberto titulo="Gerenciar procedimentos" onFechar={() => setRateando(false)} rodape={<Button secondary onClick={() => setRateando(false)}>Fechar</Button>}>{carregandoServicos ? <p role="status">Carregando atendimentos…</p> : <><ErrorBox erro={erroServicos} /><Button secondary onClick={() => setRepetirServicos((v) => v + 1)}>Tentar novamente</Button></>}</PainelCadastro>}
+      {rateando && (carregandoServicos || erroServicos) && <PainelCadastro aberto titulo="Gerenciar procedimentos" onFechar={() => setRateando(false)} rodape={<Button secondary onClick={() => setRateando(false)}>Fechar</Button>}>{carregandoServicos ? <EsqueletoLista label="Carregando atendimentos" /> : <><ErrorBox erro={erroServicos} /><Button secondary onClick={() => setRepetirServicos((v) => v + 1)}>Tentar novamente</Button></>}</PainelCadastro>}
       {tarefaAplicacao && animalDaAcao && (
         <FormAplicacaoServico
           animalId={animalDaAcao.animalId}

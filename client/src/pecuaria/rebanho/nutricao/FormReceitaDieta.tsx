@@ -29,7 +29,7 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviando.current = false; setOcupado(false); }
   }
   return <PainelCadastro aberto titulo={editar ? "Editar rascunho de dieta" : dieta ? "Nova versão de dieta" : "Nova receita"} icon={BookOpen} onFechar={onVoltar} bloqueado={ocupado} alteracoesExternas={alterado} largura="sm:max-w-5xl" rodape={fechar => <><Button secondary onClick={fechar} disabled={ocupado}>Cancelar</Button><Button type="submit" form={formId} disabled={ocupado || produtos.carregando || !!produtos.erro}>{ocupado ? "Salvando…" : editar ? "Salvar rascunho" : "Criar rascunho"}</Button></>}><div className="nutricao-formulario">
-    <p className="nutricao-nota">Salve o rascunho e publique a versão para usá-la nos lotes. <AjudaCampo rotulo="Sobre as versões da receita" texto="Versões publicadas são preservadas; alterações geram uma nova versão." /></p>
+    <p className="nutricao-nota">Salve o rascunho e publique a versão para usá-la nos lotes. </p>
     <form id={formId} onSubmit={(e) => { e.preventDefault(); void salvar(); }}><fieldset disabled={ocupado} className="nutricao-card-corpo grid gap-5">
       <ErrorBox erro={erro} /><EstadoConsulta erro={produtos.erro} carregando={produtos.carregando} recarregar={produtos.carregar} />
       <section className="receita-form-identidade"><h3>Identificação da receita</h3><label>Nome da dieta<input className={classeInput} required minLength={2} maxLength={160} value={nome} onChange={(e) => { setAlterado(true); setNome(e.target.value); }} /></label></section>

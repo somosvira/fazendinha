@@ -36,9 +36,10 @@ import { fetchMe, logout } from "./api/auth";
 import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
-import { BootSplash, Loader } from "./components/Loading";
+import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 import { LimiteCarregamentoArea } from "./components/LimiteCarregamentoArea";
+import { EsqueletoPagina } from "./components/Esqueleto";
 
 // Declarações estáveis: mudar sítio/rota conserva os mesmos contratos de montagem.
 // O shell e os tokens ficam disponíveis enquanto o domínio é baixado.
@@ -643,7 +644,7 @@ export function App() {
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
-          <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><Loader label="Carregando área…" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
+          <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><EsqueletoPagina label="Carregando área" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>
       <CommandPalette

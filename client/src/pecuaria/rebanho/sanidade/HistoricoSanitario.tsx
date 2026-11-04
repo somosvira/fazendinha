@@ -30,6 +30,7 @@ import {
   useColecaoFichaSanitaria,
 } from "./consultaFichaSanitaria";
 import "./ficha-sanitaria-consultas.css";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 export type PropsConsultaSanitaria = {
   animalId?: string;
   loteId?: string;
@@ -215,7 +216,7 @@ export function HistoricoSanitario({
           Tentar novamente
         </Button>
       ) : carregando ? (
-        <p role="status">Carregando histórico…</p>
+        <EsqueletoTabela label="Carregando histórico" />
       ) : (
         <>
           {!filtrados.length ? (

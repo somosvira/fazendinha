@@ -8,6 +8,7 @@ import { dataHoraSanitaria, resultadoExameSanitario } from "./rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
 import type { ExameResultado } from "./ResultadoExame";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 function valorServico(valor: unknown): string {
   if (!valor || typeof valor !== "object") return "Não registrado";
   const dado = valor as Record<string, unknown>;
@@ -42,7 +43,7 @@ export function HistoricoExame({ exameId, propriedadeId, formato }: { exameId: s
   const [retry, setRetry] = useState(0);
   useEffect(() => { let vivo = true; setDados(null); setErro(null); consultarHistoricoExame(exameId, propriedadeId, pagina, 20).then((v) => { if (vivo) setDados(v); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [exameId, propriedadeId, pagina, retry]);
   return <section className="sanitario-historico"><h3>Histórico de alterações</h3>
-    {erro ? <><ErrorBox erro={erro} /><Button variant="outline" onClick={() => setRetry((v) => v + 1)}>Tentar novamente</Button></> : !dados ? <p role="status">Carregando histórico…</p> : <>
+    {erro ? <><ErrorBox erro={erro} /><Button variant="outline" onClick={() => setRetry((v) => v + 1)}>Tentar novamente</Button></> : !dados ? <EsqueletoLista label="Carregando histórico" /> : <>
       {dados.itens.map(a => <article key={a.id} className="sanitario-historico-evento">
         <header><h4>{tituloEvento(a.acao)}</h4><p>{a.autor?.nome ?? "Autor não registrado"} · {dataHoraSanitaria(a.criadoEm)}</p></header>
         <dl className="sanitario-dados"><div><dt>Antes</dt><dd>{eventoServico(a.acao) ? valorServico(a.antes) : valorHistorico(a.antes, formato)}</dd></div><div><dt>Depois</dt><dd>{eventoServico(a.acao) ? valorServico(a.depois) : valorHistorico(a.depois, formato)}</dd></div></dl>

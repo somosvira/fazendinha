@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -173,7 +172,7 @@ export function OperacoesComerciaisLeite({
       className="leite-operacoes"
       aria-label="Operações comerciais de leite"
     >
-      {!integrado && <><h2 className="leite-titulo-secao">Operações de leite <AjudaCampo rotulo="Sobre as operações comerciais de leite" texto={"Reúna as coletas de um comprador no período. Registre a retirada com preço pendente e confira o acordo antes de fechar a venda."} /></h2>
+      {!integrado && <><h2 className="leite-titulo-secao">Operações de leite </h2>
 
       <div className="leite-form-inline">
         <label>

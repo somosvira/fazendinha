@@ -20,7 +20,6 @@ import { dataValida } from "../reproducao/periodo-consulta";
 import { DateRangePicker, dateFromIso, isoDate } from "../../../components/DateRangePicker";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Loader } from "@/components/Loading";
 import { usePropriedades } from "../../../api/propriedades";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { AcoesLinha, Button, type ColunaTabela, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -34,6 +33,7 @@ import { SeletorAnimais } from "../components/SeletorAnimais";
 import { HistoricoMovimentacoes } from "../components/HistoricoMovimentacoes";
 import { DetalheMovimentacao } from "../components/DetalheMovimentacao";
 import { BuscaLista } from "../../../components/BuscaLista";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 type Painel = { modo: "novo" } | { modo: "editar"; id: string } | null;
 const LOTES_POR_PAGINA = 15;
@@ -195,7 +195,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       <div className="consulta-visual-barra"><span>{lotesFiltrados.length} lotes no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos lotes" {...visual}/></div>
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
-          ? <div className="p-6"><Loader label="Carregando lotes" /></div>
+          ? <EsqueletoTabela label="Carregando lotes" className="p-6" />
           : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}

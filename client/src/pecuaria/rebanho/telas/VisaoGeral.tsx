@@ -14,6 +14,7 @@ import { NavRebanho } from "./NavRebanho";
 import { linkFichaAnimal, linkNovoAnimal } from "../lib/navegacao";
 import { CORES_REBANHO, percentualRebanho } from "../components/GraficosRebanho";
 import "./visao-geral.css";
+import { EsqueletoPainel } from "../../../components/Esqueleto";
 
 const URL_ANIMAIS = "/pecuaria/rebanho/animais";
 
@@ -110,7 +111,7 @@ export function VisaoGeral({ podeLancar = true }: { podeLancar?: boolean }) {
     <PageHeader titulo={<span className="rotina-titulo"><span><LayoutDashboard aria-hidden/></span>Rebanho</span>} acao={podeLancar ? <Button onClick={() => navegarPara(linkNovoAnimal())}><Plus size={16} /> Novo animal</Button> : undefined} />
     <NavRebanho ativa="visao-geral" />
     <ErrorBox erro={erro} />
-    {carregando && <div className="rebanho-carregamento" role="status">Carregando rebanho…</div>}
+    {carregando && <EsqueletoPainel label="Carregando rebanho" />}
     <ResumoAlertas />
     {painel && <>
       <div className="pec-panorama-grid"><div className="pec-panorama-principal">

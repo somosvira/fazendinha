@@ -7,6 +7,7 @@ import { Button, ErrorBox, hoje, dataBR } from "../financeiro/financeiro-ui";
 import { classeInput } from "../financeiro/PainelCadastro";
 import { listarPartidasNutricionais, type PartidaNutricional } from "../pecuaria/rebanho/nutricao/api";
 import { previaLoteProduto } from "./api";
+import { EsqueletoLinhas } from "../components/Esqueleto";
 export type DistribuicaoPartida = { partidaId?: string; codigo?: string; nome?: string; validade?: string | null; cienciaValidadeDesconhecida?: boolean; quantidade: string };
 export const nomeLoteProduto = (p: Pick<PartidaNutricional, "nome" | "codigo" | "origemRastreio">) => p.nome || (p.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem validade informada" : p.codigo);
 export class ErroDistribuicaoPartidas extends Error {
@@ -60,7 +61,7 @@ export function SelecaoPartidas({ produtoId, propriedadeId, dataFato, quantidade
   const comErro = !!erroValidacao;
   const erroDeLinha = erroValidacao?.campo.startsWith(`${campo}.`) ? erroValidacao.campo.slice(campo.length + 1).split(".")[0] : undefined;
   const mensagemErro = erroValidacao && <p id={`erro-${campo}`} role="alert" tabIndex={-1} className="flex items-start gap-1.5 text-sm font-semibold text-destructive outline-none"><CircleAlert size={16} className="mt-px shrink-0" aria-hidden /><span>{erroValidacao.mensagem}</span></p>;
-  return <fieldset id={`campo-${campo}`} tabIndex={-1} aria-invalid={comErro || undefined} aria-describedby={comErro ? `erro-${campo}` : undefined} className={`mt-3 grid gap-3 outline-none ${compacto ? "border-t pt-3" : "rounded-lg border p-3"} ${comErro ? "border-red-400 ring-2 ring-red-200" : "border-border"}`}><legend className="px-1 text-sm font-semibold">Lotes por validade<AjudaCampo rotulo="Ajuda: agrupamento dos lotes" texto={<>O mesmo produto e a mesma validade compartilham o lote, independentemente do fornecedor.</>} /></legend><ErrorBox erro={erro} />{carregando && <p className="text-sm">Carregando lotes…</p>}
+  return <fieldset id={`campo-${campo}`} tabIndex={-1} aria-invalid={comErro || undefined} aria-describedby={comErro ? `erro-${campo}` : undefined} className={`mt-3 grid gap-3 outline-none ${compacto ? "border-t pt-3" : "rounded-lg border p-3"} ${comErro ? "border-red-400 ring-2 ring-red-200" : "border-border"}`}><legend className="px-1 text-sm font-semibold">Lotes por validade<AjudaCampo rotulo="Ajuda: agrupamento dos lotes" texto={<>O mesmo produto e a mesma validade compartilham o lote, independentemente do fornecedor.</>} /></legend><ErrorBox erro={erro} />{carregando && <EsqueletoLinhas label="Carregando lotes" linhas={2} />}
     {erro && <Button secondary onClick={() => setRevisao((r) => r + 1)}>Tentar novamente</Button>}
     {saida && !carregando && !erro && !partidas.length && <p className="text-sm">Sem lotes disponíveis. Confira as entradas do produto no Estoque.</p>}
 

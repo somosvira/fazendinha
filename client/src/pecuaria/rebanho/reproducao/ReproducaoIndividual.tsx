@@ -18,6 +18,7 @@ import { HistoricoReprodutivo, rotulosReprodutivos, type FatoHistorico } from ".
 import { ProtocolosReprodutivosAnimal, useHistoricoProtocolosReprodutivos } from "./ProtocolosReprodutivosAnimal";
 import { SecaoReproducaoAnimal } from "./SecaoReproducaoAnimal";
 import "./reproducao-individual.css";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export type ReproducaoIndividualProps = { animalId: string; propriedadeId?: number | null; podeLancar: boolean; recarregarToken?: number; onSituacao?: (situacao: string | null) => void; onMudou?: () => void };
 /** A identidade do contexto desmonta formulários e invalida leituras ao trocar animal/sítio. */
@@ -77,7 +78,7 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
   const atualizar = async () => { setRevisaoProtocolos(v => v + 1); await carregar(); onMudou?.(); };
   return <div className="repro-individual">
     <ErrorBox erro={erro}/>{erro && <Button variant="outline" onClick={() => void carregar()}>Tentar novamente</Button>}
-    {carregando && <p role="status">Carregando reprodução…</p>}
+    {carregando && <EsqueletoLista label="Carregando reprodução" />}
     {painel && <>
       <SecaoGeralAnimal id="acompanhamento-reprodutivo" icon={GitBranch} titulo="Acompanhamento reprodutivo">
         {animal ? <dl className="repro-metricas repro-metricas-com-icone">

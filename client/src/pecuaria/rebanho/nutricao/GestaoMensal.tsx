@@ -17,6 +17,7 @@ import {
 import * as api from "./mensal-api";
 import "./mensal.css";
 import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
     minimumFractionDigits: 3,
@@ -124,7 +125,7 @@ export function GestaoMensal({
       )}
       <p role="status">{mensagem}</p>
       {carregando ? (
-        <p role="status">Carregando nutrição mensal…</p>
+        <EsqueletoTabela label="Carregando nutrição mensal" />
       ) : status && !status.habilitada ? (
         <section>
           <h2>Nutrição mensal ainda não habilitada</h2>

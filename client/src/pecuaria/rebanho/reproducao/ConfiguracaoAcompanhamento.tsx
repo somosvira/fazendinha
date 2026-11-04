@@ -7,6 +7,7 @@ import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { reqV4 } from "./api";
 import { FormularioAcompanhamento, type RegistroPoliticaAcompanhamento, type TipoExameAcompanhamento } from "./FormularioAcompanhamento";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 
 type Regra = { tipoExameId?: string; tipoExameVersao?: number };
 export type PoliticaAcompanhamento = {
@@ -81,7 +82,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
     {podeLancar && <Button type="button" variant="outline" onClick={() => setFormularioAberto(true)}>Nova versão de acompanhamento</Button>}
     </div>
     {!formularioAberto && <ErrorBox erro={erro} />}
-    {carregando && <p role="status">Carregando políticas…</p>}
+    {carregando && <EsqueletoFormulario label="Carregando políticas" />}
     {!carregando && !erro && !politicas.length && <Empty>Nenhuma política registrada neste sítio.</Empty>}
     {mensagem && <p role="status">{mensagem}</p>}
 

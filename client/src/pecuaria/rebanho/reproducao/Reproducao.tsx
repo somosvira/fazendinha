@@ -44,6 +44,7 @@ import { Exposicoes } from "./Exposicoes";
 import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 function acaoDaUrl(): AcaoReprodutiva | null {
   const acao = new URLSearchParams(window.location.search).get("acao");
   return ["avaliacao", "tentativa", "parto", "situacao", "restricao"].includes(acao ?? "") ? acao as AcaoReprodutiva : null;
@@ -278,7 +279,7 @@ function ConteudoReproducao({
   if (secao === "programacoes") return <div className="space-y-5">
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-    {carregando && <p role="status">Carregando programações…</p>}
+    {carregando && <EsqueletoTabela label="Carregando programações" />}
     {!carregando && painel && <Iatf programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
   </div>;
   return (

@@ -137,7 +137,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Histórico de fornecimentos" ajuda="Fornecimentos com origem e volume por animal." rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
+      <CabecalhoTabela titulo="Histórico de fornecimentos" rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
       {podeLancar && novo ? (
         <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
           <label>

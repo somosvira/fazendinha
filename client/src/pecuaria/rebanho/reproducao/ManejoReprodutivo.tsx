@@ -25,6 +25,7 @@ import { consultarIndicadores } from "./indicadores-api";
 import { consultarManejoAptidao, descreverMotivo } from "./elegibilidade-api";
 
 import { carregarAnimaisManejo, filtrarManejo, lerConsultaManejo, montarFilasManejo, type ConsultaManejo, type FilaManejo, type LinhaManejo } from "./manejo-reprodutivo";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const FILAS = [
   { id: "liberadas", titulo: "Liberadas sem serviço", descricao: "Matrizes com liberação comprovada até hoje.", Icone: Venus },
@@ -115,7 +116,7 @@ export function ManejoReprodutivo({ propriedadeId, podeLancar, onRegistrarEvento
 
         <BarraConsulta ordenacao={ordenacao} campos={campos} edicaoFiltros={edicaoFiltros} acao={onRegistrarEvento && podeLancar ? <Button onClick={onRegistrarEvento}><Plus size={18}/>Registrar evento</Button> : undefined} criterios={[...(consulta.fila!=="manejo"?[{id:"fila",rotulo:atual?.titulo??"Todas as filas",limpar:()=>mudar({fila:"manejo"})}]:[]),...(consulta.lote?[{id:"lote",rotulo:`Lote: ${lotes.find(l=>l.id===consulta.lote)?.nome??"Sem lote informado"}`,limpar:()=>mudar({lote:""})}]:[]),...(consulta.ordem!=="maior-espera"?[{id:"ordem",rotulo:`Ordenação: ${consulta.ordem.startsWith("animal")?`Identificação (${consulta.ordem==="animal"?"A–Z":"Z–A"})`:"Menor espera"}`,limpar:()=>mudar({ordem:"maior-espera"})}]:[])]}><label className="fin-filtro-busca relative"><Search aria-hidden size={18} className="pointer-events-none absolute left-3 top-3.5 text-muted-foreground"/><Input aria-label="Buscar animal" placeholder="Buscar animal" className={`${classeInput} pl-10`} value={consulta.busca} onChange={e=>mudar({busca:e.target.value})}/></label></BarraConsulta>
       </header>
-      {carregando && <p role="status" className="p-5">Carregando filas de manejo…</p>}
+      {carregando && <EsqueletoTabela label="Carregando filas de manejo" className="p-5" />}
       {visivel && <>
         <div className="repro-consulta-titulo"><div><h2>Filas de manejo <span>{linhas.length} animais</span></h2><p>{atual?.descricao ?? (consulta.fila === "manejo" ? "Avaliações, agendamentos, retornos e serviços. Contagem de animais únicos nas filas exibidas." : "Todas as filas. Um animal pode ter mais de um acompanhamento; cada animal é contado uma vez.")}</p></div><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais e acompanhamentos"/></div>
         {visual.modo === "visual" && linhas.length > 0 ? <div className="reproducao-cartoes reproducao-manejo-cartoes">{linhas.slice((pagina - 1) * consulta.tamanho, pagina * consulta.tamanho).map(a => {
