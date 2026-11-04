@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/DatePicker";
 import "./estoque-theme.css";
 import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useRef, useState } from "react";
@@ -37,7 +38,7 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
   return <section className="estoque-valorizacao" aria-label="Valorização do estoque">
     <h3 className="font-semibold">Valor do saldo e abertura documentada<AjudaCampo rotulo="Ajuda: valor do saldo" texto="Custos anteriores são preservados. Saldo sem valor comprovado exige evidência; zero comprovado pode ser informado explicitamente. A abertura documenta o valor disponível. Não altera quantidade, compras, pagamentos ou custos antigos. Em produto sem rastreio, as origens serão consumidas pela data e ordem comprovadas." /></h3>
 
-    <label className="mt-3 block text-sm">Data de corte<input className={classeInput} type="date" max={hoje()} value={data} disabled={ocupado} onChange={e => setData(e.target.value)} /></label>
+    <label className="mt-3 block text-sm">Data de corte<DatePicker className="mt-1.5" aria-label="Data de corte" max={hoje()} value={data} disabled={ocupado} onChange={setData} /></label>
     <ErrorBox erro={erro} />
     {!dados && !erro && <p role="status" className="text-sm">Conferindo a valorização…</p>}
     {dados && <ul className="estoque-grupos-valor">{dados.grupos.map(g => <li key={g.partidaId ?? "sem-rastreio"}><h4>{g.grupoNome}</h4><dl><div><dt>Saldo</dt><dd>{g.quantidade}</dd></div><div><dt>Validade</dt><dd>{g.validade ?? "Não informada"}</dd></div><div><dt>Valor do saldo</dt><dd>{g.estadoValor === "CONHECIDO" ? brl(g.valor) : "Valor desconhecido — abertura necessária"}</dd></div></dl><p>{g.metodo === "MEDIA_SALDO_V1" ? "Média do saldo do grupo" : "Aquisições mais antigas"}</p></li>)}</ul>}
@@ -51,7 +52,7 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
         {origens.map((o,i) => <fieldset key={o.id} className="grid gap-2 rounded border border-border p-3"><legend>Origem {i+1}</legend>
           <label className="text-sm">Quantidade da origem<input required className={classeInput} type="number" min="0.001" step="0.001" value={o.quantidade} disabled={ocupado} onChange={e => setOrigens(v=>v.map(x=>x.id===o.id?{...x,quantidade:e.target.value}:x))} /></label>
           <label className="text-sm">Valor total da origem (R$)<input required className={classeInput} type="number" min="0" step="0.01" value={o.valor} disabled={ocupado} onChange={e => setOrigens(v=>v.map(x=>x.id===o.id?{...x,valor:e.target.value}:x))} /></label>
-          <label className="text-sm">Data original da aquisição ou inventário<input required className={classeInput} type="date" max={data} value={o.disponivelDesde} disabled={ocupado} onChange={e => setOrigens(v=>v.map(x=>x.id===o.id?{...x,disponivelDesde:e.target.value}:x))} /></label>
+          <label className="text-sm">Data original da aquisição ou inventário<DatePicker className="mt-1.5" aria-label="Data original da aquisição ou inventário" required max={data} value={o.disponivelDesde} disabled={ocupado} onChange={valor => setOrigens(v=>v.map(x=>x.id===o.id?{...x,disponivelDesde:valor}:x))} /></label>
           <label className="text-sm">Referência da origem<input required minLength={2} maxLength={200} className={classeInput} value={o.referencia} disabled={ocupado} onChange={e => setOrigens(v=>v.map(x=>x.id===o.id?{...x,referencia:e.target.value}:x))} /></label>
           {origens.length>1 && <Button type="button" secondary disabled={ocupado} onClick={()=>setOrigens(v=>v.filter(x=>x.id!==o.id))}>Remover origem {i+1}</Button>}
         </fieldset>)}
