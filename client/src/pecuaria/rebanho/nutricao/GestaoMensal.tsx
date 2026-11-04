@@ -1,4 +1,3 @@
-import { LotesSemDieta } from "./LotesSemDieta";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { listarLotes } from "../api";
@@ -119,7 +118,6 @@ export function GestaoMensal({
     navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
   return (
     <div className="nutricao-mensal">
-      {vista === "alertas" && <LotesSemDieta podeLancar={podeLancar} />}
       <ErrorBox erro={erro} />
       {erro && (
         <Button secondary onClick={() => setRecarregar((v) => v + 1)}>
@@ -139,7 +137,7 @@ export function GestaoMensal({
         </section>
       ) : status && !status.habilitada ? null : (
         <>
-          {status && !status.automacao && vista !== "mensal" && (
+          {status && !status.automacao && vista === "configuracao" && (
             <p className="mensal-aviso">
               O processamento automático está desligado neste ambiente. As
               configurações não iniciam baixas sozinhas.
@@ -155,11 +153,11 @@ export function GestaoMensal({
               ocupado={ocupado}
               executar={executar}
             />
-          ) : vista === "mensal" && !lista.length && !filtroLote ? null : (
+          ) : !lista.length && !filtroLote ? null : (
             <section>
               <h2>
                 {vista === "alertas"
-                  ? "O que precisa de atenção"
+                  ? "Meses para conferir"
                   : "Fechamentos mensais"}
                 {filtroLote && <> · {lotes.find((l) => l.id === filtroLote)?.nome ?? "lote selecionado"}</>}
               </h2>
@@ -219,7 +217,7 @@ export function GestaoMensal({
         </>
       )}
       {!mes && children}
-          {!carregando && status?.habilitada !== false && podeLancar && vista !== "configuracao" && (
+          {!carregando && status?.habilitada !== false && podeLancar && vista === "mensal" && (
             <details className="mensal-processar">
               <summary>Processar dias encerrados</summary>
               {status && !status.automacao && vista === "mensal" && <p className="mensal-aviso">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}

@@ -54,7 +54,7 @@ describe("gestão compartilhada de receitas", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Salvar rascunho" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
     await waitFor(() => expect(api.editarDieta).toHaveBeenCalledWith("rascunho", { nome: "Dieta de lactação", itens: [{ produtoId: "milho", quantidadeCabecaDia: 3.5 }] }));
-    fireEvent.click(await screen.findByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Nova versão" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Criar rascunho" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Criar rascunho" }));
     await waitFor(() => expect(api.criarDieta).toHaveBeenCalledWith({ nome: "Dieta de lactação", itens: [{ produtoId: "milho", quantidadeCabecaDia: 3.5 }] }));
@@ -62,7 +62,7 @@ describe("gestão compartilhada de receitas", () => {
   });
   it("cancelar preserva a lista e publicar só atua no rascunho", async () => {
     render(<ReceitasDieta podeLancar />);
-    fireEvent.click(await screen.findByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Nova versão" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByLabelText("Nome da dieta")).toBeNull();
     expect(screen.getByText("Publicada")).toBeTruthy();
@@ -81,7 +81,7 @@ describe("gestão compartilhada de receitas", () => {
     expect(uso.getAttribute("href")).toContain("loteId=lote");
     fireEvent.change(screen.getByLabelText("Buscar receita"), { target: { value: "lactação" } });
     expect(new URLSearchParams(window.location.search).get("buscaReceita")).toBe("lactação");
-    fireEvent.click(screen.getByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Nova versão" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.getByLabelText("Buscar receita")).toHaveProperty("value", "lactação");
   });
@@ -132,7 +132,7 @@ describe("gestão compartilhada de receitas", () => {
     render(<ReceitasDieta podeLancar />);
     const tabela = await screen.findByRole("table", { name: "Receitas de dieta" });
     expect(within(tabela).getAllByText("3,5 KG")).toHaveLength(2);
-    expect(within(tabela).getAllByRole("button", { name: "Criar nova versão a partir desta" })).toHaveLength(1);
+    expect(within(tabela).getAllByRole("button", { name: "Nova versão" })).toHaveLength(1);
     expect(within(tabela).getAllByRole("button", { name: "Publicar" })).toHaveLength(1);
     expect(screen.queryByRole("group", { name: /Visualização de Dieta/ })).toBeNull();
   });

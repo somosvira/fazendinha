@@ -65,7 +65,11 @@ export function SelecaoPartidas({ produtoId, propriedadeId, dataFato, quantidade
     {erro && <Button secondary onClick={() => setRevisao((r) => r + 1)}>Tentar novamente</Button>}
     {saida && !carregando && !erro && !partidas.length && <p className="text-sm">Sem lotes disponíveis. Confira as entradas do produto no Estoque.</p>}
 
-    {saida && sugerida && <p className="text-sm">Vencimento conhecido mais próximo: <strong>{nomeLoteProduto(sugerida)}</strong> · {dataBR(sugerida.validade!)}. Confirme a escolha abaixo.</p>}
+    {saida && sugerida && <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+      <span>Vencimento mais próximo: <strong>{nomeLoteProduto(sugerida)}</strong> · {dataBR(sugerida.validade!)}.</span>
+      {/* A escolha continua explícita: um clique registra a sugestão; a seleção automática só vale quando autorizada nas configurações. */}
+      {valor.length === 1 && valor[0].partidaId !== sugerida.id && <Button secondary className="min-h-8 px-3 py-1 text-sm" onClick={() => selecionar(0, sugerida.id)}>Usar este lote</Button>}
+    </p>}
     {valor.map((v, i) => {
       const existente = v.validade !== undefined ? previas[v.validade ?? "nao-informada"] : undefined;
       const erroLinha = erroValidacao?.campo.startsWith(`${campo}.${i}.`);

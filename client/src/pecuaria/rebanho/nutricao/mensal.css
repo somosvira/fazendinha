@@ -140,3 +140,8 @@
 .mensal-processar { margin-top: 28px; border-top: 1px solid var(--border); padding-top: 14px; }
 .mensal-processar > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); }
 .mensal-processar[open] > summary { margin-bottom: 12px; }
+.nutricao-config-vigencia{display:grid;gap:2px;align-content:start}.nutricao-config-vigencia span{font-size:14px;font-weight:500}.nutricao-config-vigencia strong{font-size:18px;font-weight:650;padding:6px 0}.nutricao-config-vigencia small{color:var(--fin-text-muted,#526863);font-size:12px}
+.nutricao-config-check{display:flex;align-items:center;gap:10px;cursor:pointer}
+.nutricao-config-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex-shrink:0}
+.nutricao-configuracao .nutricao-mensal section,.nutricao-mensal .nutricao-configuracao section{margin:0}
+.nutricao-config-calendario input[type=number]{max-width:140px}

@@ -11,12 +11,16 @@ import { estimativaConferida, somarEstimativas } from "./conferencia.calc";
 import { formatarDataBR } from "../lib/rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
 import { navegarPara } from "../../../router";
+import { quantidadeNutricional } from "./quantidades";
+
+const numero = (valor: string | number) => quantidadeNutricional(String(valor));
 
 type Escolha = { origensLeite: string[]; quantidade: string; motivo: string; modo: "BAIXA_ESTOQUE" | "SEM_BAIXA_JUSTIFICADA"; justificativa: string; partidas: DistribuicaoPartida[] };
 /** Com `acoes`, o passo atual (conferir ou confirmar) vai para o rodapé do painel que hospeda a conferência. */
-export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado, acoes }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void; acoes?: HTMLElement | null }) {
-  const [inicio, setInicio] = useState(hoje().slice(0, 7) + "-01");
-  const [fim, setFim] = useState(hoje());
+export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, onOcupado, acoes, inicial }: { loteId: string; propriedadeId: number; centros: CentroNutricional[]; onSalvo: () => Promise<void>; onOcupado?: (v: boolean) => void; acoes?: HTMLElement | null; inicial?: { inicio: string; fim: string } }) {
+  // Sem sugestão, o intervalo vai do início do mês até ontem; com ela, começa no dia seguinte ao último fechamento.
+  const [inicio, setInicio] = useState(inicial?.inicio ?? hoje().slice(0, 7) + "-01");
+  const [fim, setFim] = useState(inicial?.fim ?? hoje());
   const [centroCustoId, setCentro] = useState("");
   const [previa, setPrevia] = useState<{ revisao: string; periodos: Previa[]; lacunas: Array<{ inicio: string; fim: string }> } | null>(null);
   const [escolhas, setEscolhas] = useState<Record<string, Escolha>>({});
@@ -64,7 +68,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
       {!acoes && <div className="flex items-end">{botaoConferir}</div>}
     </fieldset>
     {previa && <>
-      <p className="text-sm">A confirmação inclui {previa.periodos.length} fechamento(s), separados por mês e vigência. Consumo/custo por animal são atribuições por permanência.</p>
+      {previa.periodos.length > 1 && <p className="text-sm">O intervalo vira {previa.periodos.length} fechamentos, um por mês e vigência de dieta.</p>}
       {previa.lacunas.map((l) => <p key={l.inicio} className="rounded-lg bg-amber-50 p-3 text-sm">Sem dieta de {formatarDataBR(l.inicio)} a {formatarDataBR(l.fim)}. Corrija a vigência e confira novamente; o conjunto não pode ser confirmado.</p>)}
       {previa.periodos.map((p) => {
         const mostrarValores = p.verValores ?? p.itens.some((i) => i.custoPrevisto != null);
@@ -76,11 +80,16 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
           };
         });
         return <fieldset key={p.inicio} disabled={ocupado} className="grid gap-3 rounded-lg border border-border p-3">
-          <legend className="px-1 font-semibold">{formatarDataBR(p.inicio)} – {formatarDataBR(p.fim)} · {p.dieta.nome} v{p.dieta.versao}</legend>
-          <p>{p.animalDias} animal-dias · {p.participantes.length} animais · MS prevista conhecida {p.materiaSecaConhecidaKg} kg ({p.coberturaMateriaSecaCompleta ? "completa" : "cobertura incompleta"})</p>
-          <p>MS conferida conhecida ≈ {somarEstimativas(valores.map((v) => v.ms), 3)} kg ({valores.every((v) => v.ms != null) ? "completa" : "cobertura incompleta"})</p>
-          {mostrarValores && <p>Custo conferido estimado conhecido: {valores.some((v) => v.custo != null) ? `≈ ${fmtMoneyExact(Number(somarEstimativas(valores.map((v) => v.custo), 2)))}` : "não apurado"} ({valores.every((v) => v.custo != null) ? "completo" : "incompleto"}). Apurado na confirmação com a base de estoque.</p>}
-          <div className="nutricao-participantes"><h3 className="text-sm font-semibold">Participantes</h3><ul>{p.participantes.map((a) => <li key={a.animalId}>{a.brinco}: {a.dias} dias</li>)}</ul></div>
+          <legend className="px-1 font-semibold">{formatarDataBR(p.inicio)} a {formatarDataBR(p.fim)} · {p.dieta.nome} v{p.dieta.versao}</legend>
+          <dl className="nutricao-conferencia-resumo">
+            <div><dt>Animais</dt><dd>{p.participantes.length}</dd></div>
+            <div><dt>Animal-dias</dt><dd>{numero(p.animalDias)}</dd></div>
+            <div><dt>Matéria seca prevista</dt><dd>{numero(p.materiaSecaConhecidaKg)} kg{!p.coberturaMateriaSecaCompleta && <small> · parcial</small>}</dd></div>
+            <div><dt>Matéria seca conferida</dt><dd>{valores.some((v) => v.ms != null) ? `${numero(somarEstimativas(valores.map((v) => v.ms), 3))} kg` : "Não apurada"}{valores.some((v) => v.ms == null) && valores.some((v) => v.ms != null) && <small> · parcial</small>}</dd></div>
+            {mostrarValores && <div><dt>Custo estimado</dt><dd>{valores.some((v) => v.custo != null) ? fmtMoneyExact(Number(somarEstimativas(valores.map((v) => v.custo), 2))) : "Apurado ao confirmar"}{valores.some((v) => v.custo == null) && valores.some((v) => v.custo != null) && <small> · parcial</small>}</dd></div>}
+          </dl>
+          <details className="nutricao-participantes"><summary>Ver animais ({p.participantes.length})</summary><ul>{p.participantes.map((a) => <li key={a.animalId}>{a.brinco} · {a.dias} {a.dias === 1 ? "dia" : "dias"}</li>)}</ul></details>
+          <div className="nutricao-conferencia-cabecalho" aria-hidden><span>Ingrediente</span><span>Previsto</span><span>Conferido</span><span>Estoque</span></div>
           {!!p.ofertasBezerreiro?.length && <section aria-label="Leite já registrado no Bezerreiro" className="grid gap-2">
             <h3 className="text-sm font-semibold">Leite já registrado no Bezerreiro</h3>
             <ul className="grid gap-2">{p.ofertasBezerreiro.map(oferta => <li key={oferta.fornecimentoId} className="flex flex-wrap items-center gap-2 text-sm">
@@ -90,11 +99,14 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
           </section>}
           {p.itens.map((i, indice) => {
             const k = chaveItem(p, i.produtoId); const e = escolhas[k]; const v = valores[indice];
-            return <div key={k} className="grid gap-2 border-t border-border pt-3">
-              <strong>{i.nome}: previsto {i.quantidadePrevista} {i.unidade}</strong>
-              <p className="text-sm">Saldo {i.saldo} {i.unidade}{!mostrarValores ? "" : ` · custo previsto ${i.custoPrevisto == null ? "não apurado" : fmtMoneyExact(Number(i.custoPrevisto))}`}</p>
-              <p className="text-sm">MS prevista: {i.materiaSecaKg == null ? "não informada / unidade sem conversão para massa" : `${i.materiaSecaKg} kg`} · MS conferida: {v.ms == null ? "não apurada" : `≈ ${v.ms} kg`}</p>
-              {mostrarValores && <p className="text-sm">Custo conferido estimado: {v.custo == null ? (e.modo === "SEM_BAIXA_JUSTIFICADA" ? "não apurado — sem baixa de estoque" : "não apurado — sem base de custo") : `≈ ${fmtMoneyExact(Number(v.custo))}`}</p>}
+            const insuficiente = e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > Number(i.saldo);
+            return <div key={k} className="nutricao-conferencia-item">
+              <div className="nutricao-conferencia-linha">
+                <div className="nutricao-conferencia-nome"><strong>{i.nome}</strong><span className={insuficiente ? "nutricao-alerta-texto" : undefined}>Saldo {numero(i.saldo)} {i.unidade}{insuficiente && " · insuficiente"}{mostrarValores && v.custo != null && ` · ${fmtMoneyExact(Number(v.custo))}`}</span></div>
+                <div className="nutricao-conferencia-previsto"><span className="nutricao-rotulo-movel">Previsto</span>{numero(i.quantidadePrevista)} {i.unidade}</div>
+                <label className="nutricao-conferencia-campo"><span className="nutricao-rotulo-movel">Conferido ({i.unidade})</span><input aria-label={`Quantidade conferida de ${i.nome} (${i.unidade})`} type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
+                <label className="nutricao-conferencia-campo"><span className="nutricao-rotulo-movel">Estoque</span><SelectCampo aria-label={`Origem de ${i.nome}`} className={classeInput} value={e.modo} onValueChange={(valorSelecionado) => mudar(k, { modo: valorSelecionado as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></SelectCampo></label>
+              </div>
               {i.leite && !!p.ofertasBezerreiro?.length && <div className="grid gap-2">
                 <p className="text-sm" title={p.orientacaoLeiteBezerreiro ?? undefined}>Concilie o leite já fornecido. Os demais ingredientes permanecem neste fechamento.</p>
                 <div><Button secondary onClick={() => mudar(k, { quantidade: '0', motivo: 'Leite já registrado nas ofertas do Bezerreiro; sem novo fornecimento neste fechamento.' })}>Usar ofertas já registradas · zerar leite</Button></div>
@@ -105,10 +117,6 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
                 {i.leite.origens.map(o => <label key={o.entradaId} className="flex items-start gap-2 text-sm"><input type="checkbox" checked={e.origensLeite.includes(o.entradaId)} onChange={ev => mudar(k, { origensLeite: ev.target.checked ? [...e.origensLeite,o.entradaId] : e.origensLeite.filter(id => id !== o.entradaId) })} /><span>{o.produtoNome} · {o.natureza === "NAO_COMERCIAL" ? "Não comercial" : "Comercial"} · {formatarDataBR(o.data)} · {formatarLitros(Number(o.quantidadeDisponivelLitros))}</span></label>)}
 
               </fieldset>}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label>Quantidade conferida ({i.unidade})<input type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
-                <label>Origem<SelectCampo className={classeInput} value={e.modo} onValueChange={(valorSelecionado) => mudar(k, { modo: valorSelecionado as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></SelectCampo></label>
-              </div>
               {(Number(e.quantidade) !== Number(i.quantidadePrevista) || (i.leite && !!p.ofertasBezerreiro?.length)) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}
               {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas compacto produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
