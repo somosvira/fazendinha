@@ -10,11 +10,12 @@ import { consultarSituacaoFechamentos, MODELOS, type SituacaoLote } from "./situ
 const intervalo = (l: SituacaoLote) => l.inicio === l.fim ? formatarDataBR(l.inicio) : `${formatarDataBR(l.inicio).slice(0, 5)} a ${formatarDataBR(l.fim)}`;
 
 /** Cada lote com dieta vigente: até onde foi fechado e o que falta, pelo modelo do lote (período ou mensal). */
-export function ProximosFechamentos({ podeLancar, somentePendentes = false }: { podeLancar: boolean; somentePendentes?: boolean }) {
+export function ProximosFechamentos({ podeLancar, somentePendentes = false, loteId }: { podeLancar: boolean; somentePendentes?: boolean; /** Na página de um lote, mostra só ele. */ loteId?: string }) {
   const consulta = useConsulta(useCallback(consultarSituacaoFechamentos, []));
-  const linhas = consulta.dados?.filter(l => !somentePendentes || l.dias > 0) ?? [];
-  const pendentes = consulta.dados?.filter(l => l.dias > 0).length ?? 0;
-  const mensais = consulta.dados?.filter(l => l.mensal && l.dias === 0).length ?? 0;
+  const doContexto = consulta.dados?.filter(l => !loteId || l.resumo.lote.id === loteId);
+  const linhas = doContexto?.filter(l => !somentePendentes || l.dias > 0) ?? [];
+  const pendentes = doContexto?.filter(l => l.dias > 0).length ?? 0;
+  const mensais = doContexto?.filter(l => l.mensal && l.dias === 0).length ?? 0;
   if (somentePendentes && consulta.dados && !linhas.length) return null;
   const resumo = !consulta.dados ? "Lotes com dieta vigente e o que falta fechar." : [
     pendentes ? `${pendentes} ${pendentes === 1 ? "lote tem" : "lotes têm"} consumo a fechar por período` : "Nenhum período a fechar",

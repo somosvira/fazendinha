@@ -167,7 +167,6 @@ export function GestaoMensal({
                   : "Meses de fechamento"}
                 {filtroLote && <> · {lotes.find((l) => l.id === filtroLote)?.nome ?? "lote selecionado"}</>}
               </h2>
-              {filtroLote && <p><LinkNutricional href={rotaNutricao({ aba: "fechamentos" })}>Ver fechamentos de todos os lotes</LinkNutricional></p>}
               {!lista.length && (
                 <Empty acao={podeProcessar ? <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button> : undefined}>
                   {filtroLote ? "Nenhum mês de fechamento para este lote ainda." : "Nenhum mês de fechamento ainda."}{" "}
@@ -223,19 +222,20 @@ export function GestaoMensal({
         </>
       )}
       {!mes && children}
-          {podeProcessar && (
+          {podeProcessar && lista.length > 0 && (
             <div className="mensal-processar">
               <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button>
             </div>
           )}
           <Dialog open={processando} onOpenChange={(v) => { if (!ocupado) setProcessando(v); }}>
             <DialogContent>
-              <DialogHeader>
+              <DialogHeader className="border-b border-border px-5 pb-4 pt-5 pr-12">
                 <DialogTitle>Processar dias encerrados</DialogTitle>
                 <DialogDescription>Recupera dias não processados e tenta novamente as baixas pendentes, sem repetir as já efetivadas.</DialogDescription>
               </DialogHeader>
+              <div className="grid gap-4 px-5 py-5">
               <ErrorBox erro={erro} />
-              {status && !status.automacao && <p className="mensal-aviso">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
+              {status && !status.automacao && <p className="mensal-aviso m-0">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
               <label className="mensal-campo-modal">
                 Lote de animais
                 <select value={lote} onChange={(e) => setLote(e.target.value)}>
@@ -247,7 +247,8 @@ export function GestaoMensal({
                   ))}
                 </select>
               </label>
-              <DialogFooter>
+              </div>
+              <DialogFooter className="border-t border-border px-5 py-4">
                 <Button secondary disabled={ocupado} onClick={() => setProcessando(false)}>Cancelar</Button>
                 <Button
                   disabled={!lote || ocupado}
