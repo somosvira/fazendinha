@@ -40,6 +40,8 @@ export interface Meta {
   definicao: DefinicaoMeta;
   medicoes: MedicaoMeta[];
   situacao: string;
+  /** Dias da janela de apuração automática ainda sem medição, com o motivo de cada um. */
+  pendencias?: { data: string; motivo: string }[];
   historico: {
     revisao: number;
     tipo: string;
@@ -69,6 +71,8 @@ async function requisicao<T>(url: string, init?: RequestInit): Promise<T> {
 }
 export const obterCatalogoMetas = () => requisicao<CatalogoMetas>("/catalogo");
 export const obterMetas = () => requisicao<ListaMetas>("");
+/** Apura os dias que já fecham nas metas automáticas e devolve a lista atualizada (só para quem edita). */
+export const apurarMetas = () => requisicao<ListaMetas>("/apuracao", { method: "POST" });
 export const salvarMeta = (
   id: string,
   operacaoId: string,

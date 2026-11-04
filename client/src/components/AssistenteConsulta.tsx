@@ -60,6 +60,8 @@ import { navegarPara } from "../router";
 import { prepararPrint } from "../lib/midia-assistente";
 import { useAudioAssistente } from "./useAudioAssistente";
 import { useConversaVoz } from "./useConversaVoz";
+import { RespostaDados } from "./RespostaDados";
+import { ConferenciaPesagem } from "./ConferenciaPesagem";
 import "./assistente-consulta.css";
 
 type Anexo = { nome: string; dataUrl: string; tipo: "imagem" | "pdf" };
@@ -76,6 +78,7 @@ const mensagensPersistiveis = (mensagens: Mensagem[]): MensagemSalva[] =>
           resposta: {
             modo: resposta.modo,
             resposta: resposta.resposta,
+            ...(resposta.dados ? { dados: resposta.dados } : {}),
             fontes: resposta.fontes,
             consultadoEm: resposta.consultadoEm,
             escopo: resposta.escopo,
@@ -647,6 +650,28 @@ export function AssistenteConsulta({
   useEffect(() => { if (!ativo) { cancelarPendentes(); setModoVoz(false); } }, [ativo]);
   useEffect(() => { if (abrirHistoricoVersao > 0) { voz.encerrar(); setModoVoz(false); void abrirHistorico(); } }, [abrirHistoricoVersao]);
 
+  const seletorModo = (
+    <div
+      className="assistente-toggle"
+      role="group"
+      aria-label="Modo do assistente"
+    >
+      {(["consultar", "editar"] as const).map((valor) => (
+        <button
+          type="button"
+          key={valor}
+          aria-pressed={modo === valor}
+          disabled={
+            carregandoConfig ||
+            (valor === "editar" && !config?.podeEditar)
+          }
+          onClick={() => mudarModo(valor)}
+        >
+          {valor === "consultar" ? "Consultar" : "Editar"}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <Dialog
       open={aberto}
@@ -751,33 +776,9 @@ export function AssistenteConsulta({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>}
-            <div
-              className="assistente-toggle"
-              role="group"
-              aria-label="Modo do assistente"
-            >
-              {(["consultar", "editar"] as const).map((valor) => (
-                <button
-                  type="button"
-                  key={valor}
-                  aria-pressed={modo === valor}
-                  disabled={
-                    carregandoConfig ||
-                    (valor === "editar" && !config?.podeEditar)
-                  }
-                  onClick={() => mudarModo(valor)}
-                >
-                  {valor === "consultar" ? "Consultar" : "Editar"}
-                </button>
-              ))}
-            </div>
+            {!pagina && seletorModo}
           </div>
         </DialogHeader>
-        {pagina && config && !carregandoConfig && !modoVoz && mensagens.length > 0 && <div className="assistente-atalhos" aria-label="Mensagens sugeridas">
-          {CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" size="sm" disabled={bloqueado} onClick={() => { setModo("consultar"); setInput(c.pergunta); inputRef.current?.focus(); }}>{c.titulo}</Button>)}
-          {config.podeEditar && <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { mudarModo("editar"); setInput("Quero registrar uma pesagem de rotina."); inputRef.current?.focus(); }}>Registrar pesagem</Button>}
-          <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { setInput("Como posso usar o Terrano?"); inputRef.current?.focus(); }}>Ajuda com o Terrano</Button>
-        </div>}
         <div className="assistente-corpo">
           {carregandoConfig && (
             <p role="status">
@@ -1000,89 +1001,26 @@ export function AssistenteConsulta({
                           <MessageCircle size={16} />
                           Terrano
                         </div>
-                        <p>{m.resposta.resposta}</p>
+                        {m.resposta.dados ? <RespostaDados dados={m.resposta.dados} /> : <p>{m.resposta.resposta}</p>}
                         {m.resposta.proposta &&
                           !m.cancelada &&
                           modo === "editar" && (
-                            <section
-                              className="assistente-conferencia"
-                              aria-label="Conferir pesagem"
-                            >
-                              <h3>Registrar pesagem</h3>
-                              <dl>
-                                <div>
-                                  <dt>Animal</dt>
-                                  <dd>{m.resposta.proposta.animal}</dd>
-                                </div>
-                                <div>
-                                  <dt>Fazenda</dt>
-                                  <dd>{m.resposta.escopo.nome}</dd>
-                                </div>
-                                <div>
-                                  <dt>Data</dt>
-                                  <dd>
-                                    {m.resposta.proposta.data
-                                      .split("-")
-                                      .reverse()
-                                      .join("/")}
-                                  </dd>
-                                </div>
-                                <div>
-                                  <dt>Peso</dt>
-                                  <dd>
-                                    {m.resposta.proposta.pesoKg.toLocaleString(
-                                      "pt-BR",
-                                    )}{" "}
-                                    kg
-                                  </dd>
-                                </div>
-                                <div>
-                                  <dt>Tipo e origem</dt>
-                                  <dd>
-                                    {m.resposta.proposta.tipo} ·{" "}
-                                    {m.resposta.proposta.origem}
-                                  </dd>
-                                </div>
-                                <div>
-                                  <dt>Precisão</dt>
-                                  <dd>{m.resposta.proposta.precisao}</dd>
-                                </div>
-                              </dl>
-                              <div>
-                                <Button
-                                  disabled={bloqueado}
-                                  onClick={() =>
-                                    void confirmar(
-                                      i,
-                                      m.resposta!.proposta!.token,
-                                    )
-                                  }
-                                >
-                                  Confirmar registro
-                                </Button>
-                                <Button
-                                  disabled={bloqueado}
-                                  variant="ghost"
-                                  onClick={() =>
-                                    setMensagens((ms) =>
-                                      ms.map((item, j) =>
-                                        j === i
-                                          ? { ...item, cancelada: true }
-                                          : item,
-                                      ),
-                                    )
-                                  }
-                                >
-                                  Cancelar
-                                </Button>
-                              </div>
-                            </section>
+                            <ConferenciaPesagem
+                              proposta={m.resposta.proposta}
+                              escopo={m.resposta.escopo.nome}
+                              bloqueado={bloqueado}
+                              onGravar={() => void confirmar(i, m.resposta!.proposta!.token)}
+                              onCorrigir={() => {
+                                setMensagens((ms) => ms.map((item, j) => (j === i ? { ...item, cancelada: true } : item)));
+                                setInput(m.pergunta);
+                                inputRef.current?.focus();
+                              }}
+                            />
                           )}
                         {m.resposta.modo === "proposta" &&
                           (m.cancelada || !m.resposta.proposta) && (
                             <p className="assistente-aviso">
-                              Proposta encerrada. Peça novamente para preparar
-                              uma confirmação.
+                              Pesagem não gravada. Ajuste a mensagem e envie de novo.
                             </p>
                           )}
                         {m.resposta.fontes.map((f) => (
@@ -1284,6 +1222,7 @@ export function AssistenteConsulta({
                 }}
               />
               <div className="assistente-ferramentas">
+                {pagina && seletorModo}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -1352,6 +1291,11 @@ export function AssistenteConsulta({
                 </Button>
               </div>
             </div>
+            {pagina && config && !carregandoConfig && !modoVoz && mensagens.length > 0 && <div className="assistente-atalhos" aria-label="Mensagens sugeridas">
+          {CONSULTAS.filter(c => config.consultas.includes(c.visao)).slice(0, 2).map(c => <Button key={c.visao} variant="outline" size="sm" disabled={bloqueado} onClick={() => { setModo("consultar"); setInput(c.pergunta); inputRef.current?.focus(); }}>{c.titulo}</Button>)}
+          {config.podeEditar && <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { mudarModo("editar"); setInput("Quero registrar uma pesagem de rotina."); inputRef.current?.focus(); }}>Registrar pesagem</Button>}
+          <Button variant="outline" size="sm" disabled={bloqueado} onClick={() => { setInput("Como posso usar o Terrano?"); inputRef.current?.focus(); }}>Ajuda com o Terrano</Button>
+        </div>}
             <input
               type="file"
               ref={arquivoRef}

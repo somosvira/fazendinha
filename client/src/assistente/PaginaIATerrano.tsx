@@ -6,6 +6,7 @@ import { SubTabs } from "../components/SubTabs";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { navegarPara } from "../router";
 import { Radar } from "./Radar";
+import { HojeNaFazenda } from "./HojeNaFazenda";
 import "./pagina-ia.css";
 
 type Aba = "conversa" | "radar";
@@ -115,6 +116,7 @@ export function PaginaIATerrano({
           abrirHistoricoVersao={historico}
           onAbrirFonte={onAbrirFonte}
         />
+        {aba === "conversa" && <HojeNaFazenda propriedadeId={propriedadeId} onVerRadar={() => selecionar("radar")} onPerguntar={setPergunta} />}
       </div>
       {aba === "radar" && (
         <div

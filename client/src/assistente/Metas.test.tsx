@@ -12,12 +12,14 @@ const mocks = vi.hoisted(() => ({
   lista: vi.fn(),
   catalogo: vi.fn(),
   registrar: vi.fn(),
+  apurar: vi.fn(),
 }));
 vi.mock("./metas-api", () => ({
   obterMetas: mocks.lista,
   obterCatalogoMetas: mocks.catalogo,
   salvarMeta: vi.fn(),
   registrarMedicao: mocks.registrar,
+  apurarMetas: mocks.apurar,
 }));
 afterEach(cleanup);
 const indicador = {
@@ -116,7 +118,7 @@ describe("Metas", () => {
     const abrir = vi.fn();
     render(<Metas propriedadeId={null} onAbrirFonte={abrir} />);
     const link = await screen.findByRole("link", {
-      name: "Conferir ordenhas da medição",
+      name: "Ver ordenhas",
     });
     const clique = new MouseEvent("click", { bubbles: true, cancelable: true });
     fireEvent(link, clique);
@@ -170,8 +172,8 @@ describe("Metas", () => {
     });
     const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<Metas propriedadeId={1} />);
-    await screen.findByText("0 de 2 etapas concluídas");
-    fireEvent.click(screen.getByRole("button", { name: "Editar Ordenha" }));
+    await screen.findByRole("list", { name: "0 de 2 etapas concluídas" });
+    fireEvent.click(screen.getByRole("button", { name: "Editar meta" }));
     fireEvent.change(screen.getByLabelText(/Etapas, uma por linha/), {
       target: { value: "Equipamento\nInstalação\nTeste" },
     });
@@ -197,5 +199,45 @@ describe("Metas", () => {
     expect(
       screen.getByRole("button", { name: "Tentar novamente" }),
     ).toBeTruthy();
+  });
+});
+
+describe("leitura das metas", () => {
+  const producao = (valores: [string, number][], pendencias: { data: string; motivo: string }[] = []) => ({
+    id: "meta-leite", propriedadeId: 1, revisao: valores.length + 1,
+    definicao: { titulo: "Produção diária", indicadorId: "leite_volume", indicadorVersao: 1 as const, tipo: "minimo" as const, minimo: 900, maximo: null, periodo: "diario" as const, prazo: null, fonte: "automatica" as const, observacao: "" },
+    medicoes: valores.map(([data, valor], i) => ({ data, valor, concluido: null, observacao: "", revisao: i + 2, usuarioId: 1, criadoEm: `${data}T12:00:00Z`, proveniencia: { url: `/pecuaria/leite?propriedadeId=1&leiteSecao=ordenhas&leiteModo=geral&ordenhasInicio=${data}&ordenhasFim=${data}`, adaptador: "LEITE" } })),
+    situacao: "fora_do_alvo", historico: [], pendencias,
+  });
+  it("mostra a distância do alvo, a sequência e o motivo dos dias sem apuração", async () => {
+    const meta = producao([["2026-10-27", 950], ["2026-10-28", 1023], ["2026-10-29", 880], ["2026-11-01", 890], ["2026-11-02", 875]],
+      [{ data: "2026-10-30", motivo: "Há parcelas sem confirmação no estoque. Apuração automática indisponível." }, { data: "2026-10-31", motivo: "Há parcelas sem confirmação no estoque. Apuração automática indisponível." }]);
+    mocks.lista.mockResolvedValue({ metas: [meta], podeEditar: true, limite: 100 });
+    mocks.apurar.mockResolvedValue({ metas: [meta], podeEditar: true, limite: 100 });
+    mocks.catalogo.mockResolvedValue({ indicadores: [indicador], podeEditar: true });
+    render(<Metas propriedadeId={1} />);
+    await screen.findByText("Fora do alvo há 3 dias");
+    expect(screen.getByText("25 L abaixo do mínimo")).toBeTruthy();
+    expect(screen.getByText("2 de 5")).toBeTruthy();
+    expect(screen.getByText("1.023 L · 28/10")).toBeTruthy();
+    expect(screen.getByText("Sem apuração · 30 e 31/10: há parcelas sem confirmação no estoque.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Confirmar parcelas" }).getAttribute("href")).toContain("ordenhasInicio=2026-10-30&ordenhasFim=2026-10-31");
+    // Meta automática não oferece apuração manual nem registro de medição.
+    expect(screen.queryByRole("button", { name: /Apurar|Registrar medição/ })).toBeNull();
+    // Quem edita dispara a apuração dos dias que fecham ao abrir a página.
+    expect(mocks.apurar).toHaveBeenCalledOnce();
+  });
+  it("filtra por situação e quem só lê não dispara a apuração", async () => {
+    const fora = producao([["2026-11-02", 875]]);
+    const ok = { ...producao([["2026-11-02", 950]]), id: "meta-ok", definicao: { ...fora.definicao, titulo: "Produção do outro tanque" } };
+    mocks.apurar.mockClear();
+    mocks.lista.mockResolvedValue({ metas: [fora, ok], podeEditar: false, limite: 100 });
+    mocks.catalogo.mockResolvedValue({ indicadores: [indicador], podeEditar: false });
+    render(<Metas propriedadeId={1} />);
+    await screen.findByText("Produção do outro tanque");
+    fireEvent.click(screen.getByRole("button", { name: "Fora do alvo 1" }));
+    expect(screen.queryByText("Produção do outro tanque")).toBeNull();
+    expect(screen.getByText("Produção diária")).toBeTruthy();
+    expect(mocks.apurar).not.toHaveBeenCalled();
   });
 });

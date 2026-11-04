@@ -292,3 +292,65 @@ details.metas-formula summary { cursor: pointer; color: var(--primary); font-siz
 details.metas-formula summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 details.metas-formula p { margin-top: 6px; }
 .metas-vazio > button { margin-top: 14px; }
+
+/* Cartão de meta: situação com contexto, leitura antes do gráfico e ações com nome. */
+.terrano-metas { --metas-linha: var(--campo-pasto, #006f68); --metas-barra: #7fb3ad; --metas-fora: var(--campo-atraso, #8d3931); --metas-fora-fundo: #fbefec; --metas-ok-fundo: #e0efec; --metas-atencao: var(--campo-atencao, #775930); --metas-grade: #e6ecea; --metas-hachura: #d9cbb5; }
+.metas-resumo { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+.metas-resumo button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 14px; color: var(--muted-foreground); cursor: pointer; }
+.metas-resumo button b { color: var(--foreground); font-weight: 650; }
+.metas-resumo button[aria-pressed="true"] { border-color: var(--metas-linha); color: var(--metas-linha); background: var(--metas-ok-fundo); }
+.metas-resumo button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.metas-ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+.metas-ponto-fora { background: var(--metas-fora); }
+.metas-ponto-ok { background: var(--metas-linha); }
+.metas-ponto-marco { background: var(--metas-atencao); }
+.metas-lista { gap: 16px; }
+.metas-meta { padding: 0; overflow: hidden; }
+.metas-meta > .metas-identidade { padding: 18px 20px 0; }
+.metas-identidade h3 { font-size: 17px; font-weight: 650; }
+.metas-identidade p { margin: 2px 0 0; }
+.metas-situacao { font-weight: 600; border-radius: 999px; padding: 4px 12px; }
+.metas-situacao-ok { background: var(--metas-ok-fundo); color: var(--metas-linha); }
+.metas-situacao-fora { background: var(--metas-fora-fundo); color: var(--metas-fora); }
+.metas-situacao-marco { background: #f6f0e5; color: var(--metas-atencao); }
+.metas-meta > .metas-corpo { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.7fr); gap: 28px; margin: 0; padding: 16px 20px 18px; align-items: start; }
+.metas-atual { margin: 0; }
+.metas-atual > dt { font-size: 13px; color: var(--muted-foreground); }
+.metas-atual > dd { margin: 2px 0 0; display: grid; gap: 4px; }
+.metas-grande { font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+.metas-delta { font-size: 14px; font-weight: 600; color: var(--muted-foreground); }
+.metas-delta.bom { color: var(--metas-linha); }
+.metas-delta.ruim { color: var(--metas-fora); }
+.metas-fatos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.metas-fatos dt { font-size: 12px; color: var(--muted-foreground); }
+.metas-fatos dd { margin: 0; font-weight: 650; font-size: 14px; }
+.metas-sem-medicao p:first-child { font-weight: 600; }
+.metas-sem-medicao p { color: var(--muted-foreground); font-size: 14px; }
+.metas-meta .metas-grafico { margin: 0; min-height: 0; }
+.metas-grafico figcaption { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 6px; font-size: 12px; color: var(--muted-foreground); }
+.metas-grafico figcaption span { display: inline-flex; align-items: center; gap: 6px; }
+.metas-legenda-alvo { width: 18px; border-top: 2px dashed var(--metas-atencao); }
+.metas-legenda-fora { width: 8px; height: 8px; border-radius: 50%; background: var(--metas-fora); }
+.metas-legenda-hachura { width: 12px; height: 12px; background: repeating-linear-gradient(45deg, var(--metas-hachura) 0 2px, transparent 2px 5px); }
+.metas-progresso { display: block; height: 8px; border-radius: 999px; background: var(--muted); overflow: hidden; max-width: 240px; }
+.metas-progresso i { display: block; height: 100%; background: var(--metas-linha); }
+.metas-meta .metas-etapas { margin: 0; display: grid; gap: 2px; counter-reset: etapa; }
+.metas-meta .metas-etapas li { justify-content: flex-start; align-items: center; gap: 10px; padding: 8px 0; color: var(--muted-foreground); }
+.metas-meta .metas-etapas li:last-child { border-bottom: 0; }
+.metas-marca { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.metas-etapas li.feita { color: var(--foreground); }
+.metas-etapas li.feita .metas-marca { background: var(--metas-linha); border-color: var(--metas-linha); color: #fff; }
+.metas-etapas li.agora { color: var(--foreground); font-weight: 600; }
+.metas-etapas li.agora .metas-marca { border-color: var(--metas-atencao); }
+.metas-sem-etapas { color: var(--muted-foreground); font-size: 14px; }
+.metas-rodape-cartao { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px 14px 10px 20px; border-top: 1px solid var(--border); background: var(--campo-papel, #f7f8fa); font-size: 13px; color: var(--muted-foreground); }
+.metas-rodape-cartao > div { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.metas-pendencia { color: var(--metas-atencao); font-weight: 500; }
+.metas-link, .metas-link-forte { padding: 6px 10px; color: var(--metas-linha); text-decoration: underline; text-underline-offset: 3px; font-weight: 600; font-size: 14px; }
+.metas-link-forte { color: var(--metas-atencao); }
+@media (max-width: 760px) {
+  .metas-meta > .metas-corpo { grid-template-columns: 1fr; gap: 16px; padding: 14px 16px 16px; }
+  .metas-meta > .metas-identidade { padding: 16px 16px 0; }
+  .metas-rodape-cartao { padding: 10px 12px 12px 16px; }
+  .metas-rodape-cartao button, .metas-link, .metas-link-forte { min-height: 44px; display: inline-flex; align-items: center; }
+}

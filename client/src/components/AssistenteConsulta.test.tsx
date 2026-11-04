@@ -170,7 +170,7 @@ it("prepara em Editar, não grava sem confirmação e impede duplo clique", asyn
   fireEvent.click(screen.getByRole("button", { name: "Editar" }));
   perguntar("Pese 1058 com 450 kg hoje");
   const confirmar = await screen.findByRole("button", {
-    name: "Confirmar registro",
+    name: "Gravar pesagem",
   });
   expect(api.confirmarPesagemAssistente).not.toHaveBeenCalled();
   fireEvent.click(confirmar);
@@ -182,10 +182,10 @@ it("trocar modo invalida a proposta pendente", async () => {
   await abrir();
   fireEvent.click(screen.getByRole("button", { name: "Editar" }));
   perguntar("Pese 1058");
-  await screen.findByRole("button", { name: "Confirmar registro" });
+  await screen.findByRole("button", { name: "Gravar pesagem" });
   fireEvent.click(screen.getByRole("button", { name: "Consultar" }));
   expect(
-    screen.queryByRole("button", { name: "Confirmar registro" }),
+    screen.queryByRole("button", { name: "Gravar pesagem" }),
   ).toBeNull();
   expect(api.confirmarPesagemAssistente).not.toHaveBeenCalled();
 });
@@ -223,7 +223,7 @@ it("salva somente texto, sem anexo ou token de confirmação", async () => {
   await abrir();
   fireEvent.click(screen.getByRole("button", { name: "Editar" }));
   perguntar("Pese 1058");
-  await screen.findByRole("button", { name: "Confirmar registro" });
+  await screen.findByRole("button", { name: "Gravar pesagem" });
   await waitFor(() => expect(api.salvarConversaAssistente).toHaveBeenCalled());
   expect(
     JSON.stringify(vi.mocked(api.salvarConversaAssistente).mock.calls),
@@ -245,10 +245,10 @@ it("reabre conversa salva sem reativar proposta antiga", async () => {
     await screen.findByRole("button", { name: /Pesagem anterior/ }),
   );
   await screen.findByText(
-    "Proposta encerrada. Peça novamente para preparar uma confirmação.",
+    "Pesagem não gravada. Ajuste a mensagem e envie de novo.",
   );
   expect(
-    screen.queryByRole("button", { name: "Confirmar registro" }),
+    screen.queryByRole("button", { name: "Gravar pesagem" }),
   ).toBeNull();
 });
 it("desmontar aborta consulta e ignora retorno tardio", async () => {
@@ -352,4 +352,42 @@ it("salvar com sucesso não apresenta erro falso", async () => {
   await waitFor(() => expect(api.salvarConversaAssistente).toHaveBeenCalled());
   await act(async () => {});
   expect(screen.queryByText(/Não foi possível salvar/)).toBeNull();
+});
+it("mostra a consulta em formato de dados e salva os dados com a conversa", async () => {
+  vi.mocked(api.consultarAssistente).mockResolvedValue({
+    ...resposta,
+    dados: {
+      titulo: "Financeiro de novembro",
+      contexto: "São Francisco · regime de caixa",
+      numeros: [
+        { rotulo: "A pagar no período", valor: "R$ 6.480,00", detalhe: "1 compromisso · 1 vencido", destaque: true },
+        { rotulo: "Resultado realizado", valor: "R$ 0,00" },
+      ],
+      leitura: "O que pesa no mês são os compromissos a pagar.",
+      tabela: { colunas: [{ titulo: "Vencimento" }, { titulo: "Compromisso" }, { titulo: "Valor", valor: true }], linhas: [{ celulas: ["01/11 · vencido", "Ração", "R$ 6.480,00"], atraso: true }] },
+    },
+  });
+  await abrir();
+  perguntar("Como está o financeiro?");
+  const cartao = await screen.findByRole("article", { name: "Financeiro de novembro" });
+  expect(cartao.textContent).toContain("R$ 6.480,00");
+  expect(cartao.querySelector(".destaque dt")?.textContent).toBe("A pagar no período");
+  expect(cartao.querySelector("tr.atraso")).toBeTruthy();
+  // O texto corrido continua para voz e cópia, mas não duplica o cartão na tela.
+  expect(screen.queryByText("Entradas: R$ 100,00")).toBeNull();
+  await vi.waitFor(() => expect(api.salvarConversaAssistente).toHaveBeenCalled());
+  const salvas = vi.mocked(api.salvarConversaAssistente).mock.calls.at(-1)!;
+  expect(JSON.stringify(salvas)).toContain("Financeiro de novembro");
+});
+it("compara com a pesagem anterior e Corrigir devolve a mensagem para edição", async () => {
+  vi.mocked(api.consultarAssistente).mockResolvedValue({ ...proposta, proposta: { ...proposta.proposta!, anterior: { data: "2026-10-03", pesoKg: 436 } } });
+  await abrir();
+  fireEvent.click(screen.getByRole("button", { name: "Editar" }));
+  perguntar("Pese 1058 com 450 kg");
+  await screen.findByRole("button", { name: "Gravar pesagem" });
+  expect(screen.getByText(/Última pesagem: 436 kg em 03\/10\/2026 \(\+14 kg em 30 dias, 0,47 kg\/dia\)/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Corrigir" }));
+  expect(screen.queryByRole("button", { name: "Gravar pesagem" })).toBeNull();
+  expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("Pese 1058 com 450 kg");
+  expect(api.confirmarPesagemAssistente).not.toHaveBeenCalled();
 });

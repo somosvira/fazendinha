@@ -2,18 +2,7 @@ import { navegarPara } from "../router";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { registrarGuardaNavegacao } from "../navegacaoGuardada";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  ReferenceLine,
-  ReferenceArea,
-} from "recharts";
-import { Plus, Pencil, History, CalendarCheck } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,13 +15,19 @@ import { DatePicker } from "../components/DatePicker";
 import {
   obterCatalogoMetas,
   obterMetas,
+  apurarMetas,
   salvarMeta,
   registrarMedicao,
   type DefinicaoMeta,
   type Meta,
   type IndicadorMeta,
 } from "./metas-api";
+import { CartaoMeta, grupoMeta, leituraMeta } from "./CartaoMeta";
+import { Skeleton } from "../components/ui/skeleton";
 import "./metas.css";
+
+type GrupoMeta = ReturnType<typeof grupoMeta>;
+const FILTROS: [("todas" | GrupoMeta), string][] = [["todas", "Todas"], ["fora", "Fora do alvo"], ["ok", "No alvo"], ["marco", "Marcos"], ["neutro", "Sem medição"]];
 const novaDefinicao: DefinicaoMeta = {
   titulo: "",
   indicadorId: "",
@@ -53,13 +48,6 @@ const periodo = {
   mensal: "Mensal",
   anual: "Anual",
   ciclo: "Ciclo",
-};
-const situacao: Record<string, string> = {
-  sem_medicao: "Sem medição",
-  no_alvo: "No alvo",
-  fora_do_alvo: "Fora do alvo",
-  concluido: "Concluído",
-  em_aberto: "Em aberto",
 };
 export function alvoMeta(d: DefinicaoMeta, unidade: string) {
   return d.tipo === "marco"
@@ -152,7 +140,13 @@ export default function Metas({
     [carregando, setCarregando] = useState(true),
     [erro, setErro] = useState(""),
     [modal, setModal] = useState<Modal | null>(null),
-    [atualizacao, setAtualizacao] = useState(0);
+    [atualizacao, setAtualizacao] = useState(0),
+    [filtro, setFiltro] = useState<"todas" | GrupoMeta>("todas");
+  const visiveis = metas.flatMap((meta) => {
+    const indicador = indicadores.find((i) => i.id === meta.definicao.indicadorId);
+    return indicador ? [{ meta, indicador, grupo: grupoMeta(meta, leituraMeta(meta, indicador.unidade)) }] : [];
+  });
+  const contagem = visiveis.reduce((c, v) => ({ ...c, [v.grupo]: (c[v.grupo] ?? 0) + 1 }), {} as Partial<Record<GrupoMeta, number>>);
   useEffect(() => {
     let ativa = true;
     setCarregando(true);
@@ -167,6 +161,9 @@ export default function Metas({
           setMetas(lista.metas);
           setIndicadores(cat.indicadores);
           setPodeEditar(lista.podeEditar && cat.podeEditar);
+          // Apura os dias que já fecham; a lista aparece antes e é atualizada quando a apuração termina.
+          if (lista.podeEditar && propriedadeId !== null && lista.metas.some((m) => m.definicao.fonte === "automatica"))
+            apurarMetas().then((r) => { if (ativa) setMetas(r.metas); }).catch(() => {});
         }
       })
       .catch((e) => {
@@ -207,7 +204,7 @@ export default function Metas({
         </p>
       )}
       {carregando ? (
-        <p role="status">Carregando metas…</p>
+        <div role="status" aria-label="Carregando metas" className="metas-lista">{[0, 1].map((n) => <Skeleton key={n} className="h-72 w-full rounded-xl" />)}</div>
       ) : erro ? (
         <div role="alert">
           <p>{erro}</p>
@@ -238,214 +235,19 @@ export default function Metas({
           )}
         </div>
       ) : (
-        <div className="metas-lista">
-          {metas.map((meta) => {
-            const i = indicadores.find(
-              (i) => i.id === meta.definicao.indicadorId,
-            );
-            if (!i) return null;
-            const d = meta.definicao,
-              ultima = meta.medicoes.at(-1);
-            return (
-              <article className="metas-meta" key={meta.id}>
-                <div className="metas-identidade">
-                  <div>
-                    <h3>{d.titulo}</h3>
-                    <p>
-                      {i.nome} · {periodo[d.periodo]} ·{" "}
-                      {d.fonte === "manual"
-                        ? "Medição manual"
-                        : "Apuração automática"}
-                    </p>
-                    {propriedadeId === null && (
-                      <p>Fazenda #{meta.propriedadeId}</p>
-                    )}
-                  </div>
-                  <span className={`metas-situacao metas-${meta.situacao}`}>
-                    {situacao[meta.situacao] ?? meta.situacao}
-                  </span>
-                </div>
-                <div className="metas-corpo">
-                  <div className="metas-alvo">
-                    <p className="metas-alvo-legenda">Alvo definido</p>
-                    <strong>{alvoMeta(d, i.unidade)}</strong>
-                    <p>
-                      {ultima
-                        ? `${d.tipo === "marco" ? (ultima.concluido ? "Conclusão registrada" : "Ainda em aberto") : `Última medição: ${numero(ultima.valor!)} ${i.unidade}`} · ${dataBR(ultima.data)}`
-                        : "Nenhuma medição registrada."}
-                    </p>
-                    <p>{d.observacao}</p>
-                    {ultima?.proveniencia?.url && (
-                      <a
-                        href={ultima.proveniencia.url}
-                        onClick={(evento) => {
-                          evento.preventDefault();
-                          const url = ultima.proveniencia!.url;
-                          if (onAbrirFonte)
-                            onAbrirFonte(url, meta.propriedadeId);
-                          else
-                            void executarComGuardaNavegacao(() =>
-                              navegarPara(url),
-                            );
-                        }}
-                      >
-                        Conferir ordenhas da medição
-                      </a>
-                    )}
-                    <div className="metas-acoes">
-                      {podeEditar && propriedadeId !== null && (
-                        <>
-                          <Button
-                            variant="outline"
-                            onClick={() => setModal({ tipo: "medicao", meta })}
-                          >
-                            <CalendarCheck size={16} />
-                            {d.fonte === "automatica"
-                              ? "Apurar dia"
-                              : "Registrar medição"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            aria-label={`Editar ${d.titulo}`}
-                            onClick={() =>
-                              setModal({ tipo: "definicao", meta })
-                            }
-                          >
-                            <Pencil size={16} />
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        variant="ghost"
-                        onClick={() => setModal({ tipo: "historico", meta })}
-                      >
-                        <History size={16} />
-                        Histórico
-                      </Button>
-                    </div>
-                  </div>
-                  <div
-                    className="metas-grafico"
-                    role={d.tipo==="marco"?"group":"img"}
-                    aria-label={`Evolução de ${d.titulo}. ${meta.medicoes.length} medições. ${alvoMeta(d, i.unidade)}`}
-                  >
-                    {d.tipo === "marco" ? (
-                      <div className="metas-sem-dados">
-                        <CalendarCheck size={26} />
-                        {d.etapas?.length ? (
-                          <>
-                            <p>
-                              {ultima?.etapasConcluidas?.length ?? 0} de{" "}
-                              {d.etapas.length} etapas concluídas
-                            </p>
-                            <ul className="metas-etapas">
-                              {d.etapas.map((etapa) => (
-                                <li key={etapa.id}>
-                                  <span>{etapa.titulo}</span>
-                                  <strong>
-                                    {ultima?.etapasConcluidas?.includes(
-                                      etapa.id,
-                                    )
-                                      ? "Concluída"
-                                      : "Pendente"}
-                                  </strong>
-                                </li>
-                              ))}
-                            </ul>
-                          </>
-                        ) : (
-                          <p>
-                            {ultima?.concluido
-                              ? "Marco concluído"
-                              : "A conclusão será registrada como um fato, sem percentual estimado."}
-                          </p>
-                        )}
-                      </div>
-                    ) : meta.medicoes.length === 0 ? (
-                      <div className="metas-sem-dados">
-                        <p>Sem evolução disponível</p>
-                        <span>O gráfico começa na primeira medição.</span>
-                      </div>
-                    ) : (
-                      <ResponsiveContainer width="100%" height={220}>
-                        <LineChart
-                          data={meta.medicoes}
-                          margin={{ top: 18, right: 24, bottom: 5, left: 6 }}
-                        >
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            vertical={false}
-                          />
-                          <XAxis
-                            dataKey="data"
-                            tickFormatter={dataBR}
-                            tick={{ fontSize: 12 }}
-                          />
-                          <YAxis
-                            domain={["auto", "auto"]}
-                            tick={{ fontSize: 12 }}
-                            width={65}
-                          />
-                          <Tooltip
-                            labelFormatter={(v) => dataBR(String(v))}
-                            formatter={(v) => [
-                              `${numero(Number(v))} ${i.unidade}`,
-                              "Medição",
-                            ]}
-                          />
-                          {d.tipo === "faixa" && (
-                            <ReferenceArea
-                              y1={d.minimo!}
-                              y2={d.maximo!}
-                              fill="var(--primary)"
-                              fillOpacity={0.08}
-                              ifOverflow="extendDomain"
-                            />
-                          )}
-                          {d.minimo !== null && (
-                            <ReferenceLine
-                              y={d.minimo}
-                              stroke="var(--primary)"
-                              strokeDasharray="5 4"
-                              ifOverflow="extendDomain"
-                              label={{
-                                value: "Mínimo",
-                                fontSize: 12,
-                                position: "insideTopRight",
-                              }}
-                            />
-                          )}
-                          {d.maximo !== null && (
-                            <ReferenceLine
-                              y={d.maximo}
-                              stroke="var(--primary)"
-                              strokeDasharray="5 4"
-                              ifOverflow="extendDomain"
-                              label={{
-                                value: "Máximo",
-                                fontSize: 12,
-                                position: "insideTopRight",
-                              }}
-                            />
-                          )}
-                          <Line
-                            type="linear"
-                            dataKey="valor"
-                            stroke="var(--primary)"
-                            strokeWidth={2}
-                            dot={{ r: 3 }}
-                            connectNulls={false}
-                            isAnimationActive={false}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+        <>
+          <div className="metas-resumo" role="group" aria-label="Filtrar metas por situação">
+            {FILTROS.filter(([valor]) => valor === "todas" || contagem[valor]).map(([valor, rotulo]) => <button type="button" key={valor} aria-pressed={filtro === valor} onClick={() => setFiltro(valor)}>
+              {valor !== "todas" && <span className={`metas-ponto metas-ponto-${valor}`} aria-hidden />}{rotulo} <b>{valor === "todas" ? visiveis.length : contagem[valor]}</b>
+            </button>)}
+          </div>
+          <div className="metas-lista">
+            {visiveis.filter(({ grupo }) => filtro === "todas" || grupo === filtro).map(({ meta, indicador }) => <CartaoMeta key={meta.id} meta={meta} indicador={indicador}
+              podeEditar={podeEditar && propriedadeId !== null} mostrarFazenda={propriedadeId === null}
+              onRegistrar={() => setModal({ tipo: "medicao", meta })} onEditar={() => setModal({ tipo: "definicao", meta })} onHistorico={() => setModal({ tipo: "historico", meta })}
+              onAbrir={(url) => { if (onAbrirFonte) onAbrirFonte(url, meta.propriedadeId); else void executarComGuardaNavegacao(() => navegarPara(url)); }} />)}
+          </div>
+        </>
       )}
       {!carregando && metas.length >= 100 && (
         <p className="metas-contexto">

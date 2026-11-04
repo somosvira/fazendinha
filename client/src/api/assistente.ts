@@ -14,8 +14,21 @@ export interface ConfiguracaoAssistente {
   consultas: VisaoAssistente[];
   artigos: { id: string; titulo: string }[];
 }
+/** Resposta de consulta estruturada: números de destaque, leitura e tabela. O texto `resposta` continua sendo a versão falada e copiada. */
+export interface DadosResposta {
+  titulo: string;
+  contexto: string;
+  numeros: { rotulo: string; valor: string; detalhe?: string; destaque?: boolean }[];
+  leitura?: string;
+  tabela?: {
+    colunas: { titulo: string; valor?: boolean }[];
+    linhas: { celulas: string[]; atraso?: boolean }[];
+    nota?: string;
+  };
+}
 export interface RespostaAssistente {
   locucao?: string;
+  dados?: DadosResposta;
   proposta?: {
     token: string;
     animal: string;
@@ -24,6 +37,8 @@ export interface RespostaAssistente {
     tipo: string;
     origem: string;
     precisao: string;
+    /** Pesagem anterior do mesmo animal, para comparar antes de gravar. */
+    anterior?: { data: string; pesoKg: number };
   };
   modo:
     | "proposta"

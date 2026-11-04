@@ -1,7 +1,46 @@
-.ia-radar{color:#263e3b;font-size:15px;line-height:1.6}.ia-radar ::selection{background:#c5ded8;color:#203c39}.ia-radar-header{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:28px}.ia-radar h2{font-size:24px;line-height:1.25;margin:0 0 8px;font-weight:650}.ia-radar h3{font-size:18px;line-height:1.4;margin:0 0 16px;font-weight:650}.ia-radar h4{font-size:16px;margin:0 0 6px;font-weight:650}.ia-radar p{margin:0 0 12px;max-width:72ch}.ia-radar-header p,.ia-radar small{color:#526863}.ia-radar button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:8px 14px;border:1px solid #7a928d;border-radius:8px;background:#fff;color:#006f68;font:inherit;font-weight:600;cursor:pointer}.ia-radar button:hover{background:#edf5f4}.ia-radar button:disabled{opacity:.6;cursor:wait}.ia-radar a{color:#006f68;display:inline-flex;align-items:center;gap:5px;text-decoration:underline;text-underline-offset:4px}.ia-radar a:hover{color:#203c39}.ia-radar :is(a,button):focus-visible{outline:3px solid #006f68;outline-offset:3px}.ia-radar-sintese{background:#edf5f4;padding:24px;border-radius:12px;margin-bottom:32px}.ia-radar-sintese small{font-size:13px}.ia-radar-colunas{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);gap:40px}.ia-radar-lista{list-style:none;padding:0;margin:0}.ia-radar-lista li{border-bottom:1px solid #dfe7e5;padding:22px 0}.ia-radar-lista li:first-child{padding-top:0}.ia-radar-acoes{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}.ia-radar-leitura{padding:0 0 20px;margin-bottom:20px;border-bottom:1px solid #dfe7e5}.ia-radar .ia-radar-cobertura-titulo{margin-top:32px}.ia-radar-erro{color:#8d3931;background:#fce1df;padding:20px;border-radius:12px}.ia-radar-vazio{color:#526863}.ia-radar-header p{font-variant-numeric:tabular-nums}@media(max-width:800px){.ia-radar-colunas{grid-template-columns:1fr;gap:32px}.ia-radar-header{align-items:flex-start;flex-wrap:wrap;gap:16px}.ia-radar-sintese{padding:20px}.ia-radar button{min-height:44px}}
-.ia-radar-modo{margin:0 0 28px;font-size:14px;line-height:1.6;color:var(--ink-3,var(--muted-foreground))}
-.ia-radar-modo strong{color:var(--foreground);font-weight:600}
-.ia-radar-cobertura{margin-top:36px;border-top:1px solid var(--border);padding-top:16px}
-.ia-radar-cobertura summary{cursor:pointer;font-weight:600;color:var(--foreground)}
-.ia-radar-cobertura summary:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
-.ia-radar-cobertura-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:0 32px;margin-top:8px}
+.ia-radar{--tinta:var(--campo-tinta,#203c39);--tinta-2:var(--campo-tinta-2,#526863);--linha:var(--campo-linha,#dfe7e5);--pasto:var(--campo-pasto,#006f68);--atraso:var(--campo-atraso,#8d3931);--atencao:var(--campo-atencao,#775930);color:var(--tinta);font-size:15px;line-height:1.6}
+.ia-radar-header{display:flex;justify-content:space-between;align-items:center;gap:24px;margin-bottom:20px}
+.ia-radar h2{font-size:22px;line-height:1.25;margin:0 0 4px;font-weight:650}
+.ia-radar-header p{color:var(--tinta-2);font-size:14px;font-variant-numeric:tabular-nums;margin:0}
+.ia-radar button,.ia-radar-abrir{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:38px;padding:6px 12px;border:1px solid var(--campo-linha-forte,#7a928d);border-radius:8px;background:#fff;color:var(--pasto);font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;white-space:nowrap}
+.ia-radar button:hover,.ia-radar-abrir:hover{background:var(--campo-pasto-claro,#edf5f4)}
+.ia-radar button:disabled{opacity:.6;cursor:wait}
+.ia-radar a{color:var(--pasto);text-underline-offset:3px}
+.ia-radar :is(a,button):focus-visible{outline:3px solid var(--pasto);outline-offset:3px}
+.ia-radar-sintese{background:var(--campo-pasto-claro,#edf5f4);padding:20px 24px;border-radius:12px;margin-bottom:24px}
+.ia-radar-sintese h3{font-size:16px;font-weight:650;margin:0 0 8px}
+.ia-radar-sintese p{max-width:72ch}
+.ia-radar-sintese small{font-size:13px;color:var(--tinta-2)}
+.ia-radar-modo{margin:0 0 20px;font-size:14px;color:var(--tinta-2)}
+.ia-radar-modo strong{color:var(--tinta);font-weight:600}
+.ia-radar-colunas{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(280px,1fr);gap:24px;align-items:start}
+.ia-radar-prioridades{display:grid;gap:10px}
+.ia-radar-prioridade{display:grid;grid-template-columns:76px minmax(0,1fr) auto;gap:16px;align-items:center;background:#fff;border:1px solid var(--linha);border-left:4px solid var(--campo-linha-forte,#7a928d);border-radius:10px;padding:14px 16px}
+.ia-radar-prioridade.atrasado{border-left-color:var(--atraso)}
+.ia-radar-prioridade.hoje{border-left-color:var(--atencao)}
+.ia-radar-qtd{font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.ia-radar-qtd small{display:block;font-size:12px;font-weight:500;color:var(--tinta-2);margin-top:4px}
+.ia-radar-prioridade h3{font-size:15px;font-weight:650;margin:0}
+.ia-radar-prioridade p{margin:2px 0 0;color:var(--tinta-2);font-size:13px}
+.ia-radar-urgencia{font-size:12px;font-weight:650;color:var(--tinta-2)}
+.atrasado .ia-radar-urgencia{color:var(--atraso)}
+.hoje .ia-radar-urgencia{color:var(--atencao)}
+.ia-radar-acoes{display:flex;gap:6px}
+.ia-radar-acoes button{border-color:transparent;background:none}
+.ia-radar-leitura{background:#fff;border:1px solid var(--linha);border-radius:12px}
+.ia-radar-leitura h3{font-size:15px;font-weight:650;margin:0;padding:14px 16px 10px}
+.ia-radar-leitura dl{margin:0}
+.ia-radar-leitura dl>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:10px 16px;border-top:1px solid var(--linha)}
+.ia-radar-leitura dt{color:var(--tinta-2);font-size:13px}
+.ia-radar-leitura dd{margin:0;font-weight:650;text-align:right;font-variant-numeric:tabular-nums}
+.ia-radar-leitura span{grid-column:1/-1;font-size:12px;color:var(--tinta-2)}
+.ia-radar-leitura>p{padding:0 16px 14px}
+.ia-radar-erro{color:var(--atraso);background:var(--campo-atraso-claro,#fce1df);padding:20px;border-radius:12px}
+.ia-radar-vazio{color:var(--tinta-2);font-size:14px}
+.ia-radar-cobertura{margin-top:28px;border-top:1px solid var(--linha);padding-top:14px}
+.ia-radar-cobertura summary{cursor:pointer;font-weight:600;color:var(--tinta)}
+.ia-radar-cobertura-grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px 32px;margin:12px 0 0}
+.ia-radar-cobertura-grade dt{font-weight:600;font-size:14px}
+.ia-radar-cobertura-grade dd{margin:2px 0 0;font-size:13px;color:var(--tinta-2)}
+@media(max-width:900px){.ia-radar-colunas{grid-template-columns:1fr}}
+@media(max-width:640px){.ia-radar-header{align-items:flex-start;flex-wrap:wrap;gap:12px}.ia-radar-prioridade{grid-template-columns:56px minmax(0,1fr)}.ia-radar-acoes{grid-column:1/-1}.ia-radar-qtd{font-size:22px}.ia-radar button,.ia-radar-abrir{min-height:44px}}
