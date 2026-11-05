@@ -42,7 +42,9 @@ function FormConsumo({ lote, onSalvo, onOcupado, acoes }: { lote: Lote; onSalvo:
   const centros = useConsulta(useCallback(listarCentrosNutricionais, []));
   const situacao = useConsulta(useCallback(async () => {
     const [resumo, ultimo, modelos, dietas] = await Promise.all([consultarResumoNutricional(lote.id), ultimoFechamentoConfirmado(lote.id), consultarModelosFechamento(), listarDietas().catch(() => [])]);
-    return resumo.vigente ? { ...situacaoDoLote(resumo, ultimo?.fim.slice(0, 10) ?? null, modelos.configuracoes), dieta: dietas.find(d => d.id === resumo.vigente!.dieta.id) } : null;
+    if (!resumo.vigente) return null;
+    const dieta = dietas.find(d => d.id === resumo.vigente!.dieta.id);
+    return { ...situacaoDoLote(resumo, ultimo?.fim.slice(0, 10) ?? null, modelos.configuracoes, undefined, null, !!dieta?.usaLeiteProprio), dieta };
   }, [lote.id]));
   const s = situacao.dados;
   const conferencia = (inicial?: { inicio: string; fim: string }) => centros.dados && <ConferenciaPeriodos acoes={acoes} inicial={inicial} loteId={lote.id} propriedadeId={lote.propriedadeId} centros={centros.dados.filter((c) => c.ativo)} onOcupado={onOcupado} onSalvo={async () => onSalvo()} />;

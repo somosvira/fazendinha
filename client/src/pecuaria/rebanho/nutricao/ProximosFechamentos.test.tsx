@@ -4,7 +4,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { ProximosFechamentos } from "./ProximosFechamentos";
 
 const mocks = vi.hoisted(() => ({ visao: vi.fn(), ultimo: vi.fn(), status: vi.fn(), configs: vi.fn(), meses: vi.fn() }));
-vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo }));
+vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, listarDietas: async () => [] }));
 vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: mocks.meses, reprocessarMensal: vi.fn() }));
 vi.mock("../../../financeiro/financeiro-ui", async (original) => ({ ...(await original<object>()), hoje: () => "2026-11-04" }));
 afterEach(cleanup);

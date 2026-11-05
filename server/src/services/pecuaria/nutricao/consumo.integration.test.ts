@@ -2,6 +2,7 @@ import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } fro
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
+import { hojeFazendaDate } from "../rebanho/regras.js";
 import { cadastrar } from "../rebanho/animais.js";
 import { cadastrarAnimalSchema } from "../rebanho/schemas.js";
 import { atribuirDieta, criarDieta, publicarDieta } from "./dietas.js";
@@ -104,16 +105,21 @@ describeComBanco("fechamento nutricional com PostgreSQL", () => {
     expect(await confirmarPeriodos(input, null)).toEqual(resultado);
     expect(await prisma.fechamentoConsumo.count({ where: { loteId: ids.lote } })).toBe(antes + 2);
   });
-  it("bloqueia estorno retroativo com dependentes e preserva o custo do último fechamento estornado", async () => {
+  it("estorna com dependentes devolvendo hoje e preserva o custo dos fechamentos", async () => {
     // O fechamento original foi estornado no primeiro cenário. O par
     // confirmado pelo cenário de períodos é que comprova a dependência.
     const confirmados = await prisma.fechamentoConsumo.findMany({ where: { loteId: ids.lote, status: "CONFIRMADO" }, orderBy: [{ fim: "asc" }, { id: "asc" }] });
     expect(confirmados).toHaveLength(2);
     const [primeiro, ultimo] = confirmados;
     const movimentosAntes = await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } });
-    await expect(estornarFechamento(primeiro.id, ids.propriedade, "Revisão do consumo registrado", null)).rejects.toMatchObject({ code: "CONFLITO" });
-    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: primeiro.id } }))?.status).toBe("CONFIRMADO");
-    expect(await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } })).toBe(movimentosAntes);
+    const custoPrimeiro = (await detalheFechamento(primeiro.id, ids.propriedade, true)).custoConhecido;
+    // Com o último fechamento depois dele, a devolução não pode entrar na data antiga: entra hoje.
+    await estornarFechamento(primeiro.id, ids.propriedade, "Revisão do consumo registrado", null);
+    expect((await prisma.fechamentoConsumo.findUnique({ where: { id: primeiro.id } }))?.status).toBe("ESTORNADO");
+    expect((await detalheFechamento(primeiro.id, ids.propriedade, true)).custoConhecido).toBe(custoPrimeiro);
+    const devolucao = await prisma.movimentoEstoque.findFirst({ where: { produtoId: ids.produto, reversaoDeId: { not: null } }, orderBy: { seq: "desc" } });
+    expect(devolucao?.data.toISOString().slice(0, 10)).toBe(hojeFazendaDate().toISOString().slice(0, 10));
+    expect(await prisma.movimentoEstoque.count({ where: { produtoId: ids.produto } })).toBe(movimentosAntes + 1);
     const custoAntes = (await detalheFechamento(ultimo.id, ids.propriedade, true)).custoConhecido;
     await estornarFechamento(ultimo.id, ids.propriedade, "Revisão do último consumo registrado", null);
     expect((await prisma.fechamentoConsumo.findUnique({ where: { id: ultimo.id } }))?.status).toBe("ESTORNADO");

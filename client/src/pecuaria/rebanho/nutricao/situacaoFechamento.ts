@@ -1,6 +1,6 @@
 import { hoje } from "../../../financeiro/financeiro-ui";
 import type { Lote } from "../types";
-import { consultarVisaoNutricional, ultimoFechamentoConfirmado, type ResumoNutricional } from "./api";
+import { consultarVisaoNutricional, listarDietas, ultimoFechamentoConfirmado, type ResumoNutricional } from "./api";
 import { configuracoesMensais, mesesNutricionais, statusMensal, type ConfiguracaoMensal } from "./mensal-api";
 
 export const MODELOS: Record<ConfiguracaoMensal["modelo"], { rotulo: string; texto: string }> = {
@@ -39,7 +39,9 @@ export type SituacaoLote = {
 };
 
 /** Para cada lote com dieta vigente: até onde foi fechado e o que falta, respeitando o modelo do lote. */
-export function situacaoDoLote(resumo: ResumoNutricional, ultimoFim: string | null, configuracoes: ConfiguracaoMensal[], dia = hoje(), processadoAte: string | null = null): SituacaoLote {
+/** Com leite produzido na fazenda na dieta, o lote continua fechando por período: o tipo diário ou mensal não se aplica. */
+export function situacaoDoLote(resumo: ResumoNutricional, ultimoFim: string | null, configuracoes: ConfiguracaoMensal[], dia = hoje(), processadoAte: string | null = null, usaLeiteProprio = false): SituacaoLote {
+  if (usaLeiteProprio) configuracoes = [];
   const desde = resumo.vigente!.desde.slice(0, 10);
   const inicio = ultimoFim && ultimoFim >= desde ? somarDias(ultimoFim, 1) : desde;
   const adocao = adocaoMensal(configuracoes, resumo.lote);
@@ -57,13 +59,14 @@ export async function consultarModelosFechamento() {
 }
 
 export async function consultarSituacaoFechamentos(): Promise<SituacaoLote[]> {
-  const [visao, modelos] = await Promise.all([consultarVisaoNutricional(), consultarModelosFechamento()]);
+  const [visao, modelos, dietas] = await Promise.all([consultarVisaoNutricional(), consultarModelosFechamento(), listarDietas().catch(() => [])]);
+  const comLeite = new Set(dietas.filter(d => d.usaLeiteProprio).map(d => d.id));
   const comDieta = visao.lotes.filter(r => r.vigente && r.lote.ativo !== false);
   const [ultimos, processados] = await Promise.all([
     Promise.all(comDieta.map(r => ultimoFechamentoConfirmado(r.lote.id))),
     // Último dia processado no tipo de fechamento, só para lotes que já o adotaram.
-    Promise.all(comDieta.map(r => adocaoMensal(modelos.configuracoes, r.lote) ? mesesNutricionais(1, r.lote.id).then(p => p.itens.flatMap(m => m.dias.map(d => d.data.slice(0, 10))).sort().at(-1) ?? null).catch(() => null) : null)),
+    Promise.all(comDieta.map(r => !comLeite.has(r.vigente!.dieta.id) && adocaoMensal(modelos.configuracoes, r.lote) ? mesesNutricionais(1, r.lote.id).then(p => p.itens.flatMap(m => m.dias.map(d => d.data.slice(0, 10))).sort().at(-1) ?? null).catch(() => null) : null)),
   ]);
-  return comDieta.map((resumo, i) => situacaoDoLote(resumo, ultimos[i]?.fim.slice(0, 10) ?? null, modelos.configuracoes, hoje(), processados[i]))
+  return comDieta.map((resumo, i) => situacaoDoLote(resumo, ultimos[i]?.fim.slice(0, 10) ?? null, modelos.configuracoes, hoje(), processados[i], comLeite.has(resumo.vigente!.dieta.id)))
     .sort((a, b) => b.dias + (b.diarios?.dias ?? 0) - a.dias - (a.diarios?.dias ?? 0) || a.resumo.lote.nome.localeCompare(b.resumo.lote.nome, "pt-BR"));
 }

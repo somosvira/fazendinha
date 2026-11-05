@@ -3,7 +3,7 @@ import { buscarLote, listarLotes } from "../api";
 import { comPropriedade } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
-export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
+export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; /** Usa leite produzido na fazenda: o lote fecha por período. */ usaLeiteProprio?: boolean; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
 export type Vigencia = { id: string; desde: string; ate: string | null; dieta: { id: string; nome: string; versao: number } };
 export type Pagina<T> = { itens: T[]; total: number; pagina: number; limite: number };
 export type PaginaVigencias = Pagina<Vigencia> & { vigente: Vigencia | null; programada: Vigencia | null };
