@@ -32,7 +32,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
   // Sem custo em nenhum animal, as colunas de custo só repetiriam "Não apurado".
   const custoAnimais = f.verValores && f.participacoes.some(p => p.custoConhecido != null);
   return <div className="nutricao-conteudo">
-    <Panel className="nutricao-fechamento-resumo"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Resumo do fechamento</h2><p>{periodoFechamento(f)} · {f.animalDias} animal-dias</p></div><SituacaoFechamento status={f.status} /></div><div className="nutricao-card-corpo nutricao-resumo">
+    <Panel className="nutricao-fechamento-resumo"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Resumo do fechamento</h2><p>{periodoFechamento(f)} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</p></div><SituacaoFechamento status={f.status} /></div><div className="nutricao-card-corpo nutricao-resumo">
       <div><span>Lote</span><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional></div><div><span>Sítio</span><strong>{f.propriedade.nome}</strong></div><div><span>Receita</span><strong>{f.vigencia.dieta.nome} · v{f.vigencia.dieta.versao}</strong></div><div><span>Centro de custo</span><strong>{f.centroCusto.nome}</strong></div>
     </div>{f.verValores && <dl className="nutricao-fatos nutricao-fatos-fechamento">
       <div><dt>Custo do fechamento</dt><dd>{custoTexto(f.custoConhecido)}</dd><p>{f.coberturaCustoCompleta ? "Custo integralmente apurado" : f.custoConhecido == null ? "Nenhum ingrediente com custo ainda" : "Parcial: falta o custo de parte dos ingredientes"}</p></div>

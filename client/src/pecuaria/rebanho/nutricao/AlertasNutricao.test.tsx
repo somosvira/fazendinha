@@ -7,7 +7,7 @@ import type { Fechamento } from "./api";
 const mocks = vi.hoisted(() => ({ visao: vi.fn(), ultimo: vi.fn(), listar: vi.fn(), status: vi.fn(), configs: vi.fn(), dietas: vi.fn(), saldos: vi.fn() }));
 vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, listarFechamentos: mocks.listar, listarDietas: mocks.dietas, listarPartidasNutricionais: async () => [] }));
 vi.mock("../../../estoque/api", () => ({ listarSaldos: mocks.saldos }));
-vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs }));
+vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn() }));
 vi.mock("../../../financeiro/financeiro-ui", async (original) => ({ ...(await original<object>()), hoje: () => "2026-11-04" }));
 afterEach(cleanup);
 beforeEach(() => { vi.clearAllMocks(); mocks.status.mockResolvedValue({ habilitada: false, automacao: false }); mocks.configs.mockResolvedValue([]); mocks.ultimo.mockResolvedValue({ fim: "2026-11-03" }); mocks.dietas.mockResolvedValue([]); mocks.saldos.mockResolvedValue([]); });

@@ -20,10 +20,12 @@ import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./Configur
 import { EsqueletoTabela } from "../../../components/Esqueleto";
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
-    minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
 const data = (v: string) => v.slice(0, 10).split("-").reverse().join("/");
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+/** "2026-10" → "outubro de 2026". */
+export const mesPorExtenso = (competencia: string) => `${MESES[Number(competencia.slice(5, 7)) - 1]} de ${competencia.slice(0, 4)}`;
 export function GestaoMensal({
   podeLancar,
   vista,
@@ -109,7 +111,7 @@ export function GestaoMensal({
     setMensagem("");
     try {
       await acao();
-      setMensagem("Operação concluída.");
+      setMensagem("Salvo. Os totais e o estoque abaixo já estão atualizados.");
       setRecarregar((v) => v + 1);
       return true;
     } catch (e) {
@@ -179,7 +181,7 @@ export function GestaoMensal({
                   <article className="mensal-linha" key={m.id}>
                     <div>
                       <h3>
-                        {m.loteNome} · {m.competencia}
+                        {m.loteNome} · {mesPorExtenso(m.competencia)}
                       </h3>
                       <p>
                         {modelos[m.modelo].nome} ·{" "}
@@ -188,9 +190,8 @@ export function GestaoMensal({
                           .toLocaleLowerCase("pt-BR")}
                       </p>
                       <p className="mensal-ajuda">
-                        Conferência em {data(m.prazo)} ·{" "}
-                        {m.dias.filter((d) => d.pendencia).length} dias com
-                        pendências
+                        Conferência em {data(m.prazo)}
+                        {(() => { const n = m.dias.filter((d) => d.pendencia).length; return n ? ` · ${n} ${n === 1 ? "dia com pendência" : "dias com pendências"}` : ""; })()}
                       </p>
                     </div>
                     <Button secondary onClick={() => abrir(m)}>
@@ -222,7 +223,7 @@ export function GestaoMensal({
         </>
       )}
       {!mes && children}
-          {podeProcessar && lista.length > 0 && (
+          {podeProcessar && (lista.length > 0 || !filtroLote) && (
             <div className="mensal-processar">
               <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button>
             </div>
@@ -324,10 +325,10 @@ function RevisaoMensal({
         Voltar aos meses
       </Button>
       <h2>
-        {mes.competencia} · {mes.loteNome}
+        {mes.loteNome} · {mesPorExtenso(mes.competencia)}
       </h2>
       <p>
-        {modelos[mes.modelo].nome} · conferir em {data(mes.prazo)}
+        {modelos[mes.modelo].nome} · {mes.revisadoEm ? `revisado em ${data(mes.revisadoEm)}` : `conferir em ${data(mes.prazo)}`}
       </p>
       <p className="mensal-aviso">
         Um fechamento por mês. Quantidades calculadas pela dieta não são
@@ -403,7 +404,7 @@ function RevisaoMensal({
           )
           .map((i) => (
             <details key={i.produtoId}>
-              <summary>Selecionar lotes físicos de {i.nome}</summary>
+              <summary>Escolher o lote de estoque de {i.nome}</summary>
               <SelecaoPartidas
                 deEstoque
                 compacto
@@ -527,6 +528,7 @@ function RevisaoMensal({
             {d.pendencia && (
               <p role="alert" className="mensal-aviso">
                 {d.pendencia}
+                {/validade/i.test(d.pendencia) && <> <LinkNutricional href="/configuracoes/pecuaria/nutricao/fechamento">Configurar</LinkNutricional></>}
               </p>
             )}
             {mes.modelo !== "PROVISORIO" && podeLancar && !fechado && (
@@ -576,7 +578,7 @@ function RevisaoMensal({
                           Number(i.confirmada) && (
                           <details>
                             <summary>
-                              Selecionar lotes físicos da saída complementar
+                              Escolher o lote de estoque (obrigatório sem a autorização por validade)
                             </summary>
                             <SelecaoPartidas
                 deEstoque

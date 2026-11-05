@@ -62,7 +62,7 @@ describe("configuração nutricional", () => {
           loteId: null,
           modelo: "AUTOMATICO",
           diaConferencia: 31,
-          autorizaValidade: false,
+          autorizaValidade: true,
         }),
       ),
     );

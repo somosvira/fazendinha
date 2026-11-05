@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { FormOperacaoNutricional } from "./FormOperacaoNutricional";
 import * as api from "./api";
 import * as mensal from "./mensal-api";
-vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn() }));
+vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn(), mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn() }));
 import * as lotesApi from "../api";
 vi.mock("../api", () => ({ buscarLote: vi.fn(), listarLotes: vi.fn() }));
 vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), atribuirDieta: vi.fn(), corrigirVigencia: vi.fn(), listarDietas: vi.fn(), listarCentrosNutricionais: vi.fn(), obterVigencia: vi.fn(), ultimoFechamentoConfirmado: vi.fn(), consultarVisaoNutricional: vi.fn() }));

@@ -7,7 +7,8 @@ import { useConsulta } from "./consulta";
 import { LinkNutricional, rotaNutricao } from "./componentes";
 import { rotaFechamento, rotaOperacaoNutricional } from "./navegacao";
 import { quantidadeNutricional } from "./quantidades";
-import { consultarSituacaoFechamentos, type SituacaoLote } from "./situacaoFechamento";
+import { consultarSituacaoFechamentos, MODELOS, type SituacaoLote } from "./situacaoFechamento";
+import { BotaoProcessarDias } from "./ProximosFechamentos";
 import { LinkInterno } from "@/components/LinkInterno";
 import { consultarCobertura, DIAS_ATENCAO, hrefProdutoEstoque, ingredientesEmFalta, textoCobertura } from "./coberturaEstoque";
 
@@ -36,12 +37,12 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
     const [situacoes, visao, recentes] = await Promise.all([consultarSituacaoFechamentos(), consultarVisaoNutricional(), listarFechamentos(undefined, 1, "CONFIRMADO")]);
     // Estoque é complemento: se a consulta falhar, os demais alertas continuam.
     const cobertura = await consultarCobertura(visao.lotes).catch(() => null);
-    return { aFechar: situacoes.filter(s => s.dias > 0), semDieta: visao.lotes.filter(l => !l.vigente && l.lote.ativo !== false), revisar: fechamentosParaRevisar(recentes.itens), estoque: cobertura ? ingredientesEmFalta(cobertura, visao.lotes) : [], estoqueIndisponivel: !cobertura };
+    return { aFechar: situacoes.filter(s => s.dias > 0), aProcessar: situacoes.filter(s => (s.diarios?.dias ?? 0) > 0), semDieta: visao.lotes.filter(l => !l.vigente && l.lote.ativo !== false), revisar: fechamentosParaRevisar(recentes.itens), estoque: cobertura ? ingredientesEmFalta(cobertura, visao.lotes) : [], estoqueIndisponivel: !cobertura };
   }, []));
   if (consulta.carregando) return <EsqueletoTabela label="Carregando alertas da nutrição" colunas={3} linhas={4} />;
   if (consulta.erro) return <p role="alert" className="nutricao-aviso">{consulta.erro}</p>;
   const d = consulta.dados!;
-  const nada = !d.aFechar.length && !d.semDieta.length && !d.revisar.length && !d.estoque.length;
+  const nada = !d.aFechar.length && !d.aProcessar.length && !d.semDieta.length && !d.revisar.length && !d.estoque.length;
   return <div className="nutricao-alertas">
     {nada && <Panel><Empty>Nada precisa de atenção na nutrição agora.</Empty></Panel>}
     {d.aFechar.length > 0 && <Secao titulo="Consumo a fechar" descricao={`${d.aFechar.length} ${d.aFechar.length === 1 ? "lote tem" : "lotes têm"} dias de consumo sem fechamento até ontem.`}>
@@ -49,6 +50,14 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
         { chave: "lote", titulo: "Lote", principal: true, celula: (s: SituacaoLote) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: s.resumo.lote.id })}>{s.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{s.resumo.lote.propriedade.nome}</p></> },
         { chave: "dias", titulo: "A fechar", celula: (s: SituacaoLote) => <><strong>{s.dias} {s.dias === 1 ? "dia" : "dias"}</strong><p className="nutricao-secundario">{formatarDataBR(s.inicio)} a {formatarDataBR(s.fim)}</p></> },
         ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: (s: SituacaoLote) => <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", s.resumo.lote.id)}>Fechar período</LinkNutricional> }] : []),
+      ]} />
+    </Secao>}
+    {d.aProcessar.length > 0 && <Secao titulo="Dias a processar" descricao="Lotes no fechamento diário ou mensal com dias encerrados ainda não processados. Processar calcula o consumo de cada dia; no diário automático, também dá a baixa no estoque.">
+      <TabelaFinanceira rotulo="Lotes com dias a processar" itens={d.aProcessar} chaveDe={s => s.resumo.lote.id} colunas={[
+        { chave: "lote", titulo: "Lote", principal: true, celula: (s: SituacaoLote) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: s.resumo.lote.id })}>{s.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{s.resumo.lote.propriedade.nome}</p></> },
+        { chave: "tipo", titulo: "Tipo de fechamento", celula: (s: SituacaoLote) => s.mensal ? MODELOS[s.mensal.modelo].rotulo : "—" },
+        { chave: "dias", titulo: "A processar", celula: (s: SituacaoLote) => <><strong>{s.diarios!.dias} {s.diarios!.dias === 1 ? "dia" : "dias"}</strong><p className="nutricao-secundario">{formatarDataBR(s.diarios!.inicio)} a {formatarDataBR(s.diarios!.fim)}</p></> },
+        ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: (s: SituacaoLote) => <BotaoProcessarDias situacao={s} onProcessado={() => void consulta.carregar()} /> }] : []),
       ]} />
     </Secao>}
     {d.estoque.length > 0 && <Secao titulo="Estoque acabando ou vencendo" descricao={`Ingredientes das dietas vigentes que cobrem menos de ${DIAS_ATENCAO} dias com o efetivo de hoje, somando todos os lotes de animais do sítio, ou que têm lotes de estoque vencendo antes do uso.`}>

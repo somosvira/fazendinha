@@ -66,7 +66,8 @@ export async function previaRetroatividadeTx(tx: Db, produtoId: string, propried
     data: { gt: data }, ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) }, select: { id: true, seq: true, data: true, origem: true }, orderBy: { seq: "asc" }, take: 20 });
   const aberturasPosteriores = await tx.baseValorizacaoEstoque.count({ where: { produtoId, propriedadeId, corteAbertura: { gt: data }, aberturaDocumentada: { not: Prisma.DbNull } } });
   return { permitido: posteriores.length === 0 && aberturasPosteriores === 0, posteriores, aberturasPosteriores,
-    motivo: posteriores.length || aberturasPosteriores ? "O registro antecede movimentos ou abertura já existentes. Regularize os dependentes; não há recálculo histórico automático." : null };
+    motivo: posteriores.length ? `Este produto já tem ${posteriores.length === 20 ? "20 ou mais movimentações" : posteriores.length === 1 ? "1 movimentação" : `${posteriores.length} movimentações`} depois desta data (a primeira em ${posteriores[0].data.toISOString().slice(0, 10).split("-").reverse().join("/")}). Um registro com data anterior mudaria o custo delas, e o sistema não recalcula o passado. Corrija com um ajuste de estoque na data de hoje.`
+      : aberturasPosteriores ? "Este produto teve a valorização aberta depois desta data. Um registro com data anterior mudaria essa base de custo, e o sistema não recalcula o passado. Corrija com um ajuste de estoque na data de hoje." : null };
 }
 async function conferirCronologiaTx(tx: Db, produtoId: string, propriedadeId: number, data: Date, excluir?: string) {
   const previa = await previaRetroatividadeTx(tx, produtoId, propriedadeId, data, excluir);
