@@ -128,10 +128,27 @@ suite("SQL real das parcelas gerais de ordenha", () => {
     const dados = { natureza: "COLOSTRO", animaisOrigem: [animal], primeiraOrdenhaColostro: true, criterioColostroSnapshot: f.snapshot(partos, true) };
     await f.rejeitar(() => f.inserir({ ...dados, primeiraOrdenhaColostro: false, criterioColostroSnapshot: f.snapshot(partos, false) }), "23514", "declaração explícita da primeira ordenha");
     await f.rejeitar(() => f.inserir({ ...dados, criterioColostroSnapshot: f.snapshot([{ ...partos[0], versao: 2 }], true) }), "23514", "parto real");
-    await f.inserir(dados);
+    const medicao = await f.inserir(dados);
     await f.conferir();
     await f.rejeitar(() => f.inserir(dados), "23514", "primeira ordenha do parto já declarada");
-    await f.rejeitar(() => f.db.query('UPDATE pecuaria."PartoAnimal" SET versao=versao+1 WHERE id=$1', [parto]), "23514", "retira evidência de colostro");
+    await f.db.query('UPDATE pecuaria."PartoAnimal" SET responsavel=$2, "retencaoPlacenta"=true, "grauRetencaoPlacenta"=2, versao=versao+1 WHERE id=$1', [parto, "Responsável revisado"]);
+    await f.conferir();
+    expect((await f.db.query('SELECT "criterioColostroSnapshot" FROM pecuaria."MedicaoGeralLeite" WHERE "sessaoId"=$1', [f.sessao])).rows[0].criterioColostroSnapshot.partos).toEqual(partos);
+    // Revalidar a sessão (inclusive ao confirmar uma entrada) aceita o snapshot histórico.
+    await f.db.query('UPDATE pecuaria."MedicaoGeralLeite" SET responsavel=$2, versao=versao+1 WHERE "sessaoId"=$1', [f.sessao, "Parcela conferida"]);
+    await f.conferir();
+    await f.rejeitar(() => f.inserir({ ...dados, recipiente: "Outra coleta", primeiraOrdenhaColostro: false, declaracaoDireta: { justificativa: "Coleta documentada posterior" }, criterioColostroSnapshot: f.snapshot(partos, false) }), "23514", "parto real");
+    const produto = randomUUID(), movimento = randomUUID(), entrada = randomUUID();
+    const parcela = (await f.db.query('SELECT recipiente FROM pecuaria."MedicaoGeralLeite" WHERE id=$1', [medicao])).rows[0];
+    await f.db.query('INSERT INTO public."Produto" (id,nome,unidade,"updatedAt") VALUES ($1,$1,\'L\',now())', [produto]);
+    await f.db.query(`INSERT INTO public."MovimentoEstoque" (id,seq,"produtoId",tipo,origem,data,quantidade,"propriedadeId","metodoValorizacao","updatedAt") VALUES ($1,$2,$3,'ENTRADA','PRODUCAO','2026-10-20',20,$4,'LEITE_FIFO_V1',now())`, [movimento, -randomInt(1, 2_000_000_000), produto, f.sitio]);
+    const origem = (await f.db.query('SELECT l.id AS "localizacaoId", f.id AS "finalidadeId" FROM pecuaria."LocalizacaoAnimal" l JOIN pecuaria."FinalidadeAnimal" f ON f."animalId"=l."animalId" WHERE l."animalId"=$1', [animal])).rows[0];
+    const snapshot = { fonte: "GERAL", medicaoGeralId: medicao, litros: 20, versaoMedicaoGeral: 2, animaisOrigem: [{ animalId: animal, ...origem, lactacaoId: lactacao }], recipiente: parcela.recipiente, tanqueId: null, natureza: "COLOSTRO", declaracaoDireta: null, primeiraOrdenhaColostro: true, criterioColostroSnapshot: f.snapshot(partos, true) };
+    await f.db.query(`INSERT INTO pecuaria."EntradaProducaoLeite" (id,"sessaoId","versaoSessao","movimentoId",chave,hash,snapshot,"medicaoGeralId") VALUES ($1,$2,1,$3,$1,$6,$4::jsonb,$5)`, [entrada, f.sessao, movimento, JSON.stringify(snapshot), medicao, "a".repeat(64)]);
+    await f.db.query(`INSERT INTO pecuaria."ClassificacaoEntradaLeite" (id,"entradaId",versao,natureza,motivo) VALUES ($1,$2,1,'NAO_INFORMADA','Classificação inicial privada')`, [randomUUID(), entrada]);
+    await f.conferir();
+    expect((await f.db.query('SELECT status FROM pecuaria."EntradaProducaoLeite" WHERE id=$1', [entrada])).rows[0].status).toBe("CONFIRMADA");
+    await f.rejeitar(() => f.db.query('UPDATE pecuaria."PartoAnimal" SET status=\'ANULADO\',versao=versao+1 WHERE id=$1', [parto]), "23514", "retira evidência de colostro");
     await f.rejeitar(() => f.db.query('UPDATE pecuaria."LactacaoAnimal" SET "partoId"=NULL,versao=versao+1 WHERE id=$1', [lactacao]), "23514", "retira evidência de colostro");
   }, { tipo: "PRIMEIRA_ORDENHA" }));
 

@@ -64,3 +64,18 @@ describe("vínculos atômicos do parto", () => {
     await expect(corrigirPesosCriasTx(db, parto(), { propriedadeId: 1, motivo: "Conferência", pesosCrias: [{ criaId: id, pesoKg: 32 }] }, null)).rejects.toThrow(/pesagem vinculada/);
   });
 });
+
+describe("grau de retenção de placenta", () => {
+  it("mantém antigos sem grau e admite somente graus 1 a 3 com RP declarada", () => {
+    expect(normalizarDetalhesParto({}, "2026-01-01", parto({retencaoPlacenta:true})).grauRetencaoPlacenta).toBeNull();
+    for (const grau of [1,2,3]) expect(partoAmpliadoSchema.parse({...base,retencaoPlacenta:true,grauRetencaoPlacenta:grau}).grauRetencaoPlacenta).toBe(grau);
+    for (const grau of [0,4,1.5]) expect(partoAmpliadoSchema.safeParse({...base,retencaoPlacenta:true,grauRetencaoPlacenta:grau}).success).toBe(false);
+    expect(partoAmpliadoSchema.safeParse({...base,grauRetencaoPlacenta:1}).success).toBe(false);
+  });
+  it("correção preserva grau omitido e exige remoção explícita ao retirar RP", () => {
+    const anterior=parto({retencaoPlacenta:true,grauRetencaoPlacenta:2});
+    expect(normalizarDetalhesParto({},"2026-01-01",anterior).grauRetencaoPlacenta).toBe(2);
+    expect(()=>normalizarDetalhesParto({retencaoPlacenta:false},"2026-01-01",anterior)).toThrow(/remova o grau/);
+    expect(normalizarDetalhesParto({retencaoPlacenta:false,grauRetencaoPlacenta:null},"2026-01-01",anterior)).toMatchObject({retencaoPlacenta:false,grauRetencaoPlacenta:null});
+  });
+});

@@ -153,6 +153,7 @@ export function FormReproducao({
     { viva: true, sexo: "F", aptidao: "LEITE" },
   ]);
   const [lactacao, setLactacao] = useState(false);
+  const [alteracoesExternas, setAlteracoesExternas] = useState(false);
   const [situacao, setSituacao] = useState<SituacaoInicialInput["situacao"]>("VAZIA");
   const [classeReprodutiva, setClasseReprodutiva] = useState("");
   const [aptaDesde, setAptaDesde] = useState("");
@@ -258,7 +259,7 @@ export function FormReproducao({
           {...p}
           className={classeInput}
           value={valor}
-          onValueChange={valor => setter(valor)}
+          onValueChange={valor => { setAlteracoesExternas(true); setter(valor); }}
           required={required}
         >
           <option value="">{rotuloVazio}</option>
@@ -378,9 +379,10 @@ export function FormReproducao({
       titulo={TITULOS[acao]}
       onFechar={onFechar}
       bloqueado={ocupado}
-      rodape={
+      alteracoesExternas={alteracoesExternas}
+      rodape={fechar => (
         <>
-          <Button variant="outline" disabled={ocupado} onClick={onFechar}>
+          <Button variant="outline" disabled={ocupado} onClick={fechar}>
             Cancelar
           </Button>
           <Button
@@ -391,7 +393,7 @@ export function FormReproducao({
             {ocupado ? "Salvando…" : "Confirmar registro"}
           </Button>
         </>
-      }
+      )}
     >
       <form
         id="form-reproducao"
@@ -551,6 +553,7 @@ export function FormReproducao({
                   s.id,
                   `#${s.numero} ${s.descricao ?? "Serviço"}`,
                 ]),
+                origem === "SERVICO",
               )}
 
             {servicoId && podeValores && <CampoFormulario id="rep-valor-servico" rotulo="Valor atribuído ao Serviço (R$)" ajuda="Parcela do Serviço correspondente a esta tentativa. Não gera outra despesa. Deixe vazio se ainda não foi atribuída.">
@@ -637,7 +640,7 @@ export function FormReproducao({
           </ConfirmacaoCiencia>
           </>
         )}
-        {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
+        {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={v => { setAlteracoesExternas(true); setDadosParto(v); }} crias={crias} setCrias={v => { setAlteracoesExternas(true); setCrias(v); }} lotes={lotes} lactacao={lactacao} setLactacao={v => { setAlteracoesExternas(true); setLactacao(v); }} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
           seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],
@@ -706,6 +709,6 @@ export function FormReproducao({
   );
 }
 
-function FormShellReproducao({ inline, titulo, onFechar, bloqueado, rodape, children }: { inline: boolean; titulo: string; onFechar: () => void; bloqueado: boolean; rodape: ReactNode; children: ReactNode }) {
-  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><div className="flex flex-wrap gap-2">{rodape}</div></div>{children}</section> : <PainelCadastro aberto titulo={titulo} onFechar={onFechar} bloqueado={bloqueado} rodape={rodape}>{children}</PainelCadastro>;
+function FormShellReproducao({ inline, titulo, onFechar, bloqueado, rodape, children, alteracoesExternas }: { inline: boolean; titulo: string; onFechar: () => void; bloqueado: boolean; rodape: (fechar: () => void) => ReactNode; children: ReactNode; alteracoesExternas: boolean }) {
+  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><div className="flex flex-wrap gap-2">{rodape(onFechar)}</div></div>{children}</section> : <PainelCadastro aberto titulo={titulo} onFechar={onFechar} bloqueado={bloqueado} alteracoesExternas={alteracoesExternas} rodape={rodape}>{children}</PainelCadastro>;
 }

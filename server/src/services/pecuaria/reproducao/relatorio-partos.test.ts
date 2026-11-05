@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
-  exames: vi.fn(), origem: vi.fn(), partos: vi.fn(), crias: vi.fn(), usuarios: vi.fn(), transaction: vi.fn(),
+  coletas: vi.fn(), exames: vi.fn(), origem: vi.fn(), partos: vi.fn(), crias: vi.fn(), usuarios: vi.fn(), transaction: vi.fn(),
 }));
 vi.mock("../../../db.js", () => ({ prisma: { $transaction: mocks.transaction } }));
 import { obterPartoOperacional, emitirRelatorioPartos, periodoRelatorioPartosSchema } from "./relatorio-partos.js";
 
 beforeEach(() => {
-  vi.clearAllMocks(); mocks.exames.mockResolvedValue([]);
-  mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback({ exameAnimal: { findMany: mocks.exames }, partoAnimal: { findFirst: mocks.origem, findMany: mocks.partos }, criaParto: { findMany: mocks.crias }, usuario: { findMany: mocks.usuarios } }));
+  vi.clearAllMocks(); mocks.exames.mockResolvedValue([]); mocks.coletas.mockResolvedValue([]);
+  mocks.transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback({ loteColostro: { findMany: mocks.coletas }, exameAnimal: { findMany: mocks.exames }, partoAnimal: { findFirst: mocks.origem, findMany: mocks.partos }, criaParto: { findMany: mocks.crias }, usuario: { findMany: mocks.usuarios } }));
 });
 describe("emissão de partos por sítio do fato", () => {
   it("valida período inclusivo, datas reais e ordem", () => {
@@ -59,6 +59,7 @@ it("detalhe pontual usa identidade e data do parto, inclusive anulado, sem emiss
  mocks.partos.mockResolvedValue([{id,versao:1,animal:{id:"a",brinco:"123",nome:null},data:new Date("2026-01-03"),ocorridoEm:null,horarioEstimado:false,desfecho:"NASCIMENTO",tipo:"NORMAL",induzido:null,dificuldade:null,assistenciaDescricao:null,retencaoPlacenta:null,responsavel:null,observacao:null,criadoPorId:null,criadoEm:new Date("2026-01-04"),ocorrenciasRetencaoPlacenta:[],vinculosPesagem:[],examesPosParto:[]}]);
  mocks.crias.mockResolvedValue([]);
  const p=await obterPartoOperacional(id,9);
- expect(p).toMatchObject({id,propriedadeId:9,status:"ANULADO"});
+ expect(p).toMatchObject({id,propriedadeId:9,status:"ANULADO",coletasColostro:[],grauRetencaoPlacenta:null});
+ expect(mocks.coletas).toHaveBeenCalledWith(expect.objectContaining({where:{partoId:id,propriedadeId:9,status:{not:"ESTORNADO"}}}));
  expect(mocks.partos.mock.calls[0][0].where).toEqual({id,propriedadeId:9,data:{gte:new Date("2026-01-03"),lte:new Date("2026-01-03")}});
 });

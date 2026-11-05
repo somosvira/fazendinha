@@ -373,3 +373,33 @@ describe("classe comprovada no histórico inicial", () => {
   await waitFor(()=>expect(registrarParto).toHaveBeenCalledTimes(1));
   expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([expect.objectContaining({loteId:"bez"})]);
  });
+
+it("preserva RP e grau ao cancelar e continuar editando o parto", async () => {
+  const fechar = vi.fn();
+  render(<FormReproducao acao="parto" painel={painel} animalInicial="a" onFechar={fechar} onSalvo={vi.fn()}/>);
+  fireEvent.click(screen.getByRole("button", { name: "Pós-parto" }));
+  await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
+  await alterarControle(screen.getByLabelText("Grau de RP"), { target: { value: "2" } });
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(await screen.findByRole("dialog", { name: "Descartar alterações?" })).toBeTruthy();
+  expect(fechar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Continuar editando" }));
+  expect(screen.getByLabelText("Grau de RP").textContent).toContain("2");
+  fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+  fireEvent.click(screen.getByRole("button", { name: "Descartar alterações" }));
+  expect(fechar).toHaveBeenCalledOnce();
+});
+
+
+it("exige Serviço financeiro somente quando o material está incluído no Serviço", async () => {
+  render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  for (const origem of ["DOCUMENTADA", "ESTOQUE", "SERVICO", "DOCUMENTADA"]) {
+    await alterarControle(screen.getByLabelText("Origem do material"), { target: { value: origem } });
+    const controle = screen.getByLabelText("Serviço financeiro");
+    expect(controle.getAttribute("aria-required")).toBe(String(origem === "SERVICO"));
+    const nativo = controle.parentElement?.querySelector("select");
+    expect(nativo).toBeTruthy();
+    expect(nativo!.required).toBe(origem === "SERVICO");
+    expect(nativo!.checkValidity()).toBe(origem !== "SERVICO");
+  }
+});

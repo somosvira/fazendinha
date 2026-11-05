@@ -31,6 +31,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
   naFicha?: boolean;
 }) {
   const [data, setData] = useState(getHojeISO);
+  const gestanteHoje = naFicha && data === getHojeISO() && painel.animais.some(a => a.animalId === animalId && a.situacao === "GESTANTE");
   // A consulta histórica nunca preenche a data de uma nova decisão.
   const [dataDecisao, setDataDecisao] = useState(getHojeISO);
   const [editando, setEditando] = useState(false);
@@ -148,7 +149,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     {r?.aptidaoClinica?.retornoEm && <p>Retorno informado: {formatBRDateISO(r.aptidaoClinica.retornoEm)}</p>}
     {r && <div className="repro-aptidao-contexto">
       {naFicha ? null : <p>Disponível desde: {r.aptaDesde ? formatBRDateISO(r.aptaDesde) : "Não informada"} · Política: {r.politicaVersao ? `versão ${r.politicaVersao}` : "Sem versão vinculada"}</p>}
-      {r.motivos.map(m => <p key={m}>{descreverMotivo(m)}</p>)}
+      {r.motivos.filter(m => !gestanteHoje || !["LIBERACAO_EXPLICITA_NECESSARIA", "LIBERACAO_NAO_COMPROVADA", "EM_ESPERA_PARA_LIBERACAO"].includes(m)).map(m => <p key={m}>{descreverMotivo(m)}</p>)}
       {r.alertas.map(m => <p key={m}>Atenção: {descreverMotivo(m)}</p>)}
     </div>}
     {!naFicha && <label className="repro-aptidao-data">Consultar na data<DatePicker value={data} onChange={setData}/></label>}

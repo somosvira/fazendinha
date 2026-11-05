@@ -191,3 +191,27 @@
 .repro-individual .repro-historico .consulta-barra{padding:0;margin-bottom:16px;border:0;background:transparent}.repro-individual .repro-historico table.fin-tabela,.repro-individual .repro-demandas table{border:1px solid var(--border)!important;border-radius:10px!important}.repro-individual .repro-historico table.fin-tabela th,.repro-individual .repro-historico table.fin-tabela td{border-right:1px solid var(--border)!important;text-align:center!important}.repro-individual .repro-historico table.fin-tabela th:last-child,.repro-individual .repro-historico table.fin-tabela td:last-child{border-right:0!important}.repro-individual .repro-historico-tamanho{order:2}.repro-individual .repro-historico-tamanho select{min-height:32px!important;height:32px!important;font-size:12px!important}.repro-individual .repro-historico-rodape>[aria-label]{margin:0;padding:0;border:0}.repro-individual .repro-historico-tamanho label{font-size:12px!important}
 
 .repro-individual table.fin-tabela{border-collapse:separate!important;border-spacing:0!important;overflow:hidden}.repro-individual table.fin-tabela tbody tr:last-child td{border-bottom:0!important}
+
+/* Acompanhamento contínuo: o ciclo não se divide entre tentativas e exames. */
+.repro-timeline-atual{list-style:none;margin:0;padding:0 0 0 18px;position:relative}
+.repro-timeline-atual::before{content:"";position:absolute;left:4px;top:28px;bottom:28px;width:1px;background:var(--border)}
+.repro-timeline-atual>li{display:flex;align-items:center;gap:14px;position:relative;padding:16px 0;border-bottom:1px solid var(--border)}
+.repro-timeline-atual>li:last-child{border-bottom:0}
+.repro-timeline-atual>li::before{content:"";position:absolute;left:-18px;width:9px;height:9px;border-radius:50%;background:var(--primary);border:2px solid var(--card)}
+.repro-timeline-atual time{font-size:12px;min-width:85px;font-variant-numeric:tabular-nums}
+.repro-timeline-atual .pec-icone{display:grid;place-items:center;width:32px;height:32px;background:var(--muted);border-radius:50%;color:var(--primary);flex-shrink:0}
+.repro-timeline-atual>li>div{flex:1;min-width:0;font-size:14px}
+.repro-timeline-atual p{margin-top:4px;font-size:12px;color:var(--muted-foreground)}
+@media(max-width:700px){.repro-timeline-atual>li{flex-wrap:wrap}.repro-timeline-atual>li>div{flex-basis:55%}.repro-timeline-atual>li>button{margin-left:auto}}
+
+/* O mínimo intrínseco das tabelas não deve alargar a coluna da ficha. */
+.repro-individual{grid-template-columns:minmax(0,1fr);max-width:100%}
+.repro-individual>*,.repro-individual .secao-recolhivel,.repro-individual .secao-recolhivel-conteudo{min-width:0;max-width:100%}
+@media(max-width:640px){
+ .repro-individual .secao-recolhivel-cabecalho{flex-wrap:wrap;min-width:0}
+ .repro-individual .secao-recolhivel-seta-final>h2{flex-basis:100%}
+ .repro-individual .secao-recolhivel-acoes{width:100%;min-width:0;max-width:100%;padding-bottom:12px}
+ .repro-individual .secao-recolhivel-acoes>div{min-width:0;max-width:100%;flex-wrap:wrap}
+ .repro-individual .secao-recolhivel-acoes :is(button,a){max-width:100%;white-space:normal;height:auto;min-height:40px;overflow-wrap:anywhere}
+ .repro-individual .repro-timeline-atual>li>div{overflow-wrap:anywhere}
+}

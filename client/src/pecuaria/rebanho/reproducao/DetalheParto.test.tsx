@@ -12,9 +12,8 @@ it("consulta somente o parto solicitado e apresenta dados clínicos sem chaves t
  vi.mocked(reqV4).mockResolvedValue(parto);render(<DetalheParto id="p" propriedadeId={1}/>);
  await screen.findByRole("heading",{name:"Parto de V4-011"});
  expect(reqV4).toHaveBeenCalledWith("/reproducao/partos/p",undefined,"GET",1);
- expect(screen.getByText(/Nascimento · Distócico/)).toBeTruthy();expect(screen.queryByText("ESCALA_MAX")).toBeNull();
- expect(screen.getAllByText("Máximo da escala").length).toBeGreaterThan(0);
- expect(screen.getAllByText("0").length).toBeGreaterThan(0);
+ expect(screen.getByText("Nascimento")).toBeTruthy();expect(screen.getByText("Distócico")).toBeTruthy();expect(screen.queryByText("ESCALA_MAX")).toBeNull();
+ expect(screen.getAllByText("0 / 5").length).toBeGreaterThan(0);
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
 });
 it("resposta antiga não substitui o contexto do sítio atual",async()=>{
@@ -29,7 +28,7 @@ it("falha de leitura não vira ausência de crias",async()=>{
  await screen.findByText("Parto não encontrado neste sítio");expect(screen.getByRole("button",{name:"Tentar novamente"})).toBeTruthy();expect(screen.queryByText("Nenhum registro informado.")).toBeNull();
 });
 
-it("reutiliza correção, anulação e colostro no detalhe com permissão de lançamento",async()=>{
+it("reutiliza correção e anulação e direciona alimentação para o bezerreiro",async()=>{
  const comCriaViva={...parto,crias:[{...parto.crias[0],viva:true,animalId:"cria"}]};
  vi.mocked(reqV4).mockImplementation(async path=>path.startsWith("/reproducao/colostro?")?[]:comCriaViva);
  render(<DetalheParto id="p" propriedadeId={1} podeLancar/>);
@@ -43,9 +42,8 @@ it("reutiliza correção, anulação e colostro no detalhe com permissão de lan
  fireEvent.click(screen.getByRole("button",{name:"Conferir anulação"}));
  expect(screen.getByRole("dialog",{name:"Anulação do parto"}).textContent).toContain("p · sítio 1");
  fireEvent.click(screen.getByRole("button",{name:"Cancelar anulação de teste"}));
- fireEvent.click(screen.getAllByRole("button",{name:"Gerenciar colostro da cria 1"})[0]);
- await screen.findByRole("button",{name:"Adicionar fornecimento"});
- expect(reqV4).toHaveBeenCalledWith("/reproducao/colostro?criaId=c&propriedadeId=1",undefined,"GET",1);
+ expect(screen.queryByRole("heading",{name:"Fornecimentos de colostro"})).toBeNull();
+ expect(screen.getByRole("link",{name:"Abrir no Bezerreiro"}).getAttribute("href")).toContain("/pecuaria/bezerreiro/animais/cria");
 });
 it.each([false,true])("oculta escritas para leitor ou parto anulado (anulado=%s)",async anulado=>{
  vi.mocked(reqV4).mockResolvedValue({...parto,status:anulado?"ANULADO":"VALIDO",crias:[{...parto.crias[0],viva:true}]});
@@ -71,4 +69,19 @@ it("inicia retirada no bezerreiro conservando o parto e sem gravar produção",a
  expect(location.pathname).toBe("/pecuaria/bezerreiro");
  const params=new URLSearchParams(location.search);expect(params.get("aba")).toBe("colostragem");expect(params.get("partoId")).toBe("p");expect(params.get("propriedadeId")).toBe("1");expect(params.get("novaRetirada")).toBe("1");
  expect(vi.mocked(reqV4).mock.calls.every(c=>c[2]==="GET")).toBe(true);
+});
+
+it("mostra coleta única vinculada ao parto, grau de RP e destinos sem campos fixos",async()=>{
+ vi.mocked(reqV4).mockResolvedValue({...parto,grauRetencaoPlacenta:2,coletasColostro:[{id:'r',data:'2026-10-07',ocorridoEm:null,horarioEstimado:false,quantidadeLitros:'4',status:'CONFIRMADO',primeiraRetirada:true,brix:{resultado:'26'},destinos:[{id:'d',tipo:'BANCO',descricao:'Banco BC-01',quantidadeLitros:'1',data:'2026-10-07',viaBanco:false}]}]});
+ render(<DetalheParto id="p" propriedadeId={1}/>);await screen.findByText('Grau 2');expect(screen.getAllByText('26%').length).toBeGreaterThan(0);expect(screen.getAllByText('Banco BC-01').length).toBeGreaterThan(0);expect(screen.queryByText('Segunda retirada')).toBeNull();expect(screen.getAllByText('4 L').length).toBeGreaterThan(1);
+});
+
+it("mantém peso ao nascer compacto e abre o histórico de pesagens pelo cabeçalho", async () => {
+ vi.mocked(reqV4).mockResolvedValue({...parto,crias:[{...parto.crias[0],filiacaoSnapshot:{pesoKg:34},pesos:[{id:"peso",data:"2026-10-07",pesoKg:"34"}]}]});
+ render(<DetalheParto id="p" propriedadeId={1}/>);
+ const botao = await screen.findByRole("button",{name:"Ver pesagens"});
+ expect(screen.getAllByText("34 kg")).toHaveLength(1);
+ fireEvent.click(botao);
+ expect(screen.getByRole("dialog",{name:"Pesagens da cria 1"})).toBeTruthy();
+ expect(screen.getAllByText("34 kg").length).toBeGreaterThan(1);
 });

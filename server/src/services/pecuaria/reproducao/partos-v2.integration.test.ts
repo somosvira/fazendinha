@@ -30,6 +30,28 @@ async function fixtures(tx: Prisma.TransactionClient) {
   return { sitio, matriz };
 }
 suite("parto/pós-parto com fixtures inteiramente revertidas", () => {
+  it("persiste grau RP, preserva em correção parcial e protege valores inválidos no SQL", async () => {
+    await emRollback(async tx => {
+      const { sitio, matriz } = await fixtures(tx);
+      const p = await criarPartoTx(tx, { chave: randomUUID(), animalId: matriz.id, propriedadeId: sitio.id,
+        data: "2026-01-01", tipo: "ABORTO", observacao: "Aborto observado na fixture", iniciarLactacao: false,
+        crias: [], retencaoPlacenta: true, grauRetencaoPlacenta: 2 }, null);
+      expect(p.grauRetencaoPlacenta).toBe(2);
+      const corrigido = await corrigirPartoTx(tx, p.id, { chave: randomUUID(), propriedadeId: sitio.id,
+        versaoEsperada: p.versao, motivo: "Revisão da observação", observacao: "Observação corrigida" }, null);
+      expect(corrigido.grauRetencaoPlacenta).toBe(2);
+      for (const data of [{ grauRetencaoPlacenta: 4 }, { retencaoPlacenta: false }, { retencaoPlacenta: null }]) {
+        await tx.$executeRawUnsafe("SAVEPOINT grau_invalido");
+        await expect(tx.partoAnimal.update({ where: { id: p.id }, data })).rejects.toThrow();
+        await tx.$executeRawUnsafe("ROLLBACK TO SAVEPOINT grau_invalido");
+      }
+      const semGrau = await corrigirPartoTx(tx, p.id, { chave: randomUUID(), propriedadeId: sitio.id,
+        versaoEsperada: corrigido.versao, motivo: "Retenção informada por engano", retencaoPlacenta: false,
+        grauRetencaoPlacenta: null }, null);
+      expect(semGrau.grauRetencaoPlacenta).toBeNull();
+      expect((await lerPartoTx(tx, p.id)).retencaoPlacenta).toBe(false);
+    });
+  });
   it("cria RP e peso matriz na mesma transação e conserva RP após encerramento", async () => {
     await emRollback(async tx => {
       const { sitio, matriz } = await fixtures(tx);

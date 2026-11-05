@@ -80,8 +80,9 @@ export function AcoesReprodutivas({
     setMotivo("");
     setCausaClinica("DESCONHECIDA");setDescricaoCausa("");
     setEvidenciasPerda("");
-    setPrevisao("");
-    setTentativaId("");
+    const atual = painel.gestacoes?.find(g => g.id === a.id) ?? painel.animais.find(animal => animal.animalId === a.animalId)?.gestacao;
+    setPrevisao(a.tipo === "previsao" ? atual?.previsaoParto?.slice(0, 10) ?? "" : "");
+    setTentativaId(a.tipo === "vinculo" ? atual?.tentativaId ?? "" : "");
     setBrinco("");
     setNomeCria("");
     setErro(null);
@@ -101,7 +102,7 @@ export function AcoesReprodutivas({
   const crias = painel.partos.filter(p => p.animalId === animalId && p.status !== "ANULADO").flatMap(p => (p.crias ?? []).filter(c => c.viva && c.animalId && c.animal?.identificacaoProvisoria !== false));
   const comporConteudoLactacao = comporLactacao ?? ((conteudo: ReactNode, acoes: ReactNode) => <SecaoGeralAnimal id="lactacao-atual-animal" titulo="Lactação atual" icon={Milk} acao={acoes}>{conteudo}</SecaoGeralAnimal>);
   return <>
-    {modo === "gestacao" ? <>{gestacao && !gestacao.encerradaEm && gestacao.status !== "ANULADO" && <SecaoReproducaoAnimal titulo="Gestação atual" icon={Baby} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
+    {modo === "gestacao" ? <>{gestacao && !gestacao.encerradaEm && gestacao.status !== "ANULADO" && <SecaoGeralAnimal id="gestacao-atual-animal" titulo="Gestação atual" icon={HeartPulse} acao={podeLancar && gestacao ? <MenuAcoesFicha rotulo="Gerenciar gestação" itens={[
       { id: "previsao", rotulo: "Editar previsão", onSelect: () => abrirGestacao("previsao") },
       { id: "vinculo", rotulo: "Corrigir vínculo da tentativa", onSelect: () => abrirGestacao("vinculo") },
       { id: "perda", rotulo: "Registrar perda", onSelect: () => abrirGestacao("perda") },
@@ -112,7 +113,7 @@ export function AcoesReprodutivas({
         <DadoFicha icon={Syringe} rotulo="Tentativa vinculada">{tentativa ? `${rotulosReprodutivos[tentativa.tipo ?? ""] ?? tentativa.tipo} · ${formatBRDateISO(tentativa.data)}` : gestacao.tentativaId ? "Vínculo fora deste histórico" : "Não informada"}</DadoFicha>
         <DadoFicha icon={HeartPulse} rotulo="Última avaliação">{avaliacao ? `${rotulosReprodutivos[avaliacao.tipo ?? ""] ?? "Avaliação"} · ${formatBRDateISO(avaliacao.data)}` : "Não informada"}</DadoFicha>
       </dl> : <p className="repro-vazio"><Baby aria-hidden="true"/>{animal?.situacao === "VAZIA" ? "Animal vazio · sem gestação em andamento" : "Situação gestacional não informada"}</p>}
-    </SecaoReproducaoAnimal>}<PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
+    </SecaoGeralAnimal>}<PerdasGestacionais painel={painel} animalId={animalId} naFicha/></> : modo === "restricoes" ? <div className="repro-restricoes">
       {restricoes.length ? restricoes.map(r => <article key={r.id} className="repro-restricao"><div><strong>{rotulosReprodutivos[r.tipo] ?? r.tipo}</strong><p>{r.motivo}</p><small>{r.data ? `Desde ${formatBRDateISO(r.data)}` : "Início não informado"}{r.ate ? ` · Até ${formatBRDateISO(r.ate)}` : ""} · {r.acoes?.join(", ") ?? "Todas as intervenções"}</small></div><Pill>Ativa</Pill>{podeLancar && <Button secondary onClick={() => abrir({ tipo: "restricao", id: r.id, animalId: r.animalId, propriedadeId: r.propriedadeId })}>Encerrar restrição</Button>}</article>) : <div className="repro-vazio" role="status"><HeartPulse aria-hidden="true"/><strong>Nenhuma restrição vigente registrada</strong></div>}
     </div> : modo === "lactacao" ? comporConteudoLactacao(<><dl className="repro-metricas repro-metricas-com-icone">
         <div><dt><Milk aria-hidden="true"/>Situação produtiva</dt><dd>{rotuloLactacao(animal?.situacaoProdutiva)}</dd></div>
@@ -421,6 +422,7 @@ export function AcoesReprodutivas({
                   onChange={(e) => setTentativaId(e.target.value)}
                 >
                   <option value="">Vínculo desconhecido</option>
+                  {tentativaId && !painel.tentativas.some(t => t.id === tentativaId && t.animalId === acao.animalId && t.status !== "ANULADO") && <option value={tentativaId}>Vínculo atual fora deste histórico</option>}
                   {painel.tentativas
                     .filter(
                       (t) =>
@@ -485,5 +487,5 @@ function PerdasGestacionais({ painel, animalId, naFicha = false }: { painel: Pai
     {g.causaClinica?.descricao && <p>{g.causaClinica.descricao}</p>}
     {g.causaClinica?.evidencias?.length ? <ul>{g.causaClinica.evidencias.map((e, i) => <li key={i}>{e}</li>)}</ul> : <p>Evidências não informadas.</p>}
   </article>);
-  return naFicha ? <SecaoReproducaoAnimal titulo="Histórico de perdas" icon={HeartPulse}>{conteudo}</SecaoReproducaoAnimal> : <details className="rounded-lg border border-border p-4"><summary className="cursor-pointer font-semibold">Perdas gestacionais registradas</summary>{conteudo}</details>;
+  return naFicha ? <SecaoGeralAnimal id="perdas-gestacionais-animal" titulo="Histórico de perdas" icon={HeartPulse}>{conteudo}</SecaoGeralAnimal> : <details className="rounded-lg border border-border p-4"><summary className="cursor-pointer font-semibold">Perdas gestacionais registradas</summary>{conteudo}</details>;
 }
