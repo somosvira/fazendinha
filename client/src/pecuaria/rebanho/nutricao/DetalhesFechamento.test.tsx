@@ -21,7 +21,7 @@ describe("lotes no histórico nutricional", () => {
     expect(within(resumo).getByText(/2 animal-dias/)).toBeTruthy();
     expect(within(resumo).getByText(/100,00/)).toBeTruthy();
     expect(within(resumo).getByText(/50,00/)).toBeTruthy();
-    expect(within(resumo).getByText(/Cobertura incompleta/)).toBeTruthy();
+    expect(within(resumo).getByText(/Parcial: falta o custo de parte dos ingredientes/)).toBeTruthy();
     expect(within(resumo).getByText(/excluído dos custos atuais/)).toBeTruthy();
     expect(document.querySelector(".nutricao-metricas")).toBeNull();
   });
@@ -32,5 +32,13 @@ describe("lotes no histórico nutricional", () => {
     expect(screen.queryByText("Custo por animal-dia")).toBeNull();
     expect(screen.getByText(/2 animal-dias/)).toBeTruthy();
     expect(screen.getByText(/Conferência corrigida/)).toBeTruthy();
+  });
+});
+
+describe("período do fechamento", () => {
+  it("mostra uma data só quando o fechamento cobre um dia", async () => {
+    const { periodoFechamento } = await import("./DetalhesFechamento");
+    expect(periodoFechamento({ inicio: "2026-10-26T00:00:00.000Z", fim: "2026-10-26T00:00:00.000Z" })).toBe("26/10/2026");
+    expect(periodoFechamento({ inicio: "2026-10-01", fim: "2026-10-26" })).toBe("01/10/2026 a 26/10/2026");
   });
 });

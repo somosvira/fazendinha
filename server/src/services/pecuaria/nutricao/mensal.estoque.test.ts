@@ -131,7 +131,7 @@ describe("efeitos físicos do consumo diário", () => {
     item.produto.rastrearPartidas = true;
     await expect(
       ajustarItemTx(db, "item", D(2), null, "Automático"),
-    ).rejects.toThrow("Selecione");
+    ).rejects.toThrow("controla lotes por validade");
     expect(tx.movimentoEstoque.create).not.toHaveBeenCalled();
   });
   it("mantém falta de lastro sem movimento parcial", async () => {

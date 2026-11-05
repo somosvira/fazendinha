@@ -3,7 +3,7 @@ import { buscarLote, listarLotes } from "../api";
 import { comPropriedade } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
-export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
+export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; /** Usa leite produzido na fazenda: o lote fecha por período. */ usaLeiteProprio?: boolean; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
 export type Vigencia = { id: string; desde: string; ate: string | null; dieta: { id: string; nome: string; versao: number } };
 export type Pagina<T> = { itens: T[]; total: number; pagina: number; limite: number };
 export type PaginaVigencias = Pagina<Vigencia> & { vigente: Vigencia | null; programada: Vigencia | null };
@@ -71,7 +71,7 @@ const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechament
 };
 export const listarFechamentos = paginaFechamentos;
 /** Último fechamento confirmado do lote (a lista vem do mais recente para o mais antigo). */
-export const ultimoFechamentoConfirmado = (loteId: string) =>
+export const ultimoFechamentoConfirmado = (loteId: string): Promise<Fechamento | null> =>
   req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?loteId=${encodeURIComponent(loteId)}&pagina=1&status=CONFIRMADO`).then(r => r.itens[0] ?? null);
 export const obterFechamento = async (id: string): Promise<Fechamento> => {
   const fechamento = await req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
@@ -117,4 +117,4 @@ export const listarReferenciasLeite = (fornecimentoId: string) => req<{ itens: C
 export const revisarReferenciaLeite = (fornecimentoId: string, body: { chave: string; propriedadeId: number; fechamentoId: string; versaoEsperada: number; motivo: string }) => post(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencia`, body);
 
 export type CustoMedioNutricional = { inicio: string; fim: string; custoPorAnimalDia: string | null; custoConhecido: string | null; animalDias: number; lotesIncluidos: number; lotesTotal: number };
-export const consultarCustoMedio = () => req<CustoMedioNutricional | null>("/pecuaria/rebanho/nutricao/custo-medio");
+export const consultarCustoMedio = (mes: "anterior" | "atual" = "anterior") => req<CustoMedioNutricional | null>(`/pecuaria/rebanho/nutricao/custo-medio${mes === "atual" ? "?mes=atual" : ""}`);

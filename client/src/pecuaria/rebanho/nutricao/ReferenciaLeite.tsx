@@ -23,11 +23,11 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
   return <div className="grid gap-3 py-3">
     <p><strong>{formatarLitros(Number(leite.quantidadeLitros))} fornecidos</strong> · {leite.movimentos.map(m => `${formatarLitros(Number(m.quantidadeLitros))} ${m.natureza === "NAO_COMERCIAL" ? "não comerciais" : "comerciais"}`).join(" + ")}</p>
     {verValores && <p>Custo de produção: <strong>{custoTexto(leite.custoProducao)}</strong></p>}
-    {verReferenciasComerciais && <><p>Referência gerencial: <AjudaCampo rotulo="Sobre a referência gerencial" texto={"A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna."} /> <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>{leite.referencia && <> ({leite.referencia.provisoria ? "provisória, mês anterior" : "preço do período"} · versão {leite.referencia.versao})</>}</p>
+    {verReferenciasComerciais && <><p>Referência gerencial: <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>{leite.referencia && <> ({leite.referencia.provisoria ? "provisória, mês anterior" : "preço do período"} · versão {leite.referencia.versao})</>} <AjudaCampo rotulo="Sobre a referência gerencial" texto={"A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna."} /></p>
 
       {!!leite.referencias.length && <details><summary className="cursor-pointer">Histórico das referências</summary>{leite.referencias.map(r => <p key={r.id} className="mt-2 text-sm">Versão {r.versao} · {r.provisoria ? "provisória" : "do período"} · {formatarDataBR(r.periodoInicio)} a {formatarDataBR(r.periodoFim)} · {custoTexto(r.precoUnitario)}/L · {custoTexto(r.valorTotal)} · {r.motivo}</p>)}</details>}
       {podeLancar && leite.status === "CONFIRMADO" && <>
-        <Button secondary disabled={ocupado} onClick={() => void consultar()}>{ocupado ? "Consultando referências…" : "Conferir preço de referência"}</Button>
+        <Button secondary className="justify-self-start" disabled={ocupado} onClick={() => void consultar()}>{ocupado ? "Consultando referências…" : "Conferir preço de referência"}</Button>
         <ErrorBox erro={erro} />
         {candidatos && <form className="grid gap-3" onSubmit={e => { e.preventDefault(); void confirmar(); }}><fieldset className="grid gap-3" disabled={ocupado}>
           {!candidatos.length ? <p role="status">Não há fechamento comercial comprovado do mês do consumo ou do mês anterior. A referência permanece pendente.</p> : <>
