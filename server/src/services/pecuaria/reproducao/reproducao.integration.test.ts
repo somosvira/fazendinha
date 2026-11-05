@@ -240,6 +240,7 @@ suite("reprodução V4 integra fatos, estoque e visita sem duplicação", () => 
       materialId: m.id,
       origem: "ESTOQUE" as const,
       quantidade: 2,
+      motivoQuantidadeExcepcional: "Duas doses utilizadas no atendimento desta fixture",
     };
     const feitos = await Promise.all([
       criarTentativa(input, null),

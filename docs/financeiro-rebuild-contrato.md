@@ -109,6 +109,8 @@ A ficha da operação apresenta o resumo com parceiro, classificação gerencial
 
 `BaseValorizacaoEstoque`, `ParcelaValorizacaoEstoque` e o método de valorização no `MovimentoEstoque` conservam o lastro monetário de cada saída. O [HTML da entrega](pecuaria/artefatos/follow-up-v4-entrega.html) explica os fluxos, as entidades e a validação. Entrega de código não representa aplicação das migrations no ambiente da fazenda nem homologação de campo.
 
+A resolução do sítio principal durante a valorização usa a mesma transação dos movimentos e bases, inclusive para tratar movimentos legados sem sítio. Essa consulta não usa nem alimenta o cache externo à transação; cadastros ainda não confirmados e rollbacks não contaminam outras operações.
+
 ### Base, parcelas e conservação
 
 - Produto rastreado usa média do **saldo remanescente** por grupo atual de produto/validade e sítio. Não há nova identidade de lote físico nem registro por dose. Aliases continuam resolvidos para a partida raiz.

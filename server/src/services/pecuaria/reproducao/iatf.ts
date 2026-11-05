@@ -445,7 +445,10 @@ export async function iniciarParticipanteTx(
       "inicioEfetivo",
     );
   }
-  await conferirAptidaoParaAcaoTx(tx, participante.animalId, propriedadeId, dia(temporal.data), "PROTOCOLO");
+  // O primeiro exame apenas registra o início do acompanhamento. A aptidão geral
+  // continua sendo exigida nas ações de preparação e em cada nova tentativa.
+  if (acaoInicial !== "EXAME" && acaoInicial !== "AVALIACAO")
+    await conferirAptidaoParaAcaoTx(tx, participante.animalId, propriedadeId, dia(temporal.data), "PROTOCOLO");
   if (acaoInicial) await conferirMatrizTx(tx, participante.animalId, propriedadeId, dia(temporal.data));
   else await conferirDisponibilidadeTx(
     tx,

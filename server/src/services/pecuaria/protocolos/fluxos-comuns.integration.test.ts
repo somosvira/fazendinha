@@ -192,14 +192,14 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     expect(JSON.parse(JSON.stringify(await confirmarAtividade(a.visitaId, a.atividadeId, input, null)))).toEqual(await confirmarAtividade(a.visitaId, a.atividadeId, input, null));
     const e = await prisma.exameAnimal.findFirstOrThrow({ where: { animalId, tipoExameId: t.id }, include: { resultados: true, interpretacao: true } });
     expect(e.resultados).toEqual(expect.arrayContaining([expect.objectContaining({ campo: "MEDIDA", valor: "0" }), expect.objectContaining({ campo: "ACHADO", valor: false }), expect.objectContaining({ campo: "CONCLUSAO_GESTACIONAL", valor: "NEGATIVO" })]));
-    expect(e.interpretacao).not.toBeNull(); expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(1);
+    expect(e.interpretacao).not.toBeNull(); expect(await prisma.exameAnimal.count({ where: { animalId, tipoExameId: t.id } })).toBe(1);
   });
   it("formato alterado depois do rascunho exige revisão, sem confirmar parcialmente", async () => {
     const animalId = await animal(), t = await tipo(true), a = await atividade(animalId, "AVALIACAO_REPRODUTIVA");
     await salvarRascunho(a.visitaId, a.participanteId, sitio, { tipoExameId: t.id, resultado: "NEGATIVO", resultados: [{ campo: "MEDIDA", valor: "1" }] }, null, 0);
     await editarTipoExame(t.id, { campos: [...campos, { codigo: "OUTRO", tipo: "TEXTO", obrigatorio: false }] }, null);
     await expect(confirmarAtividade(a.visitaId, a.atividadeId, confirmacaoVisitaSchema.parse({ propriedadeId: sitio, chave: chave(), itens: [{ participanteId: a.participanteId }] }), null)).rejects.toMatchObject({ code: "CONFLITO" });
-    expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(0);
+    expect(await prisma.exameAnimal.count({ where: { animalId, tipoExameId: t.id } })).toBe(0);
     expect((await prisma.participanteVisita.findUniqueOrThrow({ where: { id: a.participanteId } })).status).toBe("PENDENTE");
   });
   it("protocolo publica o tipo reprodutivo escolhido e a tarefa executa sua versão congelada", async () => {
@@ -219,16 +219,16 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     await iatf.iniciarParticipante(part.id, sitio, instante, null);
     const tarefa = await prisma.tarefaIatf.findFirstOrThrow({ where: { participanteId: part.id, tipo: "AVALIACAO" } });
     await iatf.executarTarefa(tarefa.id, { propriedadeId: sitio, chave: chave(), realizadaEm: instante, dados: { resultado: "NEGATIVO", finalidade: "DIAGNOSTICO", resultados: [{ campo: "MEDIDA", valor: 0 }] } }, null);
-    expect(await prisma.exameAnimal.findFirstOrThrow({ where: { animalId } })).toMatchObject({ tipoExameId: t.id, formatoSnapshot: { nome: t.nome, versao: 1 } });
+    expect(await prisma.exameAnimal.findFirstOrThrow({ where: { animalId, tipoExameId: t.id } })).toMatchObject({ tipoExameId: t.id, formatoSnapshot: { nome: t.nome, versao: 1 } });
     expect((await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: tarefa.id } })).desviosSnapshot).toMatchObject({ diferencas: [] });
-    const exame = await prisma.exameAnimal.findFirstOrThrow({ where: { animalId } });
+    const exame = await prisma.exameAnimal.findFirstOrThrow({ where: { animalId, tipoExameId: t.id } });
     const previa = await previaAnulacao("avaliacoes", exame.id, sitio);
     await anularFato("avaliacoes", exame.id, { propriedadeId: sitio, chave: chave(), motivo: "Procedimento registrado no animal errado", fingerprint: previa.fingerprint }, null);
     expect((await prisma.tarefaIatf.findUniqueOrThrow({ where: { id: tarefa.id } })).regularizacaoPendente).toBe(true);
     const reaberta = await iatf.regularizarTarefa(tarefa.id, regularizacao("REABRIR"), null);
     expect(reaberta).toMatchObject({ realizadaEm: null, avaliacaoId: null, regularizacaoPendente: false });
     await iatf.executarTarefa(tarefa.id, { propriedadeId: sitio, chave: chave(), realizadaEm: instante, dados: { resultado: "NEGATIVO", finalidade: "DIAGNOSTICO", resultados: [{ campo: "MEDIDA", valor: 1 }] } }, null);
-    expect(await prisma.exameAnimal.count({ where: { animalId } })).toBe(2);
+    expect(await prisma.exameAnimal.count({ where: { animalId, tipoExameId: t.id } })).toBe(2);
     expect((await sugestoesVisita(sitio, data)).tarefasSanitarias.some(v => v.animalId === animalId)).toBe(false);
     const tarefaSanitaria = await prisma.tarefaIatf.findFirstOrThrow({ where: { participanteId: part.id, tipo: "EXAME" } });
     const realizada = await iatf.executarTarefa(tarefaSanitaria.id, { propriedadeId: sitio, chave: chave(), realizadaEm: instante, dados: { tipoExameId: exameSanitario.id, resultadoNumero: 0 } }, null);
@@ -258,7 +258,7 @@ comBanco("tarefas, regularização e exames personalizados na base comum", () =>
     const adiada = await prisma.tarefaProtocolo.findUniqueOrThrow({ where: { id: t.tarefaId } });
     expect(adiada).toMatchObject({ previstaPara: new Date("2026-09-16"), previsaoOriginal: original.previstaPara, realizadaEm: null, precisaoTemporal: "DIA" });
     expect(adiada.parametros).toEqual(original.parametros);
-    expect(await prisma.exameAnimal.count({ where: { animalId: t.animalId } })).toBe(0);
+    expect(await prisma.exameAnimal.count({ where: { animalId: t.animalId, tarefaId: t.tarefaId } })).toBe(0);
     expect(await prisma.movimentoEstoque.count({ where: { propriedadeId: sitio } })).toBe(movimentosAntes);
     await registrarExame({ ...t, data: "2026-09-16", resultadoNumero: 0 }, null);
     await expect(registrarEventoTarefa(t.tarefaId, { ...input, chave: chave() }, null)).rejects.toMatchObject({ code: "CONFLITO" });

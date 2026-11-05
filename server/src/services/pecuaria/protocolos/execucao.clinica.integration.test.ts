@@ -8,6 +8,7 @@ import { hojeFazenda } from "../rebanho/regras.js";
 import { criarProtocolo, criarProgramacao } from "../reproducao/iatf.js";
 import { protocoloSchema, programacaoSchema } from "../reproducao/schemas.js";
 import { criarAvaliacao } from "../reproducao/registros.js";
+import { obterElegibilidadesNaDataTx } from "../reproducao/elegibilidade.js";
 import { listarAcompanhamentosPaginados } from "../reproducao/acompanhamento.js";
 import { anularFato, previaAnulacao } from "../reproducao/correcoes.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -137,6 +138,14 @@ banco("execução clínica comum preserva fatos e efeitos no PostgreSQL",()=>{
   expect(await prisma.gestacaoAnimal.count({where:{animalId:item.animalId,status:"VALIDO"}})).toBe(1);
   expect(await prisma.gestacaoAnimal.findUnique({where:{id:primeiro.gestacaoId!}})).toMatchObject({sexoFetal:"F"});
   expect(await prisma.exameAnimal.findUnique({where:{id:inconclusivo.itens[0].id}})).toMatchObject({status:"VALIDO"});
+  const atual=(await obterElegibilidadesNaDataTx(prisma,[item.animalId],f.sitio.id,new Date(data))).get(item.animalId);
+  expect(atual).toMatchObject({situacaoReprodutiva:"GESTANTE",aptidao:{estado:"NAO_APTA",motivos:expect.arrayContaining(["GESTACAO_CONFIRMADA"])}});
+  const tentativa=await prisma.tarefaProtocolo.findFirstOrThrow({where:{execucao:{rodadaId:f.grupo.id,animalId:item.animalId},etapa:{tipo:"TENTATIVA"}},include:{etapa:true}});
+  const plano=tentativa.etapa.configuracao as {planoTentativa:{materialId:string}};
+  const movimentosAntes=await prisma.movimentoEstoque.count({where:{produtoId:f.produto.id}});
+  await expect(confirmar({...f.input,itens:[{tipo:"TENTATIVA",tarefaId:tentativa.id,animalId:item.animalId,propriedadeId:f.sitio.id,data,tipoTentativa:"IA",materialId:plano.planoTentativa.materialId,origem:"ESTOQUE",quantidade:1}]})).rejects.toThrow(/gestação confirmada/);
+  expect(await prisma.tentativaReprodutiva.count({where:{animalId:item.animalId}})).toBe(0);
+  expect(await prisma.movimentoEstoque.count({where:{produtoId:f.produto.id}})).toBe(movimentosAntes);
  },60000);
  it("não realização legada não atende nas projeções Prisma/TS mesmo com realizadaEm",async()=>{
   const f=await fixture("EXAME",1);const item=f.itens[0];

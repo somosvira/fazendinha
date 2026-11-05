@@ -61,7 +61,7 @@ export async function previaAtivacaoRastreio(produtoId: string) {
 }
 
 export async function saldoPartidaTx(tx: Prisma.TransactionClient, partidaId: string, propriedadeId: number) {
-  const principal = await propriedadePrincipalId();
+  const principal = await propriedadePrincipalId(tx);
   const alocacoes = await tx.alocacaoPartidaEstoque.findMany({ where: {
     partidaId: { in: await idsGrupoPartidaTx(tx, partidaId) }, movimentoEstoque: { status: statusSaldoEstoque,
       ...(propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId }) },

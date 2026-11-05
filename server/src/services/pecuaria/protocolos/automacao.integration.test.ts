@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { criarEntradaValorizadaFixtureTx } from "../../../test/estoque-valorizado.fixture.js";
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { prepararTentativaTx, criarTentativaTx } from "../reproducao/registros.js";
 import { tentativaSchema } from "../reproducao/schemas.js";
 import { prepararExecucaoProtocoloTx, executarItensPreparadosProtocoloTx } from "./execucao.js";
@@ -24,6 +25,7 @@ async function fixture(tx: Prisma.TransactionClient, acoes = 1) {
   const tipo = await tx.tipoAplicacaoSanitaria.create({ data: { nome: `Auto ${token}` } });
   const produto = await tx.produto.create({ data: { nome: `Produto ${token}`, unidade: "ML", usoSanitario: true } });
   const animal = await tx.animal.create({ data: { brinco: token, sexo: "F", origem: "COMPRADO", dataNascimento: new Date("2015-01-01"), dataEntrada: new Date("2020-01-01"), localizacoes: { create: { propriedadeId: sitio.id, desde: new Date("2020-01-01") } }, destinos: { create: { aptidao: "LEITE", desde: new Date("2020-01-01") } } } });
+  await criarAptidaoFixture(tx, animal.id, sitio.id, new Date("2026-09-01"));
   const etapa = { nome: "Aplicação", tipo: "APLICACAO", intervalo: 0, unidade: "DIAS", planoAplicacao: { produtoId: produto.id, tipoAplicacaoId: tipo.id, dose: "1", unidadeDose: "ML" }, momento: { nome: "D0", ordem: 1, politicaExecucao: "AUTOMATICA_EXCECAO", horarioPadrao: "08:00", fusoHorario: "America/Sao_Paulo" } };
   const protocolo = await criarProtocoloReprodutivoTx(tx, { data: { nome: `Auto ${token}`, versao: 1, publicado: true, etapas: Array.from({ length: acoes }, (_, i) => ({ ...etapa, nome: `Aplicação ${i + 1}` })) } });
   const grupo = await criarProgramacaoReprodutivaTx(tx, { data: { propriedadeId: sitio.id, protocoloId: protocolo.id, nome: "Grupo", inicioPrevisto: new Date("2026-10-01"), precisaoTemporal: "DIA" } });
@@ -75,6 +77,7 @@ async function concorrente(executar: (f: Awaited<ReturnType<typeof fixture>>, jo
       await tx.protocolo.delete({ where: { id: f.protocolo.id } });
       await tx.finalidadeAnimal.deleteMany({ where: { animalId: f.animal.id } });
       await tx.localizacaoAnimal.deleteMany({ where: { animalId: f.animal.id } });
+      await limparAptidaoFixture(tx, [f.animal.id]);
       await tx.animal.delete({ where: { id: f.animal.id } });
       await tx.produto.delete({ where: { id: f.produto.id } });
       await tx.tipoAplicacaoSanitaria.delete({ where: { id: f.tipo.id } });
