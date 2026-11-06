@@ -3,7 +3,6 @@ import { Empty } from "@/financeiro/financeiro-ui";
 import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
 import { ModalPolitica } from "./ModalPolitica";
 import { getHojeISO } from "../../../lib/hoje";
-import { AjudaCampo } from "../../../components/Dica";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
@@ -133,7 +132,7 @@ export function ConfiguracaoReprodutiva({
   return (
     <section className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">Elegibilidade reprodutiva <AjudaCampo rotulo="Ajuda sobre elegibilidade reprodutiva" texto="Defina o período de espera voluntário (PEV) e as regras da fazenda. Os valores devem ser escolhidos com o responsável pelo manejo."/></h2>
+        <h2 className="text-xl font-semibold">Elegibilidade reprodutiva</h2>
         {podeLancar && <Button type="button" onClick={() => setFormularioAberto(true)}>Nova versão da política</Button>}
       </div>
       {erro && !formularioAberto && (
@@ -222,7 +221,7 @@ export function ConfiguracaoReprodutiva({
           className="space-y-4"
         >
           <fieldset disabled={ocupado} className="space-y-4 min-w-0">
-          <p className="text-sm">Registrar nova versão <AjudaCampo rotulo="Ajuda sobre versões da política" texto="Cada ciclo conserva a versão aplicável ao seu início. Consultar um animal não cria vínculos. Ciclos antigos exigem associação explícita na ficha do animal."/></p>
+          <p className="text-sm text-ink-3">Defina o período de espera voluntário (PEV) e as regras da fazenda com o responsável pelo manejo. Cada ciclo segue a versão vigente no seu início.</p>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
@@ -311,7 +310,7 @@ export function ConfiguracaoReprodutiva({
             <label className="mt-4 block">Motivo da nova versão<Input required minLength={5} maxLength={1000} value={motivoVersao} onChange={e => setMotivoVersao(e.target.value)}/></label>
           </div>
           <fieldset>
-            <legend className="mb-2">Papéis incluídos na elegibilidade <AjudaCampo rotulo="Ajuda sobre a elegibilidade de novilhas" texto="Novilhas dependem da situação inicial com “apta desde” ou de liberação individual. Idade e DEL não liberam automaticamente."/></legend>
+            <legend className="mb-2">Papéis incluídos na elegibilidade<span className="mt-1 block text-xs font-normal text-ink-3">Novilhas só entram com “apta desde” ou liberação individual; idade e DEL não liberam sozinhas.</span></legend>
             {(
               [
                 ["NENHUM", "Nenhum"],
