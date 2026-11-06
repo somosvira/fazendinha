@@ -154,7 +154,7 @@ export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fe
         const mov = await tx.movimentoEstoque.create({ data: { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId,
           tipo: "SAIDA", origem: "NUTRICAO", data: c.fim, quantidade,
           custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal, centroCustoId: c.centroCustoId,
-          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio} a ${input.fim}`,
+          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio.split("-").reverse().join("/")} a ${input.fim.split("-").reverse().join("/")}`,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
         await registrarSaidaValorizadaTx(tx, mov.id, plano);

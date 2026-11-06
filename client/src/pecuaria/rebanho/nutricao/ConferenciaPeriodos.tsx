@@ -11,7 +11,7 @@ import { estimativaConferida, somarEstimativas } from "./conferencia.calc";
 import { formatarDataBR } from "../lib/rotulos";
 import { fmtMoneyExact } from "../../../components/charts";
 import { navegarPara } from "../../../router";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 
 const numero = (valor: string | number) => quantidadeNutricional(String(valor));
 
@@ -102,9 +102,9 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
             const insuficiente = e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > Number(i.saldo);
             return <div key={k} className="nutricao-conferencia-item">
               <div className="nutricao-conferencia-linha">
-                <div className="nutricao-conferencia-nome"><strong>{i.nome}</strong><span className={insuficiente ? "nutricao-alerta-texto" : undefined}>Saldo {numero(i.saldo)} {i.unidade}{insuficiente && " · insuficiente"}{mostrarValores && v.custo != null && ` · ${fmtMoneyExact(Number(v.custo))}`}</span></div>
-                <div className="nutricao-conferencia-previsto"><span className="nutricao-rotulo-movel">Previsto</span>{numero(i.quantidadePrevista)} {i.unidade}</div>
-                <label className="nutricao-conferencia-campo"><span className="nutricao-rotulo-movel">Conferido ({i.unidade})</span><input aria-label={`Quantidade conferida de ${i.nome} (${i.unidade})`} type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
+                <div className="nutricao-conferencia-nome"><strong>{i.nome}</strong><span className={insuficiente ? "nutricao-alerta-texto" : undefined}>Saldo {numero(i.saldo)} {un(i.unidade)}{insuficiente && " · insuficiente"}{mostrarValores && v.custo != null && ` · ${fmtMoneyExact(Number(v.custo))}`}</span></div>
+                <div className="nutricao-conferencia-previsto"><span className="nutricao-rotulo-movel">Previsto</span>{numero(i.quantidadePrevista)} {un(i.unidade)}</div>
+                <label className="nutricao-conferencia-campo"><span className="nutricao-rotulo-movel">Conferido ({un(i.unidade)})</span><input aria-label={`Quantidade conferida de ${i.nome} (${un(i.unidade)})`} type="number" min="0" step="0.001" className={classeInput} value={e.quantidade} onChange={(ev) => mudar(k, { quantidade: ev.target.value })} /></label>
                 <label className="nutricao-conferencia-campo"><span className="nutricao-rotulo-movel">Estoque</span><SelectCampo aria-label={`Origem de ${i.nome}`} className={classeInput} value={e.modo} onValueChange={(valorSelecionado) => mudar(k, { modo: valorSelecionado as Escolha["modo"] })}><option value="BAIXA_ESTOQUE">Baixar estoque</option><option value="SEM_BAIXA_JUSTIFICADA">Sem baixa — justificar</option></SelectCampo></label>
               </div>
               {i.leite && !!p.ofertasBezerreiro?.length && <div className="grid gap-2">
@@ -119,7 +119,7 @@ export function ConferenciaPeriodos({ loteId, propriedadeId, centros, onSalvo, o
               </fieldset>}
               {(Number(e.quantidade) !== Number(i.quantidadePrevista) || (i.leite && !!p.ofertasBezerreiro?.length)) && <label>Motivo da diferença<input className={classeInput} value={e.motivo} onChange={(ev) => mudar(k, { motivo: ev.target.value })} /></label>}
               {e.modo === "SEM_BAIXA_JUSTIFICADA" && <label>Justificativa sem baixa<textarea className={classeInput} value={e.justificativa} onChange={(ev) => mudar(k, { justificativa: ev.target.value })} /></label>}
-              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas compacto deEstoque produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={i.unidade} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
+              {i.rastrearPartidas && e.modo === "BAIXA_ESTOQUE" && Number(e.quantidade) > 0 && <SelecaoPartidas compacto deEstoque produtoId={i.produtoId} propriedadeId={propriedadeId} dataFato={p.fim.slice(0, 10)} quantidade={e.quantidade} unidade={un(i.unidade)} saida valor={e.partidas} onChange={(s) => mudar(k, { partidas: s })} />}
             </div>;
           })}
         </fieldset>;

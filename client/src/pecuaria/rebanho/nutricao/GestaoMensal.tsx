@@ -1,3 +1,4 @@
+import { un } from "./quantidades";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Empty, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -354,7 +355,7 @@ function RevisaoMensal({
                 return (
                   <tr key={i.produtoId}>
                     <th scope="row">
-                      {i.nome} · {i.unidade}
+                      {i.nome} · {un(i.unidade)}
                     </th>
                     <td>{quantidade(i.prevista)}</td>
                     <td>{quantidade(i.confirmada)}</td>
@@ -378,7 +379,7 @@ function RevisaoMensal({
                     <td>
                       {delta === 0
                         ? "Sem ajuste"
-                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${i.unidade}`}
+                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${un(i.unidade)}`}
                     </td>
                     {mes.verValores && (
                       <td>
@@ -414,7 +415,7 @@ function RevisaoMensal({
                 quantidade={String(
                   Number(quantidades[i.produtoId]) - Number(i.confirmada),
                 )}
-                unidade={i.unidade}
+                unidade={un(i.unidade)}
                 saida
                 valor={partidas[i.produtoId] ?? []}
                 onChange={(p) => {
@@ -553,7 +554,7 @@ function RevisaoMensal({
                   d.itens.map((i) => (
                     <div key={i.id}>
                       <label>
-                        {i.nome} ({i.unidade})
+                        {i.nome} ({un(i.unidade)})
                         <input
                           type="number"
                           min="0"
@@ -590,7 +591,7 @@ function RevisaoMensal({
                                 Number(diarias[i.id] ?? i.prevista) -
                                   Number(i.confirmada),
                               )}
-                              unidade={i.unidade}
+                              unidade={un(i.unidade)}
                               saida
                               valor={partidas[i.id] ?? []}
                               onChange={(p) => {

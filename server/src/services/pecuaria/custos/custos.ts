@@ -48,7 +48,7 @@ export async function carregarFontesCustoTx(tx: Db, propriedadeId: number, filtr
       for(const p of f.participacoes.filter(p=>(!filtro.animalId||p.animalId===filtro.animalId)&&(!filtro.animalIds||filtro.animalIds.includes(p.animalId))&&(!filtro.ids?.NUTRICAO||filtro.ids.NUTRICAO.includes(p.id)))){
         const atribuicao=distribuicao.participacoes.find(v=>v.animalId===p.animalId)!;
         for(const i of f.itens){const parcela=atribuicao.itens.find(v=>v.produtoId===i.produtoId)!;
-          nutricao.push({id:p.id,fechamentoId:f.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio)} a ${dia(f.fim)}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});
+          nutricao.push({id:p.id,fechamentoId:f.id,tipo:"NUTRICAO",animalId:p.animalId,propriedadeId,data:dia(f.fim),descricao:`Nutrição · ${i.produto.nome} · ${dia(f.inicio).split("-").reverse().join("/")} a ${dia(f.fim).split("-").reverse().join("/")}`,estadoFato:f.status,participacaoId:null,origemMaterial:"NUTRICAO",movimentoEstoqueId:i.movimentoEstoqueId,operacaoServicoId:null,valorMaterial:parcela.custoConhecido,valorServico:null,classificacao:classificacao(p.classificacaoCusto),versaoClassificacao:p.classificacaoCusto?.versao??0,componenteId:i.id,periodoConsumo:{inicio:dia(f.inicio),fim:dia(f.fim)}});
         }
       }
     }

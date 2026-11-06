@@ -4,7 +4,7 @@ import { Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { consultarVisaoNutricional, type ResumoNutricional } from "./api";
 import { useConsulta } from "./consulta";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import { consultarCobertura, DIAS_ATENCAO, hrefProdutoEstoque, textoCobertura, type CoberturaIngrediente } from "./coberturaEstoque";
 import { formatarDataBR } from "../lib/rotulos";
 
@@ -28,10 +28,10 @@ export function EstoqueDieta({ resumo }: { resumo: ResumoNutricional }) {
       : !c?.ingredientes.length ? <p className="nutricao-nota px-5 pb-5">A receita não tem ingredientes cadastrados.</p>
       : <TabelaFinanceira rotulo="Estoque dos ingredientes da dieta" itens={c.ingredientes} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: CoberturaIngrediente) => <LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno> },
-        { chave: "lote", titulo: "Consumo do lote", alinhamento: "direita", celula: (i: CoberturaIngrediente) => `${qtd(i.consumoLoteDia)} ${i.unidade}/dia` },
-        ...(compartilhado ? [{ chave: "sitio", titulo: "Todos os lotes", alinhamento: "direita" as const, celula: (i: CoberturaIngrediente) => `${qtd(i.consumoSitioDia)} ${i.unidade}/dia` }] : []),
-        { chave: "saldo", titulo: "Saldo no sítio", alinhamento: "direita", celula: (i: CoberturaIngrediente) => `${qtd(i.saldo)} ${i.unidade}` },
-        { chave: "dias", titulo: "Cobre", alinhamento: "direita", celula: (i: CoberturaIngrediente) => <><span className={i.dias != null && i.dias < DIAS_ATENCAO ? "nutricao-alerta-texto" : undefined}>{textoCobertura(i.dias)}</span>{i.vencendo > 0 && <p className="nutricao-secundario nutricao-alerta-texto">{qtd(i.vencendo)} {i.unidade} vencem antes do uso</p>}{i.proximaValidade && <p className="nutricao-secundario">Validade mais próxima {formatarDataBR(i.proximaValidade)}</p>}</> },
+        { chave: "lote", titulo: "Consumo do lote", alinhamento: "direita", celula: (i: CoberturaIngrediente) => `${qtd(i.consumoLoteDia)} ${un(i.unidade)}/dia` },
+        ...(compartilhado ? [{ chave: "sitio", titulo: "Todos os lotes", alinhamento: "direita" as const, celula: (i: CoberturaIngrediente) => `${qtd(i.consumoSitioDia)} ${un(i.unidade)}/dia` }] : []),
+        { chave: "saldo", titulo: "Saldo no sítio", alinhamento: "direita", celula: (i: CoberturaIngrediente) => `${qtd(i.saldo)} ${un(i.unidade)}` },
+        { chave: "dias", titulo: "Cobre", alinhamento: "direita", celula: (i: CoberturaIngrediente) => <><span className={i.dias != null && i.dias < DIAS_ATENCAO ? "nutricao-alerta-texto" : undefined}>{textoCobertura(i.dias)}</span>{i.vencendo > 0 && <p className="nutricao-secundario nutricao-alerta-texto">{qtd(i.vencendo)} {un(i.unidade)} vencem antes do uso</p>}{i.proximaValidade && <p className="nutricao-secundario">Validade mais próxima {formatarDataBR(i.proximaValidade)}</p>}</> },
       ]} />}
   </Panel>;
 }

@@ -4,7 +4,7 @@ import { Button } from "@/financeiro/financeiro-ui";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import type { Fechamento } from "./api";
 import { custoTexto, SituacaoFechamento } from "./componentes";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import { formatarDataBR } from "../lib/rotulos";
 import { LIMITE_DIVERGENCIA } from "./AlertasNutricao";
 import "./fechamentos-visuais.css";
@@ -25,7 +25,7 @@ function ComparacaoIngrediente({item:i}:{item:Fechamento["itens"][number]}){
  const maior=Math.max(Number(i.quantidadePrevista),Number(i.quantidadeConfirmada),1);const diferenca=diferencaConsumo(i.quantidadePrevista,i.quantidadeConfirmada);
  // Mesmo critério dos Alertas: diferença acima do limite merece revisão.
  const divergente=Number(i.quantidadePrevista)>0&&Math.abs(diferenca)/Number(i.quantidadePrevista)>LIMITE_DIVERGENCIA;
- return <div className="fechamento-ingrediente"><strong>{i.produto.nome}</strong><div><span>Previsto <b>{quantidadeNutricional(i.quantidadePrevista)} {i.unidade}</b></span><div className="fechamento-barra"><i className="fechamento-previsto" style={{width:`${Number(i.quantidadePrevista)/maior*100}%`}}/></div><span>Conferido <b>{quantidadeNutricional(i.quantidadeConfirmada)} {i.unidade}</b></span><div className="fechamento-barra"><i style={{width:`${Number(i.quantidadeConfirmada)/maior*100}%`}}/></div></div><small data-divergente={divergente||undefined}>Diferença <strong>{diferenca>0?"+":""}{quantidadeNutricional(String(diferenca))} {i.unidade}{divergente&&` · ${diferenca>0?"+":"−"}${Math.round(Math.abs(diferenca)/Number(i.quantidadePrevista)*100)}%`}</strong></small></div>;
+ return <div className="fechamento-ingrediente"><strong>{i.produto.nome}</strong><div><span>Previsto <b>{quantidadeNutricional(i.quantidadePrevista)} {un(i.unidade)}</b></span><div className="fechamento-barra"><i className="fechamento-previsto" style={{width:`${Number(i.quantidadePrevista)/maior*100}%`}}/></div><span>Conferido <b>{quantidadeNutricional(i.quantidadeConfirmada)} {un(i.unidade)}</b></span><div className="fechamento-barra"><i style={{width:`${Number(i.quantidadeConfirmada)/maior*100}%`}}/></div></div><small data-divergente={divergente||undefined}>Diferença <strong>{diferenca>0?"+":""}{quantidadeNutricional(String(diferenca))} {un(i.unidade)}{divergente&&` · ${diferenca>0?"+":"−"}${Math.round(Math.abs(diferenca)/Number(i.quantidadePrevista)*100)}%`}</strong></small></div>;
 }
 export function CalendarioFechamentos({itens,total,de,onMes,onAbrir}:{itens:Fechamento[];total:number;de:string;onMes:(periodo:{de:string;ate:string})=>void;onAbrir:(f:Fechamento)=>void}){
  const hoje=new Date().toLocaleDateString("sv-SE",{timeZone:"America/Sao_Paulo"});

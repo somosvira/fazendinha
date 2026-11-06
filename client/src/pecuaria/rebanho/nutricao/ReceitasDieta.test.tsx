@@ -131,7 +131,7 @@ describe("gestão compartilhada de receitas", () => {
     try { localStorage.clear(); } catch { /* armazenamento indisponível */ }
     render(<ReceitasDieta podeLancar />);
     const tabela = await screen.findByRole("table", { name: "Receitas de dieta" });
-    expect(within(tabela).getAllByText("3,5 KG")).toHaveLength(2);
+    expect(within(tabela).getAllByText("3,5 kg")).toHaveLength(2);
     expect(within(tabela).getAllByRole("button", { name: "Nova versão" })).toHaveLength(1);
     expect(within(tabela).getAllByRole("button", { name: "Publicar" })).toHaveLength(1);
     expect(screen.queryByRole("group", { name: /Visualização de Dieta/ })).toBeNull();
