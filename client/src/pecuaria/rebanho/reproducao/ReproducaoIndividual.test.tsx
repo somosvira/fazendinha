@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { alterarControle } from "../../../lib/controles.fixture";
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
+import { abrirFiltrosConsulta, alterarControle, aplicarFiltrosConsulta } from "../../../lib/controles.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { getHojeISO } from "../../../lib/hoje";

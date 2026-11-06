@@ -154,7 +154,7 @@ export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fe
         const mov = await tx.movimentoEstoque.create({ data: { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId,
           tipo: "SAIDA", origem: "NUTRICAO", data: c.fim, quantidade,
           custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal, centroCustoId: c.centroCustoId,
-          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio} a ${input.fim}`,
+          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio.split("-").reverse().join("/")} a ${input.fim.split("-").reverse().join("/")}`,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
         await registrarSaidaValorizadaTx(tx, mov.id, plano);
@@ -310,6 +310,11 @@ export async function consumoAnimal(animalId: string, propriedadeId: number | nu
   })) };
 }
 
+/** Último dia fechado (fechamentos confirmados) de cada lote do escopo, numa consulta só. */
+export async function ultimosFechamentos(propriedadeId: number | null) {
+  const grupos = await prisma.fechamentoConsumo.groupBy({ by: ["loteId"], where: { status: "CONFIRMADO", ...(propriedadeId == null ? {} : { propriedadeId }) }, _max: { fim: true } });
+  return Object.fromEntries(grupos.map(g => [g.loteId, g._max.fim?.toISOString().slice(0, 10) ?? null]));
+}
 export async function estornarFechamento(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     await travarAlimentacaoLeiteTx(tx, propriedadeId);

@@ -1,5 +1,6 @@
+import { un } from "./quantidades";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, Empty, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { Button, Empty, ErrorBox, hoje, Pill } from "../../../financeiro/financeiro-ui";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listarLotes } from "../api";
 import type { Lote } from "../types";
@@ -18,6 +19,15 @@ import * as api from "./mensal-api";
 import "./mensal.css";
 import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
 import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+
+// Situação calculada pelo servidor para o mês; o selo diz o que a pessoa precisa fazer.
+const SITUACAO_MES: Record<string, { rotulo: string; tom: "neutral" | "green" | "amber" | "red" }> = {
+  EM_ANDAMENTO: { rotulo: "Mês em andamento", tom: "neutral" },
+  A_CONFERIR: { rotulo: "A conferir", tom: "amber" },
+  ATRASADO: { rotulo: "Conferência atrasada", tom: "red" },
+  REVISADO: { rotulo: "Revisado", tom: "green" },
+};
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
     maximumFractionDigits: 3,
@@ -183,11 +193,9 @@ export function GestaoMensal({
                       <h3>
                         {m.loteNome} · {mesPorExtenso(m.competencia)}
                       </h3>
-                      <p>
-                        {modelos[m.modelo].nome} ·{" "}
-                        {m.situacao
-                          .replaceAll("_", " ")
-                          .toLocaleLowerCase("pt-BR")}
+                      <p className="flex flex-wrap items-center gap-2">
+                        {modelos[m.modelo].nome}
+                        <Pill tone={SITUACAO_MES[m.situacao]?.tom ?? "neutral"}>{SITUACAO_MES[m.situacao]?.rotulo ?? m.situacao}</Pill>
                       </p>
                       <p className="mensal-ajuda">
                         Conferência em {data(m.prazo)}
@@ -239,14 +247,14 @@ export function GestaoMensal({
               {status && !status.automacao && <p className="mensal-aviso m-0">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
               <label className="mensal-campo-modal">
                 Lote de animais
-                <select value={lote} onChange={(e) => setLote(e.target.value)}>
+                <SelectCampo value={lote} onValueChange={(valor) => setLote(valor)}>
                   <option value="">Selecione</option>
                   {lotes.map((l) => (
                     <option key={l.id} value={l.id}>
                       {l.nome} · {l.propriedade.nome}
                     </option>
                   ))}
-                </select>
+                </SelectCampo>
               </label>
               </div>
               <DialogFooter className="border-t border-border px-5 py-4">
@@ -354,7 +362,7 @@ function RevisaoMensal({
                 return (
                   <tr key={i.produtoId}>
                     <th scope="row">
-                      {i.nome} · {i.unidade}
+                      {i.nome} · {un(i.unidade)}
                     </th>
                     <td>{quantidade(i.prevista)}</td>
                     <td>{quantidade(i.confirmada)}</td>
@@ -378,7 +386,7 @@ function RevisaoMensal({
                     <td>
                       {delta === 0
                         ? "Sem ajuste"
-                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${i.unidade}`}
+                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${un(i.unidade)}`}
                     </td>
                     {mes.verValores && (
                       <td>
@@ -414,7 +422,7 @@ function RevisaoMensal({
                 quantidade={String(
                   Number(quantidades[i.produtoId]) - Number(i.confirmada),
                 )}
-                unidade={i.unidade}
+                unidade={un(i.unidade)}
                 saida
                 valor={partidas[i.produtoId] ?? []}
                 onChange={(p) => {
@@ -523,7 +531,7 @@ function RevisaoMensal({
               {data(d.data)} · {d.animais} animais
             </strong>
             <p>
-              {d.dieta ?? "Sem dieta"} · {d.situacao.toLocaleLowerCase("pt-BR")}
+              {d.dieta ?? "Sem dieta"} · {d.situacao === "EFETIVADO" ? "Baixa feita" : "Baixa pendente"}
             </p>
             {d.pendencia && (
               <p role="alert" className="mensal-aviso">
@@ -553,7 +561,7 @@ function RevisaoMensal({
                   d.itens.map((i) => (
                     <div key={i.id}>
                       <label>
-                        {i.nome} ({i.unidade})
+                        {i.nome} ({un(i.unidade)})
                         <input
                           type="number"
                           min="0"
@@ -590,7 +598,7 @@ function RevisaoMensal({
                                 Number(diarias[i.id] ?? i.prevista) -
                                   Number(i.confirmada),
                               )}
-                              unidade={i.unidade}
+                              unidade={un(i.unidade)}
                               saida
                               valor={partidas[i.id] ?? []}
                               onChange={(p) => {

@@ -356,7 +356,7 @@ export async function fecharOperacaoLeiteTx(
           financeiro: input.financeiro,
           itens: [
             {
-              descricao: `Leite de ${dataDTO(o.inicio)} a ${dataDTO(o.fim)}`,
+              descricao: `Leite de ${dataDTO(o.inicio).split("-").reverse().join("/")} a ${dataDTO(o.fim).split("-").reverse().join("/")}`,
               quantidade: Number(calculo.volume),
               unidade: "L",
               valorTotal: Number(calculo.total),

@@ -5,7 +5,7 @@ import { BarraConsulta, SituacoesConsulta } from "@/financeiro/BarraConsulta";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import type { Dieta } from "./api";
 
 import { navegarPara } from "../../../router";
@@ -82,7 +82,7 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
 function totalPorCabeca(d: Dieta) {
   const totais = new Map<string, number>();
   for (const item of d.itens) totais.set(item.unidade, (totais.get(item.unidade) ?? 0) + Number(item.quantidadeCabecaDia));
-  return totais.size ? [...totais].map(([unidade, total]) => `${quantidadeNutricional(String(total))} ${unidade}`).join(" + ") : "—";
+  return totais.size ? [...totais].map(([unidade, total]) => `${quantidadeNutricional(String(total))} ${un(unidade)}`).join(" + ") : "—";
 }
 
 /** Composição no cartão: uma barra por unidade com a participação de cada ingrediente e a lista ao lado. */
@@ -91,9 +91,9 @@ function ComposicaoCompacta({ dieta }: { dieta: Dieta }) {
   for (const item of dieta.itens) grupos.set(item.unidade, [...(grupos.get(item.unidade) ?? []), item]);
   return <div className="receita-compacta">{[...grupos].map(([unidade, itens]) => {
     const total = itens.reduce((s, i) => s + Number(i.quantidadeCabecaDia), 0);
-    return <div key={unidade} className="receita-compacta-grupo">
+    return <div key={un(unidade)} className="receita-compacta-grupo">
       <div className="receita-compacta-barra" aria-hidden>{itens.map((i, n) => <span key={i.produtoId} className={`receita-cor-${n % 3}`} style={{ width: `${total > 0 ? Number(i.quantidadeCabecaDia) / total * 100 : 0}%` }} />)}</div>
-      <ul aria-label={`Ingredientes em ${unidade} por cabeça/dia, com matéria seca`}>{itens.map((i, n) => <li key={i.produtoId}><i className={`receita-cor-${n % 3}`} aria-hidden /><span>{i.produto?.nome ?? "Produto indisponível"}</span><strong>{quantidadeNutricional(i.quantidadeCabecaDia)} {unidade}</strong><small title="Matéria seca">{i.materiaSecaPercentualSnapshot == null ? "MS —" : `${quantidadeNutricional(i.materiaSecaPercentualSnapshot)}%`}</small></li>)}</ul>
+      <ul aria-label={`Ingredientes em ${un(unidade)} por cabeça/dia, com matéria seca`}>{itens.map((i, n) => <li key={i.produtoId}><i className={`receita-cor-${n % 3}`} aria-hidden /><span>{i.produto?.nome ?? "Produto indisponível"}</span><strong>{quantidadeNutricional(i.quantidadeCabecaDia)} {un(unidade)}</strong><small title="Matéria seca">{i.materiaSecaPercentualSnapshot == null ? "MS —" : `${quantidadeNutricional(i.materiaSecaPercentualSnapshot)}%`}</small></li>)}</ul>
     </div>;
   })}{!dieta.itens.length && <p className="nutricao-secundario">Nenhum ingrediente nesta receita.</p>}</div>;
 }

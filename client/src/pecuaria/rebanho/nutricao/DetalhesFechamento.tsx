@@ -7,7 +7,7 @@ import { formatarDataBR } from "../lib/rotulos";
 import type { Fechamento } from "./api";
 import { custoTexto, LinkNutricional, rotaNutricao, SituacaoFechamento } from "./componentes";
 
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import { LIMITE_DIVERGENCIA } from "./AlertasNutricao";
 
 type Item = Fechamento["itens"][number];
@@ -23,10 +23,10 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
   // Até 8 ingredientes a tabela vai direta, sem busca, filtros nem ordenação.
   const colunasItens: ColunaTabela<Fechamento["itens"][number]>[] = [
         { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
-        { chave: "previsto", alinhamento: "direita" as const, titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${i.unidade}` },
-        { chave: "conferido", alinhamento: "direita" as const, titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${i.unidade}` },
-        { chave: "diferenca", alinhamento: "direita" as const, titulo: "Diferença", celula: (i) => { const p = Number(i.quantidadePrevista), c = Number(i.quantidadeConfirmada), d = c - p; if (Math.abs(d) < 0.0005) return <span className="nutricao-secundario">Igual ao previsto</span>; const v = p > 0 ? d / p : null; return <span className={v == null || Math.abs(v) > LIMITE_DIVERGENCIA ? "nutricao-alerta-texto" : undefined}>{d > 0 ? "+" : "−"}{quantidadeNutricional(String(Math.round(Math.abs(d) * 1000) / 1000))} {i.unidade}{v != null && ` (${d > 0 ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%)`}</span>; } },
-        { chave: "origem", titulo: "Origem", larguraMinima: 220, celula: (i) => <>{i.leite ? <Pill tone="green">Origens de leite produzido</Pill> : i.movimentoEstoque ? <><Pill tone="green">Baixa de estoque</Pill>{i.movimentoEstoque.alocacaoPartidaEstoques.map((a, idx) => <p className="nutricao-secundario mt-2" key={idx}>Partida {a.partida.nome || a.partida.codigo}: {quantidadeNutricional(a.quantidade)} {i.unidade}</p>)}</> : <Pill tone={Number(i.quantidadeConfirmada) === 0 ? "neutral" : "amber"}>{Number(i.quantidadeConfirmada) === 0 ? "Sem consumo" : "Sem baixa de estoque"}</Pill>}</> },
+        { chave: "previsto", alinhamento: "direita" as const, titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${un(i.unidade)}` },
+        { chave: "conferido", alinhamento: "direita" as const, titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${un(i.unidade)}` },
+        { chave: "diferenca", alinhamento: "direita" as const, titulo: "Diferença", celula: (i) => { const p = Number(i.quantidadePrevista), c = Number(i.quantidadeConfirmada), d = c - p; if (Math.abs(d) < 0.0005) return <span className="nutricao-secundario">Igual ao previsto</span>; const v = p > 0 ? d / p : null; return <span className={v == null || Math.abs(v) > LIMITE_DIVERGENCIA ? "nutricao-alerta-texto" : undefined}>{d > 0 ? "+" : "−"}{quantidadeNutricional(String(Math.round(Math.abs(d) * 1000) / 1000))} {un(i.unidade)}{v != null && ` (${d > 0 ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%)`}</span>; } },
+        { chave: "origem", titulo: "Origem", larguraMinima: 220, celula: (i) => <>{i.leite ? <Pill tone="green">Origens de leite produzido</Pill> : i.movimentoEstoque ? <><Pill tone="green">Baixa de estoque</Pill>{i.movimentoEstoque.alocacaoPartidaEstoques.map((a, idx) => <p className="nutricao-secundario mt-2" key={idx}>Partida {a.partida.nome || a.partida.codigo}: {quantidadeNutricional(a.quantidade)} {un(i.unidade)}</p>)}</> : <Pill tone={Number(i.quantidadeConfirmada) === 0 ? "neutral" : "amber"}>{Number(i.quantidadeConfirmada) === 0 ? "Sem consumo" : "Sem baixa de estoque"}</Pill>}</> },
         ...(f.verValores ? [{ chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (i: Item) => custoTexto(custoDoItem(i)) }] : []),
       ];
   // Sem custo em nenhum animal, as colunas de custo só repetiriam "Não apurado".
@@ -59,7 +59,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
           { chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (p: Fechamento["participacoes"][number]) => <>{custoTexto(p.custoConhecido)}{p.custoConhecido != null && !p.coberturaCustoCompleta && <p className="nutricao-secundario">Parcial</p>}</> },
           { chave: "medio", alinhamento: "direita" as const, titulo: "Por animal-dia", celula: (p: Fechamento["participacoes"][number]) => custoTexto(p.custoConhecidoPorDia) },
         ] : []),
-        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => p.itens.length === 1 ? <span>{quantidadeNutricional(p.itens[0].quantidadeAtribuida)} {p.itens[0].unidade} <span className="nutricao-secundario">(≈ {quantidadeNutricional(p.itens[0].quantidadePorDia)} {p.itens[0].unidade}/dia)</span></span> : <details className="nutricao-consumo-atribuido"><summary>Ver ingredientes ({p.itens.length})</summary><div>{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {i.unidade} (≈ {quantidadeNutricional(i.quantidadePorDia)} {i.unidade}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</div></details> },
+        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => p.itens.length === 1 ? <span>{quantidadeNutricional(p.itens[0].quantidadeAtribuida)} {p.itens[0].unidade} <span className="nutricao-secundario">(≈ {quantidadeNutricional(p.itens[0].quantidadePorDia)} {p.itens[0].unidade}/dia)</span></span> : <details className="nutricao-consumo-atribuido"><summary>Ver ingredientes ({p.itens.length})</summary><div>{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {un(i.unidade)} (≈ {quantidadeNutricional(i.quantidadePorDia)} {un(i.unidade)}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</div></details> },
       ]} />
     </Panel>
   </div>;

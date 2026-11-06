@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { escreverCustos, obterPreparatorios, type CustosDTO } from "./api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 type Candidato = Awaited<ReturnType<typeof obterPreparatorios>>["itens"][number];
 type Props = {
@@ -49,13 +50,13 @@ export function VinculosPreparatorios({ dados, aoMudarPaginaVinculos,visivel, pr
       if (!f) return;
       void gravar(() => escreverCustos("/preparatorios", { chave, propriedadeId, tentativaId, tipo: f.tipo, fonteId: f.id, modo, ...modo === "PARCELA" ? { valorMaterial: material || null, valorServico: servico || null } : {}, motivo }, propriedadeId));
     }}><fieldset className="grid gap-3" disabled={ocupado}>
-      <label>Preparatório<select required className={classeInput} value={preparo} onChange={e => setPreparo(e.target.value)}>
+      <label>Preparatório<SelectCampo required className={classeInput} value={preparo} onValueChange={(valor) => setPreparo(valor)}>
         <option value="">Selecione um fato realizado</option>{candidatos.map(f => <option key={`${f.tipo}:${f.id}`} value={`${f.tipo}:${f.id}`}>{f.data} · {f.descricao}</option>)}
-      </select></label>
+      </SelectCampo></label>
       <Paginacao paginaAtual={paginada.pagina} totalPaginas={Math.max(1,Math.ceil(paginada.total/10))} totalItens={paginada.total} itensPorPagina={10} onPaginaChange={p=>void carregarPreparos(p)} rotulo="candidatos" idSelect="custos-candidatos-preparo"/>
-      <label className="relative">Atribuição<select className={classeInput} value={modo} onChange={e => setModo(e.target.value)}>
+      <label className="relative">Atribuição<SelectCampo className={classeInput} value={modo} onValueChange={(valor) => setModo(valor)}>
         <option value="INTEGRAL">Integral, exclusiva desta tentativa</option><option value="PARCELA">Parcelas explícitas compartilhadas</option>
-      </select></label>
+      </SelectCampo></label>
       {modo === "PARCELA" && <>
         <label>Parcela do material (R$)<input className={classeInput} type="number" min="0" step="0.01" value={material} onChange={e => setMaterial(e.target.value)} /></label>
         <label>Parcela do Serviço (R$)<input className={classeInput} type="number" min="0" step="0.01" value={servico} onChange={e => setServico(e.target.value)} /></label>

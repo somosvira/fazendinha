@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/DatePicker";
 import { ArrowDownLeft, ArrowUpRight, Info, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -85,7 +86,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
         <label className="text-sm font-medium">Valor
           <Input disabled={processando} type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />
         </label>
-        <label className="text-sm font-medium">Data da liquidação<Input disabled={processando} required type="date" max={hoje()} value={data} onChange={e => setData(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label>
+        <label className="text-sm font-medium">Data da liquidação<DatePicker aria-label="Data da liquidação" disabled={processando} required max={hoje()} value={data} onChange={setData} className="mt-1.5" /></label>
         <label className="sm:col-span-2 text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
       </div>
       {compromisso.tipo === "PAGAR" && <NotaFiscalAnexo arquivo={nota} salvo={notaSalva} disabled={processando} onArquivo={setNota} />}

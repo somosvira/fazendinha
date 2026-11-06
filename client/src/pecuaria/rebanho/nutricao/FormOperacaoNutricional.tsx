@@ -1,6 +1,6 @@
 import { type ConfiguracaoMensal } from "./mensal-api";
 import { configuracaoNaData, consultarModelosFechamento, consultarSituacaoFechamentos, MODELOS, situacaoDoLote, somarDias } from "./situacaoFechamento";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import { consultarResumoNutricional, ultimoFechamentoConfirmado, type Dieta, type ResumoNutricional } from "./api";
 import { ClipboardCheck, Leaf } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
@@ -72,7 +72,7 @@ function ContextoFechamento({ lote, vigencia, dieta }: { lote: ResumoNutricional
     <div><dt>Lote de animais</dt><dd>{lote.nome}</dd><small>{lote.propriedade.nome} · {lote.animaisAtivos} {lote.animaisAtivos === 1 ? "animal ativo" : "animais ativos"} hoje</small></div>
     <div><dt>Receita</dt><dd>{vigencia.dieta.nome} · v{vigencia.dieta.versao}</dd><small>Vigente desde {formatarDataBR(vigencia.desde)}</small></div>
     {dieta && dieta.itens.length > 0 && <div className="nutricao-contexto-ingredientes"><dt>Ingredientes por cabeça/dia</dt>
-      <dd><ul>{dieta.itens.map(i => <li key={i.produtoId}><span>{i.produto?.nome ?? "Produto"}</span><strong>{quantidadeNutricional(i.quantidadeCabecaDia)} {i.unidade}</strong><small>{quantidadeNutricional(String(Math.round(Number(i.quantidadeCabecaDia) * lote.animaisAtivos * 1000) / 1000))} {i.unidade}/dia no lote</small></li>)}</ul></dd></div>}
+      <dd><ul>{dieta.itens.map(i => <li key={i.produtoId}><span>{i.produto?.nome ?? "Produto"}</span><strong>{quantidadeNutricional(i.quantidadeCabecaDia)} {un(i.unidade)}</strong><small>{quantidadeNutricional(String(Math.round(Number(i.quantidadeCabecaDia) * lote.animaisAtivos * 1000) / 1000))} {un(i.unidade)}/dia no lote</small></li>)}</ul></dd></div>}
   </dl>;
 }
 function FormVigencia({ acao, lote, vigenciaId, dietaInicialId, onSalvo, onOcupado, onAlterar }: { acao: "atribuir" | "corrigir"; lote: Lote; vigenciaId?: string; dietaInicialId?: string; onAlterar: () => void; onSalvo: () => void; onOcupado: (v: boolean) => void }) {
@@ -118,7 +118,7 @@ function FormVigencia({ acao, lote, vigenciaId, dietaInicialId, onSalvo, onOcupa
     {acao === "atribuir" && <>
       <EstadoConsulta erro={resumo.erro} carregando={resumo.carregando} recarregar={resumo.carregar} />
       {resumo.dados && <p className="nutricao-nota">Dieta atual: {resumo.dados.vigente ? `${resumo.dados.vigente.dieta.nome} · v${resumo.dados.vigente.dieta.versao}` : "Nenhuma cadastrada"}.</p>}
-      {selecionada && <section><h3>Composição de {selecionada.nome} · v{selecionada.versao}</h3><div className="nutricao-tabela-scroll"><table className="nutricao-tabela consulta-tabela"><thead><tr><th>Ingrediente</th><th>Por animal/dia</th><th>Para {lote.animaisAtivos} animais/dia</th></tr></thead><tbody>{selecionada.itens.map(item => <tr key={item.produtoId}><td>{item.produto?.nome ?? "Produto indisponível"}</td><td>{quantidadeNutricional(item.quantidadeCabecaDia)} {item.unidade}</td><td>{quantidadeNutricional(String(Number(item.quantidadeCabecaDia) * lote.animaisAtivos))} {item.unidade}</td></tr>)}</tbody></table></div><p className="nutricao-nota">Estimativa com o efetivo de hoje. O consumo acompanha a permanência dos animais em cada dia; unidades distintas não são somadas.</p></section>}
+      {selecionada && <section><h3>Composição de {selecionada.nome} · v{selecionada.versao}</h3><div className="nutricao-tabela-scroll"><table className="nutricao-tabela consulta-tabela"><thead><tr><th>Ingrediente</th><th>Por animal/dia</th><th>Para {lote.animaisAtivos} animais/dia</th></tr></thead><tbody>{selecionada.itens.map(item => <tr key={item.produtoId}><td>{item.produto?.nome ?? "Produto indisponível"}</td><td>{quantidadeNutricional(item.quantidadeCabecaDia)} {un(item.unidade)}</td><td>{quantidadeNutricional(String(Number(item.quantidadeCabecaDia) * lote.animaisAtivos))} {un(item.unidade)}</td></tr>)}</tbody></table></div><p className="nutricao-nota">Estimativa com o efetivo de hoje. O consumo acompanha a permanência dos animais em cada dia; unidades distintas não são somadas.</p></section>}
       {desde && resumo.dados && <p className="nutricao-nota">{desde > hoje() ? `Dieta programada para ${formatarDataBR(desde)}.` : `Início em ${formatarDataBR(desde)}.`} {resumo.dados?.vigente ? "A troca encerra a dieta anterior na data informada." : desde > hoje() ? "Até essa data, o lote continuará sem dieta vigente cadastrada." : "Esta será a dieta do lote a partir da data informada."} A atribuição não confirma consumo nem efetua baixa de estoque.</p>}
       <EstadoConsulta erro={modelo.erro} carregando={modelo.carregando} recarregar={modelo.carregar} />
       {modelo.dados && <p className="nutricao-nota">{!modelo.dados.habilitada ? "Nutrição mensal não habilitada. O consumo segue a conferência de períodos existente." : !configuracao ? "Sem configuração mensal vigente na data informada. O consumo segue a conferência de períodos existente." : <>

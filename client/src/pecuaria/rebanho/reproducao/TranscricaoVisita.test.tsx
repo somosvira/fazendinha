@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { alterarControle } from "@/lib/controles.fixture";
+import { alterarControle, esperarOpcoes, itensDoCampo, mudarCampo } from "@/lib/controles.fixture";
 import {
   cleanup,
   fireEvent,
@@ -271,8 +271,9 @@ it("visita encerrada permite regularizar vínculo sem permitir reabrir atendimen
   const a = {...atividade, participantes: atividade.participantes.map(p => ({...p,status:"CONFIRMADO",fatoId:"av",regularizacaoPendente:true}))};
   render(<Transcricao visita={{...visita,status:"ENCERRADA"}} atividade={a} podeLancar={false} podeRegularizar onMudou={vi.fn()} />);
   fireEvent.click(screen.getByRole("button",{name:"Regularizar origem do fato anulado"}));
-  expect(screen.getByRole("option",{name:"Reabrir pendência"})).toHaveProperty("disabled",true);
-  expect(screen.getByRole("option",{name:"Vincular fato substituto comprovado"})).toHaveProperty("disabled",false);
+  const acoes = itensDoCampo(screen.getByLabelText("Ação"));
+  expect(acoes.find(o => o.texto === "Reabrir pendência")?.desabilitada).toBe(true);
+  expect(acoes.find(o => o.texto === "Vincular fato substituto comprovado")?.desabilitada).toBe(false);
 });
 it("seleciona exame personalizado por animal e preserva zero e falso no rascunho e na confirmação", async () => {
   vi.mocked(reqV4).mockImplementation(async url => url.includes("tipos-exame") ? [{ id: "tipo-custom", nome: "Ultrassom detalhado", ativo: true, versaoFormato: 2, formatoExameHash: "c".repeat(64), campos: [
@@ -473,10 +474,10 @@ it("início IATF filtra protocolo e identifica pendência única; ambiguidade pe
   render(<Transcricao visita={visita} atividade={inicio} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)} />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhes · 100" }));
   const escolha = await screen.findByRole("combobox", { name: "Participação IATF · 100" });
-  await waitFor(() => expect(within(escolha).getAllByRole("option")).toHaveLength(3));
-  expect(within(escolha).queryByText(/Protocolo Y/)).toBeNull();
-  expect(within(escolha).getByText(/Turma manhã/)).toBeTruthy();
-  expect(within(escolha).getByText(/Turma tarde/)).toBeTruthy();
+  const opcoes = (await esperarOpcoes(() => escolha, o => o.length === 3)).map(o => o.texto);
+  expect(opcoes.some(t => /Protocolo Y/.test(t))).toBe(false);
+  expect(opcoes.some(t => /Turma manhã/.test(t))).toBe(true);
+  expect(opcoes.some(t => /Turma tarde/.test(t))).toBe(true);
 });
 
 it.each([
@@ -493,7 +494,7 @@ it.each([
   expect((await screen.findByRole("alert")).textContent).toContain("deixou de estar disponível");
   const escolha = await screen.findByRole("combobox", { name: "Participação IATF · 100" });
   expect((escolha as HTMLSelectElement).value).toBe("cancelada");
-  expect((within(escolha).getByRole("option", { name: /Participação anterior indisponível/ }) as HTMLOptionElement).disabled).toBe(true);
+  expect(itensDoCampo(escolha).find(o => /Participação anterior indisponível/.test(o.texto))?.desabilitada).toBe(true);
   await alterarControle(escolha, { target: { value: destino } });
   fireEvent.blur(escolha);
   await waitFor(() => expect(salvarRascunhoVisita).toHaveBeenCalled());
@@ -631,5 +632,5 @@ it("pagina o recibo de onze confirmações sem repetir a operação",async()=>{
 });
 
 async function esperarOpcao(nome: string | RegExp) {
-    await waitFor(() => expect(Array.from(document.querySelectorAll("option")).some(o => typeof nome === "string" ? o.textContent === nome : nome.test(o.textContent ?? ""))).toBe(true));
+    await esperarOpcoes(() => screen.queryAllByRole("combobox"), o => o.some(i => typeof nome === "string" ? i.texto === nome : nome.test(i.texto)));
 }

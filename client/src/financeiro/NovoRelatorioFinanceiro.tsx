@@ -55,7 +55,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const pendenteRef = useRef(!!recuperacao);
   // Enquanto gera ou descarta, nada grava: o servidor consome ou apaga o rascunho.
   const pausadoRef = useRef(false);
-  const iniciouRef = useRef(false);
+  // Só uma mudança real da configuração cria rascunho: abrir a tela, ajustes automáticos de período
+  // e a segunda execução dos efeitos em desenvolvimento repetem a mesma configuração.
+  const baseRef = useRef(JSON.stringify(config));
 
   const executarSalvamento = async () => {
     if (!mesmoContexto() || pausadoRef.current || !pendenteRef.current || estadoRascunhoRelatorioAtivo().recuperacao?.configuracao !== configRef.current) return;
@@ -81,7 +83,7 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
 
   useEffect(() => {
     if (pausadoRef.current) return;
-    if (!iniciouRef.current) { iniciouRef.current = true; if (!pendenteRef.current) return; }
+    if (!pendenteRef.current && JSON.stringify(config) === baseRef.current) return;
     pendenteRef.current = true; guardarEdicaoRascunhoRelatorio(config); setTemRascunho(true); setEstado("ALTERADO");
     cancelarTimer();
     timerRef.current = window.setTimeout(() => { timerRef.current = null; void enfileirar(); }, 700);
@@ -100,11 +102,11 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   // Mantém a sidebar e o leitor de tela informados sobre qual trabalho está aberto.
   useEffect(() => marcarEdicaoRascunhoRelatorio(), []);
   useEffect(() => {
-    if (estado !== "ALTERADO" && estado !== "SALVANDO") return;
+    if (!temRascunho || (estado !== "ALTERADO" && estado !== "SALVANDO")) return;
     const avisar = (evento: BeforeUnloadEvent) => { evento.preventDefault(); evento.returnValue = ""; };
     window.addEventListener("beforeunload", avisar);
     return () => window.removeEventListener("beforeunload", avisar);
-  }, [estado]);
+  }, [estado, temRascunho]);
 
   const alterar = <K extends keyof ConfiguracaoRelatorioFinanceiro>(campo: K, valor: ConfiguracaoRelatorioFinanceiro[K]) => setConfig((atual) => ({ ...atual, [campo]: valor }));
   const sair = async () => {
@@ -119,8 +121,9 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
       await filaRef.current;
       await enfileirarSalvamentoRascunhoRelatorio(descartarRascunhoRelatorioFinanceiro);
       limparRascunhoRelatorioAtivo();
-      versaoRef.current = undefined; pendenteRef.current = false; iniciouRef.current = false;
-      setTemRascunho(false); setErroRascunho(null); setEstado("ALTERADO"); setConfig(configuracaoPadrao());
+      const padrao = configuracaoPadrao();
+      versaoRef.current = undefined; pendenteRef.current = false; baseRef.current = JSON.stringify(padrao);
+      setTemRascunho(false); setErroRascunho(null); setEstado("ALTERADO"); setConfig(padrao);
     } catch (falha) { setErro(mensagem(falha)); }
     finally { pausadoRef.current = false; }
   };

@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
+import { mudarCampo, opcoesDoCampo } from "@/lib/controles.fixture";
 
 const mocks = vi.hoisted(() => ({ req: vi.fn() }));
 vi.mock("./api", () => ({ reqV4: mocks.req }));
@@ -34,12 +35,12 @@ describe("formulário da política de acompanhamento", () => {
     await screen.findByText(/Versão 1/);
     fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
     expect(escritas()).toHaveLength(0);
-    fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
+    mudarCampo(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
     fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));
-    fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } });
-    fireEvent.change(screen.getByLabelText("Exame do diagnóstico"), { target: { value: "reprodutivo" } });
+    mudarCampo(screen.getByLabelText("Dias após a tentativa"), { target: { value: "0" } });
+    mudarCampo(screen.getByLabelText("Exame do diagnóstico"), { target: { value: "reprodutivo" } });
     fireEvent.click(screen.getByRole("button", { name: "Adicionar reconfirmação" }));
-    fireEvent.change(screen.getByLabelText("Dias desde o primeiro DG positivo"), { target: { value: "30" } });
+    mudarCampo(screen.getByLabelText("Dias desde o primeiro DG positivo"), { target: { value: "30" } });
     const submeter = () => fireEvent.submit((screen.getByRole("button", { name: "Registrar nova versão" }) as HTMLButtonElement).form!);
     submeter();
     await screen.findByText("Conferência recusada");
@@ -55,9 +56,9 @@ describe("formulário da política de acompanhamento", () => {
     await screen.findByText(/Versão registrada/);
     expect(escritas()[1]).toEqual(escritas()[0]);
     fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
-    fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
+    mudarCampo(screen.getByLabelText("Vigente desde"), { target: { value: "2026-10-10" } });
     fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));
-    fireEvent.change(screen.getByLabelText("Dias após a tentativa"), { target: { value: "10" } });
+    mudarCampo(screen.getByLabelText("Dias após a tentativa"), { target: { value: "10" } });
     submeter();
     await waitFor(() => expect(escritas()).toHaveLength(3));
     expect(escritas()[2][1]).toMatchObject({ chave: expect.any(String), parametros: { diagnostico: { diasAposTentativa: 10 } } });
@@ -72,9 +73,10 @@ describe("formulário da política de acompanhamento", () => {
     await screen.findByText("Configure ao menos um acompanhamento.");
     expect(escritas()).toHaveLength(0);
     fireEvent.click(screen.getByLabelText("Configurar diagnóstico após tentativa"));
-    expect(screen.getByRole("option", { name: "Diagnóstico reprodutivo" })).toBeTruthy();
-    expect(screen.getByRole("option", { name: "Exame compartilhado" })).toBeTruthy();
-    expect(screen.queryByRole("option", { name: "Exame sanitário" })).toBeNull();
-    expect(screen.queryByRole("option", { name: "Exame inativo" })).toBeNull();
+    const opcoes = screen.getAllByRole("combobox").flatMap(opcoesDoCampo);
+    expect(opcoes).toContain("Diagnóstico reprodutivo");
+    expect(opcoes).toContain("Exame compartilhado");
+    expect(opcoes).not.toContain("Exame sanitário");
+    expect(opcoes).not.toContain("Exame inativo");
   });
 });

@@ -1,7 +1,7 @@
 import { hoje } from "../../../financeiro/financeiro-ui";
 import type { Lote } from "../types";
-import { consultarVisaoNutricional, listarDietas, ultimoFechamentoConfirmado, type ResumoNutricional } from "./api";
-import { configuracoesMensais, mesesNutricionais, statusMensal, type ConfiguracaoMensal } from "./mensal-api";
+import { compartilhada, consultarVisaoNutricional, listarDietas, ultimosFechamentos, type ResumoNutricional } from "./api";
+import { configuracoesMensais, processadosMensais, statusMensal, type ConfiguracaoMensal } from "./mensal-api";
 
 export const MODELOS: Record<ConfiguracaoMensal["modelo"], { rotulo: string; texto: string }> = {
   AUTOMATICO: { rotulo: "Diário automático", texto: "Todo dia o estoque é descontado sozinho; na conferência mensal, ajuste as diferenças." },
@@ -53,7 +53,8 @@ export function situacaoDoLote(resumo: ResumoNutricional, ultimoFim: string | nu
   return { resumo, ultimoFim, inicio, fim, dias: inicio > fim ? 0 : diasEntre(inicio, fim), mensal: configuracaoNaData(configuracoes, resumo.lote, dia), adocao, configuracaoAdocao: adocao ? configuracaoNaData(configuracoes, resumo.lote, adocao) : undefined, diarios };
 }
 
-export async function consultarModelosFechamento() {
+export const consultarModelosFechamento = () => compartilhada("modelos", lerModelosFechamento);
+async function lerModelosFechamento() {
   const status = await statusMensal();
   return { ...status, configuracoes: status.habilitada ? await configuracoesMensais() : [] as ConfiguracaoMensal[] };
 }
@@ -62,11 +63,8 @@ export async function consultarSituacaoFechamentos(): Promise<SituacaoLote[]> {
   const [visao, modelos, dietas] = await Promise.all([consultarVisaoNutricional(), consultarModelosFechamento(), listarDietas().catch(() => [])]);
   const comLeite = new Set(dietas.filter(d => d.usaLeiteProprio).map(d => d.id));
   const comDieta = visao.lotes.filter(r => r.vigente && r.lote.ativo !== false);
-  const [ultimos, processados] = await Promise.all([
-    Promise.all(comDieta.map(r => ultimoFechamentoConfirmado(r.lote.id))),
-    // Último dia processado no tipo de fechamento, só para lotes que já o adotaram.
-    Promise.all(comDieta.map(r => !comLeite.has(r.vigente!.dieta.id) && adocaoMensal(modelos.configuracoes, r.lote) ? mesesNutricionais(1, r.lote.id).then(p => p.itens.flatMap(m => m.dias.map(d => d.data.slice(0, 10))).sort().at(-1) ?? null).catch(() => null) : null)),
-  ]);
-  return comDieta.map((resumo, i) => situacaoDoLote(resumo, ultimos[i]?.fim.slice(0, 10) ?? null, modelos.configuracoes, hoje(), processados[i], comLeite.has(resumo.vigente!.dieta.id)))
+  // Duas consultas para todos os lotes, em vez de uma por lote.
+  const [ultimos, processados] = await Promise.all([ultimosFechamentos(), modelos.habilitada ? processadosMensais().catch(() => ({} as Record<string, string>)) : Promise.resolve({} as Record<string, string>)]);
+  return comDieta.map(resumo => situacaoDoLote(resumo, ultimos[resumo.lote.id] ?? null, modelos.configuracoes, hoje(), comLeite.has(resumo.vigente!.dieta.id) || !adocaoMensal(modelos.configuracoes, resumo.lote) ? null : processados[resumo.lote.id] ?? null, comLeite.has(resumo.vigente!.dieta.id)))
     .sort((a, b) => b.dias + (b.diarios?.dias ?? 0) - a.dias - (a.diarios?.dias ?? 0) || a.resumo.lote.nome.localeCompare(b.resumo.lote.nome, "pt-BR"));
 }

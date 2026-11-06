@@ -157,7 +157,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
     {podeLancar && <EditorDecisao emModal={naFicha} aberto={editando} onFechar={() => setEditando(false)} ocupado={ocupado}><div id={editorId} className="space-y-3">
       <h3>Decisão individual </h3>
 
-      <label>Data da decisão<Input type="date" value={dataDecisao} disabled={ocupado} onChange={e => setDataDecisao(e.target.value)}/></label>
+      <label>Data da decisão<DatePicker value={dataDecisao} disabled={ocupado} onChange={(valor) => setDataDecisao(valor)} /></label>
       {carregandoDecisao && <p role="status">Conferindo acompanhamento na data da decisão…</p>}
       {erroEdicao && <p role="alert">{erroEdicao}</p>}
       {decisao && !decisao.ciclo && <p>Não há parto ou situação inicial que comprove o início do acompanhamento nesta data.</p>}
@@ -172,7 +172,7 @@ export function ElegibilidadeAnimal({ animalId, propriedadeId, painel, podeLanca
         {tipo === "LIBERAR" && <div className="space-y-3">
           {decisao.aptidaoClinica?.estado === "APTA" ? <p>Exame apto vinculado: {decisao.aptidaoClinica.exameId} · {decisao.aptidaoClinica.data && formatBRDateISO(decisao.aptidaoClinica.data)}</p> : <p role="status">É necessário toque de aptidão apto neste ciclo para registrar liberação.</p>}
           <label>Ação avaliada<SelectCampo value={acaoLiberada} onValueChange={v => setAcaoLiberada(v as typeof acaoLiberada)}><option value="PROTOCOLO">Iniciar protocolo reprodutivo</option><option value="IA">Registrar IA</option><option value="TE">Registrar TE</option></SelectCampo></label>
-          <label>Apta desde<Input type="date" min={dataDecisao} value={apta} onChange={e => { setApta(e.target.value); setAnteciparPev(false); }}/></label>
+          <label>Apta desde<DatePicker min={dataDecisao} value={apta} onChange={(valor) => { setApta(valor); setAnteciparPev(false); }} /></label>
           {decisao.pevOriginalAte && apta && apta < decisao.pevOriginalAte && <label className="flex gap-2"><Checkbox checked={anteciparPev} onCheckedChange={v => setAnteciparPev(v === true)}/>Solicitar antecipação do PEV com base neste exame apto. O prazo original permanece preservado.</label>}
         </div>}
         <label>Motivo<Input minLength={5} maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)}/></label>

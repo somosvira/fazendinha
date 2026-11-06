@@ -109,6 +109,10 @@ export const nutricaoRouter = new Hono()
       return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status, {de,ate}, verReferencias(c))); }
     catch (e) { return falha(c, e); }
   })
+  .get("/consumo/ultimos", async (c) => {
+    try { return c.json(await consumo.ultimosFechamentos(await resolverEscopoLeitura(c))); }
+    catch (e) { return falha(c, e); }
+  })
   .get("/consumo/fechamentos/:id", async (c) => {
     try { if (!uuid.safeParse(c.req.param("id")).success) return c.json({ error: "Fechamento inválido", code: "VALIDACAO" }, 422);
       return c.json(await consumo.detalheFechamento(c.req.param("id"), await resolverEscopoLeitura(c), verValores(c), verReferencias(c))); }

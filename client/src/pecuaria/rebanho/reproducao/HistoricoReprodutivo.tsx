@@ -19,6 +19,7 @@ import { OrigensFatoProtocolo } from "../protocolos/OrigensFatoProtocolo";
 import { dataRelativaFato } from "../lib/historicoAnimal";
 import "./historico-reprodutivo.css";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 export type FatoHistorico = FatoReprodutivo & { grupo: string; chaveHistorico?: string; registro?: string; urlDetalhe?: string };
 export const rotulosReprodutivos: Record<string, string> = { VAZIA: "Vazia", GESTANTE: "Gestante", DESCONHECIDA: "Desconhecida", POSITIVO: "Positivo", NEGATIVO: "Negativo", INCONCLUSIVO: "Inconclusivo", IA: "Inseminação artificial", TE: "Transferência de embrião", COBERTURA: "Cobertura", NAO_AVALIADO: "Não avaliado", ABORTO: "Aborto registrado", NASCIMENTO: "Nascimento", NATIMORTO: "Natimorto", NORMAL: "Parto", DISTOCICO: "Parto distócico", PARTO_DISTOCICO: "Parto distócico", PARTO_NORMAL: "Parto normal", GESTACAO_ENCERRADA_PARTO: "Gestação encerrada pelo parto", GESTACAO_ENCERRADA_PERDA: "Gestação encerrada por perda", PERDA: "Perda gestacional", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem", ANULADO: "Anulado", ENCERRADA: "Encerrada", ATIVA: "Confirmada" };
@@ -84,7 +85,7 @@ export function HistoricoReprodutivo({ fatos, animalId, propriedadeId, onAbrir, 
       { chave: "acao", titulo: "Ação", acoes: true, celula: acoes },
     ]}/>}
     {!selecionados.length && <Empty>Nenhum evento registrado neste período e tipo.</Empty>}
-    {selecionados.length > 0 && <div className="repro-historico-rodape"><div className="repro-historico-tamanho"><label>Por página <select aria-label="Registros por página" value={tamanho} onChange={e => { setTamanho(Number(e.target.value)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</select></label></div>
+    {selecionados.length > 0 && <div className="repro-historico-rodape"><div className="repro-historico-tamanho"><label>Por página <SelectCampo aria-label="Registros por página" value={tamanho} onValueChange={(valor) => { setTamanho(Number(valor)); setPagina(1); }}>{[5,10].map(n => <option key={n}>{n}</option>)}</SelectCampo></label></div>
     <Paginacao paginaAtual={paginaAtual} totalPaginas={totalPaginas} totalItens={selecionados.length} itensPorPagina={tamanho} onPaginaChange={setPagina} rotulo="registros" idSelect={`pagina-${chaveUrl}-animal`}/></div>}
   </div>;
 }

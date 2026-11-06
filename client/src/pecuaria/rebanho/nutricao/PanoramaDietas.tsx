@@ -8,7 +8,7 @@ import { DIAS_ATENCAO, ingredientesEmFalta, textoCobertura, type CoberturaLote }
 import type { ResumoNutricional } from "./api";
 import { custoTexto, LinkNutricional, rotaNutricao } from "./componentes";
 import { formatarDataBR } from "../lib/rotulos";
-import { quantidadeNutricional } from "./quantidades";
+import { quantidadeNutricional, un } from "./quantidades";
 import "./panorama-dietas.css";
 
 /** Faixa de números do topo: cobertura de dietas com o efetivo, e o custo médio. Clicar em "sem dieta" filtra a lista abaixo. */
@@ -25,7 +25,7 @@ export function PanoramaDietas({ lotes, situacao, filtrar, verValores = false, c
     {lotes.some(r => r.vigente) && <div><dt>Estoque das dietas</dt>
       {cobertura === undefined ? <dd><Skeleton className="h-7 w-24" /></dd> : cobertura === null ? <dd className="text-sm">Indisponível</dd> : faltas.length ? <>
         <dd className="dieta-cartao-alerta">{[acabando && `${acabando} ${acabando === 1 ? "ingrediente acabando" : "ingredientes acabando"}`, vencendo && `${vencendo} ${vencendo === 1 ? "com lote vencendo" : "com lotes vencendo"}`].filter(Boolean).join(" · ")}</dd>
-        <small>{faltas[0].nome}: {faltas[0].dias != null && faltas[0].dias < DIAS_ATENCAO ? textoCobertura(faltas[0].dias) : `${quantidadeNutricional(String(Math.round(faltas[0].vencendo)))} ${faltas[0].unidade} vencem antes do uso`}{faltas.length > 1 ? ` · e mais ${faltas.length - 1}` : ""}</small>
+        <small>{faltas[0].nome}: {faltas[0].dias != null && faltas[0].dias < DIAS_ATENCAO ? textoCobertura(faltas[0].dias) : `${quantidadeNutricional(String(Math.round(faltas[0].vencendo)))} ${un(faltas[0].unidade)} vencem antes do uso`}{faltas.length > 1 ? ` · e mais ${faltas.length - 1}` : ""}</small>
         <LinkNutricional className="dietas-resumo-filtro" href={rotaNutricao({ aba: "alertas" })}>Ver nos alertas</LinkNutricional>
       </> : <><dd>Em dia</dd><small>Todos os ingredientes cobrem pelo menos {DIAS_ATENCAO} dias</small></>}
     </div>}
