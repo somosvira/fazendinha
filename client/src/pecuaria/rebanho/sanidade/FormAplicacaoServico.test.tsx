@@ -53,7 +53,7 @@ describe("aplicação sanitária V3", () => {
     await preencher();
     await screen.findByText(/Lote do sítio A · saldo/);
     expect(listarPartidasNutricionais).toHaveBeenLastCalledWith("produto", 1);
-    await alterarControle(screen.getByLabelText(/Lote do Produto/), { target: { value: "lote-a" } }); submeter();
+    await alterarControle(screen.getByLabelText(/Lote de estoque/), { target: { value: "lote-a" } }); submeter();
     await waitFor(() => expect(cargaAplicacao()).toMatchObject({ propriedadeId: 1, itens: [{ propriedadeId: 1, partidaId: "lote-a", data: "2026-09-10" }] }));
     expect(getPropriedadeAtiva()).toBe(2);
   });
@@ -224,10 +224,10 @@ describe("aplicação sanitária V3", () => {
     vi.mocked(reqSanidade).mockImplementation(async (path) => { if (path === "/aplicacoes/coletivas") throw Object.assign(new Error("Saldo do lote insuficiente neste sítio"), { campo: "itens.0.partidaId" }); return []; });
     render(<FormAplicacaoServico animalId="animal" propriedadeId={1} animais={[{ id: "a", brinco: "RN01", propriedadeId: 1 }]} onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher(); await screen.findByText(/A · saldo/);
-    await alterarControle(screen.getByLabelText(/Lote do Produto/), { target: { value: "lote" } }); submeter(); submeter();
-    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Lote do Produto/)));
+    await alterarControle(screen.getByLabelText(/Lote de estoque/), { target: { value: "lote" } }); submeter(); submeter();
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/Lote de estoque/)));
     expect(screen.getByLabelText(/Quantidade aplicada em RN01/)).toHaveProperty("value", "10");
-    expect(screen.getByLabelText(/Lote do Produto/)).toHaveProperty("value", "lote");
+    expect(screen.getByLabelText(/Lote de estoque/)).toHaveProperty("value", "lote");
   });
 });
 it("devolve a aplicação criada para atualizar a ficha e abrir o fato salvo", async () => {

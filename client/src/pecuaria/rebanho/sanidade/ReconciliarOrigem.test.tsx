@@ -53,7 +53,7 @@ it("aceita volume compatível e exige ciência explícita da validade desconheci
   render(<ReconciliarOrigem aplicacao={{ ...aplicacao, nomeProdutoAplicado: "Nome cadastrado" }} propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await preencher();
   await screen.findByRole("option", { hidden: true,  name: /Lote conhecido/ });
-  await alterarControle(screen.getByLabelText("Lote do Produto"), { target: { value: "l1" } });
+  await alterarControle(screen.getByLabelText("Lote de estoque"), { target: { value: "l1" } });
   fireEvent.submit(document.getElementById("reconciliar-origem")!);
   expect(reqSanidade).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("switch", { name: /validade deste lote/ }));
