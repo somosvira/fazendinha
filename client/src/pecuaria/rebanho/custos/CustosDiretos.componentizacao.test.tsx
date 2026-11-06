@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { alterarControle } from "../../../lib/controles.fixture";
+import { alterarControle, esperarOpcoes, mudarCampo, opcoesDoCampo } from "../../../lib/controles.fixture";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CustosDiretos } from "./CustosDiretos";
@@ -35,7 +35,7 @@ describe("rascunhos dos editores de custos", () => {
     await alterarControle(screen.getByLabelText("Fato a classificar"), { target: { value: "TENTATIVA:t" } });
     await alterarControle(screen.getByLabelText("Finalidade gerencial"), { target: { value: "SANIDADE" } });
     abrirPreparatorios();
-    await screen.findByRole("option", { name: /Hormônio h/ });
+    await esperarOpcoes(() => screen.getByLabelText("Preparatório"), o => o.some(i => /Hormônio h/.test(i.texto)));
     await alterarControle(screen.getByLabelText("Preparatório"), { target: { value: "APLICACAO:h" } });
     await alterarControle(screen.getByLabelText("Atribuição"), { target: { value: "PARCELA" } });
     await alterarControle(screen.getByLabelText("Parcela do material (R$)"), { target: { value: "10.25" } });
@@ -73,10 +73,10 @@ describe("rascunhos dos editores de custos", () => {
     rerender(<CustosDiretos tentativaId="b" propriedadeId={2} podeLancar />);
     await screen.findByRole("table", { name: "Componentes do custo direto registrado" });
     abrirPreparatorios();
-    await screen.findByRole("option", { name: /Hormônio b/ });
+    await esperarOpcoes(() => screen.getByLabelText("Preparatório"), o => o.some(i => /Hormônio b/.test(i.texto)));
     await act(async () => rejeitar(new Error("Falha antiga")));
     expect(screen.queryByText("Falha antiga")).toBeNull();
-    expect(screen.getByRole("option", { name: /Hormônio b/ })).toBeTruthy();
+    expect(opcoesDoCampo(screen.getByLabelText("Preparatório")).some(t => /Hormônio b/.test(t))).toBe(true);
     expect(screen.getByLabelText("Preparatório")).toHaveProperty("value", "");
   });
 });

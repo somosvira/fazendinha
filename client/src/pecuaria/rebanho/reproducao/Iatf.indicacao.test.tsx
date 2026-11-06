@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Iatf } from "./Iatf";
 import { reqV4, type AnimalReprodutivo } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { esperarOpcoes, mudarCampo, opcoesDoCampo } from "@/lib/controles.fixture";
 
 vi.mock("./api", () => ({ reqV4: vi.fn() }));
 vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/versoes") ? { itens: [{ id: "protocolo", nome: "Protocolo publicado", versao: 2 }], total: 1, pagina: 1, porPagina: 10 } : { itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
@@ -33,10 +34,10 @@ it("abre programação com indicados, permite editar a seleção e grava no sít
   expect(screen.getByRole("checkbox", { name: "101" })).toHaveProperty("checked", true);
   expect(vi.mocked(reqV4).mock.calls.every(([, body]) => !body)).toBe(true);
   fireEvent.click(screen.getByRole("checkbox", { name: "101" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Nome" }), { target: { value: "Turma após visita" } });
-  await screen.findByRole("option", { name: "Protocolo publicado · v2" });
-  fireEvent.change(screen.getByRole("combobox", { name: "Versão publicada" }), { target: { value: "protocolo" } });
-  fireEvent.change(screen.getByLabelText("Início previsto"), { target: { value: "2026-10-18" } });
+  mudarCampo(screen.getByRole("textbox", { name: "Nome" }), { target: { value: "Turma após visita" } });
+  await esperarOpcoes(() => screen.getByRole("combobox", { name: "Versão publicada" }), o => o.some(i => i.texto === "Protocolo publicado · v2"));
+  mudarCampo(screen.getByRole("combobox", { name: "Versão publicada" }), { target: { value: "protocolo" } });
+  mudarCampo(screen.getByLabelText("Início previsto"), { target: { value: "2026-10-18" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/programacoes", expect.objectContaining({
     propriedadeId: 7, nome: "Turma após visita", protocoloId: "protocolo", inicioPrevisto: "2026-10-18",
@@ -52,7 +53,7 @@ it("limita a primeira programação a 100 e mantém todos os indicados disponív
   await screen.findByRole("dialog", { name: "Nova programação IATF" });
   expect(screen.getByText("Participantes: 100/100")).toBeTruthy();
   expect(screen.getAllByRole("checkbox").length).toBeLessThanOrEqual(11);
-  fireEvent.change(screen.getByLabelText("Buscar animais disponíveis"), { target: { value: "200" } });
+  mudarCampo(screen.getByLabelText("Buscar animais disponíveis"), { target: { value: "200" } });
   expect(screen.getByRole("checkbox", { name: "200" })).toHaveProperty("checked", false);
   expect(screen.getByText(/os demais indicados continuam disponíveis/)).toBeTruthy();
   expect(vi.mocked(reqV4).mock.calls.every(([, body]) => !body)).toBe(true);

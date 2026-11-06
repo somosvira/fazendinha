@@ -16,6 +16,7 @@ import {
   type PoliticaElegibilidade,
 } from "./elegibilidade-api";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export function ConfiguracaoReprodutiva({
   propriedadeId,
   podeLancar,
@@ -357,10 +358,10 @@ function Escolha({
   return (
     <label>
       {rotulo}
-      <select
+      <SelectCampo
         required
         value={valor}
-        onChange={(e) => mudar(e.target.value)}
+        onValueChange={(valor) => mudar(valor)}
         className="h-10 w-full rounded-md border bg-background px-3"
       >
         <option value="">Selecione a regra</option>
@@ -369,7 +370,7 @@ function Escolha({
             {t}
           </option>
         ))}
-      </select>
+      </SelectCampo>
     </label>
   );
 }

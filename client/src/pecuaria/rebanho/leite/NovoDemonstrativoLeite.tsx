@@ -13,6 +13,7 @@ import {
   type PaginaComercial,
   type ComponenteDemonstrativo,
 } from "./comercial-types";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 interface Alocacao {
   entrega: EntregaComercial;
   quantidade: string;
@@ -205,11 +206,11 @@ export function NovoDemonstrativoLeite({
         <div className="leite-form-inline">
           <label>
             Comprador do demonstrativo
-            <select
+            <SelectCampo
               required
               value={parceiro}
-              onChange={(e) => {
-                setParceiro(e.target.value);
+              onValueChange={(valor) => {
+                setParceiro(valor);
                 setPagina(1);
               }}
             >
@@ -220,7 +221,7 @@ export function NovoDemonstrativoLeite({
                   {!p.ativo ? " (inativo · histórico)" : ""}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Início comercial

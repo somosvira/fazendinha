@@ -3,6 +3,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import type { PoliticaAcompanhamento } from "./ConfiguracaoAcompanhamento";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 export type TipoExameAcompanhamento = { id: string; nome: string; contexto?: string; ativo: boolean };
 export type RegistroPoliticaAcompanhamento = Pick<PoliticaAcompanhamento, "vigenteDesde" | "parametros"> & { propriedadeId: number; chave: string };
@@ -45,9 +46,9 @@ export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupad
     void aoSalvar({ ...input, chave: chave.current.id });
   }
 
-  const exame = (valor: string, mudar: (v: string) => void) => <select className={classeInput} value={valor} onChange={e => mudar(e.target.value)}>
+  const exame = (valor: string, mudar: (v: string) => void) => <SelectCampo className={classeInput} value={valor} onValueChange={(valor) => mudar(valor)}>
     <option value="">Tipo de exame não especificado</option>{tipos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-  </select>;
+  </SelectCampo>;
 
   if (!visivel) return null;
   return <form id="nova-politica-acompanhamento" onSubmit={salvar} className="space-y-4">

@@ -16,6 +16,7 @@ import { listarAnimais, listarGenitores, listarLotes } from "../api";
 import type { AnimalResumo, GenitorDTO, Lote } from "../types";
 import { obterReproducao, reqV4 } from "./api";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 type Exposicao = {
   id: string;
   loteId: string;
@@ -235,11 +236,11 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
             <ErrorBox erro={erro} />
             <label>
               Lote
-              <select
+              <SelectCampo
                 className={classeInput}
                 required
                 value={loteId}
-                onChange={(e) => setLoteId(e.target.value)}
+                onValueChange={(valor) => setLoteId(valor)}
               >
                 <option value="">Selecione</option>
                 {lotes.map((l) => (
@@ -247,15 +248,15 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
                     {l.nome}
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Touro
-              <select
+              <SelectCampo
                 className={classeInput}
                 required
                 value={touro}
-                onChange={(e) => setTouro(e.target.value)}
+                onValueChange={(valor) => setTouro(valor)}
               >
                 <option value="">Selecione</option>
                 {touros.map((t) => (
@@ -268,7 +269,7 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
                     {t.nome} · externo
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Início

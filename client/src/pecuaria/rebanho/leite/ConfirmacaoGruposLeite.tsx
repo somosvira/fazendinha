@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { FolhaLeite } from "./types";
 import { formatarLitros } from "./modelo";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export type NaturezaGrupoLeite = "COMERCIAL" | "COLOSTRO" | "NAO_COMERCIAL";
 export const nomeNaturezaGrupo = (natureza: string) =>
   (
@@ -299,18 +300,18 @@ function ConfirmarGrupo({
             <div className="leite-form-inline">
               <label>
                 Natureza do grupo de {sessao.nome}
-                <select
+                <SelectCampo
                   required
                   value={natureza}
-                  onChange={(e) =>
-                    setNatureza(e.target.value as NaturezaGrupoLeite)
+                  onValueChange={(valor) =>
+                    setNatureza(valor as NaturezaGrupoLeite)
                   }
                 >
                   <option value="">Escolha a natureza</option>
                   <option value="COMERCIAL">Comercial</option>
                   <option value="COLOSTRO">Colostro</option>
                   <option value="NAO_COMERCIAL">Não comercial</option>
-                </select>
+                </SelectCampo>
               </label>
               <label>
                 Justificativa da natureza de {sessao.nome}

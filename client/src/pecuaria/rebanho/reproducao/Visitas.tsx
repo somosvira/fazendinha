@@ -20,6 +20,7 @@ import { EntradaVisita } from "./EntradaVisita";
 import { ConsultaVisitas } from "./ConsultaVisitas";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -152,7 +153,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       })} contexto={<>
         <label>Nome da visita<input required minLength={2} maxLength={120} value={nome} onChange={e=>setNome(e.target.value)}/></label>
         <label>Data da visita<DatePicker required value={data} onChange={(valor) => setData(valor)} /></label>
-        <label>Sítio<select required value={propriedadeId} onChange={e=>setPropriedadeId(e.target.value?Number(e.target.value):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
+        <label>Sítio<SelectCampo required value={propriedadeId} onValueChange={(valor) =>setPropriedadeId(valor?Number(valor):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
         <label>Responsável (opcional)<input maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
       </>}/>
     </> : <>

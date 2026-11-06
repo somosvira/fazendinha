@@ -6,6 +6,7 @@ import { EditorExecucaoClinica } from "./EditorExecucaoClinica";
 import { reqProtocolo } from "./api";
 import { obterOpcoesClinicas, type EntradaClinica } from "./clinica-api";
 import type { TarefaOperacional } from "./api";
+import { mudarCampo } from "@/lib/controles.fixture";
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), reqProtocolo: vi.fn() }));
 vi.mock("./clinica-api", async original => ({ ...await original<typeof import("./clinica-api")>(), obterOpcoesClinicas: vi.fn() }));
 vi.mock("../../../financeiro/PainelCadastro", () => ({ classeInput: "input", PainelCadastro: ({ titulo, children, rodape }: { titulo: string; children: ReactNode; rodape: ReactNode }) => <section><h2>{titulo}</h2>{children}{rodape}</section> }));
@@ -23,7 +24,7 @@ afterEach(cleanup);
 it("registra somente coleta com DIA sem inventar resultado nem horário", async () => {
   render(<EditorExecucaoClinica tarefas={[tarefas[0]]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   const entrada = vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica;
@@ -33,14 +34,14 @@ it("registra somente coleta com DIA sem inventar resultado nem horário", async 
 it("preserva resultado e observação da primeira página ao editar o11ºanimal", async () => {
   render(<EditorExecucaoClinica tarefas={tarefas} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
   expect(screen.getAllByLabelText(/Informar resultado/)).toHaveLength(10);
   fireEvent.click(screen.getByLabelText("Informar resultado · Brinco 1"));
-  fireEvent.change(screen.getByLabelText("Resultado · células"), { target: { value: "123" } });
-  fireEvent.change(screen.getByLabelText("Observações · Brinco 1"), { target: { value: "Amostra identificada" } });
+  mudarCampo(screen.getByLabelText("Resultado · células"), { target: { value: "123" } });
+  mudarCampo(screen.getByLabelText("Observações · Brinco 1"), { target: { value: "Amostra identificada" } });
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
   expect(screen.getAllByLabelText(/Informar resultado/)).toHaveLength(1);
-  fireEvent.change(screen.getByLabelText("Observações · Brinco 11"), { target: { value: "Aguardando laudo" } });
+  mudarCampo(screen.getByLabelText("Observações · Brinco 11"), { target: { value: "Aguardando laudo" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   const entrada = vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica;
@@ -56,7 +57,7 @@ it("retry após falha de rede conserva chave e confirmação é única para o co
   });
   render(<EditorExecucaoClinica tarefas={[tarefas[0]]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   fireEvent.click(await screen.findByRole("button", { name: "Confirmar conjunto" }));
   await screen.findByText("Resposta interrompida");
@@ -71,11 +72,11 @@ it("avaliação não preseleciona positivo e exige resultado de cada animal", as
   render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
   expect(screen.getByLabelText("Resultado da avaliação · Brinco 1")).toHaveProperty("value", "");
-  fireEvent.change(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByText(/Informe o resultado da avaliação de Brinco 1/);
   expect(reqProtocolo).not.toHaveBeenCalled();
-  fireEvent.change(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "INCONCLUSIVO" } });
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "INCONCLUSIVO" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   expect((vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica).itens[0]).toMatchObject({ resultado: "INCONCLUSIVO", formatoExameHash: formato.formatoExameHash });
@@ -83,10 +84,10 @@ it("avaliação não preseleciona positivo e exige resultado de cada animal", as
 it("cobertura documentada usa reprodutor sem forçar material ou baixa de estoque", async () => {
   const t = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "TENTATIVA" } };
   render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
-  fireEvent.change(screen.getByLabelText("Tipo de tentativa"), { target: { value: "COBERTURA" } });
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Tipo de tentativa"), { target: { value: "COBERTURA" } });
   expect(screen.getByLabelText("Origem do material ou reprodutor")).toHaveProperty("value", "DOCUMENTADA");
-  fireEvent.change(screen.getByLabelText("Justificativa da origem documentada"), { target: { value: "Cobertura comprovada no manejo" } });
+  mudarCampo(screen.getByLabelText("Justificativa da origem documentada"), { target: { value: "Cobertura comprovada no manejo" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   const item = (vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica).itens[0];
@@ -103,8 +104,8 @@ it("reavaliação exige vínculo explícito e conserva a demanda do exame anteri
   vi.mocked(obterOpcoesClinicas).mockResolvedValue({ itens: [{ ...formato, tipoResultado: "MULTIPLO", campos: [] }], total: 1, pagina: 1, porPagina: 10, acompanhamento: { id: "demanda", estado: "PENDENTE", finalidade: "DIAGNOSTICO", versao: 1, tentativaId: "tentativa" } });
   render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
-  fireEvent.change(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
-  fireEvent.change(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "INCONCLUSIVO" } });
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "INCONCLUSIVO" } });
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByText(/Vincule cada reavaliação/);
   expect(reqProtocolo).not.toHaveBeenCalled();
@@ -125,7 +126,7 @@ it("hidratação do material planejado não cria exceções e todos herdam mater
   fireEvent.click(await screen.findByRole("button",{name:"Usar Material novo"}));
   fireEvent.click(screen.getByRole("button",{name:"Selecionar lote do material"}));
   fireEvent.click(await screen.findByRole("button",{name:"Usar Partida nova"}));
-  fireEvent.change(screen.getByLabelText("Data do atendimento"),{target:{value:"2026-10-21"}});
+  mudarCampo(screen.getByLabelText("Data do atendimento"),{target:{value:"2026-10-21"}});
   fireEvent.click(screen.getByRole("button",{name:"Conferir execução"}));
   await screen.findByRole("button",{name:"Confirmar conjunto"});
   const entrada = vi.mocked(reqProtocolo).mock.calls.find(([p])=>p==="/execucoes/previa")![2] as EntradaClinica;

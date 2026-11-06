@@ -55,6 +55,7 @@ import { FormReproducao } from "./FormReproducao";
 import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
 export function Transcricao({
   visita,
@@ -602,12 +603,12 @@ export function Transcricao({
     label: string,
     opcoes: [string, string][],
   ) => (
-    <label>{label}<select
+    <label>{label}<SelectCampo
       aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`}
       className={classeInput}
       disabled={!podeLancar || ocupado || confirmado(p)}
       value={String(rascunhos[p.id]?.[campo] ?? "")}
-      onChange={(e) => atualizar(p, campo, e.target.value)}
+      onValueChange={(valor) => atualizar(p, campo, valor)}
       onBlur={() => void persistir(p)}
     >
       <option value="">Selecione</option>
@@ -616,12 +617,12 @@ export function Transcricao({
           {r}
         </option>
       ))}
-    </select></label>
+    </SelectCampo></label>
   );
   const selectDados = (p: ParticipanteVisita, campo: string, label: string, opcoes: [string, string][]) => (
-    <label>{label}<select aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={!podeLancar || ocupado || confirmado(p)} value={String(rascunhos[p.id]?.dados?.[campo] ?? "")} onChange={e => atualizarDados(p, { [campo]: e.target.value })} onBlur={() => void persistir(p)}>
+    <label>{label}<SelectCampo aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={!podeLancar || ocupado || confirmado(p)} value={String(rascunhos[p.id]?.dados?.[campo] ?? "")} onValueChange={(valor) => atualizarDados(p, { [campo]: valor })} onBlur={() => void persistir(p)}>
       <option value="">Selecione</option>{opcoes.map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
-    </select></label>
+    </SelectCampo></label>
   );
   function gestacoesDoAnimal(p: ParticipanteVisita) {
     const animal = painel?.animais.find(a => a.animalId === p.animalId);
@@ -729,14 +730,14 @@ export function Transcricao({
         {ausente ? <label>Motivo do atendimento pendente{input(p, "motivo", "Motivo do atendimento pendente")}</label> : <>
           <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />
           <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label>
-          <label>Tipo de exame<select aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
-            value={r.tipoExameId ?? ""} onChange={e => {
-              const tipo = tiposExame.find(t => t.id === e.target.value);
+          <label>Tipo de exame<SelectCampo aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
+            value={r.tipoExameId ?? ""} onValueChange={(valor) => {
+              const tipo = tiposExame.find(t => t.id === valor);
               mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] });
             }}>
             <option value="">Avaliação reprodutiva padrão</option>
             {tiposExame.filter(t => t.ativo || t.id === r.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}
-          </select></label>
+          </SelectCampo></label>
           {r.resultado !== "NAO_AVALIADO" && <CamposResultadoExame
             campos={(tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))}
             valores={r.resultados ?? []} onChange={resultados => mudarAvaliacao(p, { resultados })} />}
@@ -894,7 +895,7 @@ export function Transcricao({
               <tr className="border-b border-border align-top" id={`linha-${p.id}`}>
                 <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
                 <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
-                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}><CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={(r.dados ?? {}) as RascunhoVisita} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/></fieldset> : <select aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onChange={e=>{atualizar(p,"status",e.target.value);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></select>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
+                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}><CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={(r.dados ?? {}) as RascunhoVisita} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/></fieldset> : <SelectCampo aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onValueChange={(valor) =>{atualizar(p,"status",valor);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></SelectCampo>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
                 <td className="p-3 min-w-36 space-y-2">
                   <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
                   <p role="status" className="text-sm">{avisos[p.id]}</p>
@@ -921,7 +922,7 @@ export function Transcricao({
                       <label>Anotação original<input className={classeInput} value={String(r.dados?.anotacaoOriginal ?? "")} onChange={e => atualizarDados(p, { anotacaoOriginal: e.target.value })} onBlur={() => void persistir(p)} /></label>
                       {["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "") && input(p, "motivo", "Motivo do atendimento pendente")}
                     </fieldset>
-                    <div className="grid gap-3"><label>Tipo de exame<select className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onChange={e => { const tipo = tiposExame.find(t => t.id === e.target.value); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</select></label>
+                    <div className="grid gap-3"><label>Tipo de exame<SelectCampo className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onValueChange={(valor) => { const tipo = tiposExame.find(t => t.id === valor); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>
                       {!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
                     </div>
                   </>}
@@ -942,13 +943,13 @@ export function Transcricao({
                         {referenciaIndisponivel ? <>
                           <p role="alert" className="text-sm">A participação salva no rascunho deixou de estar disponível. Resolva o vínculo antes de confirmar, escolhendo uma opção compatível.</p>
                           {!temProtocolo && compativeis.length === 0 && <p className="text-sm">Nenhuma participação pendente compatível está disponível. Este início antigo exige uma participação existente.</p>}
-                          <label>Participação IATF<select aria-label={`Participação IATF · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={bloqueado} value={r.participanteIatfId ?? ""} onChange={e => { atualizar(p, "participanteIatfId", e.target.value); void persistir(p); }} onBlur={() => void persistir(p)}>
+                          <label>Participação IATF<SelectCampo aria-label={`Participação IATF · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={bloqueado} value={r.participanteIatfId ?? ""} onValueChange={(valor) => { atualizar(p, "participanteIatfId", valor); void persistir(p); }} onBlur={() => void persistir(p)}>
                             <option value={r.participanteIatfId} disabled>Participação anterior indisponível · selecione uma opção</option>
                             {temProtocolo && compativeis.length === 0 && <option value="">Criar nova participação</option>}
                             {temProtocolo && compativeis.length === 1 && <option value={compativeis[0].id}>Usar participação pendente compatível · {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"}</option>}
                             {(!temProtocolo || compativeis.length > 1) && <option value="">{temProtocolo ? "Limpar escolha anterior" : "Selecione uma participação"}</option>}
                             {(!temProtocolo || compativeis.length > 1) && compativeis.map(t => <option key={t.id} value={t.id}>{t.protocoloNome ?? "Protocolo"} · v{t.protocoloVersao ?? "?"} · {t.programacaoNome ?? "Programação"} · previsto {t.inicioPrevisto.slice(0, 10)}</option>)}
-                          </select></label>
+                          </SelectCampo></label>
                         </> : <>
                           {temProtocolo && compativeis.length === 0 && <p className="text-sm">A participação e as tarefas serão criadas ao confirmar este início.</p>}
                           {compativeis.length === 1 && <p className="text-sm">Participação pendente: {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"} · previsto {compativeis[0].inicioPrevisto.slice(0, 10)}. Será reutilizada na confirmação.</p>}

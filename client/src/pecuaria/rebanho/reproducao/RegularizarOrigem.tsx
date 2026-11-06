@@ -3,6 +3,7 @@ import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { reqV4 } from "./api";
 import { Paginacao } from "../ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export type EventoRegularizacao = { acao?: string; destinoConsumo?: string | null };
 export function consumoMantidoUltimaAnulacao(historico?: EventoRegularizacao[]) {
   return [...(historico ?? [])].reverse().find(e => e.acao === "FATO_ANULADO")?.destinoConsumo === "MANTER_CONSUMO";
@@ -41,7 +42,7 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
           .then(async()=>{setAberto(false);await onMudou();}).catch(e=>setErro(e.message)).finally(()=>setOcupado(false));
       }}>
         <ErrorBox erro={erro}/><p className="text-sm">O vínculo e a execução anteriores permanecem no histórico. {consumoMantido && "O consumo foi mantido; a origem não pode ser reaberta para executar novamente."}</p>
-        <label>Ação<select className={classeInput} value={acao} onChange={e=>{setAcao(e.target.value);setFatoId("");setSelecionado(null);setPagina(1);}}><option value="ENCERRAR_SEM_SUBSTITUICAO">Encerrar sem substituição</option><option value="REABRIR" disabled={consumoMantido || !reabrirPermitido}>Reabrir pendência</option><option value="VINCULAR_SUBSTITUTO">Vincular fato substituto comprovado</option></select></label>
+        <label>Ação<SelectCampo className={classeInput} value={acao} onValueChange={(valor) =>{setAcao(valor);setFatoId("");setSelecionado(null);setPagina(1);}}><option value="ENCERRAR_SEM_SUBSTITUICAO">Encerrar sem substituição</option><option value="REABRIR" disabled={consumoMantido || !reabrirPermitido}>Reabrir pendência</option><option value="VINCULAR_SUBSTITUTO">Vincular fato substituto comprovado</option></SelectCampo></label>
         {acao === "REABRIR" && <label><input type="checkbox" required checked={ciencia} onChange={e=>setCiencia(e.target.checked)}/> Confirmo que o procedimento não foi executado fisicamente.</label>}
         {acao === "VINCULAR_SUBSTITUTO" && <>
           <label>Buscar procedimento<input className={classeInput} value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1);}} /></label>
@@ -49,10 +50,10 @@ export function RegularizarOrigem({path, propriedadeId, consumoMantido, reabrirP
           <ErrorBox erro={erroConsulta}/>
           {erroConsulta && <Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar consulta novamente</Button>}
           {!carregando && !erroConsulta && !substitutos.length && <p>Nenhum fato substituto compatível disponível. Registre o procedimento comprovado antes de vinculá-lo.</p>}
-          <label>Fato substituto comprovado<select className={classeInput} disabled={carregando || !!erroConsulta} value={substitutos.some(s=>s.id===fatoId)?fatoId:""} onChange={e=>{setFatoId(e.target.value);setSelecionado(substitutos.find(s=>s.id===e.target.value)??null);}}>
+          <label>Fato substituto comprovado<SelectCampo className={classeInput} disabled={carregando || !!erroConsulta} value={substitutos.some(s=>s.id===fatoId)?fatoId:""} onValueChange={(valor) =>{setFatoId(valor);setSelecionado(substitutos.find(s=>s.id===valor)??null);}}>
             <option value="">Selecione o procedimento registrado</option>
             {substitutos.map(s=><option key={s.id} value={s.id}>{s.descricao}</option>)}
-          </select></label>
+          </SelectCampo></label>
           {!erroConsulta&&total>10&&<Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(total/10))} totalItens={total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="fatos substitutos" idSelect="pagina-substitutos"/>}
           {selecionado&&<p role="status">Fato selecionado: <strong>{selecionado.descricao}</strong></p>}
           <p className="text-sm">Vincular reutiliza o fato registrado e seus efeitos. Esta ação não registra outro procedimento ou despesa.</p>

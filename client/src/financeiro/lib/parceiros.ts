@@ -9,6 +9,11 @@ export const FORMAS_PAGAMENTO: Record<string, string> = {
   CARTAO: "Cartão", CHEQUE: "Cheque", DEBITO_AUTOMATICO: "Débito automático", OUTRO: "Outro",
 };
 
+export const TIPOS_TRANSACAO: Record<string, string> = {
+  PAGAMENTO: "Pagamento", RECEBIMENTO: "Recebimento", TRANSFERENCIA: "Transferência", APORTE: "Aporte",
+  RETIRADA: "Retirada", AJUSTE: "Ajuste", REVERSAO: "Estorno",
+};
+
 export function papeisDoParceiro(parceiro: DadosParceiro & { tipo: TipoParceiro }): PapelParceiro[] {
   return parceiro.papeis?.length ? parceiro.papeis : parceiro.tipo === "AMBOS" ? ["CLIENTE", "FORNECEDOR"] : [parceiro.tipo];
 }
