@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
@@ -313,13 +314,7 @@ export function NovaEntregaComercialLeite({
                   </label>
                   <label>
                     Data da retirada
-                    <input
-                      type="date"
-                      required
-                      max={hojeOperacional()}
-                      value={data}
-                      onChange={(e) => setData(e.target.value)}
-                    />
+                    <DatePicker required max={hojeOperacional()} value={data} onChange={(valor) => setData(valor)} />
                   </label>
                   <label>
                     Volume expedido (L)
@@ -371,12 +366,7 @@ export function NovaEntregaComercialLeite({
                   {condicao === "A_PRAZO" && (
                     <label>
                       Vencimento da parcela
-                      <input
-                        type="date"
-                        required
-                        value={vencimento}
-                        onChange={(e) => setVencimento(e.target.value)}
-                      />
+                      <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
                     </label>
                   )}
                   {condicao === "A_VISTA" && (

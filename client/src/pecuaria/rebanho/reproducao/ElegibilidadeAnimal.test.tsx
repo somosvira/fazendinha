@@ -145,7 +145,7 @@ it("consulta automaticamente hoje e mantém a decisão independente do filtro hi
   await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2020-05-02"));
   fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
   await screen.findByLabelText("Decisão");
-  expect(screen.getByLabelText("Data da decisão")).toHaveProperty("value", hoje);
+  expect(screen.getByLabelText("Data da decisão")).toHaveProperty("value", hoje.split("-").reverse().join("/"));
   await alterarControle(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
   await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Decisão conferida na data do registro" } });
   fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));

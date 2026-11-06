@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Badge } from '@/components/ui/badge';
 import { AjudaCampo } from '@/components/Dica';
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
@@ -49,7 +50,7 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
   return <section className="leite-operacoes leite-consultas">
     <BarraConsulta edicaoFiltros={draft} adicionais={<>
       <CampoFiltro rotulo="Consultar produção por"><SelectCampo value={draft.rascunho.visao} onValueChange={v => draft.editar("visao", v)}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></CampoFiltro>
-      <CampoFiltro rotulo="Data de produção"><input type="date" value={draft.rascunho.data} onChange={e => { if(e.target.value) { draft.editar("data", e.target.value); const periodo = datasVisao(e.target.value, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
+      <CampoFiltro rotulo="Data de produção"><DatePicker value={draft.rascunho.data} onChange={(valor) => { if(valor) { draft.editar("data", valor); const periodo = datasVisao(valor, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
       <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Não comercial</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Classificação"><span className="leite-checkbox"><input type="checkbox" checked={draft.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => draft.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Sem classificação</span></CampoFiltro>
     </>}><PeriodoFinanceiroControl showIcon inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>

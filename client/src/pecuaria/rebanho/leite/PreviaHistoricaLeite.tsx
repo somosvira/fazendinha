@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { FileSearch } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -142,30 +143,17 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           <div className="leite-form-inline">
             <label>
               Início do lote
-              <input
-                type="date"
-                required
-                max={fim}
-                value={inicio}
-                onChange={(e) => {
-                  setInicio(e.target.value);
+              <DatePicker required max={fim} value={inicio} onChange={(valor) => {
+                  setInicio(valor);
                   invalidar();
-                }}
-              />
+                }} />
             </label>
             <label>
               Fim do lote
-              <input
-                type="date"
-                required
-                min={inicio}
-                max={hojeOperacional()}
-                value={fim}
-                onChange={(e) => {
-                  setFim(e.target.value);
+              <DatePicker required min={inicio} max={hojeOperacional()} value={fim} onChange={(valor) => {
+                  setFim(valor);
                   invalidar();
-                }}
-              />
+                }} />
             </label>
             <label>
               Arquivo de preparação (JSON)

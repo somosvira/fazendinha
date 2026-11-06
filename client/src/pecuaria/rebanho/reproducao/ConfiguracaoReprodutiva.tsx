@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
 import { ModalPolitica } from "./ModalPolitica";
@@ -225,12 +226,7 @@ export function ConfiguracaoReprodutiva({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
               Vigente desde
-              <Input
-                required
-                type="date"
-                value={vigencia}
-                onChange={(e) => setVigencia(e.target.value)}
-              />
+              <DatePicker required value={vigencia} onChange={(valor) => setVigencia(valor)} />
             </label>
             <label>
               PEV após primeiro parto (dias)

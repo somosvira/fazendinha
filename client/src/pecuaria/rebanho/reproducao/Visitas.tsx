@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, CabecalhoTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
@@ -150,7 +151,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         navegarPara(urlEtapaVisita(v.id,modo==="agenda"?"planejamento":"selecao",{modo}));setRota(parseRotaVisita(window.location.pathname,window.location.search)!);
       })} contexto={<>
         <label>Nome da visita<input required minLength={2} maxLength={120} value={nome} onChange={e=>setNome(e.target.value)}/></label>
-        <label>Data da visita<input type="date" required value={data} onChange={e=>setData(e.target.value)}/></label>
+        <label>Data da visita<DatePicker required value={data} onChange={(valor) => setData(valor)} /></label>
         <label>Sítio<select required value={propriedadeId} onChange={e=>setPropriedadeId(e.target.value?Number(e.target.value):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
         <label>Responsável (opcional)<input maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
       </>}/>

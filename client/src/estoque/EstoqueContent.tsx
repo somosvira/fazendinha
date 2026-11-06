@@ -71,6 +71,7 @@ function useMovimentos(f: FiltroMovimentos) {
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
   const visual = useVisualizacaoConsulta("visualEstoque");
+  const [produtoCriado, setProdutoCriado] = useState<string | null>(null);
   const [consultaUrl, setConsultaUrl] = useState(() => window.location.search);
   useEffect(() => { const atualizar = () => setConsultaUrl(window.location.search); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
   const urlEstoque = new URLSearchParams(consultaUrl);
@@ -212,6 +213,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{m.valorTotal == null ? "—" : brl(m.valorTotal)}</span> },
     { chave: "origem", titulo: "Origem / vínculo", alinhamento: "esquerda", larguraMinima: 220, larguraFlexivel: true, celula: (m) => {
       const destino = destinoDoMovimento(m);
+      // A devolução de um estorno é gravada como ajuste; o que importa para quem lê é que é um estorno.
+      if (m.reversaoDeId && !destino) return <><div className="text-xs text-ink-3">Estorno</div><div className="break-words text-ink-3">{m.observacao ?? "—"}</div><div className="mt-1 flex flex-wrap gap-2 text-xs"><LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno></div></>;
       return <>{destino?.rotulo !== (ROTULO_ORIGEM[m.origem] ?? m.origem) && <div className="text-xs text-ink-3">{ROTULO_ORIGEM[m.origem] ?? m.origem}</div>}<div className="break-words">{destino ? <><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</> : <span className="text-ink-3">{m.fornecedor ?? "—"}</span>}</div><div className="mt-1 flex flex-wrap gap-2 text-xs">
         {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
         {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
@@ -237,6 +240,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><Package/></span>{titulo ?? "Estoque"}</span>} acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
+    {produtoCriado && <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted px-4 py-3 text-sm"><span><strong>{produtoCriado}</strong> cadastrado. Ele aparece com saldo depois da primeira entrada.</span><LinkInterno area="financeiro" href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE">Registrar a primeira entrada</LinkInterno><button type="button" className="ml-auto text-ink-3 hover:text-ink" onClick={() => setProdutoCriado(null)}>Fechar</button></p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
     <Panel className="estoque-resumo-consulta mt-5">
@@ -319,6 +323,6 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     {perdendo && <TransferirEstoque perda onFechar={() => setPerdendo(false)} onSalvo={() => { setPerdendo(false); recarregarTudo(); }} />}
     {transferindo && <TransferirEstoque onFechar={() => setTransferindo(false)} onSalvo={() => { setTransferindo(false); recarregarTudo(); }} />}
-    {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
+    {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={(salvo) => { setCadastrandoProduto(false); setProdutoCriado(salvo.nome); recarregarTudo(); }} />}
   </PaginaFinanceira>;
 }

@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import {ListaAnimaisVisita} from "./ListaAnimaisVisita";
 import { FiltrosAtendimentoVisita } from "./FiltrosAtendimentoVisita";
 import "./visitas-fluxo.css";
@@ -912,7 +913,7 @@ export function Transcricao({
                         <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
                         <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label>
                         {r.dados?.conduta === "DESCARTE" && <label>Motivo do descarte<input aria-label={`Motivo do descarte · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={String(r.dados?.motivo ?? "")} onChange={e => atualizarDados(p, { motivo: e.target.value })} /></label>}
-                        {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<input aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} type="date" value={String(r.dados?.retornoEm ?? "")} onChange={e => atualizarDados(p, { retornoEm: e.target.value || undefined })} /></label>}
+                        {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<DatePicker aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className="mt-1.5" value={String(r.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(p, { retornoEm: valor || undefined })} /></label>}
                         {r.dados?.conduta === "IATF" && <div><p>A indicação não inicia o protocolo. A programação fica disponível após confirmar.</p><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
                       </fieldset>
                       {r.dados?.resultado === "POSITIVO" && !r.dados?.tentativaId && !r.dados?.gestacaoId && <label>Justificativa do vínculo desconhecido<input className={classeInput} value={String(r.dados?.motivoVinculoDesconhecido ?? "")} onChange={e => atualizarDados(p, { motivoVinculoDesconhecido: e.target.value })} onBlur={() => void persistir(p)} /></label>}
@@ -1035,7 +1036,7 @@ export function Transcricao({
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
-            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<input className={classeInput} type="date" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={e => atualizarDados(preparar, { retornoEm: e.target.value || undefined })}/></label>}</>}
+            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<DatePicker className="mt-1.5" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(preparar, { retornoEm: valor || undefined })} /></label>}</>}
             dataInicial={visita.data.slice(0, 10)}
             tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}

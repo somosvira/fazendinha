@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -51,7 +52,7 @@ export function FormularioAcompanhamento({ visivel, propriedadeId, tipos, ocupad
   if (!visivel) return null;
   return <form id="nova-politica-acompanhamento" onSubmit={salvar} className="space-y-4">
     <fieldset disabled={ocupado} className="space-y-4 min-w-0">
-    <label>Vigente desde<input className={classeInput} required type="date" value={vigencia} onChange={e => setVigencia(e.target.value)} /></label>
+    <label>Vigente desde<DatePicker className="mt-1.5" required value={vigencia} onChange={(valor) => setVigencia(valor)} /></label>
     <label className="flex gap-2"><input type="checkbox" checked={dg} onChange={e => setDg(e.target.checked)} />Configurar diagnóstico após tentativa</label>
     {dg && <div className="grid gap-3 sm:grid-cols-2">
       <label>Dias após a tentativa<input className={classeInput} type="number" required min={0} max={1000} value={dias} onChange={e => setDias(e.target.value)} /></label>

@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { SelecaoQualidadeFechamento } from "./SelecaoQualidadeFechamento";
@@ -241,15 +242,7 @@ export function FecharOperacaoComercialLeite({
         <div className="leite-form-inline">
           <label>
             Data do fechamento
-            <input
-              required
-              type="date"
-              min={o.fim}
-              max={hojeOperacional()}
-              value={data}
-              disabled={!!o.fechamento}
-              onChange={(e) => setData(e.target.value)}
-            />
+            <DatePicker required min={o.fim} max={hojeOperacional()} value={data} disabled={!!o.fechamento} onChange={(valor) => setData(valor)} />
           </label>
           <label>
             Preço negociado por litro (R$)
@@ -336,12 +329,7 @@ export function FecharOperacaoComercialLeite({
           {condicao === "A_PRAZO" && (
             <label>
               Vencimento
-              <input
-                required
-                type="date"
-                value={vencimento}
-                onChange={(e) => setVencimento(e.target.value)}
-              />
+              <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
             </label>
           )}
           {condicao === "A_VISTA" && (

@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -35,11 +36,11 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     <div className="leite-form-inline">
       <label>Produto de leite<SelectCampo required value={produto} onValueChange={setProduto}><option value="">Selecione</option>{produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
       <label>Comprador<SelectCampo required value={parceiro} onValueChange={setParceiro}><option value="">Selecione</option>{config.parceiros.filter(p => p.ativo).map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
-      <label>Data da retirada<input required type="date" max={hojeOperacional()} value={data} onChange={e => setData(e.target.value)} /></label>
+      <label>Data da retirada<DatePicker required max={hojeOperacional()} value={data} onChange={(valor) => setData(valor)} /></label>
       <label>Litros retirados<input required inputMode="decimal" value={litros} onChange={e => setLitros(e.target.value)} /></label>
       <label>Valor total acordado (R$)<input required inputMode="decimal" value={valor} onChange={e => setValor(e.target.value)} /></label>
       <label>Recebimento<SelectCampo value={condicao} onValueChange={setCondicao}><option value="A_PRAZO">A receber</option><option value="A_VISTA">Recebido agora</option></SelectCampo></label>
-      {condicao === "A_PRAZO" ? <label>Vencimento<input required type="date" value={vencimento} onChange={e => setVencimento(e.target.value)} /></label> : <label>Conta de recebimento<SelectCampo required value={conta} onValueChange={setConta}><option value="">Selecione</option>{config.contas.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>}
+      {condicao === "A_PRAZO" ? <label>Vencimento<DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} /></label> : <label>Conta de recebimento<SelectCampo required value={conta} onValueChange={setConta}><option value="">Selecione</option>{config.contas.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>}
     </div>
     {produto && !saldo && !erro && <p role="status">Consultando saldo comercial…</p>}
     {saldo && <p>{saldo.comercial.confiavel ? `Disponível para venda: ${formatarLitros(saldo.comercial.quantidadeLitros === null ? null : Number(saldo.comercial.quantidadeLitros))}.` : saldo.comercial.motivoNaoAferivel ?? "Saldo comercial não aferível. Confira as origens no Estoque."}</p>}

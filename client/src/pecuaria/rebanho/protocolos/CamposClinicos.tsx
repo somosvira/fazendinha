@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { useState } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
@@ -30,8 +31,8 @@ export function CamposAvaliacaoClinica({ tarefa: t, dados: d, onChange }: Props)
     <SeletorClinico tarefaId={t.id} propriedadeId={t.propriedadeId} opcao="GESTACAO" rotulo={rotulo("gestação conhecida")} valor={d.gestacaoId} onChange={gestacaoId => onChange({ gestacaoId })} />
     <label>{rotulo("Motivo de vínculo desconhecido, se necessário")}<textarea className={classeInput} minLength={5} maxLength={1000} value={d.motivoVinculoDesconhecido} onChange={e => onChange({ motivoVinculoDesconhecido: e.target.value })} /></label>
     <label>{rotulo("Sexo fetal observado")}<select className={classeInput} value={d.sexoFetal} onChange={e => onChange({ sexoFetal: e.target.value })}><option value="">Não informado</option><option value="F">Fêmea</option><option value="M">Macho</option></select></label>
-    <label>{rotulo("Retorno definido pelo responsável (opcional)")}<input className={classeInput} type="date" value={d.retornoEm} onChange={e => onChange({ retornoEm: e.target.value })} /></label>
-    <label>{rotulo("Previsão de parto informada (opcional)")}<input className={classeInput} type="date" value={d.previsaoParto} onChange={e => onChange({ previsaoParto: e.target.value })} /></label>
+    <label>{rotulo("Retorno definido pelo responsável (opcional)")}<DatePicker className="mt-1.5" value={d.retornoEm} onChange={(valor) => onChange({ retornoEm: valor })} /></label>
+    <label>{rotulo("Previsão de parto informada (opcional)")}<DatePicker className="mt-1.5" value={d.previsaoParto} onChange={(valor) => onChange({ previsaoParto: valor })} /></label>
     {d.resultado === "INCONCLUSIVO" && <p className="text-sm">O exame inconclusivo permanece como fato. Acompanhamento e nova avaliação preservam esse histórico.</p>}
     <ReavaliacaoClinica tarefa={t} dados={d} onChange={onChange} />
   </div>;

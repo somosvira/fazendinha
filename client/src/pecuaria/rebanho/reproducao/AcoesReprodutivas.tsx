@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { FormEncerrarLactacao } from "./FormEncerrarLactacao";
 import { FormPesoSecagem } from "./FormPesoSecagem";
 import { PesoSecagemLactacao } from "./PesoSecagemLactacao";
@@ -392,24 +393,13 @@ export function AcoesReprodutivas({
             {["perda", "restricao"].includes(acao.tipo) && (
               <label>
                 Data
-                <input
-                  type="date"
-                  required
-                  className={classeInput}
-                  value={data}
-                  onChange={(e) => setData(e.target.value)}
-                />
+                <DatePicker required className="mt-1.5" value={data} onChange={(valor) => setData(valor)} />
               </label>
             )}
             {acao.tipo === "previsao" && (
               <label>
                 Previsão (vazio remove a previsão)
-                <input
-                  type="date"
-                  className={classeInput}
-                  value={previsao}
-                  onChange={(e) => setPrevisao(e.target.value)}
-                />
+                <DatePicker className="mt-1.5" value={previsao} onChange={(valor) => setPrevisao(valor)} />
               </label>
             )}
             {acao.tipo === "vinculo" && (
