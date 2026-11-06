@@ -310,6 +310,11 @@ export async function consumoAnimal(animalId: string, propriedadeId: number | nu
   })) };
 }
 
+/** Último dia fechado (fechamentos confirmados) de cada lote do escopo, numa consulta só. */
+export async function ultimosFechamentos(propriedadeId: number | null) {
+  const grupos = await prisma.fechamentoConsumo.groupBy({ by: ["loteId"], where: { status: "CONFIRMADO", ...(propriedadeId == null ? {} : { propriedadeId }) }, _max: { fim: true } });
+  return Object.fromEntries(grupos.map(g => [g.loteId, g._max.fim?.toISOString().slice(0, 10) ?? null]));
+}
 export async function estornarFechamento(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     await travarAlimentacaoLeiteTx(tx, propriedadeId);

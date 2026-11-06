@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
-import { type Fechamento, type ResumoReferenciaLeite, consultarVisaoNutricional, consultarResumoNutricional, listarDietas, listarFechamentos, obterVigencia } from "./api";
+import { type Fechamento, type ResumoReferenciaLeite, consultarVisaoNutricional, limparLeiturasCompartilhadas, consultarResumoNutricional, listarDietas, listarFechamentos, obterVigencia } from "./api";
 const lote = { id: "l1", nome: "Matrizes", ativo: true, propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, animaisAtivos: 3 };
 const dieta = { id: "d1", nome: "Matrizes", versao: 1 };
 const vigente = { id: "v1", desde: "2026-01-01", ate: null, dieta };
@@ -8,7 +8,7 @@ const fechamento = (id: string, custo: string | null, status = "CONFIRMADO", com
 let fechamentos: ReturnType<typeof fechamento>[];
 let chamadas: string[];
 let resumo: { verValores: boolean; lotes: Array<{ referenciaLeite?: ResumoReferenciaLeite | null; loteId: string; vigente: typeof vigente; programada: null; custos: { custoConhecido: string | null; animalDias: number; fechamentos: number; coberturaCustoCompleta: boolean } }> };
-beforeEach(() => {
+beforeEach(() => { limparLeiturasCompartilhadas();
   localStorage.clear(); chamadas = [];
   fechamentos = [fechamento("f1", "1.11"), fechamento("f2", "2.22"), fechamento("f3", "500.00", "ESTORNADO")];
   resumo = { verValores: true, lotes: [{ loteId: "l1", vigente, programada: null, custos: { custoConhecido: "3.33", animalDias: 4, fechamentos: 2, coberturaCustoCompleta: true } }] };

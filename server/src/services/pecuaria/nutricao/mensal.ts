@@ -442,6 +442,13 @@ export async function processarDia(
       });
     }
 }
+/** Último dia já processado no tipo de fechamento (diário ou mensal) de cada lote do escopo. */
+export async function ultimosDiasProcessados(propriedadeId: number | null) {
+  const linhas = await prisma.$queryRaw<Array<{ loteId: string; data: Date }>>(Prisma.sql`
+    SELECT m."loteId", MAX(d.data) AS data FROM pecuaria."ConsumoDiario" d JOIN pecuaria."MesNutricao" m ON m.id = d."mesId"
+    ${propriedadeId == null ? Prisma.empty : Prisma.sql`WHERE m."propriedadeId" = ${propriedadeId}`} GROUP BY m."loteId"`);
+  return Object.fromEntries(linhas.map(l => [l.loteId, l.data.toISOString().slice(0, 10)]));
+}
 export async function processarPendentes(
   loteId?: string,
   propriedadeId?: number,

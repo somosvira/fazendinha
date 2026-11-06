@@ -11,23 +11,28 @@ export async function consultarNutricaoTx(tx:Prisma.TransactionClient,propriedad
   const locais=await tx.localizacaoAnimal.findMany({where:{...(propriedadeId==null?{}:{propriedadeId}),desde:{lte:ate},OR:[{ate:null},{ate:{gt:desde}}]},
     include:{animal:{include:{partos:true,categoriasManuais:true}}}});
   const animais=new Map(locais.map(l=>[l.animalId,l.animal]));
+  // Índices montados uma vez: com milhares de animais, filtrar a lista inteira a cada animal e dia ficava quadrático.
+  const locaisPorAnimal=new Map<string,typeof locais>();for(const l of locais)locaisPorAnimal.set(l.animalId,[...(locaisPorAnimal.get(l.animalId)??[]),l]);
+  const locaisPorId=new Map(locais.map(l=>[l.id,l]));
   const presencas:PresencaDia[]=[];
   for(const animal of animais.values()){
-    const segmentos=intervalosPresenca(animal,locais,desde,ate);
-    for(const s of segmentos){const local=locais.find(l=>l.id===s.localizacaoId)!;
+    const segmentos=intervalosPresenca(animal,locaisPorAnimal.get(animal.id)??[],desde,ate);
+    for(const s of segmentos){const local=locaisPorId.get(s.localizacaoId)!;
       for(const d of diasIntervalos([s]))presencas.push({...d,animalId:animal.id,propriedadeId:local.propriedadeId});
     }
   }
   const diarios:FechamentoAnalise[]=[];
   if(env.NUTRICAO_MENSAL_ENABLED){
     const dias=await tx.consumoDiario.findMany({where:{mes:propriedadeId==null?{}:{propriedadeId},data:{gte:inicio,lte:fim},situacao:"EFETIVADO",participantes:{some:{}}},include:{mes:true,participantes:{include:{classificacaoCusto:true}},itens:{include:{movimentos:true}}}});
+    // Índice só quando há dias processados: com um ano de rebanho grande, montá-lo custava mais de um segundo.
+    const presencaPorDia=dias.length?new Map(presencas.map(v=>[`${v.animalId}:${v.propriedadeId}:${v.data}`,v])):new Map<string,PresencaDia>();
     const centros=await tx.centroCusto.findMany({where:{id:{in:dias.flatMap(d=>d.centroCustoId?[d.centroCustoId]:[])}}});
     for(const d of dias){if(!d.centroCustoId)continue;diarios.push({id:d.id,propriedadeId:d.mes.propriedadeId,centroCustoId:d.centroCustoId,centroCustoNome:centros.find(c=>c.id===d.centroCustoId)?.nome??"Centro histórico",inicio:d.data,fim:d.data,animalDias:d.participantes.length,
-      participacoes:d.participantes.map(p=>({...p,dias:1,finalidade:p.classificacaoCusto?.finalidade??null,intervalos:[{desde:d.data,ate:new Date(+d.data+86400000),vaca:presencas.find(v=>v.animalId===p.animalId&&v.propriedadeId===d.mes.propriedadeId&&v.data===textoDia(d.data))?.vaca??null}]})),
+      participacoes:d.participantes.map(p=>({...p,dias:1,finalidade:p.classificacaoCusto?.finalidade??null,intervalos:[{desde:d.data,ate:new Date(+d.data+86400000),vaca:presencaPorDia.get(`${p.animalId}:${d.mes.propriedadeId}:${textoDia(d.data)}`)?.vaca??null}]})),
       itens:d.itens.map(i=>({id:i.id,produtoId:i.produtoId,unidade:i.unidade,quantidadeConfirmada:i.confirmada.toFixed(3),custoConhecido:i.custoLiquido.toFixed(2),movimentoEstoqueId:i.movimentos.length===1?i.movimentos[0].movimentoId:null}))});}
   }
   return calcularNutricao(presencas,[...diarios,...fechamentos.map(f=>({...f,centroCustoNome:f.centroCusto.nome,
     participacoes:f.participacoes.map(p=>({...p,finalidade:p.classificacaoCusto?.finalidade??null,
-      intervalos:animais.has(p.animalId)?intervalosPresenca(animais.get(p.animalId)!,locais.filter(l=>l.propriedadeId===f.propriedadeId&&l.loteId===f.loteId),f.inicio,f.fim):[]})),
+      intervalos:animais.has(p.animalId)?intervalosPresenca(animais.get(p.animalId)!,(locaisPorAnimal.get(p.animalId)??[]).filter(l=>l.propriedadeId===f.propriedadeId&&l.loteId===f.loteId),f.inicio,f.fim):[]})),
     itens:f.itens.map(i=>({...i,quantidadeConfirmada:i.quantidadeConfirmada.toString(),custoConhecido:i.quantidadeConfirmada.isZero()?"0":leites.has(i.id)?leites.get(i.id)!.custoProducao:i.situacaoCusto==="CONHECIDO"?i.movimentoEstoque?.valorTotal?.toFixed(2)??null:null}))}))],textoDia(inicio),textoDia(fim));
 }

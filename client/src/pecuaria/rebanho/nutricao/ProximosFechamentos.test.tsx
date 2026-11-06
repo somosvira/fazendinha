@@ -4,8 +4,8 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { ProximosFechamentos } from "./ProximosFechamentos";
 
 const mocks = vi.hoisted(() => ({ visao: vi.fn(), ultimo: vi.fn(), status: vi.fn(), configs: vi.fn(), meses: vi.fn() }));
-vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, listarDietas: async () => [] }));
-vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: mocks.meses, reprocessarMensal: vi.fn() }));
+vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, listarDietas: async () => [], ultimosFechamentos: async () => Object.fromEntries(await Promise.all((await mocks.visao()).lotes.map(async (r: { lote: { id: string } }) => [r.lote.id, (await mocks.ultimo(r.lote.id))?.fim ?? null]))), compartilhada: (_: string, ler: () => Promise<unknown>) => ler() }));
+vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: mocks.meses, reprocessarMensal: vi.fn(), processadosMensais: async () => { const datas = (await mocks.meses()).itens.flatMap((m: { dias: Array<{ data: string }> }) => m.dias.map(d => d.data)).sort(); return datas.length ? { a: datas.at(-1) } : {}; } }));
 vi.mock("../../../financeiro/financeiro-ui", async (original) => ({ ...(await original<object>()), hoje: () => "2026-11-04" }));
 afterEach(cleanup);
 beforeEach(() => { vi.clearAllMocks(); mocks.status.mockResolvedValue({ habilitada: false, automacao: false }); mocks.configs.mockResolvedValue([]); mocks.meses.mockResolvedValue({ itens: [], total: 0 }); });

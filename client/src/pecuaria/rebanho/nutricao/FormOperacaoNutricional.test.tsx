@@ -5,10 +5,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { FormOperacaoNutricional } from "./FormOperacaoNutricional";
 import * as api from "./api";
 import * as mensal from "./mensal-api";
-vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn(), mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn() }));
+vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn(), mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn(), processadosMensais: async () => ({}) }));
 import * as lotesApi from "../api";
 vi.mock("../api", () => ({ buscarLote: vi.fn(), listarLotes: vi.fn() }));
-vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), atribuirDieta: vi.fn(), corrigirVigencia: vi.fn(), listarDietas: vi.fn(), listarCentrosNutricionais: vi.fn(), obterVigencia: vi.fn(), ultimoFechamentoConfirmado: vi.fn(), consultarVisaoNutricional: vi.fn() }));
+vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), atribuirDieta: vi.fn(), corrigirVigencia: vi.fn(), listarDietas: vi.fn(), listarCentrosNutricionais: vi.fn(), obterVigencia: vi.fn(), ultimoFechamentoConfirmado: vi.fn(), consultarVisaoNutricional: vi.fn(), ultimosFechamentos: vi.fn(), compartilhada: (_: string, ler: () => Promise<unknown>) => ler() }));
 vi.mock("./ConferenciaPeriodos", () => ({ ConferenciaPeriodos: ({ loteId, propriedadeId, inicial }: { loteId: string; propriedadeId: number; inicial?: { inicio: string; fim: string } }) => <p>Consumo {loteId} no sítio {propriedadeId}{inicial && ` de ${inicial.inicio} a ${inicial.fim}`}</p> }));
 const lote = { id: "lote", nome: "Matrizes", propriedadeId: 2, propriedade: { id: 2, nome: "Destino" }, ativo: true, animaisAtivos: 5, observacao: null };
 beforeEach(() => {
@@ -20,6 +20,7 @@ beforeEach(() => {
   vi.mocked(api.listarDietas).mockResolvedValue([{ id: "publicada", nome: "Dieta publicada", versao: 1, publicadaEm: "2026-10-01", itens: [] }, { id: "rascunho", nome: "Dieta em estudo", versao: 2, publicadaEm: null, itens: [] }]);
   vi.mocked(api.listarCentrosNutricionais).mockResolvedValue([]);
   vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue(null);
+  vi.mocked(api.ultimosFechamentos).mockImplementation(async () => Object.fromEntries(await Promise.all((await api.consultarVisaoNutricional()).lotes.map(async r => [r.lote.id, (await api.ultimoFechamentoConfirmado(r.lote.id))?.fim ?? null]))));
   vi.mocked(api.obterVigencia).mockResolvedValue({ id: "v", loteId: "lote", desde: "2026-09-01", ate: null, dieta: { id: "publicada", nome: "Dieta publicada", versao: 1 } });
 });
 afterEach(() => { cleanup(); vi.useRealTimers(); });
