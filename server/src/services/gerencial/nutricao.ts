@@ -1,8 +1,8 @@
 import { consultarFornecimentosNutricionaisTx } from "../pecuaria/leite/nutricao.js";
 import { env } from "../../env.js";
 import { Prisma } from "@prisma/client";
-import { intervalosPresenca, textoDia } from "./presenca.calc.js";
-import { calcularNutricao, diasIntervalos, type FechamentoAnalise, type PresencaDia } from "./nutricao.calc.js";
+import { DIA_MS, intervalosPresenca, textoDia } from "./presenca.calc.js";
+import { calcularNutricao, type FechamentoAnalise, type PresencaDia } from "./nutricao.calc.js";
 export async function consultarNutricaoTx(tx:Prisma.TransactionClient,propriedadeId:number|null,inicio:Date,fim:Date){
   const fechamentos=await tx.fechamentoConsumo.findMany({where:{...(propriedadeId==null?{}:{propriedadeId}),status:"CONFIRMADO",inicio:{lte:fim},fim:{gte:inicio}},
     include:{centroCusto:{select:{nome:true}},participacoes:{include:{classificacaoCusto:true}},itens:{include:{movimentoEstoque:{select:{valorTotal:true}}}}}});
@@ -18,7 +18,8 @@ export async function consultarNutricaoTx(tx:Prisma.TransactionClient,propriedad
   for(const animal of animais.values()){
     const segmentos=intervalosPresenca(animal,locaisPorAnimal.get(animal.id)??[],desde,ate);
     for(const s of segmentos){const local=locaisPorId.get(s.localizacaoId)!;
-      for(const d of diasIntervalos([s]))presencas.push({...d,animalId:animal.id,propriedadeId:local.propriedadeId});
+      // Um segmento já vem em ordem de dias: gera as presenças direto, sem lista intermediária.
+      for(let t=+s.desde;t<+s.ate;t+=DIA_MS)presencas.push({data:textoDia(new Date(t)),vaca:s.vaca,animalId:animal.id,propriedadeId:local.propriedadeId});
     }
   }
   const diarios:FechamentoAnalise[]=[];
