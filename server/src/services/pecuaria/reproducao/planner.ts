@@ -42,7 +42,7 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
     include: { etapa: true, execucao: { include: { protocolo: true, rodada: true } } }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }] });
   const tarefasReprodutivas = tarefas.filter(t => t.execucao.protocolo.tipo === "REPRODUTIVO").map(t => t.id);
   const revisoes = tarefasReprodutivas.length ? await tx.necessidadeReprodutiva.findMany({
-    where: { propriedadeId, tarefaId: { in: tarefasReprodutivas }, demandaId: null, convergidaParaId: null, decisao: "SUSPENDER", situacao: "SUSPENSO", revisaoEm: { not: null } },
+    where: { propriedadeId, tarefaId: { in: tarefasReprodutivas }, demandaId: null, convergidaParaId: null, decisao: "SUSPENDER", situacao: { notIn: ["RESOLVIDO", "DISPENSADO", "ENCERRADO"] }, revisaoEm: { not: null } },
     select: { id: true, tarefaId: true, revisaoEm: true, revisao: true },
   }) : [];
   const revisoesPorTarefa = new Map(revisoes.map(n => [n.tarefaId, n]));
