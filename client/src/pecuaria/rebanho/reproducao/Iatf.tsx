@@ -1,3 +1,5 @@
+import "../telas/ficha-geral.css";
+import { ClipboardList } from "lucide-react";
 import { PreparacaoAutomacao, type PreparacaoAutomacaoEntrada, type RevisaoRetroativaAutomacao } from "../protocolos/PreparacaoAutomacao";
 import { useAcoesInicioProtocolo } from "../protocolos/useAcoesInicioProtocolo";
 import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
@@ -16,7 +18,7 @@ import { type ReferenciasCustoCadastro } from "../protocolos/CamposReferenciasCu
 import { listarCadastrosProtocolos, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
 import { CatalogoModelosProtocolos } from "../protocolos/CatalogoModelosProtocolos";
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
-import { GestaoParticipantes } from "../protocolos/GestaoParticipantes";
+
 import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
@@ -503,14 +505,18 @@ export function Iatf({
         </div>
       )}
       {modo === "operacao" && detalhe && (
-        <div className="repro-programacao-detalhe">
-          <header className="repro-programacao-identidade"><div><h2>{detalhe.nome}</h2><p>{detalhe.protocolo.nome} · v{detalhe.protocolo.versao} · Início: {horarioIatf(detalhe.inicioReferencia, detalhe.precisaoTemporal)}</p></div><Pill>{detalhe.status === "ABERTA" ? "Aberta" : detalhe.status === "ENCERRADA" ? "Encerrada" : "A conferir"}</Pill></header>
-          <dl className="repro-programacao-resumo"><div><dt>Participantes</dt><dd>{detalhe.participantesTotal ?? "Não informado"}</dd></div><div><dt>Procedimentos atendidos</dt><dd>{detalhe.contagens.atendidos}</dd></div><div><dt>Procedimentos pendentes</dt><dd>{detalhe.contagens.pendentes}</dd></div></dl>
+        <div className="repro-programacao-detalhe pec-ficha ficha-v4 ficha-animal-geral">
+          <header className="ficha-animal-cabecalho">
+            <div className="ficha-animal-ilustracao bg-accent text-primary"><ClipboardList size={36} strokeWidth={1.6}/></div>
+            <div className="ficha-animal-identidade"><h2 className="ficha-animal-identificacao"><span className="ficha-animal-brinco">{detalhe.nome}</span><span className="ficha-animal-nome">{detalhe.protocolo.nome}</span><span className="ficha-animal-lote">Versão {detalhe.protocolo.versao} · Início {horarioIatf(detalhe.inicioReferencia, detalhe.precisaoTemporal).replace(" · horário não informado", "")} · {detalhe.participantesTotal ?? "—"} participantes <span className="protocolo-status-inline"><Pill tone={detalhe.status === "ABERTA" ? "green" : "neutral"}>{detalhe.status === "ABERTA" ? "Em andamento" : detalhe.status === "ENCERRADA" ? "Encerrada" : "A conferir"}</Pill></span></span></h2></div>
+
+          </header>
 
           {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>Fechar detalhes</Button></div>}
-          <OperacaoProtocolo ocultarCabecalho programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
-            acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined}
-            gestao={<div className="grid gap-6"><ParticipacoesProgramacao key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao}/><GestaoParticipantes key={`${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo} revisao={operacaoRevisao} aoRetirar={id => { setAcao({ tipo: "retirada", id }); setMotivo(""); }} /></div>}
+          <OperacaoProtocolo aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined} ocultarCabecalho programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
+
+            gestao={<ParticipacoesProgramacao acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined} key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao} aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined}/>}
+
             aoSalvar={() => { setOperacaoRevisao(v => v + 1); void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]); }}
             regularizacao={(t, aoSalvar) => t.propriedadeId ? <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={t.tarefaOrigem.propriedadeRegularizacaoId ?? t.propriedadeId} consumoMantido={consumoMantidoUltimaAnulacao(t.tarefaOrigem.historicoRegularizacao)} onMudou={async () => { aoSalvar(); await onMudou?.(); }} /> : null}
           />

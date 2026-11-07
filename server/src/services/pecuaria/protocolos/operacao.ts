@@ -1,3 +1,4 @@
+import { produtosUtilizadosTx } from "./produtos-utilizados.js";
 import { agruparAgendaEtapas } from "./agenda-etapas.calc.js";
 import { agruparCustosEtapas } from "./custos-etapas.calc.js";
 import { iaPrevistaNoModelo } from "./historico-participacao.calc.js";
@@ -140,7 +141,9 @@ export async function listarProcedimentosOperacao(contexto:ContextoOperacao,prop
       return {...base,chave,valor:resumo.totalConhecido,situacao:resumo.situacao,componentesPendentes:resumo.componentesPendentes,componentes:componentes.map(({origemId,...c})=>({...c,origemId:podeVerValoresFinanceiros(usuario)?origemId:null}))};
     }).filter(c=>!f.busca||c.descricao.toLocaleLowerCase("pt-BR").includes(f.busca.toLocaleLowerCase("pt-BR"))).sort((a,b)=>b.data.localeCompare(a.data)||a.chave.localeCompare(b.chave));
     const total=procedimentos.length;const pagina=paginaOperacao(total,f.pagina,f.porPagina);
-    return {itens:procedimentos.slice((pagina-1)*f.porPagina,pagina*f.porPagina),total,pagina,porPagina:f.porPagina,resumo:{rotulo:custos.rotulo,cobertura:custos.cobertura,situacao:custos.situacao,totalConhecido:custos.totalConhecido,componentesPendentes:custos.componentesPendentes,limitacoes:custos.limitacoes},estimativa:podeVerValoresFinanceiros(usuario)&&c.propriedadeContextoId!=null?await estimarProtocoloTx(tx,c.propriedadeContextoId,c.where,tarefaNoEscopoOperacao(c.escopoLeituraId),f.referenciasPagina??1):{situacao:"NAO_APURADO",total:null,totalConhecido:null,componentesConhecidos:0,componentesPendentes:0,referencia:podeVerValoresFinanceiros(usuario)?"Sítio de referência não informado":"Valores não disponíveis para este acesso",limitacoes:[]}};});
+    const produtos=await produtosUtilizadosTx(tx,custos.componentes,podeVerValoresFinanceiros(usuario));
+    const produtosPagina=paginaOperacao(produtos.length,f.produtosPagina ?? 1,f.porPagina);
+    return {produtosUtilizados:{itens:produtos.slice((produtosPagina-1)*f.porPagina,produtosPagina*f.porPagina),pagina:produtosPagina,porPagina:f.porPagina,total:produtos.length},itens:procedimentos.slice((pagina-1)*f.porPagina,pagina*f.porPagina),total,pagina,porPagina:f.porPagina,resumo:{rotulo:custos.rotulo,cobertura:custos.cobertura,situacao:custos.situacao,totalConhecido:custos.totalConhecido,componentesPendentes:custos.componentesPendentes,limitacoes:custos.limitacoes},estimativa:podeVerValoresFinanceiros(usuario)&&c.propriedadeContextoId!=null?await estimarProtocoloTx(tx,c.propriedadeContextoId,c.where,tarefaNoEscopoOperacao(c.escopoLeituraId),f.referenciasPagina??1):{situacao:"NAO_APURADO",total:null,totalConhecido:null,componentesConhecidos:0,componentesPendentes:0,referencia:podeVerValoresFinanceiros(usuario)?"Sítio de referência não informado":"Valores não disponíveis para este acesso",limitacoes:[]}};});
 }
 
 /** Agenda do contexto agrupada no servidor; nunca agrega somente a página de animais. */

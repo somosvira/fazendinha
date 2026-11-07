@@ -19,9 +19,18 @@ it("abre manejo como manejo e mantém totais integrais ao paginar",async()=>{
 });
 it("identifica origem e data da referência com paginação independente",async()=>{
  vi.mocked(reqProtocolo).mockImplementation(async path => path.includes("custos-etapas") ? { itens: [{ id: "etapa", nome: "Etapa de retirada", participantes: 11, atendidos: 10, totalConhecido: "99.00", situacao: "PARCIAL", componentesPendentes: 1 }], total: 1, pagina: 1, porPagina: 10 } : dados());render(<ProcedimentosProtocolo contexto={{participacaoId:"p"}} propriedadeId={1} revisao={0}/>);
- await waitFor(()=>expect(reqProtocolo).toHaveBeenCalled());fireEvent.click(await screen.findByRole("button", { name: "Consultar registros individuais e composição" }));fireEvent.click(await screen.findByText("Referências usadas na estimativa"));
+ await waitFor(()=>expect(reqProtocolo).toHaveBeenCalled());fireEvent.click(await screen.findByRole("button", { name: "Consultar registros individuais e composição" }));fireEvent.click(await screen.findByText("Referências do custo previsto"));
  expect(screen.getByText("Cotação 20")).toBeTruthy();expect(screen.getByText(/Referência de 20\/10\/2026/)).toBeTruthy();
  const nav=screen.getByLabelText("Paginação de referências");fireEvent.click(within(nav).getByRole("button",{name:"Próxima"}));
  await waitFor(()=>expect(reqProtocolo).toHaveBeenLastCalledWith(expect.stringContaining("referenciasPagina=2"),1));
 });
 it("links de manejo nunca usam rota de exame",()=>{expect(linkFatoProcedimento({tipoFonte:"MANEJO",fonteId:"m",animalId:"a"},1)).toBe("/pecuaria/rebanho/animais/a");});
+it("separa previsto e realizado e mostra produtos com paginação independente",async()=>{
+ vi.mocked(reqProtocolo).mockImplementation(async path=>path.includes("custos-etapas") ? {itens:[],total:0,pagina:1,porPagina:10} : {...dados(),produtosUtilizados:{itens:[{id:"p",produto:"Hormônio",unidade:"mL",quantidade:"4",animais:2,atendimentos:2,custo:"24.00",parcial:false}],total:11,pagina:1,porPagina:10}});
+ render(<ProcedimentosProtocolo contexto={{programacaoId:"g"}} propriedadeId={7} revisao={0}/>);
+ expect(await screen.findByText("Custo previsto")).toBeTruthy();expect(screen.getByText("Custo realizado")).toBeTruthy();
+ const tabela=screen.getByRole("table",{name:"Produtos utilizados"});expect(within(tabela).getByText("Hormônio")).toBeTruthy();expect(within(tabela).getByText("4 mL")).toBeTruthy();
+ expect(document.querySelector("details")).toBeNull();
+ fireEvent.click(within(screen.getByLabelText("Paginação de produtos")).getByRole("button",{name:"Próxima"}));
+ await waitFor(()=>expect(reqProtocolo).toHaveBeenLastCalledWith(expect.stringContaining("produtosPagina=2"),7));
+});
