@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ tx: {
   vinculoConclusaoAcompanhamento: { create: vi.fn(), update: vi.fn() },
   partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn(), findFirst: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
   gestacaoAnimal: { findUnique: vi.fn() },
-  participacaoProtocolo: { findFirst: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
+  participacaoProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
 }, auditar: vi.fn(), conferir: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
@@ -238,4 +238,117 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     await expect(vincularExameDemandaTx(tx, "d", "exame")).rejects.toMatchObject({ code: "VALIDACAO" });
     expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
   });
+});
+
+it("revogar associação administrativa mantém DG pendente ligado à tentativa válida", async () => {
+  const d = {
+    ...demanda("dg"),
+    participacaoAcompanhamentoId: "p-original",
+    tentativa: { ...demanda("dg").tentativa!, participacoesExplicitas: [] },
+  };
+  mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);
+  await reconciliarDemandasAnimalTx(tx, "animal", 7);
+  expect(
+    mocks.tx.demandaAcompanhamentoReprodutivo.update,
+  ).not.toHaveBeenCalled();
+});
+
+it("DG positivo após revogação usa regra congelada da demanda para reconfirmar, sem consultar política atual", async () => {
+  const regra = {
+    finalidade: "RECONFIRMACAO",
+    ocorrencia: 1,
+    publico: "GESTACAO",
+    referencia: "PRIMEIRO_DG_POSITIVO",
+    intervalo: 45,
+    unidade: "DIAS",
+    antecedencia: 0,
+    tolerancia: 0,
+    resolucao: "RECONFIRMACAO_CONCLUSIVA",
+  };
+  mocks.tx.gestacaoAnimal.findUnique.mockResolvedValue({
+    TentativaReprodutiva: {
+      id: "t",
+      tarefa: null,
+      participacoesExplicitas: [],
+    },
+  });
+  mocks.tx.exameAnimal.findUnique.mockResolvedValue({
+    demandaAcompanhamento: { participacaoAcompanhamentoId: "p-original" },
+  });
+  mocks.tx.participacaoProtocolo.findUnique.mockResolvedValue({
+    id: "p-original",
+    animalId: "animal",
+    propriedadeId: 7,
+    acompanhamentoSnapshot: {
+      versao: 1,
+      protocoloId: "modelo",
+      protocoloVersao: 1,
+      diagnosticoIndividualEm: null,
+      modelo: { versao: 2, efeito: "ALERTA", regras: [regra] },
+      sitio: null,
+    },
+  });
+  mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(
+    async ({ data }) => ({ id: "nova", ...data }),
+  );
+  await criarDemandasDoFatoTx(
+    tx,
+    {
+      gestacaoId: "gestacao",
+      exameOrigemId: "primeiro-dg",
+      animalId: "animal",
+      propriedadeId: 7,
+      data: dia("2026-02-01"),
+    },
+    7,
+  );
+  expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledWith(
+    {
+      data: expect.objectContaining({
+        finalidade: "RECONFIRMACAO",
+        origemAdocao: "MODELO",
+        participacaoAcompanhamentoId: "p-original",
+        previstaPara: dia("2026-03-18"),
+        regraSnapshot: expect.objectContaining({ regra }),
+      }),
+    },
+  );
+  expect(
+    mocks.tx.politicaAcompanhamentoReprodutivo.findFirst,
+  ).not.toHaveBeenCalled();
+  // O mesmo fato pode ter sido concluído pelo ledger P3, sem a FK legada do exame.
+  mocks.tx.exameAnimal.findUnique.mockResolvedValue({
+    demandaAcompanhamento: null,
+  });
+  mocks.tx.demandaAcompanhamentoReprodutivo.findFirst.mockImplementation(
+    async ({ where }) =>
+      where.finalidade === "DIAGNOSTICO"
+        ? { participacaoAcompanhamentoId: "p-original" }
+        : null,
+  );
+  mocks.tx.demandaAcompanhamentoReprodutivo.create.mockClear();
+  await criarDemandasDoFatoTx(
+    tx,
+    {
+      gestacaoId: "gestacao",
+      exameOrigemId: "primeiro-dg",
+      animalId: "animal",
+      propriedadeId: 7,
+      data: dia("2026-02-01"),
+    },
+    7,
+  );
+  expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledWith(
+    {
+      data: expect.objectContaining({
+        finalidade: "RECONFIRMACAO",
+        origemAdocao: "MODELO",
+        participacaoAcompanhamentoId: "p-original",
+        previstaPara: dia("2026-03-18"),
+      }),
+    },
+  );
+  expect(
+    mocks.tx.politicaAcompanhamentoReprodutivo.findFirst,
+  ).not.toHaveBeenCalled();
 });

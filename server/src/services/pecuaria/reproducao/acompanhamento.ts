@@ -128,14 +128,29 @@ async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?
 }
 const selecionarParticipacaoPrazo = { id: true, animalId: true, propriedadeId: true, acompanhamentoSnapshot: true } as const;
 const selecionarOrigemTentativa = {
+ id: true,
  tarefa: { select: { execucao: { select: selecionarParticipacaoPrazo } } },
  participacoesExplicitas: { where: { revogadoEm: null }, select: { participacao: { select: selecionarParticipacaoPrazo } } },
 } as const;
 type ParticipacaoPrazo = { id: string; animalId: string; propriedadeId: number; acompanhamentoSnapshot: Prisma.JsonValue };
 
-async function proporDemandasGestacaoTx(tx: Prisma.TransactionClient, origem: Origem & { gestacaoId: string }, participacao?: ParticipacaoPrazo | null) {
- return participacao && participacao.animalId === origem.animalId && participacao.propriedadeId === origem.propriedadeId && participacao.acompanhamentoSnapshot
-  ? proporReconfirmacoesDaParticipacao(participacao.acompanhamentoSnapshot, { gestacaoId: origem.gestacaoId, data: texto(origem.data) }, participacao.id)
+async function proporDemandasGestacaoTx(tx: Prisma.TransactionClient, origem: Origem & { gestacaoId: string }, participacao?: ParticipacaoPrazo | null, tentativaId?: string) {
+ const exameOrigem = origem.exameOrigemId ? await tx.exameAnimal.findUnique({
+  where: { id: origem.exameOrigemId },
+  select: { demandaAcompanhamento: { select: { participacaoAcompanhamentoId: true } } },
+ }) : null;
+ const demandaAdotada = tentativaId ? await tx.demandaAcompanhamentoReprodutivo.findFirst({
+  where: { tentativaId, finalidade: "DIAGNOSTICO", participacaoAcompanhamentoId: { not: null } },
+  select: { participacaoAcompanhamentoId: true },
+  orderBy: [{ ocorrencia: "asc" }, { id: "asc" }],
+ }) : null;
+ const participacaoAdotadaId = exameOrigem?.demandaAcompanhamento?.participacaoAcompanhamentoId ?? demandaAdotada?.participacaoAcompanhamentoId;
+ const participacaoAdotada = participacaoAdotadaId ? await tx.participacaoProtocolo.findUnique({
+  where: { id: participacaoAdotadaId }, select: selecionarParticipacaoPrazo,
+ }) : null;
+ const origemCongelada = participacaoAdotada ?? participacao;
+ return origemCongelada && origemCongelada.animalId === origem.animalId && origemCongelada.propriedadeId === origem.propriedadeId && origemCongelada.acompanhamentoSnapshot
+  ? proporReconfirmacoesDaParticipacao(origemCongelada.acompanhamentoSnapshot, { gestacaoId: origem.gestacaoId, data: texto(origem.data) }, origemCongelada.id)
   : (await propostasTx(tx, origem)).map(p => ({ ...p, origemAdocao: "FATO_NOVO" as const, participacaoAcompanhamentoId: null }));
 }
 
@@ -147,7 +162,7 @@ export async function preverDemandasNovaGestacaoTx(tx: Prisma.TransactionClient,
   select: selecionarOrigemTentativa,
  }) : null;
  const participacao = tentativa?.tarefa?.execucao ?? tentativa?.participacoesExplicitas?.[0]?.participacao;
- const propostas = await proporDemandasGestacaoTx(tx, { ...fato, gestacaoId: "PREVIA" }, participacao);
+ const propostas = await proporDemandasGestacaoTx(tx, { ...fato, gestacaoId: "PREVIA" }, participacao, tentativaId ?? undefined);
  return propostas.map(({ gestacaoId: _gestacaoId, ...proposta }) => proposta);
 }
 /** Somente escritores chamam esta função. Uma leitura nunca adota políticas em fatos antigos. */
@@ -161,7 +176,7 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
  }else if(origem.gestacaoId && !politicaId){
   const gestacao=await tx.gestacaoAnimal.findUnique({where:{id:origem.gestacaoId},select:{TentativaReprodutiva:{select:selecionarOrigemTentativa}}});
   const participacao=gestacao?.TentativaReprodutiva?.tarefa?.execucao ?? gestacao?.TentativaReprodutiva?.participacoesExplicitas?.[0]?.participacao;
-  propostas=await proporDemandasGestacaoTx(tx, { ...origem, gestacaoId: origem.gestacaoId }, participacao);
+  propostas=await proporDemandasGestacaoTx(tx, { ...origem, gestacaoId: origem.gestacaoId }, participacao, gestacao?.TentativaReprodutiva?.id);
  }else propostas=(await propostasTx(tx,origem,politicaId)).map(p=>({...p,origemAdocao:politicaId?"ADOCAO_EXPLICITA" as const:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  for(const p of propostas){
   const existente=await tx.demandaAcompanhamentoReprodutivo.findFirst({where:{tentativaId:p.tentativaId,gestacaoId:p.gestacaoId,finalidade:p.finalidade,ocorrencia:p.ocorrencia}});
@@ -189,7 +204,6 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const tarefaOrigem=d.tentativa?.tarefa??tentativas.find(t=>t.id===d.gestacao?.tentativaId)?.tarefa;
   const tentativaOrigem=d.tentativa??tentativas.find(t=>t.id===d.gestacao?.tentativaId);
   const participacaoOrigemId=tarefaOrigem?.execucaoId??tentativaOrigem?.participacoesExplicitas?.[0]?.participacaoId;
-  const origemDesvinculada=!!d.participacaoAcompanhamentoId&&d.participacaoAcompanhamentoId!==participacaoOrigemId;
   if(!d.tarefaId&&participacaoOrigemId){
    const tarefas=await tx.tarefaProtocolo.findMany({where:{execucaoId:participacaoOrigemId,demandaAcompanhamento:null,dispensadaEm:null,realizadaEm:null,regularizacaoPendente:false},include:{etapa:true},orderBy:[{previstaPara:"asc"},{id:"asc"}]});
    const compativel=tarefas.find(t=>{
@@ -221,14 +235,14 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   });
   const conclusivo=evidencia;
   let dados:Prisma.DemandaAcompanhamentoReprodutivoUncheckedUpdateInput;
-  if(conclusivo&&fonte?.status==="VALIDO"&&origemValida&&!origemDesvinculada){
+  if(conclusivo&&fonte?.status==="VALIDO"&&origemValida){
    if(!vinculo)utilizados.add(conclusivo.id);
    dados={estado:"RESOLVIDA",exameResolucaoId:vinculo?null:conclusivo.id,vinculoConclusaoResolucaoId:vinculo?.id??null,resolvidaEm:conclusivo.data,resolucaoSnapshot:json({exameId:conclusivo.id,...(vinculo?{fonte:vinculo.fonte,resultadoId:vinculo.resultadoId,interpretacaoId:vinculo.interpretacaoId}:{}),data:texto(conclusivo.data),formato:conclusivo.formatoSnapshot}),encerradaEm:null,motivoEncerramento:null};
-  }else if(fonte?.status!=="VALIDO"||fim||origemDesvinculada){
-   const motivo=origemDesvinculada?"ORIGEM_DESVINCULADA":fonte?.status!=="VALIDO"?"ORIGEM_ANULADA":d.gestacao?.encerradaEm?`GESTACAO_ENCERRADA_${d.gestacao.tipoEncerramento??"NAO_IDENTIFICADO"}`:parto?"CICLO_ENCERRADO_POR_PARTO":"TENTATIVA_SUBSTITUIDA";
+  }else if(fonte?.status!=="VALIDO"||fim){
+   const motivo=fonte?.status!=="VALIDO"?"ORIGEM_ANULADA":d.gestacao?.encerradaEm?`GESTACAO_ENCERRADA_${d.gestacao.tipoEncerramento??"NAO_IDENTIFICADO"}`:parto?"CICLO_ENCERRADO_POR_PARTO":"TENTATIVA_SUBSTITUIDA";
    dados={estado:"ENCERRADA",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:Prisma.DbNull,encerradaEm:fim??new Date(),motivoEncerramento:motivo};
   }else dados={estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:Prisma.DbNull,encerradaEm:null,motivoEncerramento:null};
-  if(vinculo && (!conclusivo || fonte?.status!=="VALIDO" || !origemValida || origemDesvinculada)){
+  if(vinculo && (!conclusivo || fonte?.status!=="VALIDO" || !origemValida)){
    await tx.vinculoConclusaoAcompanhamento.update({where:{id:vinculo.id},data:{vigente:false,invalidadoEm:new Date(),invalidadoPorId:usuarioId,motivoInvalidacao:"Evidência ou origem deixou de ser válida"}});
    dados.vinculoConclusaoResolucaoId=null;
   }

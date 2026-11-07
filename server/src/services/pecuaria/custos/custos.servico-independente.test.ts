@@ -167,3 +167,62 @@ it("o editor da tentativa conserva vínculos fora do recorte para permitir sua c
   const r = await consultarCustosTx(banco(tx), 1, consulta({ tentativaId: ids.tentativa, inicio: "2026-01-10" }), true);
   expect(r.atribuicoesPreparos[0].vinculos[0].id).toBe(ids.vinculo);
 });
+
+it("tentativa e exame externos entram no protocolo uma vez pelo vínculo factual, sem consumir nem duplicar preparo", async () => {
+  const { tx, tentativas, vinculos } = criarTx();
+  const externa = {
+    ...tentativas[0],
+    tarefa: null,
+    participacoesExplicitas: [{ participacaoId: ids.protocolo }],
+  };
+  tx.tentativaReprodutiva.findMany.mockResolvedValue([externa]);
+  tx.aplicacaoProduto.findMany.mockResolvedValue([]);
+  tx.exameAnimal.findMany.mockResolvedValue([
+    {
+      id: uid(80),
+      animalId: ids.animal,
+      propriedadeId: 1,
+      data: new Date("2026-02-10"),
+      status: "VALIDO",
+      realizacao: "REALIZADO",
+      operacaoServicoId: uid(81),
+      valorServicoAtribuido: D("5.00"),
+      classificacaoCusto: null,
+      tarefa: null,
+      vinculosProtocolo: [],
+      demandaAcompanhamento: null,
+      interpretacao: { TentativaReprodutiva: externa, GestacaoAnimal: null },
+    },
+  ]);
+  vinculos.length = 0;
+  const resultado = await consultarCustosTx(
+    banco(tx),
+    1,
+    consulta({ participacaoId: ids.protocolo }),
+    true,
+  );
+  expect(resultado.totalConhecido).toBe("75.00");
+  expect(resultado.componentes).toHaveLength(3);
+  expect(tx.tentativaReprodutiva.findMany).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({
+        propriedadeId: 1,
+        AND: expect.arrayContaining([
+          expect.objectContaining({
+            OR: expect.arrayContaining([
+              {
+                participacoesExplicitas: {
+                  some: {
+                    revogadoEm: null,
+                    participacaoId: { in: [ids.protocolo] },
+                  },
+                },
+              },
+            ]),
+          }),
+        ]),
+      }),
+    }),
+  );
+  expect(tx.$executeRaw).not.toHaveBeenCalled();
+});
