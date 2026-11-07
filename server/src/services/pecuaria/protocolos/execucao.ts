@@ -76,7 +76,7 @@ export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProto
         const p=item.tipo==="MANEJO"||item.tipo==="RETIRADA"?await prepararExecucaoManejoTx(tx,item,null,opcoes.planejamentoFuturo):await prepararExecucaoClinicaTx(tx,item,null);
         if("consumo" in p)preparadosClinicos.push(p);
         basesFingerprint.push({tarefaId:tarefa.id,planejado:tarefa.parametros,momento:tarefa.momentoSnapshot,prevista:tarefa.previstaPara,preparada:p.dadosFingerprint});
-        itens.push({tarefaId:item.tarefaId,animalId:item.animalId,tipo:item.tipo,...p.desvio,inicioLegado:p.inicioLegado,carencia:null});
+        itens.push({tarefaId:item.tarefaId,animalId:item.animalId,tipo:item.tipo,...p.desvio,inicioLegado:p.inicioLegado,carencia:null,...("avaliacaoContextual" in p && p.avaliacaoContextual ? {avaliacaoContextual:p.avaliacaoContextual} : {})});
         continue;
       }
       let desvio;
@@ -150,7 +150,11 @@ export async function executarItensPreparadosProtocoloTx(tx:Tx,previa:Awaited<Re
     const tarefa = previa.tarefas.find(t => t.id === item.tarefaId)!;
     let id: string;
     if(item.tipo==="MANEJO"||item.tipo==="RETIRADA")id=(await executarExecucaoManejoTx(tx,item,usuarioId)).id;
-    else if(item.tipo!=="APLICACAO")id=(await executarExecucaoClinicaTx(tx,item,usuarioId)).id;
+    else if(item.tipo!=="APLICACAO"){
+      const projetado=previa.itens.find(i=>i.tarefaId===item.tarefaId);
+      const contextual=projetado && "avaliacaoContextual" in projetado ? projetado.avaliacaoContextual : null;
+      id=(await executarExecucaoClinicaTx(tx,item.tipo==="AVALIACAO" && contextual ? {...item,revisaoContextual:contextual.revisao} : item,usuarioId)).id;
+    }
     else if (tarefa.execucao.protocolo.tipo === "REPRODUTIVO") {
       const feita = await executarTarefaTx(tx, tarefa.id, entradaIatf(item), usuarioId);
       if (!feita.aplicacaoId) throw new RebanhoError("CONFLITO", "A execução não produziu a aplicação esperada");

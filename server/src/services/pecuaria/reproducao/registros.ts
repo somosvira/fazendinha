@@ -565,11 +565,11 @@ export async function prepararAvaliacaoTx(
   }) : null;
   return { data, tentativa, gestacao, gestacaoCriada, evidencia, contexto, necessidades };
 }
-async function resumirPreviaAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, preparada: Awaited<ReturnType<typeof prepararAvaliacaoTx>>) {
+export async function resumirPreviaAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, preparada: Awaited<ReturnType<typeof prepararAvaliacaoTx>>) {
   const necessidadesGeradas = preparada.gestacaoCriada ? await preverDemandasNovaGestacaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data: preparada.data }) : [];
   const resumo = { exame: { tipoExameId: preparada.evidencia.tipoExameId, data: input.data, resultado: input.resultado, sexoFetal: input.sexoFetal ?? null, resultadoAptidao: input.resultadoAptidao ?? null, gestacaoCriada: preparada.gestacaoCriada },
     itens: preparada.contexto!.itens, condutas: preparada.contexto!.condutas, necessidades: preparada.necessidades, necessidadesGeradas };
-  return { ...resumo, revisao: revisaoAvaliacaoContextual(input, resumo) };
+  return { ...resumo, revisao: revisaoAvaliacaoContextual({ ...input, ...resolverDecisaoIatf(input) }, resumo) };
 }
 export function previaAvaliacaoContextual(input: AvaliacaoInput, usuarioId: number | null) {
   if (!input.avaliacaoContextual) erro("Informe o catálogo e os itens da avaliação", "avaliacaoContextual");
@@ -666,7 +666,7 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     usuarioId,
     depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true, ...(preparada.contexto ? { avaliacaoContextual: preparada.contexto } : {}) },
   });
-  if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
+  if (input.demandaAcompanhamentoId && !preparada.contexto) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
   if (input.vinculosConclusao?.length) await vincularConclusoesExameTx(tx, criada.id, input.vinculosConclusao, usuarioId);
   if (gestacaoCriada && gestacao) await criarDemandasDoFatoTx(tx, { gestacaoId: gestacao.id, animalId: input.animalId, propriedadeId: input.propriedadeId, data, exameOrigemId: criada.id }, usuarioId);
   await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);

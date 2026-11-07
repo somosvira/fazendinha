@@ -22,11 +22,11 @@ export async function catalogoAvaliacao(propriedadeId: number, contexto?: string
 }
 export function criarCatalogoAvaliacao(input: CriarCatalogoAvaliacaoInput, usuarioId: number | null) {
   return transacaoPecuaria(async tx => {
+    await travarTiposExame(tx, [input.tipoExameId]);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-catalogo-avaliacao:${input.propriedadeId}`}))`;
     return operacaoIdempotenteTx(tx, input, usuarioId, "CATALOGO_AVALIACAO_REPRODUTIVA", async () => {
       const atual = await tx.catalogoAvaliacaoReprodutiva.findFirst({ where: { propriedadeId: input.propriedadeId }, orderBy: { versao: "desc" } });
       if ((atual?.versao ?? 0) !== input.versaoEsperada) throw new RebanhoError("CONFLITO", "O catálogo mudou; atualize antes de publicar");
-      await travarTiposExame(tx, [input.tipoExameId]);
       const tipo = await tx.tipoExame.findUnique({ where: { id: input.tipoExameId } });
       if (!tipo || !tipo.ativo || tipo.contexto === "SANITARIO") erro("Tipo de exame reprodutivo ativo não encontrado", "tipoExameId");
       conferirFormatoReprodutivo(tipo.tipoResultado, tipo.campos);
@@ -42,13 +42,15 @@ export function criarCatalogoAvaliacao(input: CriarCatalogoAvaliacaoInput, usuar
 
 /** Assina a proposta e as projeções consultadas; a confirmação recalcula sob trava. */
 export function revisaoAvaliacaoContextual(input: AvaliacaoInput, resumo: unknown) {
-  const { revisaoContextual: _revisao, ...dados } = input;
+  const { revisaoContextual: _revisao, chave: _chave, ...dados } = input;
   return hashDados({ dados, resumo });
 }
 
 /** Examina a configuração e os dados sem criar fatos ou inferir resultados clínicos. */
 export async function prepararContextoAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput) {
   if (!input.avaliacaoContextual) return null;
+  if (!input.tipoExameId) erro("Informe o tipo de exame do catálogo", "tipoExameId");
+  await travarTiposExame(tx, [input.tipoExameId]);
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-catalogo-avaliacao:${input.propriedadeId}`}))`;
   const catalogo = await tx.catalogoAvaliacaoReprodutiva.findFirst({ where: { propriedadeId: input.propriedadeId }, orderBy: { versao: "desc" } });
   if (!catalogo || catalogo.id !== input.avaliacaoContextual.catalogoId) throw new RebanhoError("CONFLITO", "O catálogo mudou; atualize e revise a avaliação");

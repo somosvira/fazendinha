@@ -53,6 +53,22 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     expect(mocks.tx.vinculoConclusaoAcompanhamento.create.mock.calls.map(([v])=>v.data.resultadoId)).toEqual(["resultado-dg", "resultado-sexo"]);
     expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
   });
+  it("um exame satisfaz DG e sexagem distintos; anulação reabre ambos sem reexecutar exame", async () => {
+    const vinculo = (id:string,resultadoId:string,valorSnapshot:string) => ({id,resultadoId,valorSnapshot,fonte:"RESULTADO",vigente:true});
+    const dg = { ...demanda("dg",1,true), estado:"RESOLVIDA", vinculoConclusaoResolucaoId:"v-dg", vinculoConclusaoResolucao:vinculo("v-dg","r-dg","POSITIVO") };
+    const sexo = { ...demanda("sexo",1,true), finalidade:"SEXAGEM", estado:"RESOLVIDA", vinculoConclusaoResolucaoId:"v-sexo", vinculoConclusaoResolucao:vinculo("v-sexo","r-sexo","F") };
+    const unico = { ...exame("POSITIVO",true), finalidades:["RECONFIRMACAO","SEXAGEM"], resultados:[{id:"r-dg",campo:"CONCLUSAO_GESTACIONAL",valor:"POSITIVO"},{id:"r-sexo",campo:"SEXO_FETAL",valor:"F"}] };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([dg,sexo]);
+    mocks.tx.exameAnimal.findMany.mockResolvedValue([unico]);
+    await reconciliarDemandasAnimalTx(tx,"animal",7);
+    expect(mocks.tx.vinculoConclusaoAcompanhamento.update).not.toHaveBeenCalled();
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
+    mocks.tx.exameAnimal.findMany.mockResolvedValue([]);
+    await reconciliarDemandasAnimalTx(tx,"animal",7);
+    expect(mocks.tx.vinculoConclusaoAcompanhamento.update).toHaveBeenCalledTimes(2);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledTimes(2);
+    expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  });
   it("invalida vínculo quando a evidência deixa de estar vigente e reabre a demanda", async () => {
     const d = { ...demanda("d", 1, true), estado: "RESOLVIDA", vinculoConclusaoResolucaoId: "v", vinculoConclusaoResolucao: { id: "v", resultadoId: "r", vigente: true } };
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);

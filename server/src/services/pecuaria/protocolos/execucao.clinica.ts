@@ -5,7 +5,7 @@ import { travarValorizacaoTx } from "../../estoque/valorizacao.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
 import { resolverLotePrincipalTx } from "../../estoque/partidas.js";
 import { prepararExameTx, registrarExameTx, travarTiposExame } from "../sanidade/exames.js";
-import { prepararTentativaTx, prepararAvaliacaoTx, criarAvaliacaoTx } from "../reproducao/registros.js";
+import { prepararTentativaTx, prepararAvaliacaoTx, criarAvaliacaoTx, resumirPreviaAvaliacaoTx } from "../reproducao/registros.js";
 import { prepararExecucaoTarefaTx, executarTarefaTx } from "../reproducao/iatf.js";
 import { tentativaSchema, avaliacaoSchema } from "../reproducao/schemas.js";
 import { anteriorIatf, lerDataIatf } from "../reproducao/horarios.calc.js";
@@ -74,8 +74,9 @@ export async function prepararExecucaoClinicaTx(tx: Tx, entrada: ItemExecucaoCli
     throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada para o animal e sítio");
   if(item.tipo==="AVALIACAO"&&item.reavaliacao){
     const preparada=await prepararReavaliacaoTx(tx,item,usuarioId);
+    const avaliacaoContextual=preparada.preparada.contexto?await resumirPreviaAvaliacaoTx(tx,preparada.input,preparada.preparada):null;
     return {desvio:{aferido:true,diferencas:[],referencia:"DEMANDA_ACOMPANHAMENTO",motivo:item.desvio?.motivo??null,motivoObrigatorio:false,planejado:preparada.demanda.regraSnapshot,realizado:preparada.input},
-      dadosFingerprint:preparada,inicioLegado:{exigeCiencia:false,total:0},consumo:null};
+      dadosFingerprint:{preparada,avaliacaoContextual},avaliacaoContextual,inicioLegado:{exigeCiencia:false,total:0},consumo:null};
   }
   if (item.tipo === "EXAME" && tarefa.execucao.protocolo.tipo !== "REPRODUTIVO") {
     const preparada = await prepararExameTx(tx, item, usuarioId, true);
@@ -83,6 +84,7 @@ export async function prepararExecucaoClinicaTx(tx: Tx, entrada: ItemExecucaoCli
   }
   const reprodutiva = await prepararExecucaoTarefaTx(tx, item.tarefaId, entradaClinicaIatf(item), usuarioId);
   let dadosFingerprint: unknown = reprodutiva.preparado;
+  let avaliacaoContextual: Awaited<ReturnType<typeof resumirPreviaAvaliacaoTx>> | null = null;
   let consumo: Consumo | null = null;
   if (item.tipo === "TENTATIVA") {
     const preparada = await prepararTentativaTx(tx, tentativaSchema.parse(reprodutiva.preparado), usuarioId);
@@ -94,14 +96,16 @@ export async function prepararExecucaoClinicaTx(tx: Tx, entrada: ItemExecucaoCli
         partidaNome: partida?.nome ?? partida?.codigo ?? null, partidaValidade: partida?.validade?.toISOString().slice(0, 10) ?? null };
     }
   } else if (item.tipo === "AVALIACAO") {
-    const preparada = await prepararAvaliacaoTx(tx, avaliacaoSchema.parse(reprodutiva.preparado), usuarioId);
-    dadosFingerprint = { ...preparada, plano: reprodutiva.plano };
+    const inputAvaliacao = avaliacaoSchema.parse(reprodutiva.preparado);
+    const preparada = await prepararAvaliacaoTx(tx, inputAvaliacao, usuarioId);
+    avaliacaoContextual = preparada.contexto ? await resumirPreviaAvaliacaoTx(tx, inputAvaliacao, preparada) : null;
+    dadosFingerprint = { ...preparada, plano: reprodutiva.plano, avaliacaoContextual };
   } else dadosFingerprint = (await prepararExameTx(tx, { ...item, data: reprodutiva.data, tarefaId: undefined }, usuarioId, true)).dadosCriacao;
   return { desvio: { ...reprodutiva.desvio, referencia: reprodutiva.plano ? "SNAPSHOT_PLANEJADO" : "LEGADO_SEM_SNAPSHOT",
     motivo: item.desvio?.motivo ?? null, motivoObrigatorio: exigeMotivoExecucao(reprodutiva.desvio),
     planejado: reprodutiva.plano?.etapa ?? {}, realizado: reprodutiva.preparado },
     dadosFingerprint: { dados: dadosFingerprint, plano: reprodutiva.plano, impactos: reprodutiva.impactosInicio },
-    inicioLegado: { exigeCiencia: reprodutiva.impactosInicio.itens.length > 0, total: reprodutiva.impactosInicio.itens.length }, consumo };
+    inicioLegado: { exigeCiencia: reprodutiva.impactosInicio.itens.length > 0, total: reprodutiva.impactosInicio.itens.length }, consumo, avaliacaoContextual };
 }
 
 export async function conferirConsumosExecucaoClinicaTx(tx: Tx, itens: ItemExecucaoClinica[], preparados: Array<{ consumo?: Consumo | null }>) {

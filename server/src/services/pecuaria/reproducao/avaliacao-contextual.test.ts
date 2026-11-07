@@ -43,6 +43,7 @@ describe("avaliação contextual", () => {
  it("revisão cobre dados e necessidades sem depender da própria revisão", () => {
   const input = entrada(), primeiro = revisaoAvaliacaoContextual(input, { necessidades:[{id:"d",acao:"PRESERVAR"}] });
   expect(revisaoAvaliacaoContextual({...input,revisaoContextual:primeiro}, { necessidades:[{id:"d",acao:"PRESERVAR"}] })).toBe(primeiro);
+  expect(revisaoAvaliacaoContextual({...input,chave:tipo}, { necessidades:[{id:"d",acao:"PRESERVAR"}] })).toBe(primeiro);
   expect(revisaoAvaliacaoContextual(input, { necessidades:[{id:"d",acao:"RESOLVER"}] })).not.toBe(primeiro);
   expect(revisaoAvaliacaoContextual({...input, observacao:"Novo dado"}, { necessidades:[{id:"d",acao:"PRESERVAR"}] })).not.toBe(primeiro);
  });
