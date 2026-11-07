@@ -66,6 +66,14 @@ export type CamposAvaliacaoContextual = {
   realizadoSemDG?: boolean;
   revisaoContextual?: string;
 };
+export type DadosAvaliacaoContextual = CamposAvaliacaoContextual & {
+  resultado?: string;
+  finalidade?: string;
+  sexoFetal?: string | null;
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null;
+  retornoAptidaoEm?: string | null;
+  resultados?: Array<{ campo: string; valor: string | number | boolean }>;
+};
 export type PreviaAvaliacaoContextual = {
   exame: {
     tipoExameId: string;

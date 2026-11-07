@@ -634,3 +634,122 @@ it("pagina o recibo de onze confirmações sem repetir a operação",async()=>{
 async function esperarOpcao(nome: string | RegExp) {
     await esperarOpcoes(() => screen.queryAllByRole("combobox"), o => o.some(i => typeof nome === "string" ? i.texto === nome : nome.test(i.texto)));
 }
+
+it("avaliação contextual direta exige conferência da projeção antes de confirmar o mesmo rascunho e fingerprint", async () => {
+  const a: AtividadeVisita = {
+    ...atividade,
+    participantes: [
+      {
+        ...atividade.participantes[0],
+        versaoRascunho: 2,
+        rascunho: {
+          resultado: "NAO_AVALIADO",
+          realizadoSemDG: true,
+          tipoExameId: "tipo",
+          formatoExameHash: "d".repeat(64),
+          resultados: [{ campo: "UTERO", valor: 0 }],
+          avaliacaoContextual: {
+            catalogoId: "catalogo",
+            itens: [{ codigo: "UTERO", estado: "CONCLUSIVO" }],
+            condutas: [],
+          },
+          vinculosConclusao: [],
+        },
+      },
+    ],
+  };
+  const resumo = {
+    exame: {
+      tipoExameId: "tipo",
+      data: visita.data,
+      resultado: "NAO_AVALIADO",
+      gestacaoCriada: false,
+    },
+    itens: [
+      {
+        codigo: "UTERO",
+        rotulo: "Útero",
+        tipo: "UTERO",
+        campo: "UTERO",
+        contextos: [],
+        estado: "CONCLUSIVO",
+      },
+    ],
+    condutas: [],
+    necessidades: [
+      {
+        id: "demanda",
+        finalidade: "DIAGNOSTICO",
+        previstaPara: null,
+        conclusaoCompativel: null,
+        acao: "PRESERVAR",
+      },
+    ],
+    necessidadesGeradas: [],
+    revisao: "e".repeat(64),
+  };
+  vi.mocked(reqV4).mockImplementation(async (url) =>
+    url.includes("tipos-exame") || url.includes("alertas-sanitarios")
+      ? []
+      : url.startsWith("/reproducao?")
+        ? painelVazio
+        : {
+            fingerprint: "f".repeat(64),
+            total: 1,
+            pagina: 1,
+            porPagina: 10,
+            totalComAlteracoes: 0,
+            participantes: [
+              {
+                participanteId: "p",
+                animalId: "a",
+                alteracoes: [],
+                avaliacaoContextual: { estado: "CONFERIDA", ...resumo },
+              },
+            ],
+            execucaoProtocolos: null,
+          },
+  );
+  vi.mocked(confirmarVisita).mockResolvedValue({});
+  render(
+    <Transcricao
+      visita={visita}
+      atividade={a}
+      podeLancar
+      onMudou={vi.fn().mockResolvedValue(undefined)}
+    />,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Conferir resultados (1)" }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }),
+  );
+  expect(
+    await screen.findByText(
+      "Confira as avaliações e os cuidados projetados antes de confirmar o conjunto.",
+    ),
+  ).toBeTruthy();
+  expect(confirmarVisita).not.toHaveBeenCalled();
+  expect(screen.getByText("DG não avaliado neste atendimento")).toBeTruthy();
+  expect(screen.getByText(/Permanece pendente/)).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar 1 atendimento(s)" }),
+  );
+  await waitFor(() => expect(confirmarVisita).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(confirmarVisita).mock.calls[0][2]).toMatchObject({
+    fingerprintPrevia: "f".repeat(64),
+    itens: [
+      {
+        participanteId: "p",
+        versaoRascunho: 2,
+        dados: {
+          resultado: "NAO_AVALIADO",
+          realizadoSemDG: true,
+          vinculosConclusao: [],
+          avaliacaoContextual: a.participantes[0].rascunho?.avaliacaoContextual,
+        },
+      },
+    ],
+  });
+});

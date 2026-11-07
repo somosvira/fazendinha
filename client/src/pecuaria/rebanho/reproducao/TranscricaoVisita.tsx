@@ -1,3 +1,6 @@
+import { AvaliacaoContextualVisita, limparCamposContextuais } from "./AvaliacaoContextualVisita";
+import { PreviaAvaliacaoContextual } from "./PreviaAvaliacaoContextual";
+import type { PreviaAvaliacaoContextual as PreviaContextual } from "./avaliacao-contextual-api";
 import { DatePicker } from "../../../components/DatePicker";
 import {ListaAnimaisVisita} from "./ListaAnimaisVisita";
 import { FiltrosAtendimentoVisita } from "./FiltrosAtendimentoVisita";
@@ -56,7 +59,38 @@ import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, c
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
+type PreviaContextualVisita =
+  | ({ estado: "CONFERIDA" } & PreviaContextual)
+  | { estado: "DADOS_PENDENTES"; erro: string };
+type PreviaVisita = {
+  fingerprint: string;
+  participantes: Array<{
+    participanteId: string;
+    animalId: string;
+    alteracoes: string[];
+    avaliacaoContextual?: PreviaContextualVisita;
+  }>;
+  total?: number;
+  pagina?: number;
+  porPagina?: number;
+  totalComAlteracoes?: number;
+  execucaoProtocolos?: {
+    estado: "CONFERIDA" | "DADOS_PENDENTES";
+    erro?: string;
+    consumos?: Array<{
+      produtoNome?: string;
+      quantidade?: string;
+      unidade?: string;
+    }>;
+    avaliacoes?: Array<
+      PreviaContextual & { tarefaId: string; animalId: string }
+    >;
+    totalConsumos?: number;
+    paginaConsumos?: number;
+    porPaginaConsumos?: number;
+  } | null;
+};
+
 export function Transcricao({
   visita,
   atividade: atividadeOriginal,
@@ -366,6 +400,24 @@ export function Transcricao({
     setRascunhos({ ...rascunhosAtuais.current });
     setAvisos(a => ({ ...a, [p.id]: "Alterações não salvas" }));
   }
+  function mudarContextualVisita(
+    p: ParticipanteVisita,
+    patch: Partial<RascunhoVisita>,
+    procedimento = false,
+  ) {
+    const atual = rascunhosAtuais.current[p.id] ?? {};
+    const clinicos = limparCamposContextuais({
+      ...(procedimento ? (atual.dados ?? {}) : atual),
+      ...patch,
+    });
+    rascunhosAtuais.current[p.id] = procedimento
+      ? { ...atual, dados: clinicos, status: "CONFIRMADO" }
+      : { ...clinicos, status: "CONFIRMADO" };
+    rascunhosSujos.current.add(p.id);
+    setRascunhos({ ...rascunhosAtuais.current });
+    setAvisos((v) => ({ ...v, [p.id]: "Alterações não salvas" }));
+    setPreviaConferencia(null);
+  }
   async function persistir(p: ParticipanteVisita) {
     if (!rascunhosSujos.current.has(p.id) && !gravações.current[p.id]) return true;
     const anterior = gravações.current[p.id] ?? Promise.resolve();
@@ -520,7 +572,10 @@ export function Transcricao({
         setPreviaConferencia(previa); setIdsPrevia(ids);  setAlteracoes(mudancas);
         if (!mesma) setCienciaAlteracoes(false);
         if (previa.execucaoProtocolos?.estado === "DADOS_PENDENTES") throw new Error(previa.execucaoProtocolos.erro ?? "Complete os dados dos procedimentos antes de confirmar.");
-        if (!mesma && previa.execucaoProtocolos) { setErro("Confira os procedimentos e os materiais previstos antes de confirmar o conjunto."); return false; }
+        const contextuais=previa.participantes.filter(p=>p.avaliacaoContextual);
+        const incompleta=contextuais.find(p=>p.avaliacaoContextual?.estado==="DADOS_PENDENTES");
+        if(incompleta?.avaliacaoContextual?.estado==="DADOS_PENDENTES")throw new Error(incompleta.avaliacaoContextual.erro);
+        if (!mesma && (previa.execucaoProtocolos || contextuais.length)) { setErro(contextuais.length||previa.execucaoProtocolos?.avaliacoes?.length?"Confira as avaliações e os cuidados projetados antes de confirmar o conjunto.":"Confira os procedimentos e os materiais previstos antes de confirmar o conjunto."); return false; }
         if (totalMudancas > 0 && (!mesma || !cienciaAlteracoes)) {
           setErro("Revise as mudanças desde a preparação e confirme ciência antes de registrar.");
           return false;
@@ -692,9 +747,9 @@ export function Transcricao({
                 onChange={e => setSelecionados(anteriores => e.target.checked ? [...new Set([...anteriores, p.id])] : anteriores.filter(id => id !== p.id))} /></td>
               <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
               <td className="visita-resultado"><fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>
-                <CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r}
+                {r.avaliacaoContextual?<span>{resultadoPrincipalVisita(atividade.tipo,p,r)??"Avaliação contextual em preenchimento"}</span>:<CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r}
                   administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}}
-                  onChange={mudanca=>mudarAvaliacao(p,{...mudanca,status:"CONFIRMADO"})}/>
+                  onChange={mudanca=>mudarAvaliacao(p,{...mudanca,status:"CONFIRMADO"})}/>}
               </fieldset>{r.sexoFetal && <small>Sexo fetal: {r.sexoFetal === "F" ? "Fêmea" : "Macho"}</small>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
               <td className="p-3 min-w-36 space-y-2">
                 <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
@@ -728,20 +783,21 @@ export function Transcricao({
       </div>
       <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-4 lg:grid-cols-2">
         {ausente ? <label>Motivo do atendimento pendente{input(p, "motivo", "Motivo do atendimento pendente")}</label> : <>
-          <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />
-          <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label>
+          <AvaliacaoContextualVisita participante={p} propriedadeId={visita.propriedadeId} dados={r} tiposExame={tiposExame} onChange={patch=>mudarContextualVisita(p,patch)} disabled={bloqueado}/>
+          {!r.avaliacaoContextual&&<><CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />
+          <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label></>}
           <label>Tipo de exame<SelectCampo aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
             value={r.tipoExameId ?? ""} onValueChange={(valor) => {
               const tipo = tiposExame.find(t => t.id === valor);
-              mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] });
+              mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [], avaliacaoContextual:undefined,vinculosConclusao:undefined,realizadoSemDG:undefined });
             }}>
             <option value="">Avaliação reprodutiva padrão</option>
             {tiposExame.filter(t => t.ativo || t.id === r.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}
           </SelectCampo></label>
-          {r.resultado !== "NAO_AVALIADO" && <CamposResultadoExame
+          {!r.avaliacaoContextual&&r.resultado !== "NAO_AVALIADO" && <CamposResultadoExame
             campos={(tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))}
             valores={r.resultados ?? []} onChange={resultados => mudarAvaliacao(p, { resultados })} />}
-          {r.resultado && r.resultado !== "NAO_AVALIADO" && <>
+          {(r.avaliacaoContextual||r.resultado && r.resultado !== "NAO_AVALIADO") && <>
             {select(p, "tentativaId", "Tentativa comprovada", tentativas.map(t => [t.id, `${t.data.slice(0, 10)} · ${t.tipo}`]))}
             {gestacoes.length > 0 && select(p, "gestacaoId", "Gestação conhecida · confirmar vínculo", gestacoes.map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0, 10) ?? "sem data informada"}`]))}
             {r.resultado === "POSITIVO" && !r.tentativaId && !r.gestacaoId && <label>Justificativa do vínculo desconhecido{input(p, "motivoVinculoDesconhecido", "Motivo da tentativa não comprovada")}</label>}
@@ -812,7 +868,7 @@ export function Transcricao({
       <div className="visita-aviso suave">{atividade.tipo === "AVALIACAO_REPRODUTIVA" || atividade.participantes.some(ehAvaliacaoTarefa) ? "Conclusão, sexo fetal e conduta são informações distintas. Os complementos aparecem em “Detalhes”." : "O resultado principal fica na linha. Os dados complementares do procedimento ficam em “Detalhes”."}</div>
       <div className="visita-mensagens">
         <ErrorBox erro={erro} />
-        {previaConferencia && ((previaConferencia.totalComAlteracoes ?? alteracoes.length) > 0 || (previaConferencia.total ?? 0) > 10 || previaConferencia.execucaoProtocolos) && (
+        {previaConferencia && ((previaConferencia.totalComAlteracoes ?? alteracoes.length) > 0 || (previaConferencia.total ?? 0) > 10 || previaConferencia.execucaoProtocolos || previaConferencia.participantes.some(p=>p.avaliacaoContextual)) && (
           <div className="rounded-lg border border-border p-4 mb-4">
             <ul className="text-sm space-y-2">
               {previaConferencia.participantes.map((a) => (
@@ -825,6 +881,8 @@ export function Transcricao({
               ))}
             </ul>
             {(previaConferencia.total ?? 0) > 10 && <div className="flex flex-wrap gap-3"><p>Página {previaConferencia.pagina ?? 1} de {Math.ceil((previaConferencia.total ?? 0) / 10)} · {previaConferencia.totalComAlteracoes ?? 0} animais com contexto alterado.</p><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) <= 1} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) - 1)}>Contexto anterior</Button><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) * 10 >= (previaConferencia.total ?? 0)} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) + 1)}>Próximo contexto</Button></div>}
+            {previaConferencia.participantes.filter(p=>p.avaliacaoContextual).map(p=><section key={p.participanteId} className="grid gap-3 border-t border-border pt-4"><h3 className="font-semibold">Avaliação · {atividade.participantes.find(a=>a.id===p.participanteId)?.snapshot.brinco??"Animal selecionado"}</h3>{p.avaliacaoContextual?.estado==="CONFERIDA"?<PreviaAvaliacaoContextual dados={p.avaliacaoContextual}/>:p.avaliacaoContextual?.estado==="DADOS_PENDENTES"?<ErrorBox erro={p.avaliacaoContextual.erro}/>:null}</section>)}
+            {previaConferencia.execucaoProtocolos?.avaliacoes?.map(a=><section className="grid gap-3 border-t border-border pt-4" key={a.tarefaId}><h3 className="font-semibold">Avaliação da etapa · {atividade.participantes.find(p=>p.animalId===a.animalId)?.snapshot.brinco??"Animal selecionado"}</h3><PreviaAvaliacaoContextual dados={a}/></section>)}
             {previaConferencia.execucaoProtocolos && <div><p>{previaConferencia.execucaoProtocolos.estado === "CONFERIDA" ? "Procedimentos conferidos no servidor." : previaConferencia.execucaoProtocolos.erro}</p>{previaConferencia.execucaoProtocolos.consumos?.map((c, i) => <p key={i}>{c.produtoNome ?? "Material"}: {c.quantidade} {c.unidade}</p>)}{(previaConferencia.execucaoProtocolos.totalConsumos ?? 0) > 10 && <p>Materiais: página {previaConferencia.execucaoProtocolos.paginaConsumos ?? 1} de {Math.ceil((previaConferencia.execucaoProtocolos.totalConsumos ?? 0) / 10)}.</p>}</div>}
             {(previaConferencia.execucaoProtocolos?.totalConsumos ?? 0) > 10 && <div className="flex gap-3"><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) <= 1} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) - 1)}>Materiais anteriores</Button><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) * 10 >= (previaConferencia.execucaoProtocolos?.totalConsumos ?? 0)} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) + 1)}>Próximos materiais</Button></div>}
             <ConfirmacaoCiencia
@@ -895,7 +953,7 @@ export function Transcricao({
               <tr className="border-b border-border align-top" id={`linha-${p.id}`}>
                 <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
                 <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
-                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}><CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={(r.dados ?? {}) as RascunhoVisita} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/></fieldset> : <SelectCampo aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onValueChange={(valor) =>{atualizar(p,"status",valor);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></SelectCampo>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
+                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>{r.dados?.avaliacaoContextual?<span>{resultadoPrincipalVisita(atividade.tipo,p,r)??"Avaliação contextual em preenchimento"}</span>:<CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/>}</fieldset> : <SelectCampo aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onValueChange={(valor) =>{atualizar(p,"status",valor);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></SelectCampo>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
                 <td className="p-3 min-w-36 space-y-2">
                   <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
                   <p role="status" className="text-sm">{avisos[p.id]}</p>
@@ -911,8 +969,9 @@ export function Transcricao({
                       {selectDados(p, "tentativaId", "Tentativa comprovada", ((painel?.tentativas ?? []).filter(t => t.animalId === p.animalId && t.status !== "ANULADO" && t.data.slice(0,10) <= visita.data.slice(0,10)).map(t => [t.id, `${t.data.slice(0,10)} · ${t.tipo}`]) as [string,string][]))}
                       {selectDados(p, "gestacaoId", "Gestação conhecida", ((painel?.gestacoes ?? []).filter(g => g.animalId === p.animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= visita.data.slice(0,10)) && (!g.encerradaEm || g.encerradaEm.slice(0,10) > visita.data.slice(0,10))).map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0,10) ?? "sem data"}`]) as [string,string][]))}
                       <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-3">
-                        <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
-                        <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label>
+                        <AvaliacaoContextualVisita participante={p} propriedadeId={visita.propriedadeId} dados={r.dados??{}} tiposExame={tiposExame} onChange={patch=>mudarContextualVisita(p,patch,true)} disabled={bloqueado}/>
+                        {!r.dados?.avaliacaoContextual&&<><CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
+                        <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label></>}
                         {r.dados?.conduta === "DESCARTE" && <label>Motivo do descarte<input aria-label={`Motivo do descarte · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={String(r.dados?.motivo ?? "")} onChange={e => atualizarDados(p, { motivo: e.target.value })} /></label>}
                         {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<DatePicker aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className="mt-1.5" value={String(r.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(p, { retornoEm: valor || undefined })} /></label>}
                         {r.dados?.conduta === "IATF" && <div><p>A indicação não inicia o protocolo. A programação fica disponível após confirmar.</p><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
@@ -923,7 +982,7 @@ export function Transcricao({
                       {["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "") && input(p, "motivo", "Motivo do atendimento pendente")}
                     </fieldset>
                     <div className="grid gap-3"><label>Tipo de exame<SelectCampo className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onValueChange={(valor) => { const tipo = tiposExame.find(t => t.id === valor); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>
-                      {!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
+                      {!r.dados?.avaliacaoContextual&&!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
                     </div>
                   </>}
                   {atividade.tipo === "TAREFA_IATF" && r.status === "ADIADO" && <CampoDataIatf rotulo={`Nova previsão · ${p.snapshot.brinco ?? p.ordem}`} valor={r.previstaPara ?? ""} onChange={v => atualizar(p, "previstaPara", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />}

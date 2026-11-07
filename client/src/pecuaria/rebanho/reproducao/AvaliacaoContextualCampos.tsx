@@ -5,16 +5,12 @@ import { DatePicker } from "../../../components/DatePicker";
 import { ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { classeInput } from "../../../financeiro/PainelCadastro";
-import {
-  CamposResultadoExame,
-  type CampoExame,
-  type ObservacaoExame,
-} from "../sanidade/CamposExame";
-import { CamposAptidao, type ConclusaoAptidao } from "./CamposAptidao";
+import { CamposResultadoExame, type CampoExame } from "../sanidade/CamposExame";
+import { CamposAptidao } from "./CamposAptidao";
 import {
   consultarCatalogoAvaliacao,
   type AvaliacaoContextualInput,
-  type CamposAvaliacaoContextual,
+  type DadosAvaliacaoContextual,
   type CatalogoAvaliacao,
   type ContextoAvaliacao,
   type EstadoItemAvaliacao,
@@ -22,14 +18,7 @@ import {
   type VinculoConclusaoInput,
 } from "./avaliacao-contextual-api";
 
-export type DadosFormularioContextual = CamposAvaliacaoContextual & {
-  resultado?: string;
-  finalidade?: string;
-  sexoFetal?: string | null;
-  resultadoAptidao?: ConclusaoAptidao | null;
-  retornoAptidaoEm?: string | null;
-  resultados?: ObservacaoExame[];
-};
+export type DadosFormularioContextual = DadosAvaliacaoContextual;
 export type NecessidadeSelecionavel = {
   id: string;
   finalidade: string;
