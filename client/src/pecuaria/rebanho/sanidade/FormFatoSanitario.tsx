@@ -1,3 +1,5 @@
+import { useConferenciaImpactos } from "./ConferenciaImpactos";
+import type { ConfirmacaoImpacto } from "./impactos-api";
 import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { HeartPulse } from "lucide-react";
@@ -21,6 +23,7 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
   dataInicial?: string; conteudoExtra?: ReactNode; propriedadeId?: number;
   onRegistrar?: (input: Record<string, unknown>) => Promise<void>; inline?: boolean;
 }) {
+  const impactos = useConferenciaImpactos();
   const [animalId, setAnimalId] = useState(animalInicial);
   const [busca, setBusca] = useState("");
   const [animais, setAnimais] = useState<AnimalResumo[]>([]);
@@ -68,14 +71,21 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
     if (!sitio) { setErro("Confira o animal e a data: não há sítio histórico nesta data."); setCampoErro("data"); return; }
     trava.current = true; setOcupado(true); setErro(null); setCampoErro("");
     const base = { animalId, propriedadeId: sitio };
-    const body = tipo === "ocorrencia" ? { ...base, doencaId: cadastroId, inicio: data, observacao: texto.trim() || null } : tipo === "exame" ? { ...base, tipoExameId: cadastroId, data, tarefaId, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, responsavel: responsavel.trim() || null, ...(formato?.tipoResultado === "MULTIPLO" ? { resultados: observacoes } : resultado === "" ? {} : formato?.tipoResultado === "NUMERO" ? { resultadoNumero: Number(resultado) } : formato?.tipoResultado === "OPCAO" ? { resultadoOpcao: resultado } : { resultadoTexto: resultado }) } : { ...base, protocoloId: cadastroId, inicio: data, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, ...(ciencia ? { confirmarSobreposicao: true, justificativaSobreposicao: texto.trim() } : {}) };
-    try { if (onRegistrar) { await onRegistrar(body); onSalvo(); return; } await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }, sitio); onSalvo(); }
+    const body: Record<string, unknown> & { chave?: string; impacto?: ConfirmacaoImpacto } = tipo === "ocorrencia" ? { ...base, doencaId: cadastroId, inicio: data, observacao: texto.trim() || null } : tipo === "exame" ? { ...base, tipoExameId: cadastroId, data, tarefaId, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, responsavel: responsavel.trim() || null, ...(formato?.tipoResultado === "MULTIPLO" ? { resultados: observacoes } : resultado === "" ? {} : formato?.tipoResultado === "NUMERO" ? { resultadoNumero: Number(resultado) } : formato?.tipoResultado === "OPCAO" ? { resultadoOpcao: resultado } : { resultadoTexto: resultado }) } : { ...base, protocoloId: cadastroId, inicio: data, operacaoServicoId: servicoId || null, ocorrenciaId: ocorrenciaId || null, ...(ciencia ? { confirmarSobreposicao: true, justificativaSobreposicao: texto.trim() } : {}) };
+    try {
+      if (tipo === "ocorrencia") {
+        const confirmacoes = await impactos.conferir([{ origem: "OCORRENCIA", ...base, data, doencaId: cadastroId }], { [animalId]: ficha?.brinco ?? "Animal selecionado" });
+        if (!confirmacoes) return;
+        body.chave = chave.current;
+        body.impacto = confirmacoes[0];
+      }
+      if (onRegistrar) { await onRegistrar(body); onSalvo(); return; } await reqSanidade(tipo === "ocorrencia" ? "/ocorrencias" : tipo === "exame" ? "/exames/coletivos" : "/execucoes/coletivas", { method: "POST", body: JSON.stringify(tipo === "ocorrencia" ? body : { chave: chave.current, propriedadeId: sitio, itens: [body] }) }, sitio); onSalvo(); }
     catch (e) { const mensagem = e instanceof Error ? e.message : String(e); setErro(mensagem); const recebido = e instanceof SanidadeApiError ? (e.campo ?? "").replace(/^itens\.\d+\./, "") : ""; setCampoErro(({ inicio: "data", doencaId: "cadastro", tipoExameId: "cadastro", protocoloId: "cadastro", operacaoServicoId: "servico", resultadoNumero: "resultado", resultadoTexto: "resultado", resultadoOpcao: "resultado", observacao: "texto", justificativaSobreposicao: "texto", motivo: "texto", confirmarSobreposicao: "ciencia", propriedadeId: "data" } as Record<string, string>)[recebido] ?? recebido); if (tipo === "protocolo" && /protocolo pendente|sobreposição/i.test(mensagem)) setSobreposicao(true); }
     finally { trava.current = false; setOcupado(false); }
   }
   const titulo = tipo === "ocorrencia" ? "Nova ocorrência" : tipo === "exame" ? "Registrar exame" : "Iniciar protocolo";
   const formularioConteudo = <form ref={formulario} id="novo-fato-sanitario" className="sanidade-form-fato" onSubmit={(e) => { e.preventDefault(); void salvar(); }}>
-      {conteudoExtra}
+      <fieldset disabled={ocupado} className="contents">{conteudoExtra}
       <section className="sanidade-fato-identificacao"><h3>Animal e data do registro</h3><CampoFormulario id="fato-data" rotulo="Data" obrigatorio erro={campoErro === "data" ? erro ?? undefined : undefined}>{(p) => <DatePicker {...p} required value={data} onChange={setData} />}</CampoFormulario>
       {fixo ? <p>Animal: {ficha ? nomeAnimalSanitario(ficha) : "Carregando animal…"}</p> : <><label className="relative">Buscar animal<input className={classeInput} value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Brinco ou nome" /></label><label>Animal<SelectCampo required className={classeInput} aria-label="Animal" aria-invalid={invalido("animalId")} value={animalId} onValueChange={(valorSelecionado) => setAnimalId(valorSelecionado)}><option value="">Selecione</option>{ficha && !animais.some((a) => a.id === ficha.id) && <option value={ficha.id}>{nomeAnimalSanitario(ficha)}</option>}{animais.map((a) => <option key={a.id} value={a.id}>{nomeAnimalSanitario(a)}</option>)}</SelectCampo>{totalAnimais > animais.length && <span className="mt-1 block text-xs text-ink-3">Mostrando {animais.length} de {totalAnimais.toLocaleString("pt-BR")} animais. Busque pelo brinco ou nome para encontrar os demais.</span>}{erroCampo("animalId")}</label></>}
       <p className="text-sm text-ink-3">Sítio na data: {local?.propriedade?.nome ?? "Não localizado"}</p>
@@ -85,7 +95,7 @@ export function FormFatoSanitario({ tipo, animalInicial = "", fixo = false, cada
       {(tipo === "ocorrencia" || sobreposicao) && <label>{sobreposicao ? "Motivo da sobreposição" : "Observação"}<textarea required={sobreposicao} minLength={sobreposicao ? 5 : undefined} maxLength={500} className={classeInput} aria-invalid={invalido("texto")} value={texto} onChange={(e) => setTexto(e.target.value)} />{erroCampo("texto")}</label>}
       {sobreposicao && <ConfirmacaoCiencia id="nova-sobreposicao" checked={ciencia} onChange={setCiencia} obrigatorio>Confirmo iniciar outro protocolo com tarefas pendentes.</ConfirmacaoCiencia>}
       {erroCampo("ciencia")}
-      </section>
+      </section></fieldset>
     </form>;
-  return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{titulo}</h3><div className="flex gap-2"><Button secondary disabled={ocupado} onClick={onFechar}>Fechar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></div></div><ErrorBox erro={erro} />{formularioConteudo}</section> : <PainelCadastro icon={HeartPulse} aberto titulo={titulo} largura="sm:max-w-4xl" onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></>}>{formularioConteudo}</PainelCadastro>;
+  return <>{impactos.painel}{inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold">{titulo}</h3><div className="flex gap-2"><Button secondary disabled={ocupado} onClick={onFechar}>Fechar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></div></div><ErrorBox erro={erro} />{formularioConteudo}</section> : <PainelCadastro icon={HeartPulse} aberto titulo={titulo} largura="sm:max-w-4xl" onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="novo-fato-sanitario" disabled={ocupado || !ficha}>Confirmar</Button></>}>{formularioConteudo}</PainelCadastro>}</>;
 }

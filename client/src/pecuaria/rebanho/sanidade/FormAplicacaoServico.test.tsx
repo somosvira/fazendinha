@@ -1,3 +1,4 @@
+import { previaImpactosTeste } from "./impactos.fixture";
 // @vitest-environment jsdom
 import { EditorExecucaoProtocolo } from "../protocolos/EditorExecucaoProtocolo";
 import { reqProtocolo, type TarefaOperacional } from "../protocolos/api";
@@ -317,4 +318,15 @@ it("coletivo sem tarefa entrega os itens conferidos ao adaptador sem POST intern
  await waitFor(()=>expect(conferir).toHaveBeenCalledTimes(1));
  expect(conferir.mock.calls[0][0]).toMatchObject([{animalId:'a',produtoId:'produto',dose:'10'},{animalId:'b',produtoId:'produto',dose:'10'}]);
  expect(vi.mocked(reqSanidade).mock.calls.some(([path])=>path==='/aplicacoes/coletivas')).toBe(false);
+});
+
+it("aplicação coordenada só entrega fato e hash após conferir impacto explícito", async () => {
+  vi.mocked(reqSanidade).mockImplementation(async (path, init) => path === "/impactos-protocolares/previa" ? previaImpactosTeste(JSON.parse(String(init?.body))) : []);
+  const registrar = vi.fn().mockResolvedValue(undefined);
+  render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onRegistrar={registrar} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher(); submeter();
+  await screen.findByText("Preparo autorizado · v2"); expect(registrar).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Confirmado com responsável" } });
+  fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
+  await waitFor(() => expect(registrar).toHaveBeenCalledWith(expect.objectContaining({ animalId: "animal", propriedadeId: 1, chave: expect.any(String), impacto: { revisao: "a".repeat(64), motivo: "Confirmado com responsável" } })));
 });

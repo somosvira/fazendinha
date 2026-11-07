@@ -1,3 +1,4 @@
+import { useConferenciaImpactos } from "../sanidade/ConferenciaImpactos";
 import { DatePicker } from "../../../components/DatePicker";
 import { RevisaoPesoSecagem, revisaoPesoSecagemVazia, validarRevisaoPesoSecagem } from "./RevisaoPesoSecagem";
 import { getHojeISO } from "../../../lib/hoje";
@@ -13,6 +14,7 @@ import { SelectCampo } from "@/financeiro/SelectCampo";
 export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicial, partoInicial, tipoPartoInicial, complementoInicial, onFechar, onSalvo }: {
   complementoInicial?: "escore" | "peso" | "retencao"; tipo: "parto" | "lactacao"; id: string; animalId: string; propriedadeId?: number | null; gestacaoInicial?: string | null; partoInicial?: string | null; tipoPartoInicial?: string; onFechar: () => void; onSalvo: () => void;
 }) {
+  const impactos = useConferenciaImpactos();
   const sitioDoFato = propriedadeId ?? getPropriedadeAtiva();
   const [revisaoSecagem, setRevisaoSecagem] = useState(revisaoPesoSecagemVazia);
   const [escoreRevisao, setEscoreRevisao] = useState("");
@@ -71,10 +73,17 @@ export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicia
     const payload = { propriedadeId: prop, motivo, ...(tipo === "parto" ? { ...camposAlterados, ...(escoreRevisao.startsWith("ANULAR:") ? { escoreMatriz: { acao: "ANULAR", exameId: escoreRevisao.slice(7), motivo } } : escoreRevisao.startsWith("SUBSTITUIR:") && atual.escoreMatriz ? { escoreMatriz: { ...atual.escoreMatriz, acao: "SUBSTITUIR", exameId: escoreRevisao.slice(11), motivo } } : {}), ...(desvincularPeso ? { pesoMatriz: { acao: "DESVINCULAR", vinculoId: desvincularPeso, motivo } } : {}), ...(desvincularRp ? { ocorrenciaRetencao: { acao: "DESVINCULAR", ocorrenciaId: desvincularRp, motivo } } : {}), gestacaoId: vinculo || null, versaoEsperada: fato!.versao, pesosCrias: alteracoesPesos } : { ...(revisaoPeso.pesoSecagem ? { pesoSecagem: revisaoPeso.pesoSecagem } : {}), partoId: vinculo || null, versaoEsperada: painel?.lactacoes?.find(l => l.id === id)?.versao, ...(inicio ? { inicio } : {}), ...(painel?.lactacoes?.some(l => l.id === id) ? { encerradaEm: fim || null } : {}) }) };
     const serializado = JSON.stringify(payload); if (envio.current?.payload !== serializado) envio.current = { payload: serializado, chave: crypto.randomUUID() };
     emCurso.current = true; setOcupado(true); setErro(null);
-    try { await reqV4(`/reproducao/${tipo === "parto" ? "partos" : "lactacoes"}/${id}/correcao`, { ...payload, chave: envio.current.chave }, "POST", prop); onSalvo(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { emCurso.current = false; setOcupado(false); }
+    try {
+      if (tipo === "parto" && !desvincularRp && atual.ocorrenciaRetencao?.acao === "CRIAR") {
+        const ocorrencia = atual.ocorrenciaRetencao;
+        const confirmacoes = await impactos.conferir([{ origem: "OCORRENCIA", animalId, propriedadeId: prop, data: ocorrencia.inicio, doencaId: ocorrencia.doencaId }], { [animalId]: "Matriz do parto" });
+        if (!confirmacoes) return;
+        if (confirmacoes[0]) ocorrencia.impacto = confirmacoes[0];
+      }
+      await reqV4(`/reproducao/${tipo === "parto" ? "partos" : "lactacoes"}/${id}/correcao`, { ...payload, chave: envio.current.chave }, "POST", prop); onSalvo(); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { emCurso.current = false; setOcupado(false); }
   }
-  return <PainelCadastro aberto titulo={tipo === "parto" ? "Corrigir / completar parto" : "Corrigir lactação"} onFechar={onFechar} bloqueado={ocupado} rodape={<><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="corrigir-fato-v4" disabled={ocupado || !painel}>{ocupado ? "Salvando…" : "Salvar correção"}</Button></>}>
-    <form id="corrigir-fato-v4" noValidate={tipo === "lactacao"} className="grid gap-4" onSubmit={e => { e.preventDefault(); void salvar(); }}><ErrorBox erro={erro} /><p className="text-sm">A correção conserva o histórico, os cadastros e a filiação das crias. Desvincular a lactação preserva seu período físico.</p>
+  return <>{impactos.painel}<PainelCadastro aberto titulo={tipo === "parto" ? "Corrigir / completar parto" : "Corrigir lactação"} onFechar={onFechar} bloqueado={ocupado} rodape={<><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="corrigir-fato-v4" disabled={ocupado || !painel}>{ocupado ? "Salvando…" : "Salvar correção"}</Button></>}>
+    <form id="corrigir-fato-v4" noValidate={tipo === "lactacao"} className="grid gap-4" onSubmit={e => { e.preventDefault(); void salvar(); }}><fieldset disabled={tipo === "parto" && ocupado} className="contents"><ErrorBox erro={erro} /><p className="text-sm">A correção conserva o histórico, os cadastros e a filiação das crias. Desvincular a lactação preserva seu período físico.</p>
       {tipo === "parto" && <><label className="grid gap-1 text-sm">Desfecho<SelectCampo className={classeInput} value={dados.desfecho} onValueChange={(valor) => setDados({ ...dados, desfecho: valor as typeof dados.desfecho })}><option value="NASCIMENTO">Nascimento</option><option value="ABORTO">Aborto</option></SelectCampo></label><p className="text-sm text-ink-3">Classificação histórica: {fato?.tipo ?? tipoPartoInicial ?? "Não informada"}</p><label className="grid gap-1 text-sm">Hora (opcional)<input type="time" className={classeInput} value={dados.hora} onChange={e => setDados({ ...dados, hora: e.target.value, horarioEstimado: !!e.target.value && dados.horarioEstimado })} /></label><label className="text-sm"><input type="checkbox" disabled={!dados.hora} checked={dados.horarioEstimado} onChange={e => setDados({ ...dados, horarioEstimado: e.target.checked })} /> Horário estimado</label><CamposTriEstado rotulo="Parto induzido" valor={dados.induzido} onChange={v => setDados({ ...dados, induzido: v })} /><CamposTriEstado rotulo="Dificuldade no parto" valor={dados.dificuldade} onChange={v => setDados({ ...dados, dificuldade: v })} /><label className="grid gap-1 text-sm">Assistência (opcional)<textarea className={classeInput} value={dados.assistenciaDescricao} maxLength={1000} onChange={e => setDados({ ...dados, assistenciaDescricao: e.target.value })} /></label><label className="grid gap-1 text-sm">Responsável pelo parto (opcional)<input className={classeInput} value={dados.responsavel} maxLength={160} onChange={e => setDados({ ...dados, responsavel: e.target.value })} /></label><label className="grid gap-1 text-sm">Observação<textarea className={classeInput} value={dados.observacao} maxLength={1000} onChange={e => setDados({ ...dados, observacao: e.target.value })} /></label>{fato?.examesPosParto?.some(e => e.status === "VALIDO") && <label className="grid gap-1 text-sm">Revisão do escore corporal<SelectCampo className={classeInput} value={escoreRevisao} onValueChange={(escolha) => {
         const valor = escolha; setEscoreRevisao(valor);
         const exame = fato.examesPosParto?.find(x => x.id === valor.split(":")[1]);
@@ -85,6 +94,6 @@ export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicia
       {tipo === "lactacao" && painel?.lactacoes?.find(l => l.id === id) && <RevisaoPesoSecagem lactacao={painel.lactacoes.find(l => l.id === id)!} fim={fim} valor={revisaoSecagem} onChange={setRevisaoSecagem} propriedadeId={sitioDoFato ?? undefined} />}
       <label className="grid gap-1 text-sm">{tipo === "parto" ? "Gestação vinculada" : "Parto vinculado"}<SelectCampo className={classeInput} value={vinculo} onValueChange={(valor) => setVinculo(valor)}><option value="">Sem vínculo · desvincular</option>{tipo === "parto" ? (painel?.gestacoes ?? []).filter(g => g.status === "VALIDO").map(g => <option key={g.id} value={g.id}>Gestação confirmada em {g.confirmadaEm?.slice(0, 10) ?? g.id.slice(0, 8)}</option>) : (painel?.partos ?? []).filter(p => p.status !== "ANULADO").map(p => <option key={p.id} value={p.id}>{p.data.slice(0, 10)} · {p.tipo}</option>)}</SelectCampo></label>
       <label className="grid gap-1 text-sm">Motivo da correção<textarea className={classeInput} required minLength={5} maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)} /></label>
-    </form>
-  </PainelCadastro>;
+    </fieldset></form>
+  </PainelCadastro></>;
 }

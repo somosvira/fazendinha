@@ -1,3 +1,4 @@
+import { useConferenciaImpactos } from "../sanidade/ConferenciaImpactos";
 import { AvaliacaoContextualCampos, type DadosFormularioContextual, type NecessidadeSelecionavel } from "./AvaliacaoContextualCampos";
 import { PreviaAvaliacaoContextual } from "./PreviaAvaliacaoContextual";
 import { conferirAvaliacaoContextual, contextoAvaliacao, type CamposAvaliacaoContextual, type PreviaAvaliacaoContextual as PreviaContextual } from "./avaliacao-contextual-api";
@@ -103,6 +104,7 @@ export function FormReproducao({
     input: TentativaInput | AvaliacaoInput | PartoInput,
   ) => Promise<void>;
 }) {
+  const impactosParto = useConferenciaImpactos();
   const propriedadeId = propriedadeIdInformada ?? getPropriedadeAtiva();
   const usuario = getUsuario();
   const podeValores = !!usuario && podeAcessarArea("financeiro") && (usuario.dono || usuario.flags.includes("verValores"));
@@ -426,14 +428,22 @@ export function FormReproducao({
         await (onRegistrar ?? registrarAvaliacao)(input);
       }
 
-      if (acao === "parto")
+      if (acao === "parto") {
+        const complementos = camposPartoPayload(dadosParto, data);
+        if (complementos.ocorrenciaRetencao?.acao === "CRIAR") {
+          const ocorrencia = complementos.ocorrenciaRetencao;
+          const confirmacoes = await impactosParto.conferir([{ origem: "OCORRENCIA", animalId, propriedadeId, data: ocorrencia.inicio, doencaId: ocorrencia.doencaId }], { [animalId]: animal?.brinco ?? "Matriz selecionada" });
+          if (!confirmacoes) return;
+          if (confirmacoes[0]) ocorrencia.impacto = confirmacoes[0];
+        }
         await (onRegistrar ?? registrarParto)({
           ...base,
-          ...camposPartoPayload(dadosParto, data),
+          ...complementos,
           ...(demandaInicial?.gestacaoId?{gestacaoId:demandaInicial.gestacaoId}:gestacaoDoFato ? { gestacaoId: gestacaoDoFato.id } : {}),
           crias: dadosParto.desfecho === "ABORTO" ? [] : crias,
           iniciarLactacao: lactacao,
         });
+      }
       if (acao === "situacao")
         await reqV4("/reproducao/situacoes-iniciais", {
           ...base,
@@ -548,7 +558,7 @@ export function FormReproducao({
       </FormShellReproducao>
     );
   if (registroSalvo) return <FormShellReproducao inline={inline} titulo="Avaliação registrada" onFechar={onSalvo} bloqueado={false} rodape={<><Button variant="outline" onClick={onSalvo}>Concluir</Button><Button onClick={() => { try { onPrepararIatf?.([registroSalvo]); } catch { setErro("Diagnóstico já salvo. Não foi possível abrir a preparação; tente novamente sem registrar o diagnóstico outra vez."); } }}>Preparar próxima IATF</Button></>}><ErrorBox erro={erro} /><p role="status">Gestação não confirmada. Indicação para nova IATF registrada. A preparação exige revisão e confirmação próprias.</p></FormShellReproducao>;
-  return (
+  return (<>{impactosParto.painel}
     <FormShellReproducao
       inline={inline}
       titulo={TITULOS[acao]}
@@ -577,6 +587,7 @@ export function FormReproducao({
           void salvar();
         }}
       >
+        <fieldset disabled={acao === "parto" && ocupado} className="contents">
         {conteudoExtra}
         <ErrorBox erro={erro} />
         <section className="repro-registro-identidade" aria-label="Animal e data do fato">
@@ -865,8 +876,9 @@ export function FormReproducao({
           ])}
         </div></section>
         {acao !== "parto" && campo("motivo", acao === "situacao" ? "Evidência ou referência" : "Motivo / observação", motivo, setMotivo, exigeMotivo)}
+        </fieldset>
       </form>
-    </FormShellReproducao>
+    </FormShellReproducao></>
   );
 }
 

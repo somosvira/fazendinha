@@ -1,3 +1,4 @@
+import type { ConfirmacaoImpacto } from "./impactos-api";
 import type { ResumoCustos } from "../custos/api";
 import { comPropriedade } from "../../../propriedadeScope";
 
@@ -57,6 +58,7 @@ export const salvarTipoAplicacao = (body: { nome?: string; ativo?: boolean }, id
 export const listarComprasDiretas = (propriedadeId: number) => req<CompraDireta[]>(`/compras-diretas?propriedadeId=${propriedadeId}`, undefined, propriedadeId);
 export type EstadoPrazo = "INFORMADO" | "NAO_INFORMADO" | "NAO_APLICAVEL";
 export type AplicacaoInput = {
+  chave?: string; impacto?: ConfirmacaoImpacto;
   animalId: string; propriedadeId: number; data: string; aplicadaEm?: string; tipoAplicacaoId: string;
   tarefaId?: string;
   ocorrenciaId?: string;

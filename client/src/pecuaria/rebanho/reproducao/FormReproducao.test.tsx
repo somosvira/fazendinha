@@ -1,3 +1,4 @@
+import { previaImpactosTeste } from "../sanidade/impactos.fixture";
 import { consultarBezerreiro } from "../bezerreiro/api";
 import { alterarControle } from "@/lib/controles.fixture";
 // @vitest-environment jsdom
@@ -12,7 +13,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { listarAnimais, listarGenitores, listarLotes, listarMaterialGenetico } from "../api";
-import { listarServicos } from "../sanidade/api";
+import { listarServicos, reqSanidade } from "../sanidade/api";
 import { FormReproducao } from "./FormReproducao";
 import {
   reqV4,
@@ -29,6 +30,7 @@ vi.mock("../api", () => ({
 vi.mock("../bezerreiro/api",()=>({consultarBezerreiro:vi.fn()}));
 vi.mock("../nutricao/api",()=>({listarPartidasNutricionais:vi.fn().mockResolvedValue([])}));
 vi.mock("../sanidade/api", () => ({
+  reqSanidade: vi.fn(),
   listarServicos: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("../../../propriedadeScope", () => ({ getPropriedadeAtiva: vi.fn(() => 1) }));
@@ -554,4 +556,20 @@ it("avaliação contextual parcial confere efeitos antes de gravar e preserva ch
     revisaoContextual: previa.revisao,
   });
   expect(salvo).toHaveBeenCalledTimes(1);
+});
+
+it("parto com ocorrência nova de RP confere os impactos e envia a confirmação na mesma ação CRIAR", async () => {
+  vi.mocked(reqV4).mockImplementation(async path => path === "/sanidade/doencas" ? [{ id: "rp", nome: "Retenção de placenta" }] : []);
+  vi.mocked(reqSanidade).mockImplementation(async (_path, init) => previaImpactosTeste(JSON.parse(String(init?.body))));
+  vi.mocked(registrarParto).mockResolvedValue({ id: "p", animalId: "a", data: "2026-10-13" });
+  render(<FormReproducao acao="parto" painel={painel} animalInicial="a" propriedadeId={7} dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  fireEvent.click(screen.getByRole("button", { name: "Pós-parto" }));
+  await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } });
+  await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } }); await esperarOpcao("Retenção de placenta");
+  await alterarControle(screen.getByLabelText("Doença da ocorrência"), { target: { value: "rp" } });
+  await alterarControle(screen.getByLabelText("Início real da ocorrência"), { target: { value: "2026-10-14" } });
+  fireEvent.submit(document.getElementById("form-reproducao")!); await screen.findByText("Preparo autorizado · v2"); expect(registrarParto).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Impacto da RP conferido" } }); fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
+  await waitFor(() => expect(registrarParto).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, ocorrenciaRetencao: { acao: "CRIAR", doencaId: "rp", inicio: "2026-10-14", impacto: { revisao: "a".repeat(64), motivo: "Impacto da RP conferido" } } })));
+  expect(reqSanidade).toHaveBeenCalledWith("/impactos-protocolares/previa", expect.objectContaining({ body: JSON.stringify({ origem: "OCORRENCIA", animalId: "a", propriedadeId: 7, data: "2026-10-14", doencaId: "rp" }) }), 7);
 });
