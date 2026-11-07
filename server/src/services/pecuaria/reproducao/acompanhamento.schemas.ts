@@ -46,3 +46,10 @@ export type ParametrosAcompanhamento=z.infer<typeof parametrosAcompanhamentoSche
 export type CriarPoliticaAcompanhamentoInput=z.infer<typeof criarPoliticaAcompanhamentoSchema>;
 export type PreviaAdocaoAcompanhamentoInput=z.infer<typeof previaAdocaoAcompanhamentoSchema>;
 export type AdotarAcompanhamentoInput=z.infer<typeof adotarAcompanhamentoSchema>;
+
+const selecaoRevisaoPrazo = { propriedadeId:sitio, politicaId:id, demandaIds:z.array(id).min(1).max(100) };
+const idsUnicos = (v:{demandaIds:string[]}, c:z.RefinementCtx) => { if(new Set(v.demandaIds).size!==v.demandaIds.length)c.addIssue({code:"custom",path:["demandaIds"],message:"Não repita demandas na seleção"}); };
+export const previaRevisaoPrazosSchema = z.object(selecaoRevisaoPrazo).strict().superRefine(idsUnicos);
+export const revisarPrazosSchema = z.object({ ...selecaoRevisaoPrazo, chave:id, motivo, revisao:z.string().regex(/^[a-f0-9]{64}$/) }).strict().superRefine(idsUnicos);
+export type PreviaRevisaoPrazos = z.infer<typeof previaRevisaoPrazosSchema>;
+export type RevisarPrazos = z.infer<typeof revisarPrazosSchema>;

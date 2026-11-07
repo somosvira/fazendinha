@@ -3284,6 +3284,24 @@ model DemandaAcompanhamentoReprodutivo {
   @@schema("pecuaria")
 }
 
+// Revisão explícita preserva as duas versões de prazo e permite conferir concorrência.
+model RevisaoPrazoAcompanhamento {
+  id String @id @default(uuid())
+  demandaId String
+  versaoAnterior Int
+  politicaAnteriorId String
+  politicaNovaId String
+  previstaAnterior DateTime @db.Date
+  previstaNova DateTime @db.Date
+  regraAnterior Json
+  regraNova Json
+  motivo String
+  usuarioId Int?
+  criadoEm DateTime @default(now())
+  @@unique([demandaId, versaoAnterior])
+  @@schema("pecuaria")
+}
+
 // V5: configuração imutável e população histórica; litros têm uma única fonte.
 model ConfiguracaoOrdenha {
   id String @id @default(uuid())

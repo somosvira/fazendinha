@@ -158,6 +158,8 @@ export const reproducaoRouter = new Hono()
   .get("/acompanhamento",async c=>{try{const {propriedadeId:_sitio,...consulta}=c.req.query();return c.json(await acompanhamento.listarAcompanhamentosPaginados(s.sitio.parse(await resolverEscopoLeitura(c)),consulta));}catch(e){return falhaV4(c,e);}})
   .post("/acompanhamento/adocao/previa",validarV4(acompanhamentoSchemas.previaAdocaoAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.previaAdocaoAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)}));}catch(e){return falhaV4(c,e);}})
   .post("/acompanhamento/adocao",validarV4(acompanhamentoSchemas.adotarAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.adotarAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/prazos/previa",validarV4(acompanhamentoSchemas.previaRevisaoPrazosSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.previaRevisaoPrazos({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)}));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/prazos/revisao",validarV4(acompanhamentoSchemas.revisarPrazosSchema),async c=>{try{const b=c.req.valid("json");const ator=usuarioV4(c);if(!ator)return c.json({error:"Sessão de usuário necessária para revisar prazos",code:"SEM_PERMISSAO"},403);return c.json(await acompanhamento.revisarPrazos({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},ator));}catch(e){return falhaV4(c,e);}})
   .get("/colostro", async (c) => {
     try {
       const criaId = s.uuid.parse(c.req.query("criaId"));
