@@ -1,3 +1,4 @@
+import { VisaoGeralReprodutiva } from "./VisaoGeralReprodutiva";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { abrirPreparacaoIatf } from "./preparar-iatf";
 import { GitBranch } from "lucide-react";
@@ -90,6 +91,7 @@ export function ReproducaoAnimal({
   );
 }
 const ROTINAS = [
+  { id:"geral", label:"Visão geral" },
   { id: "ciclos", label: "Animais e acompanhamentos" },
   { id: "agenda", label: "Agenda" },
   { id: "programacoes", label: "Protocolos" },
@@ -99,8 +101,18 @@ const ROTINAS = [
 type Rotina = typeof ROTINAS[number]["id"];
 function rotinaDaUrl(): Rotina {
   const valor = new URLSearchParams(window.location.search).get("rotina");
-  return ROTINAS.find(r => r.id === valor)?.id ?? (new URLSearchParams(window.location.search).has("programacaoId") ? "programacoes" : "ciclos");
+  const p = new URLSearchParams(window.location.search);
+  return (
+    ROTINAS.find((r) => r.id === valor)?.id ??
+    (p.has("programacaoId")
+      ? "programacoes"
+      : p.get("visao") === "historico" ||
+          ["animalId", "fatoId", "tentativaId", "acao"].some((k) => p.has(k))
+        ? "ciclos"
+        : "geral")
+  );
 }
+
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
@@ -130,7 +142,8 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId ?? (Number(parametros.get("sitio")) || null)}/>
     </>;
     return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
-      {rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
+      {rotina === "geral" ? <VisaoGeralReprodutiva propriedadeId={sitioId}/>
+        : rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
         : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId} podeLancar={podeLancar}/>
         : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes"/>

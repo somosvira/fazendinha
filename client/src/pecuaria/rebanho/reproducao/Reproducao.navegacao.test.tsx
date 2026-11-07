@@ -14,6 +14,7 @@ vi.mock("./ResumoPoliticaReprodutiva", () => ({ ResumoPoliticaReprodutiva: () =>
 vi.mock("../../../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 7, nome: "Escola" }, { id: 8, nome: "Destino" }]) }));
 vi.mock("./ElegibilidadeAnimal", () => ({ ElegibilidadeAnimal: vi.fn(({ propriedadeId }: { propriedadeId: number }) => <p>Elegibilidade no sítio {propriedadeId}</p>) }));
 vi.mock("./api", () => ({obterReproducao:vi.fn(),reqV4:vi.fn().mockImplementation(async (path: string) => path.startsWith("/reproducao/acompanhamento?") ? { itens: [], total: 0, pagina: 1, porPagina: 10, resumo: { total: 0, pendentes: 0, resolvidas: 0, encerradas: 0, semData: 0 } } : [])}));
+vi.mock("./VisaoGeralReprodutiva",()=>({VisaoGeralReprodutiva:({propriedadeId}:{propriedadeId:number})=><p>Visão geral operacional do sítio {propriedadeId}</p>}));
 vi.mock("./Iatf", () => ({Iatf:vi.fn(()=>null)}));
 vi.mock("./Exposicoes", () => ({Exposicoes:()=>null}));
 vi.mock("./RegrasSanitarias", () => ({RegrasSanitarias:()=>null}));
@@ -85,4 +86,40 @@ it("link direto da programação recebe painel e animais para adicionar e execut
  render(<Reproducao podeLancar/>);
  await waitFor(()=>expect(vi.mocked(Iatf).mock.calls.at(-1)?.[0]).toMatchObject({programacaoId:"programacao",painel,animais:painel.animais,propriedadeId:7,podeLancar:true}));
  expect(obterReproducao).toHaveBeenCalledWith(undefined,7);
+});
+
+it("visão geral é a entrada padrão e conserva todas as rotinas e os aliases históricos", async () => {
+  vi.mocked(obterReproducao).mockResolvedValue({
+    animais: [],
+    tentativas: [],
+    avaliacoes: [],
+    partos: [],
+    restricoes: [],
+  });
+  setPropriedadeAtiva(7);
+  window.history.replaceState(null, "", "/pecuaria/reproducao");
+  render(<Reproducao podeLancar={false} />);
+  expect(
+    await screen.findByText("Visão geral operacional do sítio 7"),
+  ).toBeTruthy();
+  for (const nome of [
+    "Visão geral",
+    "Animais e acompanhamentos",
+    "Agenda",
+    "Protocolos",
+    "Partos e pós-parto",
+    "Indicadores",
+  ])
+    expect(screen.getByRole("tab", { name: nome })).toBeTruthy();
+  expect(obterReproducao).not.toHaveBeenCalled();
+  window.history.pushState(
+    null,
+    "",
+    "/pecuaria/reproducao?rotina=ciclos&visao=historico&animalId=matriz&acao=avaliacao",
+  );
+  fireEvent(window, new PopStateEvent("popstate"));
+  await waitFor(() =>
+    expect(obterReproducao).toHaveBeenLastCalledWith("matriz", 7),
+  );
+  expect(screen.queryByText("Formulário avaliacao matriz")).toBeNull();
 });
