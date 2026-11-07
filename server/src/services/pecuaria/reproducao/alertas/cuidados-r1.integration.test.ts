@@ -23,7 +23,6 @@ import { prepararExecucaoClinicaTx } from "../../protocolos/execucao.clinica.js"
 import { criarAvaliacaoTx } from "../registros.js";
 import { avaliacaoSchema } from "../schemas.js";
 import { necessidadeAtualTx } from "./identidade.js";
-// revisarPrazosTx é fornecido pelo checkpoint81c8fe6a, integrado antes deste recorte.
 const banco =
   process.env.PECUARIA_DB_INTEGRATION === "1" ? describe : describe.skip;
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
