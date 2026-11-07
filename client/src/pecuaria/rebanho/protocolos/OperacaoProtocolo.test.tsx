@@ -188,3 +188,13 @@ it("consulta atendidos no servidor e conserva filtro ao restaurar URL", async ()
   fireEvent.click(screen.getByRole("button",{name:/Todos/}));
   await waitFor(()=>expect(api.tarefas).toHaveBeenLastCalledWith(expect.any(Object),expect.objectContaining({situacao:undefined}),1));
 });
+
+it("dispensa reprodutiva usa a decisão terminal real, sem fingir não atendimento",async()=>{
+ api.cabecalho.mockResolvedValue({id:"g1",modo:"COLETIVO",tipo:"REPRODUTIVO",nome:"Turma",protocolo:{id:"p",nome:"Modelo",versao:1},inicioReferencia:"2026-10-19",precisaoTemporal:"DIA",contagens});
+ api.tarefas.mockResolvedValue({itens:[tarefa(1)],total:1,pagina:1,porPagina:10});api.evento.mockResolvedValue({id:"ev"});
+ render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoExecutar={vi.fn()}/>);
+ fireEvent.click(await screen.findByRole("button",{name:"Dispensar etapa"}));
+ fireEvent.change(screen.getByLabelText("Justificativa"),{target:{value:"Procedimento dispensado após conferência"}});
+ fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
+ await waitFor(()=>expect(api.evento).toHaveBeenCalledWith("t1",expect.objectContaining({tipo:"DISPENSA",motivo:"Procedimento dispensado após conferência"})));
+});

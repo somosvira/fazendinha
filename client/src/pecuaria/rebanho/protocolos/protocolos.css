@@ -308,3 +308,10 @@
 .protocolo-caminho a { color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
 
 .repro-programacao-detalhe .ficha-animal-identificacao .ficha-animal-nome { display:block; margin-top:6px; font-size:14px; font-weight:500; line-height:1.45; color:var(--muted-foreground); }
+.protocolo-resultados-contagens { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:12px; }
+.protocolo-resultados-contagens > div,.protocolo-resultados-taxas > div { min-width:0; display:flex; flex-direction:column; gap:8px; padding:14px 12px; background:var(--card); border-bottom:1px solid var(--border); }
+.protocolo-resultados-contagens span { font-size:13px; color:var(--muted-foreground); }
+.protocolo-resultados-contagens strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.protocolo-resultados-taxas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; font-size:14px; }
+@media(max-width:1200px) { .protocolo-resultados-contagens { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) { .protocolo-resultados-taxas { grid-template-columns:minmax(0,1fr); } }
