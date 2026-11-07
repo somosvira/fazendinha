@@ -52,6 +52,14 @@ describe("participantes paginados da operação coletiva",()=>{
     expect(count.where).toMatchObject({rodadaId:id,animal:{OR:[{brinco:{contains:"Selecionado",mode:"insensitive"}},{nome:{contains:"Selecionado",mode:"insensitive"}}]}});
     expect(JSON.stringify(count.where.AND)).toContain('"propriedadeId":2');
   });
+  it("expõe instante e motivo do bloqueio sem ampliar os dados da participação", async () => {
+    banco.tx.participacaoProtocolo.count.mockResolvedValue(1);
+    banco.tx.participacaoProtocolo.findMany.mockResolvedValue([{ id, animalId: id, animal: { id, brinco: "10", nome: null }, canceladaEm: null, motivoCancelamento: null, bloqueadaEm: data, motivoBloqueio: "Revisar ocorrência", inicio: data, inicioEfetivo: null, precisaoTemporal: "DIA", precisaoInicioEfetivo: null, impactoSnapshot: { interno: "Não devolver" } }]);
+    const r = await listarParticipantesOperacao({ programacaoId: id }, 1, consultaOperacaoSchema.parse({}));
+    expect(r.itens[0]).toMatchObject({ bloqueadaEm: data.toISOString(), motivoBloqueio: "Revisar ocorrência" });
+    expect(r.itens[0]).not.toHaveProperty("impactoSnapshot");
+    expect(banco.tx.participacaoProtocolo.findMany).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ bloqueadaEm: true, motivoBloqueio: true }) }));
+  });
   it("recupera última página válida após retirada e rejeita teto acima de dez",async()=>{
     banco.tx.participacaoProtocolo.count.mockResolvedValue(11);banco.tx.participacaoProtocolo.findMany.mockResolvedValue([]);
     expect(await listarParticipantesOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({pagina:3}))).toMatchObject({total:11,pagina:2,porPagina:10});
