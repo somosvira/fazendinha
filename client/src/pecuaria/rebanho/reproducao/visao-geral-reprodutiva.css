@@ -114,3 +114,13 @@
 .repro-visao-indicadores dt { font-size: 13px; color: var(--muted-foreground); }
 .repro-visao-indicadores dd { font-size: 20px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
 @media(max-width:600px) { .repro-visao-indicadores { grid-template-columns:1fr; } .repro-visao-indicadores > div + div { border-left:0; border-top:1px solid var(--border); } }
+
+/* Busca, período e contagem compartilham a mesma linha também no laptop. */
+.repro-visao-painel .consulta-linha { flex-direction: row; align-items: center; gap: 16px; padding: 0; }
+.repro-visao-painel .consulta-controles { flex-wrap: nowrap; justify-content: flex-start; align-items: center; }
+.repro-visao-painel .consulta-controles > .repro-visao-busca { flex: 0 1 300px; min-width: 120px; }
+.repro-visao-painel .consulta-acoes { order: 0; flex-wrap: nowrap; white-space: nowrap; }
+@media(max-width:600px) {
+  .repro-visao-painel .consulta-barra { overflow-x: auto; }
+  .repro-visao-painel .consulta-linha { min-width: 460px; }
+}
