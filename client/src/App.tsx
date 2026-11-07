@@ -26,7 +26,8 @@ import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
-import { AssistenteConsulta } from "./components/AssistenteConsulta";
+const PaginaMetas = lazy(() => import("./assistente/PaginaMetas").then(m => ({ default: m.PaginaMetas })));
+const PaginaIATerrano = lazy(() => import("./assistente/PaginaIATerrano").then(m => ({ default: m.PaginaIATerrano })));
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
@@ -70,7 +71,6 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
 // Se a IA legada voltar explicitamente, não sobrepor o novo chat ao composer.
-const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
@@ -154,6 +154,7 @@ export function App() {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [modoBusca, setModoBusca] = useState<"tudo" | "animais">("tudo");
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
   const [sideColapsada, setSideColapsada] = useState<boolean>(() => {
     try { return localStorage.getItem("side-collapsed") === "1"; } catch { return false; }
@@ -312,12 +313,18 @@ export function App() {
     return () => { vivo = false; };
   }, []);
 
-  // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
+  // atalhos globais: ⌘K / Ctrl+K busca em tudo; ⌘⇧K / Ctrl+Shift+K busca só animais.
+  // Repetir o atalho do modo aberto fecha; o outro atalho troca de modo (Esc é tratado dentro dela).
+  const buscaRef = useRef({ aberta: false, modo: "tudo" as "tudo" | "animais" });
+  buscaRef.current = { aberta: buscaAberta, modo: modoBusca };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
         e.preventDefault();
-        setBuscaAberta((v) => !v);
+        const modo = e.shiftKey ? "animais" : "tudo";
+        const atual = buscaRef.current;
+        if (atual.aberta && atual.modo === modo) { setBuscaAberta(false); return; }
+        setModoBusca(modo); setBuscaAberta(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -560,8 +567,19 @@ export function App() {
     return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
+  const abrirFonteAssistente = (caminho: string, sitio: number | null) => { void executarComGuardaNavegacao(() => {
+    if (!podeAcessarCaminho(usuario, caminho)) return;
+    const destino = new URL(caminho, window.location.origin);
+    const id = Number(destino.searchParams.get("propriedadeId"));
+    const escopo = Number.isInteger(id) && id > 0 && id <= 2147483647 ? id : sitio;
+    setPropriedadeAtiva(escopo); setPropAtiva(escopo); setDeepLinkFiltros(null); navegarPara(caminho);
+  }); };
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : tab === "metas"
+    ? <PaginaMetas propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
+    : tab === "assistente"
+    ? <PaginaIATerrano propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
     : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
@@ -625,7 +643,7 @@ export function App() {
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
-        onAbrirBusca={() => setBuscaAberta(true)}
+        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
         user={effectiveUser}
@@ -655,6 +673,7 @@ export function App() {
         podeVerValores={podeVerValores}
         podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
+        modo={modoBusca}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, _entidadeId, caminho) => {
           if (!caminho) { navegarTab(t); return; }
@@ -671,7 +690,6 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <AssistenteConsulta key={`${token}:${usuario.id}:${propAtiva ?? "all"}:${JSON.stringify([usuario.areas, usuario.abas, usuario.flags, usuario.dono])}`} />}
     </div>
     </>
   );

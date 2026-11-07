@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import * as iatf from "../reproducao/iatf.js";
 import { protocoloSchema, programacaoSchema } from "../reproducao/schemas.js";
@@ -22,6 +23,7 @@ const antes = (dias: number) => new Date(Date.parse(hojeFazenda()) - dias * 86_4
 // tabelas globais ou fixtures de outra suíte; o coordenador executa esta suíte.
 afterAll(async () => {
   if (!sitios.length) return;
+  await limparAlertasReprodutivosFixtureTx(prisma, animais);
   await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: { in: sitios } }, { animalId: { in: animais } }, { entidadeId: { in: protocolos } }] } });

@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -25,6 +26,7 @@ const sitios:number[]=[],animais:string[]=[],produtos:string[]=[],protocolos:str
 // As exclusões abrangem somente identidades criadas por esta suíte, sem tocar seed/manifestações alheias.
 afterAll(async()=>{
  if(!sitios.length)return;
+ await limparAlertasReprodutivosFixtureTx(prisma, animais);
  await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
  await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}},{entidadeId:{in:protocolos}}]}});
@@ -34,6 +36,7 @@ afterAll(async()=>{
  await prisma.visitaVeterinaria.deleteMany({where:{id:{in:visitas}}});
  await prisma.vinculoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
  await prisma.eventoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
+ await prisma.exameAnimal.updateMany({where:{animalId:{in:animais}},data:{demandaAcompanhamentoId:null}});
  await prisma.demandaAcompanhamentoReprodutivo.deleteMany({where:{animalId:{in:animais}}});
  await prisma.interpretacaoReprodutiva.deleteMany({where:{exame:{animalId:{in:animais}}}});
  await prisma.resultadoExame.deleteMany({where:{exame:{animalId:{in:animais}}}});

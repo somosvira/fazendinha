@@ -13,7 +13,7 @@
 import "./sidebar-clara.css";
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
-import { LayoutDashboard, Bell, GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
+import { Target, Sparkles, LayoutDashboard, Bell, GitBranch, ClipboardList, HeartPulse, Leaf, Milk, CircleDollarSign, FileText, FilePenLine, Plus, Settings, Wallet, X } from "lucide-react";
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
@@ -109,7 +109,7 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
   id: Tab; label: string; current: Tab; onNav: (t: Tab) => void; nested?: boolean; chevron?: boolean; activeWhen?: Tab[];
 }) {
   const isOn = current === id || (activeWhen?.includes(current) ?? false);
-  const Icone = ICON_PECUARIA[id] ?? ICON_FINANCEIRO[id];
+  const Icone = id === "assistente" ? Sparkles : id === "metas" ? Target : ICON_PECUARIA[id] ?? ICON_FINANCEIRO[id];
   return (
     <Button variant="ghost"
       type="button"
@@ -141,7 +141,7 @@ function SearchControl({ onClick }: { onClick: () => void }) {
     <Button variant="ghost"
       type="button"
       onClick={onClick}
-      title="Buscar (Ctrl/⌘ K)"
+      title="Buscar (Ctrl/⌘ K) · só animais: Ctrl/⌘ Shift K"
       aria-keyshortcuts="Control+k Meta+k"
       aria-label="Buscar páginas, animais e ações"
       className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-2 [.side-collapsed_&]:order-2"
@@ -488,6 +488,11 @@ export function AppSidebar({
           <Item id="estoque" label="Estoque" current={current} onNav={nav} />
         </div>
       )}
+
+      <div className="mt-3 flex flex-col gap-px">
+        <Item id="assistente" label="IA Terrano" current={current} onNav={nav} />
+        <Item id="metas" label="Metas" current={current} onNav={nav} />
+      </div>
 
       <div className="mt-3 flex flex-col gap-px border-t border-dashed border-[rgba(232,220,196,0.16)] pt-3">
         <Item id="config" label="Configurações" current={current} onNav={nav} chevron activeWhen={[...(isAdmin ? (["sitios", "acessos"] as Tab[]) : [])]} />

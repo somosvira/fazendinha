@@ -10,7 +10,10 @@ import { reqV4 } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { mudarCampo } from "@/lib/controles.fixture";
 vi.mock("../protocolos/cadastros-api", () => ({ listarCadastrosProtocolos: vi.fn(), obterCadastroProtocolo: vi.fn(), obterAcoesCadastro: vi.fn() }));
-beforeEach(() => { vi.mocked(listarCadastrosProtocolos).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }); });
+beforeEach(() => {
+  vi.mocked(listarCadastrosProtocolos).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+});
 vi.mock("./api",()=>({reqV4:vi.fn()}));
 vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterCabecalhoProtocolo: vi.fn().mockImplementation(async (contexto: { programacaoId: string }) => ({ id: contexto.programacaoId, nome: contexto.programacaoId === "um" ? "Primeira programação" : "Segunda programação", modo: "COLETIVO", tipo: "REPRODUTIVO", protocolo: { id: "p", nome: "Protocolo", versao: 1 }, contagens: {}, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA" })), reqProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }), obterEtapasProtocolo: vi.fn().mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }) }));
 vi.mock("../protocolos/ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => null }));

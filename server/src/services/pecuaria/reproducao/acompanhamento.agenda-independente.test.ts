@@ -16,6 +16,7 @@ function fonte() {
   const leitor = { localizacaoAnimal: { findMany: vi.fn().mockResolvedValue([{ animalId }]) }, tarefaProtocolo: { findMany: vi.fn().mockResolvedValue([tarefa]) },
     participanteVisita: { findMany: vi.fn().mockResolvedValue([]) }, atividadeVisita: { findMany: vi.fn().mockResolvedValue([]) }, visitaVeterinaria: { findMany: vi.fn().mockResolvedValue([]) },
     avaliacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([]) }, demandaAcompanhamentoReprodutivo: { findMany: vi.fn().mockResolvedValue([demanda]), create: vi.fn(), update: vi.fn() },
+    necessidadeReprodutiva: { findMany: vi.fn().mockResolvedValue([]) },
     interpretacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([]) }, $executeRaw: vi.fn() };
   return { tx: leitor as unknown as Prisma.TransactionClient, leitor, animalId, tarefa, demanda };
 }

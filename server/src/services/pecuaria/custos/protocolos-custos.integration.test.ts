@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -25,6 +26,7 @@ const referencias = (valorMaterial = "0.00", valorServico = "5.00"): Referencias
 // Apenas IDs próprios. Esta suíte não redefine estrutura, cria banco ou usa seed.
 afterAll(async () => {
   if (!sitios.length) return;
+  await limparAlertasReprodutivosFixtureTx(prisma, animais);
   await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: { in: sitios } }, { animalId: { in: animais } }, { entidadeId: { in: protocolos } }] } });

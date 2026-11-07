@@ -39,6 +39,8 @@ const tarefa = (extra = {}) => ({
   etapa: { tipo: "RETIRADA", configuracao: {} },
   previstaPara: new Date("2026-11-05"),
   realizadaEm: null,
+  precisaoRealizacao: "DIA",
+  precisaoTemporal: "DIA",
   dispensadaEm: null,
   previsaoPendente: false,
   parametros: {},
@@ -272,12 +274,16 @@ describe("produtor reprodutivo canônico", () => {
       }),
     );
   });
-  it("hora do preparo não exclui tentativa factual do mesmo dia civil", async () => {
+  it.each([
+    ["2026-11-01T22:00:00-03:00", "HORA"],
+    ["2026-11-01T00:00:00Z", "DIA"],
+  ])("preparo %s com precisão %s conserva tentativa do mesmo dia civil", async (realizadaEm, precisaoRealizacao) => {
     m.participacoes.mockResolvedValue([
       participacao([
         tarefa({
           etapa: { tipo: "APLICACAO", configuracao: {} },
-          realizadaEm: new Date("2026-11-01T15:00:00Z"),
+          realizadaEm: new Date(realizadaEm),
+          precisaoRealizacao,
           aplicacoes: [{ status: "VALIDO" }],
         }),
       ]),
@@ -291,6 +297,16 @@ describe("produtor reprodutivo canônico", () => {
         }),
       }),
     );
+    expect(m.criar).not.toHaveBeenCalled();
+  });
+  it("ordena o preparo por dia civil ao combinar DIA e HORA", async () => {
+    m.participacoes.mockResolvedValue([participacao([
+      tarefa({ id: "dia", etapa: { tipo: "APLICACAO", configuracao: {} }, realizadaEm: new Date("2026-11-02"), precisaoRealizacao: "DIA", aplicacoes: [{ status: "VALIDO" }] }),
+      tarefa({ id: "hora", etapa: { tipo: "APLICACAO", configuracao: {} }, realizadaEm: new Date("2026-11-01T22:00:00-03:00"), precisaoRealizacao: "HORA", aplicacoes: [{ status: "VALIDO" }] }),
+    ])]);
+    m.tentativa.mockResolvedValue({ id: "externa" });
+    await reavaliarAtencaoAnimal("a", 1, 7);
+    expect(m.tentativa).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ data: { gte: new Date("2026-11-02T00:00:00Z") } }) }));
     expect(m.criar).not.toHaveBeenCalled();
   });
   it("dispensa de preparo não comprova preparo concluído", async () => {

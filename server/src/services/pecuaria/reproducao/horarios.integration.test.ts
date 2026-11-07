@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { randomUUID } from "node:crypto";
@@ -92,6 +93,7 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
   });
   afterAll(async()=>{
     if(!sitio)return;
+    await limparAlertasReprodutivosFixtureTx(prisma, animais);
     await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:sitio}});
     await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{propriedadeId:sitio},{animalId:{in:animais}},{entidadeId:{in:protocolos}}]}});
@@ -103,6 +105,8 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     await prisma.eventoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}},tipo:"RETIFICACAO_JUSTIFICATIVA"}});
     await prisma.eventoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
     await prisma.aplicacaoProduto.deleteMany({where:{animalId:{in:animais}}});
+    await prisma.exameAnimal.updateMany({where:{animalId:{in:animais}},data:{demandaAcompanhamentoId:null}});
+    await prisma.demandaAcompanhamentoReprodutivo.deleteMany({where:{animalId:{in:animais}}});
     await prisma.tentativaReprodutiva.deleteMany({where:{animalId:{in:animais}}});
     await prisma.classificacaoCustoPecuaria.deleteMany({where:{manejo:{animalId:{in:animais}}}});
     await prisma.manejoAnimal.deleteMany({where:{animalId:{in:animais}}});

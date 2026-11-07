@@ -1,3 +1,4 @@
+import { diaIatf } from "../horarios.calc.js";
 import { registrarDecisaoDemandaTx } from "../decisao-demanda.js";
 import { convergirNecessidadesTx } from "./identidade.js";
 import { filtroInsercoesRetirada } from "../../protocolos/insercoes-retirada.js";
@@ -398,15 +399,11 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
     ) {
       // Tentativa.data e os intervalos em DIAS têm precisão civil. Uma hora
       // conhecida do preparo não pode excluir a tentativa do mesmo dia.
-      const referencia = dia(
-        new Date(
-          Math.max(
-            ...preparo.map((t) => (t.realizadaEm ?? t.previstaPara).getTime()),
-          ),
-        )
-          .toISOString()
-          .slice(0, 10),
-      );
+      const diasPreparo = preparo.map((t) => diaIatf(
+        t.realizadaEm ?? t.previstaPara,
+        t.realizadaEm ? (t.precisaoRealizacao ?? "HORA") : t.precisaoTemporal,
+      ));
+      const referencia = dia(diasPreparo.reduce((ultimo, atual) => atual > ultimo ? atual : ultimo));
       const tentativa = await tx.tentativaReprodutiva.findFirst({
         where: {
           animalId,

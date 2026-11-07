@@ -41,7 +41,7 @@ export function AlternarVisualizacaoConsulta({ modo, mudar, visual = "Cartões",
     const proximo = valores.find(valor => valor !== modo);
     if (proximo === "visual" || proximo === "tabela") mudar(proximo);
   }} aria-label={rotulo} className="consulta-visual-alternador">
-    <ToggleGroupItem value="visual"><Icone size={16} aria-hidden />{visual}</ToggleGroupItem>
-    <ToggleGroupItem value="tabela"><List size={16} aria-hidden />Tabela</ToggleGroupItem>
+    <ToggleGroupItem value="visual" className="h-auto"><Icone size={16} aria-hidden />{visual}</ToggleGroupItem>
+    <ToggleGroupItem value="tabela" className="h-auto"><List size={16} aria-hidden />Tabela</ToggleGroupItem>
   </ToggleGroup>;
 }
