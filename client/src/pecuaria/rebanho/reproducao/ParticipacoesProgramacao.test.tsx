@@ -1,52 +1,36 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
-import { reqProtocolo, obterTarefasProtocolo, type TarefaOperacional } from "../protocolos/api";
-vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn(), obterTarefasProtocolo: vi.fn() }));
-afterEach(() => { cleanup(); vi.resetAllMocks(); });
-it("consulta timeline somente ao expandir e percorre todas as páginas da participação, preservando precisão e realização", async () => {
-  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "p", animalId: "a", inicioPrevisto: "2026-10-01", inicioEfetivo: "2026-10-02", precisaoInicioEfetivo: "DIA", animal: { brinco: "Matriz 1" } }], pagina: 1, total: 1, porPagina: 10 });
-  function tarefa(id: string, data: string, realizada: string | null): TarefaOperacional {
-    return { id, previstaPara: data, realizadaEm: realizada, precisaoTemporal: "DIA", precisaoRealizacao: "DIA", previsaoPendente: false, tarefaOrigem: { id, nome: `Etapa ${id}`, tipo: "MANEJO", previstaEm: data, status: realizada ? "REALIZADA" : "PENDENTE" } } as TarefaOperacional;
-  }
-  vi.mocked(obterTarefasProtocolo).mockResolvedValueOnce({ itens: [tarefa("1", "2026-10-03", "2026-10-04")], pagina: 1, porPagina: 1, total: 2 }).mockResolvedValueOnce({ itens: [tarefa("2", "2026-10-05", null)], pagina: 2, porPagina: 1, total: 2 });
-  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
-  await screen.findByText("Matriz 1");
-  expect(obterTarefasProtocolo).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Consultar etapas individuais" }));
-  await screen.findByText("Etapa 2");
-  expect(obterTarefasProtocolo).toHaveBeenNthCalledWith(2, { participacaoId: "p" }, { pagina: 2 }, 7);
-  expect(screen.getByText("04/10/2026 · horário não informado")).toBeTruthy();
-  expect(screen.getByText("Previsto: 05/10/2026 · horário não informado")).toBeTruthy();
-  expect(screen.getByRole("link", { name: "Ficha do animal" }).getAttribute("href")).toContain("sitio=7");
+import { reqProtocolo, obterEtapasProtocolo, obterTarefasProtocolo, type TarefaOperacional, type EtapaProtocolo } from "../protocolos/api";
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn(), obterEtapasProtocolo:vi.fn(), obterTarefasProtocolo: vi.fn() }));
+afterEach(()=>{cleanup();vi.resetAllMocks();window.history.replaceState({},"","/");});
+beforeEach(()=>{
+ vi.mocked(reqProtocolo).mockResolvedValue({itens:[{id:"p",animalId:"a",animal:{brinco:"Matriz 1"},encerradoEm:"2026-10-05"}],total:1,pagina:1,porPagina:10});
+ vi.mocked(obterEtapasProtocolo).mockResolvedValue({itens:["1","2","3","4"].map(id=>({id,nome:`Etapa ${id}`,diaRelativo:Number(id),unidadeIntervalo:"DIAS"} as EtapaProtocolo)),total:4,pagina:1,porPagina:10});
 });
-
-it.each([['NAO_ATENDIDO', 'Não atendido'], ['ADIADO', 'Adiado']] as const)("preserva situação administrativa %s na timeline individual", async (situacao, rotulo) => {
-  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "p", animalId: "a", inicioPrevisto: "2020-01-01", inicioEfetivo: "2020-01-01", precisaoInicioEfetivo: "DIA", animal: { brinco: "Matriz 1" } }], pagina: 1, total: 1, porPagina: 10 });
-  vi.mocked(obterTarefasProtocolo).mockResolvedValue({ itens: [{ id: "t", situacao, previstaPara: "2020-01-02", precisaoTemporal: "DIA", realizadaEm: null, previsaoPendente: false, ultimoEvento: { motivo: "Animal indisponível para o manejo" }, tarefaOrigem: { id: "t", nome: "Inseminação", tipo: "TENTATIVA", previstaEm: "2020-01-02", status: "PENDENTE" } } as TarefaOperacional], pagina: 1, total: 1, porPagina: 10 });
-  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
-  fireEvent.click(await screen.findByRole("button", { name: "Consultar etapas individuais" }));
-  expect(await screen.findByText(rotulo)).toBeTruthy();
-  expect(screen.queryByText("Atrasada")).toBeNull();
-  expect(screen.getByText("Animal indisponível para o manejo")).toBeTruthy();
-  expect(screen.getByText("Previsto: 02/01/2020 · horário não informado")).toBeTruthy();
+it("mostra fatos por etapa sem transformar atendimento anterior à retirada em X",async()=>{
+ vi.mocked(obterTarefasProtocolo).mockResolvedValue({itens:[{etapaId:"1",situacao:"ATENDIDO"},{etapaId:"2",situacao:"RETIRADO"},{etapaId:"3",situacao:"PREVISTO"}] as TarefaOperacional[],total:3,pagina:1,porPagina:10});
+ const retirar=vi.fn();render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0} aoRetirar={retirar}/>);
+ expect(await screen.findByRole("table",{name:"Participantes por etapa"})).toBeTruthy();
+ for(const name of ["Etapa 1: Atendido","Etapa 2: Retirado do protocolo","Etapa 3: Pendente · agendado","Etapa 4: Sem tarefa vinculada"]) expect(screen.getByRole("button",{name})).toBeTruthy();
+ expect(screen.queryByText("Gestão das participações")).toBeNull();
+ expect(obterTarefasProtocolo).toHaveBeenCalledWith({participacaoId:"p"},{pagina:1},7);
 });
-
-
-it("conserva retorno completo e separa a versão do modelo do vínculo da tentativa", async () => {
-  const origem = "/pecuaria/reproducao/programacoes/grupo?busca=matriz&sitio=7#participantes";
-  window.history.replaceState({}, "", origem);
-  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "p", animalId: "a", inicioPrevisto: "2020-01-01", inicioEfetivo: "2020-01-01", animal: { brinco: "Matriz 1" }, contextoTentativa: { iaPrevista: false, possuiTentativaVinculada: true } }], pagina: 1, total: 1, porPagina: 10 });
-  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
-  expect(await screen.findByText("IA não prevista neste modelo histórico")).toBeTruthy();
-  expect(screen.getByText("Tentativa vinculada")).toBeTruthy();
-  expect(screen.queryByText("Sem tentativa vinculada")).toBeNull();
-  const link = new URL(screen.getByRole("link", { name: "Ficha do animal" }).getAttribute("href")!, "http://localhost");
-  expect(link.searchParams.get("retorno")).toBe(origem);
-  expect(link.searchParams.get("participacaoId")).toBe("p");
-  expect(link.searchParams.get("programacaoId")).toBe("grupo");
-  expect(link.hash).toBe("#reproducao");
-  expect(obterTarefasProtocolo).not.toHaveBeenCalled();
-  window.history.replaceState({}, "", "/");
+it("percorre tarefas paginadas e preserva URL de retorno e contexto da participação",async()=>{
+ const origem="/pecuaria/reproducao/programacoes/grupo?sitio=7#participantes";window.history.replaceState({},"",origem);
+ vi.mocked(obterTarefasProtocolo).mockResolvedValueOnce({itens:[{etapaId:"1",situacao:"ATENDIDO"}] as TarefaOperacional[],total:2,pagina:1,porPagina:1}).mockResolvedValueOnce({itens:[{etapaId:"2",situacao:"NAO_ATENDIDO"}] as TarefaOperacional[],total:2,pagina:2,porPagina:1});
+ render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
+ await screen.findByRole("button",{name:"Etapa 2: Não atendido"});
+ expect(obterTarefasProtocolo).toHaveBeenNthCalledWith(2,{participacaoId:"p"},{pagina:2},7);
+ const link=new URL(screen.getByRole("link",{name:"Matriz 1"}).getAttribute("href")!,"http://localhost");
+ expect(link.searchParams.get("retorno")).toBe(origem);expect(link.searchParams.get("sitio")).toBe("7");expect(link.searchParams.get("participacaoId")).toBe("p");
+});
+it("não transforma falha de consulta em ausência de participação",async()=>{
+ vi.mocked(obterTarefasProtocolo).mockRejectedValue(new Error("Falha de leitura"));
+ render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0}/>);
+ expect(await screen.findByText("Falha de leitura")).toBeTruthy();expect(screen.queryByRole("table")).toBeNull();
+ vi.mocked(obterTarefasProtocolo).mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10});
+ fireEvent.click(screen.getByRole("button",{name:"Atualizar participações individuais"}));
+ await waitFor(()=>expect(screen.getByRole("table")).toBeTruthy());
 });

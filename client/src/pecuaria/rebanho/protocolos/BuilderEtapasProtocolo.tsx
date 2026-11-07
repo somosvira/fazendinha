@@ -9,6 +9,7 @@ import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export type AcaoBuilderEtapas = { chaveEdicao?: string; ordem?: number; momento?: MomentoCadastro | null };
 export type BuilderEtapasProtocoloProps<T extends AcaoBuilderEtapas> = {
+  permitirAutomacao?: boolean;
   origem: CadastroProtocoloMeta | null;
   itens: T[];
   onChange: (itens: T[]) => void;
@@ -35,7 +36,7 @@ function agrupar<T extends AcaoBuilderEtapas>(itens: T[]): Grupo<T>[] {
   return [...grupos.values()].sort((a, b) => (a.momento?.ordem ?? a.acoes[0].item.ordem ?? a.acoes[0].indice) - (b.momento?.ordem ?? b.acoes[0].item.ordem ?? b.acoes[0].indice));
 }
 
-export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ origem, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
+export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ permitirAutomacao = false, origem, itens, onChange, converter, onCompletoChange, criarAcao, renderizarAcao, renderizarCalendario, indiceErro }: BuilderEtapasProtocoloProps<T>) {
   const id = useId();
   const raiz = useRef<HTMLDivElement>(null);
   const adicionarEtapa = useRef<HTMLButtonElement>(null);
@@ -172,9 +173,9 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ origem, it
           onChange(novos);
         }}>Adicionar etapa</Button></div>
         <p className="builder-etapas-ajuda">{grupos.length} {grupos.length === 1 ? "etapa" : "etapas"} · {itens.length} de 100 procedimentos</p>
-        {grupos.slice((paginaEtapasAtual - 1) * 10, paginaEtapasAtual * 10).map((g, indice) => <button type="button" className="builder-etapas-opcao" key={g.chave} data-selecionar-etapa={(paginaEtapasAtual - 1) * 10 + indice} aria-pressed={grupo?.chave === g.chave} aria-controls={`${id}-editor`} onClick={() => setSelecionada(g.chave)}>
-          <strong>{g.momento?.nome || (g.momento ? `Etapa ${g.momento.ordem}` : `Ação legada ${g.acoes[0].item.ordem ?? g.acoes[0].indice + 1}`)}</strong>{" "}<span>{g.acoes.length} {g.acoes.length === 1 ? "procedimento" : "procedimentos"} · {g.momento?.modoAtendimento === "AUTOMATIZADA" ? "Automatizada" : g.momento?.modoAtendimento === "MANUAL" ? "Manual" : "Modo não declarado"}</span>
-        </button>)}
+        <div className="builder-etapas-trilha">{grupos.slice((paginaEtapasAtual - 1) * 10, paginaEtapasAtual * 10).map((g, indice) => <button type="button" className="builder-etapas-opcao" key={g.chave} data-selecionar-etapa={(paginaEtapasAtual - 1) * 10 + indice} aria-pressed={grupo?.chave === g.chave} aria-controls={`${id}-editor`} onClick={() => setSelecionada(g.chave)}>
+          <strong>{g.momento?.nome || (g.momento ? `Etapa ${g.momento.ordem}` : `Ação legada ${g.acoes[0].item.ordem ?? g.acoes[0].indice + 1}`)}</strong>{" "}<span>{g.acoes.length} {g.acoes.length === 1 ? "procedimento" : "procedimentos"} · {g.momento?.politicaExecucao === "AUTOMATICA_EXCECAO" ? "Automática" : "Confirmação obrigatória"}</span>
+        </button>)}</div>
         {grupos.length > 10 && <Paginacao paginaAtual={paginaEtapasAtual} totalPaginas={Math.ceil(grupos.length / 10)} totalItens={grupos.length} itensPorPagina={10} onPaginaChange={setPaginaEtapas} rotulo="etapas" idSelect={`${id}-pagina-etapas`} />}
       </section>
       <section id={`${id}-editor`} className="builder-etapas-editor" aria-label="Etapa selecionada">
@@ -184,7 +185,8 @@ export function BuilderEtapasProtocolo<T extends AcaoBuilderEtapas>({ origem, it
             <label className="builder-etapas-campo">Nome da etapa<input data-nome-etapa className={classeInput} required minLength={1} maxLength={120} value={grupo.momento.nome} onChange={e => mudarMomento({ nome: e.target.value })} /></label>
             {renderizarCalendario?.(grupo.acoes[0].item, grupo.acoes.map(a => a.indice))}
             <label className="builder-etapas-campo">Instruções gerais da etapa (opcional)<textarea className={classeInput} rows={3} maxLength={2000} value={grupo.momento.instrucoesGerais ?? ""} onChange={e => mudarMomento({ instrucoesGerais: e.target.value })} /></label>
-            <fieldset className="builder-etapas-modo"><legend>Como esta etapa será atendida?</legend>{([{ valor: "AUTOMATIZADA", nome: "Automatizada", ajuda: "Procedimentos e produtos predefinidos. A equipe confirma os OKs e ajusta as exceções." }, { valor: "MANUAL", nome: "Manual", ajuda: "A equipe registra produtos e resultados por animal ou para um grupo de animais." }] as const).map(modo => <label key={modo.valor}><input type="radio" name={`${id}-modo`} value={modo.valor} checked={grupo.momento?.modoAtendimento === modo.valor} onChange={() => mudarMomento({ modoAtendimento: modo.valor })} /><span><strong>{modo.nome}</strong><small>{modo.ajuda}</small></span></label>)}</fieldset>
+            <fieldset className="builder-etapas-modo"><legend>Como esta etapa será executada?</legend><label><input type="radio" name={`${id}-modo`} checked={grupo.momento.politicaExecucao !== "AUTOMATICA_EXCECAO"} onChange={() => mudarMomento({ modoAtendimento: "MANUAL", politicaExecucao: "CONFIRMACAO_OBRIGATORIA" })} /><span><strong>Confirmação obrigatória</strong><small>A equipe informa os dados reais e confirma o atendimento. Obrigatório para exames e tentativas reprodutivas.</small></span></label>{permitirAutomacao && <label><input type="radio" name={`${id}-modo`} checked={grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO"} onChange={() => mudarMomento({ modoAtendimento: "AUTOMATIZADA", politicaExecucao: "AUTOMATICA_EXCECAO", fusoHorario: "America/Sao_Paulo" })} /><span><strong>Automática com reversão por exceção</strong><small>Aplicações e dispositivos com dados completos são executados no horário programado. A equipe registra as exceções.</small></span></label>}</fieldset>
+            {grupo.momento.politicaExecucao === "AUTOMATICA_EXCECAO" && <div className="grid gap-3"><label>Horário padrão<input className={classeInput} type="time" required value={grupo.momento.horarioPadrao ?? ""} onChange={e => mudarMomento({ horarioPadrao: e.target.value })} /></label><p className="text-sm">Horário de Brasília · America/Sao_Paulo. A ativação exige dados completos e revisão das etapas vencidas.</p></div>}
             {!grupo.momento.modoAtendimento && <p className="builder-etapas-ajuda">Etapa legada sem modo declarado. Escolha o modo para a nova versão.</p>}
           </> : <div className="builder-etapas-legado"><p>Esta ação não possui etapa declarada. A data não a agrupa com outras ações.</p><Button secondary type="button" disabled={!editavel} onClick={() => {
             const { base, momento } = prepararNovoMomento();

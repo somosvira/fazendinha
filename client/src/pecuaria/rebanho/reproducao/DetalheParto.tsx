@@ -238,7 +238,7 @@ export function DetalheParto({
       <section className="repro-parto-clinica" aria-label="Desfecho e assistência"><h2>Desfecho e assistência</h2><dl className="repro-dados-grade">
         <div><dt>Desfecho</dt><dd>{texto(p.desfecho)} · {texto(p.tipo)}</dd></div>
         <div><dt>Crias</dt><dd>{p.crias.length} · {p.crias.filter(c => c.viva).length} vivas</dd></div>
-        <div><dt>Retenção de placenta</dt><dd>{texto(p.retencaoPlacenta)}</dd></div>
+        <div><dt>Retenção de placenta</dt><dd>{texto(p.retencaoPlacenta)}</dd></div><div><dt>Grau de RP</dt><dd>{p.grauRetencaoPlacenta ?? "Não informado"}</dd></div>
         <div><dt>Dificuldade</dt><dd>{texto(p.dificuldade)}</dd></div>
         <div><dt>Assistência</dt><dd>{p.assistenciaDescricao ?? "Não informada"}</dd></div>
       </dl></section>

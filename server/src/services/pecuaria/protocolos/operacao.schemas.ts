@@ -2,6 +2,7 @@ import { z } from "zod";
 import { dataOuHorario } from "../reproducao/schemas.js";
 export const situacaoOperacaoSchema = z.enum(["ATENDIDO", "NAO_ATENDIDO", "SEM_REGISTRO", "ADIADO", "PREVISTO", "REGULARIZACAO_PENDENTE", "DISPENSADO", "RETIRADO", "ENCERRADO", "PENDENTES", "ATRASADAS", "ACOMPANHAMENTO_PENDENTE"]);
 export const consultaOperacaoSchema = z.object({
+  produtosPagina: z.coerce.number().int().min(1).max(100000).optional(),
   referenciasPagina: z.coerce.number().int().min(1).max(100000).optional(),
   pagina: z.coerce.number().int().min(1).max(100000).default(1),
   porPagina: z.coerce.number().int().min(1).max(10).default(10),

@@ -1,3 +1,4 @@
+import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
 import { consultarManejoAptidao } from "../../services/pecuaria/reproducao/manejo-aptidao.js";
 import { encerramentoLactacaoSchema, manterPesoSecagemSchema, pesoSecagemSchema } from "../../services/pecuaria/reproducao/peso-secagem.schemas.js";
 import { manterPesoSecagem } from "../../services/pecuaria/reproducao/peso-secagem.js";
@@ -478,6 +479,7 @@ export const reproducaoRouter = new Hono()
   .post("/programacoes", validarV4(s.programacaoSchema), async (c) => {
     try {
       const b = c.req.valid("json");
+      if (b.automacoes?.some(i => i.dados.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
       return c.json(
         await iatf.criarProgramacao(
           {
@@ -740,6 +742,7 @@ reproducaoRouter.post(
       .object({
         propriedadeId: s.sitio,
         chave: s.uuid,
+        automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(),
         cienciaSanitaria: z.boolean().optional(),
         animais: z
           .array(
@@ -758,6 +761,7 @@ reproducaoRouter.post(
   async (c) => {
     try {
       const b = c.req.valid("json");
+      if (b.automacoes?.some(i => i.dados.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
       return c.json(
         await iatf.adicionarParticipantes(
           c.req.param("id"),

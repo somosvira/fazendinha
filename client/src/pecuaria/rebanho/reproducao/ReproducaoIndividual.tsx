@@ -1,3 +1,4 @@
+import { abrirPreparacaoIatf } from "./preparar-iatf";
 import { Button } from "../../../components/ui/button";
 import { listarDemandasAcompanhamento, type ResumoAcompanhamentos } from "./acompanhamento-api";
 import { FormParticipacaoIndividual } from "../protocolos/FormParticipacaoIndividual";
@@ -122,6 +123,6 @@ function ConteudoReproducao({ animalId, propriedadeId, podeLancar, recarregarTok
 
     </>}
     {fato && <DetalheFato fato={fato} podeLancar={podeLancar} onFechar={fecharFato} onMudou={() => { fecharFato(); void atualizar(); }}/>}
-    {acao && painel && podeLancar && <FormReproducao acao={acao} painel={painel} animalInicial={animalId} propriedadeId={propriedadeId ?? undefined} demandaInicial={demanda ?? undefined} finalidadeInicial={demanda?.finalidade} tipoExameInicial={demanda?.regraSnapshot.tipoExameId ?? undefined} onFechar={fechar} onSalvo={() => { fechar(); void atualizar(); }}/>}
+    {acao && painel && podeLancar && <FormReproducao onPrepararIatf={propriedadeId ? ids => abrirPreparacaoIatf(ids, propriedadeId) : undefined} acao={acao} painel={painel} animalInicial={animalId} propriedadeId={propriedadeId ?? undefined} demandaInicial={demanda ?? undefined} finalidadeInicial={demanda?.finalidade} tipoExameInicial={demanda?.regraSnapshot.tipoExameId ?? undefined} onFechar={fechar} onSalvo={() => { fechar(); void atualizar(); }}/>}
   </div>;
 }

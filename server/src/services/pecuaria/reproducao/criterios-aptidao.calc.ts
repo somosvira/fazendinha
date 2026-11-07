@@ -15,7 +15,7 @@ export function avaliarCriteriosAptidao(input: {
 }): NecessidadeAptidao {
   const necessidadeId = `APTIDAO:${input.animalId}:${input.chaveCiclo}`;
   if (input.classeReprodutiva === "NAO_DETERMINADA") {
-    const selecionados = [input.vacas, input.novilhas].some(g => [g.idadeMinimaMeses, g.percentualPesoAdulto, g.pesoMinimoKg, g.eccMinimo].some(v => v !== null)) || input.diasAvaliacaoPosParto !== null;
+    const selecionados = [input.vacas, input.novilhas].some(g => [g.idadeMinimaMeses, g.percentualPesoAdulto, g.pesoMinimoKg].some(v => v !== null)) || input.diasAvaliacaoPosParto !== null;
     return { necessidadeId, estado: selecionados ? "PENDENCIA_DADOS" : "MANUAL", devidaDesde: null,
       pendencias: selecionados ? ["CLASSE_REPRODUTIVA_NAO_COMPROVADA"] : [], criteriosNaoAtingidos: [], evidenciaIds: [] };
   }
@@ -58,13 +58,7 @@ export function avaliarCriteriosAptidao(input: {
       if (g.percentualPesoAdulto !== null && (!g.pesoAdultoReferenciaKg || peso.pesoKg < g.pesoAdultoReferenciaKg * g.percentualPesoAdulto / 100)) criteriosNaoAtingidos.push("PERCENTUAL_PESO_ADULTO");
     }
   }
-  if (g.eccMinimo !== null) {
-    disparadores++;
-    const ecc = [...input.escores].filter(e => vigente(e.data, g.validadeEccDias) && g.escalaEcc && e.escalaMin === g.escalaEcc.minimo && e.escalaMax === g.escalaEcc.maximo)
-      .sort((a, b) => b.data.getTime() - a.data.getTime() || b.id.localeCompare(a.id))[0];
-    if (!ecc) pendencias.push("ECC_AUSENTE_VENCIDO_OU_ESCALA_INCOMPATIVEL");
-    else { evidenciaIds.push(ecc.id); devida(ecc.data); if (ecc.valor < g.eccMinimo) criteriosNaoAtingidos.push("ECC_MINIMO"); }
-  }
+  // ECC é observacional; configurações históricas não produzem avisos.
   const estado = !disparadores ? "MANUAL" : pendencias.length ? "PENDENCIA_DADOS" : criteriosNaoAtingidos.length ? "CRITERIOS_NAO_ATINGIDOS" : "AVALIACAO_DEVIDA";
   return { necessidadeId, estado, devidaDesde: devidaDesde ? (devidaDesde as Date).toISOString().slice(0, 10) : null, pendencias, criteriosNaoAtingidos, evidenciaIds };
 }

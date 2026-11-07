@@ -76,7 +76,7 @@ export function situacaoReprodutiva(input: {
   // Uma situação de entrada não desfaz uma gestação operacional ainda aberta.
   if (input.gestacao?.status === "VALIDO" && !input.gestacao.encerradaEm) return "GESTANTE";
   const evidencias: Array<{ data: Date; situacao: string; prioridade: number }> = [];
-  if (input.inicial) evidencias.push({ ...input.inicial, prioridade: 0 });
+  if (input.inicial && ["VAZIA", "DESCONHECIDA"].includes(input.inicial.situacao)) evidencias.push({ ...input.inicial, prioridade: 0 });
   if (input.ultimaTentativa) evidencias.push({ ...input.ultimaTentativa, situacao: "AGUARDANDO_DIAGNOSTICO", prioridade: 1 });
   for (const avaliacao of input.avaliacoes ?? (input.ultimaAvaliacao ? [input.ultimaAvaliacao] : [])) {
     if (["POSITIVO", "RECONFIRMACAO", "SEXAGEM", "NEGATIVO"].includes(avaliacao.resultado)) {

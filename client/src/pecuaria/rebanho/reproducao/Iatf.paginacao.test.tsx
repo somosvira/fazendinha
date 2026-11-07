@@ -5,7 +5,7 @@ import { Iatf } from "./Iatf";
 import { reqV4 } from "./api";
 import { obterCabecalhoProtocolo, reqProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
 vi.mock("./api", () => ({ reqV4: vi.fn() }));
-vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), reqProtocolo: vi.fn(), obterCabecalhoProtocolo: vi.fn() }));
+vi.mock("../protocolos/api", async original => ({ ...await original<typeof import("../protocolos/api")>(), obterEtapasProtocolo: vi.fn().mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10}), obterTarefasProtocolo: vi.fn().mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10}), reqProtocolo: vi.fn(), obterCabecalhoProtocolo: vi.fn() }));
 vi.mock("../protocolos/OperacaoProtocolo", () => ({ OperacaoProtocolo: ({ gestao }: { gestao: import("react").ReactNode }) => <>{gestao}</> }));
 vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([]) }));
 vi.mock("../api", () => ({ listarMaterialGenetico: vi.fn().mockResolvedValue([]) }));
@@ -21,7 +21,6 @@ it("lista, detalhe e gestão usam API comum paginada no sítio consultado, sem b
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
   fireEvent.click((await screen.findAllByRole("link", { name: "Grupo 11" }))[0]);
   await waitFor(() => expect(obterCabecalhoProtocolo).toHaveBeenCalledWith({ programacaoId: "g11" }, 7));
-  fireEvent.click(await screen.findByRole("button", { name: "Gestão das participações" }));
   expect(await screen.findByRole("link", { name: "Animal escolhido" })).toBeTruthy();
   expect(screen.queryByRole("button", { name: "Retirar participação" })).toBeNull();
   expect(reqProtocolo).toHaveBeenCalledWith(expect.stringMatching(/^\/programacoes\?tipo=REPRODUTIVO&pagina=2&porPagina=10$/), 7);

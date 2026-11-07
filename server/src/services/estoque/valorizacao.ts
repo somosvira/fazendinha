@@ -19,8 +19,8 @@ export async function travarValorizacaoTx(tx: Db, produtoIds: string[]) {
   const chaves = [...new Set(produtoIds)].map(id => `valorizacao-estoque:${id}`);
   if (chaves.length) await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${chaves}::text[]) AS k) chaves ORDER BY h`;
 }
-async function escopo(propriedadeId: number) {
-  return propriedadeId === await propriedadePrincipalId() ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId };
+async function escopo(tx: Db, propriedadeId: number) {
+  return propriedadeId === await propriedadePrincipalId(tx) ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId };
 }
 async function metodoProduto(tx: Db, produtoId: string): Promise<MetodoValorizacao> {
   const produto = await tx.produto.findUniqueOrThrow({ where: { id: produtoId }, select: { rastrearPartidas: true } });
@@ -43,7 +43,7 @@ export async function saldosBasesTx(tx: Db, produtoId: string, propriedadeId: nu
     valor: b.parcelas.reduce((s, p) => s.plus(p.valorTotal), b.valorAbertura) }));
 }
 async function saldoFisicoTx(tx: Db, produtoId: string, propriedadeId: number, partidaId?: string | null, excluirMovimentoId?: string, data?: Date) {
-  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: estadosSaldo, ...await escopo(propriedadeId), ...(data ? { data: { lte: data } } : {}), ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) },
+  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, status: estadosSaldo, ...await escopo(tx, propriedadeId), ...(data ? { data: { lte: data } } : {}), ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) },
     include: { alocacaoPartidaEstoques: { orderBy: [{ partidaId: "asc" }, { id: "asc" }], include: { partida: { select: { lotePrincipalId: true } } } } } });
   return movimentos.reduce((s, m) => {
     const qtd = partidaId == null ? m.quantidade : m.alocacaoPartidaEstoques.filter(a => (a.partida.lotePrincipalId ?? a.partidaId) === partidaId).reduce((t, a) => t.plus(a.quantidade), D(0));
@@ -62,7 +62,7 @@ async function conferirLastroTx(tx: Db, produtoId: string, propriedadeId: number
   return bases;
 }
 export async function previaRetroatividadeTx(tx: Db, produtoId: string, propriedadeId: number, data: Date, excluirMovimentoId?: string) {
-  const posteriores = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(propriedadeId), status: estadosSaldo,
+  const posteriores = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(tx, propriedadeId), status: estadosSaldo,
     data: { gt: data }, ...(excluirMovimentoId ? { id: { not: excluirMovimentoId } } : {}) }, select: { id: true, seq: true, data: true, origem: true }, orderBy: { seq: "asc" }, take: 20 });
   const aberturasPosteriores = await tx.baseValorizacaoEstoque.count({ where: { produtoId, propriedadeId, corteAbertura: { gt: data }, aberturaDocumentada: { not: Prisma.DbNull } } });
   return { permitido: posteriores.length === 0 && aberturasPosteriores === 0, posteriores, aberturasPosteriores,
@@ -101,7 +101,7 @@ export async function registrarSaidaValorizadaTx(tx: Db, movimentoId: string, pl
 export async function registrarEntradaValorizadaTx(tx: Db, movimento: MovimentoEstoque, distribuicao: DistribuicaoValor[], origemPlano?: PlanoSaida) {
   if (movimento.valorTotal == null || movimento.custoUnitario == null)
     throw new ValorizacaoError("VALIDACAO", "Valor pendente é permitido somente pelo fluxo próprio de produção de leite");
-  const propriedadeId = movimento.propriedadeId ?? await propriedadePrincipalId();
+  const propriedadeId = movimento.propriedadeId ?? await propriedadePrincipalId(tx);
   if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(movimento.origem)) {
     const evidencia = movimento.evidenciaValor as { referencia?: unknown; evidencia?: unknown } | null;
     if (!evidencia || typeof evidencia.referencia !== "string" || evidencia.referencia.trim().length < 2 || typeof evidencia.evidencia !== "string" || evidencia.evidencia.trim().length < 5)
@@ -138,7 +138,7 @@ export async function registrarEntradaValorizadaTx(tx: Db, movimento: MovimentoE
 }
 export async function registrarInversoValorizadoTx(tx: Db, originalId: string, inversoId: string) {
   const original = await tx.movimentoEstoque.findUniqueOrThrow({ where: { id: originalId }, include: { parcelasValorizacao: { include: { base: true } } } });
-  const propriedadeId = original.propriedadeId ?? await propriedadePrincipalId();
+  const propriedadeId = original.propriedadeId ?? await propriedadePrincipalId(tx);
   await travarValorizacaoTx(tx, [original.produtoId]);
   if (original.metodoValorizacao === "LEGADO") {
     if (await tx.baseValorizacaoEstoque.count({ where: { produtoId: original.produtoId, propriedadeId } }))
@@ -157,7 +157,7 @@ export async function registrarInversoValorizadoTx(tx: Db, originalId: string, i
 
 export async function diagnosticarValorizacaoTx(tx: Db, produtoId: string, propriedadeId: number, data: Date) {
   const produto = await tx.produto.findUniqueOrThrow({ where: { id: produtoId }, select: { id: true, rastrearPartidas: true } });
-  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(propriedadeId), status: estadosSaldo, data: { lte: data } }, orderBy: { seq: "asc" },
+  const movimentos = await tx.movimentoEstoque.findMany({ where: { produtoId, ...await escopo(tx, propriedadeId), status: estadosSaldo, data: { lte: data } }, orderBy: { seq: "asc" },
     include: { alocacaoPartidaEstoques: { orderBy: [{ partidaId: "asc" }, { id: "asc" }], include: { partida: { select: { lotePrincipalId: true } } } } } });
   const bases = await saldosBasesTx(tx, produtoId, propriedadeId, data);
   const idsGrupo = produto.rastrearPartidas ? [...new Set(movimentos.flatMap(m => m.alocacaoPartidaEstoques.map(a => a.partida.lotePrincipalId ?? a.partidaId)))] : [null];

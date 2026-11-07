@@ -7,10 +7,13 @@ import type { ReactNode } from "react";
 import { Empty } from "@/financeiro/financeiro-ui";
 
 /** A seleção só consulta os eventos já recebidos; nunca cria uma previsão. */
-export function CalendarioAgenda<T>({ itens, dataDe, chaveDe, render }: {
+export function CalendarioAgenda<T>({ itens, dataDe, chaveDe, render, dataSelecionada, onSelecionarData }: {
+  dataSelecionada?: string; onSelecionarData?: (data: string) => void;
   itens: T[]; dataDe: (item: T) => string | null; chaveDe: (item: T) => string; render: (item: T) => ReactNode;
 }) {
-  const [selecionada, setSelecionada] = useState(getHojeISO);
+  const [dataLocal, setDataLocal] = useState(getHojeISO);
+  const selecionada = dataSelecionada || dataLocal;
+  const setSelecionada = (data: string) => { setDataLocal(data); onSelecionarData?.(data); };
   const [mes, setMes] = useState(() => dateFromIso(getHojeISO())!);
   const dia = dateFromIso(selecionada);
   const doDia = itens.filter(item => dataDe(item)?.slice(0, 10) === selecionada);
@@ -21,7 +24,7 @@ export function CalendarioAgenda<T>({ itens, dataDe, chaveDe, render }: {
     <div data-calendars><CalendarMonth year={mes.getFullYear()} month={mes.getMonth()} hideTitle range={{ start: dia, end: dia }} hoverEnd={null} onHoverDay={() => {}} onPickDay={d => setSelecionada(isoDate(d))} onNavigate={navegar}/></div>
     <div className="repro-agenda-dias"><span>Dias com atividades</span>{diasComAtividades.length ? diasComAtividades.map(d => <Button key={d} variant={d === selecionada ? "default" : "outline"} size="sm" aria-label={`Consultar atividades de ${formatBRDateISO(d)}`} onClick={() => setSelecionada(d)}>{Number(d.slice(8))}</Button>) : <Empty>Nenhuma atividade datada neste mês com os critérios atuais.</Empty>}</div>
     <Button variant="outline" size="sm" onClick={() => { const d = getHojeISO(); setSelecionada(d); setMes(dateFromIso(d)!); }}>Hoje</Button>
-    <section className="repro-agenda-dia" aria-label="Atividades do dia selecionado"><h3>{formatBRDateISO(selecionada)}</h3>{doDia.length ? <ul>{doDia.map(item => <li key={chaveDe(item)}>{render(item)}</li>)}</ul> : <Empty icone={CalendarDays}>Nenhuma atividade prevista neste dia com os critérios atuais.</Empty>}</section>
+    {!onSelecionarData && <section className="repro-agenda-dia" aria-label="Atividades do dia selecionado"><h3>{formatBRDateISO(selecionada)}</h3>{doDia.length ? <ul>{doDia.map(item => <li key={chaveDe(item)}>{render(item)}</li>)}</ul> : <Empty icone={CalendarDays}>Nenhuma atividade prevista neste dia com os critérios atuais.</Empty>}</section>}
 
   </aside>;
 }

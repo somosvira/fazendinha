@@ -70,6 +70,7 @@ export function FormReproducao({
   animalInicial,
   onFechar,
   onSalvo,
+  onPrepararIatf,
   onRegistrar,
   dataInicial,
   conteudoExtra,
@@ -89,6 +90,7 @@ export function FormReproducao({
   inline?: boolean;
   onFechar: () => void;
   onSalvo: () => void;
+  onPrepararIatf?: (animaisIds: string[]) => void;
   dataInicial?: string;
   conteudoExtra?: ReactNode;
   tipoExameInicial?: string;
@@ -101,6 +103,9 @@ export function FormReproducao({
   const usuario = getUsuario();
   const podeValores = !!usuario && podeAcessarArea("financeiro") && (usuario.dono || usuario.flags.includes("verValores"));
   const envio = useRef<{ payload: string; chave: string } | null>(null);
+  const [registroSalvo, setRegistroSalvo] = useState<string | null>(null);
+  const [quantidadeAberta, setQuantidadeAberta] = useState(!!tentativaInicial?.quantidade && tentativaInicial.quantidade !== 1);
+  const [motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional] = useState("");
   const [animalId, setAnimalId] = useState(animalInicial ?? "");
   const [data, setData] = useState(dataInicial ?? hoje());
   const [erro, setErro] = useState<string | null>(null);
@@ -124,10 +129,13 @@ export function FormReproducao({
   const [motivoVinculo, setMotivoVinculo] = useState("");
   const [servicoId, setServicoId] = useState("");
   const [valorServico, setValorServico] = useState("");
-  const [quantidade, setQuantidade] = useState(String(tentativaInicial?.quantidade ?? 1));
+  const [quantidade, setQuantidade] = useState(tentativaInicial?.quantidade != null ? String(tentativaInicial.quantidade) : "");
   const [responsavel, setResponsavel] = useState("");
   const [resultado, setResultado] =
     useState<AvaliacaoInput["resultado"] | "">("");
+  const [resultadoAptidao, setResultadoAptidao] = useState<AvaliacaoInput["resultadoAptidao"]>(null);
+  const [retornoAptidaoEm, setRetornoAptidaoEm] = useState<string | null>(null);
+  const [decisaoIatf, setDecisaoIatf] = useState<AvaliacaoInput["decisaoIatf"]>(null);
   const [conduta, setConduta] = useState<AvaliacaoInput["conduta"] | null>(null);
   const [sexoFetal, setSexoFetal] = useState<"F" | "M" | "">("");
   const [finalidade, setFinalidade] = useState<AvaliacaoInput["finalidade"]>(finalidadeInicial ?? "DIAGNOSTICO");
@@ -155,7 +163,6 @@ export function FormReproducao({
   const [lactacao, setLactacao] = useState(false);
   const [situacao, setSituacao] = useState<SituacaoInicialInput["situacao"]>("VAZIA");
   const [classeReprodutiva, setClasseReprodutiva] = useState("");
-  const [aptaDesde, setAptaDesde] = useState("");
   const [restricaoAte, setRestricaoAte] = useState("");
   const [acoesRestritas, setAcoesRestritas] = useState([
     "IA",
@@ -286,13 +293,17 @@ export function FormReproducao({
       setErro(exigeEvidenciaClasse ? "Descreva a evidência da classe reprodutiva com pelo menos 5 caracteres." : "Informe um motivo com pelo menos 5 caracteres.");
       return;
     }
-    if (acao === "avaliacao" && (!resultado || !tipoExameId || (finalidade === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
+    if (acao === "avaliacao" && (!resultado || !tipoExameId || (resultado === "SEXAGEM" && !sexoFetal))) { setErro("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem."); return; }
+    if (acao === "avaliacao" && resultado !== "NAO_AVALIADO" && ["SEXAGEM", "RECONFIRMACAO"].includes(finalidade ?? "") && !demandaInicial?.gestacaoId && !gestacaoDoFato) { setErro("Vincule uma gestação conhecida para reconfirmação ou sexagem."); return; }
+    if (acao === "tentativa" && tipo !== "COBERTURA" && quantidade && Number(quantidade) !== 1 && motivoQuantidadeExcepcional.trim().length < 5) { setErro("Informe o motivo da quantidade excepcional (mínimo de 5 caracteres)."); return; }
     if (acao === "parto" && destinoCriaPendente) { setErro("Confira a sugestão de Bezerreiro e escolha o lote de cada cria ou Sem lote."); return; }
     if (acao === "parto") { const erroParto = validarDadosParto(dadosParto); if (erroParto) { setErro(erroParto); return; } }
     if (ocupado) return;
     setOcupado(true);
     setErro(null);
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, responsavel, resultado, conduta, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, aptaDesde, restricaoAte, acoesRestritas, restricao});
+    const unidadeMaterial = materiais.find(m => m.id === materialId)?.produto.unidade;
+    const quantidadeEfetiva = quantidade !== "" ? Number(quantidade) : unidadeMaterial === "DOSE" || unidadeMaterial === "UN" ? 1 : undefined;
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -307,9 +318,10 @@ export function FormReproducao({
               ? { touroExternoId: touro.slice(8) }
               : { touroId: touro }
             : {}),
+          ...(tipo !== "COBERTURA" && quantidadeEfetiva != null ? { quantidade: quantidadeEfetiva } : {}),
+          ...(tipo !== "COBERTURA" && motivoQuantidadeExcepcional.trim() ? { motivoQuantidadeExcepcional: motivoQuantidadeExcepcional.trim() } : {}),
           ...(origem === "ESTOQUE"
             ? {
-                quantidade: Number(quantidade),
                 partidaId: partidaId || undefined,
                 cienciaValidadeDesconhecida: cienciaValidade,
                 documentacaoExcepcional: cienciaVencida,
@@ -327,12 +339,14 @@ export function FormReproducao({
         await (onRegistrar ?? registrarAvaliacao)({
           ...base,
           ...(demandaInicial?{demandaAcompanhamentoId:demandaInicial.id}:{}),
+          resultadoAptidao, retornoAptidaoEm, responsavel: responsavel || undefined,
           resultado, finalidade, tipoExameId, resultados, formatoExameHash: tipoExame?.formatoExameHash,
           cienciaSanitaria,
           conduta: conduta ?? undefined,
+          ...(resultado === "NEGATIVO" && decisaoIatf ? { decisaoIatf } : {}),
           ...(tentativaId ? { tentativaId } : {}),
           ...(demandaInicial?.gestacaoId?{gestacaoId:demandaInicial.gestacaoId}:gestacaoDoFato ? { gestacaoId: gestacaoDoFato.id } : {}),
-          ...(sexoFetal && resultado !== "NAO_AVALIADO" ? { sexoFetal } : {}),
+          ...(sexoFetal && !["NAO_AVALIADO", "NEGATIVO"].includes(resultado) ? { sexoFetal } : {}),
           ...(motivo ? { motivo } : {}),
           ...(anotacao ? { anotacaoOriginal: anotacao } : {}),
           ...(retorno ? { retornoEm: retorno } : {}),
@@ -355,7 +369,6 @@ export function FormReproducao({
           situacao,
           ...(classeReprodutiva === "NOVILHA" || classeReprodutiva === "VACA" ? { classeReprodutiva } : {}),
           observacao: motivo || undefined,
-          aptaDesde: aptaDesde || undefined,
         } satisfies SituacaoInicialInput, "POST", propriedadeId);
       if (acao === "restricao")
         await reqV4("/reproducao/restricoes", {
@@ -365,13 +378,15 @@ export function FormReproducao({
           acoes: acoesRestritas,
           ate: restricaoAte || undefined,
         }, "POST", propriedadeId);
-      onSalvo();
+      if (acao === "avaliacao" && resultado === "NEGATIVO" && decisaoIatf === "INDICAR" && onPrepararIatf) setRegistroSalvo(animalId);
+      else onSalvo();
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     } finally {
       setOcupado(false);
     }
   }
+  if (registroSalvo) return <FormShellReproducao inline={inline} titulo="Avaliação registrada" onFechar={onSalvo} bloqueado={false} rodape={<><Button variant="outline" onClick={onSalvo}>Concluir</Button><Button onClick={() => { try { onPrepararIatf?.([registroSalvo]); } catch { setErro("Diagnóstico já salvo. Não foi possível abrir a preparação; tente novamente sem registrar o diagnóstico outra vez."); } }}>Preparar próxima IATF</Button></>}><ErrorBox erro={erro} /><p role="status">Gestação não confirmada. Indicação para nova IATF registrada. A preparação exige revisão e confirmação próprias.</p></FormShellReproducao>;
   return (
     <FormShellReproducao
       inline={inline}
@@ -477,16 +492,9 @@ export function FormReproducao({
               ],
               tipo === "COBERTURA",
             )}
+            {tipo !== "COBERTURA" && <><p className="text-sm">Uso habitual: {tipo === "TE" ? "1 embrião por receptora" : "1 dose por inseminação"}. A unidade cadastrada será conferida antes de confirmar.</p><Button variant="outline" type="button" aria-expanded={quantidadeAberta} onClick={() => setQuantidadeAberta(v => !v)}>Quantidade excepcional ou registro histórico</Button>{quantidadeAberta && <div className="grid gap-3">{campo("quantidade", "Quantidade efetivamente utilizada", quantidade, setQuantidade, false, "number")}{campo("motivo-quantidade", "Motivo da quantidade excepcional", motivoQuantidadeExcepcional, setMotivoQuantidadeExcepcional, !!quantidade && Number(quantidade) !== 1)}<p className="text-sm text-ink-3">Perdas de estoque não aumentam a dose do animal. Registre a quantidade histórica sem converter a unidade.</p></div>}</>}
             {origem === "ESTOQUE" && (
               <>
-                {campo(
-                  "quantidade",
-                  "Quantidade consumida",
-                  quantidade,
-                  setQuantidade,
-                  true,
-                  "number",
-                )}
                 {partidas.length > 0 &&
                   seletor(
                     "partida",
@@ -564,12 +572,16 @@ export function FormReproducao({
           <>
             {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
             {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
-            <CamposAvaliacao dados={{ resultado, finalidade, sexoFetal, conduta }} onChange={mudanca => {
-              if (mudanca.resultado !== undefined) setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | "");
+            {campo("responsavel-exame", "Responsável pelo exame", responsavel, setResponsavel, Boolean(resultadoAptidao))}
+            <CamposAvaliacao indicacaoExplicita dados={{ resultadoAptidao, retornoAptidaoEm, resultado, finalidade, sexoFetal, conduta: conduta === "IATF" ? null : conduta }} onChange={mudanca => {
+              if (mudanca.resultadoAptidao !== undefined) setResultadoAptidao(mudanca.resultadoAptidao);
+              if (mudanca.retornoAptidaoEm !== undefined) setRetornoAptidaoEm(mudanca.retornoAptidaoEm);
+              if (mudanca.resultado !== undefined) { setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | ""); setDecisaoIatf(null); if (mudanca.resultado === "NAO_AVALIADO") { setResultadoAptidao(null); setRetornoAptidaoEm(""); } if(conduta === "IATF") setConduta(null); }
               if (mudanca.finalidade !== undefined) setFinalidade(mudanca.finalidade as AvaliacaoInput["finalidade"]);
               if (mudanca.sexoFetal !== undefined) setSexoFetal((mudanca.sexoFetal ?? "") as "F" | "M" | "");
-              if (mudanca.conduta !== undefined) setConduta(mudanca.conduta as AvaliacaoInput["conduta"]);
+              if (mudanca.conduta !== undefined) { setConduta(mudanca.conduta as AvaliacaoInput["conduta"]); if(decisaoIatf === "INDICAR") setDecisaoIatf(null); }
             }} />
+            {resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}<p className="text-sm text-ink-3">Sem seleção, a decisão fica pendente. Indicar não inicia outro protocolo; a inclusão exige preparação e confirmação próprias.</p></div>}
             {tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && <CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={setResultados} />}
             {seletor(
               "tentativa",
@@ -639,26 +651,15 @@ export function FormReproducao({
         )}
         {acao === "parto" && <PartoCampos lotesCarregando={catalogosCarregando} onDestinoPendente={setDestinoCriaPendente} valor={dadosParto} onChange={setDadosParto} crias={crias} setCrias={setCrias} lotes={lotes} lactacao={lactacao} setLactacao={setLactacao} animalId={animalId} propriedadeId={propriedadeId ?? undefined} />}
         {acao === "situacao" &&
-          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA" || valor === "APTA") setSituacao(valor); }, [
+          seletor("situacao", "Situação inicial", situacao, valor => { if (valor === "VAZIA" || valor === "DESCONHECIDA") setSituacao(valor); }, [
             ["VAZIA", "Vazia"],
             ["DESCONHECIDA", "Desconhecida"],
-            ["APTA", "Apta"],
           ])}
         {acao === "situacao" &&
           seletor("classe-reprodutiva", "Classe na data do registro", classeReprodutiva, setClasseReprodutiva, [
             ["NOVILHA", "Novilha — nunca pariu, conforme evidência"],
             ["VACA", "Vaca — já pariu, conforme evidência"],
           ], false, "Não determinada")}
-        {acao === "situacao" &&
-          situacao === "APTA" &&
-          campo(
-            "apta-desde",
-            "Apta desde",
-            aptaDesde,
-            setAptaDesde,
-            false,
-            "date",
-          )}
         {acao === "restricao" && (
           <>
             {" "}

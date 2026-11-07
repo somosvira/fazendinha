@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -22,7 +23,7 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
     }
     materialId=(await prisma.materialGenetico.create({data:{tipo:"SEMEN",produtoId:produtos[1],touroExternoId:genitorId}})).id;
   });
-  async function criarAnimal(){const a=await prisma.animal.create({data:{brinco:`HO${animais.length}${token}`,sexo:"F",origem:"COMPRADO",dataNascimento:new Date("2024-01-01"),dataEntrada:new Date("2026-08-01"),localizacoes:{create:{propriedadeId:sitio,desde:new Date("2026-08-01")}},destinos:{create:{aptidao:"LEITE",desde:new Date("2026-08-01")}}}});animais.push(a.id);return a.id;}
+  async function criarAnimal(){const a=await prisma.animal.create({data:{brinco:`HO${animais.length}${token}`,sexo:"F",origem:"COMPRADO",dataNascimento:new Date("2024-01-01"),dataEntrada:new Date("2026-08-01"),localizacoes:{create:{propriedadeId:sitio,desde:new Date("2026-08-01")}},destinos:{create:{aptidao:"LEITE",desde:new Date("2026-08-01")}}}});animais.push(a.id);await criarAptidaoFixture(prisma, a.id, sitio, new Date("2026-08-01"));return a.id;}
   async function criar(inicio=data,horas=false){
     const animalId=await criarAnimal();
     const p=await iatf.criarProtocolo({nome:`Horário ${protocolos.length} ${token}`,versao:1,publicado:true,etapas:[
@@ -91,7 +92,8 @@ comBanco("IATF data/hora independentes no banco de desenvolvimento", () => {
   });
   afterAll(async()=>{
     if(!sitio)return;
-    await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:sitio}});
+    await limparAptidaoFixture(prisma, animais);
+  await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:sitio}});
     await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{propriedadeId:sitio},{animalId:{in:animais}},{entidadeId:{in:protocolos}}]}});
     await prisma.participanteVisita.deleteMany({where:{animalId:{in:animais}}});
     await prisma.impressaoVisita.deleteMany({where:{visitaId:{in:visitas}}});

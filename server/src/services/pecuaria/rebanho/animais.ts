@@ -1,3 +1,4 @@
+import { lerEscoreCorporal, TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { completarContextoCartoes } from "./contexto-cartao.js";
 import { reavaliarContinuidadeAnimalTx } from "../sanidade/alertas/continuidade.js";
@@ -844,6 +845,10 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
   const baixaAtual = baixas.find((s) => s.estornadaEm == null) ?? null;
   // baixado: idade/categoria contam até a data da baixa, não até hoje (K5)
   const hoje = baixaAtual ? baixaAtual.data : hojeFazendaDate();
+  const examesEcc = await prisma.exameAnimal.findMany({ where: { animalId: id, status: "VALIDO", data: { lte: hoje },
+    ...(propriedadeEscopo != null ? { propriedadeId: propriedadeEscopo } : {}), OR: [{ finalidadePrincipal: { in: ["ESCORE_CORPORAL", "ECC"] } }, { tipoExameId: TIPO_EXAME_ESCORE_CORPORAL }] },
+    include: { resultados: { where: { vigente: true } } }, orderBy: [{ data: "asc" }, { id: "asc" }] });
+  const historicoEcc = examesEcc.map(lerEscoreCorporal);
   const pesos = pesagens.map(p => ({ ...p, pesoKg: Number(p.pesoKg) }));
   const pesagensIndicadores = pesagensParaIndicadores(pesos, hoje);
   const ultimoPeso = pesagensIndicadores.at(-1) ?? null;
@@ -916,6 +921,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       id: m.id, categoria: m.categoria, desde: m.desde.toISOString().slice(0, 10), ate: m.ate ? m.ate.toISOString().slice(0, 10) : null,
       motivo: m.motivo, motivoEncerramento: m.motivoEncerramento,
     })),
+    historicoEcc,
     historicoPesagens: pesagens.map((p) => ({ id: p.id, data: p.data.toISOString().slice(0, 10), pesoKg: Number(p.pesoKg), tipo: p.tipo, origem: p.origem, observacao: p.observacao, precisao: p.precisao, contextoHistorico: p.contextoHistorico, propriedadeId: p.propriedadeId, referenciaHistorica: p.referenciaHistorica })),
     baixa: baixaAtual ? {
       id: baixaAtual.id, data: baixaAtual.data.toISOString().slice(0, 10), tipo: baixaAtual.tipo,

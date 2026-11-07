@@ -85,6 +85,14 @@ describe("integridade de exames", () => {
   });
 });
 
+it("correção de ECC recusa valor fora da escala antes de alterar o histórico", async () => {
+  const original = { id: "ecc", animalId: "animal", tipoExameId: "b0841f3c-3f88-4c2d-9d0d-3ef33d49b841", formatoSnapshot: { tipoResultado: "MULTIPLO", campos: ["ESCORE", "ESCALA_MIN", "ESCALA_MAX"].map(codigo => ({ codigo, rotulo: codigo, tipo: "NUMERO", obrigatorio: true })) } };
+  mocks.tx.exameAnimal.findFirst.mockResolvedValueOnce({ animalId: "animal" }).mockResolvedValueOnce(original);
+  await expect(corrigirExame("ecc", 2, { motivo: "Correção de anotação", resultados: [{ campo: "ESCORE", valor: 6 }, { campo: "ESCALA_MIN", valor: 1 }, { campo: "ESCALA_MAX", valor: 5 }] }, 7)).rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("dentro dos limites") });
+  expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  expect(mocks.auditar).not.toHaveBeenCalled();
+});
+
 describe("histórico de exame", () => {
   it("consulta uma página da auditoria existente, mantendo antes/depois e motivo sem inventar autor", async () => {
     mocks.tx.exameAnimal.findFirst.mockResolvedValue({ id: "e" });

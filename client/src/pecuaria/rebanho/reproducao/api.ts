@@ -57,6 +57,7 @@ export type ContextoTemporalAnimal = {
   diasDesdeConfirmacao?: number | null;
   idadeGestacionalDias?: number | null;
   retencaoPlacenta?: boolean | null;
+  grauRetencaoPlacenta?: number | null;
   pendenciasContexto?: string[];
 };
 export type PesoPartoInput =
@@ -81,6 +82,7 @@ export type CamposParto = {
   ocorridoEm?: string | null;
   horarioEstimado?: boolean;
   retencaoPlacenta?: boolean | null;
+  grauRetencaoPlacenta?: number | null;
   responsavel?: string | null;
   observacao?: string | null;
 };
@@ -121,6 +123,8 @@ export type FatoReprodutivo = CamposParto & {
   data: string;
   tipo?: string;
   resultado?: string;
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null;
+  retornoAptidaoEm?: string | null;
   motivo?: string | null;
   anotacaoOriginal?: string | null;
   sexoFetal?: string | null;
@@ -203,12 +207,13 @@ export type FatoBase = {
   data: string;
 };
 export type SituacaoInicialInput = FatoBase & {
-  situacao: "VAZIA" | "DESCONHECIDA" | "APTA";
+  situacao: "VAZIA" | "DESCONHECIDA";
   classeReprodutiva?: "NOVILHA" | "VACA" | null;
   observacao?: string | null;
   aptaDesde?: string | null;
 };
 export type TentativaInput = FatoBase & {
+  motivoQuantidadeExcepcional?: string;
   tipo: "IA" | "TE" | "COBERTURA";
   origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";
   materialId?: string;
@@ -227,6 +232,7 @@ export type TentativaInput = FatoBase & {
   motivoDocumentacaoExcepcional?: string;
 };
 export type AvaliacaoInput = FatoBase & {
+  responsavel?: string | null;
   demandaAcompanhamentoId?:string;
   formatoExameHash?: string;
   finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
@@ -244,6 +250,9 @@ export type AvaliacaoInput = FatoBase & {
   gestacaoId?: string;
   sexoFetal?: "F" | "M";
   conduta?: "AGUARDAR" | "IATF" | "DESCARTE";
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null;
+  retornoAptidaoEm?: string | null;
+  decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   motivo?: string;
   anotacaoOriginal?: string;
   retornoEm?: string;

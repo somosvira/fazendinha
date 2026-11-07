@@ -46,64 +46,6 @@ const painel = {
   restricoes: [],
   situacoesIniciais: [],
 } as PainelReprodutivo;
-it("consultar ciclo antigo não grava e vínculo exige revisão explícita da evidência", async () => {
-  const hoje = new Intl.DateTimeFormat("en-CA").format(new Date());
-  vi.mocked(consultarElegibilidade).mockResolvedValue({
-    animalId: "a",
-    propriedadeId: 1,
-    dataReferencia: hoje,
-    estado: "PENDENTE",
-    baseElegivel: null,
-    elegivel: null,
-    aptaDesde: null,
-    ciclo: { chaveCiclo: "PARTO:p", inicioCiclo: "2026-01-01", partoId: "p" },
-    vinculoCicloId: null,
-    politicaId: null,
-    politicaVersao: null,
-    metodologia: "v1",
-    decisaoId: null,
-    motivos: ["POLITICA_CICLO_NAO_CONGELADA"],
-    alertas: [],
-    restricaoIds: [],
-  });
-  vi.mocked(vincularPolitica).mockRejectedValue(new Error("Revisar origem"));
-  render(
-    <ElegibilidadeAnimal
-      animalId="a"
-      propriedadeId={1}
-      painel={painel}
-      podeLancar={true}
-    />,
-  );
-  await screen.findByText("Pendente de informação");
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByRole("button", { name: "Associar política ao acompanhamento" });
-  expect(vincularPolitica).not.toHaveBeenCalled();
-  expect(
-    (
-      screen.getByRole("button", {
-        name: "Associar política ao acompanhamento",
-      }) as HTMLButtonElement
-    ).disabled,
-  ).toBe(true);
-  fireEvent.click(screen.getByRole("checkbox"));
-  fireEvent.click(
-    screen.getByRole("button", { name: "Associar política ao acompanhamento" }),
-  );
-  await screen.findByText("Revisar origem");
-  expect(vincularPolitica).toHaveBeenCalledWith({
-    chave: expect.any(String),
-    animalId: "a",
-    propriedadeId: 1,
-    partoId: "p",
-  });
-  const primeira = vi.mocked(vincularPolitica).mock.calls[0][0];
-  fireEvent.click(
-    screen.getByRole("button", { name: "Associar política ao acompanhamento" }),
-  );
-  await waitFor(() => expect(vincularPolitica).toHaveBeenCalledTimes(2));
-  expect(vi.mocked(vincularPolitica).mock.calls[1][0]).toEqual(primeira);
-});
 it("configuração inicia sem dias clínicos nem regras escolhidas", async () => {
   render(<ConfiguracaoReprodutiva propriedadeId={9} podeLancar={true} />);
   await waitFor(() => expect(listarPoliticas).toHaveBeenCalledWith(9));
@@ -129,104 +71,49 @@ it("configuração inicia sem dias clínicos nem regras escolhidas", async () =>
   ).toBe(true);
 });
 
-function elegibilidade(data: string): ElegibilidadeNaData {
-  return { animalId: "a", propriedadeId: 1, dataReferencia: data, estado: "NAO_ELEGIVEL", baseElegivel: false, elegivel: false, aptaDesde: null, ciclo: { chaveCiclo: `PARTO:${data}`, inicioCiclo: data, partoId: `parto:${data}` }, vinculoCicloId: `vinculo:${data}`, politicaId: "politica", politicaVersao: 1, metodologia: "v1", decisaoId: null, motivos: ["DIAGNOSTICO_PENDENTE"], alertas: [], restricaoIds: [] };
+function elegibilidade(data: string, estado: "APTA" | "NAO_APTA" | "PENDENTE" = "PENDENTE"): ElegibilidadeNaData {
+  return { animalId: "a", propriedadeId: 1, dataReferencia: data, situacaoReprodutiva: "VAZIA", aptidao: { estado, exameId: null, data: null, retornoEm: null, motivos: [] }, estado: "PENDENTE", baseElegivel: null, elegivel: null, aptaDesde: null, ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null, metodologia: "v1", decisaoId: null, motivos: [], alertas: [], restricaoIds: [] };
 }
-it("consulta automaticamente hoje e mantém a decisão independente do filtro histórico", async () => {
-  const hoje = new Intl.DateTimeFormat("en-CA").format(new Date());
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_animal, _sitio, data) => elegibilidade(data));
-  vi.mocked(decidirElegibilidade).mockRejectedValue(new Error("Falha transitória da decisão"));
+it("exibe os dois eixos sem decisão adicional nem vínculo automático", async () => {
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => elegibilidade(data, "APTA"));
   render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
-  await screen.findByText("Não elegível");
-  expect(consultarElegibilidade).toHaveBeenCalledWith("a", 1, hoje);
-  expect(screen.getByLabelText("Data da decisão").closest("[hidden]")).not.toBeNull();
-  expect(decidirElegibilidade).not.toHaveBeenCalled();
-  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2020-05-02" } });
-  await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2020-05-02"));
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByLabelText("Decisão");
-  expect(screen.getByLabelText("Data da decisão")).toHaveProperty("value", hoje.split("-").reverse().join("/"));
-  await alterarControle(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
-  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Decisão conferida na data do registro" } });
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
-  await screen.findByText("Falha transitória da decisão");
-  expect(decidirElegibilidade).toHaveBeenCalledWith(expect.objectContaining({ data: hoje, vinculoCicloId: `vinculo:${hoje}`, tipo: "BLOQUEAR", aptaDesde: null }));
-  const primeira = vi.mocked(decidirElegibilidade).mock.calls[0][0];
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
-  await waitFor(() => expect(decidirElegibilidade).toHaveBeenCalledTimes(2));
-  expect(vi.mocked(decidirElegibilidade).mock.calls[1][0]).toEqual(primeira);
-  expect(anularDecisao).not.toHaveBeenCalled();
+  await screen.findByText("Apta");
+  expect(screen.getByText("Vazia")).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Registrar decisão" })).toBeNull();
+  expect(decidirElegibilidade).not.toHaveBeenCalled(); expect(vincularPolitica).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar exame de aptidão" }));
+  expect(await screen.findByLabelText("Responsável pelo toque")).toBeTruthy();
 });
-it("mudar explicitamente a data da decisão confere o vínculo daquela data e conserva rascunho ao recolher", async () => {
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_animal, _sitio, data) => elegibilidade(data));
+it("consulta histórica não grava e leitura não oferece ações de escrita", async () => {
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => elegibilidade(data));
+  render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar={false}/>);
+  await screen.findByText("Pendente de avaliação");
+  await alterarControle(screen.getByLabelText("Data de referência da aptidão"), { target: { value: "2020-05-02" } });
+  await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2020-05-02"));
+  expect(screen.queryByRole("button", { name: "Registrar exame de aptidão" })).toBeNull();
+  expect(decidirElegibilidade).not.toHaveBeenCalled(); expect(vincularPolitica).not.toHaveBeenCalled();
+});
+it("ignora resposta antiga após atualização dos fatos, preservando o filtro", async () => {
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => elegibilidade(data, "APTA"));
+  const { rerender } = render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
+  await screen.findByText("Apta");
+  let resolver!: (v: ElegibilidadeNaData) => void;
+  vi.mocked(consultarElegibilidade).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve; }));
+  await alterarControle(screen.getByLabelText("Data de referência da aptidão"), { target: { value: "2026-01-02" } });
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => elegibilidade(data, "NAO_APTA"));
+  rerender(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={{ ...painel }} podeLancar/>);
+  await screen.findByText("Não apta");
+  await act(async () => resolver(elegibilidade("2026-01-02", "APTA")));
+  expect(screen.queryByText("Apta")).toBeNull();
+  expect(screen.getByLabelText("Data de referência da aptidão")).toHaveProperty("value", "02/01/2026");
+});
+it("preserva revisão de toque e permite encerrar bloqueio histórico com motivo", async () => {
+  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _s, data) => ({ ...elegibilidade(data, "NAO_APTA"), vinculoCicloId: "v", aptidao: { estado: "NAO_APTA", exameId: "e", finalidadePrincipal: "APTIDAO_REPRODUTIVA", bloqueioAnteriorId: "b", data, retornoEm: null, motivos: [] } }));
   vi.mocked(decidirElegibilidade).mockResolvedValue({});
   render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
-  await screen.findByText("Não elegível");
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByLabelText("Motivo");
-  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Motivo já conferido" } });
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByLabelText("Motivo");
-  expect(screen.getByLabelText("Motivo")).toHaveProperty("value", "Motivo já conferido");
-  await alterarControle(screen.getByLabelText("Data da decisão"), { target: { value: "2025-01-02" } });
-  await waitFor(() => expect(consultarElegibilidade).toHaveBeenLastCalledWith("a", 1, "2025-01-02"));
-  await screen.findByLabelText("Decisão");
-  await alterarControle(screen.getByLabelText("Decisão"), { target: { value: "BLOQUEAR" } });
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
-  await waitFor(() => expect(decidirElegibilidade).toHaveBeenCalledWith(expect.objectContaining({ data: "2025-01-02", vinculoCicloId: "vinculo:2025-01-02", motivo: "Motivo já conferido" })));
-});
-
-it("atualiza aptidão e contexto da decisão após novos fatos sem apagar filtros ou rascunho", async () => {
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), estado: "ELEGIVEL", elegivel: true }));
-  const { rerender } = render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
-  await screen.findByText("Elegível");
-  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-01" } });
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByLabelText("Motivo");
-  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Rascunho preservado" } });
-  let resolver: (valor: ElegibilidadeNaData) => void = () => {};
-  vi.mocked(consultarElegibilidade).mockImplementationOnce(() => new Promise(resolve => { resolver = resolve; }));
-  await alterarControle(screen.getByLabelText("Consultar na data"), { target: { value: "2026-01-02" } });
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => elegibilidade(data));
-  const antes = vi.mocked(consultarElegibilidade).mock.calls.length;
-  rerender(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={{ ...painel }} podeLancar/>);
-  await screen.findByText("Não elegível");
-  expect(consultarElegibilidade).toHaveBeenCalledTimes(antes + 2);
-  expect(screen.getByLabelText("Consultar na data")).toHaveProperty("value", "02/01/2026");
-  expect(screen.getByLabelText("Motivo")).toHaveProperty("value", "Rascunho preservado");
-  await act(async () => resolver({ ...elegibilidade("2026-01-02"), estado: "ELEGIVEL", elegivel: true }));
-  expect(screen.queryByText("Elegível")).toBeNull();
-  expect(screen.getByText("Não elegível")).toBeTruthy();
-});
-
-it("uma atualização dos fatos exige nova conferência da associação de política", async () => {
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), vinculoCicloId: null }));
-  const { rerender } = render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
-  await screen.findByText("Não elegível");
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByRole("checkbox");
-  fireEvent.click(screen.getByRole("checkbox"));
-  expect(screen.getByRole("button", { name: "Associar política ao acompanhamento" })).toHaveProperty("disabled", false);
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), vinculoCicloId: null, ciclo: { chaveCiclo: "PARTO:novo", inicioCiclo: data, partoId: "novo" } }));
-  rerender(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={{ ...painel }} podeLancar/>);
-  await screen.findByText("Parto de origem comprovado: novo");
-  expect(screen.getByRole("checkbox").getAttribute("aria-checked")).toBe("false");
-  expect(screen.getByRole("button", { name: "Associar política ao acompanhamento" })).toHaveProperty("disabled", true);
-  expect(vincularPolitica).not.toHaveBeenCalled();
-});
-
-it("não apresenta elegibilidade calculada como aptidão clínica e exige evidência para liberar", async () => {
-  vi.mocked(consultarElegibilidade).mockImplementation(async (_a, _p, data) => ({ ...elegibilidade(data), estado: "ELEGIVEL", elegivel: true }));
-  render(<ElegibilidadeAnimal animalId="a" propriedadeId={1} painel={painel} podeLancar/>);
-  await screen.findByText("Elegível");
-  expect(screen.getByText("Não determinada")).toBeTruthy();
-  expect(screen.queryByText("Apta", { selector: "strong" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Registrar decisão" }));
-  await screen.findByLabelText("Apta desde");
-  await alterarControle(screen.getByLabelText("Apta desde"), { target: { value: new Intl.DateTimeFormat("en-CA").format(new Date()) } });
-  await alterarControle(screen.getByLabelText("Motivo"), { target: { value: "Conferir liberação sem laudo" } });
-  fireEvent.click(screen.getByRole("button", { name: "Confirmar decisão" }));
-  await screen.findByText("Registre e confira um toque apto antes de liberar.");
-  expect(decidirElegibilidade).not.toHaveBeenCalled();
+  await screen.findByText("Revisar exame de aptidão");
+  fireEvent.click(screen.getByText("Revisar bloqueio anterior"));
+  fireEvent.change(screen.getByLabelText("Motivo do encerramento"), { target: { value: "Tratamento encerrado e conferido" } });
+  fireEvent.click(screen.getByRole("button", { name: "Encerrar bloqueio anterior" }));
+  await waitFor(() => expect(decidirElegibilidade).toHaveBeenCalledWith({ vinculoCicloId: "v", tipo: "RETOMAR_POLITICA", aptaDesde: null, data: expect.any(String), propriedadeId: 1, motivo: "Tratamento encerrado e conferido", chave: expect.any(String) }));
 });

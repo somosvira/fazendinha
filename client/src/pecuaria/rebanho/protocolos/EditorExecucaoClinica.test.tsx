@@ -35,13 +35,17 @@ it("preserva resultado e observação da primeira página ao editar o11ºanimal"
   render(<EditorExecucaoClinica tarefas={tarefas} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
   mudarCampo(screen.getByLabelText("Data da coleta"), { target: { value: "2026-10-21" } });
-  expect(screen.getAllByLabelText(/Informar resultado/)).toHaveLength(10);
+  expect(screen.getAllByRole("button", { name: /Registro individual · Brinco/ })).toHaveLength(10);
+  fireEvent.click(screen.getByRole("button", { name: "Registro individual · Brinco 1" }));
   fireEvent.click(screen.getByLabelText("Informar resultado · Brinco 1"));
   mudarCampo(screen.getByLabelText("Resultado · células"), { target: { value: "123" } });
   mudarCampo(screen.getByLabelText("Observações · Brinco 1"), { target: { value: "Amostra identificada" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concluir edição individual" }));
   fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  fireEvent.click(screen.getByRole("button", { name: "Registro individual · Brinco 11" }));
   expect(screen.getAllByLabelText(/Informar resultado/)).toHaveLength(1);
   mudarCampo(screen.getByLabelText("Observações · Brinco 11"), { target: { value: "Aguardando laudo" } });
+  fireEvent.click(screen.getByRole("button", { name: "Concluir edição individual" }));
   fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
   await screen.findByRole("button", { name: "Confirmar conjunto" });
   const entrada = vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica;
@@ -120,8 +124,8 @@ it("hidratação do material planejado não cria exceções e todos herdam mater
   const grupo:TarefaOperacional[] = tarefas.slice(0, 2).map(t => ({...t,tarefaOrigem:{...t.tarefaOrigem,tipo:"TENTATIVA",planejadoSnapshot:{etapa:{nome:"Tentativa planejada",tipo:"TENTATIVA",intervalo:0,unidade:"DIAS",planoTentativa:{tipo:"IA",materialId:"planejado",quantidade:1}},previstaEm:"2026-10-21",previsaoOriginal:"2026-10-21",inicioReferencia:"2026-10-21"}}}));
   vi.mocked(obterOpcoesClinicas).mockImplementation(async (_t,_s,opcao,_pagina,_busca,selecionadoId) => ({itens:opcao === "MATERIAL" ? [{id:selecionadoId || "novo",nome:selecionadoId === "planejado" ? "Material planejado" : "Material novo"}] : [{id:"lote",nome:"Partida nova"}],total:1,pagina:1,porPagina:10}));
   render(<EditorExecucaoClinica tarefas={grupo} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await waitFor(()=>expect(screen.getAllByText(/material genético.*Material planejado/)).toHaveLength(3));
-  expect(screen.getAllByText(/Exceções da tentativa/).every(s=>!s.closest("details")?.open)).toBe(true);
+  await waitFor(()=>expect(screen.getAllByText(/material genético.*Material planejado/)).toHaveLength(1));
+  expect(screen.getAllByRole("button", { name: /Registro individual/ })).toHaveLength(2);
   fireEvent.click(screen.getByRole("button",{name:"Selecionar material genético"}));
   fireEvent.click(await screen.findByRole("button",{name:"Usar Material novo"}));
   fireEvent.click(screen.getByRole("button",{name:"Selecionar lote do material"}));
@@ -137,8 +141,65 @@ it("TETF novo propõe TE e mantém material e quantidade para preenchimento no a
   const t: TarefaOperacional = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "TENTATIVA", planejadoSnapshot: { etapa: { nome: "Transferência", tipo: "TENTATIVA", tentativaTipo: "TE", intervalo: 17, unidade: "DIAS" }, previstaEm: "2026-10-21", previsaoOriginal: "2026-10-21", inicioReferencia: "2026-10-04" } } };
   render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
   expect(screen.getByLabelText<HTMLSelectElement>("Tipo de tentativa").value).toBe("TE");
+  fireEvent.click(screen.getByRole("button", {name:"Quantidade excepcional ou registro histórico"}));
   expect(screen.getByLabelText<HTMLInputElement>("Quantidade por animal").value).toBe("");
   fireEvent.click(screen.getByRole("button", { name: "Selecionar material genético" }));
   await waitFor(() => expect(obterOpcoesClinicas).toHaveBeenCalledWith(t.id, 7, "MATERIAL", 1, "", undefined, "", "TE", true));
   expect(reqProtocolo).not.toHaveBeenCalled();
+});
+
+it("DG negativa registra decisão opcional e limpa indicação ao mudar resultado", async () => {
+  const t = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "AVALIACAO" } };
+  vi.mocked(obterOpcoesClinicas).mockResolvedValue({ itens: [{ ...formato, tipoResultado: "MULTIPLO", campos: [] }], total: 1, pagina: 1, porPagina: 10 });
+  render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByText(/tipo de exame: CCS/);
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "NEGATIVO" } });
+  expect(screen.getByLabelText("Indicação para nova IATF · Brinco 1")).toHaveProperty("value", "");
+  mudarCampo(screen.getByLabelText("Indicação para nova IATF · Brinco 1"), { target: { value: "NAO_INDICAR" } });
+  fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
+  await screen.findByRole("button", { name: "Confirmar conjunto" });
+  expect((vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica).itens[0]).toMatchObject({ resultado: "NEGATIVO", decisaoIatf: "NAO_INDICAR" });
+  fireEvent.click(screen.getByRole("button", { name: "Editar atendimento" }));
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "POSITIVO" } });
+  expect(screen.queryByLabelText("Indicação para nova IATF · Brinco 1")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
+  await screen.findByRole("button", { name: "Confirmar conjunto" });
+  expect((vi.mocked(reqProtocolo).mock.calls.at(-1)![2] as EntradaClinica).itens[0]).not.toHaveProperty("decisaoIatf");
+});
+
+it("DG só abre preparação após confirmação e falha de navegação não repete gravação", async () => {
+  const t = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "AVALIACAO" } };
+  const preparar = vi.fn().mockImplementationOnce(() => { throw new Error("Navegação indisponível"); });
+  vi.mocked(reqProtocolo).mockImplementation(async (path, _site, body) => path === "/execucoes/previa" ? previa(body as EntradaClinica) : { versao: 1, chave: "dg", total: 1, pagina: 1, porPagina: 10, itens: [{ tarefaId: "t1", animalId: "a1", tipo: "AVALIACAO", id: "dg1" }] });
+  render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} onPrepararIatf={preparar} />);
+  await screen.findByText(/tipo de exame: CCS/);
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "NEGATIVO" } });
+  mudarCampo(screen.getByLabelText("Indicação para nova IATF · Brinco 1"), { target: { value: "INDICAR" } });
+  fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
+  await screen.findByRole("button", { name: "Confirmar conjunto" });
+  expect(screen.queryByRole("button", { name: /Preparar próxima/ })).toBeNull();
+  expect(screen.getByText(/Finalidade: Diagnóstico.*Indicar para nova IATF/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Confirmar conjunto" }));
+  fireEvent.click(await screen.findByRole("button", { name: /Preparar próxima IATF/ }));
+  expect(preparar).toHaveBeenCalledWith(["a1"]);
+  expect(screen.getByText(/Atendimentos já salvos/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /Preparar próxima IATF/ }));
+  expect(vi.mocked(reqProtocolo).mock.calls.filter(([path]) => path === "/execucoes/confirmar")).toHaveLength(1);
+});
+
+it("sexagem sincroniza finalidade e exige vínculo antes de conferir", async () => {
+  const t = { ...tarefas[0], tarefaOrigem: { ...tarefas[0].tarefaOrigem, tipo: "AVALIACAO" } };
+  render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByText(/tipo de exame: CCS/);
+  mudarCampo(screen.getByLabelText("Data do atendimento"), { target: { value: "2026-10-21" } });
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "SEXAGEM" } });
+  expect(screen.getByLabelText("Finalidade do exame · Brinco 1")).toHaveProperty("value", "SEXAGEM");
+  fireEvent.click(screen.getByRole("button", { name: "Conferir execução" }));
+  await screen.findByText("Vincule a gestação conhecida de Brinco 1.");
+  expect(reqProtocolo).not.toHaveBeenCalled();
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "NEGATIVO" } });
+  expect(screen.getByLabelText("Finalidade do exame · Brinco 1")).toHaveProperty("value", "DIAGNOSTICO");
+  expect(screen.queryByLabelText("Sexo fetal observado · Brinco 1")).toBeNull();
 });

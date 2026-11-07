@@ -9,7 +9,7 @@ vi.mock("../../../estoque/navegacao", () => ({ podeAcessarArea: () => true }));
 vi.mock("./ProcedimentosProtocolo", () => ({ ProcedimentosProtocolo: () => <section>Procedimentos e custos</section> }));
 const contagens = { total: 21, atendidos: 0, pendentes: 21 };
 const tarefa = (n: number) => ({ id: `t${n}`, tarefaId: `t${n}`, participacaoId: `p${n}`, etapaId: "e1", animal: { id: `a${n}`, brinco: `Animal ${n}`, nome: null }, propriedadeId: 1, situacao: "SEM_REGISTRO", previstaPara: "2026-10-19", precisaoTemporal: "DIA", realizadaEm: null, previsaoIndividual: false, ultimoEvento: null, vinculoAtual: null, acoes: { atender: true, justificar: true, adiar: true, retificar: false, regularizar: false }, tarefaOrigem: {} });
-beforeEach(() => { vi.clearAllMocks(); api.momentos.mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10}); window.history.replaceState(null, "", "/pecuaria/sanidade?rodadaId=g1"); api.cabecalho.mockResolvedValue({ id: "g1", modo: "COLETIVO", tipo: "SANITARIO", nome: "Turma", protocolo: { id: "p", nome: "Vacinação", versao: 1 }, propriedadeId: 1, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA", contagens }); api.etapas.mockResolvedValue({ itens: [{ id: "e1", nome: "Aplicação", ordem: 1, diaRelativo: 0, previstaPara: "2026-10-19", precisaoTemporal: "DIA", contagens }], pagina: 1, porPagina: 10, total: 1 }); api.tarefas.mockImplementation((_contexto, filtros) => Promise.resolve({ itens: Array.from({ length: filtros.pagina === 3 ? 1 : 10 }, (_, i) => tarefa((filtros.pagina - 1) * 10 + i + 1)), pagina: filtros.pagina, porPagina: 10, total: 21 })); });
+beforeEach(() => { Element.prototype.scrollIntoView = vi.fn(); vi.clearAllMocks(); api.momentos.mockResolvedValue({itens:[],total:0,pagina:1,porPagina:10}); window.history.replaceState(null, "", "/pecuaria/sanidade?rodadaId=g1"); api.cabecalho.mockResolvedValue({ id: "g1", modo: "COLETIVO", tipo: "SANITARIO", nome: "Turma", protocolo: { id: "p", nome: "Vacinação", versao: 1 }, propriedadeId: 1, inicioReferencia: "2026-10-19", precisaoTemporal: "DIA", contagens }); api.etapas.mockResolvedValue({ itens: [{ id: "e1", nome: "Aplicação", ordem: 1, diaRelativo: 0, previstaPara: "2026-10-19", precisaoTemporal: "DIA", contagens }], pagina: 1, porPagina: 10, total: 1 }); api.tarefas.mockImplementation((_contexto, filtros) => Promise.resolve({ itens: Array.from({ length: filtros.pagina === 3 ? 1 : 10 }, (_, i) => tarefa((filtros.pagina - 1) * 10 + i + 1)), pagina: filtros.pagina, porPagina: 10, total: 21 })); });
 afterEach(cleanup);
 describe("operação real de protocolos", () => {
   it("preserva seleção entre três páginas e entrega todos os ids ao executor existente", async () => {
@@ -33,7 +33,8 @@ describe("operação real de protocolos", () => {
   it("registra não atendimento por evento com motivo, sem chamar executor", async () => {
     api.evento.mockResolvedValue({ id: "ev" }); const executar = vi.fn(); render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoExecutar={executar} />);
     const linha = (await screen.findByRole("link", { name: "Animal 1" })).closest("tr")!;
-    fireEvent.click(within(linha).getByRole("button", { name: "Justificar" }));
+    fireEvent.keyDown(within(linha).getByRole("button", { name: "Mais ações para Animal 1" }), {key:"ArrowDown"});
+    fireEvent.click(await screen.findByRole("menuitem", {name:"Não atender esta etapa"}));
     fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível neste manejo" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(api.evento).toHaveBeenCalledOnce());
@@ -64,15 +65,12 @@ describe("operação real de protocolos", () => {
     expect(link.getAttribute("href")).toContain("detalheTipo=aplicacao&detalheId=aplicacao1&propriedadeId=1&retorno=");
   });
 
-  it("conserva seletor e paginação quando a última página contém somente ações sem momento",async()=>{
-    api.momentos.mockImplementation((_contexto,pagina)=>Promise.resolve({itens:pagina===1?Array.from({length:10},(_,i)=>({id:`m${i}`,nome:`Momento ${i}`,ordem:i+1})):[{id:"SEM_MOMENTO",nome:"Ações sem momento explícito",ordem:null}],total:11,pagina,porPagina:10}));
+  it("restaura o contexto da agenda sem duplicar navegação e permite voltar a todas as etapas", async () => {
+    window.history.replaceState(null,"","/pecuaria/sanidade?protocoloContexto=g1&momentoId=SEM_MOMENTO&etapaId=e1");
     render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar/>);
-    const momentos=await screen.findByRole("region",{name:"Momentos do protocolo"});
-    fireEvent.click(within(momentos).getByRole("button",{name:"Próxima"}));
-    await within(momentos).findByRole("button",{name:"Ações sem momento explícito"});
-    expect(within(momentos).getByRole("button",{name:"Anterior"})).toHaveProperty("disabled",false);
-    fireEvent.click(within(momentos).getByRole("button",{name:"Ações sem momento explícito"}));
-    await waitFor(()=>expect(api.etapas).toHaveBeenLastCalledWith(expect.any(Object),1,1,"SEM_MOMENTO"));
+    fireEvent.click(await screen.findByRole("button",{name:"Ver todas as etapas"}));
+    await waitFor(()=>expect(api.etapas).toHaveBeenLastCalledWith(expect.any(Object),1,1,undefined));
+    expect(screen.queryByRole("button",{name:"Todas as ações"})).toBeNull();
   });
 
 });
@@ -85,7 +83,8 @@ it("mantém atendimento e acompanhamento separados na mesma tabela e filtro de s
   expect(within(linha).getByText("Acompanhamento pendente")).toBeTruthy();
   expect(within(linha).getByRole("button", { name: "Reavaliar acompanhamento" })).toBeTruthy();
   expect(within(linha).queryByRole("button", { name: "Atender" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Acompanhamentos" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Situação" }));
+  fireEvent.click(await screen.findByRole("option", {name:/Acompanhamentos/}));
   await waitFor(() => expect(api.tarefas).toHaveBeenLastCalledWith(expect.any(Object), expect.objectContaining({ situacao: "ACOMPANHAMENTO_PENDENTE", pagina: 1 }), 1));
   expect(new URLSearchParams(window.location.search).get("protocoloSituacao")).toBe("ACOMPANHAMENTO_PENDENTE");
 });
@@ -114,10 +113,11 @@ it.each(["NAO_ATENDIDO", "ADIAMENTO", "RETIFICACAO_JUSTIFICATIVA"] as const)("in
   }
   render(<Tela/>);
   await screen.findByRole("link", { name: "Animal 1" });
+  fireEvent.keyDown(screen.getByRole("button", {name:"Mais ações para Animal 1"}), {key:"ArrowDown"});
   if (tipo === "RETIFICACAO_JUSTIFICATIVA") {
-    fireEvent.click(screen.getByRole("button", { name: "Ver motivo" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Ver motivo" }));
     fireEvent.click(screen.getByRole("button", { name: "Editar justificativa" }));
-  } else fireEvent.click(screen.getByRole("button", { name: tipo === "ADIAMENTO" ? "Adiar" : "Justificar" }));
+  } else fireEvent.click(await screen.findByRole("menuitem", { name: tipo === "ADIAMENTO" ? "Adiar atendimento" : "Não atender esta etapa" }));
   if (tipo === "ADIAMENTO") fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "21/10/2026" } });
   fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível para manejo" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar" }));
@@ -137,4 +137,18 @@ it("invalida o contexto externo também após execução delegada e regularizaç
   expect(await screen.findByText("Resumo atualizado 1 vezes")).toBeTruthy();
   fireEvent.click(await screen.findByRole("button", { name: "Concluir regularização" }));
   expect(await screen.findByText("Resumo atualizado 2 vezes")).toBeTruthy();
+});
+
+it("seleciona a página na primeira coluna e encaminha retirada sem registrar não atendimento", async () => {
+  const retirar = vi.fn();
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoExecutar={vi.fn()} aoRetirar={retirar}/>);
+  const selecionar = await screen.findByRole("checkbox", {name:"Selecionar esta página"});
+  fireEvent.click(selecionar);
+  expect(screen.getByRole("button", {name:"Atender selecionadas (10)"})).toBeTruthy();
+  const linha = screen.getByRole("link", {name:"Animal 1"}).closest("tr")!;
+  expect(within(linha.children[0] as HTMLElement).getByRole("checkbox")).toBeTruthy();
+  fireEvent.keyDown(within(linha).getByRole("button", {name:"Mais ações para Animal 1"}), {key:"ArrowDown"});
+  fireEvent.click(await screen.findByRole("menuitem", {name:"Retirar do protocolo"}));
+  expect(retirar).toHaveBeenCalledWith("p1");
+  expect(api.evento).not.toHaveBeenCalled();
 });

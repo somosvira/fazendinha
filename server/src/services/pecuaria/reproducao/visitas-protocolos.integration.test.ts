@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -24,7 +25,8 @@ const sitios:number[]=[],animais:string[]=[],produtos:string[]=[],protocolos:str
 // As exclusões abrangem somente identidades criadas por esta suíte, sem tocar seed/manifestações alheias.
 afterAll(async()=>{
  if(!sitios.length)return;
- await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
+ await limparAptidaoFixture(prisma, animais);
+  await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
  await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}},{entidadeId:{in:protocolos}}]}});
  const atividades=await prisma.atividadeVisita.findMany({where:{visitaId:{in:visitas}},select:{id:true}});
  await prisma.participanteVisita.deleteMany({where:{atividadeId:{in:atividades.map(a=>a.id)}}});
@@ -57,7 +59,7 @@ async function fixture(quantidade:number,saldo:number,reprodutivo=false){
  const run=uuid().slice(0,8),sitio=await prisma.propriedade.create({data:{nome:`Visita ações ${run}`}});sitios.push(sitio.id);
  const produto=await prisma.produto.create({data:{nome:`Material visita ${run}`,unidade:reprodutivo?"DOSE":"ML",usoGenetico:reprodutivo,usoSanitario:!reprodutivo}});produtos.push(produto.id);
  const ids:string[]=[];
- for(let n=0;n<quantidade;n++){const a=await cadastrar(cadastrarAnimalSchema.parse({brinco:`VPA${run}${String(n).padStart(2,"0")}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(a.id);ids.push(a.id);}
+ for(let n=0;n<quantidade;n++){const a=await cadastrar(cadastrarAnimalSchema.parse({brinco:`VPA${run}${String(n).padStart(2,"0")}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(a.id);ids.push(a.id);await criarAptidaoFixture(prisma, a.id, sitio.id, new Date("2026-08-01"));}
  let grupoId:string,materialId:string|undefined;
  if(reprodutivo){
   const touro=await prisma.genitorExterno.create({data:{nome:`Touro visita ${run}`,sexo:"M"}});genitores.push(touro.id);

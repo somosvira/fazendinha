@@ -33,7 +33,7 @@ export type PartoRelatorio = {
   id: string; versao: number; matriz: { id: string; brinco: string; nome: string | null };
   data: string; ocorridoEm: string | null; horarioEstimado: boolean;
   desfecho: string | null; tipo: string; induzido: boolean | null;
-  dificuldade: boolean | null; assistenciaDescricao: string | null; retencaoPlacenta: boolean | null;
+  dificuldade: boolean | null; assistenciaDescricao: string | null; retencaoPlacenta: boolean | null; grauRetencaoPlacenta?: number | null;
   responsavel: string | null; observacao: string | null;
   lancador: { id: number; nome: string | null } | null; criadoEm: string;
   ocorrenciasRetencaoPlacenta: Array<{ id: string; inicio: string; fim: string | null }>;
@@ -59,11 +59,11 @@ function pesos(itens: Array<{ data: string; pesoKg: string }>) {
 }
 export function csvRelatorioPartos(snapshot: SnapshotRelatorioPartos): string {
   const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escores matriz datados/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
+  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Grau de RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escores matriz datados/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
   for (const { parto: p, cria: c, contarParto } of linhasCriasPartos(snapshot)) linhas.push([
     snapshot.emitidoEm, snapshot.versao, snapshot.propriedadeId, snapshot.periodo.inicio, snapshot.periodo.fim, snapshot.totalPartos,
     p.id, p.versao, contarParto, `${p.matriz.brinco} ${p.matriz.nome ?? ""}`, horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado),
-    p.desfecho, p.tipo, textoPreservado(p.induzido), textoPreservado(p.dificuldade), p.assistenciaDescricao, rp(p.retencaoPlacenta), p.responsavel,
+    p.desfecho, p.tipo, textoPreservado(p.induzido), textoPreservado(p.dificuldade), p.assistenciaDescricao, rp(p.retencaoPlacenta), p.grauRetencaoPlacenta ?? null, p.responsavel,
     p.lancador?.nome ?? p.lancador?.id, p.observacao, pesos(p.pesosMatriz), JSON.stringify(p.escoresMatriz),
     c?.id, c?.ordem, c ? JSON.stringify(c.filiacaoSnapshot) : "Sem cria registrada", c?.sexo, c ? textoPreservado(c.viva) : "", c ? textoPreservado(registro(c.filiacaoSnapshot).pesoKg) : "", c ? pesos(c.pesos) : "", c ? JSON.stringify(c.colostro) : "",
   ]);
@@ -193,7 +193,7 @@ export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapsh
       <h3 className="font-semibold">Matriz {p.matriz.brinco} {p.matriz.nome} · {horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado)}</h3>
       <p>Parto {p.id} · Versão {p.versao} · Desfecho: {p.desfecho ?? "Não informado"} · Tipo registrado: {p.tipo}</p>
       <p>Induzido: {textoPreservado(p.induzido)} · Dificuldade: {textoPreservado(p.dificuldade)} · Assistência: {p.assistenciaDescricao ?? "Não informada"}</p>
-      <p>RP: {rp(p.retencaoPlacenta)} · Acompanhamentos vinculados: {p.ocorrenciasRetencaoPlacenta.length ? p.ocorrenciasRetencaoPlacenta.map(o => `${o.inicio.slice(0, 10)} a ${o.fim?.slice(0, 10) ?? "em aberto"}`).join("; ") : "Nenhum"}</p>
+      <p>RP: {rp(p.retencaoPlacenta)}{p.grauRetencaoPlacenta != null ? ` · Grau: ${p.grauRetencaoPlacenta}` : ""} · Acompanhamentos vinculados: {p.ocorrenciasRetencaoPlacenta.length ? p.ocorrenciasRetencaoPlacenta.map(o => `${o.inicio.slice(0, 10)} a ${o.fim?.slice(0, 10) ?? "em aberto"}`).join("; ") : "Nenhum"}</p>
       <p>Responsável pelo parto: {p.responsavel ?? "Não informado"} · Lançador: {p.lancador?.nome ?? p.lancador?.id ?? "Não informado"} · Registro: {p.criadoEm}</p>
       <p>Observações: {p.observacao ?? "—"}</p>
       <p>Pesagens da matriz: {pesos(p.pesosMatriz)}</p>

@@ -1,13 +1,12 @@
+import { validarEscalaEscore, TIPO_EXAME_ESCORE_CORPORAL } from "./escore-corporal.calc.js";
+export { validarEscalaEscore } from "./escore-corporal.calc.js";
 import { Prisma } from "@prisma/client";
 import { auditar, RebanhoError } from "../rebanho/regras.js";
 import { registrarExameTx } from "../sanidade/exames.js";
 import type { CorrecaoPartoAmpliadaInput } from "./partos.schemas.js";
-export const TIPO_EXAME_ESCORE_PARTO = "b0841f3c-3f88-4c2d-9d0d-3ef33d49b841";
+export const TIPO_EXAME_ESCORE_PARTO = TIPO_EXAME_ESCORE_CORPORAL;
 type AcaoEscore = NonNullable<CorrecaoPartoAmpliadaInput["escoreMatriz"]>;
 function erro(mensagem: string): never { throw new RebanhoError("VALIDACAO", mensagem, "escoreMatriz"); }
-export function validarEscalaEscore(valor: number, minimo: number, maximo: number) {
-  if (![valor, minimo, maximo].every(Number.isFinite) || minimo >= maximo || valor < minimo || valor > maximo) erro("Informe escala mínima menor que máxima e escore dentro dos limites declarados");
-}
 export async function aplicarEscorePartoTx(tx: Prisma.TransactionClient, parto: Prisma.PartoAnimalGetPayload<Record<string, never>>, acao: AcaoEscore | undefined, usuarioId: number | null) {
   if (!acao) return;
   if (acao.acao !== "ANULAR") {
