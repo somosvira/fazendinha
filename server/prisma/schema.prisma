@@ -3292,6 +3292,9 @@ model DemandaAcompanhamentoReprodutivo {
 model RevisaoPrazoAcompanhamento {
   id String @id @default(uuid())
   demandaId String
+  tarefaId String?
+  tarefaPrevistaAnterior DateTime?
+  tarefaPrevistaNova DateTime?
   versaoAnterior Int
   politicaAnteriorId String?
   politicaNovaId String
