@@ -1,16 +1,17 @@
 import { describe,it,expect,vi,beforeEach } from "vitest";
-const mock=vi.hoisted(()=>({env:{REPRODUCAO_AUTOMACAO_ENABLED:false,ALERTAS_CRON_ENABLED:false,NUTRICAO_MENSAL_ENABLED:false,NUTRICAO_AUTOMACAO_ENABLED:false},isolar:vi.fn(),automacoes:vi.fn(),nutricao:vi.fn(),criar:vi.fn(),avaliar:vi.fn(),disconnect:vi.fn(),fetch:vi.fn().mockResolvedValue(new Response("ok"))}));
+const mock=vi.hoisted(()=>({env:{REPRODUCAO_AUTOMACAO_ENABLED:false,ALERTAS_CRON_ENABLED:false,NUTRICAO_MENSAL_ENABLED:false,NUTRICAO_AUTOMACAO_ENABLED:false},isolar:vi.fn(),automacoes:vi.fn(),nutricao:vi.fn(),criar:vi.fn(),avaliar:vi.fn(),avaliarReproducao:vi.fn(),disconnect:vi.fn(),fetch:vi.fn().mockResolvedValue(new Response("ok"))}));
 vi.mock("./env.js",()=>({env:mock.env}));
 vi.mock("./app.js",()=>({app:{fetch:mock.fetch}}));
 vi.mock("./db.js",()=>({criarPrismaClient:mock.criar,comPrismaPorRequisicao:mock.isolar}));
 vi.mock("./services/pecuaria/sanidade/alertas/avaliador.js",()=>({avaliarAlertasTemporais:mock.avaliar}));
+vi.mock("./services/pecuaria/reproducao/alertas/avaliador.js",()=>({avaliarAlertasReprodutivos:mock.avaliarReproducao}));
 vi.mock("./services/pecuaria/nutricao/mensal.js",()=>({processarPendentes:mock.nutricao}));
 vi.mock("./services/pecuaria/protocolos/automacao.js",()=>({processarAutomacoes:mock.automacoes}));
 import worker from "./worker.js";
 describe("Worker fetch e scheduled",()=>{
  beforeEach(()=>{vi.clearAllMocks();mock.env.REPRODUCAO_AUTOMACAO_ENABLED=false;mock.env.ALERTAS_CRON_ENABLED=false;mock.env.NUTRICAO_MENSAL_ENABLED=false;mock.env.NUTRICAO_AUTOMACAO_ENABLED=false;mock.isolar.mockImplementation(f=>f());mock.criar.mockReturnValue({$disconnect:mock.disconnect});});
  it("fetch mantém encaminhamento Hono",async()=>{const r=await worker.fetch(new Request("http://localhost/api/health"));expect(r.status).toBe(200);expect(mock.fetch).toHaveBeenCalledOnce();});
- it("cron fica desligado por padrão sem criar client",async()=>{await worker.scheduled({scheduledTime:0});expect(mock.criar).not.toHaveBeenCalled();});
+ it("cron fica desligado por padrão sem criar client",async()=>{await worker.scheduled({scheduledTime:0});expect(mock.criar).not.toHaveBeenCalled();expect(mock.avaliarReproducao).not.toHaveBeenCalled();});
  it("nutrição exige ambos os gates e usa contexto próprio mesmo sem cron sanitário",async()=>{
   mock.env.NUTRICAO_MENSAL_ENABLED=true;
   await worker.scheduled({scheduledTime:123});expect(mock.nutricao).not.toHaveBeenCalled();
@@ -21,12 +22,13 @@ describe("Worker fetch e scheduled",()=>{
  it("automação tem gate próprio e roda a cada minuto; alertas conservam 15 minutos",async()=>{
    mock.env.REPRODUCAO_AUTOMACAO_ENABLED=true;mock.env.ALERTAS_CRON_ENABLED=true;
    await worker.scheduled({scheduledTime:60_000,cron:"* * * * *"});
-   expect(mock.automacoes).toHaveBeenCalledWith(new Date(60_000));expect(mock.avaliar).not.toHaveBeenCalled();
+   expect(mock.automacoes).toHaveBeenCalledWith(new Date(60_000));expect(mock.avaliar).not.toHaveBeenCalled();expect(mock.avaliarReproducao).not.toHaveBeenCalled();
    await worker.scheduled({scheduledTime:900_000,cron:"* * * * *"});expect(mock.avaliar).toHaveBeenCalledOnce();
+   expect(mock.avaliarReproducao).toHaveBeenCalledWith(mock.criar.mock.results[0].value,new Date(900_000));expect(mock.disconnect).toHaveBeenCalledOnce();
  });
  it("falha da fila de reprodução não impede alertas e nutrição",async()=>{
    mock.env.REPRODUCAO_AUTOMACAO_ENABLED=true;mock.env.ALERTAS_CRON_ENABLED=true;mock.env.NUTRICAO_MENSAL_ENABLED=true;mock.env.NUTRICAO_AUTOMACAO_ENABLED=true;
    mock.automacoes.mockRejectedValueOnce(new Error("banco indisponível"));const log=vi.spyOn(console,"error").mockImplementation(()=>{});
-   await worker.scheduled({scheduledTime:900_000,cron:"* * * * *"});expect(mock.avaliar).toHaveBeenCalledOnce();expect(mock.nutricao).toHaveBeenCalledOnce();log.mockRestore();
+   await worker.scheduled({scheduledTime:900_000,cron:"* * * * *"});expect(mock.avaliar).toHaveBeenCalledOnce();expect(mock.nutricao).toHaveBeenCalledOnce();expect(mock.avaliarReproducao).toHaveBeenCalledWith(mock.criar.mock.results[0].value,new Date(900_000));expect(mock.disconnect).toHaveBeenCalledOnce();log.mockRestore();
  });
 });

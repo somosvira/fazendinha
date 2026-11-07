@@ -21,13 +21,14 @@ const m = vi.hoisted(() => {
     vinculoImportacaoPecuaria: { findMany: vi.fn() },
     auditoriaPecuaria: { create: vi.fn() },
   };
-  return { db, conferirHistorico: vi.fn() };
+  return { db, conferirHistorico: vi.fn(), reconciliarAlertasReprodutivos: vi.fn() };
 });
 
 vi.mock("../../../db.js", () => ({ prisma: m.db }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: async (executar: (tx: typeof m.db) => Promise<unknown>) => executar(m.db) }));
 vi.mock("../bezerreiro/localizacao.js", () => ({ sincronizarLocalizacoesBezerreiroTx: vi.fn() }));
 vi.mock("../fatos.js", () => ({ conferirHistoricoDosFatos: m.conferirHistorico }));
+vi.mock("../reproducao/alertas/produtor.js", () => ({ reconciliarAlertasReprodutivosAnimalTx: m.reconciliarAlertasReprodutivos }));
 
 import { buscarFicha, editar, editarPesagem, excluirPesagem } from "./animais.js";
 import { RebanhoError } from "./regras.js";
@@ -117,6 +118,7 @@ describe("edição cadastral conserva fatos de pesagem", () => {
     expect(m.db.animal.update.mock.invocationCallOrder[0]).toBeLessThan(m.conferirHistorico.mock.invocationCallOrder[0]);
     expect(m.db.localizacaoAnimal.update.mock.invocationCallOrder[0]).toBeLessThan(m.conferirHistorico.mock.invocationCallOrder[0]);
     expect(m.db.pesagem.updateMany).not.toHaveBeenCalled();
+    expect(m.reconciliarAlertasReprodutivos).not.toHaveBeenCalled();
     expect(m.db.auditoriaPecuaria.create).not.toHaveBeenCalled();
   });
 
@@ -173,6 +175,9 @@ describe("edição cadastral conserva fatos de pesagem", () => {
     m.db.pesagem.findMany.mockResolvedValue([peso]);
     await editar(animal.id, { dataEntrada: "2025-01-01" }, 7);
     expect(m.db.pesagem.updateMany).toHaveBeenCalledWith({ where: { id: { in: [peso.id] } }, data: { data: new Date("2025-01-01") } });
+    expect(m.reconciliarAlertasReprodutivos).toHaveBeenCalledWith(m.db, animal.id, 7);
+    expect(m.conferirHistorico.mock.invocationCallOrder[0]).toBeLessThan(m.reconciliarAlertasReprodutivos.mock.invocationCallOrder[0]);
+    expect(m.reconciliarAlertasReprodutivos.mock.invocationCallOrder[0]).toBeLessThan(m.db.auditoriaPecuaria.create.mock.invocationCallOrder[0]);
   });
 });
 
