@@ -1,3 +1,4 @@
+import { confirmacaoImpactoSchema } from "../reproducao/impactos.schemas.js";
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
 const uuid = z.string().uuid();
@@ -10,6 +11,7 @@ export const aplicacaoCamposSchema = z
   .object({
     desvio,
     chave: uuid.optional(),
+    impacto: confirmacaoImpactoSchema.optional(),
     animalId: uuid,
     propriedadeId: z.number().int().positive(),
     data,

@@ -1,3 +1,14 @@
+import { usePropriedades } from "../../../api/propriedades";
+import "./programar-protocolo.css";
+import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
+import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { registrarGuardaNavegacao, executarComGuardaNavegacao } from "../../../navegacaoGuardada";
+import { EscolhaModeloProgramacao } from "./EscolhaModeloProgramacao";
+import type { AnimalPlanner } from "./planner-api";
+import { SelecaoAnimaisProgramacao } from "./SelecaoAnimaisProgramacao";
+import { ListaProtocolosReprodutivos } from "./ListaProtocolosReprodutivos";
+import type { ComponentProps } from "react";
+import { DatasDiagnosticoIndividual } from "../protocolos/DatasDiagnosticoIndividual";
 import "../telas/ficha-geral.css";
 import { ClipboardList } from "lucide-react";
 import { PreparacaoAutomacao, type PreparacaoAutomacaoEntrada, type RevisaoRetroativaAutomacao } from "../protocolos/PreparacaoAutomacao";
@@ -9,7 +20,6 @@ import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
-import { CartaoProtocoloReprodutivo, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useConsultaCadastroProtocolos } from "../protocolos/useConsultaCadastroProtocolos";
 import { urlCadastroProtocolo } from "../protocolos/rotas-cadastro";
 import "../protocolos/protocolos.css";
@@ -20,7 +30,6 @@ import { CatalogoModelosProtocolos } from "../protocolos/CatalogoModelosProtocol
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "../protocolos/CamposMomentoAcao";
 
 import { obterCabecalhoProtocolo, reqProtocolo, consultaProtocolo, type CabecalhoProtocolo, type TarefaOperacional } from "../protocolos/api";
-import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
 import { OperacaoProtocolo } from "../protocolos/OperacaoProtocolo";
@@ -36,7 +45,6 @@ import {
   Empty,
   Panel,
   Pill,
-  TabelaFinanceira,
 } from "../../../financeiro/financeiro-ui";
 import {
   classeInput,
@@ -171,7 +179,8 @@ export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
 type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:Array<{id:string;brinco:string;nome:string|null}>; avisos:string[] };
 export function Iatf({
-  programacaoId, onAbrirProgramacao, onFecharDetalhe,
+  programacaoId, onAbrirProgramacao, onFecharDetalhe, paginaProgramacao = false, onCancelarProgramacao,
+  solicitarProgramacao, onProgramacaoAberta, acaoProgramarNoCabecalho = false,
   animais = [],
   painel,
   modo = "operacao",
@@ -180,10 +189,15 @@ export function Iatf({
   animaisIndicadosInicialmente,
   propriedadeId,
 }: {
+  paginaProgramacao?: boolean;
+  onCancelarProgramacao?: () => void;
+  solicitarProgramacao?: boolean;
+  onProgramacaoAberta?: () => void;
+  acaoProgramarNoCabecalho?: boolean;
   programacaoId?: string;
   onAbrirProgramacao?: (id: string) => void;
   onFecharDetalhe?: () => void;
-  animais?: Array<Pick<AnimalReprodutivo, "animalId" | "brinco" | "nome">>;
+  animais?: Array<Pick<AnimalReprodutivo, "animalId" | "brinco" | "nome"> & Partial<Pick<AnimalReprodutivo, "restricoes">>>;
   animaisIndicadosInicialmente?: string[];
   propriedadeId?: number;
   painel?: PainelReprodutivo;
@@ -259,14 +273,37 @@ export function Iatf({
     "programacao" | "participantes" | null
   >(null);
   const [ocupado, setOcupado] = useState(false);
+  const liberarSaidaProgramacao = useRef(false);
+  const programacaoAlterada = useRef(false);
+  const resolverSaida = useRef<((ok: boolean) => void) | null>(null);
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
+  useEffect(() => {
+    if (!paginaProgramacao || !novo) return;
+    const remover = registrarGuardaNavegacao(() => {
+      if (liberarSaidaProgramacao.current) return Promise.resolve(true);
+      if (ocupado) return Promise.resolve(false);
+      if (!programacaoAlterada.current) return Promise.resolve(true);
+      return new Promise(resolve => { resolverSaida.current = resolve; setConfirmarSaida(true); });
+    });
+    const proteger = (e: BeforeUnloadEvent) => { if (!liberarSaidaProgramacao.current && (programacaoAlterada.current || ocupado)) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", proteger);
+    return () => { remover(); window.removeEventListener("beforeunload", proteger); resolverSaida.current?.(false); resolverSaida.current = null; };
+  }, [paginaProgramacao, novo, ocupado]);
   const [nome, setNome] = useState("");
+  const [identificados, setIdentificados] = useState(animais);
+  const receberIdentificados = useCallback((novos: AnimalPlanner[]) => setIdentificados(atuais => [...atuais.filter(a => !novos.some(n => n.animalId === a.animalId)), ...novos.map(a => ({ animalId: a.animalId, brinco: a.brinco ?? "Animal selecionado", nome: a.nome ?? null }))]), []);
+  const animaisConhecidos = [...animais, ...identificados.filter(a => !animais.some(x => x.animalId === a.animalId))];
   const [cienciaSanitaria, setCienciaSanitaria] = useState(false);
   const [chaveProgramacao, setChaveProgramacao] = useState(() =>
     crypto.randomUUID(),
   );
   const [protocoloId, setProtocoloId] = useState("");
+  const [modeloEscolhido, setModeloEscolhido] = useState<{nome:string;versao:number}|null>(null);
   const [inicio, setInicio] = useState("");
   const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [diagnosticosIndividuais,setDiagnosticosIndividuais]=useState<Record<string,string>>({});
+  programacaoAlterada.current = !!(nome || protocoloId || inicio || selecionados.length || Object.keys(diagnosticosIndividuais).length);
+  useEffect(()=>setDiagnosticosIndividuais({}),[contexto,novo]);
   const modeloInicioId = novo === "participantes" ? detalhe?.protocolo.id ?? "" : novo ? protocoloId : "";
   const modeloInicio = useAcoesInicioProtocolo(modeloInicioId, sitioEfetivo ?? undefined);
   const identidadePreparo = `${modeloInicioId}:${inicio}:${selecionados.join(",")}:${sitioEfetivo}`;
@@ -274,7 +311,7 @@ export function Iatf({
   const temAutomaticas = modeloInicio.etapas?.some(e=>e.momento?.politicaExecucao==="AUTOMATICA_EXCECAO")??false;
   const automacaoPronta = !temAutomaticas || preparo?.identidade===identidadePreparo && preparo.pronta;
   const receberPreparo = useCallback((entradas:PreparacaoAutomacaoEntrada[],pronta:boolean,revisoes:RevisaoRetroativaAutomacao[]=[])=>{setPreparo({identidade:identidadePreparo,entradas,pronta,revisoes});setChaveProgramacao(crypto.randomUUID());},[identidadePreparo]);
-  const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, cienciaSanitaria, preparo });
+  const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, diagnosticosIndividuais, cienciaSanitaria, preparo });
   const identidadeConferenciaAtual = useRef(identidadeConferencia);
   identidadeConferenciaAtual.current = identidadeConferencia;
   const [conferenciaInicio, setConferenciaInicio] = useState<{identidade:string;dados:PreviaInicioColetivo}|null>(null);
@@ -342,6 +379,11 @@ export function Iatf({
       aberturaAtual.current++;
     };
   }, [carregar]);
+  useEffect(() => {
+    if (!solicitarProgramacao || !podeLancar || !sitioEfetivo || carregando || erroConsulta || modo !== "operacao" || programacaoId) return;
+    setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false);
+    onProgramacaoAberta?.();
+  }, [solicitarProgramacao, podeLancar, sitioEfetivo, carregando, erroConsulta, modo, programacaoId, onProgramacaoAberta]);
   const abrir = useCallback(
     async (id: string) => {
       if (contextoAtual.current !== contexto) return;
@@ -430,31 +472,33 @@ export function Iatf({
   };
   return (
     <div className="protocolos-pagina protocolos-superficie space-y-5">
+      <ConfirmDialog open={confirmarSaida} title="Descartar programação?" message="A preparação ainda não foi salva." confirmLabel="Descartar" cancelLabel="Continuar editando" onConfirm={() => { setConfirmarSaida(false); resolverSaida.current?.(true); }} onCancel={() => { setConfirmarSaida(false); resolverSaida.current?.(false); }} />
       <ErrorBox erro={erro} />
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
-      {modo === "operacao" && !programacaoId && <Panel>
+      {modo === "operacao" && !programacaoId && !paginaProgramacao && <Panel>
+        <div className="repro-consulta-titulo"><h2>Protocolos</h2><div className="flex gap-1" role="group" aria-label="Situação dos protocolos">
+          {[["", "Todos"], ["ABERTA", "Ativos"], ["ENCERRADA", "Histórico"]].map(([status, rotulo]) => <Button key={status} secondary={criterios.status !== status} aria-pressed={criterios.status === status} onClick={() => {
+            setCriterios(c => ({ ...c, status })); setPaginaProgramacoes(1);
+            const url = new URL(window.location.href);
+            status ? url.searchParams.set("iatfStatus", status) : url.searchParams.delete("iatfStatus");
+            window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+          }}>{rotulo}</Button>)}
+        </div></div>
         <BarraConsulta edicaoFiltros={edicaoProgramacoes} campos={[
           { chave: "busca", conteudo: <CampoFiltro rotulo="Protocolo ou grupo"><input className={classeInput} aria-label="Buscar programação no filtro" value={edicaoProgramacoes.rascunho.busca} onChange={e=>edicaoProgramacoes.editar("busca",e.target.value)}/></CampoFiltro> },
           { chave: "situacao", conteudo: <CampoFiltro rotulo="Situação"><SelectCampo value={edicaoProgramacoes.rascunho.status} onValueChange={v=>edicaoProgramacoes.editar("status",v)}><option value="">Todas</option><option value="ABERTA">Aberta</option><option value="ENCERRADA">Encerrada</option></SelectCampo></CampoFiltro> },
           { chave: "ordem", conteudo: <CampoFiltro rotulo="Ordenar por"><SelectCampo value={edicaoProgramacoes.rascunho.ordem} onValueChange={v=>edicaoProgramacoes.editar("ordem",v)}><option value="RECENTES">Mais recentes</option><option value="NOME">Nome do grupo</option></SelectCampo></CampoFiltro> },
         ].map(c=>({...c,ativo:false,limpar:edicaoProgramacoes.limpar}))} criterios={criterios.status?[{id:"status",rotulo:criterios.status==="ABERTA"?"Aberta":"Encerrada",limpar:()=>{setCriterios(c=>({...c,status:""}));setPaginaProgramacoes(1);const u=new URL(window.location.href);u.searchParams.delete("iatfStatus");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);}}]:[]} acao={<>
-          {podeLancar && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
+          {podeLancar && !acaoProgramarNoCabecalho && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
           <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos em acompanhamento"/>
         </>}><BuscaLista rotulo="Buscar programação" placeholder="Protocolo ou grupo" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
         <div className="space-y-3">
-          <div className="repro-consulta-titulo"><div><h2>Grupos programados</h2><p>Modelo versionado e participação individual preservados.</p></div></div>
           {carregando && (consultaVisivel
             ? <p role="status" className="rounded-lg bg-muted p-3 text-sm">Atualizando programações… Os dados confirmados continuam visíveis.</p>
             : <EsqueletoTabela label="Carregando programações" />)}
           <ErrorBox erro={erroConsulta} />
           {erroConsulta && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-          <>{visual.modo === "visual" ? <div className="reproducao-cartoes">{filtradas.map(p => <CartaoProtocoloReprodutivo key={p.id} grupo={p} sitio={sitioEfetivo ?? undefined} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}/>)}</div> : <TabelaFinanceira visualizacao="tabela" rotulo="Programações IATF" itens={filtradas} chaveDe={p=>p.id} onAbrir={p => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)} colunas={[
-            {chave:"nome",titulo:"Programação",principal:true,larguraMinima:200,larguraFlexivel:true,celula:p=><a href={`/pecuaria/reproducao/programacoes/${encodeURIComponent(p.id)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}${sitioEfetivo ? `&sitio=${sitioEfetivo}` : ""}`} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) { e.preventDefault(); e.stopPropagation(); onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id); } }}>{p.nome}</a>},
-            {chave:"inicio",titulo:"Início programado",larguraMinima:180,celula:p=>horarioIatf(p.inicioReferencia,p.precisaoTemporal)},
-            {chave:"participantes",titulo:"Participantes",larguraMinima:110,celula:p=>p.participantesTotal ?? "—"},
-            {chave:"situacao",titulo:"Situação",larguraMinima:120,celula:p=><Pill>{p.status==="ABERTA"?"Aberta":p.status==="ENCERRADA"?"Encerrada":"A conferir"}</Pill>},
-            {chave:"acao",titulo:"Ação",acoes:true,larguraMinima:140,celula:p=><LinkReproducao botao sitio={sitioEfetivo ?? undefined} href={`/pecuaria/reproducao/programacoes/${p.id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`} aoAbrir={() => onAbrirProgramacao ? onAbrirProgramacao(p.id) : void abrir(p.id)}>Abrir acompanhamento</LinkReproducao>},
-          ]}/>}</>
+          <ListaProtocolosReprodutivos itens={filtradas} sitio={sitioEfetivo ?? undefined} modo={visual.modo === "visual" ? "visual" : "tabela"} aoAbrir={id => onAbrirProgramacao ? onAbrirProgramacao(id) : void abrir(id)} />
           {(consultaVisivel?.total ?? 0)>10&&<Paginacao paginaAtual={paginaLista} totalPaginas={paginasProgramacoes} totalItens={consultaVisivel?.total ?? 0} itensPorPagina={10} onPaginaChange={setPaginaProgramacoes} rotulo="programações" idSelect="pagina-programacoes-iatf"/>}
           {!carregando && !erroConsulta && consultaVisivel && !!buscaProgramacao.trim() && !programacoes.length && <Empty>Nenhuma programação encontrada com esta busca. Ajuste os critérios para consultar outras programações.</Empty>}
           {!carregando &&
@@ -512,10 +556,16 @@ export function Iatf({
 
           </header>
 
-          {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>Fechar detalhes</Button></div>}
+          {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { void executarComGuardaNavegacao(() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }); }}>Fechar detalhes</Button></div>}
           <OperacaoProtocolo aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined} ocultarCabecalho programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
 
-            gestao={<ParticipacoesProgramacao acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined} key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao} aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined}/>}
+            gestao={<ParticipacoesProgramacao
+              podeRevisarBloqueio={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA"}
+              aoRevisarBloqueio={() => {
+                setOperacaoRevisao(v => v + 1);
+                void Promise.all([abrir(detalhe.id), onMudou?.()]);
+              }}
+              acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined} key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao} aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined}/>}
 
             aoSalvar={() => { setOperacaoRevisao(v => v + 1); void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]); }}
             regularizacao={(t, aoSalvar) => t.propriedadeId ? <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={t.tarefaOrigem.propriedadeRegularizacaoId ?? t.propriedadeId} consumoMantido={consumoMantidoUltimaAnulacao(t.tarefaOrigem.historicoRegularizacao)} onMudou={async () => { aoSalvar(); await onMudou?.(); }} /> : null}
@@ -532,15 +582,15 @@ export function Iatf({
         onNovaVersao={p=>abrirCadastro(p,true)} onConcluir={p=>abrirCadastro(p,false)}
         onInativar={p=>void executar(async()=>{await reqIatf(`/reproducao/protocolos/${p.id}/inativar`,{});await carregar();})}/>}
       {novo && (
-        <PainelCadastro
+        <SuperficieProgramacao pagina={paginaProgramacao && novo === "programacao"} resumo={<dl className="programacao-resumo"><dt>Sítio</dt><dd><NomeSitioProgramacao id={sitioEfetivo}/></dd><dt>Modelo</dt><dd>{modeloEscolhido ? `${modeloEscolhido.nome} · versão ${modeloEscolhido.versao}` : "Não selecionado"}</dd><dt>Participantes</dt><dd>{selecionados.length} animais</dd><dt>Início previsto</dt><dd>{inicio ? horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "") : "Não definido"}</dd></dl>}
           aberto
           largura="sm:max-w-3xl"
           titulo={novo === "participantes" ? "Adicionar ou reintegrar participantes" : "Programar protocolo"}
-          onFechar={() => setNovo(null)}
+          onFechar={() => { if (paginaProgramacao) void executarComGuardaNavegacao(() => onCancelarProgramacao?.()); else setNovo(null); }}
           bloqueado={ocupado}
           rodape={
             <>
-              <Button secondary onClick={() => setNovo(null)}>
+              <Button secondary onClick={() => { if (paginaProgramacao) void executarComGuardaNavegacao(() => onCancelarProgramacao?.()); else setNovo(null); }}>
                 Cancelar
               </Button>
               {previaInicio && <Button secondary disabled={ocupado} onClick={() => setConferenciaInicio(null)}>Editar preparação</Button>}
@@ -569,6 +619,7 @@ export function Iatf({
                       animais: selecionados.map((animalId) => ({
                         animalId,
                         inicioPrevisto: dataHoraISO(inicio),
+                        ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}),
                       })),
                     },
                   );
@@ -581,10 +632,11 @@ export function Iatf({
                     protocoloId,
                     ...(temAutomaticas ? {automacoes:preparo!.entradas,revisaoRetroativa:preparo!.revisoes} : {}),
                     inicioPrevisto: dataHoraISO(inicio),
-                    animais: selecionados.map((animalId) => ({ animalId })),
+                    animais: selecionados.map((animalId) => ({ animalId, ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}) })),
                   });
                 if (contextoAtual.current !== contexto) return;
                 setNovo(null);
+                if (paginaProgramacao) { liberarSaidaProgramacao.current = true; onCancelarProgramacao?.(); }
                 await carregar();
                 if (detalhe) await abrir(detalhe.id);
               });
@@ -592,6 +644,9 @@ export function Iatf({
           >
             <ErrorBox erro={erro} />
             <fieldset className={previaInicio ? "hidden" : "grid gap-4"} hidden={!!previaInicio} disabled={!!previaInicio || ocupado}>
+            <section className={paginaProgramacao ? "programacao-bloco" : "contents"}>
+            {paginaProgramacao && <h2>Identificação e calendário</h2>}
+            <div className={paginaProgramacao ? "programacao-campos" : "contents"}>
             {novo !== "participantes" && (
               <label className="text-sm">
                 Nome
@@ -604,16 +659,17 @@ export function Iatf({
                 />
               </label>
             )}
-            {(
-              <>
                 {novo !== "participantes" && (
-                  <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
+                  paginaProgramacao ? <EscolhaModeloProgramacao onEscolhido={setModeloEscolhido} valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} /> : <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
                 )}
                 <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio} />
                 {modeloInicioId && !modeloInicio.etapas && !modeloInicio.erro && <p role="status">Carregando etapas da versão…</p>}
                 <ErrorBox erro={modeloInicio.erro}/>
                 {modeloInicio.erro && <Button secondary onClick={modeloInicio.recarregar}>Atualizar etapas</Button>}
-                <label className="text-sm">
+                </div></section>
+                <section className={paginaProgramacao ? "programacao-bloco" : "contents"}>
+                {paginaProgramacao && <h2>Participantes</h2>}
+                {(!paginaProgramacao || selecionados.some(id => animais.find(a => a.animalId === id)?.restricoes?.length) || /sanitári|sanitari/i.test(erro ?? "")) && <label className="text-sm">
                   <input
                     type="checkbox"
                     checked={cienciaSanitaria}
@@ -621,50 +677,33 @@ export function Iatf({
                   />{" "}
                   Confirmo ciência dos alertas sanitários configurados para
                   estes animais, quando aplicáveis.
-                </label>
+                </label>}
                 {(animaisIndicadosInicialmente?.length ?? 0) > 100 && <p className="text-sm">
                   A programação aceita até 100 animais. Revise este subconjunto; os demais indicados continuam disponíveis para outra programação.
                 </p>}
                 <p className="text-sm">
                   Participantes: {selecionados.length}/100
                 </p>
-                <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => (
-                    <label key={a.animalId} className="text-sm">
-                      <input
-                        type="checkbox"
-                        checked={selecionados.includes(a.animalId)}
-                        disabled={
-                          !selecionados.includes(a.animalId) &&
-                          selecionados.length >= 100
-                        }
-                        onChange={(e) =>
-                          setSelecionados(
-                            e.target.checked
-                              ? [...selecionados, a.animalId]
-                              : selecionados.filter((id) => id !== a.animalId),
-                          )
-                        }
-                      />{" "}
-                      {a.brinco} {a.nome}
-                    </label>
-                  )} />
-                {temAutomaticas && modeloInicio.etapas && sitioEfetivo != null && selecionados.length > 0 && <PreparacaoAutomacao protocoloId={modeloInicioId} etapas={modeloInicio.etapas} animais={selecionados.map(id=>({id,brinco:animais.find(a=>a.animalId===id)?.brinco??id}))} propriedadeId={sitioEfetivo} inicio={inicio} onChange={receberPreparo}/>}
-              </>
-            )}
+                {!paginaProgramacao ? <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <label key={a.animalId}><input type="checkbox" checked={selecionados.includes(a.animalId)} disabled={!selecionados.includes(a.animalId) && selecionados.length >= 100} onChange={e => setSelecionados(e.target.checked ? [...selecionados, a.animalId] : selecionados.filter(id => id !== a.animalId))}/>{a.brinco} {a.nome}</label>}/> : sitioEfetivo && inicio ? <SelecaoAnimaisProgramacao propriedadeId={sitioEfetivo} data={inicio.slice(0,10)} selecionados={selecionados} onSelecionados={setSelecionados} onIdentificados={receberIdentificados} /> : <p>Informe a data de início para consultar os animais no sítio.</p>}
+                {paginaProgramacao && !!selecionados.length && <details><summary>Revisar {selecionados.length} animais selecionados</summary><ListaRascunho itens={selecionados} rotulo="selecionados" texto={id => animaisConhecidos.find(a => a.animalId === id)?.brinco ?? id} renderizar={id => <label className="flex gap-2 py-2" key={id}><input type="checkbox" checked onChange={() => setSelecionados(ids => ids.filter(a => a !== id))}/>{animaisConhecidos.find(a => a.animalId === id)?.brinco ?? "Animal selecionado"} · {animaisConhecidos.find(a => a.animalId === id)?.nome ?? "Sem nome"}</label>}/></details>}
+                <DatasDiagnosticoIndividual animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado",nome:animaisConhecidos.find(a=>a.animalId===id)?.nome}))} valores={diagnosticosIndividuais} onChange={(id,data)=>{setDiagnosticosIndividuais(v=>({...v,[id]:data}));setChaveProgramacao(crypto.randomUUID());}}/>
+                {temAutomaticas && modeloInicio.etapas && sitioEfetivo != null && selecionados.length > 0 && <PreparacaoAutomacao protocoloId={modeloInicioId} etapas={modeloInicio.etapas} animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??id}))} propriedadeId={sitioEfetivo} inicio={inicio} onChange={receberPreparo}/>}
+                </section>
             </fieldset>
             {previaInicio && <section className="grid gap-4" aria-label="Conferência do início coletivo">
               <h3 className="font-semibold">Calendário previsto</h3>
+              <DatasDiagnosticoIndividual somenteLeitura animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado"}))} valores={diagnosticosIndividuais} onChange={()=>{}}/>
               <p>Modelo: {previaInicio.protocolo.nome} · versão {previaInicio.protocolo.versao}</p>
-              <p>{novo === "participantes" ? "Inclusão no grupo" : nome} · {previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"} · início {horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA")}</p>
+              <p>{novo === "participantes" ? "Inclusão no grupo" : nome} · {previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"} · início {horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "")}</p>
               <ListaRascunho itens={previaInicio.participantes} rotulo="animais selecionados" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <p key={a.id}>{a.brinco}{a.nome ? ` · ${a.nome}` : ""}</p>} />
-              {previaInicio.itens.map(e => { const revisao = preparo?.revisoes.find(r => r.etapaId === e.id); const automatica = modeloInicio.etapas?.find(a => a.id === e.id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO"; return <div key={e.id}><p><strong>{e.nome}</strong> · {e.previstaPara ? horarioIatf(e.previstaPara,e.precisaoTemporal) : "Previsão a definir: hora da referência não informada"}</p><p className="text-sm">{revisao ? revisao.decisao === "DISPENSAR" ? `Dispensar etapa vencida: ${revisao.motivo}` : `Registrar manualmente: ${revisao.motivo}` : automatica ? "Execução automática preparada" : "Confirmação obrigatória"}</p></div>; })}
+              {previaInicio.itens.map(e => { const revisao = preparo?.revisoes.find(r => r.etapaId === e.id); const automatica = modeloInicio.etapas?.find(a => a.id === e.id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO"; return <div key={e.id}><p><strong>{e.nome}</strong> · {e.previstaPara ? horarioIatf(e.previstaPara,e.precisaoTemporal).replace(" · horário não informado", "") : "Previsão a definir: hora da referência não informada"}</p><p className="text-sm">{revisao ? revisao.decisao === "DISPENSAR" ? `Dispensar etapa vencida: ${revisao.motivo}` : `Registrar manualmente: ${revisao.motivo}` : automatica ? "Execução automática preparada" : "Confirmação obrigatória"}</p></div>; })}
               {previaInicio.total > 10 && <Paginacao paginaAtual={previaInicio.pagina} totalPaginas={Math.ceil(previaInicio.total/10)} totalItens={previaInicio.total} itensPorPagina={10} onPaginaChange={p => void executar(async () => { await conferirInicio(p); return false; })} rotulo="etapas previstas" idSelect="previa-coletiva-etapas" />}
               {temAutomaticas && <p>As etapas automáticas serão autorizadas com a preparação conferida. Etapas vencidas seguem a decisão registrada; nenhum fato passado será criado automaticamente.</p>}
               <p>Exames e tentativas reprodutivas exigem registro e confirmação dos dados reais.</p>
               {previaInicio.avisos.map(a => <p key={a} className="text-sm">{a}</p>)}
             </section>}
           </form>
-        </PainelCadastro>
+        </SuperficieProgramacao>
       )}
       {acao && (
         <PainelCadastro
@@ -904,4 +943,14 @@ export function PlanoEtapa({
 export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChange:(e:EtapaIatf)=>void}){
  const r=etapa.orientacaoTemporal;const mudar=(v:Partial<NonNullable<EtapaIatf["orientacaoTemporal"]>>)=>r&&onChange({...etapa,orientacaoTemporal:{...r,...v}});
  return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa </legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<SelectCampo className={classeInput} value={r.referencia} onValueChange={(valor) =>mudar({referencia:valor as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></SelectCampo></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}</>}</fieldset>;
+}
+
+function SuperficieProgramacao({ pagina, resumo, ...props }: ComponentProps<typeof PainelCadastro> & { pagina: boolean; resumo: import("react").ReactNode }) {
+  if (!pagina) return <PainelCadastro {...props} />;
+  return <section className="programar-protocolo" aria-label={props.titulo}><header className="programacao-cabecalho"><h1>{props.titulo}</h1><Button secondary onClick={props.onFechar}>Voltar</Button></header><div className="programacao-layout"><div className="programacao-conteudo">{props.children}</div><aside className="programacao-revisao"><h2>Programação</h2>{resumo}<div className="programacao-acoes">{typeof props.rodape === "function" ? props.rodape(props.onFechar) : props.rodape}</div></aside></div></section>;
+}
+
+function NomeSitioProgramacao({id}: {id: number | null}) {
+  const {data, loading} = usePropriedades();
+  return <>{data.find(sitio => sitio.id === id)?.nome ?? (loading ? "Consultando sítio…" : "Sítio selecionado")}</>;
 }

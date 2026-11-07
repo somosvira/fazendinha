@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
@@ -29,6 +30,7 @@ const uuid=()=>crypto.randomUUID();
 // Somente IDs criados por esta suíte; nenhuma limpeza global/seed/estrutura.
 afterAll(async()=>{
  if(!sitios.length)return;
+ await limparAlertasReprodutivosFixtureTx(prisma, animais);
  await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
  await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}},{entidadeId:{in:protocolos}}]}});

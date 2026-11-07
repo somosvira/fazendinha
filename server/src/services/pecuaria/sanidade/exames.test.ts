@@ -147,3 +147,18 @@ describe("integração com qualidade do leite", () => {
     expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
   });
 });
+
+
+describe("formato adotado em catálogo reprodutivo publicado", () => {
+  it("expõe formato bloqueado mesmo sem exame ou etapa", async () => {
+    mocks.tx.tipoExame.findMany.mockResolvedValue([{ ...tipo, _count: { exames: 0, etapas: 0, catalogosAvaliacaoReprodutiva: 1 } }]);
+    expect(await listarTiposExame()).toEqual([{ ...tipo, formatoExameHash: expect.any(String), padraoReprodutivo: false, formatoBloqueado: true }]);
+    expect(mocks.tx.tipoExame.findMany).toHaveBeenCalledWith(expect.objectContaining({ include: expect.objectContaining({ _count: expect.objectContaining({ select: expect.objectContaining({ catalogosAvaliacaoReprodutiva: true }) }) }) }));
+  });
+  it("orienta nova versão antes de alterar formato de catálogo preservado", async () => {
+    mocks.tx.tipoExame.findUnique.mockResolvedValue({ ...tipo, _count: { catalogosAvaliacaoReprodutiva: 1 } });
+    await expect(editarTipoExame(tipo.id, { unidade: "g" }, 7)).rejects.toMatchObject({ code: "CONFLITO", message: expect.stringContaining("catálogo publicado") });
+    expect(mocks.tx.tipoExame.update).not.toHaveBeenCalled();
+    expect(await editarTipoExame(tipo.id, { nome: "Nome atualizado" }, 7)).toMatchObject({ nome: "Nome atualizado", formatoBloqueado: true });
+  });
+});

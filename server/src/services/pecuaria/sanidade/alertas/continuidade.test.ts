@@ -1,3 +1,4 @@
+vi.mock("../../reproducao/alertas/produtor.js",()=>({reconciliarAlertasReprodutivosAnimalTx:vi.fn()}));
 import {beforeEach,describe,expect,it,vi} from "vitest";
 import type {Prisma} from "@prisma/client";
 const m=vi.hoisted(()=>({publicar:vi.fn(),avaliar:vi.fn(),auditar:vi.fn(),tx:{necessidadeSanitaria:{findMany:vi.fn(),update:vi.fn()},animal:{findUniqueOrThrow:vi.fn()},regraAlertaSanitario:{findMany:vi.fn()}}}));

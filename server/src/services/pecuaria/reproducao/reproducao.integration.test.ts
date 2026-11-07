@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { criarEntradaValorizadaFixture, limparMovimentosValorizadosFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { corrigirExame } from "../sanidade/exames.js";
@@ -114,6 +115,7 @@ afterAll(async () => {
   const props = { in: [propriedadeId, propriedade2].filter(Boolean) },
     ids = { in: animais },
     ps = { in: produtos };
+  await limparAlertasReprodutivosFixtureTx(prisma, animais);
   const visitas = await prisma.visitaVeterinaria.findMany({
       where: { propriedadeId: props },
     }),

@@ -1,3 +1,6 @@
+import { conferirImpactosTx, aplicarImpactosTx, type ConfirmacaoImpacto } from "../reproducao/impactos.js";
+import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 import { validarContextoHistoricoAnimalTx, type ContextoHistoricoAnimalInput } from "../importacao/pesagens.js";
 import { filtrosFatos, limites, type ConsultaSanitaria } from "./consulta.js";
 import { Prisma } from "@prisma/client";
@@ -62,8 +65,8 @@ export async function listarOcorrenciasPaginadas(animalId: string | undefined, p
   return { itens, total, pagina: filtro.pagina, porPagina: filtro.porPagina, resumo: { abertas, encerradas, anuladas, porDoenca } };
 }
 
-export type CriarOcorrenciaInput = { animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null };
-/** Executor compartilhado: o chamador mantém a transação do fato de origem. */
+export type CriarOcorrenciaInput = { chave?:string; impacto?:ConfirmacaoImpacto; animalId: string; propriedadeId: number; doencaId: string; inicio: string; observacao?: string | null };
+/** Gravador factual de baixo nível. Uso direto restrito à importação com contexto histórico; operação atual usa criarOcorrenciaOperacionalTx. */
 export async function criarOcorrenciaTx(tx: Prisma.TransactionClient, input: CriarOcorrenciaInput, usuarioId: number | null, historico?: ContextoHistoricoAnimalInput) {
   await travarAnimais(tx, [input.animalId]);
   const inicio = dia(input.inicio);
@@ -76,8 +79,16 @@ export async function criarOcorrenciaTx(tx: Prisma.TransactionClient, input: Cri
   await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: criada.id, animalId: input.animalId, propriedadeId: criada.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
   return criada;
 }
+/** Escrita operacional compartilhada: prévia + fato + efeitos na transação do chamador. */
+export async function criarOcorrenciaOperacionalTx(tx: Prisma.TransactionClient, input: CriarOcorrenciaInput, usuarioId: number | null) {
+  const previa=await conferirImpactosTx(tx,{origem:"OCORRENCIA",animalId:input.animalId,propriedadeId:input.propriedadeId,data:input.inicio,doencaId:input.doencaId},input.impacto);
+  if(previa.exigeConfirmacao&&(!input.chave||!usuarioId||usuarioId<1))throw new RebanhoError("VALIDACAO","Impactos exigem chave idempotente e sessão real");
+  const criada=await criarOcorrenciaTx(tx,input,usuarioId);
+  await aplicarImpactosTx(tx,previa,{tipo:"OcorrenciaSanitaria",id:criada.id},input.impacto,usuarioId);
+  return criada;
+}
 export async function criarOcorrencia(input: CriarOcorrenciaInput, usuarioId: number | null) {
-  return transacaoPecuaria((tx) => criarOcorrenciaTx(tx, input, usuarioId));
+  return transacaoPecuaria(tx => input.chave?operacaoIdempotenteTx(tx,{...input,chave:input.chave},usuarioId,"OCORRENCIA_COM_IMPACTOS",()=>criarOcorrenciaOperacionalTx(tx,input,usuarioId)):criarOcorrenciaOperacionalTx(tx,input,usuarioId));
 }
 
 export async function encerrarOcorrenciaTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number | null, input: { fim: string; desfecho: string | null }, usuarioId: number | null) {
@@ -94,6 +105,7 @@ export async function encerrarOcorrenciaTx(tx: Prisma.TransactionClient, id: str
     const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { fim, desfecho: input.desfecho?.trim() || null } });
     await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: id, animalId: atual.animalId, propriedadeId, acao: "ENCERRAMENTO", usuarioId,
       antes: atual, depois: salva });
+    await reconciliarAlertasReprodutivosAnimalTx(tx,atual.animalId,usuarioId);
     return salva;
 }
 export async function encerrarOcorrencia(id: string, propriedadeId: number, input: { fim: string; desfecho: string }, usuarioId: number | null) {
@@ -117,6 +129,7 @@ export async function anularOcorrencia(id: string, propriedadeId: number, motivo
     const salva = await tx.ocorrenciaSanitaria.update({ where: { id }, data: { status: "ANULADO", motivoAnulacao: motivo, anuladoEm: new Date() } });
     await auditar(tx, { entidade: "OcorrenciaSanitaria", entidadeId: id, animalId: original.animalId, propriedadeId, acao: "ANULACAO", usuarioId,
       antes: atual, depois: { status: salva.status, motivo } });
+    await reconciliarAlertasReprodutivosAnimalTx(tx,atual.animalId,usuarioId);
     return salva;
   });
 }

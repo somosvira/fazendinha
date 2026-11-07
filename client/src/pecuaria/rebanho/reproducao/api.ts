@@ -1,3 +1,5 @@
+import type { ConfirmacaoImpacto } from "../sanidade/impactos-api";
+import type { CamposAvaliacaoContextual } from "./avaliacao-contextual-api";
 import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 import type { Aptidao } from "../types";
@@ -67,7 +69,7 @@ export type PesoPartoInput =
   | { acao: "DESVINCULAR"; vinculoId: string; motivo: string };
 export type OcorrenciaRetencaoInput =
   | { acao: "VINCULAR"; ocorrenciaId: string }
-  | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null }
+  | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null; impacto?: ConfirmacaoImpacto }
   | { acao: "DESVINCULAR"; ocorrenciaId: string; motivo: string };
 export type DadosEscoreParto = { data: string; valor: number; escalaMin: number; escalaMax: number; escalaDescricao?: string | null; responsavel?: string | null };
 export type EscorePartoInput =
@@ -231,7 +233,7 @@ export type TentativaInput = FatoBase & {
   documentacaoExcepcional?: boolean;
   motivoDocumentacaoExcepcional?: string;
 };
-export type AvaliacaoInput = FatoBase & {
+export type AvaliacaoInput = FatoBase & CamposAvaliacaoContextual & {
   responsavel?: string | null;
   demandaAcompanhamentoId?:string;
   formatoExameHash?: string;

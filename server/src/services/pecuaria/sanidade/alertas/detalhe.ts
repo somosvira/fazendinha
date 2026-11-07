@@ -1,3 +1,4 @@
+import { detalheAlertaReprodutivo } from "../../reproducao/alertas/detalhe.js";
 import { configuracaoNecessidadeTx } from "./produtor.js";
 import { dataCivil,diaCivil,situacaoTemporal } from "./datas.calc.js";
 import { consultarDetalheProgramacaoAlerta } from "../programacoes/detalhe.js";
@@ -6,10 +7,11 @@ import { temArea, temPermissao } from "../../../auth/papeis.js";
 import { prisma } from "../../../../db.js";
 import { RebanhoError } from "../../rebanho/regras.js";
 export async function consultarDetalheAlerta(id:string,propriedadeId:number|null,usuario:UsuarioContexto) {
- const alerta=await prisma.alerta.findFirst({where:{id,proprietario:"fazendinha",produtor:"sanidade",...(propriedadeId==null?{}:{propriedadeId})}});
+ const alerta=await prisma.alerta.findFirst({where:{id,proprietario:"fazendinha",produtor:{in:["sanidade","reproducao"]},...(propriedadeId==null?{}:{propriedadeId})}});
  if(!alerta)throw new RebanhoError("NAO_ENCONTRADO","Alerta não encontrado");
  // Resumo e snapshot só são liberados depois de revalidar contexto atual do sujeito.
  if(alerta.sujeitoTipo==="ANIMAL"&&propriedadeId!=null&&!await prisma.localizacaoAnimal.findFirst({where:{animalId:alerta.sujeitoId,propriedadeId,ate:null}}))throw new RebanhoError("NAO_ENCONTRADO","Alerta não encontrado neste sítio");
+ if(alerta.produtor==="reproducao")return detalheAlertaReprodutivo(alerta,usuario);
  const necessidade=await prisma.necessidadeSanitaria.findUnique({where:{alertaId:id},include:{regra:true}});
  if(!necessidade && alerta.tipo === "PROGRAMACAO") { const detalhe = await consultarDetalheProgramacaoAlerta(alerta,usuario); if (detalhe) return detalhe; }
  if(!necessidade)return{alertaId:id,titulo:alerta.titulo,motivo:alerta.motivo,situacao:alerta.situacao,evidenciaDisparo:alerta.snapshotInicial,origem:{estado:"INDISPONIVEL" as const},acoes:[]};

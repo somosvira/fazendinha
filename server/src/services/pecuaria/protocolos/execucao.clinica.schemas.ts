@@ -13,12 +13,17 @@ export const tentativaProtocoloSchema = tentativaSchema.omit({ chave: true, tipo
   ...comuns, tipo: z.literal("TENTATIVA"), tipoTentativa: tentativaSchema.shape.tipo,
 }).strict();
 // Não realização pertence a EventoTarefaProtocolo. O exame anterior continua legível.
-export const avaliacaoProtocoloSchema = avaliacaoSchema.omit({ chave: true }).extend({
+export const avaliacaoProtocoloBase = avaliacaoSchema.omit({ chave: true }).extend({
   ...comuns, tipo: z.literal("AVALIACAO"),
   reavaliacao: z.boolean().optional(),
-  resultado: z.enum(["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO"]),
+  resultado: z.enum(["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"]),
 }).strict();
+export function validarAvaliacaoRealizada(item: z.infer<typeof avaliacaoProtocoloBase>, ctx: z.RefinementCtx) {
+  if (item.resultado === "NAO_AVALIADO" && (!item.realizadoSemDG || !item.avaliacaoContextual))
+    ctx.addIssue({ code:"custom", path:["resultado"], message:"Uma avaliação sem DG exige itens contextuais efetivamente realizados" });
+}
+export const avaliacaoProtocoloSchema = avaliacaoProtocoloBase.superRefine(validarAvaliacaoRealizada);
 export const itemExecucaoClinicaSchema = z.discriminatedUnion("tipo", [
-  exameProtocoloSchema, tentativaProtocoloSchema, avaliacaoProtocoloSchema,
-]);
+  exameProtocoloSchema, tentativaProtocoloSchema, avaliacaoProtocoloBase,
+]).superRefine((item,ctx)=>{ if(item.tipo === "AVALIACAO") validarAvaliacaoRealizada(item,ctx); });
 export type ItemExecucaoClinica = z.infer<typeof itemExecucaoClinicaSchema>;

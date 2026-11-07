@@ -1,3 +1,4 @@
+import { confirmacaoImpactoSchema } from "../reproducao/impactos.schemas.js";
 import { z } from "zod";
 import { observacoesExameSchema } from "../exames/formatos.js";
 import { UnidadeMedida } from "@prisma/client";
@@ -6,7 +7,7 @@ const uuid = z.string().uuid();
 const desvio = z.object({ motivo: z.string().trim().min(5).max(500) }).strict().optional();
 const base = { animalId: uuid, propriedadeId: z.number().int().positive(), tarefaId: uuid, data: z.string().date(),
   responsavel: z.string().trim().max(160).nullish(), ocorrenciaId: uuid.nullish(), operacaoServicoId: uuid.nullish(), desvio };
-export const executarAplicacaoEtapaSchema = z.object({ ...base, tipo: z.literal("APLICACAO"),
+export const executarAplicacaoEtapaSchema = z.object({ ...base, tipo: z.literal("APLICACAO"), impacto:confirmacaoImpactoSchema.optional(),
   aplicadaEm: z.string().datetime({ offset: true }), finalidade: z.enum(["TRATAMENTO", "VACINA", "VERMIFUGO"]).optional(), tipoAplicacaoId: uuid.optional(),
   nomeProdutoAplicado: z.string().trim().min(1).max(180), produtoId: uuid.nullish(), dose: z.string().regex(/^\d+(\.\d{1,3})?$/), unidadeDose: z.nativeEnum(UnidadeMedida), via: z.string().trim().max(80).nullish(),
   origemInsumo: z.enum(["BAIXA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "INCLUSO_SERVICO", "SEM_ORIGEM_JUSTIFICADA"]),

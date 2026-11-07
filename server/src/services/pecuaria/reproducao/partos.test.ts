@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { partoAmpliadoSchema, correcaoPartoAmpliadaSchema } from "./partos.schemas.js";
 vi.mock("../rebanho/animais.js", () => ({ registrarPesagemTx: vi.fn() }));
-vi.mock("../sanidade/ocorrencias.js", () => ({ criarOcorrenciaTx: vi.fn() }));
+vi.mock("../sanidade/ocorrencias.js", () => ({ criarOcorrenciaOperacionalTx: vi.fn() }));
+import { criarOcorrenciaOperacionalTx } from "../sanidade/ocorrencias.js";
 import { normalizarDetalhesParto, aplicarRetencaoPartoTx, aplicarPesoPartoTx, corrigirPesosCriasTx } from "./partos.js";
 const id = "7e59821f-4c09-4e95-8d4e-699f32738c2b";
 const base = { chave: id, animalId: id, propriedadeId: 1, data: "2026-01-01", tipo: "ABORTO",observacao:"Aborto observado; causa clínica desconhecida" };
@@ -73,4 +74,14 @@ it("grau de RP é opcional, restrito a RP presente e preservado na correção pa
   expect(normalizarDetalhesParto({}, "2026-01-01", anterior).grauRetencaoPlacenta).toBe(2);
   expect(() => normalizarDetalhesParto({ retencaoPlacenta: false }, "2026-01-01", anterior)).toThrow(/remova explicitamente/);
   expect(normalizarDetalhesParto({ retencaoPlacenta: false, grauRetencaoPlacenta: null }, "2026-01-01", anterior).grauRetencaoPlacenta).toBeNull();
+});
+
+it("RP nova compartilha conferência de impactos e recusa prévia obsoleta antes de vincular fato", async () => {
+  const impacto={revisao:"a".repeat(64),motivo:"Efeitos conferidos para a ocorrência RP"};
+  const criar=vi.mocked(criarOcorrenciaOperacionalTx);criar.mockClear();criar.mockRejectedValueOnce(new Error("Prévia de impactos obsoleta"));
+  const update=vi.fn(),db=tx({ocorrenciaSanitaria:{update}});
+  const input=partoAmpliadoSchema.parse({...base,retencaoPlacenta:true,ocorrenciaRetencao:{acao:"CRIAR",doencaId:id,inicio:"2026-01-02",impacto}});
+  await expect(aplicarRetencaoPartoTx(db,parto({retencaoPlacenta:true}),input,7)).rejects.toThrow("obsoleta");
+  expect(criar).toHaveBeenCalledWith(db,expect.objectContaining({chave:id,animalId:id,propriedadeId:1,doencaId:id,inicio:"2026-01-02",impacto}),7);
+  expect(update).not.toHaveBeenCalled();
 });

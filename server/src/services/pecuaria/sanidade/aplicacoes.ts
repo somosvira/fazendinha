@@ -1,3 +1,5 @@
+import { conferirImpactosTx, aplicarImpactosTx, type ConfirmacaoImpacto } from "../reproducao/impactos.js";
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 import { custoAplicacao } from "./custo-aplicacao.js";
 import { vincularAplicacaoAlertaTx, revisarAplicacaoAnuladaTx } from "./alertas/atendimento.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
@@ -23,6 +25,7 @@ import { travarUsosProduto } from "../../estoque/usos.js";
 
 export type AplicacaoInput = {
   chave?: string;
+  impacto?: ConfirmacaoImpacto;
   alertaId?: string;
   alertaRevisao?: number;
   confirmarCuidadoAlerta?: boolean;
@@ -231,18 +234,29 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
     return { dadosCriacao, desvioProtocoloSnapshot };
 }
 
-export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null) {
+export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, opcoes: { impactosConferidos?: Awaited<ReturnType<typeof conferirImpactosTx>>; adiarEfeitos?: boolean } = {}) {
+    const previaImpacto = opcoes.impactosConferidos ?? await conferirImpactosTx(tx, {
+      origem: "PROCEDIMENTO", animalId: input.animalId, propriedadeId: input.propriedadeId, data: input.data,
+      tipoAplicacaoId: input.tipoAplicacaoId ?? tipoAplicacaoLegadaId(input.finalidade),
+    }, input.impacto);
+    if (previaImpacto.entrada.animalId !== input.animalId || previaImpacto.entrada.propriedadeId !== input.propriedadeId
+      || previaImpacto.entrada.data !== input.data || previaImpacto.entrada.origem !== "PROCEDIMENTO"
+      || previaImpacto.entrada.tipoAplicacaoId !== (input.tipoAplicacaoId ?? tipoAplicacaoLegadaId(input.finalidade))) {
+      throw new RebanhoError("CONFLITO", "Prévia interna incompatível com o procedimento");
+    }
+    if(previaImpacto.exigeConfirmacao&&(!usuarioId||usuarioId<1))throw new RebanhoError("VALIDACAO","Impactos exigem sessão real");
     const { dadosCriacao } = await prepararAplicacaoTx(tx, input, usuarioId);
     const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     await vincularAplicacaoAlertaTx(tx, input, criada, usuarioId);
+    if(!opcoes.adiarEfeitos)await aplicarImpactosTx(tx,previaImpacto,{tipo:"AplicacaoProduto",id:criada.id},input.impacto,usuarioId);
     return criada;
 }
 
 export async function criarAplicacao(input: AplicacaoInput, usuarioId: number | null) {
-  if (input.alertaId && !input.chave) erro("O atendimento do alerta exige chave de confirmação", "chave");
+  if ((input.alertaId || input.impacto) && !input.chave) erro("O atendimento do alerta exige chave de confirmação", "chave");
   return confirmarFato(input, usuarioId, "APLICACAO", criarAplicacaoTx, (tx, id) => tx.aplicacaoProduto.findUniqueOrThrow({ where: { id } }));
 }
 
@@ -380,6 +394,7 @@ export async function anularAplicacaoTx(tx: Prisma.TransactionClient, id: string
     await marcarRegularizacaoFatoTx(tx, { fatoTipo: "APLICACAO", fatoId: id, destinoConsumo: destino, motivo, usuarioId });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
       antes: existente, depois: { status: salva.status, motivo, destinoConsumo: destino, consumoMantido: salva.consumoMantido, administracaoMantida: salva.administracaoMantida } });
+    await reconciliarAlertasReprodutivosAnimalTx(tx,existente.animalId,usuarioId);
     return salva;
 }
 

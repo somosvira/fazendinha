@@ -1,3 +1,4 @@
+import { snapshotPrazosAdesaoTx } from "../reproducao/prazos-protocolo.js";
 import { associarMomentosAcoesTx, snapshotMomento } from "./momentos.js";
 import { reservarVersaoTx } from "./versoes.js";
 import { vincularFatoTarefaTx, encerrarVinculoAtualTx } from "./vinculos.js";
@@ -20,12 +21,12 @@ export async function resolverIdReprodutivoTx(tx: Tx, entidade: Entidade, id: st
   return registro.id;
 }
 
-type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; finalidade?: FinalidadeProtocolo | null; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
+type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; finalidade?: FinalidadeProtocolo | null; modalidadeTentativa?: string | null; modalidadeDiagnostico?: string | null; configuracaoAcompanhamento?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
 export async function criarProtocoloReprodutivoTx(tx: Tx, { data }: { data: DadosProtocolo }): Promise<ProtocoloIatf> {
   const etapas = etapasReprodutivasDoContrato(data.etapas);
   const versao = await reservarVersaoTx(tx, "REPRODUTIVO", data.nome.trim(), data.versao);
   const p = await tx.protocolo.create({ data: { id: data.id, tipo: "REPRODUTIVO", nome: data.nome.trim(), descricao: data.descricao, versao,
-    publicado: false, finalidade: data.finalidade, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
+    publicado: false, finalidade: data.finalidade, modalidadeTentativa: data.modalidadeTentativa, modalidadeDiagnostico: data.modalidadeDiagnostico, configuracaoAcompanhamento: data.configuracaoAcompanhamento, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
   await associarMomentosAcoesTx(tx, p.id, Array.isArray(data.etapas) ? data.etapas.map(e => { const { referencias: _referencias, ...campos } = e as Record<string, Prisma.InputJsonValue>; return etapaIatfSchema.parse(campos); }) : []);
   if (data.publicado) await tx.protocolo.update({ where: { id: p.id }, data: { publicado: true, publicadoEm: new Date() } });
   return tx.protocoloIatf.findUniqueOrThrow({ where: { id: p.id } });
@@ -55,12 +56,12 @@ export async function criarProgramacaoReprodutivaTx(tx: Tx, { data }: { data: Da
   return tx.programacaoIatf.findUniqueOrThrow({ where: { id: p.id } });
 }
 
-type DadosParticipacao = Pick<ParticipanteIatf, "animalId" | "inicioPrevisto"> & { programacaoId: string } & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId" | "precisaoTemporal" | "precisaoInicioEfetivo">>;
+type DadosParticipacao = Pick<ParticipanteIatf, "animalId" | "inicioPrevisto"> & { programacaoId: string; diagnosticoIndividualEm?: string; acompanhamentoSnapshot?: Prisma.InputJsonValue } & Partial<Pick<ParticipanteIatf, "id" | "referenciaExterna" | "inicioEfetivo" | "encerradoEm" | "motivoEncerramento" | "criadoEm" | "criadoPorId" | "precisaoTemporal" | "precisaoInicioEfetivo">>;
 export async function criarParticipacaoReprodutivaTx(tx: Tx, { data }: { data: DadosParticipacao }): Promise<ParticipanteIatf> {
   const rodadaId = await resolverIdReprodutivoTx(tx, "programacao", data.programacaoId);
   const programa = await tx.programacaoProtocolo.findUniqueOrThrow({ where: { id: rodadaId } });
   const p = await tx.participacaoProtocolo.create({ data: { id: data.id, referenciaExterna: data.referenciaExterna,
-    rodadaId, origemCalendario: "REFERENCIA_PROGRAMADA", protocoloId: programa.protocoloId, propriedadeId: programa.propriedadeId, animalId: data.animalId,
+    rodadaId, acompanhamentoSnapshot: data.acompanhamentoSnapshot ?? await snapshotPrazosAdesaoTx(tx, programa.protocoloId, programa.propriedadeId, data.diagnosticoIndividualEm), origemCalendario: "REFERENCIA_PROGRAMADA", protocoloId: programa.protocoloId, propriedadeId: programa.propriedadeId, animalId: data.animalId,
     inicio: data.inicioPrevisto, inicioEfetivo: data.inicioEfetivo, precisaoTemporal: data.precisaoTemporal ?? "HORA", precisaoInicioEfetivo: data.precisaoInicioEfetivo ?? (data.inicioEfetivo ? "HORA" : null),
     canceladaEm: data.encerradoEm, motivoCancelamento: data.motivoEncerramento, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId } });
   return tx.participanteIatf.findUniqueOrThrow({ where: { id: p.id } });

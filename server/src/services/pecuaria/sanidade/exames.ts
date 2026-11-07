@@ -24,8 +24,8 @@ const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 
 export async function listarTiposExame(incluirInativos = false, contexto?: "SANITARIO" | "REPRODUTIVO") {
   const tipos = await prisma.tipoExame.findMany({ where: { formatoQualidadeLeite: null, ...(incluirInativos ? {} : { ativo: true }), ...(contexto ? { contexto: { in: [contexto, "COMPARTILHADO"] } } : {}) }, orderBy: { nome: "asc" },
-    include: { formatoQualidadeLeite: { select: { _count: { select: { amostras: true } } } }, _count: { select: { exames: true, etapas: { where: { protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } } } } } } });
-  return tipos.filter(tipo => contexto !== "REPRODUTIVO" || formatoReprodutivoCompativel(tipo.tipoResultado, tipo.campos)).map(({ _count, formatoQualidadeLeite, ...tipo }) => ({ ...tipo, formatoExameHash: hashFormatoExame(tipo), padraoReprodutivo: tipo.id === "b0400000-0000-4000-8000-000000000001", formatoBloqueado: _count.exames > 0 || _count.etapas > 0 || (formatoQualidadeLeite?._count.amostras ?? 0) > 0 }));
+    include: { formatoQualidadeLeite: { select: { _count: { select: { amostras: true } } } }, _count: { select: { catalogosAvaliacaoReprodutiva: true, exames: true, etapas: { where: { protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } } } } } } });
+  return tipos.filter(tipo => contexto !== "REPRODUTIVO" || formatoReprodutivoCompativel(tipo.tipoResultado, tipo.campos)).map(({ _count, formatoQualidadeLeite, ...tipo }) => ({ ...tipo, formatoExameHash: hashFormatoExame(tipo), padraoReprodutivo: tipo.id === "b0400000-0000-4000-8000-000000000001", formatoBloqueado: (_count.catalogosAvaliacaoReprodutiva ?? 0) > 0 || _count.exames > 0 || _count.etapas > 0 || (formatoQualidadeLeite?._count.amostras ?? 0) > 0 }));
 }
 
 export async function travarTiposExame(tx: Prisma.TransactionClient, ids: string[]) {
@@ -37,7 +37,7 @@ export async function travarTiposExame(tx: Prisma.TransactionClient, ids: string
 export async function editarTipoExame(id: string, input: { nome?: string; ativo?: boolean; tipoResultado?: TipoResultado; unidade?: string | null; opcoes?: string[] | null; campos?: CampoExame[] | null }, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     await travarTiposExame(tx, [id]);
-    const antes = await tx.tipoExame.findUnique({ where: { id }, include: { formatoQualidadeLeite: { select: { _count: { select: { amostras: true } } } } } });
+    const antes = await tx.tipoExame.findUnique({ where: { id }, include: { _count: { select: { catalogosAvaliacaoReprodutiva: true } }, formatoQualidadeLeite: { select: { _count: { select: { amostras: true } } } } } });
     if (!antes) throw new RebanhoError("NAO_ENCONTRADO", "Tipo de exame não encontrado");
     const tipoResultado = input.tipoResultado ?? antes.tipoResultado;
     const opcoes = input.opcoes !== undefined ? input.opcoes : tipoResultado === "OPCAO" ? antes.opcoes : null;
@@ -47,9 +47,9 @@ export async function editarTipoExame(id: string, input: { nome?: string; ativo?
     if (antes.contexto === "REPRODUTIVO") conferirFormatoReprodutivo(tipoResultado, campos);
     if (antes.formatoQualidadeLeite && tipoResultado !== "MULTIPLO") throw new RebanhoError("VALIDACAO", "Qualidade do leite exige formato de vários resultados", "tipoResultado");
     const camposAntes = antes.tipoResultado === "MULTIPLO" ? camposExameSchema.parse(antes.campos) : null;
-    const formatoBloqueado = Boolean((antes.formatoQualidadeLeite?._count.amostras ?? 0) > 0 || await tx.exameAnimal.findFirst({ where: { tipoExameId: id }, select: { id: true } }) || await tx.etapaProtocolo.findFirst({ where: { tipoExameId: id, protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } }, select: { id: true } }));
+    const formatoBloqueado = Boolean((antes._count?.catalogosAvaliacaoReprodutiva ?? 0) > 0 || (antes.formatoQualidadeLeite?._count.amostras ?? 0) > 0 || await tx.exameAnimal.findFirst({ where: { tipoExameId: id }, select: { id: true } }) || await tx.etapaProtocolo.findFirst({ where: { tipoExameId: id, protocolo: { OR: [{ publicado: true }, { execucoes: { some: {} } }] } }, select: { id: true } }));
     if (formatoBloqueado && (tipoResultado !== antes.tipoResultado || unidade !== antes.unidade || JSON.stringify(opcoes) !== JSON.stringify(antes.opcoes) || JSON.stringify(campos) !== JSON.stringify(camposAntes))) {
-      throw new RebanhoError("CONFLITO", "Tipo de exame com coleta não permite mudar formato, unidade ou opções. Crie uma nova versão do formato.", "tipoResultado");
+      throw new RebanhoError("CONFLITO", "Tipo de exame usado em coleta, protocolo ou catálogo publicado não permite mudar formato, unidade ou opções. Crie uma nova versão do formato.", "tipoResultado");
     }
     if (tipoResultado === "OPCAO" && (!Array.isArray(opcoes) || !opcoes.length)) throw new RebanhoError("VALIDACAO", "Informe as opções possíveis", "opcoes");
     if (tipoResultado !== "OPCAO" && Array.isArray(opcoes) && opcoes.length) throw new RebanhoError("VALIDACAO", "Opções só cabem em resultado por escolha", "opcoes");

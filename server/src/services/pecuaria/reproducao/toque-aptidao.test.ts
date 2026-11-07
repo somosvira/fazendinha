@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
-const m = vi.hoisted(() => ({ tx: {} as Prisma.TransactionClient, corrigir: vi.fn(), registrar: vi.fn(), idempotente: vi.fn() }));
+const m = vi.hoisted(() => ({ tx: {} as Prisma.TransactionClient, corrigir: vi.fn(), registrar: vi.fn(), idempotente: vi.fn(), reconciliar: vi.fn() }));
 vi.mock("../transacao.js", () => ({ transacaoPecuaria: async (fn: (tx: Prisma.TransactionClient) => unknown) => fn(m.tx) }));
+vi.mock("./acompanhamento.js", () => ({ reconciliarDemandasAnimalTx: m.reconciliar }));
 vi.mock("./operacoes.js", () => ({ operacaoIdempotenteTx: m.idempotente }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: vi.fn(async () => ({ sexo: "F" })) }));
 vi.mock("../rebanho/regras.js", async original => ({ ...(await original<typeof import("../rebanho/regras.js")>()), travarAnimais: vi.fn(), auditar: vi.fn() }));
@@ -40,6 +41,7 @@ it("corrige só aptidão do exame combinado, preservando DG e vínculos", async 
  await corrigirToqueAptidao("e", { chave: "k", propriedadeId: 1, motivo: "Conferência do laudo", resultado: "NAO_APTO", retornoEm: "2026-11-01" }, 7);
  expect(update).toHaveBeenCalledWith({ where: { id: "e" }, data: { atualizadoEm: expect.any(Date), interpretacao: { update: { resultadoAptidao: "NAO_APTO", retornoAptidaoEm: new Date("2026-11-01") } } }, include: { interpretacao: true } });
  expect(m.corrigir).not.toHaveBeenCalled();
+ expect(m.reconciliar).toHaveBeenCalledWith(m.tx, "a", 7);
  await expect(corrigirToqueAptidao("e", { chave: "k2", propriedadeId: 1, motivo: "Conferência do laudo", anular: true }, 7)).rejects.toThrow(/vínculos gestacionais/);
 });
 

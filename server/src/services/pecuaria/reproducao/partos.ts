@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { auditar, RebanhoError } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
-import { criarOcorrenciaTx } from "../sanidade/ocorrencias.js";
+import { criarOcorrenciaOperacionalTx } from "../sanidade/ocorrencias.js";
 import { registrarPesagemTx, editarPesagemTx } from "../rebanho/animais.js";
 import type { CorrecaoPartoAmpliadaInput, PartoAmpliadoInput } from "./partos.schemas.js";
 
@@ -44,7 +44,7 @@ export async function lerPartoTx(tx: Prisma.TransactionClient, id: string) {
 }
 
 /** A transação já deve ter travado matriz/crias. Desvínculos nunca apagam os fatos clínicos. */
-export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto: PartoPersistido, input: Pick<CorrecaoPartoAmpliadaInput, "ocorrenciaRetencao">, usuarioId: number | null) {
+export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto: PartoPersistido, input: Pick<CorrecaoPartoAmpliadaInput, "ocorrenciaRetencao" | "chave">, usuarioId: number | null) {
   const acao = input.ocorrenciaRetencao;
   if (!acao) {
     if (parto.retencaoPlacenta !== true && await tx.ocorrenciaSanitaria.count({ where: { partoRetencaoPlacentaId: parto.id, status: "VALIDO" } })) erro("Desvincule explicitamente a ocorrência antes de alterar a retenção", "retencaoPlacenta");
@@ -54,7 +54,7 @@ export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto
   let ocorrencia;
   if (acao.acao === "CRIAR") {
     if (new Date(acao.inicio) < parto.data) erro("Ocorrência não pode anteceder o parto", "ocorrenciaRetencao");
-    ocorrencia = await criarOcorrenciaTx(tx, { animalId: parto.animalId, propriedadeId: parto.propriedadeId!, doencaId: acao.doencaId, inicio: acao.inicio, observacao: acao.observacao }, usuarioId);
+    ocorrencia = await criarOcorrenciaOperacionalTx(tx, { chave:input.chave, impacto:acao.impacto, animalId: parto.animalId, propriedadeId: parto.propriedadeId!, doencaId: acao.doencaId, inicio: acao.inicio, observacao: acao.observacao }, usuarioId);
   } else ocorrencia = await tx.ocorrenciaSanitaria.findUnique({ where: { id: acao.ocorrenciaId } });
   if (!ocorrencia || ocorrencia.animalId !== parto.animalId || ocorrencia.propriedadeId !== parto.propriedadeId || ocorrencia.status !== "VALIDO" || ocorrencia.inicio < parto.data) erro("Ocorrência incompatível com animal, sítio ou cronologia do parto", "ocorrenciaRetencao");
   if (acao.acao === "DESVINCULAR") {

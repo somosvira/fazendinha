@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "../../reproducao/alertas/produtor.js";
 import type { Prisma } from "@prisma/client";
 import { RebanhoError, auditar, hojeFazendaDate } from "../../rebanho/regras.js";
 import { conferirDestinoAtivoTx, exigirAutorDecisao, obterNecessidadeAtendimentoTx, type OrigemAlertaAplicacao } from "./atendimento.js";
@@ -26,9 +27,10 @@ export async function vincularParticipacaoAlertaTx(tx: Prisma.TransactionClient,
 }
 /** Publica a situação dos executores comuns sem copiar tarefas ou executar fatos clínicos. */
 export async function reconciliarParticipacaoAlertaTx(tx: Prisma.TransactionClient, participacaoId: string, usuarioId: number | null) {
+  const p = await tx.participacaoProtocolo.findUnique({ where: { id: participacaoId }, include: { protocolo: { select: { tipo: true } }, tarefas: { include: { aplicacoes: true, exames: true, tentativas: true, manejos: true, vinculos: { include: { aplicacao: true, exame: true, tentativa: true, manejo: true } } } } } });
+  if(p?.protocolo.tipo==="REPRODUTIVO")await reconciliarAlertasReprodutivosAnimalTx(tx,p.animalId,usuarioId);
   const necessidades = await tx.necessidadeSanitaria.findMany({ where: { participacaoId }, include: { alerta: { select: { ciclo: true } } } });
   if (!necessidades.length) return;
-  const p = await tx.participacaoProtocolo.findUnique({ where: { id: participacaoId }, include: { tarefas: { include: { aplicacoes: true, exames: true, tentativas: true, manejos: true, vinculos: { include: { aplicacao: true, exame: true, tentativa: true, manejo: true } } } } } });
   if (!p) throw new RebanhoError("CONFLITO", "Participação vinculada não encontrada");
   const autor = usuarioId && usuarioId > 0 ? { usuarioId } : { tecnico: "sanidade:reconciliacao-protocolo" };
   const hoje = hojeFazendaDate();

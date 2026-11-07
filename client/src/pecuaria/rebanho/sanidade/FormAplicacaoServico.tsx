@@ -1,3 +1,5 @@
+import { useConferenciaImpactos } from "./ConferenciaImpactos";
+import type { EntradaImpacto } from "./impactos-api";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
@@ -36,6 +38,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   tarefas?: TarefaAplicacao[];
   animais?: Array<{ id: string; brinco: string; propriedadeId: number | null }>;
 }) {
+  const impactos = useConferenciaImpactos();
   const [leiteRelevante, setLeiteRelevante] = useState<boolean | null>(null);
   const [ficha, setFicha] = useState<AnimalFicha | null>(null);
   useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId, undefined, propriedadeId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa && momentoIatf === undefined) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length, propriedadeId]);
@@ -143,6 +146,16 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     setErro(mensagemLocalizada);
     setErrosCampos(ids[atributo] ? { [ids[atributo]]: mensagemLocalizada } : {});
   }
+  async function conferirImpactosAplicacoes(entradas: AplicacaoInput[], reutilizar = false) {
+    const confirmacoes = await impactos.conferir(
+      entradas.map((i): EntradaImpacto => ({ origem: "PROCEDIMENTO", animalId: i.animalId, propriedadeId: i.propriedadeId, data: i.data, tipoAplicacaoId: i.tipoAplicacaoId })),
+      Object.fromEntries(animais?.map(a => [a.id, a.brinco]) ?? [[animalId, ficha?.brinco ?? "Animal selecionado"]]),
+      reutilizar ? JSON.stringify(entradas) : undefined,
+    );
+    if (!confirmacoes) return false;
+    entradas.forEach((item, indice) => { item.impacto = confirmacoes[indice]; });
+    return true;
+  }
   async function submeter(e: FormEvent) {
     e.preventDefault(); if (emCurso.current) return;
     if (carregando) { setErro("Aguarde a consulta dos cadastros antes de confirmar."); return; }
@@ -190,13 +203,17 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne,
         carenciaLeiteHoras: estadoLeite === "INFORMADO" ? Number(leite) : null, carenciaCarneHoras: estadoCarne === "INFORMADO" ? Number(carne) : null,
         justificativaCarenciaCarne: estadoCarne === "NAO_APLICAVEL" ? motivoCarne.trim() : undefined };
-      if (onRegistrar) { await onRegistrar(input); onSalvo(undefined, sitioDoFato); return; }
       const entradas = animais?.length ? animais.map((a) => {
         const t = tarefas?.find((t) => t.animalId === a.id);
         const { motivoDesvio: _motivo, ...ajuste } = ajustesEtapa[a.id] ?? {};
         const dataComum = momentoIatf !== undefined ? input.data : t?.previstaPara?.slice(0,10) ?? input.data;
         return { ...input, ...(t && !desvio ? { data: dataComum, aplicadaEm: hora ? dataHoraISO(`${dataComum}T${hora}`) : undefined, produtoId: t.produtoId, dose: t.dose, unidadeDose: t.unidade, via: t.via, tipoAplicacaoId: t.tipoAplicacaoId || input.tipoAplicacaoId } : desvio ? ajuste : {}), animalId: a.id, tarefaId: t?.id ?? tarefa?.id, dose: desvio || !t ? quantidades[a.id] : t.dose };
       }) : [input];
+      if (onRegistrar) {
+        if (!await conferirImpactosAplicacoes([input])) return;
+        input.chave = chave;
+        await onRegistrar(input); onSalvo(undefined, sitioDoFato); return;
+      }
       if (tarefa) {
         if (animais?.length) {
           const fichas = await Promise.all(entradas.map((i) => buscarFichaAnimal(i.animalId, undefined, i.propriedadeId)));
@@ -213,6 +230,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         }
         const sitioExecucao = entradas[0].propriedadeId;
         if (entradas.some((i) => i.propriedadeId !== sitioExecucao)) throw new Error("As aplicações selecionadas precisam ocorrer no mesmo sítio nas datas realizadas.");
+        if (!await conferirImpactosAplicacoes(entradas, true)) return;
         const itensExecucao = entradas.map(i => ({ ...i, ...(desvio ? { desvio: { motivo: (ajustesEtapa[i.animalId]?.motivoDesvio || motivoDesvio).trim() } } : {}) }));
         if (onConferirConjunto) { await onConferirConjunto(itensExecucao); return; }
         const payload = { propriedadeId: sitioExecucao, itens: itensExecucao.map(i => ({ ...i, tipo: "APLICACAO" })) };
@@ -221,14 +239,16 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         await reqSanidade("/tarefas/execucao/confirmacao", { method: "POST", body: JSON.stringify({ ...payload, chave, fingerprint: previaExecucao.fingerprint }) }, sitioExecucao);
         onSalvo(undefined, sitioExecucao); return;
       }
+      if (!await conferirImpactosAplicacoes(entradas, true)) return;
       if (onConferirConjunto) { await onConferirConjunto(entradas); return; }
       const resultado = await reqSanidade<{ aplicacoes: string[] }>("/aplicacoes/coletivas", { method: "POST", body: JSON.stringify({ chave, propriedadeId: animais?.length ? propriedadeId : sitioDoFato, itens: entradas }) }, sitioDoFato);
       onSalvo(resultado?.aplicacoes?.[0], sitioDoFato);
-    } catch (falha) { erroDaApi(falha); }
+    } catch (falha) { impactos.invalidar(); setPreviaExecucao(null); erroDaApi(falha); }
     finally { emCurso.current = false; setSalvando(false); }
   }
-  return <FormShellAplicacao inline={inline} titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={onFechar} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : rotuloSubmeter ?? (tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação")}</Button></div></div>}>
+  return <>{impactos.painel}<FormShellAplicacao inline={inline} titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={onFechar} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : rotuloSubmeter ?? (tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação")}</Button></div></div>}>
     <form ref={formulario} noValidate id="form-aplicacao-sanitaria" onSubmit={submeter} onChange={() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); aoEditarExecucao?.(); }} className="grid gap-4">
+      <fieldset disabled={salvando} className="contents">
       {conteudoExtra&&<fieldset disabled={salvando}>{conteudoExtra}</fieldset>}
       {carregando && <EsqueletoLinhas label="Carregando cadastros" linhas={2} />}
       {tarefa && <section className="grid gap-3 rounded-lg border border-border p-3"><strong>{tarefa.protocoloNome ?? "Protocolo"} · v{tarefa.protocoloVersao ?? "—"} · Aplicação</strong><p>Animal: {animais?.map((a) => a.brinco).join(", ") ?? ficha?.brinco ?? "Carregando animal…"}. Versão e natureza são fixas. Planejado: {tarefa.previstaPara ? dataSanitaria(tarefa.previstaPara) : "Data não registrada"} · {produto?.nome ?? "Produto planejado"} · {tarefa.dose} {unidadeSanitaria(tarefa.unidade)} · {tarefa.via ?? "Via não informada"}</p><Button secondary disabled={salvando} onClick={() => { setDesvio((v) => !v); setPreviaExecucao(null); if (desvio) { setData(tarefa.previstaPara?.slice(0, 10) ?? hoje()); setTipoId(tarefa.tipoAplicacaoId); setProdutoId(tarefa.produtoId); setDose(tarefa.dose); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); setMotivoDesvio(""); setAjustesEtapa({}); } }}>{desvio ? "Voltar ao planejamento" : "Registrar desvio"}</Button>{desvio && <CampoFormulario id="san-desvio" erro={errosCampos["san-desvio"]} rotulo="Motivo do desvio" obrigatorio>{(p) => <textarea {...p} minLength={5} maxLength={500} className={classeInput} value={motivoDesvio} onChange={(e) => setMotivoDesvio(e.target.value)} />}</CampoFormulario>}</section>}
@@ -255,8 +275,9 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       {previaExecucao && <ConferenciaExecucao previa={previaExecucao} animais={animais ?? [{ id: animalId, brinco: ficha?.brinco ?? animalId }]} />}
       {tarefa && desvio && conferindo && animais && <ListaRascunho itens={animais} rotulo="ajustes individuais" texto={a => a.brinco} renderizar={a => <AjusteIndividualAplicacao key={a.id} brinco={a.brinco} ajuste={ajustesEtapa[a.id] ?? {}} comum={{ propriedadeId, data, hora, produtoId, tipoAplicacaoId: tipoId, unidadeDose: unidade, via, responsavel, partidaId, origemInsumo: origem, estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne, carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), operacaoServicoId: servicoId, itemCompraDiretaId: compraId, justificativaSemOrigem: justificativa }} produtos={produtos} tipos={tipos} compras={compras} servicos={servicos} onChange={(patch: AjusteEtapaAplicacao) => { setPreviaExecucao(null); setChave(crypto.randomUUID()); setAjustesEtapa((v) => ({ ...v, [a.id]: { ...v[a.id], ...patch } })); }} />} />}
       {conferindo && animais && <section className="grid gap-3"><h3 className="font-semibold">Revisão por animal</h3><p className="text-sm">Os dados acima serão usados para todos e continuam disponíveis para correção. Cada linha permite ajustar a quantidade. A confirmação é atômica; erro em uma linha impede o conjunto.</p><ListaRascunho itens={animais} rotulo="quantidades individuais" texto={a => a.brinco} renderizar={a => <CampoFormulario key={a.id} id={`san-dose-${a.id}`} erro={errosCampos[`san-dose-${a.id}`]} rotulo={`Quantidade aplicada em ${a.brinco}`} obrigatorio>{(p) => <input {...p} disabled={salvando || !!tarefa && !desvio} type="number" min="0.001" step="0.001" className={classeInput} value={quantidades[a.id] ?? ""} onChange={(e) => { setQuantidades((q) => ({ ...q, [a.id]: e.target.value })); }} />}</CampoFormulario>} /><Button secondary disabled={salvando} onClick={() => setConferindo(false)}>Voltar aos dados comuns</Button></section>}
+      </fieldset>
     </form>
-  </FormShellAplicacao>;
+  </FormShellAplicacao></>;
 }
 
 function FormShellAplicacao({ inline, titulo, onFechar, rodape, children }: { inline: boolean; titulo: string; onFechar: () => void; rodape: ReactNode; children: ReactNode }) {

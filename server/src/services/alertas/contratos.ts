@@ -22,7 +22,7 @@ export interface ParticipanteAlertaDTO {
   situacao: string; dataReferencia: string | null; dataAtencao: string | null;
   revisao: number; chaveAgrupamento: string; propriedadeId: number | null;
 }
-export interface CoberturaAlertaDTO { estado: "ATUALIZADA" | "DESATUALIZADA" | "FALHA" | "NAO_AVALIADO"; diaCoberto: string | null; ultimaConclusao: string | null; erro: string | null }
+export interface CoberturaAlertaDTO { estado: "ATUALIZADA" | "DESATUALIZADA" | "FALHA" | "NAO_AVALIADO"; diaCoberto: string | null; ultimaConclusao: string | null; erro: string | null; produtores?: Array<{produtor:string;estado:CoberturaAlertaDTO["estado"];diaCoberto:string|null;ultimaConclusao:string|null;erro:string|null}> }
 export interface ConsultaAlertasDTO { itens: GrupoAlertaDTO[]; total: number; pagina: number; tamanho: number; totaisGerais: TotaisAlertas; totaisFiltrados: TotaisAlertas; cobertura: CoberturaAlertaDTO; tiposDisponiveis: string[];
   /** Cuidados de cada situação ativa com os mesmos filtros; ausente no histórico. */
   cuidadosPorDisposicao?: Record<"ATENCAO" | "PROXIMOS" | "PROGRAMADOS", number> }

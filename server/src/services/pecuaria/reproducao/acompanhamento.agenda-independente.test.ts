@@ -16,6 +16,7 @@ function fonte() {
   const leitor = { localizacaoAnimal: { findMany: vi.fn().mockResolvedValue([{ animalId }]) }, tarefaProtocolo: { findMany: vi.fn().mockResolvedValue([tarefa]) },
     participanteVisita: { findMany: vi.fn().mockResolvedValue([]) }, atividadeVisita: { findMany: vi.fn().mockResolvedValue([]) }, visitaVeterinaria: { findMany: vi.fn().mockResolvedValue([]) },
     avaliacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([]) }, demandaAcompanhamentoReprodutivo: { findMany: vi.fn().mockResolvedValue([demanda]), create: vi.fn(), update: vi.fn() },
+    necessidadeReprodutiva: { findMany: vi.fn().mockResolvedValue([]) },
     interpretacaoReprodutiva: { findMany: vi.fn().mockResolvedValue([]) }, $executeRaw: vi.fn() };
   return { tx: leitor as unknown as Prisma.TransactionClient, leitor, animalId, tarefa, demanda };
 }
@@ -58,4 +59,16 @@ describe("agenda de acompanhamento — contraprovas independentes", () => {
     f.leitor.avaliacaoReprodutiva.findMany.mockResolvedValue([avaliacao]); f.leitor.interpretacaoReprodutiva.findMany.mockResolvedValue([manual.interpretacao]);
     const r = await consultarPlannerTx(f.tx, consulta, true); expect(r.grupos.map(g => [g.nome, g.previstaPara])).toEqual([["Reconfirmação 1", "2026-01-10"], ["Reconfirmação 2", "2026-01-22"]]);
   });
+});
+it("decisão operacional da demanda prevalece no planner sem alterar prazo da regra", async () => {
+ const f = fonte(); f.leitor.tarefaProtocolo.findMany.mockResolvedValue([]);
+ const demanda = { ...f.demanda, decisaoOperacional: { id: uid(80), tipo: "REAGENDAR", data: dia("2026-01-28"), destino: "Visita", motivo: "Revisão explícita" } };
+ f.leitor.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda]);
+ const r = await consultarPlannerTx(f.tx, consulta, true);
+ expect(r.grupos[0].previstaPara).toBe("2026-01-28"); expect(demanda.previstaPara).toEqual(dia("2026-01-10"));
+});
+it("dispensa residual deixa de aparecer no planner sem alterar tarefa factual", async () => {
+ const f = fonte(); f.leitor.tarefaProtocolo.findMany.mockResolvedValue([]);
+ f.leitor.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{ ...f.demanda, decisaoOperacional: { id: uid(80), tipo: "DISPENSAR", data: null, destino: null, motivo: "Dispensa explícita" } }]);
+ const r = await consultarPlannerTx(f.tx, consulta, true); expect(r.totais.procedimentos).toBe(0);
 });

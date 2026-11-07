@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 import { z } from "zod";
 import { revisaoRetroativaSchema } from "./automacao.schemas.js";
 import { Prisma } from "@prisma/client";
@@ -34,9 +35,12 @@ async function autorizarTx(tx: Tx, usuarioId: number) {
   return usuario;
 }
 async function contextoTx(tx: Tx, input: Entrada) {
+  const referencia = await tx.participacaoProtocolo.findFirst({ where: { id: input.participacaoId, propriedadeId: input.propriedadeId }, select: { animalId: true } });
+  if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Participação reprodutiva não encontrada neste sítio");
+  await travarAnimais(tx, [referencia.animalId]);
   const participacao = await tx.participacaoProtocolo.findFirst({ where: { id: input.participacaoId, propriedadeId: input.propriedadeId }, include: { rodada: true, protocolo: true } });
   if (!participacao || participacao.protocolo.tipo !== "REPRODUTIVO") throw new RebanhoError("NAO_ENCONTRADO", "Participação reprodutiva não encontrada neste sítio");
-  await travarAnimais(tx, [participacao.animalId]);
+  if (participacao.bloqueadaEm) throw new RebanhoError("CONFLITO", "Participação bloqueada por impacto; registre revisão explícita antes da automação");
   if (participacao.canceladaEm || (participacao.rodada && participacao.rodada.status !== "ABERTA")) throw new RebanhoError("CONFLITO", "Participação encerrada");
   const tarefas = await tx.tarefaProtocolo.findMany({ where: { execucaoId: participacao.id }, include: { etapa: true }, orderBy: { etapa: { ordem: "asc" } } });
   const selecionadas = tarefas.filter(t => { const m = t.momentoSnapshot as Record<string, unknown> | null; return m?.id === input.momentoId; });
@@ -286,6 +290,7 @@ export async function registrarExcecaoAutomacaoTx(tx: Tx, id: string, entrada: u
       }
       const salva = await tx.automacaoProtocolo.update({ where: { id }, data: { estado: job.executadaEm ? (input.reversoes.length ? "REVERTIDA" : job.estado) : "CANCELADA", erro: input.motivo } });
       await auditar(tx, { entidade: "AutomacaoProtocolo", entidadeId: id, animalId: ref.participacao.animalId, propriedadeId: input.propriedadeId, usuarioId, acao: "EXCECAO_AUTOMACAO", antes: job, depois: { ...salva, reversoes: input.reversoes, retirarDoProtocolo: input.retirarDoProtocolo } });
+      await reconciliarAlertasReprodutivosAnimalTx(tx,ref.participacao.animalId,usuarioId);
       return { id, estado: salva.estado, participacaoRetirada: input.retirarDoProtocolo };
     });
 }

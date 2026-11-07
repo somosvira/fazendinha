@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import { dadosClinicosIniciais, montarItemClinico, animaisIndicadosParaIatf } from "./clinica-form";
 import type { TarefaOperacional } from "./api";
 import type { ItemClinico } from "./clinica-api";
+import type { AvaliacaoContextualInput } from "../reproducao/avaliacao-contextual-api";
 const tarefa = { id:"t", animal:{id:"a",brinco:"123"}, propriedadeId:7, tarefaOrigem:{tipo:"AVALIACAO"} } as TarefaOperacional;
 const avaliacao = () => ({...dadosClinicosIniciais(tarefa),momento:"2026-11-04",tipoExameId:"exame",formato:{tipoResultado:"MULTIPLO" as const,formatoExameHash:"a".repeat(64)},gestacaoId:"gestacao"});
 it("sexagem conhecida exige sexo e preserva inconclusivo sem inventar sexo",()=>{
@@ -31,4 +32,42 @@ it("preparação usa indicadas de todas as páginas e exclui outras decisões/re
 
 it("DG e aptidão seguem independentes no mesmo exame e sem indicação de protocolo", () => {
  expect(montarItemClinico(tarefa,{...avaliacao(),resultado:"NEGATIVO",resultadoAptidao:"APTO",retornoAptidaoEm:"2026-11-12",decisaoIatf:"NAO_INDICAR"})).toMatchObject({resultado:"NEGATIVO",resultadoAptidao:"APTO",retornoAptidaoEm:"2026-11-12",decisaoIatf:"NAO_INDICAR"});
+});
+
+it("avaliação parcial exige item realizado e mantém cuidados sem conclusão selecionada", () => {
+  const base = {
+    ...avaliacao(),
+    resultado: "NAO_AVALIADO",
+    realizadoSemDG: true,
+  };
+  expect(() => montarItemClinico(tarefa, base)).toThrow(
+    /Não atendimento exige justificativa/,
+  );
+  const vazio: AvaliacaoContextualInput = {
+    catalogoId: "catalogo",
+    itens: [{ codigo: "UTERO", estado: "NAO_AVALIADO" }],
+    condutas: [],
+  };
+  expect(() =>
+    montarItemClinico(tarefa, { ...base, avaliacaoContextual: vazio }),
+  ).toThrow(/Não atendimento exige justificativa/);
+  const contexto: AvaliacaoContextualInput = {
+    ...vazio,
+    itens: [{ codigo: "UTERO", estado: "CONCLUSIVO" }],
+  };
+  expect(
+    montarItemClinico(tarefa, {
+      ...base,
+      gestacaoId: "",
+      avaliacaoContextual: contexto,
+      vinculosConclusao: [],
+      resultados: [{ campo: "UTERO", valor: 0 }],
+    }),
+  ).toMatchObject({
+    resultado: "NAO_AVALIADO",
+    realizadoSemDG: true,
+    avaliacaoContextual: contexto,
+    vinculosConclusao: [],
+    resultados: [{ campo: "UTERO", valor: 0 }],
+  });
 });

@@ -22,12 +22,52 @@ import { EsqueletoCalendario, EsqueletoTabela } from "../../../components/Esquel
 export function DemandasAcompanhamento({animalId,propriedadeId,painel,podeLancar,onAvaliar,atualizacao,onMudou,naFicha=false,resumo,proxima}:{naFicha?:boolean;resumo?:ResumoAcompanhamentos|null;proxima?:DemandaAcompanhamento|null;animalId:string;propriedadeId:number;painel:PainelReprodutivo;podeLancar:boolean;onAvaliar:(d:DemandaAcompanhamento)=>void;atualizacao:number;onMudou?:()=>void|Promise<void>}){
  const [demandas,setDemandas]=useState<DemandaAcompanhamento[]>([]),[politicas,setPoliticas]=useState<PoliticaAcompanhamento[]>([]),[politica,setPolitica]=useState(""),[motivo,setMotivo]=useState(""),[erro,setErro]=useState<string|null>(null),[ocupado,setOcupado]=useState(false),[previa,setPrevia]=useState<{revisao:string;propostas:Array<{acao:string;finalidade:string;ocorrencia:number;previstaPara:string;tentativaId?:string|null;gestacaoId?:string|null}>}|null>(null);
  const [visual,setVisual]=useState<"lista"|"calendario">("lista");
+ const demandaUrlLida=useRef("");
  const [agenda,setAgenda]=useState<DemandaAcompanhamento[]|null>(null),[erroAgenda,setErroAgenda]=useState<string|null>(null),[detalhe,setDetalhe]=useState<DemandaAcompanhamento|null>(null);
 
  const [carregando,setCarregando]=useState(true);
  const [planejando,setPlanejando]=useState(false);
  const [pagina,setPagina]=useState(1),[total,setTotal]=useState(0),[estado,setEstado]=useState(""),[finalidade,setFinalidade]=useState(""),[revisaoLista,setRevisaoLista]=useState(0);
  useEffect(()=>{let ativo=true;setAgenda(null);setErroAgenda(null);if(naFicha&&visual==="calendario")void(async()=>{try{const primeira=await listarDemandasAcompanhamento(propriedadeId,animalId,1,estado,finalidade);const itens=[...primeira.itens];for(let pagina=2;pagina<=Math.ceil(primeira.total/primeira.porPagina);pagina++){if(!ativo)return;const proxima=await listarDemandasAcompanhamento(propriedadeId,animalId,pagina,estado,finalidade);itens.push(...proxima.itens);}if(ativo)setAgenda(Array.from(new Map(itens.map(i=>[i.id,i])).values()));}catch(e){if(ativo)setErroAgenda(e instanceof Error?e.message:String(e));}})();return()=>{ativo=false;};},[naFicha,visual,animalId,propriedadeId,estado,finalidade,atualizacao,painel,revisaoLista]);
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("demandaId");
+    const identidade = `${propriedadeId}:${animalId}:${id}`;
+    if (!id || demandaUrlLida.current === identidade) return;
+    let ativo = true;
+    void (async () => {
+      try {
+        const primeira = await listarDemandasAcompanhamento(
+          propriedadeId,
+          animalId,
+          1,
+        );
+        let encontrada = primeira.itens.find((d) => d.id === id);
+        for (
+          let pagina = 2;
+          ativo &&
+          !encontrada &&
+          pagina <= Math.ceil(primeira.total / primeira.porPagina);
+          pagina++
+        )
+          encontrada = (
+            await listarDemandasAcompanhamento(propriedadeId, animalId, pagina)
+          ).itens.find((d) => d.id === id);
+        if (ativo) {
+          demandaUrlLida.current = identidade;
+          if (encontrada) setDetalhe(encontrada);
+          else
+            setErro(
+              "O cuidado deste endereço não está disponível para este animal e sítio.",
+            );
+        }
+      } catch (e) {
+        if (ativo) setErro(e instanceof Error ? e.message : String(e));
+      }
+    })();
+    return () => {
+      ativo = false;
+    };
+  }, [animalId, propriedadeId]);
  const geracaoConsulta=useRef(0);
  const [erroPoliticas,setErroPoliticas]=useState<string|null>(null);
  const geracaoPrevia=useRef(0);

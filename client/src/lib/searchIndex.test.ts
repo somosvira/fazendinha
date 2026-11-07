@@ -105,3 +105,18 @@ it("localiza o fluxo de automação e atendimento coletivo sem executar ações"
   expect(buscar(COMANDOS, "automação").find(c => c.id === "repro-programacoes")?.caminho).toBe("/pecuaria/reproducao?rotina=programacoes");
   expect(buscar(COMANDOS, "atendimento coletivo").map(c => c.id)).toContain("repro-programacoes");
 });
+
+
+it("encontra configurações de reprodução pelos destinos administrativos exatos", () => {
+  const destinos = [
+    ["modelos de protocolos reprodutivos", "/configuracoes/pecuaria/reproducao/protocolos"],
+    ["catálogo avaliação", "/configuracoes/pecuaria/reproducao/avaliacao"],
+    ["alertas operacionais", "/configuracoes/pecuaria/reproducao/alertas"],
+    ["impactos protocolos", "/configuracoes/pecuaria/reproducao/regras-sanitarias"],
+  ];
+  for (const [termo, caminho] of destinos) expect(buscar(COMANDOS, termo).map(c => c.caminho)).toContain(caminho);
+  const modelos = COMANDOS.find(c => c.id === "config-pec-reproducao/protocolos");
+  expect(modelos?.tab).toBe("config");
+  expect(modelos?.acao).not.toBe(true);
+  expect(modelos?.exigeLancamento).not.toBe(true);
+});

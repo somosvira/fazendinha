@@ -42,7 +42,7 @@ import {
   dataOuHorario,
   type CriteriosVisita,
 } from "./schemas.js";
-import { criarAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./registros.js";
+import { criarAvaliacaoTx, prepararAvaliacaoTx, resumirPreviaAvaliacaoTx, dia, erro, obterEstadosReprodutivosTx } from "./registros.js";
 import {
   contextoTarefaTx,
   executarTarefaTx,
@@ -51,6 +51,20 @@ import { avaliarCategoria } from "../rebanho/categoria.calc.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 const json = (v: unknown): Prisma.InputJsonValue =>
   JSON.parse(JSON.stringify(v));
+export function dadosAvaliacaoVisita(bruto: Record<string, unknown>, salvo: Record<string, unknown>, snapshot: Record<string, unknown>, animalId: string, propriedadeId: number, dataVisita: string, chave: string) {
+ if ((bruto.animalId && bruto.animalId !== animalId) || (bruto.propriedadeId && bruto.propriedadeId !== propriedadeId)) erro("Os dados não pertencem ao participante/sítio");
+ const dados: Record<string, unknown> = { ...bruto, chave, animalId, propriedadeId, data: (bruto.data as string | undefined) ?? dataVisita };
+ const acompanhamento=snapshot.acompanhamento as {id:string;finalidade:string;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>}|undefined;
+ if(acompanhamento){
+  if(dados.demandaAcompanhamentoId&&dados.demandaAcompanhamentoId!==acompanhamento.id)erro("A demanda do atendimento foi alterada; refaça a preparação");
+  Object.assign(dados,{demandaAcompanhamentoId:acompanhamento.id,finalidade:acompanhamento.finalidade,tentativaId:acompanhamento.tentativaId,gestacaoId:acompanhamento.gestacaoId});
+  if(acompanhamento.regraSnapshot.tipoExameId)dados.tipoExameId=acompanhamento.regraSnapshot.tipoExameId;
+ }
+ const tipoExameId=typeof dados.tipoExameId==="string"?dados.tipoExameId:TIPO_EXAME_REPRODUTIVO;
+ if(tipoExameId!==TIPO_EXAME_REPRODUTIVO&&(salvo.tipoExameId!==tipoExameId||typeof salvo.formatoExameHash!=="string"))erro("Salve e revise o rascunho deste tipo de exame antes de confirmar", "tipoExameId");
+ const { status: _status, dados: _procedimento, inicioEfetivo: _inicio, realizadaEm: _realizada, ...clinicos }=dados;
+ return avaliacaoSchema.parse({ ...clinicos, ...(salvo.tipoExameId===tipoExameId?{formatoExameHash:salvo.formatoExameHash}:{}) });
+}
 function chaveEventoVisita(chave:string,participanteId:string){const h=hashDados({chave,participanteId});return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-8${h.slice(17,20)}-${h.slice(20,32)}`;}
 async function visitaTx(
   tx: Prisma.TransactionClient,
@@ -406,7 +420,18 @@ export async function confirmarAtividadeTx(
       "CONFIRMACAO_VISITA",
       async () => {
         if (v.encerradaEm) erro("Visita encerrada não recebe confirmações");
-        if (input.cienciaAlteracoes) {
+        const contextoAvaliacoes = input.itens.some(item => {
+          const participante = participantes.find(p => p.id === item.participanteId)!;
+          const bruto = item.dados ?? (participante.rascunho as Record<string,unknown>);
+          return item.status === "CONFIRMADO" && !!bruto.avaliacaoContextual;
+        });
+        if (contextoAvaliacoes) for (const item of input.itens) {
+          const participante = participantes.find(p => p.id === item.participanteId)!;
+          const salvo = participante.rascunho as Record<string,unknown>;
+          if (item.status === "CONFIRMADO" && (item.dados?.avaliacaoContextual || salvo.avaliacaoContextual) && item.dados && hashDados(item.dados) !== hashDados(salvo))
+            erro("Salve o rascunho contextual e gere nova prévia antes de confirmar", "fingerprintPrevia");
+        }
+        if (input.cienciaAlteracoes || contextoAvaliacoes) {
           const atual = await previaAtividadeTx(
             tx,
             id,
@@ -524,21 +549,10 @@ export async function confirmarAtividadeTx(
               fatoTipo=atividade.tipo==="TAREFA_IATF"?"TarefaIatf":protocoloFeito.tipo==="APLICACAO"?"AplicacaoProduto":"ExameAnimal";
             } else if (atividade.tipo === "AVALIACAO_REPRODUTIVA") {
               const salvo = p.rascunho as Record<string, unknown>;
-              const acompanhamento=(p.snapshot as Record<string,unknown>).acompanhamento as {id:string;finalidade:string;tentativaId:string|null;gestacaoId:string|null;regraSnapshot:Record<string,unknown>}|undefined;
-              if(acompanhamento){
-                if(dados.demandaAcompanhamentoId&&dados.demandaAcompanhamentoId!==acompanhamento.id)erro("A demanda do atendimento foi alterada; refaça a preparação");
-                Object.assign(dados,{demandaAcompanhamentoId:acompanhamento.id,finalidade:acompanhamento.finalidade,tentativaId:acompanhamento.tentativaId,gestacaoId:acompanhamento.gestacaoId});
-                if(acompanhamento.regraSnapshot.tipoExameId)dados.tipoExameId=acompanhamento.regraSnapshot.tipoExameId;
-              }
-              const tipoExameId = typeof dados.tipoExameId === "string" ? dados.tipoExameId : TIPO_EXAME_REPRODUTIVO;
-              if (tipoExameId !== TIPO_EXAME_REPRODUTIVO && (salvo.tipoExameId !== tipoExameId || typeof salvo.formatoExameHash !== "string"))
-                erro("Salve e revise o rascunho deste tipo de exame antes de confirmar", "tipoExameId");
-              const { status: _status, dados: _procedimento, inicioEfetivo: _inicio, realizadaEm: _realizada, ...clinicos } = dados;
-              fato = await criarAvaliacaoTx(
-                tx,
-                avaliacaoSchema.parse({ ...clinicos, ...(salvo.tipoExameId === tipoExameId ? { formatoExameHash: salvo.formatoExameHash } : {}) }),
-                usuarioId,
-              );
+              const avaliacao = dadosAvaliacaoVisita(bruto, salvo, p.snapshot as Record<string,unknown>, p.animalId, input.propriedadeId, v.data.toISOString().slice(0,10), input.chave);
+              const preparada = avaliacao.avaliacaoContextual ? await prepararAvaliacaoTx(tx, avaliacao, usuarioId) : null;
+              const previa = preparada ? await resumirPreviaAvaliacaoTx(tx, avaliacao, preparada) : null;
+              fato = await criarAvaliacaoTx(tx, previa ? { ...avaliacao, revisaoContextual: previa.revisao } : avaliacao, usuarioId);
               fatoTipo = "AvaliacaoReprodutiva";
             } else if (atividade.tipo === "APLICACAO_SANITARIA") {
               fato = await criarAplicacaoTx(
@@ -926,21 +940,38 @@ async function previaAtividadeTx(
     where: { atividadeId, status: { not: "CONFIRMADO" },...(filtros.participanteIds?{id:{in:filtros.participanteIds}}:{}) },
     orderBy: { ordem: "asc" },
   });
-  const linhas = await Promise.all(
-    participantes.map(async (p) => ({
-      participanteId: p.id,
-      animalId: p.animalId,
-      ...(await compararSnapshotTx(tx, p, v.data, propriedadeId)),
-    })),
-  );
+  if (participantes.some(p => !!(p.rascunho as Record<string,unknown>).avaliacaoContextual)) {
+    await travarAnimais(tx, participantes.map(p => p.animalId));
+    await travarTiposExame(tx, participantes.flatMap(p => {
+      const dados=p.rascunho as Record<string,unknown>;
+      return dados.avaliacaoContextual && typeof dados.tipoExameId === "string" ? [dados.tipoExameId] : [];
+    }));
+  }
+  const linhas = [];
+  for (const p of participantes) {
+    const linha = { participanteId:p.id, animalId:p.animalId, ...(await compararSnapshotTx(tx,p,v.data,propriedadeId)) };
+    const rascunho=p.rascunho as Record<string,unknown>;
+    if (atividade.tipo === "AVALIACAO_REPRODUTIVA" && !p.tarefaId && rascunho.avaliacaoContextual) {
+      try {
+        const dados=dadosAvaliacaoVisita(rascunho,rascunho,p.snapshot as Record<string,unknown>,p.animalId,propriedadeId,v.data.toISOString().slice(0,10),p.id);
+        const preparada=await prepararAvaliacaoTx(tx,dados,null);
+        linhas.push({...linha,avaliacaoContextual:{estado:"CONFERIDA" as const,...await resumirPreviaAvaliacaoTx(tx,dados,preparada)}});
+      } catch(e) {
+        if(!(e instanceof RebanhoError)&&!(e instanceof z.ZodError))throw e;
+        linhas.push({...linha,avaliacaoContextual:{estado:"DADOS_PENDENTES" as const,erro:e instanceof z.ZodError?e.issues[0]?.message??"Complete a avaliação":e.message}});
+      }
+    } else linhas.push(linha);
+  }
+  const paginaAvaliacoes=Math.min(filtros.pagina,Math.max(1,Math.ceil(participantes.length/filtros.porPagina)));
+  const tarefasPagina=new Set(participantes.slice((paginaAvaliacoes-1)*filtros.porPagina,paginaAvaliacoes*filtros.porPagina).flatMap(p=>p.tarefaId?[p.tarefaId]:[]));
   const vinculados=participantes.filter(p=>p.tarefaId);
-  let execucaoProtocolos:{estado:"CONFERIDA"|"DADOS_PENDENTES";fingerprint?:string;consumos?:unknown[];totalConsumos?:number;paginaConsumos?:number;porPaginaConsumos?:number;erro?:string}|null=null;
+  let execucaoProtocolos:{estado:"CONFERIDA"|"DADOS_PENDENTES";fingerprint?:string;consumos?:unknown[];avaliacoes?:unknown[];totalConsumos?:number;paginaConsumos?:number;porPaginaConsumos?:number;erro?:string}|null=null;
   if(vinculados.length){
     try{
       if(vinculados.length>100)throw new RebanhoError("VALIDACAO","Escolha até cem participantes para uma confirmação única");
       const preparada=await prepararProtocolosVisitaTx(tx,atividade.tipo,vinculados.map(p=>({participanteId:p.id,animalId:p.animalId,tarefaId:p.tarefaId!,dados:p.rascunho as Record<string,unknown>})),propriedadeId,v.data.toISOString().slice(0,10));
       const totalConsumos=preparada?.consumos.length??0,paginaConsumos=Math.min(filtros.paginaConsumos,Math.max(1,Math.ceil(totalConsumos/10)));
-      execucaoProtocolos={estado:"CONFERIDA",fingerprint:preparada?.fingerprint,consumos:preparada?.consumos.slice((paginaConsumos-1)*10,paginaConsumos*10)??[],totalConsumos,paginaConsumos,porPaginaConsumos:10};
+      execucaoProtocolos={estado:"CONFERIDA",fingerprint:preparada?.fingerprint,consumos:preparada?.consumos.slice((paginaConsumos-1)*10,paginaConsumos*10)??[],avaliacoes:preparada?.preparados.flatMap(g=>g.preparada.itens.flatMap(i=>tarefasPagina.has(i.tarefaId) && "avaliacaoContextual" in i && i.avaliacaoContextual ? [{tarefaId:i.tarefaId,animalId:i.animalId,...i.avaliacaoContextual}] : []))??[],totalConsumos,paginaConsumos,porPaginaConsumos:10};
     }catch(e){if(!(e instanceof RebanhoError)&&!(e instanceof z.ZodError))throw e;execucaoProtocolos={estado:"DADOS_PENDENTES",erro:e instanceof z.ZodError?e.issues[0]?.message??"Complete os dados de execução":e.message};}
   }
   const total=linhas.length,pagina=Math.min(filtros.pagina,Math.max(1,Math.ceil(total/filtros.porPagina)));

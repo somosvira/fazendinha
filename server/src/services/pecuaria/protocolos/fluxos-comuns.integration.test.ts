@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { paginaSubstitutosTarefa } from "./substitutos.js";
 import { criarRodada } from "../sanidade/rodadas.js";
@@ -39,6 +40,7 @@ const campos: CampoExame[] = [
 // Fixtures exclusivas; nenhuma alteração no catálogo global, seed ou banco auxiliar.
 afterAll(async () => {
   if (!sitio) return;
+  await limparAlertasReprodutivosFixtureTx(prisma, animais);
   await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: [sitio, ...sitiosExtras] } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: sitio }, { animalId: { in: animais } }, { entidadeId: { in: [...tipos, ...protocolos] } }] } });

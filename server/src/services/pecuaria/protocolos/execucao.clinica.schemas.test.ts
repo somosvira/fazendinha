@@ -20,5 +20,6 @@ describe("contratos clínicos da execução comum", () => {
     expect(avaliacaoProtocoloSchema.safeParse(avaliacao).success).toBe(false);
     expect(avaliacaoProtocoloSchema.safeParse({ ...avaliacao, resultado: "NAO_AVALIADO" }).success).toBe(false);
     expect(avaliacaoProtocoloSchema.parse({ ...avaliacao, resultado: "INCONCLUSIVO" }).resultado).toBe("INCONCLUSIVO");
+    expect(avaliacaoProtocoloSchema.parse({ ...avaliacao, resultado:"NAO_AVALIADO", realizadoSemDG:true, avaliacaoContextual:{catalogoId:id,itens:[{codigo:"APTIDAO",estado:"CONCLUSIVO"}],condutas:[]} }).resultado).toBe("NAO_AVALIADO");
   });
 });

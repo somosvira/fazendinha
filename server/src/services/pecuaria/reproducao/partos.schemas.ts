@@ -1,3 +1,4 @@
+import { confirmacaoImpactoSchema } from "./impactos.schemas.js";
 import { z } from "zod";
 
 const uuid = z.string().uuid();
@@ -7,7 +8,7 @@ const texto = z.string().trim().max(1000).nullish();
 const peso = z.number().positive().max(99999);
 export const ocorrenciaRetencaoSchema = z.discriminatedUnion("acao", [
   z.object({ acao: z.literal("VINCULAR"), ocorrenciaId: uuid }).strict(),
-  z.object({ acao: z.literal("CRIAR"), doencaId: uuid, inicio: data, observacao: texto }).strict(),
+  z.object({ acao: z.literal("CRIAR"), impacto:confirmacaoImpactoSchema.optional(), doencaId: uuid, inicio: data, observacao: texto }).strict(),
   z.object({ acao: z.literal("DESVINCULAR"), ocorrenciaId: uuid, motivo }).strict(),
 ]);
 export const pesoPartoSchema = z.discriminatedUnion("acao", [

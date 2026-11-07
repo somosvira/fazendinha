@@ -1,3 +1,7 @@
+import { listarEtapasDoDia, etapasDoDiaSchema } from "../../services/pecuaria/protocolos/etapas-do-dia.js";
+import { estimarModelo, estimativaModeloSchema } from "../../services/pecuaria/custos/estimativa-modelo.js";
+import { consultarResultadosProtocolo, consultaResultadosSchema } from "../../services/pecuaria/protocolos/resultados.js";
+import { listarTentativasCandidatas, vincularTentativaParticipacao, revogarTentativaParticipacao, vincularTentativaParticipacaoSchema, revogarTentativaParticipacaoSchema } from "../../services/pecuaria/protocolos/tentativa-participacao.js";
 import { previaProgramacaoSchema, preverProgramacaoColetiva } from "../../services/pecuaria/protocolos/previa-programacao.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
 import { preverExcecaoAutomacao, obterPreparacaoAutomacao, listarLembretesAutomacoes, preverAutomacoesAdesao, previaAutomacoesAdesaoSchema, ativarAutomacao, ativarAutomacaoSchema, listarAutomacoes, revisarAutomacao, revisarAutomacaoSchema, registrarExcecaoAutomacao, excecaoAutomacaoSchema } from "../../services/pecuaria/protocolos/automacao.js";
@@ -32,7 +36,7 @@ const participacaoSchema = z.object({
   alertaId: uuid.optional(), alertaRevisao: z.number().int().positive().optional(), confirmarCuidadoAlerta: z.literal(true).optional(),
   chave: uuid, propriedadeId: z.number().int().positive().max(2147483647),
   tipo: z.enum(["SANITARIO", "REPRODUTIVO"]), protocoloId: uuid, animalId: uuid,
-  inicioReferencia: z.union([z.string().date(), z.string().datetime({ offset: true })]),
+  inicioReferencia: z.union([z.string().date(), z.string().datetime({ offset: true })]), diagnosticoIndividualEm: z.string().date().optional(),
   cienciaSanitaria: z.boolean().optional(), confirmarSobreposicao: z.boolean().optional(),
   justificativaSobreposicao: z.string().trim().min(5).max(1000).optional(),
 }).strict();
@@ -62,6 +66,13 @@ export const protocolosOperacaoRouter = new Hono().use("*", async (c, next) => {
   await next();
 });
 
+protocolosOperacaoRouter.get("/etapas-do-dia", async c => {
+  try {
+    const { propriedadeId: _sitio, ...filtros } = c.req.query();
+    const f = etapasDoDiaSchema.parse(filtros);
+    return c.json(await listarEtapasDoDia(await resolverEscopoLeitura(c), f));
+  } catch (e) { return falha(c, e); }
+});
 protocolosOperacaoRouter.get("/origens-fato", async c => {
   try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); return c.json(await consultas.listarOrigensFatoOperacao(await resolverEscopoLeitura(c), consultaOrigensFatoOperacaoSchema.parse(filtros))); } catch (e) { return falha(c, e); }
 });
@@ -99,6 +110,7 @@ for (const familia of ["programacoes", "participacoes"] as const) {
   protocolosOperacaoRouter.get(`/${familia}/:id/automacoes`, async c => {
     try { return c.json(await listarAutomacoes(await resolverEscopoEscrita(c), contexto(c))); } catch (e) { return falha(c, e); }
   });
+  protocolosOperacaoRouter.get(`/${familia}/:id/resultados`, async c=>{try{const {propriedadeId:_sitio,...f}=c.req.query();return c.json(await consultarResultadosProtocolo(contexto(c),await resolverEscopoLeitura(c),consultaResultadosSchema.parse(f)));}catch(e){return falha(c,e);}});
   protocolosOperacaoRouter.get(`/${familia}/:id/momentos`, async c => {
     try { return c.json(await consultas.listarMomentosOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c))); } catch(e) { return falha(c,e); }
   });
@@ -247,3 +259,9 @@ protocolosOperacaoRouter.post("/programacoes/previa", async c => {
     return c.json(await preverProgramacaoColetiva({ ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }));
   } catch (e) { return falha(c, e); }
 });
+
+protocolosOperacaoRouter.get("/participacoes/:id/tentativas-candidatas",async c=>{try{const f=paginaExecucaoSchema.parse({pagina:c.req.query("pagina"),porPagina:c.req.query("porPagina")});if(!(c.req.header("X-Propriedade-Id")??c.req.query("propriedadeId")))throw new RebanhoError("VALIDACAO","Selecione o sítio da participação");const sitio=await resolverEscopoLeitura(c);if(sitio==null)throw new RebanhoError("VALIDACAO","Selecione o sítio da participação");return c.json(await listarTentativasCandidatas(uuid.parse(c.req.param("id")),sitio,f.pagina));}catch(e){return falha(c,e);}});
+protocolosOperacaoRouter.post("/participacoes/:id/tentativa-externa",async c=>{try{const ator=usuarioId(c);if(!ator)return c.json({error:"Sessão de usuário necessária",code:"SEM_PERMISSAO"},403);const i=vincularTentativaParticipacaoSchema.parse(await c.req.json());return c.json(await vincularTentativaParticipacao(uuid.parse(c.req.param("id")),{...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)},ator),201);}catch(e){return falha(c,e);}});
+protocolosOperacaoRouter.post("/vinculos-tentativa/:id/revogacao",async c=>{try{const ator=usuarioId(c);if(!ator)return c.json({error:"Sessão de usuário necessária",code:"SEM_PERMISSAO"},403);const i=revogarTentativaParticipacaoSchema.parse(await c.req.json());return c.json(await revogarTentativaParticipacao(uuid.parse(c.req.param("id")),{...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)},ator));}catch(e){return falha(c,e);}});
+
+protocolosOperacaoRouter.post("/modelos/estimativa",async c=>{try{if(!podeVerValoresFinanceiros(getUsuario(c)??null))return c.json({error:"Permissão financeira para consultar valores necessária",code:"SEM_PERMISSAO"},403);const i=estimativaModeloSchema.parse(await c.req.json());return c.json(await estimarModelo({...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)}));}catch(e){return falha(c,e);}});

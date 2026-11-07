@@ -1,3 +1,5 @@
+import { AvaliacaoContextualCampos, type DadosFormularioContextual } from "../reproducao/AvaliacaoContextualCampos";
+import { contextoAvaliacao } from "../reproducao/avaliacao-contextual-api";
 import { DatePicker } from "../../../components/DatePicker";
 import { AjudaCampo } from "../../../components/Dica";
 import { CamposAptidao } from "../reproducao/CamposAptidao";
@@ -25,23 +27,241 @@ export function CamposTentativaClinica({ tarefa: t, dados: d, onChange, identifi
 
   </div>;
 }
-export function CamposAvaliacaoClinica({ tarefa: t, dados: d, onChange }: Props) {
+export function CamposAvaliacaoClinica({
+  tarefa: t,
+  dados: d,
+  onChange,
+}: Props) {
   const rotulo = (v: string) => `${v} · ${t.animal.brinco}`;
-  return <div className="grid gap-3">
-    <label>{rotulo("Resultado da avaliação")}<SelectCampo className={classeInput} value={d.resultado} onValueChange={valor => onChange({ resultado: valor, finalidade: valor === "SEXAGEM" ? "SEXAGEM" : valor === "RECONFIRMACAO" ? "RECONFIRMACAO" : valor === "INCONCLUSIVO" ? d.finalidade : "DIAGNOSTICO", decisaoIatf: null, ...(valor === "NEGATIVO" ? { sexoFetal: "" } : {}) })}><option value="">Informe o resultado observado</option><option value="POSITIVO">Gestação confirmada</option><option value="NEGATIVO">Gestação não confirmada</option><option value="INCONCLUSIVO">Inconclusivo</option><option value="RECONFIRMACAO">Gestação conhecida reconfirmada</option><option value="SEXAGEM">Sexagem de gestação conhecida</option></SelectCampo></label>
-    {d.resultado === "NEGATIVO" && <section className="grid gap-3 rounded-lg border border-border p-4"><label>{rotulo("Indicação para nova IATF")}<SelectCampo className={classeInput} value={d.decisaoIatf ?? ""} onValueChange={valor => onChange({ decisaoIatf: (valor || null) as DadosClinicos["decisaoIatf"] })}><option value="">Decidir depois</option><option value="INDICAR">Indicar para nova IATF</option><option value="NAO_INDICAR">Não indicar neste atendimento</option></SelectCampo></label><p className="text-sm text-ink-3">A indicação será registrada com o diagnóstico. A inclusão em outro protocolo exige preparação e confirmação próprias; o resultado negativo não inicia uma IATF.</p></section>}
-    <label>{rotulo("Finalidade do exame")}<SelectCampo className={classeInput} value={d.finalidade} onValueChange={valor => onChange({ finalidade: valor as DadosClinicos["finalidade"], resultado: d.resultado === "INCONCLUSIVO" ? "INCONCLUSIVO" : valor === "SEXAGEM" ? "SEXAGEM" : valor === "RECONFIRMACAO" && ["POSITIVO", "SEXAGEM", "RECONFIRMACAO"].includes(d.resultado) ? "RECONFIRMACAO" : ["SEXAGEM", "RECONFIRMACAO"].includes(d.resultado) ? "POSITIVO" : d.resultado, decisaoIatf: null })}><option value="DIAGNOSTICO">Diagnóstico</option><option value="RECONFIRMACAO">Reconfirmação</option><option value="SEXAGEM">Sexagem</option></SelectCampo></label>
-    {d.formato?.campos && <CamposResultadoExame campos={d.formato.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={d.resultados} onChange={resultados => onChange({ resultados })} />}
-    <SeletorClinico tarefaId={t.id} propriedadeId={t.propriedadeId} opcao="TENTATIVA" rotulo={rotulo("tentativa de origem")} valor={d.tentativaId} onChange={tentativaId => onChange({ tentativaId })} />
-    <SeletorClinico tarefaId={t.id} propriedadeId={t.propriedadeId} opcao="GESTACAO" rotulo={rotulo("gestação conhecida")} valor={d.gestacaoId} onChange={gestacaoId => onChange({ gestacaoId })} />
-    <label>{rotulo("Motivo de vínculo desconhecido, se necessário")}<textarea className={classeInput} minLength={5} maxLength={1000} value={d.motivoVinculoDesconhecido} onChange={e => onChange({ motivoVinculoDesconhecido: e.target.value })} /></label>
-    {d.resultado !== "NEGATIVO" && <label>{rotulo("Sexo fetal observado")}<SelectCampo className={classeInput} value={d.sexoFetal} onValueChange={valor => onChange({ sexoFetal: valor })}><option value="">Não informado</option><option value="F">Fêmea</option><option value="M">Macho</option></SelectCampo></label>}
-    <label>{rotulo("Retorno definido pelo responsável (opcional)")}<DatePicker className="mt-1.5" value={d.retornoEm} onChange={valor => onChange({ retornoEm: valor })} /></label>
-    <label>{rotulo("Previsão de parto informada (opcional)")}<DatePicker className="mt-1.5" value={d.previsaoParto} onChange={valor => onChange({ previsaoParto: valor })} /></label>
-    {d.resultado === "INCONCLUSIVO" && <p className="text-sm">O exame inconclusivo permanece como fato. Acompanhamento e nova avaliação preservam esse histórico.</p>}
-    <CamposAptidao dados={d} onChange={onChange}/>
-    <ReavaliacaoClinica tarefa={t} dados={d} onChange={onChange} />
-  </div>;
+  const mudarContextuais = (patch: Partial<DadosFormularioContextual>) => {
+    const { sexoFetal, finalidade, ...resto } = patch;
+    onChange({
+      ...resto,
+      ...(sexoFetal !== undefined ? { sexoFetal: sexoFetal ?? "" } : {}),
+      ...(finalidade !== undefined
+        ? { finalidade: finalidade as DadosClinicos["finalidade"] }
+        : {}),
+      ...(patch.avaliacaoContextual && !d.avaliacaoContextual
+        ? { decisaoIatf: null, retornoEm: "" }
+        : {}),
+    });
+  };
+  const acompanhamento = (t as TarefaClinica).acompanhamento;
+  const necessidades =
+    acompanhamento?.estado === "PENDENTE" ? [acompanhamento] : [];
+  async function adotarTipo(id: string) {
+    if (id === d.tipoExameId && d.formato?.formatoExameHash) return;
+    const pagina = await obterOpcoesClinicas(
+      t.id,
+      t.propriedadeId,
+      "TIPO_EXAME",
+      1,
+      "",
+      id,
+    );
+    const tipo = pagina.itens.find((v) => v.id === id);
+    if (!tipo?.formatoExameHash)
+      throw new Error(
+        "O tipo de exame do catálogo não está disponível para esta tarefa.",
+      );
+    onChange({
+      tipoExameId: id,
+      formato: {
+        tipoResultado: tipo.tipoResultado ?? "MULTIPLO",
+        campos: tipo.campos,
+        versaoFormato: tipo.versaoFormato,
+        formatoExameHash: tipo.formatoExameHash,
+      },
+    });
+  }
+  return (
+    <div className="grid gap-3">
+      <AvaliacaoContextualCampos
+        propriedadeId={t.propriedadeId}
+        contexto={contextoAvaliacao({
+          gestacaoId: d.gestacaoId,
+          tentativaId: d.tentativaId,
+        })}
+        dados={d}
+        campos={d.formato?.campos ?? []}
+        necessidades={necessidades}
+        onChange={mudarContextuais}
+        onTipoExame={adotarTipo}
+        identificacao={t.animal.brinco}
+      />
+      {!d.avaliacaoContextual && (
+        <>
+          <label>
+            {rotulo("Resultado da avaliação")}
+            <SelectCampo
+              className={classeInput}
+              value={d.resultado}
+              onValueChange={(valor) =>
+                onChange({
+                  resultado: valor,
+                  finalidade:
+                    valor === "SEXAGEM"
+                      ? "SEXAGEM"
+                      : valor === "RECONFIRMACAO"
+                        ? "RECONFIRMACAO"
+                        : valor === "INCONCLUSIVO"
+                          ? d.finalidade
+                          : "DIAGNOSTICO",
+                  decisaoIatf: null,
+                  ...(valor === "NEGATIVO" ? { sexoFetal: "" } : {}),
+                })
+              }
+            >
+              <option value="">Informe o resultado observado</option>
+              <option value="POSITIVO">Gestação confirmada</option>
+              <option value="NEGATIVO">Gestação não confirmada</option>
+              <option value="INCONCLUSIVO">Inconclusivo</option>
+              <option value="RECONFIRMACAO">
+                Gestação conhecida reconfirmada
+              </option>
+              <option value="SEXAGEM">Sexagem de gestação conhecida</option>
+            </SelectCampo>
+          </label>
+          {d.resultado === "NEGATIVO" && (
+            <section className="grid gap-3 rounded-lg border border-border p-4">
+              <label>
+                {rotulo("Indicação para nova IATF")}
+                <SelectCampo
+                  className={classeInput}
+                  value={d.decisaoIatf ?? ""}
+                  onValueChange={(valor) =>
+                    onChange({
+                      decisaoIatf: (valor ||
+                        null) as DadosClinicos["decisaoIatf"],
+                    })
+                  }
+                >
+                  <option value="">Decidir depois</option>
+                  <option value="INDICAR">Indicar para nova IATF</option>
+                  <option value="NAO_INDICAR">
+                    Não indicar neste atendimento
+                  </option>
+                </SelectCampo>
+              </label>
+              <p className="text-sm text-ink-3">
+                A indicação será registrada com o diagnóstico. A inclusão em
+                outro protocolo exige preparação e confirmação próprias; o
+                resultado negativo não inicia uma IATF.
+              </p>
+            </section>
+          )}
+          <label>
+            {rotulo("Finalidade do exame")}
+            <SelectCampo
+              className={classeInput}
+              value={d.finalidade}
+              onValueChange={(valor) =>
+                onChange({
+                  finalidade: valor as DadosClinicos["finalidade"],
+                  resultado:
+                    d.resultado === "INCONCLUSIVO"
+                      ? "INCONCLUSIVO"
+                      : valor === "SEXAGEM"
+                        ? "SEXAGEM"
+                        : valor === "RECONFIRMACAO" &&
+                            ["POSITIVO", "SEXAGEM", "RECONFIRMACAO"].includes(
+                              d.resultado,
+                            )
+                          ? "RECONFIRMACAO"
+                          : ["SEXAGEM", "RECONFIRMACAO"].includes(d.resultado)
+                            ? "POSITIVO"
+                            : d.resultado,
+                  decisaoIatf: null,
+                })
+              }
+            >
+              <option value="DIAGNOSTICO">Diagnóstico</option>
+              <option value="RECONFIRMACAO">Reconfirmação</option>
+              <option value="SEXAGEM">Sexagem</option>
+            </SelectCampo>
+          </label>
+          {d.formato?.campos && (
+            <CamposResultadoExame
+              campos={d.formato.campos.filter(
+                (c) =>
+                  !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo),
+              )}
+              valores={d.resultados}
+              onChange={(resultados) => onChange({ resultados })}
+            />
+          )}
+        </>
+      )}
+      <SeletorClinico
+        tarefaId={t.id}
+        propriedadeId={t.propriedadeId}
+        opcao="TENTATIVA"
+        rotulo={rotulo("tentativa de origem")}
+        valor={d.tentativaId}
+        onChange={(tentativaId) => onChange({ tentativaId })}
+      />
+      <SeletorClinico
+        tarefaId={t.id}
+        propriedadeId={t.propriedadeId}
+        opcao="GESTACAO"
+        rotulo={rotulo("gestação conhecida")}
+        valor={d.gestacaoId}
+        onChange={(gestacaoId) => onChange({ gestacaoId })}
+      />
+      <label>
+        {rotulo("Motivo de vínculo desconhecido, se necessário")}
+        <textarea
+          className={classeInput}
+          minLength={5}
+          maxLength={1000}
+          value={d.motivoVinculoDesconhecido}
+          onChange={(e) =>
+            onChange({ motivoVinculoDesconhecido: e.target.value })
+          }
+        />
+      </label>
+      {!d.avaliacaoContextual && d.resultado !== "NEGATIVO" && (
+        <label>
+          {rotulo("Sexo fetal observado")}
+          <SelectCampo
+            className={classeInput}
+            value={d.sexoFetal}
+            onValueChange={(valor) => onChange({ sexoFetal: valor })}
+          >
+            <option value="">Não informado</option>
+            <option value="F">Fêmea</option>
+            <option value="M">Macho</option>
+          </SelectCampo>
+        </label>
+      )}
+      <label>
+        {rotulo("Retorno definido pelo responsável (opcional)")}
+        <DatePicker
+          className="mt-1.5"
+          value={d.retornoEm}
+          onChange={(valor) => onChange({ retornoEm: valor })}
+        />
+      </label>
+      <label>
+        {rotulo("Previsão de parto informada (opcional)")}
+        <DatePicker
+          className="mt-1.5"
+          value={d.previsaoParto}
+          onChange={(valor) => onChange({ previsaoParto: valor })}
+        />
+      </label>
+      {d.resultado === "INCONCLUSIVO" && (
+        <p className="text-sm">
+          O exame inconclusivo permanece como fato. Acompanhamento e nova
+          avaliação preservam esse histórico.
+        </p>
+      )}
+      {!d.avaliacaoContextual && (
+        <CamposAptidao dados={d} onChange={onChange} />
+      )}
+      <ReavaliacaoClinica tarefa={t} dados={d} onChange={onChange} />
+    </div>
+  );
 }
 function ReavaliacaoClinica({ tarefa, dados, onChange }: Props) {
   const t = tarefa as TarefaClinica;

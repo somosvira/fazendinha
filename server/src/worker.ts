@@ -1,3 +1,4 @@
+import { avaliarAlertasReprodutivos } from "./services/pecuaria/reproducao/alertas/avaliador.js";
 import "./lib/dom-parser-polyfill.js";
 import { app } from "./app.js";
 import { criarPrismaClient, comPrismaPorRequisicao } from "./db.js";
@@ -20,7 +21,7 @@ export default {
     if (controller.cron && Math.floor(controller.scheduledTime / 60_000) % 15 !== 0) return;
     if (env.ALERTAS_CRON_ENABLED) {
       const db = criarPrismaClient();
-      try { await avaliarAlertasTemporais(db, new Date(controller.scheduledTime)); }
+      try { await avaliarAlertasTemporais(db, new Date(controller.scheduledTime)); await avaliarAlertasReprodutivos(db, new Date(controller.scheduledTime)); }
       finally { await db.$disconnect(); }
     }
     if (env.ASSISTENTE_CONSULTA_ENABLED) {
