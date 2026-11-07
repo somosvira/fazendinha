@@ -729,7 +729,7 @@ export function Transcricao({
               ? [...new Set([...anteriores, ...editaveis.map(p => p.id)])]
               : anteriores.filter(id => !editaveis.some(p => p.id === id)))} /></th>
           <CabecalhoContextoVisita />
-          <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
+          <th className="p-3">Resultado do atendimento</th><th className="p-3 text-right">Ações</th>
         </tr></thead>
         <tbody>{itensPagina.map(p => {
           const r = rascunhos[p.id] ?? {};
@@ -743,7 +743,7 @@ export function Transcricao({
           return <Fragment key={p.id}>
             <tr id={`linha-${p.id}`} className="border-b border-border align-top">
               <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`}
-                disabled={bloqueado} checked={selecionados.includes(p.id)}
+                disabled={bloqueado} checked={confirmado(p) || selecionados.includes(p.id)}
                 onChange={e => setSelecionados(anteriores => e.target.checked ? [...new Set([...anteriores, p.id])] : anteriores.filter(id => id !== p.id))} /></td>
               <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
               <td className="visita-resultado"><fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>
@@ -751,7 +751,7 @@ export function Transcricao({
                   administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}}
                   onChange={mudanca=>mudarAvaliacao(p,{...mudanca,status:"CONFIRMADO"})}/>}
               </fieldset>{r.sexoFetal && <small>Sexo fetal: {r.sexoFetal === "F" ? "Fêmea" : "Macho"}</small>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
-              <td className="p-3 min-w-36 space-y-2">
+              <td className="p-3 min-w-36 space-y-2 text-right">
                 <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
                 <p role="status" className="text-sm">{avisos[p.id]}</p>
                 {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
@@ -865,6 +865,12 @@ export function Transcricao({
     <section className="visita-painel visita-transcricao">
       <div className="visita-painel-cabecalho"><div><h2>{tituloAtividade}</h2><p>{lotesAtividadeVisita(atividade)} · {totalParticipantes} animais na lista preparada</p></div><span className="visita-badge">{confirmados} / {totalParticipantes} confirmados</span></div>
       <div className="visita-contexto">{protocoloVisivel !== tituloAtividade && <div><span>Protocolo / seleção</span>{protocoloVisivel}</div>}<div><span>Data do atendimento</span>{visita.data.slice(0,10).split("-").reverse().join("/")}</div>{referenciaVisivel !== tituloAtividade && referenciaVisivel !== protocoloVisivel && <div className="visita-criterio"><span>Referência compartilhada</span>{referenciaVisivel}</div>}</div>
+      {atividade.tipo === "AVALIACAO_REPRODUTIVA" && <dl className="flex flex-wrap gap-x-8 gap-y-3 border-b border-border px-4 py-4" aria-label="Resumo da avaliação">
+        <div><dt className="text-sm text-ink-3">Animais na lista</dt><dd className="font-semibold tabular-nums">{totalParticipantes}</dd></div>
+        <div><dt className="text-sm text-ink-3">Atendimentos confirmados</dt><dd className="font-semibold tabular-nums">{confirmados}</dd></div>
+        <div><dt className="text-sm text-ink-3">Aguardam confirmação</dt><dd className="font-semibold tabular-nums">{Math.max(0, totalParticipantes - confirmados)}</dd></div>
+        <div><dt className="text-sm text-ink-3">Nesta conferência</dt><dd className="font-semibold tabular-nums">{idsConferencia.length}</dd></div>
+      </dl>}
       <div className="visita-aviso suave">{atividade.tipo === "AVALIACAO_REPRODUTIVA" || atividade.participantes.some(ehAvaliacaoTarefa) ? "Conclusão, sexo fetal e conduta são informações distintas. Os complementos aparecem em “Detalhes”." : "O resultado principal fica na linha. Os dados complementares do procedimento ficam em “Detalhes”."}</div>
       <div className="visita-mensagens">
         <ErrorBox erro={erro} />
@@ -941,7 +947,7 @@ export function Transcricao({
         <table className="w-full text-sm consulta-tabela">
           <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
             <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados" disabled={!podeLancar || ocupado || !itens.some(p => !confirmado(p))} checked={itens.filter(p => !confirmado(p)).length > 0 && itens.filter(p => !confirmado(p)).every(p => selecionados.includes(p.id))} onChange={e => setSelecionados(prev => e.target.checked ? [...new Set([...prev, ...itens.filter(p => !confirmado(p)).map(p => p.id)])] : prev.filter(id => !itens.some(p => p.id === id)))} /></th><CabecalhoContextoVisita />
-            <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
+            <th className="p-3">Resultado do atendimento</th><th className="p-3 text-right">Ações</th>
           </tr></thead>
           <tbody>{itensPagina.map(p => {
             const r = rascunhos[p.id] ?? {};
@@ -951,10 +957,10 @@ export function Transcricao({
             const bloqueado = !podeLancar || ocupado || confirmado(p);
             return <Fragment key={p.id}>
               <tr className="border-b border-border align-top" id={`linha-${p.id}`}>
-                <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
+                <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={confirmado(p) || selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
                 <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
                 <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>{r.dados?.avaliacaoContextual?<span>{resultadoPrincipalVisita(atividade.tipo,p,r)??"Avaliação contextual em preenchimento"}</span>:<CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/>}</fieldset> : <SelectCampo aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onValueChange={(valor) =>{atualizar(p,"status",valor);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></SelectCampo>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
-                <td className="p-3 min-w-36 space-y-2">
+                <td className="p-3 min-w-36 space-y-2 text-right">
                   <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
                   <p role="status" className="text-sm">{avisos[p.id]}</p>
                   {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}

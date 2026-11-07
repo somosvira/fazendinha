@@ -428,6 +428,11 @@ export function VisaoGeralReprodutiva({
   ];
   return (
     <div className="repro-visao-geral">
+      <dl className="repro-visao-indicadores" aria-label="Resumo operacional">
+        <div><dt>Atendimentos nas etapas de hoje</dt><dd>{etapasHoje ? etapasHoje.reduce((total, etapa) => total + etapa.atendidos, 0) : "—"}</dd></div>
+        <div><dt>Protocolos e participações abertos</dt><dd>{execucoes ? execucoes.length : "—"}</dd></div>
+        <div><dt>Cuidados em atenção</dt><dd>{alertas?.cobertura.estado === "ATUALIZADA" ? alertas.totaisFiltrados.cuidados : "A conferir"}</dd></div>
+      </dl>
       <div className="repro-visao-secoes">
         <SecaoFicha
           className="repro-visao-painel"

@@ -42,3 +42,9 @@ it("ignora uma resposta de outro sítio",async()=>{
   resolver({...snapshot(anterior),totais:{...snapshot(anterior).totais,taxas:{servico:99,concepcao:99,prenhez:99}}});
   await waitFor(()=>expect(screen.queryByText("99%")).toBeNull());
 });
+
+it("consulta o mês civil escolhido na tela operacional", async () => {
+  render(<ConsultaIndicadoresOperacionais propriedadeId={7}/>);
+  fireEvent.change(screen.getByLabelText("Mês de referência"), {target:{value:"2025-02"}});
+  await waitFor(() => expect(consultarIndicadores).toHaveBeenLastCalledWith(expect.objectContaining({inicio:"2025-02-01",fim:"2025-02-28"})));
+});

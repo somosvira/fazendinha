@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { registrarGuardaNavegacao } from "../../../navegacaoGuardada";
 import { Iatf } from "./Iatf";
 import { PaginaCadastroProtocolo } from "../protocolos/PaginaCadastroProtocolo";
 import { listarCadastrosProtocolos, obterCadastroProtocolo, obterAcoesCadastro, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
@@ -145,4 +146,23 @@ it.each(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const)("publicação valida a f
     expect(document.activeElement).toBe(screen.getByRole("alert").parentElement);
     expect(vi.mocked(reqV4).mock.calls.some(([, body]) => !!body)).toBe(false);
   }
+});
+
+it("preserva detalhes legados quando a guarda do formulário recusa fechar", async () => {
+  vi.clearAllMocks();
+  vi.mocked(reqV4).mockResolvedValue([]);
+  window.history.replaceState(null, "", "/pecuaria/reproducao?programacaoId=um");
+  render(<Iatf animais={[]} podeLancar={false} />);
+  await screen.findByText("Primeira programação");
+  const guarda = vi.fn(async () => false);
+  const remover = registrarGuardaNavegacao(guarda);
+  try {
+    fireEvent.click(screen.getByRole("button", {name: "Fechar detalhes"}));
+    await waitFor(() => expect(guarda).toHaveBeenCalledOnce());
+    expect(screen.getByText("Primeira programação")).toBeTruthy();
+    expect(screen.getByRole("button", {name: "Fechar detalhes"})).toBeTruthy();
+    expect(window.location.search).toContain("programacaoId=um");
+  } finally { remover(); }
+  fireEvent.click(screen.getByRole("button", {name: "Fechar detalhes"}));
+  await waitFor(() => expect(screen.queryByText("Primeira programação")).toBeNull());
 });

@@ -111,7 +111,7 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["sanidade/tipos-exame", "Tipos de exame", "formatos resultados sanidade"], ["sanidade/tipos-aplicacao", "Tipos de aplicação", "vacinas medicamentos sanidade"],
     ["reproducao/protocolos", "Modelos de protocolos reprodutivos", "reprodução protocolos modelos IATF TETF etapas"],
     ["reproducao/politica", "Política reprodutiva e acompanhamento", "reprodução aptidão idade peso PEV prazo diagnóstico reconfirmação"],
-    ["reproducao/avaliacao", "Itens e condutas da avaliação", "reprodução catálogo avaliação exame útero ovários conduta"],
+    ["reproducao/avaliacao", "Campos e encaminhamentos da avaliação", "reprodução catálogo avaliação exame útero ovários conduta"],
     ["reproducao/alertas", "Alertas operacionais da reprodução", "reprodução prazo atenção avaliação encaminhamento preparo"],
     ["reproducao/regras-sanitarias", "Regras sanitárias e impactos em protocolos", "reprodução doença procedimento bloqueio retirada impacto"],
   ].map(([rota, label, termos]) => ({ id: `config-pec-${rota}`, tab: "config" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/configuracoes/pecuaria/${rota}`, sinonimos: termos.split(" ") })),

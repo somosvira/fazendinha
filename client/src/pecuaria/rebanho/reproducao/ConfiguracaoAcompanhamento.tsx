@@ -31,6 +31,7 @@ function ConteudoConfiguracaoAcompanhamento({
   podeLancar,
 }: Props) {
   const [formularioAberto, setFormularioAberto] = useState(false);
+  const [edicao, setEdicao] = useState(0);
   const [inicial, setInicial] = useState<ConfiguracaoAcompanhamentoV2 | null>(
     null,
   );
@@ -62,6 +63,7 @@ function ConteudoConfiguracaoAcompanhamento({
       .then(([p, t]) => {
         if (g === geracao.current) {
           setPoliticas(p);
+          prepararFormulario(p);
           setTipos(t.filter((x) => x.ativo && x.contexto !== "SANITARIO"));
         }
       })
@@ -98,10 +100,10 @@ function ConteudoConfiguracaoAcompanhamento({
       );
       if (g === geracao.current) {
         setPoliticas(p);
-        setFormularioAberto(false);
+        prepararFormulario(p);
         setAlterado(false);
         setMensagem(
-          "Versão registrada. Os fatos e demandas existentes foram preservados; a adoção em casos antigos exige conferência explícita.",
+          "Alterações salvas. Os fatos e demandas existentes foram preservados; a adoção em casos antigos exige conferência explícita.",
         );
       }
     } catch (e) {
@@ -112,6 +114,12 @@ function ConteudoConfiguracaoAcompanhamento({
     }
   }
 
+  function prepararFormulario(lista: PoliticaAcompanhamento[]) {
+    const atual = [...lista].filter(p => p.vigenteDesde.slice(0,10) <= getHojeISO()).sort((a,b) => b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao-a.versao)[0];
+    setInicial(atual?.parametros.versao === 2 ? atual.parametros : null);
+    setFormularioAberto(!atual || atual.parametros.versao === 2);
+    setAlterado(false); setEdicao(e => e + 1);
+  }
   const vigente = [...politicas]
     .filter((p) => p.vigenteDesde.slice(0, 10) <= getHojeISO())
     .sort(
@@ -136,18 +144,7 @@ function ConteudoConfiguracaoAcompanhamento({
             clínico padrão. As regras geram alertas.
           </p>
         </div>
-        {podeLancar && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setInicial(null);
-              setFormularioAberto(true);
-            }}
-          >
-            Nova versão de acompanhamento
-          </Button>
-        )}
+        {podeLancar && vigente?.parametros.versao === 1 && <Button type="button" variant="outline" onClick={() => {setInicial(null); setFormularioAberto(true); setEdicao(e=>e+1);}}>Configurar novos prazos</Button>}
       </div>
       {!formularioAberto && <ErrorBox erro={erro} />}
       {carregando && <EsqueletoFormulario label="Carregando políticas" />}
@@ -156,6 +153,56 @@ function ConteudoConfiguracaoAcompanhamento({
       )}
       {mensagem && <p role="status">{mensagem}</p>}
 
+      {podeLancar && !carregando && formularioAberto && (
+        <ModalPolitica
+          emPagina
+          key={edicao}
+          aberto
+          titulo="Prazos de acompanhamento"
+          bloqueado={ocupado}
+          alteracoesExternas={alterado}
+          onFechar={() => {
+            prepararFormulario(politicas);
+            setAlterado(false);
+            setErro(null);
+          }}
+          rodape={(fechar) => (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={fechar}
+                disabled={ocupado}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                form="nova-politica-acompanhamento"
+                disabled={ocupado || carregando}
+              >
+                {ocupado ? "Salvando…" : "Salvar alterações de acompanhamento"}
+              </Button>
+            </>
+          )}
+        >
+          <ErrorBox erro={erro} />
+          <FormularioAcompanhamento
+            inicial={inicial}
+            visivel
+            propriedadeId={propriedadeId}
+            tipos={tipos}
+            ocupado={ocupado}
+            aoSalvar={salvar}
+            aoAlterar={() => setAlterado(true)}
+            aoErro={(mensagemErro) => {
+              setErro(mensagemErro);
+              setMensagem("");
+            }}
+          />
+        </ModalPolitica>
+      )}
+      <details className="rounded-lg border border-border p-4" open={!podeLancar || !!vigente && vigente.parametros.versao === 1}><summary className="cursor-pointer font-semibold">Histórico dos prazos de acompanhamento</summary>
       {ordenadas.map((p) => (
         <article key={p.id} className="space-y-2 border-t border-border py-3">
           <h3 className="font-semibold">
@@ -234,9 +281,10 @@ function ConteudoConfiguracaoAcompanhamento({
                       ],
                     });
                     setFormularioAberto(true);
+                    setEdicao(e => e + 1);
                   }}
                 >
-                  Criar versão V2 a partir da versão {p.versao}
+                  Editar prazos a partir da versão {p.versao}
                 </Button>
               )}
             </>
@@ -263,59 +311,14 @@ function ConteudoConfiguracaoAcompanhamento({
           )}
         </article>
       ))}
+      </details>
       {podeLancar && !carregando && politicas.length > 0 && (
         <RevisaoPrazosAcompanhamento
           propriedadeId={propriedadeId}
           politicas={ordenadas}
         />
       )}
-      {podeLancar && formularioAberto && (
-        <ModalPolitica
-          aberto
-          titulo="Nova versão de acompanhamento"
-          bloqueado={ocupado}
-          alteracoesExternas={alterado}
-          onFechar={() => {
-            setFormularioAberto(false);
-            setAlterado(false);
-            setErro(null);
-          }}
-          rodape={(fechar) => (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={fechar}
-                disabled={ocupado}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                form="nova-politica-acompanhamento"
-                disabled={ocupado || carregando}
-              >
-                {ocupado ? "Registrando…" : "Registrar nova versão"}
-              </Button>
-            </>
-          )}
-        >
-          <ErrorBox erro={erro} />
-          <FormularioAcompanhamento
-            inicial={inicial}
-            visivel
-            propriedadeId={propriedadeId}
-            tipos={tipos}
-            ocupado={ocupado}
-            aoSalvar={salvar}
-            aoAlterar={() => setAlterado(true)}
-            aoErro={(mensagemErro) => {
-              setErro(mensagemErro);
-              setMensagem("");
-            }}
-          />
-        </ModalPolitica>
-      )}
+
     </section>
   );
 }

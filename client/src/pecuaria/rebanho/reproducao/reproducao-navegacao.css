@@ -8,7 +8,7 @@
   max-width: 100%;
   height: auto;
   min-height: 0;
-  gap: 4px;
+  gap: 24px;
   padding: 0;
   margin-bottom: 0;
   overflow-x: auto;
@@ -32,13 +32,13 @@
   height: auto;
   min-height: 48px;
   max-width: 100%;
-  padding: 12px 20px;
+  padding: 12px 0;
   margin: 0 0 -1px;
-  border: 1px solid var(--border);
-  border-radius: 8px 8px 0 0;
-  background: var(--muted);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--muted-foreground);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
   white-space: nowrap;
@@ -52,12 +52,12 @@
 :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected="false"]:hover { background: var(--fin-nav-hover, var(--accent)); color: var(--foreground); }
 :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] {
   z-index: 1;
-  border-bottom-color: var(--card);
-  background: var(--card);
+  border-bottom: 3px solid var(--primary);
+  background: transparent;
   color: var(--primary);
   font-weight: 650;
 }
-:root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"]::after { display: block; content: ""; position: absolute; inset: auto 0 -2px; height: 2px; background: var(--card); }
+:root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"]::after { display: block; content: ""; position: absolute; inset: auto 0 -2px; height: 0; background: transparent; }
 :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { z-index: 2; outline: 2px solid var(--ring); outline-offset: -4px; }
 :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected]:disabled { cursor: not-allowed; opacity: .5; }
 
@@ -67,7 +67,7 @@
 .reproducao-v4 .reproducao-comandos { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 8px; }
 :root .app-main .reproducao-v4 > .abas-superficie { padding: 20px 0 0; background: transparent; border: 0; }
 @media (max-width: 1100px) {
-  :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected] { padding: 10px 12px; font-size: 14px; min-height: 44px; }
+  :root .app-main .reproducao-v4 [role="tablist"].abas-pasta > [role="tab"][aria-selected] { padding: 10px 0; font-size: 14px; min-height: 44px; }
   .reproducao-v4 .reproducao-comandos { gap: 6px; }
   .reproducao-v4 .reproducao-comandos button { font-size: 13px; padding: 8px 10px; }
 }

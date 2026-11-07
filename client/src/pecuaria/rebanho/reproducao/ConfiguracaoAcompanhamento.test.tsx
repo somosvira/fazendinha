@@ -51,7 +51,7 @@ const submit = () =>
   fireEvent.submit(
     (
       screen.getByRole("button", {
-        name: "Registrar nova versão",
+        name: "Salvar alterações de acompanhamento",
       }) as HTMLButtonElement
     ).form!,
   );
@@ -64,7 +64,7 @@ describe("política de acompanhamento V2", () => {
     ).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", {
-        name: "Criar versão V2 a partir da versão 1",
+        name: "Editar prazos a partir da versão 1",
       }),
     );
     expect(
@@ -94,7 +94,7 @@ describe("política de acompanhamento V2", () => {
     render(<ConfiguracaoAcompanhamento propriedadeId={7} podeLancar />);
     await screen.findByText(/Formato histórico V1/);
     fireEvent.click(
-      screen.getByRole("button", { name: "Nova versão de acompanhamento" }),
+      screen.getByRole("button", { name: "Configurar novos prazos" }),
     );
     mudarCampo(screen.getByLabelText("Vigente desde"), {
       target: { value: "2026-11-09" },
@@ -124,7 +124,7 @@ describe("política de acompanhamento V2", () => {
       7,
     ]);
     submit();
-    await screen.findByText(/Versão registrada/);
+    await screen.findByText(/Alterações salvas/);
     expect(mocks.req.mock.calls.filter(([, b]) => b)[1]).toEqual(primeira);
   });
   it("apresenta política V2 e não oferece escrita a leitura", async () => {
@@ -141,7 +141,7 @@ describe("política de acompanhamento V2", () => {
     render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar={false} />);
     await screen.findByText(/Diagnóstico após TE/);
     expect(
-      screen.queryByRole("button", { name: "Nova versão de acompanhamento" }),
+      screen.queryByRole("button", { name: "Configurar novos prazos" }),
     ).toBeNull();
   });
 });

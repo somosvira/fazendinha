@@ -16,7 +16,7 @@
 .repro-visao-painel > .secao-recolhivel-cabecalho {
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
-  background: var(--muted);
+  background: var(--card);
   flex-wrap: wrap;
 }
 .repro-visao-painel > .secao-recolhivel-conteudo {
@@ -92,13 +92,25 @@
 /* A visão geral conserva o acabamento tabular aprovado, sem alterar outros eixos. */
 :root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela {
   border-collapse: collapse;
-  border: 1px solid var(--fin-table-divider, #d8e0e5);
+  border: 0;
 }
 :root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela > thead > tr > th {
-  background: var(--fin-table-header);
+  background: var(--muted);
   color: var(--fin-table-heading);
   border-bottom: 1px solid var(--fin-table-rule);
 }
 :root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela > :is(thead, tbody) > tr > :is(th, td):not(:last-child) {
-  border-inline-end: 1px solid var(--fin-table-divider, #d8e0e5);
+  border-inline-end: 0;
 }
+
+/* Cabeçalhos, filtros e tabela ocupam faixas próprias, como em Nutrição. */
+.repro-visao-painel > .secao-recolhivel-conteudo { padding: 0; gap: 0; }
+.repro-visao-painel .consulta-barra { margin: 0; padding: 16px 18px; }
+.repro-visao-painel > .secao-recolhivel-conteudo > :is(p, [role="alert"]) { margin: 16px 18px; }
+
+.repro-visao-indicadores { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.repro-visao-indicadores > div { padding: 16px 18px; }
+.repro-visao-indicadores > div + div { border-left: 1px solid var(--border); }
+.repro-visao-indicadores dt { font-size: 13px; color: var(--muted-foreground); }
+.repro-visao-indicadores dd { font-size: 20px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+@media(max-width:600px) { .repro-visao-indicadores { grid-template-columns:1fr; } .repro-visao-indicadores > div + div { border-left:0; border-top:1px solid var(--border); } }

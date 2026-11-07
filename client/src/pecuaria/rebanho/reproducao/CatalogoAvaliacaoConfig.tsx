@@ -202,7 +202,7 @@ export function CatalogoAvaliacaoConfig({
   return (
     <section className="space-y-4">
       <PageHeader
-        titulo="Itens e condutas da avaliação"
+        titulo="Campos e encaminhamentos da avaliação"
         descricao="Configure uma vez o que pode ser avaliado. Cada atendimento registra somente os itens realizados."
         acao={
           podeLancar && (

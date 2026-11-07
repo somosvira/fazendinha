@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { EditorExecucaoClinica } from "./EditorExecucaoClinica";
 import { reqProtocolo } from "./api";
 import { obterOpcoesClinicas, type EntradaClinica } from "./clinica-api";
@@ -202,4 +203,38 @@ it("sexagem sincroniza finalidade e exige vínculo antes de conferir", async () 
   mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"), { target: { value: "NEGATIVO" } });
   expect(screen.getByLabelText("Finalidade do exame · Brinco 1")).toHaveProperty("value", "DIAGNOSTICO");
   expect(screen.queryByLabelText("Sexo fetal observado · Brinco 1")).toBeNull();
+});
+
+it("a avaliação protocolar abre em página, mantém detalhes individuais e deixa os não preenchidos pendentes", async () => {
+  const grupo = tarefas.slice(0,2).map(t => ({...t,tarefaOrigem:{...t.tarefaOrigem,tipo:"AVALIACAO"}}));
+  render(<EditorExecucaoClinica tarefas={grupo} reprodutivo={false} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+  await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
+  expect(screen.getByRole("heading", {name:"Avaliação reprodutiva"})).toBeTruthy();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  mudarCampo(screen.getByLabelText("Data do atendimento"),{target:{value:"2026-10-21"}});
+  fireEvent.click(screen.getByRole("button",{name:"Registro individual · Brinco 1"}));
+  mudarCampo(screen.getByLabelText("Resultado da avaliação · Brinco 1"),{target:{value:"INCONCLUSIVO"}});
+  fireEvent.click(screen.getByRole("button",{name:"Concluir edição individual"}));
+  fireEvent.click(screen.getByRole("button",{name:"Conferir execução"}));
+  await screen.findByRole("button",{name:"Confirmar conjunto"});
+  const entrada = vi.mocked(reqProtocolo).mock.calls[0][2] as EntradaClinica;
+  expect(entrada.itens).toHaveLength(1);
+  expect(entrada.itens[0]).toMatchObject({animalId:"a1",resultado:"INCONCLUSIVO"});
+});
+
+it("a página clínica protege mudanças de data ao cancelar ou navegar", async () => {
+  const t = {...tarefas[0],tarefaOrigem:{...tarefas[0].tarefaOrigem,tipo:"AVALIACAO"}};
+  const fechar = vi.fn();
+  render(<EditorExecucaoClinica tarefas={[t]} reprodutivo={false} onFechar={fechar} onSalvo={vi.fn()}/>);
+  await waitFor(() => expect(screen.getByText(/tipo de exame: CCS/)).toBeTruthy());
+  mudarCampo(screen.getByLabelText("Data do atendimento"),{target:{value:"2026-10-21"}});
+  const navegar = vi.fn();
+  let saida: void | Promise<boolean> = undefined;
+  act(()=>{saida=executarComGuardaNavegacao(navegar);});
+  fireEvent.click(await screen.findByRole("button",{name:"Continuar editando"}));
+  await act(async()=>{await saida;});
+  expect(navegar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Descartar alterações"}));
+  expect(fechar).toHaveBeenCalledOnce();
 });

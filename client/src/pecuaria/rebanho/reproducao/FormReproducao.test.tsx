@@ -9,11 +9,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { listarAnimais, listarGenitores, listarLotes, listarMaterialGenetico } from "../api";
 import { listarServicos, reqSanidade } from "../sanidade/api";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { FormReproducao } from "./FormReproducao";
 import {
   reqV4,
@@ -572,4 +574,77 @@ it("parto com ocorrência nova de RP confere os impactos e envia a confirmação
   fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Impacto da RP conferido" } }); fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
   await waitFor(() => expect(registrarParto).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, ocorrenciaRetencao: { acao: "CRIAR", doencaId: "rp", inicio: "2026-10-14", impacto: { revisao: "a".repeat(64), motivo: "Impacto da RP conferido" } } })));
   expect(reqSanidade).toHaveBeenCalledWith("/impactos-protocolares/previa", expect.objectContaining({ body: JSON.stringify({ origem: "OCORRENCIA", animalId: "a", propriedadeId: 7, data: "2026-10-14", doencaId: "rp" }) }), 7);
+});
+
+it("a página de avaliação conserva o exame completo e exige conferência antes de gravar", async () => {
+  const registrar = vi.fn().mockResolvedValue({ id: "exame" });
+  const salvo = vi.fn();
+  render(<FormReproducao pagina acao="avaliacao" painel={painel} animalInicial="a" onFechar={vi.fn()} onSalvo={salvo} onRegistrar={registrar} />);
+  await esperarOpcao("Exame reprodutivo · v1");
+  expect(screen.queryByRole("dialog")).toBeNull();
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await screen.findByText("Informe o tipo de exame, a conclusão e o sexo fetal quando houver sexagem.");
+  expect(registrar).not.toHaveBeenCalled();
+  await alterarControle(screen.getByLabelText("Atendimento"), {target:{value:"REALIZADO"}});
+  await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"), {target:{value:"INCONCLUSIVO"}});
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  await screen.findByRole("region", {name:"Conferência da avaliação"});
+  expect(registrar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", {name:"Voltar à avaliação"}));
+  expect(screen.getByLabelText("Conclusão sobre a gestação").textContent).toContain("Inconclusivo");
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  fireEvent.click(await screen.findByRole("button", {name:"Confirmar avaliação conferida"}));
+  await waitFor(() => expect(salvo).toHaveBeenCalledTimes(1));
+  expect(registrar).toHaveBeenCalledWith(expect.objectContaining({animalId:"a", resultado:"INCONCLUSIVO", tipoExameId:"tipo", gestacaoId:"g"}));
+});
+
+it("a avaliação em página protege o rascunho ao cancelar, trocar de rota ou fechar a janela", async () => {
+  const fechar = vi.fn();
+  render(<FormReproducao pagina acao="avaliacao" painel={painel} animalInicial="a" onFechar={fechar} onSalvo={vi.fn()} />);
+  await esperarOpcao("Exame reprodutivo · v1");
+  fireEvent.change(screen.getByLabelText("Motivo / observação"), {target:{value:"Exame em preenchimento"}});
+  const antesDeSair = new Event("beforeunload", {cancelable:true});
+  window.dispatchEvent(antesDeSair);
+  expect(antesDeSair.defaultPrevented).toBe(true);
+  const navegar = vi.fn();
+  let saida: void | Promise<boolean> = undefined;
+  act(() => { saida = executarComGuardaNavegacao(navegar); });
+  fireEvent.click(await screen.findByRole("button", {name:"Continuar editando"}));
+  await act(async () => { await saida; });
+  expect(navegar).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", {name:"Cancelar"}));
+  expect(fechar).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole("button", {name:"Descartar alterações"}));
+  expect(fechar).toHaveBeenCalledOnce();
+});
+
+it("a avaliação salva libera a navegação para preparar IATF sem descartar o fato confirmado", async () => {
+  const p = {...painel, animais:painel.animais.map(a => ({...a,situacao:"VAZIA",gestacao:null}))};
+  vi.mocked(registrarAvaliacao).mockResolvedValue({id:"dg",animalId:"a",data:"2026-10-13"});
+  const navegar = vi.fn();
+  const preparar = vi.fn(() => { void executarComGuardaNavegacao(navegar); });
+  render(<FormReproducao pagina acao="avaliacao" painel={p} animalInicial="a" onFechar={vi.fn()} onSalvo={vi.fn()} onPrepararIatf={preparar}/>);
+  await esperarOpcao("Exame reprodutivo · v1");
+  await alterarControle(screen.getByLabelText("Atendimento"),{target:{value:"REALIZADO"}});
+  await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
+  await alterarControle(screen.getByLabelText("Indicação para nova IATF"),{target:{value:"INDICAR"}});
+  fireEvent.submit(document.getElementById("form-reproducao")!);
+  fireEvent.click(await screen.findByRole("button",{name:"Confirmar avaliação conferida"}));
+  fireEvent.click(await screen.findByRole("button",{name:"Preparar próxima IATF"}));
+  await waitFor(() => expect(navegar).toHaveBeenCalledOnce());
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(registrarAvaliacao).toHaveBeenCalledTimes(1);
+});
+
+it("mudar somente a data pelo calendário protege a avaliação ao sair", async () => {
+  const fechar = vi.fn();
+  render(<FormReproducao pagina acao="avaliacao" painel={painel} animalInicial="a" dataInicial="2026-11-07" onFechar={fechar} onSalvo={vi.fn()}/>);
+  await esperarOpcao("Exame reprodutivo · v1");
+  const campoData = screen.getByLabelText("Data do fato").closest("div")!;
+  fireEvent.click(within(campoData).getByRole("button", {name:"Abrir calendário"}));
+  const dias = screen.getAllByRole("button", {name:"8 de novembro de 2026"});
+  fireEvent.click(dias[0]);
+  fireEvent.click(screen.getByRole("button", {name:"Cancelar"}));
+  await screen.findByRole("dialog", {name:"Descartar alterações?"});
+  expect(fechar).not.toHaveBeenCalled();
 });

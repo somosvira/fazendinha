@@ -315,3 +315,17 @@
 .protocolo-resultados-taxas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; font-size:14px; }
 @media(max-width:1200px) { .protocolo-resultados-contagens { grid-template-columns:repeat(3,minmax(0,1fr)); } }
 @media(max-width:600px) { .protocolo-resultados-contagens { grid-template-columns:repeat(2,minmax(0,1fr)); } .protocolo-resultados-taxas { grid-template-columns:minmax(0,1fr); } }
+
+/* Sequência aprovada: a etapa ativa mantém a mesma geometria das demais. */
+.protocolo-operacao-conectada .protocolo-etapas > button { flex-basis:180px; min-height:140px; }
+.protocolo-operacao-conectada .protocolo-etapas > button::before { top:19px; height:2px; }
+.protocolo-operacao-conectada .protocolo-etapa-marca { width:40px; height:40px; border-width:2px; box-shadow:0 0 0 5px var(--card); }
+.protocolo-operacao-conectada .protocolo-etapa-corpo { border-bottom-width:1px; border-radius:6px; }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-corpo { border-color:var(--fin-filter-border); }
+.protocolo-operacao-conectada .protocolo-etapas > button:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; border-radius:8px; }
+
+.clinica-avaliacao-pagina{max-width:1200px;width:100%;margin-inline:auto}
+.clinica-avaliacao-pagina .clinica-dados-comuns{padding:20px;border:1px solid var(--border);border-radius:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.clinica-avaliacao-pagina .clinica-dados-comuns>legend{padding-inline:4px}
+.clinica-avaliacao-pagina .clinica-dados-comuns>.flex{grid-column:1/-1}
+@media(max-width:640px){.clinica-avaliacao-pagina .clinica-dados-comuns{grid-template-columns:1fr;padding:16px}}

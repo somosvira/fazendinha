@@ -39,6 +39,9 @@ Os campos Prisma `diaRelativo`, `rodadaId`, `inicio`, `execucaoId`, `previstaPar
 
 ## Versões, calendário e execução
 
+Na Reprodução, a programação coletiva tem página própria, com identificação/calendário, participantes e resumo da programação. A busca seleciona uma versão publicada em um único controle; a seleção de animais reutiliza a prévia de critérios das visitas na data de início, preservando a escolha entre filtros e páginas. A nova superfície conserva os mesmos endpoints de preparação e confirmação, chave idempotente, revisão do calendário, ciência sanitária e limite atômico. Os chamadores legados do formulário permanecem compatíveis.
+
+
 ### Cadastro de modelos: finalidade, parâmetros e compatibilidade
 
 Os cadastros sanitários e reprodutivos compartilham a consulta em Cartões/Tabela, com busca, preferência individual de apresentação (`visualCadastroProtocolos`) e páginas de até dez versões. O padrão inclui ativos, inclusive cadastros antigos ainda incompletos; “Mostrar inativos” amplia o recorte. Não há comando de atualização manual nem seletor de rascunho/publicação. Links antigos com `cadastroSituacao=RASCUNHO|PUBLICADA|INATIVA` conservam sua interpretação, identificada por um filtro removível; trocar apresentação ou retornar do builder preserva o recorte.
@@ -209,6 +212,8 @@ Copiar exige nome e versão e cria um `Protocolo` em rascunho, com `referenciaTe
 As políticas e demandas de DG/reconfirmação estão descritas no [contrato reprodutivo](reproducao.md#diagnóstico-e-reconfirmação-configuráveis). Elas se vinculam às tarefas e exames comuns; não criam um segundo executor de protocolo. Realização da tarefa e resolução clínica da demanda são estados diferentes. Um exame inconclusivo não satisfaz a demanda apenas por ter concluído a tarefa.
 
 A execução comum aceita coleta/exame, tentativa e avaliação com dados por animal. A preparação valida o mesmo formato, cronologia, material, lote e Serviço da confirmação, sem gravar os fatos. A quantidade de material e a atribuição de Serviço são conferidas sobre o conjunto. IA/TE não criam gestação. Data com precisão de dia conserva a ausência de horário; o horário conhecido permanece explícito na tarefa.
+
+A avaliação da etapa usa uma página própria, com atendimento comum, resultados e detalhes individuais, conferência e recibo. Somente os animais com resultado preenchido entram na preparação; os demais continuam pendentes. Cancelar ou navegar com alterações exige descarte explícito, e a confirmação conserva as garantias do executor comum.
 
 `NAO_REALIZADO` não atende a tarefa, inclusive quando registros legados conservam `realizadaEm`. As projeções TypeScript, Prisma e SQL aplicam a mesma exclusão; coleta registrada com resultado pendente continua sendo um fato realizado e não libera outra coleta. Completar resultado preserva a identidade da coleta e usa a correção do exame; exame interpretado segue a revisão reprodutiva existente.
 

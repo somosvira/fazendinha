@@ -1,3 +1,4 @@
+import { PartosPrevistos } from "./PartosPrevistos";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../components/VisualizacaoConsulta";
 import { CartaoParto, IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
@@ -47,6 +48,8 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   const partos = consulta.filtrar(visivel?.partos ?? []).filter(p=>`${p.matriz.brinco} ${p.matriz.nome??""}`.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR"))).sort((a, b) => b.data.localeCompare(a.data) || b.id.localeCompare(a.id));
   const paginas=Math.max(1,Math.ceil(partos.length/20)),atual=Math.min(pagina,paginas);
   return <div className="space-y-5">
+    <PartosPrevistos propriedadeId={propriedadeId}/>
+    <section aria-label="Partos e pós-parto" className="space-y-4"><div className="repro-consulta-titulo"><h2>Partos e pós-parto</h2></div>
     <BarraConsulta campos={consulta.campos} edicaoFiltros={consulta.edicao} criterios={consulta.criterios} acao={<AlternarVisualizacaoConsulta {...visual} rotulo="Visualização de partos"/>} resumo={visivel ? <span>{partos.length} de {visivel.totalPartos} partos no período</span> : undefined}>
 
       <BuscaLista rotulo="Buscar matriz" placeholder="Brinco ou nome da matriz" valor={busca} onChange={buscar}/>
@@ -59,8 +62,8 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     {!carregando && !erro && visivel && <Panel>
 
       {!partos.length ? <div className="space-y-3 p-5"><p>{visivel.partos.length ? "Nenhum parto corresponde à busca ou aos filtros." : "Nenhum parto neste período."}</p>{visivel.partos.length ? <><p className="text-sm text-muted-foreground">Existem {visivel.totalPartos} partos no período selecionado.</p><Button secondary onClick={() => { buscar(""); consulta.edicao.limpar(); consulta.limpar(); }}>Limpar busca e filtros</Button></> : <p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p>}</div> : visual.modo === "visual" ? <div className="reproducao-cartoes">{partos.slice((atual-1)*20,atual*20).map(p => <CartaoParto key={p.id} parto={p} sitio={propriedadeId}/>)}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}
-        rotulo="Partos recentes" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
-          { chave: "data", titulo: "Data", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
+        rotulo="Partos realizados" itens={partos.slice((atual-1)*20,atual*20)} chaveDe={p => p.id} colunas={[
+          { chave: "data", titulo: "Data do parto", larguraMinima: 110, celula: p => formatBRDateISO(p.data) },
           { chave: "matriz", titulo: "Matriz", principal: true, larguraFlexivel: true, larguraMinima: 160, celula: p => <IdentificacaoReproducao id={p.matriz.id} brinco={p.matriz.brinco} nome={p.matriz.nome} sitio={propriedadeId}/> },
           { chave: "desfecho", titulo: "Desfecho", larguraMinima: 110, celula: p => p.desfecho === "ABORTO" ? "Aborto" : p.desfecho === "NASCIMENTO" ? "Nascimento" : "Não informado" },
           { chave: "crias", titulo: "Crias", larguraMinima: 100, celula: p => `${p.crias.length} · ${p.crias.filter(c => c.viva).length} vivas` },
@@ -69,6 +72,6 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
         ]}/>}
       {partos.length>20&&<Paginacao paginaAtual={atual} totalPaginas={paginas} totalItens={partos.length} itensPorPagina={20} onPaginaChange={setPagina} rotulo="partos" idSelect="pagina-partos"/>}
     </Panel>}
-
+    </section>
   </div>;
 }

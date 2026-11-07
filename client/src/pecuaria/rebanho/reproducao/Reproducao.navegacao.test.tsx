@@ -104,13 +104,13 @@ it("visão geral é a entrada padrão e conserva todas as rotinas e os aliases h
   ).toBeTruthy();
   for (const nome of [
     "Visão geral",
-    "Animais e acompanhamentos",
     "Agenda",
     "Protocolos",
     "Partos e pós-parto",
     "Indicadores",
   ])
     expect(screen.getByRole("tab", { name: nome })).toBeTruthy();
+  expect(screen.queryByRole("tab", { name: "Animais e acompanhamentos" })).toBeNull();
   expect(obterReproducao).not.toHaveBeenCalled();
   window.history.pushState(
     null,
@@ -130,8 +130,7 @@ it("programa protocolo pelo cabeçalho da visão geral preservando o sítio e os
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] });
   render(<Reproducao podeLancar />);
   fireEvent.click(screen.getByRole("button", { name: "Programar protocolo" }));
-  await waitFor(() => expect(vi.mocked(Iatf).mock.lastCall?.[0]).toMatchObject({ propriedadeId: 7, solicitarProgramacao: true, acaoProgramarNoCabecalho: true }));
-  expect(new URLSearchParams(window.location.search).get("rotina")).toBe("programacoes");
-  expect(new URLSearchParams(window.location.search).get("iatfBusca")).toBe("Grupo");
-  expect(window.location.hash).toBe("#consulta");
+  await waitFor(() => expect(vi.mocked(Iatf).mock.lastCall?.[0]).toMatchObject({ propriedadeId: 7, solicitarProgramacao: true, paginaProgramacao: true, acaoProgramarNoCabecalho: true }));
+  expect(window.location.pathname).toBe("/pecuaria/reproducao/programacoes/nova");
+  expect(new URLSearchParams(window.location.search).get("retorno")).toBe("/pecuaria/reproducao?rotina=geral&iatfBusca=Grupo#consulta");
 });

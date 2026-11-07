@@ -29,7 +29,7 @@ beforeEach(() => { vi.resetAllMocks(); mocks.req.mockImplementation(padrao); });
 afterEach(() => cleanup());
 async function conferirAdocao() { await screen.findByRole("combobox", { name: "Regra para os acompanhamentos novos" }); fireEvent.click(screen.getByText("Planejar acompanhamentos faltantes")); await alterarControle(screen.getByLabelText("Regra para os acompanhamentos novos"), { target: { value: "p1" } }); fireEvent.click(screen.getByRole("button", { name: "Ver prévia" })); await screen.findByLabelText("Motivo obrigatório"); }
 function preencherPolitica() {
- fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
+ fireEvent.click(screen.getByRole("button", { name: "Configurar novos prazos" }));
  fireEvent.change(screen.getByLabelText("Vigente desde"), { target: { value: "2026-02-01" } });
  fireEvent.click(screen.getByRole("button", { name: "Adicionar diagnóstico" }));
  for (const rotulo of ["Intervalo (dias)", "Antecedência (dias)", "Tolerância (dias)"])
@@ -100,23 +100,23 @@ describe("UI acompanhamento — contraprovas independentes", () => {
   const { rerender } = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar/>);
   await screen.findByText(/Versão 1/);
   preencherPolitica();
-  fireEvent.submit((screen.getByRole("button", { name: "Registrar nova versão" }) as HTMLButtonElement).form!);
+  fireEvent.submit((screen.getByRole("button", { name: "Salvar alterações de acompanhamento" }) as HTMLButtonElement).form!);
   await waitFor(() => expect(posts()).toHaveLength(1));
   expect(posts()[0]).toEqual(["/reproducao/acompanhamento/politicas", {
    propriedadeId: 1, vigenteDesde: "2026-02-01", chave: expect.any(String),
    parametros: { versao: 2, efeito: "ALERTA", regras: [{ finalidade: "DIAGNOSTICO", ocorrencia: 1, publico: "IA", referencia: "IA", intervalo: 0, unidade: "DIAS", antecedencia: 0, tolerancia: 0, resolucao: "DIAGNOSTICO_CONCLUSIVO" }] },
   }, "POST", 1]);
-  expect(screen.getByRole("button", { name: "Registrando…" })).toHaveProperty("disabled", true);
+  expect(screen.getByRole("button", { name: "Salvando…" })).toHaveProperty("disabled", true);
   rerender(<ConfiguracaoAcompanhamento propriedadeId={2} podeLancar/>);
   await screen.findByText(/Versão 1/);
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByRole("button", { name: "Nova versão de acompanhamento" })).toHaveProperty("disabled", false);
+  expect(screen.getByRole("button", { name: "Configurar novos prazos" })).toHaveProperty("disabled", false);
   await act(async () => escrita.resolve({ id: "politica-antiga" }));
-  expect(screen.queryByText(/Versão registrada/)).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Nova versão de acompanhamento" }));
+  expect(screen.queryByText(/Alterações salvas/)).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Configurar novos prazos" }));
   expect(screen.getByLabelText("Vigente desde")).toHaveProperty("value", "");
   expect(screen.queryByLabelText("Intervalo (dias)")).toBeNull();
-  expect(screen.getByRole("button", { name: "Registrar nova versão" })).toHaveProperty("disabled", false);
+  expect(screen.getByRole("button", { name: "Salvar alterações de acompanhamento" })).toHaveProperty("disabled", false);
   expect(posts()).toHaveLength(1);
  });
  it("consulta de política lenta não substitui versão do novo sítio", async () => {
@@ -140,7 +140,7 @@ describe("UI acompanhamento — contraprovas independentes", () => {
  });
  it("sem lançar há leitura sem editores nem confirmação", async () => {
   const a = render(<DemandasAcompanhamento animalId="a" propriedadeId={1} painel={painel("a")} podeLancar={false} onAvaliar={vi.fn()} atualizacao={0}/>); await screen.findByText(/Nenhum acompanhamento planejado/); expect(screen.queryByText("Planejar acompanhamentos faltantes")).toBeNull(); a.unmount();
-  const b = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar={false}/>); await screen.findByText(/Versão 1/); expect(screen.queryByRole("button", { name: "Registrar nova versão" })).toBeNull(); b.unmount();
+  const b = render(<ConfiguracaoAcompanhamento propriedadeId={1} podeLancar={false}/>); await screen.findByText(/Versão 1/); expect(screen.queryByRole("button", { name: "Salvar alterações de acompanhamento" })).toBeNull(); b.unmount();
   render(<BibliotecaReprodutiva propriedadeId={1} podeLancar={false} onCopiou={vi.fn()}/>); await screen.findByText("Referência técnica"); expect(screen.queryByRole("button", { name: "Copiar como rascunho" })).toBeNull(); expect(posts()).toHaveLength(0);
  });
 });

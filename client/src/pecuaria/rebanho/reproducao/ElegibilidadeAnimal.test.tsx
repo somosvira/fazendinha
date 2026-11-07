@@ -49,7 +49,7 @@ const painel = {
 it("configuração inicia sem dias clínicos nem regras escolhidas", async () => {
   render(<ConfiguracaoReprodutiva propriedadeId={9} podeLancar={true} />);
   await waitFor(() => expect(listarPoliticas).toHaveBeenCalledWith(9));
-  fireEvent.click(screen.getByRole("button", { name: "Nova versão da política" }));
+
   expect(
     (
       screen.getByLabelText(
