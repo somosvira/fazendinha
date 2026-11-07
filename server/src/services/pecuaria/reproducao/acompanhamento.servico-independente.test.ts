@@ -37,12 +37,16 @@ beforeEach(() => {
   mocks.tx.demandaAcompanhamentoReprodutivo.update.mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
 });
 describe("contraprovas de serviço: identidade, continuidade e leitura sem escrita", () => {
-  it.each(["INTERNA", "EXTERNA"])("prévia de reconfirmação conserva a regra congelada da tentativa %s e coincide com a confirmação", async origem => {
+  it.each(["INTERNA", "EXTERNA", "EXTERNA_REVOGADA"])("prévia de reconfirmação conserva a regra congelada da tentativa %s e coincide com a confirmação", async origem => {
     const regra = { finalidade: "RECONFIRMACAO", ocorrencia: 1, publico: "GESTACAO", referencia: "PRIMEIRO_DG_POSITIVO", intervalo: 10, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "RECONFIRMACAO_CONCLUSIVA" };
     const participacao = { id: "participacao", animalId: "animal", propriedadeId: 7, acompanhamentoSnapshot: { versao: 1, protocoloId: "protocolo", protocoloVersao: 1, diagnosticoIndividualEm: null, modelo: { versao: 2, efeito: "ALERTA", regras: [regra] }, sitio: null } };
-    const tentativa = origem === "INTERNA" ? { tarefa: { execucao: participacao }, participacoesExplicitas: [] } : { tarefa: null, participacoesExplicitas: [{ participacao }] };
+    const tentativa = { id: "t", tarefa: origem === "INTERNA" ? { execucao: participacao } : null, participacoesExplicitas: origem === "EXTERNA" ? [{ participacao }] : [] };
     mocks.tx.tentativaReprodutiva.findFirst.mockResolvedValue(tentativa);
     mocks.tx.gestacaoAnimal.findUnique.mockResolvedValue({ TentativaReprodutiva: tentativa });
+    if (origem === "EXTERNA_REVOGADA") {
+      mocks.tx.demandaAcompanhamentoReprodutivo.findFirst.mockImplementation(async ({ where }) => where.finalidade === "DIAGNOSTICO" && where.participacaoAcompanhamentoId ? { participacaoAcompanhamentoId: participacao.id } : null);
+      mocks.tx.participacaoProtocolo.findUnique.mockResolvedValue(participacao);
+    }
     mocks.tx.politicaAcompanhamentoReprodutivo.findFirst.mockResolvedValue({ id: "politica-atual", versao: 9, parametros: { versao: 1, efeito: "ALERTA", diagnostico: null, reconfirmacoes: [{ ocorrencia: 1, diasAposPrimeiroPositivo: 99 }] } });
     const previa = await preverDemandasNovaGestacaoTx(tx, { animalId: "animal", propriedadeId: 7, data: dia("2026-02-01"), tentativaId: "t" });
     expect(previa).toEqual([expect.objectContaining({ previstaPara: "2026-02-11", origemAdocao: "MODELO", participacaoAcompanhamentoId: "participacao" })]);
@@ -252,6 +256,17 @@ it("revogar associação administrativa mantém DG pendente ligado à tentativa 
   expect(
     mocks.tx.demandaAcompanhamentoReprodutivo.update,
   ).not.toHaveBeenCalled();
+});
+
+it("associação externa revogada preserva a conclusão P3 válida já obtida", async () => {
+  const d = { ...demanda("dg"), estado: "RESOLVIDA", participacaoAcompanhamentoId: "p-original", vinculoConclusaoResolucaoId: "v",
+    vinculoConclusaoResolucao: { id: "v", fonte: "RESULTADO", resultadoId: "r", valorSnapshot: "POSITIVO", vigente: true },
+    tentativa: { ...demanda("dg").tentativa!, participacoesExplicitas: [] } };
+  mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);
+  mocks.tx.exameAnimal.findMany.mockResolvedValue([{ ...exame(), resultados: [{ id: "r", campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO" }] }]);
+  await reconciliarDemandasAnimalTx(tx, "animal", 7);
+  expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
+  expect(mocks.tx.vinculoConclusaoAcompanhamento.update).not.toHaveBeenCalled();
 });
 
 it("DG positivo após revogação usa regra congelada da demanda para reconfirmar, sem consultar política atual", async () => {
