@@ -262,12 +262,13 @@ async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import
  const demandas = await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:input.demandaIds},propriedadeOrigemId:input.propriedadeId},include:{tentativa:{select:{tipo:true,status:true}},gestacao:{select:{status:true,encerradaEm:true}}},orderBy:{id:"asc"}});
  if(demandas.length!==input.demandaIds.length)erro("Demandas não pertencem ao sítio escolhido", "demandaIds");
  const parametros = parametrosAcompanhamentoSchema.parse(politica.parametros);
- const propostas = demandas.map(d=>{
+ const propostas = await Promise.all(demandas.map(async d=>{
   const fato = { ...(d.tentativaId ? {tentativaId:d.tentativaId,tipoTentativa:d.tentativa?.tipo} : {gestacaoId:d.gestacaoId!}), data:texto(d.dataReferencia) };
   const proposta = proporAcompanhamentos({...politica,parametros},fato).find(p=>p.finalidade===d.finalidade && p.ocorrencia===d.ocorrencia);
-  const impedimento = d.estado!=="PENDENTE" ? "DEMANDA_NAO_PENDENTE" : d.tarefaId ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
-  return {demandaId:d.id,animalId:d.animalId,versao:d.versao,politicaAnteriorId:d.politicaId,previstaAnterior:d.previstaPara?.toISOString().slice(0,10)??null,regraAnterior:d.regraSnapshot,proposta:proposta??null,impedimento};
- });
+  const visitaAgendada = await tx.participanteVisita.findFirst({where:{animalId:d.animalId,status:"PENDENTE",snapshot:{path:["acompanhamento","id"],equals:d.id},AtividadeVisita:{VisitaVeterinaria:{propriedadeId:input.propriedadeId,encerradaEm:null}}},select:{id:true}});
+  const impedimento = d.estado!=="PENDENTE" ? "DEMANDA_NAO_PENDENTE" : d.tarefaId ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : visitaAgendada ? "AGENDAMENTO_VISITA_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
+  return {demandaId:d.id,animalId:d.animalId,versao:d.versao,politicaAnteriorId:d.politicaId,previstaAnterior:d.previstaPara?.toISOString().slice(0,10)??null,regraAnterior:d.regraSnapshot,visitaAgendadaId:visitaAgendada?.id??null,proposta:proposta??null,impedimento};
+ }));
  return {propostas,revisao:hashDados({politicaId:politica.id,politicaVersao:politica.versao,propostas})};
 }
 export function previaRevisaoPrazos(input: import("./acompanhamento.schemas.js").PreviaRevisaoPrazos) { return prisma.$transaction(tx=>previaRevisaoPrazosTx(tx,input)); }
