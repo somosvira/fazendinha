@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
-import { criarDemandasDoFatoTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, criarPoliticaAcompanhamentoTx } from "./acompanhamento.js";
 import { proporAcompanhamentos } from "./acompanhamento.calc.js";
-import { parametrosAcompanhamentoSchema } from "./acompanhamento.schemas.js";
+import { parametrosAcompanhamentoSchema, criarPoliticaAcompanhamentoSchema } from "./acompanhamento.schemas.js";
 
 const banco=process.env.PECUARIA_DB_INTEGRATION==="1"?describe:describe.skip;
 const dia=(s:string)=>new Date(`${s}T00:00:00Z`);
@@ -23,7 +23,7 @@ banco("prazos e revisões no PostgreSQL autorizado",()=>{
    const animal=await tx.animal.create({data:{brinco:marca,sexo:"F",origem:"COMPRADO",dataNascimento:dia("2023-01-01"),dataEntrada:dia("2024-01-01")}});
    const modelo=await tx.protocolo.create({data:{nome:marca,tipo:"REPRODUTIVO",finalidade:"TETF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"EXTERNO",configuracaoAcompanhamento:json(configuracao(20))}});
    const etapa=await tx.etapaProtocolo.create({data:{protocoloId:modelo.id,ordem:1,nome:"TE",tipo:"TENTATIVA",diaRelativo:0,configuracao:{tipo:"TENTATIVA",tentativaTipo:"TE"}}});
-   const politica=await tx.politicaAcompanhamentoReprodutivo.create({data:{propriedadeId:sitio.id,versao:1,vigenteDesde:dia("2025-01-01"),parametros:json(configuracao(30))}});
+   const politica=await criarPoliticaAcompanhamentoTx(tx,criarPoliticaAcompanhamentoSchema.parse({chave:randomUUID(),propriedadeId:sitio.id,vigenteDesde:"2025-01-01",parametros:configuracao(30)}),null);
    const snapshot={versao:1,protocoloId:modelo.id,protocoloVersao:modelo.versao,diagnosticoIndividualEm:null,modelo:configuracao(20),sitio:{id:politica.id,versao:politica.versao,parametros:configuracao(30)}};
    const participacao=await tx.participacaoProtocolo.create({data:{protocoloId:modelo.id,animalId:animal.id,propriedadeId:sitio.id,inicio:dia("2026-01-01"),acompanhamentoSnapshot:json(snapshot)}});
    const tarefa=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapa.id,previstaPara:dia("2026-01-01")}});

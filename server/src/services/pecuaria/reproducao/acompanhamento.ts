@@ -80,8 +80,7 @@ export async function validarTiposPoliticaTx(tx:Prisma.TransactionClient,paramet
  }
  return parametros;
 }
-export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInput,usuarioId:number|null){
- return transacaoPecuaria(async tx=>{
+export async function criarPoliticaAcompanhamentoTx(tx:Prisma.TransactionClient,input:CriarPoliticaAcompanhamentoInput,usuarioId:number|null){
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-politica-acompanhamento:${input.propriedadeId}`}))`;
   return operacaoIdempotenteTx(tx,input,usuarioId,"POLITICA_ACOMPANHAMENTO",async()=>{
    const parametros=parametrosAcompanhamentoSchema.parse(input.parametros);
@@ -92,7 +91,9 @@ export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInp
    await auditar(tx,{entidade:"PoliticaAcompanhamentoReprodutivo",entidadeId:criada.id,propriedadeId:input.propriedadeId,acao:"REGISTRO",usuarioId,depois:criada});
    return criada;
   });
- });
+}
+export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInput,usuarioId:number|null){
+ return transacaoPecuaria(tx=>criarPoliticaAcompanhamentoTx(tx,input,usuarioId));
 }
 
 type Origem={tipoTentativa?:string;tentativaId?:string;gestacaoId?:string;animalId:string;propriedadeId:number;data:Date;exameOrigemId?:string};
