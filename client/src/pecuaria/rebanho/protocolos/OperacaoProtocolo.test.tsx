@@ -198,3 +198,12 @@ it("dispensa reprodutiva usa a decisão terminal real, sem fingir não atendimen
  fireEvent.click(screen.getByRole("button",{name:"Salvar"}));
  await waitFor(()=>expect(api.evento).toHaveBeenCalledWith("t1",expect.objectContaining({tipo:"DISPENSA",motivo:"Procedimento dispensado após conferência"})));
 });
+
+it("desabilita seleção da página quando todos os animais exibidos já foram atendidos", async () => {
+  api.cabecalho.mockResolvedValue({ id:"g1", modo:"COLETIVO", tipo:"REPRODUTIVO", nome:"Preparo", protocolo:{id:"p",nome:"IATF",versao:2}, inicioReferencia:"2026-10-19", precisaoTemporal:"DIA", contagens });
+  api.tarefas.mockResolvedValue({itens:[{...tarefa(1),situacao:"ATENDIDO",realizadaEm:"2026-10-19",acoes:{atender:false,adiar:false,justificar:false}}],total:1,pagina:1,porPagina:10});
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar/>);
+  await screen.findByRole("checkbox",{name:"Atendido Animal 1"});
+  expect(screen.getByRole("checkbox",{name:"Selecionar esta página"})).toHaveProperty("disabled",true);
+  expect(screen.getByRole("checkbox",{name:"Atendido Animal 1"}).getAttribute("aria-checked")).toBe("true");
+});
