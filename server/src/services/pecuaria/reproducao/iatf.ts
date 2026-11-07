@@ -1,3 +1,4 @@
+import { demandaDispensada } from "./agenda-demanda.calc.js";
 import { tipoAplicacaoLegadaId } from "../sanidade/desvios.js";
 import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
 import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
@@ -666,11 +667,11 @@ export async function prepararExecucaoTarefaTx(
   const plano = planoOriginal ? { ...planoOriginal, previstaEm: serializarDataIatf(tarefa.previstaEm, tarefa.precisaoTemporal),
     precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente } : null;
   const demanda = tarefa.tipo === "AVALIACAO"
-    ? await tx.demandaAcompanhamentoReprodutivo.findUnique({ where: { tarefaId: tarefa.id } })
+    ? await tx.demandaAcompanhamentoReprodutivo.findUnique({ where: { tarefaId: tarefa.id }, include: { decisaoOperacional: true } })
     : null;
   const dadosAcompanhamento: Record<string, unknown> = {};
   if (demanda) {
-    if (demanda.estado !== "PENDENTE") erro("A demanda desta tarefa não está pendente; revise o acompanhamento", "demandaAcompanhamentoId");
+    if (demanda.estado !== "PENDENTE" || demandaDispensada(demanda)) erro("A demanda desta tarefa não está pendente operacionalmente; revise o acompanhamento", "demandaAcompanhamentoId");
     Object.assign(dadosAcompanhamento, { demandaAcompanhamentoId: demanda.id, finalidade: demanda.finalidade, tentativaId: demanda.tentativaId, gestacaoId: demanda.gestacaoId });
     const regra = demanda.regraSnapshot as Record<string, unknown>;
     if (regra.tipoExameId) dadosAcompanhamento.tipoExameId = regra.tipoExameId;

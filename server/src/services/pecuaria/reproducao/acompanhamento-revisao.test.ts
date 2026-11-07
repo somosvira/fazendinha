@@ -91,3 +91,19 @@ describe("revisão explícita de prazos",()=>{
   expect(mocks.tx.revisaoPrazoAcompanhamento.create).not.toHaveBeenCalled();
  });
 });
+it("revisão de regra preserva o ponteiro da decisão operacional existente", async () => {
+ mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{ ...demanda(), decisaoOperacionalId: "agendamento", decisaoOperacional: { id: "agendamento", tipo: "REAGENDAR", data: dia("2026-03-01"), destino: "Visita", motivo: "Agendamento explícito" } }]);
+ const previa = await previaRevisaoPrazos(entrada);
+ expect(previa.propostas[0].impedimento).toBeNull();
+ await revisarPrazos({ ...entrada, chave: "chave", motivo: "Revisão sem apagar agenda", revisao: previa.revisao }, 1);
+ const alteracao = mocks.tx.demandaAcompanhamentoReprodutivo.updateMany.mock.calls[0][0];
+ expect(alteracao.data).not.toHaveProperty("decisaoOperacionalId");
+ expect(alteracao.data.previstaPara).toEqual(dia("2026-01-21"));
+});
+it("dispensa administrativa não é pendência elegível à revisão de regra", async () => {
+ mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{ ...demanda(), decisaoOperacionalId: "dispensa", decisaoOperacional: { id: "dispensa", tipo: "DISPENSAR", data: null, destino: null, motivo: "Dispensa explícita" } }]);
+ const previa = await previaRevisaoPrazos(entrada);
+ expect(previa.propostas[0].impedimento).toBe("DEMANDA_NAO_PENDENTE");
+ await expect(revisarPrazos({ ...entrada, chave: "chave", motivo: "Revisão indevida", revisao: previa.revisao }, 1)).rejects.toMatchObject({ code: "VALIDACAO" });
+ expect(mocks.tx.demandaAcompanhamentoReprodutivo.updateMany).not.toHaveBeenCalled();
+});

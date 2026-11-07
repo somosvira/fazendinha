@@ -59,3 +59,15 @@ describe("agenda de acompanhamento — contraprovas independentes", () => {
     const r = await consultarPlannerTx(f.tx, consulta, true); expect(r.grupos.map(g => [g.nome, g.previstaPara])).toEqual([["Reconfirmação 1", "2026-01-10"], ["Reconfirmação 2", "2026-01-22"]]);
   });
 });
+it("decisão operacional da demanda prevalece no planner sem alterar prazo da regra", async () => {
+ const f = fonte(); f.leitor.tarefaProtocolo.findMany.mockResolvedValue([]);
+ const demanda = { ...f.demanda, decisaoOperacional: { id: uid(80), tipo: "REAGENDAR", data: dia("2026-01-28"), destino: "Visita", motivo: "Revisão explícita" } };
+ f.leitor.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda]);
+ const r = await consultarPlannerTx(f.tx, consulta, true);
+ expect(r.grupos[0].previstaPara).toBe("2026-01-28"); expect(demanda.previstaPara).toEqual(dia("2026-01-10"));
+});
+it("dispensa residual deixa de aparecer no planner sem alterar tarefa factual", async () => {
+ const f = fonte(); f.leitor.tarefaProtocolo.findMany.mockResolvedValue([]);
+ f.leitor.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{ ...f.demanda, decisaoOperacional: { id: uid(80), tipo: "DISPENSAR", data: null, destino: null, motivo: "Dispensa explícita" } }]);
+ const r = await consultarPlannerTx(f.tx, consulta, true); expect(r.totais.procedimentos).toBe(0);
+});

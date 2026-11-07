@@ -39,7 +39,7 @@ function baseConsulta(propriedadeId: number | null, filtro: ConsultaAlertas, ago
     LEFT JOIN "pecuaria"."Animal" an ON a."sujeitoTipo"='ANIMAL' AND an."id"=a."sujeitoId"
     LEFT JOIN "pecuaria"."LocalizacaoAnimal" l ON l."animalId"=an."id" AND l."ate" IS NULL
     LEFT JOIN "pecuaria"."Lote" lt ON lt."id"=l."loteId"
-    WHERE a."proprietario"='fazendinha' AND a."produtor" IN ('sanidade','reproducao') AND ${filtro.produtor?Prisma.sql`a."produtor"=${filtro.produtor}`:Prisma.sql`TRUE`} AND ${filtro.tipo?Prisma.sql`a."tipo"=${filtro.tipo}`:Prisma.sql`TRUE`} AND (a."visivelDesde" IS NULL OR a."visivelDesde"<=${hoje}) AND ${propriedadeId == null ? Prisma.sql`TRUE` : Prisma.sql`a."propriedadeId"=${propriedadeId} AND (a."sujeitoTipo" <> 'ANIMAL' OR l."propriedadeId"=${propriedadeId})`}
+    WHERE a."proprietario"='fazendinha' AND a."produtor" IN ('sanidade','reproducao') AND nr."convergidaParaId" IS NULL AND ${filtro.produtor?Prisma.sql`a."produtor"=${filtro.produtor}`:Prisma.sql`TRUE`} AND ${filtro.tipo?Prisma.sql`a."tipo"=${filtro.tipo}`:Prisma.sql`TRUE`} AND (a."visivelDesde" IS NULL OR a."visivelDesde"<=${hoje}) AND ${propriedadeId == null ? Prisma.sql`TRUE` : Prisma.sql`a."propriedadeId"=${propriedadeId} AND (a."sujeitoTipo" <> 'ANIMAL' OR l."propriedadeId"=${propriedadeId})`}
       AND ${disposicao}
   ), filtrada AS (SELECT * FROM base WHERE ${!aplicarFiltros ? Prisma.sql`TRUE` : Prisma.sql`
     ${filtro.busca ? Prisma.sql`("titulo" ILIKE ${`%${filtro.busca}%`} OR "motivo" ILIKE ${`%${filtro.busca}%`} OR "brinco" ILIKE ${`%${filtro.busca}%`} OR "animalNome" ILIKE ${`%${filtro.busca}%`})` : Prisma.sql`TRUE`}

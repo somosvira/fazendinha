@@ -1,3 +1,4 @@
+import { demandaDispensada } from "../reproducao/agenda-demanda.calc.js";
 import { Prisma } from "@prisma/client";
 import { RebanhoError } from "../rebanho/regras.js";
 import { obterSaldo } from "../consumo.js";
@@ -31,8 +32,8 @@ export function entradaClinicaIatf(item: ItemExecucaoClinica) {
 
 async function prepararReavaliacaoTx(tx: Tx, item: Extract<ItemExecucaoClinica, {tipo:"AVALIACAO"}>, usuarioId: number|null) {
   if(!item.demandaAcompanhamentoId)throw new RebanhoError("VALIDACAO","Identifique a demanda da reavaliação","demandaAcompanhamentoId");
-  const demanda=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:item.demandaAcompanhamentoId}});
-  if(!demanda||demanda.tarefaId!==item.tarefaId||demanda.animalId!==item.animalId||demanda.estado!=="PENDENTE")
+  const demanda=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:item.demandaAcompanhamentoId},include:{decisaoOperacional:true}});
+  if(!demanda||demanda.tarefaId!==item.tarefaId||demanda.animalId!==item.animalId||demanda.estado!=="PENDENTE"||demandaDispensada(demanda))
     throw new RebanhoError("CONFLITO","A demanda não está pendente para esta tarefa e animal","demandaAcompanhamentoId");
   const regra=demanda.regraSnapshot as Record<string,unknown>;
   const esperados={finalidade:demanda.finalidade,tentativaId:demanda.tentativaId,gestacaoId:demanda.gestacaoId,tipoExameId:regra.tipoExameId};

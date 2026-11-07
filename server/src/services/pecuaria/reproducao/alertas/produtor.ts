@@ -1,3 +1,5 @@
+import { registrarDecisaoDemandaTx } from "../decisao-demanda.js";
+import { convergirNecessidadesTx } from "./identidade.js";
 import { filtroInsercoesRetirada } from "../../protocolos/insercoes-retirada.js";
 import type { Prisma, NecessidadeReprodutiva } from "@prisma/client";
 import { hashConteudo, publicarAlertaTx } from "../../../alertas/publicacao.js";
@@ -50,7 +52,10 @@ async function publicarTx(
   const atual = n.alertaId
     ? await tx.alerta.findUnique({ where: { id: n.alertaId } })
     : null;
-  const janela = janelaAtencao(n.previstaPara, n.regraSnapshot, hoje);
+  const dataOperacional = ["REAGENDAR", "SUSPENDER"].includes(n.decisao ?? "")
+    ? (n.revisaoEm ?? n.previstaPara)
+    : n.previstaPara;
+  const janela = janelaAtencao(dataOperacional, n.regraSnapshot, hoje);
   const encerrado = terminal(n);
   const resumo = {
     necessidadeId: n.id,
@@ -69,7 +74,7 @@ async function publicarTx(
     motivo: n.motivo,
     propriedadeId: n.propriedadeId,
     resumo,
-    previstaPara: n.previstaPara?.toISOString() ?? null,
+    previstaPara: dataOperacional?.toISOString() ?? null,
     encerrado,
   };
   // Temporal e evento factual podem observar o mesmo estado; não criam revisões vazias.
@@ -112,7 +117,7 @@ async function publicarTx(
       motivo: n.motivo,
       situacao: n.situacao,
       resumo,
-      dataReferencia: n.previstaPara,
+      dataReferencia: dataOperacional,
       visivelDesde: janela.visivelDesde,
       prazo: n.revisaoEm ?? janela.prazo,
     },
@@ -147,7 +152,7 @@ async function publicarTx(
         motivo: n.motivo,
         situacao: n.situacao,
         resumo,
-        dataReferencia: n.previstaPara,
+        dataReferencia: dataOperacional,
         visivelDesde: janela.visivelDesde,
         prazo: n.revisaoEm ?? janela.prazo,
       },
@@ -215,6 +220,7 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
       tx.demandaAcompanhamentoReprodutivo.findMany({
         where: { animalId },
         include: {
+          decisaoOperacional: true,
           tarefa: { select: { execucaoId: true, dispensadaEm: true } },
         },
       }),
@@ -282,7 +288,9 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
       regraSnapshot: json(d.regraSnapshot),
       resolvida: d.estado === "RESOLVIDA",
       encerrada: d.estado === "ENCERRADA",
-      dispensada: Boolean(d.tarefa?.dispensadaEm),
+      dispensada:
+        Boolean(d.tarefa?.dispensadaEm) ||
+        d.decisaoOperacional?.tipo === "DISPENSAR",
     });
   }
   const politica = local
@@ -551,7 +559,41 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
     if (c.previstaPara)
       c.previstaPara = dia(c.previstaPara.toISOString().slice(0, 10));
     if (baixado) c.encerrada = true;
-    const anterior = existentes.find((n) => n.chave === c.chave);
+    let anterior =
+      existentes.find(
+        (n) =>
+          !n.convergidaParaId && c.demandaId && n.demandaId === c.demandaId,
+      ) ??
+      existentes.find(
+        (n) => !n.convergidaParaId && c.tarefaId && n.tarefaId === c.tarefaId,
+      ) ??
+      existentes.find((n) => !n.convergidaParaId && n.chave === c.chave);
+    let decisaoReunida: NecessidadeReprodutiva | null = null;
+    const outra = existentes.find(
+      (n) =>
+        !n.convergidaParaId &&
+        n.id !== anterior?.id &&
+        c.tarefaId &&
+        n.tarefaId === c.tarefaId,
+    );
+    if (anterior && outra) {
+      const reunidas = await convergirNecessidadesTx(
+        tx,
+        anterior,
+        outra,
+        usuarioId,
+      );
+      if (
+        reunidas.destino.decisao !== anterior.decisao ||
+        reunidas.destino.decisaoPorId !== anterior.decisaoPorId ||
+        reunidas.destino.revisaoEm?.getTime() !== anterior.revisaoEm?.getTime()
+      )
+        decisaoReunida = reunidas.destino;
+      anterior = reunidas.destino;
+      existentes[existentes.findIndex((n) => n.id === outra.id)] =
+        reunidas.origem;
+      await publicarTx(tx, reunidas.origem, animal, usuarioId, hoje);
+    }
     // Prazos operacionais congelados seguem a regra da primeira adoção. Tarefa/demanda têm revisão própria explícita.
     const congelar = anterior && !c.tarefaId && !c.demandaId;
     const previstaPara = congelar ? anterior.previstaPara : c.previstaPara,
@@ -562,7 +604,14 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
         ? "DISPENSADO"
         : c.encerrada
           ? "ENCERRADO"
-          : janelaAtencao(previstaPara, regraSnapshot, hoje).situacao;
+          : janelaAtencao(
+              anterior &&
+                ["REAGENDAR", "SUSPENDER"].includes(anterior.decisao ?? "")
+                ? (anterior.revisaoEm ?? previstaPara)
+                : previstaPara,
+              regraSnapshot,
+              hoje,
+            ).situacao;
     if (!c.resolvida && anterior?.decisao === "DISPENSAR")
       situacao = "DISPENSADO";
     if (
@@ -620,11 +669,47 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
       : await tx.necessidadeReprodutiva.create({
           data: { ...dados, chave: c.chave },
         });
+    if (
+      decisaoReunida &&
+      outra &&
+      c.demandaId &&
+      !c.resolvida &&
+      !c.encerrada &&
+      decisaoReunida.decisaoPorId &&
+      decisaoReunida.decisaoMotivo &&
+      ["REAGENDAR", "SUSPENDER", "DISPENSAR"].includes(
+        decisaoReunida.decisao ?? "",
+      )
+    ) {
+      await registrarDecisaoDemandaTx(tx, {
+        demandaId: c.demandaId,
+        necessidadeId: salva.id,
+        chave: `CONVERGENCIA:${outra.id}`,
+        tipo: decisaoReunida.decisao ?? "",
+        data: decisaoReunida.revisaoEm,
+        destino: decisaoReunida.decisaoDestino,
+        motivo: decisaoReunida.decisaoMotivo,
+        usuarioId: decisaoReunida.decisaoPorId,
+      });
+    }
     await publicarTx(tx, salva, animal, usuarioId, hoje);
   }
   const chaves = new Set(candidatos.map((c) => c.chave));
+  const demandasAtuais = new Set(
+    candidatos.flatMap((c) => (c.demandaId ? [c.demandaId] : [])),
+  );
+  const tarefasAtuais = new Set(
+    candidatos.flatMap((c) => (c.tarefaId ? [c.tarefaId] : [])),
+  );
   for (const n of existentes) {
-    if (chaves.has(n.chave) || terminal(n)) continue;
+    if (
+      n.convergidaParaId ||
+      chaves.has(n.chave) ||
+      (n.demandaId && demandasAtuais.has(n.demandaId)) ||
+      (n.tarefaId && tarefasAtuais.has(n.tarefaId)) ||
+      terminal(n)
+    )
+      continue;
     const retirada =
       n.tipo === "DISPOSITIVO_SEM_RETIRADA"
         ? await tx.manejoAnimal.findFirst({

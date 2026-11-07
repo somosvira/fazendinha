@@ -3280,6 +3280,9 @@ model PoliticaAcompanhamentoReprodutivo {
 
 // Necessidade clínica separada da execução de uma tarefa e de suas respostas inconclusivas.
 model DemandaAcompanhamentoReprodutivo {
+  decisaoOperacionalId String? @unique
+  decisaoOperacional DecisaoOperacionalAcompanhamento? @relation("DecisaoAtualDemanda", fields: [decisaoOperacionalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  decisoesOperacionais DecisaoOperacionalAcompanhamento[] @relation("DecisoesDaDemanda")
   participacaoAcompanhamentoId String?
   vinculosConclusao VinculoConclusaoAcompanhamento[] @relation("ConclusoesDaDemanda")
   vinculoConclusaoResolucaoId String? @unique
@@ -4982,6 +4985,8 @@ model PoliticaAtencaoReprodutiva {
 // Projeção persistida com identidade canônica da tarefa/demanda/fato, publicada no núcleo comum.
 model NecessidadeReprodutiva {
  id String @id @default(uuid())
+ convergidaParaId String?
+ convergenciaSnapshot Json?
  chave String @unique
  tipo String
  origemId String
@@ -5025,5 +5030,24 @@ model RegraImpactoProcedimentoReprodutivo {
  atualizadoEm DateTime @updatedAt
  @@unique([propriedadeId, tipoAplicacaoId, finalidade], map: "RegraImpactoProcedimento_publico_unico")
  @@index([propriedadeId, ativo])
+ @@schema("pecuaria")
+}
+
+// Agenda e dispensa administrativa não alteram a regra clínica adotada.
+model DecisaoOperacionalAcompanhamento {
+ id String @id @default(uuid())
+ versaoAnterior Int
+ demandaId String
+ demanda DemandaAcompanhamentoReprodutivo @relation("DecisoesDaDemanda", fields: [demandaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+ demandaAtual DemandaAcompanhamentoReprodutivo? @relation("DecisaoAtualDemanda")
+ necessidadeId String
+ chave String
+ tipo String
+ data DateTime? @db.Date
+ destino String?
+ motivo String
+ usuarioId Int
+ criadoEm DateTime @default(now())
+ @@unique([demandaId, chave])
  @@schema("pecuaria")
 }

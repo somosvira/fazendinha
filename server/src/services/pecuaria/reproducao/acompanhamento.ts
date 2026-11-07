@@ -1,3 +1,4 @@
+import { demandaDispensada, projetarAgendaDemanda } from "./agenda-demanda.calc.js";
 import { reconciliarAlertasReprodutivosAnimalTx } from "./alertas/produtor.js";
 import { tarefaComPrazoHerdado } from "./prazo-tarefa.calc.js";
 import { proporPrazoDaParticipacao, proporReconfirmacoesDaParticipacao } from "./prazos-protocolo.js";
@@ -35,8 +36,8 @@ function pendenciasOrigemDemanda(demanda: OrigemDemanda, exame: ExameOrigem | nu
 }
 
 export async function vincularExameDemandaTx(tx:Prisma.TransactionClient,demandaId:string,exameId:string){
- const [demanda,exame]=await Promise.all([tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:demandaId},include:{exameOrigem:{include:incluirExameOrigem}}}),tx.exameAnimal.findUnique({where:{id:exameId},include:{interpretacao:true}})]);
- if(!demanda||!exame||demanda.estado!=="PENDENTE"||demanda.animalId!==exame.animalId)erro("Demanda não está pendente para este animal", "demandaAcompanhamentoId");
+ const [demanda,exame]=await Promise.all([tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:demandaId},include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem}}}),tx.exameAnimal.findUnique({where:{id:exameId},include:{interpretacao:true}})]);
+ if(!demanda||!exame||demanda.estado!=="PENDENTE"||demandaDispensada(demanda)||demanda.animalId!==exame.animalId)erro("Demanda não está pendente para este animal", "demandaAcompanhamentoId");
  if(pendenciasOrigemDemanda(demanda,demanda.exameOrigem).length)erro("O primeiro DG que fundamentou esta demanda está inválido; regularize a evidência de origem antes de registrar sua resolução", "demandaAcompanhamentoId");
  const regra=demanda.regraSnapshot as Record<string,unknown>;
  const formato=exame.formatoSnapshot as Record<string,unknown>;
@@ -51,8 +52,8 @@ export async function vincularConclusoesExameTx(tx: Prisma.TransactionClient, ex
   erro("Cada conclusão e cada demanda podem aparecer uma única vez", "vinculosConclusao");
  const exame=await tx.exameAnimal.findUniqueOrThrow({where:{id:exameId},include:{resultados:{where:{vigente:true}},interpretacao:true}});
  for(const v of vinculos){
-  const demanda=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:v.demandaId}});
-  if(!demanda||demanda.estado!=="PENDENTE"||demanda.animalId!==exame.animalId||demanda.propriedadeOrigemId!==exame.propriedadeId)
+  const demanda=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:v.demandaId},include:{decisaoOperacional:true}});
+  if(!demanda||demanda.estado!=="PENDENTE"||demandaDispensada(demanda)||demanda.animalId!==exame.animalId||demanda.propriedadeOrigemId!==exame.propriedadeId)
    erro("Demanda pendente não pertence ao animal e ao sítio da avaliação", "vinculosConclusao");
   const finalidadeEsperada=v.campo==="SEXO_FETAL" ? "SEXAGEM" : v.campo==="APTIDAO_REPRODUTIVA" ? "APTIDAO_REPRODUTIVA" : null;
   if(finalidadeEsperada ? demanda.finalidade!==finalidadeEsperada : !["DIAGNOSTICO","RECONFIRMACAO"].includes(demanda.finalidade))
@@ -304,12 +305,12 @@ export async function listarAcompanhamentos(propriedadeId:number,animalId:string
 /** IDs autorizados pelo chamador; a leitura compartilha a projeção de validade da origem sem escrever. */
 export async function carregarAcompanhamentosNaDataTx(tx: Prisma.TransactionClient, animalIds: string[], referencia: Date) {
  if (!animalIds.length) return [];
- const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:animalIds},dataReferencia:{lte:referencia}},include:{exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
+ const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:animalIds},dataReferencia:{lte:referencia}},include:{decisaoOperacional:true,exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
  return demandas.map(({exameOrigem,...demanda})=>{
   const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);
   // A leitura revela resolução obsoleta sem reescrever o histórico ou adotar outra âncora.
-  return {...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{}),pendencias};
- });
+  return {...projetarAgendaDemanda({...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{})}),pendencias};
+ }).sort((a,b)=>(a.previstaPara?.getTime()??Number.POSITIVE_INFINITY)-(b.previstaPara?.getTime()??Number.POSITIVE_INFINITY)||a.ocorrencia-b.ocorrencia||a.id.localeCompare(b.id));
 }
 
 /** Projeção usada por filtros e totais. Não adota regra nem repara demanda durante leitura. */
@@ -326,19 +327,22 @@ export function sqlDemandaPendenteTarefa(){
  return Prisma.sql`(EXISTS(SELECT 1 FROM pecuaria."DemandaAcompanhamentoReprodutivo" d
   LEFT JOIN pecuaria."ExameAnimal" e ON e.id=d."exameOrigemId"
   LEFT JOIN pecuaria."InterpretacaoReprodutiva" i ON i."exameId"=e.id
-  WHERE d."tarefaId"=t.id AND (d.estado='PENDENTE' OR d.estado<>'ENCERRADA' AND NOT coalesce((${sqlOrigemValidaDemanda()}),false)))
+  WHERE d."tarefaId"=t.id AND NOT EXISTS(SELECT 1 FROM pecuaria."DecisaoOperacionalAcompanhamento" o WHERE o.id=d."decisaoOperacionalId" AND o.tipo='DISPENSAR') AND (d.estado='PENDENTE' OR d.estado<>'ENCERRADA' AND NOT coalesce((${sqlOrigemValidaDemanda()}),false)))
   OR EXISTS(SELECT 1 FROM pecuaria."ExameAnimal" x WHERE x.status='VALIDO' AND x.realizacao='COLETA_REGISTRADA'
    AND (x."tarefaId"=t.id OR EXISTS(SELECT 1 FROM pecuaria."VinculoTarefaProtocolo" v WHERE v."tarefaId"=t.id AND v.estado='ATUAL' AND v."exameId"=x.id))))`;
 }
 
 export async function listarAcompanhamentosPaginados(propriedadeId:number,entrada:unknown){
+ return prisma.$transaction(tx => listarAcompanhamentosPaginadosTx(tx,propriedadeId,entrada),{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
+}
+export async function listarAcompanhamentosPaginadosTx(tx: Prisma.TransactionClient, propriedadeId:number, entrada:unknown) {
  const f=consultaAcompanhamentoSchema.parse(entrada);const data=f.data??new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
- return prisma.$transaction(async tx=>{
   if(f.animalId)await conferirAnimalNoFato(tx,f.animalId,propriedadeId,dia(data));
   const escopo=f.animalId?Prisma.sql`d."animalId"=${f.animalId}`:Prisma.sql`EXISTS(SELECT 1 FROM pecuaria."LocalizacaoAnimal" l WHERE l."animalId"=d."animalId" AND l."propriedadeId"=${propriedadeId} AND l.desde<=${dia(data)} AND (l.ate IS NULL OR l.ate>${dia(data)}))`;
-  const base=Prisma.sql`WITH demandas AS (SELECT d.id,d."previstaPara",d."dataReferencia",d.ocorrencia,
-   CASE WHEN d.estado<>'ENCERRADA' AND NOT coalesce((${sqlOrigemValidaDemanda()}),false) THEN 'PENDENTE' ELSE d.estado END AS estado
+  const base=Prisma.sql`WITH demandas AS (SELECT d.id,coalesce(o.data,d."previstaPara") AS "previstaPara",d."dataReferencia",d.ocorrencia,
+   CASE WHEN d.estado='PENDENTE' AND o.tipo='DISPENSAR' THEN 'ENCERRADA' WHEN d.estado<>'ENCERRADA' AND NOT coalesce((${sqlOrigemValidaDemanda()}),false) THEN 'PENDENTE' ELSE d.estado END AS estado
    FROM pecuaria."DemandaAcompanhamentoReprodutivo" d
+   LEFT JOIN pecuaria."DecisaoOperacionalAcompanhamento" o ON o.id=d."decisaoOperacionalId"
    LEFT JOIN pecuaria."ExameAnimal" e ON e.id=d."exameOrigemId"
    LEFT JOIN pecuaria."InterpretacaoReprodutiva" i ON i."exameId"=e.id
    WHERE ${escopo} AND d."dataReferencia"<=${dia(data)} ${f.finalidade?Prisma.sql`AND d.finalidade=${f.finalidade}`:Prisma.empty})`;
@@ -347,17 +351,16 @@ export async function listarAcompanhamentosPaginados(propriedadeId:number,entrad
   const total=Number(contagem?.total??0);const pagina=Math.min(f.pagina,Math.max(1,Math.ceil(total/f.porPagina)));
   const [agregado]=await tx.$queryRaw<Array<{total:bigint;pendentes:bigint;resolvidas:bigint;encerradas:bigint;semData:bigint}>>(Prisma.sql`${base} SELECT count(*) AS total,count(*) FILTER(WHERE estado='PENDENTE') AS pendentes,count(*) FILTER(WHERE estado='RESOLVIDA') AS resolvidas,count(*) FILTER(WHERE estado='ENCERRADA') AS encerradas,count(*) FILTER(WHERE "previstaPara" IS NULL) AS "semData" FROM demandas`);
   const ids=await tx.$queryRaw<Array<{id:string}>>(Prisma.sql`${base} SELECT id FROM demandas WHERE ${filtro} ORDER BY "previstaPara" ASC NULLS LAST,ocorrencia ASC,id ASC LIMIT ${f.porPagina} OFFSET ${(pagina-1)*f.porPagina}`);
-  const registros=ids.length?await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:ids.map(i=>i.id)}},include:{animal:{select:{id:true,brinco:true,nome:true}},exameOrigem:{include:incluirExameOrigem}}}):[];
-  const itens=ids.map(({id})=>{const {exameOrigem,...demanda}=registros.find(d=>d.id===id)!;const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);return {...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{}),pendencias};});
+  const registros=ids.length?await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:ids.map(i=>i.id)}},include:{decisaoOperacional:true,animal:{select:{id:true,brinco:true,nome:true}},exameOrigem:{include:incluirExameOrigem}}}):[];
+  const itens=ids.map(({id})=>{const {exameOrigem,...demanda}=registros.find(d=>d.id===id)!;const pendencias=pendenciasOrigemDemanda(demanda,exameOrigem);return {...projetarAgendaDemanda({...demanda,...(pendencias.length&&demanda.estado!=="ENCERRADA"?{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:null}:{})}),pendencias};});
   return{itens,total,pagina,porPagina:f.porPagina,resumo:{total:Number(agregado?.total??0),pendentes:Number(agregado?.pendentes??0),resolvidas:Number(agregado?.resolvidas??0),encerradas:Number(agregado?.encerradas??0),semData:Number(agregado?.semData??0)}};
- },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead});
 }
 
 /** Uma revisão nunca desloca tarefa/agendamento individual, nem altera necessidade atendida. */
 export async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import("./acompanhamento.schemas.js").PreviaRevisaoPrazos) {
  const politica = await tx.politicaAcompanhamentoReprodutivo.findFirst({where:{id:input.politicaId,propriedadeId:input.propriedadeId}});
  if(!politica)erro("Política não pertence ao sítio escolhido", "politicaId");
- const demandas = await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:input.demandaIds},propriedadeOrigemId:input.propriedadeId},include:{tentativa:{select:{tipo:true,status:true}},gestacao:{select:{status:true,encerradaEm:true}},tarefa:{include:{eventos:{select:{id:true},take:1},_count:{select:{aplicacoes:true,exames:true,tentativas:true,manejos:true,vinculos:true}},execucao:{select:{canceladaEm:true,rodada:{select:{status:true}}}}}}},orderBy:{id:"asc"}});
+ const demandas = await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:input.demandaIds},propriedadeOrigemId:input.propriedadeId},include:{decisaoOperacional:true,tentativa:{select:{tipo:true,status:true}},gestacao:{select:{status:true,encerradaEm:true}},tarefa:{include:{eventos:{select:{id:true},take:1},_count:{select:{aplicacoes:true,exames:true,tentativas:true,manejos:true,vinculos:true}},execucao:{select:{canceladaEm:true,rodada:{select:{status:true}}}}}}},orderBy:{id:"asc"}});
  if(demandas.length!==input.demandaIds.length)erro("Demandas não pertencem ao sítio escolhido", "demandaIds");
  const parametros = parametrosAcompanhamentoSchema.parse(politica.parametros);
  const propostas = await Promise.all(demandas.map(async d=>{
@@ -365,7 +368,7 @@ export async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input:
   const proposta = proporAcompanhamentos({...politica,parametros},fato).find(p=>p.finalidade===d.finalidade && p.ocorrencia===d.ocorrencia);
   const visitaAgendada = await tx.participanteVisita.findFirst({where:{animalId:d.animalId,status:"PENDENTE",snapshot:{path:["acompanhamento","id"],equals:d.id},AtividadeVisita:{VisitaVeterinaria:{propriedadeId:input.propriedadeId,encerradaEm:null}}},select:{id:true}});
   const tarefaHerdada = d.tarefa && !d.tarefa.execucao.canceladaEm && (!d.tarefa.execucao.rodada || d.tarefa.execucao.rodada.status==="ABERTA") && tarefaComPrazoHerdado(d.tarefa,d.previstaPara) ? {id:d.tarefa.id,previstaAnterior:d.tarefa.previstaPara.toISOString(),historico:d.tarefa.historicoReprogramacao} : null;
-  const impedimento = d.estado!=="PENDENTE" ? "DEMANDA_NAO_PENDENTE" : d.tarefaId && !tarefaHerdada ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : visitaAgendada ? "AGENDAMENTO_VISITA_PRESERVADO" : d.origemAdocao==="SEM_REGRA" && (d.regraSnapshot as Record<string,unknown>).motivo==="AGENDAMENTO_ANTERIOR_A_TENTATIVA" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="INDIVIDUAL" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
+  const impedimento = d.estado!=="PENDENTE" || demandaDispensada(d) ? "DEMANDA_NAO_PENDENTE" : d.tarefaId && !tarefaHerdada ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : visitaAgendada ? "AGENDAMENTO_VISITA_PRESERVADO" : d.origemAdocao==="SEM_REGRA" && (d.regraSnapshot as Record<string,unknown>).motivo==="AGENDAMENTO_ANTERIOR_A_TENTATIVA" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="INDIVIDUAL" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
   return {demandaId:d.id,animalId:d.animalId,versao:d.versao,politicaAnteriorId:d.politicaId,previstaAnterior:d.previstaPara?.toISOString().slice(0,10)??null,regraAnterior:d.regraSnapshot,tarefaHerdada,visitaAgendadaId:visitaAgendada?.id??null,proposta:proposta??null,impedimento};
  }));
  return {propostas,revisao:hashDados({politicaId:politica.id,politicaVersao:politica.versao,propostas})};
@@ -408,12 +411,12 @@ export async function preverConclusoesAvaliacaoTx(tx: Prisma.TransactionClient, 
  if(new Set(proposta.vinculos.map(v=>v.demandaId)).size!==proposta.vinculos.length || new Set(proposta.vinculos.map(v=>v.campo)).size!==proposta.vinculos.length)
   erro("Cada conclusão e cada demanda podem aparecer uma única vez", "vinculosConclusao");
  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:proposta.animalId,propriedadeOrigemId:proposta.propriedadeId,estado:"PENDENTE"},
-  include:{tentativa:true,gestacao:true,exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
+  include:{decisaoOperacional:true,tentativa:true,gestacao:true,exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
  const [partos,tentativas]=await Promise.all([
   tx.partoAnimal.findMany({where:{animalId:proposta.animalId,status:"VALIDO"},orderBy:[{data:"asc"},{id:"asc"}]}),
   tx.tentativaReprodutiva.findMany({where:{animalId:proposta.animalId,status:"VALIDO"},orderBy:[{data:"asc"},{ordem:"asc"}]}),
  ]);
- const projecao=demandas.map(d=>{
+ const projecao=demandas.filter(d=>!demandaDispensada(d)).map(d=>{
   const regra=d.regraSnapshot as Record<string,unknown>, fonte=d.tentativa??d.gestacao??(d.origemAdocao==="PROTOCOLO"?d.exameOrigem:null);
   const parto=partos.find(p=>p.data>=d.dataReferencia&&(!d.gestacaoId||p.gestacaoId===d.gestacaoId));
   const substituta=d.tentativa?tentativas.find(t=>t.data>d.tentativa!.data||(t.data.getTime()===d.tentativa!.data.getTime()&&t.ordem>d.tentativa!.ordem)):null;

@@ -309,3 +309,13 @@ describe("produtor reprodutivo canônico", () => {
     });
   });
 });
+it("associação posterior à tarefa preserva o ID/chave/alerta da demanda publicada", async () => {
+ const anterior = { id: "necessidade-original", chave: "DEMANDA:d", alertaId: "alerta-original", demandaId: "d", tarefaId: null, tipo: "DG_VENCIDO", origemId: "d", animalId: "a", propriedadeId: 1, dataReferencia: new Date("2026-10-01"), previstaPara: new Date("2026-11-05"), regraSnapshot: {}, situacao: "PENDENTE", revisao: 1, decisao: null, revisaoEm: null };
+ m.necessidades.mockResolvedValue([anterior]);
+ m.atualizar.mockImplementation(async ({ data }) => ({ ...anterior, ...data, revisao: 2 }));
+ m.demandas.mockResolvedValue([{ id: "d", animalId: "a", propriedadeOrigemId: 1, tarefaId: "t", tarefa: { execucaoId: "p", dispensadaEm: null }, finalidade: "DIAGNOSTICO", dataReferencia: anterior.dataReferencia, previstaPara: anterior.previstaPara, regraSnapshot: {}, estado: "PENDENTE" }]);
+ await reavaliarAtencaoAnimal("a", 1, 7);
+ expect(m.criar).not.toHaveBeenCalled();
+ expect(m.atualizar).toHaveBeenCalledWith({ where: { id: anterior.id }, data: expect.objectContaining({ tarefaId: "t", demandaId: "d" }) });
+ expect(m.publicar.mock.calls[0][1]).toMatchObject({ origemId: anterior.id, chaveOcorrencia: anterior.chave });
+});
