@@ -1,3 +1,4 @@
+vi.mock("./alertas/produtor.js",()=>({reconciliarAlertasReprodutivosAnimalTx:vi.fn()}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../sanidade/alertas/protocolos.js",()=>({reconciliarParticipacaoAlertaTx:vi.fn()}));
 import type { Prisma } from "@prisma/client";

@@ -1,3 +1,5 @@
+import { tipoAplicacaoLegadaId } from "../sanidade/desvios.js";
+import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
 import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
 import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
@@ -613,10 +615,12 @@ export async function prepararExecucaoTarefaTx(
   },
   usuarioId: number | null,
   planejamentoFuturo = false,
+  impactoConferido?: Awaited<ReturnType<typeof conferirImpactosTx>>,
 ) {
   const referencia = await contextoTarefaTx(tx, id, input.propriedadeId);
   await travarAnimais(tx, [referencia.participante.animalId]);
   let contexto = await contextoTarefaTx(tx, id, input.propriedadeId);
+  if (contexto.comum.bloqueadaEm) erro("Participação bloqueada por impacto; registre revisão explícita antes de executar");
   if (contexto.participante.encerradoEm || contexto.tarefa.dispensadaEm || contexto.programacao.status !== "ABERTA")
     erro("A tarefa exige participação aberta e pendente");
   const comum = await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: contexto.tarefa.id }, include: {
@@ -704,6 +708,13 @@ export async function prepararExecucaoTarefaTx(
       .strict()
       .parse(Object.fromEntries(Object.entries(input.dados).filter(([k]) => k !== "cienciaSanitaria")));
   else erro("Tipo de tarefa desconhecido; revise a versão do protocolo");
+  const aplicacaoPreparada = tarefa.tipo === "APLICACAO" ? aplicacaoSchema.parse(preparado) : null;
+  const impactoProtocolar = aplicacaoPreparada
+    ? impactoConferido ?? await conferirImpactosTx(tx, {
+      origem: "PROCEDIMENTO", animalId: participante.animalId, propriedadeId: input.propriedadeId, data,
+      tipoAplicacaoId: aplicacaoPreparada.tipoAplicacaoId ?? tipoAplicacaoLegadaId(aplicacaoPreparada.finalidade),
+    }, aplicacaoPreparada.impacto)
+    : undefined;
   if(plano?.etapa.orientacaoTemporal){
     const regra=plano.etapa.orientacaoTemporal;
     if(regra.referencia==="INICIO_EFETIVO")plano.referenciaTemporalEfetiva={data:participante.inicioEfetivo!.toISOString(),precisao:participante.precisaoInicioEfetivo??"DIA",fatoId:participante.id};
@@ -782,7 +793,7 @@ export async function prepararExecucaoTarefaTx(
         unidade: p.unidade,
       };
   }
-  return { contexto, tarefa, participante, temporal, realizada, data, preparado, desvio, referenciasRealizadas, plano, impactosInicio };
+  return { impactoProtocolar, contexto, tarefa, participante, temporal, realizada, data, preparado, desvio, referenciasRealizadas, plano, impactosInicio };
 }
 
 /** Confirmação e prévia usam a mesma preparação; só este limite produz os fatos. */
@@ -800,7 +811,7 @@ export async function executarTarefaTx(
     if (preparacao.impactosInicio.itens.length && input.cienciaRecalendarioLegado !== true)
       erro("Revise a prévia e confirme ciência das mudanças no calendário legado", "cienciaRecalendarioLegado");
     await iniciarParticipanteTx(tx, preparacao.participante.id, input.propriedadeId, input.realizadaEm, usuarioId, input.dados.cienciaSanitaria === true, z.enum(["APLICACAO", "EXAME", "AVALIACAO", "TENTATIVA"]).parse(preparacao.tarefa.tipo));
-    preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId);
+    preparacao = await prepararExecucaoTarefaTx(tx, id, input, usuarioId, false, preparacao.impactoProtocolar);
   }
   const { tarefa, participante, temporal, realizada, preparado, desvio, referenciasRealizadas, plano } = preparacao;
   if (exigeMotivoExecucao(desvio) && (!input.motivo || input.motivo.trim().length < 5))
@@ -817,6 +828,7 @@ export async function executarTarefaTx(
       tx,
       aplicacaoSchema.parse(preparado),
       usuarioId,
+      { impactosConferidos: preparacao.impactoProtocolar, adiarEfeitos: true },
     );
     vinculo = { aplicacaoId: fato.id };
   }
@@ -869,6 +881,10 @@ export async function executarTarefaTx(
       ...vinculo,
     },
   });
+  if (tarefa.tipo === "APLICACAO" && fato && preparacao.impactoProtocolar) {
+    await aplicarImpactosTx(tx, preparacao.impactoProtocolar, { tipo: "AplicacaoProduto", id: fato.id },
+      aplicacaoSchema.parse(preparado).impacto, usuarioId);
+  }
   if (tarefa.tipo === "TENTATIVA" && fato) {
     const tentativa = await tx.tentativaReprodutiva.findUniqueOrThrow({where:{id:fato.id}});
     await criarDemandasDoFatoTx(tx,{tentativaId:tentativa.id,tipoTentativa:tentativa.tipo,animalId:tentativa.animalId,propriedadeId:input.propriedadeId,data:tentativa.data},usuarioId,undefined,participante.id);
@@ -949,6 +965,7 @@ export async function retirarParticipante(
       antes: participante,
       depois: salva,
     });
+    await reconciliarDemandasAnimalTx(tx,participante.animalId,usuarioId);
     return salva;
   });
 }

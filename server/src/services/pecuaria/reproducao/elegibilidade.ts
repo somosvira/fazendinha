@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "./alertas/produtor.js";
 import { lerEscoreCorporal } from "./escore-corporal.calc.js";
 import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import { garantirTipoToqueAptidaoTx } from "./toque-aptidao.js";
@@ -100,6 +101,7 @@ export function decidirElegibilidadeCiclo(input: DecidirElegibilidadeCicloInput,
       } });
       await auditar(tx, { entidade: "DecisaoElegibilidadeCiclo", entidadeId: criada.id, animalId: referencia.animalId,
         propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
+      await reconciliarAlertasReprodutivosAnimalTx(tx,referencia.animalId,usuarioId);
       return criada;
     });
   });
@@ -116,6 +118,7 @@ export function anularDecisaoElegibilidade(id: string, input: { chave: string; p
       if (atual.status !== "VALIDO") throw new RebanhoError("CONFLITO", "Decisão já anulada");
       const depois = await tx.decisaoElegibilidadeCiclo.update({ where: { id }, data: { status: "ANULADO", anuladoEm: new Date(), motivoAnulacao: input.motivo } });
       await auditar(tx, { entidade: "DecisaoElegibilidadeCiclo", entidadeId: id, animalId: vinculo.animalId, propriedadeId: input.propriedadeId, acao: "ANULACAO", usuarioId, antes: atual, depois });
+      await reconciliarAlertasReprodutivosAnimalTx(tx,vinculo.animalId,usuarioId);
       return depois;
     });
   });

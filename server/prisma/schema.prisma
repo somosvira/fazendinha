@@ -1048,12 +1048,10 @@ model TokenAcesso {
   @@schema("public")
 }
 
-// =============================================================================
-// PECUÁRIA v1 — REBANHO (schema Postgres `pecuaria`)
+// ======================================================================// PECUÁRIA v1 — REBANHO (schema Postgres `pecuaria`)
 // Substitui o módulo legado de rebanho/corte (removido do schema `public`).
 // Nada faz cascade a partir do animal.
-// =============================================================================
-
+// ======================================================================
 enum SexoBovino {
   F
   M
@@ -2020,6 +2018,9 @@ model ProgramacaoProtocolo {
 
 model ParticipacaoProtocolo {
   tentativasExternas VinculoTentativaParticipacao[]
+  bloqueadaEm DateTime?
+  motivoBloqueio String?
+  impactoSnapshot Json?
   acompanhamentoSnapshot Json?
   automacoes AutomacaoProtocolo[]
   Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
@@ -2528,6 +2529,7 @@ model RestricaoReprodutiva {
 }
 
 model RegraSanitariaReprodutiva {
+  impactoProtocolar Json?
   Propriedade   Propriedade @relation(fields: [propriedadeId], references: [id])
   Doenca        Doenca      @relation(fields: [doencaId], references: [id])
   Usuario       Usuario?    @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
@@ -4961,4 +4963,67 @@ model AutomacaoProtocolo {
   @@unique([participacaoId, momentoId])
   @@index([estado, programadaPara])
   @@schema("pecuaria")
+}
+
+// Regras operacionais sem valores clínicos implícitos; cada versão é imutável.
+model PoliticaAtencaoReprodutiva {
+ id String @id @default(uuid())
+ propriedadeId Int
+ versao Int
+ vigenteDesde DateTime @db.Date
+ parametros Json
+ criadoPorId Int
+ criadoEm DateTime @default(now())
+ @@unique([propriedadeId, versao])
+ @@unique([propriedadeId, vigenteDesde])
+ @@schema("pecuaria")
+}
+
+// Projeção persistida com identidade canônica da tarefa/demanda/fato, publicada no núcleo comum.
+model NecessidadeReprodutiva {
+ id String @id @default(uuid())
+ chave String @unique
+ tipo String
+ origemId String
+ animalId String
+ propriedadeId Int
+ tarefaId String? @unique
+ demandaId String? @unique
+ participacaoId String?
+ alertaId String? @unique
+ dataReferencia DateTime @db.Date
+ previstaPara DateTime? @db.Date
+ regraSnapshot Json
+ situacao String
+ motivo String
+ revisao Int @default(1)
+ decisao String?
+ decisaoMotivo String?
+ decisaoDestino String?
+ revisaoEm DateTime? @db.Date
+ decisaoPorId Int?
+ criadoEm DateTime @default(now())
+ atualizadoEm DateTime @updatedAt
+ @@index([animalId, situacao])
+ @@index([propriedadeId, situacao, previstaPara])
+ @@schema("pecuaria")
+}
+
+// Procedimento pode afetar protocolo sem associar doença fictícia.
+model RegraImpactoProcedimentoReprodutivo {
+ id String @id @default(uuid())
+ propriedadeId Int
+ tipoAplicacaoId String
+ finalidade String
+ efeito String
+ motivo String
+ ativo Boolean @default(true)
+ versao Int @default(1)
+ criadoPorId Int
+ atualizadoPorId Int
+ criadoEm DateTime @default(now())
+ atualizadoEm DateTime @updatedAt
+ @@unique([propriedadeId, tipoAplicacaoId, finalidade], map: "RegraImpactoProcedimento_publico_unico")
+ @@index([propriedadeId, ativo])
+ @@schema("pecuaria")
 }

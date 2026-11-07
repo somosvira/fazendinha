@@ -72,6 +72,7 @@ export async function prepararExecucaoClinicaTx(tx: Tx, entrada: ItemExecucaoCli
   const tarefa = await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: item.tarefaId }, include: { execucao: { include: { protocolo: true } } } });
   if (tarefa.execucao.animalId !== item.animalId || tarefa.execucao.propriedadeId !== item.propriedadeId)
     throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada para o animal e sítio");
+  if(tarefa.execucao.bloqueadaEm)throw new RebanhoError("CONFLITO","Participação bloqueada por impacto; registre revisão explícita antes de executar");
   if(item.tipo==="AVALIACAO"&&item.reavaliacao){
     const preparada=await prepararReavaliacaoTx(tx,item,usuarioId);
     const avaliacaoContextual=preparada.preparada.contexto?await resumirPreviaAvaliacaoTx(tx,preparada.input,preparada.preparada):null;

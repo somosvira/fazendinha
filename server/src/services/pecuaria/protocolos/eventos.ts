@@ -19,13 +19,13 @@ export const eventoTarefaSchema = z.object({
 export type EventoTarefaInput = z.infer<typeof eventoTarefaSchema>;
 
 /** Histórico operacional sem criação de fato clínico, serviço ou movimento de estoque. */
-export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: string, entrada: EventoTarefaInput, usuarioId: number | null, tipo?: TipoProtocolo) {
+export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: string, entrada: EventoTarefaInput, usuarioId: number | null, tipo?: TipoProtocolo, opcoes: { reciboCompartilhado?: true } = {}) {
   const input = eventoTarefaSchema.parse(entrada);
   const referencia = await tx.tarefaProtocolo.findFirst({ where: { OR: [{ id }, { legadoIatfId: id }], execucao: { protocolo: tipo ? { tipo } : {} } }, select: { id: true, execucao: { select: { animalId: true } } } });
   if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Tarefa não encontrada");
   await travarAnimais(tx, [referencia.execucao.animalId]);
   await tx.$queryRaw`SELECT id FROM pecuaria."TarefaProtocolo" WHERE id=${referencia.id} FOR UPDATE`;
-  return operacaoIdempotenteTx(tx, { ...input, tarefaId: referencia.id }, usuarioId, "EVENTO_TAREFA_PROTOCOLO", async () => {
+  const executar = async () => {
     const tarefa = await tx.tarefaProtocolo.findUniqueOrThrow({ where: { id: referencia.id }, include: {
       execucao: { include: { rodada: true } }, etapa: true,
       aplicacoes: { where: { status: "VALIDO" } }, exames: { where: { status: "VALIDO" } }, tentativas: { where: { status: "VALIDO" } },
@@ -79,7 +79,8 @@ export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: 
       propriedadeId: input.propriedadeId, acao: input.tipo, usuarioId, depois: evento });
     await reconciliarParticipacaoAlertaTx(tx, tarefa.execucaoId, usuarioId);
     return evento;
-  });
+  };
+  return opcoes.reciboCompartilhado ? executar() : operacaoIdempotenteTx(tx, { ...input, tarefaId: referencia.id }, usuarioId, "EVENTO_TAREFA_PROTOCOLO", executar);
 }
 export const registrarEventoTarefa = (id: string, input: EventoTarefaInput, usuarioId: number | null, tipo?: TipoProtocolo) =>
   transacaoPecuaria(tx => registrarEventoTarefaTx(tx, id, input, usuarioId, tipo));

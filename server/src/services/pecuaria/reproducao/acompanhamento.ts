@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "./alertas/produtor.js";
 import { tarefaComPrazoHerdado } from "./prazo-tarefa.calc.js";
 import { proporPrazoDaParticipacao, proporReconfirmacoesDaParticipacao } from "./prazos-protocolo.js";
 import { Prisma, type DemandaAcompanhamentoReprodutivo } from "@prisma/client";
@@ -189,7 +190,7 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
 /** Reavalia apenas demandas já criadas, inclusive quando uma evidência é anulada. Não aplica uma política nova. */
 export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,animalId:string,usuarioId:number|null){
  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId},include:{tentativa:{include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true}}}},gestacao:true,exameOrigem:true,vinculoConclusaoResolucao:true},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
- if(!demandas.length)return;
+ if(!demandas.length){await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);return;}
  const exames=await tx.exameAnimal.findMany({where:{animalId,status:"VALIDO",realizacao:"REALIZADO"},include:{interpretacao:true,resultados:{where:{vigente:true,campo:{in:["CONCLUSAO_GESTACIONAL","SEXO_FETAL"]}}}},orderBy:[{data:"asc"},{criadoEm:"asc"},{id:"asc"}]});
  const partos=await tx.partoAnimal.findMany({where:{animalId,status:"VALIDO"},orderBy:[{data:"asc"},{id:"asc"}]});
  const tentativas=await tx.tentativaReprodutiva.findMany({where:{animalId,status:"VALIDO"},include:{tarefa:true,participacoesExplicitas:{where:{revogadoEm:null},select:{participacaoId:true}}},orderBy:[{data:"asc"},{ordem:"asc"}]});
@@ -256,6 +257,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:antes.id},data:{...dados,versao:{increment:1}}});
   await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:antes.id,animalId,propriedadeId:antes.propriedadeOrigemId,acao:"RECONCILIACAO",usuarioId,antes,depois:salva});
  }
+ await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);
 }
 async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcompanhamentoInput){
  const [tentativas,gestacoes]=await Promise.all([tx.tentativaReprodutiva.findMany({where:{id:{in:input.tentativaIds},status:"VALIDO",propriedadeId:input.propriedadeId},orderBy:{id:"asc"}}),tx.gestacaoAnimal.findMany({where:{id:{in:input.gestacaoIds},status:"VALIDO",propriedadeId:input.propriedadeId,encerradaEm:null},orderBy:{id:"asc"}})]);

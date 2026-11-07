@@ -1,3 +1,4 @@
+vi.mock("./alertas/produtor.js",()=>({reconciliarAlertasReprodutivosAnimalTx:vi.fn()}));
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ tx: {
   demandaAcompanhamentoReprodutivo: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },

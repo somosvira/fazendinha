@@ -61,6 +61,7 @@ export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProto
     throw new RebanhoError("VALIDACAO", "Selecione a mesma ação e programação; participação individual não se mistura a outra inscrição", "itens");
   if (tarefas.some(t => t.execucao.canceladaEm || t.execucao.rodada && t.execucao.rodada.status !== "ABERTA"))
     throw new RebanhoError("CONFLITO", "A participação ou programação está encerrada", "itens");
+  if(tarefas.some(t=>t.execucao.bloqueadaEm))throw new RebanhoError("CONFLITO","Participação bloqueada por impacto; registre revisão explícita antes de executar","itens");
   const aplicacoes=input.itens.filter((i):i is Extract<ItemExecucaoProtocolo,{tipo:"APLICACAO"}>=>i.tipo==="APLICACAO");
   const manejos=input.itens.filter((i):i is ItemExecucaoManejo=>i.tipo==="MANEJO"||i.tipo==="RETIRADA");
   const clinicos=input.itens.filter((i):i is ItemExecucaoClinica=>i.tipo==="EXAME"||i.tipo==="TENTATIVA"||i.tipo==="AVALIACAO");

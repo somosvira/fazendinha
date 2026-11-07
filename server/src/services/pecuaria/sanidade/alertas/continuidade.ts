@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "../../reproducao/alertas/produtor.js";
 import { reavaliarContinuidadeProgramaAnimalTx } from "../programacoes/continuidade.js";
 import type { Prisma } from "@prisma/client";
 import { auditar, hojeFazendaDate } from "../../rebanho/regras.js";
@@ -43,6 +44,7 @@ export async function reavaliarContinuidadeAnimalTx(tx: Prisma.TransactionClient
     }
     if (!fora && !destinoInativo && !animal.baixas.length && !temDecisao && !["ENCERRADO", "NECESSITA_REVISAO"].includes(situacao)) await avaliarRegraAnimalTx(tx, n.regraId, animalId, hoje, autor);
   }
+  await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);
   await reavaliarContinuidadeProgramaAnimalTx(tx, animalId, usuarioId, mudanca);
   if (!local || animal.baixas.length) return;
   const regras = await tx.regraAlertaSanitario.findMany({ where: { ativo: true, propriedadeIds: { has: local.propriedadeId }, ...(necessidades.length ? { id: { notIn: necessidades.map(n => n.regraId) } } : {}) }, select: { id: true } });

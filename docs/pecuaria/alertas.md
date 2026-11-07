@@ -1,6 +1,6 @@
 # Alertas da Pecuária e programação sanitária
 
-Este contrato descreve o núcleo de alertas e seu primeiro produtor, Sanidade: regras por idade/data fixa, programação por meses, consultas e vínculos de atendimento. Backend e interfaces estão codificados localmente; integrações com PostgreSQL foram exercitadas com fixtures próprias. A validação visual integrada e a liberação operacional conservam os gates abaixo. Isso não comprova disponibilidade em ambiente publicado ou homologação da fazenda.
+Este contrato descreve o núcleo de alertas e os produtores Sanidade e Reprodução. Sanidade reúne regras por idade/data fixa, programação por meses, consultas e vínculos de atendimento. Backend e interfaces estão codificados localmente; integrações com PostgreSQL foram exercitadas com fixtures próprias. A validação visual integrada e a liberação operacional conservam os gates abaixo. Isso não comprova disponibilidade em ambiente publicado ou homologação da fazenda.
 
 ## Alertas na ficha do animal
 
@@ -122,13 +122,11 @@ A validação automatizada, a inspeção em navegador, o CI remoto, a publicaç�
 
 ## Extensão por outras origens e tarefas
 
-A integração de atendimento por protocolo não ativa um produtor autônomo de alertas de etapas. Os tipos abaixo continuam sem produtores ativos; exigem critério de domínio, identidade de episódio e resolvedor autorizado antes de entrar na central.
+O produtor reprodutivo descrito abaixo publica etapas e acompanhamentos no núcleo comum. As origens da tabela continuam sem produtores ativos e exigem critério de domínio, identidade de episódio e resolvedor autorizado antes de entrar na central.
 
 | Origem futura | Evidência e encerramento a definir |
 |---|---|
 | Previsão de parto | Gestação/previsão válidas; parto, perda ou correção reconciliam a atenção |
-| Etapa de protocolo | Identidade da tarefa e sua situação factual, sem duplicar o procedimento |
-| Intervalo após inseminação | Tentativa válida e finalidade explícita do acompanhamento; avaliação/correção/anulação vinculadas |
 | Tempo sem manejo | Tipos de manejo e marco de acompanhamento conferidos; histórico insuficiente não significa falta de cuidado |
 | Ocorrência sanitária prolongada | Ocorrência válida sem encerramento e limite configurado; informar duração do registro, sem afirmar doença persistente |
 | Lembrete avulso | Título, data e contexto definidos por pessoa autorizada; conclusão sem simular fato clínico |
@@ -136,3 +134,20 @@ A integração de atendimento por protocolo não ativa um produtor autônomo de 
 Uma futura tarefa/Kanban pode referenciar `alertaId` e sua origem/episódio. A tarefa não substitui a identidade da necessidade, a autorização ou o fato do domínio; uma conclusão genérica não pode gravar aplicação, exame ou encerramento clínico. Não existem tabelas ou execução de tarefas de trabalho nesta entrega.
 
 Peso, prescrição, reforço automático pela última aplicação, sincronização contínua IDEAGRI e notificações externas permanecem fora do fluxo. A aprovação visual G2 não autoriza ativar uma atividade real sem G3, habilitar cron, publicar ou fazer deploy.
+
+
+## Atenção reprodutiva no núcleo comum
+
+`NecessidadeReprodutiva` projeta o cuidado com identidade canônica: `TAREFA:<id>` (incluindo demanda de acompanhamento ligada à tarefa), `DEMANDA:<id>` sem tarefa, preparo de uma participação, exame/retorno ou ciclo de origem. Uma tarefa e seu acompanhamento não publicam duas necessidades. A ficha, a agenda e a central consultam essa mesma origem persistida. A ausência de atendimento usa a redação **Sem atendimento registrado**; planejamento, preparo, inscrição ou indicação não comprovam serviço.
+
+Os tipos registrados cobrem etapa, tentativa após preparo, agendamento incompleto, DG, reconfirmação, retorno, apta sem encaminhamento e avaliação necessária/desatualizada. DG/reconfirmação usam a regra congelada da demanda, inclusive antecedência e tolerância v2; etapa e retorno usam o dia civil explicitamente programado; a tarefa conserva sua precisão/hora original para execução e agenda. `PoliticaAtencaoReprodutiva` acrescenta versões imutáveis dos prazos operacionais de preparo/encaminhamento/avaliação: público, marco, intervalo/unidade, antecedência, tolerância e resolução são obrigatórios, sem valor clínico padrão. A necessidade conserva a regra adotada. Sem data ou regra, a situação é `PLANEJAMENTO_PENDENTE`, sem fabricar atraso. Uma nova política não desloca necessidades existentes; reagendamento individual é decisão explícita.
+
+Tentativa externa válida e vinculada por `VinculoTentativaParticipacao` satisfaz preparo; coincidência de animal/data e rateio financeiro não vinculam serviço. Encaminhamento explícito de avaliação ou participação aberta pode resolver **sem encaminhamento**, sem comprovar tentativa realizada. Exame físico realizado não satisfaz DG solicitado: sem conclusão gestacional vigente positiva/negativa permanece cuidado residual na identidade da tarefa. Retorno requer avaliação reprodutiva compatível, não qualquer exame sanitário posterior.
+
+A decisão `REAGENDAR` ou `SUSPENDER` exige motivo, data futura e destino; a revisão volta à atenção quando alcançada. `DISPENSAR` encerra administrativamente, com motivo e autoria, sem criar fato. `RETIRAR` exige participação, registra retirada administrativa e cancela autorizações futuras; preserva aplicações, consumo e histórico. A dispensa de tarefa usa o evento terminal `DISPENSA`, compartilhando o recibo da decisão. Os serviços revalidam sítio, animal, origem e revisão sob trava, no mesmo commit da decisão e da publicação.
+
+O dispositivo tem identidade própria `DISPOSITIVO:<aplicacaoId>`. Uma inserção válida, ou anulada com administração mantida/a esclarecer, continua demandando cuidado até retirada física válida ou mantida. Dispensar a etapa ou retirar a participação não encerra esse cuidado; a decisão administrativa não altera o corpo do animal. O cuidado físico recusa `DISPENSAR`/`RETIRAR`, mantendo reagendamento/revisão explícitos.
+
+As consultas/detalhes comuns aceitam `produtor=reproducao` e `tipo`, com os mesmos gates de sessão real, Pecuária e sítio. `GET` não avalia nem publica. `POST /alertas/reproducao/reavaliacao` permite reavaliação explícita de um animal autorizado; políticas ficam em `/alertas/reproducao/politicas` e decisões em `/alertas/:id/decisao-reprodutiva`. Os resumos não contêm custos nem campos clínicos livres. Cadastro, correção, localização, baixa/estorno e escritores reprodutivos reconciliam a atenção dentro da transação de origem.
+
+O avaliador temporal de Reprodução confirma lotes/cursor e cobertura próprios em `AvaliacaoAlertas.id=reproducao`. A consulta informa as coberturas por produtor e o pior estado agregado; Sanidade atualizada não comprova Reprodução atualizada. O handler compartilhado respeita `ALERTAS_CRON_ENABLED`, mantido desabilitado por padrão, sem criação de cron ou alteração de ambiente. Testes unitários verificam contratos, deduplicação, fatos externos, DG residual e dispositivo. Os casos PostgreSQL novos são opt-in, usam somente fixtures próprias em transação revertida e não constituem homologação operacional.

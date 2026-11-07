@@ -15,7 +15,8 @@ describe("consulta e proposta de origem da retirada", () => {
     expect(r).toMatchObject({ total: 1, pagina: 1, porPagina: 10, sugestaoInsercaoId: "insercao", situacaoOrigem: "UNIVOCA" });
     expect(m.tarefa).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "tarefa", etapa: { tipo: "RETIRADA" }, execucao: { propriedadeId: 7 } } }));
     const filtro = m.contar.mock.calls[0][0].where;
-    expect(filtro).toMatchObject({ animalId: "animal-autorizado", status: "VALIDO" });
+    expect(filtro).toMatchObject({ animalId: "animal-autorizado" });
+    expect(filtro.AND).toEqual(expect.arrayContaining([expect.objectContaining({OR:expect.arrayContaining([{status:"VALIDO"}])})]));
     expect(m.listar).toHaveBeenCalledWith(expect.objectContaining({ where: filtro, skip: 0, take: 10 }));
   });
   it("zero origens e múltiplas origens não escolhem a primeira nem a mais recente", async () => {
