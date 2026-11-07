@@ -10,6 +10,7 @@ import {
   reconciliarDemandasAnimalTx,
 } from "../reproducao/acompanhamento.js";
 import { hashDados, operacaoIdempotenteTx } from "../reproducao/operacoes.js";
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 
 const comando = {
   chave: z.string().uuid(),
@@ -315,6 +316,11 @@ export async function revogarTentativaParticipacao(
           antes: v,
           depois: salva,
         });
+        await reconciliarAlertasReprodutivosAnimalTx(
+          tx,
+          v.participacao.animalId,
+          usuarioId,
+        );
         return { id: salva.id, revogadoEm: agora.toISOString() };
       },
     );
