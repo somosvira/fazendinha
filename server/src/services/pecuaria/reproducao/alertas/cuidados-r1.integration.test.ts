@@ -79,6 +79,7 @@ async function fixture(tx: Prisma.TransactionClient) {
           tipo: "OPCAO",
           opcoes: ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"],
         },
+        { codigo: "SEXO_FETAL", tipo: "OPCAO", opcoes: ["M", "F"] },
       ],
     },
   });
