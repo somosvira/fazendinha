@@ -566,7 +566,7 @@ export async function prepararAvaliacaoTx(
   return { data, tentativa, gestacao, gestacaoCriada, evidencia, contexto, necessidades };
 }
 export async function resumirPreviaAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, preparada: Awaited<ReturnType<typeof prepararAvaliacaoTx>>) {
-  const necessidadesGeradas = preparada.gestacaoCriada ? await preverDemandasNovaGestacaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data: preparada.data }) : [];
+  const necessidadesGeradas = preparada.gestacaoCriada ? await preverDemandasNovaGestacaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data: preparada.data, tentativaId: preparada.tentativa?.id }) : [];
   const resumo = { exame: { tipoExameId: preparada.evidencia.tipoExameId, data: input.data, resultado: input.resultado, sexoFetal: input.sexoFetal ?? null, resultadoAptidao: input.resultadoAptidao ?? null, gestacaoCriada: preparada.gestacaoCriada },
     itens: preparada.contexto!.itens, condutas: preparada.contexto!.condutas, necessidades: preparada.necessidades, necessidadesGeradas };
   return { ...resumo, revisao: revisaoAvaliacaoContextual({ ...input, ...resolverDecisaoIatf(input) }, resumo) };

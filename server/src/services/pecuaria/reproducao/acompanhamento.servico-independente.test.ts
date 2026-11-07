@@ -3,13 +3,14 @@ const mocks = vi.hoisted(() => ({ tx: {
   demandaAcompanhamentoReprodutivo: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
   exameAnimal: { findMany: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
   vinculoConclusaoAcompanhamento: { create: vi.fn(), update: vi.fn() },
-  partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
+  partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn(), findFirst: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
+  gestacaoAnimal: { findUnique: vi.fn() },
   participacaoProtocolo: { findFirst: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
 }, auditar: vi.fn(), conferir: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
-import { criarDemandasDoFatoTx, listarAcompanhamentos, preverConclusoesAvaliacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, listarAcompanhamentos, preverConclusoesAvaliacaoTx, preverDemandasNovaGestacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import type { Prisma } from "@prisma/client";
 const tx = mocks.tx as unknown as Prisma.TransactionClient;
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -35,6 +36,23 @@ beforeEach(() => {
   mocks.tx.demandaAcompanhamentoReprodutivo.update.mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
 });
 describe("contraprovas de serviço: identidade, continuidade e leitura sem escrita", () => {
+  it.each(["INTERNA", "EXTERNA"])("prévia de reconfirmação conserva a regra congelada da tentativa %s e coincide com a confirmação", async origem => {
+    const regra = { finalidade: "RECONFIRMACAO", ocorrencia: 1, publico: "GESTACAO", referencia: "PRIMEIRO_DG_POSITIVO", intervalo: 10, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "RECONFIRMACAO_CONCLUSIVA" };
+    const participacao = { id: "participacao", animalId: "animal", propriedadeId: 7, acompanhamentoSnapshot: { versao: 1, protocoloId: "protocolo", protocoloVersao: 1, diagnosticoIndividualEm: null, modelo: { versao: 2, efeito: "ALERTA", regras: [regra] }, sitio: null } };
+    const tentativa = origem === "INTERNA" ? { tarefa: { execucao: participacao }, participacoesExplicitas: [] } : { tarefa: null, participacoesExplicitas: [{ participacao }] };
+    mocks.tx.tentativaReprodutiva.findFirst.mockResolvedValue(tentativa);
+    mocks.tx.gestacaoAnimal.findUnique.mockResolvedValue({ TentativaReprodutiva: tentativa });
+    mocks.tx.politicaAcompanhamentoReprodutivo.findFirst.mockResolvedValue({ id: "politica-atual", versao: 9, parametros: { versao: 1, efeito: "ALERTA", diagnostico: null, reconfirmacoes: [{ ocorrencia: 1, diasAposPrimeiroPositivo: 99 }] } });
+    const previa = await preverDemandasNovaGestacaoTx(tx, { animalId: "animal", propriedadeId: 7, data: dia("2026-02-01"), tentativaId: "t" });
+    expect(previa).toEqual([expect.objectContaining({ previstaPara: "2026-02-11", origemAdocao: "MODELO", participacaoAcompanhamentoId: "participacao" })]);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).not.toHaveBeenCalled();
+    mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(async ({ data }) => ({ id: "nova-demanda", ...data }));
+    await criarDemandasDoFatoTx(tx, { animalId: "animal", propriedadeId: 7, data: dia("2026-02-01"), gestacaoId: "g" }, 7);
+    const gravada = mocks.tx.demandaAcompanhamentoReprodutivo.create.mock.calls[0][0].data;
+    expect(gravada).toMatchObject({ previstaPara: dia(previa[0].previstaPara!), regraSnapshot: previa[0].regraSnapshot, origemAdocao: previa[0].origemAdocao });
+    expect(mocks.tx.politicaAcompanhamentoReprodutivo.findFirst).not.toHaveBeenCalled();
+  });
+
   it("prévia distingue resolução explícita e preservação sem gravar", async () => {
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda("d1"), demanda("d2", 2)]);
     const proposta = { animalId:"animal", propriedadeId:7, data:dia("2026-01-25"), tentativaId:"t", gestacaoId:null, tipoExameId:"tipo", versaoFormato:1, finalidades:["DIAGNOSTICO"], resultados:[{campo:"CONCLUSAO_GESTACIONAL",valor:"NEGATIVO"}], vinculos:[{demandaId:"d1",campo:"CONCLUSAO_GESTACIONAL" as const}] };
@@ -76,6 +94,7 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     expect(mocks.tx.vinculoConclusaoAcompanhamento.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "v" }, data: expect.objectContaining({ vigente: false, invalidadoPorId: 7 }) }));
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "d" }, data: expect.objectContaining({ estado: "PENDENTE", vinculoConclusaoResolucaoId: null }) }));
   });
+
 
   it("inconclusivo mantém acompanhamento mesmo após prazo e tarefa já realizada", async () => {
     const d = { ...demanda("d"), tarefaId: "tarefa-concluida" };

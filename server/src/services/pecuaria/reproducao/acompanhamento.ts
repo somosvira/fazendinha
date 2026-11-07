@@ -126,10 +126,29 @@ async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?
  if(!politica){if(politicaId)erro("Política não pertence ao sítio de origem", "politicaId");return [];}
  return proporAcompanhamentos({...politica,parametros:parametrosAcompanhamentoSchema.parse(politica.parametros)},{...origem,data:texto(origem.data)}).map(p=>({...p,politicaId:politica.id}));
 }
-/** Propostas de política para uma gestação que ainda será criada, sem adotar nem persistir. */
-export async function preverDemandasNovaGestacaoTx(tx: Prisma.TransactionClient, origem: { animalId: string; propriedadeId: number; data: Date }) {
- const propostas=await propostasTx(tx,{...origem,gestacaoId:"PREVIA"});
- return propostas.map(({gestacaoId: _gestacaoId, ...proposta})=>proposta);
+const selecionarParticipacaoPrazo = { id: true, animalId: true, propriedadeId: true, acompanhamentoSnapshot: true } as const;
+const selecionarOrigemTentativa = {
+ tarefa: { select: { execucao: { select: selecionarParticipacaoPrazo } } },
+ participacoesExplicitas: { where: { revogadoEm: null }, select: { participacao: { select: selecionarParticipacaoPrazo } } },
+} as const;
+type ParticipacaoPrazo = { id: string; animalId: string; propriedadeId: number; acompanhamentoSnapshot: Prisma.JsonValue };
+
+async function proporDemandasGestacaoTx(tx: Prisma.TransactionClient, origem: Origem & { gestacaoId: string }, participacao?: ParticipacaoPrazo | null) {
+ return participacao && participacao.animalId === origem.animalId && participacao.propriedadeId === origem.propriedadeId && participacao.acompanhamentoSnapshot
+  ? proporReconfirmacoesDaParticipacao(participacao.acompanhamentoSnapshot, { gestacaoId: origem.gestacaoId, data: texto(origem.data) }, participacao.id)
+  : (await propostasTx(tx, origem)).map(p => ({ ...p, origemAdocao: "FATO_NOVO" as const, participacaoAcompanhamentoId: null }));
+}
+
+/** Projeta a mesma regra congelada da confirmação, sem adotar nem persistir. */
+export async function preverDemandasNovaGestacaoTx(tx: Prisma.TransactionClient, origem: { animalId: string; propriedadeId: number; data: Date; tentativaId?: string | null }) {
+ const { tentativaId, ...fato } = origem;
+ const tentativa = tentativaId ? await tx.tentativaReprodutiva.findFirst({
+  where: { id: tentativaId, animalId: origem.animalId, status: "VALIDO", data: { lte: origem.data } },
+  select: selecionarOrigemTentativa,
+ }) : null;
+ const participacao = tentativa?.tarefa?.execucao ?? tentativa?.participacoesExplicitas?.[0]?.participacao;
+ const propostas = await proporDemandasGestacaoTx(tx, { ...fato, gestacaoId: "PREVIA" }, participacao);
+ return propostas.map(({ gestacaoId: _gestacaoId, ...proposta }) => proposta);
 }
 /** Somente escritores chamam esta função. Uma leitura nunca adota políticas em fatos antigos. */
 export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:Origem,usuarioId:number|null,politicaId?:string,participacaoId?:string){
@@ -140,11 +159,9 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
   propostas=participacao.acompanhamentoSnapshot ? proporPrazoDaParticipacao(participacao.acompanhamentoSnapshot,{tentativaId:origem.tentativaId,tipoTentativa:origem.tipoTentativa,data:texto(origem.data)},participacaoId)
    : (await propostasTx(tx,origem)).map(p=>({...p,origemAdocao:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  }else if(origem.gestacaoId && !politicaId){
-  const gestacao=await tx.gestacaoAnimal.findUnique({where:{id:origem.gestacaoId},select:{TentativaReprodutiva:{select:{tarefa:{select:{execucao:{select:{id:true,animalId:true,propriedadeId:true,acompanhamentoSnapshot:true}}}},participacoesExplicitas:{where:{revogadoEm:null},select:{participacao:{select:{id:true,animalId:true,propriedadeId:true,acompanhamentoSnapshot:true}}}}}}}});
+  const gestacao=await tx.gestacaoAnimal.findUnique({where:{id:origem.gestacaoId},select:{TentativaReprodutiva:{select:selecionarOrigemTentativa}}});
   const participacao=gestacao?.TentativaReprodutiva?.tarefa?.execucao ?? gestacao?.TentativaReprodutiva?.participacoesExplicitas?.[0]?.participacao;
-  propostas=participacao && participacao.animalId===origem.animalId && participacao.propriedadeId===origem.propriedadeId && participacao.acompanhamentoSnapshot
-   ? proporReconfirmacoesDaParticipacao(participacao.acompanhamentoSnapshot,{gestacaoId:origem.gestacaoId,data:texto(origem.data)},participacao.id)
-   : (await propostasTx(tx,origem)).map(p=>({...p,origemAdocao:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
+  propostas=await proporDemandasGestacaoTx(tx, { ...origem, gestacaoId: origem.gestacaoId }, participacao);
  }else propostas=(await propostasTx(tx,origem,politicaId)).map(p=>({...p,origemAdocao:politicaId?"ADOCAO_EXPLICITA" as const:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  for(const p of propostas){
   const existente=await tx.demandaAcompanhamentoReprodutivo.findFirst({where:{tentativaId:p.tentativaId,gestacaoId:p.gestacaoId,finalidade:p.finalidade,ocorrencia:p.ocorrencia}});
