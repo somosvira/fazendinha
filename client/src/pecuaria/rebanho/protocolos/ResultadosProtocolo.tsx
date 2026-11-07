@@ -22,12 +22,22 @@ import {
   type ContextoProtocolo,
 } from "./api";
 
+type CondutaContextualResultado = {
+  codigo: string;
+  rotulo: string;
+  tipo: string;
+  destino: string | null;
+  revisaoEm: string | null;
+  retornoEm: string | null;
+  observacao: string | null;
+};
 type ExameResultado = {
   id: string;
   data: string;
   resultado: string | null;
   conduta: string | null;
   retornoEm: string | null;
+  condutasContextuais?: CondutaContextualResultado[];
 };
 type TentativaResultado = {
   id: string;
@@ -54,6 +64,7 @@ export type LinhaResultadoProtocolo = {
   perdaPosterior: boolean;
   situacaoAtual: string | null;
   encaminhamento: string | null;
+  condutasContextuais?: CondutaContextualResultado[];
   retornoEm: string | null;
   pendencia: string | null;
   vinculoExterno: { id: string; tentativaId: string; valido: boolean } | null;
@@ -70,6 +81,26 @@ type Taxa = {
   denominador: number;
   percentual: number | null;
 };
+function EncaminhamentosContextuais({
+  condutas,
+}: {
+  condutas?: CondutaContextualResultado[];
+}) {
+  if (!condutas?.length) return null;
+  return (
+    <ul aria-label="Encaminhamentos registrados" className="mt-2 grid gap-2">
+      {condutas.map((c, i) => (
+        <li key={`${c.codigo}:${i}`}>
+          <p className="font-medium">{c.rotulo}</p>
+          {c.destino && <p>Destino: {c.destino}</p>}
+          {c.revisaoEm && <p>Revisão: {dataBR(c.revisaoEm)}</p>}
+          {c.retornoEm && <p>Retorno: {dataBR(c.retornoEm)}</p>}
+          {c.observacao && <p>Observação: {c.observacao}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
 export type DadosResultadosProtocolo = {
   etapasAcompanhamento?: string[];
   liberado: boolean;
@@ -323,6 +354,9 @@ export function ResultadosProtocolo({
                     {l.encaminhamento && (
                       <span className="block">{l.encaminhamento}</span>
                     )}
+                    <EncaminhamentosContextuais
+                      condutas={l.condutasContextuais}
+                    />
                     {l.retornoEm && (
                       <span className="block">
                         Retorno: {dataBR(l.retornoEm)}
@@ -450,6 +484,9 @@ export function ResultadosProtocolo({
                         {resultado[e.resultado ?? ""] ?? "Exame registrado"}
                       </LinkInterno>
                       {e.conduta && <p>Conduta: {e.conduta}</p>}
+                      <EncaminhamentosContextuais
+                        condutas={e.condutasContextuais}
+                      />
                       {e.retornoEm && <p>Retorno: {dataBR(e.retornoEm)}</p>}
                     </div>
                   ))}

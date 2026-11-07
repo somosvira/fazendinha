@@ -4,8 +4,36 @@ import {
   resumirPreparo,
   resumirDiagnostico,
   taxaResultado,
+  condutasContextuaisResultado,
 } from "./resultados.calc.js";
 describe("execução e resultados factuais", () => {
+  it("encaminhamento mantém o snapshot clínico sem expor JSON financeiro ou inventar valores", () => {
+    expect(condutasContextuaisResultado(null)).toEqual([]);
+    expect(
+      condutasContextuaisResultado([
+        {
+          codigo: "ENCAMINHAR",
+          rotulo: "Indicar protocolo",
+          tipo: "INDICAR_PROTOCOLO",
+          destino: "Avaliação antes do preparo",
+          revisaoEm: "2026-11-20",
+          valorServico: "999.00",
+          retornoEm: null,
+        },
+        { rotulo: "Sem identidade" },
+      ]),
+    ).toEqual([
+      {
+        codigo: "ENCAMINHAR",
+        rotulo: "Indicar protocolo",
+        tipo: "INDICAR_PROTOCOLO",
+        destino: "Avaliação antes do preparo",
+        revisaoEm: "2026-11-20",
+        retornoEm: null,
+        observacao: null,
+      },
+    ]);
+  });
   it("separa DG, reconfirmação e sexagem pelo contrato estruturado, sem interpretar nomes", () => {
     for (const tipo of ["DIAGNOSTICO", "RECONFIRMACAO", "SEXAGEM"])
       expect(

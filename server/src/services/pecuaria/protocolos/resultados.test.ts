@@ -224,3 +224,95 @@ it("não revela tentativa externa nem situação atual de outro sítio por uma p
     m.participantes.mock.calls[0][0].include.tentativasExternas.where,
   ).toMatchObject({ propriedadeId: 1, revogadoEm: null });
 });
+
+it("resultados expõem encaminhamento contextual do exame factual sem perder legado ou primeiro DG", async () => {
+  m.participantes.mockResolvedValue([
+    {
+      ...participante(),
+      tentativasExternas: [
+        {
+          id: "v",
+          snapshot: { animalId: "animal", data: "2026-01-01", tipo: "IA" },
+          tentativa: tentativa(),
+        },
+      ],
+    },
+  ]);
+  m.exames.mockResolvedValue([
+    {
+      id: "dg-original",
+      data,
+      finalidades: ["DIAGNOSTICO"],
+      resultados: [{ valor: "POSITIVO" }],
+      interpretacao: {
+        tentativaId: "tentativa",
+        gestacaoId: null,
+        conduta: null,
+        retornoEm: null,
+        condutasContextuais: [],
+      },
+    },
+    {
+      id: "avaliacao-posterior",
+      data: new Date("2026-01-02T00:00:00Z"),
+      finalidades: ["DIAGNOSTICO"],
+      resultados: [],
+      interpretacao: {
+        tentativaId: "tentativa",
+        gestacaoId: null,
+        conduta: "AGUARDAR",
+        retornoEm: new Date("2026-01-15T00:00:00Z"),
+        condutasContextuais: [
+          {
+            codigo: "REVER",
+            rotulo: "Não prosseguir neste momento",
+            tipo: "NAO_PROSSEGUIR",
+            destino: "Reavaliação clínica",
+            revisaoEm: "2026-01-20",
+            observacao: "Conferir antes de outro preparo",
+            valorServico: "999.00",
+          },
+        ],
+      },
+    },
+  ]);
+  const r = await consultarResultadosProtocolo(
+    { participacaoId: "participacao" },
+    1,
+    consultaResultadosSchema.parse({}),
+  );
+  const linha = r.itens[0];
+  const conduta = {
+    codigo: "REVER",
+    rotulo: "Não prosseguir neste momento",
+    tipo: "NAO_PROSSEGUIR",
+    destino: "Reavaliação clínica",
+    revisaoEm: "2026-01-20",
+    observacao: "Conferir antes de outro preparo",
+    retornoEm: null,
+  };
+  expect(linha).toMatchObject({
+    encaminhamento: "AGUARDAR",
+    retornoEm: "2026-01-15",
+    condutasContextuais: [conduta],
+    primeiroDg: { id: "dg-original", resultado: "POSITIVO" },
+  });
+  expect(linha.tentativas[0].posteriores).toEqual([
+    expect.objectContaining({
+      id: "avaliacao-posterior",
+      condutasContextuais: [conduta],
+    }),
+  ]);
+  expect(r.resumo).toMatchObject({ positivos: 1, negativos: 0, examinados: 1 });
+  expect(JSON.stringify(r)).not.toContain("999.00");
+  expect(m.exames).toHaveBeenCalledWith(
+    expect.objectContaining({
+      where: expect.objectContaining({ propriedadeId: 1 }),
+      select: expect.objectContaining({
+        interpretacao: expect.objectContaining({
+          select: expect.objectContaining({ condutasContextuais: true }),
+        }),
+      }),
+    }),
+  );
+});

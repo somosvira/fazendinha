@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
@@ -241,4 +242,89 @@ it("DG incluído opera a tarefa na própria aba e leitor não recebe comandos de
   expect(
     screen.queryByRole("button", { name: "Registrar diagnóstico" }),
   ).toBeNull();
+});
+
+it("exibe destino e revisão contextuais na tabela e no exame factual, conservando conduta legada", () => {
+  const conduta = {
+    codigo: "REVER",
+    rotulo: "Não prosseguir neste momento",
+    tipo: "NAO_PROSSEGUIR",
+    destino: "Reavaliação clínica",
+    revisaoEm: "2026-01-20",
+    retornoEm: null,
+    observacao: "Conferir antes de outro preparo",
+  };
+  const dg = {
+    id: "dg-original",
+    data: "2026-01-01",
+    resultado: "POSITIVO",
+    conduta: null,
+    retornoEm: null,
+  };
+  const posterior = {
+    id: "avaliacao-posterior",
+    data: "2026-01-02",
+    resultado: null,
+    conduta: "AGUARDAR",
+    retornoEm: "2026-01-15",
+    condutasContextuais: [conduta],
+  };
+  const registro: LinhaResultadoProtocolo = {
+    ...linha,
+    primeiroDg: dg,
+    conclusao: "POSITIVO",
+    encaminhamento: "AGUARDAR",
+    retornoEm: "2026-01-15",
+    condutasContextuais: [conduta],
+    tentativasTotal: 1,
+    tentativas: [
+      {
+        id: "tentativa",
+        tipo: "IA",
+        data: "2025-12-01",
+        origem: "EXTERNA",
+        primeiroDg: dg,
+        conclusao: "POSITIVO",
+        perdaPosterior: false,
+        posteriores: [posterior],
+        posterioresTotal: 1,
+      },
+    ],
+  };
+  render(
+    <ResultadosProtocolo
+      consulta={consulta({
+        ...dados,
+        itens: [registro],
+        resumo: {
+          ...dados.resumo,
+          tentativasRealizadas: 1,
+          animaisComTentativa: 1,
+          examinados: 1,
+          positivos: 1,
+        },
+      })}
+      propriedadeId={1}
+      podeLancar={false}
+      aoSalvar={vi.fn()}
+      aoOperarEtapa={vi.fn()}
+    />,
+  );
+  expect(screen.getByText(conduta.rotulo)).toBeTruthy();
+  expect(screen.getByText("Destino: Reavaliação clínica")).toBeTruthy();
+  expect(screen.getByText("Revisão: 20/01/2026")).toBeTruthy();
+  expect(screen.getByText("AGUARDAR")).toBeTruthy();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Exames e encaminhamento" }),
+  );
+  const modal = screen.getByRole("dialog");
+  expect(within(modal).getByText(conduta.rotulo)).toBeTruthy();
+  expect(within(modal).getByText("Destino: Reavaliação clínica")).toBeTruthy();
+  expect(within(modal).getByText("Revisão: 20/01/2026")).toBeTruthy();
+  expect(within(modal).getByText("Conduta: AGUARDAR")).toBeTruthy();
+  expect(
+    within(modal)
+      .getByRole("link", { name: /01\/01\/2026.*Positivo/ })
+      .getAttribute("href"),
+  ).toContain("detalheId=dg-original");
 });

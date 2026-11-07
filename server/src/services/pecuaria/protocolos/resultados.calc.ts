@@ -45,6 +45,45 @@ export function resumirPreparo(
     );
   return { situacao, total: preparo.length, atendidas, execucaoEncerrada };
 }
+export type CondutaContextualResultado = {
+  codigo: string;
+  rotulo: string;
+  tipo: string;
+  destino: string | null;
+  revisaoEm: string | null;
+  retornoEm: string | null;
+  observacao: string | null;
+};
+/** Expõe somente o encaminhamento clínico registrado, sem repassar JSON ou valores financeiros. */
+export function condutasContextuaisResultado(
+  valor: unknown,
+): CondutaContextualResultado[] {
+  if (!Array.isArray(valor)) return [];
+  return valor.flatMap((item) => {
+    const c = objeto(item);
+    if (
+      typeof c.codigo !== "string" ||
+      typeof c.rotulo !== "string" ||
+      typeof c.tipo !== "string"
+    )
+      return [];
+    const texto = (campo: string): string | null => {
+      const dado = c[campo];
+      return typeof dado === "string" ? dado : null;
+    };
+    return [
+      {
+        codigo: c.codigo,
+        rotulo: c.rotulo,
+        tipo: c.tipo,
+        destino: texto("destino"),
+        revisaoEm: texto("revisaoEm"),
+        retornoEm: texto("retornoEm"),
+        observacao: texto("observacao"),
+      },
+    ];
+  });
+}
 export type ExameResultado = {
   id: string;
   data: string;
@@ -52,6 +91,7 @@ export type ExameResultado = {
   resultado: string | null;
   conduta: string | null;
   retornoEm: string | null;
+  condutasContextuais?: CondutaContextualResultado[];
 };
 export function resumirDiagnostico(
   exames: readonly ExameResultado[],

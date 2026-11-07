@@ -12,6 +12,7 @@ import {
   resumirDiagnostico,
   resumirPreparo,
   taxaResultado,
+  condutasContextuaisResultado,
 } from "./resultados.calc.js";
 export const consultaResultadosSchema = z
   .object({
@@ -182,6 +183,7 @@ export async function consultarResultadosProtocolo(
               gestacaoId: true,
               conduta: true,
               retornoEm: true,
+              condutasContextuais: true,
             },
           },
         },
@@ -251,6 +253,9 @@ export async function consultarResultadosProtocolo(
                     ? e.resultados[0].valor
                     : null,
                 conduta: e.interpretacao?.conduta ?? null,
+                condutasContextuais: condutasContextuaisResultado(
+                  e.interpretacao?.condutasContextuais,
+                ),
                 retornoEm: e.interpretacao?.retornoEm
                   ? dia(e.interpretacao.retornoEm)
                   : null,
@@ -331,6 +336,9 @@ export async function consultarResultadosProtocolo(
             perdaPosterior: atual?.perdaPosterior ?? false,
             situacaoAtual,
             encaminhamento: ultimoExame?.interpretacao?.conduta ?? null,
+            condutasContextuais: condutasContextuaisResultado(
+              ultimoExame?.interpretacao?.condutasContextuais,
+            ),
             retornoEm: ultimoExame?.interpretacao?.retornoEm
               ? dia(ultimoExame.interpretacao.retornoEm)
               : null,
