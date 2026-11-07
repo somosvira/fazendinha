@@ -1,9 +1,11 @@
+import { MovimentoEstoqueModal } from "./MovimentoEstoqueModal";
+import { UsoProdutoDietas } from "../pecuaria/rebanho/nutricao/UsoProdutoDietas";
 import { AjudaCampo } from "@/components/Dica";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { Button as BotaoMenu } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import "./estoque-theme.css";
-import { Boxes, Package, Pencil, SlidersHorizontal, MoreHorizontal } from "lucide-react";
+import { Package, Pencil, SlidersHorizontal, MoreHorizontal } from "lucide-react";
 import { SubTabs } from "../components/SubTabs";
 import { DialogFinanceiro } from "../financeiro/DialogFinanceiro";
 import { navegarPara } from "../router";
@@ -42,6 +44,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const [carregando, setCarregando] = useState(true);
   const [revisao, setRevisao] = useState(0);
   const [editando, setEditando] = useState(false);
+  const [movimentoAberto, setMovimentoAberto] = useState<string | null>(null);
   const [produtoEdicao, setProdutoEdicao] = useState<ProdutoDTO | null>(null);
   const [renomeando, setRenomeando] = useState<string | null>(null);
   const [nome, setNome] = useState("");
@@ -89,7 +92,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     { chave: "tipo", titulo: "Tipo", celula: m => <Pill tone={m.tipo === "ENTRADA" ? "green" : m.tipo === "SAIDA" ? "amber" : "neutral"}>{m.tipo === "ENTRADA" ? "Entrada" : m.tipo === "SAIDA" ? "Saída" : "Ajuste"}</Pill> },
     { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", celula: m => <span className="tabular-nums">{Number(m.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</span> },
     { chave: "situacao", titulo: "Situação", celula: m => <Pill tone={m.status === "REVERTIDO" || m.reversaoDeId ? "red" : "green"}>{m.status === "REVERTIDO" ? "Estornado" : m.reversaoDeId ? "Estorno" : "Confirmado"}</Pill> },
-    { chave: "vinculo", titulo: "Origem / destino", celula: m => { const destino = destinoDoMovimento(m); return destino && podeAcessarArea(destino.area) ? <a href={destino.href} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">{destino.rotulo}</a> : "—"; } },
+    { chave: "vinculo", titulo: "Documento", celula: m => { const destino = destinoDoMovimento(m); return destino && podeAcessarArea(destino.area) ? <a href={destino.href} className="font-medium text-primary underline underline-offset-4 hover:decoration-2">{destino.rotulo}</a> : "—"; } },
   ];
   const colunasOrigens: ColunaTabela<OrigemProdutoDTO>[] = [
     { chave: "data", titulo: "Data", celula: o => dataBR(o.data) },
@@ -111,15 +114,15 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
           <div className="produto-ficha-disponivel"><span className="text-sm text-muted-foreground">Disponível</span><p className="estoque-ficha-saldo tabular-nums">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</p><p className="mt-2 text-sm text-ink-3">{produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{!podeEditar && <p className="mt-3 text-sm text-ink-3">Você tem acesso de consulta.</p>}</div>
           <dl className="estoque-ficha-dados"><div><dt>Lotes com saldo</dt><dd>{dados.lotesComSaldo} <small>de {dados.totalLotes} cadastrados</small></dd></div><div><dt>Categoria</dt><dd>{produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"}</dd></div>{dados.custoMedio != null && <><div><dt>Custo médio</dt><dd>{brl(dados.custoMedio)}</dd></div><div><dt>Valor em estoque</dt><dd>{brl(dados.valor ?? 0)}</dd></div></>}</dl>
         </div>
-        <div className="produto-ficha-rastreio"><h3>Consultar rastreabilidade</h3><div><Button secondary onClick={() => abrirAba("lotes")}><Boxes size={17} aria-hidden="true" />Lotes e validades</Button><Button secondary onClick={() => abrirAba("movimentos")}>Movimentos do produto</Button><Button secondary onClick={() => abrirAba("origens")}>Origens das entradas</Button></div></div>
-        {podeAjustarEstoque() && <div className="estoque-ficha-opcoes">{sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}><SlidersHorizontal size={16} />Ajustar quantidade</Button> : <p className="text-sm text-ink-3">Selecione um sítio acima para registrar movimentos.</p>}</div>}
+        {podeAcessarArea("pecuaria") && <UsoProdutoDietas produtoId={produto.id} propriedadeId={sitioId} saldo={Number(dados.saldo)} unidade={unidade} />}
+        {podeAjustarEstoque() && <div className="estoque-ficha-opcoes">{sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}><SlidersHorizontal size={16} />Ajustar quantidade</Button> : <p className="text-sm text-ink-3">Para ajustar a quantidade, escolha um sítio no campo Sítio acima.</p>}</div>}
         {podeEditar && sitioId && <details className="estoque-ficha-opcoes"><summary className="cursor-pointer text-sm font-medium">Opções avançadas</summary><div className="mt-3"><PartidasProduto key={`${produto.id}-${sitioId}`} produtoId={produto.id} propriedadeId={sitioId} rastreado={!!produto.rastrearPartidas} configuracao onMudou={() => setRevisao(r => r + 1)} /></div></details>}
       </Panel>}
       {aba !== "resumo" && <Panel className="mt-5 overflow-hidden">
 
         {vazio ? <Empty><p>Nenhum {aba === "lotes" ? "lote" : aba === "origens" ? "recebimento" : "movimento"} neste escopo.</p><div className="mt-3 flex flex-wrap justify-center gap-3">{podeAjustarEstoque() && <a href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Registrar primeira entrada</a>}<a href="/estoque" className="font-medium text-primary underline underline-offset-4 hover:decoration-2">Consultar Estoque</a></div></Empty>
           : aba === "lotes" && lotes ? <TabelaFinanceira rotulo="Lotes do produto" itens={lotes.itens} colunas={colunasLotes} chaveDe={l => l.id} />
-          : aba === "movimentos" && movimentos ? <TabelaFinanceira rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} />
+          : aba === "movimentos" && movimentos ? <TabelaFinanceira rotulo="Movimentos do produto" itens={movimentos.itens} colunas={colunasMovimentos} chaveDe={m => m.id} onAbrir={m => setMovimentoAberto(m.id)} cartaoComLinks />
           : aba === "origens" && origens ? <TabelaFinanceira rotulo="Origens das entradas" itens={origens.itens} colunas={colunasOrigens} chaveDe={o => o.id} /> : null}
         {total > 0 && <Paginacao pagina={pagina} totalPaginas={Math.max(1, Math.ceil(total / 15))} total={total} porPagina={15} rotulo="Paginação da ficha" substantivo="itens" idSelect="pagina-ficha-produto" onPagina={setPagina} />}
       </Panel>}
@@ -128,6 +131,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     {renomeando && <DialogFinanceiro titulo="Renomear lote" eyebrow="" icon={Pencil} onClose={() => { if (!salvando) setRenomeando(null); }} rodape={<><Button secondary disabled={salvando} onClick={() => setRenomeando(null)}>Cancelar</Button><Button type="submit" form="renomear-lote" carregando={salvando} disabled={!nome.trim()}>Salvar nome</Button></>}>
       <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label></div></form>
     </DialogFinanceiro>}
+    {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto} propriedadeId={sitioId} unidade={unidade} onFechar={() => setMovimentoAberto(null)} />}
     {editando && produtoEdicao && <FormProduto produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
   </div></PaginaFinanceira>;
 }

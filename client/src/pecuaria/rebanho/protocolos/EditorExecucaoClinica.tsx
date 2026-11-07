@@ -13,6 +13,7 @@ import { reqProtocolo, ProtocoloApiError, type TarefaOperacional } from "./api";
 import { dadosClinicosIniciais, montarItemClinico, animaisIndicadosParaIatf } from "./clinica-form";
 import { SeletorClinico } from "./SeletorClinico";
 import type { DadosClinicos, EntradaClinica, PreviaClinica, ReciboClinico, EscolhaClinica } from "./clinica-api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 export function EditorExecucaoClinica({ tarefas, reprodutivo, onFechar, onSalvo, onPrepararIatf }: { tarefas: TarefaOperacional[]; reprodutivo: boolean; podeEditarValores?: boolean; onFechar: () => void; onSalvo: () => void; onPrepararIatf?: (animaisIds: string[]) => void }) {
   const primeira = tarefas[0];
@@ -91,7 +92,7 @@ function EditorClinico({ tarefas, primeira, reprodutivo, onFechar, onSalvo, onPr
 function ResultadoClinico({ dados: d, onChange }: { dados: DadosClinicos; onChange: (patch: Partial<DadosClinicos>) => void }) {
   if (!d.formato) return <p>Selecione o tipo de exame para carregar seu formato.</p>;
   if (d.formato.tipoResultado === "MULTIPLO") return <CamposResultadoExame campos={d.formato.campos ?? []} valores={d.resultados} onChange={resultados => onChange({ resultados })} />;
-  return <label>Resultado{d.formato.unidade ? ` · ${d.formato.unidade}` : ""}{d.formato.tipoResultado === "OPCAO" ? <select className={classeInput} value={d.valorResultado} onChange={e => onChange({ valorResultado: e.target.value })}><option value="">Não informado</option>{d.formato.opcoes?.map(o => <option key={o}>{o}</option>)}</select> : <input className={classeInput} type={d.formato.tipoResultado === "NUMERO" ? "number" : "text"} step="any" value={d.valorResultado} onChange={e => onChange({ valorResultado: e.target.value })} />}</label>;
+  return <label>Resultado{d.formato.unidade ? ` · ${d.formato.unidade}` : ""}{d.formato.tipoResultado === "OPCAO" ? <SelectCampo className={classeInput} value={d.valorResultado} onValueChange={(valor) => onChange({ valorResultado: valor })}><option value="">Não informado</option>{d.formato.opcoes?.map(o => <option key={o}>{o}</option>)}</SelectCampo> : <input className={classeInput} type={d.formato.tipoResultado === "NUMERO" ? "number" : "text"} step="any" value={d.valorResultado} onChange={e => onChange({ valorResultado: e.target.value })} />}</label>;
 }
 
 function CienciaClinica({ tarefa, dados, onChange }: { tarefa: TarefaOperacional; dados: DadosClinicos; onChange: (valor: boolean) => void }) {

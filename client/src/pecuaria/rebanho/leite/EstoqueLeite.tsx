@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { ClipboardCheck } from "lucide-react";
@@ -157,15 +158,10 @@ function DetalheEstoqueLeite({
         </label>
         <label>
           Dia da produção / retirada
-          <input
-            type="date"
-            value={data}
-            disabled={ocupado}
-            onChange={(e) => {
-              setData(e.target.value);
+          <DatePicker value={data} disabled={ocupado} onChange={(valor) => {
+              setData(valor);
               setAviso("");
-            }}
-          />
+            }} />
         </label>
       </div>
       {!produtos.length && (

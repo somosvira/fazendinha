@@ -1,8 +1,9 @@
+import { AjudaCampo } from "../../../components/Dica";
+import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CriteriosAptidaoFormulario, ResumoCriteriosAptidao, grupoCriteriosVazio } from "./CriteriosAptidaoFormulario";
 import { ModalPolitica } from "./ModalPolitica";
 import { getHojeISO } from "../../../lib/hoje";
-import { AjudaCampo } from "../../../components/Dica";
 import { ConfiguracaoAcompanhamento } from "./ConfiguracaoAcompanhamento";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
@@ -15,6 +16,7 @@ import {
   type PoliticaElegibilidade,
 } from "./elegibilidade-api";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export function ConfiguracaoReprodutiva({
   propriedadeId,
   podeLancar,
@@ -225,12 +227,7 @@ export function ConfiguracaoReprodutiva({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <label>
               Vigente desde
-              <Input
-                required
-                type="date"
-                value={vigencia}
-                onChange={(e) => setVigencia(e.target.value)}
-              />
+              <DatePicker required value={vigencia} onChange={(valor) => setVigencia(valor)} />
             </label>
             <label>
               PEV após primeiro parto (dias)
@@ -362,10 +359,10 @@ function Escolha({
   return (
     <label>
       {rotulo}
-      <select
+      <SelectCampo
         required
         value={valor}
-        onChange={(e) => mudar(e.target.value)}
+        onValueChange={(valor) => mudar(valor)}
         className="h-10 w-full rounded-md border bg-background px-3"
       >
         <option value="">Selecione a regra</option>
@@ -374,7 +371,7 @@ function Escolha({
             {t}
           </option>
         ))}
-      </select>
+      </SelectCampo>
     </label>
   );
 }

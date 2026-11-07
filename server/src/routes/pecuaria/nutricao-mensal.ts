@@ -91,6 +91,9 @@ export const nutricaoMensalRouter = new Hono()
   .get("/configuracoes", async (c) =>
     c.json(await mensal.listarConfiguracoes(await resolverEscopoLeitura(c))),
   )
+  .get("/processados", async (c) =>
+    c.json(await mensal.ultimosDiasProcessados(await resolverEscopoLeitura(c))),
+  )
   .post("/configuracoes", validar(configuracaoSchema), async (c) => {
     const input = c.req.valid("json");
     const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId);

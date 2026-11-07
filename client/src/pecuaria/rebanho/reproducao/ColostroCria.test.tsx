@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { ColostroCria } from "./ColostroCria";
 import { reqV4 } from "./api";
+import { mudarCampo } from "@/lib/controles.fixture";
 vi.mock("./api",()=>({reqV4:vi.fn()}));
 afterEach(()=>{cleanup();vi.clearAllMocks();});
 it("registra fornecimento à cria com unidade explícita, Brix zero e retry idempotente",async()=>{
@@ -11,10 +12,10 @@ it("registra fornecimento à cria com unidade explícita, Brix zero e retry idem
   render(<ColostroCria criaId="cria" propriedadeId={1} dataParto="2026-10-13" podeLancar onMudou={vi.fn()}/>);
   await screen.findByText("Nenhum fornecimento informado.");
   fireEvent.click(screen.getByRole("button",{name:"Adicionar fornecimento"}));
-  fireEvent.change(screen.getByLabelText("Quantidade (opcional)"),{target:{value:"1500"}});
-  fireEvent.change(screen.getByLabelText("Unidade"),{target:{value:"ML"}});
-  fireEvent.change(screen.getByLabelText("Método de qualidade"),{target:{value:"REFRATOMETRO_BRIX"}});
-  fireEvent.change(screen.getByLabelText("Leitura Brix (%)"),{target:{value:"0"}});
+  mudarCampo(screen.getByLabelText("Quantidade (opcional)"),{target:{value:"1500"}});
+  mudarCampo(screen.getByLabelText("Unidade"),{target:{value:"ML"}});
+  mudarCampo(screen.getByLabelText("Método de qualidade"),{target:{value:"REFRATOMETRO_BRIX"}});
+  mudarCampo(screen.getByLabelText("Leitura Brix (%)"),{target:{value:"0"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar fornecimento"}));
   await screen.findByText("Tente novamente");
   expect(post.mock.calls[0][0]).toMatchObject({criaId:"cria",quantidade:1500,unidade:"ML",metodoQualidade:"REFRATOMETRO_BRIX",qualidadeBrix:0,qualidadeClassificacao:null});
@@ -29,8 +30,8 @@ it("corrige com versão e motivo sem transformar mL em litros informados",async(
   render(<ColostroCria criaId="cria" propriedadeId={1} dataParto="2026-10-13" podeLancar onMudou={vi.fn()}/>);
   fireEvent.click(await screen.findByRole("button",{name:"Corrigir fornecimento"}));
   expect((screen.getByLabelText("Quantidade (opcional)") as HTMLInputElement).value).toBe("1500");
-  fireEvent.change(screen.getByLabelText("Motivo da correção"),{target:{value:"Correção do responsável"}});
-  fireEvent.change(screen.getByLabelText("Responsável pelo fornecimento (opcional)"),{target:{value:"Maria"}});
+  mudarCampo(screen.getByLabelText("Motivo da correção"),{target:{value:"Correção do responsável"}});
+  mudarCampo(screen.getByLabelText("Responsável pelo fornecimento (opcional)"),{target:{value:"Maria"}});
   fireEvent.click(screen.getByRole("button",{name:"Salvar fornecimento"}));
   await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/colostro/f",expect.objectContaining({versaoEsperada:3,motivo:"Correção do responsável",quantidade:1500,unidade:"ML",responsavel:"Maria"}),"PATCH",1));
 });

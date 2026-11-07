@@ -74,7 +74,7 @@ export async function ajustarItemTx(
       if (!mes.configuracao.autorizaValidade)
         throw new RebanhoError(
           "CONFLITO",
-          "Selecione os lotes do produto ou autorize a seleção por validade",
+          "Este produto controla lotes por validade: escolha o lote de estoque do dia ou autorize, na configuração do fechamento, o uso do lote que vence primeiro",
         );
       const bases = await saldosBasesTx(
         tx,

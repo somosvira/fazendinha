@@ -1,7 +1,9 @@
+import { periodoFechamento } from "./DetalhesFechamento";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { PeriodoFinanceiroControl } from "@/financeiro/PeriodoFinanceiroControl";
 import { DatePicker } from "@/components/DatePicker";
-import { CalendarioFechamentos } from "./CalendarioFechamentos";
+import { CalendarioFechamentos, intervaloMesFechamento } from "./CalendarioFechamentos";
+import { getHojeISO as hojeISO } from "@/lib/hoje";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
@@ -30,7 +32,16 @@ export function FechamentosNutricao({ loteId }: { loteId?: string }) {
   const status = situacao === "CONFIRMADO" || situacao === "ESTORNADO" ? situacao : "";
   const numeroPagina = Number(params.get("paginaFechamentos") ?? 1);
   const pagina = Number.isInteger(numeroPagina) && numeroPagina >= 1 && numeroPagina <= 100000 ? numeroPagina : 1;
-  const lista = useConsulta(useCallback(() => de || ate ? listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined, {de:de||undefined,ate:ate||undefined}) : listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined), [loteId, filtroLote, pagina, status, de, ate]));
+  // No calendário a consulta é o mês exibido inteiro, não a página da lista.
+  const calendario = visual.modo === "visual";
+  // Sem mês escolhido, o calendário abre no mês do fechamento mais recente.
+  const lista = useConsulta(useCallback(() => calendario
+    ? todosDoMes(loteId || filtroLote || undefined, status || undefined, de ? de.slice(0, 7) : null)
+    : de || ate ? listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined, {de:de||undefined,ate:ate||undefined}) : listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [loteId, filtroLote, pagina, status, de, ate, calendario]));
+  const mesDados = (lista.dados as { mes?: string } | null)?.mes;
+  const mesCalendario = intervaloMesFechamento(mesDados ?? (de || hojeISO()).slice(0, 7));
   const lotes = useConsulta(useCallback(() => loteId ? buscarLote(loteId).then(l => [l]) : listarLotes(), [loteId]));
   const edicao = useRascunhoConsulta({lote:filtroLote,status,de,ate},{lote:"",status:"",de:"",ate:""},v=>atualizar({filtroLoteId:v.lote,statusFechamento:v.status,fechamentosDe:v.de,fechamentosAte:v.ate,paginaFechamentos:""}));
   const campos: CampoConsulta[] = [
@@ -39,16 +50,26 @@ export function FechamentosNutricao({ loteId }: { loteId?: string }) {
     {chave:"situacao",ativo:!!status,limpar:()=>edicao.editar("status",""),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação do fechamento" value={edicao.rascunho.status} onValueChange={v=>edicao.editar("status",v)}><option value="">Todas as situações</option><option value="CONFIRMADO">Confirmados</option><option value="ESTORNADO">Estornados</option></SelectCampo></CampoFiltro>},
   ];
   return <Panel className="nutricao-conteudo nutricao-fechamentos">
-    <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={edicao.rascunho.de && edicao.rascunho.ate && edicao.rascunho.de>edicao.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null} criterios={[...(de||ate?[{id:"datas",rotulo:`Período: ${de?formatarDataBR(de):"início"} a ${ate?formatarDataBR(ate):"hoje"}`,limpar:()=>atualizar({fechamentosDe:"",fechamentosAte:"",paginaFechamentos:""})}]:[]),...(filtroLote?[{id:"lote",rotulo:`Lote: ${lotes.dados?.find(l=>l.id===filtroLote)?.nome ?? "Selecionado"}`,limpar:()=>atualizar({filtroLoteId:"",paginaFechamentos:""})}]:[]),...(status?[{id:"status",rotulo:status==="CONFIRMADO"?"Confirmados":"Estornados",limpar:()=>atualizar({statusFechamento:"",paginaFechamentos:""})}]:[])]} resumo={<>{loteId && <span><LinkNutricional href={rotaNutricao({aba:"fechamentos",statusFechamento:status || undefined})}>Ver fechamentos de todos os lotes</LinkNutricional></span>}{lista.dados && !lista.carregando && lista.dados.total > 0 && lista.dados.total <= lista.dados.limite && <span>{lista.dados.total} fechamentos</span>}</>}><PeriodoFinanceiroControl allowAll inicio={de} fim={ate} label="Período dos fechamentos" onChange={v=>atualizar({fechamentosDe:v.inicio,fechamentosAte:v.fim,paginaFechamentos:""})}/></BarraConsulta>
-    <div className="consulta-visual-barra"><span>Períodos e consumo registrado por lote</span><AlternarVisualizacaoConsulta rotulo="Visualização dos fechamentos" visual="Calendário" {...visual}/></div>
+    <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={edicao.rascunho.de && edicao.rascunho.ate && edicao.rascunho.de>edicao.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null} criterios={[...(de||ate?[{id:"datas",rotulo:`Período: ${de?formatarDataBR(de):"início"} a ${ate?formatarDataBR(ate):"hoje"}`,limpar:()=>atualizar({fechamentosDe:"",fechamentosAte:"",paginaFechamentos:""})}]:[]),...(filtroLote?[{id:"lote",rotulo:`Lote: ${lotes.dados?.find(l=>l.id===filtroLote)?.nome ?? "Selecionado"}`,limpar:()=>atualizar({filtroLoteId:"",paginaFechamentos:""})}]:[]),...(status?[{id:"status",rotulo:status==="CONFIRMADO"?"Confirmados":"Estornados",limpar:()=>atualizar({statusFechamento:"",paginaFechamentos:""})}]:[])]} resumo={<>{loteId && <span><LinkNutricional href={rotaNutricao({aba:"fechamentos",statusFechamento:status || undefined})}>Ver fechamentos de todos os lotes</LinkNutricional></span>}</>}><PeriodoFinanceiroControl allowAll inicio={de} fim={ate} label="Período dos fechamentos" onChange={v=>atualizar({fechamentosDe:v.inicio,fechamentosAte:v.fim,paginaFechamentos:""})}/></BarraConsulta>
+    <div className="consulta-visual-barra"><span>{lista.dados ? `${lista.dados.total} ${lista.dados.total === 1 ? "fechamento" : "fechamentos"}${calendario ? " no mês" : ""}` : ""}</span><AlternarVisualizacaoConsulta rotulo="Visualização dos fechamentos" visual="Calendário" {...visual}/></div>
     <div className="px-5"><EstadoConsulta erro={lista.erro} carregando={lista.carregando} recarregar={lista.carregar} estrutura="lista" label="Carregando fechamentos nutricionais…" /></div>
-    {lista.dados && !lista.carregando && !lista.erro && <>{visual.modo === "visual" ? <CalendarioFechamentos itens={lista.dados.itens} total={lista.dados.total} de={de} onMes={periodo=>atualizar({fechamentosDe:periodo.de,fechamentosAte:periodo.ate,paginaFechamentos:""})} onAbrir={f=>navegarPara(rotaFechamento(f.id,loteId))}/> : !lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} cartaoComLinks onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
-      { chave: "periodo", titulo: "Período / situação", principal: true, larguraMinima: 210, celula: (f) => <><LinkNutricional href={rotaFechamento(f.id, loteId)}>{formatarDataBR(f.inicio)} – {formatarDataBR(f.fim)}</LinkNutricional><div className="mt-2"><SituacaoFechamento status={f.status} /></div></> },
+    {lista.dados && !lista.carregando && !lista.erro && <>{visual.modo === "visual" ? <CalendarioFechamentos itens={lista.dados.itens} total={lista.dados.total} de={mesCalendario.de} onMes={periodo=>atualizar({fechamentosDe:periodo.de,fechamentosAte:periodo.ate,paginaFechamentos:""})} onAbrir={f=>navegarPara(rotaFechamento(f.id,loteId))}/> : !lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} cartaoComLinks onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
+      { chave: "periodo", titulo: "Período / situação", principal: true, larguraMinima: 210, celula: (f) => <><LinkNutricional href={rotaFechamento(f.id, loteId)}>{periodoFechamento(f)}</LinkNutricional><div className="mt-2"><SituacaoFechamento status={f.status} /></div></> },
       ...(!loteId ? [{ chave: "lote", titulo: "Lote / sítio", larguraMinima: 180, celula: (f: Fechamento) => <><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional><p className="nutricao-secundario">{f.propriedade.nome}</p></> }] : []),
-      { chave: "dieta", titulo: "Receita", larguraMinima: 200, larguraFlexivel: true, celula: (f) => <>{f.vigencia.dieta.nome}<p className="nutricao-secundario">v{f.vigencia.dieta.versao} · {f.animalDias} animal-dias</p></> },
+      { chave: "dieta", titulo: "Receita", larguraMinima: 200, larguraFlexivel: true, celula: (f) => <>{f.vigencia.dieta.nome}<p className="nutricao-secundario">v{f.vigencia.dieta.versao} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</p></> },
       ...(lista.dados.itens.some((f) => f.verValores) ? [{ chave: "custo", titulo: "Custo conhecido", alinhamento: "direita" as const, celula: (f: Fechamento) => f.verValores ? <>{custoTexto(f.custoConhecido)}{!f.coberturaCustoCompleta && f.custoConhecido != null && <p className="nutricao-secundario">Parcial</p>}</> : "—" }] : []),
     ]} />}
-      <PaginacaoNutricao pagina={pagina} total={lista.dados.total} limite={lista.dados.limite} onPagina={(p) => atualizar({ paginaFechamentos: String(p) })} nome="fechamentos" />
+      {!calendario && <PaginacaoNutricao pagina={pagina} total={lista.dados.total} limite={lista.dados.limite} onPagina={(p) => atualizar({ paginaFechamentos: String(p) })} nome="fechamentos" />}
     </>}
   </Panel>;
+}
+
+/** Todos os fechamentos do mês, percorrendo as páginas; sem mês, usa o do fechamento mais recente. */
+async function todosDoMes(loteId: string | undefined, status: Fechamento["status"] | undefined, mesEscolhido: string | null) {
+  const mes = mesEscolhido ?? (await listarFechamentos(loteId, 1, status)).itens[0]?.fim.slice(0, 7) ?? hojeISO().slice(0, 7);
+  const periodo = intervaloMesFechamento(mes);
+  const primeira = await listarFechamentos(loteId, 1, status, periodo);
+  const paginas = Math.min(Math.ceil(primeira.total / Math.max(1, primeira.limite)), 20);
+  const demais = await Promise.all(Array.from({ length: Math.max(0, paginas - 1) }, (_, i) => listarFechamentos(loteId, i + 2, status, periodo)));
+  return { ...primeira, mes, itens: [...primeira.itens, ...demais.flatMap(p => p.itens)] };
 }

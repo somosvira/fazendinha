@@ -5,6 +5,7 @@ import { SeletorCatalogoProtocolo } from "./SeletorCatalogoProtocolo";
 import { CamposReferenciasCusto, type ReferenciasCustoCadastro } from "./CamposReferenciasCusto";
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "./CamposMomentoAcao";
 import type { CadastroProtocoloMeta } from "./cadastros-api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export type Etapa = {
   chaveEdicao?: string;
   referenciasCusto?: ReferenciasCustoCadastro;
@@ -54,10 +55,10 @@ export function EditorModeloSanitario({ origemCadastro, etapas, setEtapas, setAc
                 <label>Dia relativo ao início<input required type="number" min="0" max="10000" step="1" value={et.diaRelativo} className={classeInput} onChange={e => { const diaRelativo = Number(e.target.value); setEtapas(es => es.map((acao, i) => indices.includes(i) ? { ...acao, diaRelativo } : acao)); }} /></label>
               </fieldset>}
               renderizarAcao={(et, i) => <div className="grid gap-3">
-                <label>Tipo de procedimento<select value={et.tipo === "APLICACAO" && et.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : et.tipo} className={classeInput} onChange={e => {
-                  const tipo = e.target.value === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : e.target.value as Etapa["tipo"];
-                  mudar(i, { tipo, subtipo: tipo === "APLICACAO" ? e.target.value === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : undefined, produtoId: "", tipoExameId: "", tipoAplicacaoId: "", dose: "", unidade: "", referenciasCusto: et.referenciasCusto ? { servico: et.referenciasCusto.servico } : undefined });
-                }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="EXAME">Exame / diagnóstico</option>{et.tipo === "MANEJO" && <option value="MANEJO">Manejo legado (compatibilidade)</option>}</select></label>
+                <label>Tipo de procedimento<SelectCampo value={et.tipo === "APLICACAO" && et.subtipo === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : et.tipo} className={classeInput} onValueChange={(valor) => {
+                  const tipo = valor === "INSERCAO_DISPOSITIVO" ? "APLICACAO" : valor as Etapa["tipo"];
+                  mudar(i, { tipo, subtipo: tipo === "APLICACAO" ? valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : undefined, produtoId: "", tipoExameId: "", tipoAplicacaoId: "", dose: "", unidade: "", referenciasCusto: et.referenciasCusto ? { servico: et.referenciasCusto.servico } : undefined });
+                }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="EXAME">Exame / diagnóstico</option>{et.tipo === "MANEJO" && <option value="MANEJO">Manejo legado (compatibilidade)</option>}</SelectCampo></label>
                 {et.tipo === "APLICACAO" ? <>
                   <SeletorCatalogoProtocolo origem="SANITARIO" opcao="PRODUTO" rotulo="Produto" valor={et.produtoId} onChange={(produtoId, produto) => mudar(i, { produtoId, dose: produtoId === et.produtoId ? et.dose : "", unidade: produtoId === et.produtoId ? et.unidade : produto?.unidade ?? "", tipoAplicacaoId: produtoId === et.produtoId ? et.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? "" })} />
                   <div className="grid gap-3 sm:grid-cols-2"><label>Quantidade prevista ({et.unidade || "selecione o produto"})<input required type="number" min="0.001" step="0.001" value={et.dose} className={classeInput} onChange={e => mudar(i, { dose: e.target.value })} /></label><label>Unidade do produto<input className={classeInput} readOnly value={et.produtoId ? et.unidade : ""} /></label></div>

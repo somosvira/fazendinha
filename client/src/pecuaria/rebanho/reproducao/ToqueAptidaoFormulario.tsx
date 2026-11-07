@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
@@ -25,9 +26,9 @@ export function ToqueAptidaoFormulario({ animalId, propriedadeId, onMudou, emMod
       catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível registrar o exame."); }
       finally { setOcupado(false); }
     }}>
-      <div className="grid gap-4 sm:grid-cols-2"><label>Data do exame<Input type="date" required max={getHojeISO()} value={data} onChange={e => setData(e.target.value)}/></label>
+      <div className="grid gap-4 sm:grid-cols-2"><label>Data do exame<DatePicker required max={getHojeISO()} value={data} onChange={(valor) => setData(valor)} /></label>
         <label>Resultado do toque<SelectCampo value={resultado} onValueChange={v => setResultado(v as typeof resultado)} required><option value="">Selecionar resultado</option><option value="APTO">Apta</option><option value="NAO_APTO">Não apta</option><option value="INCONCLUSIVO">Inconclusivo</option></SelectCampo></label>
-        <label>Retorno informado<Input type="date" min={data} value={retorno} onChange={e => setRetorno(e.target.value)}/></label>
+        <label>Retorno informado<DatePicker min={data} value={retorno} onChange={(valor) => setRetorno(valor)} /></label>
         <label>Responsável pelo toque<Input required minLength={2} maxLength={160} value={responsavel} onChange={e => setResponsavel(e.target.value)}/></label></div>
       <label className="block">Observações do toque<textarea className="mt-1 min-h-24 w-full rounded border bg-background p-3" maxLength={4000} value={observacao} onChange={e => setObservacao(e.target.value)}/></label>
       <p className="text-sm text-muted-foreground">Inconclusivo mantém a aptidão pendente. Para registrar também DG no mesmo exame, use o atendimento de avaliação reprodutiva.</p>

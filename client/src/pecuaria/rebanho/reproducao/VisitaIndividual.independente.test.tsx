@@ -9,6 +9,7 @@ vi.mock("./Iatf", () => ({ Iatf: () => null }));
 vi.mock("./AcoesReprodutivas", () => ({ AcoesReprodutivas: () => null }));
 import { Transcricao } from "./TranscricaoVisita";
 import type { AtividadeVisita, Visita } from "./visitas-api";
+import { mudarCampo } from "@/lib/controles.fixture";
 const atividade: AtividadeVisita = { id: "at", nome: "Grupo livre", tipo: "AVALIACAO_REPRODUTIVA", extra: false, contexto: { percursoVisita: { versao: 1, origem: "LIVRE" } }, participantes: [
  { id: "pa", animalId: "a", ordem: 1, status: "PENDENTE", versaoRascunho: 1, snapshot: { brinco: "100", nome: "Aurora", lote: { id: "l", nome: "Lote preservado" } }, rascunho: { resultado: "NAO_AVALIADO", anotacaoOriginal: "Rascunho exclusivo Aurora" } },
  { id: "pb", animalId: "b", ordem: 2, status: "PENDENTE", versaoRascunho: 1, snapshot: { brinco: "200", nome: "Brisa", lote: { id: "l", nome: "Lote preservado" } }, rascunho: { resultado: "NAO_AVALIADO", anotacaoOriginal: "Rascunho exclusivo Brisa" } },
@@ -35,9 +36,9 @@ describe("seleção livre individual — contraprovas independentes", () => {
  });
  it("voltar mantém busca, contexto e rascunho sem confirmar atendimento ao navegar", async () => {
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)}/>);
-  fireEvent.change(screen.getByLabelText("Buscar por brinco ou nome"), { target: { value: "Aurora" } });
+  mudarCampo(screen.getByLabelText("Buscar por brinco ou nome"), { target: { value: "Aurora" } });
   fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));
-  const anotacao = screen.getByLabelText("Anotação original · 100"); fireEvent.change(anotacao, { target: { value: "Contexto do atendimento de Aurora preservado" } }); fireEvent.blur(anotacao);
+  const anotacao = screen.getByLabelText("Anotação original · 100"); mudarCampo(anotacao, { target: { value: "Contexto do atendimento de Aurora preservado" } }); fireEvent.blur(anotacao);
   await waitFor(() => expect(mocks.salvar).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", { name: "Voltar à lista de animais" })); await screen.findByRole("button", { name: "Abrir atendimento de 100 · Aurora" });
   expect(screen.getByLabelText("Buscar por brinco ou nome")).toHaveProperty("value", "Aurora"); expect(screen.queryByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeNull();
@@ -48,7 +49,7 @@ describe("seleção livre individual — contraprovas independentes", () => {
   render(<Transcricao visita={visita} atividade={atividade} podeLancar onMudou={vi.fn().mockResolvedValue(undefined)}/>);
   fireEvent.click(screen.getByRole("button", { name: "Abrir atendimento de 100 · Aurora" }));
   fireEvent.click(screen.getByText("Filtrar atendimentos"));
-  fireEvent.change(screen.getByRole("combobox", { name: "Atendimento" }), { target: { value: "CONFIRMADO" } });
+  mudarCampo(screen.getByRole("combobox", { name: "Atendimento" }), { target: { value: "CONFIRMADO" } });
   fireEvent.click(screen.getByRole("button", { name: "Concluir filtros" }));
   fireEvent.click(screen.getByRole("button", { name: "Voltar à lista de animais" }));
   await screen.findByText("Nenhum animal nesta seleção.");
@@ -56,7 +57,7 @@ describe("seleção livre individual — contraprovas independentes", () => {
   const filtro = screen.getByRole("combobox", { name: "Atendimento" });
   expect(filtro).toHaveProperty("value", "CONFIRMADO");
   expect(new URLSearchParams(window.location.search).get("atividade-at-status")).toBe("CONFIRMADO");
-  fireEvent.change(filtro, { target: { value: "" } });
+  mudarCampo(filtro, { target: { value: "" } });
   fireEvent.click(screen.getByRole("button", { name: "Concluir filtros" }));
   await screen.findByRole("button", { name: "Abrir atendimento de 100 · Aurora" });
   expect(screen.getByRole("button", { name: "Abrir atendimento de 200 · Brisa" })).toBeTruthy();

@@ -309,7 +309,7 @@ export function EntradaSaidaChart({ data, tipo = "line", compacto = false, vocab
         </>}
       </ComposedChart>
     </ChartContainer>
-    <ul className="sr-only" aria-label={tipo === "line" ? "Totais acumulados do gráfico" : "Valores do gráfico"}>{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotulo ?? ponto.data} — {entradas}: {fmtMoneyExact(ponto.entradas)}; {saidas}: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
+    <ul className="sr-only" aria-label={tipo === "line" ? "Totais acumulados do gráfico" : "Valores do gráfico"}>{pontos.map((ponto) => <li key={ponto.data}>{ponto.rotuloTooltip} — {entradas}: {fmtMoneyExact(ponto.entradas)}; {saidas}: {fmtMoneyExact(ponto.saidas)}</li>)}</ul>
   </>;
 }
 

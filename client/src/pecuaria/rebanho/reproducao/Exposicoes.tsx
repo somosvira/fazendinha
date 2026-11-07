@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { getHojeISO as hoje } from "../../../lib/hoje";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,6 +16,7 @@ import { listarAnimais, listarGenitores, listarLotes } from "../api";
 import type { AnimalResumo, GenitorDTO, Lote } from "../types";
 import { obterReproducao, reqV4 } from "./api";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 type Exposicao = {
   id: string;
   loteId: string;
@@ -167,14 +169,7 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
             <ErrorBox erro={erro} />
             <label>
               Fim da exposição
-              <input
-                type="date"
-                required
-                min={encerrando.inicio.slice(0, 10)}
-                className={classeInput}
-                value={dataFim}
-                onChange={(e) => setDataFim(e.target.value)}
-              />
+              <DatePicker required min={encerrando.inicio.slice(0, 10)} className="mt-1.5" value={dataFim} onChange={(valor) => setDataFim(valor)} />
             </label>
             <label>
               Motivo
@@ -241,11 +236,11 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
             <ErrorBox erro={erro} />
             <label>
               Lote
-              <select
+              <SelectCampo
                 className={classeInput}
                 required
                 value={loteId}
-                onChange={(e) => setLoteId(e.target.value)}
+                onValueChange={(valor) => setLoteId(valor)}
               >
                 <option value="">Selecione</option>
                 {lotes.map((l) => (
@@ -253,15 +248,15 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
                     {l.nome}
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Touro
-              <select
+              <SelectCampo
                 className={classeInput}
                 required
                 value={touro}
-                onChange={(e) => setTouro(e.target.value)}
+                onValueChange={(valor) => setTouro(valor)}
               >
                 <option value="">Selecione</option>
                 {touros.map((t) => (
@@ -274,27 +269,15 @@ export function Exposicoes({ podeLancar, propriedadeId }: { podeLancar: boolean;
                     {t.nome} · externo
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Início
-              <input
-                type="date"
-                required
-                className={classeInput}
-                value={inicio}
-                onChange={(e) => setInicio(e.target.value)}
-              />
+              <DatePicker required className="mt-1.5" value={inicio} onChange={(valor) => setInicio(valor)} />
             </label>
             <label>
               Fim (opcional)
-              <input
-                type="date"
-                min={inicio}
-                className={classeInput}
-                value={fim}
-                onChange={(e) => setFim(e.target.value)}
-              />
+              <DatePicker min={inicio} className="mt-1.5" value={fim} onChange={(valor) => setFim(valor)} />
             </label>
             <label>
               Observação

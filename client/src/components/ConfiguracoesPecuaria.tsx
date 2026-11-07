@@ -32,11 +32,9 @@ function LinkCadastro({ href, children }: { href: string; children: React.ReactN
  return <a href={href} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(href); } }}>{children}</a>;
 }
 
-/** Agrupa os cadastros existentes sem recriar seus formulários nem contratos. */
+/** Só o que se configura: receitas e dietas por lote vivem nas abas da própria Nutrição. */
 const CONFIG_NUTRICAO = [
   { nome: "Modelo e prazo de fechamento", descricao: "Baixa diária, conferência mensal e exceções por lote.", href: "/configuracoes/pecuaria/nutricao/fechamento" },
-  { nome: "Receitas de dieta", descricao: "Ingredientes por cabeça/dia, versões e publicação.", href: "/pecuaria/nutricao?aba=receitas" },
-  { nome: "Dieta por lote", descricao: "Receita vigente e trocas programadas de cada lote.", href: "/pecuaria/nutricao" },
   { nome: "Leite no bezerreiro", descricao: "Fases, ofertas diárias e referências do colostro.", href: "/configuracoes/pecuaria/producao/bezerreiro" },
 ] as const;
 export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false }: { podeLancar: boolean; podeGerenciarAlertas?: boolean }) {
@@ -56,8 +54,8 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
    return () => window.removeEventListener("popstate", sync);
  }, []);
  // Ponto único das variações de configuração da nutrição, aberto pelo botão Configurações da própria Nutrição.
- if (path === "/configuracoes/pecuaria/nutricao") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span></nav><h1 className="mb-5 text-2xl font-semibold">Configurações da Nutrição</h1><section className="pec-config-grupo pec-config-nutricao">{CONFIG_NUTRICAO.map(c => <LinkCadastro key={c.href} href={c.href}><span><strong>{c.nome}</strong><small>{c.descricao}</small></span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section></>;
- if (path === "/configuracoes/pecuaria/nutricao/fechamento") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span></nav><h1 className="mb-5 text-2xl font-semibold">Modelo e prazo de fechamento</h1><GestaoMensal podeLancar={podeLancar} vista="configuracao" /></>;
+ if (path === "/configuracoes/pecuaria/nutricao") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Configurações da Nutrição</h1><section className="pec-config-grupo pec-config-nutricao">{CONFIG_NUTRICAO.map(c => <LinkCadastro key={c.href} href={c.href}><span><strong>{c.nome}</strong><small>{c.descricao}</small></span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section></>;
+ if (path === "/configuracoes/pecuaria/nutricao/fechamento") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><LinkCadastro href="/configuracoes/pecuaria/nutricao">Nutrição</LinkCadastro><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Modelo e prazo de fechamento</h1><GestaoMensal podeLancar={podeLancar} vista="configuracao" /></>;
  if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <ConfiguracoesBezerreiro podeLancar={podeLancar} />;
  if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo pec-config-producao"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada tituloPagina podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite tituloPagina podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);

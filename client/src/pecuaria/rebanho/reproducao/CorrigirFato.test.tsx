@@ -166,7 +166,7 @@ it("reabertura exige ciência explícita de revogação e conserva o peso no his
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [], partos: [], lactacoes: [lactacaoSecagem] });
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="lactacao" id="l1" animalId="a1" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "2026-10-29"));
+  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "29/10/2026"));
   fireEvent.change(screen.getByLabelText("Encerramento (opcional)"), { target: { value: "" } });
   fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Encerramento lançado indevidamente" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
@@ -180,7 +180,7 @@ it("trocar data do encerramento exige revisão do peso na mesma correção", asy
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [], partos: [], lactacoes: [lactacaoSecagem] });
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="lactacao" id="l1" animalId="a1" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "2026-10-29"));
+  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "29/10/2026"));
   fireEvent.change(screen.getByLabelText("Encerramento (opcional)"), { target: { value: "2026-10-28" } });
   fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência da data real da secagem" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));

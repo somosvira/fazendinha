@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { CalendarDays, Plus } from "lucide-react";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
@@ -139,7 +140,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
     <section className="leite-operacoes">
       <CabecalhoRotinaLeite titulo="Qualidade do leite" rotuloAjuda="Sobre qualidade do leite" />
       <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
-      {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><input type="date" required value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} acao={<>
+      {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><DatePicker required value={filtros.rascunho.data} onChange={(valor) => { if(valor) filtros.editar("data", valor); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
           <Button disabled={!propriedadeResolvida}
             onClick={() => {
@@ -415,17 +416,11 @@ export function NovaAmostra({
         <div className="leite-form-inline">
           <label>
             Data da coleta
-            <input
-              required
-              type="date"
-              value={data}
-              max={hojeOperacional()}
-              onChange={(e) => {
-                setData(e.target.value);
+            <DatePicker required value={data} max={hojeOperacional()} onChange={(valor) => {
+                setData(valor);
                 setAnimal(null);
                 setEntradaId("");
-              }}
-            />
+              }} />
           </label>
           <label>
             Formato do laudo

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-const mocks=vi.hoisted(()=>({tx:{programacaoProtocolo:{findFirst:vi.fn()},tarefaProtocolo:{findMany:vi.fn()},$queryRaw:vi.fn()},custos:vi.fn(),estimativa:vi.fn()}));
+const mocks=vi.hoisted(()=>({tx:{aplicacaoProduto:{findMany:vi.fn()},programacaoProtocolo:{findFirst:vi.fn()},tarefaProtocolo:{findMany:vi.fn()},$queryRaw:vi.fn()},custos:vi.fn(),estimativa:vi.fn()}));
 vi.mock("../../../db.js",()=>({prisma:{$transaction:(fn:(tx:typeof mocks.tx)=>unknown)=>fn(mocks.tx)}}));
 vi.mock("../custos/custos.js",()=>({consultarCustosTx:mocks.custos}));
 vi.mock("../custos/estimativa-protocolo.js",()=>({estimarProtocoloTx:mocks.estimativa}));
@@ -11,6 +11,7 @@ const componente={chave:"mov1",fonteId:"f1",tipoFonte:"APLICACAO",animalId:"a1",
 beforeEach(()=>{
  vi.resetAllMocks();
  mocks.tx.programacaoProtocolo.findFirst.mockResolvedValue({id,nome:"Grupo",propriedadeId:1,inicioReferencia:new Date("2026-11-03"),precisaoTemporal:"DIA",status:"ABERTA",protocolo:{id,nome:"IATF",versao:1,tipo:"REPRODUTIVO"}});
+ mocks.tx.aplicacaoProduto.findMany.mockResolvedValue([{id:"f1",produtoId:"produto1",nomeProdutoAplicado:"Produto aplicado",dose:"2",unidadeDose:"mL"}]);
  mocks.custos.mockResolvedValue({componentes:[componente]});
  mocks.tx.tarefaProtocolo.findMany.mockResolvedValue([{id:"t1",etapaId:"e1",execucao:{animalId:"a1"},etapa:{nome:"Aplicação",ordem:1,momento:{id:"m1",nome:"D0",ordem:1}},aplicacoes:[{id:"f1"}],tentativas:[],exames:[],manejos:[],vinculos:[]}]);
  mocks.tx.$queryRaw.mockResolvedValue([{id:"t1",situacao:"ATENDIDO"}]);
@@ -21,6 +22,7 @@ describe("DTO agrupado e autorização de valores",()=>{
   expect(grupos.resumo).toMatchObject({situacao:"OCULTO",totalConhecido:null});
   expect(grupos.itens[0]).toMatchObject({participantes:1,atendidos:1,totalConhecido:null,situacao:"OCULTO"});
   const procedimentos=await listarProcedimentosOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({}),usuario);
+  expect(procedimentos.produtosUtilizados.itens).toEqual([expect.objectContaining({produto:"Produto aplicado",quantidade:"2",custo:null,parcial:false})]);
   expect(procedimentos.itens[0]).toMatchObject({valor:null,situacao:"OCULTO"});
   expect(JSON.stringify([grupos,procedimentos])).not.toContain("123.45");expect(JSON.stringify([grupos,procedimentos])).not.toContain("mov-financeiro");expect(mocks.estimativa).not.toHaveBeenCalled();
   expect(mocks.custos).toHaveBeenCalledWith(mocks.tx,1,expect.objectContaining({programacaoId:id,limite:Number.MAX_SAFE_INTEGER}),true,false);

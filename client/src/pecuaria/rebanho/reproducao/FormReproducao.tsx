@@ -498,7 +498,7 @@ export function FormReproducao({
                 {partidas.length > 0 &&
                   seletor(
                     "partida",
-                    "Lote do produto",
+                    "Lote de estoque",
                     partidaId,
                     setPartidaId,
                     partidas.map((p) => [
@@ -532,7 +532,7 @@ export function FormReproducao({
                     </ConfirmacaoCiencia>
                     {campo(
                       "motivo-vencido",
-                      "Motivo do fato com lote vencido",
+                      "Motivo para usar lote de estoque vencido",
                       motivoVencida,
                       setMotivoVencida,
                       true,

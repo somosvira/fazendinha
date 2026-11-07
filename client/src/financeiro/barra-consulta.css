@@ -10,8 +10,12 @@
 .consulta-controles > .fin-filtro-controle { flex: 0 1 auto; width: auto; min-width: 160px; max-width: 240px; }
 .consulta-acoes { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; font-size: 12px; }
 .consulta-acoes button { min-height: var(--campo-altura); }
-.consulta-situacoes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.consulta-situacoes button { min-height: var(--campo-altura); height: auto; white-space: normal; }
+/* Situação como controle segmentado: um grupo com borda, a opção ativa só tingida,
+ * para não competir com o botão de ação principal da barra. */
+.consulta-situacoes { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-btn, 6px); background: var(--card); }
+.consulta-situacoes button { min-height: calc(var(--campo-altura) - 6px); height: auto; white-space: normal; border-color: transparent !important; box-shadow: none !important; background: transparent; color: var(--muted-foreground); font-weight: 500; }
+.consulta-situacoes button[aria-pressed="true"], .consulta-situacoes button[data-state="open"] { background: var(--accent) !important; color: var(--primary) !important; font-weight: 600; }
+.consulta-situacoes button:hover { background: var(--muted); color: var(--foreground); }
 .consulta-criterios { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 12px; }
 .consulta-criterios button { height: auto; min-height: 32px; white-space: normal; text-align: left; }
 @media (max-width:1100px) {

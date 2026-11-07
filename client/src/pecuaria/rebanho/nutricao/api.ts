@@ -1,9 +1,9 @@
 import type { Lote } from "../types";
 import { buscarLote, listarLotes } from "../api";
-import { comPropriedade } from "../../../propriedadeScope";
+import { comPropriedade, getPropriedadeAtiva } from "../../../propriedadeScope";
 
 export type Ingrediente = { produtoId: string; quantidadeCabecaDia: string; unidade: string; materiaSecaPercentualSnapshot?: string | null; produto?: { nome: string } };
-export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
+export type Dieta = { id: string; nome: string; versao: number; publicadaEm: string | null; itens: Ingrediente[]; /** Usa leite produzido na fazenda: o lote fecha por período. */ usaLeiteProprio?: boolean; lotesEmUso?: Array<{ id: string; nome: string; propriedade: { id: number; nome: string } }> };
 export type Vigencia = { id: string; desde: string; ate: string | null; dieta: { id: string; nome: string; versao: number } };
 export type Pagina<T> = { itens: T[]; total: number; pagina: number; limite: number };
 export type PaginaVigencias = Pagina<Vigencia> & { vigente: Vigencia | null; programada: Vigencia | null };
@@ -32,10 +32,24 @@ export type Fechamento = { id: string; inicio: string; fim: string; animalDias: 
   motivoEstorno?: string | null; estornadoEm?: string | null;
   itens: Array<{ leite?: FornecimentoLeiteNutricional | null; produtoId: string; quantidadePrevista: string; quantidadeConfirmada: string; unidade: string; situacaoCusto: string; produto: { nome: string }; movimentoEstoque: { quantidade: string; valorTotal: string | null; custoUnitario: string | null; alocacaoPartidaEstoques: Array<{ quantidade: string; partida: { codigo: string; nome?: string | null; validade: string | null } }> } | null }> };
 
+/** Várias seções da mesma tela pedem os mesmos dados; a leitura é feita uma vez e reaproveitada por alguns segundos. */
+const leituras = new Map<string, { em: number; valor: Promise<unknown> }>();
+/** Esquece as leituras guardadas (troca de usuário, testes). */
+export const limparLeiturasCompartilhadas = () => leituras.clear();
+export function compartilhada<T>(chave: string, ler: () => Promise<T>, ms = 4000): Promise<T> {
+  const k = `${getPropriedadeAtiva() ?? "todos"}:${chave}`, atual = leituras.get(k);
+  if (atual && Date.now() - atual.em < ms) return atual.valor as Promise<T>;
+  const valor = ler();
+  leituras.set(k, { em: Date.now(), valor });
+  valor.catch(() => leituras.delete(k));
+  return valor;
+}
 export async function req<T>(path: string, init?: RequestInit, consolidado = false, propriedadeId?: number): Promise<T> {
   const headers = comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) });
   if (consolidado) delete headers["X-Propriedade-Id"];
   else if (propriedadeId) headers["X-Propriedade-Id"] = String(propriedadeId);
+  // Qualquer escrita invalida as leituras compartilhadas, para a tela não mostrar dado antigo.
+  if (init?.method && init.method !== "GET") leituras.clear();
   const r = await fetch(`/api${path}`, { ...init, headers });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error ?? `Erro HTTP ${r.status}`);
@@ -46,7 +60,7 @@ export const post = <T>(path: string, body: unknown) => req<T>(path, { method: "
 export const listarProdutosNutricionais = () => req<ProdutoNutricional[]>("/estoque/produtos?uso=nutricional&ativo=true");
 export const listarCentrosNutricionais = () => req<CentroNutricional[]>("/estoque/centros-custo");
 export const listarPartidasNutricionais = (produtoId: string, propriedadeId?: number | null) => req<PartidaNutricional[]>(`/estoque/partidas?produtoId=${encodeURIComponent(produtoId)}${propriedadeId == null ? "" : `&propriedadeId=${propriedadeId}`}`, undefined, propriedadeId === null, propriedadeId ?? undefined);
-export const listarDietas = (): Promise<Dieta[]> => req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas");
+export const listarDietas = (): Promise<Dieta[]> => compartilhada("dietas", () => req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas"));
 export const criarDieta = (body: { nome: string; itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }) =>
   post<Dieta>("/pecuaria/rebanho/nutricao/dietas", body);
 export const publicarDieta = (id: string) => post<Dieta>(`/pecuaria/rebanho/nutricao/dietas/${id}/publicacao`, {});
@@ -71,7 +85,9 @@ const paginaFechamentos = async (loteId?: string, pagina = 1, status?: Fechament
 };
 export const listarFechamentos = paginaFechamentos;
 /** Último fechamento confirmado do lote (a lista vem do mais recente para o mais antigo). */
-export const ultimoFechamentoConfirmado = (loteId: string) =>
+/** Último dia fechado de cada lote do escopo, numa chamada só. */
+export const ultimosFechamentos = () => compartilhada("ultimos", () => req<Record<string, string | null>>("/pecuaria/rebanho/nutricao/consumo/ultimos"));
+export const ultimoFechamentoConfirmado = (loteId: string): Promise<Fechamento | null> =>
   req<Pagina<Fechamento>>(`/pecuaria/rebanho/nutricao/consumo/fechamentos?loteId=${encodeURIComponent(loteId)}&pagina=1&status=CONFIRMADO`).then(r => r.itens[0] ?? null);
 export const obterFechamento = async (id: string): Promise<Fechamento> => {
   const fechamento = await req<Fechamento>(`/pecuaria/rebanho/nutricao/consumo/fechamentos/${encodeURIComponent(id)}`);
@@ -91,7 +107,8 @@ export type VisaoNutricional = { lotes: ResumoNutricional[]; verValores: boolean
 // Adaptação dos catálogos de leitura; a agregação histórica fica no servidor.
 type ResumosNutricionais = { verValores: boolean; lotes: Array<Omit<ResumoNutricional, "lote" | "verValores"> & { loteId: string }> };
 const consultarResumos = (loteId?: string) => req<ResumosNutricionais>(`/pecuaria/rebanho/nutricao/resumo${loteId ? `?loteId=${encodeURIComponent(loteId)}` : ""}`);
-export async function consultarVisaoNutricional(): Promise<VisaoNutricional> {
+export const consultarVisaoNutricional = (): Promise<VisaoNutricional> => compartilhada("visao", lerVisaoNutricional);
+async function lerVisaoNutricional(): Promise<VisaoNutricional> {
   const [lotes, resumo] = await Promise.all([listarLotes(), consultarResumos()]);
   const porLote = new Map(resumo.lotes.map(r => [r.loteId, r]));
   return { verValores: resumo.verValores, lotes: lotes.filter(l => l.ativo && porLote.has(l.id)).map(lote => ({ ...porLote.get(lote.id)!, lote, verValores: resumo.verValores })) };
@@ -117,4 +134,4 @@ export const listarReferenciasLeite = (fornecimentoId: string) => req<{ itens: C
 export const revisarReferenciaLeite = (fornecimentoId: string, body: { chave: string; propriedadeId: number; fechamentoId: string; versaoEsperada: number; motivo: string }) => post(`/pecuaria/rebanho/nutricao/consumo/leite/${encodeURIComponent(fornecimentoId)}/referencia`, body);
 
 export type CustoMedioNutricional = { inicio: string; fim: string; custoPorAnimalDia: string | null; custoConhecido: string | null; animalDias: number; lotesIncluidos: number; lotesTotal: number };
-export const consultarCustoMedio = () => req<CustoMedioNutricional | null>("/pecuaria/rebanho/nutricao/custo-medio");
+export const consultarCustoMedio = (mes: "anterior" | "atual" = "anterior") => req<CustoMedioNutricional | null>(`/pecuaria/rebanho/nutricao/custo-medio${mes === "atual" ? "?mes=atual" : ""}`);

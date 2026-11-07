@@ -7,6 +7,7 @@ import { listarCadastrosProtocolos, obterCadastroProtocolo, obterAcoesCadastro, 
 import { reqProtocolo } from "../protocolos/api";
 import { reqV4 } from "./api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { mudarCampo } from "@/lib/controles.fixture";
 vi.mock("../protocolos/cadastros-api", () => ({ listarCadastrosProtocolos: vi.fn(), obterCadastroProtocolo: vi.fn(), obterAcoesCadastro: vi.fn() }));
 beforeEach(() => { vi.mocked(listarCadastrosProtocolos).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 }); });
 vi.mock("./api",()=>({reqV4:vi.fn()}));
@@ -21,15 +22,15 @@ it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calend
   vi.clearAllMocks();
   vi.mocked(reqV4).mockImplementation(async path => path.startsWith("/reproducao/biblioteca") ? [] : {});
   comecarZero();
-  fireEvent.change(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo genético" } });
-  fireEvent.change(screen.getByLabelText("Finalidade da versão"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
-  fireEvent.change(screen.getByLabelText("Intervalo desde o início"), { target: { value: "10.5" } });
-  fireEvent.change(screen.getByLabelText("Unidade do intervalo"), { target: { value: "HORAS" } });
-  fireEvent.change(screen.getByLabelText("Tipo de procedimento"), { target: { value: tentativaTipo } });
-  fireEvent.change(screen.getByLabelText("Instruções gerais da etapa (opcional)"), { target: { value: "Registrar o material por animal ou grupo." } });
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Modelo genético" } });
+  mudarCampo(screen.getByLabelText("Finalidade da versão"), { target: { value: tentativaTipo === "IA" ? "IATF" : "TETF" } });
+  mudarCampo(screen.getByLabelText("Intervalo desde o início"), { target: { value: "10.5" } });
+  mudarCampo(screen.getByLabelText("Unidade do intervalo"), { target: { value: "HORAS" } });
+  mudarCampo(screen.getByLabelText("Tipo de procedimento"), { target: { value: tentativaTipo } });
+  mudarCampo(screen.getByLabelText("Instruções gerais da etapa (opcional)"), { target: { value: "Registrar o material por animal ou grupo." } });
   expect(screen.queryByRole("button", { name: /Selecionar Material/ })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "Adicionar procedimento" }));
-  fireEvent.change(screen.getAllByLabelText("Tipo de procedimento")[1], { target: { value: "RETIRADA" } });
+  mudarCampo(screen.getAllByLabelText("Tipo de procedimento")[1], { target: { value: "RETIRADA" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ etapas: expect.any(Array) }), "POST", 7));
   const [, body] = vi.mocked(reqV4).mock.calls.find(([path, body]) => path === "/reproducao/protocolos" && !!body)!;
@@ -59,7 +60,7 @@ it.each(["Editar rascunho","Nova versão"])("%s envia apenas parâmetros editáv
   vi.mocked(obterAcoesCadastro).mockResolvedValue({ itens: etapas.map((e, i) => ({ ...e, ordem: i + 1 })), total: 1, pagina: 1, porPagina: 10 });
   paginaNova(acao === "Nova versão" ? "?base=protocolo" : "?editar=protocolo");
   await waitFor(() => expect(screen.getByRole("button", { name: "Salvar protocolo" })).toHaveProperty("disabled", false));
-  fireEvent.change(screen.getByLabelText("Finalidade da versão"), { target: { value: "PRE_SINCRONIZACAO" } });
+  mudarCampo(screen.getByLabelText("Finalidade da versão"), { target: { value: "PRE_SINCRONIZACAO" } });
   fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
   await waitFor(()=>expect(vi.mocked(reqV4).mock.calls.some(([,body])=>!!body)).toBe(true));
   const [path,body,method]=vi.mocked(reqV4).mock.calls.find(([,body])=>!!body)!;
@@ -85,8 +86,8 @@ it.each([
   render(<Iatf modo="cadastros" podeLancar propriedadeId={propriedadeId} />);
   await screen.findByText("Referência técnica");
   fireEvent.click(screen.getByText("Biblioteca de referências reprodutivas"));
-  fireEvent.change(screen.getByLabelText("Nome do novo rascunho"), { target: { value: "Manejo da fazenda" } });
-  fireEvent.change(screen.getByLabelText("Versão do novo rascunho"), { target: { value: "1" } });
+  mudarCampo(screen.getByLabelText("Nome do novo rascunho"), { target: { value: "Manejo da fazenda" } });
+  mudarCampo(screen.getByLabelText("Versão do novo rascunho"), { target: { value: "1" } });
   fireEvent.click(screen.getByRole("button", { name: "Copiar como rascunho" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith(
     "/reproducao/biblioteca/referencia/copiar",
@@ -105,13 +106,13 @@ it("editar quantidade conserva classificação explícita da aplicação", async
   vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ id: "produto", nome: "Produto em litros", unidade: "L", perfilSanitario: { tipoAplicacaoId: "padrao-do-produto" } }], total: 1, pagina: 1, porPagina: 10 });
   paginaNova("?editar=protocolo");
   const dose = await screen.findByLabelText("Dose planejada");
-  fireEvent.change(dose, { target: { value: "3" } });
+  mudarCampo(dose, { target: { value: "3" } });
   expect(screen.getByLabelText("Unidade da dose (do produto)")).toHaveProperty("readOnly", true);
   fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto planejado" }));
   fireEvent.click(await screen.findByRole("button", { name: "Usar Produto em litros" }));
   expect(screen.getByLabelText("Unidade da dose (do produto)")).toHaveProperty("value", "ML");
   expect(dose).toHaveProperty("value", "3");
-  fireEvent.change(screen.getByLabelText("Finalidade da versão"), { target: { value: "PRE_SINCRONIZACAO" } });
+  mudarCampo(screen.getByLabelText("Finalidade da versão"), { target: { value: "PRE_SINCRONIZACAO" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos/protocolo", expect.objectContaining({ etapas: [expect.objectContaining({ intervalo: 7.5, planoAplicacao: expect.objectContaining({ produtoId: "produto", dose: "3", tipoAplicacaoId: "classificacao-explicita" }) })] }), "PATCH", 7));
 });
@@ -119,11 +120,11 @@ it.each(["PRE_SINCRONIZACAO", "IATF", "TETF"] as const)("publicação valida a f
   vi.clearAllMocks();
   vi.mocked(reqV4).mockImplementation(async path => path.startsWith("/reproducao/biblioteca") ? [] : {});
   comecarZero();
-  fireEvent.change(screen.getByLabelText("Nome do protocolo"), { target: { value: "Nome não classifica finalidade" } });
-  fireEvent.change(screen.getByLabelText("Tipo de procedimento"), { target: { value: "RETIRADA" } });
-  fireEvent.change(screen.getByLabelText("Intervalo desde o início"), { target: { value: "7.5" } });
+  mudarCampo(screen.getByLabelText("Nome do protocolo"), { target: { value: "Nome não classifica finalidade" } });
+  mudarCampo(screen.getByLabelText("Tipo de procedimento"), { target: { value: "RETIRADA" } });
+  mudarCampo(screen.getByLabelText("Intervalo desde o início"), { target: { value: "7.5" } });
   expect(screen.getByLabelText("Intervalo desde o início")).toHaveProperty("step", "any");
-  fireEvent.change(screen.getByLabelText("Finalidade da versão"), { target: { value: finalidade } });
+  mudarCampo(screen.getByLabelText("Finalidade da versão"), { target: { value: finalidade } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar protocolo" }));
   if (finalidade === "PRE_SINCRONIZACAO") {
     await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos", expect.objectContaining({ finalidade, publicado: true, etapas: [expect.objectContaining({ tipo: "RETIRADA", intervalo: 7.5, unidade: "DIAS" })] }), "POST", 7));

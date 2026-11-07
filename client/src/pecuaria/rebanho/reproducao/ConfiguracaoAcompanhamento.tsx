@@ -1,4 +1,3 @@
-import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useRef, useState } from "react";
 import { ModalPolitica } from "./ModalPolitica";
 import { Button } from "../../../components/ui/button";
@@ -78,7 +77,7 @@ function ConteudoConfiguracaoAcompanhamento({ propriedadeId, podeLancar }: Props
   const ordenadas = [...politicas].sort((a, b) => Number(b.id === vigente?.id) - Number(a.id === vigente?.id) || b.vigenteDesde.localeCompare(a.vigenteDesde) || b.versao - a.versao);
   return <section className="space-y-4 border-t pt-5">
     <div className="flex flex-wrap items-center justify-between gap-3">
-    <h2 className="text-xl font-semibold">Diagnóstico e reconfirmações <AjudaCampo rotulo="Ajuda sobre prazos de acompanhamento" texto="Escolha os prazos com o responsável pelo manejo. As regras geram alertas e conservam sua versão em cada demanda. Não há prazo clínico padrão."/></h2>
+    <div><h2 className="text-xl font-semibold">Diagnóstico e reconfirmações</h2><p className="mt-1 text-sm text-ink-3">Escolha os prazos com o responsável pelo manejo; não há prazo clínico padrão. As regras geram alertas.</p></div>
     {podeLancar && <Button type="button" variant="outline" onClick={() => setFormularioAberto(true)}>Nova versão de acompanhamento</Button>}
     </div>
     {!formularioAberto && <ErrorBox erro={erro} />}

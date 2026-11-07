@@ -17,6 +17,7 @@ import { PeriodoProducao, VazioProducao } from "./ProducaoAnimalUI";
 import { AfericaoAnimalDetalhe } from "./AfericaoAnimalDetalhe";
 import type { DiaHistoricoProdutivo, ContextoCarenciaLeite } from "./historico-types";
 import "./historico-produtivo.css";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 const situacaoDia = (d: DiaHistoricoProdutivo) => d.excluidoEm ? "Excluída" : d.totais.completa ? "Completa" : "Parcial";
 const normalizar = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -71,7 +72,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
       {periodoPicker}<Button variant="outline" aria-expanded={filtros} onClick={() => setFiltros(v => !v)}><SlidersHorizontal size={16}/>Filtros{situacao !== "todas" && " · 1"}</Button>
       <div className="producao-alternador" role="group" aria-label="Apresentação das aferições"><Button variant={visualizacao.modo === "visual" ? "default" : "outline"} aria-pressed={visualizacao.modo === "visual"} onClick={() => visualizacao.mudar("visual")}><ChartLine size={16}/>Gráfico</Button><Button variant={visualizacao.modo === "tabela" ? "default" : "outline"} aria-pressed={visualizacao.modo === "tabela"} onClick={() => visualizacao.mudar("tabela")}><Table2 size={16}/>Tabela</Button></div>
     </div>
-    {filtros && <div className="producao-filtros"><label>Situação<select value={situacao} onChange={e => { setSituacao(e.target.value); setPagina(1); visualizacao.mudar("tabela"); }}><option value="todas">Todas</option><option value="Completa">Completas</option><option value="Parcial">Parciais</option><option value="Excluída">Excluídas</option></select></label><Button variant="outline" onClick={() => { setSituacao("todas"); setBusca(""); setPagina(1); }}>Limpar filtros</Button></div>}
+    {filtros && <div className="producao-filtros"><label>Situação<SelectCampo value={situacao} onValueChange={(valor) => { setSituacao(valor); setPagina(1); visualizacao.mudar("tabela"); }}><option value="todas">Todas</option><option value="Completa">Completas</option><option value="Parcial">Parciais</option><option value="Excluída">Excluídas</option></SelectCampo></label><Button variant="outline" onClick={() => { setSituacao("todas"); setBusca(""); setPagina(1); }}>Limpar filtros</Button></div>}
     {!carregando && !erro && dados && <>
       {!registros.length ? <VazioProducao>{busca || situacao !== "todas" ? "Nenhuma aferição corresponde aos filtros" : <>Nenhuma aferição no período</>}</VazioProducao>
       : visualizacao.modo === "visual" ? pontos.length ? <EvolucaoProducaoIndividual pontos={pontos}/> : <VazioProducao>Nenhum volume conhecido para o gráfico. Consulte os registros na tabela.</VazioProducao>
