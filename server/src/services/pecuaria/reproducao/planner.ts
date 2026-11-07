@@ -40,6 +40,12 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
   const tarefas = await tx.tarefaProtocolo.findMany({ where: { AND: [condicaoSituacaoTarefa("PENDENTE")],
     execucao: { animalId: { in: ids }, propriedadeId, OR: [{ rodadaId: null }, { rodada: { status: "ABERTA" } }] } },
     include: { etapa: true, execucao: { include: { protocolo: true, rodada: true } } }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }] });
+  const tarefasReprodutivas = tarefas.filter(t => t.execucao.protocolo.tipo === "REPRODUTIVO").map(t => t.id);
+  const revisoes = tarefasReprodutivas.length ? await tx.necessidadeReprodutiva.findMany({
+    where: { propriedadeId, tarefaId: { in: tarefasReprodutivas }, demandaId: null, convergidaParaId: null, decisao: "SUSPENDER", situacao: "SUSPENSO", revisaoEm: { not: null } },
+    select: { id: true, tarefaId: true, revisaoEm: true, revisao: true },
+  }) : [];
+  const revisoesPorTarefa = new Map(revisoes.map(n => [n.tarefaId, n]));
   const participantesVisita = tarefas.length ? await tx.participanteVisita.findMany({ where: { tarefaId: { in: tarefas.map(t => t.id) } }, select: { tarefaId: true, atividadeId: true } }) : [];
   const atividades = participantesVisita.length ? await tx.atividadeVisita.findMany({ where: { id: { in: participantesVisita.map(p => p.atividadeId) } }, select: { id: true, visitaId: true } }) : [];
   const visitas = atividades.length ? await tx.visitaVeterinaria.findMany({ where: { id: { in: atividades.map(a => a.visitaId) }, encerradaEm: null, propriedadeId }, select: { id: true, nome: true } }) : [];
@@ -62,19 +68,21 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
     const demanda=demandas.find(d=>d.tarefaId===tarefa.id);
     if (demanda && demandaDispensada(demanda)) continue;
     const retornoInformado=demanda?avaliacoes.find(a=>a.retornoEm&&compativel(demanda,a))?.retornoEm:null;
-    const previstaAgenda=demanda?.decisaoOperacional?.data ?? retornoInformado ?? tarefa.previstaPara;
+    const revisao = !demanda ? revisoesPorTarefa.get(tarefa.id) : undefined;
+    const dataOperacional = demanda?.decisaoOperacional?.data ?? revisao?.revisaoEm ?? retornoInformado;
+    const previstaAgenda = dataOperacional ?? tarefa.previstaPara;
     const identidade = identidadeGrupoProtocolo({ protocoloId: protocolo.id, versao: protocolo.versao, tipo: protocolo.tipo,
       programacaoId: execucao.rodadaId, participacaoId: execucao.id, etapaId: tarefa.etapaId, previstaPara: previstaAgenda,
-      precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente });
+      precisaoTemporal: dataOperacional ? "DIA" : tarefa.precisaoTemporal, previsaoPendente: dataOperacional ? false : tarefa.previsaoPendente });
     let grupo = grupos.get(identidade);
     if (!grupo) {
       const tipo: TipoAtividade = protocolo.tipo === "REPRODUTIVO" ? "TAREFA_IATF" : tarefa.etapa.tipo === "EXAME" ? "EXAME_SANITARIO" : "APLICACAO_SANITARIA";
       grupo = { grupo: { origem: "PROTOCOLO", identidade }, nome: `${protocolo.nome} · ${tarefa.etapa.nome}`,
-        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(previstaAgenda, (retornoInformado||demanda?.decisaoOperacional?.data)?"DIA":tarefa.precisaoTemporal,(retornoInformado||demanda?.decisaoOperacional?.data)?false:tarefa.previsaoPendente,data), tipo,
+        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(previstaAgenda, dataOperacional?"DIA":tarefa.precisaoTemporal,dataOperacional?false:tarefa.previsaoPendente,data), tipo,
         protocolo: { id: protocolo.id, nome: protocolo.nome, versao: protocolo.versao },
         turma: { id: execucao.rodadaId ?? execucao.id, nome: execucao.rodada?.nome ?? "Participação individual" },
         etapa: { id: tarefa.etapaId, nome: tarefa.etapa.nome, ordem: tarefa.etapa.ordem },
-        previstaPara: (retornoInformado||demanda?.decisaoOperacional?.data)?previstaAgenda.toISOString().slice(0,10):tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: (retornoInformado||demanda?.decisaoOperacional?.data)?"DIA":tarefa.precisaoTemporal,
+        previstaPara: dataOperacional?previstaAgenda.toISOString().slice(0,10):tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: dataOperacional?"DIA":tarefa.precisaoTemporal,
         criterios: null, contexto: { protocoloId: protocolo.id, programacaoId: execucao.rodadaId, etapaId: tarefa.etapaId }, membros: [] };
       grupos.set(identidade, grupo);
     }
@@ -83,8 +91,8 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
       const atividade = atividades.find(a => a.id === p.atividadeId), visita = visitas.find(v => v.id === atividade?.visitaId);
       return visita ? [[visita.id, visita] as const] : [];
     })).values()];
-    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`,...((retornoInformado||demanda?.decisaoOperacional?.data)?[`Agenda operacional; tarefa planejada para ${tarefa.previstaPara.toISOString().slice(0,10)}`]:[])], visitasAbertas,
-      estadoTarefa: { acompanhamento:demanda??null,retornoInformadoEm:retornoInformado??null,previstaParaAgenda:previstaAgenda,previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
+    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`,...(dataOperacional?[`Agenda operacional; tarefa planejada para ${tarefa.previstaPara.toISOString().slice(0,10)}`]:[])], visitasAbertas,
+      estadoTarefa: { revisaoOperacional: revisao ?? null, acompanhamento:demanda??null,retornoInformadoEm:retornoInformado??null,previstaParaAgenda:previstaAgenda,previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
         parametros: tarefa.parametros, execucaoId: execucao.id, inicio: execucao.inicio, inicioEfetivo: execucao.inicioEfetivo, precisaoInicioEfetivo: execucao.precisaoInicioEfetivo } });
   }
   for(const demanda of demandas){
