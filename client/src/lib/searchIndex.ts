@@ -5,6 +5,8 @@ import type { Tab } from "../components/Shell";
 export type GrupoComando =
   | "Financeiro"
   | "Pecuária"
+  | "Gestão"
+  | "IA Terrano"
   | "Administração"
   | "Ações";
 
@@ -37,6 +39,9 @@ export interface ResultadoBusca {
 // Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "plano"→"Categorias";
 // replicamos aqui para o usuário achar pelos dois nomes.
 const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
+  { id: "assistente", tab: "assistente", label: "IA Terrano", grupo: "IA Terrano", caminho: "/assistente", sinonimos: ["assistente", "chat", "conversa", "inteligência artificial"], descricao: "Conversar sobre os dados e o uso do Terrano" },
+  { id: "assistente-radar", tab: "assistente", label: "Radar da fazenda", grupo: "IA Terrano", caminho: "/assistente?aba=radar", sinonimos: ["insights", "análise diária", "avisos"], descricao: "Análises e avisos das áreas autorizadas" },
+  { id: "metas", tab: "metas", label: "Metas da fazenda", grupo: "Gestão", caminho: "/metas", sinonimos: ["objetivos", "progresso", "indicadores"], descricao: "Acompanhar e cadastrar metas" },
   // — Financeiro (grupo "Visão & gestão" / abas do ABAS) —
   { id: "fin-dashboard", tab: "dashboard", label: "Visão geral", grupo: "Financeiro", sinonimos: ["dashboard", "painel", "início", "home", "executivo"], descricao: "Resultados, saldos e compromissos do período" },
   { id: "fin-gastos", tab: "gastos", label: "Compromissos", grupo: "Financeiro", sinonimos: ["gastos", "despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Valores a pagar e a receber" },

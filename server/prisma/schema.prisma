@@ -660,6 +660,9 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  eventosMetasAssistente EventoMetaAssistente[]
+  assinaturasRadarAssistente AssinaturaRadarAssistente[]
+  conversasAssistente ConversaAssistente[]
   automacoesProtocolos AutomacaoProtocolo[]
   vinculosPesagemSecagem VinculoPesagemSecagem[]
   controlesHistoricosLeite ControleHistoricoLeite[]
@@ -934,6 +937,10 @@ enum TipoToken {
 }
 
 model Usuario {
+  eventosMetasAssistente EventoMetaAssistente[]
+  assinaturasRadarAssistente AssinaturaRadarAssistente[]
+  snapshotsRadarAssistente SnapshotRadarAssistente[]
+  conversasAssistente ConversaAssistente[]
   automacoesProtocolos AutomacaoProtocolo[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   VisitaVeterinaria                VisitaVeterinaria[]
@@ -4829,6 +4836,65 @@ model MovimentoConsumoDiario {
   criadoEm DateTime @default(now())
   @@index([itemId])
   @@schema("pecuaria")
+
+}
+
+// Histórico privado por usuário e sítio; anexos e tokens não são persistidos.
+model ConversaAssistente {
+  id String @id @db.Uuid
+  usuarioId Int
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  propriedadeId Int?
+  propriedade Propriedade? @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  permissoes String
+  revisao BigInt @default(0)
+  titulo String
+  mensagens Json
+  atualizadoEm DateTime @default(now()) @db.Timestamptz
+
+  @@index([usuarioId, propriedadeId, atualizadoEm(sort: Desc)])
+  @@schema("public")
+}
+
+model EventoMetaAssistente {
+ metaId String @db.Uuid
+ revisao Int
+ operacaoId String @unique @db.Uuid
+ hashPedido String
+ propriedadeId Int
+ propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+ usuarioId Int
+ usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+ dominio String
+ tipo String
+ conteudo Json
+ criadoEm DateTime @default(now()) @db.Timestamptz(6)
+ @@id([metaId, revisao])
+ @@index([propriedadeId, dominio, metaId, revisao(sort: Desc)], map: "EventoMetaAssistente_escopo_idx")
+ @@schema("public")
+}
+model AssinaturaRadarAssistente {
+ chave String @id
+ usuarioId Int
+ usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+ propriedadeId Int?
+ propriedade Propriedade? @relation(fields: [propriedadeId], references: [id], onDelete: Cascade)
+ permissoes String
+ ultimoUso DateTime @default(now()) @db.Timestamptz(6)
+ @@index([ultimoUso], map: "AssinaturaRadarAssistente_ultimoUso_idx")
+ @@schema("public")
+}
+model SnapshotRadarAssistente {
+ chave String
+ dia DateTime @db.Date
+ usuarioId Int
+ usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+ criadoEm DateTime @default(now()) @db.Timestamptz(6)
+ conteudo Json?
+ iaReservada Boolean @default(false)
+ @@id([chave, dia])
+ @@index([dia], map: "SnapshotRadarAssistente_dia_idx")
+ @@schema("public")
 }
 
 /// Unidade de execução atômica: um momento para um animal. Recibo e efeitos na mesma transação.

@@ -7,6 +7,7 @@ import { listarPropriedades } from "../api/propriedades";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import "./busca-global.css";
+import { BuscaAnimais } from "../pecuaria/rebanho/components/BuscaAnimais";
 
 type FiltroBusca = "Tudo" | "Registros" | "Páginas" | "Ações";
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
   podeVer: (t: Tab) => boolean;
   podeVerCaminho?: (caminho: string) => boolean;
   podeLancar?: boolean; podeVerValores?: boolean; escopo?: string;
+  modo?: "tudo" | "animais";
   /** Sítio ativo: o contexto mostra seu nome em vez de um rótulo genérico. */
   propriedadeId?: number | null;
 };
@@ -27,7 +29,7 @@ function eResultadoBusca(v: unknown): v is ResultadoBusca {
     && (r.caminho as string).startsWith("/") && !(r.caminho as string).startsWith("//");
 }
 
-export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null }: Props) {
+function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null }: Props) {
   const [nomeSitio, setNomeSitio] = useState<string | null>(null);
   useEffect(() => {
     if (!aberto || propriedadeId == null || nomeSitio) return;
@@ -101,8 +103,15 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
           {semResultados && <div className="busca-global-vazio"><strong>{termo ? `Nenhum resultado para «${termo}»` : "Digite para buscar"}</strong><p>{!consultaValida(termo) && termo ? "Digite pelo menos duas letras ou um número." : "Tente parte do nome, brinco ou referência do registro."}</p></div>}
           {registros.length >= 6 && <p className="busca-global-dica">Resultados limitados por tipo. Refine o termo para localizar outros registros.</p>}
         </CommandList>
-        <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl/⌘ K</kbd> buscar</span></div>
+        <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl/⌘ Shift K</kbd> só animais</span></div>
       </Command>
     </DialogContent>
   </Dialog>;
+}
+
+/** Os dois atalhos compartilham abertura/guarda; cada modo conserva sua consulta. */
+export function CommandPalette(props: Props) {
+  if (props.modo !== "animais") return <BuscaGlobal {...props}/>;
+  const podeConsultar = props.podeVer("pec-rebanho") && (!props.podeVerCaminho || props.podeVerCaminho("/pecuaria/rebanho/animais"));
+  return <BuscaAnimais aberto={props.aberto} escopo={props.escopo ?? "Consolidado"} podeConsultar={podeConsultar} podeVerCaminho={props.podeVerCaminho} onFechar={props.onFechar} onAbrir={(id,caminho) => { props.onNav("pec-rebanho",id,caminho); props.onFechar(); }}/>;
 }

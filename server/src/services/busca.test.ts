@@ -15,6 +15,12 @@ describe("consulta da busca", () => {
     expect(await buscarEntidades("leite", { ...dono, dono: false }, null)).toEqual([]);
     expect(query).not.toHaveBeenCalled();
   });
+  it("com tipos, consulta só essas fontes e amplia o limite da fonte única", async () => {
+    await buscarEntidades("dev019", dono, null, ["animal"]);
+    const sql = query.mock.calls[0][0];
+    expect(sql.sql).toContain('"Animal"'); expect(sql.sql).not.toContain('"Operacao"');
+    expect(sql.values).toContain(20);
+  });
   it("devolve o destino exato com sítio e sem dados de consulta internos", async () => {
     query.mockResolvedValue([{ tipo: "animal", id: "animal-184", label: "184 — Estrela", contexto: "Rebanho › Principal", alvoId: "animal-184", propriedadeId: 7 }]);
     const [r] = await buscarEntidades("184", dono, 7);
