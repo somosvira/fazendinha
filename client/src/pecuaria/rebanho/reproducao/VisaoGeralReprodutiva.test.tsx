@@ -14,6 +14,7 @@ import {
   execucaoVisaoGeral as p,
 } from "./visao-geral.fixture";
 const m = vi.hoisted(() => ({
+  etapas: vi.fn(),
   agenda: vi.fn(),
   execucoes: vi.fn(),
   animais: vi.fn(),
@@ -22,6 +23,7 @@ const m = vi.hoisted(() => ({
 vi.mock("./visao-geral-api", async (original) => ({
   ...(await original<typeof import("./visao-geral-api")>()),
   consultarAgendaVisaoGeral: m.agenda,
+  consultarEtapasDoDia: m.etapas,
   consultarExecucoesVisaoGeral: m.execucoes,
   consultarAnimaisGrupoVisaoGeral: m.animais,
 }));
@@ -55,6 +57,20 @@ beforeEach(() => {
     "",
     "/pecuaria/reproducao?rotina=geral&sitio=7",
   );
+  m.etapas.mockResolvedValue([
+    {
+      contextoId: "hoje",
+      modo: "COLETIVO",
+      nome: "Programação hoje",
+      modelo: "Modelo",
+      etapaId: "etapa-hoje",
+      etapa: "Etapa hoje",
+      totalAnimais: 6,
+      atendidos: 4,
+      pendentes: 2,
+      encerrados: 0,
+    },
+  ]);
   m.agenda.mockResolvedValue([
     g("hoje", "2026-11-07"),
     g("amanha", "2026-11-08"),
@@ -161,4 +177,34 @@ it("grupo de DG abre somente os animais conferidos e preserva identidade do cuid
   await waitFor(() =>
     expect(m.animais).toHaveBeenCalledWith(7, "2026-11-07", grupo, 1),
   );
+});
+
+it("Hoje mostra quatro atendidos e dois pendentes e conserva a etapa após o último atendimento", async () => {
+  const { unmount } = render(<VisaoGeralReprodutiva propriedadeId={7} />);
+  const titulo = await screen.findByText("Programação hoje");
+  const linha = titulo.closest("article")!;
+  expect(within(linha).getByText("6 animais")).toBeTruthy();
+  expect(within(linha).getByText("Atendidos").parentElement?.textContent).toBe(
+    "Atendidos4",
+  );
+  expect(within(linha).getByText("Pendentes").parentElement?.textContent).toBe(
+    "Pendentes2",
+  );
+  unmount();
+  const [etapa] = await m.etapas.mock.results[0].value;
+  m.etapas.mockResolvedValue([{ ...etapa, atendidos: 6, pendentes: 0 }]);
+  render(<VisaoGeralReprodutiva propriedadeId={7} />);
+  const completa = (await screen.findByText("Programação hoje")).closest(
+    "article",
+  )!;
+  expect(within(completa).getByText("6 animais")).toBeTruthy();
+  expect(
+    within(completa).getByText("Atendidos").parentElement?.textContent,
+  ).toBe("Atendidos6");
+  expect(
+    within(completa).getByText("Pendentes").parentElement?.textContent,
+  ).toBe("Pendentes0");
+  expect(
+    within(completa).getByRole("link", { name: "Abrir etapa" }),
+  ).toBeTruthy();
 });

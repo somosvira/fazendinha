@@ -171,3 +171,26 @@ export function demandaDoGrupo(
   const id = Reflect.get(mapa, animalId);
   return typeof id === "string" ? id : null;
 }
+
+export type EtapaDoDia = {
+  contextoId: string;
+  modo: "COLETIVO" | "INDIVIDUAL";
+  nome: string;
+  modelo: string;
+  etapaId: string;
+  etapa: string;
+  totalAnimais: number;
+  atendidos: number;
+  pendentes: number;
+  encerrados: number;
+};
+export function consultarEtapasDoDia(propriedadeId: number, data: string) {
+  return lerTodasAsPaginas<EtapaDoDia>(
+    (pagina) =>
+      reqProtocolo<Pagina<EtapaDoDia>>(
+        `/etapas-do-dia?${new URLSearchParams({ data, pagina: String(pagina), porPagina: "10" })}`,
+        propriedadeId,
+      ),
+    (e) => `${e.modo}:${e.contextoId}:${e.etapaId}`,
+  );
+}

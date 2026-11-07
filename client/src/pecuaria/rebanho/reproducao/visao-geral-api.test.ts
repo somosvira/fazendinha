@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import {
   consultarAgendaVisaoGeral,
+  consultarEtapasDoDia,
   consultarExecucoesVisaoGeral,
   demandaDoGrupo,
   diaDoGrupo,
@@ -120,4 +121,40 @@ it("cuidado só é identificado pela identidade explícita, sem coincidência de
   });
   expect(demandaDoGrupo(grupo, "animal")).toBe("demanda");
   expect(demandaDoGrupo(grupo, "outro")).toBeNull();
+});
+
+it("Hoje lê todas as páginas de etapas completas no sítio, incluindo etapa totalmente atendida", async () => {
+  const itens = Array.from({ length: 11 }, (_, i) => ({
+    contextoId: `grupo-${i}`,
+    modo: "COLETIVO",
+    nome: "Programação",
+    modelo: "Modelo",
+    etapaId: "etapa",
+    etapa: "D0",
+    totalAnimais: 6,
+    atendidos: i === 10 ? 6 : 4,
+    pendentes: i === 10 ? 0 : 2,
+    encerrados: 0,
+  }));
+  m.protocolo.mockImplementation(async (path: string, sitio: number) => {
+    expect(path).toContain("/etapas-do-dia?data=2026-11-07");
+    expect(sitio).toBe(7);
+    const pagina = Number(
+      new URLSearchParams(path.split("?")[1]).get("pagina"),
+    );
+    return {
+      itens: itens.slice((pagina - 1) * 10, pagina * 10),
+      total: 11,
+      pagina,
+      porPagina: 10,
+    };
+  });
+  const dados = await consultarEtapasDoDia(7, "2026-11-07");
+  expect(dados).toHaveLength(11);
+  expect(dados.at(-1)).toMatchObject({
+    totalAnimais: 6,
+    atendidos: 6,
+    pendentes: 0,
+  });
+  expect(m.protocolo).toHaveBeenCalledTimes(2);
 });

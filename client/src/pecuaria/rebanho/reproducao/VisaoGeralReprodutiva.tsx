@@ -22,6 +22,8 @@ import { horarioIatf } from "./CampoDataIatf";
 import type { GrupoPlanner, PreviaPlanner } from "./planner-api";
 import {
   consultarAgendaVisaoGeral,
+  consultarEtapasDoDia,
+  type EtapaDoDia,
   consultarAnimaisGrupoVisaoGeral,
   consultarExecucoesVisaoGeral,
   demandaDoGrupo,
@@ -61,6 +63,8 @@ export function VisaoGeralReprodutiva({
   const [fim, setFim] = useState(() => somarDias(hoje, 7));
   const [agenda, setAgenda] = useState<GrupoPlanner[] | null>(null),
     [execucoes, setExecucoes] = useState<CabecalhoProtocolo[] | null>(null);
+  const [etapasHoje, setEtapasHoje] = useState<EtapaDoDia[] | null>(null);
+  const [erroHoje, setErroHoje] = useState<string | null>(null);
   const [alertas, setAlertas] = useState<ConsultaAlertas | null>(null);
   const [erroAgenda, setErroAgenda] = useState<string | null>(null),
     [erroExecucoes, setErroExecucoes] = useState<string | null>(null),
@@ -71,6 +75,15 @@ export function VisaoGeralReprodutiva({
   useEffect(() => {
     let ativo = true;
     setAgenda(null);
+    setEtapasHoje(null);
+    setErroHoje(null);
+    consultarEtapasDoDia(propriedadeId, hoje)
+      .then((v) => {
+        if (ativo) setEtapasHoje(v);
+      })
+      .catch((e) => {
+        if (ativo) setErroHoje(mensagem(e));
+      });
     setExecucoes(null);
     setErroAgenda(null);
     setErroExecucoes(null);
@@ -119,7 +132,19 @@ export function VisaoGeralReprodutiva({
     agenda && execucoes
       ? organizarVisaoGeral(agenda, execucoes, hoje, inicio, fim)
       : null;
-  const gruposHoje = agenda?.filter((g) => diaDoGrupo(g) === hoje);
+  if (organizados && etapasHoje) {
+    const destacados = new Set(
+      etapasHoje.map((e) => `${e.modo}:${e.contextoId}`),
+    );
+    organizados.emAndamento = organizados.emAndamento.filter(
+      (p) => !destacados.has(`${p.modo}:${p.id}`),
+    );
+  }
+  const gruposHoje = agenda?.filter(
+    (g) => diaDoGrupo(g) === hoje && g.grupo.origem !== "PROTOCOLO",
+  );
+  const totalHoje =
+    etapasHoje && gruposHoje ? etapasHoje.length + gruposHoje.length : null;
   const gruposProximos =
     agenda && periodoValido
       ? agenda.filter((g) => {
@@ -220,20 +245,61 @@ export function VisaoGeralReprodutiva({
               <h2>Hoje</h2>
               <p>{formatBRDateISO(hoje)}</p>
             </div>
-            {gruposHoje && (
+            {totalHoje != null && (
               <Pill>
-                {gruposHoje.length}{" "}
-                {gruposHoje.length === 1 ? "cuidado" : "cuidados"}
+                {totalHoje} {totalHoje === 1 ? "cuidado" : "cuidados"}
               </Pill>
             )}
           </header>
           <div className="repro-visao-conteudo">
-            {erroAgenda ? (
-              erro(erroAgenda)
-            ) : !gruposHoje ? (
+            {erroHoje || erroAgenda ? (
+              erro(erroHoje ?? erroAgenda ?? "Não foi possível consultar Hoje")
+            ) : !etapasHoje || !gruposHoje ? (
               <p role="status">Consultando cuidados de hoje…</p>
-            ) : gruposHoje.length ? (
-              listaGrupos(gruposHoje, "cuidados de hoje")
+            ) : totalHoje ? (
+              <>
+                {!!etapasHoje.length && (
+                  <ListaRascunho
+                    itens={etapasHoje}
+                    rotulo="etapas de hoje"
+                    renderizar={(e) => (
+                      <article
+                        className="repro-visao-etapa"
+                        key={`${e.modo}:${e.contextoId}:${e.etapaId}`}
+                      >
+                        <div>
+                          <h3>{e.nome}</h3>
+                          <p>{e.etapa}</p>
+                          <p className="text-sm text-ink-3">
+                            {e.totalAnimais}{" "}
+                            {e.totalAnimais === 1 ? "animal" : "animais"}
+                            {e.encerrados > 0
+                              ? ` · ${e.encerrados} encerrados`
+                              : ""}
+                          </p>
+                        </div>
+                        <div>
+                          <span>Atendidos</span>
+                          <strong>{e.atendidos}</strong>
+                        </div>
+                        <div>
+                          <span>Pendentes</span>
+                          <strong>{e.pendentes}</strong>
+                        </div>
+                        <LinkReproducao
+                          botao
+                          sitio={propriedadeId}
+                          href={`${caminhoExecucao({ id: e.contextoId, modo: e.modo })}?${new URLSearchParams({ etapaId: e.etapaId, retorno: window.location.pathname + window.location.search })}`}
+                        >
+                          Abrir etapa
+                        </LinkReproducao>
+                      </article>
+                    )}
+                  />
+                )}
+                {!!gruposHoje.length &&
+                  listaGrupos(gruposHoje, "cuidados de hoje")}
+              </>
             ) : (
               <Empty>Nenhum cuidado previsto para hoje.</Empty>
             )}
@@ -243,7 +309,9 @@ export function VisaoGeralReprodutiva({
           <header className="repro-visao-cabecalho">
             <div>
               <h2>Próximos</h2>
-              <p>Intervalo futuro explícito</p>
+              <p>
+                {formatBRDateISO(inicio)} a {formatBRDateISO(fim)}
+              </p>
             </div>
             <Button
               secondary

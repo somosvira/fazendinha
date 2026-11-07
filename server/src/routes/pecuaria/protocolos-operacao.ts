@@ -1,3 +1,4 @@
+import { listarEtapasDoDia, etapasDoDiaSchema } from "../../services/pecuaria/protocolos/etapas-do-dia.js";
 import { estimarModelo, estimativaModeloSchema } from "../../services/pecuaria/custos/estimativa-modelo.js";
 import { consultarResultadosProtocolo, consultaResultadosSchema } from "../../services/pecuaria/protocolos/resultados.js";
 import { listarTentativasCandidatas, vincularTentativaParticipacao, revogarTentativaParticipacao, vincularTentativaParticipacaoSchema, revogarTentativaParticipacaoSchema } from "../../services/pecuaria/protocolos/tentativa-participacao.js";
@@ -65,6 +66,13 @@ export const protocolosOperacaoRouter = new Hono().use("*", async (c, next) => {
   await next();
 });
 
+protocolosOperacaoRouter.get("/etapas-do-dia", async c => {
+  try {
+    const { propriedadeId: _sitio, ...filtros } = c.req.query();
+    const f = etapasDoDiaSchema.parse(filtros);
+    return c.json(await listarEtapasDoDia(await resolverEscopoLeitura(c), f));
+  } catch (e) { return falha(c, e); }
+});
 protocolosOperacaoRouter.get("/origens-fato", async c => {
   try { const { propriedadeId: _sitio, ...filtros } = c.req.query(); return c.json(await consultas.listarOrigensFatoOperacao(await resolverEscopoLeitura(c), consultaOrigensFatoOperacaoSchema.parse(filtros))); } catch (e) { return falha(c, e); }
 });
