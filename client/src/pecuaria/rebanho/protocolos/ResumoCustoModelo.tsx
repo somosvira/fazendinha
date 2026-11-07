@@ -1,3 +1,8 @@
+import { SelectCampo } from "../../../financeiro/SelectCampo";
+import {
+  listarPropriedades,
+  type PropriedadeDTO,
+} from "../../../api/propriedades";
 import { useEffect, useState } from "react";
 import { Button, ErrorBox, brl } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
@@ -30,7 +35,7 @@ type Estimativa = {
 };
 export function ResumoCustoModelo({
   etapas,
-  propriedadeId,
+  propriedadeId: propriedadeInformada,
   completo,
 }: {
   etapas: EtapaIatf[];
@@ -43,6 +48,34 @@ export function ResumoCustoModelo({
       usuario.dono ||
       (usuario.areas.includes("financeiro") &&
         usuario.flags.includes("verValores"));
+  const [sitioLocal, setSitioLocal] = useState<number | null>(() => {
+    const id = Number(new URLSearchParams(window.location.search).get("sitio"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  });
+  const propriedadeId = propriedadeInformada ?? sitioLocal;
+  const [sitios, setSitios] = useState<PropriedadeDTO[]>([]);
+  const [erroSitios, setErroSitios] = useState<string | null>(null);
+  const [carregandoSitios, setCarregandoSitios] = useState(false);
+  const [revisaoSitios, setRevisaoSitios] = useState(0);
+  useEffect(() => {
+    if (!permitido || propriedadeInformada != null) return;
+    let ativo = true;
+    setCarregandoSitios(true);
+    setErroSitios(null);
+    listarPropriedades()
+      .then((v) => {
+        if (ativo) setSitios(v);
+      })
+      .catch((e) => {
+        if (ativo) setErroSitios(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => {
+        if (ativo) setCarregandoSitios(false);
+      });
+    return () => {
+      ativo = false;
+    };
+  }, [permitido, propriedadeInformada, revisaoSitios]);
   const [dados, setDados] = useState<Estimativa | null>(null),
     [erro, setErro] = useState<string | null>(null),
     [aberto, setAberto] = useState(false),
@@ -90,6 +123,46 @@ export function ResumoCustoModelo({
       aria-label="Custo previsto do modelo"
     >
       <h3>Custo previsto por animal</h3>
+      {permitido && propriedadeInformada == null && (
+        <div className="grid gap-2">
+          <label>
+            Sítio para referências de custo
+            <SelectCampo
+              aria-label="Sítio para referências de custo"
+              value={sitioLocal ? String(sitioLocal) : ""}
+              disabled={carregandoSitios || !!erroSitios}
+              onValueChange={(valor) => {
+                setSitioLocal(valor ? Number(valor) : null);
+                setPagina(1);
+                setDados(null);
+                setErro(null);
+              }}
+            >
+              <option value="">Selecione um sítio</option>
+              {sitios.map((s) => (
+                <option value={s.id} key={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </SelectCampo>
+          </label>
+          <p className="text-sm text-ink-3">
+            A seleção vale para esta estimativa e preserva a visão global.
+          </p>
+          {erroSitios && (
+            <>
+              <ErrorBox erro={erroSitios} />
+              <Button
+                secondary
+                type="button"
+                onClick={() => setRevisaoSitios((v) => v + 1)}
+              >
+                Consultar sítios novamente
+              </Button>
+            </>
+          )}
+        </div>
+      )}
       {!permitido ? (
         <p>Valores ocultos</p>
       ) : !propriedadeId ? (
@@ -102,7 +175,11 @@ export function ResumoCustoModelo({
       ) : erro ? (
         <>
           <ErrorBox erro={erro} />
-          <Button secondary onClick={() => setTentativa((v) => v + 1)}>
+          <Button
+            secondary
+            type="button"
+            onClick={() => setTentativa((v) => v + 1)}
+          >
             Tentar estimar novamente
           </Button>
         </>
@@ -125,7 +202,7 @@ export function ResumoCustoModelo({
           {dados.componentesPendentes > 0 && (
             <p>{dados.componentesPendentes} componentes não apurados</p>
           )}
-          <Button secondary onClick={() => setAberto(true)}>
+          <Button secondary type="button" onClick={() => setAberto(true)}>
             Conferir referências
           </Button>
         </>
@@ -137,7 +214,7 @@ export function ResumoCustoModelo({
           camada="sobreDetalhe"
           onFechar={() => setAberto(false)}
           rodape={
-            <Button secondary onClick={() => setAberto(false)}>
+            <Button secondary type="button" onClick={() => setAberto(false)}>
               Fechar
             </Button>
           }

@@ -128,7 +128,7 @@ Uma tentativa externa se relaciona à participação por `VinculoTentativaPartic
 
 Novos acompanhamentos de um fato vinculado podem usar o snapshot da participação. Demandas já existentes conservam prazo/regra; o vínculo não os substitui silenciosamente. A revisão explícita de prazos continua separada. Reconfirmações usam a mesma origem factual, inclusive quando a tentativa não pertence a uma tarefa.
 
-O rascunho do modelo consulta `POST /protocolos/operacao/modelos/estimativa`, com sítio autorizado e permissão financeira de valores. A leitura usa Decimal, conversão de unidades e referências explícitas ou saldo valorizado consultado. Não cria participações/tarefas fictícias, não reserva saldo e não lança despesa. Quantidade/material não definido, incompatibilidade de unidade e serviço sem referência permanecem não apurados; zero documentado é preservado. Totais integrais distinguem completo/parcial/não apurado e referências são paginadas com origem e data.
+O rascunho do modelo consulta `POST /protocolos/operacao/modelos/estimativa`, com sítio autorizado e permissão financeira de valores. Na visão consolidada, a revisão respeita o sítio do endereço e oferece seleção local para a estimativa, sem alterar a seleção global. A leitura usa Decimal, conversão de unidades e referências explícitas ou saldo valorizado consultado. Não cria participações/tarefas fictícias, não reserva saldo e não lança despesa. Quantidade/material não definido, incompatibilidade de unidade e serviço sem referência permanecem não apurados; zero documentado é preservado. Totais integrais distinguem completo/parcial/não apurado e referências são paginadas com origem e data.
 
 ### Conjunto, navegação e preservação
 

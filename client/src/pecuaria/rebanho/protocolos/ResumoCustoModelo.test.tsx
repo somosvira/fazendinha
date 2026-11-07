@@ -1,3 +1,4 @@
+import { alterarControle } from "@/lib/controles.fixture";
 // @vitest-environment jsdom
 import {
   act,
@@ -10,12 +11,17 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ResumoCustoModelo } from "./ResumoCustoModelo";
-const m = vi.hoisted(() => ({ req: vi.fn(), usuario: vi.fn() }));
+const m = vi.hoisted(() => ({
+  req: vi.fn(),
+  usuario: vi.fn(),
+  sitios: vi.fn(),
+}));
 vi.mock("./api", async (original) => ({
   ...(await original<typeof import("./api")>()),
   reqProtocolo: m.req,
 }));
 vi.mock("../../../lib/auth", () => ({ getUsuario: m.usuario }));
+vi.mock("../../../api/propriedades", () => ({ listarPropriedades: m.sitios }));
 const estimativa = {
   situacao: "PARCIAL",
   total: null,
@@ -42,6 +48,12 @@ const estimativa = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  window.history.replaceState(
+    null,
+    "",
+    "/configuracoes/pecuaria/reproducao/protocolos/novo",
+  );
+  m.sitios.mockResolvedValue([{ id: 7, nome: "Sítio das referências" }]);
   m.usuario.mockReturnValue({
     dono: true,
     areas: ["pecuaria", "financeiro"],
@@ -95,6 +107,47 @@ it("sem permissão financeira ou sítio não consulta valores", () => {
     flags: [],
   });
   render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
-  expect(screen.getByText(/Selecione um sítio/)).toBeTruthy();
+  expect(
+    screen.getByText(/Selecione um sítio para consultar o custo previsto/),
+  ).toBeTruthy();
   expect(m.req).not.toHaveBeenCalled();
+});
+
+it("respeita sítio do endereço em Consolidado sem exigir alterar o seletor global", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/configuracoes/pecuaria/reproducao/protocolos/novo?sitio=7",
+  );
+  render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
+  await waitFor(() =>
+    expect(m.req).toHaveBeenCalledWith(
+      "/modelos/estimativa",
+      7,
+      expect.objectContaining({ propriedadeId: 7 }),
+    ),
+  );
+  expect(
+    screen.getByRole("combobox", { name: "Sítio para referências de custo" }),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText(/Selecione um sítio para consultar o custo/),
+  ).toBeNull();
+});
+it("oferece seleção local dentro da revisão e só estima após escolher o sítio", async () => {
+  render(<ResumoCustoModelo etapas={[]} propriedadeId={null} completo />);
+  expect(m.req).not.toHaveBeenCalled();
+  const controle = await screen.findByRole("combobox", {
+    name: "Sítio para referências de custo",
+  });
+  await waitFor(() => expect(controle).toHaveProperty("disabled", false));
+  await alterarControle(controle, { target: { value: "7" } });
+  await waitFor(() =>
+    expect(m.req).toHaveBeenCalledWith(
+      "/modelos/estimativa",
+      7,
+      expect.objectContaining({ propriedadeId: 7 }),
+    ),
+  );
+  expect(screen.getByText(/preserva a visão global/)).toBeTruthy();
 });
