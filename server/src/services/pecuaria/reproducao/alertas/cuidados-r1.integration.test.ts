@@ -158,6 +158,9 @@ async function tarefaDG(tx: Prisma.TransactionClient, f: Fixture) {
       animalId: f.animal.id,
       propriedadeId: f.sitio.id,
       inicio: dia("2026-01-01"),
+      inicioEfetivo: dia("2026-01-01"),
+      precisaoInicioEfetivo: "DIA",
+      criadoPorId: f.usuario.id,
     },
   });
   const tarefa = await tx.tarefaProtocolo.create({
@@ -230,7 +233,12 @@ banco("R1 cuidados — somente fixtures próprias em TX revertida", () => {
             tentativaId: tentativa.id,
             propriedadeId: f.sitio.id,
             motivo: "Serviço externo conferido na fixture",
-            snapshot: { tentativaId: tentativa.id },
+            snapshot: {
+              tentativaId: tentativa.id,
+              animalId: tentativa.animalId,
+              tipo: tentativa.tipo,
+              data: tentativa.data.toISOString().slice(0, 10),
+            },
             criadoPorId: f.usuario.id,
           },
         });
@@ -429,7 +437,13 @@ banco("R1 cuidados — somente fixtures próprias em TX revertida", () => {
           tentativaId: tentativa.id,
           propriedadeId: f.sitio.id,
           motivo: "Correspondência documental conferida",
-          snapshot: {},
+          snapshot: {
+            tentativaId: tentativa.id,
+            animalId: tentativa.animalId,
+            tipo: tentativa.tipo,
+            data: tentativa.data.toISOString().slice(0, 10),
+          },
+          criadoPorId: f.usuario.id,
         },
       });
       await reconciliarDemandasAnimalTx(tx, f.animal.id, f.usuario.id);
