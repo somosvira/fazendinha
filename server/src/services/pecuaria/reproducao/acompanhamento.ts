@@ -75,7 +75,7 @@ export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInp
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-politica-acompanhamento:${input.propriedadeId}`}))`;
   return operacaoIdempotenteTx(tx,input,usuarioId,"POLITICA_ACOMPANHAMENTO",async()=>{
    const parametros=parametrosAcompanhamentoSchema.parse(input.parametros);
-   for(const regra of [...(parametros.diagnostico?[parametros.diagnostico]:[]),...parametros.reconfirmacoes])if(regra.tipoExameId){
+   for(const regra of (parametros.versao===1?[...(parametros.diagnostico?[parametros.diagnostico]:[]),...parametros.reconfirmacoes]:parametros.regras))if(regra.tipoExameId){
     const tipo=await tx.tipoExame.findUnique({where:{id:regra.tipoExameId}});
     if(!tipo||!tipo.ativo||tipo.contexto==="SANITARIO"||tipo.tipoResultado!=="MULTIPLO")erro("Selecione um tipo de exame reprodutivo ativo", "tipoExameId");
     if(regra.tipoExameVersao&&regra.tipoExameVersao!==tipo.versaoFormato)throw new RebanhoError("CONFLITO","A versão do tipo de exame mudou; confira a política");
@@ -90,7 +90,7 @@ export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInp
  });
 }
 
-type Origem={tentativaId?:string;gestacaoId?:string;animalId:string;propriedadeId:number;data:Date;exameOrigemId?:string};
+type Origem={tipoTentativa?:string;tentativaId?:string;gestacaoId?:string;animalId:string;propriedadeId:number;data:Date;exameOrigemId?:string};
 async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?:string){
  const politica=await tx.politicaAcompanhamentoReprodutivo.findFirst({where:{propriedadeId:origem.propriedadeId,...(politicaId?{id:politicaId}:{vigenteDesde:{lte:origem.data}})},orderBy:{vigenteDesde:"desc"}});
  if(!politica){if(politicaId)erro("Política não pertence ao sítio de origem", "politicaId");return [];}
@@ -170,7 +170,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
 async function previaAdocaoTx(tx:Prisma.TransactionClient,input:PreviaAdocaoAcompanhamentoInput){
  const [tentativas,gestacoes]=await Promise.all([tx.tentativaReprodutiva.findMany({where:{id:{in:input.tentativaIds},status:"VALIDO",propriedadeId:input.propriedadeId},orderBy:{id:"asc"}}),tx.gestacaoAnimal.findMany({where:{id:{in:input.gestacaoIds},status:"VALIDO",propriedadeId:input.propriedadeId,encerradaEm:null},orderBy:{id:"asc"}})]);
  if(tentativas.length!==input.tentativaIds.length||gestacoes.length!==input.gestacaoIds.length)erro("Fatos válidos não pertencem ao sítio escolhido; gestações devem estar abertas");
- const origens:Origem[]=tentativas.map(t=>({tentativaId:t.id,animalId:t.animalId,propriedadeId:input.propriedadeId,data:t.data}));
+ const origens:Origem[]=tentativas.map(t=>({tentativaId:t.id,tipoTentativa:t.tipo,animalId:t.animalId,propriedadeId:input.propriedadeId,data:t.data}));
  for(const g of gestacoes){
   const primeiro=await tx.exameAnimal.findFirst({where:{animalId:g.animalId,status:"VALIDO",realizacao:"REALIZADO",interpretacao:{gestacaoId:g.id},resultados:{some:{campo:"CONCLUSAO_GESTACIONAL",vigente:true,valor:{equals:"POSITIVO"}}}},orderBy:[{data:"asc"},{id:"asc"}]});
   if(!primeiro)erro("Gestação sem primeiro DG positivo comprovado; reconcilie a evidência antes de adotar reconfirmações", "gestacaoIds");

@@ -139,6 +139,14 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.findFirst).toHaveBeenCalledWith({ where: { tentativaId: "t", gestacaoId: null, finalidade: "DIAGNOSTICO", ocorrencia: 1 } });
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).not.toHaveBeenCalled();
   });
+  it("cria demanda com snapshot v2 por tipo e preserva a versão adotada", async () => {
+    const regra = { finalidade: "DIAGNOSTICO", ocorrencia: 1, publico: "TE", referencia: "TE", intervalo: 20, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "DIAGNOSTICO_CONCLUSIVO" };
+    mocks.tx.politicaAcompanhamentoReprodutivo.findFirst.mockResolvedValue({ id: "p2", versao: 2, parametros: { versao: 2, efeito: "ALERTA", regras: [regra] } });
+    mocks.tx.demandaAcompanhamentoReprodutivo.findFirst.mockResolvedValue(null);
+    mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(async ({ data }) => ({ id: "demanda", ...data }));
+    await criarDemandasDoFatoTx(tx, { tentativaId: "t", tipoTentativa: "TE", animalId: "animal", propriedadeId: 7, data: dia("2026-01-01") }, null);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previstaPara: dia("2026-01-21"), regraSnapshot: expect.objectContaining({ origem: "SITIO", referencia: "TE", politicaVersao: 2, tolerancia: 1 }) }) });
+  });
   it("sem política vigente o escritor não inventa previsão e a leitura não cria fatos", async () => {
     mocks.tx.politicaAcompanhamentoReprodutivo.findFirst.mockResolvedValue(null);
     await criarDemandasDoFatoTx(tx, { tentativaId: "t", animalId: "animal", propriedadeId: 7, data: dia("2026-01-01") }, null);

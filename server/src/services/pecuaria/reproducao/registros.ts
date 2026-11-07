@@ -441,7 +441,7 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
       justificativaSemOrigem: input.justificativaSemOrigem ?? null,
     },
   });
-  await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
+  await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, tipoTentativa: criada.tipo, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
   await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
   return criada;
 }
