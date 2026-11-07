@@ -4,14 +4,14 @@ const mocks = vi.hoisted(() => ({ tx: {
   demandaAcompanhamentoReprodutivo: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
   exameAnimal: { findMany: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
   vinculoConclusaoAcompanhamento: { create: vi.fn(), update: vi.fn() },
-  partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn(), findFirst: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
+  partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn(), findFirst: vi.fn() }, tarefaProtocolo: { findMany: vi.fn(), findUniqueOrThrow: vi.fn() },
   gestacaoAnimal: { findUnique: vi.fn() },
   participacaoProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
 }, auditar: vi.fn(), conferir: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
-import { criarDemandasDoFatoTx, listarAcompanhamentos, preverConclusoesAvaliacaoTx, preverDemandasNovaGestacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, criarDemandasDoFatoTx, listarAcompanhamentos, preverConclusoesAvaliacaoTx, preverDemandasNovaGestacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import type { Prisma } from "@prisma/client";
 const tx = mocks.tx as unknown as Prisma.TransactionClient;
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -37,6 +37,18 @@ beforeEach(() => {
   mocks.tx.demandaAcompanhamentoReprodutivo.update.mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
 });
 describe("contraprovas de serviço: identidade, continuidade e leitura sem escrita", () => {
+  it("cria residual apenas quando a tarefa solicita DG e preserva o exame parcial", async () => {
+    mocks.tx.demandaAcompanhamentoReprodutivo.findUnique.mockResolvedValue(null);
+    mocks.tx.exameAnimal.findUniqueOrThrow.mockResolvedValue({id:"exame",animalId:"animal",propriedadeId:7,tarefaId:"tarefa",data:dia("2026-01-25"),status:"VALIDO",realizacao:"REALIZADO",finalidadePrincipal:"AVALIACAO_REPRODUTIVA",avaliacaoContextualSnapshot:{itens:[]},tipoExameId:"tipo",formatoSnapshot:{versao:1},interpretacao:{tentativaId:null,gestacaoId:null},resultados:[]});
+    const tarefa={id:"tarefa",execucao:{animalId:"animal",propriedadeId:7},etapa:{configuracao:{tipo:"AVALIACAO",planoAvaliacao:{tipo:"DIAGNOSTICO"}}}};
+    mocks.tx.tarefaProtocolo.findUniqueOrThrow.mockResolvedValue(tarefa);
+    mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(async ({data})=>({id:"residual",...data}));
+    expect(await garantirDemandaProtocoloTx(tx,"tarefa","exame",7)).toMatchObject({finalidade:"DIAGNOSTICO",exameOrigemId:"exame",tarefaId:"tarefa",previstaPara:null});
+    expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+    tarefa.etapa.configuracao.planoAvaliacao.tipo="SEXAGEM";
+    expect(await garantirDemandaProtocoloTx(tx,"tarefa","exame",7)).toBeNull();
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledTimes(1);
+  });
   it.each(["INTERNA", "EXTERNA", "EXTERNA_REVOGADA"])("prévia de reconfirmação conserva a regra congelada da tentativa %s e coincide com a confirmação", async origem => {
     const regra = { finalidade: "RECONFIRMACAO", ocorrencia: 1, publico: "GESTACAO", referencia: "PRIMEIRO_DG_POSITIVO", intervalo: 10, unidade: "DIAS", antecedencia: 2, tolerancia: 1, resolucao: "RECONFIRMACAO_CONCLUSIVA" };
     const participacao = { id: "participacao", animalId: "animal", propriedadeId: 7, acompanhamentoSnapshot: { versao: 1, protocoloId: "protocolo", protocoloVersao: 1, diagnosticoIndividualEm: null, modelo: { versao: 2, efeito: "ALERTA", regras: [regra] }, sitio: null } };

@@ -40,6 +40,22 @@ describe("avaliação contextual", () => {
   const input = avaliacaoSchema.parse({ chave:id,animalId:id,propriedadeId:7,data:"2026-11-01",tipoExameId:tipo,resultado:"INCONCLUSIVO",finalidade:"SEXAGEM",avaliacaoContextual:{catalogoId:id,itens:[{codigo:"SEXO",estado:"INCONCLUSIVO"}],condutas:[]} });
   expect((await prepararContextoAvaliacaoTx(transacao,input))?.itens).toEqual([expect.objectContaining({tipo:"SEXAGEM",estado:"INCONCLUSIVO"})]);
  });
+ it.each([
+  ["RECONFIRMACAO", undefined, "CONCLUSIVO"],
+  ["NEGATIVO", "RECONFIRMACAO", "CONCLUSIVO"],
+  ["INCONCLUSIVO", "RECONFIRMACAO", "INCONCLUSIVO"],
+  ["NAO_AVALIADO", "RECONFIRMACAO", "NAO_AVALIADO"],
+ ] as const)("preserva reconfirmação %s no item contextual", async (resultado, finalidade, estado) => {
+  const config = { ...catalogo, itens: [
+   {codigo:"RECONF",rotulo:"Reconfirmação",tipo:"RECONFIRMACAO",contextos:["GESTACAO_CONHECIDA"]},
+   {codigo:"UTERO",rotulo:"Útero",tipo:"UTERO",campo:"UTERO_ACHADO",contextos:["GESTACAO_CONHECIDA"]},
+  ] };
+  const transacao = { $executeRaw:vi.fn(), catalogoAvaliacaoReprodutiva:{findFirst:vi.fn().mockResolvedValue(config)} } as unknown as Prisma.TransactionClient;
+  const input = avaliacaoSchema.parse({chave:id,animalId:id,propriedadeId:7,data:"2026-11-01",tipoExameId:tipo,resultado,finalidade,
+   ...(resultado === "NAO_AVALIADO" ? {realizadoSemDG:true,resultados:[{campo:"UTERO_ACHADO",valor:"normal"}]} : {}),
+   avaliacaoContextual:{catalogoId:id,itens:[{codigo:"RECONF",estado},...(resultado === "NAO_AVALIADO" ? [{codigo:"UTERO",estado:"CONCLUSIVO"}] : [])],condutas:[]} });
+  expect((await prepararContextoAvaliacaoTx(transacao,input))?.itens[0].estado).toBe(estado);
+ });
  it("revisão cobre dados e necessidades sem depender da própria revisão", () => {
   const input = entrada(), primeiro = revisaoAvaliacaoContextual(input, { necessidades:[{id:"d",acao:"PRESERVAR"}] });
   expect(revisaoAvaliacaoContextual({...input,revisaoContextual:primeiro}, { necessidades:[{id:"d",acao:"PRESERVAR"}] })).toBe(primeiro);

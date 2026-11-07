@@ -57,7 +57,7 @@ export async function prepararContextoAvaliacaoTx(tx: Prisma.TransactionClient, 
   if (catalogo.tipoExameId !== input.tipoExameId) erro("Tipo de exame difere do catálogo selecionado", "tipoExameId");
   const itens = itensSchema.parse(catalogo.itens), condutas = condutasSchema.parse(catalogo.condutas);
   const tiposNecessarios = [
-    ...(input.resultado === "RECONFIRMACAO" || input.resultado === "INCONCLUSIVO" && input.finalidade === "RECONFIRMACAO" ? ["RECONFIRMACAO"] : []),
+    ...(input.resultado === "RECONFIRMACAO" || ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(input.resultado) && input.finalidade === "RECONFIRMACAO" ? ["RECONFIRMACAO"] : []),
     ...(["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(input.resultado) && input.finalidade !== "RECONFIRMACAO" && input.finalidade !== "SEXAGEM" ? ["DIAGNOSTICO"] : []),
     ...(input.sexoFetal || input.resultado === "INCONCLUSIVO" && input.finalidade === "SEXAGEM" ? ["SEXAGEM"] : []), ...(input.resultadoAptidao ? ["APTIDAO"] : []),
   ];
@@ -67,7 +67,7 @@ export async function prepararContextoAvaliacaoTx(tx: Prisma.TransactionClient, 
   for (const resultado of input.resultados ?? []) if (!itens.some(i => i.campo === resultado.campo)) erro("Observação não pertence aos itens configurados", "resultados");
   const estados = itens.map(item => {
     const preenchido = preenchidos.get(item.codigo), estado = preenchido?.estado ?? "NAO_AVALIADO";
-    const valor = item.campo ? input.resultados?.find(r => r.campo === item.campo)?.valor : item.tipo === "APTIDAO" ? input.resultadoAptidao : item.tipo === "SEXAGEM" ? input.sexoFetal ?? (input.resultado === "INCONCLUSIVO" && input.finalidade === "SEXAGEM" ? "INCONCLUSIVO" : null) : item.tipo === "RECONFIRMACAO" ? (input.resultado === "RECONFIRMACAO" ? "POSITIVO" : input.resultado === "INCONCLUSIVO" && input.finalidade === "RECONFIRMACAO" ? "INCONCLUSIVO" : null) : item.tipo === "DIAGNOSTICO" ? (["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(input.resultado) && input.finalidade !== "RECONFIRMACAO" && input.finalidade !== "SEXAGEM" ? input.resultado : null) : null;
+    const valor = item.campo ? input.resultados?.find(r => r.campo === item.campo)?.valor : item.tipo === "APTIDAO" ? input.resultadoAptidao : item.tipo === "SEXAGEM" ? input.sexoFetal ?? (input.resultado === "INCONCLUSIVO" && input.finalidade === "SEXAGEM" ? "INCONCLUSIVO" : null) : item.tipo === "RECONFIRMACAO" ? (input.resultado === "RECONFIRMACAO" ? "POSITIVO" : ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(input.resultado) && input.finalidade === "RECONFIRMACAO" ? input.resultado : null) : item.tipo === "DIAGNOSTICO" ? (["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(input.resultado) && input.finalidade !== "RECONFIRMACAO" && input.finalidade !== "SEXAGEM" ? input.resultado : null) : null;
     const conclusivo = valor !== null && valor !== undefined && valor !== "INCONCLUSIVO";
     const inconclusivo = valor === "INCONCLUSIVO";
     if (estado === "CONCLUSIVO" && !conclusivo || estado === "INCONCLUSIVO" && conclusivo || estado === "NAO_AVALIADO" && (conclusivo || inconclusivo)) erro("Estado do item diverge do resultado informado", "avaliacaoContextual.itens");

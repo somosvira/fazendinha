@@ -45,3 +45,12 @@ it("sexagem inconclusiva contextual não cria resultado de DG", async () => {
  await registrarEvidenciaAvaliacaoTx(tx, { id:"av", animalId:"a", data:new Date("2026-11-03"), resultado:"INCONCLUSIVO", finalidade:"SEXAGEM", sexagemInconclusivaSemDG:true, contextualSnapshot:{ itens:[{tipo:"SEXAGEM",estado:"INCONCLUSIVO"}] } });
  expect(create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({resultados:{create:[]},finalidadePrincipal:"SEXAGEM",avaliacaoContextualSnapshot:{ itens:[{tipo:"SEXAGEM",estado:"INCONCLUSIVO"}] }})}));
 });
+
+it("reconfirmação contextual parcial preserva somente os itens realizados", async () => {
+ const create=vi.fn().mockResolvedValue({});
+ const tx={ $executeRaw:vi.fn(), tipoExame:{findUnique:vi.fn().mockResolvedValue({id:"exame",nome:"Avaliação",tipoResultado:"MULTIPLO",contexto:"REPRODUTIVO",ativo:true,versaoFormato:1,campos})},exameAnimal:{create},avaliacaoReprodutiva:{findUniqueOrThrow:vi.fn().mockResolvedValue({id:"av",resultado:"NAO_AVALIADO"})} } as unknown as Prisma.TransactionClient;
+ const dados={id:"av",animalId:"a",data:new Date("2026-11-03"),resultado:"NAO_AVALIADO",finalidade:"RECONFIRMACAO" as const,realizadoSemDG:true,parcial:true,itensRealizados:true};
+ await registrarEvidenciaAvaliacaoTx(tx,dados);
+ expect(create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({finalidadePrincipal:"AVALIACAO_REPRODUTIVA",resultados:{create:[]}})}));
+ await expect(registrarEvidenciaAvaliacaoTx(tx,{...dados,parcial:false})).rejects.toThrow(/contextual/);
+});

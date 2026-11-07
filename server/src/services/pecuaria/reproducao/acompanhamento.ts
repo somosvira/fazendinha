@@ -72,25 +72,31 @@ export async function garantirDemandaProtocoloTx(tx: Prisma.TransactionClient, t
  const existente=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{tarefaId}});
  if(existente)return existente;
  const exame=await tx.exameAnimal.findUniqueOrThrow({where:{id:exameId},include:{interpretacao:true,resultados:{where:{vigente:true,campo:"CONCLUSAO_GESTACIONAL"}}}});
- if(exame.status!=="VALIDO"||exame.realizacao!=="REALIZADO"||!exame.resultados.some(r=>r.valor==="INCONCLUSIVO"))return null;
+ if(exame.status!=="VALIDO"||exame.realizacao!=="REALIZADO")return null;
  const tarefa=await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:tarefaId},include:{etapa:true,execucao:true}});
  if(exame.tarefaId!==tarefaId||exame.animalId!==tarefa.execucao.animalId||exame.propriedadeId!==tarefa.execucao.propriedadeId||!exame.interpretacao)
   erro("Exame incompatível com a tarefa de origem", "tarefaId");
- const finalidade=exame.finalidadePrincipal??"DIAGNOSTICO";
+ const config=tarefa.etapa.configuracao as {tipo?:string;planoAvaliacao?:{tipo?:string}};
+ const solicitada=config.tipo==="AVALIACAO" ? config.planoAvaliacao?.tipo : undefined;
+ const inconclusivo=exame.resultados.some(r=>r.valor==="INCONCLUSIVO");
+ const parcialSemDG=!!exame.avaliacaoContextualSnapshot && exame.finalidadePrincipal==="AVALIACAO_REPRODUTIVA"
+  && exame.resultados.length===0 && (solicitada==="DIAGNOSTICO"||solicitada==="RECONFIRMACAO");
+ if(!inconclusivo&&!parcialSemDG)return null;
+ const finalidade=parcialSemDG ? solicitada! : exame.finalidadePrincipal??"DIAGNOSTICO";
  const origem={tentativaId:exame.interpretacao.tentativaId,gestacaoId:exame.interpretacao.gestacaoId};
  const mesmaOrigem=origem.tentativaId?{tentativaId:origem.tentativaId}:origem.gestacaoId?{gestacaoId:origem.gestacaoId}:{tarefaId};
  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:exame.animalId,finalidade,...mesmaOrigem},orderBy:[{ocorrencia:"desc"},{id:"asc"}]});
  const pendente=demandas.find(d=>d.estado==="PENDENTE"&&!d.tarefaId);
  if(pendente){
   const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:pendente.id},data:{tarefaId,versao:{increment:1}}});
-  await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:salva.id}});
+  if(!parcialSemDG)await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:salva.id}});
   return salva;
  }
  const formato=exame.formatoSnapshot as Record<string,unknown>;
  const criada=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:exame.animalId,propriedadeOrigemId:tarefa.execucao.propriedadeId!,
   finalidade,...origem,ocorrencia:(demandas[0]?.ocorrencia??0)+1,politicaId:null,previstaPara:null,
   tarefaId,exameOrigemId:exame.id,dataReferencia:exame.data,origemAdocao:"PROTOCOLO",regraSnapshot:json({versao:1,efeito:"ALERTA",tipoExameId:exame.tipoExameId,tipoExameVersao:formato.versao,acao:tarefa.etapa.configuracao}),criadoPorId:usuarioId}});
- await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:criada.id}});
+ if(!parcialSemDG)await tx.exameAnimal.update({where:{id:exame.id},data:{demandaAcompanhamentoId:criada.id}});
  await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:criada.id,animalId:exame.animalId,propriedadeId:tarefa.execucao.propriedadeId,acao:"REGISTRO_PROTOCOLO",usuarioId,depois:criada});
  return criada;
 }

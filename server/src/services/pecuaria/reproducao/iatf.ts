@@ -899,7 +899,7 @@ export async function executarTarefaTx(
     antes: tarefa,
     depois: { ...salva, fato },
   });
-  if (tarefa.tipo === "AVALIACAO" && preparado.resultado === "INCONCLUSIVO" && fato)
+  if (tarefa.tipo === "AVALIACAO" && fato)
     await garantirDemandaProtocoloTx(tx, tarefa.id, fato.id, usuarioId);
   await reconciliarDemandasAnimalTx(tx, participante.animalId, usuarioId);
   return salva;

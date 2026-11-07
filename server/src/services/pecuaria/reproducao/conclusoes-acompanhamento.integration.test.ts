@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { reconciliarDemandasAnimalTx, vincularConclusoesExameTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx } from "./acompanhamento.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 
 // Cada fixture é inteiramente revertida na própria transação; nunca limpa dados existentes.
@@ -46,7 +46,7 @@ suite("conclusões: constraints SQL", () => {
     }, { timeout: 30_000 })).rejects.toBeInstanceOf(ReverterFixture);
   });
   it("mesmo exame atende reconfirmação e sexagem, e sua anulação reabre as duas", async () => {
-    await expect(prisma.$transaction(async tx => {
+    await prisma.$transaction(async tx => {
       const f=await fixture(tx);
       const protocolo=await tx.protocolo.create({data:{nome:`Sexagem ${randomUUID()}`,tipo:"REPRODUTIVO"}});
       const config={tipo:"AVALIACAO",planoAvaliacao:{tipo:"SEXAGEM",tipoExameId:f.tipo.id}};
@@ -54,7 +54,7 @@ suite("conclusões: constraints SQL", () => {
       const participacao=await tx.participacaoProtocolo.create({data:{protocoloId:protocolo.id,animalId:f.animal.id,propriedadeId:f.sitio.id,inicio:dia("2026-01-01")}});
       const tarefa=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapa.id,previstaPara:dia("2026-01-10")}});
       const origem=await tx.exameAnimal.create({data:{animalId:f.animal.id,propriedadeId:f.sitio.id,tipoExameId:f.tipo.id,tarefaId:tarefa.id,data:dia("2026-01-10"),finalidades:["SEXAGEM"],finalidadePrincipal:"SEXAGEM",formatoSnapshot:{versao:1},interpretacao:{create:{gestacaoId:f.gestacao.id}},resultados:{create:{campo:"CONCLUSAO_GESTACIONAL",valor:"INCONCLUSIVO"}}}});
-      const demandaSexo=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:f.animal.id,propriedadeOrigemId:f.sitio.id,finalidade:"SEXAGEM",gestacaoId:f.gestacao.id,ocorrencia:1,dataReferencia:origem.data,origemAdocao:"PROTOCOLO",tarefaId:tarefa.id,exameOrigemId:origem.id,regraSnapshot:{tipoExameId:f.tipo.id,tipoExameVersao:1,acao:config}}});
+      const demandaSexo=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:f.animal.id,propriedadeOrigemId:f.sitio.id,finalidade:"SEXAGEM",gestacaoId:f.gestacao.id,ocorrencia:1,dataReferencia:origem.data,origemAdocao:"PROTOCOLO",tarefaId:tarefa.id,exameOrigemId:origem.id,regraSnapshot:{versao:1,efeito:"ALERTA",tipoExameId:f.tipo.id,tipoExameVersao:1,acao:config}}});
       await tx.exameAnimal.update({where:{id:f.exame.id},data:{finalidades:["RECONFIRMACAO","SEXAGEM"]}});
       await tx.resultadoExame.create({data:{exameId:f.exame.id,campo:"SEXO_FETAL",valor:"F"}});
       await vincularConclusoesExameTx(tx,f.exame.id,[{demandaId:f.demandas[0].id,campo:"CONCLUSAO_GESTACIONAL"},{demandaId:demandaSexo.id,campo:"SEXO_FETAL"}],null);
@@ -68,6 +68,34 @@ suite("conclusões: constraints SQL", () => {
       await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
       expect(await tx.demandaAcompanhamentoReprodutivo.count({where:{id:{in:[f.demandas[0].id,demandaSexo.id]},estado:"PENDENTE"}})).toBe(2);
       expect(await tx.vinculoConclusaoAcompanhamento.count({where:{demandaId:{in:[f.demandas[0].id,demandaSexo.id]},vigente:false}})).toBe(2);
+      throw new ReverterFixture();
+    },{timeout:30_000}).then(() => { throw new Error("Fixture não foi revertida"); }, error => { if (!(error instanceof ReverterFixture)) throw error; });
+  });
+  it("cria cuidado residual para DG solicitado e reavalia sem repetir a tarefa", async () => {
+    await expect(prisma.$transaction(async tx => {
+      const f=await fixture(tx);
+      const protocolo=await tx.protocolo.create({data:{nome:`Parcial ${randomUUID()}`,tipo:"REPRODUTIVO"}});
+      const config={tipo:"AVALIACAO",planoAvaliacao:{tipo:"DIAGNOSTICO",tipoExameId:f.tipo.id}};
+      const etapa=await tx.etapaProtocolo.create({data:{protocoloId:protocolo.id,ordem:1,diaRelativo:0,tipo:"EXAME",configuracao:config}});
+      const participacao=await tx.participacaoProtocolo.create({data:{protocoloId:protocolo.id,animalId:f.animal.id,propriedadeId:f.sitio.id,inicio:dia("2026-01-01")}});
+      const tarefa=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapa.id,previstaPara:dia("2026-01-10")}});
+      const origem=await tx.exameAnimal.create({data:{animalId:f.animal.id,propriedadeId:f.sitio.id,tipoExameId:f.tipo.id,tarefaId:tarefa.id,data:dia("2026-01-10"),finalidades:["AVALIACAO_REPRODUTIVA"],finalidadePrincipal:"AVALIACAO_REPRODUTIVA",formatoSnapshot:{versao:1},avaliacaoContextualSnapshot:{itens:[{codigo:"UTERO",estado:"CONCLUSIVO"},{codigo:"DG",estado:"NAO_AVALIADO"}]},interpretacao:{create:{}}}});
+      const demanda=await garantirDemandaProtocoloTx(tx,tarefa.id,origem.id,null);
+      expect(demanda).toMatchObject({finalidade:"DIAGNOSTICO",origemAdocao:"PROTOCOLO",tarefaId:tarefa.id,exameOrigemId:origem.id,estado:"PENDENTE",previstaPara:null});
+      expect((await garantirDemandaProtocoloTx(tx,tarefa.id,origem.id,null))?.id).toBe(demanda?.id);
+      expect(await tx.resultadoExame.count({where:{exameId:origem.id,campo:"CONCLUSAO_GESTACIONAL"}})).toBe(0);
+      await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+      await tx.$executeRaw`SET CONSTRAINTS ALL DEFERRED`;
+      const reavaliacao=await tx.exameAnimal.create({data:{animalId:f.animal.id,propriedadeId:f.sitio.id,tipoExameId:f.tipo.id,demandaAcompanhamentoId:demanda!.id,data:dia("2026-01-12"),finalidades:["DIAGNOSTICO"],finalidadePrincipal:"DIAGNOSTICO",formatoSnapshot:{versao:1},interpretacao:{create:{}},resultados:{create:{campo:"CONCLUSAO_GESTACIONAL",valor:"NEGATIVO"}}}});
+      await reconciliarDemandasAnimalTx(tx,f.animal.id,null);
+      await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+      expect(await tx.demandaAcompanhamentoReprodutivo.findUniqueOrThrow({where:{id:demanda!.id}})).toMatchObject({estado:"RESOLVIDA",exameResolucaoId:reavaliacao.id});
+      expect(await tx.exameAnimal.count({where:{tarefaId:tarefa.id}})).toBe(1);
+      await tx.$executeRaw`SET CONSTRAINTS ALL DEFERRED`;
+      await tx.exameAnimal.update({where:{id:reavaliacao.id},data:{status:"ANULADO",motivoAnulacao:"Anulação de teste",anuladoEm:new Date()}});
+      await reconciliarDemandasAnimalTx(tx,f.animal.id,null);
+      await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+      expect((await tx.demandaAcompanhamentoReprodutivo.findUniqueOrThrow({where:{id:demanda!.id}})).estado).toBe("PENDENTE");
       throw new ReverterFixture();
     },{timeout:30_000})).rejects.toBeInstanceOf(ReverterFixture);
   });
