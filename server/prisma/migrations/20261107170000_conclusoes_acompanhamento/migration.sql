@@ -136,4 +136,3 @@ CREATE OR REPLACE VIEW pecuaria."AvaliacaoReprodutiva" AS
      LEFT JOIN pecuaria."ResultadoExame" c ON (((c."exameId" = e.id) AND (c.campo = 'CONCLUSAO_GESTACIONAL'::text) AND c.vigente)))
      LEFT JOIN pecuaria."ResultadoExame" s ON (((s."exameId" = e.id) AND (s.campo = 'SEXO_FETAL'::text) AND s.vigente)))
   WHERE e."finalidadePrincipal" IS DISTINCT FROM 'APTIDAO_REPRODUTIVA';
-
