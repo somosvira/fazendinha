@@ -595,9 +595,9 @@ export async function reconciliarAlertasReprodutivosAnimalTx(
       await publicarTx(tx, reunidas.origem, animal, usuarioId, hoje);
     }
     // Prazos operacionais congelados seguem a regra da primeira adoção. Tarefa/demanda têm revisão própria explícita.
-    const congelar = anterior && !c.tarefaId && !c.demandaId;
-    const previstaPara = congelar ? anterior.previstaPara : c.previstaPara,
-      regraSnapshot = congelar ? json(anterior.regraSnapshot) : c.regraSnapshot;
+    const congelar = !c.tarefaId && !c.demandaId ? anterior : undefined;
+    const previstaPara = congelar ? congelar.previstaPara : c.previstaPara,
+      regraSnapshot = congelar ? json(congelar.regraSnapshot) : c.regraSnapshot;
     let situacao = c.resolvida
       ? "RESOLVIDO"
       : c.dispensada
