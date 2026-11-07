@@ -9,7 +9,7 @@ import { anteriorIatf, lerDataIatf } from "../reproducao/horarios.calc.js";
 
 export const eventoTarefaSchema = z.object({
   chave: z.string().uuid(), propriedadeId: z.number().int().positive().max(2147483647),
-  tipo: z.enum(["NAO_ATENDIDO", "ADIAMENTO", "RETIFICACAO_JUSTIFICATIVA"]),
+  tipo: z.enum(["NAO_ATENDIDO", "ADIAMENTO", "RETIFICACAO_JUSTIFICATIVA", "DISPENSA"]),
   ocorridaEm: z.string().datetime({ offset: true }), motivo: z.string().trim().min(5).max(1000),
   previstaPara: dataOuHorario.optional(), eventoCorrigidoId: z.string().uuid().optional(),
 }).strict().superRefine((v, ctx) => {
@@ -61,6 +61,16 @@ export async function registrarEventoTarefaTx(tx: Prisma.TransactionClient, id: 
       registradoPorId: usuarioId != null && usuarioId > 0 ? usuarioId : null,
       ...(nova ? { previsaoAnterior: tarefa.previstaPara, precisaoAnterior: tarefa.precisaoTemporal, previsaoNova: nova.instante, precisaoNova: nova.precisao } : {}),
     } });
+    if (input.tipo === "DISPENSA") {
+      await tx.tarefaProtocolo.update({ where: { id: tarefa.id }, data: { dispensadaEm: ocorridaEm, motivoDispensa: input.motivo } });
+      // A autorização é por momento: cancelar todo o job impede execução parcial silenciosa.
+      // Não altera aplicações nem manejos: dispositivo inserido continua fisicamente pendente.
+      const momento = tarefa.momentoSnapshot as Record<string, unknown> | null;
+      if (typeof momento?.id === "string") await tx.automacaoProtocolo.updateMany({
+        where: { participacaoId: tarefa.execucaoId, momentoId: momento.id, estado: { in: ["AGENDADA", "FALHOU"] } },
+        data: { estado: "CANCELADA", erro: input.motivo, revisao: { increment: 1 } },
+      });
+    }
     if (nova) await tx.tarefaProtocolo.update({ where: { id: tarefa.id }, data: {
       previstaPara: nova.instante, precisaoTemporal: nova.precisao, previsaoPendente: false,
       previsaoOriginal: tarefa.previsaoOriginal ?? tarefa.previstaPara,

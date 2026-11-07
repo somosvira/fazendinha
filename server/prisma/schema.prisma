@@ -1894,6 +1894,7 @@ enum OrigemCalendarioProtocolo {
 }
 
 enum TipoEventoTarefaProtocolo {
+  DISPENSA
   NAO_ATENDIDO
   ADIAMENTO
   RETIFICACAO_JUSTIFICATIVA
