@@ -1,6 +1,7 @@
 import { tarefaComPrazoHerdado } from "./prazo-tarefa.calc.js";
 import { proporPrazoDaParticipacao, proporReconfirmacoesDaParticipacao } from "./prazos-protocolo.js";
 import { Prisma, type DemandaAcompanhamentoReprodutivo } from "@prisma/client";
+import { referenciaConclusaoReprodutiva, resultadoConclusivoPorFinalidade } from "./conclusoes-acompanhamento.calc.js";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
@@ -41,6 +42,28 @@ export async function vincularExameDemandaTx(tx:Prisma.TransactionClient,demanda
  if(!exame.finalidades.includes(demanda.finalidade)||(demanda.tentativaId?exame.interpretacao?.tentativaId!==demanda.tentativaId:demanda.gestacaoId?exame.interpretacao?.gestacaoId!==demanda.gestacaoId:demanda.origemAdocao!=="PROTOCOLO")||exame.data<demanda.dataReferencia)erro("Exame não corresponde à origem e finalidade da demanda", "demandaAcompanhamentoId");
  if(regra.tipoExameId&&(regra.tipoExameId!==exame.tipoExameId||regra.tipoExameVersao!==formato.versao))erro("Tipo ou versão de exame difere da regra congelada", "tipoExameId");
  await tx.exameAnimal.update({where:{id:exameId},data:{demandaAcompanhamentoId:demandaId}});
+}
+
+/** Vinculações explícitas usam resultados distintos de uma única realização. */
+export async function vincularConclusoesExameTx(tx: Prisma.TransactionClient, exameId: string, vinculos: readonly { demandaId: string; campo: "CONCLUSAO_GESTACIONAL" | "SEXO_FETAL" | "APTIDAO_REPRODUTIVA" }[], usuarioId: number | null) {
+ if(new Set(vinculos.map(v=>v.demandaId)).size!==vinculos.length || new Set(vinculos.map(v=>v.campo)).size!==vinculos.length)
+  erro("Cada conclusão e cada demanda podem aparecer uma única vez", "vinculosConclusao");
+ const exame=await tx.exameAnimal.findUniqueOrThrow({where:{id:exameId},include:{resultados:{where:{vigente:true}},interpretacao:true}});
+ for(const v of vinculos){
+  const demanda=await tx.demandaAcompanhamentoReprodutivo.findUnique({where:{id:v.demandaId}});
+  if(!demanda||demanda.estado!=="PENDENTE"||demanda.animalId!==exame.animalId||demanda.propriedadeOrigemId!==exame.propriedadeId)
+   erro("Demanda pendente não pertence ao animal e ao sítio da avaliação", "vinculosConclusao");
+  const finalidadeEsperada=v.campo==="SEXO_FETAL" ? "SEXAGEM" : v.campo==="APTIDAO_REPRODUTIVA" ? "APTIDAO_REPRODUTIVA" : null;
+  if(finalidadeEsperada ? demanda.finalidade!==finalidadeEsperada : !["DIAGNOSTICO","RECONFIRMACAO"].includes(demanda.finalidade))
+   erro("Conclusão não atende à finalidade selecionada", "vinculosConclusao");
+  const referencia=referenciaConclusaoReprodutiva(v.campo,exame);
+  if(!referencia)erro("Conclusão selecionada não foi realizada ou é inconclusiva", "vinculosConclusao");
+  const valorSnapshot=referencia.fonte==="RESULTADO" ? exame.resultados.find(r=>r.id===referencia.id)!.valor : exame.interpretacao!.resultadoAptidao;
+  if(valorSnapshot==null)erro("Conclusão selecionada não possui valor", "vinculosConclusao");
+  const criado=await tx.vinculoConclusaoAcompanhamento.create({data:{demandaId:demanda.id,fonte:referencia.fonte,valorSnapshot:valorSnapshot as Prisma.InputJsonValue,...(referencia.fonte==="RESULTADO"?{resultadoId:referencia.id}:{interpretacaoId:referencia.id}),criadoPorId:usuarioId}});
+  const salva=await tx.demandaAcompanhamentoReprodutivo.update({where:{id:demanda.id},data:{estado:"RESOLVIDA",vinculoConclusaoResolucaoId:criado.id,exameResolucaoId:null,resolvidaEm:exame.data,resolucaoSnapshot:json({exameId,referencia,data:texto(exame.data),formato:exame.formatoSnapshot}),versao:{increment:1}}});
+  await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:demanda.id,animalId:exame.animalId,propriedadeId:demanda.propriedadeOrigemId,acao:"VINCULO_CONCLUSAO",usuarioId,antes:demanda,depois:salva});
+ }
 }
 
 /** A evidência original permanece válida; a demanda guarda as reavaliações como outros exames. */
@@ -128,12 +151,13 @@ export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:O
 
 /** Reavalia apenas demandas já criadas, inclusive quando uma evidência é anulada. Não aplica uma política nova. */
 export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,animalId:string,usuarioId:number|null){
- const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId},include:{tentativa:{include:{tarefa:true}},gestacao:true,exameOrigem:true},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
+ const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId},include:{tentativa:{include:{tarefa:true}},gestacao:true,exameOrigem:true,vinculoConclusaoResolucao:true},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
  if(!demandas.length)return;
  const exames=await tx.exameAnimal.findMany({where:{animalId,status:"VALIDO",realizacao:"REALIZADO"},include:{interpretacao:true,resultados:{where:{vigente:true,campo:{in:["CONCLUSAO_GESTACIONAL","SEXO_FETAL"]}}}},orderBy:[{data:"asc"},{criadoEm:"asc"},{id:"asc"}]});
  const partos=await tx.partoAnimal.findMany({where:{animalId,status:"VALIDO"},orderBy:[{data:"asc"},{id:"asc"}]});
  const tentativas=await tx.tentativaReprodutiva.findMany({where:{animalId,status:"VALIDO"},include:{tarefa:true},orderBy:[{data:"asc"},{ordem:"asc"}]});
  const utilizados=new Set<string>();
+ const resultadosReservados=new Map(demandas.flatMap(d=>d.vinculoConclusaoResolucao?.vigente&&d.vinculoConclusaoResolucao.resultadoId?[[d.vinculoConclusaoResolucao.resultadoId,d.id] as const]:[]));
  const tarefasReservadas=new Set(demandas.flatMap(d=>d.tarefaId?[d.tarefaId]:[]));
  const demandaPorTarefa=new Map(demandas.flatMap(d=>d.tarefaId?[[d.tarefaId,d.id] as const]:[]));
  const alteracoes:Array<{antes:(typeof demandas)[number];dados:Prisma.DemandaAcompanhamentoReprodutivoUncheckedUpdateInput}>=[];
@@ -156,27 +180,34 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const parto=partos.find(p=>p.data>=d.dataReferencia&&(!d.gestacaoId||p.gestacaoId===d.gestacaoId));
   const substituta=d.tentativa?tentativas.find(t=>t.data>d.tentativa!.data||(t.data.getTime()===d.tentativa!.data.getTime()&&t.ordem>d.tentativa!.ordem)):null;
   const fim=[d.gestacao?.encerradaEm,parto?.data,substituta?.data].filter((data):data is Date=>!!data).sort((a,b)=>a.getTime()-b.getTime())[0]??null;
+  const vinculo=d.vinculoConclusaoResolucao;
   const evidencia=exames.find(e=>{
    const i=e.interpretacao;
-   if(e.tarefaId&&demandaPorTarefa.has(e.tarefaId)&&demandaPorTarefa.get(e.tarefaId)!==d.id)return false;
-   if(!i||(e.demandaAcompanhamentoId&&e.demandaAcompanhamentoId!==d.id)||utilizados.has(e.id)||e.data<d.dataReferencia||(fim&&e.data>fim)||!e.finalidades.includes(d.finalidade))return false;
+   if(!vinculo&&e.tarefaId&&demandaPorTarefa.has(e.tarefaId)&&demandaPorTarefa.get(e.tarefaId)!==d.id)return false;
+   if(!i||(!vinculo&&e.demandaAcompanhamentoId&&e.demandaAcompanhamentoId!==d.id)||(!vinculo&&utilizados.has(e.id))||e.data<d.dataReferencia||(fim&&e.data>fim)||!e.finalidades.includes(d.finalidade))return false;
    if(d.tentativaId?i.tentativaId!==d.tentativaId:d.gestacaoId?i.gestacaoId!==d.gestacaoId:d.origemAdocao!=="PROTOCOLO")return false;
    if(d.finalidade==="RECONFIRMACAO"&&d.previstaPara&&e.data<d.previstaPara)return false;
    const formato=e.formatoSnapshot as Record<string,unknown>;
    if(regra.tipoExameId&&(e.tipoExameId!==regra.tipoExameId||formato.versao!==regra.tipoExameVersao))return false;
-   return e.resultados.some(r=>d.finalidade==="SEXAGEM"?r.campo==="SEXO_FETAL"&&["F","M"].includes(String(r.valor)):r.campo==="CONCLUSAO_GESTACIONAL"&&["POSITIVO","NEGATIVO"].includes(String(r.valor)));
+   if(vinculo?.fonte==="INTERPRETACAO")return vinculo.vigente && d.finalidade==="APTIDAO_REPRODUTIVA" && e.interpretacao?.id===vinculo.interpretacaoId && e.interpretacao?.resultadoAptidao===vinculo.valorSnapshot && ["APTO","NAO_APTO"].includes(e.interpretacao?.resultadoAptidao??"");
+   const resultado=resultadoConclusivoPorFinalidade(d.finalidade,e.resultados);
+   return !!resultado && (vinculo ? vinculo.vigente && vinculo.resultadoId===resultado.id && vinculo.valorSnapshot===resultado.valor : !resultadosReservados.has(resultado.id));
   });
   const conclusivo=evidencia;
   let dados:Prisma.DemandaAcompanhamentoReprodutivoUncheckedUpdateInput;
   if(conclusivo&&fonte?.status==="VALIDO"&&origemValida){
-   utilizados.add(conclusivo.id);
-   dados={estado:"RESOLVIDA",exameResolucaoId:conclusivo.id,resolvidaEm:conclusivo.data,resolucaoSnapshot:json({exameId:conclusivo.id,data:texto(conclusivo.data),formato:conclusivo.formatoSnapshot}),encerradaEm:null,motivoEncerramento:null};
+   if(!vinculo)utilizados.add(conclusivo.id);
+   dados={estado:"RESOLVIDA",exameResolucaoId:vinculo?null:conclusivo.id,vinculoConclusaoResolucaoId:vinculo?.id??null,resolvidaEm:conclusivo.data,resolucaoSnapshot:json({exameId:conclusivo.id,...(vinculo?{fonte:vinculo.fonte,resultadoId:vinculo.resultadoId,interpretacaoId:vinculo.interpretacaoId}:{}),data:texto(conclusivo.data),formato:conclusivo.formatoSnapshot}),encerradaEm:null,motivoEncerramento:null};
   }else if(fonte?.status!=="VALIDO"||fim){
    const motivo=fonte?.status!=="VALIDO"?"ORIGEM_ANULADA":d.gestacao?.encerradaEm?`GESTACAO_ENCERRADA_${d.gestacao.tipoEncerramento??"NAO_IDENTIFICADO"}`:parto?"CICLO_ENCERRADO_POR_PARTO":"TENTATIVA_SUBSTITUIDA";
    dados={estado:"ENCERRADA",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:Prisma.DbNull,encerradaEm:fim??new Date(),motivoEncerramento:motivo};
   }else dados={estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:Prisma.DbNull,encerradaEm:null,motivoEncerramento:null};
+  if(vinculo&&!conclusivo || vinculo && (fonte?.status!=="VALIDO"||!origemValida)){
+   await tx.vinculoConclusaoAcompanhamento.update({where:{id:vinculo.id},data:{vigente:false,invalidadoEm:new Date(),invalidadoPorId:usuarioId,motivoInvalidacao:"Evidência ou origem deixou de ser válida"}});
+   dados.vinculoConclusaoResolucaoId=null;
+  }
   dados.tarefaId=tarefaId;
-  if(d.tarefaId===tarefaId&&d.estado===dados.estado&&d.exameResolucaoId===(dados.exameResolucaoId??null)&&d.motivoEncerramento===(dados.motivoEncerramento??null))continue;
+  if(d.tarefaId===tarefaId&&d.estado===dados.estado&&d.exameResolucaoId===(dados.exameResolucaoId??null)&&(d.vinculoConclusaoResolucaoId??null)===(dados.vinculoConclusaoResolucaoId??null)&&d.motivoEncerramento===(dados.motivoEncerramento??null))continue;
   alteracoes.push({antes:d,dados});
  }
  // A unicidade de exame resolvedor é imediata. Libere a atribuição antiga antes de realocar provas.

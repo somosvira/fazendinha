@@ -8,7 +8,7 @@ import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
 import {carregarDadosElegibilidadeTx} from "./elegibilidade.js";
-import { criarDemandasDoFatoTx, reconciliarDemandasAnimalTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import { vincularPoliticaCicloTx } from "./elegibilidade.js";
 import { aplicarEscorePartoTx } from "./escore-parto.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -609,7 +609,7 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     ).id;
   }
   const criada = await registrarEvidenciaAvaliacaoTx(tx, {
-      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
+      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados, realizadoSemDG: input.realizadoSemDG,
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,
@@ -639,8 +639,13 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true },
   });
   if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
+  if (input.vinculosConclusao?.length) await vincularConclusoesExameTx(tx, criada.id, input.vinculosConclusao, usuarioId);
   if (gestacaoCriada && gestacao) await criarDemandasDoFatoTx(tx, { gestacaoId: gestacao.id, animalId: input.animalId, propriedadeId: input.propriedadeId, data, exameOrigemId: criada.id }, usuarioId);
   await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
+  if (input.vinculosConclusao?.length) {
+    const confirmadas = await tx.demandaAcompanhamentoReprodutivo.count({where:{id:{in:input.vinculosConclusao.map(v=>v.demandaId)},estado:"RESOLVIDA",vinculoConclusaoResolucao:{vigente:true,OR:[{resultado:{exameId:criada.id}},{interpretacao:{exameId:criada.id}}]}}});
+    if(confirmadas!==input.vinculosConclusao.length) erro("As conclusões não são compatíveis com as demandas ou suas origens", "vinculosConclusao");
+  }
   return criada;
 }
 export const criarAvaliacao = (

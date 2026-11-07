@@ -6,14 +6,17 @@ import { RebanhoError } from "../rebanho/regras.js";
 
 export const TIPO_EXAME_REPRODUTIVO = "b0400000-0000-4000-8000-000000000001";
 type DadosAvaliacao = Pick<AvaliacaoReprodutiva, "animalId" | "data" | "resultado"> &
-  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: Date | null; decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null; responsavel?: string | null; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
+  Partial<Omit<AvaliacaoReprodutiva, "animalId" | "data" | "resultado">> & { resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: Date | null; decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null; responsavel?: string | null; realizadoSemDG?: boolean; tipoExameId?: string; formatoExameHash?: string; finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM"; resultados?: ObservacaoExame[] };
 
 /** Valida formato versionado e resultados sem gravar a evidência. */
 export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient, dados: DadosAvaliacao) {
   if (!["POSITIVO", "NEGATIVO", "RECONFIRMACAO", "SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(dados.resultado)) throw new RebanhoError("VALIDACAO", "Resultado reprodutivo não reconhecido", "resultado");
   if (dados.resultadoAptidao && (!dados.responsavel || dados.responsavel.trim().length < 2)) throw new RebanhoError("VALIDACAO", "Informe o responsável pela avaliação de aptidão", "responsavel");
   if (dados.retornoAptidaoEm && (!dados.resultadoAptidao || dados.retornoAptidaoEm <= dados.data)) throw new RebanhoError("VALIDACAO", "Retorno de aptidão exige avaliação e data posterior ao exame", "retornoAptidaoEm");
-  if (dados.resultado === "NAO_AVALIADO" && dados.resultadoAptidao) throw new RebanhoError("VALIDACAO", "Use o toque de aptidão quando não houver avaliação gestacional", "resultado");
+  if (dados.realizadoSemDG && (dados.resultado !== "NAO_AVALIADO" || dados.finalidade && dados.finalidade !== "DIAGNOSTICO")) throw new RebanhoError("VALIDACAO", "Avaliação sem DG exige diagnóstico não avaliado e não admite finalidade de reconfirmação ou sexagem", "realizadoSemDG");
+  if (dados.realizadoSemDG && !dados.resultadoAptidao && !dados.resultados?.length) throw new RebanhoError("VALIDACAO", "Informe ao menos um item realizado ou conclusão de aptidão", "realizadoSemDG");
+  if (dados.resultado === "NAO_AVALIADO" && dados.resultados?.length && !dados.realizadoSemDG) throw new RebanhoError("VALIDACAO", "Informe que a avaliação foi realizada sem DG", "realizadoSemDG");
+  if (dados.resultado === "NAO_AVALIADO" && dados.resultadoAptidao && !dados.realizadoSemDG) throw new RebanhoError("VALIDACAO", "Informe que a avaliação foi realizada sem DG", "realizadoSemDG");
   if (dados.resultadoAptidao === "APTO" && ["POSITIVO", "RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado)) throw new RebanhoError("VALIDACAO", "Gestação confirmada impede aptidão para nova reprodução", "resultadoAptidao");
   const tipoExameId = dados.tipoExameId ?? TIPO_EXAME_REPRODUTIVO;
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-tipo-exame:${tipoExameId}`}))`;
@@ -23,7 +26,7 @@ export async function prepararEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient,
   conferirFormatoReprodutivo(tipo.tipoResultado, tipo.campos);
   if (dados.formatoExameHash && dados.formatoExameHash !== hashFormatoExame(tipo))
     throw new RebanhoError("CONFLITO", "O formato do exame mudou desde o preenchimento. Atualize o formulário e revise os resultados antes de confirmar", "tipoExameId");
-  const finalidade = dados.finalidade ?? (["RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado) ? dados.resultado : "DIAGNOSTICO");
+  const finalidade = dados.realizadoSemDG ? "AVALIACAO_REPRODUTIVA" : dados.finalidade ?? (["RECONFIRMACAO", "SEXAGEM"].includes(dados.resultado) ? dados.resultado : "DIAGNOSTICO");
   const finalidades = dados.sexoFetal && finalidade !== "SEXAGEM" ? [finalidade, "SEXAGEM"] : [finalidade];
   if (dados.resultadoAptidao) finalidades.push("APTIDAO_REPRODUTIVA");
   const observacoes: ObservacaoExame[] = [];
@@ -46,7 +49,7 @@ export async function registrarEvidenciaAvaliacaoTx(tx: Prisma.TransactionClient
     motivoAnulacao: dados.motivoAnulacao, anuladoEm: dados.anuladoEm,
     criadoEm: dados.criadoEm, criadoPorId: dados.criadoPorId, responsavel: dados.responsavel,
     formatoSnapshot: { nome: tipo.nome, tipoResultado: "MULTIPLO", versao: tipo.versaoFormato, campos: tipo.campos },
-    finalidades, finalidadePrincipal: finalidade, realizacao: dados.resultado === "NAO_AVALIADO" ? "NAO_REALIZADO" : "REALIZADO",
+    finalidades, finalidadePrincipal: finalidade, realizacao: dados.resultado === "NAO_AVALIADO" && !dados.realizadoSemDG ? "NAO_REALIZADO" : "REALIZADO",
     anotacaoOriginal: dados.anotacaoOriginal, observacao: dados.observacao,
     resultados: { create: resultados.map(r => ({ ...r, criadoPorId: dados.criadoPorId })) },
     interpretacao: { create: { id, referenciaExterna: dados.referenciaExterna,

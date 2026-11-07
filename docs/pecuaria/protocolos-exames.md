@@ -146,6 +146,10 @@ Na transcrição coletiva, cada animal pode escolher o tipo de exame e preencher
 
 Na avaliação reprodutiva, finalidade (diagnosticar, reconfirmar ou sexar), conclusão gestacional, sexo fetal e conduta são informações independentes. Confirmação e sexo podem ocupar a mesma realização. “P+”, “OK” e “M/F” são anotações da fazenda, não o catálogo obrigatório. Texto desconhecido permanece texto. Campos clínicos têm códigos semânticos explícitos; mudar um rótulo ou adicionar observação não cria efeitos clínicos automáticos.
 
+Na avaliação direta, `resultado: NAO_AVALIADO` continua indicando ausência de DG. Quando outro item ou a aptidão foi efetivamente avaliado, `realizadoSemDG: true` distingue o exame realizado do atendimento não realizado; ao menos um item ou a aptidão precisa ser informado. A conclusão de aptidão continua independente e não cria diagnóstico.
+
+Conclusões de um atendimento podem ser vinculadas explicitamente a demandas compatíveis por `vinculosConclusao` na avaliação. A referência tipada identifica `ResultadoExame` para conclusão gestacional ou sexo fetal e `InterpretacaoReprodutiva` para aptidão conclusiva. O vínculo conserva autoria, valor observado e histórico de invalidação; a mesma conclusão vigente não atende duas demandas independentes. Resultados inconclusivos não resolvem demandas. A reconciliação invalida vínculos cuja evidência ou origem deixou de ser válida na mesma transação. `exameResolucaoId` e sua exclusividade permanecem para vínculos legados. O vínculo não cria outra realização nem outro custo; as finalidades que podem originar uma demanda continuam regidas por seu contrato próprio.
+
 `InterpretacaoReprodutiva` liga a evidência à tentativa, gestação e eventual restrição/retorno. Ela não repete data, animal, sítio ou resultado. O executor reprodutivo abre/reconfirma gestação e atualiza sexo fetal somente após validar a cronologia. Negativo diante de gestação conhecida exige revisar perda/diagnóstico anterior. Correção/anulação de exame com interpretação passa pela revisão dos efeitos reprodutivos, na mesma transação; o endpoint sanitário genérico recusa contornar essa revisão.
 
 ### Qualidade do leite V5

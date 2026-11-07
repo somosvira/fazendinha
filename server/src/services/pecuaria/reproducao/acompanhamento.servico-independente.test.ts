@@ -1,14 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ tx: {
   demandaAcompanhamentoReprodutivo: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
-  exameAnimal: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+  exameAnimal: { findMany: vi.fn(), findUnique: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
+  vinculoConclusaoAcompanhamento: { create: vi.fn(), update: vi.fn() },
   partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
   participacaoProtocolo: { findFirst: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
 }, auditar: vi.fn(), conferir: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
-import { criarDemandasDoFatoTx, listarAcompanhamentos, reconciliarDemandasAnimalTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, listarAcompanhamentos, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import type { Prisma } from "@prisma/client";
 const tx = mocks.tx as unknown as Prisma.TransactionClient;
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -34,6 +35,24 @@ beforeEach(() => {
   mocks.tx.demandaAcompanhamentoReprodutivo.update.mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
 });
 describe("contraprovas de serviço: identidade, continuidade e leitura sem escrita", () => {
+  it("registra vínculos distintos de DG e sexagem sem duplicar o exame", async () => {
+    const gestacional = { ...exame("POSITIVO", true), propriedadeId: 7, finalidades: ["RECONFIRMACAO", "SEXAGEM"],
+      resultados: [{ id: "resultado-dg", campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO", vigente: true }, { id: "resultado-sexo", campo: "SEXO_FETAL", valor: "F", vigente: true }] };
+    mocks.tx.exameAnimal.findUniqueOrThrow.mockResolvedValue(gestacional);
+    mocks.tx.demandaAcompanhamentoReprodutivo.findUnique.mockImplementation(async ({ where }) => ({ ...demanda(where.id, 1, true), finalidade: where.id === "sexo" ? "SEXAGEM" : "RECONFIRMACAO" }));
+    mocks.tx.vinculoConclusaoAcompanhamento.create.mockImplementation(async ({ data }) => ({ id: `v-${data.demandaId}`, ...data }));
+    await vincularConclusoesExameTx(tx, "exame", [{ demandaId: "dg", campo: "CONCLUSAO_GESTACIONAL" }, { demandaId: "sexo", campo: "SEXO_FETAL" }], 7);
+    expect(mocks.tx.vinculoConclusaoAcompanhamento.create.mock.calls.map(([v])=>v.data.resultadoId)).toEqual(["resultado-dg", "resultado-sexo"]);
+    expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  });
+  it("invalida vínculo quando a evidência deixa de estar vigente e reabre a demanda", async () => {
+    const d = { ...demanda("d", 1, true), estado: "RESOLVIDA", vinculoConclusaoResolucaoId: "v", vinculoConclusaoResolucao: { id: "v", resultadoId: "r", vigente: true } };
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]);
+    await reconciliarDemandasAnimalTx(tx, "animal", 7);
+    expect(mocks.tx.vinculoConclusaoAcompanhamento.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "v" }, data: expect.objectContaining({ vigente: false, invalidadoPorId: 7 }) }));
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "d" }, data: expect.objectContaining({ estado: "PENDENTE", vinculoConclusaoResolucaoId: null }) }));
+  });
+
   it("inconclusivo mantém acompanhamento mesmo após prazo e tarefa já realizada", async () => {
     const d = { ...demanda("d"), tarefaId: "tarefa-concluida" };
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]); mocks.tx.exameAnimal.findMany.mockResolvedValue([exame("INCONCLUSIVO")]);

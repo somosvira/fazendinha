@@ -1,3 +1,4 @@
+import { reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 import { conferirConclusaoAptidaoTx } from "./elegibilidade.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -47,6 +48,7 @@ export async function corrigirToqueAptidao(id: string, input: { chave: string; p
           ...(input.resultado !== undefined ? { resultadoAptidao: input.resultado } : {}),
           ...(input.retornoEm !== undefined ? { retornoAptidaoEm: input.retornoEm ? new Date(`${input.retornoEm}T00:00:00Z`) : null } : {}),
         } } }, include: { interpretacao: true } });
+        await reconciliarDemandasAnimalTx(tx, origem.animalId, usuarioId);
         await auditar(tx, { entidade: "ExameAnimal", entidadeId: id, animalId: origem.animalId, propriedadeId: input.propriedadeId,
           acao: "REVISAO_APTIDAO_EXAME_COMBINADO", usuarioId, antes: origem, depois: { ...salvo, motivo: input.motivo } });
         return salvo;
