@@ -139,7 +139,7 @@ const selecionarOrigemTentativa = {
  tarefa: { select: { execucao: { select: selecionarParticipacaoPrazo } } },
  participacoesExplicitas: { where: { revogadoEm: null }, select: { participacao: { select: selecionarParticipacaoPrazo } } },
 } as const;
-type ParticipacaoPrazo = { id: string; animalId: string; propriedadeId: number; acompanhamentoSnapshot: Prisma.JsonValue };
+type ParticipacaoPrazo = { id: string; animalId: string; propriedadeId: number | null; acompanhamentoSnapshot: Prisma.JsonValue };
 
 async function proporDemandasGestacaoTx(tx: Prisma.TransactionClient, origem: Origem & { gestacaoId: string }, participacao?: ParticipacaoPrazo | null, tentativaId?: string) {
  const exameOrigem = origem.exameOrigemId ? await tx.exameAnimal.findUnique({
