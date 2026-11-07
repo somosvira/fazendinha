@@ -1,3 +1,4 @@
+import { EvolucaoEcc } from "./EvolucaoEcc";
 // Seção "Peso e ganho" da ficha do animal: indicadores de peso/GMD (com o seletor de
 // período), o gráfico de evolução do peso e a tabela de pesagens
 // (GMD desde a anterior, observação, editar/excluir).
@@ -74,6 +75,7 @@ export function PesoEGanho({ animal, periodo, onPeriodoChange, podeLancar, onEdi
       <GraficoPeso historicoPesagens={historicoPesagens} desde={desde} ate={limite}/>
     </>}
     </CardFicha>
+      <EvolucaoEcc historico={animal.historicoEcc}/>
       <CardFicha icon={Weight} titulo="Últimas pesagens">
       {historicoPesagens.length ? <div className="ficha-pesagens-rolagem" role="region" aria-label="Últimas pesagens" tabIndex={0}><table data-tabela-operacional className="ficha-pesagens-tabela consulta-tabela">
         <caption className="sr-only">Últimas pesagens do animal</caption>

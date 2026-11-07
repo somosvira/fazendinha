@@ -54,7 +54,7 @@ export async function listarAcoesCadastroProtocolo(id: string, input: unknown) {
     const where = { protocoloId: id };
     const total = await tx.etapaProtocolo.count({ where });
     const pagina = paginaValida(total, f.pagina, f.porPagina);
-    const etapas = await tx.etapaProtocolo.findMany({ where, include: { momento: { select: { nome: true, ordem: true, instrucoesGerais: true, modoAtendimento: true } } }, orderBy: [{ ordem: "asc" }, { id: "asc" }], skip: (pagina - 1) * f.porPagina, take: f.porPagina });
+    const etapas = await tx.etapaProtocolo.findMany({ where, include: { momento: { select: { nome: true, ordem: true, instrucoesGerais: true, modoAtendimento: true, politicaExecucao: true, horarioPadrao: true, fusoHorario: true } } }, orderBy: [{ ordem: "asc" }, { id: "asc" }], skip: (pagina - 1) * f.porPagina, take: f.porPagina });
     const itens = etapas.map(e => p.tipo === "REPRODUTIVO"
       ? { ...(e.configuracao && typeof e.configuracao === "object" && !Array.isArray(e.configuracao) ? e.configuracao : {}), id: e.id, ordem: e.ordem, momento: e.momento }
       : { id: e.id, ordem: e.ordem, nome: e.nome, tipo: e.tipo, diaRelativo: e.diaRelativo, unidadeIntervalo: e.unidadeIntervalo, produtoId: e.produtoId, tipoExameId: e.tipoExameId, tipoAplicacaoId: e.tipoAplicacaoId, tipoAplicacaoNomeSnapshot: e.tipoAplicacaoNomeSnapshot, dose: e.dose?.toString() ?? null, unidade: e.unidade, via: e.via, configuracao: e.configuracao, momento: e.momento });

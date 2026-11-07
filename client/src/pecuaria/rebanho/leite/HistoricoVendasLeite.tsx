@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
@@ -221,12 +222,7 @@ export function FormularioCorrecao({
           {condicao === "A_PRAZO" && (
             <label>
               Vencimento da nova parcela
-              <input
-                type="date"
-                required
-                value={vencimento}
-                onChange={(e) => setVencimento(e.target.value)}
-              />
+              <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
             </label>
           )}
         </div>

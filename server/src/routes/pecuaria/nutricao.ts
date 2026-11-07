@@ -36,7 +36,7 @@ const itemConsumo = z.object({ origensLeite: z.array(uuid).min(1).max(500).optio
 export const nutricaoRouter = new Hono()
   .route("/mensal", nutricaoMensalRouter)
   .get("/custo-medio", async c => {
-    try { return c.json(await consultarCustoMedio(await resolverEscopoLeitura(c), verValores(c))); }
+    try { return c.json(await consultarCustoMedio(await resolverEscopoLeitura(c), verValores(c), c.req.query("mes") === "atual" ? "atual" : "anterior")); }
     catch (e) { return falha(c, e); }
   })
   .get("/resumo", validarQuery(z.object({ loteId: uuid.optional() })), async c => {
@@ -107,6 +107,10 @@ export const nutricaoRouter = new Hono()
   .get("/consumo/fechamentos", validarQuery(consultaFechamentosSchema), async (c) => {
     try { const { loteId, status, de, ate, ...pagina } = c.req.valid("query");
       return c.json(await consumo.listarFechamentos(loteId, await resolverEscopoLeitura(c), pagina, verValores(c), undefined, status, {de,ate}, verReferencias(c))); }
+    catch (e) { return falha(c, e); }
+  })
+  .get("/consumo/ultimos", async (c) => {
+    try { return c.json(await consumo.ultimosFechamentos(await resolverEscopoLeitura(c))); }
     catch (e) { return falha(c, e); }
   })
   .get("/consumo/fechamentos/:id", async (c) => {

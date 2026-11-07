@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
-import { alterarControle } from "../../../lib/controles.fixture";
+import { abrirFiltrosConsulta, alterarControle, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { Cadastros } from "./Cadastros";

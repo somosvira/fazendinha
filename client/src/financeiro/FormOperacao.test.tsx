@@ -460,14 +460,9 @@ describe("FormOperacao", () => {
     expect(aviso.compareDocumentPosition(botao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("explica e configura os compromissos derivados da condição a prazo", async () => {
+  it("configura os compromissos derivados da condição a prazo", async () => {
     montar();
     await alterarControle(screen.getByRole("combobox", { name: "Condição financeira" }), { target: { value: "A_PRAZO" } });
-    expect(screen.queryByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeNull();
-    const ajudaParcelas = screen.getByRole("button", { name: "Ajuda: parcelas do compromisso" });
-    fireEvent.click(ajudaParcelas);
-    expect(await screen.findByText(/Cada parcela será criada como um compromisso vinculado a esta operação/)).toBeTruthy();
-    fireEvent.mouseLeave(ajudaParcelas);
     expect(screen.getByRole("spinbutton", { name: "Valor da parcela 1" })).toBeTruthy();
     expect(screen.getByLabelText("Vencimento da parcela 1")).toBeTruthy();
   });
@@ -1077,7 +1072,7 @@ describe("tipo Ajuste de estoque", () => {
     expect(screen.queryByLabelText("Conta financeira")).toBeNull();
     expect(screen.queryByLabelText("Condição financeira")).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Produto do item 1" })).toBeNull();
-    expect(screen.getByText("Sem movimentação financeira")).toBeTruthy();
+    expect(screen.queryByText("Sem movimentação financeira")).toBeNull();
     expect(screen.getByLabelText("Justificativa do ajuste")).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "Centro de custo" })).toBeTruthy();
   });
@@ -1202,7 +1197,7 @@ describe("tipo Ajuste de estoque", () => {
     render(<FormOperacao config={config} tipoInicial="AJUSTE_ESTOQUE" produtoInicial={uid(1)} rascunho={{ id: uid(8), versao: 3, updatedAt: "2026-09-11", documentos: [], dados: { formulario: { tipo: "COMPRA_ESTOQUE", condicao: "A_VISTA", descricao: "Compra com 5 itens" } } }} onSalvo={vi.fn()} />);
     const select = screen.getByLabelText("Tipo de operação") as HTMLSelectElement;
     expect(select.disabled).toBe(true);
-    expect(screen.getByText(/para outro tipo de operação, abra Nova operação/)).toBeTruthy();
+    expect(screen.getByText(/Aberto pelo Estoque para corrigir o saldo/)).toBeTruthy();
     await alterarControle(select, { target: { value: "COMPRA_ESTOQUE" } });
     await alterarControle(screen.getByLabelText("Justificativa do ajuste"), { target: { value: "Contagem física" } });
     await vi.advanceTimersByTimeAsync(3000);

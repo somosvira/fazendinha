@@ -12,7 +12,7 @@ import type { AnimalResumo, Catalogos } from "../types";
 import { BarraFiltros, CategoriaPill, Paginacao } from "../ui";
 import { Button, type ColunaTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
-import { Loader } from "../../../components/Loading";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 
@@ -109,7 +109,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
           <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos da página" checked={todosDaPaginaSelecionados} onChange={alternarTodosDaPagina} /> Selecionar todos da página</label>
           {quantidade > 0 && <span className="text-ink-3">{quantidade} {quantidade === 1 ? "animal selecionado" : "animais selecionados"} no total</span>}
         </div>}
-        {carregando && !itens.length ? <div className="p-6"><Loader label="Carregando animais" /></div>
+        {carregando && !itens.length ? <EsqueletoTabela label="Carregando animais" className="p-6" />
           // total > 0 mantém a paginação visível mesmo que esta página específica venha vazia
           : total > 0 ? <>
             {itens.length > 0

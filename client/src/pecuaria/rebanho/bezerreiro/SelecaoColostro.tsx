@@ -5,6 +5,7 @@ import { consultaBezerreiro, consultarBezerreiro } from './api';
 import { PaginacaoBezerreiro, RecuperacaoConflito, useConsultaBezerreiro, useRecuperacaoConflito } from './ui';
 import { formatarDataBR } from '../lib/rotulos';
 import type { ContextoBezerreiro, OrigemColostro } from './types';
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 export type PartoColostro = Omit<ContextoBezerreiro['partos'][number],'matrizId'> & {matrizId:string|null};
 export type PartosColostro = {itens:PartoColostro[];selecionado:PartoColostro|null;total:number;pagina:number;porPagina:number};
 export function usePartosColostro(sitio:number,data:string,valor:string,alvo:'MATRIZ'|'CRIA') {
@@ -24,7 +25,7 @@ export function SelecaoColostro({consulta,valor,alvo,aoSelecionar}:{consulta:Ret
       {consulta.itens.flatMap(p=>alvo==='MATRIZ'?[<option key={p.id} value={p.id}>{p.matriz.brinco} · {p.matriz.nome??'Sem nome'} · {formatarDataBR(p.data)}</option>]:p.crias.map(c=><option key={c.id} value={c.id}>{c.animal?.brinco??'Cria cadastrada'} · {c.animal?.nome??'Sem nome'} · nascimento {formatarDataBR(p.data)}</option>))}
     </SelectCampo></label>
     {consulta.erro&&<p role="alert" className="bez-erro">{consulta.erro}<Button type="button" variant="outline" onClick={consulta.tentar}>Tentar novamente</Button></p>}
-    {!consulta.erro&&!consulta.dados&&<p role="status">Carregando seleção nesta data…</p>}
+    {!consulta.erro&&!consulta.dados&&<EsqueletoTabela label="Carregando seleção nesta data" />}
     {valor&&consulta.dados&&!consulta.valido&&<p role="alert" className="bez-aviso">A seleção não está disponível neste sítio e data. Escolha outro registro; os demais campos foram preservados.</p>}
     {consulta.dados&&<PaginacaoBezerreiro pagina={consulta.pagina} total={consulta.dados.total} tamanho={consulta.dados.porPagina} mudar={consulta.setPagina}/>}
   </div>;

@@ -7,6 +7,7 @@ import { criarVisita, obterVisita, type AtividadeVisita, type Visita } from "./v
 import { chaveGrupo } from "./planner-api";
 import { criteriosVazios } from "./EditorSelecaoVisita";
 import { grupoLivre } from "./SelecaoLivreVisita";
+import { mudarCampo } from "@/lib/controles.fixture";
 const mocks = vi.hoisted(() => ({ guarda: vi.fn<() => Promise<boolean>>(), desmontou: vi.fn(), registrou: vi.fn() }));
 vi.mock("../../../api/propriedades", () => ({ usePropriedades: () => ({ data: [{ id: 1, nome: "Principal", ativo: true }] }) }));
 vi.mock("./visitas-api", async original => ({ ...await original<typeof import("./visitas-api")>(), criarVisita: vi.fn(), obterVisita: vi.fn(), listarVisitas: vi.fn().mockResolvedValue([]) }));
@@ -80,7 +81,7 @@ describe("entrada independente de visitas",()=>{
   window.history.replaceState({},"","/pecuaria/visitas/nova");vi.mocked(criarVisita).mockRejectedValueOnce(new Error("Falha simulada")).mockResolvedValueOnce(visita);
   render(<Visitas podeLancar/>);await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});
   expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);
-  fireEvent.change(screen.getByLabelText("Nome da visita"),{target:{value:"Visita de teste"}});fireEvent.change(screen.getByLabelText("Sítio"),{target:{value:"1"}});
+  mudarCampo(screen.getByLabelText("Nome da visita"),{target:{value:"Visita de teste"}});mudarCampo(screen.getByLabelText("Sítio"),{target:{value:"1"}});
   fireEvent.click(screen.getByRole("radio",{name:/Agenda do dia/}));expect(criarVisita).not.toHaveBeenCalled();
   fireEvent.submit(document.querySelector("#entrada-visita")!);await screen.findByText("Falha simulada");
   const chave=vi.mocked(criarVisita).mock.calls[0][0].chave;expect(chave).toBeTruthy();fireEvent.submit(document.querySelector("#entrada-visita")!);

@@ -156,7 +156,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
     : null;
   return (
     <section className="leite-operacoes" aria-label={interna ? "Retiradas para Casa e Funcionários" : "Descarte físico de leite"}>
-      <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} ajuda="Saídas efetivas com origem, motivo e histórico preservado." rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
+      <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
       <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={<span className="leite-contexto-data"><CalendarDays size={17} aria-hidden />Mês até <time dateTime={data}>{data.split("-").reverse().join("/")}</time></span>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}

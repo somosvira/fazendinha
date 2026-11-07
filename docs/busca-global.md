@@ -76,6 +76,7 @@ A integração automática do Bezerreiro conserva a identidade do animal e os de
 
 O cancelamento de programação do Bezerreiro é uma ação contextual ao período na ficha exata do animal, acessível pelo destino já indexado. Não ganha comando global: exige conferir a fase, o intervalo e a versão da participação antes de escrever. Mantém os gates de Pecuária, lançamento e sítio; não altera URLs ou fontes de registros.
 
+A operação reprodutiva reconhece “automação”, “etapas” e “atendimento coletivo” no destino existente de Programações. Jobs e reversões são ações contextuais à participação e ao momento, não comandos globais de escrita: exigem conferir animal, fatos e efeitos antes de confirmar. As programações continuam abrindo seu registro exato; o novo layout e os modais não alteram os parâmetros desse destino.
 
 
 ### Assistente Terrano

@@ -22,6 +22,7 @@ import {
   type ConfiguracoesFinanceiras,
 } from "../../../financeiro/novo-api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
+import { esperarOpcoes, itensDoCampo, mudarCampo, opcoesDoCampo } from "@/lib/controles.fixture";
 vi.mock("./operacoes-api", async (original) => ({
   ...(await original<typeof import("./operacoes-api")>()),
   consultarLeite: vi.fn(),
@@ -144,23 +145,20 @@ beforeEach(() => {
   });
 });
 function conferencia() {
-  fireEvent.change(
+  mudarCampo(
     screen.getByLabelText("Motivo ou evidência da conferência"),
     { target: { value: "Aceite ainda não informado pelo comprador" } },
   );
-  fireEvent.change(screen.getByLabelText("Referência da entrega"), {
+  mudarCampo(screen.getByLabelText("Referência da entrega"), {
     target: { value: "Coleta informada" },
   });
 }
 async function escolherExistente() {
-  await waitFor(() =>
-    expect(
-      screen
-        .getAllByRole("option")
-        .some((o) => o.getAttribute("value") === "v1"),
-    ).toBe(true),
+  await esperarOpcoes(
+    () => screen.getByLabelText("Venda registrada"),
+    (o) => o.some((i) => i.valor === "v1"),
   );
-  fireEvent.change(screen.getByLabelText("Venda registrada"), {
+  mudarCampo(screen.getByLabelText("Venda registrada"), {
     target: { value: "v1" },
   });
   conferencia();
@@ -222,10 +220,8 @@ describe("comercial do leite", () => {
     );
     await escolherExistente();
     expect(
-      screen.queryByRole("option", {
-        name: "Criar venda com entrega",
-      }),
-    ).toBeNull();
+      screen.getAllByRole("combobox").flatMap(opcoesDoCampo),
+    ).not.toContain("Criar venda com entrega");
     fireEvent.click(
       screen.getByRole("button", { name: "Confirmar vínculo da entrega" }),
     );
@@ -257,17 +253,16 @@ describe("comercial do leite", () => {
       />,
     );
     await escolherExistente();
-    const option = screen
-      .getAllByRole("option")
-      .find((o) => o.getAttribute("value") === "v-legado") as HTMLOptionElement;
-    expect(option.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Venda registrada"), {
-      target: { value: "v-legado" },
-    });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Confirmar vínculo da entrega" }),
-    );
-    await screen.findByText("Selecione uma venda vinculável sem impedimentos.");
+    const option = itensDoCampo(
+      screen.getByLabelText("Venda registrada"),
+    ).find((o) => o.valor === "v-legado")!;
+    expect(option.desabilitada).toBe(true);
+    // A venda com impedimento nem pode ser escolhida.
+    expect(
+      mudarCampo(screen.getByLabelText("Venda registrada"), {
+        target: { value: "v-legado" },
+      }),
+    ).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
   });
   it("nova venda e entrega usam uma confirmação atômica, mantendo aceite pendente", async () => {
@@ -282,25 +277,25 @@ describe("comercial do leite", () => {
         aoCancelar={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Vínculo da entrega"), {
+    mudarCampo(screen.getByLabelText("Vínculo da entrega"), {
       target: { value: "NOVA_VENDA" },
     });
-    fireEvent.change(screen.getByLabelText("Produto de leite"), {
+    mudarCampo(screen.getByLabelText("Produto de leite"), {
       target: { value: "leite" },
     });
-    fireEvent.change(screen.getByLabelText("Volume expedido (L)"), {
+    mudarCampo(screen.getByLabelText("Volume expedido (L)"), {
       target: { value: "100" },
     });
-    fireEvent.change(screen.getByLabelText("Valor total definitivo (R$)"), {
+    mudarCampo(screen.getByLabelText("Valor total definitivo (R$)"), {
       target: { value: "225" },
     });
-    fireEvent.change(screen.getByLabelText("Comprador"), {
+    mudarCampo(screen.getByLabelText("Comprador"), {
       target: { value: "p" },
     });
-    fireEvent.change(screen.getByLabelText("Condição financeira"), {
+    mudarCampo(screen.getByLabelText("Condição financeira"), {
       target: { value: "A_PRAZO" },
     });
-    fireEvent.change(screen.getByLabelText("Vencimento da parcela"), {
+    mudarCampo(screen.getByLabelText("Vencimento da parcela"), {
       target: { value: "2026-10-30" },
     });
     conferencia();
@@ -349,13 +344,13 @@ describe("comercial do leite", () => {
     fireEvent.click(
       (await screen.findAllByRole("button", { name: "Conferir Coleta 19" }))[0],
     );
-    fireEvent.change(screen.getByLabelText("Situação do aceite"), {
+    mudarCampo(screen.getByLabelText("Situação do aceite"), {
       target: { value: "DIVERGENCIA" },
     });
-    fireEvent.change(screen.getByLabelText(/Volume aceito \(L\)/), {
+    mudarCampo(screen.getByLabelText(/Volume aceito \(L\)/), {
       target: { value: "80" },
     });
-    fireEvent.change(
+    mudarCampo(
       screen.getByLabelText("Motivo ou evidência da conferência"),
       { target: { value: "Comprador informou diferença de volume" } },
     );
@@ -383,28 +378,28 @@ describe("comercial do leite", () => {
         aoCancelar={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Comprador do demonstrativo"), {
+    mudarCampo(screen.getByLabelText("Comprador do demonstrativo"), {
       target: { value: "p" },
     });
     fireEvent.click(
       await screen.findByRole("button", { name: "Alocar Coleta 19" }),
     );
-    fireEvent.change(screen.getByLabelText("Referência do demonstrativo"), {
+    mudarCampo(screen.getByLabelText("Referência do demonstrativo"), {
       target: { value: "Demonstrativo outubro" },
     });
-    fireEvent.change(screen.getByLabelText("Preço-base informado (R$/L)"), {
+    mudarCampo(screen.getByLabelText("Preço-base informado (R$/L)"), {
       target: { value: "2,25" },
     });
-    fireEvent.change(screen.getByLabelText("Volume reconhecido (L)"), {
+    mudarCampo(screen.getByLabelText("Volume reconhecido (L)"), {
       target: { value: "50" },
     });
-    fireEvent.change(screen.getByLabelText("Valor comercial informado (R$)"), {
+    mudarCampo(screen.getByLabelText("Valor comercial informado (R$)"), {
       target: { value: "112,50" },
     });
-    fireEvent.change(screen.getByLabelText("Litros alocados a Coleta 19"), {
+    mudarCampo(screen.getByLabelText("Litros alocados a Coleta 19"), {
       target: { value: "50" },
     });
-    fireEvent.change(screen.getByLabelText("Valor alocado a Coleta 19 (R$)"), {
+    mudarCampo(screen.getByLabelText("Valor alocado a Coleta 19 (R$)"), {
       target: { value: "112,50" },
     });
     fireEvent.click(
@@ -413,7 +408,7 @@ describe("comercial do leite", () => {
       }),
     );
     expect(fetchMock).not.toHaveBeenCalled();
-    fireEvent.change(
+    mudarCampo(
       screen.getByLabelText("Justificativa do aceite pendente de Coleta 19"),
       { target: { value: "Documento parcial com aceite pendente expresso" } },
     );
@@ -476,7 +471,7 @@ describe("comercial do leite", () => {
         aoCancelar={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Comprador do demonstrativo"), {
+    mudarCampo(screen.getByLabelText("Comprador do demonstrativo"), {
       target: { value: "p" },
     });
     fireEvent.click(
@@ -498,7 +493,7 @@ describe("comercial do leite", () => {
         "Aceite pendente documentado no demonstrativo",
       ],
     ])
-      fireEvent.change(screen.getByLabelText(nome), {
+      mudarCampo(screen.getByLabelText(nome), {
         target: { value: valor },
       });
     fireEvent.click(
@@ -510,31 +505,31 @@ describe("comercial do leite", () => {
       "Uma alocação excede o saldo disponível de volume ou valor da entrega.",
     );
     expect(fetchMock).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByLabelText("Litros alocados a Coleta 19"), {
+    mudarCampo(screen.getByLabelText("Litros alocados a Coleta 19"), {
       target: { value: "50" },
     });
     fireEvent.click(
       screen.getByRole("button", { name: "Adicionar componente manual" }),
     );
-    fireEvent.change(screen.getByLabelText("Natureza do componente 1"), {
+    mudarCampo(screen.getByLabelText("Natureza do componente 1"), {
       target: { value: "RETENCAO" },
     });
-    fireEvent.change(screen.getByLabelText("Valor do componente 1 (R$)"), {
+    mudarCampo(screen.getByLabelText("Valor do componente 1 (R$)"), {
       target: { value: "10" },
     });
-    fireEvent.change(screen.getByLabelText("Referência do componente 1"), {
+    mudarCampo(screen.getByLabelText("Referência do componente 1"), {
       target: { value: "Retenção contratual" },
     });
     fireEvent.click(
       screen.getByRole("button", { name: "Adicionar componente manual" }),
     );
-    fireEvent.change(screen.getByLabelText("Natureza do componente 2"), {
+    mudarCampo(screen.getByLabelText("Natureza do componente 2"), {
       target: { value: "ADIANTAMENTO" },
     });
-    fireEvent.change(screen.getByLabelText("Valor do componente 2 (R$)"), {
+    mudarCampo(screen.getByLabelText("Valor do componente 2 (R$)"), {
       target: { value: "5" },
     });
-    fireEvent.change(screen.getByLabelText("Referência do componente 2"), {
+    mudarCampo(screen.getByLabelText("Referência do componente 2"), {
       target: { value: "Adiantamento anterior" },
     });
     fireEvent.click(
@@ -575,11 +570,9 @@ describe("comercial do leite", () => {
       />,
     );
     expect(
-      screen.getByRole("option", {
-        name: "Comprador real (inativo · histórico)",
-      }),
-    ).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Comprador do demonstrativo"), {
+      opcoesDoCampo(screen.getByLabelText("Comprador do demonstrativo")),
+    ).toContain("Comprador real (inativo · histórico)");
+    mudarCampo(screen.getByLabelText("Comprador do demonstrativo"), {
       target: { value: "p" },
     });
     await screen.findByRole("button", { name: "Alocar Coleta 19" });
@@ -657,7 +650,7 @@ describe("comercial do leite", () => {
         name: "Anular Demonstrativo parcial",
       }),
     );
-    fireEvent.change(screen.getByLabelText("Motivo da anulação"), {
+    mudarCampo(screen.getByLabelText("Motivo da anulação"), {
       target: { value: "Revisão comercial documentada" },
     });
     fireEvent.click(
@@ -686,7 +679,7 @@ describe("comercial do leite", () => {
         onMudou={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Anexar comprovante (até 10 MB)"), {
+    mudarCampo(screen.getByLabelText("Anexar comprovante (até 10 MB)"), {
       target: {
         files: [new File([], "vazio.pdf", { type: "application/pdf" })],
       },
@@ -706,7 +699,7 @@ describe("comercial do leite", () => {
         aoCancelar={vi.fn()}
       />,
     );
-    fireEvent.change(screen.getByLabelText("Vínculo da entrega"), {
+    mudarCampo(screen.getByLabelText("Vínculo da entrega"), {
       target: { value: "NOVA_VENDA" },
     });
     expect(screen.getByLabelText("Valor total definitivo (R$)")).toBeTruthy();

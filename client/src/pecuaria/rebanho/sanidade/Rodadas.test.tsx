@@ -35,10 +35,10 @@ describe("ciclos de protocolos", () => {
     const contagens = { total: 2, pendentes: 2, atendidos: 0 };
     mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]));
     render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    await screen.findByRole("button", { name: /Dia 0 Exame/ });
+    await screen.findByRole("button", { name: /D0 Exame/ });
     expect(screen.queryByRole("columnheader", { name: "Filtro atual" })).toBeNull();
     expect(screen.queryByText(/Comparar com/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Dia 0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /D0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText("realizadas", { exact: true })).toBeNull();
     expect(screen.queryByText("canceladas", { exact: true })).toBeNull();
@@ -120,7 +120,8 @@ describe("ciclos de protocolos", () => {
     await screen.findByText("2 atendidos · 5 pendentes");
     fireEvent.click((await screen.findAllByRole("button", { name: "Atender" }))[0]);
     expect(executar.mock.calls[0][0][0].execucao.animalId).toBe("a");
-    fireEvent.click(screen.getByRole("button", { name: "Adiar" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mais ações para A01" }), { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Adiar atendimento" }));
     fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "2026-10-08" } });
     fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível na data prevista" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));

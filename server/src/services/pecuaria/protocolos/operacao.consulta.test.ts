@@ -133,3 +133,13 @@ it("resumo da participação usa a versão e apenas vínculos explícitos do sí
   expect(selecionado._count.select.tarefas.where.OR).toEqual([{ tentativas: { some: { propriedadeId: 2 } } }, { vinculos: { some: { tentativa: { is: { propriedadeId: 2 } } } } }]);
   expect(JSON.stringify(selecionado._count)).not.toContain("data");
 });
+
+it.each(["REGISTRAR_MANUALMENTE", "DISPENSAR"])("expõe revisão retroativa %s sem substituir o snapshot histórico", async decisao => {
+  const revisao={decisao,motivo:"Revisão do início retroativo",usuarioId:7,revisadaEm:"2026-11-03T12:00:00Z"};
+  const snapshot={momento:{politicaExecucao:"AUTOMATICA_EXCECAO"}};
+  banco.tx.tarefaProtocolo.findMany.mockReset().mockResolvedValueOnce([{...tarefa,parametros:snapshot,historicoRegularizacao:[{acao:"REVISAO_AUTOMACAO_RETROATIVA",...revisao},{acao:"OUTRA_REVISAO",motivo:"Não substituir a decisão"}]}]).mockResolvedValueOnce([]);
+  const r=await listarTarefasOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({}),{dono:true,areas:[],flags:[]});
+  expect(r.itens[0].revisaoAutomacaoRetroativa).toEqual(revisao);
+  expect(r.itens[0].tarefaOrigem.revisaoAutomacaoRetroativa).toEqual(revisao);
+  expect(r.itens[0].tarefaOrigem.planejadoSnapshot).toEqual(snapshot);
+});

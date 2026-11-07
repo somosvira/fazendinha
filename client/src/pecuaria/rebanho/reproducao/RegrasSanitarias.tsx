@@ -14,6 +14,7 @@ import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqSanidade } from "../sanidade/api";
 import { obterReproducao, reqV4 } from "./api";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 type Regra = {
   id: string;
   doencaId: string;
@@ -139,11 +140,11 @@ export function RegrasSanitarias({ podeEditar }: { podeEditar: boolean }) {
             <ErrorBox erro={erro} />
             <label>
               Doença
-              <select
+              <SelectCampo
                 className={classeInput}
                 required
                 value={doencaId}
-                onChange={(e) => setDoencaId(e.target.value)}
+                onValueChange={(valor) => setDoencaId(valor)}
               >
                 <option value="">Selecione</option>
                 {doencas
@@ -153,30 +154,30 @@ export function RegrasSanitarias({ podeEditar }: { podeEditar: boolean }) {
                       {d.nome}
                     </option>
                   ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Ação
-              <select
+              <SelectCampo
                 className={classeInput}
                 value={acao}
-                onChange={(e) => setAcao(e.target.value)}
+                onValueChange={(valor) => setAcao(valor)}
               >
                 {["IA", "TE", "COBERTURA", "IATF"].map((a) => (
                   <option key={a}>{a}</option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Efeito
-              <select
+              <SelectCampo
                 className={classeInput}
                 value={efeito}
-                onChange={(e) => setEfeito(e.target.value)}
+                onValueChange={(valor) => setEfeito(valor)}
               >
                 <option value="ALERTAR">Alertar e exigir ciência</option>
                 <option value="BLOQUEAR">Bloquear</option>
-              </select>
+              </SelectCampo>
             </label>
             <label>
               Motivo definido pela fazenda

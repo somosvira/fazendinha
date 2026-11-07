@@ -446,7 +446,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
   return (
     <article aria-label="Relatório de leite preservado">
       <div className="hidden print:block rel-identificacao-impressao"><h2>{s.propriedade.nome} · {dataPt(s.filtros.inicio)} a {dataPt(s.filtros.fim)}</h2><p>Consulta preservada em {new Date(s.corteEm).toLocaleString('pt-BR')} · metodologia {s.versaoCalculo}.</p></div>
-      <header className="rel-resultado-topo"><h2>Produção preservada<AjudaCampo rotulo="Sobre esta emissão" texto={`${s.propriedade.nome}. Consulta preservada em ${new Date(s.corteEm).toLocaleString('pt-BR')}. Metodologia ${s.versaoCalculo}.`}/></h2></header>
+      <header className="rel-resultado-topo"><h2>Produção preservada</h2></header>
       <dl id={ancora("producao")} className="leite-indicadores">
         <div>
           <dt>Litros medidos</dt>
@@ -551,7 +551,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
         </Table>
       </div>
       )}
-      <div className="leite-balanco-cobertura">Produção medida não confirmada: {formatarLitros(s.cobertura.producaoNaoConfirmadaLitros===null?null:Number(s.cobertura.producaoNaoConfirmadaLitros))}<AjudaCampo rotulo="Sobre encerramento e cobertura" texto="O encerramento vem dos movimentos preservados. Não comprova medição física nem conciliação de campo. Produção medida ainda não confirmada não aumenta o saldo."/></div>
+      <div className="leite-balanco-cobertura">Produção medida não confirmada: {formatarLitros(s.cobertura.producaoNaoConfirmadaLitros===null?null:Number(s.cobertura.producaoNaoConfirmadaLitros))}</div>
       <h2 id={ancora("qualidade")}>Qualidade nas amostras</h2>
       {!s.dados.qualidade.length && (
         <p>
@@ -908,7 +908,7 @@ function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriod
     </div>}
     {linhas.filter(o => o.fechamento?.amostras.length).map(o => <SecaoDetalhesLeite key={o.id} titulo={<>Amostras vinculadas ao fechamento · {o.referencia} · versão {o.fechamento!.versao}</>}>
 
-      <div className="flex items-center gap-1"><span>Datas da versão preservada</span><AjudaCampo rotulo="Sobre as datas das amostras preservadas" texto="Datas preservadas no acordo; correções posteriores da amostra não alteram esta versão." /></div>
+      <div className="flex items-center gap-1"><span>Datas da versão preservada</span></div>
       {o.fechamento!.amostras.map(a => <div key={a.amostraId}>
         <p>Amostra {a.amostraId} · versão {a.versaoAmostra}{a.data ? ` · coleta em ${dataPt(a.data)}` : ""}</p>
         <DatasQualidade {...a} />

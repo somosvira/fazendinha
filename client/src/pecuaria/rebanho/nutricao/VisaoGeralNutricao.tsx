@@ -1,4 +1,5 @@
-import { PanoramaDietas, CartoesNutricao } from "./PanoramaDietas";
+import { ConsumoDietas } from "./ConsumoDietas";
+import { textoCustoDia, PanoramaDietas, CartoesNutricao } from "./PanoramaDietas";
 import { useVisualizacaoConsulta, AlternarVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { useOrdenacaoTabela } from "@/financeiro/OrdenarConsulta";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
@@ -6,7 +7,6 @@ import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { CampoFiltro } from "@/financeiro/PainelFiltros";
 import { SelectCampo } from "@/financeiro/SelectCampo";
-import { AjudaCampo } from "@/components/Dica";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 
 import { useCallback } from "react";
@@ -14,6 +14,7 @@ import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui
 
 import { formatarDataBR } from "../lib/rotulos";
 import { consultarVisaoNutricional } from "./api";
+import { consultarCobertura, DIAS_ATENCAO, textoCobertura } from "./coberturaEstoque";
 import { rotaOperacaoNutricional, useFiltrosNutricionais } from "./navegacao";
 import { useConsulta } from "./consulta";
 import { custoTexto, EstadoConsulta, LinkNutricional, rotaNutricao } from "./componentes";
@@ -25,6 +26,9 @@ export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolea
   const { dados, erro, carregando, carregar } = useConsulta(
     useCallback(consultarVisaoNutricional, []),
   );
+  // A cobertura de estoque chega depois da lista; a tela não espera por ela.
+  const estoque = useConsulta(useCallback(async () => dados ? consultarCobertura(dados.lotes) : null, [dados]));
+  const cobertura = estoque.erro ? null : estoque.dados ?? undefined;
   const { params, atualizar } = useFiltrosNutricionais();
   const visualizacao = useVisualizacaoConsulta("visualNutricao", "consultas", "tabela");
   const busca = params.get("buscaLote") ?? "";
@@ -49,23 +53,25 @@ export function VisaoGeralNutricao({ podeLancar = false }: { podeLancar?: boolea
   const itens = ordem.ordenar(itensBase);
   const paginacao = usePaginacaoLocal(itens, `${ordem.controle.campo}|${ordem.controle.direcao}|${busca}|${situacao}|${consultaColunas.criterios.map(c=>c.rotulo).join("|")}`);
   return <div className="nutricao-conteudo"><EstadoConsulta erro={erro} carregando={carregando} recarregar={carregar} estrutura="panorama" label="Carregando panorama nutricional…" />{dados && <>
-    <PanoramaDietas lotes={dados.lotes} verValores={dados.verValores} situacao={situacao} filtrar={valor => atualizar({situacaoDieta:valor})} />
+    <PanoramaDietas lotes={dados.lotes} verValores={dados.verValores} situacao={situacao} filtrar={valor => atualizar({situacaoDieta:valor})} cobertura={cobertura} />
+    {cobertura && <ConsumoDietas cobertura={cobertura} verValores={dados.verValores} sitios={new Map(dados.lotes.map(r => [r.lote.propriedadeId, r.lote.propriedade.nome]))} />}
     <Panel>
-      <BarraConsulta ordenacao={ordem.controle} campos={campos} edicaoFiltros={edicao} erroFiltros={consultaColunas.erro} criterios={[...consultaColunas.criterios,...(situacao?[{id:"situacao",rotulo:situacao==="programada"?"Com troca programada":situacao==="com"?"Com dieta vigente":"Sem dieta vigente",limpar:()=>atualizar({situacaoDieta:""})}]:[])]} resumo={<div className="consulta-ajuda flex items-center gap-2">
-        {dados.verValores && <AjudaCampo rotulo="Sobre o custo histórico" texto="Animais e dieta vigente refletem hoje. O custo histórico inclui todo o consumo confirmado de cada lote, excluindo estornos; não é apenas o custo da dieta vigente." />}
-      </div>}>
+      <div className="dietas-lista-cabecalho"><h2>Nutrição por lote <span>{itens.length} {itens.length === 1 ? "lote" : "lotes"}</span></h2><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da nutrição por lote" /></div>
+      <BarraConsulta ordenacao={ordem.controle} campos={campos} edicaoFiltros={edicao} erroFiltros={consultaColunas.erro} criterios={[...consultaColunas.criterios,...(situacao?[{id:"situacao",rotulo:situacao==="programada"?"Com troca programada":situacao==="com"?"Com dieta vigente":"Sem dieta vigente",limpar:()=>atualizar({situacaoDieta:""})}]:[])]} >
         <SelectCampo aria-label="Filtrar lotes por dieta" value={situacao} onValueChange={v => atualizar({situacaoDieta:v})}><option value="">Todas as situações</option><option value="sem">Sem dieta vigente</option><option value="com">Com dieta vigente</option><option value="programada">Com troca programada</option></SelectCampo>
         <BuscaLista rotulo="Buscar lote, sítio ou dieta" valor={busca} placeholder="Buscar lote, sítio ou dieta" onChange={valor => atualizar({ buscaLote: valor })} />
 
       </BarraConsulta>
-      <div className="dietas-lista-cabecalho"><h2>Nutrição por lote <span>{itens.length} lotes</span></h2><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da nutrição por lote" /></div>
-      {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : visualizacao.modo === "visual" ? <CartoesNutricao lotes={paginacao.itens} verValores={dados.verValores} podeLancar={podeLancar} /> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
+      {!itens.length ? <div className="nutricao-vazio">{dados.lotes.length ? "Nenhum lote corresponde aos filtros." : <>Nenhum lote ativo neste contexto. <LinkNutricional href="/pecuaria/rebanho/lotes">Ver lotes do rebanho</LinkNutricional></>}</div> : visualizacao.modo === "visual" ? <CartoesNutricao lotes={paginacao.itens} verValores={dados.verValores} podeLancar={podeLancar} cobertura={cobertura} /> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={filtrosDasColunas(campos,edicao,consultaColunas.erro)} rotulo="Nutrição por lote" itens={paginacao.itens} chaveDe={(r) => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote / sítio", principal: true, celula: (r) => <><LinkNutricional href={rotaNutricao({ loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", alinhamento: "direita", larguraMinima: 90, celula: (r) => r.lote.animaisAtivos },
-        { chave: "dieta", titulo: "Dieta vigente", larguraMinima: 220, celula: (r) => r.vigente ? <><strong>{r.vigente.dieta.nome}</strong><p className="nutricao-secundario">v{r.vigente.dieta.versao} · desde {formatarDataBR(r.vigente.desde)}</p></> : <Pill tone="amber">Sem dieta vigente</Pill> },
-        { chave: "programada", titulo: "Próxima troca", celula: r => r.programada ? <><Pill tone="blue">{formatarDataBR(r.programada.desde)}</Pill><p className="nutricao-secundario">{r.programada.dieta.nome} · v{r.programada.dieta.versao}</p></> : <span className="nutricao-secundario">Não programada</span> },
-        ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", celula: (r: typeof itens[number]) => <LinkNutricional className={r.vigente ? "nutricao-botao-secundario" : "nutricao-botao"} href={rotaOperacaoNutricional("atribuir", r.lote.id)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional> }] : []),
-        ...(dados.verValores ? [{ chave: "custo", titulo: "Custo histórico", alinhamento: "direita" as const, celula: (r: typeof itens[number]) => <>{custoTexto(r.custos.custoConhecido)}{r.custos.custoConhecido != null && !r.custos.coberturaCustoCompleta && <p className="nutricao-secundario">Parcial</p>}</> }] : []),
+        { chave: "dieta", titulo: "Dieta vigente", larguraMinima: 220, celula: (r) => r.vigente ? <><strong>{r.vigente.dieta.nome}</strong><p className="nutricao-secundario">desde {formatarDataBR(r.vigente.desde)}</p></> : <Pill tone="amber">Sem dieta vigente</Pill> },
+        { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (r) => r.vigente ? `v${r.vigente.dieta.versao}` : <span className="nutricao-secundario">—</span> },
+        { chave: "estoque", titulo: "Estoque", celula: (r: typeof itens[number]) => { const c = cobertura?.get(r.lote.id); return !r.vigente ? <span className="nutricao-secundario">—</span> : cobertura === undefined ? <span className="nutricao-secundario">…</span> : !c ? <span className="nutricao-secundario">Indisponível</span> : <><span className={c.dias != null && c.dias < DIAS_ATENCAO ? "nutricao-alerta-texto" : undefined}>{textoCobertura(c.dias)}</span>{c.limitante && c.dias != null && <p className="nutricao-secundario">{c.limitante.nome} acaba primeiro</p>}</>; } },
+        // A coluna de troca só aparece quando algum lote tem troca programada.
+        ...(dados.lotes.some(r => r.programada) ? [{ chave: "programada", titulo: "Próxima troca", celula: (r: typeof itens[number]) => r.programada ? <><Pill tone="blue">{formatarDataBR(r.programada.desde)}</Pill><p className="nutricao-secundario">{r.programada.dieta.nome} · v{r.programada.dieta.versao}</p></> : <span className="nutricao-secundario">—</span> }] : []),
+        ...(dados.verValores ? [{ chave: "custoDia", titulo: "Custo diário", alinhamento: "direita" as const, celula: (r: typeof itens[number]) => !r.vigente ? <span className="nutricao-secundario">—</span> : <>{textoCustoDia(cobertura?.get(r.lote.id), cobertura)}{cobertura?.get(r.lote.id) && cobertura.get(r.lote.id)!.custoDia == null && <p className="nutricao-secundario">Ingredientes sem custo no estoque</p>}{cobertura?.get(r.lote.id)?.custoParcial && <p className="nutricao-secundario">Parcial</p>}</> }, { chave: "custo", titulo: "Custo histórico", alinhamento: "direita" as const, celula: (r: typeof itens[number]) => r.custos.fechamentos === 0 ? <span className="nutricao-secundario">Sem fechamentos</span> : <>{custoTexto(r.custos.custoConhecido)}{r.custos.custoConhecido != null && !r.custos.coberturaCustoCompleta && <p className="nutricao-secundario">Parcial</p>}</> }] : []),
+        ...(podeLancar ? [{ chave: "acoes", titulo: "Ações", acoes: true, celula: (r: typeof itens[number]) => <LinkNutricional className={r.vigente ? "nutricao-botao-secundario" : "nutricao-botao"} href={rotaOperacaoNutricional("atribuir", r.lote.id)}>{r.vigente ? "Trocar dieta" : "Atribuir dieta"}</LinkNutricional> }] : []),
       ]} />}
       <PaginacaoLocal controles={paginacao.controles} substantivo="lotes" id="pagina-nutricao-lotes" />
     </Panel>

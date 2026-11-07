@@ -22,6 +22,7 @@ import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Button, Modal, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
+import { EsqueletoTabela } from "./Esqueleto";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -566,7 +567,7 @@ export function Acessos() {
             <label className="acessos-busca"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar pessoa" placeholder="Buscar nome ou e-mail" value={busca} onChange={e => setBusca(e.target.value)} /></label>
             <div className="acessos-status-filtros" aria-label="Filtrar pessoas por situação">{[["", "Todos"], ["ATIVO", "Ativos"], ["PENDENTE", "Pendentes"], ["INATIVO", "Inativos"]].map(([valor, texto]) => <button type="button" key={valor} aria-pressed={statusFiltro === valor} onClick={() => setStatusFiltro(valor)}>{texto}</button>)}</div>
           </div>
-          {carregando ? <div className="p-5 text-sm text-ink-3" role="status">Carregando pessoas…</div> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
+          {carregando ? <EsqueletoTabela label="Carregando pessoas" className="p-5" /> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
             <div className="px-[18px] py-[22px] text-[13px] text-ink-3">{users.length ? "Nenhuma pessoa encontrada. Ajuste a busca ou a situação." : "Ninguém por aqui ainda. Convide a primeira pessoa."}</div>
           ) : (
             <div className="acessos-pessoas" aria-label="Selecionar pessoa">

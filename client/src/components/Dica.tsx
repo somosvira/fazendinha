@@ -24,7 +24,9 @@ export function Dica({ conteudo, rotulo, children, className }: {
         className={cn("dica-gatilho inline-flex items-center align-middle text-ink-3 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2", className)}
         onMouseEnter={() => setAberto(true)}
         onMouseLeave={() => setAberto(false)}
-        onFocus={() => setAberto(true)}
+        // Só o foco do teclado abre: o clique também foca o botão, e o Radix devolve o
+        // foco ao gatilho quando fecha, o que reabria a dica ao tirar o mouse.
+        onFocus={(e) => { if (e.currentTarget.matches(":focus-visible")) setAberto(true); }}
         onBlur={() => setAberto(false)}
         // Mouse: o hover já abriu, o clique só mantém aberta (o toggle do Radix fecharia).
         // Toque: não há hover, então o toque alterna.
@@ -36,6 +38,7 @@ export function Dica({ conteudo, rotulo, children, className }: {
       side="top"
       className="z-[1200] w-auto max-w-xs px-3 py-2 text-[13px] font-normal normal-case leading-5 tracking-normal"
       onOpenAutoFocus={(e) => e.preventDefault()}
+      onCloseAutoFocus={(e) => e.preventDefault()}
     >{conteudo}</PopoverContent>
   </Popover>;
 }

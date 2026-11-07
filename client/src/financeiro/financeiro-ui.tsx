@@ -119,7 +119,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
 }) {
   if (total === 0 && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
-    <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <span className="text-ink-3">{(total ? (pagina - 1) * porPagina + 1 : 0).toLocaleString("pt-BR")}–{Math.min(pagina * porPagina, total).toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2 max-sm:w-full">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>

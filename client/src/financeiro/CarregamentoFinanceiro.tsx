@@ -1,6 +1,7 @@
 import { LoaderCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Esqueleto, EsqueletoCabecalho, EsqueletoTabelaCorpo } from "@/components/Esqueleto";
 
 export function AtualizandoFinanceiro({ label = "Atualizando…" }: { label?: string }) {
   return <span role="status" className="inline-flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />{label}</span>;
@@ -50,16 +51,12 @@ function SkeletonDashboard() {
 }
 
 export function SkeletonListaFinanceira({ label = "Carregando cadastros", paginaInteira = false, estrutura = "lista" }: { label?: string; paginaInteira?: boolean; estrutura?: "lista" | "dashboard" }) {
-  return <div role="status" aria-label={label} aria-busy="true" className="fin-carregamento min-w-0"><span className="sr-only">{label}…</span><div aria-hidden="true">
-    {paginaInteira && estrutura === "dashboard" ? <SkeletonDashboard /> : <div className="space-y-4">
-      {paginaInteira && <CabecalhoSkeleton />}
-      <Card className="gap-0 overflow-hidden py-0">
-        <div className="grid grid-cols-2 gap-3 border-b border-border p-4 md:grid-cols-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-9" />)}</div>
-        <div className="space-y-0 px-4">{Array.from({ length: 6 }, (_, indice) => <div key={indice} className="grid grid-cols-[2fr_1fr_1fr] items-center gap-4 border-b border-border py-4 last:border-b-0"><div className="space-y-2"><Skeleton className="h-4 w-4/5" /><Skeleton className="h-3 w-1/2" /></div><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-3/4" /></div>)}</div>
-        <div className="border-t border-border p-4"><Skeleton className="h-4 w-32" /></div>
-      </Card>
-    </div>}
-  </div></div>;
+  if (paginaInteira && estrutura === "dashboard") return <div role="status" aria-label={label} aria-busy="true" className="fin-carregamento min-w-0"><span className="sr-only">{label}…</span><div aria-hidden="true"><SkeletonDashboard /></div></div>;
+  return <Esqueleto label={label} className="fin-carregamento">
+    {paginaInteira && <EsqueletoCabecalho />}
+    {paginaInteira && <div className="flex flex-wrap gap-3"><Skeleton className="h-9 w-56 max-w-full" /><Skeleton className="h-9 w-36" /><Skeleton className="h-9 w-36" /></div>}
+    <EsqueletoTabelaCorpo />
+  </Esqueleto>;
 }
 
 export function SkeletonGraficoFinanceiro() {

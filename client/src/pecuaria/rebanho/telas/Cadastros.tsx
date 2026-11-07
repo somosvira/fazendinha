@@ -20,7 +20,6 @@ import type { CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dna, FlaskConical, History, LogOut, Pencil, Plus, Tags, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Loader } from "@/components/Loading";
 import { AcoesLinha, Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
@@ -37,6 +36,7 @@ import { FormGenitor } from "../cadastros/FormGenitor";
 import { FormMaterialGenetico } from "../cadastros/FormMaterialGenetico";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 import { CadastrosSanitarios } from "../sanidade/CadastrosSanitarios";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export type AbaCadastroRebanho = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico" | "sanidade";
 type EntidadePainel = "raca" | "motivo" | "genitor" | "material";
@@ -357,7 +357,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
     {aba === "sanidade" && <CadastrosSanitarios podeLancar={podeLancar} />}
     {carregando
-      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} /></div>
+      ? <EsqueletoTabela label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} colunas={3} className="mt-5" />
       // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>

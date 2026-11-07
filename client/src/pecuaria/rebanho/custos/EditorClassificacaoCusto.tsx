@@ -56,7 +56,7 @@ export function EditorClassificacaoCusto({ dados, aoMudarPagina,visivel, proprie
       {atual && <>
         <label className="relative">Finalidade gerencial<SelectCampo className={classeInput} value={classificacao.finalidade ?? ""} onValueChange={valorSelecionado => { aoAlterar(); setClassificacao({ ...classificacao, finalidade: (valorSelecionado || null) as Classificacao["finalidade"] }); }}>
           <option value="">Sem classificação</option><option value="REPRODUCAO">Reprodução</option><option value="SANIDADE">Sanidade</option><option value="ROTINA">Rotina/manutenção</option>
-        </SelectCampo><span className="absolute right-0 top-0"> <AjudaCampo rotulo="Ajuda sobre finalidade gerencial" texto="Finalidade gerencial independente do vínculo à tentativa ou ao protocolo."/></span></label>
+        </SelectCampo></label>
 
         {atual.tipo !== "NUTRICAO" && <>
           <label><Checkbox checked={classificacao.materialNaoAplicavel} onCheckedChange={checked => { aoAlterar(); setClassificacao({ ...classificacao, materialNaoAplicavel: checked === true }); }} /> Material não aplicável</label>

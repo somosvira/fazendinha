@@ -5,11 +5,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { FormOperacaoNutricional } from "./FormOperacaoNutricional";
 import * as api from "./api";
 import * as mensal from "./mensal-api";
-vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn() }));
+vi.mock("./mensal-api", () => ({ statusMensal: vi.fn(), configuracoesMensais: vi.fn(), mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn(), processadosMensais: async () => ({}) }));
 import * as lotesApi from "../api";
 vi.mock("../api", () => ({ buscarLote: vi.fn(), listarLotes: vi.fn() }));
-vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), atribuirDieta: vi.fn(), corrigirVigencia: vi.fn(), listarDietas: vi.fn(), listarCentrosNutricionais: vi.fn(), obterVigencia: vi.fn() }));
-vi.mock("./ConferenciaPeriodos", () => ({ ConferenciaPeriodos: ({ loteId, propriedadeId }: { loteId: string; propriedadeId: number }) => <p>Consumo {loteId} no sítio {propriedadeId}</p> }));
+vi.mock("./api", () => ({ consultarResumoNutricional: vi.fn(), atribuirDieta: vi.fn(), corrigirVigencia: vi.fn(), listarDietas: vi.fn(), listarCentrosNutricionais: vi.fn(), obterVigencia: vi.fn(), ultimoFechamentoConfirmado: vi.fn(), consultarVisaoNutricional: vi.fn(), ultimosFechamentos: vi.fn(), compartilhada: (_: string, ler: () => Promise<unknown>) => ler() }));
+vi.mock("./ConferenciaPeriodos", () => ({ ConferenciaPeriodos: ({ loteId, propriedadeId, inicial }: { loteId: string; propriedadeId: number; inicial?: { inicio: string; fim: string } }) => <p>Consumo {loteId} no sítio {propriedadeId}{inicial && ` de ${inicial.inicio} a ${inicial.fim}`}</p> }));
 const lote = { id: "lote", nome: "Matrizes", propriedadeId: 2, propriedade: { id: 2, nome: "Destino" }, ativo: true, animaisAtivos: 5, observacao: null };
 beforeEach(() => {
   vi.clearAllMocks();
@@ -19,9 +19,13 @@ beforeEach(() => {
   vi.mocked(lotesApi.buscarLote).mockResolvedValue(lote); vi.mocked(lotesApi.listarLotes).mockResolvedValue([lote]);
   vi.mocked(api.listarDietas).mockResolvedValue([{ id: "publicada", nome: "Dieta publicada", versao: 1, publicadaEm: "2026-10-01", itens: [] }, { id: "rascunho", nome: "Dieta em estudo", versao: 2, publicadaEm: null, itens: [] }]);
   vi.mocked(api.listarCentrosNutricionais).mockResolvedValue([]);
+  vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue(null);
+  vi.mocked(api.ultimosFechamentos).mockImplementation(async () => Object.fromEntries(await Promise.all((await api.consultarVisaoNutricional()).lotes.map(async r => [r.lote.id, (await api.ultimoFechamentoConfirmado(r.lote.id))?.fim ?? null]))));
   vi.mocked(api.obterVigencia).mockResolvedValue({ id: "v", loteId: "lote", desde: "2026-09-01", ate: null, dieta: { id: "publicada", nome: "Dieta publicada", versao: 1 } });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.useRealTimers(); });
+const comDieta = (desde: string) => ({ lote, vigente: { id: "v", desde, ate: null, dieta: { id: "d", nome: "Dieta", versao: 1 } }, programada: null, verValores: false, custos: { fechamentos: 0, animalDias: 0, custoConhecido: null, custoPorAnimalDia: null, coberturaCustoCompleta: true } });
+const fixarHoje = () => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-11-04T12:00:00-03:00")); };
 describe("formulários próprios de nutrição", () => {
   it("no consolidado requer lote explícito e atribui apenas uma versão publicada ao sítio desse lote", async () => {
     const onSalvo = vi.fn();
@@ -70,20 +74,55 @@ describe("formulários próprios de nutrição", () => {
     await screen.findByText("A vigência não pertence a este lote.");
     expect(screen.queryByRole("button", { name: "Confirmar correção" })).toBeNull();
   });
-  it("reutiliza a conferência de períodos com lote e sítio fixos, sem incluir o histórico na tela", async () => {
+  it("abre a conferência do dia seguinte ao último fechamento até ontem, com lote e sítio fixos", async () => {
+    fixarHoje();
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue(comDieta("2026-10-01"));
+    vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-20" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
-    await screen.findByText("Consumo lote no sítio 2");
+    await screen.findByText("Consumo lote no sítio 2 de 2026-10-21 a 2026-11-03");
+    expect(screen.getByText("14 dias a fechar por período · 21/10/2026 a 03/11/2026")).toBeTruthy();
+    expect(screen.getByText("Fechamento por período")).toBeTruthy();
     expect(screen.queryByText("Histórico de fechamentos")).toBeNull();
   });
-  it("novo fechamento indica a forma mensal do lote e guarda o período anterior à adoção", async () => {
+  it("lote sem dieta não abre conferência", async () => {
+    render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByText(/não tem dieta vigente/);
+    expect(screen.queryByText(/Consumo lote/)).toBeNull();
+  });
+  it("lote mensal fecha por período só os dias anteriores à adoção, já abertos", async () => {
+    fixarHoje();
     vi.mocked(mensal.statusMensal).mockResolvedValue({ habilitada: true, automacao: true });
-    vi.mocked(mensal.configuracoesMensais).mockResolvedValue([{ id: "c", propriedadeId: 2, loteId: null, modelo: "MANUAL", diaConferencia: 5, autorizaValidade: false, desde: "2026-01-01" }, { id: "e", propriedadeId: 2, loteId: "lote", modelo: "PROVISORIO", diaConferencia: 5, autorizaValidade: false, desde: "2099-01-01" }]);
+    vi.mocked(mensal.configuracoesMensais).mockResolvedValue([{ id: "c", propriedadeId: 2, loteId: null, modelo: "MANUAL", diaConferencia: 5, autorizaValidade: false, desde: "2026-11-01" }]);
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue(comDieta("2026-10-01"));
+    vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-25" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
     expect(await screen.findByRole("heading", { name: "Novo fechamento · Matrizes" })).toBeTruthy();
-    await screen.findByText("Mensal · Confirmar antes de baixar");
-    expect(screen.getByRole("link", { name: "Abrir fechamento mensal" }).getAttribute("href")).toContain("aba=fechamentos&loteId=lote");
-    expect(screen.getByText(/A partir de 01\/01\/2099, exceção do lote: estimar e baixar no fechamento\./)).toBeTruthy();
-    expect(screen.getByText("Fechar períodos anteriores a 01/01/2026")).toBeTruthy();
+    await screen.findByText(/Desde 01\/11\/2026, o lote usa o fechamento/);
+    expect(screen.getByText("diário manual")).toBeTruthy();
+    expect(screen.getByText(/conferência no dia 5 do mês seguinte/)).toBeTruthy();
+    expect(screen.getByText("Consumo lote no sítio 2 de 2026-10-26 a 2026-10-31")).toBeTruthy();
+  });
+  it("lote mensal sem dias anteriores pendentes leva aos fechamentos mensais", async () => {
+    fixarHoje();
+    vi.mocked(mensal.statusMensal).mockResolvedValue({ habilitada: true, automacao: true });
+    vi.mocked(mensal.configuracoesMensais).mockResolvedValue([{ id: "c", propriedadeId: 2, loteId: null, modelo: "AUTOMATICO", diaConferencia: 5, autorizaValidade: false, desde: "2026-11-01" }]);
+    vi.mocked(api.consultarResumoNutricional).mockResolvedValue(comDieta("2026-10-01"));
+    vi.mocked(api.ultimoFechamentoConfirmado).mockResolvedValue({ fim: "2026-10-31" } as Awaited<ReturnType<typeof api.ultimoFechamentoConfirmado>>);
+    render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
+    const link = await screen.findByRole("link", { name: "Ver fechamentos do lote" });
+    expect(link.getAttribute("href")).toContain("aba=fechamentos&loteId=lote");
+    expect(screen.queryByText(/Consumo lote/)).toBeNull();
+  });
+  it("sem lote definido lista só lotes com dieta, com a situação de cada um", async () => {
+    fixarHoje();
+    const outro = { ...lote, id: "outro", nome: "Secas" };
+    vi.mocked(lotesApi.listarLotes).mockResolvedValue([lote, outro]);
+    vi.mocked(api.consultarVisaoNutricional).mockResolvedValue({ verValores: false, lotes: [comDieta("2026-11-01"), { ...comDieta("2026-11-01"), lote: outro, vigente: null }] });
+    render(<FormOperacaoNutricional acao="consumo" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByText(/Lotes sem dieta vigente não aparecem/);
+    fireEvent.click(screen.getByLabelText("Lote"));
+    expect(await screen.findByRole("option", { hidden: true, name: "Matrizes · Destino · 3 dias a fechar" })).toBeTruthy();
+    expect(screen.queryByRole("option", { hidden: true, name: /Secas/ })).toBeNull();
   });
 });
 
@@ -106,10 +145,9 @@ it("resolve o modelo pela data e prioriza exceção do lote sobre padrão mais r
     { id: "futura", propriedadeId: 2, loteId: "lote", modelo: "PROVISORIO", diaConferencia: 12, autorizaValidade: false, desde: "2030-01-01" },
   ]);
   render(<FormOperacaoNutricional acao="atribuir" loteId="lote" dietaInicialId="publicada" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
-  await screen.findByText(/Confirmar antes de baixar · Conferência dia 9/);
-  expect(screen.getByText(/processamento automático diário está desativado/)).toBeTruthy();
+  await screen.findByText(/Diário manual · Conferência dia 9/);
   await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/01/2030" } });
-  expect(screen.getByText(/Estimar e baixar no fechamento · Conferência dia 12/)).toBeTruthy();
+  expect(screen.getByText(/Mensal · Conferência dia 12/)).toBeTruthy();
   await alterarControle(screen.getByPlaceholderText("dd/mm/aaaa"), { target: { value: "03/07/2026" } });
   expect(screen.getByText(/Sem configuração mensal vigente/)).toBeTruthy();
 });

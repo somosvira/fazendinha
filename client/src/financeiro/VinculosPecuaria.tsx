@@ -6,6 +6,7 @@ import { comPropriedade } from "../propriedadeScope";
 import { navegarPara } from "../router";
 import { podeAcessarArea } from "../estoque/navegacao";
 import { dataBR, Empty } from "./financeiro-ui";
+import { EsqueletoLista } from "../components/Esqueleto";
 
 type Vinculo = { tipo: "APLICACAO" | "EXAME" | "PROTOCOLO" | "TENTATIVA"; id: string; propriedadeId: number; animalId: string; animalBrinco: string; data: string; nome: string; situacao: string; quantidadeDestinada: string | null; rateioServico: string | null };
 type Dados = { fatos: Vinculo[]; itensDiretos: Array<{ id: string; descricao: string; unidade: string; quantidadeComprada: string; quantidadeDestinada: string; quantidadeDisponivel: string }> };
@@ -28,7 +29,7 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
     <h2 className="flex items-center gap-3 text-base font-semibold text-ink"><span className="fin-section-icon"><Link aria-hidden /></span>Procedimentos vinculados<AjudaCampo rotulo="Ajuda: custos dos procedimentos" texto={<>Esta é a origem financeira dos procedimentos, sem nova despesa. O custo do medicamento e o rateio do Serviço são separados.</>} /></h2>
 
     {erro && <p className="mt-3 text-sm text-destructive">{erro} <Button variant="link" type="button" className="h-auto p-0 underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></p>}
-    {!dados && !erro && <p className="mt-3 text-sm">Carregando vínculos…</p>}
+    {!dados && !erro && <EsqueletoLista label="Carregando vínculos" itens={2} className="mt-3" />}
     {dados && <>
       {dados.itensDiretos.map((i) => <p key={i.id} className="mt-3 rounded-lg bg-surface-2 p-3 text-sm"><strong>{i.descricao}</strong> · comprado {i.quantidadeComprada} {i.unidade} · destinado {i.quantidadeDestinada} {i.unidade} · disponível {i.quantidadeDisponivel} {i.unidade}</p>)}
       {dados.fatos.length === 0 ? <Empty>Nenhum procedimento vinculado.</Empty> : <div className="mt-3 grid gap-2">{dados.fatos.map((f) => {

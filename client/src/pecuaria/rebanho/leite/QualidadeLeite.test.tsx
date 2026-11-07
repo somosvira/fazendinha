@@ -185,7 +185,7 @@ it("correção só de datas de coleta pendente omite resultados e mantém motivo
   expect(payload).toMatchObject({ versaoEsperada: 2, motivo: "Conferido no laudo", dataRecebimentoLaudo: "2026-10-16" });
   expect(payload).not.toHaveProperty("resultados");
   expect(payload).not.toHaveProperty("dataResultadoLaboratorial");
-  expect((detalhe.getByLabelText("Data de recebimento do laudo (opcional)") as HTMLInputElement).value).toBe("2026-10-16");
+  expect((detalhe.getByLabelText("Data de recebimento do laudo (opcional)") as HTMLInputElement).value).toBe("16/10/2026");
 });
 it("limpa explicitamente uma data, preserva a outra e mostra datas do histórico", async () => {
   const item = { ...amostra, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z" };

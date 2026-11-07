@@ -1,6 +1,7 @@
+import { projetarAptidaoReprodutiva, type AptidaoReprodutiva } from "./aptidao-geral.calc.js";
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { avaliarCriteriosAptidao, type EvidenciaPesoAptidao, type EvidenciaEccAptidao, type NecessidadeAptidao, type ClasseReprodutivaAptidao } from "./criterios-aptidao.calc.js";
-import { concluirAptidaoClinica, evidenciaDecisaoAptidaoVigente, type EvidenciaToqueAptidao, type AptidaoClinica } from "./toque-aptidao.calc.js";
+import { type EvidenciaToqueAptidao, type AptidaoClinica } from "./toque-aptidao.calc.js";
 import { desfechoGestacao } from "./desfecho-gestacao.calc.js";
 import type { ParametrosElegibilidade } from "./elegibilidade.schemas.js";
 import { calcularContextoAnimalNaData, dataCalendarioContexto, type HistoricoContextoAnimal } from "./contexto-animal.calc.js";
@@ -27,6 +28,7 @@ export type EntradaElegibilidade = {
   decisoes: readonly DecisaoElegibilidade[];
   papel: string | null; papelConflitante: boolean; descarte: boolean | null;
   restricoes: readonly { id: string; data: Date; ate: Date | null; status: string }[];
+  impedimentosSanitarios?: readonly { id: string; data: Date; ate: Date | null; status: string }[];
   situacaoReprodutiva: string; perdaGestacionalEm: Date | null;
   pendenciasContexto?: string[];
   classeReprodutiva?: ClasseReprodutivaAptidao;
@@ -36,8 +38,10 @@ export type EntradaElegibilidade = {
 };
 export type ElegibilidadeNaData = {
   animalId: string; propriedadeId: number; dataReferencia: string;
+  aptidao: AptidaoReprodutiva;
+  situacaoReprodutiva: string;
   estado: "ELEGIVEL" | "NAO_ELEGIVEL" | "PENDENTE";
-  /** Base antes do resultado gestacional; usada para tratar tentativas pendentes no indicador. */
+  /** Alias legado da aptidão geral. Indicadores publicados usam calculadora versionada própria. */
   baseElegivel: boolean | null; elegivel: boolean | null;
   aptidaoClinica?: AptidaoClinica; necessidadeAptidao?: NecessidadeAptidao | null;
   pevOriginalAte?: string | null; revisaoDecisaoNecessaria?: boolean;
@@ -47,103 +51,42 @@ export type ElegibilidadeNaData = {
   motivos: string[]; alertas: string[]; restricaoIds: string[];
 };
 const diaTexto = (d: Date) => dataCalendarioContexto(d).toISOString().slice(0, 10);
-const depois = (a: Date, b: Date) => dataCalendarioContexto(a) > dataCalendarioContexto(b);
 const somarDias = (d: Date, n: number) => new Date(dataCalendarioContexto(d).getTime() + n * 86_400_000);
 
 /** Projeção clínica por data. Sem acesso ao banco, defaults clínicos ou estimativa de prenhez. */
 export function calcularElegibilidadeNaData(input: EntradaElegibilidade): ElegibilidadeNaData {
   const ref = dataCalendarioContexto(input.referencia);
-  const motivos: string[] = [], alertas: string[] = [];
-  const ciclo = input.ciclo && !depois(input.ciclo.inicioCiclo, ref) ? input.ciclo : null;
-  const vinculo = input.vinculo?.chaveCiclo === ciclo?.chaveCiclo ? input.vinculo : null;
-  const politica = vinculo?.politicaId === input.politica?.id ? input.politica : null;
-  const decisoes = input.decisoes.filter(d => d.status === "VALIDO" && !depois(d.data, ref) && ciclo && !depois(ciclo.inicioCiclo, d.data))
-    .sort((a, b) => b.data.getTime() - a.data.getTime() || b.criadoEm.getTime() - a.criadoEm.getTime() || b.id.localeCompare(a.id));
-  const ultimaDecisao = vinculo ? decisoes[0] ?? null : null;
-  const aptidaoClinica = concluirAptidaoClinica(input.toques ?? [], ref);
-  const revisaoDecisaoNecessaria = Boolean(ultimaDecisao?.exameAptidaoId && (
-    aptidaoClinica.exameId !== ultimaDecisao.exameAptidaoId
-    || !evidenciaDecisaoAptidaoVigente(input.toques?.find(e => e.id === ultimaDecisao.exameAptidaoId), ultimaDecisao.exameAptidaoSnapshot)
-    || input.toques?.some(e => e.status !== "VALIDO" && e.data <= ref && e.atualizadoEm > ultimaDecisao.criadoEm)
-  ));
-  const decisao = revisaoDecisaoNecessaria ? null : ultimaDecisao;
-  let pevOriginalAte: Date | null = null;
-  let aptaDesde: Date | null = null;
-  const base: { valor: boolean | null } = { valor: true };
-  const excluir = (motivo: string) => { motivos.push(motivo); base.valor = false; };
-  const pendente = (motivo: string) => { motivos.push(motivo); if (base.valor !== false) base.valor = null; };
-  for(const motivo of input.pendenciasContexto??[])pendente(motivo);
-  if (input.sexo !== "F") excluir("ANIMAL_NAO_FEMEA");
-  if (input.baixaEm && !depois(input.baixaEm, ref)) excluir("ANIMAL_BAIXADO");
-  else if (input.localizacaoConflitante) pendente("LOCALIZACOES_CONFLITANTES");
-  else if (input.propriedadeNaData === null) pendente("LOCALIZACAO_DESCONHECIDA");
-  else if (input.propriedadeNaData !== input.propriedadeId) excluir("FORA_DO_SITIO");
-  if (!ciclo) pendente("CICLO_DESCONHECIDO");
-  else if (!vinculo) pendente("POLITICA_CICLO_NAO_CONGELADA");
-  else if (input.politicaInvalida) pendente("POLITICA_INVALIDA");
-  else if (!politica && decisao?.tipo !== "LIBERAR") pendente("POLITICA_AUSENTE_NO_INICIO_CICLO");
-  else if (!politica) {
-    aptaDesde = decisao?.aptaDesde ?? null;
-    alertas.push("LIBERACAO_INDIVIDUAL_SEM_POLITICA");
-    if (!aptaDesde) pendente("LIBERACAO_EXPLICITA_NECESSARIA");
-    else if (depois(aptaDesde, ref)) excluir("EM_ESPERA_PARA_LIBERACAO");
-    if (input.descarte) excluir("MATRIZ_DESCARTE");
-    if (input.papelConflitante || !input.papel) pendente("PAPEL_DESCONHECIDO");
-  }
+  const aptidao = projetarAptidaoReprodutiva({ ...input, referencia: ref });
+  const ciclo = input.ciclo && input.ciclo.inicioCiclo <= ref ? input.ciclo : null;
+  const politica = input.politica ?? (input.parametrosNecessidade && input.politicaNecessidade ? { ...input.politicaNecessidade, parametros: input.parametrosNecessidade } : null);
   const parametros = politica?.parametros;
-  if (decisao?.tipo === "BLOQUEAR") excluir("BLOQUEIO_INDIVIDUAL");
-  if (parametros && ciclo) {
-    if (input.papelConflitante) pendente("PAPEIS_CONFLITANTES");
-    else if (!input.papel) pendente("PAPEL_DESCONHECIDO");
-    else if (!parametros.papeisIncluidos.some(p => p === input.papel)) excluir("PAPEL_EXCLUIDO");
-    if (input.descarte === null) pendente("DESCARTE_DESCONHECIDO");
-    else if (input.descarte && parametros.descarte === "EXCLUIR") excluir("MATRIZ_DESCARTE");
-    if (ciclo.partoId) {
-      if (ciclo.aborto) {
-        if (parametros.aborto === "PEV_CONFIGURADO" && parametros.pevAposAbortoDias !== null)
-          aptaDesde = somarDias(ciclo.inicioCiclo, parametros.pevAposAbortoDias);
-      } else if (ciclo.paridade !== null && ciclo.paridade >= 1)
-        aptaDesde = somarDias(ciclo.inicioCiclo, ciclo.paridade === 1 ? parametros.pevPrimiparasDias : parametros.pevMultiparasDias);
-    } else aptaDesde = ciclo.aptaDesdeInicial;
-    pevOriginalAte = aptaDesde;
-    if (decisao?.tipo === "LIBERAR") aptaDesde = decisao.aptaDesde;
-    if (parametros.versao === 2 && !(decisao?.tipo === "LIBERAR" && decisao.exameAptidaoId)) pendente("DECISAO_APTIDAO_NECESSARIA");
-    if (!aptaDesde && decisao?.tipo !== "BLOQUEAR") pendente("LIBERACAO_EXPLICITA_NECESSARIA");
-    if (aptaDesde && depois(aptaDesde, ref)) excluir("EM_ESPERA_PARA_LIBERACAO");
-    if (input.perdaGestacionalEm && !depois(input.perdaGestacionalEm, ref) && parametros.perdaGestacional === "EXIGE_LIBERACAO"
-      && !(decisao?.tipo === "LIBERAR" && !depois(input.perdaGestacionalEm, decisao.data))) excluir("PERDA_AGUARDA_LIBERACAO");
-  }
-  if (revisaoDecisaoNecessaria) pendente("EXAME_ALTERADO_REVISAR_DECISAO");
-  const criteriosNecessidade = input.parametrosNecessidade?.criteriosAptidao ?? parametros?.criteriosAptidao;
-  const necessidadeAptidao = criteriosNecessidade ? avaliarCriteriosAptidao({
-    ...criteriosNecessidade, animalId: input.animalId, chaveCiclo: ciclo?.chaveCiclo ?? "INICIAL", referencia: ref,
-    classeReprodutiva: input.classeReprodutiva ?? (ciclo?.partoId || (ciclo?.paridade ?? 0) > 0 ? "VACA" : "NAO_DETERMINADA"),
+  const criterios = input.parametrosNecessidade?.criteriosAptidao ?? parametros?.criteriosAptidao;
+  const necessidadeAptidao = criterios ? avaliarCriteriosAptidao({
+    ...criterios, animalId: input.animalId, chaveCiclo: ciclo?.chaveCiclo ?? "INICIAL", referencia: ref,
+    classeReprodutiva: input.classeReprodutiva ?? (ciclo?.partoId ? "VACA" : "NAO_DETERMINADA"),
     parto: ciclo?.partoId ? ciclo.inicioCiclo : null, dataNascimento: input.dataNascimento ?? null,
     pesagens: input.pesagens ?? [], escores: input.escores ?? [],
   }) : null;
   if (necessidadeAptidao) {
     necessidadeAptidao.evidenciaIds.push(...input.evidenciaClasseIds ?? []);
-    if (input.classeReprodutivaConflitante && necessidadeAptidao.estado !== "MANUAL")
-      necessidadeAptidao.pendencias = necessidadeAptidao.pendencias.map(p => p === "CLASSE_REPRODUTIVA_NAO_COMPROVADA" ? "CLASSE_REPRODUTIVA_CONFLITANTE" : p);
+    if (input.classeReprodutivaConflitante) necessidadeAptidao.pendencias = necessidadeAptidao.pendencias.map(p => p === "CLASSE_REPRODUTIVA_NAO_COMPROVADA" ? "CLASSE_REPRODUTIVA_CONFLITANTE" : p);
+    Object.assign(necessidadeAptidao, { politicaId: input.politicaNecessidade?.id ?? politica?.id ?? null, politicaVersao: input.politicaNecessidade?.versao ?? politica?.versao ?? null });
   }
-  if (necessidadeAptidao) Object.assign(necessidadeAptidao, { politicaId: input.politicaNecessidade?.id ?? politica?.id ?? null, politicaVersao: input.politicaNecessidade?.versao ?? politica?.versao ?? null });
-  const restricoes = input.restricoes.filter(r => r.status === "VALIDO" && !depois(r.data, ref) && (!r.ate || depois(r.ate, ref)));
-  if (restricoes.length) {
-    if (!parametros || parametros.restricoes === "EXCLUIR") excluir("RESTRICAO_REPRODUTIVA");
-    else alertas.push("RESTRICAO_REPRODUTIVA");
-  }
-  let elegivel: boolean | null = base.valor;
-  if (input.situacaoReprodutiva === "GESTANTE") { elegivel = false; motivos.push("GESTACAO_CONFIRMADA"); }
-  else if (base.valor !== false && input.situacaoReprodutiva === "AGUARDANDO_DIAGNOSTICO") { elegivel = null; motivos.push("DIAGNOSTICO_PENDENTE"); }
-  else if (base.valor !== false && !["VAZIA", "APTA"].includes(input.situacaoReprodutiva)) { elegivel = null; motivos.push("SITUACAO_REPRODUTIVA_DESCONHECIDA"); }
-  if (elegivel === true) motivos.push(decisao?.tipo === "LIBERAR" ? "LIBERACAO_INDIVIDUAL" : "LIBERACAO_PELA_POLITICA");
-  return { animalId: input.animalId, propriedadeId: input.propriedadeId, dataReferencia: diaTexto(ref),
-    estado: elegivel === true ? "ELEGIVEL" : elegivel === false ? "NAO_ELEGIVEL" : "PENDENTE", baseElegivel: base.valor, elegivel,
-    aptaDesde: aptaDesde ? diaTexto(aptaDesde) : null,
-    ciclo: ciclo ? { chaveCiclo: ciclo.chaveCiclo, inicioCiclo: diaTexto(ciclo.inicioCiclo), partoId: ciclo.partoId } : null,
-    vinculoCicloId: vinculo?.id ?? null, politicaId: politica?.id ?? input.politicaInvalida?.id ?? null, politicaVersao: politica?.versao ?? input.politicaInvalida?.versao ?? null,
-    metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: ultimaDecisao?.id ?? null, aptidaoClinica, necessidadeAptidao,
-    pevOriginalAte: pevOriginalAte ? diaTexto(pevOriginalAte) : null, revisaoDecisaoNecessaria, motivos, alertas, restricaoIds: restricoes.map(r => r.id).sort() };
+  // O prazo é contexto histórico, não uma segunda decisão nem um veto ao exame apto.
+  const pevOriginalAte = ciclo?.partoId && !ciclo.aborto && input.politica && ciclo.paridade !== null
+    ? diaTexto(somarDias(ciclo.inicioCiclo, ciclo.paridade === 1 ? input.politica.parametros.pevPrimiparasDias : input.politica.parametros.pevMultiparasDias)) : null;
+  const elegivel = aptidao.estado === "APTA" ? true : aptidao.estado === "NAO_APTA" ? false : null;
+  return { animalId: input.animalId, propriedadeId: input.propriedadeId, dataReferencia: diaTexto(ref), aptidao, situacaoReprodutiva: input.situacaoReprodutiva === "APTA" ? "DESCONHECIDA" : input.situacaoReprodutiva,
+    // Aliases de transporte mantidos para consumidores históricos; mesma fonte de decisão.
+    estado: elegivel === true ? "ELEGIVEL" : elegivel === false ? "NAO_ELEGIVEL" : "PENDENTE", elegivel, baseElegivel: elegivel,
+    aptidaoClinica: { ...aptidao, estado: aptidao.estado === "PENDENTE" ? "NAO_DETERMINADA" : aptidao.estado, resultado: null },
+    necessidadeAptidao, pevOriginalAte, revisaoDecisaoNecessaria: false,
+    aptaDesde: elegivel ? aptidao.data : null, ciclo: ciclo ? { chaveCiclo: ciclo.chaveCiclo, inicioCiclo: diaTexto(ciclo.inicioCiclo), partoId: ciclo.partoId } : null,
+    vinculoCicloId: input.vinculo?.id ?? null, politicaId: politica?.id ?? null, politicaVersao: politica?.versao ?? null,
+    metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: aptidao.bloqueioAnteriorId, motivos: aptidao.motivos,
+    alertas: pevOriginalAte && aptidao.estado === "APTA" && aptidao.data && aptidao.data < pevOriginalAte ? ["PEV_ANTECIPADO_POR_EXAME"] : [],
+    restricaoIds: input.restricoes.filter(r => r.status === "VALIDO" && r.data <= ref && (!r.ate || r.ate > ref)).map(r => r.id) };
+
 }
 
 /** Conjunto carregado uma vez para avaliar várias datas sem consultas por animal/dia. */
@@ -164,6 +107,7 @@ export type DadosElegibilidade = {
   pesagens?: Array<EvidenciaPesoAptidao & { animalId: string }>;
   escores?: Array<EvidenciaEccAptidao & { animalId: string }>;
   toques?: EvidenciaToqueAptidao[];
+  impedimentosSanitarios?: Array<{ id: string; animalId: string; data: Date; ate: Date | null; status: string }>;
   baixas: Array<{ animalId: string; data: Date; estornadaEm: Date | null }>;
 };
 
@@ -208,15 +152,11 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
       ciclo, vinculo, politica: politica && parametros?.success ? { id: politica.id, versao: politica.versao, parametros: parametros.data } : null,
       politicaInvalida: politica && !parametros?.success ? { id: politica.id, versao: politica.versao } : undefined,
       decisoes: dados.decisoes.filter(d => d.vinculoCicloId === vinculo?.id), papel: papel.papel, papelConflitante: papel.estado === "CONFLITO", descarte,
+      impedimentosSanitarios: porAnimal(dados.impedimentosSanitarios ?? [], animal.id),
       restricoes: restricoes.filter(r => r.tipo !== "DESCARTE"), situacaoReprodutiva: contexto.situacaoReprodutiva, perdaGestacionalEm: perda?.encerradaEm ?? null };
     const item=calcularElegibilidadeNaData(entrada);
     if (contexto.pendencias.includes("GESTACOES_SOBREPOSTAS")) {
       item.motivos.push("GESTACOES_CONFLITANTES");
-      if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
-    }
-    if (vinculo?.situacaoInicialId && vinculo.inicioCiclo <= ref && !iniciais.some(i => i.id === vinculo.situacaoInicialId)) {
-      item.motivos.push("ORIGEM_INICIAL_ANULADA");
-      item.baseElegivel = null;
       if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
     }
     if (encerradas.some(g => desfechoGestacao(g, partos) === "NAO_IDENTIFICADO")) {
@@ -224,13 +164,17 @@ export function calcularElegibilidadesDoConjunto(dados: DadosElegibilidade, prop
       if (item.elegivel !== false) { item.elegivel = null; item.estado = "PENDENTE"; }
     }
     entrada.pendenciasContexto=item.motivos.filter(m=>["GESTACOES_CONFLITANTES","ORIGEM_INICIAL_ANULADA","ENCERRAMENTO_GESTACAO_DESCONHECIDO"].includes(m));
+    if (entrada.pendenciasContexto.length) {
+      const atualizado = calcularElegibilidadeNaData(entrada);
+      Object.assign(item, atualizado);
+    }
     entradas?.set(animal.id,entrada);
     resultado.set(animal.id, item);
   }
   return resultado;
 }
 
-/** A avaliação admite fêmeas em PEV; disponibilidade para IA/TE é decidida separadamente. */
+/** A avaliação pode acontecer durante o PEV; a conclusão alimenta a aptidão geral. */
 export function permiteAvaliacaoAptidao(elegibilidade: Pick<ElegibilidadeNaData, "motivos">): boolean {
   return !elegibilidade.motivos.some(m => ["ANIMAL_NAO_FEMEA", "ANIMAL_BAIXADO", "FORA_DO_SITIO", "LOCALIZACAO_DESCONHECIDA", "LOCALIZACOES_CONFLITANTES"].includes(m));
 }

@@ -10,7 +10,6 @@ import { ResumoPesagensLote } from "./ResumoPesagensLote";
 import { useCallback, useEffect, useState } from "react";
 import { ArrowLeft, ArrowRightLeft, Calendar, TrendingUp, Users, Weight } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Loader } from "@/components/Loading";
 import {
   buscarLote, buscarResumoLote, editarLote, listarAnimais, listarMovimentacoesDoLote, obterCatalogos, RebanhoApiError,
 } from "../api";
@@ -32,6 +31,7 @@ import { NutricaoLote } from "../nutricao/NutricaoLote";
 import { AgendaSanitaria } from "../sanidade/AgendaSanitaria";
 import { HistoricoSanitario } from "../sanidade/HistoricoSanitario";
 import { linkFichaAnimal } from "../lib/navegacao";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 const SECOES_LOTE = [["resumo", "Resumo"], ["animais", "Animais"], ["baixas", "Baixas"], ["historico", "Movimentações"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["alteracoes", "Alterações"]] as const;
@@ -152,7 +152,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
     finally { setProcessandoLote(false); }
   };
 
-  if (!lote) return <PaginaFinanceira><button onClick={onVoltar} className="rebanho-voltar"><ArrowLeft size={16} /> {rotuloVoltar}</button><PageHeader titulo="Lote" /><ErrorBox erro={erro} />{!erro && <div className="rebanho-carregamento"><Loader label="Carregando lote" /></div>}</PaginaFinanceira>;
+  if (!lote) return <PaginaFinanceira><button onClick={onVoltar} className="rebanho-voltar"><ArrowLeft size={16} /> {rotuloVoltar}</button><PageHeader titulo="Lote" /><ErrorBox erro={erro} />{!erro && <EsqueletoFicha label="Carregando lote" />}</PaginaFinanceira>;
 
   const totalPaginasAnimais = Math.max(1, Math.ceil(totalAnimais / ITENS_POR_PAGINA));
   const totalPaginasBaixados = Math.max(1, Math.ceil(totalBaixados / ITENS_POR_PAGINA));

@@ -1,3 +1,6 @@
+import { previaProgramacaoSchema, preverProgramacaoColetiva } from "../../services/pecuaria/protocolos/previa-programacao.js";
+import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
+import { preverExcecaoAutomacao, obterPreparacaoAutomacao, listarLembretesAutomacoes, preverAutomacoesAdesao, previaAutomacoesAdesaoSchema, ativarAutomacao, ativarAutomacaoSchema, listarAutomacoes, revisarAutomacao, revisarAutomacaoSchema, registrarExcecaoAutomacao, excecaoAutomacaoSchema } from "../../services/pecuaria/protocolos/automacao.js";
 import { listarInsercoesTarefa,listarServicosManejo } from "../../services/pecuaria/protocolos/execucao.manejos.js";
 import { reconhecerInsercaoDispositivo,reconhecerInsercaoSchema,listarAplicacoesReconhecerInsercao,listarManejosProtocolosAnimal,obterManejoProtocolar,anularManejoProtocolar,corrigirManejoProtocolar,corrigirManejoProtocoloSchema,regularizarManejoProtocolar } from "../../services/pecuaria/protocolos/manejos-correcao.js";
 import { anularManejoProtocoloSchema } from "../../services/pecuaria/protocolos/execucao.manejos.schemas.js";
@@ -25,6 +28,7 @@ import { consultaProtocolosAnimalSchema, listarProtocolosAnimal } from "../../se
 
 const uuid = z.string().uuid();
 const participacaoSchema = z.object({
+  automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(),
   alertaId: uuid.optional(), alertaRevisao: z.number().int().positive().optional(), confirmarCuidadoAlerta: z.literal(true).optional(),
   chave: uuid, propriedadeId: z.number().int().positive().max(2147483647),
   tipo: z.enum(["SANITARIO", "REPRODUTIVO"]), protocoloId: uuid, animalId: uuid,
@@ -52,7 +56,7 @@ function falha(c: Context, erro: unknown) {
 export const protocolosOperacaoRouter = new Hono().use("*", async (c, next) => {
   const usuario = getUsuario(c);
   if (!usuario || !temArea(usuario, "pecuaria")) return c.json({ error: "Acesso à Pecuária necessário", code: "SEM_PERMISSAO" }, 403);
-  const previa = c.req.method === "POST" && /\/participacoes\/previa\/?$/.test(c.req.path);
+  const previa = c.req.method === "POST" && /\/(participacoes\/previa|automacoes\/previa-adesao)\/?$/.test(c.req.path);
   if (c.req.method !== "GET" && !previa && !temPermissao(usuario, "lancar"))
     return c.json({ error: "Permissão para lançar necessária", code: "SEM_PERMISSAO" }, 403);
   await next();
@@ -92,6 +96,9 @@ for (const familia of ["programacoes", "participacoes"] as const) {
   protocolosOperacaoRouter.get(`/${familia}/:id`, async c => {
     try { return c.json(await consultas.obterCabecalhoOperacao(contexto(c), await resolverEscopoLeitura(c), getUsuario(c))); } catch (e) { return falha(c, e); }
   });
+  protocolosOperacaoRouter.get(`/${familia}/:id/automacoes`, async c => {
+    try { return c.json(await listarAutomacoes(await resolverEscopoEscrita(c), contexto(c))); } catch (e) { return falha(c, e); }
+  });
   protocolosOperacaoRouter.get(`/${familia}/:id/momentos`, async c => {
     try { return c.json(await consultas.listarMomentosOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c))); } catch(e) { return falha(c,e); }
   });
@@ -103,6 +110,12 @@ for (const familia of ["programacoes", "participacoes"] as const) {
   });
   protocolosOperacaoRouter.get(`/${familia}/:id/procedimentos`, async c => {
     try { return c.json(await consultas.listarProcedimentosOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c), getUsuario(c))); } catch (e) { return falha(c, e); }
+  });
+  protocolosOperacaoRouter.get(`/${familia}/:id/custos-etapas`, async c => {
+    try { return c.json(await consultas.listarCustosEtapasOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c), getUsuario(c))); } catch (e) { return falha(c, e); }
+  });
+  protocolosOperacaoRouter.get(`/${familia}/:id/agenda-etapas`, async c => {
+    try { return c.json(await consultas.listarAgendaEtapasOperacao(contexto(c), await resolverEscopoLeitura(c), consulta(c))); } catch (e) { return falha(c, e); }
   });
 }
 protocolosOperacaoRouter.get("/tarefas/:id/eventos", async c => {
@@ -125,6 +138,8 @@ protocolosOperacaoRouter.post("/participacoes/previa", async c => {
 protocolosOperacaoRouter.post("/participacoes", async c => {
   try {
     const { tipo, ...input } = participacaoSchema.parse(await c.req.json());
+    if (input.automacoes?.some(i => i.dados.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
+    if (input.automacoes?.length && tipo !== "REPRODUTIVO") throw new RebanhoError("VALIDACAO", "Automação disponível somente para protocolos reprodutivos");
     if (input.alertaId && tipo !== "SANITARIO") throw new RebanhoError("VALIDACAO", "Este alerta exige um protocolo sanitário");
     const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId);
     const resultado = tipo === "REPRODUTIVO"
@@ -173,3 +188,62 @@ protocolosOperacaoRouter.get("/tarefas/:id/exames",async c=>{try{const {propried
 
 protocolosOperacaoRouter.get("/tarefas/:id/aplicacoes-insercao",async c=>{try{const p=paginaExecucaoSchema.parse({pagina:c.req.query("pagina"),porPagina:c.req.query("porPagina")});return c.json(await listarAplicacoesReconhecerInsercao(uuid.parse(c.req.param("id")),await resolverEscopoEscrita(c),p.pagina));}catch(e){return falha(c,e);}});
 protocolosOperacaoRouter.post("/tarefas/:id/reconhecer-insercao",async c=>{try{const i=reconhecerInsercaoSchema.parse(await c.req.json());return c.json(await reconhecerInsercaoDispositivo(uuid.parse(c.req.param("id")),{...i,propriedadeId:await resolverEscopoEscrita(c,i.propriedadeId)},usuarioId(c)));}catch(e){return falha(c,e);}});
+
+protocolosOperacaoRouter.post("/automacoes/ativar", async c => {
+  try {
+    const ator = usuarioId(c);
+    if (!ator) return c.json({ error: "Sessão de usuário necessária para autorizar automação", code: "SEM_PERMISSAO" }, 403);
+    const input = ativarAutomacaoSchema.parse(await c.req.json());
+    if (input.itens.some(i => "valorServicoAtribuido" in i && i.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
+    const job = await ativarAutomacao({ ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }, ator);
+    return c.json({ id: job.id, estado: job.estado, programadaPara: job.programadaPara, revisao: job.revisao }, 201);
+  } catch (e) { return falha(c, e); }
+});
+protocolosOperacaoRouter.post("/automacoes/:id/revisao", async c => {
+  try {
+    const ator = usuarioId(c);
+    if (!ator) return c.json({ error: "Sessão de usuário necessária para revisar automação", code: "SEM_PERMISSAO" }, 403);
+    const input = revisarAutomacaoSchema.parse(await c.req.json());
+    if (input.itens.some(i => "valorServicoAtribuido" in i && i.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
+    const job = await revisarAutomacao(uuid.parse(c.req.param("id")), { ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }, ator);
+    return c.json({ id: job.id, estado: job.estado, programadaPara: job.programadaPara, revisao: job.revisao });
+  } catch (e) { return falha(c, e); }
+});
+protocolosOperacaoRouter.post("/automacoes/:id/excecao", async c => {
+  try {
+    const ator = usuarioId(c);
+    if (!ator) return c.json({ error: "Sessão de usuário necessária para registrar exceção", code: "SEM_PERMISSAO" }, 403);
+    const input = excecaoAutomacaoSchema.parse(await c.req.json());
+    return c.json(await registrarExcecaoAutomacao(uuid.parse(c.req.param("id")), { ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }, ator));
+  } catch (e) { return falha(c, e); }
+});
+
+protocolosOperacaoRouter.post("/automacoes/previa-adesao", async c => {
+  try {
+    const input = previaAutomacoesAdesaoSchema.parse(await c.req.json());
+    return c.json(await preverAutomacoesAdesao({ ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }));
+  } catch (e) { return falha(c, e); }
+});
+
+protocolosOperacaoRouter.get("/automacoes/lembretes", async c => {
+  try { return c.json(await listarLembretesAutomacoes(await resolverEscopoEscrita(c), z.string().date().parse(c.req.query("data")))); } catch (e) { return falha(c, e); }
+});
+
+protocolosOperacaoRouter.get("/automacoes/:id/preparacao", async c => {
+  try { return c.json(await obterPreparacaoAutomacao(uuid.parse(c.req.param("id")), await resolverEscopoEscrita(c), podeVerValoresFinanceiros(getUsuario(c) ?? null))); } catch (e) { return falha(c, e); }
+});
+
+protocolosOperacaoRouter.post("/automacoes/:id/previa-excecao", async c => {
+  try {
+    const ator = usuarioId(c);
+    if (!ator) return c.json({ error: "Sessão de usuário necessária para conferir exceção", code: "SEM_PERMISSAO" }, 403);
+    const input = excecaoAutomacaoSchema.parse(await c.req.json());
+    return c.json(await preverExcecaoAutomacao(uuid.parse(c.req.param("id")), { ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }, ator));
+  } catch (e) { return falha(c, e); }
+});
+protocolosOperacaoRouter.post("/programacoes/previa", async c => {
+  try {
+    const input = previaProgramacaoSchema.parse(await c.req.json());
+    return c.json(await preverProgramacaoColetiva({ ...input, propriedadeId: await resolverEscopoEscrita(c, input.propriedadeId) }));
+  } catch (e) { return falha(c, e); }
+});

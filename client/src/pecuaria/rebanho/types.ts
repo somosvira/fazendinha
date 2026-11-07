@@ -132,6 +132,7 @@ export type AnimalFicha = AnimalResumo & {
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
   historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
+  historicoEcc?: { id: string; data: string; valor: number | null; escalaMin: number | null; escalaMax: number | null; responsavel: string | null }[];
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];

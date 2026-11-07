@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularElegibilidadeNaData, calcularElegibilidadesDoConjunto, type DadosElegibilidade, type EntradaElegibilidade } from "./elegibilidade.calc.js";
+import { calcularElegibilidadeNaData, calcularElegibilidadesDoConjunto, type DadosElegibilidade, type EntradaElegibilidade } from "./elegibilidade-indicadores-v2.calc.js";
 import { parametrosElegibilidadeSchema, decidirElegibilidadeCicloSchema } from "./elegibilidade.schemas.js";
 
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);

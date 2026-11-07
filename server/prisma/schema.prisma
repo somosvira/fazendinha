@@ -663,6 +663,7 @@ model Propriedade {
   eventosMetasAssistente EventoMetaAssistente[]
   assinaturasRadarAssistente AssinaturaRadarAssistente[]
   conversasAssistente ConversaAssistente[]
+  automacoesProtocolos AutomacaoProtocolo[]
   vinculosPesagemSecagem VinculoPesagemSecagem[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   pesagensHistoricas Pesagem[] @relation("PesagemSitioFato")
@@ -940,6 +941,7 @@ model Usuario {
   assinaturasRadarAssistente AssinaturaRadarAssistente[]
   snapshotsRadarAssistente SnapshotRadarAssistente[]
   conversasAssistente ConversaAssistente[]
+  automacoesProtocolos AutomacaoProtocolo[]
   controlesHistoricosLeite ControleHistoricoLeite[]
   VisitaVeterinaria                VisitaVeterinaria[]
   VinculoTarefaProtocolo           VinculoTarefaProtocolo[]
@@ -1943,6 +1945,10 @@ model Protocolo {
 }
 
 model MomentoProtocolo {
+  automacoes AutomacaoProtocolo[]
+  politicaExecucao String @default("CONFIRMACAO_OBRIGATORIA")
+  horarioPadrao String?
+  fusoHorario String?
   instrucoesGerais String?
   modoAtendimento String?
   id String @id @default(uuid())
@@ -2012,6 +2018,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  automacoes AutomacaoProtocolo[]
   Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   origemCalendario OrigemCalendarioProtocolo @default(REFERENCIA_PROGRAMADA)
   destinosPreparoCusto VinculoPreparoTentativa[]
@@ -2238,6 +2245,9 @@ model ResultadoExame {
 }
 
 model InterpretacaoReprodutiva {
+  resultadoAptidao String?
+  retornoAptidaoEm DateTime? @db.Date
+  decisaoIatf String?
   TentativaReprodutiva TentativaReprodutiva? @relation(fields: [tentativaId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_tentativaId_fkey")
   RestricaoReprodutiva RestricaoReprodutiva? @relation(fields: [restricaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_restricaoId_fkey")
   GestacaoAnimal       GestacaoAnimal?       @relation(fields: [gestacaoId], references: [id], onDelete: Restrict, map: "AvaliacaoReprodutiva_gestacaoId_fkey")
@@ -2636,6 +2646,7 @@ model PartoAnimal {
   assistenciaDescricao String?
   ocorridoEm DateTime? @db.Timestamptz(3)
   horarioEstimado Boolean @default(false)
+  grauRetencaoPlacenta Int?
   retencaoPlacenta Boolean?
   versao Int @default(1)
   ocorrenciasRetencaoPlacenta OcorrenciaSanitaria[]
@@ -4884,4 +4895,30 @@ model SnapshotRadarAssistente {
  @@id([chave, dia])
  @@index([dia], map: "SnapshotRadarAssistente_dia_idx")
  @@schema("public")
+}
+
+/// Unidade de execução atômica: um momento para um animal. Recibo e efeitos na mesma transação.
+model AutomacaoProtocolo {
+  id String @id @default(uuid())
+  participacaoId String
+  participacao ParticipacaoProtocolo @relation(fields: [participacaoId], references: [id], onDelete: Restrict)
+  momentoId String
+  momento MomentoProtocolo @relation(fields: [momentoId], references: [id], onDelete: Restrict)
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  propriedadeId Int
+  usuarioId Int
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  estado String @default("AGENDADA")
+  programadaPara DateTime
+  configuracao Json
+  resultado Json?
+  erro String?
+  revisao Int @default(1)
+  tentativas Int @default(0)
+  criadaEm DateTime @default(now())
+  atualizadaEm DateTime @updatedAt
+  executadaEm DateTime?
+  @@unique([participacaoId, momentoId])
+  @@index([estado, programadaPara])
+  @@schema("pecuaria")
 }

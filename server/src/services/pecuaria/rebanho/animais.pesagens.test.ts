@@ -9,6 +9,7 @@ const m = vi.hoisted(() => {
     animal: { findUniqueOrThrow: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), count: vi.fn(), update: vi.fn() },
     localizacaoAnimal: { findMany: vi.fn(), findUniqueOrThrow: vi.fn(), update: vi.fn() },
     finalidadeAnimal: { findMany: vi.fn(), update: vi.fn() },
+    exameAnimal: { findMany: vi.fn() },
     pesagem: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn(), delete: vi.fn() },
     vinculoPesagemParto: { findMany: vi.fn(), count: vi.fn() },
     vinculoPesagemSecagem: { findFirst: vi.fn(), count: vi.fn() },
@@ -58,6 +59,7 @@ beforeEach(() => {
   m.db.localizacaoAnimal.findUniqueOrThrow.mockResolvedValue({ id: "local", animalId: animal.id, desde: animal.dataEntrada, ate: null });
   m.db.finalidadeAnimal.findMany.mockResolvedValue([]);
   m.db.pesagem.findMany.mockResolvedValue([]);
+  m.db.exameAnimal.findMany.mockResolvedValue([]);
   m.db.pesagem.findUnique.mockResolvedValue(peso);
   m.db.pesagem.update.mockResolvedValue(peso);
   m.db.vinculoPesagemParto.findMany.mockResolvedValue([]);

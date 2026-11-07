@@ -10,7 +10,7 @@ vi.mock("./caixa.js", () => ({ consultarCaixaTx: mocks.caixa }));
 vi.mock("./estoque.js", () => ({ consultarEstoqueTx: mocks.estoque }));
 vi.mock("./nutricao.js", () => ({ consultarNutricaoTx: mocks.nutricao }));
 vi.mock("../pecuaria/custos/custos.js", () => ({ carregarFontesCustoTx: mocks.fontes }));
-import { obterResumoGerencial } from "./resumo.js";
+import { resumoSemDetalhes, obterResumoGerencial } from "./resumo.js";
 const usuario: UsuarioContexto = { id: 1, nome: "Consulta", email: "", papel: "consulta", status: "ATIVO", areas: ["pecuaria"], abas: [], flags: [], dono: false };
 const inicio = new Date("2026-10-01");
 const fim = new Date("2026-10-17");
@@ -86,3 +86,13 @@ describe("consulta gerencial", () => {
     expect(tx.compromissoFinanceiro.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("resposta do painel sem listas detalhadas", () => {
+  it("mantém totais e contagens e esvazia as listas por animal-dia", () => {
+    const r = resumoSemDetalhes({ nutricao: { estado: "DISPONIVEL", dados: { lacunas: [1], fontes: [1, 2] } }, custos: { estado: "DISPONIVEL", dados: { componentesPendentes: 3, componentes: [1], finalidades: [{ finalidade: "ROTINA", componentes: [1] }] } }, caixa: { estado: "RESTRITO", motivo: "x" } });
+    expect(r.nutricao.dados).toEqual({ lacunas: [1], fontes: [] });
+    expect(r.custos.dados).toEqual({ componentesPendentes: 3, componentes: [], finalidades: [{ finalidade: "ROTINA", componentes: [] }] });
+    expect(resumoSemDetalhes({ nutricao: { estado: "RESTRITO" }, custos: { estado: "RESTRITO" } }).nutricao).toEqual({ estado: "RESTRITO" });
+  });
+});
+

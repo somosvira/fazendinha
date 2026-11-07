@@ -8,6 +8,7 @@ export type TipoAtividade =
   | "EXAME_SANITARIO"
   | "INICIAR_SANITARIO";
 export type RascunhoVisita = {
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: string | null;
   tipoExameId?: string;
   formatoExameHash?: string;
   resultados?: import("../sanidade/CamposExame").ObservacaoExame[];
@@ -205,7 +206,7 @@ export type SugestoesVisita = {
   categorias?: Array<{id: string; nome: string}>;
   lotes?: Array<{id: string; nome: string}>;
   criterios?: Record<string, unknown>;
-  retornos?: Array<{precisaoTemporal?: "DIA" | "HORA"; previsaoPendente?: boolean; origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string}>;
+  retornos?: Array<{precisaoTemporal?: "DIA" | "HORA"; previsaoPendente?: boolean; origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string; participacaoId?: string; etapaId?: string; etapaNome?: string; momentoId?: string | null; momentoNome?: string | null; programacaoNome?: string | null}>;
   animais:
     | import("./api").AnimalReprodutivo[]
     | import("./api").PainelReprodutivo;

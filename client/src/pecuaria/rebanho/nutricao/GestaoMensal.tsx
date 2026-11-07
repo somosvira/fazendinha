@@ -1,6 +1,7 @@
-import { LotesSemDieta } from "./LotesSemDieta";
-import { useEffect, useRef, useState } from "react";
-import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
+import { un } from "./quantidades";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Button, Empty, ErrorBox, hoje, Pill } from "../../../financeiro/financeiro-ui";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { listarLotes } from "../api";
 import type { Lote } from "../types";
 import {
@@ -17,18 +18,33 @@ import {
 import * as api from "./mensal-api";
 import "./mensal.css";
 import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./ConfiguracaoNutricao";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+
+// Situação calculada pelo servidor para o mês; o selo diz o que a pessoa precisa fazer.
+const SITUACAO_MES: Record<string, { rotulo: string; tom: "neutral" | "green" | "amber" | "red" }> = {
+  EM_ANDAMENTO: { rotulo: "Mês em andamento", tom: "neutral" },
+  A_CONFERIR: { rotulo: "A conferir", tom: "amber" },
+  ATRASADO: { rotulo: "Conferência atrasada", tom: "red" },
+  REVISADO: { rotulo: "Revisado", tom: "green" },
+};
 const quantidade = (v: string) =>
   Number(v).toLocaleString("pt-BR", {
-    minimumFractionDigits: 3,
     maximumFractionDigits: 3,
   });
 const data = (v: string) => v.slice(0, 10).split("-").reverse().join("/");
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+/** "2026-10" → "outubro de 2026". */
+export const mesPorExtenso = (competencia: string) => `${MESES[Number(competencia.slice(5, 7)) - 1]} de ${competencia.slice(0, 4)}`;
 export function GestaoMensal({
   podeLancar,
   vista,
+  children,
 }: {
   podeLancar: boolean;
   vista: "mensal" | "configuracao" | "alertas";
+  /** Conteúdo exibido depois dos meses e antes do processamento manual. */
+  children?: ReactNode;
 }) {
   const escopo = getPropriedadeAtiva();
   const [status, setStatus] = useState<{
@@ -47,6 +63,7 @@ export function GestaoMensal({
     [recarregar, setRecarregar] = useState(0),
     [mensagem, setMensagem] = useState("");
   const [lote, setLote] = useState("");
+  const [processando, setProcessando] = useState(false);
   const enviando = useRef(false);
   const url = new URLSearchParams(window.location.search),
     id = url.get("mesId"),
@@ -94,18 +111,22 @@ export function GestaoMensal({
       vivo = false;
     };
   }, [escopo, recarregar, pagina, id, vista, filtroLote]);
+  const podeProcessar = !carregando && status?.habilitada !== false && podeLancar && vista === "mensal";
+  const abrirProcessamento = (loteId?: string) => { setLote(loteId ?? ""); setErro(null); setProcessando(true); };
   async function executar(acao: () => Promise<unknown>) {
-    if (enviando.current) return;
+    if (enviando.current) return false;
     enviando.current = true;
     setOcupado(true);
     setErro(null);
     setMensagem("");
     try {
       await acao();
-      setMensagem("Operação concluída.");
+      setMensagem("Salvo. Os totais e o estoque abaixo já estão atualizados.");
       setRecarregar((v) => v + 1);
+      return true;
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       enviando.current = false;
       setOcupado(false);
@@ -115,7 +136,6 @@ export function GestaoMensal({
     navegarPara(`/pecuaria/nutricao?aba=fechamentos&mesId=${m.id}`);
   return (
     <div className="nutricao-mensal">
-      {vista === "alertas" && <LotesSemDieta podeLancar={podeLancar} />}
       <ErrorBox erro={erro} />
       {erro && (
         <Button secondary onClick={() => setRecarregar((v) => v + 1)}>
@@ -124,8 +144,8 @@ export function GestaoMensal({
       )}
       <p role="status">{mensagem}</p>
       {carregando ? (
-        <p role="status">Carregando nutrição mensal…</p>
-      ) : status && !status.habilitada ? (
+        <EsqueletoTabela label="Carregando nutrição mensal" />
+      ) : status && !status.habilitada && vista !== "mensal" ? (
         <section>
           <h2>Nutrição mensal ainda não habilitada</h2>
           <p>
@@ -133,9 +153,9 @@ export function GestaoMensal({
             preparação do ambiente.
           </p>
         </section>
-      ) : (
+      ) : status && !status.habilitada ? null : (
         <>
-          {status && !status.automacao && (
+          {status && !status.automacao && vista === "configuracao" && (
             <p className="mensal-aviso">
               O processamento automático está desligado neste ambiente. As
               configurações não iniciam baixas sozinhas.
@@ -151,20 +171,19 @@ export function GestaoMensal({
               ocupado={ocupado}
               executar={executar}
             />
-          ) : (
+          ) : !lista.length && !filtroLote ? null : (
             <section>
               <h2>
                 {vista === "alertas"
-                  ? "O que precisa de atenção"
-                  : "Fechamentos mensais"}
+                  ? "Meses para conferir"
+                  : "Meses de fechamento"}
                 {filtroLote && <> · {lotes.find((l) => l.id === filtroLote)?.nome ?? "lote selecionado"}</>}
               </h2>
-              {filtroLote && <p><LinkNutricional href={rotaNutricao({ aba: "fechamentos" })}>Ver fechamentos de todos os lotes</LinkNutricional></p>}
               {!lista.length && (
-                <p>
-                  Nenhum mês processado neste contexto. Configure a nutrição e
-                  processe os dias encerrados.
-                </p>
+                <Empty acao={podeProcessar ? <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button> : undefined}>
+                  {filtroLote ? "Nenhum mês de fechamento para este lote ainda." : "Nenhum mês de fechamento ainda."}{" "}
+                  Os meses aparecem depois que os dias encerrados são processados.
+                </Empty>
               )}
               {lista
                 .filter((m) => vista !== "alertas" || !m.revisadoEm)
@@ -172,18 +191,15 @@ export function GestaoMensal({
                   <article className="mensal-linha" key={m.id}>
                     <div>
                       <h3>
-                        {m.loteNome} · {m.competencia}
+                        {m.loteNome} · {mesPorExtenso(m.competencia)}
                       </h3>
-                      <p>
-                        {modelos[m.modelo].nome} ·{" "}
-                        {m.situacao
-                          .replaceAll("_", " ")
-                          .toLocaleLowerCase("pt-BR")}
+                      <p className="flex flex-wrap items-center gap-2">
+                        {modelos[m.modelo].nome}
+                        <Pill tone={SITUACAO_MES[m.situacao]?.tom ?? "neutral"}>{SITUACAO_MES[m.situacao]?.rotulo ?? m.situacao}</Pill>
                       </p>
                       <p className="mensal-ajuda">
-                        Conferência em {data(m.prazo)} ·{" "}
-                        {m.dias.filter((d) => d.pendencia).length} dias com
-                        pendências
+                        Conferência em {data(m.prazo)}
+                        {(() => { const n = m.dias.filter((d) => d.pendencia).length; return n ? ` · ${n} ${n === 1 ? "dia com pendência" : "dias com pendências"}` : ""; })()}
                       </p>
                     </div>
                     <Button secondary onClick={() => abrir(m)}>
@@ -191,7 +207,7 @@ export function GestaoMensal({
                     </Button>
                   </article>
                 ))}
-              <div className="mensal-acoes">
+              {total > 10 && <div className="mensal-acoes">
                 <Button
                   secondary
                   disabled={pagina === 1}
@@ -209,48 +225,53 @@ export function GestaoMensal({
                 >
                   Próxima
                 </Button>
-              </div>
-            </section>
-          )}
-          {podeLancar && vista !== "configuracao" && (
-            <section>
-              <h3>Processar dias encerrados</h3>
-              <p className="mensal-ajuda">
-                Recupera dias não processados e tenta novamente as baixas
-                pendentes, sem repetir as já efetivadas.
-              </p>
-              <div className="mensal-campos">
-                <label>
-                  Lote
-                  <select
-                    value={lote}
-                    onChange={(e) => setLote(e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {lotes.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.nome} · {l.propriedade.nome}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <Button
-                  disabled={!lote || ocupado}
-                  onClick={() => {
-                    const l = lotes.find((l) => l.id === lote);
-                    if (l)
-                      void executar(() =>
-                        api.reprocessarMensal(l.propriedade.id, l.id),
-                      );
-                  }}
-                >
-                  Processar pendências
-                </Button>
-              </div>
+              </div>}
             </section>
           )}
         </>
       )}
+      {!mes && children}
+          {podeProcessar && (lista.length > 0 || !filtroLote) && (
+            <div className="mensal-processar">
+              <Button secondary onClick={() => abrirProcessamento(filtroLote)}>Processar dias encerrados</Button>
+            </div>
+          )}
+          <Dialog open={processando} onOpenChange={(v) => { if (!ocupado) setProcessando(v); }}>
+            <DialogContent>
+              <DialogHeader className="border-b border-border px-5 pb-4 pt-5 pr-12">
+                <DialogTitle>Processar dias encerrados</DialogTitle>
+                <DialogDescription>Recupera dias não processados e tenta novamente as baixas pendentes, sem repetir as já efetivadas.</DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 px-5 py-5">
+              <ErrorBox erro={erro} />
+              {status && !status.automacao && <p className="mensal-aviso m-0">O processamento automático está desligado neste ambiente. As configurações não iniciam baixas sozinhas.</p>}
+              <label className="mensal-campo-modal">
+                Lote de animais
+                <SelectCampo value={lote} onValueChange={(valor) => setLote(valor)}>
+                  <option value="">Selecione</option>
+                  {lotes.map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.nome} · {l.propriedade.nome}
+                    </option>
+                  ))}
+                </SelectCampo>
+              </label>
+              </div>
+              <DialogFooter className="border-t border-border px-5 py-4">
+                <Button secondary disabled={ocupado} onClick={() => setProcessando(false)}>Cancelar</Button>
+                <Button
+                  disabled={!lote || ocupado}
+                  onClick={async () => {
+                    const l = lotes.find((l) => l.id === lote);
+                    if (!l) return;
+                    if (await executar(() => api.reprocessarMensal(l.propriedade.id, l.id))) setProcessando(false);
+                  }}
+                >
+                  Processar pendências
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
     </div>
   );
 }
@@ -263,7 +284,7 @@ function RevisaoMensal({
   mes: api.MesNutricional;
   podeLancar: boolean;
   ocupado: boolean;
-  executar: (f: () => Promise<unknown>) => Promise<void>;
+  executar: (f: () => Promise<unknown>) => Promise<unknown>;
 }) {
   const [quantidades, setQuantidades] = useState(
       Object.fromEntries(
@@ -312,10 +333,10 @@ function RevisaoMensal({
         Voltar aos meses
       </Button>
       <h2>
-        {mes.competencia} · {mes.loteNome}
+        {mes.loteNome} · {mesPorExtenso(mes.competencia)}
       </h2>
       <p>
-        {modelos[mes.modelo].nome} · conferir em {data(mes.prazo)}
+        {modelos[mes.modelo].nome} · {mes.revisadoEm ? `revisado em ${data(mes.revisadoEm)}` : `conferir em ${data(mes.prazo)}`}
       </p>
       <p className="mensal-aviso">
         Um fechamento por mês. Quantidades calculadas pela dieta não são
@@ -341,7 +362,7 @@ function RevisaoMensal({
                 return (
                   <tr key={i.produtoId}>
                     <th scope="row">
-                      {i.nome} · {i.unidade}
+                      {i.nome} · {un(i.unidade)}
                     </th>
                     <td>{quantidade(i.prevista)}</td>
                     <td>{quantidade(i.confirmada)}</td>
@@ -365,7 +386,7 @@ function RevisaoMensal({
                     <td>
                       {delta === 0
                         ? "Sem ajuste"
-                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${i.unidade}`}
+                        : `${delta > 0 ? "Saída" : "Recompor"} ${quantidade(String(Math.abs(delta)))} ${un(i.unidade)}`}
                     </td>
                     {mes.verValores && (
                       <td>
@@ -391,8 +412,9 @@ function RevisaoMensal({
           )
           .map((i) => (
             <details key={i.produtoId}>
-              <summary>Selecionar lotes físicos de {i.nome}</summary>
+              <summary>Escolher o lote de estoque de {i.nome}</summary>
               <SelecaoPartidas
+                deEstoque
                 compacto
                 produtoId={i.produtoId}
                 propriedadeId={mes.propriedadeId}
@@ -400,7 +422,7 @@ function RevisaoMensal({
                 quantidade={String(
                   Number(quantidades[i.produtoId]) - Number(i.confirmada),
                 )}
-                unidade={i.unidade}
+                unidade={un(i.unidade)}
                 saida
                 valor={partidas[i.produtoId] ?? []}
                 onChange={(p) => {
@@ -509,11 +531,12 @@ function RevisaoMensal({
               {data(d.data)} · {d.animais} animais
             </strong>
             <p>
-              {d.dieta ?? "Sem dieta"} · {d.situacao.toLocaleLowerCase("pt-BR")}
+              {d.dieta ?? "Sem dieta"} · {d.situacao === "EFETIVADO" ? "Baixa feita" : "Baixa pendente"}
             </p>
             {d.pendencia && (
               <p role="alert" className="mensal-aviso">
                 {d.pendencia}
+                {/validade/i.test(d.pendencia) && <> <LinkNutricional href="/configuracoes/pecuaria/nutricao/fechamento">Configurar</LinkNutricional></>}
               </p>
             )}
             {mes.modelo !== "PROVISORIO" && podeLancar && !fechado && (
@@ -538,7 +561,7 @@ function RevisaoMensal({
                   d.itens.map((i) => (
                     <div key={i.id}>
                       <label>
-                        {i.nome} ({i.unidade})
+                        {i.nome} ({un(i.unidade)})
                         <input
                           type="number"
                           min="0"
@@ -563,9 +586,10 @@ function RevisaoMensal({
                           Number(i.confirmada) && (
                           <details>
                             <summary>
-                              Selecionar lotes físicos da saída complementar
+                              Escolher o lote de estoque (obrigatório sem a autorização por validade)
                             </summary>
                             <SelecaoPartidas
+                deEstoque
                               compacto
                               produtoId={i.produtoId}
                               propriedadeId={mes.propriedadeId}
@@ -574,7 +598,7 @@ function RevisaoMensal({
                                 Number(diarias[i.id] ?? i.prevista) -
                                   Number(i.confirmada),
                               )}
-                              unidade={i.unidade}
+                              unidade={un(i.unidade)}
                               saida
                               valor={partidas[i.id] ?? []}
                               onChange={(p) => {

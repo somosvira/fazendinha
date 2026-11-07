@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ValorizacaoProduto } from "./ValorizacaoProduto";
 import { abrirValorEstoque, consultarValorizacao, type DiagnosticoValorizacao } from "./api";
+import { mudarCampo } from "@/lib/controles.fixture";
 
 vi.mock("./api", () => ({ abrirValorEstoque: vi.fn(), consultarValorizacao: vi.fn() }));
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -12,7 +13,7 @@ const diagnostico = (alteracoes: Partial<DiagnosticoValorizacao> = {}): Diagnost
     estadoValor: "DESCONHECIDO", valor: null, metodo: "FIFO_AQUISICAO_V1" }],
   retroatividade: { permitido: true, motivo: null }, legado: "Valor sem comprovação", ...alteracoes,
 });
-const alterar = (rotulo: string, valor: string) => fireEvent.change(screen.getByLabelText(rotulo), { target: { value: valor } });
+const alterar = (rotulo: string, valor: string) => mudarCampo(screen.getByLabelText(rotulo), { target: { value: valor } });
 async function preparar(dados = diagnostico(), podeEditar = true) {
   vi.mocked(consultarValorizacao).mockResolvedValue(dados);
   const onSalvo = vi.fn();
@@ -37,11 +38,11 @@ describe("abertura documentada do estoque — contraprovas da interface", () => 
     fireEvent.click(screen.getByRole("button", { name: "Acrescentar origem comprovada" }));
     const primeira = within(screen.getByRole("group", { name: "Origem 1" }));
     const segunda = within(screen.getByRole("group", { name: "Origem 2" }));
-    fireEvent.change(primeira.getByLabelText("Data original da aquisição ou inventário"), { target: { value: "2026-09-01" } });
-    fireEvent.change(segunda.getByLabelText("Quantidade da origem"), { target: { value: "1" } });
-    fireEvent.change(segunda.getByLabelText("Valor total da origem (R$)"), { target: { value: "65" } });
-    fireEvent.change(segunda.getByLabelText("Data original da aquisição ou inventário"), { target: { value: "2026-09-02" } });
-    fireEvent.change(segunda.getByLabelText("Referência da origem"), { target: { value: "Segunda aquisição comprovada" } });
+    mudarCampo(primeira.getByLabelText("Data original da aquisição ou inventário"), { target: { value: "2026-09-01" } });
+    mudarCampo(segunda.getByLabelText("Quantidade da origem"), { target: { value: "1" } });
+    mudarCampo(segunda.getByLabelText("Valor total da origem (R$)"), { target: { value: "65" } });
+    mudarCampo(segunda.getByLabelText("Data original da aquisição ou inventário"), { target: { value: "2026-09-02" } });
+    mudarCampo(segunda.getByLabelText("Referência da origem"), { target: { value: "Segunda aquisição comprovada" } });
     expect(screen.queryByText(/Confira as quantidades/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar abertura documentada" }));
     await waitFor(() => expect(onSalvo).toHaveBeenCalledOnce());

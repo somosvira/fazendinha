@@ -342,7 +342,7 @@ describe("classe comprovada no histórico inicial", () => {
     expect(reqV4).not.toHaveBeenCalled();
     await alterarControle(screen.getByLabelText("Evidência ou referência"), { target: { value: "Nuliparidade conferida na origem" } });
     fireEvent.submit(document.getElementById("form-reproducao")!);
-    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.objectContaining({ classeReprodutiva: "NOVILHA", observacao: "Nuliparidade conferida na origem", situacao: "VAZIA", aptaDesde: undefined }), "POST", 1));
+    await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/situacoes-iniciais", expect.objectContaining({ classeReprodutiva: "NOVILHA", observacao: "Nuliparidade conferida na origem", situacao: "VAZIA" }), "POST", 1));
   });
   it("preserva evidência e classe no erro e reutiliza chave somente para o mesmo conteúdo", async () => {
     abrir();
@@ -373,3 +373,43 @@ describe("classe comprovada no histórico inicial", () => {
   await waitFor(()=>expect(registrarParto).toHaveBeenCalledTimes(1));
   expect(vi.mocked(registrarParto).mock.calls[0][0].crias).toEqual([expect.objectContaining({loteId:"bez"})]);
  });
+
+it.each([null,"INDICAR","NAO_INDICAR"] as const)("DG individual preserva decisão %s sem iniciar outro protocolo",async decisao=>{
+ const p={...painel,animais:painel.animais.map(a=>({...a,situacao:"VAZIA",gestacao:null}))};
+ vi.mocked(registrarAvaliacao).mockResolvedValue({id:"dg",animalId:"a",data:"2026-10-13"});
+ render(<FormReproducao acao="avaliacao" painel={p} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await esperarOpcao("Exame reprodutivo · v1");
+ await alterarControle(screen.getByLabelText("Atendimento"),{target:{value:"REALIZADO"}});
+ await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
+ if(decisao)await alterarControle(screen.getByLabelText("Indicação para nova IATF"),{target:{value:decisao}});
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ await waitFor(()=>expect(registrarAvaliacao).toHaveBeenCalledTimes(1));
+ expect(vi.mocked(registrarAvaliacao).mock.calls[0][0].decisaoIatf).toBe(decisao??undefined);
+ expect(vi.mocked(registrarAvaliacao).mock.calls[0][0].conduta).toBe(decisao==="INDICAR"?"IATF":undefined);
+ expect(vi.mocked(reqV4).mock.calls.some(([path,body])=>path.includes("programacoes")&&!!body)).toBe(false);
+});
+
+it("tentativa individual mantém quantidade histórica visível na seção excepcional",async()=>{
+ render(<FormReproducao acao="tentativa" painel={painel} animalInicial="a" tentativaInicial={{tipo:"IA",materialId:"material",quantidade:2}} onFechar={vi.fn()} onSalvo={vi.fn()}/>);
+ await screen.findByText(/1 dose por inseminação/);
+ expect(screen.getByLabelText("Quantidade efetivamente utilizada")).toHaveProperty("value","2");
+ expect(screen.getByRole("button", {name:"Quantidade excepcional ou registro histórico"}).getAttribute("aria-expanded")).toBe("true");
+});
+
+it("DG individual oferece preparação somente depois de salvar e mantém recibo ao falhar navegação", async () => {
+ const p={...painel,animais:painel.animais.map(a=>({...a,situacao:"VAZIA",gestacao:null}))};
+ const preparar=vi.fn().mockImplementationOnce(()=>{throw new Error("Falha ao abrir");});
+ vi.mocked(registrarAvaliacao).mockResolvedValue({id:"dg",animalId:"a",data:"2026-10-13"});
+ render(<FormReproducao acao="avaliacao" painel={p} animalInicial="a" dataInicial="2026-10-13" onFechar={vi.fn()} onSalvo={vi.fn()} onPrepararIatf={preparar}/>);
+ await esperarOpcao("Exame reprodutivo · v1");
+ await alterarControle(screen.getByLabelText("Atendimento"),{target:{value:"REALIZADO"}});
+ await alterarControle(screen.getByLabelText("Conclusão sobre a gestação"),{target:{value:"NEGATIVO"}});
+ await alterarControle(screen.getByLabelText("Indicação para nova IATF"),{target:{value:"INDICAR"}});
+ expect(screen.queryByRole("button",{name:"Preparar próxima IATF"})).toBeNull();
+ fireEvent.submit(document.getElementById("form-reproducao")!);
+ fireEvent.click(await screen.findByRole("button",{name:"Preparar próxima IATF"}));
+ expect(preparar).toHaveBeenCalledWith(["a"]);
+ expect(screen.getByText(/Diagnóstico já salvo/)).toBeTruthy();
+ fireEvent.click(screen.getByRole("button",{name:"Preparar próxima IATF"}));
+ expect(registrarAvaliacao).toHaveBeenCalledTimes(1);
+});

@@ -96,8 +96,8 @@ describe("EstoqueContent — filtro inicial vindo do módulo", () => {
       sessao(["pecuaria"]);
       vi.stubGlobal("fetch", mockFetch({ movimentos: [mov({ propriedadeId: 7, status: "REVERTIDO", estorno: { id: uid(11) } })] }));
       render(<EstoqueContent />);
-      const link = (await screen.findAllByRole("link", { name: "Ver estorno" }))[0];
-      expect(link.getAttribute("href")).toBe(`/estoque?movimentoId=${uid(11)}&propriedadeId=7`);
+      // O estorno abre em modal, sem trocar a lista que está sendo lida.
+      expect((await screen.findAllByRole("button", { name: "Ver estorno" })).length).toBeGreaterThan(0);
       const historico = screen.getByRole("region", { name: "Histórico de movimentos" });
       await waitFor(() => expect(document.activeElement).toBe(historico));
       expect(scroll).toHaveBeenCalled();

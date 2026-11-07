@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { type ReactNode } from "react";
 import { BuscaLista } from "@/components/BuscaLista";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
@@ -29,7 +30,7 @@ export function BarraComercialLeite({ filtros, onChange, parceiros, vendas = fal
       ...(filtros.situacao ? [{ id: "situacao", rotulo: filtros.situacao, limpar: () => onChange({ ...filtros, situacao: "" }) }] : []),
       ...(filtros.modalidade ? [{ id: "modalidade", rotulo: filtros.modalidade === "periodo" ? "Por período" : "Avulsa", limpar: () => onChange({ ...filtros, modalidade: "" }) }] : []),
     ]} onLimpar={() => onChange({ ...filtrosComerciaisIniciais(), busca: filtros.busca })}
-    adicionais={<><CampoFiltro rotulo="Desde"><input type="date" value={draft.rascunho.de} onChange={e => draft.editar("de", e.target.value)} /></CampoFiltro><CampoFiltro rotulo="Até"><input type="date" value={draft.rascunho.ate} onChange={e => draft.editar("ate", e.target.value)} /></CampoFiltro>
+    adicionais={<><CampoFiltro rotulo="Desde"><DatePicker value={draft.rascunho.de} onChange={(valor) => draft.editar("de", valor)} /></CampoFiltro><CampoFiltro rotulo="Até"><DatePicker value={draft.rascunho.ate} onChange={(valor) => draft.editar("ate", valor)} /></CampoFiltro>
       <CampoFiltro rotulo="Comprador"><SelectCampo value={draft.rascunho.comprador} onValueChange={v => draft.editar("comprador", v)}><option value="">Todos os compradores</option>{parceiros.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></CampoFiltro>
       <CampoFiltro rotulo={vendas ? "Situação" : "Preço"}><SelectCampo value={draft.rascunho.situacao} onValueChange={v => draft.editar("situacao", v)}><option value="">Todas</option>{(vendas ? ["Aberta", "Fechada", "Confirmada", "Cancelada"] : ["Preço pendente", "Preço definido"]).map(v => <option key={v} value={v}>{v}</option>)}</SelectCampo></CampoFiltro>
       {vendas && <CampoFiltro rotulo="Modalidade"><SelectCampo value={draft.rascunho.modalidade} onValueChange={v => draft.editar("modalidade", v)}><option value="">Todas</option><option value="periodo">Por período</option><option value="avulsa">Avulsa</option></SelectCampo></CampoFiltro>}</>}

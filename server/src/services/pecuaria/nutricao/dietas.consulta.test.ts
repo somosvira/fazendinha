@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listarDietas } from "./dietas.js";
-const mocks = vi.hoisted(() => ({ dietas: vi.fn(), vigencias: vi.fn(), transacao: vi.fn() }));
+const mocks = vi.hoisted(() => ({ dietas: vi.fn(), vigencias: vi.fn(), leites: vi.fn(), transacao: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { $transaction: mocks.transacao } }));
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.transacao.mockImplementation(callback => callback({ dieta: { findMany: mocks.dietas }, vigenciaDietaLote: { findMany: mocks.vigencias } }));
+  mocks.transacao.mockImplementation(callback => callback({ dieta: { findMany: mocks.dietas }, vigenciaDietaLote: { findMany: mocks.vigencias }, entradaProducaoLeite: { findMany: mocks.leites } }));
   mocks.dietas.mockResolvedValue([{ id: "d1", itens: [] }, { id: "d2", itens: [] }]);
+  mocks.leites.mockResolvedValue([]);
   mocks.vigencias.mockResolvedValue([{ dietaId: "d1", lote: { id: "l1", nome: "Matrizes", propriedade: { id: 7, nome: "Sítio" } } }]);
 });
 describe("catálogo de receitas com uso atual agregado", () => {
@@ -26,5 +27,12 @@ describe("catálogo de receitas com uso atual agregado", () => {
     mocks.vigencias.mockResolvedValue(Array.from({ length: 1000 }, (_, i) => ({ dietaId: "d1", lote: { id: `l${i}` } })));
     expect((await listarDietas(7))[0].lotesEmUso).toHaveLength(1000);
     expect(mocks.vigencias).toHaveBeenCalledTimes(1);
+  });
+  it("marca as receitas que usam leite produzido na fazenda", async () => {
+    mocks.dietas.mockResolvedValue([{ id: "d1", itens: [{ produtoId: "leite" }] }, { id: "d2", itens: [{ produtoId: "racao" }] }]);
+    mocks.leites.mockResolvedValue([{ movimento: { produtoId: "leite" } }]);
+    const [comLeite, semLeite] = await listarDietas(7);
+    expect(comLeite.usaLeiteProprio).toBe(true);
+    expect(semLeite.usaLeiteProprio).toBe(false);
   });
 });

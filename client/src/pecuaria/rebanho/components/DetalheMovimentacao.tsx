@@ -4,7 +4,6 @@
 // partir de uma linha de HistoricoMovimentacoes (Lotes · Histórico e DetalheLote).
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader } from "../../../components/Loading";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { buscarMovimentacao, RebanhoApiError } from "../api";
@@ -12,6 +11,7 @@ import type { MovimentacaoDetalhe } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { ConfirmarDesfazerMovimentacao } from "./ConfirmarDesfazerMovimentacao";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 function rotuloDestino(mov: MovimentacaoDetalhe): string {
   return mov.destino.lote ? `${mov.destino.lote.nome} (${mov.destino.propriedade.nome})` : mov.destino.propriedade.nome;
@@ -57,7 +57,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
   return <DialogFinanceiro titulo="Movimentação" eyebrow="" className="sm:max-w-3xl" onClose={onFechar}
       rodape={<Button secondary onClick={onFechar}>Fechar</Button>}>
       <div className="p-5"><ErrorBox erro={erro} />
-      {carregando && !mov ? <Loader label="Carregando movimentação" /> : mov && <div className="grid gap-5">
+      {carregando && !mov ? <EsqueletoFicha label="Carregando movimentação" /> : mov && <div className="grid gap-5">
         <div className="rounded-xl border border-border p-4 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             {mov.direcao && <Pill tone={mov.direcao === "ENTRADA" ? "green" : "amber"}>{mov.direcao === "ENTRADA" ? "Entrada" : "Saída"}</Pill>}

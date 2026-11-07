@@ -7,10 +7,17 @@ import { processarPendentes } from "./services/pecuaria/nutricao/mensal.js";
 
 import { processarRadarDiario } from "./services/assistente/radar/servico.js";
 import { apurarMetasAutomaticas } from "./services/assistente/metas/servico.js";
+import { processarAutomacoes } from "./services/pecuaria/protocolos/automacao.js";
 
 export default {
   fetch: app.fetch.bind(app),
-  async scheduled(controller: { scheduledTime: number }) {
+  async scheduled(controller: { scheduledTime: number; cron?: string }) {
+    if (env.REPRODUCAO_AUTOMACAO_ENABLED) {
+      try { await comPrismaPorRequisicao(() => processarAutomacoes(new Date(controller.scheduledTime))); }
+      catch (erro) { console.error("[reproducao/automacao] Falha ao processar fila", erro instanceof Error ? erro.name : "Erro"); }
+    }
+    // Manter rotinas existentes a cada 15 minutos.
+    if (controller.cron && Math.floor(controller.scheduledTime / 60_000) % 15 !== 0) return;
     if (env.ALERTAS_CRON_ENABLED) {
       const db = criarPrismaClient();
       try { await avaliarAlertasTemporais(db, new Date(controller.scheduledTime)); }

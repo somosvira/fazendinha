@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +13,7 @@ import {
   type VendaVinculavel,
 } from "./comercial-types";
 import { formatarLitros, hojeOperacional } from "./modelo";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export function NovaEntregaComercialLeite({
   sitio,
   de,
@@ -177,7 +179,7 @@ export function NovaEntregaComercialLeite({
         <legend>Registrar entrega</legend>
         <label>
           Vínculo da entrega
-          <select value={tipoEfetivo} onChange={(e) => setTipo(e.target.value)}>
+          <SelectCampo value={tipoEfetivo} onValueChange={(valor) => setTipo(valor)}>
             <option value="VENDA_EXISTENTE">
               Vincular venda já registrada
             </option>
@@ -186,7 +188,7 @@ export function NovaEntregaComercialLeite({
                 Criar venda com entrega
               </option>
             )}
-          </select>
+          </SelectCampo>
         </label>
         {tipoEfetivo === "VENDA_EXISTENTE" || !podeFinanceiro ? (
           <>
@@ -207,10 +209,10 @@ export function NovaEntregaComercialLeite({
             )}
             <label>
               Venda registrada
-              <select
+              <SelectCampo
                 required
                 value={vendaId}
-                onChange={(e) => setVendaId(e.target.value)}
+                onValueChange={(valor) => setVendaId(valor)}
               >
                 <option value="">Selecione a venda</option>
                 {candidatos?.itens.map((v) => (
@@ -227,7 +229,7 @@ export function NovaEntregaComercialLeite({
                     {v.impedimento ? ` · ${v.impedimento}` : ""}
                   </option>
                 ))}
-              </select>
+              </SelectCampo>
             </label>
             <SecaoDetalhesLeite  titulo={<>Impedimentos para vínculo</>}>
 
@@ -291,10 +293,10 @@ export function NovaEntregaComercialLeite({
                 <div className="leite-form-inline">
                   <label>
                     Produto de leite
-                    <select
+                    <SelectCampo
                       required
                       value={produto}
-                      onChange={(e) => setProduto(e.target.value)}
+                      onValueChange={(valor) => setProduto(valor)}
                     >
                       <option value="">Selecione</option>
                       {(config.produtosCadastro ?? config.produtos)
@@ -309,17 +311,11 @@ export function NovaEntregaComercialLeite({
                             {p.nome}
                           </option>
                         ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                   <label>
                     Data da retirada
-                    <input
-                      type="date"
-                      required
-                      max={hojeOperacional()}
-                      value={data}
-                      onChange={(e) => setData(e.target.value)}
-                    />
+                    <DatePicker required max={hojeOperacional()} value={data} onChange={(valor) => setData(valor)} />
                   </label>
                   <label>
                     Volume expedido (L)
@@ -341,10 +337,10 @@ export function NovaEntregaComercialLeite({
                   </label>
                   <label>
                     Comprador
-                    <select
+                    <SelectCampo
                       required
                       value={parceiro}
-                      onChange={(e) => setParceiro(e.target.value)}
+                      onValueChange={(valor) => setParceiro(valor)}
                     >
                       <option value="">Selecione</option>
                       {config.parceiros
@@ -354,38 +350,33 @@ export function NovaEntregaComercialLeite({
                             {p.nome}
                           </option>
                         ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                   <label>
                     Condição financeira
-                    <select
+                    <SelectCampo
                       required
                       value={condicao}
-                      onChange={(e) => setCondicao(e.target.value)}
+                      onValueChange={(valor) => setCondicao(valor)}
                     >
                       <option value="">Escolha explicitamente</option>
                       <option value="A_PRAZO">A receber</option>
                       <option value="A_VISTA">Recebido agora</option>
-                    </select>
+                    </SelectCampo>
                   </label>
                   {condicao === "A_PRAZO" && (
                     <label>
                       Vencimento da parcela
-                      <input
-                        type="date"
-                        required
-                        value={vencimento}
-                        onChange={(e) => setVencimento(e.target.value)}
-                      />
+                      <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
                     </label>
                   )}
                   {condicao === "A_VISTA" && (
                     <label>
                       Conta do recebimento
-                      <select
+                      <SelectCampo
                         required
                         value={conta}
-                        onChange={(e) => setConta(e.target.value)}
+                        onValueChange={(valor) => setConta(valor)}
                       >
                         <option value="">Selecione</option>
                         {config.contas
@@ -395,14 +386,14 @@ export function NovaEntregaComercialLeite({
                               {c.nome}
                             </option>
                           ))}
-                      </select>
+                      </SelectCampo>
                     </label>
                   )}
                   <label>
                     Categoria (opcional)
-                    <select
+                    <SelectCampo
                       value={categoria}
-                      onChange={(e) => setCategoria(e.target.value)}
+                      onValueChange={(valor) => setCategoria(valor)}
                     >
                       <option value="">Padrão do produto</option>
                       {config.categorias
@@ -412,13 +403,13 @@ export function NovaEntregaComercialLeite({
                             {c.nome}
                           </option>
                         ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                   <label>
                     Centro de custo (opcional)
-                    <select
+                    <SelectCampo
                       value={centro}
-                      onChange={(e) => setCentro(e.target.value)}
+                      onValueChange={(valor) => setCentro(valor)}
                     >
                       <option value="">Padrão do produto</option>
                       {config.centrosCusto
@@ -428,7 +419,7 @@ export function NovaEntregaComercialLeite({
                             {c.nome}
                           </option>
                         ))}
-                    </select>
+                    </SelectCampo>
                   </label>
                 </div>
                 {condicao === "A_VISTA" && (

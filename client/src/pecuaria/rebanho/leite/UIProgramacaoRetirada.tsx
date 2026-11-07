@@ -62,6 +62,12 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
       setCarregando(false);
       return;
     }
+    // A programação é por sítio: no consolidado, só orienta a escolher um, sem consultar a API.
+    if (sitio == null) {
+      setErro("Selecione um sítio para consultar a programação de retirada");
+      setCarregando(false);
+      return;
+    }
     void consultarLeite<ConsultaProgramacaoDTO>(
       `/programacao?data=${data}`,
       sitio,
@@ -122,7 +128,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
           )}
           {dados.meta && (
             <div>
-              <h2>Conferência da meta <AjudaCampo rotulo="Sobre a conferência da meta" texto={"A conferência usa o produto configurado neste sítio. Uma retirada parcial altera o saldo na próxima consulta. Não há alerta persistente ou retirada automática."} /></h2>
+              <h2>Conferência da meta </h2>
               <p>
                 {dados.meta.estado === "NAO_AFERIVEL"
                   ? "Meta não aferível"

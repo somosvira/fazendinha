@@ -11,6 +11,7 @@ import { reqV4 } from "./api";
 import { type SnapshotRelatorioPartos } from "./RelatorioPartos";
 import { Paginacao } from "../ui";
 import { usePeriodoConsulta } from "./periodo-consulta";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
   const periodo = usePeriodoConsulta("partos");
@@ -54,7 +55,7 @@ export function PartosPosParto({ propriedadeId }: { propriedadeId: number }) {
     {periodo.aviso && <p role="status" className="text-sm text-muted-foreground">{periodo.aviso}</p>}
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
-    {carregando && <p role="status">Carregando partos…</p>}
+    {carregando && <EsqueletoTabela label="Carregando partos" />}
     {!carregando && !erro && visivel && <Panel>
 
       {!partos.length ? <div className="space-y-3 p-5"><p>{visivel.partos.length ? "Nenhum parto corresponde à busca ou aos filtros." : "Nenhum parto neste período."}</p>{visivel.partos.length ? <><p className="text-sm text-muted-foreground">Existem {visivel.totalPartos} partos no período selecionado.</p><Button secondary onClick={() => { buscar(""); consulta.edicao.limpar(); consulta.limpar(); }}>Limpar busca e filtros</Button></> : <p className="text-sm text-muted-foreground">Use o filtro de período para consultar outras datas.</p>}</div> : visual.modo === "visual" ? <div className="reproducao-cartoes">{partos.slice((atual-1)*20,atual*20).map(p => <CartaoParto key={p.id} parto={p} sitio={propriedadeId}/>)}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={consulta.colunas}

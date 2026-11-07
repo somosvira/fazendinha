@@ -1,13 +1,14 @@
+import { lerEscoreCorporal } from "./escore-corporal.calc.js";
 import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import { garantirTipoToqueAptidaoTx } from "./toque-aptidao.js";
-import { FINALIDADE_APTIDAO, snapshotToqueAptidao } from "./toque-aptidao.calc.js";
+import { FINALIDADE_APTIDAO } from "./toque-aptidao.calc.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { operacaoIdempotenteTx } from "./operacoes.js";
-import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type ElegibilidadeNaData } from "./elegibilidade.calc.js";
+import { calcularElegibilidadeNaData, calcularElegibilidadesDoConjunto, type DadosElegibilidade, type ElegibilidadeNaData } from "./elegibilidade.calc.js";
 import { parametrosElegibilidadeSchema, type CriarPoliticaElegibilidadeInput, type VincularPoliticaCicloInput,
   type DecidirElegibilidadeCicloInput } from "./elegibilidade.schemas.js";
 
@@ -16,6 +17,9 @@ function erro(message: string, campo?: string): never { throw new RebanhoError("
 
 export async function criarPoliticaElegibilidade(input: CriarPoliticaElegibilidadeInput, usuarioId: number | null) {
   const parametros = parametrosElegibilidadeSchema.parse(input.parametros);
+  if (parametros.criteriosAptidao) for (const grupo of [parametros.criteriosAptidao.vacas, parametros.criteriosAptidao.novilhas]) {
+    grupo.eccMinimo = null; grupo.escalaEcc = null; grupo.validadeEccDias = null;
+  }
   return transacaoPecuaria(async tx => {
     // Esta trava só é usada na configuração; não se combina com travas de animais.
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-politica-elegibilidade:${input.propriedadeId}`}))`;
@@ -78,6 +82,7 @@ export function vincularPoliticaCiclo(input: VincularPoliticaCicloInput, usuario
 }
 
 export function decidirElegibilidadeCiclo(input: DecidirElegibilidadeCicloInput, usuarioId: number | null) {
+  if (input.tipo === "LIBERAR") erro("Registre a conclusão de aptidão no exame do animal; não há decisão adicional por procedimento", "tipo");
   return transacaoPecuaria(async tx => {
     const referencia = await tx.vinculoPoliticaCiclo.findUnique({ where: { id: input.vinculoCicloId } });
     if (!referencia) throw new RebanhoError("NAO_ENCONTRADO", "Ciclo não encontrado");
@@ -87,27 +92,11 @@ export function decidirElegibilidadeCiclo(input: DecidirElegibilidadeCicloInput,
       if (dia(input.data) < referencia.inicioCiclo) erro("Decisão antecede o ciclo", "data");
       const parto = await tx.partoAnimal.findFirst({ where: { animalId: referencia.animalId, status: "VALIDO", data: { lte: dia(input.data) } }, orderBy: { data: "desc" } });
       if ((parto ? `PARTO:${parto.id}` : "INICIAL") !== referencia.chaveCiclo) erro("Decisão pertence a outro ciclo na data informada", "vinculoCicloId");
-      if (input.tipo === "LIBERAR" ? (!input.aptaDesde || input.aptaDesde < input.data) : input.aptaDesde !== null) erro("Apta desde incompatível com a decisão", "aptaDesde");
-      let evidencia = null;
-      if (input.tipo === "LIBERAR") {
-        if (!input.exameAptidaoId) erro("Liberação exige toque de aptidão apto", "exameAptidaoId");
-        const exame = await tx.exameAnimal.findFirst({ where: { id: input.exameAptidaoId, animalId: referencia.animalId,
-          propriedadeId: input.propriedadeId, finalidadePrincipal: FINALIDADE_APTIDAO, status: "VALIDO", resultadoOpcao: "APTO", data: { gte: referencia.inicioCiclo, lte: dia(input.data) } } });
-        if (!exame) erro("Toque apto válido do animal e sítio não encontrado neste ciclo", "exameAptidaoId");
-        const projecao = (await obterElegibilidadesNaDataTx(tx, [referencia.animalId], input.propriedadeId, dia(input.data))).get(referencia.animalId);
-        if (projecao?.aptidaoClinica?.exameId !== exame.id) erro("Use o toque de aptidão mais recente do ciclo", "exameAptidaoId");
-        const impedimentos = projecao?.motivos.filter(m => ["ANIMAL_NAO_FEMEA", "ANIMAL_BAIXADO", "FORA_DO_SITIO", "MATRIZ_DESCARTE", "RESTRICAO_REPRODUTIVA", "GESTACAO_CONFIRMADA", "DIAGNOSTICO_PENDENTE", "GESTACOES_CONFLITANTES", "LOCALIZACOES_CONFLITANTES"].includes(m)) ?? [];
-        if (impedimentos.length) erro("Há impedimentos operacionais na data da decisão; confira gestação, descarte, restrições e sítio", "animalId");
-        const pevOriginalAte = projecao?.pevOriginalAte ?? null;
-        if (pevOriginalAte && input.aptaDesde! < pevOriginalAte && !input.anteciparPev) erro("Confirme explicitamente a antecipação do PEV com base no toque apto", "anteciparPev");
-        if (!input.acaoLiberada) erro("Informe a ação avaliada na decisão individual", "acaoLiberada");
-        evidencia = { pevOriginalAte, antecipacaoPev: Boolean(pevOriginalAte && input.aptaDesde! < pevOriginalAte), ...snapshotToqueAptidao({ ...exame, retornoEm: null }), acaoLiberada: input.acaoLiberada ?? null };
-      }
+      if (input.aptaDesde !== null) erro("Apta desde pertence ao exame de aptidão", "aptaDesde");
       const criada = await tx.decisaoElegibilidadeCiclo.create({ data: {
         vinculoCicloId: referencia.id, data: dia(input.data), tipo: input.tipo, aptaDesde: input.aptaDesde ? dia(input.aptaDesde) : null,
         motivo: input.motivo, criadoPorId: usuarioId,
-        exameAptidaoId: input.tipo === "LIBERAR" ? input.exameAptidaoId : null,
-        ...(evidencia ? { exameAptidaoSnapshot: evidencia } : {}),
+        exameAptidaoId: null,
       } });
       await auditar(tx, { entidade: "DecisaoElegibilidadeCiclo", entidadeId: criada.id, animalId: referencia.animalId,
         propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId, depois: criada });
@@ -155,22 +144,24 @@ export async function carregarDadosElegibilidadeTx(tx: Prisma.TransactionClient,
     tx.politicaElegibilidadeReprodutiva.findMany({ where: { OR: [{ id: { in: vinculos.flatMap(v => v.politicaId ? [v.politicaId] : []) } }, { propriedadeId: { in: [...new Set(localizacoes.map(l => l.propriedadeId))] }, vigenteDesde: { lte: ate } }] } }),
     tx.decisaoElegibilidadeCiclo.findMany({ where: { vinculoCicloId: { in: vinculos.map(v => v.id) }, data: { lte: ate } } }),
   ]);
-  const [pesagens, exames] = await Promise.all([
+  const [pesagens, exames, ocorrencias, regrasSanitarias] = await Promise.all([
     tx.pesagem.findMany({ where: { animalId, data: { lte: ate } } }),
-    tx.exameAnimal.findMany({ where: { animalId, data: { lte: ate }, finalidadePrincipal: { in: [FINALIDADE_APTIDAO, "ESCORE_CORPORAL", "ECC"] } },
+    tx.exameAnimal.findMany({ where: { animalId, data: { lte: ate }, OR: [{ finalidadePrincipal: { in: [FINALIDADE_APTIDAO, "ESCORE_CORPORAL", "ECC"] } }, { interpretacao: { resultadoAptidao: { not: null } } }] },
       include: { resultados: { where: { vigente: true } }, interpretacao: true } }),
+    tx.ocorrenciaSanitaria.findMany({ where: { animalId, status: "VALIDO", inicio: { lte: ate } } }),
+    tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true, efeito: "BLOQUEAR" } }),
   ]);
   const escores = exames.filter(e => e.status === "VALIDO" && ["ESCORE_CORPORAL", "ECC"].includes(e.finalidadePrincipal ?? "")).flatMap(e => {
-    const valor = (campo: string) => e.resultados.find(r => r.campo === campo)?.valor;
-    let payload: Record<string, unknown> = {};
-    try { const anotacao = JSON.parse(e.anotacaoOriginal ?? "{}") as { payload?: Record<string, unknown> }; payload = anotacao.payload ?? {}; } catch { /* Escala ausente permanece desconhecida. */ }
-    const escala = payload.escala === "1_A_5" ? [1, 5] : payload.escala === "1_A_9" ? [1, 9] : null;
-    const [v, min, max] = [valor("ESCORE") ?? e.resultadoNumero?.toNumber(), valor("ESCALA_MIN") ?? payload.escalaMin ?? escala?.[0], valor("ESCALA_MAX") ?? payload.escalaMax ?? escala?.[1]];
-    return typeof v === "number" && typeof min === "number" && typeof max === "number" ? [{ id: e.id, animalId: e.animalId, data: e.data, valor: v, escalaMin: min, escalaMax: max }] : [];
+    const v = lerEscoreCorporal(e);
+    return v.valor !== null && v.escalaMin !== null && v.escalaMax !== null ? [{ id: e.id, animalId: e.animalId, data: e.data, valor: v.valor, escalaMin: v.escalaMin, escalaMax: v.escalaMax }] : [];
   });
-  const toques = exames.filter(e => e.finalidadePrincipal === FINALIDADE_APTIDAO).map(e => ({ ...e, retornoEm: e.interpretacao?.retornoEm ?? null }));
+  const toques = exames.filter(e => e.finalidadePrincipal === FINALIDADE_APTIDAO || e.interpretacao?.resultadoAptidao != null).map(e => ({ ...e,
+    resultadoAptidao: e.interpretacao?.resultadoAptidao ?? null,
+    retornoEm: e.finalidadePrincipal === FINALIDADE_APTIDAO ? e.interpretacao?.retornoEm ?? null : e.interpretacao?.retornoAptidaoEm ?? null }));
+  const impedimentosSanitarios = ocorrencias.filter(o => o.partoRetencaoPlacentaId || regrasSanitarias.some(r => r.doencaId === o.doencaId && r.propriedadeId === o.propriedadeId))
+    .map(o => ({ id: o.id, animalId: o.animalId, data: o.inicio, ate: o.fim, status: o.status }));
   const crias=partos.length?await tx.criaParto.findMany({where:{partoId:{in:partos.map(p=>p.id)}},select:{partoId:true,viva:true}}):[];
-  return { animais, partos:partos.map(p=>({...p,crias:crias.filter(c=>c.partoId===p.id)})), tentativas, lactacoes, gestacoes, localizacoes, avaliacoes, iniciais, vinculos, restricoes, papeis, baixas, politicas, decisoes, escores, toques,
+  return { animais, partos:partos.map(p=>({...p,crias:crias.filter(c=>c.partoId===p.id)})), tentativas, lactacoes, gestacoes, localizacoes, avaliacoes, iniciais, vinculos, restricoes, papeis, baixas, politicas, decisoes, escores, toques, impedimentosSanitarios,
     pesagens: pesagens.map(p => ({ id: p.id, animalId: p.animalId, data: p.data, pesoKg: p.pesoKg.toNumber(), precisao: p.precisao })) };
 }
 /** O chamador autoriza os IDs pela localização na data. A consulta nunca congela vínculos. */
@@ -187,24 +178,26 @@ export async function consultarElegibilidadeNaData(animalId: string, propriedade
   });
 }
 
-/** Revalida no mesmo fluxo de escrita. Versões anteriores conservam seu contrato histórico. */
-export async function conferirAptidaoParaAcaoTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, acao: "PROTOCOLO" | "IA" | "TE") {
-  // A versão acompanha o ciclo factual atual; um vínculo anterior não prova a regra deste ciclo.
-  const parto = await tx.partoAnimal.findFirst({ where: { animalId, status: "VALIDO", data: { lte: data } }, orderBy: [{ data: "desc" }, { id: "asc" }] });
-  const chaveCiclo = parto ? `PARTO:${parto.id}` : "INICIAL";
-  const vinculo = await tx.vinculoPoliticaCiclo.findUnique({ where: { animalId_chaveCiclo: { animalId, chaveCiclo } },
-    include: { politica: true, situacaoInicial: { select: { status: true, data: true } } } });
-  const vinculoComprovado = vinculo && vinculo.inicioCiclo <= data && (parto ? vinculo.partoId === parto.id
-    : vinculo.situacaoInicial?.status === "VALIDO" && vinculo.situacaoInicial.data <= data);
-  const vigente = (vinculoComprovado ? vinculo.politica : null) ?? await tx.politicaElegibilidadeReprodutiva.findFirst({ where: { propriedadeId, vigenteDesde: { lte: data } }, orderBy: { vigenteDesde: "desc" } });
-  const p = parametrosElegibilidadeSchema.safeParse(vigente?.parametros);
-  if (!vigente) return;
-  if (!p.success) erro("Política reprodutiva inválida; revise a configuração antes de intervir", "politicaId");
-  if (!vinculoComprovado) erro("Decisão de aptidão exige origem comprovada e associação da política ao ciclo atual", "vinculoCicloId");
-  if (p.data.versao !== 2) return;
-  const elegibilidade = (await obterElegibilidadesNaDataTx(tx, [animalId], propriedadeId, data)).get(animalId);
-  if (elegibilidade?.elegivel !== true) erro("Decisão de aptidão e disponibilidade operacional precisam ser conferidas antes desta ação", "animalId");
-  const decisao = elegibilidade.decisaoId ? await tx.decisaoElegibilidadeCiclo.findUnique({ where: { id: elegibilidade.decisaoId } }) : null;
-  const snapshot = decisao?.exameAptidaoSnapshot as Prisma.JsonObject | null;
-  if (snapshot?.acaoLiberada !== acao) erro("Decisão individual não autoriza esta ação; registre decisão específica após conferir o exame", "acaoLiberada");
+/** A mesma aptidão vale para protocolo e qualquer tentativa. */
+export async function conferirAptidaoParaAcaoTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, _acao: "PROTOCOLO" | "IA" | "TE" | "COBERTURA") {
+  const atual = (await obterElegibilidadesNaDataTx(tx, [animalId], propriedadeId, data)).get(animalId);
+  if (atual?.aptidao.estado !== "APTA") erro(`Animal sem aptidão confirmada nesta data: ${atual?.aptidao.motivos.join("; ") || "avaliação pendente"}`, "animalId");
+}
+
+/** Confere a conclusão antes de gravar, sob a mesma trava/transação do exame. */
+export async function conferirConclusaoAptidaoTx(tx: Prisma.TransactionClient, input: {
+  animalId: string; propriedadeId: number; data: Date; resultadoAptidao?: string | null; resultadoGestacional?: string;
+}) {
+  if (input.resultadoAptidao !== "APTO") return;
+  if (["POSITIVO", "RECONFIRMACAO", "SEXAGEM"].includes(input.resultadoGestacional ?? "")) erro("Gestação confirmada impede aptidão para nova reprodução", "resultadoAptidao");
+  const dados = await carregarDadosElegibilidadeTx(tx, [input.animalId], input.data);
+  const entradas = new Map<string, import("./elegibilidade.calc.js").EntradaElegibilidade>();
+  calcularElegibilidadesDoConjunto(dados, input.propriedadeId, input.data, entradas);
+  const entrada = entradas.get(input.animalId);
+  if (!entrada) erro("Animal não encontrado para avaliação de aptidão", "animalId");
+  if (input.resultadoGestacional === "NEGATIVO") entrada.situacaoReprodutiva = "VAZIA";
+  const projetada = calcularElegibilidadeNaData({ ...entrada, toques: [{ id: "EXAME_EM_REGISTRO", animalId: input.animalId,
+    propriedadeId: input.propriedadeId, data: input.data, atualizadoEm: new Date(), status: "VALIDO",
+    finalidadePrincipal: FINALIDADE_APTIDAO, resultadoOpcao: "APTO", retornoEm: null }] });
+  if (projetada.aptidao.estado !== "APTA") erro(`Não é possível concluir aptidão: ${projetada.motivos.join("; ")}`, "resultadoAptidao");
 }

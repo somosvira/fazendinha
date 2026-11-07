@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Plus } from "lucide-react";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -137,17 +138,12 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Histórico de fornecimentos" ajuda="Fornecimentos com origem e volume por animal." rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
+      <CabecalhoTabela titulo="Histórico de fornecimentos" rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
       {podeLancar && novo ? (
         <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
           <label>
             Data do fornecimento
-            <input
-              type="date"
-              value={data}
-              max={hojeOperacional()}
-              onChange={(e) => setData(e.target.value)}
-            />
+            <DatePicker value={data} max={hojeOperacional()} onChange={(valor) => setData(valor)} />
           </label>
           {dataValida(data) && (
             <FormularioDestino
@@ -172,7 +168,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
         </p>
       ) : null}
       {aviso && <p role="status">{aviso}</p>}
-      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><input type="date" value={filtros.rascunho.de} onChange={e => filtros.editar("de", e.target.value)} /></CampoFiltro><CampoFiltro rotulo="Até"><input type="date" value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={e => filtros.editar("ate", e.target.value)} /></CampoFiltro></>} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><DatePicker value={filtros.rascunho.de} onChange={(valor) => filtros.editar("de", valor)} /></CampoFiltro><CampoFiltro rotulo="Até"><DatePicker value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={(valor) => filtros.editar("ate", valor)} /></CampoFiltro></>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (

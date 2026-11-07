@@ -6,7 +6,7 @@
 .nutricao-link:hover { text-decoration: underline; }
 .nutricao-link:focus-visible, .nutricao-botao:focus-visible, .nutricao-botao-secundario:focus-visible, .nutricao-abas button:focus-visible { outline: 2px solid var(--pos); outline-offset: 4px; }
 .nutricao-botao, .nutricao-botao-secundario { display: inline-flex; gap: .5rem; min-height: 40px; align-items: center; justify-content: center; border-radius: 8px; padding: .6rem 1rem; font-size: .875rem; font-weight: 600; text-align: center; }
-.nutricao-botao { background: var(--mast-bg); color: white; }
+.nutricao-botao { background: var(--primary); color: var(--primary-foreground); }
 .nutricao-botao-secundario { border: 1px solid var(--border); background: white; color: var(--ink); }
 .nutricao-botao:hover { opacity: .9; }
 .nutricao-botao-secundario:hover { background: var(--bg-card-2); }
@@ -181,9 +181,11 @@
 .nutricao-dieta-vigente .nutricao-card-corpo { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
 .nutricao-dieta-vigente .nutricao-acoes { margin-top: 0; }
 .nutricao-consumo-resumo .nutricao-fatos { grid-template-columns: repeat(2,minmax(0,1fr)); }
-.nutricao-consumo-composicao { display: grid; grid-template-columns: minmax(0,1.5fr) minmax(260px,1fr); align-items: start; }
-.nutricao-consumo-composicao:not(:has(.nutricao-custo-distribuicao)) { grid-template-columns: minmax(0,1fr); }
-.nutricao-custo-distribuicao { padding: 20px; border-left: 1px solid var(--border); }
+.nutricao-consumo-composicao { display: grid; grid-template-columns: minmax(0,1fr); align-items: start; }
+.nutricao-custo-distribuicao { padding: 20px; border-top: 1px solid var(--border); display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 12px 24px; }
+.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: 1 / -1; }
+.nutricao-custo-distribuicao ul { align-content: center; }
+@media(max-width:640px) { .nutricao-custo-distribuicao { grid-template-columns: minmax(0,1fr); } }
 .nutricao-custo-distribuicao h3 { font-size: 15px; font-weight: 600; }
 .nutricao-custo-grafico { width: 100%; max-width: 250px; margin: 10px auto; }
 .nutricao-custo-grafico > div { height: 180px; aspect-ratio: auto; }
@@ -192,13 +194,13 @@
 .nutricao-custo-legenda { width: 8px; height: 8px; border-radius: 2px; }
 .nutricao-consumo-atribuido summary { color: var(--primary); cursor: pointer; padding: 8px 0; font-weight: 500; }
 .nutricao-consumo-atribuido summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
-@media(max-width:1350px) { .nutricao-consumo-composicao { grid-template-columns: minmax(0,1fr); }.nutricao-custo-distribuicao { border-left: 0; border-top: 1px solid var(--border); display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 12px 24px; }.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: 1 / -1; }.nutricao-custo-distribuicao ul { align-content: center; } }
+
 @media(max-width:600px) { .nutricao-formulario .nutricao-ingrediente-form,.nutricao-custo-distribuicao { grid-template-columns: minmax(0,1fr); }.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: auto; }.nutricao-receita-linha { padding: 16px; }.nutricao-consumo-resumo .nutricao-fatos { grid-template-columns: minmax(0,1fr); } }
 .nutricao-fechamento-resumo { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); }
 .nutricao-fechamento-resumo > .nutricao-card-cabecalho,.nutricao-fechamento-resumo > .nutricao-aviso { grid-column: 1 / -1; }
 .nutricao-fechamento-resumo > .nutricao-resumo { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 16px 20px; gap: 12px 20px; }
 .nutricao-fechamento-resumo .nutricao-resumo span { font-size: 14px; margin-bottom: 3px; }
-.nutricao-fechamento-resumo > .nutricao-fatos-fechamento { align-items: center; border-top: 0; border-left: 1px solid var(--border); gap: 12px; padding: 16px 20px; }
+.nutricao-fechamento-resumo > .nutricao-fatos-fechamento { align-items: start; border-top: 0; border-left: 1px solid var(--border); gap: 12px; padding: 16px 20px; }
 @media(max-width:800px) { .nutricao-fechamento-resumo { grid-template-columns: minmax(0,1fr); }.nutricao-fechamento-resumo > .nutricao-fatos-fechamento { border-left: 0; border-top: 1px solid var(--border); } }
 .nutricao-pagina .nutricao-dietas-panorama { flex-direction: row; min-height: 0; justify-content: space-between; }
 .nutricao-dietas-panorama > div:first-child { flex: 0 0 auto; }
@@ -324,3 +326,76 @@
 .nutricao-formas-fechamento li > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
 .nutricao-formas-fechamento p { margin-top: .4rem; font-size: .875rem; line-height: 1.6; }
 .nutricao-lote-fechamentos > h2 { margin-bottom: .75rem; }
+
+/* Detalhe no modal: o envelope já tem respiro; os conteúdos aninhados não somam margem. */
+.nutricao-conteudo .nutricao-conteudo, [data-slot="dialog-content"] .nutricao-conteudo:first-child { margin-top: 0; }
+
+/* Novo fechamento: modelo do lote em uma linha e conferência em grade. */
+.nutricao-modelo-lote { margin: 8px 0 4px; padding: 12px 14px; border-radius: 8px; background: var(--campo-papel, #f7f8fa); font-size: 14px; line-height: 1.6; }
+.nutricao-modelo-lote a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+.nutricao-subtitulo { font-size: 16px; font-weight: 650; margin: 8px 0 0; }
+.nutricao-conferencia-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 0; }
+.nutricao-conferencia-resumo > div { background: var(--card); padding: 10px 12px; }
+.nutricao-conferencia-resumo dt { font-size: 12px; color: var(--muted-foreground); }
+.nutricao-conferencia-resumo dd { margin: 2px 0 0; font-weight: 650; font-variant-numeric: tabular-nums; }
+.nutricao-conferencia-resumo small { font-weight: 500; color: var(--muted-foreground); }
+.nutricao-participantes summary { cursor: pointer; color: var(--primary); font-weight: 500; width: fit-content; }
+.nutricao-conferencia-cabecalho, .nutricao-conferencia-linha { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, .9fr) minmax(120px, 1fr) minmax(150px, 1.2fr); gap: 12px; align-items: center; }
+.nutricao-conferencia-cabecalho { padding: 0 0 6px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.nutricao-conferencia-item { display: grid; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.nutricao-conferencia-item:last-of-type { border-bottom: 0; }
+.nutricao-conferencia-nome { display: grid; gap: 2px; min-width: 0; }
+.nutricao-conferencia-nome span { font-size: 13px; color: var(--muted-foreground); }
+.nutricao-conferencia-previsto { font-variant-numeric: tabular-nums; }
+.nutricao-alerta-texto { color: var(--campo-atraso, #8d3931) !important; font-weight: 600; }
+.nutricao-rotulo-movel { display: none; }
+@media (max-width: 760px) {
+  .nutricao-conferencia-cabecalho { display: none; }
+  .nutricao-conferencia-linha { grid-template-columns: 1fr 1fr; }
+  .nutricao-conferencia-nome { grid-column: 1 / -1; }
+  .nutricao-rotulo-movel { display: block; font-size: 12px; color: var(--muted-foreground); }
+}
+
+/* Alertas: uma seção por tipo de pendência, cada uma com a ação que resolve. */
+.nutricao-alertas { display: grid; gap: 24px; }
+.nutricao-alerta-secao { display: grid; gap: 10px; }
+.nutricao-alerta-secao h2 { font-size: 18px; font-weight: 600; }
+.nutricao-alerta-secao header p { color: var(--muted-foreground); margin-top: 2px; font-size: 14px; }
+.nutricao-motivos { display: grid; gap: 2px; font-size: 14px; }
+
+/* Receitas: nome abre a composição; uma ação principal e as demais no menu. */
+.nutricao-receita-nome { text-align: left; font-weight: 650; color: var(--foreground); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.nutricao-receita-nome:hover { text-decoration-color: currentColor; color: var(--primary); }
+.nutricao-receita-nome:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
+.nutricao-receita-card h3 .nutricao-receita-nome { font-size: inherit; }
+.receita-compacta { display: grid; gap: 14px; padding: 4px 20px 0; }
+.receita-compacta-barra { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--muted); }
+.receita-compacta-barra span { display: block; height: 100%; }
+.receita-compacta ul { display: grid; gap: 6px; margin-top: 10px; }
+.receita-compacta li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 52px; gap: 8px; align-items: center; font-size: 14px; }
+.receita-compacta li i { width: 10px; height: 10px; border-radius: 3px; }
+.receita-compacta li strong { font-variant-numeric: tabular-nums; font-weight: 600; }
+.receita-compacta .receita-cor-0 { background: #00817a; }
+.receita-compacta .receita-cor-1 { background: #78a98c; }
+.receita-compacta .receita-cor-2 { background: #c39850; }
+.receita-uso-compacto { padding: 0 20px; font-size: 13px; color: var(--muted-foreground); }
+.receita-uso-compacto a { color: var(--primary); }
+.nutricao-receita-card .receita-acoes-novas { display: flex; justify-content: flex-end; gap: 8px; }
+.receita-compacta li small { text-align: right; color: var(--muted-foreground); font-size: 13px; font-variant-numeric: tabular-nums; }
+.receita-uso-compacto { margin: 12px 0 16px; }
+.nutricao-estoque-dieta td a.text-primary,.nutricao-alerta-secao td a.text-primary{color:var(--campo-pasto,#006f68)}
+
+/* No formulário, a linha de contexto do topo não é um cabeçalho de cartão: sem divisória nem respiro extra. */
+.nutricao-formulario > .nutricao-card-cabecalho { border-bottom: 0; padding: 0 0 4px; }
+.nutricao-contexto-fechamento { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.6fr); gap: 0; margin: 4px 0 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.nutricao-contexto-fechamento > div { display: grid; gap: 3px; align-content: start; padding: 14px 16px; min-width: 0; }
+.nutricao-contexto-fechamento > div + div { border-left: 1px solid var(--border); }
+.nutricao-contexto-fechamento dt { font-size: 12px; color: var(--muted-foreground); }
+.nutricao-contexto-fechamento dd { margin: 0; font-weight: 650; font-size: 15px; }
+.nutricao-contexto-fechamento > div > small { font-size: 13px; color: var(--muted-foreground); }
+.nutricao-contexto-ingredientes ul { display: grid; gap: 6px; margin: 2px 0 0; padding: 0; list-style: none; }
+.nutricao-contexto-ingredientes li { display: grid; grid-template-columns: minmax(0,1fr) auto; column-gap: 12px; font-size: 13px; font-weight: 500; }
+.nutricao-contexto-ingredientes li strong { text-align: right; font-variant-numeric: tabular-nums; font-weight: 650; }
+.nutricao-contexto-ingredientes li small { grid-column: 1 / -1; color: var(--muted-foreground); font-weight: 400; }
+@media (max-width: 800px) { .nutricao-contexto-fechamento { grid-template-columns: minmax(0,1fr); } .nutricao-contexto-fechamento > div + div { border-left: 0; border-top: 1px solid var(--border); } }
+.nutricao-formulario > .nutricao-card-cabecalho + .nutricao-card-corpo { padding-top: 0; }

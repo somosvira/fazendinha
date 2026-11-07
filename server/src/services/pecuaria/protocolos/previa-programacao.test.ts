@@ -1,0 +1,12 @@
+import { beforeEach, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ animais:vi.fn(), calendario:vi.fn(), automacoes:vi.fn() }));
+vi.mock("../../../db.js",()=>({prisma:{animal:{findMany:mocks.animais}}}));
+vi.mock("./operacao.js",()=>({preverParticipacaoIndividual:mocks.calendario}));
+vi.mock("./automacao.js",()=>({preverAutomacoesAdesao:mocks.automacoes}));
+import { preverProgramacaoColetiva, previaProgramacaoSchema } from "./previa-programacao.js";
+const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
+const input={propriedadeId:7,protocoloId:id(1),animaisIds:[id(2),id(3)],inicioReferencia:"2026-11-05"};
+beforeEach(()=>{vi.resetAllMocks();mocks.animais.mockResolvedValue(input.animaisIds.map(id=>({id,brinco:id,nome:null})));mocks.calendario.mockResolvedValue({protocolo:{nome:"Modelo",versao:2},itens:[{id:id(4),nome:"Inserção",previstaPara:"2026-11-05T00:00:00Z",precisaoTemporal:"DIA"}],total:1,pagina:1,porPagina:10});mocks.automacoes.mockResolvedValue({itens:[{etapaId:id(4),programadaPara:"2026-11-05T11:00:00Z"}]});});
+it("confere conjunto no sítio e reutiliza uma consulta de calendário com hora automática real",async()=>{const result=await preverProgramacaoColetiva(input);expect(mocks.calendario).toHaveBeenCalledTimes(1);expect(mocks.animais).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({id:{in:input.animaisIds},localizacoes:{some:{propriedadeId:7,ate:null}},baixas:{none:{estornadaEm:null}}})}));expect(result.participantes).toHaveLength(2);expect(result.itens[0]).toMatchObject({previstaPara:"2026-11-05T11:00:00Z",precisaoTemporal:"HORA"});});
+it("recusa participantes ausentes sem consultar o calendário",async()=>{mocks.animais.mockResolvedValue([{id:id(2)}]);await expect(preverProgramacaoColetiva(input)).rejects.toThrow(/não estão disponíveis neste sítio/);expect(mocks.calendario).not.toHaveBeenCalled();});
+it("rejeita duplicação e lote maior que100",()=>{expect(previaProgramacaoSchema.safeParse({...input,animaisIds:[id(2),id(2)]}).success).toBe(false);expect(previaProgramacaoSchema.safeParse({...input,animaisIds:Array.from({length:101},(_,i)=>id(i+2))}).success).toBe(false);});

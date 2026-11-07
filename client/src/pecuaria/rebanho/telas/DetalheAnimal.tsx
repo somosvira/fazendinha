@@ -38,7 +38,6 @@ import { FormPesagem } from "../forms/FormPesagem";
 import { FormBaixa } from "../forms/FormBaixa";
 import { FormBaixaHistorica } from "../forms/FormBaixaHistorica";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
-import { Loader } from "../../../components/Loading";
 import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira, Pill } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
@@ -55,8 +54,10 @@ import { ControlesDocumentaisAnimal } from "../leite/ControlesDocumentaisAnimal"
 import { ReproducaoAnimal } from "../reproducao/Reproducao";
 import { StatusOperacionaisAnimal } from "../components/StatusOperacionaisAnimal";
 import { SinaisClinicosAnimal } from "../components/SinaisClinicosAnimal";
-import type { CarenciaAnimal } from "../sanidade/api";
+import { consultarCarencia, type CarenciaAnimal } from "../sanidade/api";
+import { obterReproducao } from "../reproducao/api";
 import { NutricaoAnimal } from "../nutricao/NutricaoAnimal";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 const ABAS_FICHA = [["geral", "Geral"], ["producao", "Produção"], ["reproducao", "Reprodução"], ["sanidade", "Sanidade"], ["nutricao", "Nutrição"], ["bezerreiro", "Bezerreiro"], ["alertas", "Alertas"]] as const;
 const ICONES_FICHA = {geral: IdCard, producao: Milk, reproducao: GitBranch, sanidade: HeartPulse, nutricao: Leaf, bezerreiro: Baby, alertas: TriangleAlert, cadastro: IdCard};
@@ -96,6 +97,10 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   const sitioDaUrl = () => { const valor = Number(new URLSearchParams(window.location.search).get("sitio")); return Number.isSafeInteger(valor) && valor > 0 ? valor : undefined; };
   const [sitioConsulta, setSitioConsulta] = useState(sitioDaUrl);
   const [secaoAtiva, setSecaoAtiva] = useState(secaoDaUrl);
+  // Abas que não alimentam o cabeçalho só consultam o servidor depois de abertas uma vez.
+  const [abasAbertas, setAbasAbertas] = useState(() => new Set<string>([secaoAtiva]));
+  useEffect(() => { setAbasAbertas(atual => atual.has(secaoAtiva) ? atual : new Set(atual).add(secaoAtiva)); }, [secaoAtiva]);
+  useEffect(() => { setAbasAbertas(new Set([secaoAtiva])); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const selecionarSecao = (secao: string) => {
     const destino = destinoGeral(secao);
     setSecaoAtiva(["cadastro", "identificacao-genetica", "peso", "historico"].includes(destino) ? "geral" : secao);
@@ -242,6 +247,17 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
   // A mesma localização e o mesmo sítio explícito alimentam o indicador e a consulta completa.
   const localizacaoAtual = animal?.historicoLocalizacoes.find((l) => l.ate == null) ?? animal?.historicoLocalizacoes[0] ?? null;
   const propriedadeAlertas = sitioConsulta ?? localizacaoAtual?.propriedade?.id;
+  // O cabeçalho consulta só os resumos; as abas carregam o resto quando abertas.
+  const sitioResumo = sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null;
+  useEffect(() => {
+    if (!animal || animal.id !== id) return;
+    let vivo = true;
+    consultarCarencia(animal.id).then(c => { if (vivo) setCarenciaResumo(c); }).catch(() => { if (vivo) setCarenciaResumo(null); });
+    if (animal.sexo === "F") obterReproducao(animal.id, sitioResumo ?? undefined)
+      .then(p => { if (vivo) setSituacaoReprodutiva(p.animais.find(a => a.animalId === animal.id)?.situacao ?? null); })
+      .catch(() => { if (vivo) setSituacaoReprodutiva(null); });
+    return () => { vivo = false; };
+  }, [animal, id, sitioResumo, refreshToken]);
   const totalAlertas = useResumoAlertasAnimal(animal?.id === id ? animal.id : undefined, propriedadeAlertas, refreshToken);
 
   if (!animal) return <PaginaFinanceira><nav aria-label="Navegação" className="pec-breadcrumb"><button type="button" onClick={onVoltar}>{rotuloVoltar}</button></nav><PageHeader titulo="Animal" /><div className="rebanho-carregamento">
@@ -249,7 +265,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
       <h1 id="animal-indisponivel" className="text-xl font-semibold">{getPropriedadeAtiva() == null ? "Animal não encontrado" : "Animal não disponível no sítio selecionado"}</h1>
       <p className="text-ink-3">{getPropriedadeAtiva() == null ? "Volte à lista para localizar um animal disponível." : "Confira o sítio no seletor lateral ou volte à lista de animais deste sítio."}</p>
       <Button secondary onClick={onVoltar}><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button>
-    </section> : <><Button secondary onClick={onVoltar} className="mt-6"><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button><ErrorBox erro={erro}/>{!erro && <Loader label="Carregando animal"/>}</>}
+    </section> : <><Button secondary onClick={onVoltar} className="mt-6"><ArrowLeft size={17} aria-hidden="true"/>Voltar para {rotuloVoltar.toLocaleLowerCase("pt-BR")}</Button><ErrorBox erro={erro}/>{!erro && <EsqueletoFicha label="Carregando animal" campos={8} />}</>}
   </div></PaginaFinanceira>;
 
   const ativo = animal.situacao === "ATIVO";
@@ -333,7 +349,7 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
     <SubTabs ariaLabel="Seções da ficha" tabs={ABAS_FICHA.filter(([ancora]) => (ancora !== "bezerreiro" || !!bezerreiro.dados?.temHistorico) && (!["reproducao", "producao"].includes(ancora) || animal.sexo === "F")).map(([id, label]) => ({ id, label, icon: ICONES_FICHA[id] }))} active={secaoAtiva} onSelect={selecionarSecao} idDaAba={aba => `aba-${aba}`} idDoPainel={aba => `ficha-painel-${aba}`} />
     {secaoAtiva === "bezerreiro" && !bezerreiro.dados && <div className="p-5" role={bezerreiro.erro ? "alert" : "status"}>{bezerreiro.erro || "Consultando acompanhamento do bezerreiro…"}{bezerreiro.erro && <Button secondary onClick={bezerreiro.tentar}>Tentar novamente</Button>}</div>}
     {bezerreiro.dados?.temHistorico && sitioBezerreiro != null && <section id="ficha-painel-bezerreiro" role="tabpanel" aria-labelledby="aba-bezerreiro" hidden={secaoAtiva !== "bezerreiro"}>{<AcompanhamentoBezerreiro animalId={animal.id} sitio={sitioBezerreiro} podeLancar={podeLancar} revisao={refreshToken} embutido dadosIniciais={bezerreiro.dados}/>}</section>}
-    <section id="ficha-painel-alertas" role="tabpanel" aria-labelledby="aba-alertas" hidden={secaoAtiva !== "alertas"}><AlertasAnimal animalId={animal.id} propriedadeId={propriedadeAlertas} podeLancar={podeLancar} revisao={refreshToken}/></section>
+    <section id="ficha-painel-alertas" role="tabpanel" aria-labelledby="aba-alertas" hidden={secaoAtiva !== "alertas"}>{abasAbertas.has("alertas") && <AlertasAnimal animalId={animal.id} propriedadeId={propriedadeAlertas} podeLancar={podeLancar} revisao={refreshToken}/>}</section>
     <div id="ficha-painel-geral" role="tabpanel" aria-labelledby="aba-geral" hidden={secaoAtiva !== "geral"} className="ficha-geral">
       <SecaoGeralAnimal id="cadastro" icon={IdCard} titulo="Identificação" acao={podeLancar && ativo ? <Button secondary onClick={() => setEditandoDados(true)}>Editar dados</Button> : undefined}>
         <dl className="grid gap-4 sm:grid-cols-2">
@@ -428,18 +444,18 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
 </DialogContent></Dialog>
 <Dialog open={manejoDetalhe} onOpenChange={setManejoDetalhe}><DialogContent className="ficha-dialogo max-w-4xl" aria-describedby={undefined}><DialogHeader><DialogTitle>Desmama e castração</DialogTitle></DialogHeader><ManejoAnimal animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} localizacoes={animal.historicoLocalizacoes} baixaData={animal.baixa?.data ?? null} podeLancar={podeLancar} onSalvo={() => { void carregar(); }}/></DialogContent></Dialog>
       {animal.sexo === "F" && <section id="ficha-painel-producao" role="tabpanel" aria-labelledby="aba-producao" hidden={secaoAtiva !== "producao"}>
-        <div id="producao-leite">
+        {abasAbertas.has("producao") && <div id="producao-leite">
           <HistoricoProdutivoLeite animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} lactacao={{ propriedadeId: sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null, podeLancar, onMudou: () => { void carregar(); } }} />
-        </div>
+        </div>}
         {secaoAtiva === "producao" && <QualidadeAnimalLeite key={animal.id} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
         {secaoAtiva === "producao" && <ControlesDocumentaisAnimal key={`documentos-${animal.id}`} animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id ?? null} recarregarToken={refreshToken} />}
       </section>}
-      {animal.sexo==="F"&&<section id="ficha-painel-reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6"><ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onSituacao={setSituacaoReprodutiva} onMudou={() => { void carregar(); }} /></section>}
+      {animal.sexo==="F"&&<section id="ficha-painel-reproducao" role="tabpanel" aria-labelledby="aba-reproducao" hidden={secaoAtiva !== "reproducao"} className="scroll-mt-6">{abasAbertas.has("reproducao") && <ReproducaoAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />}</section>}
       <section id="ficha-painel-sanidade" role="tabpanel" aria-labelledby="aba-sanidade" hidden={secaoAtiva !== "sanidade"} className="scroll-mt-6">
-      <SanidadeAnimal onCarencia={setCarenciaResumo} animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />
+      {abasAbertas.has("sanidade") && <SanidadeAnimal animalId={animal.id} propriedadeId={sitioConsulta ?? localizacaoAtual?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={refreshToken} onMudou={() => { void carregar(); }} />}
       </section>
       <section id="ficha-painel-nutricao" role="tabpanel" aria-labelledby="aba-nutricao" hidden={secaoAtiva !== "nutricao"} className="scroll-mt-6">
-      <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />
+      {abasAbertas.has("nutricao") && <NutricaoAnimal animalId={animal.id} recarregarToken={refreshToken} />}
 
       </section>
     {identificandoCria && <IdentificarCria animalId={animal.id} propriedadeId={localizacaoAtual?.propriedade?.id??null} nomeInicial={animal.nome} onFechar={()=>setIdentificandoCria(false)} onSalvo={()=>{setIdentificandoCria(false);void carregar();}} />}

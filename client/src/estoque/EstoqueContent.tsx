@@ -15,12 +15,12 @@ import "./estoque-theme.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History, ArrowLeftRight, ChevronDown } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
-import { Loader } from "../components/Loading";
 import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
 import { fmtMoneyExact } from "@/components/charts";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaFinanceira, Paginacao, Panel, Pill, SelectFiltro, TabelaFinanceira } from "../financeiro/financeiro-ui";
 import { TransferirEstoque } from "./TransferirEstoque";
+import { MovimentoEstoqueModal } from "./MovimentoEstoqueModal";
 import { FormProduto } from "../financeiro/FormProduto";
 import { PeriodoFinanceiroControl } from "../financeiro/PeriodoFinanceiroControl";
 import { useSaldos, listarMovimentos, listarCentrosCusto, type FiltroMovimentos, type MovimentoDTO, type OrigemMovimento, type SaldoDTO, type RefDTO } from "./api";
@@ -28,6 +28,7 @@ import { abrirAjusteEstoque, destinoDoMovimento, podeAcessarArea, podeAjustarEst
 import { SEM_VINCULO } from "../lib/ids";
 import { ROTULO_ORIGEM } from "./rotulos";
 import { getPropriedadeAtiva } from "../propriedadeScope";
+import { EsqueletoLinhas, EsqueletoTabela } from "../components/Esqueleto";
 
 const qtd = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
 const CAMPO = "h-10 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-sm";
@@ -44,6 +45,8 @@ const ENTRADAS_EXIBIDAS = 6;
 const hrefMaterialGenetico = (id: string) => `/pecuaria/rebanho/cadastros?aba=material-genetico&material=${encodeURIComponent(id)}`;
 
 type Ordem = "nome" | "categoria" | "valor";
+
+const LINK_MODAL = "font-medium text-primary hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4";
 
 function IconeAbaixoMinimo({ size = 16 }: { size?: number }) {
   return <TriangleAlert data-testid="icone-abaixo-minimo" size={size} aria-hidden="true" className="shrink-0 text-[var(--fin-pendente)]" />;
@@ -71,6 +74,9 @@ function useMovimentos(f: FiltroMovimentos) {
 
 export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { centroCustoIdInicial?: string | null; titulo?: string; avisoFiltro?: string } = {}) {
   const visual = useVisualizacaoConsulta("visualEstoque");
+  const [produtoCriado, setProdutoCriado] = useState<string | null>(null);
+  // Estorno e original abrem em modal: navegar trocaria a lista que a pessoa estava lendo.
+  const [movimentoAberto, setMovimentoAberto] = useState<{ id: string; propriedadeId?: number | null; unidade?: string } | null>(null);
   const [consultaUrl, setConsultaUrl] = useState(() => window.location.search);
   useEffect(() => { const atualizar = () => setConsultaUrl(window.location.search); window.addEventListener("popstate", atualizar); return () => window.removeEventListener("popstate", atualizar); }, []);
   const urlEstoque = new URLSearchParams(consultaUrl);
@@ -212,9 +218,11 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     { chave: "valor", titulo: "Valor", alinhamento: "direita", larguraMinima: 120, celula: (m) => <span className="whitespace-nowrap">{m.valorTotal == null ? "—" : brl(m.valorTotal)}</span> },
     { chave: "origem", titulo: "Origem / vínculo", alinhamento: "esquerda", larguraMinima: 220, larguraFlexivel: true, celula: (m) => {
       const destino = destinoDoMovimento(m);
+      // A devolução de um estorno é gravada como ajuste; o que importa para quem lê é que é um estorno.
+      if (m.reversaoDeId && !destino) return <><div className="text-xs text-ink-3">Estorno</div><div className="break-words text-ink-3">{m.observacao ?? "—"}</div><div className="mt-1 flex flex-wrap gap-2 text-xs"><button type="button" className={LINK_MODAL} onClick={(e) => { e.stopPropagation(); setMovimentoAberto({ id: m.reversaoDeId!, propriedadeId: m.propriedadeId, unidade: unidadePorProduto.get(m.produtoId) }); }}>Ver movimento original</button></div></>;
       return <>{destino?.rotulo !== (ROTULO_ORIGEM[m.origem] ?? m.origem) && <div className="text-xs text-ink-3">{ROTULO_ORIGEM[m.origem] ?? m.origem}</div>}<div className="break-words">{destino ? <><LinkInterno href={destino.href} area={destino.area}>{destino.rotulo}</LinkInterno>{m.fornecedor && <span className="text-ink-3"> · {m.fornecedor}</span>}</> : <span className="text-ink-3">{m.fornecedor ?? "—"}</span>}</div><div className="mt-1 flex flex-wrap gap-2 text-xs">
-        {m.estorno && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.estorno.id)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver estorno</LinkInterno>}
-        {m.reversaoDeId && <LinkInterno href={`/estoque?movimentoId=${encodeURIComponent(m.reversaoDeId)}${m.propriedadeId != null ? `&propriedadeId=${m.propriedadeId}` : ""}`} area="estoque">Ver movimento original</LinkInterno>}
+        {m.estorno && <button type="button" className={LINK_MODAL} onClick={(e) => { e.stopPropagation(); setMovimentoAberto({ id: m.estorno!.id, propriedadeId: m.propriedadeId, unidade: unidadePorProduto.get(m.produtoId) }); }}>Ver estorno</button>}
+        {m.reversaoDeId && <button type="button" className={LINK_MODAL} onClick={(e) => { e.stopPropagation(); setMovimentoAberto({ id: m.reversaoDeId!, propriedadeId: m.propriedadeId, unidade: unidadePorProduto.get(m.produtoId) }); }}>Ver movimento original</button>}
       </div></>;
     } },
   ];
@@ -237,6 +245,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   return <PaginaFinanceira>
     <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><Package/></span>{titulo ?? "Estoque"}</span>} acao={acao} />
     {avisoFiltro && <p className="mt-4 text-sm text-amber-800">{avisoFiltro}</p>}
+    {produtoCriado && <p role="status" className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-muted px-4 py-3 text-sm"><span><strong>{produtoCriado}</strong> cadastrado. Ele aparece com saldo depois da primeira entrada.</span><LinkInterno area="financeiro" href="/financeiro/operacoes/nova?tipo=COMPRA_ESTOQUE">Registrar a primeira entrada</LinkInterno><button type="button" className="ml-auto text-ink-3 hover:text-ink" onClick={() => setProdutoCriado(null)}>Fechar</button></p>}
     <ErrorBox erro={erroCentros ? `Erro ao carregar centros de custo: ${erroCentros}` : null} />
 
     <Panel className="estoque-resumo-consulta mt-5">
@@ -261,7 +270,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       </BarraConsulta>
       <div className="consulta-visual-barra"><span>{saldosVisiveis.length} produtos no recorte</span><AlternarVisualizacaoConsulta rotulo="Visualização dos produtos" {...visual}/></div>
       <div className="min-w-0">
-        {saldos.loading ? <div className="p-6"><Loader /></div>
+        {saldos.loading ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
           : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
@@ -287,7 +296,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
         <PeriodoFinanceiroControl inicio={periodoMov.inicio} fim={periodoMov.fim} allowAll label="Período do histórico" onChange={(periodo) => { setPeriodoMov(periodo); setPaginaMov(1); }} />
       </BarraConsulta>
       <div className="min-w-0">
-        {movimentos.loading && movimentos.data.length === 0 ? <div className="p-6"><Loader /></div>
+        {movimentos.loading && movimentos.data.length === 0 ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : movimentos.erro ? <Empty>Não foi possível consultar os movimentos: {movimentos.erro} <button type="button" className="underline" onClick={movimentos.recarregar}>Tentar novamente</button></Empty>
           : movimentos.data.length === 0 ? <Empty>{movimentoId ? "Movimento não encontrado neste sítio ou indisponível para seu acesso." : filtrosMovAtivos ? "Nenhum movimento bate com os filtros." : "Nenhum movimento registrado ainda."}</Empty>
           : <>
@@ -301,7 +310,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     <section className="estoque-entradas mt-3 rounded-xl border border-border bg-card" aria-label="Últimas entradas">
       <h2 className="flex items-center gap-2 px-4 pt-4 text-base font-semibold"><PackagePlus size={17} aria-hidden="true" />Últimas entradas</h2>
       <div className="border-t border-border p-4">
-        {entradas.loading && ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Carregando…</p>
+        {entradas.loading && ultimasEntradas.length === 0 ? <EsqueletoLinhas label="Carregando entradas" className="mt-3" />
           : ultimasEntradas.length === 0 ? <p className="mt-3 text-xs text-ink-3">Nenhuma entrada registrada ainda.</p>
           : <ul className="mt-3 grid gap-x-8 gap-y-3 sm:grid-cols-2">{ultimasEntradas.map((m) => {
               const destino = destinoDoMovimento(m);
@@ -319,6 +328,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     {perdendo && <TransferirEstoque perda onFechar={() => setPerdendo(false)} onSalvo={() => { setPerdendo(false); recarregarTudo(); }} />}
     {transferindo && <TransferirEstoque onFechar={() => setTransferindo(false)} onSalvo={() => { setTransferindo(false); recarregarTudo(); }} />}
-    {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={() => { setCadastrandoProduto(false); recarregarTudo(); }} />}
+    {cadastrandoProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={(salvo) => { setCadastrandoProduto(false); setProdutoCriado(salvo.nome); recarregarTudo(); }} />}
+    {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto.id} propriedadeId={movimentoAberto.propriedadeId} unidade={movimentoAberto.unidade} onFechar={() => setMovimentoAberto(null)} />}
   </PaginaFinanceira>;
 }

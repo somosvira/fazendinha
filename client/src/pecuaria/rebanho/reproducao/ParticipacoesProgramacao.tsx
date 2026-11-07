@@ -1,10 +1,16 @@
+import { SecaoRecolhivel } from "../components/SecaoRecolhivel";
+import { Check, Clock3, X, Minus, ChevronDown } from "lucide-react";
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "../../../components/ui/table";
+import { Dica, AjudaCampo } from "../../../components/Dica";
+import { PainelCadastro } from "../../../financeiro/PainelCadastro";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "../../../components/ui/dropdown-menu";
 import { ContextoTentativaParticipacao, type ContextoTentativaParticipacaoDTO } from "../protocolos/ContextoTentativaParticipacao";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
+import { ErrorBox } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
-import { consultaProtocolo, obterTarefasProtocolo, reqProtocolo } from "../protocolos/api";
+import { consultaProtocolo, obterTarefasProtocolo, obterEtapasProtocolo, reqProtocolo, type EtapaProtocolo, type TarefaOperacional } from "../protocolos/api";
 import type { PaginaProtocolo } from "../protocolos/EtapasProtocolo";
 import type { ParticipanteIatf, TarefaIatf } from "./Iatf";
 import { horarioIatf } from "./CampoDataIatf";
@@ -14,7 +20,9 @@ import { Empty } from "@/financeiro/financeiro-ui";
 
 type Participacao = Omit<ParticipanteIatf, "tarefas"> & { contextoTentativa?: ContextoTentativaParticipacaoDTO };
 /** Consulta individual explícita: nenhuma data coletiva substitui a participação. */
-export function ParticipacoesProgramacao({ id, propriedadeId, revisao }: { id: string; propriedadeId?: number; revisao: number }) {
+export function ParticipacoesProgramacao({ id, propriedadeId, revisao, aoRetirar, acoes }: { id: string; propriedadeId?: number; revisao: number; aoRetirar?: (id: string) => void; acoes?: ReactNode }) {
+  const [etapas, setEtapas] = useState<EtapaProtocolo[]>([]);
+  const [tarefas, setTarefas] = useState<Record<string,TarefaOperacional[]>>({});
   const [pagina, setPagina] = useState(1);
   const [busca, setBusca] = useState("");
   const [dados, setDados] = useState<PaginaProtocolo<Participacao> | null>(null);
@@ -24,23 +32,39 @@ export function ParticipacoesProgramacao({ id, propriedadeId, revisao }: { id: s
   useEffect(() => {
     let vigente = true; setDados(null); setErro(null); setAberta(null);
     reqProtocolo<PaginaProtocolo<Participacao>>(`/programacoes/${encodeURIComponent(id)}/participantes${consultaProtocolo({ pagina, busca })}`, propriedadeId)
-      .then(d => { if (vigente) setDados(d); }).catch(e => { if (vigente) setErro(e instanceof Error ? e.message : "Não foi possível consultar as participações."); });
+      .then(async d => {
+        const primeira = await obterEtapasProtocolo({programacaoId:id}, 1, propriedadeId);
+        const todas = [...primeira.itens];
+        for (let pagina = 2; vigente && pagina <= Math.ceil(primeira.total / primeira.porPagina); pagina++) todas.push(...(await obterEtapasProtocolo({programacaoId:id}, pagina, propriedadeId)).itens);
+        const linhas = await Promise.all(d.itens.map(async p => {
+          const primeira = await obterTarefasProtocolo({participacaoId:p.id}, {pagina:1}, propriedadeId);
+          const itens = [...primeira.itens];
+          for(let pagina=2; vigente && pagina<=Math.ceil(primeira.total/primeira.porPagina); pagina++) itens.push(...(await obterTarefasProtocolo({participacaoId:p.id},{pagina},propriedadeId)).itens);
+          return [p.id,itens] as const;
+        }));
+        if(vigente){setEtapas(todas);setTarefas(Object.fromEntries(linhas));setDados(d);}
+      }).catch(e => { if (vigente) setErro(e instanceof Error ? e.message : "Não foi possível consultar as participações."); });
     return () => { vigente = false; };
   }, [id, propriedadeId, pagina, busca, revisao, tentativa]);
-  return <section className="repro-participacoes" aria-label="Participações individuais da programação">
-    <div className="repro-consulta-titulo"><div><h2>Participações individuais</h2><p>Início efetivo, previsões e realizações de cada animal.</p></div></div>
+  return <SecaoRecolhivel recolhivel={false} className="ficha-geral-secao protocolo-etapa-ficha repro-participacoes" titulo={<>Participantes <AjudaCampo rotulo="Legenda das etapas" texto="Check: atendido. Relógio: pendente, inclusive agendado. X: não atendido, dispensado ou retirado. Passe o mouse ou foque o ícone para ver o detalhe."/></>} acoes={acoes}>
     <Input aria-label="Buscar animal nas participações" placeholder="Buscar animal nas participações" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }}/>
     <ErrorBox erro={erro}/>{erro ? <Button variant="outline" onClick={() => setTentativa(v => v + 1)}>Atualizar participações individuais</Button> : !dados ? <p role="status">Consultando participações individuais…</p> : <>
-      {dados.itens.map(p => <article key={p.id} className="repro-participacao"><header><div><h3>{p.animal?.brinco ?? "Animal"}{p.animal?.nome ? ` · ${p.animal.nome}` : ""}</h3><p>Início efetivo: {p.inicioEfetivo ? horarioIatf(p.inicioEfetivo, p.precisaoInicioEfetivo ?? p.precisaoTemporal) : "Não confirmado"}</p></div><Pill>{p.encerradoEm ? "Participação encerrada" : p.inicioEfetivo ? "Em acompanhamento" : "Início previsto"}</Pill></header>
-        <ContextoTentativaParticipacao contexto={p.contextoTentativa}/>
-        {p.motivoEncerramento && <p>{p.motivoEncerramento}</p>}
-        <div className="repro-participacao-acoes"><Button variant="outline" aria-expanded={aberta === p.id} onClick={() => setAberta(aberta === p.id ? null : p.id)}>{aberta === p.id ? "Recolher etapas" : "Consultar etapas individuais"}</Button><LinkReproducao botao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?participacaoId=${encodeURIComponent(p.id)}&programacaoId=${encodeURIComponent(id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}#reproducao`}>Ficha do animal</LinkReproducao></div>
-        {aberta === p.id && <EtapasParticipacao key={`${p.id}:${propriedadeId}:${revisao}`} participante={p} propriedadeId={propriedadeId}/>}
-      </article>)}
+      <div className="protocolo-tabela mt-4"><Table containerLabel="Participantes por etapa" aria-label="Participantes por etapa"><TableHeader><TableRow><TableHead>Animal</TableHead>{etapas.map(e=><TableHead key={e.id}>{e.unidadeIntervalo === "HORAS" ? "H" : "D"}{e.diaRelativo} · {e.nome}</TableHead>)}<TableHead>Ações</TableHead></TableRow></TableHeader><TableBody>
+      {dados.itens.map(p=><TableRow key={p.id}><TableCell><LinkReproducao sitio={propriedadeId} href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?participacaoId=${encodeURIComponent(p.id)}&programacaoId=${encodeURIComponent(id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}#reproducao`}>{p.animal?.brinco ?? "Animal"}{p.animal?.nome ? ` · ${p.animal.nome}` : ""}</LinkReproducao></TableCell>{etapas.map(e=>{
+        const t=tarefas[p.id]?.find(t=>t.etapaId===e.id);
+        const feito=t?.situacao === "ATENDIDO";
+        const ausente=!!t && ["NAO_ATENDIDO","RETIRADO","DISPENSADO","ENCERRADO"].includes(t.situacao);
+        const rotulos:Record<string,string>={ATENDIDO:"Atendido",NAO_ATENDIDO:"Não atendido",RETIRADO:"Retirado do protocolo",DISPENSADO:"Dispensado",ENCERRADO:"Encerrado sem substituição",PREVISTO:"Pendente · agendado",SEM_REGISTRO:"Pendente · sem registro",ADIADO:"Pendente · adiado",REGULARIZACAO_PENDENTE:"Pendente · regularização"};
+        const rotulo=t ? rotulos[t.situacao] ?? "Pendente" : "Sem tarefa vinculada";
+        const Icone=feito ? Check : ausente ? X : t ? Clock3 : Minus;
+        return <TableCell key={e.id}><Dica rotulo={`${e.nome}: ${rotulo}`} conteudo={<>{rotulo}{t?.ultimoEvento?.motivo && <p>{t.ultimoEvento.motivo}</p>}</>}><Icone size={18} className={feito ? "text-emerald-700" : ausente ? "text-red-600" : "text-ink-3"}/></Dica></TableCell>;
+      })}<TableCell><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" aria-label={`Ações de ${p.animal?.brinco}`}>Ações<ChevronDown size={14}/></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onSelect={()=>setAberta(p.id)}>Detalhes da participação</DropdownMenuItem>{aoRetirar && !p.encerradoEm && <DropdownMenuItem className="text-destructive" onSelect={()=>aoRetirar(p.id)}>Retirar do protocolo</DropdownMenuItem>}</DropdownMenuContent></DropdownMenu></TableCell></TableRow>)}
+      </TableBody></Table></div>
+      {dados.itens.filter(p=>p.id===aberta).map(p=><PainelCadastro key={p.id} aberto titulo={`Participação · ${p.animal?.brinco}`} onFechar={()=>setAberta(null)} rodape={<Button variant="outline" onClick={()=>setAberta(null)}>Fechar</Button>}><p>Início efetivo: {p.inicioEfetivo ? horarioIatf(p.inicioEfetivo,p.precisaoInicioEfetivo ?? p.precisaoTemporal).replace(" · horário não informado","") : "Não confirmado"}</p><ContextoTentativaParticipacao contexto={p.contextoTentativa}/>{p.motivoEncerramento && <p>{p.motivoEncerramento}</p>}<EtapasParticipacao participante={p} propriedadeId={propriedadeId}/></PainelCadastro>)}
       {!dados.total && <Empty>Nenhuma participação corresponde à busca.</Empty>}
       {dados.total > dados.porPagina && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.max(1, Math.ceil(dados.total / dados.porPagina))} totalItens={dados.total} itensPorPagina={dados.porPagina} onPaginaChange={setPagina} rotulo="participações" idSelect="participacoes-individuais-programacao"/>}
     </>}
-  </section>;
+  </SecaoRecolhivel>;
 }
 function EtapasParticipacao({ participante, propriedadeId }: { participante: Participacao; propriedadeId?: number }) {
   const [tarefas, setTarefas] = useState<TarefaIatf[] | null>(null);

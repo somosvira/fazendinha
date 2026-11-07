@@ -4,6 +4,7 @@ import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -47,6 +48,12 @@ function selecionar(filtro: string, opcao: string) {
 }
 
 describe("novo relatório financeiro", () => {
+  it("só abrir a tela não cria rascunho, nem com os efeitos repetidos do StrictMode", async () => {
+    render(<StrictMode><NovoRelatorioFinanceiro cadastros={cadastros} rascunho={null} onVoltar={vi.fn()} onGerado={vi.fn()} /></StrictMode>);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 900)); });
+    expect(salvarRascunhoRelatorioFinanceiro).not.toHaveBeenCalled();
+    expect(estadoRascunhoRelatorioAtivo().rascunho).toBeNull();
+  });
   it("continua o rascunho e resume as escolhas em tempo real", () => {
     const { resumo } = renderizar();
     expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Pecuária — agosto");
