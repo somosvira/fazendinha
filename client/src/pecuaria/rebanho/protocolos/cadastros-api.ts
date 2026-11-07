@@ -1,9 +1,11 @@
+import type { ConfiguracaoAcompanhamentoV2 } from "../reproducao/acompanhamento-api";
 import { comPropriedade } from "../../../propriedadeScope";
 export type FinalidadeProtocoloCadastro = "SANITARIO" | "PRE_SINCRONIZACAO" | "IATF" | "TETF";
 export type PaginaCadastro<T> = { itens: T[]; total: number; pagina: number; porPagina: number; revisao?: string };
 export type CadastroProtocoloMeta = {
   id: string; nome: string; descricao: string | null; tipo: "SANITARIO" | "REPRODUTIVO"; versao: number;
   finalidade?: FinalidadeProtocoloCadastro | null;
+  configuracaoAcompanhamento?: ConfiguracaoAcompanhamentoV2 | null;
   modalidadeTentativa?: "ETAPA" | "EXTERNA" | null;
   modalidadeDiagnostico?: "PROTOCOLO" | "EXTERNO" | null;
   ativo: boolean; publicado: boolean; publicadoEm: string | null; atualizadoEm: string;

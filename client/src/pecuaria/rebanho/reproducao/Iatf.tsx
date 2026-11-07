@@ -1,3 +1,4 @@
+import { DatasDiagnosticoIndividual } from "../protocolos/DatasDiagnosticoIndividual";
 import "../telas/ficha-geral.css";
 import { ClipboardList } from "lucide-react";
 import { PreparacaoAutomacao, type PreparacaoAutomacaoEntrada, type RevisaoRetroativaAutomacao } from "../protocolos/PreparacaoAutomacao";
@@ -267,6 +268,8 @@ export function Iatf({
   const [protocoloId, setProtocoloId] = useState("");
   const [inicio, setInicio] = useState("");
   const [selecionados, setSelecionados] = useState<string[]>([]);
+  const [diagnosticosIndividuais,setDiagnosticosIndividuais]=useState<Record<string,string>>({});
+  useEffect(()=>setDiagnosticosIndividuais({}),[contexto,novo]);
   const modeloInicioId = novo === "participantes" ? detalhe?.protocolo.id ?? "" : novo ? protocoloId : "";
   const modeloInicio = useAcoesInicioProtocolo(modeloInicioId, sitioEfetivo ?? undefined);
   const identidadePreparo = `${modeloInicioId}:${inicio}:${selecionados.join(",")}:${sitioEfetivo}`;
@@ -274,7 +277,7 @@ export function Iatf({
   const temAutomaticas = modeloInicio.etapas?.some(e=>e.momento?.politicaExecucao==="AUTOMATICA_EXCECAO")??false;
   const automacaoPronta = !temAutomaticas || preparo?.identidade===identidadePreparo && preparo.pronta;
   const receberPreparo = useCallback((entradas:PreparacaoAutomacaoEntrada[],pronta:boolean,revisoes:RevisaoRetroativaAutomacao[]=[])=>{setPreparo({identidade:identidadePreparo,entradas,pronta,revisoes});setChaveProgramacao(crypto.randomUUID());},[identidadePreparo]);
-  const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, cienciaSanitaria, preparo });
+  const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, diagnosticosIndividuais, cienciaSanitaria, preparo });
   const identidadeConferenciaAtual = useRef(identidadeConferencia);
   identidadeConferenciaAtual.current = identidadeConferencia;
   const [conferenciaInicio, setConferenciaInicio] = useState<{identidade:string;dados:PreviaInicioColetivo}|null>(null);
@@ -569,6 +572,7 @@ export function Iatf({
                       animais: selecionados.map((animalId) => ({
                         animalId,
                         inicioPrevisto: dataHoraISO(inicio),
+                        ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}),
                       })),
                     },
                   );
@@ -581,7 +585,7 @@ export function Iatf({
                     protocoloId,
                     ...(temAutomaticas ? {automacoes:preparo!.entradas,revisaoRetroativa:preparo!.revisoes} : {}),
                     inicioPrevisto: dataHoraISO(inicio),
-                    animais: selecionados.map((animalId) => ({ animalId })),
+                    animais: selecionados.map((animalId) => ({ animalId, ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}) })),
                   });
                 if (contextoAtual.current !== contexto) return;
                 setNovo(null);
@@ -648,12 +652,14 @@ export function Iatf({
                       {a.brinco} {a.nome}
                     </label>
                   )} />
+                <DatasDiagnosticoIndividual animais={selecionados.map(id=>({id,brinco:animais.find(a=>a.animalId===id)?.brinco??"Animal selecionado",nome:animais.find(a=>a.animalId===id)?.nome}))} valores={diagnosticosIndividuais} onChange={(id,data)=>{setDiagnosticosIndividuais(v=>({...v,[id]:data}));setChaveProgramacao(crypto.randomUUID());}}/>
                 {temAutomaticas && modeloInicio.etapas && sitioEfetivo != null && selecionados.length > 0 && <PreparacaoAutomacao protocoloId={modeloInicioId} etapas={modeloInicio.etapas} animais={selecionados.map(id=>({id,brinco:animais.find(a=>a.animalId===id)?.brinco??id}))} propriedadeId={sitioEfetivo} inicio={inicio} onChange={receberPreparo}/>}
               </>
             )}
             </fieldset>
             {previaInicio && <section className="grid gap-4" aria-label="Conferência do início coletivo">
               <h3 className="font-semibold">Calendário previsto</h3>
+              <DatasDiagnosticoIndividual somenteLeitura animais={selecionados.map(id=>({id,brinco:animais.find(a=>a.animalId===id)?.brinco??"Animal selecionado"}))} valores={diagnosticosIndividuais} onChange={()=>{}}/>
               <p>Modelo: {previaInicio.protocolo.nome} · versão {previaInicio.protocolo.versao}</p>
               <p>{novo === "participantes" ? "Inclusão no grupo" : nome} · {previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"} · início {horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "")}</p>
               <ListaRascunho itens={previaInicio.participantes} rotulo="animais selecionados" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <p key={a.id}>{a.brinco}{a.nome ? ` · ${a.nome}` : ""}</p>} />

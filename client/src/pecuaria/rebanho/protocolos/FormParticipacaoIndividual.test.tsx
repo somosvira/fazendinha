@@ -22,12 +22,17 @@ it("confere calendário individual e retry preserva chave sem criar programaçã
   fireEvent.click(screen.getByRole("button", { name: "Conferir calendário" }));
   await screen.findByText("Calendário previsto");
   expect(vi.mocked(reqProtocolo).mock.calls.filter(([path]) => path === "/participacoes")).toHaveLength(0);
+  const primeiraPrevia=vi.mocked(reqProtocolo).mock.calls.find(([path])=>path==="/participacoes/previa")?.[2];
+  expect(primeiraPrevia).not.toHaveProperty("diagnosticoIndividualEm");
+  mudarCampo(screen.getByLabelText("Data individual para DG (opcional)"),{target:{value:"2026-11-25"}});
+  fireEvent.click(screen.getByRole("button", { name: "Conferir calendário" }));
+  await screen.findByRole("button",{name:"Confirmar participação"});
   fireEvent.click(screen.getByRole("button", { name: "Confirmar participação" }));
   await screen.findAllByText("Resposta interrompida");
   fireEvent.click(screen.getByRole("button", { name: "Confirmar participação" }));
   await waitFor(() => expect(salvo).toHaveBeenCalledWith("individual1"));
   const escritas = vi.mocked(reqProtocolo).mock.calls.filter(([path]) => path === "/participacoes");
   expect(escritas[0][2]).toEqual(escritas[1][2]);
-  expect(escritas[0][2]).toMatchObject({ tipo: "REPRODUTIVO", animalId: "animal1", propriedadeId: 7, protocoloId: "p1", inicioReferencia: "2026-10-19" });
+  expect(escritas[0][2]).toMatchObject({ tipo: "REPRODUTIVO", animalId: "animal1", propriedadeId: 7, protocoloId: "p1", inicioReferencia: "2026-10-19", diagnosticoIndividualEm:"2026-11-25" });
   expect(escritas[0][2]).not.toHaveProperty("programacaoId");
 });

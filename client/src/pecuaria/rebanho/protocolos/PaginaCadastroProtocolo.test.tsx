@@ -227,3 +227,22 @@ it("derivar uma base e mudar finalidade não duplica etapas nem recarrega açõe
   fireEvent.click(screen.getByRole("button",{name:"Salvar protocolo"}));
   expect(reqV4).not.toHaveBeenCalled();
 });
+
+it("herda e edita regras do modelo, valida prazo vazio e envia configuração sem alterar a base", async () => {
+  const configuracao:NonNullable<CadastroProtocoloMeta["configuracaoAcompanhamento"]>={versao:2,efeito:"ALERTA",regras:[{finalidade:"DIAGNOSTICO",ocorrencia:1,publico:"IA",referencia:"IA",intervalo:20,unidade:"DIAS",antecedencia:1,tolerancia:2,resolucao:"DIAGNOSTICO_CONCLUSIVO"}]};
+  window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos/novo?base=p1");
+  vi.mocked(obterCadastroProtocolo).mockResolvedValue({...meta,tipo:"REPRODUTIVO",finalidade:"IATF",modalidadeTentativa:"EXTERNA",modalidadeDiagnostico:"EXTERNO",configuracaoAcompanhamento:configuracao});
+  vi.mocked(obterAcoesCadastro).mockResolvedValue(pagina([{nome:"Retirada",tipo:"RETIRADA",intervalo:7,unidade:"DIAS",ordem:1,momento:{nome:"Fim do preparo",ordem:1,modoAtendimento:"MANUAL"}}]));
+  vi.mocked(reqV4).mockImplementation(async(path)=>path.startsWith("/reproducao/tipos-exame")?[]:{});
+  render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar/>);
+  const intervalo=await screen.findByLabelText("Intervalo (dias)");
+  expect(intervalo).toHaveProperty("value","20");
+  fireEvent.change(intervalo,{target:{value:""}});
+  fireEvent.submit(document.getElementById("cadastro-protocolo")!);
+  expect(await screen.findByText(/Informe intervalo, antecedência e tolerância/)).toBeTruthy();
+  expect(vi.mocked(reqV4).mock.calls.some(([path])=>path==="/reproducao/protocolos")).toBe(false);
+  fireEvent.change(intervalo,{target:{value:"23"}});
+  fireEvent.submit(document.getElementById("cadastro-protocolo")!);
+  await waitFor(()=>expect(reqV4).toHaveBeenCalledWith("/reproducao/protocolos",expect.objectContaining({configuracaoAcompanhamento:{...configuracao,regras:[{...configuracao.regras[0],intervalo:23}]}}),"POST",undefined));
+  expect(configuracao.regras[0].intervalo).toBe(20);
+});
