@@ -95,7 +95,7 @@ export function AvaliacaoContextualCampos({
   campos?: CampoExame[];
   necessidades?: NecessidadeSelecionavel[];
   onChange: (patch: Partial<DadosFormularioContextual>) => void;
-  onTipoExame: (tipoExameId: string) => void;
+  onTipoExame: (tipoExameId: string) => void | Promise<void>;
   disabled?: boolean;
   identificacao?: string;
 }) {
@@ -105,6 +105,7 @@ export function AvaliacaoContextualCampos({
   const [erro, setErro] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [revisao, setRevisao] = useState(0);
+  const [adotando, setAdotando] = useState(false);
   useEffect(() => {
     setContexto(contextoInicial);
   }, [contextoInicial]);
@@ -194,7 +195,7 @@ export function AvaliacaoContextualCampos({
   }
   return (
     <fieldset
-      disabled={disabled}
+      disabled={disabled || adotando}
       className="grid gap-3 border-t border-border pt-4"
     >
       <legend className="font-semibold">
@@ -229,26 +230,37 @@ export function AvaliacaoContextualCampos({
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    onTipoExame(catalogo.tipoExameId);
-                    onChange({
-                      avaliacaoContextual: adotarCatalogoAvaliacao(
-                        catalogo,
-                        dados,
-                      ),
-                      revisaoContextual: undefined,
-                      resultados: (dados.resultados ?? []).filter((r) =>
-                        catalogo.itens.some((i) => i.campo === r.campo),
-                      ),
-                      realizadoSemDG:
-                        !dados.resultado || dados.resultado === "NAO_AVALIADO",
-                      ...(!dados.resultado
-                        ? { resultado: "NAO_AVALIADO" }
-                        : {}),
-                    });
+                  onClick={async () => {
+                    setAdotando(true);
+                    try {
+                      const consulta = onTipoExame(catalogo.tipoExameId);
+                      if (consulta) await consulta;
+                      onChange({
+                        avaliacaoContextual: adotarCatalogoAvaliacao(
+                          catalogo,
+                          dados,
+                        ),
+                        revisaoContextual: undefined,
+                        resultados: (dados.resultados ?? []).filter((r) =>
+                          catalogo.itens.some((i) => i.campo === r.campo),
+                        ),
+                        realizadoSemDG:
+                          !dados.resultado ||
+                          dados.resultado === "NAO_AVALIADO",
+                        ...(!dados.resultado
+                          ? { resultado: "NAO_AVALIADO" }
+                          : {}),
+                      });
+                    } catch (e) {
+                      setErro(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setAdotando(false);
+                    }
                   }}
                 >
-                  Usar catálogo do sítio · versão {catalogo.versao}
+                  {adotando
+                    ? "Conferindo tipo do exame…"
+                    : `Usar catálogo do sítio · versão ${catalogo.versao}`}
                 </Button>
               </>
             ) : !compativel ? (
