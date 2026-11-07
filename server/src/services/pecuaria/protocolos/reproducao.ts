@@ -20,12 +20,12 @@ export async function resolverIdReprodutivoTx(tx: Tx, entidade: Entidade, id: st
   return registro.id;
 }
 
-type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; finalidade?: FinalidadeProtocolo | null; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
+type DadosProtocolo = Pick<ProtocoloIatf, "nome" | "versao"> & { id?: string; finalidade?: FinalidadeProtocolo | null; modalidadeTentativa?: string | null; modalidadeDiagnostico?: string | null; etapas: Prisma.InputJsonValue; publicado?: boolean; criadoEm?: Date; criadoPorId?: number | null; descricao?: string | null;referenciaTecnica?:Prisma.InputJsonValue };
 export async function criarProtocoloReprodutivoTx(tx: Tx, { data }: { data: DadosProtocolo }): Promise<ProtocoloIatf> {
   const etapas = etapasReprodutivasDoContrato(data.etapas);
   const versao = await reservarVersaoTx(tx, "REPRODUTIVO", data.nome.trim(), data.versao);
   const p = await tx.protocolo.create({ data: { id: data.id, tipo: "REPRODUTIVO", nome: data.nome.trim(), descricao: data.descricao, versao,
-    publicado: false, finalidade: data.finalidade, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
+    publicado: false, finalidade: data.finalidade, modalidadeTentativa: data.modalidadeTentativa, modalidadeDiagnostico: data.modalidadeDiagnostico, referenciaTecnica:data.referenciaTecnica, criadoEm: data.criadoEm, criadoPorId: data.criadoPorId, etapas: { create: etapas } } });
   await associarMomentosAcoesTx(tx, p.id, Array.isArray(data.etapas) ? data.etapas.map(e => { const { referencias: _referencias, ...campos } = e as Record<string, Prisma.InputJsonValue>; return etapaIatfSchema.parse(campos); }) : []);
   if (data.publicado) await tx.protocolo.update({ where: { id: p.id }, data: { publicado: true, publicadoEm: new Date() } });
   return tx.protocoloIatf.findUniqueOrThrow({ where: { id: p.id } });

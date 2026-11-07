@@ -2,7 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { RebanhoError } from "../rebanho/regras.js";
 import { consultaCadastroProtocoloSchema, consultaAcoesCadastroSchema, type ConsultaCadastroProtocolo } from "./cadastros.schemas.js";
-const metaSelect = { id: true, nome: true, descricao: true, tipo: true, finalidade: true, versao: true, ativo: true, publicado: true, publicadoEm: true, atualizadoEm: true, referenciaTecnica: true, _count: { select: { etapas: true, execucoes: true, rodadas: true } } } as const;
+const metaSelect = { id: true, nome: true, descricao: true, tipo: true, finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, versao: true, ativo: true, publicado: true, publicadoEm: true, atualizadoEm: true, referenciaTecnica: true, _count: { select: { etapas: true, execucoes: true, rodadas: true } } } as const;
 type Meta = Prisma.ProtocoloGetPayload<{ select: typeof metaSelect }>;
 function apresentarMeta(p: Meta) {
   const { _count, ...dados } = p;

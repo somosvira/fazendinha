@@ -68,3 +68,19 @@ it("aceita metadados opcionais no perfil e valida identificadores sem exigir via
   expect(perfil.safeParse({ carenciaLeiteHoras: null, carenciaCarneHoras: null, tipoAplicacaoId: id }).success).toBe(true);
   expect(perfil.safeParse({ carenciaLeiteHoras: null, carenciaCarneHoras: null, tipoAplicacaoId: "nome de vacina" }).success).toBe(false);
 });
+
+
+describe("modalidades independentes de protocolos novos", () => {
+  it.each(["IATF", "TETF"] as const)("aceita as quatro combinações de %s", finalidade => {
+    for (const modalidadeTentativa of ["ETAPA", "EXTERNA"] as const) for (const modalidadeDiagnostico of ["PROTOCOLO", "EXTERNO"] as const) {
+      const tentativa = { nome: "Tentativa", tipo: "TENTATIVA", intervalo: 10, unidade: "DIAS", tentativaTipo: finalidade === "IATF" ? "IA" : "TE" };
+      const dg = { nome: "DG", tipo: "AVALIACAO", intervalo: 30, unidade: "DIAS", planoAvaliacao: { tipo: "DIAGNOSTICO" } };
+      const etapas = [aplicacao, ...(modalidadeTentativa === "ETAPA" ? [tentativa] : []), ...(modalidadeDiagnostico === "PROTOCOLO" ? [dg] : [])];
+      expect(protocoloSchema.safeParse({ ...protocolo, finalidade, modalidadeTentativa, modalidadeDiagnostico, etapas }).success).toBe(true);
+    }
+  });
+  it("rejeita escolhas incompletas ou contraditórias", () => {
+    expect(protocoloSchema.safeParse({ ...protocolo, finalidade: "IATF", modalidadeTentativa: "EXTERNA" }).success).toBe(false);
+    expect(protocoloSchema.safeParse({ ...protocolo, finalidade: "IATF", modalidadeTentativa: "ETAPA", modalidadeDiagnostico: "EXTERNO" }).success).toBe(false);
+  });
+});

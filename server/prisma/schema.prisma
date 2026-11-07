@@ -1915,6 +1915,8 @@ enum FinalidadeProtocolo {
 model Protocolo {
   Usuario           Usuario?                @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   finalidade FinalidadeProtocolo?
+  modalidadeTentativa String?
+  modalidadeDiagnostico String?
   momentos MomentoProtocolo[]
   referenciaTecnica Json?
   tipo TipoProtocolo @default(SANITARIO)

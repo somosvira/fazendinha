@@ -36,17 +36,24 @@ export const etapaIatfSchema = z.object({ referenciasCusto: referenciasCustoSche
   if (etapa.subtipo && etapa.tipo !== "APLICACAO") ctx.addIssue({ code:"custom",path:["subtipo"],message:"Subtipo de aplicação exige ação de aplicação" });
   for(const [campo,tipo] of [["planoExame","EXAME"],["planoAplicacao","APLICACAO"],["planoTentativa","TENTATIVA"],["planoAvaliacao","AVALIACAO"]] as const) if(etapa[campo] && etapa.tipo!==tipo)ctx.addIssue({code:"custom",path:[campo],message:"Planejamento incompatível com a ação da etapa"});
 });
-export const protocoloSchema = z.object({ finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
+export const protocoloSchema = z.object({ modalidadeTentativa: z.enum(["ETAPA", "EXTERNA"]).nullish(), modalidadeDiagnostico: z.enum(["PROTOCOLO", "EXTERNO"]).nullish(), finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
   const builder = protocolo.finalidade != null;
   protocolo.etapas.forEach((etapa, i) => {
     if (builder && etapa.tipo === "MANEJO") ctx.addIssue({ code: "custom", path: ["etapas", i, "tipo"], message: "O novo builder não oferece procedimentos livres" });
     if (builder && etapa.planoTentativa) ctx.addIssue({ code: "custom", path: ["etapas", i, "planoTentativa"], message: "Material genético é definido na realização, sem plano fixo no builder" });
     if (builder && etapa.tipo === "TENTATIVA" && !etapa.tentativaTipo) ctx.addIssue({ code: "custom", path: ["etapas", i, "tentativaTipo"], message: "Declare IA ou TE para esta ação" });
   });
+  if ((protocolo.modalidadeTentativa == null) !== (protocolo.modalidadeDiagnostico == null)) ctx.addIssue({ code: "custom", path: ["modalidadeDiagnostico"], message: "Declare as duas modalidades" });
+  if (protocolo.modalidadeTentativa && !["IATF", "TETF"].includes(protocolo.finalidade ?? "")) ctx.addIssue({ code: "custom", path: ["modalidadeTentativa"], message: "Modalidades disponíveis para IATF ou TETF" });
   if(!protocolo.publicado)return;
   if (!builder && !protocolo.etapas.some(e=>e.tipo==="TENTATIVA")) ctx.addIssue({code:"custom",path:["etapas"],message:"Protocolo publicado exige etapa de tentativa planejada"});
   const tentativaExigida = protocolo.finalidade === "IATF" ? "IA" : protocolo.finalidade === "TETF" ? "TE" : null;
-  if (tentativaExigida && !protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo === tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Finalidade ${protocolo.finalidade} exige ao menos uma ação ${tentativaExigida}` });
+  if (tentativaExigida && protocolo.modalidadeTentativa !== "EXTERNA" && !protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo === tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Finalidade ${protocolo.finalidade} exige ao menos uma ação ${tentativaExigida}` });
+  if (tentativaExigida && protocolo.modalidadeTentativa === "EXTERNA" && protocolo.etapas.some(e => e.tipo === "TENTATIVA")) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Tentativa externa não pode ser etapa do modelo" });
+  if (tentativaExigida && protocolo.etapas.some(e => e.tipo === "TENTATIVA" && e.tentativaTipo !== tentativaExigida)) ctx.addIssue({ code: "custom", path: ["etapas"], message: `Tentativa incompatível com ${protocolo.finalidade}` });
+  const temDg = protocolo.etapas.some(e => e.tipo === "AVALIACAO" && e.planoAvaliacao?.tipo === "DIAGNOSTICO");
+  if (protocolo.modalidadeDiagnostico === "PROTOCOLO" && !temDg) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Inclua uma avaliação de diagnóstico no protocolo" });
+  if (protocolo.modalidadeDiagnostico === "EXTERNO" && temDg) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Diagnóstico externo não pode ser etapa do modelo" });
   protocolo.etapas.forEach((etapa,i)=>{const campo=etapa.tipo==="APLICACAO"?"planoAplicacao":etapa.tipo==="TENTATIVA" && !builder?"planoTentativa":etapa.tipo==="AVALIACAO"?"planoAvaliacao":etapa.tipo==="EXAME"?"planoExame":null;if(campo && !etapa[campo])ctx.addIssue({code:"custom",path:["etapas",i,campo],message:"Defina o planejamento desta etapa antes de publicar"});});
 });
 export const programacaoSchema = z.object({ automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(), chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: dataOuHorario, animais: z.array(z.object({ animalId: uuid, inicioPrevisto: dataOuHorario.optional() })).min(1).max(100) }).strict();
