@@ -18,6 +18,16 @@ import {
 import { obterReproducao, reqV4 } from "./api";
 import { requisicaoAlertas } from "../alertas/api";
 import { ModalPolitica } from "./ModalPolitica";
+const rotulosAcao: Record<string, string> = {
+  IA: "IA",
+  TE: "TE",
+  COBERTURA: "Cobertura",
+  IATF: "IATF",
+  TETF: "TETF",
+  PROTOCOLO: "Protocolo",
+  PRE_SINCRONIZACAO: "Pré-sincronização / preparação",
+};
+
 type Impacto = {
   versao: 1;
   gatilho: "OCORRENCIA" | "PROCEDIMENTO";
@@ -324,7 +334,7 @@ export function RegrasSanitarias({
                     "Doença configurada")}
               </strong>
               <span>
-                {r.acao}
+                {rotulosAcao[r.acao] ?? r.acao}
                 {!r.procedimento &&
                   ` · ${r.efeito === "BLOQUEAR" ? "Bloquear ação clínica" : "Alertar e exigir ciência"}`}
               </span>
@@ -469,7 +479,7 @@ export function RegrasSanitarias({
                     : ["IA", "TE", "COBERTURA", "IATF", "TETF", "PROTOCOLO"]
                   ).map((a) => (
                     <option key={a} value={a}>
-                      {a}
+                      {rotulosAcao[a] ?? a}
                     </option>
                   ))}
                 </SelectCampo>

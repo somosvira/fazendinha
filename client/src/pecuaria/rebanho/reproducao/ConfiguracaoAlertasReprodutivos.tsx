@@ -208,8 +208,7 @@ export function ConfiguracaoAlertasReprodutivos({
       )}
       <p className="text-sm text-ink-3">
         DG e reconfirmações usam a política de acompanhamento. Etapas,
-        dispositivos e retornos usam seus compromissos registrados. Salvar estas
-        regras não habilita automação ou processamento agendado.
+        dispositivos e retornos usam seus compromissos registrados.
       </p>
       {aberto && (
         <ModalPolitica

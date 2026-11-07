@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RegrasSanitarias } from "./RegrasSanitarias";
-import { mudarCampo } from "@/lib/controles.fixture";
+import { mudarCampo, opcoesDoCampo } from "@/lib/controles.fixture";
 const mocks = vi.hoisted(() => ({
   req: vi.fn(),
   alertas: vi.fn(),
@@ -42,6 +42,12 @@ it("configura procedimento pela rota própria sem inventar doença ou efeito cl�
   mudarCampo(screen.getByLabelText("Tipo de procedimento"), {
     target: { value: "t" },
   });
+  const opcoesFinalidade = opcoesDoCampo(
+    screen.getByLabelText("Finalidade do protocolo"),
+  );
+  expect(opcoesFinalidade).toContain("Protocolo");
+  expect(opcoesFinalidade).toContain("Pré-sincronização / preparação");
+  expect(opcoesFinalidade).not.toContain("PRE_SINCRONIZACAO");
   mudarCampo(screen.getByLabelText("Finalidade do protocolo"), {
     target: { value: "TETF" },
   });
