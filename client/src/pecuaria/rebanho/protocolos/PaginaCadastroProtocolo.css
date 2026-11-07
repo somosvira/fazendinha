@@ -72,3 +72,22 @@
 .cadastro-protocolo-bases-rolagem { position:relative; display:block; width:100%; min-width:0; max-width:100%; overflow-x:auto; overscroll-behavior-x:contain; }
 .cadastro-protocolo-bases-rolagem > table { min-width:620px; }
 .cadastro-protocolo-bases-rolagem:focus-visible { outline:2px solid var(--ring); outline-offset:3px; }
+
+/* Formulário contínuo: configuração à esquerda, revisão ao lado, gravação ao final. */
+.cadastro-protocolo-continuo { grid-template-columns:minmax(0,1fr) 280px; gap:24px; padding:24px; align-items:start; }
+.cadastro-protocolo-continuo .cadastro-protocolo-editor { padding:0; background:transparent; }
+.cadastro-protocolo-continuo .cadastro-protocolo-campos { background:var(--card); border:1px solid var(--border); border-radius:12px; }
+.cadastro-protocolo-continuo .cadastro-protocolo-campos > section { padding:24px; margin:0; }
+.cadastro-protocolo-continuo .cadastro-protocolo-campos > section + section { border-top:1px solid var(--border); }
+.cadastro-protocolo-continuo .cadastro-protocolo-origem { padding:0; background:transparent; }
+.cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:sticky; top:0; margin-top:104px; border:1px solid var(--border); border-radius:12px; background:var(--secondary); }
+.cadastro-protocolo-continuo .cadastro-protocolo-resumo { padding:20px; }
+.cadastro-protocolo-modalidades { display:grid; gap:12px; margin-top:20px; font-size:14px; }
+.cadastro-protocolo-modalidades > div { border-top:1px solid var(--border); padding-top:12px; }
+.cadastro-protocolo-modalidades dt { color:var(--muted-foreground); }
+.cadastro-protocolo-modalidades dd { margin-top:4px; font-weight:600; }
+.cadastro-protocolo-acoes { grid-column:1/-1; }
+.cadastro-protocolo-continuo > .cadastro-protocolo-acoes { border-radius:0; padding:20px 0 0; }
+@media(max-width:1000px) { .cadastro-protocolo-continuo { grid-template-columns:minmax(0,1fr); padding:20px; } .cadastro-protocolo-continuo .cadastro-protocolo-revisao { position:static; margin-top:0; } }
+@media(max-width:600px) { .cadastro-protocolo-continuo { padding:16px; gap:20px; } .cadastro-protocolo-continuo .cadastro-protocolo-campos > section { padding:16px; } }
+.cadastro-protocolo-continuo .builder-etapas-em-lista .builder-etapas-lista { display:block; padding-bottom:0; }

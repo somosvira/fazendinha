@@ -217,63 +217,13 @@
 
 /* Abas da ficha de referência, restritas à programação. */
 /* Abas compartilhadas. A variante de botões e filtros não recebe esta classe. */
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: stretch;
-  justify-content: flex-start;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  min-height: 0;
-  gap: 4px;
-  padding: 0;
-  margin-bottom: 0;
-  overflow: visible;
-  border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected] {
-  position: relative;
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: auto;
-  min-height: 48px;
-  max-width: 100%;
-  padding: 12px 20px;
-  margin: 0 0 -1px;
-  border: 1px solid var(--border);
-  border-radius: 8px 8px 0 0;
-  background: var(--muted);
-  color: var(--muted-foreground);
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.3;
-  white-space: normal;
-  text-align: center;
-  cursor: pointer;
-  box-shadow: none;
-  transition: background-color 120ms, color 120ms;
-}
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]::after { display: none; }
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { display:block; flex-shrink: 0; width: 20px; height: 20px; }
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected="false"]:hover { background: var(--fin-nav-hover, var(--accent)); color: var(--foreground); }
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] {
-  z-index: 1;
-  border-bottom-color: var(--card);
-  background: var(--card);
-  color: var(--primary);
-  font-weight: 700;
-}
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"]::after { display: block; content: ""; position: absolute; inset: auto 0 -2px; height: 2px; background: var(--card); }
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { z-index: 2; outline: 2px solid var(--ring); outline-offset: -4px; }
-:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:disabled { cursor: not-allowed; opacity: .5; }
+/* Abas sublinhadas, como a ficha aprovada. */
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta { display:flex; flex-wrap:wrap; width:100%; gap:4px; padding:0; margin:0; border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent; box-shadow:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected] { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 16px; margin:0 0 -1px; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--muted-foreground); font-size:14px; font-weight:500; box-shadow:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]::after { display:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] { color:var(--primary); border-bottom-color:var(--primary); font-weight:700; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:hover { color:var(--primary); }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { outline:2px solid var(--ring); outline-offset:-3px; }
 
 /* Mesma escala tipográfica medida na ficha animal. */
 :root .app-main .repro-programacao-detalhe .protocolo-tabela table > thead > tr > th {
@@ -334,3 +284,27 @@
 
 .protocolo-etapas { position:relative; }
 @media(min-width:761px) { .repro-programacao-detalhe .protocolo-tabela-dados td[data-label="Ações"] { width:240px; } }
+
+/* Execução reprodutiva: os marcadores conectam a sequência; o corpo identifica a etapa ativa. */
+.protocolo-operacao-conectada > .secao-recolhivel-cabecalho { display:none; }
+.protocolo-operacao-conectada .protocolo-etapas { gap:0; border:0; border-radius:0; margin:0; padding:24px 8px 12px; }
+.protocolo-operacao-conectada .protocolo-etapas > button { position:relative; isolation:isolate; flex:1 0 200px; align-items:center; border:0; background:transparent; box-shadow:none; padding:0 8px; gap:12px; min-height:150px; }
+.protocolo-operacao-conectada .protocolo-etapas > button::before { content:""; position:absolute; top:17px; left:0; right:0; height:1px; background:var(--fin-control-border); z-index:-1; }
+.protocolo-operacao-conectada .protocolo-etapas > button:first-child::before { left:50%; }
+.protocolo-operacao-conectada .protocolo-etapas > button:last-child::before { right:50%; }
+.protocolo-operacao-conectada .protocolo-etapa-marca { display:flex; align-items:center; justify-content:center; width:36px; height:36px; flex:none; border:1px solid var(--fin-control-border); border-radius:50%; background:var(--card); color:var(--muted-foreground); font-weight:700; }
+.protocolo-operacao-conectada .protocolo-etapa-marca.concluida { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+.protocolo-operacao-conectada .protocolo-etapa-corpo { display:flex; flex:1; flex-direction:column; align-items:center; justify-content:flex-start; width:100%; gap:7px; padding:8px 10px 12px; border:1px solid transparent; border-bottom-width:3px; border-radius:8px; text-align:center; }
+.protocolo-operacao-conectada .protocolo-etapa-corpo > span { font-size:13px; }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-corpo { border-color:var(--fin-filter-border); border-bottom-color:var(--primary); background:var(--fin-filter-bg); }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-marca { color:var(--primary); border:2px solid var(--primary); outline:4px solid var(--fin-filter-bg); }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-marca.concluida { color:var(--primary-foreground); }
+.protocolo-operacao-conectada .protocolo-etapas > button:hover .protocolo-etapa-corpo { background:var(--fin-table-hover); }
+.protocolo-operacao-conectada .protocolo-etapa-total { margin-left:auto; white-space:nowrap; font-size:13px; color:var(--muted-foreground); }
+.protocolo-acao-tooltip { z-index:1300; border-radius:6px; padding:7px 10px; background:var(--fin-heading); color:var(--card); font-size:13px; box-shadow:var(--fin-popover-shadow); }
+.protocolo-acao-tooltip svg { fill:var(--fin-heading); }
+@media(max-width:760px) { .protocolo-operacao-conectada .protocolo-etapas > button { flex-basis:190px; } }
+.protocolo-caminho { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:14px; color:var(--muted-foreground); }
+.protocolo-caminho a { color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
+
+.repro-programacao-detalhe .ficha-animal-identificacao .ficha-animal-nome { display:block; margin-top:6px; font-size:14px; font-weight:500; line-height:1.45; color:var(--muted-foreground); }

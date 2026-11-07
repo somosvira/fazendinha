@@ -54,7 +54,7 @@ export function ParticipacoesProgramacao({ id, propriedadeId, revisao, aoRetirar
         const t=tarefas[p.id]?.find(t=>t.etapaId===e.id);
         const feito=t?.situacao === "ATENDIDO";
         const ausente=!!t && ["NAO_ATENDIDO","RETIRADO","DISPENSADO","ENCERRADO"].includes(t.situacao);
-        const rotulos:Record<string,string>={ATENDIDO:"Atendido",NAO_ATENDIDO:"Não atendido",RETIRADO:"Retirado do protocolo",DISPENSADO:"Dispensado",ENCERRADO:"Encerrado sem substituição",PREVISTO:"Pendente · agendado",SEM_REGISTRO:"Pendente · sem registro",ADIADO:"Pendente · adiado",REGULARIZACAO_PENDENTE:"Pendente · regularização"};
+        const rotulos:Record<string,string>={ATENDIDO:"Atendido",NAO_ATENDIDO:"Não atendido",RETIRADO:"Retirado do protocolo",DISPENSADO:"Dispensado",ENCERRADO:"Encerrado sem substituição",PREVISTO:"Pendente · agendado",SEM_REGISTRO:"Sem atendimento registrado",ADIADO:"Pendente · adiado",REGULARIZACAO_PENDENTE:"Pendente · regularização"};
         const rotulo=t ? rotulos[t.situacao] ?? "Pendente" : "Sem tarefa vinculada";
         const Icone=feito ? Check : ausente ? X : t ? Clock3 : Minus;
         return <TableCell key={e.id}><Dica rotulo={`${e.nome}: ${rotulo}`} conteudo={<>{rotulo}{t?.ultimoEvento?.motivo && <p>{t.ultimoEvento.motivo}</p>}</>}><Icone size={18} className={feito ? "text-emerald-700" : ausente ? "text-red-600" : "text-ink-3"}/></Dica></TableCell>;

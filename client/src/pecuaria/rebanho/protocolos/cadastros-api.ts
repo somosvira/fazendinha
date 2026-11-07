@@ -4,6 +4,8 @@ export type PaginaCadastro<T> = { itens: T[]; total: number; pagina: number; por
 export type CadastroProtocoloMeta = {
   id: string; nome: string; descricao: string | null; tipo: "SANITARIO" | "REPRODUTIVO"; versao: number;
   finalidade?: FinalidadeProtocoloCadastro | null;
+  modalidadeTentativa?: "ETAPA" | "EXTERNA" | null;
+  modalidadeDiagnostico?: "PROTOCOLO" | "EXTERNO" | null;
   ativo: boolean; publicado: boolean; publicadoEm: string | null; atualizadoEm: string;
   totalEtapas: number; utilizada: boolean; proximaVersao?: number;
   totalMomentos?: number; totalAcoesSemEtapa?: number;

@@ -1,3 +1,4 @@
+import { LinkInterno } from "../../../components/LinkInterno";
 import { abrirPreparacaoIatf } from "./preparar-iatf";
 import { GitBranch } from "lucide-react";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
@@ -144,8 +145,10 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
     const [,tipo,id]=detalheRota;
-    const voltar=()=>{const retorno=new URLSearchParams(window.location.search).get("retorno");navegarPara(retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`));};
-    return <PaginaFinanceira><PageHeader titulo={tipo==="partos"?"Parto e pós-parto":"Programação do protocolo"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio cabecalho={tipo === "programacoes" ? () => null : undefined}>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
+    const retorno=new URLSearchParams(window.location.search).get("retorno");
+    const destinoRetorno=retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`);
+    const voltar=()=>navegarPara(destinoRetorno);
+    return <PaginaFinanceira>{tipo === "programacoes" ? <nav aria-label="Caminho do protocolo" className="protocolo-caminho"><LinkInterno area="pecuaria" href={destinoRetorno}>Reprodução · Protocolos</LinkInterno><span aria-hidden="true">/</span><span>Programação</span></nav> : <PageHeader titulo="Parto e pós-parto" acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/>}<ConsultaPorSitio cabecalho={tipo === "programacoes" ? () => null : undefined}>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
   }
   return (
     <PaginaFinanceira>

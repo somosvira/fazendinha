@@ -152,3 +152,39 @@ it("seleciona a página na primeira coluna e encaminha retirada sem registrar n�
   expect(retirar).toHaveBeenCalledWith("p1");
   expect(api.evento).not.toHaveBeenCalled();
 });
+
+it("execução reprodutiva conserva atendidos marcados sem repetir atendimento e limpa seleção ao mudar etapa", async () => {
+  api.cabecalho.mockResolvedValue({ id:"g1", modo:"COLETIVO", tipo:"REPRODUTIVO", nome:"Preparo", protocolo:{id:"p",nome:"IATF",versao:2}, inicioReferencia:"2026-10-19", precisaoTemporal:"DIA", contagens });
+  api.etapas.mockResolvedValue({itens:[{id:"e1",nome:"Início",ordem:1,diaRelativo:0,previstaPara:"2026-10-19",precisaoTemporal:"DIA",contagens},{id:"e2",nome:"Retirada",ordem:2,diaRelativo:7,previstaPara:"2026-10-26",precisaoTemporal:"DIA",contagens}],pagina:1,porPagina:10,total:2});
+  api.tarefas.mockResolvedValue({itens:[{...tarefa(1),situacao:"ATENDIDO",realizadaEm:"2026-10-19",acoes:{atender:false,adiar:false,justificar:false}},{...tarefa(2)}],total:2,pagina:1,porPagina:10});
+  const executar=vi.fn();
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoExecutar={executar}/>);
+  const concluido=await screen.findByRole("checkbox",{name:"Atendido Animal 1"});
+  expect(concluido.getAttribute("aria-checked")).toBe("true");
+  expect(concluido).toHaveProperty("disabled",true);
+  fireEvent.click(screen.getByRole("checkbox",{name:"Selecionar esta página"}));
+  fireEvent.click(screen.getByRole("button",{name:"Atender selecionadas (1)"}));
+  expect(executar.mock.calls[0][0].map((t:{id:string})=>t.id)).toEqual(["t2"]);
+  fireEvent.click(screen.getByRole("button",{name:/D7 Retirada/}));
+  await waitFor(()=>expect(screen.queryByRole("button",{name:/Atender selecionadas/})).toBeNull());
+  expect(screen.getByRole("checkbox",{name:"Atendido Animal 1"}).getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(screen.getAllByRole("button",{name:"Selecionar pendentes elegíveis"})[0]);
+  await screen.findByRole("button",{name:"Atender selecionadas (1)"});
+  expect(screen.getByRole("tab",{name:"Execução"})).toBeTruthy();
+  expect(screen.queryByRole("button",{name:"Histórico da etapa"})).toBeNull();
+  expect(screen.getByRole("button",{name:"Atender"}).textContent).toBe("");
+  fireEvent.click(screen.getByRole("button",{name:"Reagendar"}));
+  expect(screen.getByRole("dialog").textContent).toContain("Retirada");
+  expect(screen.getByRole("dialog").textContent).toContain("Animal 2");
+});
+
+it("consulta atendidos no servidor e conserva filtro ao restaurar URL", async () => {
+  window.history.replaceState(null,"","/pecuaria/reproducao?protocoloContexto=g1&etapaId=e1&protocoloSituacao=ATENDIDO");
+  api.cabecalho.mockResolvedValue({id:"g1",modo:"COLETIVO",tipo:"REPRODUTIVO",nome:"Turma",protocolo:{id:"p",nome:"Modelo",versao:1},inicioReferencia:"2026-10-19",precisaoTemporal:"DIA",contagens});
+  render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar={false}/>);
+  await screen.findByRole("link",{name:"Animal 1"});
+  expect(api.tarefas).toHaveBeenLastCalledWith({programacaoId:"g1"},expect.objectContaining({situacao:"ATENDIDO"}),1);
+  expect(screen.getByRole("button",{name:/Atendidos/}).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button",{name:/Todos/}));
+  await waitFor(()=>expect(api.tarefas).toHaveBeenLastCalledWith(expect.any(Object),expect.objectContaining({situacao:undefined}),1));
+});
