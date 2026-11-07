@@ -19,7 +19,7 @@ import { rebanhoRouter } from "./rebanho.js";
 import { PropriedadeError } from "../../services/propriedade.js";
 import { RebanhoError } from "../../services/pecuaria/rebanho/regras.js";
 
-const usuario = { id: 7, dono: false, areas: ["pecuaria"], flags: ["lancar"], abas: [] };
+const usuario: { id: number; dono: boolean; areas: string[]; flags: string[]; abas: string[] } = { id: 7, dono: false, areas: ["pecuaria"], flags: ["lancar"], abas: [] };
 const app = (u: typeof usuario | null = usuario) => new Hono().use("*", async (c, next) => { if (u) c.set("usuario" as never, u as never); await next(); }).use("*", exigeArea("pecuaria")).route("/", rebanhoRouter);
 const json = { "content-type": "application/json" };
 const base = { chave: uid(1), animalId: uid(2), propriedadeId: 2, data: "2026-10-01" };
@@ -45,7 +45,10 @@ describe("V4: autorização e exposição de custos", () => {
     expect((await app().request(`/reproducao/avaliacoes/${uid(5)}/contexto`)).status).toBe(200);
     expect(mocks.obterContexto).toHaveBeenCalledWith(uid(5),2);
     mocks.criarCatalogo.mockResolvedValue({id:uid(4)});
-    expect((await app().request("/reproducao/avaliacoes/contexto/catalogo",{method:"POST",headers:json,body:JSON.stringify(cat)})).status).toBe(201);
+    expect((await app().request("/reproducao/avaliacoes/contexto/catalogo",{method:"POST",headers:json,body:JSON.stringify(cat)})).status).toBe(403);
+    expect((await app({...usuario,id:0,dono:true}).request("/reproducao/avaliacoes/contexto/catalogo",{method:"POST",headers:json,body:JSON.stringify(cat)})).status).toBe(403);
+    expect(mocks.criarCatalogo).not.toHaveBeenCalled();
+    expect((await app({...usuario,abas:["cadastros"]}).request("/reproducao/avaliacoes/contexto/catalogo",{method:"POST",headers:json,body:JSON.stringify(cat)})).status).toBe(201);
     expect(mocks.criarCatalogo).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:2}),7);
     mocks.previaAvaliacao.mockResolvedValue({revisao:"a".repeat(64)});
     expect((await app().request("/reproducao/avaliacoes/contexto/previa",{method:"POST",headers:json,body:JSON.stringify(dados)})).status).toBe(200);

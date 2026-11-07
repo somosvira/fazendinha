@@ -9,10 +9,12 @@ beforeEach(()=>vi.resetAllMocks());
 describe("acompanhamentos paginados",()=>{
  it("limita a dez, recupera última página e calcula resumo fora da página",async()=>{
   mocks.raw.mockResolvedValueOnce([{total:21n}]).mockResolvedValueOnce([{total:21n,pendentes:11n,resolvidas:8n,encerradas:2n,semData:1n}]).mockResolvedValueOnce([{id}]);
-  mocks.buscar.mockResolvedValue([{id,animalId:"animal",estado:"PENDENTE",finalidade:"DIAGNOSTICO",origemAdocao:"PROTOCOLO",dataReferencia:referencia,previstaPara:null,exameOrigemId:"exame",exameOrigem:{id:"exame",animalId:"animal",status:"VALIDO",realizacao:"REALIZADO",data:referencia}}]);
+  mocks.buscar.mockResolvedValue([{id,animalId:"animal",animal:{id:"animal",brinco:"123",nome:"Estrela"},estado:"PENDENTE",finalidade:"DIAGNOSTICO",origemAdocao:"PROTOCOLO",dataReferencia:referencia,previstaPara:null,exameOrigemId:"exame",exameOrigem:{id:"exame",animalId:"animal",status:"VALIDO",realizacao:"REALIZADO",data:referencia}}]);
   const resposta=await listarAcompanhamentosPaginados(7,{data:"2026-10-20",pagina:99,estado:"PENDENTE"});
   expect(resposta).toMatchObject({total:21,pagina:3,porPagina:10,resumo:{total:21,pendentes:11,resolvidas:8,encerradas:2,semData:1}});
   expect(resposta.itens).toHaveLength(1);
+  expect(resposta.itens[0]).toMatchObject({animal:{id:"animal",brinco:"123",nome:"Estrela"}});
+  expect(mocks.buscar).toHaveBeenCalledWith(expect.objectContaining({include:expect.objectContaining({animal:{select:{id:true,brinco:true,nome:true}}})}));
   expect(mocks.buscar).toHaveBeenCalledWith(expect.objectContaining({where:{id:{in:[id]}}}));
   const consulta=mocks.raw.mock.calls[2][0];
   expect(consulta.text).toContain('NULLS LAST');

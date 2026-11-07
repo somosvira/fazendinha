@@ -28,6 +28,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
+import { temPermissao } from "../../services/auth/papeis.js";
 import { getUsuario } from "../../middleware/permissao.js";
 import { podeConsultarCustosPecuaria, podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
 import { PropriedadeError } from "../../services/propriedade.js";
@@ -320,7 +321,7 @@ export const reproducaoRouter = new Hono()
     catch (e) { return falhaV4(c, e); }
   })
   .post("/avaliacoes/contexto/catalogo", validarV4(criarCatalogoAvaliacaoSchema), async c => {
-    try { const b = c.req.valid("json"); return c.json(await avaliacaoContextual.criarCatalogoAvaliacao({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c)), 201); }
+    try { const usuario = getUsuario(c); if (!usuario || usuario.id < 1 || !temPermissao(usuario, "lancar") || (!usuario.dono && !usuario.abas.includes("cadastros"))) return c.json({ error: "Gerenciar catálogo exige sessão de usuário, cadastro e permissão para lançar", code: "SEM_PERMISSAO" }, 403); const b = c.req.valid("json"); return c.json(await avaliacaoContextual.criarCatalogoAvaliacao({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c)), 201); }
     catch (e) { return falhaV4(c, e); }
   })
   .post("/avaliacoes/contexto/previa", validarV4(s.avaliacaoSchema), async c => {
