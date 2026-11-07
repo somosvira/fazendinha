@@ -1,3 +1,7 @@
+import { AvaliacaoContextualCampos, type DadosFormularioContextual, type NecessidadeSelecionavel } from "./AvaliacaoContextualCampos";
+import { PreviaAvaliacaoContextual } from "./PreviaAvaliacaoContextual";
+import { conferirAvaliacaoContextual, contextoAvaliacao, type CamposAvaliacaoContextual, type PreviaAvaliacaoContextual as PreviaContextual } from "./avaliacao-contextual-api";
+import { listarDemandasAcompanhamento } from "./acompanhamento-api";
 import { Button } from "../../../components/ui/button";
 import { DatePicker } from "../../../components/DatePicker";
 import { Input } from "../../../components/ui/input";
@@ -142,10 +146,68 @@ export function FormReproducao({
   const [tiposExame, setTiposExame] = useState<TipoExame[]>([]);
   const [tipoExameId, setTipoExameId] = useState(tipoExameInicial ?? "");
   const [resultados, setResultados] = useState<ObservacaoExame[]>([]);
+  const [contextuais, setContextuais] = useState<CamposAvaliacaoContextual>({});
+  const [previaContextual, setPreviaContextual] = useState<{
+    input: AvaliacaoInput;
+    dados: PreviaContextual;
+  } | null>(null);
+  const [necessidadesContextuais, setNecessidadesContextuais] = useState<
+    Array<
+      NecessidadeSelecionavel & {
+        tentativaId: string | null;
+        gestacaoId: string | null;
+      }
+    >
+  >([]);
+  const [erroNecessidades, setErroNecessidades] = useState<string | null>(null);
+  const confirmandoContextual = useRef(false);
+  useEffect(() => {
+    setContextuais({});
+    setPreviaContextual(null);
+  }, [animalId, propriedadeId]);
+  useEffect(() => {
+    let ativo = true;
+    setNecessidadesContextuais([]);
+    setErroNecessidades(null);
+    if (acao === "avaliacao" && animalId && propriedadeId)
+      void (async () => {
+        try {
+          const primeira = await listarDemandasAcompanhamento(
+            propriedadeId,
+            animalId,
+            1,
+            "PENDENTE",
+          );
+          const itens = [...primeira.itens];
+          for (
+            let pagina = 2;
+            ativo && pagina <= Math.ceil(primeira.total / primeira.porPagina);
+            pagina++
+          )
+            itens.push(
+              ...(
+                await listarDemandasAcompanhamento(
+                  propriedadeId,
+                  animalId,
+                  pagina,
+                  "PENDENTE",
+                )
+              ).itens,
+            );
+          if (ativo) setNecessidadesContextuais(itens);
+        } catch (e) {
+          if (ativo)
+            setErroNecessidades(e instanceof Error ? e.message : String(e));
+        }
+      })();
+    return () => {
+      ativo = false;
+    };
+  }, [acao, animalId, propriedadeId]);
   useEffect(() => {
     if (acao !== "avaliacao") return;
     let ativo = true;
-    reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true", undefined, "GET", propriedadeId ?? undefined).then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(tipoExameInicial ?? tipos.find(t => t.ativo && t.padraoReprodutivo)?.id ?? tipos.find(t => t.ativo)?.id ?? ""); } }).catch(e => { if (ativo) setErro(e.message); });
+    reqV4<TipoExame[]>("/reproducao/tipos-exame?incluirInativos=true", undefined, "GET", propriedadeId ?? undefined).then(tipos => { if (ativo) { setTiposExame(tipos); setTipoExameId(atual => tipoExameInicial ?? (atual || tipos.find(t => t.ativo && t.padraoReprodutivo)?.id || tipos.find(t => t.ativo)?.id || "")); } }).catch(e => { if (ativo) setErro(e.message); });
     return () => { ativo = false; };
   }, [acao, tipoExameInicial, propriedadeId]);
   const tipoExame = tiposExame.find(t => t.id === tipoExameId);
@@ -303,7 +365,7 @@ export function FormReproducao({
     setErro(null);
     const unidadeMaterial = materiais.find(m => m.id === materialId)?.produto.unidade;
     const quantidadeEfetiva = quantidade !== "" ? Number(quantidade) : unidadeMaterial === "DOSE" || unidadeMaterial === "UN" ? 1 : undefined;
-    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
+    const payload = JSON.stringify({acao, propriedadeId, animalId, data, tipo, origem, materialId, touro, partidaId, cienciaValidade, cienciaSanitaria, cienciaVencida, motivoVencida, servicoId, valorServico, quantidade, motivoQuantidadeExcepcional, responsavel, resultado, conduta, decisaoIatf, resultadoAptidao, retornoAptidaoEm, sexoFetal, finalidade, tipoExameId, resultados, tentativaId, motivo, anotacao, retorno, previsao, motivoVinculo, contextuais, dadosParto, crias, lactacao, situacao, classeReprodutiva, restricaoAte, acoesRestritas, restricao});
     if (envio.current?.payload !== payload) envio.current = { payload, chave: crypto.randomUUID() };
     const base = { chave: envio.current.chave, propriedadeId, animalId, data };
     try {
@@ -335,9 +397,10 @@ export function FormReproducao({
             ? { justificativaSemOrigem: motivo, observacao: motivo }
             : {}),
         });
-      if (acao === "avaliacao" && resultado)
-        await (onRegistrar ?? registrarAvaliacao)({
+      if (acao === "avaliacao" && resultado) {
+        const input:AvaliacaoInput={
           ...base,
+          ...contextuais,
           ...(demandaInicial?{demandaAcompanhamentoId:demandaInicial.id}:{}),
           resultadoAptidao, retornoAptidaoEm, responsavel: responsavel || undefined,
           resultado, finalidade, tipoExameId, resultados, formatoExameHash: tipoExame?.formatoExameHash,
@@ -354,7 +417,15 @@ export function FormReproducao({
           ...(resultado === "POSITIVO" && !tentativaId && !gestacaoDoFato
             ? { motivoVinculoDesconhecido: motivoVinculo }
             : {}),
-        });
+        };
+        if(contextuais.avaliacaoContextual){
+          const dados=await conferirAvaliacaoContextual(input,propriedadeId);
+          setPreviaContextual({input,dados});
+          return;
+        }
+        await (onRegistrar ?? registrarAvaliacao)(input);
+      }
+
       if (acao === "parto")
         await (onRegistrar ?? registrarParto)({
           ...base,
@@ -386,6 +457,96 @@ export function FormReproducao({
       setOcupado(false);
     }
   }
+  function mudarContextuais(patch: Partial<DadosFormularioContextual>) {
+    setContextuais((atual) => ({
+      ...atual,
+      ...("avaliacaoContextual" in patch
+        ? { avaliacaoContextual: patch.avaliacaoContextual }
+        : {}),
+      ...("vinculosConclusao" in patch
+        ? { vinculosConclusao: patch.vinculosConclusao }
+        : {}),
+      ...("realizadoSemDG" in patch
+        ? { realizadoSemDG: patch.realizadoSemDG }
+        : {}),
+      revisaoContextual: undefined,
+    }));
+    if (patch.resultado !== undefined)
+      setResultado(patch.resultado as AvaliacaoInput["resultado"]);
+    if (patch.finalidade !== undefined)
+      setFinalidade(patch.finalidade as AvaliacaoInput["finalidade"]);
+    if (patch.sexoFetal !== undefined)
+      setSexoFetal((patch.sexoFetal ?? "") as "F" | "M" | "");
+    if (patch.resultadoAptidao !== undefined)
+      setResultadoAptidao(patch.resultadoAptidao);
+    if (patch.retornoAptidaoEm !== undefined)
+      setRetornoAptidaoEm(patch.retornoAptidaoEm);
+    if (patch.resultados !== undefined) setResultados(patch.resultados);
+    if (patch.avaliacaoContextual && !contextuais.avaliacaoContextual) {
+      setConduta(null);
+      setDecisaoIatf(null);
+      setRetorno("");
+    }
+  }
+  async function confirmarContextual() {
+    if (!previaContextual || confirmandoContextual.current) return;
+    confirmandoContextual.current = true;
+    setOcupado(true);
+    setErro(null);
+    try {
+      await (onRegistrar ?? registrarAvaliacao)({
+        ...previaContextual.input,
+        revisaoContextual: previaContextual.dados.revisao,
+      });
+      if (
+        previaContextual.input.resultado === "NEGATIVO" &&
+        previaContextual.input.decisaoIatf === "INDICAR" &&
+        onPrepararIatf
+      )
+        setRegistroSalvo(previaContextual.input.animalId);
+      else onSalvo();
+      setPreviaContextual(null);
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : String(e));
+    } finally {
+      confirmandoContextual.current = false;
+      setOcupado(false);
+    }
+  }
+  if (previaContextual)
+    return (
+      <FormShellReproducao
+        inline={inline}
+        titulo="Conferir efeitos da avaliação"
+        onFechar={() => {
+          if (!ocupado) setPreviaContextual(null);
+        }}
+        bloqueado={ocupado}
+        rodape={
+          <>
+            <Button
+              variant="outline"
+              disabled={ocupado}
+              onClick={() => {
+                setPreviaContextual(null);
+                setErro(null);
+              }}
+            >
+              Voltar à avaliação
+            </Button>
+            <Button
+              disabled={ocupado}
+              onClick={() => void confirmarContextual()}
+            >
+              {ocupado ? "Registrando…" : "Confirmar avaliação conferida"}
+            </Button>
+          </>
+        }
+      >
+        <ErrorBox erro={erro} />
+        <PreviaAvaliacaoContextual dados={previaContextual.dados} />
+      </FormShellReproducao>
+    );
   if (registroSalvo) return <FormShellReproducao inline={inline} titulo="Avaliação registrada" onFechar={onSalvo} bloqueado={false} rodape={<><Button variant="outline" onClick={onSalvo}>Concluir</Button><Button onClick={() => { try { onPrepararIatf?.([registroSalvo]); } catch { setErro("Diagnóstico já salvo. Não foi possível abrir a preparação; tente novamente sem registrar o diagnóstico outra vez."); } }}>Preparar próxima IATF</Button></>}><ErrorBox erro={erro} /><p role="status">Gestação não confirmada. Indicação para nova IATF registrada. A preparação exige revisão e confirmação próprias.</p></FormShellReproducao>;
   return (
     <FormShellReproducao
@@ -403,7 +564,7 @@ export function FormReproducao({
             form="form-reproducao"
             disabled={ocupado || negativoBloqueado}
           >
-            {ocupado ? "Salvando…" : "Confirmar registro"}
+            {ocupado ? "Salvando…" : acao === "avaliacao" && contextuais.avaliacaoContextual ? "Conferir efeitos" : "Confirmar registro"}
           </Button>
         </>
       }
@@ -570,19 +731,21 @@ export function FormReproducao({
         )}
         {acao === "avaliacao" && (
           <>
-            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
+            {seletor("tipo-exame", "Tipo de exame", tipoExameId, v => { setTipoExameId(v); setResultados([]); setContextuais({}); }, tiposExame.filter(t => t.ativo || t.id === tipoExameId).map(t => [t.id, `${t.nome} · v${t.versaoFormato ?? 1}${t.ativo ? "" : " (inativo)"}`]))}
             {!tiposExame.length && <p role="status">Nenhum tipo de exame disponível. Confira os cadastros de Reprodução.</p>}
             {campo("responsavel-exame", "Responsável pelo exame", responsavel, setResponsavel, Boolean(resultadoAptidao))}
-            <CamposAvaliacao indicacaoExplicita dados={{ resultadoAptidao, retornoAptidaoEm, resultado, finalidade, sexoFetal, conduta: conduta === "IATF" ? null : conduta }} onChange={mudanca => {
+            {propriedadeId&&<AvaliacaoContextualCampos propriedadeId={propriedadeId} contexto={contextoAvaliacao({gestacaoId:demandaInicial?.gestacaoId??gestacaoDoFato?.id,tentativaId:tentativaId||animal?.ultimaTentativa?.id,partos:animal?.partos})} dados={{...contextuais,resultado,finalidade,sexoFetal,resultadoAptidao,retornoAptidaoEm,resultados}} campos={tipoExame?.campos??[]} necessidades={necessidadesContextuais.filter(n=>n.id===demandaInicial?.id||!!tentativaId&&n.tentativaId===tentativaId||!!gestacaoDoFato&&n.gestacaoId===gestacaoDoFato.id)} onTipoExame={setTipoExameId} onChange={mudarContextuais} disabled={ocupado}/>}
+            {contextuais.avaliacaoContextual&&erroNecessidades&&<ErrorBox erro={`Não foi possível consultar os cuidados existentes: ${erroNecessidades}`}/>}
+            {!contextuais.avaliacaoContextual&&<CamposAvaliacao indicacaoExplicita dados={{ resultadoAptidao, retornoAptidaoEm, resultado, finalidade, sexoFetal, conduta: conduta === "IATF" ? null : conduta }} onChange={mudanca => {
               if (mudanca.resultadoAptidao !== undefined) setResultadoAptidao(mudanca.resultadoAptidao);
               if (mudanca.retornoAptidaoEm !== undefined) setRetornoAptidaoEm(mudanca.retornoAptidaoEm);
               if (mudanca.resultado !== undefined) { setResultado(mudanca.resultado as AvaliacaoInput["resultado"] | ""); setDecisaoIatf(null); if (mudanca.resultado === "NAO_AVALIADO") { setResultadoAptidao(null); setRetornoAptidaoEm(""); } if(conduta === "IATF") setConduta(null); }
               if (mudanca.finalidade !== undefined) setFinalidade(mudanca.finalidade as AvaliacaoInput["finalidade"]);
               if (mudanca.sexoFetal !== undefined) setSexoFetal((mudanca.sexoFetal ?? "") as "F" | "M" | "");
               if (mudanca.conduta !== undefined) { setConduta(mudanca.conduta as AvaliacaoInput["conduta"]); if(decisaoIatf === "INDICAR") setDecisaoIatf(null); }
-            }} />
-            {resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}<p className="text-sm text-ink-3">Sem seleção, a decisão fica pendente. Indicar não inicia outro protocolo; a inclusão exige preparação e confirmação próprias.</p></div>}
-            {tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && <CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={setResultados} />}
+            }} />}
+            {!contextuais.avaliacaoContextual&&resultado === "NEGATIVO" && <div className="grid gap-2">{seletor("decisao-iatf", "Indicação para nova IATF", decisaoIatf ?? "", valor => { const decisao = (valor || null) as AvaliacaoInput["decisaoIatf"]; setDecisaoIatf(decisao); if(decisao === "INDICAR") setConduta("IATF"); else if(conduta === "IATF") setConduta(null); }, [["INDICAR","Indicar para nova IATF"],["NAO_INDICAR","Não indicar neste atendimento"]], false)}<p className="text-sm text-ink-3">Sem seleção, a decisão fica pendente. Indicar não inicia outro protocolo; a inclusão exige preparação e confirmação próprias.</p></div>}
+            {!contextuais.avaliacaoContextual&&tipoExame?.campos?.some(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo)) && resultado !== "NAO_AVALIADO" && <CamposResultadoExame campos={tipoExame.campos.filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={resultados} onChange={setResultados} />}
             {seletor(
               "tentativa",
               "Tentativa relacionada",

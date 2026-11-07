@@ -413,3 +413,145 @@ it("DG individual oferece preparação somente depois de salvar e mantém recibo
  fireEvent.click(screen.getByRole("button",{name:"Preparar próxima IATF"}));
  expect(registrarAvaliacao).toHaveBeenCalledTimes(1);
 });
+
+it("avaliação contextual parcial confere efeitos antes de gravar e preserva chave, revisão e cuidado não selecionado", async () => {
+  const salvo = vi.fn();
+  const previa = {
+    exame: {
+      tipoExameId: "tipo",
+      data: "2026-10-13",
+      resultado: "NAO_AVALIADO",
+      gestacaoCriada: false,
+    },
+    itens: [
+      {
+        codigo: "UTERO",
+        rotulo: "Útero",
+        tipo: "UTERO",
+        campo: "OBS_UTERO",
+        contextos: ["NOVILHA"],
+        estado: "CONCLUSIVO",
+      },
+    ],
+    condutas: [],
+    necessidades: [
+      {
+        id: "d",
+        finalidade: "DIAGNOSTICO",
+        previstaPara: null,
+        conclusaoCompativel: null,
+        acao: "PRESERVAR",
+      },
+    ],
+    necessidadesGeradas: [],
+    revisao: "f".repeat(64),
+  };
+  vi.mocked(reqV4).mockImplementation(async (path) => {
+    if (path.startsWith("/reproducao/tipos-exame"))
+      return [
+        {
+          id: "tipo",
+          nome: "Exame reprodutivo",
+          padraoReprodutivo: true,
+          tipoResultado: "MULTIPLO",
+          formatoExameHash: "a".repeat(64),
+          campos: [
+            { codigo: "OBS_UTERO", rotulo: "Achado uterino", tipo: "TEXTO" },
+          ],
+          ativo: true,
+        },
+      ];
+    if (path.startsWith("/reproducao/avaliacoes/contexto/catalogo"))
+      return {
+        catalogo: {
+          id: "catalogo",
+          versao: 1,
+          tipoExameId: "tipo",
+          itens: [
+            {
+              codigo: "UTERO",
+              rotulo: "Útero",
+              tipo: "UTERO",
+              campo: "OBS_UTERO",
+              contextos: ["NOVILHA"],
+            },
+          ],
+          condutas: [],
+        },
+        sugeridos: ["UTERO"],
+      };
+    if (path.startsWith("/reproducao/acompanhamento?"))
+      return {
+        itens: [
+          {
+            id: "d",
+            finalidade: "DIAGNOSTICO",
+            tentativaId: null,
+            gestacaoId: "g",
+            previstaPara: null,
+          },
+        ],
+        total: 1,
+        pagina: 1,
+        porPagina: 10,
+      };
+    if (path === "/reproducao/avaliacoes/contexto/previa") return previa;
+    return [];
+  });
+  vi.mocked(registrarAvaliacao).mockResolvedValue({
+    id: "avaliacao-contextual",
+    animalId: "a",
+    data: "2026-10-13",
+  });
+  render(
+    <FormReproducao
+      acao="avaliacao"
+      painel={painel}
+      animalInicial="a"
+      dataInicial="2026-10-13"
+      demandaInicial={{ id: "d", tentativaId: null, gestacaoId: "g" }}
+      onFechar={vi.fn()}
+      onSalvo={salvo}
+    />,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: /Usar catálogo do sítio/ }),
+  );
+  await alterarControle(
+    screen.getByRole("combobox", { name: "Estado de Útero" }),
+    { target: { value: "CONCLUSIVO" } },
+  );
+  fireEvent.change(screen.getByLabelText(/Achado uterino/), {
+    target: { value: "Observação estruturada" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Conferir efeitos" }));
+  await screen.findByRole("button", { name: "Confirmar avaliação conferida" });
+  expect(registrarAvaliacao).not.toHaveBeenCalled();
+  expect(screen.getByText(/Permanece pendente/)).toBeTruthy();
+  const entrada = vi
+    .mocked(reqV4)
+    .mock.calls.find(
+      ([path]) => path === "/reproducao/avaliacoes/contexto/previa",
+    )?.[1];
+  expect(entrada).toEqual(
+    expect.objectContaining({
+      resultado: "NAO_AVALIADO",
+      realizadoSemDG: true,
+      resultados: [{ campo: "OBS_UTERO", valor: "Observação estruturada" }],
+      avaliacaoContextual: {
+        catalogoId: "catalogo",
+        itens: [{ codigo: "UTERO", estado: "CONCLUSIVO" }],
+        condutas: [],
+      },
+    }),
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Confirmar avaliação conferida" }),
+  );
+  await waitFor(() => expect(registrarAvaliacao).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(registrarAvaliacao).mock.calls[0][0]).toEqual({
+    ...entrada,
+    revisaoContextual: previa.revisao,
+  });
+  expect(salvo).toHaveBeenCalledTimes(1);
+});

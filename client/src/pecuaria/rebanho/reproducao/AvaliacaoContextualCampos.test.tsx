@@ -129,6 +129,12 @@ it("adotar preserva zero, observação e DG informado sem atribuir aptidão", ()
   ]);
   expect(adotado.condutas).toEqual([]);
 });
+it("sexagem inconclusiva conserva seu item sem transformar em DG", () => {
+  const comSexagem: CatalogoAvaliacao = { ...catalogo, itens: [...catalogo.itens, { codigo: "SEXO", rotulo: "Sexagem", tipo: "SEXAGEM", contextos: ["GESTACAO_CONHECIDA"] }] };
+  const adotado = adotarCatalogoAvaliacao(comSexagem, { resultado: "INCONCLUSIVO", finalidade: "SEXAGEM" });
+  expect(adotado.itens.find(i => i.codigo === "SEXO")?.estado).toBe("INCONCLUSIVO");
+  expect(adotado.itens.find(i => i.codigo === "DG")?.estado).toBe("NAO_AVALIADO");
+});
 it("item inconclusivo sem DG conserva avaliação parcial e exige vínculo explícito do cuidado", async () => {
   render(<Formulario />);
   fireEvent.click(await screen.findByRole("button", { name: /Usar catálogo/ }));

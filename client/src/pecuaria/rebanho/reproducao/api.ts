@@ -1,3 +1,4 @@
+import type { CamposAvaliacaoContextual } from "./avaliacao-contextual-api";
 import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 import type { Aptidao } from "../types";
@@ -231,7 +232,7 @@ export type TentativaInput = FatoBase & {
   documentacaoExcepcional?: boolean;
   motivoDocumentacaoExcepcional?: string;
 };
-export type AvaliacaoInput = FatoBase & {
+export type AvaliacaoInput = FatoBase & CamposAvaliacaoContextual & {
   responsavel?: string | null;
   demandaAcompanhamentoId?:string;
   formatoExameHash?: string;

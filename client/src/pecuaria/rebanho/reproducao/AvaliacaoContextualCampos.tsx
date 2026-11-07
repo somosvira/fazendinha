@@ -49,12 +49,21 @@ export function adotarCatalogoAvaliacao(
         : item.tipo === "APTIDAO"
           ? dados.resultadoAptidao
           : item.tipo === "SEXAGEM"
-            ? dados.sexoFetal
+            ? dados.sexoFetal ||
+              (dados.resultado === "INCONCLUSIVO" &&
+              dados.finalidade === "SEXAGEM"
+                ? "INCONCLUSIVO"
+                : null)
             : item.tipo === "RECONFIRMACAO" &&
                 dados.finalidade === "RECONFIRMACAO"
               ? dados.resultado
               : item.tipo === "DIAGNOSTICO" &&
-                  !["RECONFIRMACAO", "SEXAGEM"].includes(dados.finalidade ?? "")
+                  !["RECONFIRMACAO", "SEXAGEM"].includes(
+                    dados.finalidade ?? "",
+                  ) &&
+                  ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"].includes(
+                    dados.resultado ?? "",
+                  )
                 ? dados.resultado
                 : null;
       const estado: EstadoItemAvaliacao =
@@ -153,7 +162,12 @@ export function AvaliacaoContextualCampos({
     }
     if (item.tipo === "SEXAGEM") {
       patch.sexoFetal = null;
-      if (estado === "INCONCLUSIVO") {
+      if (
+        estado === "INCONCLUSIVO" &&
+        !["POSITIVO", "NEGATIVO", "RECONFIRMACAO"].includes(
+          dados.resultado ?? "",
+        )
+      ) {
         patch.resultado = "INCONCLUSIVO";
         patch.finalidade = "SEXAGEM";
       } else if (dados.finalidade === "SEXAGEM") {
@@ -223,6 +237,9 @@ export function AvaliacaoContextualCampos({
                         dados,
                       ),
                       revisaoContextual: undefined,
+                      resultados: (dados.resultados ?? []).filter((r) =>
+                        catalogo.itens.some((i) => i.campo === r.campo),
+                      ),
                       realizadoSemDG:
                         !dados.resultado || dados.resultado === "NAO_AVALIADO",
                       ...(!dados.resultado
@@ -364,7 +381,12 @@ export function AvaliacaoContextualCampos({
                                 onValueChange={(sexoFetal) =>
                                   onChange({
                                     sexoFetal: sexoFetal || null,
-                                    ...(sexoFetal
+                                    ...(sexoFetal &&
+                                    ![
+                                      "POSITIVO",
+                                      "NEGATIVO",
+                                      "RECONFIRMACAO",
+                                    ].includes(dados.resultado ?? "")
                                       ? {
                                           resultado: "SEXAGEM",
                                           finalidade: "SEXAGEM",
