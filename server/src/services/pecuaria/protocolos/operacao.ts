@@ -52,7 +52,7 @@ async function contextoTx(tx:Tx, c:ContextoOperacao, propriedadeId:number|null) 
   }
   const p=await tx.participacaoProtocolo.findFirst({where:{OR:[{id:c.participacaoId},{legadoIatfId:c.participacaoId}],AND:[participacaoNoEscopoOperacao(propriedadeId)]},include:{protocolo:{select:protocoloSelect},animal:{select:animalSelect},rodada:{select:{status:true}}}});
   if(!p) throw new RebanhoError("NAO_ENCONTRADO","Participação individual não encontrada neste sítio");
-  return {id:p.id,modo:"INDIVIDUAL" as const,nome:p.animal.nome??p.animal.brinco,protocolo:p.protocolo,propriedadeId:p.propriedadeId,propriedadeContextoId:propriedadeId??p.propriedadeId,escopoLeituraId:propriedadeId,inicioReferencia:p.inicio,precisaoTemporal:p.precisaoTemporal,status:p.canceladaEm?"ENCERRADA":p.rodada?.status??"ABERTA",animal:p.animal,where:{id:p.id} satisfies Prisma.ParticipacaoProtocoloWhereInput};
+  return {id:p.id,bloqueadaEm:p.bloqueadaEm?.toISOString()??null,motivoBloqueio:p.motivoBloqueio,modo:"INDIVIDUAL" as const,nome:p.animal.nome??p.animal.brinco,protocolo:p.protocolo,propriedadeId:p.propriedadeId,propriedadeContextoId:propriedadeId??p.propriedadeId,escopoLeituraId:propriedadeId,inicioReferencia:p.inicio,precisaoTemporal:p.precisaoTemporal,status:p.canceladaEm?"ENCERRADA":p.rodada?.status??"ABERTA",animal:p.animal,where:{id:p.id} satisfies Prisma.ParticipacaoProtocoloWhereInput};
 }
 type Contexto = Awaited<ReturnType<typeof contextoTx>>;
 function baseSql(c:Contexto,f:ConsultaOperacao,agora:Date,aplicarEtapa=true) {

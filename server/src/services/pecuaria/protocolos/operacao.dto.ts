@@ -3,7 +3,7 @@ export type ContagensOperacao = { total: number; atendidos: number; pendentes: n
 export type PaginaOperacao<T> = { itens: T[]; total: number; pagina: number; porPagina: number; resumo?: ContagensOperacao };
 export type AnimalOperacao = { id: string; brinco: string; nome: string | null };
 export type CabecalhoOperacao = {
-  id: string; modo: "INDIVIDUAL" | "COLETIVO"; tipo: string; nome: string;
+  bloqueadaEm?: string | null; motivoBloqueio?: string | null; id: string; modo: "INDIVIDUAL" | "COLETIVO"; tipo: string; nome: string;
   protocolo: { id: string; nome: string; versao: number }; propriedadeId: number | null; propriedadeContextoId?: number | null;
   inicioReferencia: string; precisaoTemporal: "DIA" | "HORA"; status: string;
   animal: AnimalOperacao | null; participantesTotal:number; podeEditarValores?:boolean; contagens: ContagensOperacao;
