@@ -123,3 +123,15 @@ it("visão geral é a entrada padrão e conserva todas as rotinas e os aliases h
   );
   expect(screen.queryByText("Formulário avaliacao matriz")).toBeNull();
 });
+
+it("programa protocolo pelo cabeçalho da visão geral preservando o sítio e os filtros", async () => {
+  setPropriedadeAtiva(7);
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=geral&iatfBusca=Grupo#consulta");
+  vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] });
+  render(<Reproducao podeLancar />);
+  fireEvent.click(screen.getByRole("button", { name: "Programar protocolo" }));
+  await waitFor(() => expect(vi.mocked(Iatf).mock.lastCall?.[0]).toMatchObject({ propriedadeId: 7, solicitarProgramacao: true, acaoProgramarNoCabecalho: true }));
+  expect(new URLSearchParams(window.location.search).get("rotina")).toBe("programacoes");
+  expect(new URLSearchParams(window.location.search).get("iatfBusca")).toBe("Grupo");
+  expect(window.location.hash).toBe("#consulta");
+});

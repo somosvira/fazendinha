@@ -1,22 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   Button,
   Empty,
   ErrorBox,
-  Panel,
-  Pill,
+  TabelaFinanceira,
+  type ColunaTabela,
 } from "../../../financeiro/financeiro-ui";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
-import { DatePicker } from "../../../components/DatePicker";
+import { BarraConsulta } from "../../../financeiro/BarraConsulta";
+import { PeriodoFinanceiroControl } from "../../../financeiro/PeriodoFinanceiroControl";
+import { SecaoFicha } from "../components/SecaoRecolhivel";
 import { getHojeISO, formatBRDateISO } from "../../../lib/hoje";
 import { navegarPara } from "../../../router";
-import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { Paginacao } from "../ui";
 import type { CabecalhoProtocolo } from "../protocolos/api";
-import { requisicaoAlertas, type ConsultaAlertas } from "../alertas/api";
-import { CuidadosAlertas } from "../alertas/CuidadosAlertas";
+import {
+  requisicaoAlertas,
+  type ConsultaAlertas,
+  type GrupoAlerta,
+} from "../alertas/api";
 import { CoberturaAlertas } from "../alertas/ResumoAlertas";
-import { urlParticipantes } from "../alertas/consulta";
+import { rotuloSituacao, urlParticipantes } from "../alertas/consulta";
 import { LinkReproducao } from "./ConsultaReproducaoUI";
 import { horarioIatf } from "./CampoDataIatf";
 import type { GrupoPlanner, PreviaPlanner } from "./planner-api";
@@ -61,6 +65,7 @@ export function VisaoGeralReprodutiva({
 }) {
   const hoje = getHojeISO();
   const [inicio, setInicio] = useState(() => somarDias(hoje, 1));
+  const [busca, setBusca] = useState("");
   const [fim, setFim] = useState(() => somarDias(hoje, 7));
   const [agenda, setAgenda] = useState<GrupoPlanner[] | null>(null),
     [execucoes, setExecucoes] = useState<CabecalhoProtocolo[] | null>(null);
@@ -141,10 +146,13 @@ export function VisaoGeralReprodutiva({
       (p) => !destacados.has(`${p.modo}:${p.id}`),
     );
   }
-  const hojeOrganizado = agenda && etapasHoje ? organizarHoje(etapasHoje, agenda, hoje) : null;
+  const hojeOrganizado =
+    agenda && etapasHoje ? organizarHoje(etapasHoje, agenda, hoje) : null;
   const gruposHoje = hojeOrganizado?.grupos;
   const totalHoje =
-    etapasHoje && gruposHoje ? hojeOrganizado!.etapas.length + gruposHoje.length : null;
+    etapasHoje && gruposHoje
+      ? hojeOrganizado!.etapas.length + gruposHoje.length
+      : null;
   const gruposProximos =
     agenda && periodoValido
       ? agenda.filter((g) => {
@@ -161,277 +169,390 @@ export function VisaoGeralReprodutiva({
       </Button>
     </div>
   );
-  const listaGrupos = (
-    itens: GrupoPlanner[],
-    rotulo: string,
-    chave = rotulo,
-  ) => (
-    <ListaRascunho
-      key={chave}
-      itens={itens}
-      rotulo={rotulo}
-      renderizar={(g) => {
-        const href = destinoGrupoVisaoGeral(g);
-        return (
-          <article key={JSON.stringify(g.grupo)} className="repro-visao-item">
-            <div>
-              <h3>{g.turma?.nome ?? g.nome}</h3>
-              {g.turma && <p>{g.etapa?.nome ?? g.nome}</p>}
-              <p className="text-sm text-ink-3">
-                {g.previstaPara
-                  ? horarioIatf(
-                      g.previstaPara,
-                      g.precisaoTemporal ?? "DIA",
-                    ).replace(" · horário não informado", "")
-                  : "Sem prazo definido"}{" "}
-                · {g.totalAnimais} {g.totalAnimais === 1 ? "animal" : "animais"}
-                {g.totalProcedimentos !== g.totalAnimais
-                  ? ` · ${g.totalProcedimentos} procedimentos`
-                  : ""}
-              </p>
-              {g.emVisitaAberta > 0 && (
-                <p className="text-sm text-ink-3">
-                  {g.emVisitaAberta} procedimentos já preparados em visita
-                  aberta.
-                </p>
-              )}
-            </div>
-            {href ? (
-              <LinkReproducao botao href={href} sitio={propriedadeId}>
-                Abrir etapa
-              </LinkReproducao>
-            ) : (
-              <Button secondary onClick={() => setGrupoAberto(g)}>
-                Ver cuidados
-              </Button>
-            )}
-          </article>
-        );
-      }}
-    />
+  type LinhaCuidado = {
+    id: string;
+    data: string;
+    nome: string;
+    etapa: string;
+    animais: number;
+    atendidos: number | null;
+    pendentes: number | null;
+    detalhe?: string;
+    acao: ReactNode;
+  };
+  const acaoGrupo = (g: GrupoPlanner) => {
+    const href = destinoGrupoVisaoGeral(g);
+    return href ? (
+      <LinkReproducao botao href={href} sitio={propriedadeId}>
+        Abrir etapa
+      </LinkReproducao>
+    ) : (
+      <Button secondary onClick={() => setGrupoAberto(g)}>
+        Ver cuidados
+      </Button>
+    );
+  };
+  const linhaGrupo = (g: GrupoPlanner): LinhaCuidado => ({
+    id: JSON.stringify(g.grupo),
+    data: g.previstaPara
+      ? horarioIatf(g.previstaPara, g.precisaoTemporal ?? "DIA").replace(
+          " · horário não informado",
+          "",
+        )
+      : "Sem prazo definido",
+    nome: g.turma?.nome ?? g.nome,
+    etapa: g.turma ? (g.etapa?.nome ?? g.nome) : g.nome,
+    animais: g.totalAnimais,
+    atendidos: null,
+    pendentes: null,
+    detalhe: [
+      g.totalProcedimentos !== g.totalAnimais
+        ? `${g.totalProcedimentos} procedimentos`
+        : "",
+      g.emVisitaAberta > 0
+        ? `${g.emVisitaAberta} procedimentos já preparados em visita aberta.`
+        : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
+    acao: acaoGrupo(g),
+  });
+  const colunasCuidados: ColunaTabela<LinhaCuidado>[] = [
+    {
+      chave: "data",
+      titulo: "Data prevista",
+      larguraMinima: 140,
+      celula: (r) => r.data,
+    },
+    {
+      chave: "nome",
+      titulo: "Protocolo / cuidado",
+      principal: true,
+      larguraMinima: 280,
+      larguraFlexivel: true,
+      celula: (r) => <strong>{r.nome}</strong>,
+    },
+    {
+      chave: "etapa",
+      titulo: "Etapa / procedimento",
+      larguraMinima: 220,
+      celula: (r) => (
+        <>
+          {r.etapa}
+          {r.detalhe && (
+            <small className="repro-visao-detalhe">{r.detalhe}</small>
+          )}
+        </>
+      ),
+    },
+    {
+      chave: "animais",
+      titulo: "Animais",
+      alinhamento: "direita",
+      larguraMinima: 90,
+      celula: (r) => r.animais,
+    },
+    {
+      chave: "atendidos",
+      titulo: "Atendidos",
+      alinhamento: "direita",
+      larguraMinima: 100,
+      celula: (r) => r.atendidos ?? "—",
+    },
+    {
+      chave: "pendentes",
+      titulo: "Pendentes",
+      alinhamento: "direita",
+      larguraMinima: 100,
+      celula: (r) => r.pendentes ?? "—",
+    },
+    {
+      chave: "acao",
+      titulo: "Ações",
+      acoes: true,
+      larguraMinima: 140,
+      celula: (r) => r.acao,
+    },
+  ];
+  const linhasHoje: LinhaCuidado[] = [
+    ...(hojeOrganizado?.etapas ?? []).map((e) => ({
+      id: `${e.modo}:${e.contextoId}:${e.etapaId}`,
+      data: formatBRDateISO(hoje),
+      nome: e.nome,
+      etapa: e.etapa,
+      animais: e.totalAnimais,
+      atendidos: e.atendidos,
+      pendentes: e.pendentes,
+      detalhe: e.encerrados > 0 ? `${e.encerrados} encerrados` : undefined,
+      acao: (
+        <LinkReproducao
+          botao
+          sitio={propriedadeId}
+          href={`${caminhoExecucao({ id: e.contextoId, modo: e.modo })}?${new URLSearchParams({ etapaId: e.etapaId, retorno: window.location.pathname + window.location.search })}`}
+        >
+          Abrir etapa
+        </LinkReproducao>
+      ),
+    })),
+    ...(gruposHoje ?? []).map(linhaGrupo),
+  ];
+  const proximosFiltrados = gruposProximos?.filter((g) =>
+    `${g.turma?.nome ?? ""} ${g.nome} ${g.etapa?.nome ?? ""}`
+      .toLocaleLowerCase("pt-BR")
+      .includes(busca.trim().toLocaleLowerCase("pt-BR")),
   );
+  const colunasExecucoes: ColunaTabela<CabecalhoProtocolo>[] = [
+    {
+      chave: "nome",
+      titulo: "Protocolo",
+      principal: true,
+      larguraMinima: 300,
+      larguraFlexivel: true,
+      celula: (p) => <strong>{p.nome}</strong>,
+    },
+    {
+      chave: "modelo",
+      titulo: "Modelo",
+      larguraMinima: 280,
+      celula: (p) => (
+        <>
+          {p.protocolo.nome}
+          <small className="repro-visao-detalhe">
+            Versão {p.protocolo.versao}
+          </small>
+        </>
+      ),
+    },
+    {
+      chave: "participantes",
+      titulo: "Participantes",
+      larguraMinima: 120,
+      alinhamento: "direita",
+      celula: (p) => p.participantesTotal ?? "A conferir",
+    },
+    {
+      chave: "pendentes",
+      titulo: "Procedimentos pendentes",
+      larguraMinima: 150,
+      alinhamento: "direita",
+      celula: (p) => p.contagens.pendentes,
+    },
+    {
+      chave: "acoes",
+      titulo: "Ações",
+      acoes: true,
+      larguraMinima: 150,
+      celula: (p) => (
+        <LinkReproducao
+          botao
+          sitio={propriedadeId}
+          href={`${caminhoExecucao(p)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+        >
+          Abrir protocolo
+        </LinkReproducao>
+      ),
+    },
+  ];
+  const abrirAlerta = (g: GrupoAlerta) =>
+    navegarPara(
+      urlParticipantes(
+        g,
+        { propriedadeId, disposicao: "ATENCAO", produtor: "reproducao" },
+        window.location.pathname + window.location.search,
+      ),
+    );
+  const colunasAlertas: ColunaTabela<GrupoAlerta>[] = [
+    {
+      chave: "cuidado",
+      titulo: "Cuidado",
+      principal: true,
+      larguraMinima: 280,
+      larguraFlexivel: true,
+      celula: (g) => (
+        <>
+          <strong>{g.titulo}</strong>
+          <small className="repro-visao-detalhe">{g.motivo}</small>
+        </>
+      ),
+    },
+    {
+      chave: "situacao",
+      titulo: "Situação",
+      larguraMinima: 240,
+      celula: (g) => {
+        const extras = Object.entries(g.situacoes).filter(
+          ([estado]) => !["ATRASADO", "PENDENTE"].includes(estado),
+        );
+        return extras.length
+          ? extras
+              .map(
+                ([estado, n]) =>
+                  `${n} ${rotuloSituacao(estado).toLocaleLowerCase("pt-BR")}`,
+              )
+              .join(" · ")
+          : "Sem atendimento registrado";
+      },
+    },
+    {
+      chave: "animais",
+      titulo: "Animais",
+      larguraMinima: 90,
+      alinhamento: "direita",
+      celula: (g) => g.animais,
+    },
+    {
+      chave: "atrasados",
+      titulo: "Atrasados",
+      larguraMinima: 100,
+      alinhamento: "direita",
+      celula: (g) => g.situacoes.ATRASADO ?? 0,
+    },
+    {
+      chave: "pendentes",
+      titulo: "Pendentes",
+      larguraMinima: 100,
+      alinhamento: "direita",
+      celula: (g) => g.situacoes.PENDENTE ?? 0,
+    },
+    {
+      chave: "acoes",
+      titulo: "Ações",
+      larguraMinima: 140,
+      acoes: true,
+      celula: (g) => (
+        <Button secondary onClick={() => abrirAlerta(g)}>
+          Ver animais
+        </Button>
+      ),
+    },
+  ];
   return (
     <div className="repro-visao-geral">
-      <div className="repro-visao-acessos">
-        <p>Cuidados previstos e protocolos do sítio selecionado.</p>
-        <div>
-          <LinkReproducao
-            botao
-            sitio={propriedadeId}
-            href="/configuracoes/pecuaria/reproducao/protocolos"
-          >
-            Modelos
-          </LinkReproducao>
-          <LinkReproducao
-            botao
-            sitio={propriedadeId}
-            href="/pecuaria/reproducao?rotina=programacoes"
-          >
-            Todos os protocolos
-          </LinkReproducao>
-          <LinkReproducao
-            botao
-            sitio={propriedadeId}
-            href="/configuracoes/pecuaria/reproducao/politica"
-          >
-            Configurações
-          </LinkReproducao>
-        </div>
-      </div>
       <div className="repro-visao-secoes">
-        <Panel>
-          <header className="repro-visao-cabecalho">
-            <div>
-              <h2>Hoje</h2>
-              <p>{formatBRDateISO(hoje)}</p>
-            </div>
-            {totalHoje != null && (
-              <Pill>
-                {totalHoje} {totalHoje === 1 ? "cuidado" : "cuidados"}
-              </Pill>
-            )}
-          </header>
-          <div className="repro-visao-conteudo">
-            {erroHoje || erroAgenda ? (
-              erro(erroHoje ?? erroAgenda ?? "Não foi possível consultar Hoje")
-            ) : !etapasHoje || !gruposHoje ? (
-              <p role="status">Consultando cuidados de hoje…</p>
-            ) : totalHoje ? (
-              <>
-                {!!etapasHoje.length && (
-                  <ListaRascunho
-                    itens={hojeOrganizado?.etapas ?? etapasHoje}
-                    rotulo="etapas de hoje"
-                    renderizar={(e) => (
-                      <article
-                        className="repro-visao-etapa"
-                        key={`${e.modo}:${e.contextoId}:${e.etapaId}`}
-                      >
-                        <div>
-                          <h3>{e.nome}</h3>
-                          <p>{e.etapa}</p>
-                          <p className="text-sm text-ink-3">
-                            {e.totalAnimais}{" "}
-                            {e.totalAnimais === 1 ? "animal" : "animais"}
-                            {e.encerrados > 0
-                              ? ` · ${e.encerrados} encerrados`
-                              : ""}
-                          </p>
-                        </div>
-                        <div>
-                          <span>Atendidos</span>
-                          <strong>{e.atendidos}</strong>
-                        </div>
-                        <div>
-                          <span>Pendentes</span>
-                          <strong>{e.pendentes}</strong>
-                        </div>
-                        <LinkReproducao
-                          botao
-                          sitio={propriedadeId}
-                          href={`${caminhoExecucao({ id: e.contextoId, modo: e.modo })}?${new URLSearchParams({ etapaId: e.etapaId, retorno: window.location.pathname + window.location.search })}`}
-                        >
-                          Abrir etapa
-                        </LinkReproducao>
-                      </article>
-                    )}
-                  />
-                )}
-                {!!gruposHoje.length &&
-                  listaGrupos(gruposHoje, "cuidados de hoje")}
-              </>
-            ) : (
-              <Empty>Nenhum cuidado previsto para hoje.</Empty>
-            )}
-          </div>
-        </Panel>
-        <Panel>
-          <header className="repro-visao-cabecalho">
-            <div>
-              <h2>Próximos</h2>
-              <p>
-                {formatBRDateISO(inicio)} a {formatBRDateISO(fim)}
-              </p>
-            </div>
-            <Button
-              secondary
-              onClick={() => {
-                setInicio(somarDias(hoje, 1));
-                setFim(somarDias(hoje, 1));
+        <SecaoFicha
+          className="repro-visao-painel"
+          titulo="Hoje"
+          acoes={
+            <span className="repro-visao-resumo">
+              {formatBRDateISO(hoje)}
+              {totalHoje != null &&
+                ` · ${totalHoje} ${totalHoje === 1 ? "cuidado" : "cuidados"}`}
+            </span>
+          }
+        >
+          {erroHoje || erroAgenda ? (
+            erro(erroHoje ?? erroAgenda ?? "Não foi possível consultar Hoje")
+          ) : !etapasHoje || !gruposHoje ? (
+            <p role="status">Consultando cuidados de hoje…</p>
+          ) : totalHoje ? (
+            <TabelaFinanceira
+              visualizacao="tabela"
+              colunas={colunasCuidados}
+              itens={linhasHoje}
+              chaveDe={(r) => r.id}
+              rotulo="Cuidados de hoje"
+            />
+          ) : (
+            <Empty>Nenhum cuidado previsto para hoje.</Empty>
+          )}
+        </SecaoFicha>
+        <SecaoFicha className="repro-visao-painel" titulo="Próximos">
+          <BarraConsulta
+            resumo={
+              proximosFiltrados
+                ? `${proximosFiltrados.length} cuidados`
+                : undefined
+            }
+          >
+            <input
+              className="repro-visao-busca"
+              aria-label="Buscar próximos cuidados"
+              placeholder="Buscar protocolo ou cuidado"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+            />
+            <PeriodoFinanceiroControl
+              inicio={inicio}
+              fim={fim}
+              onChange={(p) => {
+                setInicio(p.inicio);
+                setFim(p.fim);
               }}
-            >
-              Amanhã
-            </Button>
-          </header>
-          <div className="repro-visao-conteudo">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label>
-                De
-                <DatePicker
-                  aria-label="Início dos próximos cuidados"
-                  min={somarDias(hoje, 1)}
-                  value={inicio}
-                  onChange={setInicio}
-                />
-              </label>
-              <label>
-                Até
-                <DatePicker
-                  aria-label="Fim dos próximos cuidados"
-                  min={inicio || somarDias(hoje, 1)}
-                  value={fim}
-                  onChange={setFim}
-                />
-              </label>
-            </div>
-            {!periodoValido ? (
-              <p role="status">
-                Escolha um intervalo a partir de amanhã, com fim igual ou
-                posterior ao início.
-              </p>
-            ) : erroAgenda ? (
-              erro(erroAgenda)
-            ) : !gruposProximos ? (
-              <p role="status">Consultando próximos cuidados…</p>
-            ) : gruposProximos.length ? (
-              listaGrupos(
-                gruposProximos,
-                "próximos cuidados",
-                `${inicio}:${fim}`,
-              )
-            ) : (
-              <Empty>Nenhum cuidado previsto neste intervalo.</Empty>
-            )}
-          </div>
-        </Panel>
-        <Panel>
-          <header className="repro-visao-cabecalho">
-            <div>
-              <h2>Em andamento</h2>
-              <p>Demais protocolos abertos fora do recorte acima</p>
-            </div>
-          </header>
-          <div className="repro-visao-conteudo">
-            {erroExecucoes ? (
-              erro(erroExecucoes)
-            ) : erroAgenda ? (
-              erro(
-                "Não foi possível conferir as etapas dos protocolos. Atualize a agenda para organizar as execuções.",
-              )
-            ) : !organizados ? (
-              <p role="status">Consultando execuções…</p>
-            ) : !periodoValido ? (
-              <p>
-                Defina o intervalo dos próximos cuidados para organizar os
-                protocolos.
-              </p>
-            ) : organizados.emAndamento.length ? (
-              <ListaRascunho
-                key={`${inicio}:${fim}`}
-                itens={organizados.emAndamento}
-                rotulo="protocolos em andamento"
-                renderizar={(p) => (
-                  <article
-                    className="repro-visao-item"
-                    key={`${p.modo}:${p.id}`}
-                  >
-                    <div>
-                      <h3>{p.nome}</h3>
-                      <p className="text-sm text-ink-3">
-                        {p.protocolo.nome} · versão {p.protocolo.versao}
-                      </p>
-                      <p>
-                        {p.participantesTotal == null
-                          ? "Participantes a conferir"
-                          : `${p.participantesTotal} ${p.participantesTotal === 1 ? "participante" : "participantes"}`}{" "}
-                        · {p.contagens.pendentes} procedimentos pendentes
-                      </p>
-                    </div>
-                    <LinkReproducao
-                      botao
-                      sitio={propriedadeId}
-                      href={`${caminhoExecucao(p)}?retorno=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-                    >
-                      Abrir protocolo
-                    </LinkReproducao>
-                  </article>
-                )}
-              />
-            ) : (
-              <Empty>
-                {execucoes?.length
-                  ? "Os protocolos abertos estão no recorte de hoje e próximos cuidados."
-                  : "Nenhum protocolo aberto neste sítio."}
-              </Empty>
-            )}
-          </div>
-        </Panel>
-        <Panel>
-          <header className="repro-visao-cabecalho">
-            <div>
-              <h2>Atenção</h2>
-              <p>Necessidades reprodutivas da central de alertas</p>
-            </div>
+              label="Período dos próximos cuidados"
+              showIcon
+            />
+          </BarraConsulta>
+          {!periodoValido ? (
+            <p role="status">
+              Escolha um intervalo a partir de amanhã, com fim igual ou
+              posterior ao início.
+            </p>
+          ) : erroAgenda ? (
+            erro(erroAgenda)
+          ) : !proximosFiltrados ? (
+            <p role="status">Consultando próximos cuidados…</p>
+          ) : proximosFiltrados.length ? (
+            <TabelaFinanceira
+              visualizacao="tabela"
+              colunas={colunasCuidados.filter(
+                (c) => !["atendidos", "pendentes"].includes(c.chave),
+              )}
+              itens={proximosFiltrados.map(linhaGrupo)}
+              chaveDe={(r) => r.id}
+              rotulo="Próximos cuidados"
+            />
+          ) : (
+            <Empty>
+              {busca.trim()
+                ? "Nenhum cuidado encontrado para esta busca no intervalo."
+                : "Nenhum cuidado previsto neste intervalo."}
+            </Empty>
+          )}
+        </SecaoFicha>
+        <SecaoFicha
+          className="repro-visao-painel"
+          titulo="Em andamento"
+          acoes={
+            organizados && (
+              <span className="repro-visao-resumo">
+                {organizados.emAndamento.length} protocolos
+              </span>
+            )
+          }
+        >
+          {erroExecucoes ? (
+            erro(erroExecucoes)
+          ) : erroAgenda ? (
+            erro(
+              "Não foi possível conferir as etapas dos protocolos. Atualize a agenda para organizar as execuções.",
+            )
+          ) : !organizados ? (
+            <p role="status">Consultando execuções…</p>
+          ) : !periodoValido ? (
+            <p>
+              Defina o intervalo dos próximos cuidados para organizar os
+              protocolos.
+            </p>
+          ) : organizados.emAndamento.length ? (
+            <TabelaFinanceira
+              visualizacao="tabela"
+              colunas={colunasExecucoes}
+              itens={organizados.emAndamento}
+              chaveDe={(p) => `${p.modo}:${p.id}`}
+              rotulo="Protocolos em andamento"
+            />
+          ) : (
+            <Empty>
+              {execucoes?.length
+                ? "Os protocolos abertos estão no recorte de hoje e próximos cuidados."
+                : "Nenhum protocolo aberto neste sítio."}
+            </Empty>
+          )}
+        </SecaoFicha>
+        <SecaoFicha
+          className="repro-visao-painel"
+          titulo="Atenção"
+          acoes={
             <LinkReproducao
               botao
               sitio={propriedadeId}
@@ -439,89 +560,54 @@ export function VisaoGeralReprodutiva({
             >
               Ver todos
             </LinkReproducao>
-          </header>
-          <div className="repro-visao-conteudo">
-            {erroAlertas ? (
-              erro(erroAlertas)
-            ) : !alertas ? (
-              <p role="status">Consultando necessidades…</p>
-            ) : (
-              <>
-                <CoberturaAlertas cobertura={alertas.cobertura} />
-                {alertas.itens.length ? (
-                  <>
-                    <p>
-                      {alertas.totaisFiltrados.cuidados} cuidados ·{" "}
-                      {alertas.totaisFiltrados.animais} animais
-                    </p>
-                    <CuidadosAlertas
-                      grupos={alertas.itens}
-                      modo="visual"
-                      onAbrir={(g) =>
-                        navegarPara(
-                          urlParticipantes(
-                            g,
-                            {
-                              propriedadeId,
-                              disposicao: "ATENCAO",
-                              ...{ produtor: "reproducao" },
-                            },
-                            window.location.pathname + window.location.search,
-                          ),
-                        )
-                      }
-                    />
-                    {alertas.total > 10 && (
-                      <Paginacao
-                        paginaAtual={alertas.pagina}
-                        totalPaginas={Math.ceil(alertas.total / 10)}
-                        totalItens={alertas.total}
-                        itensPorPagina={10}
-                        onPaginaChange={setPaginaAlertas}
-                        rotulo="cuidados que demandam atenção"
-                        idSelect="visao-geral-alertas"
-                      />
-                    )}
-                  </>
-                ) : alertas.cobertura.estado === "ATUALIZADA" ? (
-                  <Empty>
-                    Nenhuma atenção identificada pelas regras reprodutivas
-                    avaliadas.
-                  </Empty>
-                ) : (
-                  <p>
-                    Não há cuidados conhecidos neste recorte. A cobertura ainda
-                    não permite afirmar ausência de necessidades.
+          }
+        >
+          {erroAlertas ? (
+            erro(erroAlertas)
+          ) : !alertas ? (
+            <p role="status">Consultando necessidades…</p>
+          ) : (
+            <>
+              <CoberturaAlertas cobertura={alertas.cobertura} />
+              {alertas.itens.length ? (
+                <>
+                  <p className="repro-visao-resumo">
+                    {alertas.totaisFiltrados.cuidados} cuidados ·{" "}
+                    {alertas.totaisFiltrados.animais} animais
                   </p>
-                )}
-              </>
-            )}
-          </div>
-        </Panel>
-      </div>
-      <div className="repro-visao-acessos">
-        <p>As filas completas e o histórico continuam acessíveis.</p>
-        <LinkReproducao
-          botao
-          sitio={propriedadeId}
-          href="/pecuaria/reproducao?rotina=ciclos"
-        >
-          Animais e acompanhamentos
-        </LinkReproducao>
-        <LinkReproducao
-          botao
-          sitio={propriedadeId}
-          href="/pecuaria/reproducao?rotina=agenda"
-        >
-          Agenda completa
-        </LinkReproducao>
-        <LinkReproducao
-          botao
-          sitio={propriedadeId}
-          href="/pecuaria/reproducao?rotina=partos"
-        >
-          Partos e pós-parto
-        </LinkReproducao>
+                  <TabelaFinanceira
+                    visualizacao="tabela"
+                    colunas={colunasAlertas}
+                    itens={alertas.itens}
+                    chaveDe={(g) => g.chave}
+                    rotulo="Cuidados em atenção"
+                  />
+                  {alertas.total > 10 && (
+                    <Paginacao
+                      paginaAtual={alertas.pagina}
+                      totalPaginas={Math.ceil(alertas.total / 10)}
+                      totalItens={alertas.total}
+                      itensPorPagina={10}
+                      onPaginaChange={setPaginaAlertas}
+                      rotulo="cuidados que demandam atenção"
+                      idSelect="visao-geral-alertas"
+                    />
+                  )}
+                </>
+              ) : alertas.cobertura.estado === "ATUALIZADA" ? (
+                <Empty>
+                  Nenhuma atenção identificada pelas regras reprodutivas
+                  avaliadas.
+                </Empty>
+              ) : (
+                <p>
+                  Não há cuidados conhecidos neste recorte. A cobertura ainda
+                  não permite afirmar ausência de necessidades.
+                </p>
+              )}
+            </>
+          )}
+        </SecaoFicha>
       </div>
       {grupoAberto && (
         <AnimaisDoCuidado

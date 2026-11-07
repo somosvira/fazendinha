@@ -109,6 +109,7 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["genetica/material-genetico", "Material genético", "sêmen embriões doadoras touros genética"],
     ["sanidade/protocolos", "Protocolos sanitários", "modelos etapas versão"], ["sanidade/doencas", "Doenças", "sanidade diagnósticos"],
     ["sanidade/tipos-exame", "Tipos de exame", "formatos resultados sanidade"], ["sanidade/tipos-aplicacao", "Tipos de aplicação", "vacinas medicamentos sanidade"],
+    ["reproducao/protocolos", "Modelos de protocolos reprodutivos", "reprodução protocolos modelos IATF TETF etapas"],
     ["reproducao/politica", "Política reprodutiva e acompanhamento", "reprodução aptidão idade peso PEV prazo diagnóstico reconfirmação"],
     ["reproducao/avaliacao", "Itens e condutas da avaliação", "reprodução catálogo avaliação exame útero ovários conduta"],
     ["reproducao/alertas", "Alertas operacionais da reprodução", "reprodução prazo atenção avaliação encaminhamento preparo"],

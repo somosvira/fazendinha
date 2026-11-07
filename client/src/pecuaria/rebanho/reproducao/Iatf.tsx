@@ -173,6 +173,7 @@ export const statusParticipanteIatf = (p: ParticipanteIatf) =>
 type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:Array<{id:string;brinco:string;nome:string|null}>; avisos:string[] };
 export function Iatf({
   programacaoId, onAbrirProgramacao, onFecharDetalhe,
+  solicitarProgramacao, onProgramacaoAberta, acaoProgramarNoCabecalho = false,
   animais = [],
   painel,
   modo = "operacao",
@@ -181,6 +182,9 @@ export function Iatf({
   animaisIndicadosInicialmente,
   propriedadeId,
 }: {
+  solicitarProgramacao?: boolean;
+  onProgramacaoAberta?: () => void;
+  acaoProgramarNoCabecalho?: boolean;
   programacaoId?: string;
   onAbrirProgramacao?: (id: string) => void;
   onFecharDetalhe?: () => void;
@@ -345,6 +349,11 @@ export function Iatf({
       aberturaAtual.current++;
     };
   }, [carregar]);
+  useEffect(() => {
+    if (!solicitarProgramacao || !podeLancar || !sitioEfetivo || carregando || erroConsulta || modo !== "operacao" || programacaoId) return;
+    setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false);
+    onProgramacaoAberta?.();
+  }, [solicitarProgramacao, podeLancar, sitioEfetivo, carregando, erroConsulta, modo, programacaoId, onProgramacaoAberta]);
   const abrir = useCallback(
     async (id: string) => {
       if (contextoAtual.current !== contexto) return;
@@ -441,7 +450,7 @@ export function Iatf({
           { chave: "situacao", conteudo: <CampoFiltro rotulo="Situação"><SelectCampo value={edicaoProgramacoes.rascunho.status} onValueChange={v=>edicaoProgramacoes.editar("status",v)}><option value="">Todas</option><option value="ABERTA">Aberta</option><option value="ENCERRADA">Encerrada</option></SelectCampo></CampoFiltro> },
           { chave: "ordem", conteudo: <CampoFiltro rotulo="Ordenar por"><SelectCampo value={edicaoProgramacoes.rascunho.ordem} onValueChange={v=>edicaoProgramacoes.editar("ordem",v)}><option value="RECENTES">Mais recentes</option><option value="NOME">Nome do grupo</option></SelectCampo></CampoFiltro> },
         ].map(c=>({...c,ativo:false,limpar:edicaoProgramacoes.limpar}))} criterios={criterios.status?[{id:"status",rotulo:criterios.status==="ABERTA"?"Aberta":"Encerrada",limpar:()=>{setCriterios(c=>({...c,status:""}));setPaginaProgramacoes(1);const u=new URL(window.location.href);u.searchParams.delete("iatfStatus");window.history.replaceState(window.history.state,"",u.pathname+u.search+u.hash);}}]:[]} acao={<>
-          {podeLancar && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
+          {podeLancar && !acaoProgramarNoCabecalho && <Button disabled={!sitioEfetivo || carregando || !!erroConsulta} onClick={() => { setNome(""); setNovo("programacao"); setChaveProgramacao(crypto.randomUUID()); setCienciaSanitaria(false); }}>Programar protocolo</Button>}
           <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos protocolos em acompanhamento"/>
         </>}><BuscaLista rotulo="Buscar programação" placeholder="Protocolo ou grupo" valor={buscaProgramacao} onChange={v=>{setBuscaProgramacao(v);setPaginaProgramacoes(1);}}/></BarraConsulta>
         <div className="space-y-3">

@@ -65,7 +65,7 @@ beforeEach(() => {
       modelo: "Modelo",
       etapaId: "etapa-hoje",
       etapa: "Etapa hoje",
-      tarefasIds: ["t1","t2","t3","t4","t5","t6"],
+      tarefasIds: ["t1", "t2", "t3", "t4", "t5", "t6"],
       totalAnimais: 6,
       atendidos: 4,
       pendentes: 2,
@@ -73,33 +73,46 @@ beforeEach(() => {
     },
   ]);
   m.agenda.mockResolvedValue([
-    g("hoje", "2026-11-07", {contexto:{programacaoId:"hoje",tarefasIds:["t5","t6"]},totalAnimais:2}),
+    g("hoje", "2026-11-07", {
+      contexto: { programacaoId: "hoje", tarefasIds: ["t5", "t6"] },
+      totalAnimais: 2,
+    }),
     g("amanha", "2026-11-08"),
   ]);
   m.execucoes.mockResolvedValue([p("hoje"), p("amanha"), p("restante")]);
   m.alertas.mockResolvedValue(vazio);
 });
 afterEach(cleanup);
-it("mostra as quatro seções reais, leva à etapa exata e conserva acesso às filas completas", async () => {
+it("mostra quatro seções em tabelas e leva à etapa exata", async () => {
   render(<VisaoGeralReprodutiva propriedadeId={7} />);
-  expect(await screen.findByText("Programação hoje")).toBeTruthy();
+  expect(
+    await within(
+      await screen.findByRole("table", { name: "Cuidados de hoje" }),
+    ).findByText("Programação hoje"),
+  ).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Hoje" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Próximos" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Em andamento" })).toBeTruthy();
   expect(screen.getByRole("heading", { name: "Atenção" })).toBeTruthy();
-  expect(await screen.findByText("Execução restante")).toBeTruthy();
-  const etapas = screen.getAllByRole("link", { name: "Abrir etapa" });
+  expect(
+    await within(
+      await screen.findByRole("table", { name: "Protocolos em andamento" }),
+    ).findByText("Execução restante"),
+  ).toBeTruthy();
+  const etapas = within(
+    screen.getByRole("table", { name: "Cuidados de hoje" }),
+  ).getAllByRole("link", { name: "Abrir etapa" });
   expect(etapas[0].getAttribute("href")).toContain("/programacoes/hoje?");
   expect(etapas[0].getAttribute("href")).toContain("etapaId=etapa-hoje");
   expect(etapas[0].getAttribute("href")).toContain("sitio=7");
+  expect(screen.queryByRole("link", { name: "Agenda completa" })).toBeNull();
+  expect(screen.getByRole("table", { name: "Cuidados de hoje" })).toBeTruthy();
   expect(
-    screen
-      .getByRole("link", { name: "Animais e acompanhamentos" })
-      .getAttribute("href"),
-  ).toContain("rotina=ciclos");
-  expect(
-    screen.getByRole("link", { name: "Agenda completa" }).getAttribute("href"),
-  ).toContain("rotina=agenda");
+    within(screen.getByRole("table", { name: "Cuidados de hoje" })).getByRole(
+      "columnheader",
+      { name: "Data prevista" },
+    ),
+  ).toBeTruthy();
   expect(screen.queryByText(/horário não informado/)).toBeNull();
 });
 it("cobertura não avaliada é diferente de ausência de necessidades", async () => {
@@ -165,7 +178,11 @@ it("grupo de DG abre somente os animais conferidos e preserva identidade do cuid
     fingerprint: "hash",
   });
   render(<VisaoGeralReprodutiva propriedadeId={7} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Ver cuidados" }));
+  fireEvent.click(
+    await within(
+      await screen.findByRole("table", { name: "Cuidados de hoje" }),
+    ).findByRole("button", { name: "Ver cuidados" }),
+  );
   const dialog = screen.getByRole("dialog");
   const link = await within(dialog).findByRole("link", {
     name: "Abrir cuidado",
@@ -182,30 +199,51 @@ it("grupo de DG abre somente os animais conferidos e preserva identidade do cuid
 
 it("Hoje mostra quatro atendidos e dois pendentes e conserva a etapa após o último atendimento", async () => {
   const { unmount } = render(<VisaoGeralReprodutiva propriedadeId={7} />);
-  const titulo = await screen.findByText("Programação hoje");
-  const linha = titulo.closest("article")!;
-  expect(within(linha).getByText("6 animais")).toBeTruthy();
-  expect(within(linha).getByText("Atendidos").parentElement?.textContent).toBe(
-    "Atendidos4",
-  );
-  expect(within(linha).getByText("Pendentes").parentElement?.textContent).toBe(
-    "Pendentes2",
-  );
+  const titulo = await within(
+    await screen.findByRole("table", { name: "Cuidados de hoje" }),
+  ).findByText("Programação hoje");
+  const linha = titulo.closest("tr")!;
+  expect(
+    within(linha)
+      .getAllByRole("cell")
+      .map((c) => c.textContent),
+  ).toEqual(expect.arrayContaining(["6", "4", "2"]));
   unmount();
   const [etapa] = await m.etapas.mock.results[0].value;
   m.etapas.mockResolvedValue([{ ...etapa, atendidos: 6, pendentes: 0 }]);
   render(<VisaoGeralReprodutiva propriedadeId={7} />);
-  const completa = (await screen.findByText("Programação hoje")).closest(
-    "article",
-  )!;
-  expect(within(completa).getByText("6 animais")).toBeTruthy();
+  const completa = (
+    await within(
+      await screen.findByRole("table", { name: "Cuidados de hoje" }),
+    ).findByText("Programação hoje")
+  ).closest("tr")!;
   expect(
-    within(completa).getByText("Atendidos").parentElement?.textContent,
-  ).toBe("Atendidos6");
-  expect(
-    within(completa).getByText("Pendentes").parentElement?.textContent,
-  ).toBe("Pendentes0");
+    within(completa)
+      .getAllByRole("cell")
+      .map((c) => c.textContent),
+  ).toEqual(expect.arrayContaining(["6", "0"]));
   expect(
     within(completa).getByRole("link", { name: "Abrir etapa" }),
+  ).toBeTruthy();
+});
+
+it("busca próximos cuidados sem alterar Hoje nem ocultar cobertura", async () => {
+  render(<VisaoGeralReprodutiva propriedadeId={7} />);
+  const proximos = await screen.findByRole("table", {
+    name: "Próximos cuidados",
+  });
+  expect(within(proximos).getByText("Programação amanha")).toBeTruthy();
+  fireEvent.change(
+    screen.getByRole("textbox", { name: "Buscar próximos cuidados" }),
+    { target: { value: "sem correspondência" } },
+  );
+  expect(
+    screen.getByText("Nenhum cuidado encontrado para esta busca no intervalo."),
+  ).toBeTruthy();
+  expect(screen.getByRole("table", { name: "Cuidados de hoje" })).toBeTruthy();
+  expect(
+    screen.getByText(
+      "Nenhuma atenção identificada pelas regras reprodutivas avaliadas.",
+    ),
   ).toBeTruthy();
 });

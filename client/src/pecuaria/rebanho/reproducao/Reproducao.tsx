@@ -1,7 +1,8 @@
 import { VisaoGeralReprodutiva } from "./VisaoGeralReprodutiva";
 import { LinkInterno } from "../../../components/LinkInterno";
 import { abrirPreparacaoIatf } from "./preparar-iatf";
-import { GitBranch } from "lucide-react";
+import { GitBranch, Settings, Plus, LayoutDashboard, Users, CalendarDays, ClipboardList, Baby, ChartNoAxesCombined } from "lucide-react";
+import "./reproducao-navegacao.css";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -91,12 +92,12 @@ export function ReproducaoAnimal({
   );
 }
 const ROTINAS = [
-  { id:"geral", label:"Visão geral" },
-  { id: "ciclos", label: "Animais e acompanhamentos" },
-  { id: "agenda", label: "Agenda" },
-  { id: "programacoes", label: "Protocolos" },
-  { id: "partos", label: "Partos e pós-parto" },
-  { id: "indicadores", label: "Indicadores" },
+  { id:"geral", label:"Visão geral", icon: LayoutDashboard },
+  { id: "ciclos", label: "Animais e acompanhamentos", icon: Users },
+  { id: "agenda", label: "Agenda", icon: CalendarDays },
+  { id: "programacoes", label: "Protocolos", icon: ClipboardList },
+  { id: "partos", label: "Partos e pós-parto", icon: Baby },
+  { id: "indicadores", label: "Indicadores", icon: ChartNoAxesCombined },
 ] as const;
 type Rotina = typeof ROTINAS[number]["id"];
 function rotinaDaUrl(): Rotina {
@@ -114,6 +115,8 @@ function rotinaDaUrl(): Rotina {
 }
 
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
+  const [solicitarProgramacao, setSolicitarProgramacao] = useState(false);
+  const consumirProgramacao = useCallback(() => setSolicitarProgramacao(false), []);
   const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
   const propriedadeId = getPropriedadeAtiva();
@@ -146,7 +149,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
         : rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
         : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId} podeLancar={podeLancar}/>
-        : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes"/>
+        : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes" solicitarProgramacao={solicitarProgramacao} onProgramacaoAberta={consumirProgramacao}/>
         : <ManejoReprodutivo propriedadeId={sitioId} podeLancar={podeLancar}
             onConsultarHistorico={() => navegarConsultaComSitio("/pecuaria/reproducao?rotina=ciclos&visao=historico", sitioId)}
             onRegistrarEvento={() => navegarConsultaComSitio("/pecuaria/reproducao?rotina=ciclos&visao=historico&acao=avaliacao", sitioId)}/>
@@ -166,7 +169,10 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
-      <PageHeader titulo={<span className="rotina-titulo"><span><GitBranch/></span>Reprodução</span>} />
+      <PageHeader titulo={<span className="rotina-titulo"><span><GitBranch/></span>Reprodução</span>} acao={<div className="reproducao-comandos">
+        <Button secondary onClick={() => navegarPara(urlConsultaComSitio("/configuracoes/pecuaria/reproducao", propriedadeId ?? (Number(new URLSearchParams(consultaUrl).get("sitio")) || undefined)))}><Settings size={17} aria-hidden/>Configurações</Button>
+        {podeLancar && <Button onClick={() => { setSolicitarProgramacao(true); selecionarRotina("programacoes"); }}><Plus size={18} aria-hidden/>Programar protocolo</Button>}
+      </div>} />
       <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
         active={rotina} onSelect={selecionarRotina} />
 
@@ -184,7 +190,11 @@ function ConteudoReproducao({
   recarregarToken = 0,
   programacaoId,
   onFecharDetalhe,
+  solicitarProgramacao,
+  onProgramacaoAberta,
 }: {
+  solicitarProgramacao?: boolean;
+  onProgramacaoAberta?: () => void;
   secao?: "historico" | "programacoes";
   programacaoId?: string;
   onFecharDetalhe?: () => void;
@@ -297,7 +307,7 @@ function ConteudoReproducao({
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
     {carregando && <EsqueletoTabela label="Carregando programações" />}
-    {!carregando && painel && <Iatf programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
+    {!carregando && painel && <Iatf solicitarProgramacao={solicitarProgramacao} onProgramacaoAberta={onProgramacaoAberta} acaoProgramarNoCabecalho={!programacaoId} programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
   </div>;
   return (
     <div className="space-y-5">

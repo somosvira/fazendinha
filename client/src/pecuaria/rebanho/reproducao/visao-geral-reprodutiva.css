@@ -1,127 +1,104 @@
-.repro-visao-geral {
-  display: grid;
-  gap: 24px;
-}
+.repro-visao-geral,
 .repro-visao-secoes {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
-  align-items: start;
-}
-.repro-visao-secoes > * {
   min-width: 0;
-  overflow: hidden;
+  max-width: 100%;
 }
-.repro-visao-cabecalho {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
+.repro-visao-geral .repro-visao-painel {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  overflow: clip;
+  min-width: 0;
+}
+.repro-visao-painel > .secao-recolhivel-cabecalho {
+  padding: 16px 18px;
   border-bottom: 1px solid var(--border);
+  background: var(--muted);
+  flex-wrap: wrap;
 }
-.repro-visao-cabecalho h2 {
-  font-size: 18px;
-  font-weight: 600;
-}
-.repro-visao-cabecalho p {
-  margin-top: 4px;
-  color: var(--muted-foreground);
-  font-size: 14px;
-}
-.repro-visao-conteudo {
+.repro-visao-painel > .secao-recolhivel-conteudo {
+  padding: 14px 18px;
+  min-width: 0;
   display: grid;
-  gap: 16px;
-  padding: 20px;
+  gap: 12px;
+}
+.repro-visao-resumo,
+.repro-visao-detalhe {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.repro-visao-detalhe {
+  display: block;
+  margin-top: 4px;
+}
+.repro-visao-busca {
+  min-height: 40px;
+  width: 300px;
+  max-width: 100%;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--card);
+  color: var(--foreground);
+}
+.repro-visao-busca:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.repro-visao-geral .fin-consulta-responsiva {
+  min-width: 0;
+  max-width: 100%;
 }
 .repro-visao-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
-  min-width: 0;
-  padding: 16px 0;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 .repro-visao-item:last-child {
   border-bottom: 0;
 }
-.repro-visao-item > div {
-  min-width: 0;
-}
 .repro-visao-item h3 {
-  font-weight: 600;
-  overflow-wrap: anywhere;
+  font-weight: 650;
 }
 .repro-visao-item p {
   margin-top: 4px;
 }
-.repro-visao-item > a,
-.repro-visao-item > button {
-  flex-shrink: 0;
-}
-.repro-visao-acessos {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted-foreground);
-}
-.repro-visao-acessos > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-left: auto;
-}
-.repro-visao-conteudo .cuidados-alertas-cartoes {
-  grid-template-columns: minmax(0, 1fr);
-}
-@media (max-width: 1100px) {
+@media (max-width: 700px) {
+  .repro-visao-geral,
   .repro-visao-secoes {
-    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
   }
-}
-@media (max-width: 600px) {
-  .repro-visao-cabecalho,
+  .repro-visao-painel > .secao-recolhivel-conteudo {
+    padding: 12px;
+  }
+  .repro-visao-painel > .secao-recolhivel-cabecalho {
+    padding: 14px 12px;
+  }
+  .repro-visao-busca {
+    width: 100%;
+  }
   .repro-visao-item {
-    flex-wrap: wrap;
-  }
-  .repro-visao-conteudo,
-  .repro-visao-cabecalho {
-    padding: 16px;
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 
-.repro-visao-etapa {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto;
-  gap: 16px;
-  align-items: center;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--border);
+/* A visão geral conserva o acabamento tabular aprovado, sem alterar outros eixos. */
+:root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela {
+  border-collapse: collapse;
+  border: 1px solid var(--fin-table-divider, #d8e0e5);
 }
-.repro-visao-etapa:last-child {
-  border-bottom: 0;
+:root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela > thead > tr > th {
+  background: var(--fin-table-header);
+  color: var(--fin-table-heading);
+  border-bottom: 1px solid var(--fin-table-rule);
 }
-.repro-visao-etapa h3 {
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-.repro-visao-etapa span {
-  font-size: 12px;
-  color: var(--muted-foreground);
-}
-.repro-visao-etapa strong {
-  display: block;
-  font-variant-numeric: tabular-nums;
-}
-@media (max-width: 600px) {
-  .repro-visao-etapa {
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 12px;
-  }
-  .repro-visao-etapa > a {
-    grid-column: 1 / -1;
-    justify-self: start;
-  }
+:root .app-main .reproducao-v4 .repro-visao-geral .fin-tabela > :is(thead, tbody) > tr > :is(th, td):not(:last-child) {
+  border-inline-end: 1px solid var(--fin-table-divider, #d8e0e5);
 }
