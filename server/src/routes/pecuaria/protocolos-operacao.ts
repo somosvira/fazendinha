@@ -32,7 +32,7 @@ const participacaoSchema = z.object({
   alertaId: uuid.optional(), alertaRevisao: z.number().int().positive().optional(), confirmarCuidadoAlerta: z.literal(true).optional(),
   chave: uuid, propriedadeId: z.number().int().positive().max(2147483647),
   tipo: z.enum(["SANITARIO", "REPRODUTIVO"]), protocoloId: uuid, animalId: uuid,
-  inicioReferencia: z.union([z.string().date(), z.string().datetime({ offset: true })]),
+  inicioReferencia: z.union([z.string().date(), z.string().datetime({ offset: true })]), diagnosticoIndividualEm: z.string().date().optional(),
   cienciaSanitaria: z.boolean().optional(), confirmarSobreposicao: z.boolean().optional(),
   justificativaSobreposicao: z.string().trim().min(5).max(1000).optional(),
 }).strict();

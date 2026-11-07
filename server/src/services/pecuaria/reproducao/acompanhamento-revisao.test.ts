@@ -33,6 +33,18 @@ describe("revisão explícita de prazos",()=>{
   await expect(revisarPrazos({...entrada,chave:"chave",motivo:"Revisão confirmada",revisao:previa.revisao},1)).rejects.toThrow();
   expect(mocks.tx.revisaoPrazoAcompanhamento.create).not.toHaveBeenCalled();
  });
+ it("adota regra em necessidade sem prazo preservando a evidência anterior",async()=>{
+  mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{...demanda(),politicaId:null,previstaPara:null,origemAdocao:"SEM_REGRA",regraSnapshot:{motivo:"REGRA_NAO_CONFIGURADA"}}]);
+  const previa=await previaRevisaoPrazos(entrada);
+  expect(previa.propostas[0]).toMatchObject({previstaAnterior:null,impedimento:null});
+  await revisarPrazos({...entrada,chave:"chave",motivo:"Configuração adotada",revisao:previa.revisao},1);
+  expect(mocks.tx.revisaoPrazoAcompanhamento.create).toHaveBeenCalledWith({data:expect.objectContaining({politicaAnteriorId:null,previstaAnterior:null})});
+  expect(mocks.tx.demandaAcompanhamentoReprodutivo.updateMany).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({origemAdocao:"ADOCAO_EXPLICITA"})}));
+ });
+ it("preserva data individual anterior à tentativa para revisão consciente",async()=>{
+  mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{...demanda(),politicaId:null,previstaPara:null,origemAdocao:"SEM_REGRA",regraSnapshot:{motivo:"AGENDAMENTO_ANTERIOR_A_TENTATIVA"}}]);
+  expect((await previaRevisaoPrazos(entrada)).propostas[0].impedimento).toBe("AGENDAMENTO_INDIVIDUAL_PRESERVADO");
+ });
  it("rejeita prévia obsoleta antes de escrever",async()=>{
   const previa=await previaRevisaoPrazos(entrada);
   mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([{...demanda(),versao:2}]);

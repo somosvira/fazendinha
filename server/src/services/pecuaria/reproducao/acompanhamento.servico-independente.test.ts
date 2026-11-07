@@ -3,7 +3,7 @@ const mocks = vi.hoisted(() => ({ tx: {
   demandaAcompanhamentoReprodutivo: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
   exameAnimal: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
   partoAnimal: { findMany: vi.fn() }, tentativaReprodutiva: { findMany: vi.fn() }, tarefaProtocolo: { findMany: vi.fn() },
-  politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
+  participacaoProtocolo: { findFirst: vi.fn() }, politicaAcompanhamentoReprodutivo: { findFirst: vi.fn(), create: vi.fn() }, localizacaoAnimal: { findMany: vi.fn() },
 }, auditar: vi.fn(), conferir: vi.fn() }));
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
@@ -146,6 +146,15 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(async ({ data }) => ({ id: "demanda", ...data }));
     await criarDemandasDoFatoTx(tx, { tentativaId: "t", tipoTentativa: "TE", animalId: "animal", propriedadeId: 7, data: dia("2026-01-01") }, null);
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledWith({ data: expect.objectContaining({ previstaPara: dia("2026-01-21"), regraSnapshot: expect.objectContaining({ origem: "SITIO", referencia: "TE", politicaVersao: 2, tolerancia: 1 }) }) });
+  });
+  it("adota o prazo do modelo após vínculo factual e não consulta a política atual", async () => {
+    const regra = { finalidade:"DIAGNOSTICO",ocorrencia:1,publico:"TE",referencia:"TE",intervalo:20,unidade:"DIAS",antecedencia:2,tolerancia:1,resolucao:"DIAGNOSTICO_CONCLUSIVO" };
+    mocks.tx.participacaoProtocolo.findFirst.mockResolvedValue({acompanhamentoSnapshot:{versao:1,protocoloId:"p",protocoloVersao:1,diagnosticoIndividualEm:null,modelo:{versao:2,efeito:"ALERTA",regras:[regra]},sitio:null}});
+    mocks.tx.demandaAcompanhamentoReprodutivo.findFirst.mockResolvedValue(null);
+    mocks.tx.demandaAcompanhamentoReprodutivo.create.mockImplementation(async ({data})=>({id:"demanda",...data}));
+    await criarDemandasDoFatoTx(tx,{tentativaId:"t",tipoTentativa:"TE",animalId:"animal",propriedadeId:7,data:dia("2026-01-01")},null,undefined,"participacao");
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.create).toHaveBeenCalledWith({data:expect.objectContaining({participacaoAcompanhamentoId:"participacao",politicaId:null,origemAdocao:"MODELO",previstaPara:dia("2026-01-21")})});
+    expect(mocks.tx.politicaAcompanhamentoReprodutivo.findFirst).not.toHaveBeenCalled();
   });
   it("sem política vigente o escritor não inventa previsão e a leitura não cria fatos", async () => {
     mocks.tx.politicaAcompanhamentoReprodutivo.findFirst.mockResolvedValue(null);

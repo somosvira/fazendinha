@@ -1,3 +1,4 @@
+import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
 import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
 import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
@@ -8,7 +9,7 @@ import { associarMomentosAcoesTx } from "../protocolos/momentos.js";
 import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
-import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx } from "./acompanhamento.js";
+import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx } from "./acompanhamento.js";
 import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -188,8 +189,9 @@ export async function criarProtocolo(
     if(input.origemVersaoId&&!origem)erro("Versão de origem reprodutiva não encontrada", "origemVersaoId");
     if (origem && input.nome.trim() !== origem.nome) erro("Uma nova versão deve preservar o protocolo-base", "nome");
     const etapas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
+    if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
     const p = await criarProtocoloReprodutivoTx(tx, {
-      data: { ...input, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
+      data: { ...input, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : undefined, etapas: json(etapas), criadoPorId: usuarioId,...(origem?.referenciaTecnica?{referenciaTecnica:json({...origem.referenciaTecnica as Record<string,unknown>,protocoloOrigemId:origem.id})}:{}) },
     });
     await auditar(tx, {
       entidade: "ProtocoloIatf",
@@ -198,16 +200,16 @@ export async function criarProtocolo(
       usuarioId,
       depois: p,
     });
-    return { ...p, finalidade: input.finalidade ?? null, modalidadeTentativa: input.modalidadeTentativa ?? null, modalidadeDiagnostico: input.modalidadeDiagnostico ?? null };
+    return { ...p, finalidade: input.finalidade ?? null, modalidadeTentativa: input.modalidadeTentativa ?? null, modalidadeDiagnostico: input.modalidadeDiagnostico ?? null, configuracaoAcompanhamento: input.configuracaoAcompanhamento ?? null };
   });
 }
 export async function listarProtocolos() {
   const [versoes, contratos] = await Promise.all([
-    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, referenciaTecnica:true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
+    prisma.protocolo.findMany({ where: { tipo: "REPRODUTIVO" }, select: { id: true, ativo: true, finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, configuracaoAcompanhamento: true, referenciaTecnica:true, descricao: true, publicadoEm: true, atualizadoEm: true, _count: { select: { execucoes: true, rodadas: true } } } }),
     prisma.protocoloIatf.findMany({ orderBy: [{ nome: "asc" }, { versao: "desc" }] }),
   ]);
   const metas = new Map(versoes.map(v => [v.id, v]));
-  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, finalidade: v.finalidade, modalidadeTentativa: v.modalidadeTentativa, modalidadeDiagnostico: v.modalidadeDiagnostico, ativo: v.ativo, referenciaTecnica:v.referenciaTecnica, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
+  return contratos.map(p => { const v = metas.get(p.id)!; return { ...p, finalidade: v.finalidade, modalidadeTentativa: v.modalidadeTentativa, modalidadeDiagnostico: v.modalidadeDiagnostico, configuracaoAcompanhamento: v.configuracaoAcompanhamento, ativo: v.ativo, referenciaTecnica:v.referenciaTecnica, descricao: v.descricao, publicadoEm: v.publicadoEm, atualizadoEm: v.atualizadoEm, utilizada: v._count.execucoes > 0 || v._count.rodadas > 0 }; });
 }
 function etapaSemReferencias(e: Prisma.JsonValue) {
   if (!e || typeof e !== "object" || Array.isArray(e)) erro("Etapa de protocolo inválida", "etapas");
@@ -216,29 +218,31 @@ function etapaSemReferencias(e: Prisma.JsonValue) {
 }
 async function publicarReprodutivoTx(tx: Prisma.TransactionClient, id: string, usuarioId: number | null) {
   await publicarVersaoTx(tx, id, "REPRODUTIVO", usuarioId, async p => {
-    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
+    const validado = protocoloSchema.parse({ nome: p.nome, versao: p.versao, publicado: true, finalidade: p.finalidade, modalidadeTentativa: p.modalidadeTentativa, modalidadeDiagnostico: p.modalidadeDiagnostico, configuracaoAcompanhamento: p.configuracaoAcompanhamento, etapas: p.etapas.map(e => etapaSemReferencias(e.configuracao)) });
+    if (validado.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,validado.configuracaoAcompanhamento);
     const congeladas = await congelarEtapasTx(tx, validado.etapas, validado.finalidade != null);
     const etapas = etapasReprodutivasDoContrato(json(congeladas));
     for (const [i, etapa] of etapas.entries()) await tx.etapaProtocolo.update({ where: { id: p.etapas[i].id }, data: etapa });
   });
-  const [contrato, meta] = await Promise.all([tx.protocoloIatf.findUniqueOrThrow({ where: { id } }), tx.protocolo.findUniqueOrThrow({ where: { id }, select: { finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true } })]);
+  const [contrato, meta] = await Promise.all([tx.protocoloIatf.findUniqueOrThrow({ where: { id } }), tx.protocolo.findUniqueOrThrow({ where: { id }, select: { finalidade: true, modalidadeTentativa: true, modalidadeDiagnostico: true, configuracaoAcompanhamento: true } })]);
   return { ...contrato, ...meta };
 }
 export async function editarProtocolo(id: string, input: z.infer<typeof protocoloSchema>, usuarioId: number | null) {
   return transacaoPecuaria(async tx => {
     const identidade = await resolverIdReprodutivoTx(tx, "protocolo", id);
     const antes = await carregarVersaoTx(tx, identidade, "REPRODUTIVO", true);
-    input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? antes.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico ?? antes.modalidadeDiagnostico });
+    input = protocoloSchema.parse({ ...input, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? antes.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico ?? antes.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento === undefined ? antes.configuracaoAcompanhamento : input.configuracaoAcompanhamento });
     if (input.versao !== antes.versao) erro("A edição de um rascunho conserva o número da versão", "versao");
+    if (input.configuracaoAcompanhamento) await validarTiposPoliticaTx(tx,input.configuracaoAcompanhamento);
     const congeladas = await congelarEtapasTx(tx, input.etapas, input.finalidade != null);
     await tx.etapaProtocolo.deleteMany({ where: { protocoloId: identidade } });
     await tx.momentoProtocolo.deleteMany({ where: { protocoloId: identidade } });
-    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
+    await tx.protocolo.update({ where: { id: identidade, tipo: "REPRODUTIVO" }, data: { nome: input.nome, descricao: input.descricao, finalidade: input.finalidade, modalidadeTentativa: input.modalidadeTentativa, modalidadeDiagnostico: input.modalidadeDiagnostico, configuracaoAcompanhamento: input.configuracaoAcompanhamento ? json(input.configuracaoAcompanhamento) : Prisma.DbNull, etapas: { deleteMany: {}, create: etapasReprodutivasDoContrato(json(congeladas)) } } });
     await associarMomentosAcoesTx(tx, identidade, input.etapas);
     if (input.publicado) await publicarReprodutivoTx(tx, identidade, usuarioId);
     const depois = await tx.protocoloIatf.findUniqueOrThrow({ where: { id: identidade } });
     await auditar(tx, { entidade: "ProtocoloIatf", entidadeId: identidade, acao: "RASCUNHO_EDITADO", usuarioId, antes, depois });
-    return { ...depois, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? null, modalidadeDiagnostico: input.modalidadeDiagnostico ?? null };
+    return { ...depois, finalidade: input.finalidade ?? antes.finalidade, modalidadeTentativa: input.modalidadeTentativa ?? null, modalidadeDiagnostico: input.modalidadeDiagnostico ?? null, configuracaoAcompanhamento: input.configuracaoAcompanhamento ?? null };
   });
 }
 export async function publicarProtocolo(id: string, usuarioId: number | null) {
@@ -300,7 +304,7 @@ export async function criarProgramacaoTx(
       data: {
         programacaoId: programacao.id,
         animalId: animal.animalId,
-        inicioPrevisto, precisaoTemporal: referenciaTemporal.precisao,
+        inicioPrevisto, precisaoTemporal: referenciaTemporal.precisao, diagnosticoIndividualEm: animal.diagnosticoIndividualEm,
         criadoPorId: usuarioId,
       },
     });
@@ -343,7 +347,7 @@ export const dataNoBrasil = diaIatf;
 export const participacaoIndividualReprodutivaSchema = z.object({
   automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(),
   chave: z.string().uuid(), protocoloId: z.string().uuid(), animalId: z.string().uuid(),
-  propriedadeId: z.number().int().positive().max(2147483647), inicioReferencia: dataOuHorario,
+  propriedadeId: z.number().int().positive().max(2147483647), inicioReferencia: dataOuHorario, diagnosticoIndividualEm: z.string().date().optional(),
   cienciaSanitaria: z.boolean().optional(), confirmarSobreposicao: z.boolean().optional(),
   justificativaSobreposicao: z.string().trim().min(5).max(1000).optional(),
 }).strict();
@@ -371,6 +375,7 @@ export async function criarParticipacaoIndividualReprodutiva(entrada: z.infer<ty
         throw new RebanhoError("CONFLITO", "O animal já tem este protocolo pendente; confirme a sobreposição com justificativa", "confirmarSobreposicao");
       const participante = await tx.participacaoProtocolo.create({ data: { protocoloId, animalId: input.animalId,
         propriedadeId: input.propriedadeId, inicio: temporal.instante, precisaoTemporal: temporal.precisao,
+        acompanhamentoSnapshot: await snapshotPrazosAdesaoTx(tx, protocoloId, input.propriedadeId, input.diagnosticoIndividualEm),
         origemCalendario: "REFERENCIA_PROGRAMADA", criadoPorId: usuarioId } });
       await criarTarefasReprodutivasTx(tx, { data: calendarioIatf(temporal.instante, protocolo.etapas as EtapaFonte[], temporal.precisao)
         .map(e => dadosTarefa(participante.id, e, temporal.instante)) });
@@ -820,6 +825,7 @@ export async function executarTarefaTx(
       tx,
       tentativaSchema.parse(preparado),
       usuarioId,
+      { adiarAcompanhamento: true },
     );
     vinculo = { tentativaId: fato.id };
   }
@@ -863,6 +869,10 @@ export async function executarTarefaTx(
       ...vinculo,
     },
   });
+  if (tarefa.tipo === "TENTATIVA" && fato) {
+    const tentativa = await tx.tentativaReprodutiva.findUniqueOrThrow({where:{id:fato.id}});
+    await criarDemandasDoFatoTx(tx,{tentativaId:tentativa.id,tipoTentativa:tentativa.tipo,animalId:tentativa.animalId,propriedadeId:input.propriedadeId,data:tentativa.data},usuarioId,undefined,participante.id);
+  }
   await auditar(tx, {
     entidade: "TarefaIatf",
     entidadeId: id,

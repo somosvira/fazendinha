@@ -1917,6 +1917,7 @@ model Protocolo {
   finalidade FinalidadeProtocolo?
   modalidadeTentativa String?
   modalidadeDiagnostico String?
+  configuracaoAcompanhamento Json?
   momentos MomentoProtocolo[]
   referenciaTecnica Json?
   tipo TipoProtocolo @default(SANITARIO)
@@ -2013,6 +2014,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  acompanhamentoSnapshot Json?
   automacoes AutomacaoProtocolo[]
   Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
   origemCalendario OrigemCalendarioProtocolo @default(REFERENCIA_PROGRAMADA)
@@ -3244,6 +3246,7 @@ model PoliticaAcompanhamentoReprodutivo {
 
 // Necessidade clínica separada da execução de uma tarefa e de suas respostas inconclusivas.
 model DemandaAcompanhamentoReprodutivo {
+  participacaoAcompanhamentoId String?
   id String @id @default(uuid())
   animalId String
   animal Animal @relation(fields: [animalId], references: [id], onUpdate: NoAction)
@@ -3279,6 +3282,7 @@ model DemandaAcompanhamentoReprodutivo {
   atualizadoEm DateTime @updatedAt
   @@index([animalId, estado, previstaPara], map: "DemandaAcompanhamento_animal_estado_data")
   @@index([propriedadeOrigemId, estado], map: "DemandaAcompanhamento_origem_estado")
+  @@index([participacaoAcompanhamentoId], map: "DemandaAcompanhamento_participacao")
   @@index([tentativaId], map: "DemandaAcompanhamento_tentativa")
   @@index([gestacaoId], map: "DemandaAcompanhamento_gestacao")
   @@schema("pecuaria")
@@ -3289,9 +3293,9 @@ model RevisaoPrazoAcompanhamento {
   id String @id @default(uuid())
   demandaId String
   versaoAnterior Int
-  politicaAnteriorId String
+  politicaAnteriorId String?
   politicaNovaId String
-  previstaAnterior DateTime @db.Date
+  previstaAnterior DateTime? @db.Date
   previstaNova DateTime @db.Date
   regraAnterior Json
   regraNova Json

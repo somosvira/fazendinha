@@ -1,3 +1,4 @@
+import { proporPrazoDaParticipacao, proporReconfirmacoesDaParticipacao } from "./prazos-protocolo.js";
 import { Prisma, type DemandaAcompanhamentoReprodutivo } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -70,17 +71,21 @@ export async function garantirDemandaProtocoloTx(tx: Prisma.TransactionClient, t
 }
 
 export function listarPoliticasAcompanhamento(propriedadeId:number){return prisma.politicaAcompanhamentoReprodutivo.findMany({where:{propriedadeId},orderBy:{versao:"desc"}});}
+export async function validarTiposPoliticaTx(tx:Prisma.TransactionClient,parametros:import("./acompanhamento.schemas.js").ParametrosAcompanhamento){
+ for(const regra of (parametros.versao===1?[...(parametros.diagnostico?[parametros.diagnostico]:[]),...parametros.reconfirmacoes]:parametros.regras))if(regra.tipoExameId){
+  const tipo=await tx.tipoExame.findUnique({where:{id:regra.tipoExameId}});
+  if(!tipo||!tipo.ativo||tipo.contexto==="SANITARIO"||tipo.tipoResultado!=="MULTIPLO")erro("Selecione um tipo de exame reprodutivo ativo", "tipoExameId");
+  if(regra.tipoExameVersao&&regra.tipoExameVersao!==tipo.versaoFormato)throw new RebanhoError("CONFLITO","A versão do tipo de exame mudou; confira a política");
+  regra.tipoExameVersao=tipo.versaoFormato;
+ }
+ return parametros;
+}
 export function criarPoliticaAcompanhamento(input:CriarPoliticaAcompanhamentoInput,usuarioId:number|null){
  return transacaoPecuaria(async tx=>{
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`pec-politica-acompanhamento:${input.propriedadeId}`}))`;
   return operacaoIdempotenteTx(tx,input,usuarioId,"POLITICA_ACOMPANHAMENTO",async()=>{
    const parametros=parametrosAcompanhamentoSchema.parse(input.parametros);
-   for(const regra of (parametros.versao===1?[...(parametros.diagnostico?[parametros.diagnostico]:[]),...parametros.reconfirmacoes]:parametros.regras))if(regra.tipoExameId){
-    const tipo=await tx.tipoExame.findUnique({where:{id:regra.tipoExameId}});
-    if(!tipo||!tipo.ativo||tipo.contexto==="SANITARIO"||tipo.tipoResultado!=="MULTIPLO")erro("Selecione um tipo de exame reprodutivo ativo", "tipoExameId");
-    if(regra.tipoExameVersao&&regra.tipoExameVersao!==tipo.versaoFormato)throw new RebanhoError("CONFLITO","A versão do tipo de exame mudou; confira a política");
-    regra.tipoExameVersao=tipo.versaoFormato;
-   }
+   await validarTiposPoliticaTx(tx,parametros);
    const anterior=await tx.politicaAcompanhamentoReprodutivo.findFirst({where:{propriedadeId:input.propriedadeId},orderBy:{versao:"desc"}});
    if(anterior&&dia(input.vigenteDesde)<=anterior.vigenteDesde)erro("Nova vigência deve ser posterior à última versão; demandas existentes conservam a regra", "vigenteDesde");
    const criada=await tx.politicaAcompanhamentoReprodutivo.create({data:{propriedadeId:input.propriedadeId,versao:(anterior?.versao??0)+1,vigenteDesde:dia(input.vigenteDesde),parametros:json(parametros),criadoPorId:usuarioId}});
@@ -97,12 +102,24 @@ async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?
  return proporAcompanhamentos({...politica,parametros:parametrosAcompanhamentoSchema.parse(politica.parametros)},{...origem,data:texto(origem.data)}).map(p=>({...p,politicaId:politica.id}));
 }
 /** Somente escritores chamam esta função. Uma leitura nunca adota políticas em fatos antigos. */
-export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:Origem,usuarioId:number|null,politicaId?:string){
- const propostas=await propostasTx(tx,origem,politicaId);
+export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:Origem,usuarioId:number|null,politicaId?:string,participacaoId?:string){
+ let propostas: Array<import("./prazos-protocolo.js").PrazoAdotado>;
+ if(participacaoId && origem.tentativaId && origem.tipoTentativa && !politicaId){
+  const participacao=await tx.participacaoProtocolo.findFirst({where:{id:participacaoId,animalId:origem.animalId,propriedadeId:origem.propriedadeId,tarefas:{some:{tentativas:{some:{id:origem.tentativaId,status:"VALIDO"}}}}},select:{acompanhamentoSnapshot:true}});
+  if(!participacao)erro("Tentativa não vinculada à participação informada", "participacaoId");
+  propostas=participacao.acompanhamentoSnapshot ? proporPrazoDaParticipacao(participacao.acompanhamentoSnapshot,{tentativaId:origem.tentativaId,tipoTentativa:origem.tipoTentativa,data:texto(origem.data)},participacaoId)
+   : (await propostasTx(tx,origem)).map(p=>({...p,origemAdocao:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
+ }else if(origem.gestacaoId && !politicaId){
+  const gestacao=await tx.gestacaoAnimal.findUnique({where:{id:origem.gestacaoId},select:{TentativaReprodutiva:{select:{tarefa:{select:{execucao:{select:{id:true,animalId:true,propriedadeId:true,acompanhamentoSnapshot:true}}}}}}}});
+  const participacao=gestacao?.TentativaReprodutiva?.tarefa?.execucao;
+  propostas=participacao && participacao.animalId===origem.animalId && participacao.propriedadeId===origem.propriedadeId && participacao.acompanhamentoSnapshot
+   ? proporReconfirmacoesDaParticipacao(participacao.acompanhamentoSnapshot,{gestacaoId:origem.gestacaoId,data:texto(origem.data)},participacao.id)
+   : (await propostasTx(tx,origem)).map(p=>({...p,origemAdocao:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
+ }else propostas=(await propostasTx(tx,origem,politicaId)).map(p=>({...p,origemAdocao:politicaId?"ADOCAO_EXPLICITA" as const:"FATO_NOVO" as const,participacaoAcompanhamentoId:null}));
  for(const p of propostas){
   const existente=await tx.demandaAcompanhamentoReprodutivo.findFirst({where:{tentativaId:p.tentativaId,gestacaoId:p.gestacaoId,finalidade:p.finalidade,ocorrencia:p.ocorrencia}});
   if(existente)continue;
-  const criada=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:origem.animalId,propriedadeOrigemId:origem.propriedadeId,politicaId:p.politicaId,finalidade:p.finalidade,ocorrencia:p.ocorrencia,tentativaId:p.tentativaId,gestacaoId:p.gestacaoId,dataReferencia:dia(p.dataReferencia),previstaPara:dia(p.previstaPara),regraSnapshot:json(p.regraSnapshot),origemAdocao:politicaId?"ADOCAO_EXPLICITA":"FATO_NOVO",exameOrigemId:origem.exameOrigemId,criadoPorId:usuarioId}});
+  const criada=await tx.demandaAcompanhamentoReprodutivo.create({data:{animalId:origem.animalId,propriedadeOrigemId:origem.propriedadeId,politicaId:p.politicaId,participacaoAcompanhamentoId:p.participacaoAcompanhamentoId,finalidade:p.finalidade,ocorrencia:p.ocorrencia,tentativaId:p.tentativaId,gestacaoId:p.gestacaoId,dataReferencia:dia(p.dataReferencia),previstaPara:p.previstaPara?dia(p.previstaPara):null,regraSnapshot:json(p.regraSnapshot),origemAdocao:p.origemAdocao,exameOrigemId:origem.exameOrigemId,criadoPorId:usuarioId}});
   await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:criada.id,animalId:origem.animalId,propriedadeId:origem.propriedadeId,acao:politicaId?"ADOCAO_EXPLICITA":"REGISTRO",usuarioId,depois:criada});
  }
 }
@@ -266,7 +283,7 @@ async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import
   const fato = { ...(d.tentativaId ? {tentativaId:d.tentativaId,tipoTentativa:d.tentativa?.tipo} : {gestacaoId:d.gestacaoId!}), data:texto(d.dataReferencia) };
   const proposta = proporAcompanhamentos({...politica,parametros},fato).find(p=>p.finalidade===d.finalidade && p.ocorrencia===d.ocorrencia);
   const visitaAgendada = await tx.participanteVisita.findFirst({where:{animalId:d.animalId,status:"PENDENTE",snapshot:{path:["acompanhamento","id"],equals:d.id},AtividadeVisita:{VisitaVeterinaria:{propriedadeId:input.propriedadeId,encerradaEm:null}}},select:{id:true}});
-  const impedimento = d.estado!=="PENDENTE" ? "DEMANDA_NAO_PENDENTE" : d.tarefaId ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : visitaAgendada ? "AGENDAMENTO_VISITA_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
+  const impedimento = d.estado!=="PENDENTE" ? "DEMANDA_NAO_PENDENTE" : d.tarefaId ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : visitaAgendada ? "AGENDAMENTO_VISITA_PRESERVADO" : d.origemAdocao==="SEM_REGRA" && (d.regraSnapshot as Record<string,unknown>).motivo==="AGENDAMENTO_ANTERIOR_A_TENTATIVA" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="INDIVIDUAL" ? "AGENDAMENTO_INDIVIDUAL_PRESERVADO" : d.origemAdocao==="PROTOCOLO" ? "ORIGEM_PROTOCOLAR" : d.tentativa && d.tentativa.status!=="VALIDO" || d.gestacao && (d.gestacao.status!=="VALIDO" || d.gestacao.encerradaEm) ? "ORIGEM_INVALIDA" : !proposta ? "REGRA_NAO_CONFIGURADA" : d.politicaId===politica.id && d.previstaPara?.toISOString().slice(0,10)===proposta.previstaPara && hashDados(d.regraSnapshot)===hashDados(proposta.regraSnapshot) ? "SEM_ALTERACAO" : null;
   return {demandaId:d.id,animalId:d.animalId,versao:d.versao,politicaAnteriorId:d.politicaId,previstaAnterior:d.previstaPara?.toISOString().slice(0,10)??null,regraAnterior:d.regraSnapshot,visitaAgendadaId:visitaAgendada?.id??null,proposta:proposta??null,impedimento};
  }));
  return {propostas,revisao:hashDados({politicaId:politica.id,politicaVersao:politica.versao,propostas})};
@@ -281,9 +298,9 @@ export function revisarPrazos(input: import("./acompanhamento.schemas.js").Revis
    if(atual.revisao!==input.revisao)throw new RebanhoError("CONFLITO","As demandas ou regras mudaram; confira a prévia novamente");
    if(atual.propostas.some(p=>p.impedimento))erro("A seleção contém demandas que não podem ser revisadas; confira a prévia", "demandaIds");
    for(const p of atual.propostas){
-    if(!p.proposta||!p.politicaAnteriorId||!p.previstaAnterior)throw new RebanhoError("CONFLITO","A demanda não possui regra anterior revisável");
-    await tx.revisaoPrazoAcompanhamento.create({data:{demandaId:p.demandaId,versaoAnterior:p.versao,politicaAnteriorId:p.politicaAnteriorId,politicaNovaId:input.politicaId,previstaAnterior:dia(p.previstaAnterior),previstaNova:dia(p.proposta.previstaPara),regraAnterior:json(p.regraAnterior),regraNova:json(p.proposta.regraSnapshot),motivo:input.motivo,usuarioId}});
-    const atualizada=await tx.demandaAcompanhamentoReprodutivo.updateMany({where:{id:p.demandaId,versao:p.versao,estado:"PENDENTE",tarefaId:null},data:{politicaId:input.politicaId,previstaPara:dia(p.proposta.previstaPara),regraSnapshot:json(p.proposta.regraSnapshot),versao:{increment:1}}});
+    if(!p.proposta)throw new RebanhoError("CONFLITO","A demanda não possui regra anterior revisável");
+    await tx.revisaoPrazoAcompanhamento.create({data:{demandaId:p.demandaId,versaoAnterior:p.versao,politicaAnteriorId:p.politicaAnteriorId,politicaNovaId:input.politicaId,previstaAnterior:p.previstaAnterior?dia(p.previstaAnterior):null,previstaNova:dia(p.proposta.previstaPara),regraAnterior:json(p.regraAnterior),regraNova:json(p.proposta.regraSnapshot),motivo:input.motivo,usuarioId}});
+    const atualizada=await tx.demandaAcompanhamentoReprodutivo.updateMany({where:{id:p.demandaId,versao:p.versao,estado:"PENDENTE",tarefaId:null},data:{politicaId:input.politicaId,...(!p.politicaAnteriorId?{origemAdocao:"ADOCAO_EXPLICITA"}:{}),previstaPara:dia(p.proposta.previstaPara),regraSnapshot:json(p.proposta.regraSnapshot),versao:{increment:1}}});
     if(atualizada.count!==1)throw new RebanhoError("CONFLITO","Demanda alterada durante a revisão");
     await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:p.demandaId,animalId:p.animalId,propriedadeId:input.propriedadeId,acao:"REVISAO_PRAZO",usuarioId,antes:{politicaId:p.politicaAnteriorId,previstaPara:p.previstaAnterior,regra:p.regraAnterior},depois:{motivo:input.motivo,politicaId:input.politicaId,proposta:p.proposta}});
    }

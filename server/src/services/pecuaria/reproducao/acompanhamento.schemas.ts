@@ -25,7 +25,7 @@ const regraAcompanhamentoV2Schema = z.object({
  if (r.finalidade === "RECONFIRMACAO" && (r.publico !== "GESTACAO" || r.referencia !== "PRIMEIRO_DG_POSITIVO" || r.resolucao !== "RECONFIRMACAO_CONCLUSIVA")) c.addIssue({code:"custom",message:"Regra de reconfirmação exige primeiro DG positivo"});
  if (r.tipoExameVersao && !r.tipoExameId) c.addIssue({code:"custom",path:["tipoExameId"],message:"Versão exige tipo de exame"});
 });
-const parametrosAcompanhamentoV2Schema = z.object({ versao:z.literal(2), efeito:z.literal("ALERTA"), regras:z.array(regraAcompanhamentoV2Schema).min(1).max(100) }).strict().superRefine((v,c) => {
+export const parametrosAcompanhamentoV2Schema = z.object({ versao:z.literal(2), efeito:z.literal("ALERTA"), regras:z.array(regraAcompanhamentoV2Schema).min(1).max(100) }).strict().superRefine((v,c) => {
  const ids = v.regras.map(r => `${r.publico}:${r.finalidade}:${r.ocorrencia}`);
  if(new Set(ids).size !== ids.length)c.addIssue({code:"custom",path:["regras"],message:"Não repita regra para o mesmo público e ocorrência"});
 });

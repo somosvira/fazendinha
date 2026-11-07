@@ -1,7 +1,7 @@
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
 import { referenciasCustoSchema } from "../custos/referencias-planejadas.js";
 import { momentoAcaoSchema } from "../protocolos/momentos.js";
-import { causaClinicaPerdaSchema } from "./acompanhamento.schemas.js";
+import { causaClinicaPerdaSchema, parametrosAcompanhamentoV2Schema } from "./acompanhamento.schemas.js";
 import { observacoesExameSchema } from "../exames/formatos.js";
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
@@ -36,7 +36,7 @@ export const etapaIatfSchema = z.object({ referenciasCusto: referenciasCustoSche
   if (etapa.subtipo && etapa.tipo !== "APLICACAO") ctx.addIssue({ code:"custom",path:["subtipo"],message:"Subtipo de aplicação exige ação de aplicação" });
   for(const [campo,tipo] of [["planoExame","EXAME"],["planoAplicacao","APLICACAO"],["planoTentativa","TENTATIVA"],["planoAvaliacao","AVALIACAO"]] as const) if(etapa[campo] && etapa.tipo!==tipo)ctx.addIssue({code:"custom",path:[campo],message:"Planejamento incompatível com a ação da etapa"});
 });
-export const protocoloSchema = z.object({ modalidadeTentativa: z.enum(["ETAPA", "EXTERNA"]).nullish(), modalidadeDiagnostico: z.enum(["PROTOCOLO", "EXTERNO"]).nullish(), finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
+export const protocoloSchema = z.object({ configuracaoAcompanhamento: parametrosAcompanhamentoV2Schema.nullish(), modalidadeTentativa: z.enum(["ETAPA", "EXTERNA"]).nullish(), modalidadeDiagnostico: z.enum(["PROTOCOLO", "EXTERNO"]).nullish(), finalidade: z.enum(["PRE_SINCRONIZACAO", "IATF", "TETF"]).nullish(), origemVersaoId:uuid.optional(), descricao: texto, nome: z.string().trim().min(2).max(120), versao: z.number().int().positive(), publicado: z.boolean().default(false), etapas: z.array(etapaIatfSchema).min(1).max(100) }).strict().superRefine((protocolo,ctx)=>{
   const builder = protocolo.finalidade != null;
   protocolo.etapas.forEach((etapa, i) => {
     if (builder && etapa.tipo === "MANEJO") ctx.addIssue({ code: "custom", path: ["etapas", i, "tipo"], message: "O novo builder não oferece procedimentos livres" });
@@ -56,7 +56,7 @@ export const protocoloSchema = z.object({ modalidadeTentativa: z.enum(["ETAPA", 
   if (protocolo.modalidadeDiagnostico === "EXTERNO" && temDg) ctx.addIssue({ code: "custom", path: ["etapas"], message: "Diagnóstico externo não pode ser etapa do modelo" });
   protocolo.etapas.forEach((etapa,i)=>{const campo=etapa.tipo==="APLICACAO"?"planoAplicacao":etapa.tipo==="TENTATIVA" && !builder?"planoTentativa":etapa.tipo==="AVALIACAO"?"planoAvaliacao":etapa.tipo==="EXAME"?"planoExame":null;if(campo && !etapa[campo])ctx.addIssue({code:"custom",path:["etapas",i,campo],message:"Defina o planejamento desta etapa antes de publicar"});});
 });
-export const programacaoSchema = z.object({ automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(), chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: dataOuHorario, animais: z.array(z.object({ animalId: uuid, inicioPrevisto: dataOuHorario.optional() })).min(1).max(100) }).strict();
+export const programacaoSchema = z.object({ automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(), chave: uuid, propriedadeId: sitio, cienciaSanitaria:z.boolean().optional(), protocoloId: uuid, nome: z.string().trim().min(2).max(120), inicioPrevisto: dataOuHorario, animais: z.array(z.object({ animalId: uuid, inicioPrevisto: dataOuHorario.optional(), diagnosticoIndividualEm: data.optional() }).strict()).min(1).max(100) }).strict();
 export const visitaSchema = z.object({ chave: uuid.optional(), propriedadeId: sitio, data, nome: z.string().trim().min(2).max(120), responsavel: z.string().trim().max(160).nullish() }).strict();
 export const atividadeSchema = z.object({ propriedadeId: sitio, tipo: z.enum(["AVALIACAO_REPRODUTIVA", "APLICACAO_SANITARIA", "EXAME_SANITARIO", "INICIAR_SANITARIO", "TAREFA_IATF", "INICIAR_IATF"]), nome: z.string().trim().min(2).max(120), extra: z.boolean().default(false), contexto: z.record(z.unknown()).default({}), participantes: z.array(z.object({ animalId: uuid, tarefaSanitariaId: uuid.nullish(), tarefaIatfId: uuid.nullish(), motivos: z.array(z.string().trim().min(1).max(300)).max(20).optional() }).strict()).min(1).max(1000) }).strict();
 export const confirmacaoVisitaSchema = z.object({ propriedadeId: sitio, chave: uuid, cienciaAlteracoes: z.boolean().optional(), fingerprintPrevia: z.string().regex(/^[a-f0-9]{64}$/).optional(), itens: z.array(z.object({ participanteId: uuid, versaoRascunho: z.number().int().nonnegative().optional(), dados: z.record(z.unknown()).optional(), status: z.enum(["CONFIRMADO", "ADIADO", "NAO_ATENDIDO"]).default("CONFIRMADO"), motivo: motivo.optional() }).strict()).min(1).max(100) }).strict();

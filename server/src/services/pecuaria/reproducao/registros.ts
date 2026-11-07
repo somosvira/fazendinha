@@ -410,7 +410,7 @@ export async function prepararTentativaTx(
   };
   return { dadosCriacao, material, matriz, quantidade, data };
 }
-export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null) {
+export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null, opcoes?: { adiarAcompanhamento?: boolean }) {
   const { dadosCriacao, material, matriz, quantidade, data } = await prepararTentativaTx(tx, input, usuarioId);
   if (input.origem === "ESTOQUE" && material && quantidade) {
     const consumo = await consumirEstoqueTx(tx, { produto: material.produto, propriedadeId: input.propriedadeId,
@@ -441,8 +441,10 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
       justificativaSemOrigem: input.justificativaSemOrigem ?? null,
     },
   });
-  await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, tipoTentativa: criada.tipo, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
-  await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
+  if (!opcoes?.adiarAcompanhamento) {
+    await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, tipoTentativa: criada.tipo, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
+    await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
+  }
   return criada;
 }
 export const criarTentativa = (
