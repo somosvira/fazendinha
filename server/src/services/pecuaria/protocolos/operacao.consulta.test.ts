@@ -151,3 +151,13 @@ it.each(["REGISTRAR_MANUALMENTE", "DISPENSAR"])("expõe revisão retroativa %s s
   expect(r.itens[0].tarefaOrigem.revisaoAutomacaoRetroativa).toEqual(revisao);
   expect(r.itens[0].tarefaOrigem.planejadoSnapshot).toEqual(snapshot);
 });
+
+it("dispensa operacional preserva estado clínico e impede reavaliação",async()=>{
+ const acompanhamento={id:"d",estado:"PENDENTE",finalidade:"DIAGNOSTICO",previstaPara:data,versao:1,exameResolucaoId:null,decisaoOperacional:{id:"decisao",tipo:"DISPENSAR",data:null,destino:null,motivo:"Decisão explícita"}};
+ banco.tx.tarefaProtocolo.findMany.mockReset().mockResolvedValueOnce([{...tarefa,regularizacaoPendente:false,etapa:{...tarefa.etapa,configuracao:{tipo:"AVALIACAO"}},demandaAcompanhamento:acompanhamento}]).mockResolvedValueOnce([{id,execucao:{propriedadeId:1},vinculos:[]}]);
+ banco.tx.$queryRaw.mockReset().mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"ATENDIDO",acompanhamentoPendente:false}]).mockResolvedValueOnce([{situacao:"ATENDIDO",total:1n,atrasadas:0n}]).mockResolvedValueOnce([{animaisPendentes:0n,acompanhamentosPendentes:0n}]);
+ const r=await listarTarefasOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({}),{dono:true,areas:[],flags:[]});
+ expect(r.itens[0].acoes.reavaliar).toBe(false);
+ expect(r.itens[0].acompanhamento).toMatchObject({estado:"ENCERRADA",motivoEncerramento:"DISPENSA_ADMINISTRATIVA"});
+ expect(acompanhamento.estado).toBe("PENDENTE");
+});

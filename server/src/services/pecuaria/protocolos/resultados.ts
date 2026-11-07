@@ -1,3 +1,4 @@
+import { demandaDispensada, projetarAgendaDemanda } from "../reproducao/agenda-demanda.calc.js";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../../db.js";
@@ -200,7 +201,7 @@ export async function consultarResultadosProtocolo(
             ? { propriedadeOrigemId: propriedadeId }
             : {}),
         },
-        include: { tarefa: { select: { etapaId: true } } },
+        include: { decisaoOperacional: true, tarefa: { select: { etapaId: true } } },
         orderBy: [
           { previstaPara: { sort: "asc", nulls: "last" } },
           { id: "asc" },
@@ -290,7 +291,7 @@ export async function consultarResultadosProtocolo(
               ),
             )
             .at(-1);
-          const demanda = demandas.find(
+          const demanda = demandas.filter((d) => !demandaDispensada(d)).map(projetarAgendaDemanda).find(
             (d) =>
               d.tentativaId === atual?.id && d.finalidade === "DIAGNOSTICO",
           );

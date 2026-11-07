@@ -158,3 +158,15 @@ it("Hoje lê todas as páginas de etapas completas no sítio, incluindo etapa to
   });
   expect(m.protocolo).toHaveBeenCalledTimes(2);
 });
+
+import { organizarHoje } from "./visao-geral-api";
+it("Hoje une cobertura parcial e conserva revisão de tarefa fora da data planejada", () => {
+ const etapa = {contextoId:"p",modo:"COLETIVO" as const,nome:"P",modelo:"M",etapaId:"e",etapa:"DG",totalAnimais:2,atendidos:1,pendentes:1,encerrados:0,tarefasIds:["atendida","original"]};
+ const grupo = g("p", "2026-11-07", {etapa:{id:"e",nome:"DG",ordem:1},totalAnimais:2,contexto:{programacaoId:"p",tarefasIds:["original","suspensa"]}});
+ const r = organizarHoje([etapa], [grupo], "2026-11-07");
+ expect(r.grupos).toEqual([]);
+ expect(r.etapas).toEqual([expect.objectContaining({totalAnimais:3,atendidos:1,pendentes:2})]);
+ expect(etapa.totalAnimais).toBe(2);
+ const semEtapa = organizarHoje([], [grupo], "2026-11-07");
+ expect(semEtapa.grupos).toEqual([grupo]);
+});

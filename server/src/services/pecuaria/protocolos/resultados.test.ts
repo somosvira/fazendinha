@@ -316,3 +316,14 @@ it("resultados expõem encaminhamento contextual do exame factual sem perder leg
     }),
   );
 });
+
+it("dispensa administrativa não oferece diagnóstico nem fabrica conclusão", async () => {
+ const p = participante();
+ p.tentativasExternas = [];
+ m.participantes.mockResolvedValue([{...p, tentativasExternas:[{id:"v",snapshot:{animalId:"animal",data:"2026-01-01",tipo:"IA"},tentativa:tentativa(),revogadoEm:null}]}]);
+ m.demandas.mockResolvedValue([{id:"demanda",tentativaId:"tentativa",finalidade:"DIAGNOSTICO",estado:"PENDENTE",previstaPara:data,regraSnapshot:{},tarefa:null,decisaoOperacional:{id:"decisao",tipo:"DISPENSAR",data:null,destino:null,motivo:"Decisão administrativa"}}]);
+ const r = await consultarResultadosProtocolo({participacaoId:"participacao"},1,consultaResultadosSchema.parse({}));
+ expect(r.itens[0].tentativas).toHaveLength(1);
+ expect(r.itens[0].demandaDiagnostico).toBeNull();
+ expect(r.itens[0].primeiroDg).toBeNull();
+});

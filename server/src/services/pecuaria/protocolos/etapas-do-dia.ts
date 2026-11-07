@@ -19,6 +19,7 @@ type Linha = {
   modelo: string;
   etapaId: string;
   etapa: string;
+  tarefasIds: string[];
   totalAnimais: bigint;
   atendidos: bigint;
   pendentes: bigint;
@@ -37,7 +38,7 @@ export async function listarEtapasDoDia(
     SELECT coalesce(p."programacaoId",p.id) AS "contextoId",
       CASE WHEN p."programacaoId" IS NULL THEN 'INDIVIDUAL' ELSE 'COLETIVO' END AS modo,
       coalesce(pg.nome,a.nome,a.brinco) AS nome, pr.nome AS modelo,
-      e.id AS "etapaId", e.nome AS etapa, e.ordem, p."animalId",
+      e.id AS "etapaId", e.nome AS etapa, e.ordem, p."animalId", t.id AS "tarefaId",
       ${sqlSituacaoOperacional(agora)} AS situacao
     FROM pecuaria."TarefaProtocolo" t
     JOIN pecuaria."ParticipacaoProtocolo" p ON p.id=t."participacaoId"
@@ -52,6 +53,7 @@ export async function listarEtapasDoDia(
         ELSE t."previstaEm"::date END)=${f.data}::date
   ), grupos AS (
     SELECT "contextoId",modo,nome,modelo,"etapaId",etapa,ordem,
+      array_agg(DISTINCT "tarefaId") AS "tarefasIds",
       count(DISTINCT "animalId") AS "totalAnimais",
       count(DISTINCT "animalId") FILTER(WHERE situacao='ATENDIDO') AS atendidos,
       count(DISTINCT "animalId") FILTER(WHERE situacao IN

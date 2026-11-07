@@ -191,11 +191,11 @@ async function resolverGrupoTx(tx: Prisma.TransactionClient, propriedadeId: numb
 }
 function resumoGrupo(grupo: Grupo) {
   const { membros, ...dados } = grupo;
-  return { ...dados, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
+  return { ...dados, contexto: {...dados.contexto, ...(grupo.grupo.origem === "PROTOCOLO" ? {tarefasIds: membros.flatMap(m => m.tarefaId ? [m.tarefaId] : [])} : {})}, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
     emVisitaAberta: membros.filter(m => m.visitasAbertas.length > 0).length };
 }
 function fingerprint(grupo: Grupo, propriedadeId: number, data: string) {
-  return fingerprintGrupoPlanner({ ...resumoGrupo(grupo), emVisitaAberta: undefined }, propriedadeId, data,
+  return fingerprintGrupoPlanner({ ...resumoGrupo(grupo), contexto: grupo.contexto, emVisitaAberta: undefined }, propriedadeId, data,
     grupo.membros.map(({ visitasAbertas: _avisos, ...membro }) => membro));
 }
 /** Contexto legível sem projetar custos ou payloads de fatos de outros sítios. */

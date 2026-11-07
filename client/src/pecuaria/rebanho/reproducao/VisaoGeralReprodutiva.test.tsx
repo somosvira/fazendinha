@@ -65,6 +65,7 @@ beforeEach(() => {
       modelo: "Modelo",
       etapaId: "etapa-hoje",
       etapa: "Etapa hoje",
+      tarefasIds: ["t1","t2","t3","t4","t5","t6"],
       totalAnimais: 6,
       atendidos: 4,
       pendentes: 2,
@@ -72,7 +73,7 @@ beforeEach(() => {
     },
   ]);
   m.agenda.mockResolvedValue([
-    g("hoje", "2026-11-07"),
+    g("hoje", "2026-11-07", {contexto:{programacaoId:"hoje",tarefasIds:["t5","t6"]},totalAnimais:2}),
     g("amanha", "2026-11-08"),
   ]);
   m.execucoes.mockResolvedValue([p("hoje"), p("amanha"), p("restante")]);

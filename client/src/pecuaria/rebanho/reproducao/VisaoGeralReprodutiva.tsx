@@ -29,6 +29,7 @@ import {
   demandaDoGrupo,
   diaDoGrupo,
   organizarVisaoGeral,
+  organizarHoje,
 } from "./visao-geral-api";
 import "./visao-geral-reprodutiva.css";
 
@@ -140,11 +141,10 @@ export function VisaoGeralReprodutiva({
       (p) => !destacados.has(`${p.modo}:${p.id}`),
     );
   }
-  const gruposHoje = agenda?.filter(
-    (g) => diaDoGrupo(g) === hoje && g.grupo.origem !== "PROTOCOLO",
-  );
+  const hojeOrganizado = agenda && etapasHoje ? organizarHoje(etapasHoje, agenda, hoje) : null;
+  const gruposHoje = hojeOrganizado?.grupos;
   const totalHoje =
-    etapasHoje && gruposHoje ? etapasHoje.length + gruposHoje.length : null;
+    etapasHoje && gruposHoje ? hojeOrganizado!.etapas.length + gruposHoje.length : null;
   const gruposProximos =
     agenda && periodoValido
       ? agenda.filter((g) => {
@@ -260,7 +260,7 @@ export function VisaoGeralReprodutiva({
               <>
                 {!!etapasHoje.length && (
                   <ListaRascunho
-                    itens={etapasHoje}
+                    itens={hojeOrganizado?.etapas ?? etapasHoje}
                     rotulo="etapas de hoje"
                     renderizar={(e) => (
                       <article

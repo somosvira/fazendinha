@@ -179,6 +179,7 @@ export type EtapaDoDia = {
   modelo: string;
   etapaId: string;
   etapa: string;
+  tarefasIds?: string[];
   totalAnimais: number;
   atendidos: number;
   pendentes: number;
@@ -193,4 +194,26 @@ export function consultarEtapasDoDia(propriedadeId: number, data: string) {
       ),
     (e) => `${e.modo}:${e.contextoId}:${e.etapaId}`,
   );
+}
+
+/** Une cuidados operacionais à etapa sem contar duas vezes tarefas já representadas. */
+export function organizarHoje(etapas: EtapaDoDia[], agenda: GrupoPlanner[], hoje: string) {
+  const linhas = etapas.map(e => ({...e, tarefasIds: e.tarefasIds ? [...e.tarefasIds] : undefined}));
+  const grupos: GrupoPlanner[] = [];
+  for (const grupo of agenda.filter(g => diaDoGrupo(g) === hoje)) {
+    const ids = grupo.contexto?.tarefasIds;
+    const modo = typeof grupo.contexto?.programacaoId === "string" ? "COLETIVO" : "INDIVIDUAL";
+    const linha = grupo.grupo.origem === "PROTOCOLO" && grupo.turma && grupo.etapa
+      ? linhas.find(e => e.modo === modo && e.contextoId === grupo.turma!.id && e.etapaId === grupo.etapa!.id) : undefined;
+    if (!linha?.tarefasIds || !Array.isArray(ids) || !ids.every((id): id is string => typeof id === "string") || new Set(ids).size !== grupo.totalAnimais) {
+      grupos.push(grupo);
+      continue;
+    }
+    const cobertas = new Set(linha.tarefasIds);
+    const adicionais = [...new Set(ids)].filter(id => !cobertas.has(id));
+    linha.totalAnimais += adicionais.length;
+    linha.pendentes += adicionais.length;
+    linha.tarefasIds.push(...adicionais);
+  }
+  return {etapas: linhas, grupos};
 }
