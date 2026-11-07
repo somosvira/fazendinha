@@ -211,7 +211,13 @@ banco(
             unidadeDose: "UN",
             origemInsumo: "SEM_ORIGEM_JUSTIFICADA",
             justificativaSemOrigem: "Registro da fixture sem consumo real",
-            insercaoDispositivoSnapshot: { versao: 1, origem: "FIXTURE" },
+            insercaoDispositivoSnapshot: {
+              versao: 1,
+              motivo: "Reconhecimento explícito da inserção na fixture própria",
+              evidencia: "Inserção sintética documentada para validar o cuidado físico",
+              usuarioId: f.usuario.id,
+              registradoEm: dia("2026-11-01").toISOString(),
+            },
           },
         });
         await tx.regraSanitariaReprodutiva.create({
