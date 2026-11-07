@@ -518,7 +518,13 @@ export function Iatf({
           {!onFecharDetalhe && <div className="mb-3 flex justify-end"><Button secondary onClick={() => { aberturaAtual.current++; setLeituraDetalhe(null); setDetalhe(null); }}>Fechar detalhes</Button></div>}
           <OperacaoProtocolo aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined} ocultarCabecalho programacaoId={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} podeLancar={podeLancar} revisao={operacaoRevisao}
 
-            gestao={<ParticipacoesProgramacao acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined} key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao} aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined}/>}
+            gestao={<ParticipacoesProgramacao
+              podeRevisarBloqueio={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA"}
+              aoRevisarBloqueio={() => {
+                setOperacaoRevisao(v => v + 1);
+                void Promise.all([abrir(detalhe.id), onMudou?.()]);
+              }}
+              acoes={podeLancar && sitioEfetivo != null && detalhe.propriedadeId === sitioEfetivo && detalhe.status === "ABERTA" ? <Button secondary onClick={() => { setNovo("participantes"); setChaveProgramacao(crypto.randomUUID()); setInicio(""); setSelecionados([]); setCienciaSanitaria(false); }}>Adicionar ou reintegrar participantes</Button> : undefined} key={`participacoes:${detalhe.id}:${sitioEfetivo}`} id={detalhe.id} propriedadeId={sitioEfetivo ?? undefined} revisao={operacaoRevisao} aoRetirar={podeLancar && detalhe.status === "ABERTA" && detalhe.propriedadeId === sitioEfetivo ? id => { setAcao({tipo:"retirada",id}); setMotivo(""); } : undefined}/>}
 
             aoSalvar={() => { setOperacaoRevisao(v => v + 1); void Promise.all([detalhe ? abrir(detalhe.id) : Promise.resolve(), onMudou?.()]); }}
             regularizacao={(t, aoSalvar) => t.propriedadeId ? <RegularizarOrigem path={`/reproducao/tarefas-iatf/${t.id}/regularizacao`} propriedadeId={t.tarefaOrigem.propriedadeRegularizacaoId ?? t.propriedadeId} consumoMantido={consumoMantidoUltimaAnulacao(t.tarefaOrigem.historicoRegularizacao)} onMudou={async () => { aoSalvar(); await onMudou?.(); }} /> : null}
