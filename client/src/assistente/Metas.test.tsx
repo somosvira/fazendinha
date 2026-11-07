@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import Metas from "./Metas";
 const mocks = vi.hoisted(() => ({
@@ -170,7 +171,6 @@ describe("Metas", () => {
       ],
       podeEditar: true,
     });
-    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<Metas propriedadeId={1} />);
     await screen.findByRole("list", { name: "0 de 2 etapas concluídas" });
     fireEvent.click(screen.getByRole("button", { name: "Editar meta" }));
@@ -178,13 +178,14 @@ describe("Metas", () => {
       target: { value: "Equipamento\nInstalação\nTeste" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect(confirmar).toHaveBeenCalled();
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    // Pergunta pelo diálogo do sistema; continuar editando preserva o rascunho.
+    const pergunta = await screen.findByRole("dialog", { name: "Descartar alterações?" });
+    fireEvent.click(within(pergunta).getByRole("button", { name: "Continuar editando" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Descartar alterações?" })).toBeNull());
     expect(
       (screen.getByLabelText(/Etapas, uma por linha/) as HTMLTextAreaElement)
         .value,
     ).toContain("Teste");
-    confirmar.mockRestore();
   });
   it("erro deixa tentar novamente e não apresenta um falso estado vazio", async () => {
     mocks.lista.mockRejectedValue(new Error("Falha de conexão"));

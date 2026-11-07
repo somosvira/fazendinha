@@ -1,6 +1,8 @@
 import { navegarPara } from "../router";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { registrarGuardaNavegacao } from "../navegacaoGuardada";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { getHojeISO } from "../lib/hoje";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import {
@@ -25,6 +27,7 @@ import {
 import { CartaoMeta, grupoMeta, leituraMeta } from "./CartaoMeta";
 import { Skeleton } from "../components/ui/skeleton";
 import "./metas.css";
+import { usePropriedades } from "../api/propriedades";
 
 type GrupoMeta = ReturnType<typeof grupoMeta>;
 const FILTROS: [("todas" | GrupoMeta), string][] = [["todas", "Todas"], ["fora", "Fora do alvo"], ["ok", "No alvo"], ["marco", "Marcos"], ["neutro", "Sem medição"]];
@@ -134,6 +137,7 @@ export default function Metas({
   revisao?: number;
   onAbrirFonte?: (url: string, propriedadeId: number) => void;
 }) {
+  const { data: sitios } = usePropriedades({ incluirInativos: true });
   const [metas, setMetas] = useState<Meta[]>([]),
     [indicadores, setIndicadores] = useState<IndicadorMeta[]>([]),
     [podeEditar, setPodeEditar] = useState(false),
@@ -199,7 +203,7 @@ export default function Metas({
       </div>
       {propriedadeId === null && (
         <p className="metas-contexto">
-          Visão consolidada. Selecione uma fazenda para criar ou atualizar
+          Visão consolidada. Selecione um sítio para criar ou atualizar
           metas.
         </p>
       )}
@@ -243,7 +247,7 @@ export default function Metas({
           </div>
           <div className="metas-lista">
             {visiveis.filter(({ grupo }) => filtro === "todas" || grupo === filtro).map(({ meta, indicador }) => <CartaoMeta key={meta.id} meta={meta} indicador={indicador}
-              podeEditar={podeEditar && propriedadeId !== null} mostrarFazenda={propriedadeId === null}
+              podeEditar={podeEditar && propriedadeId !== null} sitio={propriedadeId === null ? sitios.find((p) => p.id === meta.propriedadeId)?.nome ?? "Sítio sem acesso" : undefined}
               onRegistrar={() => setModal({ tipo: "medicao", meta })} onEditar={() => setModal({ tipo: "definicao", meta })} onHistorico={() => setModal({ tipo: "historico", meta })}
               onAbrir={(url) => { if (onAbrirFonte) onAbrirFonte(url, meta.propriedadeId); else void executarComGuardaNavegacao(() => navegarPara(url)); }} />)}
           </div>
@@ -290,7 +294,7 @@ function ModalMeta({
     [etapasConcluidas, setEtapasConcluidas] = useState<string[]>(
       modal.meta?.medicoes.at(-1)?.etapasConcluidas ?? [],
     ),
-    [data, setData] = useState(new Date().toLocaleDateString("en-CA")),
+    [data, setData] = useState(getHojeISO()),
     [valor, setValor] = useState(""),
     [concluido, setConcluido] = useState(false),
     [observacao, setObservacao] = useState(""),
@@ -309,17 +313,28 @@ function ModalMeta({
       setSujo(true);
       pedido.current = null;
     };
-  const sair = () => {
-    if (gravando) return;
-    if (sujo && !window.confirm("Descartar as alterações desta meta?")) return;
+  // Descartar alterações pergunta pelo diálogo do sistema, como nas demais telas.
+  const [confirmarDescarte, setConfirmarDescarte] = useState(false);
+  const resolverDescarte = useRef<((descartar: boolean) => void) | null>(null);
+  const perguntarDescarte = () => {
+    setConfirmarDescarte(true);
+    return new Promise<boolean>((resolve) => { resolverDescarte.current = resolve; });
+  };
+  const responderDescarte = (descartar: boolean) => {
+    setConfirmarDescarte(false);
+    resolverDescarte.current?.(descartar);
+    resolverDescarte.current = null;
+  };
+  useEffect(() => () => { resolverDescarte.current?.(false); }, []);
+  const sair = async () => {
+    if (gravando || confirmarDescarte) return;
+    if (sujo && !(await perguntarDescarte())) return;
     fechar();
   };
   useEffect(() => {
     if (!sujo && !gravando) return;
     return registrarGuardaNavegacao(
-      async () =>
-        !gravando &&
-        (!sujo || window.confirm("Descartar as alterações desta meta?")),
+      async () => !gravando && (!sujo || (await perguntarDescarte())),
     );
   }, [sujo, gravando]);
   useEffect(() => {
@@ -396,10 +411,11 @@ function ModalMeta({
     }
   }
   return (
+    <>
     <Dialog
       open
       onOpenChange={(v) => {
-        if (!v) sair();
+        if (!v) void sair();
       }}
     >
       <DialogContent
@@ -410,11 +426,11 @@ function ModalMeta({
         }}
         onEscapeKeyDown={(e) => {
           e.preventDefault();
-          sair();
+          void sair();
         }}
         onPointerDownOutside={(e) => {
           e.preventDefault();
-          sair();
+          void sair();
         }}
       >
         <DialogTitle ref={tituloRef} tabIndex={-1}>
@@ -803,5 +819,7 @@ function ModalMeta({
         )}
       </DialogContent>
     </Dialog>
+    <ConfirmDialog open={confirmarDescarte} title="Descartar alterações?" message="As alterações desta meta ainda não foram salvas." confirmLabel="Descartar" cancelLabel="Continuar editando" cancelTone="safe" tone="danger" onConfirm={() => responderDescarte(true)} onCancel={() => responderDescarte(false)} />
+    </>
   );
 }

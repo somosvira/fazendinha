@@ -56,6 +56,7 @@ import { listarPropriedades, type PropriedadeDTO } from "../api/propriedades";
 import { getToken } from "../lib/auth";
 import { getPropriedadeAtiva } from "../propriedadeScope";
 import { registrarGuardaNavegacao } from "../navegacaoGuardada";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { navegarPara } from "../router";
 import { prepararPrint } from "../lib/midia-assistente";
 import { useAudioAssistente } from "./useAudioAssistente";
@@ -643,10 +644,19 @@ export function AssistenteConsulta({
   useEffect(() => { if (perguntaInicial) { setInput(perguntaInicial); inputRef.current?.focus(); } }, [perguntaInicial]);
   useEffect(() => { if (novaConversaVersao > 0) novaConversa(); }, [novaConversaVersao]);
 
+  // A saída com mensagem não enviada pergunta pelo diálogo do sistema, como nas demais telas.
+  const [confirmarSaida, setConfirmarSaida] = useState(false);
+  const resolverSaida = useRef<((sair: boolean) => void) | null>(null);
+  useEffect(() => () => { resolverSaida.current?.(false); }, []);
   useEffect(() => {
     if (!pagina || !ativo || (!input.trim() && !anexo && !ocupado && !audio.ocupado)) return;
-    return registrarGuardaNavegacao(async () => !ocupado && !audio.ocupado && window.confirm("Sair desta conversa e descartar a mensagem ainda não enviada?"));
+    return registrarGuardaNavegacao(async () => {
+      if (ocupado || audio.ocupado) return false;
+      setConfirmarSaida(true);
+      return new Promise<boolean>(resolve => { resolverSaida.current = resolve; });
+    });
   }, [pagina, ativo, input, anexo, ocupado, audio.ocupado]);
+  const responderSaida = (sair: boolean) => { setConfirmarSaida(false); resolverSaida.current?.(sair); resolverSaida.current = null; };
   useEffect(() => { if (!ativo) { cancelarPendentes(); setModoVoz(false); } }, [ativo]);
   useEffect(() => { if (abrirHistoricoVersao > 0) { voz.encerrar(); setModoVoz(false); void abrirHistorico(); } }, [abrirHistoricoVersao]);
 
@@ -673,6 +683,7 @@ export function AssistenteConsulta({
     </div>
   );
   return (
+    <>
     <Dialog
       open={aberto}
       onOpenChange={(valor) => {
@@ -1360,6 +1371,8 @@ export function AssistenteConsulta({
         )}
       </SuperficieChat>
     </Dialog>
+    <ConfirmDialog open={confirmarSaida} title="Sair da conversa?" message="A mensagem ainda não enviada será descartada." confirmLabel="Sair e descartar" cancelLabel="Continuar na conversa" cancelTone="safe" tone="danger" onConfirm={() => responderSaida(true)} onCancel={() => responderSaida(false)} />
+    </>
   );
 }
 

@@ -3,6 +3,7 @@ import { SlidersHorizontal, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import { DatePicker } from "@/components/DatePicker";
 import { ROTULO_APTIDAO, ROTULO_PAPEL_REPRODUTIVO, ROTULO_TIPO_BAIXA } from "../lib/rotulos";
 import type { Catalogos, CategoriaRef, ListarFiltros } from "../types";
 import { FILTROS_AVANCADOS_VAZIOS, contarFiltrosAvancados, validarFiltrosAvancados, type FiltrosAvancadosAnimais } from "./busca-animais-filtros";
@@ -42,8 +43,8 @@ export function FiltrosBuscaAnimais({aberto,onAbertoChange,valor,onAplicar,catal
           <details><summary>Baixa</summary><div className="busca-animais-filtros-grade">
             <label>Tipo de baixa<SelectCampo aria-label="Tipo de baixa" value={rascunho.tipoBaixa} onValueChange={v=>alterar("tipoBaixa",v as FiltrosAvancadosAnimais["tipoBaixa"])} disabled={situacao==="ATIVO"}><option value="">Todos</option>{Object.entries(ROTULO_TIPO_BAIXA).filter(([v])=>v!=="CADASTRO_INDEVIDO").map(([v,r])=><option key={v} value={v}>{r}</option>)}</SelectCampo></label>
             <span aria-hidden/>
-            <label>Data inicial<input type="date" value={rascunho.baixaDe} onChange={e=>alterar("baixaDe",e.target.value)} disabled={situacao==="ATIVO"}/></label>
-            <label>Data final<input type="date" value={rascunho.baixaAte} onChange={e=>alterar("baixaAte",e.target.value)} disabled={situacao==="ATIVO"}/></label>
+            <label>Data inicial<DatePicker aria-label="Data inicial da baixa" value={rascunho.baixaDe} max={rascunho.baixaAte || undefined} onChange={v=>alterar("baixaDe",v)} disabled={situacao==="ATIVO"}/></label>
+            <label>Data final<DatePicker aria-label="Data final da baixa" value={rascunho.baixaAte} min={rascunho.baixaDe || undefined} onChange={v=>alterar("baixaAte",v)} disabled={situacao==="ATIVO"}/></label>
           </div><p>Aplica-se a animais baixados. Para usar, selecione Todos ou Baixados na lista.</p></details>
           {erro&&<p className="busca-animais-filtros-erro" role="alert">{erro}</p>}
         </div>

@@ -2,9 +2,10 @@ import { useId } from "react";
 import { Bar, Cell, ComposedChart, CartesianGrid, Line, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "../components/ui/button";
 import type { DefinicaoMeta, IndicadorMeta, Meta } from "./metas-api";
+import { formatBRDateISO, getHojeISO } from "../lib/hoje";
 
 const numero = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-const dataBR = (d: string) => d.slice(0, 10).split("-").reverse().join("/");
+const dataBR = formatBRDateISO;
 const diaMes = (d: string) => dataBR(d).slice(0, 5);
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 const mesCurto = (d: string) => MESES[Number(d.slice(5, 7)) - 1];
@@ -84,8 +85,8 @@ export function grupoMeta(meta: Meta, leitura: Leitura | null): "fora" | "ok" | 
 /** Link para conferir as ordenhas de um intervalo, no mesmo formato da proveniência das medições. */
 const urlOrdenhas = (propriedadeId: number, inicio: string, fim: string) => `/pecuaria/leite?propriedadeId=${propriedadeId}&leiteSecao=ordenhas&leiteModo=geral&ordenhasInicio=${inicio}&ordenhasFim=${fim}`;
 
-export function CartaoMeta({ meta, indicador: i, podeEditar, mostrarFazenda, onRegistrar, onEditar, onHistorico, onAbrir }: {
-  meta: Meta; indicador: IndicadorMeta; podeEditar: boolean; mostrarFazenda: boolean;
+export function CartaoMeta({ meta, indicador: i, podeEditar, sitio, onRegistrar, onEditar, onHistorico, onAbrir }: {
+  meta: Meta; indicador: IndicadorMeta; podeEditar: boolean; sitio?: string;
   onRegistrar: () => void; onEditar: () => void; onHistorico: () => void; onAbrir: (url: string) => void;
 }) {
   const d = meta.definicao;
@@ -99,7 +100,7 @@ export function CartaoMeta({ meta, indicador: i, podeEditar, mostrarFazenda, onR
   const link = (url: string, texto: string, className = "metas-link") => <a className={className} href={url} onClick={(e) => { e.preventDefault(); onAbrir(url); }}>{texto}</a>;
   return <article className="metas-meta" aria-labelledby={`meta-${meta.id}`}>
     <header className="metas-identidade">
-      <div><h3 id={`meta-${meta.id}`}>{d.titulo}</h3><p>{definicaoTexto}</p>{mostrarFazenda && <p>Fazenda #{meta.propriedadeId}</p>}</div>
+      <div><h3 id={`meta-${meta.id}`}>{d.titulo}</h3><p>{definicaoTexto}</p>{sitio && <p>{sitio}</p>}</div>
       <span className={`metas-situacao metas-situacao-${situacao.classe}`}>{situacao.texto}</span>
     </header>
     <div className="metas-corpo">
@@ -139,7 +140,7 @@ function alvoTexto(d: DefinicaoMeta, unidade: string) {
   return `${d.tipo === "minimo" ? "mínimo de" : "máximo de"} ${numero((d.tipo === "minimo" ? d.minimo : d.maximo)!)} ${unidade}`;
 }
 function medidoNoMesAtual(meta: Meta) {
-  const mes = new Date().toLocaleDateString("en-CA").slice(0, 7);
+  const mes = getHojeISO().slice(0, 7);
   return meta.medicoes.some((m) => m.data.startsWith(mes));
 }
 function proximaEtapa(meta: Meta) {

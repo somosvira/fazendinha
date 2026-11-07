@@ -1,8 +1,9 @@
 import { Button } from "./ui/button";
 import type { RespostaAssistente } from "../api/assistente";
+import { formatBRDateISO } from "../lib/hoje";
 
 type Proposta = NonNullable<RespostaAssistente["proposta"]>;
-const dataBR = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
+const dataBR = formatBRDateISO;
 const kg = (valor: number, casas = 0) => valor.toLocaleString("pt-BR", { maximumFractionDigits: casas });
 
 /** Compara com a pesagem anterior: diferença, intervalo e ganho por dia. */
