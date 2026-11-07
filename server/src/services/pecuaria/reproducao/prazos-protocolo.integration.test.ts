@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
-import { criarDemandasDoFatoTx, criarPoliticaAcompanhamentoTx } from "./acompanhamento.js";
-import { proporAcompanhamentos } from "./acompanhamento.calc.js";
-import { parametrosAcompanhamentoSchema, criarPoliticaAcompanhamentoSchema } from "./acompanhamento.schemas.js";
+import { criarDemandasDoFatoTx, criarPoliticaAcompanhamentoTx, previaRevisaoPrazosTx, revisarPrazosTx } from "./acompanhamento.js";
+import { reconciliarAlertasReprodutivosAnimalTx } from "./alertas/produtor.js";
+import { criarPoliticaAcompanhamentoSchema } from "./acompanhamento.schemas.js";
 
 const banco=process.env.PECUARIA_DB_INTEGRATION==="1"?describe:describe.skip;
 const dia=(s:string)=>new Date(`${s}T00:00:00Z`);
@@ -20,7 +20,7 @@ banco("prazos e revisões no PostgreSQL autorizado",()=>{
   const marca=`qa-prazos-${randomUUID()}`, cancelar=new Error("reverter fixture");
   await expect(prisma.$transaction(async tx=>{
    const sitio=await tx.propriedade.create({data:{nome:marca}});
-   const animal=await tx.animal.create({data:{brinco:marca,sexo:"F",origem:"COMPRADO",dataNascimento:dia("2023-01-01"),dataEntrada:dia("2024-01-01")}});
+   const animal=await tx.animal.create({data:{brinco:marca,sexo:"F",origem:"COMPRADO",dataNascimento:dia("2023-01-01"),dataEntrada:dia("2024-01-01"),localizacoes:{create:{propriedadeId:sitio.id,desde:dia("2024-01-01")}}}});
    const modelo=await tx.protocolo.create({data:{nome:marca,tipo:"REPRODUTIVO",finalidade:"TETF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"PROTOCOLO",configuracaoAcompanhamento:json(configuracao(20))}});
    const etapa=await tx.etapaProtocolo.create({data:{protocoloId:modelo.id,ordem:1,nome:"TE",tipo:"TENTATIVA",diaRelativo:0,configuracao:{tipo:"TENTATIVA",tentativaTipo:"TE"}}});
    const etapaDg=await tx.etapaProtocolo.create({data:{protocoloId:modelo.id,ordem:2,nome:"DG",tipo:"EXAME",diaRelativo:20,configuracao:{tipo:"AVALIACAO",planoAvaliacao:{tipo:"DIAGNOSTICO"}}}});
@@ -32,12 +32,22 @@ banco("prazos e revisões no PostgreSQL autorizado",()=>{
    await criarDemandasDoFatoTx(tx,{tentativaId:tentativa.id,tipoTentativa:"TE",animalId:animal.id,propriedadeId:sitio.id,data:tentativa.data},null,undefined,participacao.id);
    const demanda=await tx.demandaAcompanhamentoReprodutivo.findFirstOrThrow({where:{tentativaId:tentativa.id}});
    expect(demanda).toMatchObject({origemAdocao:"MODELO",politicaId:null,participacaoAcompanhamentoId:participacao.id,previstaPara:dia("2026-01-21")});
-   const proposta=proporAcompanhamentos({...politica,parametros:parametrosAcompanhamentoSchema.parse(politica.parametros)},{tentativaId:tentativa.id,tipoTentativa:"TE",data:"2026-01-01"})[0];
    const tarefaDg=await tx.tarefaProtocolo.create({data:{execucaoId:participacao.id,etapaId:etapaDg.id,previstaPara:dia("2026-01-21"),previsaoOriginal:dia("2026-01-21"),precisaoTemporal:"DIA",parametros:{previsaoOriginal:"2026-01-21"}}});
    await tx.demandaAcompanhamentoReprodutivo.update({where:{id:demanda.id},data:{tarefaId:tarefaDg.id}});
-   const revisao=await tx.revisaoPrazoAcompanhamento.create({data:{demandaId:demanda.id,tarefaId:tarefaDg.id,tarefaPrevistaAnterior:tarefaDg.previstaPara,tarefaPrevistaNova:dia(proposta.previstaPara),versaoAnterior:demanda.versao,politicaAnteriorId:null,politicaNovaId:politica.id,previstaAnterior:demanda.previstaPara!,previstaNova:dia(proposta.previstaPara),regraAnterior:json(demanda.regraSnapshot),regraNova:json(proposta.regraSnapshot),motivo:"Conferência da regra"}});
-   await tx.demandaAcompanhamentoReprodutivo.update({where:{id:demanda.id},data:{politicaId:politica.id,origemAdocao:"ADOCAO_EXPLICITA",previstaPara:dia(proposta.previstaPara),regraSnapshot:json(proposta.regraSnapshot),versao:{increment:1}}});
-   await tx.tarefaProtocolo.update({where:{id:tarefaDg.id},data:{previstaPara:dia(proposta.previstaPara),historicoReprogramacao:[{acao:"REVISAO_REGRA_ACOMPANHAMENTO",revisaoId:revisao.id,previstaAnterior:"2026-01-21",previstaNova:proposta.previstaPara}]}});
+   await reconciliarAlertasReprodutivosAnimalTx(tx,animal.id,null);
+   const necessidadeAnterior=await tx.necessidadeReprodutiva.findFirstOrThrow({where:{demandaId:demanda.id}});
+   expect(necessidadeAnterior.previstaPara).toEqual(dia("2026-01-21"));
+   expect(necessidadeAnterior.alertaId).not.toBeNull();
+   const selecao={propriedadeId:sitio.id,politicaId:politica.id,demandaIds:[demanda.id]};
+   const previa=await previaRevisaoPrazosTx(tx,selecao);
+   expect(previa.propostas[0]).toMatchObject({impedimento:null,tarefaHerdada:{id:tarefaDg.id}});
+   await revisarPrazosTx(tx,{...selecao,chave:randomUUID(),motivo:"Conferência da regra",revisao:previa.revisao},null);
+   const necessidadeAtual=await tx.necessidadeReprodutiva.findUniqueOrThrow({where:{id:necessidadeAnterior.id}});
+   const alertaAtual=await tx.alerta.findUniqueOrThrow({where:{id:necessidadeAtual.alertaId!}});
+   expect(necessidadeAtual).toMatchObject({previstaPara:dia("2026-01-31"),demandaId:demanda.id,tarefaId:tarefaDg.id});
+   expect(alertaAtual.dataReferencia).toEqual(dia("2026-01-31"));
+   expect((await tx.tarefaProtocolo.findUniqueOrThrow({where:{id:tarefaDg.id}})).previstaPara).toEqual(dia("2026-01-31"));
+   expect(await tx.revisaoPrazoAcompanhamento.count({where:{demandaId:demanda.id}})).toBe(1);
    const outroAnimal=await tx.animal.create({data:{brinco:`${marca}-sem-regra`,sexo:"F",origem:"COMPRADO",dataNascimento:dia("2023-01-01"),dataEntrada:dia("2024-01-01")}});
    const outroModelo=await tx.protocolo.create({data:{nome:`${marca}-sem-regra`,tipo:"REPRODUTIVO",finalidade:"TETF",modalidadeTentativa:"ETAPA",modalidadeDiagnostico:"EXTERNO"}});
    const outraEtapa=await tx.etapaProtocolo.create({data:{protocoloId:outroModelo.id,ordem:1,nome:"TE",tipo:"TENTATIVA",diaRelativo:0,configuracao:{tipo:"TENTATIVA",tentativaTipo:"TE"}}});

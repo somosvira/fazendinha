@@ -354,7 +354,7 @@ export async function listarAcompanhamentosPaginados(propriedadeId:number,entrad
 }
 
 /** Uma revisão nunca desloca tarefa/agendamento individual, nem altera necessidade atendida. */
-async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import("./acompanhamento.schemas.js").PreviaRevisaoPrazos) {
+export async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import("./acompanhamento.schemas.js").PreviaRevisaoPrazos) {
  const politica = await tx.politicaAcompanhamentoReprodutivo.findFirst({where:{id:input.politicaId,propriedadeId:input.propriedadeId}});
  if(!politica)erro("Política não pertence ao sítio escolhido", "politicaId");
  const demandas = await tx.demandaAcompanhamentoReprodutivo.findMany({where:{id:{in:input.demandaIds},propriedadeOrigemId:input.propriedadeId},include:{tentativa:{select:{tipo:true,status:true}},gestacao:{select:{status:true,encerradaEm:true}},tarefa:{include:{eventos:{select:{id:true},take:1},_count:{select:{aplicacoes:true,exames:true,tentativas:true,manejos:true,vinculos:true}},execucao:{select:{canceladaEm:true,rodada:{select:{status:true}}}}}}},orderBy:{id:"asc"}});
@@ -371,8 +371,7 @@ async function previaRevisaoPrazosTx(tx: Prisma.TransactionClient, input: import
  return {propostas,revisao:hashDados({politicaId:politica.id,politicaVersao:politica.versao,propostas})};
 }
 export function previaRevisaoPrazos(input: import("./acompanhamento.schemas.js").PreviaRevisaoPrazos) { return prisma.$transaction(tx=>previaRevisaoPrazosTx(tx,input)); }
-export function revisarPrazos(input: import("./acompanhamento.schemas.js").RevisarPrazos,usuarioId:number|null) {
- return transacaoPecuaria(async tx=>{
+export async function revisarPrazosTx(tx: Prisma.TransactionClient,input: import("./acompanhamento.schemas.js").RevisarPrazos,usuarioId:number|null) {
   const inicial=await previaRevisaoPrazosTx(tx,input);
   await travarAnimais(tx,inicial.propostas.map(p=>p.animalId));
   return operacaoIdempotenteTx(tx,input,usuarioId,"REVISAO_PRAZOS_ACOMPANHAMENTO",async()=>{
@@ -391,9 +390,12 @@ export function revisarPrazos(input: import("./acompanhamento.schemas.js").Revis
     }
     await auditar(tx,{entidade:"DemandaAcompanhamentoReprodutivo",entidadeId:p.demandaId,animalId:p.animalId,propriedadeId:input.propriedadeId,acao:"REVISAO_PRAZO",usuarioId,antes:{politicaId:p.politicaAnteriorId,previstaPara:p.previstaAnterior,regra:p.regraAnterior},depois:{motivo:input.motivo,politicaId:input.politicaId,proposta:p.proposta}});
    }
+   for(const animalId of new Set(atual.propostas.map(p=>p.animalId))) await reconciliarAlertasReprodutivosAnimalTx(tx,animalId,usuarioId);
    return {propostas:atual.propostas};
   });
- });
+}
+export function revisarPrazos(input: import("./acompanhamento.schemas.js").RevisarPrazos,usuarioId:number|null) {
+ return transacaoPecuaria(tx=>revisarPrazosTx(tx,input,usuarioId));
 }
 
 /** Projeção das atribuições explícitas de uma avaliação ainda não persistida. */
