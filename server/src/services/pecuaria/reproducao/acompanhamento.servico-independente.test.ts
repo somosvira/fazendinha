@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({ tx: {
 vi.mock("../../../db.js", () => ({ prisma: { ...mocks.tx, $transaction: async (f: (tx: typeof mocks.tx) => Promise<unknown>) => f(mocks.tx) } }));
 vi.mock("../rebanho/regras.js", async original => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
-import { criarDemandasDoFatoTx, listarAcompanhamentos, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, listarAcompanhamentos, preverConclusoesAvaliacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import type { Prisma } from "@prisma/client";
 const tx = mocks.tx as unknown as Prisma.TransactionClient;
 const dia = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -35,6 +35,14 @@ beforeEach(() => {
   mocks.tx.demandaAcompanhamentoReprodutivo.update.mockImplementation(async ({ where, data }) => ({ id: where.id, ...data }));
 });
 describe("contraprovas de serviço: identidade, continuidade e leitura sem escrita", () => {
+  it("prévia distingue resolução explícita e preservação sem gravar", async () => {
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda("d1"), demanda("d2", 2)]);
+    const proposta = { animalId:"animal", propriedadeId:7, data:dia("2026-01-25"), tentativaId:"t", gestacaoId:null, tipoExameId:"tipo", versaoFormato:1, finalidades:["DIAGNOSTICO"], resultados:[{campo:"CONCLUSAO_GESTACIONAL",valor:"NEGATIVO"}], vinculos:[{demandaId:"d1",campo:"CONCLUSAO_GESTACIONAL" as const}] };
+    expect(await preverConclusoesAvaliacaoTx(tx, proposta)).toEqual([expect.objectContaining({id:"d1",acao:"RESOLVER"}),expect.objectContaining({id:"d2",acao:"PRESERVAR"})]);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
+    await expect(preverConclusoesAvaliacaoTx(tx, {...proposta, vinculos:[{demandaId:"d1",campo:"SEXO_FETAL"}]})).rejects.toThrow(/compatível/);
+  });
+
   it("registra vínculos distintos de DG e sexagem sem duplicar o exame", async () => {
     const gestacional = { ...exame("POSITIVO", true), propriedadeId: 7, finalidades: ["RECONFIRMACAO", "SEXAGEM"],
       resultados: [{ id: "resultado-dg", campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO", vigente: true }, { id: "resultado-sexo", campo: "SEXO_FETAL", valor: "F", vigente: true }] };
@@ -58,6 +66,12 @@ describe("contraprovas de serviço: identidade, continuidade e leitura sem escri
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([d]); mocks.tx.exameAnimal.findMany.mockResolvedValue([exame("INCONCLUSIVO")]);
     await reconciliarDemandasAnimalTx(tx, "animal", null);
     expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled(); expect(mocks.auditar).not.toHaveBeenCalled();
+  });
+  it("exame contextual não resolve demanda sem escolha explícita", async () => {
+    mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda("d")]);
+    mocks.tx.exameAnimal.findMany.mockResolvedValue([{ ...exame("NEGATIVO"), avaliacaoContextualSnapshot: { catalogoId:"catalogo" } }]);
+    await reconciliarDemandasAnimalTx(tx, "animal", 7);
+    expect(mocks.tx.demandaAcompanhamentoReprodutivo.update).not.toHaveBeenCalled();
   });
   it("exame explicitamente vinculado à ocorrência2 não satisfaz a primeira", async () => {
     mocks.tx.demandaAcompanhamentoReprodutivo.findMany.mockResolvedValue([demanda("d1", 1, true), demanda("d2", 2, true)]);

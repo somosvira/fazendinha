@@ -1,3 +1,4 @@
+import { prepararContextoAvaliacaoTx, revisaoAvaliacaoContextual } from "./avaliacao-contextual.js";
 import { resolverDecisaoIatf, quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
@@ -8,7 +9,7 @@ import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
 import {carregarDadosElegibilidadeTx} from "./elegibilidade.js";
-import { criarDemandasDoFatoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, preverConclusoesAvaliacaoTx, preverDemandasNovaGestacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import { vincularPoliticaCicloTx } from "./elegibilidade.js";
 import { aplicarEscorePartoTx } from "./escore-parto.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -465,6 +466,7 @@ export async function prepararAvaliacaoTx(
 ) {
   input = { ...input, ...resolverDecisaoIatf(input) };
   await travarAnimais(tx, [input.animalId]);
+  const contexto = await prepararContextoAvaliacaoTx(tx, input);
   const data = dia(input.data);
   if (input.sexoFetal && ["NAO_AVALIADO", "NEGATIVO"].includes(input.resultado)) erro("Sexo fetal exige exame realizado com evidência de gestação", "sexoFetal");
   if ((input.resultado === "SEXAGEM" && input.finalidade && input.finalidade !== "SEXAGEM") || (input.finalidade === "SEXAGEM" && !["SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(input.resultado)) || (input.resultado === "RECONFIRMACAO" && input.finalidade && input.finalidade !== "RECONFIRMACAO")) erro("Finalidade e conclusão incompatíveis", "finalidade");
@@ -552,15 +554,35 @@ export async function prepararAvaliacaoTx(
     erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
   await conferirConclusaoAptidaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data, resultadoAptidao: input.resultadoAptidao, resultadoGestacional: input.resultado });
   const evidencia = await prepararEvidenciaAvaliacaoTx(tx, {
-    ...input, data, resultado: input.resultado, gestacaoCriada,
+    ...input, data, resultado: input.resultado, gestacaoCriada, parcial: !!contexto, itensRealizados: contexto?.itens.some(i => i.estado !== "NAO_AVALIADO"), sexagemInconclusivaSemDG: !!contexto && input.finalidade === "SEXAGEM" && input.resultado === "INCONCLUSIVO",
     retornoAptidaoEm: input.retornoAptidaoEm ? dia(input.retornoAptidaoEm) : null,
     retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
   });
-  return { data, tentativa, gestacao, gestacaoCriada, evidencia };
+  const necessidades = contexto ? await preverConclusoesAvaliacaoTx(tx, {
+    animalId: input.animalId, propriedadeId: input.propriedadeId, data, tentativaId: tentativa?.id ?? null, gestacaoId: gestacao?.id ?? null,
+    tipoExameId: evidencia.tipoExameId, versaoFormato: evidencia.tipo.versaoFormato, finalidades: evidencia.finalidades,
+    resultados: evidencia.resultados, resultadoAptidao: input.resultadoAptidao, vinculos: input.vinculosConclusao ?? [],
+  }) : null;
+  return { data, tentativa, gestacao, gestacaoCriada, evidencia, contexto, necessidades };
+}
+async function resumirPreviaAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, preparada: Awaited<ReturnType<typeof prepararAvaliacaoTx>>) {
+  const necessidadesGeradas = preparada.gestacaoCriada ? await preverDemandasNovaGestacaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data: preparada.data }) : [];
+  const resumo = { exame: { tipoExameId: preparada.evidencia.tipoExameId, data: input.data, resultado: input.resultado, sexoFetal: input.sexoFetal ?? null, resultadoAptidao: input.resultadoAptidao ?? null, gestacaoCriada: preparada.gestacaoCriada },
+    itens: preparada.contexto!.itens, condutas: preparada.contexto!.condutas, necessidades: preparada.necessidades, necessidadesGeradas };
+  return { ...resumo, revisao: revisaoAvaliacaoContextual(input, resumo) };
+}
+export function previaAvaliacaoContextual(input: AvaliacaoInput, usuarioId: number | null) {
+  if (!input.avaliacaoContextual) erro("Informe o catálogo e os itens da avaliação", "avaliacaoContextual");
+  const normalizado = { ...input, ...resolverDecisaoIatf(input) };
+  return transacaoPecuaria(async tx => resumirPreviaAvaliacaoTx(tx, normalizado, await prepararAvaliacaoTx(tx, normalizado, usuarioId)));
 }
 export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, usuarioId: number | null) {
   input = { ...input, ...resolverDecisaoIatf(input) };
   const preparada = await prepararAvaliacaoTx(tx, input, usuarioId);
+  if (preparada.contexto) {
+    const previa = await resumirPreviaAvaliacaoTx(tx, input, preparada);
+    if (!input.revisaoContextual || input.revisaoContextual !== previa.revisao) throw new RebanhoError("CONFLITO", "A avaliação ou suas necessidades mudaram; revise novamente a prévia");
+  }
   const { data, tentativa, gestacaoCriada } = preparada;
   let gestacao = preparada.gestacao;
   let restricaoId: string | null = null;
@@ -608,8 +630,8 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       })
     ).id;
   }
-  const criada = await registrarEvidenciaAvaliacaoTx(tx, {
-      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados, realizadoSemDG: input.realizadoSemDG,
+  let criada = await registrarEvidenciaAvaliacaoTx(tx, {
+      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados, realizadoSemDG: input.realizadoSemDG, parcial: !!preparada.contexto, itensRealizados: preparada.contexto?.itens.some(i => i.estado !== "NAO_AVALIADO"), sexagemInconclusivaSemDG: !!preparada.contexto && input.finalidade === "SEXAGEM" && input.resultado === "INCONCLUSIVO", ...(preparada.contexto ? { contextualSnapshot: JSON.parse(JSON.stringify({ catalogoId: preparada.contexto.catalogoId, versao: preparada.contexto.versao, tipoExameId: preparada.contexto.tipoExameId, itens: preparada.contexto.itens })) } : {}),
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,
@@ -629,6 +651,12 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       observacao: input.observacao,
       criadoPorId: usuarioId,
   });
+  if (preparada.contexto) {
+    const { condutas } = preparada.contexto;
+    const retorno = condutas.find(c => c.tipo === "RETORNO")?.retornoEm;
+    await tx.interpretacaoReprodutiva.update({where:{exameId:criada.id},data:{condutasContextuais:JSON.parse(JSON.stringify(condutas)),...(retorno ? { retornoEm: dia(retorno) } : {})}});
+    if (retorno) criada = { ...criada, retornoEm: dia(retorno) };
+  }
   await auditar(tx, {
     entidade: "AvaliacaoReprodutiva",
     entidadeId: criada.id,
@@ -636,7 +664,7 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     propriedadeId: input.propriedadeId,
     acao: "REGISTRO",
     usuarioId,
-    depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true },
+    depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true, ...(preparada.contexto ? { avaliacaoContextual: preparada.contexto } : {}) },
   });
   if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
   if (input.vinculosConclusao?.length) await vincularConclusoesExameTx(tx, criada.id, input.vinculosConclusao, usuarioId);

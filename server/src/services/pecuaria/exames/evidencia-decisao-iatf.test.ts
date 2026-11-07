@@ -38,3 +38,10 @@ it("distingue avaliação de aptidão realizada sem DG de exame não realizado",
  await expect(registrarEvidenciaAvaliacaoTx(tx, { ...dados, realizadoSemDG: false })).rejects.toThrow(/realizada sem DG/);
  await expect(registrarEvidenciaAvaliacaoTx(tx, { ...dados, resultadoAptidao: null })).rejects.toThrow(/ao menos um item/);
 });
+
+it("sexagem inconclusiva contextual não cria resultado de DG", async () => {
+ const create = vi.fn().mockResolvedValue({});
+ const tx = { $executeRaw: vi.fn(), tipoExame: { findUnique: vi.fn().mockResolvedValue({ id: "exame", nome: "Avaliação", tipoResultado: "MULTIPLO", contexto: "REPRODUTIVO", ativo: true, versaoFormato: 1, campos }) }, exameAnimal: { create }, avaliacaoReprodutiva: { findUniqueOrThrow: vi.fn().mockResolvedValue({ id: "av", resultado: "INCONCLUSIVO" }) } } as unknown as Prisma.TransactionClient;
+ await registrarEvidenciaAvaliacaoTx(tx, { id:"av", animalId:"a", data:new Date("2026-11-03"), resultado:"INCONCLUSIVO", finalidade:"SEXAGEM", sexagemInconclusivaSemDG:true, contextualSnapshot:{ itens:[{tipo:"SEXAGEM",estado:"INCONCLUSIVO"}] } });
+ expect(create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({resultados:{create:[]},finalidadePrincipal:"SEXAGEM",avaliacaoContextualSnapshot:{ itens:[{tipo:"SEXAGEM",estado:"INCONCLUSIVO"}] }})}));
+});

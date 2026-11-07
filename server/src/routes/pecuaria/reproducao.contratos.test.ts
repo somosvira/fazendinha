@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { exigeArea } from "../../middleware/permissao.js";
 import { uid } from "../../lib/uid.fixture.js";
 
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+const mocks = vi.hoisted(() => ({ catalogo:vi.fn(), criarCatalogo:vi.fn(), obterContexto:vi.fn(), previaAvaliacao:vi.fn(), leitura: vi.fn(), escrita: vi.fn(), painel: vi.fn(), tentativa: vi.fn(), avaliacao: vi.fn(), detalheVisita: vi.fn(), confirmar: vi.fn(), programacoes: vi.fn(), programar: vi.fn(), iniciar: vi.fn(), reprogramar: vi.fn(), executar: vi.fn(), agenda: vi.fn(), previaPlanner: vi.fn(), tarefaVisita: vi.fn(), emitir: vi.fn(), obterEmissao: vi.fn(), indicadores: vi.fn(), partos: vi.fn(), manejoAptidao: vi.fn(), pesoSecagem: vi.fn(), encerrarLactacao: vi.fn() }));
+vi.mock("../../services/pecuaria/reproducao/avaliacao-contextual.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/avaliacao-contextual.js")>(), catalogoAvaliacao:mocks.catalogo, criarCatalogoAvaliacao:mocks.criarCatalogo, obterAvaliacaoContextual:mocks.obterContexto }));
 vi.mock("../../services/pecuaria/reproducao/manejo-aptidao.js", () => ({ consultarManejoAptidao: mocks.manejoAptidao }));
 vi.mock("../../services/propriedade.js", async original => ({ ...await original<typeof import("../../services/propriedade.js")>(), resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
-vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao, encerrarLactacao: mocks.encerrarLactacao }));
+vi.mock("../../services/pecuaria/reproducao/registros.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/registros.js")>(), painelReproducao: mocks.painel, criarTentativa: mocks.tentativa, criarAvaliacao: mocks.avaliacao, previaAvaliacaoContextual: mocks.previaAvaliacao, encerrarLactacao: mocks.encerrarLactacao }));
 vi.mock("../../services/pecuaria/reproducao/visitas.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/visitas.js")>(), detalheVisita: mocks.detalheVisita, confirmarAtividade: mocks.confirmar, tarefaParticipanteVisita: mocks.tarefaVisita }));
 vi.mock("../../services/pecuaria/reproducao/iatf.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/iatf.js")>(), listarProgramacoes: mocks.programacoes, criarProgramacao: mocks.programar, iniciarParticipante: mocks.iniciar, reprogramarTarefa: mocks.reprogramar, executarTarefa: mocks.executar }));
 vi.mock("../../services/pecuaria/reproducao/planner.js", async original => ({ ...await original<typeof import("../../services/pecuaria/reproducao/planner.js")>(), consultarAgenda: mocks.agenda, previaGrupoPlanner: mocks.previaPlanner }));
@@ -32,6 +33,25 @@ beforeEach(() => {
 });
 
 describe("V4: autorização e exposição de custos", () => {
+  it("protege catálogo e prévia e aplica escopo e autoria", async () => {
+    const dados = { ...base, tipoExameId:uid(3), resultado:"NAO_AVALIADO", avaliacaoContextual:{catalogoId:uid(4),itens:[],condutas:[]} };
+    const cat = { chave:uid(1), propriedadeId:2, tipoExameId:uid(3), versaoEsperada:0, itens:[{codigo:"APTIDAO",rotulo:"Aptidão",tipo:"APTIDAO",contextos:["NOVILHA"]}], condutas:[] };
+    for (const [rota,corpo] of [["/reproducao/avaliacoes/contexto/catalogo",cat],["/reproducao/avaliacoes/contexto/previa",dados]] as const)
+      expect((await app({...usuario,flags:[]}).request(rota,{method:"POST",headers:json,body:JSON.stringify(corpo)})).status).toBe(403);
+    mocks.catalogo.mockResolvedValue({catalogo:null,sugeridos:[]});
+    expect((await app().request("/reproducao/avaliacoes/contexto/catalogo?contexto=NOVILHA")).status).toBe(200);
+    expect(mocks.catalogo).toHaveBeenCalledWith(2,"NOVILHA");
+    mocks.obterContexto.mockResolvedValue({id:uid(5)});
+    expect((await app().request(`/reproducao/avaliacoes/${uid(5)}/contexto`)).status).toBe(200);
+    expect(mocks.obterContexto).toHaveBeenCalledWith(uid(5),2);
+    mocks.criarCatalogo.mockResolvedValue({id:uid(4)});
+    expect((await app().request("/reproducao/avaliacoes/contexto/catalogo",{method:"POST",headers:json,body:JSON.stringify(cat)})).status).toBe(201);
+    expect(mocks.criarCatalogo).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:2}),7);
+    mocks.previaAvaliacao.mockResolvedValue({revisao:"a".repeat(64)});
+    expect((await app().request("/reproducao/avaliacoes/contexto/previa",{method:"POST",headers:json,body:JSON.stringify(dados)})).status).toBe(200);
+    expect(mocks.previaAvaliacao).toHaveBeenCalledWith(expect.objectContaining({propriedadeId:2}),7);
+  });
+
   it("exige sessão e área, inclusive nas consultas", async () => {
     expect((await app(null).request("/reproducao")).status).toBe(401);
     expect((await app({ ...usuario, areas: ["estoque"] }).request("/reproducao")).status).toBe(403);

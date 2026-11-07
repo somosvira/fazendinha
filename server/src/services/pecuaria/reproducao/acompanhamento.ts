@@ -126,6 +126,11 @@ async function propostasTx(tx:Prisma.TransactionClient,origem:Origem,politicaId?
  if(!politica){if(politicaId)erro("Política não pertence ao sítio de origem", "politicaId");return [];}
  return proporAcompanhamentos({...politica,parametros:parametrosAcompanhamentoSchema.parse(politica.parametros)},{...origem,data:texto(origem.data)}).map(p=>({...p,politicaId:politica.id}));
 }
+/** Propostas de política para uma gestação que ainda será criada, sem adotar nem persistir. */
+export async function preverDemandasNovaGestacaoTx(tx: Prisma.TransactionClient, origem: { animalId: string; propriedadeId: number; data: Date }) {
+ const propostas=await propostasTx(tx,{...origem,gestacaoId:"PREVIA"});
+ return propostas.map(({gestacaoId: _gestacaoId, ...proposta})=>proposta);
+}
 /** Somente escritores chamam esta função. Uma leitura nunca adota políticas em fatos antigos. */
 export async function criarDemandasDoFatoTx(tx:Prisma.TransactionClient,origem:Origem,usuarioId:number|null,politicaId?:string,participacaoId?:string){
  let propostas: Array<import("./prazos-protocolo.js").PrazoAdotado>;
@@ -183,6 +188,7 @@ export async function reconciliarDemandasAnimalTx(tx:Prisma.TransactionClient,an
   const vinculo=d.vinculoConclusaoResolucao;
   const evidencia=exames.find(e=>{
    const i=e.interpretacao;
+   if(!vinculo&&e.avaliacaoContextualSnapshot)return false;
    if(!vinculo&&e.tarefaId&&demandaPorTarefa.has(e.tarefaId)&&demandaPorTarefa.get(e.tarefaId)!==d.id)return false;
    if(!i||(!vinculo&&e.demandaAcompanhamentoId&&e.demandaAcompanhamentoId!==d.id)||(!vinculo&&utilizados.has(e.id))||e.data<d.dataReferencia||(fim&&e.data>fim)||!e.finalidades.includes(d.finalidade))return false;
    if(d.tentativaId?i.tentativaId!==d.tentativaId:d.gestacaoId?i.gestacaoId!==d.gestacaoId:d.origemAdocao!=="PROTOCOLO")return false;
@@ -346,4 +352,39 @@ export function revisarPrazos(input: import("./acompanhamento.schemas.js").Revis
    return {propostas:atual.propostas};
   });
  });
+}
+
+/** Projeção das atribuições explícitas de uma avaliação ainda não persistida. */
+export async function preverConclusoesAvaliacaoTx(tx: Prisma.TransactionClient, proposta: {
+ animalId: string; propriedadeId: number; data: Date; tentativaId: string | null; gestacaoId: string | null;
+ tipoExameId: string; versaoFormato: number; finalidades: string[];
+ resultados: readonly { campo: string; valor: unknown }[]; resultadoAptidao?: string | null;
+ vinculos: readonly { demandaId: string; campo: "CONCLUSAO_GESTACIONAL" | "SEXO_FETAL" | "APTIDAO_REPRODUTIVA" }[];
+}) {
+ if(new Set(proposta.vinculos.map(v=>v.demandaId)).size!==proposta.vinculos.length || new Set(proposta.vinculos.map(v=>v.campo)).size!==proposta.vinculos.length)
+  erro("Cada conclusão e cada demanda podem aparecer uma única vez", "vinculosConclusao");
+ const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:proposta.animalId,propriedadeOrigemId:proposta.propriedadeId,estado:"PENDENTE"},
+  include:{tentativa:true,gestacao:true,exameOrigem:{include:incluirExameOrigem}},orderBy:[{previstaPara:{sort:"asc",nulls:"last"}},{ocorrencia:"asc"},{id:"asc"}]});
+ const [partos,tentativas]=await Promise.all([
+  tx.partoAnimal.findMany({where:{animalId:proposta.animalId,status:"VALIDO"},orderBy:[{data:"asc"},{id:"asc"}]}),
+  tx.tentativaReprodutiva.findMany({where:{animalId:proposta.animalId,status:"VALIDO"},orderBy:[{data:"asc"},{ordem:"asc"}]}),
+ ]);
+ const projecao=demandas.map(d=>{
+  const regra=d.regraSnapshot as Record<string,unknown>, fonte=d.tentativa??d.gestacao??(d.origemAdocao==="PROTOCOLO"?d.exameOrigem:null);
+  const parto=partos.find(p=>p.data>=d.dataReferencia&&(!d.gestacaoId||p.gestacaoId===d.gestacaoId));
+  const substituta=d.tentativa?tentativas.find(t=>t.data>d.tentativa!.data||(t.data.getTime()===d.tentativa!.data.getTime()&&t.ordem>d.tentativa!.ordem)):null;
+  const fim=[d.gestacao?.encerradaEm,parto?.data,substituta?.data].filter((v):v is Date=>!!v).sort((a,b)=>a.getTime()-b.getTime())[0];
+  const resultado=resultadoConclusivoPorFinalidade(d.finalidade,proposta.resultados);
+  const campo=d.finalidade==="APTIDAO_REPRODUTIVA" && ["APTO","NAO_APTO"].includes(proposta.resultadoAptidao??"") ? "APTIDAO_REPRODUTIVA" : resultado?.campo;
+  const compativel=!!campo&&fonte?.status==="VALIDO"&&!pendenciasOrigemDemanda(d,d.exameOrigem).length
+   &&proposta.data>=d.dataReferencia&&(!fim||proposta.data<=fim)&&proposta.finalidades.includes(d.finalidade)
+   &&(d.tentativaId?proposta.tentativaId===d.tentativaId:d.gestacaoId?proposta.gestacaoId===d.gestacaoId:d.origemAdocao==="PROTOCOLO")
+   &&(d.finalidade!=="RECONFIRMACAO"||!d.previstaPara||proposta.data>=d.previstaPara)
+   &&(!regra.tipoExameId||regra.tipoExameId===proposta.tipoExameId&&regra.tipoExameVersao===proposta.versaoFormato);
+  const escolhido=proposta.vinculos.find(v=>v.demandaId===d.id);
+  if(escolhido&&(!compativel||escolhido.campo!==campo))erro("Conclusão não é compatível com a demanda ou sua origem", "vinculosConclusao");
+  return { id:d.id, finalidade:d.finalidade, previstaPara:d.previstaPara, conclusaoCompativel:compativel?campo:null, acao:escolhido?"RESOLVER" as const:"PRESERVAR" as const };
+ });
+ if(proposta.vinculos.some(v=>!projecao.some(d=>d.id===v.demandaId)))erro("Demanda selecionada não está pendente no sítio e animal informados", "vinculosConclusao");
+ return projecao;
 }

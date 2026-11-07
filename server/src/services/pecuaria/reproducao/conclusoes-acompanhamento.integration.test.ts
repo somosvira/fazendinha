@@ -19,7 +19,7 @@ async function fixture(tx: Prisma.TransactionClient) {
   for (const ocorrencia of [1, 2]) demandas.push(await tx.demandaAcompanhamentoReprodutivo.create({ data: { animalId: animal.id, propriedadeOrigemId: sitio.id, finalidade: "RECONFIRMACAO", gestacaoId: gestacao.id, ocorrencia, politicaId: politica.id, dataReferencia: dia("2026-01-03"), previstaPara: dia("2026-01-10"), regraSnapshot: { versao: 1, efeito: "ALERTA", politicaId: politica.id, politicaVersao: 1 } } }));
   const tipo = await tx.tipoExame.create({ data: { nome: `Conclusão ${randomUUID()}`, tipoResultado: "MULTIPLO", contexto: "REPRODUTIVO", campos: [{ codigo: "CONCLUSAO_GESTACIONAL", tipo: "OPCAO", opcoes: ["POSITIVO", "NEGATIVO", "INCONCLUSIVO"] }] } });
   const exame = await tx.exameAnimal.create({ data: { animalId: animal.id, propriedadeId: sitio.id, tipoExameId: tipo.id, data: dia("2026-01-25"), finalidades: ["RECONFIRMACAO"], finalidadePrincipal: "RECONFIRMACAO", formatoSnapshot: { nome: tipo.nome, tipoResultado: "MULTIPLO", versao: 1 }, interpretacao: { create: { gestacaoId: gestacao.id } }, resultados: { create: { campo: "CONCLUSAO_GESTACIONAL", valor: "POSITIVO" } } }, include: { resultados: true } });
-  return { demandas, exame, resultado: exame.resultados[0] };
+  return { demandas, exame, resultado: exame.resultados[0], sitio, tipo };
 }
 async function vincular(tx: Prisma.TransactionClient, demandaId: string, resultadoId: string) {
   const v = await tx.vinculoConclusaoAcompanhamento.create({ data: { demandaId, fonte: "RESULTADO", resultadoId, valorSnapshot: "POSITIVO" } });
@@ -43,6 +43,24 @@ suite("conclusões: constraints SQL", () => {
       await expect(vincular(tx, f.demandas[1].id, f.resultado.id)).rejects.toThrow();
       throw new ReverterFixture();
     }, { timeout: 30_000 })).rejects.toBeInstanceOf(ReverterFixture);
+  });
+  it("catálogo publicado impede alteração de seu formato e preserva fixtures", async () => {
+    await expect(prisma.$transaction(async tx => {
+      const f = await fixture(tx);
+      await tx.catalogoAvaliacaoReprodutiva.create({data:{propriedadeId:f.sitio.id,versao:1,tipoExameId:f.tipo.id,itens:[{codigo:"DG",tipo:"DIAGNOSTICO"}],condutas:[]}});
+      await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+      await expect(tx.tipoExame.update({where:{id:f.tipo.id},data:{campos:[{codigo:"OUTRO",tipo:"TEXTO"}]}})).rejects.toThrow();
+      throw new ReverterFixture();
+    }, { timeout:30_000 })).rejects.toBeInstanceOf(ReverterFixture);
+  });
+  it("snapshot de itens não pode ser reescrito", async () => {
+    await expect(prisma.$transaction(async tx => {
+      const f = await fixture(tx);
+      await tx.exameAnimal.update({where:{id:f.exame.id},data:{avaliacaoContextualSnapshot:{itens:[]}}});
+      await tx.$executeRaw`SET CONSTRAINTS ALL IMMEDIATE`;
+      await expect(tx.exameAnimal.update({where:{id:f.exame.id},data:{avaliacaoContextualSnapshot:{itens:[{codigo:"ALTERADO"}]}}})).rejects.toThrow();
+      throw new ReverterFixture();
+    }, { timeout:30_000 })).rejects.toBeInstanceOf(ReverterFixture);
   });
   it("recusa invalidar resultado sem reconciliar o vínculo na mesma transação", async () => {
     await expect(prisma.$transaction(async tx => {

@@ -1,3 +1,5 @@
+import * as avaliacaoContextual from "../../services/pecuaria/reproducao/avaliacao-contextual.js";
+import { criarCatalogoAvaliacaoSchema } from "../../services/pecuaria/reproducao/avaliacao-contextual.schemas.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
 import { consultarManejoAptidao } from "../../services/pecuaria/reproducao/manejo-aptidao.js";
 import { encerramentoLactacaoSchema, manterPesoSecagemSchema, pesoSecagemSchema } from "../../services/pecuaria/reproducao/peso-secagem.schemas.js";
@@ -305,6 +307,25 @@ export const reproducaoRouter = new Hono()
     } catch (e) {
       return falhaV4(c, e);
     }
+  })
+  .get("/avaliacoes/contexto/catalogo", async c => {
+    try {
+      const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
+      const contexto = z.enum(["NOVILHA", "APOS_TENTATIVA", "GESTACAO_CONHECIDA", "OUTRO"]).optional().parse(c.req.query("contexto"));
+      return c.json(await avaliacaoContextual.catalogoAvaliacao(propriedadeId, contexto));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .get("/avaliacoes/:id/contexto", async c => {
+    try { return c.json(await avaliacaoContextual.obterAvaliacaoContextual(s.uuid.parse(c.req.param("id")), s.sitio.parse(await resolverEscopoLeitura(c)))); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/avaliacoes/contexto/catalogo", validarV4(criarCatalogoAvaliacaoSchema), async c => {
+    try { const b = c.req.valid("json"); return c.json(await avaliacaoContextual.criarCatalogoAvaliacao({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c)), 201); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/avaliacoes/contexto/previa", validarV4(s.avaliacaoSchema), async c => {
+    try { const b = c.req.valid("json"); return c.json(await registros.previaAvaliacaoContextual({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c))); }
+    catch (e) { return falhaV4(c, e); }
   })
   .post("/avaliacoes", validarV4(s.avaliacaoSchema), async (c) => {
     try {

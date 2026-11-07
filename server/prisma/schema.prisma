@@ -660,6 +660,7 @@ model AuditoriaFinanceira {
 // Sítio físico da fazenda-cliente (multi-propriedade). Default single-tenant: 1
 // linha (principal). O mesmo seam serve de base p/ multi-tenant (Organizacao) depois.
 model Propriedade {
+  catalogosAvaliacaoReprodutiva CatalogoAvaliacaoReprodutiva[]
   automacoesProtocolos AutomacaoProtocolo[]
   vinculosPesagemSecagem VinculoPesagemSecagem[]
   controlesHistoricosLeite ControleHistoricoLeite[]
@@ -934,6 +935,7 @@ enum TipoToken {
 }
 
 model Usuario {
+  catalogosAvaliacaoCriados CatalogoAvaliacaoReprodutiva[] @relation("CatalogoAvaliacaoCriadoPor")
   conclusoesCriadas VinculoConclusaoAcompanhamento[] @relation("ConclusaoCriadaPor")
   conclusoesInvalidadas VinculoConclusaoAcompanhamento[] @relation("ConclusaoInvalidadaPor")
   automacoesProtocolos AutomacaoProtocolo[]
@@ -2146,6 +2148,7 @@ model VinculoTarefaProtocolo {
 }
 
 model TipoExame {
+  catalogosAvaliacaoReprodutiva CatalogoAvaliacaoReprodutiva[]
   formatoQualidadeLeite FormatoQualidadeLeite?
   id            String                    @id @default(uuid())
   nome          String                    @unique
@@ -2166,6 +2169,7 @@ model TipoExame {
 }
 
 model ExameAnimal {
+  avaliacaoContextualSnapshot Json?
   decisoesAptidao DecisaoElegibilidadeCiclo[] @relation("ExameDecisaoAptidao")
   imunidadeColostragem ExameImunidadeColostragem?
   Usuario                 Usuario?                           @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
@@ -2245,6 +2249,7 @@ model ResultadoExame {
 }
 
 model InterpretacaoReprodutiva {
+  condutasContextuais Json?
   vinculosConclusao VinculoConclusaoAcompanhamento[]
   resultadoAptidao String?
   retornoAptidaoEm DateTime? @db.Date
@@ -3313,6 +3318,23 @@ model RevisaoPrazoAcompanhamento {
   usuarioId Int?
   criadoEm DateTime @default(now())
   @@unique([demandaId, versaoAnterior])
+  @@schema("pecuaria")
+}
+
+// Catálogo imutável por sítio; utiliza um formato de exame versionado já existente.
+model CatalogoAvaliacaoReprodutiva {
+  id String @id @default(uuid())
+  propriedadeId Int
+  propriedade Propriedade @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
+  versao Int
+  tipoExameId String
+  tipoExame TipoExame @relation(fields: [tipoExameId], references: [id], onDelete: Restrict)
+  itens Json
+  condutas Json
+  criadoEm DateTime @default(now())
+  criadoPorId Int?
+  criadoPor Usuario? @relation("CatalogoAvaliacaoCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+  @@unique([propriedadeId, versao])
   @@schema("pecuaria")
 }
 
