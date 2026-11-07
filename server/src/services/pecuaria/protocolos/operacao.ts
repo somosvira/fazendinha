@@ -84,7 +84,7 @@ export async function obterCabecalhoOperacao(contexto:ContextoOperacao,proprieda
 }
 export async function listarEtapasOperacao(contexto:ContextoOperacao,propriedadeId:number|null,consulta:ConsultaOperacao) {
   const f=consultaOperacaoSchema.parse(consulta);
-  return leitura(async tx=>{const c=await contextoTx(tx,contexto,propriedadeId);const where={protocoloId:c.protocolo.id,...(f.momentoId?{momentoId:f.momentoId==="SEM_MOMENTO"?null:f.momentoId}:{})};const total=await tx.etapaProtocolo.count({where});const pagina=paginaOperacao(total,f.pagina,f.porPagina);const agora=new Date();
+  return leitura(async tx=>{const c=await contextoTx(tx,contexto,propriedadeId);const acompanhamento={OR:["DIAGNOSTICO","RECONFIRMACAO","SEXAGEM"].map(tipo=>({AND:[{configuracao:{path:["tipo"],equals:"AVALIACAO"}},{configuracao:{path:["planoAvaliacao","tipo"],equals:tipo}}]}))} satisfies Prisma.EtapaProtocoloWhereInput;const where={protocoloId:c.protocolo.id,...(c.protocolo.tipo==="REPRODUTIVO"&&f.fase?f.fase==="RESULTADOS"?{AND:[acompanhamento]}:{NOT:acompanhamento}:{}),...(f.momentoId?{momentoId:f.momentoId==="SEM_MOMENTO"?null:f.momentoId}:{})};const total=await tx.etapaProtocolo.count({where});const pagina=paginaOperacao(total,f.pagina,f.porPagina);const agora=new Date();
     const etapas=await tx.etapaProtocolo.findMany({where,include:{momento:true,produto:{select:{nome:true}},tipoExame:{select:{nome:true}}},orderBy:[{ordem:"asc"},{id:"asc"}],skip:(pagina-1)*f.porPagina,take:f.porPagina});
     const itens=await Promise.all(etapas.map(async e=>{const previsao=await tx.tarefaProtocolo.findFirst({where:{etapaId:e.id,execucao:c.where,AND:[tarefaNoEscopoOperacao(c.escopoLeituraId)]},select:{previstaPara:true,precisaoTemporal:true,parametros:true},orderBy:[{previstaPara:"asc"},{id:"asc"}]});return {id:e.id,momento:e.momento,configuracao:e.configuracao,nome:nomeEtapaOperacao(e,previsao?.parametros),ordem:e.ordem,tipo:e.tipo,diaRelativo:e.diaRelativo,unidadeIntervalo:e.unidadeIntervalo,previstaPara:previsao?.previstaPara.toISOString()??null,precisaoTemporal:previsao?.precisaoTemporal??null,contagens:await contarTx(tx,c,{...f,etapaId:e.id},agora)};}));
     return {itens,total,pagina,porPagina:f.porPagina};});
@@ -301,3 +301,5 @@ export async function listarMomentosOperacao(contexto:ContextoOperacao,proprieda
     return{itens,total,pagina,porPagina:f.porPagina};
   });
 }
+
+export { contextoTx as obterContextoOperacaoTx };

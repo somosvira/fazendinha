@@ -2019,6 +2019,7 @@ model ProgramacaoProtocolo {
 }
 
 model ParticipacaoProtocolo {
+  tentativasExternas VinculoTentativaParticipacao[]
   acompanhamentoSnapshot Json?
   automacoes AutomacaoProtocolo[]
   Usuario               Usuario?                     @relation(fields: [criadoPorId], references: [id], onDelete: Restrict)
@@ -2056,6 +2057,26 @@ model ParticipacaoProtocolo {
   @@index([animalId, inicio], map: "ExecucaoProtocoloSanitario_animalId_inicio_idx")
   @@index([rodadaId], map: "ExecucaoProtocoloSanitario_rodadaId_idx")
   @@index([operacaoServicoId], map: "ExecucaoProtocoloSanitario_operacaoServicoId_idx")
+  @@schema("pecuaria")
+}
+
+// Relação factual explícita; não corresponde ao rateio financeiro de um preparo.
+model VinculoTentativaParticipacao {
+  id String @id @default(uuid())
+  participacaoId String
+  participacao ParticipacaoProtocolo @relation(fields: [participacaoId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  tentativaId String
+  tentativa TentativaReprodutiva @relation(fields: [tentativaId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  propriedadeId Int
+  motivo String
+  snapshot Json
+  criadoPorId Int
+  criadoEm DateTime @default(now())
+  revogadoEm DateTime?
+  revogadoPorId Int?
+  motivoRevogacao String?
+  @@index([participacaoId, criadoEm])
+  @@index([tentativaId])
   @@schema("pecuaria")
 }
 
@@ -2526,6 +2547,7 @@ model RegraSanitariaReprodutiva {
 }
 
 model TentativaReprodutiva {
+  participacoesExplicitas VinculoTentativaParticipacao[]
   Animal_TentativaReprodutiva_touroIdToAnimal  Animal?                            @relation("TentativaReprodutiva_touroIdToAnimal", fields: [touroId], references: [id], onDelete: Restrict)
   GenitorExterno                               GenitorExterno?                    @relation(fields: [touroExternoId], references: [id], onDelete: Restrict)
   Propriedade                                  Propriedade?                       @relation(fields: [propriedadeId], references: [id], onDelete: Restrict)
