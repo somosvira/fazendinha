@@ -10,6 +10,8 @@ vi.mock("../../../db.js", () => ({ prisma: new Proxy({}, { get: (_alvo, campo) =
   : Reflect.get(banco.tx, campo) }) }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: vi.fn(async () => ({ sexo: "F" })) }));
 import { executarTarefaTx } from "./iatf.js";
+import { prepararAvaliacaoTx } from "./registros.js";
+import { avaliacaoSchema } from "./schemas.js";
 import { confirmarAtividadeTx, contextoAnimalVisitaTx } from "./visitas.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
 import { confirmacaoVisitaSchema } from "./schemas.js";
@@ -113,6 +115,20 @@ function fixture() {
 beforeEach(() => { vi.clearAllMocks(); });
 
 describe("ocorrência de acompanhamento na execução real da tarefa e da visita", () => {
+  it("reconfirmação negativa exige encerramento documentado, sem criar perda", async () => {
+    const f=fixture();
+    const catalogo={id:uid(30),versao:1,tipoExameId:TIPO_EXAME_REPRODUTIVO,itens:[{codigo:"RECONF",rotulo:"Reconfirmação",tipo:"RECONFIRMACAO",contextos:["GESTACAO_CONHECIDA"]}],condutas:[]};
+    Object.assign(f.db,{catalogoAvaliacaoReprodutiva:{findFirst:vi.fn().mockResolvedValue(catalogo)}});
+    const input=avaliacaoSchema.parse({chave:uid(31),animalId,propriedadeId:7,data,tipoExameId:TIPO_EXAME_REPRODUTIVO,gestacaoId,resultado:"NEGATIVO",finalidade:"RECONFIRMACAO",avaliacaoContextual:{catalogoId:catalogo.id,itens:[{codigo:"RECONF",estado:"CONCLUSIVO"}],condutas:[]}});
+    await expect(prepararAvaliacaoTx(f.tx,input,7)).rejects.toThrow(/gestação nesta data/);
+    const encerrada={...f.gestacao,encerradaEm:dia(data),tipoEncerramento:"PERDA"};
+    f.db.gestacaoAnimal.findFirst.mockResolvedValueOnce(encerrada).mockResolvedValueOnce(null);
+    const preparada=await prepararAvaliacaoTx(f.tx,input,7);
+    expect(preparada.contexto?.itens[0].estado).toBe("CONCLUSIVO");
+    expect(preparada.evidencia).toMatchObject({finalidade:"RECONFIRMACAO",resultados:[expect.objectContaining({campo:"CONCLUSAO_GESTACIONAL",valor:"NEGATIVO"})]});
+    expect(preparada.gestacaoCriada).toBe(false);
+    expect(f.db.exameAnimal.create).not.toHaveBeenCalled();
+  });
   it("grava a demanda da tarefa2 no exame e mantém a primeira ocorrência pendente", async () => {
     const f = fixture();
     await executarTarefaTx(f.tx, tarefa2, { chave: uid(20), propriedadeId: 7, realizadaEm: data, dados: { resultado: "RECONFIRMACAO", gestacaoId } }, 7);
