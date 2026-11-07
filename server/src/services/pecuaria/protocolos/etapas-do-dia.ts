@@ -20,6 +20,8 @@ type Linha = {
   etapaId: string;
   etapa: string;
   tarefasIds: string[];
+  animaisIds: string[];
+  animaisPendentesIds: string[];
   totalAnimais: bigint;
   atendidos: bigint;
   pendentes: bigint;
@@ -54,6 +56,9 @@ export async function listarEtapasDoDia(
   ), grupos AS (
     SELECT "contextoId",modo,nome,modelo,"etapaId",etapa,ordem,
       array_agg(DISTINCT "tarefaId") AS "tarefasIds",
+      array_agg(DISTINCT "animalId") AS "animaisIds",
+      coalesce(array_agg(DISTINCT "animalId") FILTER(WHERE situacao IN
+        ('SEM_REGISTRO','NAO_ATENDIDO','ADIADO','REGULARIZACAO_PENDENTE','PREVISTO')), ARRAY[]::text[]) AS "animaisPendentesIds",
       count(DISTINCT "animalId") AS "totalAnimais",
       count(DISTINCT "animalId") FILTER(WHERE situacao='ATENDIDO') AS atendidos,
       count(DISTINCT "animalId") FILTER(WHERE situacao IN

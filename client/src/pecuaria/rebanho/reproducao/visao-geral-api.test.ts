@@ -161,12 +161,23 @@ it("Hoje lê todas as páginas de etapas completas no sítio, incluindo etapa to
 
 import { organizarHoje } from "./visao-geral-api";
 it("Hoje une cobertura parcial e conserva revisão de tarefa fora da data planejada", () => {
- const etapa = {contextoId:"p",modo:"COLETIVO" as const,nome:"P",modelo:"M",etapaId:"e",etapa:"DG",totalAnimais:2,atendidos:1,pendentes:1,encerrados:0,tarefasIds:["atendida","original"]};
- const grupo = g("p", "2026-11-07", {etapa:{id:"e",nome:"DG",ordem:1},totalAnimais:2,contexto:{programacaoId:"p",tarefasIds:["original","suspensa"]}});
+ const etapa = {contextoId:"p",modo:"COLETIVO" as const,nome:"P",modelo:"M",etapaId:"e",etapa:"DG",totalAnimais:2,atendidos:1,pendentes:1,encerrados:0,tarefasIds:["atendida","original"],animaisIds:["animal-atendido","animal-original"],animaisPendentesIds:["animal-original"]};
+ const grupo = g("p", "2026-11-07", {etapa:{id:"e",nome:"DG",ordem:1},totalAnimais:2,contexto:{programacaoId:"p",tarefasIds:["original","suspensa"],animaisPorTarefa:{original:"animal-original",suspensa:"animal-suspenso"}}});
  const r = organizarHoje([etapa], [grupo], "2026-11-07");
  expect(r.grupos).toEqual([]);
  expect(r.etapas).toEqual([expect.objectContaining({totalAnimais:3,atendidos:1,pendentes:2})]);
  expect(etapa.totalAnimais).toBe(2);
  const semEtapa = organizarHoje([], [grupo], "2026-11-07");
  expect(semEtapa.grupos).toEqual([grupo]);
+});
+
+it("Hoje conta uma vez o animal reintegrado, preservando sua pendência atual", () => {
+ const etapa = {contextoId:"p",modo:"COLETIVO" as const,nome:"P",modelo:"M",etapaId:"e",etapa:"DG",totalAnimais:1,atendidos:0,pendentes:0,encerrados:1,tarefasIds:["cancelada"],animaisIds:["animal"],animaisPendentesIds:[]};
+ const grupo = g("p", "2026-11-07", {etapa:{id:"e",nome:"DG",ordem:1},totalAnimais:1,contexto:{programacaoId:"p",tarefasIds:["reintegrada"],animaisPorTarefa:{reintegrada:"animal"}}});
+ const r = organizarHoje([etapa],[grupo],"2026-11-07");
+ expect(r.grupos).toEqual([]);
+ expect(r.etapas[0]).toMatchObject({totalAnimais:1,pendentes:1,encerrados:1});
+ const repetida = organizarHoje(r.etapas,[grupo],"2026-11-07");
+ expect(repetida.etapas[0]).toMatchObject({totalAnimais:1,pendentes:1});
+ expect(etapa.pendentes).toBe(0);
 });

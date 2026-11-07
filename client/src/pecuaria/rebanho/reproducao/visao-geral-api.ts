@@ -180,6 +180,8 @@ export type EtapaDoDia = {
   etapaId: string;
   etapa: string;
   tarefasIds?: string[];
+  animaisIds?: string[];
+  animaisPendentesIds?: string[];
   totalAnimais: number;
   atendidos: number;
   pendentes: number;
@@ -205,14 +207,26 @@ export function organizarHoje(etapas: EtapaDoDia[], agenda: GrupoPlanner[], hoje
     const modo = typeof grupo.contexto?.programacaoId === "string" ? "COLETIVO" : "INDIVIDUAL";
     const linha = grupo.grupo.origem === "PROTOCOLO" && grupo.turma && grupo.etapa
       ? linhas.find(e => e.modo === modo && e.contextoId === grupo.turma!.id && e.etapaId === grupo.etapa!.id) : undefined;
-    if (!linha?.tarefasIds || !Array.isArray(ids) || !ids.every((id): id is string => typeof id === "string") || new Set(ids).size !== grupo.totalAnimais) {
+    if (!linha?.tarefasIds || !Array.isArray(ids) || !ids.every((id): id is string => typeof id === "string")) {
       grupos.push(grupo);
       continue;
     }
     const cobertas = new Set(linha.tarefasIds);
     const adicionais = [...new Set(ids)].filter(id => !cobertas.has(id));
-    linha.totalAnimais += adicionais.length;
-    linha.pendentes += adicionais.length;
+    if (!adicionais.length) continue;
+    const mapa = grupo.contexto?.animaisPorTarefa;
+    const animaisAdicionais = adicionais.map(id => mapa && typeof mapa === "object" ? Reflect.get(mapa, id) : null);
+    if (!linha.animaisIds || !linha.animaisPendentesIds || !animaisAdicionais.every((id): id is string => typeof id === "string")) {
+      grupos.push(grupo);
+      continue;
+    }
+    const animais = new Set(linha.animaisIds);
+    const pendentes = new Set(linha.animaisPendentesIds);
+    animaisAdicionais.forEach(id => { animais.add(id); pendentes.add(id); });
+    linha.animaisIds = [...animais];
+    linha.animaisPendentesIds = [...pendentes];
+    linha.totalAnimais = animais.size;
+    linha.pendentes = pendentes.size;
     linha.tarefasIds.push(...adicionais);
   }
   return {etapas: linhas, grupos};

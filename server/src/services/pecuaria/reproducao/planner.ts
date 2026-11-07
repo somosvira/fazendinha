@@ -191,7 +191,7 @@ async function resolverGrupoTx(tx: Prisma.TransactionClient, propriedadeId: numb
 }
 function resumoGrupo(grupo: Grupo) {
   const { membros, ...dados } = grupo;
-  return { ...dados, contexto: {...dados.contexto, ...(grupo.grupo.origem === "PROTOCOLO" ? {tarefasIds: membros.flatMap(m => m.tarefaId ? [m.tarefaId] : [])} : {})}, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
+  return { ...dados, contexto: {...dados.contexto, ...(grupo.grupo.origem === "PROTOCOLO" ? {tarefasIds: membros.flatMap(m => m.tarefaId ? [m.tarefaId] : []), animaisPorTarefa: Object.fromEntries(membros.flatMap(m => m.tarefaId ? [[m.tarefaId,m.animalId]] : []))} : {})}, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
     emVisitaAberta: membros.filter(m => m.visitasAbertas.length > 0).length };
 }
 function fingerprint(grupo: Grupo, propriedadeId: number, data: string) {
