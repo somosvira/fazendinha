@@ -430,7 +430,7 @@ export function FormReproducao({
 
       if (acao === "parto") {
         const complementos = camposPartoPayload(dadosParto, data);
-        if (complementos.ocorrenciaRetencao?.acao === "CRIAR") {
+        if ("ocorrenciaRetencao" in complementos && complementos.ocorrenciaRetencao?.acao === "CRIAR") {
           const ocorrencia = complementos.ocorrenciaRetencao;
           const confirmacoes = await impactosParto.conferir([{ origem: "OCORRENCIA", animalId, propriedadeId, data: ocorrencia.inicio, doencaId: ocorrencia.doencaId }], { [animalId]: animal?.brinco ?? "Matriz selecionada" });
           if (!confirmacoes) return;

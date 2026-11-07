@@ -74,7 +74,7 @@ export function CorrigirFato({ tipo, id, animalId, propriedadeId, gestacaoInicia
     const serializado = JSON.stringify(payload); if (envio.current?.payload !== serializado) envio.current = { payload: serializado, chave: crypto.randomUUID() };
     emCurso.current = true; setOcupado(true); setErro(null);
     try {
-      if (tipo === "parto" && !desvincularRp && atual.ocorrenciaRetencao?.acao === "CRIAR") {
+      if (tipo === "parto" && !desvincularRp && "ocorrenciaRetencao" in atual && atual.ocorrenciaRetencao?.acao === "CRIAR") {
         const ocorrencia = atual.ocorrenciaRetencao;
         const confirmacoes = await impactos.conferir([{ origem: "OCORRENCIA", animalId, propriedadeId: prop, data: ocorrencia.inicio, doencaId: ocorrencia.doencaId }], { [animalId]: "Matriz do parto" });
         if (!confirmacoes) return;
