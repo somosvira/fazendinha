@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { transacaoValidada } from "../../../lib/transacao-validada.js";
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { adotarAcompanhamento, criarDemandasDoFatoTx, listarAcompanhamentos, previaAdocaoAcompanhamento, reconciliarDemandasAnimalTx } from "./acompanhamento.js";
 
 // Constraints e transações reais: execução exclusivamente no CI externo com opt-in explícito.
@@ -54,6 +55,7 @@ suite("acompanhamento — garantias SQL independentes no CI externo", () => {
     // Somente os IDs desta suíte; estado final vazio conferido pelas mesmas constraints de produção.
     await transacaoValidada(async tx => {
       const ids = { in: animais };
+      await limparAlertasReprodutivosFixtureTx(tx, animais);
       await tx.exameAnimal.updateMany({ where: { animalId: ids }, data: { demandaAcompanhamentoId: null } });
       await tx.demandaAcompanhamentoReprodutivo.deleteMany({ where: { animalId: ids } });
       await tx.interpretacaoReprodutiva.deleteMany({ where: { exame: { animalId: ids } } });

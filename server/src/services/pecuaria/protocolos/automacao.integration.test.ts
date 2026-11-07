@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 import { exigirBancoIntegracaoPecuaria } from "../../../lib/banco-pecuaria-integration.fixture.js";
 import { criarEntradaValorizadaFixtureTx } from "../../../test/estoque-valorizado.fixture.js";
 import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { prepararTentativaTx, criarTentativaTx } from "../reproducao/registros.js";
 import { tentativaSchema } from "../reproducao/schemas.js";
 import { prepararExecucaoProtocoloTx, executarItensPreparadosProtocoloTx } from "./execucao.js";
@@ -65,6 +66,7 @@ async function concorrente(executar: (f: Awaited<ReturnType<typeof fixture>>, jo
   try { await executar(f, job.id); }
   finally {
     await prisma.$transaction(async tx => {
+      await limparAlertasReprodutivosFixtureTx(tx, [f.animal.id]);
       await tx.requisicaoPecuaria.deleteMany({ where: { propriedadeId: f.sitio.id } });
       await tx.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: f.sitio.id }, { animalId: f.animal.id }, { usuarioId: f.usuario.id }] } });
       await tx.automacaoProtocolo.deleteMany({ where: { propriedadeId: f.sitio.id } });
