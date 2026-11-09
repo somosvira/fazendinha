@@ -170,15 +170,6 @@ model CentroCusto {
   @@schema("public")
 }
 
-// Override gerencial da classificação de uma categoria (custeio × investimento).
-// null = pendente (deriva da regra padrão); decidido pelo usuário no dashboard.
-enum ClassificacaoCategoria {
-  CUSTEIO
-  INVESTIMENTO
-
-  @@schema("public")
-}
-
 model GrupoCategoria {
   id         String      @id @default(uuid())
   nome       String      @unique
@@ -194,7 +185,6 @@ model Categoria {
   nome           String
   grupoId        String?
   grupo          GrupoCategoria?         @relation(fields: [grupoId], references: [id], onDelete: Restrict)
-  classificacao  ClassificacaoCategoria?
   ativo          Boolean                 @default(true)
   ordem          Int                     @default(0)
   // Genético: produtos que podem ser material genético (sêmen/embrião) da pecuária.
@@ -385,7 +375,6 @@ model Operacao {
   manejosPecuaria ManejoAnimal[]
   composicaoComercial Json?
   categoriaNome               String?
-  classificacao               ClassificacaoCategoria?
   id                          String                       @id @default(uuid())
   // Número sequencial exibido ao usuário (OP-0042) e critério de ordem de registro.
   numero                      Int                          @unique @default(autoincrement())
@@ -494,7 +483,6 @@ model ItemOperacao {
   categoria         Categoria?              @relation(fields: [categoriaId], references: [id])
   categoriaId       String?
   categoriaNome     String?
-  classificacao     ClassificacaoCategoria?
   // Centro de custo do item. Null = herda Operacao.centroCustoId. Nome congelado
   // como snapshot, igual a categoriaNome.
   centroCusto       CentroCusto?            @relation(fields: [centroCustoId], references: [id])

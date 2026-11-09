@@ -35,7 +35,7 @@ const config: Config = {
     { id: uid(7), nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
     { id: uid(8), nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
+  categorias: [{ id: uid(11), nome: "Insumos", ativo: true, ordem: 0, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0 } }],
   produtos: [],
   produtosCadastro: [{ id: uid(30), nome: "Ração 22%", usoNutricional: true, unidade: "KG", minimoEstoque: "500", categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
@@ -427,14 +427,17 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
 });
 
 describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
-  it("cria categoria sem exigir grupo dentro da configuração financeira", async () => {
+  it("não salva categoria sem grupo e mostra a mensagem de obrigatoriedade", async () => {
     await montar("categorias");
     fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
     const painel = await screen.findByRole("dialog");
-    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
-    await alterarControle(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
+    await alterarControle(within(painel).getByLabelText(/Nome da categoria/), { target: { value: "Ração" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoId: null, classificacao: "CUSTEIO", ordem: 1 }));
+    expect((await within(painel).findAllByText("Selecione o grupo da categoria")).length).toBeGreaterThan(0);
+    expect(criarCategoria).not.toHaveBeenCalled();
+    await alterarControle(within(painel).getByLabelText(/Grupo de categorias/), { target: { value: uid(40) } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoId: uid(40), ordem: 1 }));
   });
 
   it("associa o grupo no cadastro da categoria e não oferece grupos inativos", async () => {
@@ -449,15 +452,15 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith(expect.objectContaining({ grupoId: uid(40) })));
   });
 
-  it("conserva grupo inativo na edição e permite deixar a categoria sem grupo", async () => {
+  it("conserva grupo inativo na edição e permite trocar por um grupo ativo", async () => {
     vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ ...config, categorias: [{ ...config.categorias[0], grupoId: uid(41), grupo: config.gruposCategorias![1] }] });
     await montar("categorias");
     fireEvent.click(primeiro("button", "Editar Insumos"));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByRole("combobox", { name: "Grupo de categorias" }).textContent).toContain("Grupo antigo (inativo)");
-    await escolherSelect(painel, "Grupo de categorias", "Sem grupo");
+    await escolherSelect(painel, "Grupo de categorias", "Criação Animal");
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar categoria" }));
-    await waitFor(() => expect(atualizarCategoria).toHaveBeenCalledWith(uid(11), expect.objectContaining({ grupoId: null })));
+    await waitFor(() => expect(atualizarCategoria).toHaveBeenCalledWith(uid(11), expect.objectContaining({ grupoId: uid(40) })));
   });
 
   it("cria grupos nas configurações", async () => {

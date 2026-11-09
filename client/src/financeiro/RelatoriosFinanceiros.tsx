@@ -29,12 +29,13 @@ const dataHora = (valor: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle
 const DESCRICAO = "Central dos relatórios emitidos: cada um preserva o recorte, o autor e o PDF gerado.";
 
 function recorte(r: RelatorioFinanceiro) {
-  const p = r.parametros;
+  // Relatórios antigos guardam `classificacoes`; os novos guardam `grupoIds`.
+  const p = r.parametros as typeof r.parametros & { classificacoes?: string[] };
   const partes = [
     p.tipos?.length ? `${p.tipos.length} tipo${p.tipos.length > 1 ? "s" : ""}` : null,
     p.centroCustoIds?.length ? `${p.centroCustoIds.length} centro${p.centroCustoIds.length > 1 ? "s" : ""}` : null,
     p.categoriaIds?.length ? `${p.categoriaIds.length} categoria${p.categoriaIds.length > 1 ? "s" : ""}` : null,
-    p.classificacoes?.length ? p.classificacoes.map((c) => c === "CUSTEIO" ? "custeio" : c === "INVESTIMENTO" ? "investimento" : "não classificadas").join(" + ") : null,
+    p.grupoIds?.length ? `${p.grupoIds.length} grupo${p.grupoIds.length > 1 ? "s" : ""}` : p.classificacoes?.length ? p.classificacoes.map((c) => c === "CUSTEIO" ? "custeio" : c === "INVESTIMENTO" ? "investimento" : "não classificadas").join(" + ") : null,
   ].filter(Boolean);
   return partes.length ? partes.join(" · ") : "Sem filtros";
 }

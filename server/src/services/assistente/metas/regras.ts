@@ -104,7 +104,7 @@ export function indicadoresPermitidos(u: UsuarioMeta) {
       ? temArea(u, "pecuaria")
       : temArea(u, "financeiro") &&
         (u.dono || u.abas.includes("dashboard")) &&
-        (["verValores", "verInvestimento", "verSalarios"] as const).every((f) =>
+        (["verValores", "verSalarios"] as const).every((f) =>
           temPermissao(u, f),
         ),
   );

@@ -27,7 +27,6 @@ function erroDaApi(erro: unknown, setErros: (erros: Erros) => void, setErroGeral
 export function FormCategoria({ categoria, grupos = [], ordemInicial, onSalvo, onFechar }: { categoria: Categoria | null; grupos?: GrupoCategoria[]; ordemInicial: number; onSalvo: () => Promise<void> | void; onFechar: () => void }) {
   const [nome, setNome] = useState(categoria?.nome ?? "");
   const [grupoId, setGrupoId] = useState(categoria?.grupoId ?? "");
-  const [classificacao, setClassificacao] = useState<"" | "CUSTEIO" | "INVESTIMENTO">(categoria?.classificacao ?? "");
   const [erros, setErros] = useState<Erros>({});
   const [erroGeral, setErroGeral] = useState("");
   const [salvando, setSalvando] = useState(false);
@@ -36,9 +35,10 @@ export function FormCategoria({ categoria, grupos = [], ordemInicial, onSalvo, o
     e.preventDefault();
     const novosErros: Erros = {};
     if (nome.trim().length < 2) novosErros.nome = "Informe um nome com pelo menos 2 caracteres";
+    if (!grupoId) novosErros.grupoId = "Selecione o grupo da categoria";
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) return;
     emCurso.current = true; setSalvando(true); setErroGeral("");
-    const dados = { nome: nome.trim(), grupoId: grupoId || null, classificacao: classificacao || null, ordem: categoria?.ordem ?? ordemInicial };
+    const dados = { nome: nome.trim(), grupoId, ordem: categoria?.ordem ?? ordemInicial };
     try {
       if (!categoria) await criarCategoria(dados);
       else await atualizarCategoria(categoria.id, dados);
@@ -52,9 +52,7 @@ export function FormCategoria({ categoria, grupos = [], ordemInicial, onSalvo, o
     <form id={formId} onSubmit={submeter} className="grid gap-4" noValidate>
       <ErrorBox erro={erroGeral || null} />
       <CampoFormulario id="categoria-nome" rotulo="Nome da categoria" obrigatorio erro={erros.nome}>{(p) => <Input {...p} required maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Insumos" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="categoria-grupo" rotulo="Grupo de categorias" erro={erros.grupoId}>{(p) => <SelectCampo {...p} value={grupoId} onValueChange={setGrupoId} className={classeInput}><option value="">Sem grupo</option>{grupos.filter(g => g.ativo || g.id === categoria?.grupoId).map(g => <option key={g.id} value={g.id} disabled={!g.ativo && g.id !== grupoId}>{g.nome}{!g.ativo ? " (inativo)" : ""}</option>)}</SelectCampo>}</CampoFormulario>
-      <CampoFormulario id="categoria-classificacao" rotulo="Classificação" ajuda="A direção financeira continua sendo definida pelo tipo da operação.">{(p) => <SelectCampo {...p} value={classificacao} onValueChange={(valor) => setClassificacao(valor as typeof classificacao)} className={classeInput}><option value="">Não classificada</option><option value="CUSTEIO">Custeio</option><option value="INVESTIMENTO">Investimento</option></SelectCampo>}</CampoFormulario>
-
+      <CampoFormulario id="categoria-grupo" rotulo="Grupo de categorias" obrigatorio erro={erros.grupoId}>{(p) => <SelectCampo {...p} value={grupoId} onValueChange={setGrupoId} className={classeInput}><option value="" disabled>Selecione o grupo</option>{grupos.filter(g => g.ativo || g.id === categoria?.grupoId).map(g => <option key={g.id} value={g.id} disabled={!g.ativo && g.id !== grupoId}>{g.nome}{!g.ativo ? " (inativo)" : ""}</option>)}</SelectCampo>}</CampoFormulario>
     </form>
   </PainelCadastro>;
 }

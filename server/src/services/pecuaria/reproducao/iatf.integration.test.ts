@@ -28,7 +28,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
       data: { nome: `IATF ${token}` },
     });
     const categoria = await prisma.categoria.create({
-      data: { nome: `Produtos IATF ${token}`, classificacao: "CUSTEIO" },
+      data: { nome: `Produtos IATF ${token}` },
     });
     const produto = await prisma.produto.create({
       data: {

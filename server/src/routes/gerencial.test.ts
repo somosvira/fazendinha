@@ -6,7 +6,7 @@ vi.mock("../services/propriedade.js",async original=>({...await original<typeof 
 import { gerencialRouter } from "./gerencial.js";
 import { permissoesGerencial, sinalizarLacunasNutricao } from "../services/gerencial/resumo.js";
 import type { UsuarioContexto } from "../services/auth/sessao.js";
-const perfil=(areas=["pecuaria","financeiro"],flags=["verValores","verSalarios","verInvestimento"]):UsuarioContexto=>({id:1,nome:"Ana",email:"",papel:"consulta",abas:["dashboard"],areas,flags,status:"ATIVO",dono:false});
+const perfil=(areas=["pecuaria","financeiro"],flags=["verValores","verSalarios"]):UsuarioContexto=>({id:1,nome:"Ana",email:"",papel:"consulta",abas:["dashboard"],areas,flags,status:"ATIVO",dono:false});
 const app=(u:UsuarioContexto|null)=>new Hono().use("*",async(c,next)=>{if(u)c.set("usuario" as never,u as never);await next();}).route("/",gerencialRouter);
 const url="/gerencial/resumo?inicio=2026-10-01&fim=2026-10-17";
 beforeEach(()=>{vi.clearAllMocks();mocks.escopo.mockResolvedValue(3);mocks.obter.mockResolvedValue({versao:"GERENCIAL_V1"});});

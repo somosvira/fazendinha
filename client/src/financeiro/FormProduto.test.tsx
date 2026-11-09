@@ -31,12 +31,12 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const categorias = [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }];
+const categorias = [{ id: uid(11), nome: "Insumos" as const, ativo: true, ordem: 0, usoGenetico: false }];
 const centros = [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: uid(7), nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
   id: uid(99), nome: "Sal mineral", unidade: "KG",
-  categoriaId: uid(11), categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
+  categoriaId: uid(11), categoriaNome: "Insumos" as const, ativo: true,
   categoria: { id: uid(11), nome: "Insumos", usoGenetico: false },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };

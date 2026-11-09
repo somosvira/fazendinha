@@ -108,7 +108,7 @@ describe("schemas de conta e parceiro (cadastros)", () => {
 
 describe("schemas de categorias e centros de custo", () => {
   it("normaliza os defaults na criação", () => {
-    expect(categoriaCadastroSchema.parse({ nome: " Insumos " })).toEqual({ nome: "Insumos", classificacao: null, ordem: 0 });
+    expect(categoriaCadastroSchema.parse({ nome: " Insumos ", grupoId: uid(8) })).toEqual({ nome: "Insumos", grupoId: uid(8), ordem: 0 });
     expect(centroCustoSchema.parse({ nome: " Leite " })).toEqual({ nome: "Leite", ordem: 0 });
   });
 
@@ -117,8 +117,17 @@ describe("schemas de categorias e centros de custo", () => {
     expect(patchCentroCustoSchema.parse({ ativo: false })).toEqual({ ativo: false });
   });
 
+  it("exige o grupo da categoria e não permite retirá-lo na edição", () => {
+    expect(categoriaCadastroSchema.safeParse({ nome: "Insumos" }).error?.issues[0]).toMatchObject({ path: ["grupoId"], message: "Selecione o grupo da categoria" });
+    expect(patchCategoriaCadastroSchema.safeParse({ grupoId: null }).success).toBe(false);
+  });
+
+  it("descarta a antiga classificação enviada por clientes desatualizados", () => {
+    expect(categoriaCadastroSchema.parse({ nome: "Insumos", grupoId: uid(8), classificacao: "CUSTEIO" })).not.toHaveProperty("classificacao");
+  });
+
   it("rejeita nomes curtos, ordem negativa", () => {
-    expect(categoriaCadastroSchema.safeParse({ nome: "A" }).success).toBe(false);
+    expect(categoriaCadastroSchema.safeParse({ nome: "A", grupoId: uid(8) }).success).toBe(false);
     expect(centroCustoSchema.safeParse({ nome: "Leite", ordem: -1 }).success).toBe(false);
   });
 });

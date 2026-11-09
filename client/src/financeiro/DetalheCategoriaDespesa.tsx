@@ -24,7 +24,6 @@ function LancamentoCategoria({ linha, inicio, fim }: { linha: Linha; inicio: str
     </div>
     <div className="flex flex-wrap items-center gap-2 text-sm sm:pl-12">
       <Badge variant="secondary" className="max-w-full whitespace-normal break-words"><Layers className="size-3" aria-hidden="true" />{linha.categoria}</Badge>
-      <Badge variant="outline" className={`whitespace-normal ${linha.classificacao === "INVESTIMENTO" ? "border-[var(--rural)] bg-[color-mix(in_srgb,var(--rural)_8%,transparent)]" : linha.classificacao === "CUSTEIO" ? "border-[var(--rural)] bg-[color-mix(in_srgb,var(--rural)_8%,transparent)]" : ""}`}>{linha.classificacao === "CUSTEIO" ? "Custeio" : linha.classificacao === "INVESTIMENTO" ? "Investimento" : "Sem classificação"}</Badge>
       <span className="break-words text-muted-foreground">Centro: {linha.centroCusto}</span>
     </div>
     <div className="flex items-center justify-between border-t border-border pt-2 sm:hidden"><strong className="fin-valor tabular-nums">{brl(linha.valor)}</strong>{href && <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />}</div>

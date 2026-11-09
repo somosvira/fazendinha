@@ -62,8 +62,7 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
   { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 210, celula: (c) => <strong>{c.nome}</strong> },
-  { chave: "grupo", titulo: "Grupo", larguraMinima: 160, celula: (c) => c.grupo?.nome ?? "Sem grupo" },
-  { chave: "classificacao", titulo: "Classificação", alinhamento: "centro", larguraMinima: 130, celula: (c) => <Pill>{c.classificacao === "INVESTIMENTO" ? "Investimento" : c.classificacao === "CUSTEIO" ? "Custeio" : "Não classificada"}</Pill> },
+  { chave: "grupo", titulo: "Grupo", larguraMinima: 160, celula: (c) => c.grupo?.nome ?? <Pill tone="amber">Sem grupo</Pill> },
   { chave: "referencias", titulo: "Vínculos", alinhamento: "centro", larguraMinima: 100, celula: (c) => (c._count?.operacoes ?? 0) + (c._count?.produtos ?? 0) + (c._count?.itens ?? 0) },
   { chave: "situacao", titulo: "Situação", alinhamento: "centro", larguraMinima: 100, celula: (c) => <Pill tone={c.ativo ? "green" : "neutral"}>{c.ativo ? "Ativa" : "Inativa"}</Pill> },
   { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 110, acoes: true, celula: (c) => <AcoesLinha nome={c.nome} ativo={c.ativo} onEditar={() => editar(c)} onAlternar={() => alternar(c)} /> },
@@ -204,7 +203,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: pe
     : <Button disabled={processando} onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira colorida><div className="financeiro-configuracoes">
-    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e classificações usados nos lançamentos." acao={podeEditar ? acao : undefined} />
+    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e categorias usados nos lançamentos." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="min-w-0">

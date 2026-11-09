@@ -22,7 +22,6 @@ function OperacaoDaLinha({ linha }: { linha: LinhaComposicaoRelatorio }) {
 
 const POR_PAGINA = 15;
 const dataHora = (valor: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(valor));
-const CLASSIFICACAO: Record<string, string> = { CUSTEIO: "Custeio", INVESTIMENTO: "Investimento" };
 
 type LinhaIndexada = LinhaComposicaoRelatorio & { indice: number };
 const colunasItens: ColunaTabela<LinhaIndexada>[] = [
@@ -32,7 +31,7 @@ const colunasItens: ColunaTabela<LinhaIndexada>[] = [
   { chave: "quantidade", titulo: "Quantidade", alinhamento: "direita", larguraMinima: 110, celula: (l) => l.quantidade ? <span className="whitespace-nowrap">{l.quantidade}{l.unidade ? ` ${l.unidade}` : ""}</span> : "—" },
   { chave: "categoria", titulo: "Categoria", larguraMinima: 150, celula: (l) => l.categoria },
   { chave: "centro", titulo: "Centro de custo", larguraMinima: 150, celula: (l) => l.centroCusto },
-  { chave: "classificacao", titulo: "Classificação", larguraMinima: 120, celula: (l) => l.classificacao ? <span className="relatorio-item-classificacao">{CLASSIFICACAO[l.classificacao] ?? l.classificacao}</span> : "—" },
+  { chave: "grupo", titulo: "Grupo", larguraMinima: 120, celula: (l) => l.grupo ? <span className="relatorio-item-grupo">{l.grupo}</span> : "—" },
   { chave: "valor", titulo: "Valor", alinhamento: "direita", celula: (l) => <strong className="whitespace-nowrap">{brl(l.valor)}</strong> },
 ];
 
@@ -86,7 +85,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
     ["Centros de custo", snapshot.filtros.centrosCusto],
     ["Parceiros", snapshot.filtros.parceiros ?? []],
     ["Categorias", snapshot.filtros.categorias],
-    ["Classificação", snapshot.filtros.classificacoes],
+    ["Grupos de categorias", snapshot.filtros.grupos],
   ] as const).filter(([, valores]) => valores.length > 0) : [];
   const leitura = snapshot ? REGIMES_RELATORIO.find(r => r.id === snapshot.configuracao.regime)?.rotulo ?? snapshot.configuracao.regime : "";
   return <PaginaFinanceira colorida>
@@ -124,8 +123,8 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
             </div>}
             <GraficosCaixaRelatorio dto={snapshot.gerencial} informacao={(titulo, texto) => <InformacaoRelatorio titulo={titulo}><p>{texto}</p></InformacaoRelatorio>} />
             <div className="relatorio-compras">
-              <section aria-label="Compras e serviços" className="relatorio-indicador"><h2>Compras e serviços<InformacaoRelatorio titulo="Compras e serviços"><p>Itens confirmados, pela data da operação. Custeio e investimento compõem este valor.</p></InformacaoRelatorio></h2><strong>{brl(snapshot.composicao.despesas.total)}</strong>
-                <dl className="relatorio-classificacao"><div><dt>Custeio</dt><dd>{brl(snapshot.composicao.despesas.custeio)}</dd></div><div><dt>Investimento</dt><dd>{brl(snapshot.composicao.despesas.investimento)}</dd></div>{Number(snapshot.composicao.despesas.semClassificacao) !== 0 && <div><dt>Não classificada</dt><dd>{brl(snapshot.composicao.despesas.semClassificacao)}</dd></div>}</dl>
+              <section aria-label="Compras e serviços" className="relatorio-indicador"><h2>Compras e serviços<InformacaoRelatorio titulo="Compras e serviços"><p>Itens confirmados, pela data da operação. Os grupos de categorias compõem este valor.</p></InformacaoRelatorio></h2><strong>{brl(snapshot.composicao.despesas.total)}</strong>
+                <dl className="relatorio-grupos">{snapshot.composicao.despesas.porGrupo.map((grupo) => <div key={grupo.nome}><dt>{grupo.nome}</dt><dd>{brl(grupo.total)}</dd></div>)}</dl>
                 <button className="relatorio-atalho" onClick={() => { setSecaoAnalise("compras"); mudarAba("analises"); }}>Ver análise por categoria<ArrowRight size={15} aria-hidden="true" /></button>
               </section>
               <PizzaComprasRelatorio titulo="Compras por categoria" grupos={snapshot.composicao.despesas.porCategoria} />

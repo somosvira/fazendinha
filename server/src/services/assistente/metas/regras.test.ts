@@ -46,7 +46,7 @@ describe("metas — definição e ausência", () => {
       indicadoresPermitidos({
         ...usuario,
         areas: ["financeiro"],
-        flags: ["verValores", "verInvestimento", "verSalarios"],
+        flags: ["verValores", "verSalarios"],
         abas: ["dashboard"],
       }),
     ).toHaveLength(1);
@@ -56,7 +56,7 @@ describe("metas — definição e ausência", () => {
       dono: false,
       areas: ["financeiro"],
       abas: ["dashboard"],
-      flags: ["verValores", "verInvestimento", "verSalarios"],
+      flags: ["verValores", "verSalarios"],
     };
     for (const flag of financeiro.flags)
       expect(

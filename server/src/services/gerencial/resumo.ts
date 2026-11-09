@@ -15,7 +15,7 @@ export function permissoesGerencial(u:UsuarioContexto){
   const financeiro=temArea(u,"financeiro");const pecuaria=temArea(u,"pecuaria");const valores=financeiro&&temPermissao(u,"verValores");
   // Não existe marcação semântica de sigilo salarial nas categorias atuais.
   // Sem essa permissão, um total de caixa permite inferir valores protegidos.
-  const caixa=valores&&(u.dono||u.abas.includes("dashboard"))&&temPermissao(u,"verSalarios")&&temPermissao(u,"verInvestimento");
+  const caixa=valores&&(u.dono||u.abas.includes("dashboard"))&&temPermissao(u,"verSalarios");
   return {acesso:pecuaria||(financeiro&&(u.dono||u.abas.includes("dashboard"))),caixa,estoque:valores,nutricao:pecuaria&&valores,custos:pecuaria&&valores,clinico:pecuaria};
 }
 /** Uma fonte sem recorte não pode desaparecer da cobertura do agregado. */
