@@ -34,12 +34,24 @@ describe("cobertura de estoque das dietas", () => {
     const partida = (id: string, validade: string | null, saldo: number) => ({ id, codigo: id, validade, saldo: String(saldo), origemRastreio: "ENTRADA" }) as PartidaNutricional;
     // 10 kg/dia a partir de 04/11: até 06/11 (3 dias) usa 30 de 50; até 30/11 cabem mais 240, que gasta os 100 do segundo lote.
     const partidas = [partida("b", "2026-11-30", 100), partida("a", "2026-11-06", 50), partida("sem", null, 500)];
-    expect(perdaPorValidade(partidas, 10, "2026-11-04")).toEqual({ vencendo: 20, proximaValidade: "2026-11-06" });
+    expect(perdaPorValidade(partidas, 10, "2026-11-04")).toEqual({ vencendo: 20, proximaValidade: "2026-11-06", primeiraPerda: "2026-11-06" });
     const lotes = [resumo("a", 1, 10, "d")];
     const c = calcularCobertura(lotes, [dieta("d", [["racao", "1"]])], new Map([[1, [saldo("racao", 650)]]]), new Map([["1:racao", partidas]]), "2026-11-04");
     // 650 − 20 vencendo = 630 utilizáveis a 10 kg/dia.
     expect(c.get("a")!.ingredientes[0]).toMatchObject({ vencendo: 20, dias: 63 });
-    expect(ingredientesEmFalta(c, lotes).map(i => i.produtoId)).toEqual(["racao"]);
+    expect(ingredientesEmFalta(c, lotes, "2026-11-04").map(i => i.produtoId)).toEqual(["racao"]);
+  });
+  it("perda por validade distante não vira alerta; só a que vence nos próximos 60 dias", () => {
+    const partida = (id: string, validade: string, saldo: number) => ({ id, codigo: id, validade, saldo: String(saldo), origemRastreio: "ENTRADA" }) as PartidaNutricional;
+    const lotes = [resumo("a", 1, 10, "d")];
+    const cobertura = (validade: string) => calcularCobertura(lotes, [dieta("d", [["racao", "1"]])], new Map([[1, [saldo("racao", 10000)]]]), new Map([["1:racao", [partida("x", validade, 10000)]]]), "2026-11-04");
+    // Vence em quase 2 anos: perde parte do saldo, mas ainda não pede ação.
+    const longe = cobertura("2028-10-20");
+    expect(longe.get("a")!.ingredientes[0].vencendo).toBeGreaterThan(0);
+    expect(ingredientesEmFalta(longe, lotes, "2026-11-04")).toEqual([]);
+    // Vence em 04/12: 31 dias de uso contando o da validade, 310 kg usados e 9.690 kg perdidos.
+    const perto = cobertura("2026-12-04");
+    expect(ingredientesEmFalta(perto, lotes, "2026-11-04").map(i => [i.produtoId, i.vencendo])).toEqual([["racao", 9690]]);
   });
   it("custo diário previsto por lote, consumo somado das dietas e projeção do mês", () => {
     const lotes = [resumo("lactantes", 1, 10, "lactacao"), resumo("novilhas", 1, 5, "crescimento")];
@@ -49,7 +61,7 @@ describe("cobertura de estoque das dietas", () => {
     expect(c.get("lactantes")).toMatchObject({ custoDia: 110, custoParcial: false });
     // Novilhas: só a silagem tem custo (20 × 0,5); o mineral não tem custo no estoque.
     expect(c.get("novilhas")).toMatchObject({ custoDia: 10, custoParcial: true });
-    expect(custoPrevisto(lotes, c)).toEqual({ porAnimalDia: 8, totalDia: 120, parcial: true });
+    expect(custoPrevisto(lotes, c)).toEqual({ porAnimalDia: 8, totalDia: 120, parcial: true, semCusto: 0 });
     const consumo = consumoDasDietas(c, "2026-11-04");
     expect(consumo.diasNoMes).toBe(30);
     expect(consumo.itens.find(i => i.produtoId === "silagem")).toMatchObject({ consumoSitioDia: 120, mesPrevisto: 3600, custoDia: 60, custoMes: 1800 });

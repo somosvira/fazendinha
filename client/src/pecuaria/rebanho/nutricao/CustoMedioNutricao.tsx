@@ -14,7 +14,9 @@ export function custoPrevisto(lotes: ResumoNutricional[], cobertura: Map<string,
   const base = lotes.filter(r => cobertura.get(r.lote.id)?.custoDia != null && r.lote.animaisAtivos > 0);
   const animais = base.reduce((n, r) => n + r.lote.animaisAtivos, 0);
   const total = base.reduce((n, r) => n + cobertura.get(r.lote.id)!.custoDia!, 0);
-  return animais ? { porAnimalDia: total / animais, totalDia: total, parcial: base.some(r => cobertura.get(r.lote.id)!.custoParcial) } : null;
+  // Lotes com dieta mas sem nenhum ingrediente com custo ficam fora da média; o cartão avisa quantos.
+  const semCusto = lotes.filter(r => r.vigente && r.lote.animaisAtivos > 0 && cobertura.get(r.lote.id)?.custoDia == null).length;
+  return animais ? { porAnimalDia: total / animais, totalDia: total, parcial: base.some(r => cobertura.get(r.lote.id)!.custoParcial), semCusto } : null;
 }
 
 /** Custo do mês corrente: o previsto pelas baixas diárias e o que já foi baixado e confirmado; o mês anterior como referência. */
@@ -32,9 +34,9 @@ export function CustoMedioNutricao({ lotes, cobertura }: { lotes: ResumoNutricio
       <strong>Já baixado</strong>: o que já saiu do estoque em {mes} até ontem — baixas diárias efetivadas e fechamentos confirmados com custo apurado — dividido pelos animal-dias desses dias.
     </>} /></dt>
     {cobertura === undefined ? <dd><Skeleton className="h-7 w-28" /></dd> : <dd>{previsto ? <>{custoTexto(previsto.porAnimalDia.toFixed(2))}<span className="dietas-resumo-unidade"> /animal/dia previsto</span></> : "Sem custo previsto"}</dd>}
-    {previsto && <small>{custoTexto(previsto.totalDia.toFixed(2))} por dia nos lotes{previsto.parcial ? " · há ingredientes sem custo" : ""}</small>}
+    {previsto && <small>{custoTexto(previsto.totalDia.toFixed(2))} por dia nos lotes{previsto.parcial ? " · há ingredientes sem custo" : ""}{previsto.semCusto ? ` · ${previsto.semCusto} ${previsto.semCusto === 1 ? "lote sem custo no estoque fica" : "lotes sem custo no estoque ficam"} fora` : ""}</small>}
     {consulta.carregando ? <small><Skeleton className="h-4 w-36" /></small> : consulta.erro ? <small>Baixado indisponível</small> : <>
-      <small>Já baixado: {atual?.custoPorAnimalDia != null ? <strong>{custoTexto(atual.custoPorAnimalDia)}/animal/dia</strong> : "nada baixado no mês ainda"}</small>
+      <small>Já baixado no mês: {atual?.custoPorAnimalDia != null ? <strong>{custoTexto(atual.custoPorAnimalDia)}/animal/dia</strong> : "nada ainda"}</small>
       {anterior?.custoPorAnimalDia != null && <small>{MESES[Number(anterior.inicio.slice(5, 7)) - 1][0].toUpperCase() + MESES[Number(anterior.inicio.slice(5, 7)) - 1].slice(1)}: {custoTexto(anterior.custoPorAnimalDia)}/animal/dia</small>}
     </>}
   </div>;
