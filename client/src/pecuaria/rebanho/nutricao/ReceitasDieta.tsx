@@ -1,6 +1,9 @@
 import { BookOpen, Plus } from "lucide-react";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
-import { BarraConsulta, SituacoesConsulta } from "@/financeiro/BarraConsulta";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
+import { CampoFiltro } from "@/financeiro/PainelFiltros";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -27,6 +30,8 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   const { params, atualizar } = useFiltrosNutricionais();
   const busca = params.get("buscaReceita") ?? "";
   const situacao = params.get("situacaoReceita") ?? "";
+  // A situação fica no painel de Filtros, como nas demais consultas.
+  const edicaoSituacao = useRascunhoConsulta({ situacao }, { situacao: "" }, v => atualizar({ situacaoReceita: v.situacao }));
   const visualizacao = useVisualizacaoConsulta("receitasVisualizacao", "nutricao", "tabela");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -56,15 +61,15 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   const receitas = consulta.dados?.filter((d) => d.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "publicadas") === !!d.publicadaEm)) ?? [];
   return <div className="nutricao-receitas nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="cartoes" label="Carregando receitas de dieta…" />
     {url.form && !consulta.carregando && !consulta.erro && url.form !== "nova" && !dieta && <p role="alert">Receita não encontrada. <Button secondary onClick={() => abrir()}>Voltar às receitas</Button></p>}
-    {consulta.dados && <><BarraConsulta acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /><SituacoesConsulta rotulo="Situação" valor={situacao} onChange={valor=>atualizar({situacaoReceita:valor})} opcoes={[{valor:"",texto:"Todas"},{valor:"publicadas",texto:"Publicadas"},{valor:"rascunhos",texto:"Rascunhos"}]} /><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização das receitas" /></BarraConsulta>
+    {consulta.dados && <><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização das receitas" /></BarraConsulta>
       {!receitas.length ? <Panel className="nutricao-vazio">{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Panel> : visualizacao.modo === "tabela" ? <TabelaFinanceira rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
         { chave: "receita", titulo: "Receita", principal: true, larguraFlexivel: true, celula: (d) => nomeReceita(d) },
         { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (d) => `v${d.versao}` },
         { chave: "situacao", titulo: "Situação", celula: (d) => <Pill tone={d.publicadaEm ? "green" : "amber"}>{d.publicadaEm ? "Publicada" : "Rascunho"}</Pill> },
         { chave: "ingredientes", titulo: "Ingredientes", alinhamento: "direita", celula: (d) => d.itens.length },
         { chave: "total", titulo: "Total por cabeça/dia", alinhamento: "direita", celula: (d) => totalPorCabeca(d) },
-        { chave: "uso", titulo: "Uso vigente", celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
-        { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex justify-end gap-2">{acoesReceita(d)}</div> },
+        { chave: "uso", titulo: "Uso vigente", larguraMinima: 200, celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
+        { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex flex-col items-stretch gap-2">{acoesReceita(d)}</div> },
       ]} /> : <div className="nutricao-receitas-grid">{receitas.map((d) => <Panel key={d.id} className={`nutricao-receita-card ${!d.publicadaEm ? "nutricao-receita-rascunho" : ""}`}>
         <header className="receita-identidade-nova">
           <div><h3>{nomeReceita(d)}</h3><p>v{d.versao} · {d.itens.length} {d.itens.length === 1 ? "ingrediente" : "ingredientes"} · {totalPorCabeca(d)} por cabeça/dia</p></div>

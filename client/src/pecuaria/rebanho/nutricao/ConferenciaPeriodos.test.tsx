@@ -52,7 +52,7 @@ describe("conferência nutricional dividida", () => {
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={onSalvo} />);
     fireEvent.click(screen.getByText("Conferir período"));
     await screen.findByText("Ração V3", { selector: "strong" });
-    expect(screen.getByText("110")).toBeTruthy();
+    expect(screen.getByText(/110 animal-dias/)).toBeTruthy();
     expect(screen.getAllByText(/parcial/).length).toBeGreaterThan(0);
     await alterarControle(screen.getByLabelText(/Quantidade conferida de Ração V3/), { target: { value: "0" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));

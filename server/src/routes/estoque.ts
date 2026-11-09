@@ -136,6 +136,18 @@ export const estoqueRouter = new Hono()
       return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
+  // Vários produtos numa só consulta: a cobertura da Nutrição precisava de uma chamada por ingrediente.
+  .get("/estoque/partidas/lote", zValidator("query", z.object({
+    produtoIds: z.string().transform((v) => [...new Set(v.split(",").filter(Boolean))]).pipe(z.array(z.string().uuid()).min(1).max(50)),
+    propriedadeId: z.coerce.number().int().positive().optional(),
+  })), async (c) => {
+    try {
+      const { produtoIds, propriedadeId: informado } = c.req.valid("query");
+      const propriedadeId = informado ?? await resolverEscopoLeitura(c);
+      const listas = await Promise.all(produtoIds.map((id) => partidasSvc.listarPartidas(id, propriedadeId)));
+      return c.json(Object.fromEntries(produtoIds.map((id, i) => [id, listas[i]])));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
   .get("/estoque/produtos/:id/valorizacao", zValidator("query", consultaValorizacaoSchema), async c => {
     if (!podeVerCustos(c)) return c.json({ error: "Sem permissão para consultar valores", code: "SEM_PERMISSAO" }, 403);
     try {

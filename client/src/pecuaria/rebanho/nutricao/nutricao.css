@@ -340,7 +340,7 @@
 .nutricao-conferencia-resumo dd { margin: 2px 0 0; font-weight: 650; font-variant-numeric: tabular-nums; }
 .nutricao-conferencia-resumo small { font-weight: 500; color: var(--muted-foreground); }
 .nutricao-participantes summary { cursor: pointer; color: var(--primary); font-weight: 500; width: fit-content; }
-.nutricao-conferencia-cabecalho, .nutricao-conferencia-linha { display: grid; grid-template-columns: minmax(0, 2fr) minmax(90px, .9fr) minmax(120px, 1fr) minmax(150px, 1.2fr); gap: 12px; align-items: center; }
+.nutricao-conferencia-cabecalho, .nutricao-conferencia-linha { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(90px, .8fr) minmax(120px, 1fr) minmax(80px, .6fr); gap: 12px; align-items: center; }
 .nutricao-conferencia-cabecalho { padding: 0 0 6px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
 .nutricao-conferencia-item { display: grid; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .nutricao-conferencia-item:last-of-type { border-bottom: 0; }
@@ -399,3 +399,35 @@
 .nutricao-contexto-ingredientes li small { grid-column: 1 / -1; color: var(--muted-foreground); font-weight: 400; }
 @media (max-width: 800px) { .nutricao-contexto-fechamento { grid-template-columns: minmax(0,1fr); } .nutricao-contexto-fechamento > div + div { border-left: 0; border-top: 1px solid var(--border); } }
 .nutricao-formulario > .nutricao-card-cabecalho + .nutricao-card-corpo { padding-top: 0; }
+
+/* Conferência do fechamento: faixa do conjunto, partes do intervalo e um cartão por parte. */
+.conferencia-resumo { display: grid; gap: 10px; }
+.conferencia-faixa { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.conferencia-faixa > div { padding: 8px 12px; border-radius: 8px; background: var(--campo-papel, #f7f8fa); }
+.conferencia-faixa dt { font-size: 12px; color: var(--muted-foreground); }
+.conferencia-faixa dd { margin: 0; font-size: 16px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.conferencia-partes { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.conferencia-partes li { flex: 1 1 200px; }
+.conferencia-partes a { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; color: inherit; text-decoration: none; }
+.conferencia-partes a:hover { border-color: var(--primary); }
+.conferencia-partes a > span:first-child { display: grid; }
+.conferencia-partes small { font-size: 12px; color: var(--muted-foreground); }
+.conferencia-parte-situacao { font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px; background: #eee7d8; color: #63543c; white-space: nowrap; }
+.conferencia-parte-situacao[data-pronta] { background: #e0f2ef; color: #00665f; }
+.conferencia-parte { display: grid; gap: 0; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; scroll-margin-top: 12px; }
+.conferencia-parte-cabecalho { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.conferencia-parte-cabecalho h3 { margin: 0; font-size: 15px; font-weight: 650; }
+.conferencia-parte-cabecalho span { font-size: 13px; color: var(--muted-foreground); }
+.conferencia-parte .nutricao-conferencia-cabecalho { padding: 6px 14px; background: var(--campo-papel, #f7f8fa); border-bottom: 1px solid var(--border); }
+.conferencia-parte .nutricao-conferencia-item { padding: 10px 14px; }
+.conferencia-parte .conferencia-bezerreiro { display: grid; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.conferencia-estoque { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12.5px; color: var(--muted-foreground); }
+.conferencia-estoque > svg { flex-shrink: 0; }
+.conferencia-estoque-modo { min-height: 0 !important; height: 26px; padding: 0 8px; font-size: 12.5px; width: auto; }
+.conferencia-diferenca { text-align: right; font-size: 13px; font-weight: 600; color: var(--campo-sucesso, #2f6b4f); font-variant-numeric: tabular-nums; }
+.conferencia-diferenca[data-atencao] { color: var(--campo-atencao, #775930); }
+.conferencia-partidas summary { cursor: pointer; width: fit-content; font-size: 13px; color: var(--muted-foreground); }
+.conferencia-trocar { color: var(--primary); font-weight: 600; }
+.conferencia-parte-rodape { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; padding: 10px 14px; background: var(--campo-papel, #f7f8fa); border-top: 1px solid var(--border); font-size: 13px; color: var(--muted-foreground); }
+.conferencia-parte-rodape strong { color: var(--foreground); font-weight: 650; }
+@media (max-width: 640px) { .conferencia-faixa { grid-template-columns: repeat(2, minmax(0, 1fr)); } .conferencia-diferenca { text-align: left; } }

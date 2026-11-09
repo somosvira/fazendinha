@@ -60,6 +60,8 @@ export const post = <T>(path: string, body: unknown) => req<T>(path, { method: "
 export const listarProdutosNutricionais = () => req<ProdutoNutricional[]>("/estoque/produtos?uso=nutricional&ativo=true");
 export const listarCentrosNutricionais = () => req<CentroNutricional[]>("/estoque/centros-custo");
 export const listarPartidasNutricionais = (produtoId: string, propriedadeId?: number | null) => req<PartidaNutricional[]>(`/estoque/partidas?produtoId=${encodeURIComponent(produtoId)}${propriedadeId == null ? "" : `&propriedadeId=${propriedadeId}`}`, undefined, propriedadeId === null, propriedadeId ?? undefined);
+/** Partidas de vários produtos de um sítio numa só chamada. */
+export const listarPartidasPorProduto = (produtoIds: string[], propriedadeId: number) => req<Record<string, PartidaNutricional[]>>(`/estoque/partidas/lote?produtoIds=${produtoIds.map(encodeURIComponent).join(",")}&propriedadeId=${propriedadeId}`, undefined, false, propriedadeId);
 export const listarDietas = (): Promise<Dieta[]> => compartilhada("dietas", () => req<Dieta[]>("/pecuaria/rebanho/nutricao/dietas"));
 export const criarDieta = (body: { nome: string; itens: Array<{ produtoId: string; quantidadeCabecaDia: number }> }) =>
   post<Dieta>("/pecuaria/rebanho/nutricao/dietas", body);

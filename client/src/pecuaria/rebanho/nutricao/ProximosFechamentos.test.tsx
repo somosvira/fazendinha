@@ -8,7 +8,7 @@ vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamen
 vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: mocks.meses, reprocessarMensal: vi.fn(), processadosMensais: async () => { const datas = (await mocks.meses()).itens.flatMap((m: { dias: Array<{ data: string }> }) => m.dias.map(d => d.data)).sort(); return datas.length ? { a: datas.at(-1) } : {}; } }));
 vi.mock("../../../financeiro/financeiro-ui", async (original) => ({ ...(await original<object>()), hoje: () => "2026-11-04" }));
 afterEach(cleanup);
-beforeEach(() => { vi.clearAllMocks(); mocks.status.mockResolvedValue({ habilitada: false, automacao: false }); mocks.configs.mockResolvedValue([]); mocks.meses.mockResolvedValue({ itens: [], total: 0 }); });
+beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/pecuaria/nutricao?proximosVisualizacao=tabela"); mocks.status.mockResolvedValue({ habilitada: false, automacao: false }); mocks.configs.mockResolvedValue([]); mocks.meses.mockResolvedValue({ itens: [], total: 0 }); });
 
 const lote = (id: string, nome: string) => ({ id, nome, ativo: true, propriedadeId: 1, propriedade: { id: 1, nome: "Sítio principal" } });
 const resumo = (id: string, nome: string, desde: string) => ({ lote: lote(id, nome), vigente: { id: `v-${id}`, desde, ate: null, dieta: { id: "d", nome: "Dieta", versao: 1 } }, programada: null, verValores: true, custos: {} });
@@ -19,7 +19,7 @@ describe("Próximos fechamentos", () => {
     mocks.ultimo.mockImplementation(async (id: string) => id === "a" ? { fim: "2026-11-03" } : null);
     render(<ProximosFechamentos podeLancar />);
     const linhas = await screen.findAllByRole("row");
-    expect(screen.getByText("1 lote tem consumo a fechar por período.")).toBeTruthy();
+    expect(screen.getByText("Períodos a fechar").parentElement!.textContent).toContain("1 lote");
     // Lactantes nunca fechou: de 20/10 até ontem (03/11) são 15 dias.
     expect(within(linhas[1]).getByText("Lactantes")).toBeTruthy();
     expect(within(linhas[1]).getByText("15 dias por período")).toBeTruthy();
@@ -28,6 +28,19 @@ describe("Próximos fechamentos", () => {
     expect(within(linhas[2]).getByText("Em dia")).toBeTruthy();
     expect(within(linhas[2]).queryByRole("link", { name: "Fechar período" })).toBeNull();
     expect(screen.queryByText("Sem dieta")).toBeNull();
+  });
+  it("em cartões, mostra um por lote com o que falta e a ação de fechar", async () => {
+    window.history.replaceState(null, "", "/pecuaria/nutricao?proximosVisualizacao=visual");
+    mocks.visao.mockResolvedValue({ verValores: true, lotes: [resumo("a", "Novilhas", "2026-10-01"), resumo("b", "Lactantes", "2026-10-20")] });
+    mocks.ultimo.mockImplementation(async (id: string) => id === "a" ? { fim: "2026-11-03" } : null);
+    render(<ProximosFechamentos podeLancar />);
+    const cartao = (await screen.findByRole("link", { name: "Lactantes" })).closest("article")!;
+    expect(within(cartao).getByText("A fechar", { selector: "span,div" })).toBeTruthy();
+    expect(within(cartao).getByText("15 dias por período")).toBeTruthy();
+    expect(within(cartao).getByRole("link", { name: "Fechar período" })).toBeTruthy();
+    const emDia = screen.getByRole("link", { name: "Novilhas" }).closest("article")!;
+    expect(within(emDia).queryByRole("link", { name: "Fechar período" })).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
   });
   it("lote mensal fecha por período só até a véspera da adoção", async () => {
     mocks.status.mockResolvedValue({ habilitada: true, automacao: true });

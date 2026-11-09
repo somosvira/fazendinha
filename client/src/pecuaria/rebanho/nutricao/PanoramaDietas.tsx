@@ -4,7 +4,7 @@ import { CalendarDays, Leaf, MapPin, Package, Wallet } from "lucide-react";
 import { VacaIcon } from "@/components/icons/VacaIcon";
 import { Pill } from "@/financeiro/financeiro-ui";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DIAS_ATENCAO, ingredientesEmFalta, textoCobertura, type CoberturaLote } from "./coberturaEstoque";
+import { DIAS_ATENCAO, ingredientesEmFalta, textoCobertura, type CoberturaLote, venceEmBreve } from "./coberturaEstoque";
 import type { ResumoNutricional } from "./api";
 import { custoTexto, LinkNutricional, rotaNutricao } from "./componentes";
 import { formatarDataBR } from "../lib/rotulos";
@@ -15,7 +15,7 @@ import "./panorama-dietas.css";
 export function PanoramaDietas({ lotes, situacao, filtrar, verValores = false, cobertura }: { verValores?: boolean; lotes: ResumoNutricional[]; situacao: string; filtrar: (valor: string) => void; cobertura?: Map<string, CoberturaLote> | null }) {
   const faltas = cobertura ? ingredientesEmFalta(cobertura, lotes) : [];
   const acabando = faltas.filter(i => i.dias != null && i.dias < DIAS_ATENCAO).length;
-  const vencendo = faltas.filter(i => i.vencendo > 0).length;
+  const vencendo = faltas.filter(i => venceEmBreve(i)).length;
   const com = lotes.filter(r => r.vigente).length;
   const sem = lotes.length - com;
   const animais = lotes.reduce((soma,r) => soma+r.lote.animaisAtivos,0);
@@ -24,7 +24,7 @@ export function PanoramaDietas({ lotes, situacao, filtrar, verValores = false, c
     <div><dt>Lotes com dieta</dt><dd>{com} de {lotes.length}</dd><small aria-label="Efetivo nos lotes">{animais.toLocaleString("pt-BR")} animais ativos nos lotes</small>{sem > 0 ? <button type="button" className="dietas-resumo-filtro" aria-pressed={situacao === "sem"} onClick={() => filtrar(situacao === "sem" ? "" : "sem")}>{sem} {sem === 1 ? "lote sem dieta" : "lotes sem dieta"}</button> : <small>Todos com dieta vigente</small>}</div>
     {lotes.some(r => r.vigente) && <div><dt>Estoque das dietas</dt>
       {cobertura === undefined ? <dd><Skeleton className="h-7 w-24" /></dd> : cobertura === null ? <dd className="text-sm">Indisponível</dd> : faltas.length ? <>
-        <dd className="dieta-cartao-alerta">{[acabando && `${acabando} ${acabando === 1 ? "ingrediente acabando" : "ingredientes acabando"}`, vencendo && `${vencendo} ${vencendo === 1 ? "com lote vencendo" : "com lotes vencendo"}`].filter(Boolean).join(" · ")}</dd>
+        <dd className="dieta-cartao-alerta">{[acabando && `${acabando} ${acabando === 1 ? "ingrediente acabando" : "ingredientes acabando"}`, vencendo && `${vencendo} ${vencendo === 1 ? "ingrediente vence" : "ingredientes vencem"} antes do uso`].filter(Boolean).join(" · ")}</dd>
         <small>{faltas[0].nome}: {faltas[0].dias != null && faltas[0].dias < DIAS_ATENCAO ? textoCobertura(faltas[0].dias) : `${quantidadeNutricional(String(Math.round(faltas[0].vencendo)))} ${un(faltas[0].unidade)} vencem antes do uso`}{faltas.length > 1 ? ` · e mais ${faltas.length - 1}` : ""}</small>
         <LinkNutricional className="dietas-resumo-filtro" href={rotaNutricao({ aba: "alertas" })}>Ver nos alertas</LinkNutricional>
       </> : <><dd>Em dia</dd><small>Todos os ingredientes cobrem pelo menos {DIAS_ATENCAO} dias</small></>}

@@ -5,7 +5,7 @@ import { AlertasNutricao, fechamentosParaRevisar } from "./AlertasNutricao";
 import type { Fechamento } from "./api";
 
 const mocks = vi.hoisted(() => ({ visao: vi.fn(), ultimo: vi.fn(), listar: vi.fn(), status: vi.fn(), configs: vi.fn(), dietas: vi.fn(), saldos: vi.fn() }));
-vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, ultimosFechamentos: async () => Object.fromEntries(await Promise.all((await mocks.visao()).lotes.map(async (r: { lote: { id: string } }) => [r.lote.id, (await mocks.ultimo(r.lote.id))?.fim ?? null]))), compartilhada: (_: string, ler: () => Promise<unknown>) => ler(), listarFechamentos: mocks.listar, listarDietas: mocks.dietas, listarPartidasNutricionais: async () => [] }));
+vi.mock("./api", () => ({ consultarVisaoNutricional: mocks.visao, ultimoFechamentoConfirmado: mocks.ultimo, ultimosFechamentos: async () => Object.fromEntries(await Promise.all((await mocks.visao()).lotes.map(async (r: { lote: { id: string } }) => [r.lote.id, (await mocks.ultimo(r.lote.id))?.fim ?? null]))), compartilhada: (_: string, ler: () => Promise<unknown>) => ler(), listarFechamentos: mocks.listar, listarDietas: mocks.dietas, listarPartidasNutricionais: async () => [], listarPartidasPorProduto: async () => ({}) }));
 vi.mock("../../../estoque/api", () => ({ listarSaldos: mocks.saldos }));
 vi.mock("./mensal-api", () => ({ statusMensal: mocks.status, configuracoesMensais: mocks.configs, mesesNutricionais: async () => ({ itens: [], total: 0 }), reprocessarMensal: vi.fn(), processadosMensais: async () => ({}) }));
 vi.mock("../../../financeiro/financeiro-ui", async (original) => ({ ...(await original<object>()), hoje: () => "2026-11-04" }));
@@ -21,7 +21,7 @@ const fechamento = (itens: Array<[string, string, string]>, custo: string | null
 
 describe("Alertas da nutrição", () => {
   it("marca para revisão divergências acima de 20% e custo não apurado", () => {
-    expect(fechamentosParaRevisar([fechamento([["Leite", "32", "60"]])])[0].motivos).toEqual(["Leite: conferido 60 L para 32 previstos (+88%)"]);
+    expect(fechamentosParaRevisar([fechamento([["Leite", "32", "60"]])])[0].motivos).toEqual(["Leite: conferido 60 L para 32 L previstos (+88%)"]);
     expect(fechamentosParaRevisar([fechamento([["Leite", "32", "35"]])])).toHaveLength(0);
     expect(fechamentosParaRevisar([fechamento([["Leite", "32", "32"]], null)])[0].motivos).toEqual(["Custo não apurado"]);
   });
