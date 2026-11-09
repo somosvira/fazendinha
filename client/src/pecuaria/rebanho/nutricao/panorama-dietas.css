@@ -40,3 +40,16 @@
 .dieta-cartao-estoque strong{color:var(--foreground);font-weight:650}
 .dieta-cartao-estoque strong.dieta-cartao-alerta{color:var(--campo-atraso,#8d3931)}
 .dieta-cartao>footer>a:first-child{color:var(--primary);font-weight:600;font-size:14px}
+
+/* Consumo das dietas em cartões: um por ingrediente, com o saldo de cada sítio contra o previsto no mês. */
+.consumo-cartoes{grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
+.consumo-cartao h3{font-size:16px;font-weight:650;margin:0}
+.consumo-cartao h3 a{color:inherit}
+.consumo-cartao-sitios{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.consumo-cartao-sitios li{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
+.consumo-cartao-linha{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.consumo-cartao-linha strong{font-weight:650;margin-left:auto;white-space:nowrap}
+.consumo-cartao-sitios small{font-size:12px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.consumo-cartao-barra{height:6px;border-radius:999px;background:var(--border);overflow:hidden}
+.consumo-cartao-barra span{display:block;height:100%;border-radius:inherit;background:var(--primary,#00766f)}
+.consumo-cartao-barra[data-curto] span{background:var(--campo-atraso,#8d3931)}
