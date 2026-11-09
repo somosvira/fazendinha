@@ -1,7 +1,7 @@
 import { LinkInterno } from "@/components/LinkInterno";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { CalendarDays, MapPin, Wallet } from "lucide-react";
-import { hoje, Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { consumoDasDietas, hrefProdutoEstoque, type CoberturaLote } from "./coberturaEstoque";
 import { custoTexto } from "./componentes";
 import { quantidadeNutricional, un } from "./quantidades";
@@ -31,7 +31,7 @@ function CartoesConsumo({ itens, verValores, sitios, variosSitios }: { itens: It
         {variosSitios && <p className="consulta-cartao-meta"><MapPin size={14} aria-hidden />{g.sitios.length} {g.sitios.length === 1 ? "sítio" : "sítios"}</p>}</div></header>
       <dl className="dieta-cartao-medidas">
         <div><dt><CalendarDays size={14} aria-hidden />Por dia</dt><dd>{qtd(g.porDia)} {un(g.unidade)}</dd></div>
-        {verValores && <div><dt><Wallet size={14} aria-hidden />Custo no mês</dt><dd>{g.custoMes == null ? "Sem custo" : custoTexto(g.custoMes.toFixed(2))}</dd>{g.custoMes != null && g.semCusto && <small>Parcial</small>}{g.custoMes == null && <small>Sem custo no estoque</small>}</div>}
+        {verValores && <div><dt><Wallet size={14} aria-hidden />Custo no mês</dt><dd>{g.custoMes == null ? "Sem custo" : custoTexto(g.custoMes.toFixed(2))}</dd>{g.custoMes != null && g.semCusto && <small>Parcial</small>}</div>}
       </dl>
       <ul className="consumo-cartao-sitios" aria-label={`Saldo de ${g.nome} contra o previsto no mês`}>{g.sitios.map(s => {
         const cobre = s.mesPrevisto > 0 ? Math.min(1, s.saldo / s.mesPrevisto) : 1;
@@ -50,12 +50,15 @@ function CartoesConsumo({ itens, verValores, sitios, variosSitios }: { itens: It
 /** Quanto de cada produto as dietas vigentes consomem por dia, somando os lotes de animais, e a projeção do mês. */
 export function ConsumoDietas({ cobertura, verValores, sitios }: { cobertura: Map<string, CoberturaLote>; verValores: boolean; sitios: Map<number, string> }) {
   const visualizacao = useVisualizacaoConsulta("consumo", "nutricao", "visual");
-  const { diasNoMes, itens } = consumoDasDietas(cobertura);
+  const { itens } = consumoDasDietas(cobertura);
   if (!itens.length) return null;
   const variosSitios = new Set(itens.map(i => i.propriedadeId)).size > 1;
   const custoMes = itens.reduce((s, i) => s + (i.custoMes ?? 0), 0);
   return <Panel>
-    <div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo das dietas</h2><p>Soma de todas as dietas vigentes com o efetivo de hoje. O mês tem {diasNoMes} dias{verValores && custoMes > 0 ? <>; custo previsto de <strong>{custoTexto(custoMes.toFixed(2))}</strong> no mês</> : ""}.</p></div><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização do consumo das dietas" /></div>
+    <div className="nutricao-card-cabecalho consumo-cabecalho">
+      <div className="consumo-cabecalho-titulo"><h2 className="h3">Consumo das dietas</h2><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização do consumo das dietas" /></div>
+      {verValores && custoMes > 0 && <div className="consumo-custo-previsto"><span>Custo previsto no mês</span><strong>{custoTexto(custoMes.toFixed(2))}</strong></div>}
+    </div>
     {visualizacao.modo === "visual" ? <CartoesConsumo itens={itens} verValores={verValores} sitios={sitios} variosSitios={variosSitios} /> : <TabelaFinanceira rotulo="Consumo diário das dietas vigentes" itens={itens} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
       { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: Item) => <><LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno>{variosSitios && <p className="nutricao-secundario">{sitios.get(i.propriedadeId)}</p>}</> },
       { chave: "dia", titulo: "Por dia", alinhamento: "direita", celula: (i: Item) => `${qtd(i.consumoSitioDia)} ${un(i.unidade)}` },
@@ -66,6 +69,5 @@ export function ConsumoDietas({ cobertura, verValores, sitios }: { cobertura: Ma
         { chave: "custoMes", titulo: "Custo no mês", alinhamento: "direita" as const, celula: (i: Item) => i.custoMes == null ? <span className="nutricao-secundario">—</span> : custoTexto(i.custoMes.toFixed(2)) },
       ] : []),
     ]} />}
-    <p className="nutricao-nota px-5 pb-4">Projeção do mês inteiro; hoje é dia {Number(hoje().slice(8))}. {visualizacao.modo === "visual" ? "A barra mostra quanto do previsto no mês o saldo cobre." : "Saldo em vermelho não cobre o previsto no mês."}</p>
   </Panel>;
 }

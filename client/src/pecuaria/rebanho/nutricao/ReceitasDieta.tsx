@@ -1,6 +1,9 @@
 import { BookOpen, Plus } from "lucide-react";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
-import { BarraConsulta, SituacoesConsulta } from "@/financeiro/BarraConsulta";
+import { BarraConsulta } from "@/financeiro/BarraConsulta";
+import { CampoFiltro } from "@/financeiro/PainelFiltros";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
@@ -27,6 +30,8 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   const { params, atualizar } = useFiltrosNutricionais();
   const busca = params.get("buscaReceita") ?? "";
   const situacao = params.get("situacaoReceita") ?? "";
+  // A situação fica no painel de Filtros, como nas demais consultas.
+  const edicaoSituacao = useRascunhoConsulta({ situacao }, { situacao: "" }, v => atualizar({ situacaoReceita: v.situacao }));
   const visualizacao = useVisualizacaoConsulta("receitasVisualizacao", "nutricao", "tabela");
   const [erro, setErro] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -56,7 +61,7 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
   const receitas = consulta.dados?.filter((d) => d.nome.toLocaleLowerCase("pt-BR").includes(busca.toLocaleLowerCase("pt-BR")) && (!situacao || (situacao === "publicadas") === !!d.publicadaEm)) ?? [];
   return <div className="nutricao-receitas nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="cartoes" label="Carregando receitas de dieta…" />
     {url.form && !consulta.carregando && !consulta.erro && url.form !== "nova" && !dieta && <p role="alert">Receita não encontrada. <Button secondary onClick={() => abrir()}>Voltar às receitas</Button></p>}
-    {consulta.dados && <><BarraConsulta acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /><SituacoesConsulta rotulo="Situação" valor={situacao} onChange={valor=>atualizar({situacaoReceita:valor})} opcoes={[{valor:"",texto:"Todas"},{valor:"publicadas",texto:"Publicadas"},{valor:"rascunhos",texto:"Rascunhos"}]} /><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização das receitas" /></BarraConsulta>
+    {consulta.dados && <><BarraConsulta criterios={situacao ? [{ id: "situacao", rotulo: situacao === "publicadas" ? "Publicadas" : "Rascunhos", limpar: () => atualizar({ situacaoReceita: "" }) }] : []} edicaoFiltros={edicaoSituacao} adicionais={<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação" value={edicaoSituacao.rascunho.situacao} onValueChange={v => edicaoSituacao.editar("situacao", v)}><option value="">Todas</option><option value="publicadas">Publicadas</option><option value="rascunhos">Rascunhos</option></SelectCampo></CampoFiltro>} acao={podeLancar ? <Button onClick={() => abrir("nova")}><Plus size={18} aria-hidden />Nova receita</Button> : undefined}><BuscaLista rotulo="Buscar receita" valor={busca} onChange={valor => atualizar({ buscaReceita: valor })} placeholder="Buscar receita pelo nome" /><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização das receitas" /></BarraConsulta>
       {!receitas.length ? <Panel className="nutricao-vazio">{consulta.dados.length ? "Nenhuma receita corresponde aos filtros." : "Nenhuma receita cadastrada."}</Panel> : visualizacao.modo === "tabela" ? <TabelaFinanceira rotulo="Receitas de dieta" itens={receitas} chaveDe={(d) => d.id} colunas={[
         { chave: "receita", titulo: "Receita", principal: true, larguraFlexivel: true, celula: (d) => nomeReceita(d) },
         { chave: "versao", titulo: "Versão", larguraMinima: 80, celula: (d) => `v${d.versao}` },

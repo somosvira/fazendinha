@@ -12,10 +12,6 @@
 .consulta-acoes button { min-height: var(--campo-altura); }
 /* Situação como controle segmentado: um grupo com borda, a opção ativa só tingida,
  * para não competir com o botão de ação principal da barra. */
-.consulta-situacoes { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 2px; border: 1px solid var(--border); border-radius: var(--radius-btn, 6px); background: var(--card); }
-.consulta-situacoes button { min-height: calc(var(--campo-altura) - 6px); height: auto; white-space: normal; border-color: transparent !important; box-shadow: none !important; background: transparent; color: var(--muted-foreground); font-weight: 500; }
-.consulta-situacoes button[aria-pressed="true"], .consulta-situacoes button[data-state="open"] { background: var(--accent) !important; color: var(--primary) !important; font-weight: 600; }
-.consulta-situacoes button:hover { background: var(--muted); color: var(--foreground); }
 .consulta-criterios { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 16px 12px; }
 .consulta-criterios button { height: auto; min-height: 32px; white-space: normal; text-align: left; }
 @media (max-width:1100px) {
@@ -26,13 +22,10 @@
   :root .consulta-controles > :is(.fin-filtro-busca, .consulta-busca, label:has(input[type="search"], input[aria-label^="Buscar"], input[placeholder^="Buscar"], input[placeholder^="Brinco"])) { flex: 1 1 100%; width: 100%; min-width: 0; max-width: none; }
   .consulta-controles > [data-slot="date-range-trigger"] { order: 1; }
   .consulta-controles > .consulta-mais-filtros { order: 2; margin-left: auto; }
-  .consulta-controles > .consulta-situacoes { order: 3; }
 }
 @media (max-width:639px) {
   .consulta-controles > [data-slot="date-range-trigger"] { order: 1; }
   .consulta-controles > .consulta-mais-filtros { order: 2; }
-  .consulta-controles > .consulta-situacoes { order: 3; flex: 1 1 100%; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); }
-  .consulta-controles > .consulta-situacoes button { width: 100%; height: 100%; }
 }
 @media (max-width:900px) {
   .consulta-barra :is(input:not([type=checkbox]),button) { min-height: 44px; }

@@ -53,3 +53,11 @@
 .consumo-cartao-barra{height:6px;border-radius:999px;background:var(--border);overflow:hidden}
 .consumo-cartao-barra span{display:block;height:100%;border-radius:inherit;background:var(--primary,#00766f)}
 .consumo-cartao-barra[data-curto] span{background:var(--campo-atraso,#8d3931)}
+.consumo-cabecalho{align-items:center}
+.consumo-cabecalho-titulo{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px}
+.consumo-custo-previsto{display:grid;gap:2px;margin-left:auto;padding:8px 14px;border:1px solid var(--border);border-radius:10px;background:var(--campo-papel,#f7f8fa);text-align:right}
+.consumo-custo-previsto span{font-size:12px;color:var(--muted-foreground)}
+.consumo-custo-previsto strong{font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+@media(max-width:600px){.consumo-custo-previsto{margin-left:0;width:100%;text-align:left}}
+/* O título já tem respiro embaixo; a barra de filtros logo abaixo não soma o próprio. */
+.dietas-lista-cabecalho+.consulta-barra,:root [data-design-operacional] .dietas-lista-cabecalho+.consulta-barra{padding-top:0}
