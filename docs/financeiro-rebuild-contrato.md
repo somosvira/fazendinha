@@ -214,3 +214,27 @@ O [contrato comercial do leite](pecuaria/leite-comercial.md) distingue expediç�
 A operação comercial de leite aberta é uma extensão de domínio com identidade própria por sítio/comprador/período, descrita em [leite comercial](pecuaria/leite-comercial.md). Retiradas físicas podem preceder o preço e não criam `Operacao` de valor zero, compromissos ou dinheiro. Ao fechar, `criarFechamentoPeriodoLeiteTx` reutiliza o executor normal para uma única VENDA com item agregado não estocável, centro de custo explícito e quantidade reconhecida; os detalhes conservam cada retirada. O fechamento não gera nova saída de estoque, mesmo em retry ou correção. Prévia e confirmação compartilham o cálculo Decimal do acordo.
 
 Recebimentos parciais/posteriores e seus estornos usam os serviços financeiros existentes. Corrigir o fechamento preserva suas versões e substitui a operação financeira, com data original, somente sem recebimentos ativos e com os períodos abertos; cancelamento genérico é bloqueado. Preço comercial e custo produtivo do leite permanecem medidas separadas. Histórico de VENDA/entregas anterior não é refaturado. A estrutura dessa expansão integra a baseline V5. Testes isolados e contrato SQL estrutural não comprovam aplicação/concorrência no ambiente nem homologação financeira real.
+
+### Conflitos de cadastro
+
+CPF/CNPJ de parceiro permanece único no banco. Criação e edição devolvem HTTP 409 com `campo=documento` e mensagem específica quando ocorre duplicidade, inclusive com metadados de violação de unicidade do adapter PostgreSQL. A transação mantém o cadastro e a auditoria atômicos; conflitos desconhecidos não são atribuídos a um campo por suposição.
+
+Nos formulários de contas e parceiros, uma falha de validação mantém os valores preenchidos, exibe a mensagem no rodapé à esquerda das ações e leva foco e rolagem ao primeiro campo inválido, inclusive após abrir seções recolhidas. Erros gerais permanecem também no corpo do formulário. A orientação sobre papéis usa a ajuda contextual compartilhada. Saldo e data de abertura conservam alinhamento e altura, com o DatePicker compartilhado; o texto sobre contas fora do saldo geral acompanha o checkbox. A indicação geral de campos obrigatórios foi removida, preservando as marcações e validações dos campos.
+
+### Intervalo cadastral do parceiro
+
+O cadastro usa `intervaloPagamentoDias`, inteiro de 1 a 3650 ou nulo, no campo “Intervalo em dias” quando a condição é A prazo. É uma preferência cadastral independente: não define quantidade de parcelas, não gera ou recalcula vencimentos e não altera o gerador das operações. A migração acrescenta somente a coluna e sua constraint, sem converter ou apagar dados. `prazosPagamento` permanece preservado para compatibilidade com os fluxos existentes; o formulário não o reenvia nem o modifica. Registros legados podem ser editados sem substituir suas preferências antigas; novos cadastros a prazo exigem o intervalo. Alterar a condição para À vista/sem preferência limpa somente o novo intervalo. Embalagens de produtos continuam uma proposta separada, ainda não implementada.
+
+### Composição das configurações financeiras
+
+As seis abas (Contas, Clientes e fornecedores, Produtos, Categorias, Grupos de categorias e Centros de custo) colocam a ação de cadastro da aba selecionada no cabeçalho da página. A ação respeita a permissão de edição e fica desabilitada durante processamento. A barra comum mantém busca, Filtros e Ordenar alinhados enquanto há largura; abaixo de 640 px a busca ocupa a primeira linha e os dois controles ficam juntos abaixo. Os estilos dessa composição pertencem a `configuracoes-financeiras.css`, limitados à página. Filtros, critérios ativos, ordenação, paginação e URLs continuam nos componentes e handlers existentes.
+
+No produto sanitário, “Tipo de aplicação padrão (opcional)” usa um campo de seleção com o estado vazio “Não selecionado”. O dropdown apresenta diretamente as opções do catálogo, sem busca, paginação ou botões internos, e permite limpar a referência pela opção “Não selecionado”; a escolha continua sendo uma sugestão do produto para revisão no atendimento.
+
+No perfil sanitário do produto, as carências ocupam duas linhas: Leite e Carne. Cada linha reúne as opções e, à direita, o prazo em horas somente quando Com carência é escolhido; em telas pequenas, os controles se empilham. Os dois textos explicativos repetitivos foram retirados. O controle de lotes por validade usa Sim/Não com ajuda em tooltip; em produto existente, escolher Sim continua exigindo prévia e confirmação de ativação, e um controle já ativo permanece bloqueado para desligamento. Estados desconhecidos do legado e os prazos confirmados nas aplicações permanecem preservados.
+
+Na lista de produtos das configurações financeiras, Ver no estoque é uma ação de ícone com o mesmo botão discreto das ações de edição. O link conserva sua URL e navegação independente da linha, com tooltip visual no hover/foco e nome acessível “Ver no estoque”.
+
+As ações de linha Editar, Desativar/Reativar e Ver no estoque exibem o nome em dica visual compartilhada ao passar o mouse ou focar pelo teclado, sem depender do título nativo do navegador. A dica preserva o clique da ação e a navegação dos links.
+
+As ações de produto nas configurações usam colunas de igual largura dentro da célula, mantendo distâncias iguais entre Ver no estoque, Editar e Desativar/Reativar.

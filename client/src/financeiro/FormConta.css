@@ -1,0 +1,5 @@
+.conta-calendario [data-date][aria-pressed="true"] > span {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius);
+}

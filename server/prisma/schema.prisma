@@ -307,6 +307,7 @@ model Parceiro {
   observacoes                String?
   formaPagamentoPreferida    FormaPagamento?
   condicaoPagamentoPreferida String?
+  intervaloPagamentoDias     Int?
   prazosPagamento            Int[]                   @default([])
   papeis                     ParceiroPapel[]
   ativo                      Boolean                 @default(true)

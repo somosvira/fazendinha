@@ -1,3 +1,5 @@
+import { Dica } from "@/components/Dica";
+import { Button as BotaoUI } from "@/components/ui/button";
 import { useRascunhoConsulta } from "./useRascunhoConsulta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ListaCadastroFinanceiro } from "./ListaCadastroFinanceiro";
@@ -10,6 +12,7 @@ import { FormConta, TIPO_CONTA } from "./FormConta";
 import { podeVerValoresFinanceiros } from "./permissoes";
 import { DetalheParceiroConsulta } from "./ContextoOperacao";
 import "./operacoes-consulta.css";
+import "./configuracoes-financeiras.css";
 import { FormParceiro } from "./FormParceiro";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
@@ -54,7 +57,7 @@ const colunasProdutos = (editar: (p: Produto) => void, alternar: (p: Produto) =>
   { chave: "uso", titulo: "Tipos de uso", larguraMinima: 130, celula: (p) => [p.usoGenetico && "Genético", p.usoSanitario && "Sanitário", p.usoNutricional && "Nutricional"].filter(Boolean).join(" · ") || "Geral" },
   { chave: "unidade", titulo: "Unidade", larguraMinima: 80, celula: (p) => rotuloUnidade(p.unidade) },
   { chave: "situacao", titulo: "Situação", alinhamento: "direita", larguraMinima: 100, celula: (p) => <Pill tone={p.ativo !== false ? "green" : "neutral"}>{p.ativo !== false ? "Ativo" : "Inativo"}</Pill> },
-  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 250, acoes: true, celula: (p) => <div className="flex items-center justify-end gap-2"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} className="whitespace-nowrap text-sm underline">Ver no estoque</a>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
+  { chave: "acoes", titulo: "Ações", alinhamento: "direita", larguraMinima: 140, acoes: true, celula: (p) => <div className="acoes-produto"><Dica asChild rotulo="Ver no estoque" conteudo="Ver no estoque"><BotaoUI asChild variant="ghost" className="rounded-lg p-2 text-ink-2 hover:bg-surface-2 hover:text-ink"><a href={`/estoque/produtos/${p.id}`} onClick={(e) => e.stopPropagation()} aria-label="Ver no estoque"><Package size={16} aria-hidden="true" /></a></BotaoUI></Dica>{podeEditar && <AcoesLinha nome={p.nome} ativo={p.ativo !== false} onEditar={() => editar(p)} onAlternar={() => alternar(p)} />}</div> },
 ];
 
 const colunasCategorias = (editar: (c: Categoria) => void, alternar: (c: Categoria) => void): ColunaTabela<Categoria>[] => [
@@ -196,26 +199,26 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: pe
     return fornecedorOk && centroOk && usoOk;
   });
   const acao = aba === "categorias"
-    ? <Button onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
-    : aba === "grupos" ? <Button onClick={() => abrirNovo("grupo")}><Plus size={16} /> Novo grupo</Button>
-    : <Button onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
+    ? <Button disabled={processando} onClick={() => abrirNovo("categoria")}><Plus size={16} /> Nova categoria</Button>
+    : aba === "grupos" ? <Button disabled={processando} onClick={() => abrirNovo("grupo")}><Plus size={16} /> Novo grupo</Button>
+    : <Button disabled={processando} onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
-  return <PaginaFinanceira colorida>
-    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e classificações usados nos lançamentos." />
+  return <PaginaFinanceira colorida><div className="financeiro-configuracoes">
+    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e classificações usados nos lançamentos." acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="min-w-0">
       <TabsList aria-label="Cadastros financeiros" className="fin-abas grid h-auto group-data-[orientation=horizontal]/tabs:h-auto w-full grid-cols-2 gap-1 p-1 sm:grid-cols-3 xl:grid-cols-6">{([["contas", "Contas financeiras", Building2], ["parceiros", "Clientes e fornecedores", Users], ["produtos", "Produtos", Package], ["categorias", "Categorias", Tags], ["grupos", "Grupos de categorias", Tags], ["centros", "Centros de custo", Target]] as const).map(([k, label, Icon]) => <TabsTrigger key={k} value={k} onClick={() => trocarAba(k)} className="min-h-11 whitespace-normal px-3 text-left"><Icon size={16} strokeWidth={1.8} aria-hidden="true" />{label}</TabsTrigger>)}</TabsList>
       <TabsContent value={aba}>
     <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
-      {aba === "contas" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
-      {aba === "parceiros" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="parceiros" rotulo="Clientes e fornecedores" itens={config.parceiros} camposLocais={[{chave:"papel",rotulo:"Papel do parceiro",tipo:"opcoes",obter:p=>papeisDoParceiro(p),opcoes:Object.entries(PAPEIS_PARCEIRO).map(([valor,texto])=>({valor,texto}))},{chave:"documento",naBarra:true,rotulo:"Documento",tipo:"texto",obter:p=>p.documento},{chave:"contato",naBarra:true,rotulo:"Contato",tipo:"texto",obter:p=>[p.telefone,p.email].filter(Boolean).join(" ")}]} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("parceiro", item) : undefined} termosDe={p => `${p.nome} ${p.documento ?? ""} ${p.email ?? ""} ${p.telefone ?? ""}`} />}
-      {aba === "produtos" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="produtos" rotulo="Produtos" rotuloBusca="Buscar produto" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} onAbrir={p => editar("produto", p)} edicaoFiltros={edicaoProdutos} filtrosAdicionais={<><label className="fin-filtro-campo text-sm font-medium">Fornecedor<SelectFiltro rotulo="Filtrar por fornecedor" valor={edicaoProdutos.rascunho.fornecedor} onChange={v => edicaoProdutos.editar("fornecedor", v)} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} className="fin-filtro-campo mt-1" /></label>
+      {aba === "contas" && <ListaCadastroFinanceiro parametroBusca="busca" key="contas" rotulo="Contas financeiras" itens={config.contas} colunas={colunasContas((c) => editar("conta", c), alternarConta).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("conta", item) : undefined} />}
+      {aba === "parceiros" && <ListaCadastroFinanceiro parametroBusca="busca" key="parceiros" rotulo="Clientes e fornecedores" itens={config.parceiros} camposLocais={[{chave:"papel",rotulo:"Papel do parceiro",tipo:"opcoes",obter:p=>papeisDoParceiro(p),opcoes:Object.entries(PAPEIS_PARCEIRO).map(([valor,texto])=>({valor,texto}))},{chave:"documento",naBarra:true,rotulo:"Documento",tipo:"texto",obter:p=>p.documento},{chave:"contato",naBarra:true,rotulo:"Contato",tipo:"texto",obter:p=>[p.telefone,p.email].filter(Boolean).join(" ")}]} colunas={colunasParceiros((p) => editar("parceiro", p), alternarParceiro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("parceiro", item) : undefined} termosDe={p => `${p.nome} ${p.documento ?? ""} ${p.email ?? ""} ${p.telefone ?? ""}`} />}
+      {aba === "produtos" && <ListaCadastroFinanceiro parametroBusca="busca" key="produtos" rotulo="Produtos" rotuloBusca="Buscar produto" itens={produtosFiltrados} colunas={colunasProdutos((p) => editar("produto", p), alternarProduto, podeEditar)} onAbrir={p => editar("produto", p)} edicaoFiltros={edicaoProdutos} filtrosAdicionais={<><label className="fin-filtro-campo text-sm font-medium">Fornecedor<SelectFiltro rotulo="Filtrar por fornecedor" valor={edicaoProdutos.rascunho.fornecedor} onChange={v => edicaoProdutos.editar("fornecedor", v)} opcoes={[{ valor: "", texto: "Todos os fornecedores" }, { valor: "SEM", texto: "Sem fornecedor" }, ...config.parceiros.filter((p) => papeisDoParceiro(p).includes("FORNECEDOR")).map((p) => ({ valor: String(p.id), texto: p.nome }))]} className="fin-filtro-campo mt-1" /></label>
 <label className="fin-filtro-campo text-sm font-medium">Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoProdutos.rascunho.centro} onChange={v => edicaoProdutos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: "SEM", texto: "Sem centro" }, ...config.centrosCusto.filter((c) => c.ativo).map((c) => ({ valor: String(c.id), texto: c.nome }))]} className="fin-filtro-campo mt-1" /></label>
 <label className="fin-filtro-campo text-sm font-medium">Uso<SelectFiltro rotulo="Filtrar por uso" valor={edicaoProdutos.rascunho.uso} onChange={v => edicaoProdutos.editar("uso", v)} opcoes={[{ valor: "", texto: "Todos os usos" }, { valor: "usoGenetico", texto: "Uso genético" }, { valor: "usoSanitario", texto: "Uso sanitário" }, { valor: "usoNutricional", texto: "Uso nutricional" }, { valor: "SEM", texto: "Sem uso específico" }]} className="fin-filtro-campo mt-1" /></label></>} criteriosAdicionais={[...(filtroFornecedor ? [{id:"fornecedor",rotulo:`Fornecedor: ${config.parceiros.find(p=>String(p.id)===filtroFornecedor)?.nome ?? "Sem fornecedor"}`,limpar:()=>setFiltroFornecedor("")}] : []),...(filtroCentro ? [{id:"centro",rotulo:`Centro: ${config.centrosCusto.find(c=>String(c.id)===filtroCentro)?.nome ?? "Sem centro"}`,limpar:()=>setFiltroCentro("")}] : []),...(filtroUso ? [{id:"uso",rotulo:`Uso: ${{usoGenetico:"Genético",usoSanitario:"Sanitário",usoNutricional:"Nutricional",SEM:"Sem uso específico"}[filtroUso] ?? filtroUso}`,limpar:()=>setFiltroUso("")}] : [])]} onLimparAdicionais={()=>{setFiltroFornecedor("");setFiltroCentro("");setFiltroUso("");}} />}
-      {aba === "categorias" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="categorias" rotulo="Categorias financeiras" itens={categorias} termosDe={c => `${c.nome} ${c.grupo?.nome ?? "Sem grupo"}`} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
-      {aba === "grupos" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="grupos" rotulo="Grupos de categorias" itens={grupos} colunas={colunasGrupos(g => editar("grupo", g), alternarGrupo).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("grupo", item) : undefined} />}
-      {aba === "centros" && <ListaCadastroFinanceiro parametroBusca="busca" acao={podeEditar ? acao : undefined} key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
+      {aba === "categorias" && <ListaCadastroFinanceiro parametroBusca="busca" key="categorias" rotulo="Categorias financeiras" itens={categorias} termosDe={c => `${c.nome} ${c.grupo?.nome ?? "Sem grupo"}`} colunas={colunasCategorias((c) => editar("categoria", c), alternarCategoria).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("categoria", item) : undefined} />}
+      {aba === "grupos" && <ListaCadastroFinanceiro parametroBusca="busca" key="grupos" rotulo="Grupos de categorias" itens={grupos} colunas={colunasGrupos(g => editar("grupo", g), alternarGrupo).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("grupo", item) : undefined} />}
+      {aba === "centros" && <ListaCadastroFinanceiro parametroBusca="busca" key="centros" rotulo="Centros de custo" itens={config.centrosCusto} colunas={colunasCentros((c) => editar("centro", c), alternarCentro).filter(coluna => podeEditar || !coluna.acoes)} onAbrir={podeEditar ? item => editar("centro", item) : undefined} />}
     </fieldset>
       </TabsContent>
     </Tabs>
@@ -239,5 +242,5 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: pe
       onConfirm={() => { void confirmarDesativacao(); }}
       onCancel={() => setConfirmando(null)}
     />
-  </PaginaFinanceira>;
+  </div></PaginaFinanceira>;
 }

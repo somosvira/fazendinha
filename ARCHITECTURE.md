@@ -119,3 +119,7 @@ Modais comuns de `financeiro-ui.tsx` usam `data-fin-scroll="conteudo"` para cons
 
 
 O shell compartilha gutters simétricos de 24/20/16px conforme a largura. IA Terrano (`/assistente`) e Metas (`/metas`) têm itens próprios na sidebar, sem acionador flutuante. A sidebar centraliza os controles no trilho recolhido; o seletor de sítio mantém um único fundo nesse estado. Cartões de animais apresentam identidade e contexto comprovado, preservando peso/GMD, idade e datas nos DTOs, na ficha e na tabela. Essas alterações não modificam rotas, filtros, serviços ou persistência.
+
+## Teclado nos checkboxes
+
+O componente compartilhado `client/src/components/ui/checkbox.tsx` aceita Enter para alternar a seleção, além de Espaço. Enter não submete o formulário, não repete a alternância ao manter a tecla pressionada e respeita controles desabilitados e o cancelamento pelo consumidor.

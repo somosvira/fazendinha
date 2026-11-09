@@ -49,4 +49,16 @@ describe("parceiros", () => {
     const [p] = await listarParceiros(true);
     expect(p).toEqual({ id: uid(1), nome: "A", tipo: "AMBOS", papeis: ["CLIENTE", "FORNECEDOR"], referencias: 8 });
   });
+  it("salva o intervalo sem substituir os prazos legados", async () => {
+    mocks.findUnique.mockResolvedValue({ id: uid(5), tipo: "FORNECEDOR", prazosPagamento: [30, 60], condicaoPagamentoPreferida: "A_PRAZO", _count: { operacoes: 0, compromissos: 0, transacoes: 0 } });
+    await atualizarParceiro(uid(5), { intervaloPagamentoDias: 45 }, 9);
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ data: { intervaloPagamentoDias: 45 } }));
+  });
+  it("aceita novo parceiro a prazo com somente intervalo", async () => {
+    mocks.create.mockResolvedValue({ id: uid(6), tipo: "FORNECEDOR", intervaloPagamentoDias: 30 });
+    await criarParceiro({ nome: "Parceiro teste", tipo: "FORNECEDOR", condicaoPagamentoPreferida: "A_PRAZO", intervaloPagamentoDias: 30 });
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ intervaloPagamentoDias: 30 }) }));
+    expect(mocks.create.mock.calls[0][0].data).not.toHaveProperty("prazosPagamento");
+  });
+
 });

@@ -52,6 +52,7 @@ const camposParceiro = {
   referencia: textoOpcional(240), observacoes: textoOpcional(1000),
   formaPagamentoPreferida: formaPagamentoSchema.nullable().optional(),
   condicaoPagamentoPreferida: z.enum(["A_VISTA", "A_PRAZO"]).nullable().optional(),
+  intervaloPagamentoDias: z.number().int().min(1).max(3650).nullable().optional(),
   prazosPagamento: z.array(z.number().int().min(1).max(3650)).max(24).refine((dias) => dias.every((dia, i) => i === 0 || dia > dias[i - 1]), "Informe prazos em ordem crescente, sem repetições").optional(),
 };
 

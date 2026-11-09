@@ -1,4 +1,4 @@
-import { AjudaCampo } from "@/components/Dica";
+import { AjudaCampo, Dica } from "@/components/Dica";
 import { FiltroColunaConsulta, type FiltrosColunas } from "./FiltroColunaConsulta";
 import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
@@ -154,8 +154,8 @@ export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDesce
   return <div className="flex items-center justify-end gap-1">
     {onSubir && <ShadcnButton variant="ghost" type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></ShadcnButton>}
     {onDescer && <ShadcnButton variant="ghost" type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></ShadcnButton>}
-    <ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton>
-    <ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-destructive` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton>
+    <Dica asChild rotulo={`Editar ${nome}`} conteudo="Editar"><ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton></Dica>
+    <Dica asChild rotulo={`${alternar} ${nome}`} conteudo={alternar}><ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-destructive` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton></Dica>
   </div>;
 }
 

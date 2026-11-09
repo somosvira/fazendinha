@@ -99,7 +99,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     const painel = await screen.findByRole("dialog");
     await alterarControle(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Caixa de teste" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
-    expect(within(painel).getByText("Informe a instituição financeira")).toBeTruthy();
+    expect(within(painel).getAllByText("Informe a instituição financeira")).toHaveLength(2);
     expect(criarConta).not.toHaveBeenCalled();
     expect(within(painel).queryByRole("option", { name: "Dinheiro" })).toBeNull();
     await escolherSelect(painel, "Tipo", "Caixa físico");
@@ -174,8 +174,14 @@ describe("ConfiguracoesFinanceiras — contas", () => {
 
   it("ações da linha têm dica no hover e não há setas de reordenar", async () => {
     await montar();
-    expect((primeiro("button", "Editar Banco principal") as HTMLButtonElement).title).toBe("Editar");
-    expect((primeiro("button", "Desativar Banco principal") as HTMLButtonElement).title).toBe("Desativar");
+    const editar = primeiro("button", "Editar Banco principal");
+    fireEvent.mouseEnter(editar);
+    expect(await screen.findByText("Editar", { exact: true })).toBeTruthy();
+    fireEvent.mouseLeave(editar);
+    const desativar = primeiro("button", "Desativar Banco principal");
+    fireEvent.mouseEnter(desativar);
+    expect(await screen.findByText("Desativar", { exact: true })).toBeTruthy();
+    fireEvent.mouseLeave(desativar);
     expect(screen.queryByRole("button", { name: /Mover .* para (cima|baixo)/ })).toBeNull();
   });
 
@@ -343,10 +349,20 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     const painel = await screen.findByRole("dialog");
     fireEvent.click(within(painel).getByRole("checkbox", { name: "Prestador de serviço" }));
     await alterarControle(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
-    await alterarControle(within(painel).getByLabelText("Prazos em dias"), { target: { value: "30/60" } });
+    await alterarControle(within(painel).getByLabelText("Intervalo em dias"), { target: { value: "30" } });
     await alterarControle(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
-    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
+    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", intervaloPagamentoDias: 30, formaPagamentoPreferida: "BOLETO" }));
+  });
+  it("recusa uma lista de prazos no novo intervalo único", async () => {
+    await montar("parceiros");
+    fireEvent.click(primeiro("button", "Editar Cooperativa"));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
+    await alterarControle(within(painel).getByLabelText("Intervalo em dias"), { target: { value: "30/60" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
+    expect(within(painel).getByLabelText("Intervalo em dias").getAttribute("aria-invalid")).toBe("true");
+    expect(atualizarParceiro).not.toHaveBeenCalled();
   });
   it("edição carrega nome, documento formatado, papel, telefone e e-mail", async () => {
     await montar("parceiros");
@@ -389,7 +405,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await alterarControle(within(painel).getByLabelText("E-mail"), { target: { value: "abc" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
     expect(await within(painel).findByText("E-mail inválido")).toBeTruthy();
-    expect(within(painel).getByText(/11 dígitos/)).toBeTruthy();
+    expect(within(painel).getAllByText(/11 dígitos/)).toHaveLength(2);
     expect(within(painel).getByLabelText("E-mail").getAttribute("aria-invalid")).toBe("true");
     expect(criarParceiro).not.toHaveBeenCalled();
   });
@@ -404,7 +420,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await alterarControle(within(painel).getByLabelText("Nome / razão social"), { target: { value: "Cooperativa 2" } });
     await alterarControle(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
-    expect(await within(painel).findByText("Já existe um parceiro com este CPF/CNPJ")).toBeTruthy();
+    expect(await within(painel).findAllByText("Já existe um parceiro com este CPF/CNPJ")).toHaveLength(2);
     expect(criarParceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Cooperativa 2", documento: "11222333000181", papeis: ["FORNECEDOR"], telefone: null, email: null }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });

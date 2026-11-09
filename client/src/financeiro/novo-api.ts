@@ -62,7 +62,7 @@ export type DadosParceiro = {
   papeis?: PapelParceiro[]; nomeFantasia?: string | null; pessoaContato?: string | null; telefoneWhatsapp?: boolean;
   cep?: string | null; logradouro?: string | null; numero?: string | null; complemento?: string | null;
   bairro?: string | null; cidade?: string | null; uf?: string | null; referencia?: string | null; observacoes?: string | null;
-  formaPagamentoPreferida?: string | null; condicaoPagamentoPreferida?: "A_VISTA" | "A_PRAZO" | null; prazosPagamento?: number[];
+  formaPagamentoPreferida?: string | null; condicaoPagamentoPreferida?: "A_VISTA" | "A_PRAZO" | null; prazosPagamento?: number[]; intervaloPagamentoDias?: number | null;
 };
 export type TipoParceiro = "CLIENTE" | "FORNECEDOR" | "AMBOS" | "FUNCIONARIO" | "PROPRIETARIO" | "OUTRO";
 export type ContaBase = { id: string; nome: string; tipo: TipoConta; instituicao: string | null; identificacao: string | null; saldoAbertura: string | null; dataSaldoAbertura: string; incluirNoSaldoGeral: boolean; ativo: boolean };
