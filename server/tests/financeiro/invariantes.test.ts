@@ -347,7 +347,8 @@ describe("categorias por item e relatórios", () => {
     const relatorioEstornado = await gerarRelatorioGerencial({ inicio: filtro.inicio, fim: filtro.fim, regime: "ambos" }, pid);
     expect(relatorioEstornado.resumo.saidas).toBe(0);
     expect(relatorioEstornado.operacoes.find((o) => o.tipo === "estorno")).toMatchObject({ quantidade: 1, valor: 500 });
-    expect(relatorioEstornado.operacoes.find((o) => o.tipo === "despesa")).toMatchObject({ quantidade: 1, valor: 400 });
+    // Silagem (400) e vacina (100) não se separam mais por classificação: contam como uma despesa.
+    expect(relatorioEstornado.operacoes.find((o) => o.tipo === "despesa")).toMatchObject({ quantidade: 1, valor: 500 });
     await ops.estornarOperacao(op.id, "Cancelar teste misto", { propriedadeId: pid, usuarioId: userId });
     expect((await analisarCategorias(filtro, pid)).total).toBe("0.00");
     expect((await analisarCategorias({ ...filtro, base: "pendente" }, pid)).total).toBe("0.00");
