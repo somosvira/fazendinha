@@ -3,12 +3,13 @@ import { alterarControle } from "../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProdutoEstoqueDetalhe } from "./ProdutoEstoqueDetalhe";
-import { obterProdutoEstoque, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto } from "./api";
+import { obterProdutoEstoque, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, listarProdutos, renomearLoteProduto } from "./api";
 import { getUsuario } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
-vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), obterProdutoEstoque: vi.fn(), listarLotesProduto: vi.fn(), listarMovimentosProduto: vi.fn(), listarOrigensProduto: vi.fn(), renomearLoteProduto: vi.fn() }));
+vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), obterProdutoEstoque: vi.fn(), listarProdutos: vi.fn(), listarLotesProduto: vi.fn(), listarMovimentosProduto: vi.fn(), listarOrigensProduto: vi.fn(), renomearLoteProduto: vi.fn() }));
 vi.mock("../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 1, nome: "Fazenda Rio Novo", ativo: true }, { id: 2, nome: "Sítio Novo", ativo: true }]) }));
 vi.mock("../lib/auth", async (original) => ({ ...(await original<typeof import("../lib/auth")>()), getUsuario: vi.fn() }));
+vi.mock("../financeiro/FormProduto", () => ({ FormProduto: ({ somenteLeitura }: { somenteLeitura?: boolean }) => <div role="dialog" aria-label="Cadastro do produto">{somenteLeitura ? "Cadastro somente leitura" : "Cadastro editável"}</div> }));
 vi.mock("./PartidasProduto", () => ({ PartidasProduto: () => <p>Controle avançado</p> }));
 const produto = { id: "p", nome: "Ração", unidade: "KG" as const, rastrearPartidas: true, saldo: "25", custoMedio: null, valor: null, propriedadeId: null, totalLotes: 1, lotesComSaldo: 1 };
 const lote = { id: "l", nome: "Vence dezembro", codigo: "AUTO", validade: "2026-12-31", saldo: "25", origemRastreio: "INFORMADA" };
@@ -16,6 +17,7 @@ beforeEach(() => {
   history.replaceState(null, "", "/estoque/produtos/p");
   vi.clearAllMocks(); setPropriedadeAtiva(null); vi.mocked(getUsuario).mockReturnValue(null);
   vi.mocked(obterProdutoEstoque).mockResolvedValue(produto);
+  vi.mocked(listarProdutos).mockResolvedValue([produto]);
   vi.mocked(listarLotesProduto).mockResolvedValue({ itens: [lote], total: 16, pagina: 1, porPagina: 15 });
   vi.mocked(listarMovimentosProduto).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(listarOrigensProduto).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 15 });
@@ -111,4 +113,15 @@ it("recebe lote do produto por link e consulta seus movimentos exatos", async ()
   await waitFor(() => expect(listarMovimentosProduto).toHaveBeenCalledWith("p", expect.objectContaining({ partidaId: "l" })));
   history.pushState(null, "", "/estoque/produtos/p?partidaId=outro"); fireEvent.popState(window);
   await waitFor(() => expect(listarMovimentosProduto).toHaveBeenLastCalledWith("p", expect.objectContaining({ partidaId: "outro" })));
+});
+
+it("consulta abre cadastro em somente leitura e conserva histórico e saldo", async () => {
+  vi.mocked(getUsuario).mockReturnValue({ id: 1, nome: "Leitor", email: "leitor@fazenda.test", papel: "OPERADOR", abas: [], areas: ["pecuaria"], flags: [], status: "ATIVO", dono: false });
+  render(<ProdutoEstoqueDetalhe produtoId="p" />);
+  await screen.findByText("Saldo consolidado");
+  expect(screen.queryByRole("button", { name: "Editar produto" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Consultar cadastro" }));
+  expect(await screen.findByText("Cadastro somente leitura")).toBeTruthy();
+  expect(screen.queryByText("Cadastro editável")).toBeNull();
+  expect(screen.getByText("25 kg")).toBeTruthy();
 });

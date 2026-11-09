@@ -79,6 +79,10 @@ export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: num
 // Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
 export type ProdutoCategoria = { id: string; nome: string; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type Produto = {
+  revisaoCadastro?: number; codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null; materialGeneticoId?: string | null;
+  fabricante?: import("../estoque/catalogos-api").ItemCatalogo | null; classificacaoTecnica?: import("../estoque/catalogos-api").ItemCatalogo | null;
+  composicao?: import("../estoque/catalogos-api").VersaoProduto<import("../estoque/catalogos-api").ItemComposicao> | null;
+  informacoesNutricionais?: import("../estoque/catalogos-api").VersaoProduto<import("../estoque/catalogos-api").ItemNutricional> | null;
   id: string; nome: string;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   rastrearPartidas?: boolean;

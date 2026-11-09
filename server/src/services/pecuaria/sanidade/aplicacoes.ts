@@ -22,6 +22,7 @@ import { consumirEstoqueTx } from "../consumo.js";
 import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
 import { conferirTarefaProtocoloTx, tipoAplicacaoLegadaId, type DesvioInput } from "./desvios.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
+import { capturarComposicaoTx } from "../../estoque/composicao.js";
 
 export type AplicacaoInput = {
   chave?: string;
@@ -212,6 +213,7 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
       desvioProtocoloSnapshot.exibicao.realizado.tipoAplicacaoId = tipoAplicacao!.nome;
     }
     const dadosCriacao: Prisma.AplicacaoProdutoUncheckedCreateInput = {
+      ...(!previa && dados.produtoId ? { composicaoSnapshot: await capturarComposicaoTx(tx, dados.produtoId) } : {}),
       animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
       nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
       data, aplicadaEm: dados.aplicadaEm ? new Date(dados.aplicadaEm) : null, precisaoTemporal: dados.aplicadaEm ? "HORA" : "DIA", finalidade: dados.finalidade,
@@ -249,7 +251,7 @@ export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: Apli
     const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
-      depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
+      depois: { composicaoSnapshot: criada.composicaoSnapshot, origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     await vincularAplicacaoAlertaTx(tx, input, criada, usuarioId);
     if(!opcoes.adiarEfeitos)await aplicarImpactosTx(tx,previaImpacto,{tipo:"AplicacaoProduto",id:criada.id},input.impacto,usuarioId);
     return criada;

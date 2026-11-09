@@ -35,7 +35,7 @@ import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js"
 import { Prisma } from "@prisma/client";
 import { uid } from "../../lib/uid.fixture.js";
 
-const base = { id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", } };
+const base = { revisaoCadastro: 1, codigoReferencia: "REFERENCIA", apresentacao: "Saco", observacao: null, conservacao: null, fabricanteId: null, classificacaoTecnicaId: null, id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", } };
 const fornecedor = { id: uid(7), nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: uid(4), nome: "Pecuária", ativo: true };
 
@@ -98,7 +98,7 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.produtoFindUnique.mockResolvedValue(anterior);
     mocks.produtoUpdate.mockResolvedValue({ ...anterior, perfilSanitarioProduto: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } });
     await atualizarProduto(uid(1), { perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } }, 9);
-    expect(mocks.produtoUpdate.mock.calls[0][0].data).toEqual({ perfilSanitarioProduto: { upsert: { create: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }, update: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } } } });
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).toEqual({ revisaoCadastro: { increment: 1 }, perfilSanitarioProduto: { upsert: { create: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }, update: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } } } });
     expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ usuarioId: 9, estadoAnterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: null }) }), estadoPosterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }) }) }) }));
   });
 
@@ -106,6 +106,19 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.protocoloIatfCount.mockResolvedValue(1);
     await expect(atualizarProduto(uid(1),{usoSanitario:false})).rejects.toMatchObject({code:"CONFLITO",campo:"usoSanitario"});
     expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+  it("exige revisão e reenvio ao enviar atributos ampliados", async () => {
+    await expect(atualizarProduto(uid(1), { apresentacao: "Frasco" })).rejects.toMatchObject({code:"VALIDACAO",campo:"chaveReenvio"});
+    await expect(atualizarProduto(uid(1), { apresentacao: "Frasco", chaveReenvio: uid(10) })).rejects.toMatchObject({code:"VALIDACAO",campo:"revisaoEsperada"});
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+  it("bloqueia revisão antiga antes de escrever e mantém atributos omitidos", async () => {
+    await expect(atualizarProduto(uid(1), { nome: "Novo", revisaoEsperada: 2 })).rejects.toMatchObject({code:"CONFLITO",campo:"revisaoEsperada"});
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+    const dto=await atualizarProduto(uid(1),{nome:"Novo"});
+    expect(dto).toMatchObject({codigoReferencia:"REFERENCIA",apresentacao:"Saco"});
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("codigoReferencia");
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("composicaoVersaoAtualId");
   });
   it("cria produto sem exigir fornecedor nem centro de custo", async () => {
     await criarProduto(input(), 9);
@@ -123,6 +136,7 @@ describe("cadastro de produtos (estoque)", () => {
     await atualizarProduto(uid(1), { fornecedorIds: [uid(7), uid(8)], centroCustoIds: [uid(4), uid(5)] }, 9);
     expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: {
+        revisaoCadastro: { increment: 1 },
         fornecedores: { deleteMany: {}, create: [{ fornecedorId: uid(7) }, { fornecedorId: uid(8) }] },
         centrosCusto: { deleteMany: {}, create: [{ centroCustoId: uid(4) }, { centroCustoId: uid(5) }] },
       },
@@ -177,7 +191,7 @@ describe("cadastro de produtos (estoque)", () => {
   it("produto legado sem categoria ainda pode ser ativado/desativado", async () => {
     mocks.produtoFindUnique.mockResolvedValue({ ...base, categoriaId: null, categoria: null, fornecedores: [], centrosCusto: [] });
     await atualizarProduto(uid(1), { ativo: false }, 9);
-    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { ativo: false } }));
+    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { ativo: false, revisaoCadastro: { increment: 1 } } }));
   });
 });
 

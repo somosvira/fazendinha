@@ -4,7 +4,17 @@ import { comPropriedade } from "../../../propriedadeScope";
 
 type EstadoCarencia = { estado: "NENHUMA" | "NAO_APLICAVEL" | "NAO_INFORMADO" } | { estado: "CONHECIDO"; ate: string; precisaoAproximada: boolean; prazoZero?: boolean };
 export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia; revisaoLeitePendente?: boolean; revisaoAdministracaoPendente?: boolean };
+export type ComposicaoSanitariaSnapshot = {
+  schemaVersion: 1;
+  versaoComposicaoId: string | null;
+  situacao: "INFORMADA" | "NAO_INFORMADA";
+  referencia: string | null;
+  itens: import("../../../estoque/catalogos-api").ItemComposicao[];
+  capturadoEm: string;
+  contexto: "CADASTRO_NA_GRAVACAO";
+};
 export type AplicacaoSanitaria = {
+  composicaoSnapshot?: ComposicaoSanitariaSnapshot | null;
   animal?: { id: string; brinco: string; nome: string | null }; produtoId?: string | null;
   produto?: { id: string; nome: string; unidade: string } | null;
   id: string; animalId: string; propriedadeId?: number | null; data: string; aplicadaEm: string | null; finalidade: "TRATAMENTO" | "VACINA" | "VERMIFUGO" | null;

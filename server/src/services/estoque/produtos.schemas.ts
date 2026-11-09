@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
+import { composicaoSchema, informacoesNutricionaisSchema } from "./composicao.schemas.js";
 
 // Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
@@ -11,6 +12,16 @@ const idsSchema = (campo: string) =>
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
 const produtoBaseSchema = z.object({
+  codigoReferencia: z.string().trim().max(80).nullable().optional(),
+  apresentacao: z.string().trim().max(200).nullable().optional(),
+  observacao: z.string().trim().max(2000).nullable().optional(),
+  conservacao: z.string().trim().max(1000).nullable().optional(),
+  fabricanteId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
+  classificacaoTecnicaId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
+  revisaoEsperada: z.number().int().positive().optional(),
+  chaveReenvio: z.string().uuid().optional(),
+  composicao: composicaoSchema.optional(),
+  informacoesNutricionais: informacoesNutricionaisSchema.optional(),
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   usoGenetico: z.boolean().optional(),
@@ -43,6 +54,9 @@ export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 // /estoque/produtos para validar o query param `uso`.
 export const usoQuerySchema = z.enum(["genetico", "sanitario", "nutricional"]);
 export const produtosQuerySchema = z.object({
+  fabricanteId: z.string().uuid().optional(),
+  classificacaoTecnicaId: z.string().uuid().optional(),
+  principioAtivoId: z.string().uuid().optional(),
   uso: usoQuerySchema.optional(),
   q: z.string().optional(),
   ativo: z.enum(["true", "false"]).optional(),

@@ -293,6 +293,8 @@ No fechamento, o resumo reúne base histórica e custo. A rosca mostra participa
 
 A consulta paginada de animais aceita `ordenar=ultimoPeso|gmd`, além de brinco, nascimento e entrada, com `direcao=asc|desc`. Peso e GMD usam as mesmas duas últimas pesagens apresentadas na lista, sobre todo o conjunto autorizado e filtrado, antes da paginação. Ausência permanece ao final nas duas direções, com desempate por brinco e ID. O botão Ordenar expõe essas opções diretamente e mantém os parâmetros da URL existentes.
 
+Novas aplicações com produto preservam `composicaoSnapshot`, conforme o [contrato de Produtos](../produtos.md#histórico-sanitário). O detalhe distingue a composição consultada na gravação da fórmula efetivamente administrada; registros antigos mantêm ausência explícita, sem backfill. Não altera carências nem calcula dose.
+
 ### Visões de trabalho da Sanidade
 
 A Agenda oferece Cartões/Tabela em Ciclos e Semana/Tabela em Tarefas; Ocorrências oferece Cartões/Tabela. O padrão é visual. A preferência é individual por usuário no navegador e pode ser explicitada nos parâmetros `visualCiclos`, `visualTarefas` e `visualOcorrencias` (`visual` ou `tabela`). Busca, período, filtros e ações usam os mesmos fluxos ao alternar; a mudança de apresentação não registra fatos.

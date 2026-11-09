@@ -5,8 +5,16 @@ import { papeisDoParceiro } from "../financeiro/papeis.js";
 import { auditar, FinanceiroError, traduzirConflitoUnico, type DbFinanceiro } from "../financeiro/regras.js";
 import { CATEGORIA_OBRIGATORIA, type ProdutoInput, type ProdutoPatchInput } from "./produtos.schemas.js";
 import { travarUsosProduto } from "./usos.js";
+import { comReenvioCadastro } from "./cadastro-reenvio.js";
+import { includeComposicao, includeNutricao, composicaoDTO, nutricaoDTO, salvarComposicaoTx, salvarNutricaoTx } from "./composicao.js";
 
 export const includeProduto = {
+  fabricante: true,
+  classificacaoTecnica: true,
+  materialGenetico: { select: { id: true } },
+  origensCadastro: true,
+  composicaoVersaoAtual: { include: includeComposicao },
+  perfilNutricionalVersaoAtual: { include: includeNutricao },
   fornecedores: {
     include: { fornecedor: { include: { papeis: true } } },
     orderBy: { fornecedor: { nome: "asc" as const } },
@@ -20,6 +28,19 @@ export const includeProduto = {
 export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof includeProduto }>) {
   return {
     id: produto.id,
+    codigoReferencia: produto.codigoReferencia ?? null,
+    apresentacao: produto.apresentacao ?? null,
+    observacao: produto.observacao ?? null,
+    conservacao: produto.conservacao ?? null,
+    revisaoCadastro: produto.revisaoCadastro ?? 1,
+    fabricanteId: produto.fabricanteId ?? null,
+    fabricante: produto.fabricante ? { id: produto.fabricante.id, nome: produto.fabricante.nome, ativo: produto.fabricante.ativo, revisao: produto.fabricante.revisao } : null,
+    classificacaoTecnicaId: produto.classificacaoTecnicaId ?? null,
+    classificacaoTecnica: produto.classificacaoTecnica ? { id: produto.classificacaoTecnica.id, nome: produto.classificacaoTecnica.nome, ativo: produto.classificacaoTecnica.ativo, revisao: produto.classificacaoTecnica.revisao } : null,
+    materialGeneticoId: produto.materialGenetico?.id ?? null,
+    origensCadastro: produto.origensCadastro ?? [],
+    composicao: composicaoDTO(produto.composicaoVersaoAtual),
+    informacoesNutricionais: nutricaoDTO(produto.perfilNutricionalVersaoAtual),
     nome: produto.nome,
     unidade: produto.unidade,
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
@@ -64,14 +85,34 @@ async function validarCentrosCusto(db: DbFinanceiro, centroCustoIds: string[], p
 }
 
 function separarRelacoes(input: ProdutoPatchInput) {
-  const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, ...produto } = input;
-  return { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto };
+  const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, composicao, informacoesNutricionais, chaveReenvio, revisaoEsperada, ...produto } = input;
+  return { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, composicao, informacoesNutricionais, chaveReenvio, revisaoEsperada, produto };
+}
+
+const CAMPOS_AMPLIADOS = ["codigoReferencia", "apresentacao", "observacao", "conservacao", "fabricanteId", "classificacaoTecnicaId", "composicao", "informacoesNutricionais"] as const;
+function exigirControleCadastro(input: ProdutoPatchInput, edicao: boolean) {
+  if (!CAMPOS_AMPLIADOS.some(c => input[c] !== undefined)) return;
+  if (!input.chaveReenvio) throw new FinanceiroError("VALIDACAO", "Informe uma chave de reenvio para salvar o cadastro ampliado", "chaveReenvio");
+  if (edicao && input.revisaoEsperada === undefined) throw new FinanceiroError("VALIDACAO", "Informe a revisão do produto consultado", "revisaoEsperada");
+}
+async function validarCatalogosProduto(tx: Prisma.TransactionClient, input: ProdutoPatchInput, anterior?: { fabricanteId: string | null; classificacaoTecnicaId: string | null }) {
+  if (input.fabricanteId && input.fabricanteId !== anterior?.fabricanteId) {
+    await tx.$queryRaw`SELECT "id" FROM public."FabricanteProduto" WHERE "id" = ${input.fabricanteId}::uuid FOR SHARE`;
+    if (!await tx.fabricanteProduto.findFirst({where:{id:input.fabricanteId,ativo:true}})) throw new FinanceiroError("VALIDACAO", "Selecione um fabricante ativo", "fabricanteId");
+  }
+  if (input.classificacaoTecnicaId && input.classificacaoTecnicaId !== anterior?.classificacaoTecnicaId) {
+    await tx.$queryRaw`SELECT "id" FROM public."ClassificacaoTecnicaProduto" WHERE "id" = ${input.classificacaoTecnicaId}::uuid FOR SHARE`;
+    if (!await tx.classificacaoTecnicaProduto.findFirst({where:{id:input.classificacaoTecnicaId,ativo:true}})) throw new FinanceiroError("VALIDACAO", "Selecione uma classificação técnica ativa", "classificacaoTecnicaId");
+  }
 }
 
 const USO_CAMPO = { genetico: "usoGenetico", sanitario: "usoSanitario", nutricional: "usoNutricional" } as const;
 
-export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean }) {
+export async function listarProdutos(f?: { uso?: keyof typeof USO_CAMPO; q?: string; ativo?: boolean; incluirInativos?: boolean; fabricanteId?: string; classificacaoTecnicaId?: string; principioAtivoId?: string }) {
   const where: Prisma.ProdutoWhereInput = {};
+  if (f?.fabricanteId) where.fabricanteId = f.fabricanteId;
+  if (f?.classificacaoTecnicaId) where.classificacaoTecnicaId = f.classificacaoTecnicaId;
+  if (f?.principioAtivoId) where.composicaoVersaoAtual = { itens: { some: { principioAtivoId: f.principioAtivoId } } };
   if (f?.uso) Object.assign(where, { [USO_CAMPO[f.uso]]: true });
   if (f?.q) where.nome = { contains: f.q, mode: "insensitive" };
   if (f?.ativo != null) where.ativo = f.ativo;
@@ -85,7 +126,7 @@ export async function listarProdutosCadastro() {
 
 export async function criarProduto(input: ProdutoInput, usuarioId?: number | null) {
   try {
-    return await prisma.$transaction((tx) => criarProdutoTx(tx, input, usuarioId));
+    return await prisma.$transaction((tx) => comReenvioCadastro(tx, "produto:criar", usuarioId, input.chaveReenvio, input, () => criarProdutoTx(tx, input, usuarioId)));
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
 }
 
@@ -112,7 +153,9 @@ function validarCarenciasPerfil(
 
 /** Cria o produto dentro de uma transação já aberta (ex.: material genético cria o produto junto). */
 export async function criarProdutoTx(tx: Prisma.TransactionClient, input: ProdutoInput, usuarioId?: number | null) {
-  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
+  exigirControleCadastro(input, false);
+  const { fornecedorIds = [], centroCustoIds = [], perfilSanitario, perfilNutricional, composicao, informacoesNutricionais, produto } = separarRelacoes(input);
+  await validarCatalogosProduto(tx, produto);
   if (produto.categoriaId == null) {
     throw new FinanceiroError("VALIDACAO", CATEGORIA_OBRIGATORIA, "categoriaId");
   }
@@ -133,18 +176,24 @@ export async function criarProdutoTx(tx: Prisma.TransactionClient, input: Produt
     },
     include: includeProduto,
   });
-  const dto = produtoDTO(criado);
+  if (composicao) await salvarComposicaoTx(tx, criado.id, composicao, usuarioId);
+  if (informacoesNutricionais) await salvarNutricaoTx(tx, criado.id, informacoesNutricionais, usuarioId);
+  const final = composicao || informacoesNutricionais ? await tx.produto.findUniqueOrThrow({ where: { id: criado.id }, include: includeProduto }) : criado;
+  const dto = produtoDTO(final);
   await auditar(tx, { entidade: "Produto", entidadeId: criado.id, acao: "CRIADO", usuarioId, depois: dto });
   return dto;
 }
 
 export async function atualizarProduto(id: string, input: ProdutoPatchInput, usuarioId?: number | null) {
   try {
-    return await prisma.$transaction(async (tx) => {
+    exigirControleCadastro(input, true);
+    return await prisma.$transaction((tx) => comReenvioCadastro(tx, "produto:atualizar:" + id, usuarioId, input.chaveReenvio, input, async () => {
       await travarUsosProduto(tx, [id]);
       const anterior = await tx.produto.findUnique({ where: { id }, include: includeProduto });
       if (!anterior) throw new FinanceiroError("NAO_ENCONTRADO", "Produto não encontrado");
-      const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, produto } = separarRelacoes(input);
+      if (input.revisaoEsperada !== undefined && input.revisaoEsperada !== anterior.revisaoCadastro) throw new FinanceiroError("CONFLITO", "O produto foi alterado por outra pessoa. Carregue os dados atuais.", "revisaoEsperada");
+      const { fornecedorIds, centroCustoIds, perfilSanitario, perfilNutricional, composicao, informacoesNutricionais, produto } = separarRelacoes(input);
+      await validarCatalogosProduto(tx, produto, anterior);
 
       // Todo produto precisa de categoria. Um produto legado sem categoria só
       // pode ser ativado/desativado sem informá-la; qualquer outra edição exige.
@@ -157,7 +206,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         throw new FinanceiroError("CONFLITO", "Use a conferência de ativação do controle de lotes. Depois de ativado, não pode ser desligado.", "rastrearPartidas");
       }
       if ((perfilSanitario || anterior.perfilSanitarioProduto) && !(produto.usoSanitario ?? anterior.usoSanitario)) throw new FinanceiroError("CONFLITO", "O perfil sanitário exige uso sanitário", "usoSanitario");
-      if ((perfilNutricional || anterior.perfilNutricionalProduto) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
+      if ((perfilNutricional || informacoesNutricionais || anterior.perfilNutricionalProduto || anterior.perfilNutricionalVersaoAtual) && !(produto.usoNutricional ?? anterior.usoNutricional)) throw new FinanceiroError("CONFLITO", "O perfil nutricional exige uso nutricional", "usoNutricional");
       if ((produto.usoSanitario ?? anterior.usoSanitario) && (perfilSanitario !== undefined || !anterior.usoSanitario)) {
         validarCarenciasPerfil(perfilSanitario, anterior.perfilSanitarioProduto, anterior.usoSanitario);
       }
@@ -196,6 +245,7 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         where: { id },
         data: {
           ...produto,
+          revisaoCadastro: { increment: 1 },
           ...(perfilSanitario ? { perfilSanitarioProduto: { upsert: { create: perfilSanitario, update: perfilSanitario } } } : {}),
           ...(perfilNutricional ? { perfilNutricionalProduto: { upsert: { create: perfilNutricional, update: perfilNutricional } } } : {}),
           ...(fornecedorIds === undefined ? {} : {
@@ -207,12 +257,15 @@ export async function atualizarProduto(id: string, input: ProdutoPatchInput, usu
         },
         include: includeProduto,
       });
+      if (composicao) await salvarComposicaoTx(tx, id, composicao, usuarioId);
+      if (informacoesNutricionais) await salvarNutricaoTx(tx, id, informacoesNutricionais, usuarioId);
+      const final = composicao || informacoesNutricionais ? await tx.produto.findUniqueOrThrow({ where: { id }, include: includeProduto }) : atualizado;
       const antes = produtoDTO(anterior);
-      const depois = produtoDTO(atualizado);
+      const depois = produtoDTO(final);
       if (input.ativo === false) await marcarReavaliacaoDestinoTx(tx, { produtoId: id }, usuarioId ?? null);
       await auditar(tx, { entidade: "Produto", entidadeId: id, acao: "ATUALIZADO", usuarioId, antes, depois });
       return depois;
-    });
+    }));
   } catch (erro) { traduzirConflitoUnico(erro, { nome: "Já existe um produto com este nome" }); }
 }
 

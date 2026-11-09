@@ -97,6 +97,8 @@ export function useSaldos(f?: { centroCustoId?: string; propriedadeId?: number }
 export type ProdutoDTO = Produto;
 export type UsoProduto = "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
+  chaveReenvio?: string; revisaoEsperada?: number; codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null;
+  composicao?: import("./catalogos-api").ComposicaoInput; informacoesNutricionais?: import("./catalogos-api").NutricionalInput;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
   nome: string; unidade: UnidadeMedida;
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
@@ -106,7 +108,7 @@ export interface ProdutoInput {
 }
 export type TipoAplicacaoSanitariaProduto = { id: string; nome: string; ativo: boolean };
 export const listarTiposAplicacaoSanitarios = (f: { pagina: number; porPagina?: number; busca?: string; selecionadoId?: string }) => req<{ itens: TipoAplicacaoSanitariaProduto[]; total: number; pagina: number; porPagina: number }>(`/estoque/tipos-aplicacao-sanitarios${qs({ ...f, porPagina: 10 })}`);
-export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
+export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean; fabricanteId?: string; classificacaoTecnicaId?: string; principioAtivoId?: string }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 

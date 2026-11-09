@@ -262,3 +262,46 @@ describe("carência explícita do produto sanitário", () => {
     await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(produto.id, expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: null, carenciaCarneHoras: 0 }) })));
   });
 });
+
+it('preserva composição e perfil descritivo omitidos ao editar somente cadastro comercial', async () => {
+  vi.clearAllMocks();
+  const produto = { ...produtoCriado, unidade: 'KG' as const, revisaoCadastro: 7, codigoReferencia: 'ORIG-10', composicao: { id: uid(300), numero: 1, situacao: 'NAO_INFORMADA' as const, referencia: null, itens: [] }, informacoesNutricionais: { id: uid(301), numero: 1, situacao: 'NAO_INFORMADA' as const, referencia: null, itens: [] } };
+  mocks.editarProduto.mockResolvedValue(produto);
+  render(<FormProduto produto={produto} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText('Apresentação'), { target: { value: 'Saco 25 kg' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar produto' }));
+  await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalled());
+  const dados = mocks.editarProduto.mock.calls[0][1];
+  expect(dados).toMatchObject({ codigoReferencia: 'ORIG-10', apresentacao: 'Saco 25 kg', revisaoEsperada: 7, chaveReenvio: expect.any(String) });
+  expect(dados).not.toHaveProperty('composicao'); expect(dados).not.toHaveProperty('informacoesNutricionais');
+});
+
+it('mantém chave de reenvio para payload idêntico e troca após corrigir o rascunho', async () => {
+  vi.clearAllMocks(); mocks.criarProduto.mockRejectedValue(new Error('Falha de rede'));
+  render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Produto inicial' } });
+  await alterarControle(screen.getByLabelText('Categoria'), { target: { value: uid(11) } });
+  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
+  await screen.findByText('Falha de rede');
+  const chave = mocks.criarProduto.mock.calls[0][0].chaveReenvio;
+  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
+  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledTimes(2));
+  expect(mocks.criarProduto.mock.calls[1][0].chaveReenvio).toBe(chave);
+  await screen.findByText('Falha de rede');
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Produto corrigido' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
+  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledTimes(3));
+  expect(mocks.criarProduto.mock.calls[2][0].chaveReenvio).not.toBe(chave);
+});
+
+it('permite consultar histórico no modo somente leitura', async () => {
+  const buscar = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ itens: [{ id: uid(300), numero: 1, situacao: 'NAO_INFORMADA', referencia: 'Documento conferido', itens: [], criadoPor: { id: 1, nome: 'Autor do registro' } }], total: 1, pagina: 1, porPagina: 10 }) });
+  vi.stubGlobal('fetch', buscar);
+  render(<FormProduto produto={{ ...produtoCriado, unidade: 'KG' as const }} categorias={categorias} centros={[]} parceiros={[]} somenteLeitura onSalvo={vi.fn()} onFechar={vi.fn()} />);
+  const historico = screen.getByRole('button', { name: 'Consultar histórico da composição' });
+  expect((historico as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(historico);
+  expect(await screen.findByText('Autor: Autor do registro')).toBeTruthy();
+  expect(buscar).toHaveBeenCalledWith(expect.stringContaining('/composicoes?pagina=1'), expect.any(Object));
+  expect(screen.queryByRole('button', { name: 'Salvar produto' })).toBeNull();
+});

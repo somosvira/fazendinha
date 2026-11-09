@@ -11,6 +11,11 @@ import { MultiSelect, type MultiSelectOption } from "@/components/MultiSelect";
 import { UNIDADES_ORDENADAS, rotuloUnidadeCompleto, type UnidadeMedida } from "../lib/unidades";
 import { PartidasProduto } from "../estoque/PartidasProduto";
 import { SeletorCatalogoProtocolo } from "../pecuaria/rebanho/protocolos/SeletorCatalogoProtocolo";
+import { SeletorCatalogoProduto } from '../estoque/CatalogosProdutos';
+import { EditorComposicao, EditorNutricional, HistoricoProduto, prepararComposicao, prepararNutricional, validarComposicao, validarNutricional } from '../estoque/ComposicaoProduto';
+import type { ComposicaoInput, NutricionalInput } from '../estoque/catalogos-api';
+import { obterProdutoEstoque } from '../estoque/api';
+import { LinkInterno } from '../components/LinkInterno';
 import { Package } from "lucide-react";
 
 const TIPOS = [{ campo: "usoGenetico", nome: "Genético" }, { campo: "usoSanitario", nome: "Sanitário" }, { campo: "usoNutricional", nome: "Nutricional" }] as const;
@@ -80,6 +85,24 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
   const categorias = categoriasProp ?? categoriasCarregadas;
   const centros = centrosProp ?? centrosCarregados;
 
+  const [codigoReferencia, setCodigoReferencia] = useState(produto?.codigoReferencia ?? '');
+  const [apresentacao, setApresentacao] = useState(produto?.apresentacao ?? '');
+  const [observacao, setObservacao] = useState(produto?.observacao ?? '');
+  const [conservacao, setConservacao] = useState(produto?.conservacao ?? '');
+  const [fabricanteId, setFabricanteId] = useState(produto?.fabricanteId ?? produto?.fabricante?.id ?? '');
+  const [classificacaoTecnicaId, setClassificacaoTecnicaId] = useState(produto?.classificacaoTecnicaId ?? produto?.classificacaoTecnica?.id ?? '');
+  const [revisaoEsperada, setRevisaoEsperada] = useState(produto?.revisaoCadastro ?? 1);
+  const [composicao, setComposicao] = useState<ComposicaoInput>({ versaoEsperada: produto?.composicao?.id ?? null, situacao: produto?.composicao?.situacao ?? 'NAO_INFORMADA', referencia: produto?.composicao?.referencia ?? null, itens: produto?.composicao?.itens ?? [] });
+  const [nutricional, setNutricional] = useState<NutricionalInput>({ versaoEsperada: produto?.informacoesNutricionais?.id ?? null, situacao: produto?.informacoesNutricionais?.situacao ?? 'NAO_INFORMADA', referencia: produto?.informacoesNutricionais?.referencia ?? null, itens: produto?.informacoesNutricionais?.itens ?? [] });
+  const [composicaoAlterada, setComposicaoAlterada] = useState(false), [nutricionalAlterado, setNutricionalAlterado] = useState(false);
+  const [catalogoAlterado, setCatalogoAlterado] = useState(false);
+  const [conflito, setConflito] = useState(false), [versaoAtual, setVersaoAtual] = useState<Produto | null>(null);
+  const [carregandoAtual, setCarregandoAtual] = useState(false);
+  const envio = useRef<{ hash: string; chave: string }>();
+  async function carregarAtual() {
+    if (!produto) return; setCarregandoAtual(true); setErroGeral('');
+    try { setVersaoAtual(await obterProdutoEstoque(produto.id)); } catch (e) { setErroGeral(e instanceof Error ? e.message : String(e)); } finally { setCarregandoAtual(false); }
+  }
   const [nome, setNome] = useState(produto?.nome ?? "");
   const [unidade, setUnidade] = useState<UnidadeMedida>(produto?.unidade ?? "UN");
   const [minimo, setMinimo] = useState(produto?.minimoEstoque ?? "");
@@ -128,41 +151,63 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       else if (escolha === "COM" && (!valor.trim() || !Number.isInteger(Number(valor)) || Number(valor) <= 0)) novosErros[campo] = `Informe um prazo de ${destino} em horas inteiras, maior que zero.`;
     }
     if (usos.usoSanitario && orientacaoUso.trim().length > 2000) novosErros.orientacaoUso = "Informe uma orientação com até 2.000 caracteres.";
+    if (composicaoAlterada) { const erro = validarComposicao(composicao, composicao.versaoEsperada); if (erro) novosErros.composicao = erro; }
+    if (nutricionalAlterado && usos.usoNutricional) { const erro = validarNutricional(nutricional, nutricional.versaoEsperada); if (erro) novosErros.informacoesNutricionais = erro; }
+    if (conflito) { setErroGeral('Consulte a versão atual e revise antes de reaplicar a edição.'); return; }
     setErros(novosErros); if (Object.keys(novosErros).length || emCurso.current) {
       requestAnimationFrame(() => document.querySelector<HTMLElement>('#form-produto-financeiro [aria-invalid="true"]')?.focus()); return;
     }
     const dados: ProdutoInput = {
       nome: nome.trim(), unidade,
+      ...(produto ? { revisaoEsperada } : {}),
+      codigoReferencia: codigoReferencia.trim() || null, apresentacao: apresentacao.trim() || null,
+      observacao: observacao.trim() || null, conservacao: conservacao.trim() || null,
+      fabricanteId: fabricanteId || null, classificacaoTecnicaId: classificacaoTecnicaId || null,
+      ...(composicaoAlterada ? { composicao: prepararComposicao(composicao) } : {}),
+      ...(nutricionalAlterado && usos.usoNutricional ? { informacoesNutricionais: prepararNutricional(nutricional) } : {}),
       minimoEstoque: minimo === "" ? null : Number(minimo), categoriaId,
       centroCustoIds, fornecedorIds,
       ...usos, ...(!produto ? { rastrearPartidas } : {}),
       ...(usos.usoSanitario ? { perfilSanitario: { carenciaLeiteHoras: escolhaLeite === "SEM" ? 0 : escolhaLeite === "COM" ? Number(leite) : null, carenciaCarneHoras: escolhaCarne === "SEM" ? 0 : escolhaCarne === "COM" ? Number(carne) : null, viaPadrao: via || null, orientacaoUso: orientacaoUso.trim() || null, tipoAplicacaoId: tipoAplicacaoId || null } } : {}),
       ...(usos.usoNutricional ? { perfilNutricional: { materiaSecaPercentual: ms === "" ? null : Number(ms) } } : {}),
     };
+    const hash = JSON.stringify(dados); if (envio.current?.hash !== hash) envio.current = { hash, chave: crypto.randomUUID() };
+    dados.chaveReenvio = envio.current.chave;
     emCurso.current = true; setSalvando(true); setErroGeral("");
     try {
       const salvo = produto ? await editarProduto(produto.id, dados) : await criarProduto(dados);
       await onSalvo(salvo);
     } catch (erro) {
-      if (erro instanceof ApiError && erro.campo) { setErros({ [erro.campo.split(".").at(-1)!]: erro.message }); requestAnimationFrame(() => document.querySelector<HTMLElement>('#form-produto-financeiro [aria-invalid="true"]')?.focus()); }
+      if (erro instanceof ApiError && erro.status === 409 && (!erro.campo || erro.campo.endsWith("versaoEsperada") || erro.campo === "revisaoEsperada")) { setConflito(true); setVersaoAtual(null); setErroGeral(`${erro.message} Seu rascunho foi preservado.`); }
+      else if (erro instanceof ApiError && erro.campo) { setErros({ [erro.campo.split(".").at(-1)!]: erro.message }); requestAnimationFrame(() => document.querySelector<HTMLElement>('#form-produto-financeiro [aria-invalid="true"]')?.focus()); }
       else setErroGeral(erro instanceof Error ? erro.message : String(erro));
     } finally { emCurso.current = false; setSalvando(false); }
   };
 
   const formId = "form-produto-financeiro";
-  return <PainelCadastro icon={Package} alteracoesExternas={JSON.stringify(centroCustoIds) !== JSON.stringify(produto?.centroCustoIds ?? []) || JSON.stringify(fornecedorIds) !== JSON.stringify(produto?.fornecedores?.map(f => f.id) ?? [])} bloqueado={salvando} aberto titulo={produto ? `${somenteLeitura ? "Consultar" : "Editar"} ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro icon={Package} alteracoesExternas={composicaoAlterada || nutricionalAlterado || catalogoAlterado || JSON.stringify(centroCustoIds) !== JSON.stringify(produto?.centroCustoIds ?? []) || JSON.stringify(fornecedorIds) !== JSON.stringify(produto?.fornecedores?.map(f => f.id) ?? [])} bloqueado={salvando} aberto titulo={produto ? `${somenteLeitura ? "Consultar" : "Editar"} ${produto.nome}` : "Novo produto"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>{somenteLeitura ? "Fechar" : "Cancelar"}</Button>{!somenteLeitura && <Button type="submit" form={formId} disabled={salvando || carregando} carregando={salvando}>{salvando ? "Salvando…" : produto ? "Salvar produto" : "Criar produto"}</Button>}</>}>
     <form id={formId} onSubmit={submeter} className="grid gap-5" noValidate>
       <fieldset disabled={somenteLeitura} className="cadastro-grid grid min-w-0 gap-3 sm:grid-cols-2">
 
-      <ErrorBox erro={erroGeral || null} />
+      <div className="grid gap-2 sm:col-span-2"><ErrorBox erro={erroGeral || null} />
+      <div id="produto-detalhes-erros" tabIndex={-1} aria-invalid={!!(erros.composicao || erros.informacoesNutricionais)}><ErrorBox erro={erros.composicao || erros.informacoesNutricionais || null} /></div>
+      {conflito && <div className="grid gap-3 rounded-lg border border-border p-3"><p className="text-sm">O cadastro mudou desde sua leitura. Compare os dados atuais com seu rascunho antes de reaplicar.</p><Button secondary type="button" disabled={carregandoAtual} onClick={() => void carregarAtual()}>Carregar versão atual para revisão</Button>{versaoAtual && <><div className="text-sm"><strong>{versaoAtual.nome} · revisão {versaoAtual.revisaoCadastro}</strong><p>Código: {versaoAtual.codigoReferencia ?? 'Não informado'} · Apresentação: {versaoAtual.apresentacao ?? 'Não informada'}</p><p>Fabricante: {versaoAtual.fabricante?.nome ?? 'Não informado'} · Classificação: {versaoAtual.classificacaoTecnica?.nome ?? 'Não informada'}</p><p>Composição: {versaoAtual.composicao?.itens.map(i => `${i.nomePrincipioSnapshot}: ${i.concentracaoValor ?? 'Não informada'} ${i.concentracaoUnidade ?? ''}`).join('; ') || 'Não informada'}</p><p>Referência: {versaoAtual.composicao?.referencia ?? 'Não informada'}</p><p>Nutrição: {versaoAtual.informacoesNutricionais?.itens.map(i => `${i.nomeNutrienteSnapshot}: ${i.valor ?? 'Não informado'}`).join('; ') || 'Não informada'}</p></div><Button secondary type="button" onClick={() => { setRevisaoEsperada(versaoAtual.revisaoCadastro ?? 1); setComposicao(d => ({ ...d, versaoEsperada: versaoAtual.composicao?.id ?? null })); setNutricional(d => ({ ...d, versaoEsperada: versaoAtual.informacoesNutricionais?.id ?? null })); setConflito(false); setErroGeral('Versão atual revisada. Confira o rascunho e salve para reaplicar suas alterações.'); }}>Usar revisão atual e manter meu rascunho</Button></>}</div>}
+      </div>
       {erroCarga && <ErrorBox erro={`Não foi possível carregar fornecedores/categorias/centros de custo: ${erroCarga}`} />}
       {carregando && <p className="text-sm text-ink-3">Carregando fornecedores, categorias e centros de custo…</p>}
       <section className="grid gap-3 sm:col-span-2 sm:grid-cols-2">
-        <h3 className="text-sm font-semibold text-ink sm:col-span-2">Identificação e categoria</h3>
+        <h3 className="text-sm font-semibold text-ink sm:col-span-2">Identificação comercial</h3>
       <CampoFormulario id="produto-nome" rotulo="Nome do produto" obrigatorio erro={erros.nome}>{(p) => <Input {...p} maxLength={80} value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Ração 22%" className={classeInput} />}</CampoFormulario>
-      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => setCategoriaId(valor)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="produto-categoria" rotulo="Categoria" obrigatorio ajuda="Organiza relatórios e classificação financeira." erro={erros.categoriaId}>{(p) => <SelectCampo {...p} value={categoriaId} onValueChange={(valor) => setCategoriaId(valor)} className={classeInput}><option value="">Selecione</option>{categorias.filter((c) => c.ativo || c.id === produto?.categoriaId).map((c) => <option key={c.id} value={c.id}>{c.nome}{c.ativo ? "" : " (inativa)"}</option>)}</SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="produto-codigo" rotulo="Código de referência">{p => <Input {...p} maxLength={80} value={codigoReferencia} onChange={e => setCodigoReferencia(e.target.value)} className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="produto-apresentacao" rotulo="Apresentação">{p => <Input {...p} maxLength={200} value={apresentacao} onChange={e => setApresentacao(e.target.value)} placeholder="Ex.: frasco de 500 mL" className={classeInput} />}</CampoFormulario>
+      <SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor={fabricanteId} onChange={id => { setFabricanteId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />
+      <SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Classificação técnica" valor={classificacaoTecnicaId} onChange={id => { setClassificacaoTecnicaId(id); setCatalogoAlterado(true); }} somenteLeitura={somenteLeitura} />
+      <p className="text-xs text-ink-3 sm:col-span-2">Fabricante identifica quem produz. Fornecedores continuam vinculados às compras. A classificação técnica é independente da categoria financeira.</p>
+      <CampoFormulario id="produto-observacao" rotulo="Observações do produto">{p => <textarea {...p} maxLength={2000} value={observacao} onChange={e => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
       </section>
+      <EditorComposicao dados={composicao} onChange={d => { setComposicao(d); setComposicaoAlterada(true); }} somenteLeitura={somenteLeitura} />
       <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Tipos de uso<AjudaCampo rotulo="Ajuda: tipos de uso" texto={<>Escolha um ou mais. Sem seleção, o produto tem uso geral.</>} /></legend>{TIPOS.map((t) => <div key={t.campo}><label className="flex items-center gap-2 text-sm"><Checkbox id={t.campo} aria-invalid={!!erros[t.campo]} aria-describedby={erros[t.campo] ? `${t.campo}-erro` : undefined}  checked={usos[t.campo]} onCheckedChange={(checked) => setUsos({ ...usos, [t.campo]: checked === true })} />{t.nome}</label>{erros[t.campo] && <p id={`${t.campo}-erro`} role="alert" className="text-xs text-destructive">{erros[t.campo]}</p>}</div>)}</fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <CampoFormulario id="produto-unidade" rotulo="Unidade" obrigatorio ajuda="Unidade em que o produto é comprado e baixado. Não pode mudar depois que houver movimento." erro={erros.unidade}>{(p) => <SelectCampo {...p} value={unidade} onValueChange={(valor) => setUnidade(valor as UnidadeMedida)} className={classeInput}>{UNIDADES_ORDENADAS.map((u) => <option key={u} value={u}>{rotuloUnidadeCompleto(u)}</option>)}</SelectCampo>}</CampoFormulario>
@@ -183,6 +228,9 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         <CampoFormulario id="produto-orientacao" rotulo="Orientação de uso (opcional)" erro={erros.orientacaoUso}>{(p) => <textarea {...p} maxLength={2000} value={orientacaoUso} onChange={e => setOrientacaoUso(e.target.value)} className={classeInput} />}</CampoFormulario>
       </fieldset>}
       {usos.usoNutricional && <CampoFormulario id="produto-ms" rotulo="Matéria seca (%)" erro={erros.materiaSecaPercentual}>{(p) => <Input {...p} type="text" inputMode="decimal" value={materiaSeca} onChange={(e) => setMateriaSeca(e.target.value)} className={classeInput} />}</CampoFormulario>}
+      {usos.usoNutricional && <EditorNutricional dados={nutricional} onChange={d => { setNutricional(d); setNutricionalAlterado(true); }} somenteLeitura={somenteLeitura} />}
+      {usos.usoGenetico && <div className="text-sm sm:col-span-2"><h3 className="font-semibold">Identidade genética</h3>{produto?.materialGeneticoId ? <LinkInterno href={`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${encodeURIComponent(produto.materialGeneticoId)}`} area="pecuaria">Consultar material genético</LinkInterno> : <p className="text-ink-3">Nenhum material genético vinculado. A identidade permanece no cadastro de materiais genéticos.</p>}</div>}
+      <CampoFormulario id="produto-conservacao" rotulo="Conservação e armazenamento">{p => <textarea {...p} maxLength={1000} value={conservacao} onChange={e => setConservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
       {produto ? <PartidasProduto configuracao produtoId={produto.id} rastreado={rastrearPartidas} onMudou={() => setRastrearPartidas(true)} /> : <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Lotes e validade</legend><label className="flex items-center gap-2 text-sm"><Checkbox  checked={rastrearPartidas} onCheckedChange={(checked) => setRastrearPartidas(checked === true)} />Controlar lotes por validade</label><p className="text-xs text-ink-3">Opcional. Entradas e saídas passam a identificar o lote do produto. Depois de ativado, o controle não pode ser desligado.</p></fieldset>}
       <MultiSelect
         label="Centros de custo"
@@ -209,6 +257,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
         onValueChange={setFornecedorIds}
       />
       </fieldset>
+      {produto && <><HistoricoProduto produtoId={produto.id} />{usos.usoNutricional && <HistoricoProduto produtoId={produto.id} nutricional />}</>}
     </form>
   </PainelCadastro>;
 }
