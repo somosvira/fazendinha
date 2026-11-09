@@ -42,10 +42,10 @@
 .relatorio-atalho:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .relatorio-compras { display: grid; grid-template-columns: minmax(240px, .9fr) minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 20px; }
 .relatorio-compras > .relatorio-indicador > .relatorio-atalho { margin-top: 12px; }
-.relatorio-classificacao { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 13px; }
-.relatorio-classificacao > div { display: flex; flex-wrap: wrap; gap: 7px; }
-.relatorio-classificacao dt { color: var(--ink-3); }
-.relatorio-classificacao dd { font-weight: 500; font-variant-numeric: tabular-nums; }
+.relatorio-grupos { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 13px; }
+.relatorio-grupos > div { display: flex; flex-wrap: wrap; gap: 7px; }
+.relatorio-grupos dt { color: var(--ink-3); }
+.relatorio-grupos dd { font-weight: 500; font-variant-numeric: tabular-nums; }
 .relatorio-distribuicao { min-width: 0; padding-left: 24px; border-left: 1px solid var(--border); }
 .relatorio-distribuicao ul { display: grid; gap: 16px; margin-top: 12px; }
 .relatorio-distribuicao li > div:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; font-size: 14px; }
@@ -197,7 +197,7 @@
 .relatorio-itens-cabecalho p { margin-top: 4px; font-size: 13px; color: var(--ink-3); }
 .relatorio-itens-contagem { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
 .relatorio-itens-aviso { padding: 12px 20px; background: var(--muted); border-top: 1px solid var(--border); font-size: 13px; }
-.relatorio-item-classificacao { display: inline-block; padding: 4px 9px; border-radius: 5px; color: #79470d; background: #fff0d4; font-size: 12px; font-weight: 500; }
+.relatorio-item-grupo { display: inline-block; padding: 4px 9px; border-radius: 5px; color: #79470d; background: #fff0d4; font-size: 12px; font-weight: 500; }
 :root .app-main .relatorio-itens .fin-tabela > tbody > tr > td { padding: 16px; height: 76px; font-size: 13px; }
 .relatorio-documento { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
 .relatorio-documento-barra { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }

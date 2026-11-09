@@ -31,12 +31,12 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-const categorias = [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }];
+const categorias = [{ id: uid(11), nome: "Insumos" as const, ativo: true, ordem: 0, usoGenetico: false }];
 const centros = [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0 }];
 const fornecedores = [{ id: uid(7), nome: "Cooperativa", documento: null, tipo: "FORNECEDOR" as const, telefone: null, email: null, ativo: true, referencias: 0 }];
 const produtoCriado = {
   id: uid(99), nome: "Sal mineral", unidade: "KG",
-  categoriaId: uid(11), categoriaNome: "Insumos", classificacao: "CUSTEIO" as const, ativo: true,
+  categoriaId: uid(11), categoriaNome: "Insumos" as const, ativo: true,
   categoria: { id: uid(11), nome: "Insumos", usoGenetico: false },
   centroCustoIds: [], centrosCusto: [], fornecedores: [],
 };
@@ -75,7 +75,7 @@ describe("tipos de uso e validação dos perfis", () => {
     fireEvent.click(screen.getByLabelText("Sanitário"));
     fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
     fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
-    fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
+    await alterarControle(screen.getByLabelText("Controlar lotes por validade"), { target: { value: "SIM" } });
     fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
     await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ usoNutricional: true, usoSanitario: true, rastrearPartidas: true, perfilNutricional: { materiaSecaPercentual: esperado } })));
   });
@@ -204,8 +204,8 @@ it("configura tipo padrão e orientação opcionais no produto compartilhado", a
   fireEvent.click(screen.getByLabelText("Sanitário"));
   fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
   fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
-  fireEvent.click(screen.getByRole("button", { name: "Selecionar Tipo de aplicação padrão (opcional)" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Usar Hormônio" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Tipo de aplicação padrão (opcional)" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Hormônio" }));
   fireEvent.change(screen.getByLabelText("Orientação de uso (opcional)"), { target: { value: "Conferir o rótulo do produto" } });
   fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
   await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ perfilSanitario: expect.objectContaining({ tipoAplicacaoId: uid(77), orientacaoUso: "Conferir o rótulo do produto", viaPadrao: null }) })));

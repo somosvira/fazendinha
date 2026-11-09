@@ -114,11 +114,11 @@ function renderSecao(id: SecaoId, dto: RelatorioGerencialDTO): ReactNode {
       if (!r) return null;
       return (
         <Secao id={id} regime="Realizado">
-          {r.porAtividade.length === 0 || (r.receita === 0 && r.custeio === 0 && r.investimento === 0) ? <Vazio /> : (
+          {r.porAtividade.length === 0 || (r.receita === 0 && r.despesa === 0) ? <Vazio /> : (
             <table className="rg-tabela">
-              <thead><tr><th>Atividade</th><th className="num">Receita</th><th className="num">Custeio</th><th className="num">Investimento</th><th className="num">Resultado</th></tr></thead>
-              <tbody>{r.porAtividade.map((a) => <tr key={a.atividade}><td>{ROTULO_ATIVIDADE[a.atividade] ?? a.atividade}</td><td className="num">{money(a.receita)}</td><td className="num">{money(a.custeio)}</td><td className="num">{money(a.investimento)}</td><td className={`num ${sinal(a.resultado)}`}>{money(a.resultado)}</td></tr>)}</tbody>
-              <tfoot><tr><td>Total</td><td className="num">{money(r.receita)}</td><td className="num">{money(r.custeio)}</td><td className="num">{money(r.investimento)}</td><td className={`num ${sinal(r.resultado)}`}>{money(r.resultado)}</td></tr></tfoot>
+              <thead><tr><th>Atividade</th><th className="num">Receita</th><th className="num">Despesas</th><th className="num">Resultado</th></tr></thead>
+              <tbody>{r.porAtividade.map((a) => <tr key={a.atividade}><td>{ROTULO_ATIVIDADE[a.atividade] ?? a.atividade}</td><td className="num">{money(a.receita)}</td><td className="num">{money(a.despesa)}</td><td className={`num ${sinal(a.resultado)}`}>{money(a.resultado)}</td></tr>)}</tbody>
+              <tfoot><tr><td>Total</td><td className="num">{money(r.receita)}</td><td className="num">{money(r.despesa)}</td><td className={`num ${sinal(r.resultado)}`}>{money(r.resultado)}</td></tr></tfoot>
             </table>
           )}
         </Secao>

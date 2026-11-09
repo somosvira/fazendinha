@@ -74,14 +74,14 @@ describe("consulta financeira por serviços operacionais", () => {
   });
 });
 describe("autorização e extensibilidade", () => {
-  it.each(["verValores", "verInvestimento", "verSalarios"])("não consulta valores sem %s, mesmo com aba e área", async flag => {
-    const restrito = { ...ctx, usuario: { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["dashboard", "gastos", "caixinha"], flags: ["verValores", "verInvestimento", "verSalarios"].filter(f => f !== flag) } };
+  it.each(["verValores", "verSalarios"])("não consulta valores sem %s, mesmo com aba e área", async flag => {
+    const restrito = { ...ctx, usuario: { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["dashboard", "gastos", "caixinha"], flags: ["verValores", "verSalarios"].filter(f => f !== flag) } };
     expect((await consultar("resumo", null, null, restrito)).modo).toBe("acesso_negado");
     expect(mocks.dashboard).not.toHaveBeenCalled();
     expect(ferramentasDisponiveis(restrito).some(f => f.name === "consultar_financeiro")).toBe(false);
   });
   it("área e aba são conferidas novamente na execução, não só nos specs", async () => {
-    const usuario = { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["caixinha"], flags: ["verValores", "verInvestimento", "verSalarios"] };
+    const usuario = { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["caixinha"], flags: ["verValores", "verSalarios"] };
     expect((await executarFerramenta("consultar_financeiro", { visao: "resumo", inicio: null, fim: null }, { ...ctx, usuario })).modo).toBe("acesso_negado");
     expect(mocks.dashboard).not.toHaveBeenCalled();
     expect((await consultar("resumo", null, null, { ...ctx, usuario: { ...usuario, areas: ["pecuaria"] } })).modo).toBe("acesso_negado");

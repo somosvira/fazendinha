@@ -129,7 +129,7 @@ describe("erros de distribuição dos lotes", () => {
       return { ok: true, json: async () => ({ existente: null }) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    const item = { id: 900, produtoId: uid(1), descricao: "Ração", quantidade: "10", unidade: "KG", modoValor: "UNITARIO", valorUnitario: "2", valorTotal: "", categoriaId: "", classificacao: "", centroCustoId: "", partidas };
+    const item = { id: 900, produtoId: uid(1), descricao: "Ração", quantidade: "10", unidade: "KG", modoValor: "UNITARIO", valorUnitario: "2", valorTotal: "", categoriaId: "", centroCustoId: "", partidas };
     render(<FormOperacao config={{ ...config, produtos: [{ ...config.produtos[0], rastrearPartidas: true }, { id: uid(2), nome: "Sal mineral", unidade: "KG" }] }} rascunho={{ id: "draft", versao: 3, updatedAt: "2026-10-04", documentos: [], dados: { formulario: {
       tipo: "INVENTARIO_INICIAL", condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Estoque conferido", itens: segundoItem ? [{ ...item, id: 42, produtoId: uid(2), descricao: "Sal mineral", partidas: undefined }, item] : [item],
     } } }} onSalvo={onSalvo} />);
@@ -488,7 +488,7 @@ describe("FormOperacao", () => {
 
 function configCentrosDivergentes() {
   return { ...config,
-    categorias: [{ id: uid(1), nome: "Silagem", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }, { id: uid(2), nome: "Vacinas", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false }],
+    categorias: [{ id: uid(1), nome: "Silagem" as const, ativo: true, ordem: 0, usoGenetico: false }, { id: uid(2), nome: "Vacinas" as const, ativo: true, ordem: 0, usoGenetico: false }],
     centrosCusto: [{ id: uid(1), nome: "Pecuária", ativo: true, ordem: 0 }, { id: uid(2), nome: "Agronomia", ativo: true, ordem: 0 }],
     produtos: [{ ...config.produtos[0], categoriaId: uid(1), centroCustoIds: [uid(1)] }, { ...config.produtos[0], id: uid(2), nome: "Vacina", categoriaId: uid(2), centroCustoIds: [uid(2)] }],
   };
@@ -580,7 +580,7 @@ it("rascunho salvo antes do centro de custo por item existir (item sem centroCus
         formulario: {
           tipo: "COMPRA_CONSUMO_DIRETO", condicao: "SEM_EFEITO_FINANCEIRO",
           descricao: "Compra legada", valorOperacao: "10",
-          itens: [{ id: 1, categoriaId: "", classificacao: "", produtoId: "", descricao: "Item legado", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+          itens: [{ id: 1, categoriaId: "", produtoId: "", descricao: "Item legado", quantidade: "1", unidade: "un", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
           parceiroId: String(cfg.parceiros[0].id), categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
         },
       },
@@ -1012,7 +1012,7 @@ describe("estocável é decidido pelo tipo da operação, não pelo produto", ()
     dados: {
       formulario: {
         tipo, condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Compra de ração", valorOperacao: "",
-        itens: [{ id: 1, categoriaId: "", classificacao: "", centroCustoId: "", produtoId: "1", descricao: "Ração", quantidade: "2", unidade: "kg", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
+        itens: [{ id: 1, categoriaId: "", centroCustoId: "", produtoId: "1", descricao: "Ração", quantidade: "2", unidade: "kg", modoValor: "UNITARIO", valorUnitario: "10", valorTotal: "" }],
         parceiroId: "1", categoriaId: "", centroCustoId: "", contaId: "", formaPagamento: "PIX", data: "2026-09-11", valorAgora: "", parcelas: [],
       },
     },

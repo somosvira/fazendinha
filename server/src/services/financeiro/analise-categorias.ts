@@ -35,14 +35,14 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
     include: { ...incluirClassificacao, centroCusto: true, transacoes: { orderBy: { seq: "asc" } }, compromissos: { include: { liquidacoes: true } } },
     orderBy: [{ data: "desc" }, { numero: "desc" }],
   });
-  const linhas: { operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoriaId: string | null; categoria: string; centroCusto: string; classificacao: string | null; valor: string }[] = [];
+  const linhas: { operacaoId: string | null; contaId?: string; movimentoId?: string; descricao: string | null; data: string; categoriaId: string | null; categoria: string; centroCusto: string; valor: string }[] = [];
   for (const op of operacoes) {
     const incluir = (partes: ReturnType<typeof ratearCategorias>, data: Date) => {
       for (const p of partes) {
         if (categoriaFiltro !== undefined && p.categoriaId !== categoriaFiltro) continue;
         if (centroFiltro !== undefined && p.centroCustoId !== centroFiltro) continue;
         if (p.valor.isZero()) continue;
-        linhas.push({ operacaoId: op.id, descricao: op.descricao, data: data.toISOString().slice(0, 10), categoriaId: p.categoriaId, categoria: p.categoriaNome, centroCusto: (p.centroCustoId ? p.centroCustoNome : null) ?? "Sem centro de custo", classificacao: p.classificacao, valor: p.valor.toFixed(2) });
+        linhas.push({ operacaoId: op.id, descricao: op.descricao, data: data.toISOString().slice(0, 10), categoriaId: p.categoriaId, categoria: p.categoriaNome, centroCusto: (p.centroCustoId ? p.centroCustoNome : null) ?? "Sem centro de custo", valor: p.valor.toFixed(2) });
       }
     };
     if (filtro.base === "compras") incluir(ratearCategorias(op, op.valorTotal), op.data);
@@ -81,7 +81,7 @@ async function analisarPagamentos(filtro: FiltroAnalise, propriedadeId: number |
         operacaoId: movimento.transacao.operacaoId, contaId: movimento.contaId, movimentoId: movimento.id,
         descricao: movimento.transacao.descricao ?? movimento.transacao.operacao?.descricao ?? null,
         data: movimento.transacao.data.toISOString().slice(0, 10), categoriaId: parte.categoriaId,
-        categoria: parte.categoriaNome, centroCusto: parte.centroCustoNome ?? "Sem centro de custo", classificacao: parte.classificacao,
+        categoria: parte.categoriaNome, centroCusto: parte.centroCustoNome ?? "Sem centro de custo",
         valor: parte.valor.abs().mul(realizado.valor.isNegative() ? -1 : 1).toFixed(2),
       })).filter(parte => !new Prisma.Decimal(parte.valor).isZero());
   });

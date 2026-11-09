@@ -96,8 +96,8 @@ export function RelatorioFinanceiroAnalises({ snapshot, informacao, secaoDestino
     };
   }, [assinaturaGrupos]);
 
-  const zeradas = resultado?.porAtividade.filter(item => [item.receita, item.custeio, item.investimento, item.resultado].every(valor => valor === 0)) ?? [];
-  const atividades = resultado?.porAtividade.filter(item => mostrarZeradas || [item.receita, item.custeio, item.investimento, item.resultado].some(valor => valor !== 0)) ?? [];
+  const zeradas = resultado?.porAtividade.filter(item => [item.receita, item.despesa, item.resultado].every(valor => valor === 0)) ?? [];
+  const atividades = resultado?.porAtividade.filter(item => mostrarZeradas || [item.receita, item.despesa, item.resultado].some(valor => valor !== 0)) ?? [];
   return <div ref={raiz} className="relatorio-analises-conteudo">
     <nav ref={indice} className="analise-indice" aria-label="Seções das análises">{grupos.map(grupo => <button key={grupo.id} type="button" aria-current={ativo === grupo.id ? "location" : undefined} onClick={() => ir(grupo.id)}>{grupo.titulo}</button>)}</nav>
     {(contas || fluxo || resultado) && <section className="analise-grupo" data-analise-grupo="caixa" aria-labelledby="rg-sec-caixa">
@@ -116,25 +116,26 @@ export function RelatorioFinanceiroAnalises({ snapshot, informacao, secaoDestino
           { chave: "saidas", titulo: "Saídas", alinhamento: "direita", larguraMinima: 100, celula: mes => brl(mes.saidas) },
           { chave: "resultado", titulo: "Resultado", alinhamento: "direita", larguraMinima: 110, celula: mes => brl(mes.resultado) },
         ]} />}
-        {resultado && <div id={idAtividades}><Quadro titulo="Entradas e despesas por atividade" id="analise-atividades" itens={atividades} chaveDe={item => item.atividade} rodape={{ atividade: "Total", entradas: brl(resultado.receita), custeio: brl(resultado.custeio), investimento: brl(resultado.investimento), resultado: brl(resultado.resultado) }} acao={zeradas.length > 0 && <button className="analise-disclosure h-auto" aria-expanded={mostrarZeradas} aria-controls={idAtividades} onClick={() => setMostrarZeradas(!mostrarZeradas)}>{mostrarZeradas ? "Ocultar sem movimentação" : "Mostrar sem movimentação"} ({zeradas.length})<ChevronDown size={14} aria-hidden="true" /></button>} vazio="Nenhuma atividade com movimentação no recorte." colunas={[
+        {resultado && <div id={idAtividades}><Quadro titulo="Entradas e despesas por atividade" id="analise-atividades" itens={atividades} chaveDe={item => item.atividade} rodape={{ atividade: "Total", entradas: brl(resultado.receita), despesas: brl(resultado.despesa), resultado: brl(resultado.resultado) }} acao={zeradas.length > 0 && <button className="analise-disclosure h-auto" aria-expanded={mostrarZeradas} aria-controls={idAtividades} onClick={() => setMostrarZeradas(!mostrarZeradas)}>{mostrarZeradas ? "Ocultar sem movimentação" : "Mostrar sem movimentação"} ({zeradas.length})<ChevronDown size={14} aria-hidden="true" /></button>} vazio="Nenhuma atividade com movimentação no recorte." colunas={[
           { chave: "atividade", titulo: "Atividade", principal: true, larguraMinima: 75, celula: item => ROTULO_ATIVIDADE[item.atividade] ?? item.atividade },
           { chave: "entradas", titulo: "Entradas", alinhamento: "direita", larguraMinima: 95, celula: item => brl(item.receita) },
-          { chave: "custeio", titulo: "Custeio", alinhamento: "direita", larguraMinima: 90, celula: item => brl(item.custeio) },
-          { chave: "investimento", titulo: "Investimento", alinhamento: "direita", larguraMinima: 90, celula: item => brl(item.investimento) },
+          { chave: "despesas", titulo: "Despesas", alinhamento: "direita", larguraMinima: 90, celula: item => brl(item.despesa) },
           { chave: "resultado", titulo: "Resultado do caixa", alinhamento: "direita", larguraMinima: 105, celula: item => brl(item.resultado) },
         ]}>{informacao("Entradas e despesas por atividade", "Entradas de caixa podem incluir aportes. Esta leitura não representa lucro. Atividades sem movimentação permanecem disponíveis pelo controle de exibição; os totais salvos nunca mudam.")}</Quadro></div>}
       </div>}
     </section>}
     <section className="analise-grupo" data-analise-grupo="compras" aria-labelledby="rg-sec-compras">
       <header className="analise-grupo-titulo"><h2 id="rg-sec-compras" tabIndex={-1}>Compras e despesas</h2></header>
-      <Quadro titulo="Compras por categoria e classificação" id="analise-compras" base="Pela data da operação" itens={compras.porCategoria} chaveDe={categoria => categoria.nome} rodape={{ categoria: "Total", custeio: brl(compras.custeio), investimento: brl(compras.investimento), naoClassificada: brl(compras.semClassificacao), total: brl(compras.total), pct: porcentagemTotal(compras.total) }} colunas={[
+      <Quadro titulo="Compras por grupo de categorias" id="analise-compras" base="Pela data da operação" itens={compras.porGrupo} chaveDe={grupo => grupo.nome} rodape={{ grupo: "Total", total: brl(compras.total), pct: porcentagemTotal(compras.total) }} colunas={[
+        { chave: "grupo", titulo: "Grupo", principal: true, larguraMinima: 200, celula: grupo => grupo.nome },
+        { chave: "total", titulo: "Total", alinhamento: "direita", celula: grupo => brl(grupo.total) },
+        { chave: "pct", titulo: "%", alinhamento: "direita", larguraMinima: 70, celula: grupo => percentual(grupo.pct) },
+      ]}>{informacao("Compras por grupo de categorias", "Itens das compras e serviços pela data da operação, agrupados pelo grupo da categoria. Os pagamentos abaixo são outra leitura, pela data da liquidação, e não devem ser somados às compras.")}</Quadro>
+      <Quadro titulo="Compras por categoria" id="analise-compras-categoria" base="Pela data da operação" itens={compras.porCategoria} chaveDe={categoria => categoria.nome} rodape={{ categoria: "Total", total: brl(compras.total), pct: porcentagemTotal(compras.total) }} colunas={[
         { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 200, celula: categoria => categoria.nome },
-        { chave: "custeio", titulo: "Custeio", alinhamento: "direita", celula: categoria => brl(categoria.custeio) },
-        { chave: "investimento", titulo: "Investimento", alinhamento: "direita", celula: categoria => brl(categoria.investimento) },
-        { chave: "naoClassificada", titulo: "Não classificada", alinhamento: "direita", celula: categoria => brl(categoria.semClassificacao) },
         { chave: "total", titulo: "Total", alinhamento: "direita", celula: categoria => brl(categoria.total) },
         { chave: "pct", titulo: "%", alinhamento: "direita", larguraMinima: 70, celula: categoria => percentual(categoria.pct) },
-      ]}>{informacao("Compras por categoria e classificação", "Itens das compras e serviços pela data da operação. Os pagamentos abaixo são outra leitura, pela data da liquidação, e não devem ser somados às compras.")}</Quadro>
+      ]} />
       {pagamentos && <div className="analise-pagamentos"><p className="analise-base-pagamentos">Pela data do pagamento</p><div className="analise-par">
         <Quadro titulo="Pagamentos realizados por categoria" id="analise-categorias" itens={pagamentos.itens.map((item, indice) => ({ ...item, indice }))} chaveDe={item => item.indice} rodape={{ categoria: "Total", valor: brl(dto.resumo.saidas), pct: porcentagemTotal(dto.resumo.saidas) }} colunas={[
           { chave: "categoria", titulo: "Categoria", principal: true, larguraMinima: 180, celula: item => item.categoria },

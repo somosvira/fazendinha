@@ -56,7 +56,7 @@ describe("consulta gerencial", () => {
       }) },
     };
     mocks.transaction.mockImplementation(async (consulta: (conexao: typeof tx) => Promise<unknown>) => consulta(tx));
-    const financeiro = { ...usuario, areas: ["financeiro"], abas: ["dashboard"], flags: ["verValores", "verSalarios", "verInvestimento"] };
+    const financeiro = { ...usuario, areas: ["financeiro"], abas: ["dashboard"], flags: ["verValores", "verSalarios"] };
     const resultado = await obterResumoGerencial(financeiro, propriedadeId, inicio, fim, new Date("2026-10-19T02:59:59Z"));
     expect(tx.compromissoFinanceiro.findMany).toHaveBeenCalledWith({
       where: { tipo: "PAGAR", status: { in: ["PENDENTE", "PARCIAL"] }, ...(propriedadeId == null ? {} : { operacao: { propriedadeId } }) },
@@ -67,7 +67,7 @@ describe("consulta gerencial", () => {
     expect(resultado.compromissos).toMatchObject({ estado: "DISPONIVEL", dados: { data: "2026-10-18", totalPendente: "3.03", vencido: "1.01", aVencer: "2.02" } });
   });
 
-  it.each(["verValores", "verSalarios", "verInvestimento", "dashboard", "financeiro"])("omite obrigações e sua consulta sem %s", async permissao => {
+  it.each(["verValores", "verSalarios", "dashboard", "financeiro"])("omite obrigações e sua consulta sem %s", async permissao => {
     const tx = {
       $executeRaw: vi.fn(),
       propriedade: { findMany: vi.fn().mockResolvedValue([{ id: 1, nome: "Sítio" }]) },
@@ -79,7 +79,7 @@ describe("consulta gerencial", () => {
       ...usuario,
       areas: ["pecuaria", "financeiro"].filter(p => p !== permissao),
       abas: ["dashboard"].filter(p => p !== permissao),
-      flags: ["verValores", "verSalarios", "verInvestimento"].filter(p => p !== permissao),
+      flags: ["verValores", "verSalarios"].filter(p => p !== permissao),
     };
     const resultado = await obterResumoGerencial(perfil, 1, inicio, fim, fim);
     expect(resultado.compromissos).toEqual({ estado: "RESTRITO", motivo: expect.any(String) });

@@ -15,7 +15,7 @@ import { SEM_VINCULO } from "../lib/ids.js";
 export type Natureza = "CREDITO" | "DEBITO";
 export type Situacao = "ABERTO" | "LIQUIDADO" | "LIQUIDADO_PARCIAL";
 export type Atividade = "leite" | "cafe" | "outros";
-export type TipoOperacao = "receita" | "custeio" | "investimento" | "transferencia" | "compromisso" | "parcial" | "estorno";
+export type TipoOperacao = "receita" | "despesa" | "transferencia" | "compromisso" | "parcial" | "estorno";
 
 export const CENTRO_TRANSFERENCIA = "(Sem centro de custo)";
 
@@ -33,7 +33,7 @@ export interface LinhaLancamento {
   dataVencimento: string;
   descricao: string | null;
   numeroDocumento: string | null;
-  categoria: { nome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null };
+  categoria: { nome: string };
   // `id` ausente/null = sem centro de custo (ou chamador antigo que só
   // manda o nome). O nome já vem resolvido ao vivo por quem monta a linha
   // (o snapshot de um item pode estar desatualizado).
@@ -59,8 +59,7 @@ export function classificarLinha(l: LinhaLancamento): TipoOperacao {
   if (l.situacao === "ABERTO") return "compromisso";
   if (l.transferencia) return "transferencia";
   if (l.natureza === "CREDITO") return "receita";
-  const investimento = l.categoria.classificacao === "INVESTIMENTO";
-  return investimento ? "investimento" : "custeio";
+  return "despesa";
 }
 
 const ehLiquidadoValido = (l: LinhaLancamento) =>
@@ -81,8 +80,8 @@ export function mesesEntre(inicio: string, fim: string): string[] {
 
 export interface TotaisFluxo { entradas: number; saidas: number; resultado: number }
 export interface MesFluxo extends TotaisFluxo { mes: string }
-export interface ResultadoAtividade { atividade: Atividade; receita: number; custeio: number; investimento: number; resultado: number }
-export interface ResultadoPeriodo { receita: number; custeio: number; investimento: number; resultado: number; porAtividade: ResultadoAtividade[] }
+export interface ResultadoAtividade { atividade: Atividade; receita: number; despesa: number; resultado: number }
+export interface ResultadoPeriodo { receita: number; despesa: number; resultado: number; porAtividade: ResultadoAtividade[] }
 export interface CategoriaTotal { categoria: string; total: number; pct: number }
 export interface CentroTotal { centro: string; total: number; pct: number }
 export interface RealizadoAgregado {
@@ -98,7 +97,7 @@ const ATIVIDADES: Atividade[] = ["leite", "cafe", "outros"];
 export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim: string): RealizadoAgregado {
   const validas = linhas.filter((l) => {
     const tipo = classificarLinha(l);
-    return (tipo === "receita" || tipo === "custeio" || tipo === "investimento") && noPeriodo(l.dataLiquidacao, inicio, fim);
+    return (tipo === "receita" || tipo === "despesa") && noPeriodo(l.dataLiquidacao, inicio, fim);
   });
 
   const porMes = new Map<string, { entradas: number; saidas: number }>();
@@ -106,10 +105,9 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
   let entradas = 0;
   let saidas = 0;
   let receita = 0;
-  let custeio = 0;
-  let investimento = 0;
-  const porAtividade = new Map<Atividade, { receita: number; custeio: number; investimento: number }>(
-    ATIVIDADES.map((a) => [a, { receita: 0, custeio: 0, investimento: 0 }]),
+  let despesa = 0;
+  const porAtividade = new Map<Atividade, { receita: number; despesa: number }>(
+    ATIVIDADES.map((a) => [a, { receita: 0, despesa: 0 }]),
   );
   const categorias = new Map<string, number>();
   // Agrupado pela chave (id), não pelo nome: um centro renomeado no meio do
@@ -131,8 +129,7 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     }
     saidas += v;
     if (bucket) bucket.saidas += v;
-    if (tipo === "investimento") { investimento += v; atv.investimento += v; }
-    else { custeio += v; atv.custeio += v; }
+    despesa += v; atv.despesa += v;
     categorias.set(l.categoria.nome, (categorias.get(l.categoria.nome) ?? 0) + v);
     const chave = chaveCentro(l.centroCusto);
     const centro = centros.get(chave) ?? { nome: l.centroCusto.nome, total: 0 };
@@ -147,12 +144,11 @@ export function agregarRealizado(linhas: LinhaLancamento[], inicio: string, fim:
     meses: [...porMes.entries()].map(([mes, b]) => ({ mes, entradas: reais(b.entradas), saidas: reais(b.saidas), resultado: reais(b.entradas - b.saidas) })),
     resultado: {
       receita: reais(receita),
-      custeio: reais(custeio),
-      investimento: reais(investimento),
-      resultado: reais(receita - custeio - investimento),
+      despesa: reais(despesa),
+      resultado: reais(receita - despesa),
       porAtividade: ATIVIDADES.map((atividade) => {
         const a = porAtividade.get(atividade)!;
-        return { atividade, receita: reais(a.receita), custeio: reais(a.custeio), investimento: reais(a.investimento), resultado: reais(a.receita - a.custeio - a.investimento) };
+        return { atividade, receita: reais(a.receita), despesa: reais(a.despesa), resultado: reais(a.receita - a.despesa) };
       }),
     },
     categorias: {
@@ -236,8 +232,8 @@ export function agregarSaldoContas(
 
 export interface OperacaoPorTipo { tipo: TipoOperacao; quantidade: number; valor: number; entraNoTotal: boolean }
 
-const ORDEM_TIPOS: TipoOperacao[] = ["receita", "custeio", "investimento", "transferencia", "compromisso", "parcial", "estorno"];
-const ENTRA_NO_TOTAL = new Set<TipoOperacao>(["receita", "custeio", "investimento"]);
+const ORDEM_TIPOS: TipoOperacao[] = ["receita", "despesa", "transferencia", "compromisso", "parcial", "estorno"];
+const ENTRA_NO_TOTAL = new Set<TipoOperacao>(["receita", "despesa"]);
 
 export function agregarOperacoesPorTipo(linhas: LinhaLancamento[]): OperacaoPorTipo[] {
   const acc = new Map<TipoOperacao, { ids: Set<string>; valor: number }>(ORDEM_TIPOS.map((t) => [t, { ids: new Set(), valor: 0 }]));

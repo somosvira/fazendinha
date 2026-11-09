@@ -25,7 +25,6 @@ export function produtoDTO(produto: Prisma.ProdutoGetPayload<{ include: typeof i
     minimoEstoque: produto.minimoEstoque != null ? produto.minimoEstoque.toString() : null,
     categoriaId: produto.categoriaId ?? null,
     categoriaNome: produto.categoria?.nome ?? null,
-    classificacao: produto.categoria?.classificacao ?? null,
     usoGenetico: produto.usoGenetico,
     usoSanitario: produto.usoSanitario,
     usoNutricional: produto.usoNutricional,

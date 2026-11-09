@@ -52,6 +52,7 @@ const camposParceiro = {
   referencia: textoOpcional(240), observacoes: textoOpcional(1000),
   formaPagamentoPreferida: formaPagamentoSchema.nullable().optional(),
   condicaoPagamentoPreferida: z.enum(["A_VISTA", "A_PRAZO"]).nullable().optional(),
+  intervaloPagamentoDias: z.number().int().min(1).max(3650).nullable().optional(),
   prazosPagamento: z.array(z.number().int().min(1).max(3650)).max(24).refine((dias) => dias.every((dia, i) => i === 0 || dia > dias[i - 1]), "Informe prazos em ordem crescente, sem repetições").optional(),
 };
 
@@ -83,8 +84,7 @@ export const patchContaSchema = z.object({
 
 export const categoriaCadastroSchema = z.object({
   nome: z.string().trim().min(2).max(80),
-  grupoId: z.string().uuid().nullable().optional(),
-  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().default(null),
+  grupoId: z.string({ required_error: "Selecione o grupo da categoria" }).uuid("Selecione o grupo da categoria"),
   ordem: z.number().int().min(0).max(9999).default(0),
   usoGenetico: z.boolean().optional(),
   usoSanitario: z.boolean().optional(),
@@ -131,7 +131,6 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 
 export const itemOperacaoSchema = z.object({
   categoriaId: z.string().uuid().nullable().optional(),
-  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   // undefined = herda do produto (se ele tem exatamente 1 centro), senão null;
   // null = explicitamente "herda o centro da operação".
   centroCustoId: z.string().uuid().nullable().optional(),
@@ -182,7 +181,6 @@ export const operacaoSchema = z.object({
   ...composicaoCompra,
   documentacaoValor: z.object({ referencia: z.string().trim().min(2).max(200), evidencia: z.string().trim().min(5).max(2000) }).strict().optional(),
   chave: z.string().uuid("Atualize a confirmação e tente novamente").optional(),
-  classificacao: z.enum(["CUSTEIO", "INVESTIMENTO"]).nullable().optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
     "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",

@@ -2,7 +2,8 @@
  * Espelha `server/src/services/financeiro/relatorios.schemas.ts`. */
 import { getHoje } from "../../lib/hoje";
 import { SEM_VINCULO } from "../../lib/ids";
-import type { ClassificacaoRelatorio, ConfiguracaoRelatorioFinanceiro, RegimeRelatorioFinanceiro } from "../novo-api";
+import type { ConfiguracaoRelatorioFinanceiro, RegimeRelatorioFinanceiro, SnapshotRelatorioFinanceiro } from "../novo-api";
+import type { OperacaoPorTipo, ResultadoAtividade } from "../../components/relatorio-gerencial/types";
 
 export const LIMITE_MESES = 24;
 
@@ -13,7 +14,6 @@ export const TIPOS_RELATORIO = [
 ] as const;
 // Operação nasce confirmada e só pode ser cancelada — não existe "rascunho".
 export const STATUS_RELATORIO: readonly (readonly [string, string])[] = [["CONFIRMADA", "Confirmada"], ["CANCELADA", "Cancelada"]];
-export const CLASSIFICACOES_RELATORIO: readonly (readonly [ClassificacaoRelatorio, string])[] = [["CUSTEIO", "Custeio"], ["INVESTIMENTO", "Investimento"], ["SEM_CLASSIFICACAO", "Não classificada"]];
 export const REGIMES_RELATORIO: readonly { id: RegimeRelatorioFinanceiro; rotulo: string; dica: string }[] = [
   { id: "ambos", rotulo: "Realizado + compromissos", dica: "Pagamentos e recebimentos do período e compromissos em aberto." },
   { id: "realizado", rotulo: "Só realizado", dica: "Apenas o que passou pelas contas (regime de caixa)." },
@@ -21,6 +21,7 @@ export const REGIMES_RELATORIO: readonly { id: RegimeRelatorioFinanceiro; rotulo
 ];
 export const SEM_CENTRO = "Sem centro de custo";
 export const SEM_CATEGORIA = "Sem categoria";
+export const SEM_GRUPO = "Sem grupo";
 
 const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -38,7 +39,7 @@ export function configuracaoPadrao(hoje: Date = getHoje()): ConfiguracaoRelatori
   const mes = periodoMes(hoje, -1);
   return {
     nome: `Relatório financeiro — ${mes.nome}`, dataInicio: mes.dataInicio, dataFim: mes.dataFim, regime: "ambos",
-    tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [],
+    tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], grupoIds: [],
     parceiroIds: [],
   };
 }
@@ -59,7 +60,7 @@ export function mesclarRascunho(parcial: Partial<ConfiguracaoRelatorioFinanceiro
     centroCustoIds: lista<string>(parcial.centroCustoIds) ?? base.centroCustoIds,
     parceiroIds: lista<string>(parcial.parceiroIds) ?? base.parceiroIds,
     categoriaIds: lista<string>(parcial.categoriaIds) ?? base.categoriaIds,
-    classificacoes: lista<ClassificacaoRelatorio>(parcial.classificacoes, CLASSIFICACOES_RELATORIO.map(([id]) => id)) ?? base.classificacoes,
+    grupoIds: lista<string>(parcial.grupoIds) ?? base.grupoIds,
   };
 }
 
@@ -84,7 +85,7 @@ type Cadastro = { id: string; nome: string };
 const nomes = (ids: string[], cadastros: Cadastro[], vazio: string) => ids.map((id) => id === SEM_VINCULO ? vazio : cadastros.find((c) => c.id === id)?.nome ?? "(removido)");
 const ou = (itens: string[], todos: string) => itens.length ? itens.join(", ") : todos;
 
-export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cadastros: { categorias: Cadastro[]; centrosCusto: Cadastro[]; parceiros: Cadastro[]; tipos: Record<string, string> }): [string, string][] {
+export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cadastros: { categorias: Cadastro[]; centrosCusto: Cadastro[]; parceiros: Cadastro[]; grupos: Cadastro[]; tipos: Record<string, string> }): [string, string][] {
   return [
     ["Período", `${dataCurta(config.dataInicio)} a ${dataCurta(config.dataFim)}`],
     ["Leitura", REGIMES_RELATORIO.find((r) => r.id === config.regime)?.rotulo ?? config.regime],
@@ -93,17 +94,17 @@ export function resumoConfiguracao(config: ConfiguracaoRelatorioFinanceiro, cada
     ["Centros de custo", ou(nomes(config.centroCustoIds, cadastros.centrosCusto, SEM_CENTRO), "Todos os centros")],
     ["Parceiros", ou(nomes(config.parceiroIds, cadastros.parceiros, "Sem parceiro"), "Todos os parceiros")],
     ["Categorias", ou(nomes(config.categoriaIds, cadastros.categorias, SEM_CATEGORIA), "Todas as categorias")],
-    ["Classificação", ou(config.classificacoes.map((c) => CLASSIFICACOES_RELATORIO.find(([id]) => id === c)?.[1] ?? c), "Custeio, investimento e não classificadas")],
+    ["Grupos de categorias", ou(nomes(config.grupoIds, cadastros.grupos, SEM_GRUPO), "Todos os grupos")],
   ];
 }
 
 /** Blocos que o documento terá, conforme a leitura escolhida. */
-export function secoesDoRelatorio(config: Pick<ConfiguracaoRelatorioFinanceiro, "regime" | "centroCustoIds" | "parceiroIds" | "categoriaIds" | "classificacoes" | "tipos" | "status">): string[] {
-  const filtrado = [config.tipos, config.status, config.centroCustoIds, config.parceiroIds, config.categoriaIds, config.classificacoes].some((itens) => itens.length > 0);
+export function secoesDoRelatorio(config: Pick<ConfiguracaoRelatorioFinanceiro, "regime" | "centroCustoIds" | "parceiroIds" | "categoriaIds" | "grupoIds" | "tipos" | "status">): string[] {
+  const filtrado = [config.tipos, config.status, config.centroCustoIds, config.parceiroIds, config.categoriaIds, config.grupoIds].some((itens) => itens.length > 0);
   const realizado = config.regime !== "previsto";
   const previsto = config.regime !== "realizado";
   return [
-    "Compras e serviços por categoria (custeio × investimento)",
+    "Compras e serviços por grupo de categorias e por categoria",
     "Compras e serviços por centro de custo",
     ...(realizado ? ["Pagamentos por categoria e por centro de custo", "Resultado do caixa por natureza"] : []),
     "Operações por tipo",
@@ -112,4 +113,57 @@ export function secoesDoRelatorio(config: Pick<ConfiguracaoRelatorioFinanceiro, 
     "Itens das operações com categoria e centro de custo",
     "Rastreabilidade",
   ];
+}
+
+const ROTULO_CLASSIFICACAO_ANTIGA: Record<string, string> = { CUSTEIO: "Custeio", INVESTIMENTO: "Investimento", SEM_CLASSIFICACAO: "Não classificada" };
+const somaReais = (...valores: (string | number | undefined)[]) => valores.reduce<number>((total, valor) => total + Number(valor ?? 0), 0);
+
+/** Relatórios emitidos antes da retirada da classificação (formato 1) separavam
+ * custeio × investimento. A leitura apresenta essa separação como grupos, sem
+ * recalcular nada: os totais continuam os da emissão. */
+export function normalizarSnapshot(bruto: SnapshotRelatorioFinanceiro | (Record<string, unknown> & { versao: 1 })): SnapshotRelatorioFinanceiro {
+  if (bruto.versao !== 1) return bruto as SnapshotRelatorioFinanceiro;
+  // Formato 1 não tem mais tipo próprio: só é lido aqui.
+  const antigo = bruto as any;
+  const despesas = antigo.composicao.despesas;
+  const total = Number(despesas.total) || 0;
+  const pct = (valor: number) => total === 0 ? 0 : Math.round((valor / total) * 10000) / 100;
+  const porGrupo = ([["custeio", "CUSTEIO"], ["investimento", "INVESTIMENTO"], ["semClassificacao", "SEM_CLASSIFICACAO"]] as const)
+    .map(([chave, classificacao]) => ({ nome: ROTULO_CLASSIFICACAO_ANTIGA[classificacao], valor: Number(despesas[chave] ?? 0) }))
+    .filter((grupo) => grupo.valor !== 0)
+    .map((grupo) => ({ nome: grupo.nome, total: grupo.valor.toFixed(2), pct: pct(grupo.valor) }));
+  const gerencial = antigo.gerencial;
+  const operacoes: OperacaoPorTipo[] = [];
+  for (const operacao of gerencial.operacoes ?? []) {
+    if (operacao.tipo !== "custeio" && operacao.tipo !== "investimento") { operacoes.push(operacao); continue; }
+    const despesa = operacoes.find((item) => item.tipo === "despesa");
+    if (despesa) { despesa.quantidade += operacao.quantidade; despesa.valor = somaReais(despesa.valor, operacao.valor); }
+    else operacoes.push({ ...operacao, tipo: "despesa" });
+  }
+  return {
+    ...antigo,
+    versao: 2,
+    configuracao: { ...antigo.configuracao, grupoIds: antigo.configuracao.grupoIds ?? [] },
+    filtros: { ...antigo.filtros, grupos: (antigo.filtros.classificacoes ?? []) as string[] },
+    gerencial: {
+      ...gerencial,
+      operacoes,
+      resultado: gerencial.resultado && {
+        receita: gerencial.resultado.receita,
+        despesa: somaReais(gerencial.resultado.custeio, gerencial.resultado.investimento),
+        resultado: gerencial.resultado.resultado,
+        porAtividade: gerencial.resultado.porAtividade.map((a: ResultadoAtividade & { custeio: number; investimento: number }) => ({
+          atividade: a.atividade, receita: a.receita, despesa: somaReais(a.custeio, a.investimento), resultado: a.resultado,
+        })),
+      },
+    },
+    composicao: {
+      ...antigo.composicao,
+      linhas: antigo.composicao.linhas.map(({ classificacao, ...linha }: { classificacao: string | null }) => ({ ...linha, grupo: ROTULO_CLASSIFICACAO_ANTIGA[classificacao ?? "SEM_CLASSIFICACAO"] })),
+      despesas: {
+        total: despesas.total, porGrupo, porCentro: despesas.porCentro,
+        porCategoria: despesas.porCategoria.map(({ nome, total: totalCategoria, pct: pctCategoria }: { nome: string; total: string; pct: number }) => ({ nome, total: totalCategoria, pct: pctCategoria })),
+      },
+    },
+  };
 }

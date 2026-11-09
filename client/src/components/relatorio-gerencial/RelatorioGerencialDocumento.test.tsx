@@ -13,7 +13,7 @@ const vazio: RelatorioGerencialDTO = {
   resumo: { entradas: 0, saidas: 0, resultado: 0, saldoContasFinal: 0, nLancamentos: 0, aPagar: 0, aReceber: 0 },
   saldoContas: { contas: [], total: { saldoInicial: 0, entradas: 0, saidas: 0, saldoFinal: 0 } },
   entradasSaidas: { meses: [{ mes: "2026-03", entradas: 0, saidas: 0, resultado: 0 }], total: { entradas: 0, saidas: 0, resultado: 0 } },
-  resultado: { receita: 0, custeio: 0, investimento: 0, resultado: 0, porAtividade: [] },
+  resultado: { receita: 0, despesa: 0, resultado: 0, porAtividade: [] },
   compromissos: { hoje: "2026-09-08", aPagar: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] }, aReceber: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] } },
   categorias: { itens: [], centros: [] },
   operacoes: dtoExemplo.operacoes.map((o) => ({ ...o, quantidade: 0, valor: 0 })),

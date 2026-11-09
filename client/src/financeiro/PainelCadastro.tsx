@@ -1,10 +1,11 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleAlert, type LucideIcon } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 
-export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, largura = "sm:max-w-3xl", compacto = false, bloqueado = false, alteracoesExternas = false, camada = "padrao" }: {
+export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, largura = "sm:max-w-3xl", compacto = false, bloqueado = false, alteracoesExternas = false, camada = "padrao", erroRodape }: {
+  erroRodape?: string | null;
   camada?: "padrao" | "sobreDetalhe";
   aberto: boolean;
   titulo: string;
@@ -30,7 +31,7 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   return <><Dialog open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
     <DialogContent className={`financeiro-colorido ${conteudoCamada} flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 ${compacto ? "max-w-lg" : largura}`} overlayClassName={overlay} onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
       <DialogHeader className="fin-cabecalho shrink-0 border-b border-border p-5 pr-12"><DialogTitle>{titulo}</DialogTitle><DialogDescription className="sr-only">{titulo}</DialogDescription></DialogHeader>
-      {corpo}<DialogFooter className="shrink-0 border-t border-border bg-card p-4">{typeof rodape === "function" ? rodape(fechar) : rodape}</DialogFooter>
+      {corpo}<DialogFooter className="shrink-0 border-t border-border bg-card p-4">{erroRodape !== undefined ? <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center"><p role={erroRodape ? "alert" : undefined} className="min-w-0 flex-1 text-sm text-destructive">{erroRodape}</p><div className="flex shrink-0 justify-end gap-2">{typeof rodape === "function" ? rodape(fechar) : rodape}</div></div> : typeof rodape === "function" ? rodape(fechar) : rodape}</DialogFooter>
     </DialogContent>
   </Dialog>{confirmar}</>;
 
@@ -57,4 +58,27 @@ export function CampoFormulario({ id, rotulo, erro, ajuda, children, obrigatorio
     {erro && <p id={`${id}-erro`} role="alert" className="mt-1 flex items-start gap-1.5 text-xs font-normal text-destructive"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden />{erro}</p>}
     {ajuda && <p id={`${id}-ajuda`} className="sr-only">{ajuda}</p>}
   </div>;
+}
+
+/** Aguarda a abertura de seções com erro antes de levar foco ao primeiro campo inválido. */
+export function useErrosCadastro(erros: Record<string, string>, erroGeral: string | null) {
+  const formulario = useRef<HTMLFormElement>(null);
+  const mensagem = erroGeral ?? Object.values(erros)[0] ?? null;
+  useEffect(() => {
+    if (!mensagem) return;
+    let segundoQuadro = 0;
+    const quadro = requestAnimationFrame(() => {
+      segundoQuadro = requestAnimationFrame(() => {
+        const alvo = formulario.current?.querySelector<HTMLElement>('[aria-invalid="true"], [role="alert"]');
+        if (!alvo) return;
+        const foco = alvo.matches('input, button, select, textarea') ? alvo
+          : alvo.querySelector<HTMLElement>('[role="checkbox"]') ?? alvo.querySelector<HTMLElement>('input, button, select, textarea') ?? alvo;
+        if (!foco.matches('input, button, select, textarea')) foco.tabIndex = -1;
+        foco.focus({ preventScroll: true });
+        alvo.scrollIntoView({ block: "center", behavior: "instant" });
+      });
+    });
+    return () => { cancelAnimationFrame(quadro); cancelAnimationFrame(segundoQuadro); };
+  }, [erros, erroGeral, mensagem]);
+  return { formulario, mensagem };
 }
