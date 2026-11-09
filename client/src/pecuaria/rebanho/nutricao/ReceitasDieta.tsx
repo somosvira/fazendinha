@@ -63,8 +63,8 @@ export function ReceitasDieta({ podeLancar }: { podeLancar: boolean }) {
         { chave: "situacao", titulo: "Situação", celula: (d) => <Pill tone={d.publicadaEm ? "green" : "amber"}>{d.publicadaEm ? "Publicada" : "Rascunho"}</Pill> },
         { chave: "ingredientes", titulo: "Ingredientes", alinhamento: "direita", celula: (d) => d.itens.length },
         { chave: "total", titulo: "Total por cabeça/dia", alinhamento: "direita", celula: (d) => totalPorCabeca(d) },
-        { chave: "uso", titulo: "Uso vigente", celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
-        { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex justify-end gap-2">{acoesReceita(d)}</div> },
+        { chave: "uso", titulo: "Uso vigente", larguraMinima: 200, celula: (d) => d.lotesEmUso?.length ? <span className="grid gap-1">{d.lotesEmUso.map((l) => <LinkNutricional key={l.id} href={rotaNutricao({ loteId: l.id })}>{l.nome} · {l.propriedade.nome}</LinkNutricional>)}</span> : "Sem uso vigente" },
+        { chave: "acoes", titulo: "Ações", acoes: true, celula: (d) => <div className="flex flex-col items-stretch gap-2">{acoesReceita(d)}</div> },
       ]} /> : <div className="nutricao-receitas-grid">{receitas.map((d) => <Panel key={d.id} className={`nutricao-receita-card ${!d.publicadaEm ? "nutricao-receita-rascunho" : ""}`}>
         <header className="receita-identidade-nova">
           <div><h3>{nomeReceita(d)}</h3><p>v{d.versao} · {d.itens.length} {d.itens.length === 1 ? "ingrediente" : "ingredientes"} · {totalPorCabeca(d)} por cabeça/dia</p></div>
