@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), salvar: vi.fn(), descartar: vi.fn(), confirmar: vi.fn(), criar: vi.fn(), escrita: vi.fn() }));
-vi.mock("../services/financeiro/rascunhos.js", () => ({ obterRascunho: mocks.obter, salvarRascunho: mocks.salvar, descartarRascunho: mocks.descartar, confirmarRascunho: mocks.confirmar }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ criarOperacao: mocks.criar }));
+vi.mock("../services/financeiro/rascunhos.js", () => ({ rascunhoEnvolveAnimais: async () => false, obterRascunho: mocks.obter, salvarRascunho: mocks.salvar, descartarRascunho: mocks.descartar, confirmarRascunho: mocks.confirmar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, operacaoTemAnimais: async () => false, criarOperacao: mocks.criar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 

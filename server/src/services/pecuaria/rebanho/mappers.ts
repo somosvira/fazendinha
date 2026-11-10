@@ -197,6 +197,10 @@ export interface AnimalFicha extends AnimalResumo {
   filiacao: { mae: FiliacaoLadoDTO | null; pai: FiliacaoLadoDTO | null };
   /** quantos filhos (como mãe ou pai) este animal tem registrados */
   filhosCount: number;
+  /** compra confirmada ou cancelada mais recente do animal (sem valores monetários) */
+  aquisicao?: { operacaoId: string; numero: number; data: string; status: string; parceiroNome: string | null } | null;
+  /** devolução confirmada ao vendedor */
+  devolucao?: { operacaoId: string; numero: number; data: string } | null;
 }
 
 export interface PainelRebanho {

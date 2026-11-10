@@ -1,6 +1,6 @@
 # Plano de implementação — compra de animais
 
-Status: proposta com decisões de produto fechadas em 09/11/2026. Nada implementado. Ao concluir a entrega, incorporar as regras vigentes ao [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md) e retirar este plano.
+Status: decisões de produto fechadas. Backend implementado na branch `claude/compra-animais-plano`: migration `20261109180000_compra_animais`, serviço `services/financeiro/compra-animais.ts`, rotas, ficha, filtros e rótulos. Interface do formulário pendente de aprovação do mockup (T7) e de implementação (T8, T13). As regras vigentes já estão incorporadas aos [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md). Este plano será retirado quando a interface for entregue.
 
 ## Problema
 
@@ -32,7 +32,7 @@ Não existe operação financeira para comprar animais.
 | D1 | Preço do lote | O usuário pode informar o preço por animal ou o **valor total do lote**. No lote, o sistema calcula o preço médio (total ÷ cabeças) e grava esse valor em cada item. Os centavos que sobram da divisão vão para o último item, para a soma fechar exatamente o total. |
 | D2 | Estorno | Nunca é bloqueado por fatos posteriores. Devolve o valor pelo lançamento inverso, dá baixa nos animais com o tipo novo **`COMPRA_ESTORNADA`** e mantém todos os registros (pesagens, aplicações, partos etc.). Pode ser **total** (estorno da operação) ou **parcial** (devolução de algumas cabeças). |
 | D3 | Frete e comissão | São itens comuns da operação, sem animal. **Não** entram no custo do animal. |
-| D4 | Classificação | Escolhida pelo usuário, sem sugestão automática. Pode ser definida por item. |
+| D4 | Classificação | A classificação de custeio/investimento vem do grupo da categoria (a classificação própria foi removida em staging). O usuário escolhe a categoria, inclusive por item. |
 | D5 | Entidade do animal | O animal é uma entidade própria. Dados do animal (brinco, raça, nascimento, peso de entrada etc.) ficam só no Rebanho e só são editados na ficha. A operação guarda apenas os dados da compra e a referência ao animal. |
 | D6 | Unidade de preço | Definida pelo usuário: **cabeça, kg ou arroba**. |
 

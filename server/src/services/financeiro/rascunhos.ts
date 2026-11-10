@@ -3,7 +3,8 @@ import { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
-import { confirmarRascunhoOperacao } from "./operacoes.js";
+import { confirmarRascunhoOperacao, envolveAnimais } from "./operacoes.js";
+import { transacaoPecuaria } from "../pecuaria/transacao.js";
 import { auditar, FinanceiroError } from "./regras.js";
 import { operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
 import { includeOperacaoConfirmada } from "./idempotencia.js";
@@ -62,8 +63,17 @@ export async function descartarRascunho(propriedadeId: number, usuarioId: number
   return removido;
 }
 
+/** Rascunho cuja operação cadastra, devolve ou corrige animais (também escreve no Rebanho). */
+export async function rascunhoEnvolveAnimais(propriedadeId: number, usuarioId: number): Promise<boolean> {
+  const previa = await prisma.rascunhoOperacao.findUnique({ where: chave(propriedadeId, usuarioId), select: { dados: true } });
+  const operacao = operacaoSchema.safeParse((previa?.dados as { operacao?: unknown } | undefined)?.operacao);
+  return operacao.success && envolveAnimais(operacao.data);
+}
+
 export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string) {
-  return transacaoValidada(async (tx) => {
+  // Com animais, a confirmação segue a isolação do Rebanho; a versão do rascunho é conferida dentro.
+  const executar = await rascunhoEnvolveAnimais(propriedadeId, usuarioId) ? transacaoPecuaria : transacaoValidada;
+  return executar(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
       const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });

@@ -27,6 +27,13 @@ import { apresentarValores, podeVerValores, valoresConta, valoresOperacao, valor
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
 
+/** Compra e devolução de animais também escrevem no Rebanho: exigem a área da Pecuária. */
+function exigirPecuariaParaAnimais(c: Context, comAnimais: boolean) {
+  const usuario = getUsuario(c);
+  if (comAnimais && usuario && !temArea(usuario, "pecuaria")) return c.json({ error: "Compra e devolução de animais exigem acesso à Pecuária" }, 403);
+  return null;
+}
+
 function apresentarOperacao<T extends {
   tipo?: string;
   valorTotal: unknown;
@@ -201,7 +208,12 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
-    try { const body = c.req.valid("json"); return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave)), 201); }
+    try {
+      const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
+      const semAcesso = exigirPecuariaParaAnimais(c, await rascunhos.rascunhoEnvolveAnimais(propriedadeId, uid));
+      if (semAcesso) return semAcesso;
+      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave)), 201);
+    }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {
@@ -257,6 +269,8 @@ export const financeiroRouter = new Hono()
     try {
       const input = c.req.valid("json");
       if (input.corrigeOperacaoId && !podeVerValores(c)) return c.json({ error: "É necessário poder ver valores para corrigir uma operação." }, 403);
+      const semAcesso = exigirPecuariaParaAnimais(c, operacoes.envolveAnimais(input));
+      if (semAcesso) return semAcesso;
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(apresentarValores(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresOperacao), 201);
     } catch (e) { return falha(c, e); }
@@ -264,6 +278,8 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
+      const semAcesso = exigirPecuariaParaAnimais(c, await operacoes.operacaoTemAnimais(c.req.param("id")));
+      if (semAcesso) return semAcesso;
       const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
       const dados = await operacoes.obterOperacao(cancelada.id, propriedadeId);
       return c.json(apresentarOperacao(c, dados), 201);

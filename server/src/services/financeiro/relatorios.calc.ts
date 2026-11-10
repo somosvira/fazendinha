@@ -19,7 +19,7 @@ export type FiltroRelatorio = Pick<ConfiguracaoRelatorioFinanceiro, "tipos" | "s
 };
 
 export const ROTULO_TIPO: Record<string, string> = {
-  COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto",
+  COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto", COMPRA_ANIMAIS: "Compra de animais",
   SERVICO: "Serviço", VENDA: "Venda", APORTE: "Aporte", RETIRADA: "Retirada",
   TRANSFERENCIA_FINANCEIRA: "Transferência", AJUSTE_ESTOQUE: "Ajuste de estoque",
   TRANSFERENCIA_ESTOQUE: "Transferência de estoque", INVENTARIO_INICIAL: "Inventário inicial",

@@ -68,6 +68,7 @@ enum TipoOperacaoFinanceira {
   BONIFICACAO
   DEVOLUCAO
   PRODUCAO
+  COMPRA_ANIMAIS
 
   @@schema("public")
 }
@@ -505,10 +506,14 @@ model ItemOperacao {
   movimentosEstoque MovimentoEstoque[]
   createdAt         DateTime                @default(now())
   aplicacaoProdutos AplicacaoProduto[]
+  // Compra/devolução de animais: única ligação entre animal e operação (trigger garante uma compra e uma devolução ativas).
+  animal            Animal?                 @relation("ItemOperacaoAnimal", fields: [animalId], references: [id], onDelete: Restrict)
+  animalId          String?
 
   @@unique([operacaoId, ordem])
   @@index([operacaoId])
   @@index([produtoId])
+  @@index([animalId])
   @@index([centroCustoId])
   @@schema("public")
 }
@@ -1089,6 +1094,8 @@ enum TipoBaixa {
   // Somente regularização histórica documentada.
   NAO_DETERMINADO
   CADASTRO_INDEVIDO
+  // Animal devolvido ao vendedor ou compra estornada; sem motivo.
+  COMPRA_ESTORNADA
 
   @@schema("pecuaria")
 }
@@ -1212,6 +1219,7 @@ model Animal {
   manejoAnimals               ManejoAnimal[]
   participacaoConsumoAnimals  ParticipacaoConsumoAnimal[]
 
+  itensOperacao               ItemOperacao[]          @relation("ItemOperacaoAnimal")
   @@index([brinco])
   @@index([maeId])
   @@index([paiId])

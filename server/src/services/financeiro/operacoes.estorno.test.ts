@@ -46,7 +46,7 @@ vi.mock("../../db.js", () => {
     $queryRaw: mocks.queryRaw,
   };
   mocks.transaction.mockImplementation(async (fn: (t: unknown) => unknown) => fn(tx));
-  return { prisma: { $transaction: mocks.transaction, operacao: { findFirst: mocks.operacaoFindFirstDireto } } };
+  return { prisma: { $transaction: mocks.transaction, operacao: { findFirst: mocks.operacaoFindFirstDireto }, itemOperacao: { findFirst: async () => null } } };
 });
 
 import { estornarOperacao, estornarTransacao, liquidarCompromisso, obterOperacao, simularParcelas } from "./operacoes.js";

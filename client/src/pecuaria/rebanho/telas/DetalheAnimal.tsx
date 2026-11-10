@@ -41,6 +41,8 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { Button, ErrorBox, hoje, PageHeader, PaginaFinanceira, Pill } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
+import { podeAcessarArea } from "../../../estoque/navegacao";
+import { linkOperacaoFinanceira } from "../../../financeiro/navegacao";
 import { PesoEGanho } from "../components/PesoEGanho";
 import { HistoricoBaixas } from "../components/HistoricoBaixas";
 import { QualidadeAnimalLeite } from "../leite/QualidadeAnimalLeite";
@@ -82,6 +84,11 @@ function LadoFiliacao({ lado, vazio }: { lado: AnimalFicha["filiacao"]["mae"]; v
 
 /** Nome do lote como link para a página do lote — usado no cabeçalho e no histórico de localização.
  *  Nenhuma das duas linhas onde aparece tem `onClick` no `<tr>`/container, então não precisa de stopPropagation. */
+function LinkOperacao({ id, numero }: { id: string; numero: number }) {
+  if (!podeAcessarArea("financeiro")) return <>Operação #{numero}</>;
+  return <button type="button" onClick={() => navegarPara(linkOperacaoFinanceira(id))} className="break-words font-semibold text-mast hover:underline">Operação #{numero}</button>;
+}
+
 function LinkLote({ id, nome }: { id: string; nome: string }) {
   return <button type="button" onClick={() => navegarPara(linkFichaLote(id))} className="break-words font-semibold text-mast hover:underline">{nome}</button>;
 }
@@ -357,6 +364,8 @@ export function DetalheAnimal({ id, onVoltar, podeLancar = true, rotuloVoltar = 
           <DadoFicha icon={Hash} rotulo="SISBOV">{animal.sisbov ?? "—"}</DadoFicha>
           <DadoFicha icon={animal.sexo === "F" ? Venus : Mars} rotulo="Sexo">{animal.sexo === "F" ? "Fêmea" : "Macho"}</DadoFicha>
           <DadoFicha icon={Home} rotulo="Origem">{animal.origem === "NASCIDO" ? "Nascido na propriedade" : "Comprado"}</DadoFicha>
+          {animal.aquisicao && <DadoFicha icon={LogIn} rotulo="Comprado na">{<><LinkOperacao id={animal.aquisicao.operacaoId} numero={animal.aquisicao.numero} />{animal.aquisicao.status === "CANCELADA" ? " (cancelada)" : ""}</>}</DadoFicha>}
+          {animal.devolucao && <DadoFicha icon={ArchiveX} rotulo="Devolvido na"><LinkOperacao id={animal.devolucao.operacaoId} numero={animal.devolucao.numero} /></DadoFicha>}
           <DadoFicha icon={CalendarDays} rotulo="Nascimento">{formatarDataBR(animal.dataNascimento)}{animal.nascimentoEstimado ? " (estimado)" : ""}</DadoFicha>
           <DadoFicha icon={CalendarDays} rotulo={animal.idadeNaBaixa ? "Idade na baixa" : "Idade"}>{formatarIdade(animal.idadeMeses)}</DadoFicha>
           <DadoFicha icon={LogIn} rotulo="Entrada">{formatarDataBR(animal.dataEntrada)}</DadoFicha>

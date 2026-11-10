@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), listar: vi.fn(), criar: vi.fn(), transacao: vi.fn(), transferencia: vi.fn(), estornar: vi.fn(), configuracoes: vi.fn(), parceiros: vi.fn(), gerenciais: vi.fn(), produtos: vi.fn(), leitura: vi.fn(), escrita: vi.fn(), rascunho: vi.fn() }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ obterOperacao: mocks.obter, listarOperacoes: mocks.listar, criarOperacao: mocks.criar, criarTransacaoAvulsa: mocks.transacao, transferir: mocks.transferencia, estornarTransacao: mocks.estornar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, operacaoTemAnimais: async () => false, obterOperacao: mocks.obter, listarOperacoes: mocks.listar, criarOperacao: mocks.criar, criarTransacaoAvulsa: mocks.transacao, transferir: mocks.transferencia, estornarTransacao: mocks.estornar }));
 vi.mock("../services/financeiro/contas.js", () => ({ listarContas: mocks.configuracoes }));
 vi.mock("../services/financeiro/parceiros.js", () => ({ listarParceiros: mocks.parceiros }));
 vi.mock("../services/financeiro/cadastros-gerenciais.js", () => ({ listarCadastrosGerenciais: mocks.gerenciais }));
 vi.mock("../services/estoque/produtos.js", () => ({ listarProdutosCadastro: mocks.produtos }));
-vi.mock("../services/financeiro/rascunhos.js", () => ({ obterRascunho: mocks.rascunho }));
+vi.mock("../services/financeiro/rascunhos.js", () => ({ rascunhoEnvolveAnimais: async () => false, obterRascunho: mocks.rascunho }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 import { uid } from "../lib/uid.fixture.js";

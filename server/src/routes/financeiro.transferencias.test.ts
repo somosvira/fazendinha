@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../lib/uid.fixture.js";
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), listar: vi.fn(), estornar: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ obterOperacao: mocks.obter, listarOperacoes: mocks.listar, estornarOperacao: mocks.estornar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, operacaoTemAnimais: async () => false, obterOperacao: mocks.obter, listarOperacoes: mocks.listar, estornarOperacao: mocks.estornar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 const dados = {

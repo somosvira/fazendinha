@@ -9,7 +9,7 @@ export const LIMITE_MESES = 24;
 
 // Transferência financeira não compõe relatório (só redistribui saldo).
 export const TIPOS_RELATORIO = [
-  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
+  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "APORTE", "RETIRADA",
   "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
 ] as const;
 // Operação nasce confirmada e só pode ser cancelada — não existe "rascunho".

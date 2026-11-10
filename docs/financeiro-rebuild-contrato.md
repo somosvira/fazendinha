@@ -205,6 +205,28 @@ Operações, contas e central de relatórios oferecem Cartões/Tabela; Extrato g
 Cartões de operação distinguem tipo, situação, parceiro, valor autorizado e impactos registrados. Os impactos de uma operação cancelada são históricos; um pagamento estornado não cancela automaticamente a operação. Contas apresenta o último movimento e se participa do saldo geral. A distribuição do saldo usa apenas contas ativas incluídas, independentemente dos filtros da lista; não desenha proporções quando há saldo negativo ou total não positivo. Relatórios preservam nome, período, autor, recorte, status, falha e download disponível, sem acrescentar totais financeiros à biblioteca.
 
 A cronologia do extrato agrupa somente datas consecutivas da ordenação recebida. Original e estorno permanecem movimentos separados nas próprias datas. Transferências identificam explicitamente os lados de entrada/saída nas contas, sem apresentá-los como receita ou consolidá-los em renda. O documento e o extrato individual conservam os contratos anteriores.
+## Compra e devolução de animais
+
+A compra de animais usa o tipo `COMPRA_ANIMAIS`. Seus efeitos financeiros são os de uma compra comum: pagamento à vista, a prazo ou parcial, compromissos, desconto comercial e logística, período fechado e estorno. Exige fornecedor (papel `FORNECEDOR`) e centro de custo efetivo nos itens. Não gera `MovimentoEstoque`.
+
+Cada animal é um item da operação. Frete, comissão e GTA são itens sem animal e não entram no custo do animal. A ligação é somente `ItemOperacao.animalId`; os dados do animal ficam no Rebanho e são editados na ficha.
+
+O preço é informado em uma unidade, a mesma para todos os animais da operação: por cabeça (`cab`, quantidade 1), por quilo (`kg`, sobre o peso pago) ou por arroba (`@`, peso pago dividido por 15). Quando o valor é informado para o lote, o sistema calcula o preço médio por animal; os centavos que sobram vão para o último item. O cálculo está em `services/financeiro/compra-animais.calc.ts`.
+
+A confirmação é atômica. Operação, pagamentos ou compromissos e o cadastro dos animais são gravados no mesmo commit. Cada animal entra com origem COMPRADO, no sítio da operação, com data de entrada igual à data da operação por padrão e pesagem de ENTRADA quando o peso é informado. Se qualquer animal for recusado, por exemplo por brinco ativo no sítio, toda a confirmação é desfeita. Rascunho não cria animais. A chave de confirmação evita duplicar operação e animais em reenvios. Com animais, a transação usa a isolação serializável do Rebanho.
+
+A correção (`corrigeOperacaoId`) altera somente os dados da compra. Ela precisa referenciar exatamente os mesmos animais da operação original e reativa os que tinham baixa `COMPRA_ESTORNADA`.
+
+No estorno total, a operação recebe o lançamento inverso, como nas demais operações, e os animais ainda ativos recebem baixa `COMPRA_ESTORNADA` com a data do estorno. Nenhum registro é apagado. Animal já baixado por outro motivo não recebe segunda baixa. O estorno total é recusado enquanto houver devolução confirmada de algum dos animais.
+
+A devolução parcial é uma operação `DEVOLUCAO` com itens somente de animal (`animalId`), feita ao mesmo fornecedor da compra confirmada no sítio. Ela gera valor a receber ou recebimento, como as devoluções atuais, e dá baixa `COMPRA_ESTORNADA` nos animais devolvidos, na data da devolução. Estornar a devolução reverte o financeiro e reativa os animais. Um animal só pode estar em uma compra e em uma devolução não canceladas; a trigger `validar_item_operacao_animal` confere essa regra no banco.
+
+A baixa `COMPRA_ESTORNADA` registra compra estornada ou animal devolvido. Ela só é desfeita pela operação; o estorno de baixa na ficha recusa esse tipo.
+
+Criar, confirmar rascunho ou estornar operação com animais exige também a área Pecuária, conferida no servidor.
+
+Na consulta de Operações, o impacto gerado “Cadastrou animais” (`efeito=ANIMAIS`) filtra compras com animais. A ficha da operação lista o brinco e o nome de cada animal.
+
 ## Integração da produção de leite V5
 
 A frente V5 acrescenta entrada física de produção com valor pendente e apropriação posterior. A exceção é restrita ao método `LEITE_FIFO_V1` e aos vínculos comprovados de origem/alocação; não permite custo desconhecido nos movimentos V1 existentes. Valores pendentes permanecem nulos nas consultas, inclusive no painel gerencial e na ficha do produto. A venda confirma uma retirada única com preço conhecido. Correções comerciais preservam essa retirada e criam versões substitutas das operações e dos compromissos, com motivo e condição financeira explícita. Recebimentos confirmados exigem regularização financeira antes da correção; nenhuma troca de preço devolve litros fictícios ao estoque. Referências históricas inativas podem ser preservadas nessa correção comprovada, enquanto novas referências e novas retiradas exigem cadastros ativos. Consulte o [contrato de leite](pecuaria/leite.md) para classificação, autorização e validação.

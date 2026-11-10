@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { animalCompraSchema } from "../pecuaria/rebanho/schemas.js";
+import { UNIDADE_ITEM_ANIMAL } from "./compra-animais.calc.js";
 
 const dataIso = z.coerce.date();
 // Mensagens em português: estas chegam direto ao usuário (o primeiro issue do
@@ -130,6 +132,10 @@ export const tipoDocumentoFinanceiroSchema = z.enum([
 ]);
 
 export const itemOperacaoSchema = z.object({
+  // Compra de animais: `animal` cadastra um animal novo; `animalId` aponta para um animal
+  // existente (correção da compra ou devolução). Nunca os dois no mesmo item.
+  animal: animalCompraSchema.optional(),
+  animalId: z.string().uuid().optional(),
   categoriaId: z.string().uuid().nullable().optional(),
   // undefined = herda do produto (se ele tem exatamente 1 centro), senão null;
   // null = explicitamente "herda o centro da operação".
@@ -183,7 +189,7 @@ export const operacaoSchema = z.object({
   chave: z.string().uuid("Atualize a confirmação e tente novamente").optional(),
   tipo: z.enum([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
-    "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
+    "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO", "COMPRA_ANIMAIS",
   ]),
   data: dataIso,
   descricao: z.string().trim().min(2).max(240),
@@ -207,10 +213,10 @@ export const operacaoSchema = z.object({
   if (input.distribuicaoDesconto && input.distribuicaoDesconto.length !== input.itens.length) ctx.addIssue({ code: "custom", path: ["distribuicaoDesconto"], message: "Informe uma parcela de desconto por item" });
   const tiposComItens = new Set([
     "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "AJUSTE_ESTOQUE",
-    "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
+    "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO", "COMPRA_ANIMAIS",
   ]);
   const tiposSomenteFisicos = new Set(["AJUSTE_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"]);
-  const tiposComParceiro = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
+  const tiposComParceiro = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO", "COMPRA_ANIMAIS"]);
 
   if (tiposComItens.has(input.tipo) && input.itens.length === 0) {
     ctx.addIssue({ code: "custom", path: ["itens"], message: "Este tipo de operação exige ao menos um item" });
@@ -224,7 +230,48 @@ export const operacaoSchema = z.object({
   if (tiposSomenteFisicos.has(input.tipo) && input.financeiro.condicao !== "SEM_EFEITO_FINANCEIRO") {
     ctx.addIssue({ code: "custom", path: ["financeiro", "condicao"], message: "Este tipo de operação não gera movimentação financeira" });
   }
+  validarItensAnimais(input, ctx);
 });
+
+const UNIDADES_ITEM_ANIMAL = new Set<string>(Object.values(UNIDADE_ITEM_ANIMAL));
+/** Regras de forma dos itens de animal; vínculo com compras e o rebanho são conferidos no serviço. */
+function validarItensAnimais(input: { tipo: string; corrigeOperacaoId?: string; itens: z.infer<typeof itemOperacaoSchema>[] }, ctx: z.RefinementCtx) {
+  const deAnimal = input.itens.map((item, indice) => ({ item, indice })).filter(({ item }) => item.animal || item.animalId);
+  if (input.tipo === "COMPRA_ANIMAIS" && !deAnimal.length)
+    ctx.addIssue({ code: "custom", path: ["itens"], message: "Informe ao menos um animal na compra" });
+  if (input.tipo === "DEVOLUCAO" && deAnimal.length && deAnimal.length !== input.itens.length)
+    ctx.addIssue({ code: "custom", path: ["itens"], message: "Devolva animais em uma operação própria, sem outros itens" });
+  const unidades = new Set<string>();
+  const brincos = new Map<string, number>();
+  const animais = new Set<string>();
+  for (const { item, indice } of deAnimal) {
+    const caminho = ["itens", indice];
+    if (item.animal && item.animalId) ctx.addIssue({ code: "custom", path: [...caminho, "animalId"], message: "Informe um animal novo ou um existente, não os dois" });
+    if (item.animal && (input.tipo !== "COMPRA_ANIMAIS" || input.corrigeOperacaoId))
+      ctx.addIssue({ code: "custom", path: [...caminho, "animal"], message: input.corrigeOperacaoId ? "A correção mantém os animais da compra original" : "Animais novos só entram por compra de animais" });
+    if (item.animalId && input.tipo !== "DEVOLUCAO" && !(input.tipo === "COMPRA_ANIMAIS" && input.corrigeOperacaoId))
+      ctx.addIssue({ code: "custom", path: [...caminho, "animalId"], message: "Animal existente só entra na devolução ou na correção da compra" });
+    if (item.produtoId || item.estocavel || item.partidas?.length)
+      ctx.addIssue({ code: "custom", path: [...caminho, "produtoId"], message: "Item de animal não movimenta estoque" });
+    if (!UNIDADES_ITEM_ANIMAL.has(item.unidade))
+      ctx.addIssue({ code: "custom", path: [...caminho, "unidade"], message: "Use preço por cabeça (cab), kg ou arroba (@)" });
+    unidades.add(item.unidade);
+    if (item.unidade === UNIDADE_ITEM_ANIMAL.CABECA && item.quantidade !== 1)
+      ctx.addIssue({ code: "custom", path: [...caminho, "quantidade"], message: "Preço por cabeça usa quantidade 1" });
+    if (item.animal) {
+      const brinco = item.animal.brinco.trim().toLocaleUpperCase("pt-BR");
+      if (brincos.has(brinco)) ctx.addIssue({ code: "custom", path: [...caminho, "animal", "brinco"], message: `Brinco ${item.animal.brinco} repetido nesta compra` });
+      brincos.set(brinco, indice);
+    }
+    if (item.animalId) {
+      if (animais.has(item.animalId)) ctx.addIssue({ code: "custom", path: [...caminho, "animalId"], message: "Animal repetido nesta operação" });
+      animais.add(item.animalId);
+    }
+  }
+  if (unidades.size > 1) ctx.addIssue({ code: "custom", path: ["itens"], message: "Use a mesma unidade de preço para todos os animais" });
+  if (input.tipo === "COMPRA_ANIMAIS" && (input.itens.some((item) => item.produtoId || item.estocavel)))
+    ctx.addIssue({ code: "custom", path: ["itens"], message: "Compra de animais não movimenta estoque; lance produtos em outra operação" });
+}
 
 export const liquidacaoSchema = z.object({
   contaId: z.string().uuid(),

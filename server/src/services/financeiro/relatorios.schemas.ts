@@ -5,7 +5,7 @@ import { LIMITE_MESES, REGIMES_RELATORIO, mesesEntreDatas } from "../relatorio-g
 // Transferência financeira só redistribui saldo entre contas próprias; não é
 // uma dimensão de composição do relatório.
 export const TIPOS_RELATORIO = [
-  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
+  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "APORTE", "RETIRADA",
   "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
 ] as const;
 // Operações nascem CONFIRMADA (o rascunho vive em RascunhoOperacao) e só podem
