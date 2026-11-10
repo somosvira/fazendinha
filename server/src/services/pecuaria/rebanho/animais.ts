@@ -845,7 +845,8 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     prisma.itemOperacao.findFirst({
       where: { animalId: id, operacao: { tipo: "COMPRA_ANIMAIS", status: { in: ["CONFIRMADA", "CANCELADA"] } } },
       select: { operacao: { select: { id: true, numero: true, data: true, status: true, parceiro: { select: { nome: true } } } } },
-      orderBy: [{ operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
+      // A compra vigente (CONFIRMADA) vem antes de uma original cancelada pela correção.
+      orderBy: [{ operacao: { status: "asc" } }, { operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
     }),
     prisma.itemOperacao.findFirst({
       where: { animalId: id, operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } },
@@ -1614,7 +1615,11 @@ export async function registrarBaixaTx(
   const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
   const carencias = await carenciaAnimalTx(tx, animalId, input.data);
   await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
-  if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
+  if (input.tipo === "CADASTRO_INDEVIDO") {
+    await conferirCadastroIndevidoSemFatosTx(tx, animalId);
+    const compra = await tx.itemOperacao.findFirst({ where: { animalId, operacao: { tipo: "COMPRA_ANIMAIS", status: "CONFIRMADA" } }, select: { operacao: { select: { numero: true } } } });
+    if (compra) throw new RebanhoError("CONFLITO", `Animal da compra #${compra.operacao.numero}: estorne a compra ou registre a devolução no Financeiro.`, "tipo");
+  }
   const fimDia = new Date(`${input.data}T00:00:00-03:00`);
   const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
   if (["VENDA", "ABATE", "NAO_DETERMINADO"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");

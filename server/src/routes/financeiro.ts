@@ -212,7 +212,8 @@ export const financeiroRouter = new Hono()
       const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
       const semAcesso = exigirPecuariaParaAnimais(c, await rascunhos.rascunhoEnvolveAnimais(propriedadeId, uid));
       if (semAcesso) return semAcesso;
-      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave)), 201);
+      const usuario = getUsuario(c);
+      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria") })), 201);
     }
     catch (e) { return falha(c, e); }
   })
@@ -278,7 +279,7 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      const semAcesso = exigirPecuariaParaAnimais(c, await operacoes.operacaoTemAnimais(c.req.param("id")));
+      const semAcesso = exigirPecuariaParaAnimais(c, await operacoes.operacaoTemAnimais(c.req.param("id"), propriedadeId));
       if (semAcesso) return semAcesso;
       const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
       const dados = await operacoes.obterOperacao(cancelada.id, propriedadeId);

@@ -93,7 +93,7 @@ export interface Composicao {
 }
 
 // Mesma base de "Compras e serviços" da análise por categoria.
-export const TIPOS_DESPESA: readonly string[] = ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO"];
+export const TIPOS_DESPESA: readonly string[] = ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO"];
 export const LIMITE_LINHAS_COMPOSICAO = 3000;
 
 const zero = () => new Prisma.Decimal(0);

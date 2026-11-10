@@ -10,7 +10,7 @@ import type { AnimalCompraInput } from "../pecuaria/rebanho/schemas.js";
 
 type ItemComAnimal = { animal?: AnimalCompraInput; animalId?: string };
 export type ContextoAnimaisOperacao = {
-  tipo: string; data: Date; propriedadeId: number; parceiroId?: string; corrigeOperacaoId?: string;
+  tipo: string; data: Date; propriedadeId: number; parceiroId?: string; corrigeOperacaoId?: string; animaisOriginais?: string[];
   usuarioId?: number | null; itens: ItemComAnimal[];
 };
 type OperacaoCriada = { id: string; numero: number };
@@ -64,13 +64,19 @@ export async function prepararAnimaisTx(tx: Prisma.TransactionClient, ctx: Conte
   }
 
   const ids = idsInformados(ctx.itens);
-  if (ctx.tipo === "COMPRA_ANIMAIS") {
-    // Correção: os mesmos animais da compra original, nem mais nem menos (D5).
-    const original = await tx.itemOperacao.findMany({ where: { operacaoId: ctx.corrigeOperacaoId, animalId: { not: null } }, select: { animalId: true } });
-    const esperados = new Set(original.map((item) => item.animalId!));
+  if (ctx.corrigeOperacaoId) {
+    // Correção (compra ou devolução): os mesmos animais da original, nem mais nem menos (D5).
+    const esperados = new Set(ctx.animaisOriginais ?? []);
     const informados = new Set(ids.filter((id): id is string => id != null));
-    if (esperados.size !== informados.size || [...esperados].some((id) => !informados.has(id)))
-      throw new FinanceiroError("CONFLITO", "A correção da compra mantém exatamente os animais da compra original. Para devolver cabeças, use a devolução.", "itens");
+    if ((esperados.size || ctx.tipo === "COMPRA_ANIMAIS") && (esperados.size !== informados.size || [...esperados].some((id) => !informados.has(id))))
+      throw new FinanceiroError("CONFLITO", "A correção mantém exatamente os animais da operação original. Para devolver cabeças, use a devolução.", "itens");
+  }
+  if (ctx.tipo === "COMPRA_ANIMAIS") {
+    for (const [indice, animalId] of ids.entries()) {
+      if (!animalId) continue;
+      const ativa = await compraAtivaDoAnimal(tx, animalId, ctx.propriedadeId);
+      if (ativa) throw new FinanceiroError("CONFLITO", `O animal já está na compra ativa #${ativa.operacao.numero}`, `itens.${indice}.animalId`);
+    }
     return ids;
   }
 
@@ -81,6 +87,10 @@ export async function prepararAnimaisTx(tx: Prisma.TransactionClient, ctx: Conte
       if (!compra) throw new FinanceiroError("CONFLITO", "Só é possível devolver animal de uma compra confirmada neste sítio", `itens.${indice}.animalId`);
       if (compra.operacao.parceiroId !== ctx.parceiroId)
         throw new FinanceiroError("VALIDACAO", `Devolva ao fornecedor da compra #${compra.operacao.numero}`, "parceiroId");
+      const devolvido = await tx.itemOperacao.findFirst({ where: { animalId, operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } }, select: { operacao: { select: { numero: true } } } });
+      if (devolvido) throw new FinanceiroError("CONFLITO", `O animal já foi devolvido na operação #${devolvido.operacao.numero}`, `itens.${indice}.animalId`);
+      if (await tx.baixaAnimal.findFirst({ where: { animalId, estornadaEm: null }, select: { id: true } }))
+        throw new FinanceiroError("CONFLITO", "O animal já saiu do rebanho; só é possível devolver animal ativo", `itens.${indice}.animalId`);
     }
   }
   return ids;

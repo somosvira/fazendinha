@@ -70,9 +70,11 @@ export async function rascunhoEnvolveAnimais(propriedadeId: number, usuarioId: n
   return operacao.success && envolveAnimais(operacao.data);
 }
 
-export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string) {
-  // Com animais, a confirmação segue a isolação do Rebanho; a versão do rascunho é conferida dentro.
-  const executar = await rascunhoEnvolveAnimais(propriedadeId, usuarioId) ? transacaoPecuaria : transacaoValidada;
+export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean } = {}) {
+  // Com animais, a confirmação segue a isolação do Rebanho. A leitura prévia escolhe a transação;
+  // dentro dela o conteúdo é conferido de novo, para um rascunho regravado no meio não escapar.
+  const comAnimais = await rascunhoEnvolveAnimais(propriedadeId, usuarioId);
+  const executar = comAnimais ? transacaoPecuaria : transacaoValidada;
   return executar(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
@@ -97,6 +99,10 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
     const validacao = operacaoSchema.safeParse(conteudo.operacao);
     if (!validacao.success) {
       throw new FinanceiroError("VALIDACAO", validacao.error.issues[0]?.message ?? "Preencha todos os campos obrigatórios");
+    }
+    if (envolveAnimais(validacao.data)) {
+      if (opcoes.permitirAnimais === false) throw new FinanceiroError("CONFLITO", "Compra e devolução de animais exigem acesso à Pecuária");
+      if (!comAnimais) throw new FinanceiroError("CONFLITO", "O rascunho mudou durante a confirmação. Recarregue a página e confirme de novo.");
     }
     const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, ...(chaveReenvio ? { chave: chaveReenvio } : {}), propriedadeId, usuarioId });
     await tx.documentoFinanceiro.updateMany({

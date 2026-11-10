@@ -28,7 +28,7 @@ export async function analisarCategorias(filtro: FiltroAnalise, propriedadeId: n
       // Pré-filtro por centro: a operação entra se ela OU algum item aponta o
       // centro; a fatia certa é escolhida abaixo pelo centro efetivo da parte.
       ...(centroFiltro !== undefined ? { OR: [{ centroCustoId: centroFiltro }, { itens: { some: { centroCustoId: centroFiltro } } }] } : {}),
-      tipo: { in: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO"] },
+      tipo: { in: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO"] },
       ...(filtro.base === "compras" ? { status: "CONFIRMADA", data: periodo }
         : { compromissos: { some: { status: { in: ["PENDENTE", "PARCIAL"] }, dataVencimento: periodo } } }),
     },

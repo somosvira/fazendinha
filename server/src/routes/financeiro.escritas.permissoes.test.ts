@@ -67,7 +67,7 @@ describe("escritas financeiras exigem lancar antes de validar ou acessar dados",
     expect(mocks.salvar).toHaveBeenCalledWith({ dados: { formulario: {} }, propriedadeId: 3, usuarioId: 7 });
     const chave = uid(9);
     expect((await operador.request(`${prefixo}/rascunho/confirmacao`, { method: "POST", headers, body: JSON.stringify({ chave, versao: 1 }) })).status).toBe(201);
-    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave);
+    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave, { permitirAnimais: expect.any(Boolean) });
     expect((await operador.request(`${prefixo}/rascunho`, { method: "DELETE" })).status).toBe(204);
     expect(mocks.descartar).toHaveBeenCalledWith(3, 7);
   });

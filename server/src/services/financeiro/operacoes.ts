@@ -98,13 +98,15 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     if (reenvio) return reenvio;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
+    let animaisOriginais: string[] = [];
     if (input.corrigeOperacaoId) {
-      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true } });
+      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true, itens: { where: { animalId: { not: null } }, select: { animalId: true } } } });
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
       if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
       if (original.fechamentoComercialLeite && leite?.modo !== "FECHAMENTO_PERIODO") throw new FinanceiroError("CONFLITO", "Corrija o fechamento pelo fluxo de leite, preservando todas as retiradas");
       if (original.versaoComercialLeite && leite?.modo !== "RETIRADA_EXISTENTE") throw new FinanceiroError("CONFLITO", "Corrija esta venda pelo fluxo de leite, preservando a retirada original");
       if ((original.tipo === "COMPRA_ANIMAIS") !== (input.tipo === "COMPRA_ANIMAIS")) throw new FinanceiroError("CONFLITO", "A correção de uma compra de animais continua sendo compra de animais", "tipo");
+      animaisOriginais = (original.itens ?? []).flatMap((item) => item.animalId ? [item.animalId] : []);
     }
     if (leite?.modo === "FECHAMENTO_PERIODO") {
       const comercial = await tx.operacaoComercialLeite.findFirst({ where: { id: leite.comercialId, propriedadeId: input.propriedadeId }, include: { retiradas: true } });
@@ -185,8 +187,8 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
     // Animais entram (ou são conferidos) depois das validações dos itens e antes de gravar a
     // operação, na mesma transação: uma recusa do Rebanho desfaz tudo.
     const contextoAnimais: ContextoAnimaisOperacao = { tipo: input.tipo, data: input.data, propriedadeId: input.propriedadeId, parceiroId: input.parceiroId,
-      corrigeOperacaoId: input.corrigeOperacaoId, usuarioId: input.usuarioId, itens: input.itens };
-    const animalIds = input.tipo === "COMPRA_ANIMAIS" || temItensAnimais(input) ? await prepararAnimaisTx(tx, contextoAnimais) : input.itens.map(() => null);
+      corrigeOperacaoId: input.corrigeOperacaoId, animaisOriginais, usuarioId: input.usuarioId, itens: input.itens };
+    const animalIds = input.tipo === "COMPRA_ANIMAIS" || temItensAnimais(input) || animaisOriginais.length ? await prepararAnimaisTx(tx, contextoAnimais) : input.itens.map(() => null);
     const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       ordem: indice + 1,
       produtoId: item.produtoId,
@@ -373,8 +375,8 @@ export async function criarOperacao(input: OperacaoInput) {
   return transacaoValidada((tx) => criarOperacaoTx(tx, input));
 }
 
-export async function operacaoTemAnimais(id: string): Promise<boolean> {
-  return !!await prisma.itemOperacao.findFirst({ where: { operacaoId: id, animalId: { not: null } }, select: { id: true } });
+export async function operacaoTemAnimais(id: string, propriedadeId?: number): Promise<boolean> {
+  return !!await prisma.itemOperacao.findFirst({ where: { operacaoId: id, animalId: { not: null }, ...(propriedadeId != null ? { operacao: { propriedadeId } } : {}) }, select: { id: true } });
 }
 
 export function envolveAnimais(input: { tipo: string; itens: Array<{ animal?: unknown; animalId?: string }> }): boolean {
@@ -565,7 +567,7 @@ export async function estornarTransacao(id: string, motivo: string, contexto: Co
 }
 
 export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
-  const comAnimais = await operacaoTemAnimais(id);
+  const comAnimais = await operacaoTemAnimais(id, contexto.propriedadeId);
   const executarTransacao = comAnimais ? transacaoPecuaria : transacaoValidada;
   return executarTransacao(async (tx) => {
     const produtos = await tx.movimentoEstoque.findMany({ where: { operacaoId: id }, select: { produtoId: true } });

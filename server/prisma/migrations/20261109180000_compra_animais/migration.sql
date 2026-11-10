@@ -14,7 +14,9 @@ ALTER TABLE "public"."ItemOperacao"
 
 -- Um animal pertence a no máximo uma compra e uma devolução não canceladas.
 -- A correção cancela a original e cria outra apontando para o mesmo animal, por
--- isso a unicidade depende do status da operação e não cabe num índice.
+-- isso a unicidade depende do status da operação e não cabe num índice. A trava serializa
+-- escritores em READ COMMITTED; os fluxos com animais rodam em SERIALIZABLE, onde a detecção
+-- de conflitos do PostgreSQL cobre a leitura feita antes da trava.
 CREATE OR REPLACE FUNCTION public.validar_item_operacao_animal() RETURNS trigger LANGUAGE plpgsql AS $$
 DECLARE
   tipo_operacao text;

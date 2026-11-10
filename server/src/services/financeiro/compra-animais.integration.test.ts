@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "../../db.js";
 import { exigirBancoIntegracaoPecuaria } from "../../lib/banco-pecuaria-integration.fixture.js";
-import { cadastrar, estornarBaixa } from "../pecuaria/rebanho/animais.js";
+import { cadastrar, darBaixa, estornarBaixa } from "../pecuaria/rebanho/animais.js";
 import { hojeFazenda } from "../pecuaria/rebanho/regras.js";
 import { criarOperacao, estornarOperacao, obterOperacao } from "./operacoes.js";
 import { operacaoSchema } from "./schemas.js";
@@ -137,7 +137,9 @@ comBanco("compra de animais — PostgreSQL", () => {
     const devolucao = await criarOperacao(devolucaoEntrada(fornecedor));
     expect(await baixaAtiva(ids[0])).toMatchObject({ tipo: "COMPRA_ESTORNADA" });
     expect(await baixaAtiva(ids[1])).toBeNull();
-    await expect(criarOperacao(devolucaoEntrada(fornecedor))).rejects.toBeTruthy();
+    await expect(criarOperacao(devolucaoEntrada(fornecedor))).rejects.toMatchObject({ code: "CONFLITO", campo: "itens.0.animalId" });
+    // Animal de compra ativa não sai por "excluir cadastro": a saída passa pelo Financeiro.
+    await expect(darBaixa({ animalId: ids[2], data: HOJE, tipo: "CADASTRO_INDEVIDO", motivoId: null, observacao: "Teste" }, null)).rejects.toMatchObject({ code: "CONFLITO" });
 
     // A baixa da devolução só se desfaz pela operação.
     await expect(estornarBaixa(ids[0], { motivo: "Tentativa manual" }, null)).rejects.toMatchObject({ code: "CONFLITO" });
@@ -159,6 +161,7 @@ comBanco("compra de animais — PostgreSQL", () => {
     await expect(criarOperacao(correcao(ids.slice(0, 2)))).rejects.toMatchObject({ code: "CONFLITO", campo: "itens" });
     const corrigida = await criarOperacao(correcao(ids));
     expect(corrigida.corrigeOperacaoId).toBe(operacao.id);
+    await expect(criarOperacao(correcao(ids))).rejects.toMatchObject({ code: "CONFLITO", campo: "itens.0.animalId" });
     for (const id of ids) expect(await baixaAtiva(id)).toBeNull();
   });
 
