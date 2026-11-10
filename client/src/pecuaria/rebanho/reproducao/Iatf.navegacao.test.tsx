@@ -117,8 +117,8 @@ it("editar quantidade conserva classificação explícita da aplicação", async
   const dose = screen.getByLabelText("Dose planejada");
   mudarCampo(dose, { target: { value: "3" } });
   expect(screen.getByLabelText("Unidade da dose (do produto)")).toHaveProperty("readOnly", true);
-  fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto planejado" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Usar Produto em litros" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Produto planejado" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Produto em litros" }));
   expect(screen.getByLabelText("Unidade da dose (do produto)")).toHaveProperty("value", "ML");
   expect(dose).toHaveProperty("value", "3");
   fireEvent.click(screen.getByRole("button", { name: "Concluir edição da etapa" }));

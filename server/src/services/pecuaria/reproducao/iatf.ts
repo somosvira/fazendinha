@@ -30,7 +30,7 @@ import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria } from "../transacao.js";
 import { criarAplicacaoTx } from "../sanidade/aplicacoes.js";
-import { aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
+import { aplicacaoSemCatalogoSchema as aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
 import {
   avaliacaoSchema,
   protocoloSchema,

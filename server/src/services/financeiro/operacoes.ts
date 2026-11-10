@@ -14,6 +14,8 @@ import { conferirReenvioOperacaoTx, hashConfirmacao, includeOperacaoConfirmada, 
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
 import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../pecuaria/reproducao/atribuicoes-servico.js";
 import { METODO_LEITE, registrarBaixaLeiteTx, valoresMovimentosLeiteTx, type PlanoBaixaLeite } from "../estoque/leite.js";
+import { prefixarCampoErro, resolverProdutoIdTx } from "../estoque/produtos-catalogo.js";
+import { unidadePorRotulo } from "../estoque/produtos-catalogo.calc.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null; propriedadeId?: number };
@@ -89,12 +91,41 @@ async function resolverCentros(tx: Prisma.TransactionClient, ids: string[], hist
 }
 
 type EfeitoLeite = { modo: "RETIRAR"; produtoId: string; plano: PlanoBaixaLeite } | { modo: "RETIRADA_EXISTENTE"; produtoId: string; retiradaId: string } | { modo: "FECHAMENTO_PERIODO"; comercialId: string };
-async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput, leite?: EfeitoLeite) {
+/**
+ * Itens com `produtoCatalogoId` adotam o item do catálogo na mesma transação (docs/produtos.md, Adoção):
+ * unidade da linha (quando reconhecida) e categoria da própria linha, senão a sugerida.
+ * Devolve os itens só com `produtoId`; o restante da operação não conhece o catálogo.
+ */
+async function resolverProdutosItensTx(tx: Prisma.TransactionClient, itens: OperacaoInput["itens"], usuarioId?: number | null) {
+  const resolvidos: OperacaoInput["itens"] = [];
+  for (const [indice, item] of itens.entries()) {
+    const { produtoCatalogoId, ...resto } = item;
+    if (!produtoCatalogoId) { resolvidos.push(resto); continue; }
+    try {
+      const produtoId = await resolverProdutoIdTx(tx, { produtoId: item.produtoId, produtoCatalogoId, unidade: unidadePorRotulo(item.unidade), categoriaId: item.categoriaId }, usuarioId);
+      resolvidos.push({ ...resto, produtoId });
+    } catch (erro) { throw prefixarCampoErro(erro, `itens.${indice}.`); }
+  }
+  return resolvidos;
+}
+
+/** Itens do catálogo só entram nos fluxos de entrada de estoque (docs/produtos.md, Adoção). */
+const TIPOS_QUE_ACEITAM_CATALOGO: readonly string[] = ["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO"];
+function exigirCatalogoPermitido(entrada: OperacaoInput) {
+  if (TIPOS_QUE_ACEITAM_CATALOGO.includes(entrada.tipo)) return;
+  const indice = entrada.itens.findIndex((item) => item.produtoCatalogoId);
+  if (indice >= 0) throw new FinanceiroError("VALIDACAO", "Produto do catálogo só pode ser usado em compra de estoque, inventário inicial ou bonificação. Cadastre o produto na fazenda antes", `itens.${indice}.produtoCatalogoId`);
+}
+
+async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoInput, leite?: EfeitoLeite) {
+    let input = entrada;
     if (input.tipo === "AJUSTE_ESTOQUE") throw new FinanceiroError("VALIDACAO", "Use a conferência de ajuste do Estoque para preservar a base de valor", "tipo");
     if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(input.tipo) && !input.documentacaoValor) throw new FinanceiroError("VALIDACAO", "Informe referência e evidência do valor disponibilizado, inclusive quando for zero", "documentacaoValor");
+    exigirCatalogoPermitido(input);
     const reenvio = await conferirReenvioOperacaoTx(tx, input);
     if (reenvio) return reenvio;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    if (input.itens.some((item) => item.produtoCatalogoId)) input = { ...input, itens: await resolverProdutosItensTx(tx, input.itens, input.usuarioId) };
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
     if (input.corrigeOperacaoId) {
       const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true } });
@@ -327,7 +358,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
 
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
     if (input.chave) await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMACAO_OPERACAO_IDEMPOTENTE", usuarioId: input.usuarioId,
-      depois: { chave: input.chave, hash: hashConfirmacao(input), propriedadeId: input.propriedadeId } });
+      depois: { chave: input.chave, hash: hashConfirmacao(entrada), propriedadeId: input.propriedadeId } });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
       include: includeOperacaoConfirmada,

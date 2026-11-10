@@ -504,7 +504,7 @@ it('aplica filtro de princípio ativo antes de paginar saldos e conserva parâme
   const buscar = vi.fn((url: string, init?: RequestInit) => url.includes('/estoque/produtos?')
     ? Promise.resolve({ ok: true, json: async () => [{ id: produtoId }] } as Response)
     : url.includes('/estoque/principios-ativos?')
-      ? Promise.resolve({ ok: true, json: async () => ({ itens: [{ id: principioId, nome: 'Ingrediente', ativo: true, revisao: 1 }], total: 1, pagina: 1, porPagina: 10 }) } as Response)
+      ? Promise.resolve({ ok: true, json: async () => ({ itens: [{ id: principioId, codigoOrigem: '1', nome: 'Ingrediente', ativo: true }], total: 1, pagina: 1, porPagina: 10 }) } as Response)
       : respostaBase(url, init));
   vi.stubGlobal('fetch', buscar);
   render(<EstoqueContent />);

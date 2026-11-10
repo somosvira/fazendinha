@@ -100,24 +100,3 @@ it("abre o fato realizado pelo sítio próprio mesmo quando a tarefa pertence a 
   fireEvent.click(screen.getByRole("button", { name: "Aplicação · 30/10/2026" }));
   expect(abrir).toHaveBeenCalledWith("aplicacao", "aplicacao-b", 9);
 });
-
-it("exibe a composição histórica consultada na gravação sem presumir fórmula do lote", () => {
-  render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ data: "2020-01-01", produto: { id: "p1", nome: "Produto atual", composicao: { itens: [{ nomePrincipioSnapshot: "Ingrediente atual diferente" }] } }, composicaoSnapshot: { schemaVersion: 1, versaoComposicaoId: "v1", situacao: "INFORMADA", contexto: "CADASTRO_NA_GRAVACAO", capturadoEm: "2026-10-05T13:04:00Z", referencia: "Rótulo consultado", itens: [{ principioAtivoId: "i1", nomePrincipioSnapshot: "Ingrediente preservado", concentracaoValor: "12.123456", concentracaoUnidade: "MG_ML" }, { principioAtivoId: "i2", nomePrincipioSnapshot: "Ingrediente sem concentração", concentracaoValor: null, concentracaoUnidade: null }] } }} />);
-  expect(screen.getByText("Composição do cadastro consultada na gravação — não confirma a fórmula do lote")).toBeTruthy();
-  expect(screen.getByText("Ingrediente preservado — 12,123456 mg/mL")).toBeTruthy();
-  expect(screen.getByText("Ingrediente sem concentração — Concentração não informada")).toBeTruthy();
-  expect(screen.getByText("Consulta ao cadastro: 05/10/2026 às 10:04")).toBeTruthy();
-  expect(screen.getByText("Rótulo consultado")).toBeTruthy();
-  expect(screen.queryByText(/Ingrediente atual diferente/)).toBeNull();
-});
-it.each([null, undefined])("distingue aplicação antiga sem snapshot (%s) do cadastro atual", composicaoSnapshot => {
-  render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ composicaoSnapshot, produto: { id: "p", nome: "Produto", composicao: { itens: [{ nomePrincipioSnapshot: "Cadastro atual" }] } } }} />);
-  expect(screen.getByText("Composição não registrada neste atendimento")).toBeTruthy();
-  expect(screen.queryByText(/Cadastro atual/)).toBeNull();
-  expect(screen.queryByText(/não confirma a fórmula do lote/)).toBeNull();
-});
-it("snapshot de cadastro sem ingredientes não afirma ausência de princípios ativos", () => {
-  render(<DetalheSanitario tipo="aplicacao" abrir={vi.fn()} valor={{ composicaoSnapshot: { schemaVersion: 1, situacao: "NAO_INFORMADA", contexto: "CADASTRO_NA_GRAVACAO", itens: [] } }} />);
-  expect(screen.getByText("Composição não informada no cadastro consultado.")).toBeTruthy();
-  expect(screen.queryByText("Composição não registrada neste atendimento")).toBeNull();
-});

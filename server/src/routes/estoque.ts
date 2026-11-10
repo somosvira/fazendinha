@@ -10,8 +10,9 @@ import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
 import * as catalogosSvc from "../services/estoque/catalogos.js";
-import { consultaCatalogoSchema, criarCatalogoSchema, patchCatalogoSchema, criarPrincipioSchema, patchPrincipioSchema, criarNutrienteSchema, patchNutrienteSchema } from "../services/estoque/catalogos.schemas.js";
-import { historicoComposicoes, historicoNutricional } from "../services/estoque/composicao.js";
+import { consultaCatalogoSchema } from "../services/estoque/catalogos.schemas.js";
+import * as catalogoProdutosSvc from "../services/estoque/produtos-catalogo.js";
+import { buscaProdutosSchema, consultaCatalogoProdutosSchema } from "../services/estoque/produtos-catalogo.schemas.js";
 import * as partidasSvc from "../services/estoque/partidas.js";
 import * as fichaSvc from "../services/estoque/ficha-produto.js";
 import { transferirEstoque } from "../services/estoque/transferencias.js";
@@ -27,10 +28,10 @@ import { temArea, temPermissao } from "../services/auth/papeis.js";
 import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
-function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string } } {
+function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string; produtoExistente?: catalogoProdutosSvc.ProdutoExistente } } {
   if (conflitoTransacaoValidada(e)) return { status: 409, body: { error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" } };
   if (e instanceof ValorizacaoError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
-  if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
+  if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code, ...catalogoProdutosSvc.detalheErroProduto(e) } };
   if (e instanceof svc.EstoqueError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
     // `code` deixa o cliente distinguir CONFLITO (saldo mudou) de MES_FECHADO, ambos 409.
@@ -42,10 +43,10 @@ function fail(e: unknown): { status: Status; body: { error: string; code?: strin
 
 // Mapeamento de erro dos cadastros de referência (produto) para status HTTP —
 // essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária ou financeiro.
-function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; code?: string; campo?: string } } {
+function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; campo?: string; produtoExistente?: catalogoProdutosSvc.ProdutoExistente } } {
   if (e instanceof FinanceiroError) {
     const map = { VALIDACAO: 400, NAO_ENCONTRADO: 404, CONFLITO: 409, PERIODO_FECHADO: 409, SALDO_INSUFICIENTE: 409, JA_REVERTIDO: 409 } as const;
-    return { status: map[e.code], body: { error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) } };
+    return { status: map[e.code], body: { error: e.message, ...(e.campo ? { campo: e.campo } : {}), ...catalogoProdutosSvc.detalheErroProduto(e) } };
   }
   console.error("[estoque/cadastros]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
@@ -95,40 +96,26 @@ export const estoqueRouter = new Hono()
   .get("/estoque/fabricantes", zValidator("query", consultaCatalogoSchema), async c => {
     try { return c.json(await catalogosSvc.listarFabricantes(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
   })
-  .post("/estoque/fabricantes", exigePermissao("lancar"), validarProduto(criarCatalogoSchema), async c => {
-    try { return c.json(await catalogosSvc.criarFabricantes(c.req.valid("json"), usuarioId(c)), 201); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .patch("/estoque/fabricantes/:id", exigePermissao("lancar"), validarProduto(patchCatalogoSchema), async c => {
-    try { if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO", "Identificador inválido"); return c.json(await catalogosSvc.atualizarFabricantes(c.req.param("id"), c.req.valid("json"), usuarioId(c))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
   .get("/estoque/classificacoes-tecnicas", zValidator("query", consultaCatalogoSchema), async c => {
     try { return c.json(await catalogosSvc.listarClassificacoesTecnicas(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .post("/estoque/classificacoes-tecnicas", exigePermissao("lancar"), validarProduto(criarCatalogoSchema), async c => {
-    try { return c.json(await catalogosSvc.criarClassificacoesTecnicas(c.req.valid("json"), usuarioId(c)), 201); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .patch("/estoque/classificacoes-tecnicas/:id", exigePermissao("lancar"), validarProduto(patchCatalogoSchema), async c => {
-    try { if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO", "Identificador inválido"); return c.json(await catalogosSvc.atualizarClassificacoesTecnicas(c.req.param("id"), c.req.valid("json"), usuarioId(c))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
   })
   .get("/estoque/principios-ativos", zValidator("query", consultaCatalogoSchema), async c => {
     try { return c.json(await catalogosSvc.listarPrincipiosAtivos(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
   })
-  .post("/estoque/principios-ativos", exigePermissao("lancar"), validarProduto(criarPrincipioSchema), async c => {
-    try { return c.json(await catalogosSvc.criarPrincipiosAtivos(c.req.valid("json"), usuarioId(c)), 201); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .patch("/estoque/principios-ativos/:id", exigePermissao("lancar"), validarProduto(patchPrincipioSchema), async c => {
-    try { if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO", "Identificador inválido"); return c.json(await catalogosSvc.atualizarPrincipiosAtivos(c.req.param("id"), c.req.valid("json"), usuarioId(c))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .get("/estoque/nutrientes", zValidator("query", consultaCatalogoSchema), async c => {
-    try { return c.json(await catalogosSvc.listarNutrientes(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .post("/estoque/nutrientes", exigePermissao("lancar"), validarProduto(criarNutrienteSchema), async c => {
-    try { return c.json(await catalogosSvc.criarNutrientes(c.req.valid("json"), usuarioId(c)), 201); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
-  .patch("/estoque/nutrientes/:id", exigePermissao("lancar"), validarProduto(patchNutrienteSchema), async c => {
-    try { if (!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO", "Identificador inválido"); return c.json(await catalogosSvc.atualizarNutrientes(c.req.param("id"), c.req.valid("json"), usuarioId(c))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
-  })
 
+  // Catálogo de produtos do sistema (somente leitura) e busca unificada dos seletores (docs/produtos.md, API).
+  .get("/estoque/catalogo", zValidator("query", consultaCatalogoProdutosSchema), async c => {
+    try { return c.json(await catalogoProdutosSvc.listarCatalogo(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/catalogo/:id", async c => {
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) return c.json({ error: "Item do catálogo não encontrado" }, 404);
+      return c.json(await catalogoProdutosSvc.detalheCatalogo(c.req.param("id")));
+    } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/produtos/busca", zValidator("query", buscaProdutosSchema), async c => {
+    try { return c.json(await catalogoProdutosSvc.buscarProdutos(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
   .get("/estoque/tipos-aplicacao-sanitarios", zValidator("query", tiposAplicacaoProdutoQuerySchema), async c => c.json(await produtosSvc.listarTiposAplicacaoSanitarios(c.req.valid("query"))))
   .post("/estoque/perdas", exigePermissao("lancar"), validarProduto(perdaEstoqueSchema), async (c) => {
     try { const body = c.req.valid("json"); const origemId = await resolverEscopoEscrita(c, body.origemId); return c.json(await transferirEstoque({ ...body, origemId, destinoId: origemId, modo: "PERDA" }, usuarioId(c)), 201); } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
@@ -220,12 +207,6 @@ export const estoqueRouter = new Hono()
   .patch("/estoque/partidas/:id", exigePermissao("lancar"), validarProduto(z.object({ nome: nomeLoteSchema }).strict()), async (c) => {
     try { return c.json(await partidasSvc.renomearLote(c.req.param("id"), c.req.valid("json").nome, usuarioId(c))); }
     catch (e) { const f = fail(e); return c.json(f.body, f.status); }
-  })
-  .get("/estoque/produtos/:id/composicoes", zValidator("query", z.object({pagina:z.coerce.number().int().positive().default(1),porPagina:z.coerce.number().int().min(1).max(50).default(10)})), async c => {
-    try { if(!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO","Produto inválido"); const {pagina,porPagina}=c.req.valid("query"); return c.json(await historicoComposicoes(c.req.param("id"),pagina,porPagina)); } catch(e) {const f=failCadastro(e);return c.json(f.body,f.status);}
-  })
-  .get("/estoque/produtos/:id/informacoes-nutricionais", zValidator("query", z.object({pagina:z.coerce.number().int().positive().default(1),porPagina:z.coerce.number().int().min(1).max(50).default(10)})), async c => {
-    try { if(!z.string().uuid().safeParse(c.req.param("id")).success) throw new FinanceiroError("VALIDACAO","Produto inválido"); const {pagina,porPagina}=c.req.valid("query"); return c.json(await historicoNutricional(c.req.param("id"),pagina,porPagina)); } catch(e) {const f=failCadastro(e);return c.json(f.body,f.status);}
   })
   .get("/estoque/produtos/:id", async (c) => {
     try { const u = getUsuario(c); return c.json(await fichaSvc.detalheProduto(c.req.param("id"), await resolverEscopoLeitura(c), podeVerCustos(c), u ? temArea(u, "financeiro") : true)); }

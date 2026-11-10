@@ -1,0 +1,31 @@
+{
+  "descricao": "Mapeamento explícito UNIDADEMEDIDA (IDEAGRI) -> enum UnidadeMedida do schema.prisma. fallback=true: sem equivalente, cai em UN (revisar). Código ausente ou nulo também cai em UN (contado no relatório).",
+  "fallback": "UN",
+  "unidades": {
+    "1": {"nome":"Arroba","simbolo":"@","unidade":"UN","fallback":true,"motivo":"Arroba (15 kg) não tem equivalente no enum."},
+    "2": {"nome":"Cabeça","simbolo":"cab","unidade":"UN","fallback":false,"motivo":"Cabeça é contagem; mapeia para UN sem perda."},
+    "3": {"nome":"Centímetro","simbolo":"cm","unidade":"UN","fallback":true,"motivo":"Centímetro não existe no enum."},
+    "4": {"nome":"Dia","simbolo":"d","unidade":"UN","fallback":true,"motivo":"Dia: grandeza de tempo, não é unidade de insumo."},
+    "5": {"nome":"Grama","simbolo":"g","unidade":"G","fallback":false,"motivo":"Grama."},
+    "6": {"nome":"Hectare","simbolo":"ha","unidade":"HA","fallback":false,"motivo":"Hectare."},
+    "7": {"nome":"Hora","simbolo":"h","unidade":"UN","fallback":true,"motivo":"Hora: grandeza de tempo, não é unidade de insumo."},
+    "8": {"nome":"KilowattHora","simbolo":"kwh","unidade":"UN","fallback":true,"motivo":"kWh: energia, não é unidade de insumo."},
+    "9": {"nome":"Litro","simbolo":"l","unidade":"L","fallback":false,"motivo":"Litro."},
+    "10": {"nome":"Metro","simbolo":"m","unidade":"M","fallback":false,"motivo":"Metro."},
+    "11": {"nome":"Metrocúbico","simbolo":"m3","unidade":"UN","fallback":true,"motivo":"Metro cúbico não existe no enum."},
+    "12": {"nome":"Metroquadrado","simbolo":"m2","unidade":"UN","fallback":true,"motivo":"Metro quadrado não existe no enum."},
+    "13": {"nome":"Mililitro","simbolo":"ml","unidade":"ML","fallback":false,"motivo":"Mililitro."},
+    "14": {"nome":"Milímetro","simbolo":"mm","unidade":"UN","fallback":true,"motivo":"Milímetro não existe no enum."},
+    "15": {"nome":"Minutos","simbolo":"min","unidade":"UN","fallback":true,"motivo":"Minutos: grandeza de tempo, não é unidade de insumo."},
+    "16": {"nome":"Quilograma","simbolo":"kg","unidade":"KG","fallback":false,"motivo":"Quilograma."},
+    "17": {"nome":"Quilômetro","simbolo":"km","unidade":"UN","fallback":true,"motivo":"Quilômetro não existe no enum."},
+    "18": {"nome":"Segundo","simbolo":"s","unidade":"UN","fallback":true,"motivo":"Segundo: grandeza de tempo, não é unidade de insumo."},
+    "19": {"nome":"Tonelada","simbolo":"ton","unidade":"T","fallback":false,"motivo":"Tonelada."},
+    "20": {"nome":"Unidade","simbolo":"un","unidade":"UN","fallback":false,"motivo":"Unidade."},
+    "21": {"nome":"Watt","simbolo":"W","unidade":"UN","fallback":true,"motivo":"Watt: grandeza de equipamento, não é unidade de insumo."},
+    "23": {"nome":"Percentual","simbolo":"%","unidade":"UN","fallback":true,"motivo":"Percentual: unidade de nutriente, não de produto."},
+    "24": {"nome":"Miligrama por kilograma","simbolo":"mg/Kg","unidade":"UN","fallback":true,"motivo":"mg/kg: unidade de nutriente, não de produto."},
+    "25": {"nome":"Milicaloria por kilograma","simbolo":"Mcal/Kg","unidade":"UN","fallback":true,"motivo":"Mcal/kg: unidade de nutriente, não de produto."},
+    "999": {"nome":"Milimol por litro","simbolo":"mmol/l","unidade":"UN","fallback":true,"motivo":"mmol/l: unidade de diagnóstico, não de produto."}
+  }
+}

@@ -20,6 +20,8 @@ const protocolo: CadastroProtocoloMeta = { id: "p1", nome: "Controle CCS", tipo:
 const etapa = { ordem: 1, diaRelativo: 0, tipo: "EXAME", tipoExameId: "e1", produtoId: null, tipoAplicacaoId: null, tipoAplicacaoNomeSnapshot: null, dose: null, unidade: null };
 const pagina = <T,>(itens: T[], total = itens.length, atual = 1) => ({ itens, total, pagina: atual, porPagina: 10 });
 beforeEach(() => {
+  vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} });
+  Element.prototype.scrollIntoView = vi.fn();
   vi.resetAllMocks();
   localStorage.clear();preferirCartoes({SANITARIO:["visualCadastroProtocolos"],REPRODUTIVO:["visualCadastroProtocolos"]});
   window.history.replaceState(null, "", "/configuracoes/pecuaria/sanidade/protocolos");
@@ -32,7 +34,7 @@ beforeEach(() => {
   vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([{id:"e1",nome:"Exame",agrupada:false,modoAtendimento:null,instrucoesGerais:null,procedimentos:pagina([{id:"e1",nome:"Exame",procedimento:"Exame / diagnóstico",intervalo:0,unidadeIntervalo:"DIAS",referencia:"CCS",definirMaterialNoAtendimento:false,quantidade:null,unidadeQuantidade:null,via:null,orientacaoUso:null}])}]));
   vi.mocked(reqSanidade).mockImplementation(async (_path, init) => init ? protocolo as never : [{ id: "e1", nome: "CCS", ativo: true, tipoResultado: "NUMERO", unidade: null, opcoes: null }] as never);
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 it("lista metadados e busca estrutura somente no modal de consulta, inclusive para leitor", async () => {
   render(<ProtocolosCadastro podeLancar={false} />);
   await screen.findByText("Controle CCS");
@@ -80,14 +82,14 @@ it("trocar produto limpa a dose, herda unidade e metadados sem reaproveitar quan
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
   await screen.findByLabelText("Quantidade prevista (ML)");
   expect(screen.getByLabelText("Quantidade prevista (ML)")).toHaveProperty("value", "2");
-  fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Usar Solução" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Produto" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Solução" }));
   expect(screen.getByLabelText("Quantidade prevista (ML)")).toHaveProperty("value", "2");
-  fireEvent.click(screen.getByRole("button", { name: "Selecionar Produto" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Usar Dispositivo" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Produto" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Dispositivo" }));
   expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("value", "");
   expect(screen.getByLabelText("Quantidade prevista (UN)")).toHaveProperty("required", true);
-  expect(document.activeElement).toBe(screen.getByRole("button", { name: "Selecionar Produto" }));
+  expect(document.activeElement).toBe(screen.getByRole("combobox", { name: "Produto" }));
   expect(screen.queryByText("Via: IM")).toBeNull();
   expect(await screen.findByText("Orientação de uso: Conferir embalagem")).toBeTruthy();
 });

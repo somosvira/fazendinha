@@ -23,7 +23,8 @@ import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "../../../
 import { useConsultaCadastroProtocolos } from "../protocolos/useConsultaCadastroProtocolos";
 import { urlCadastroProtocolo } from "../protocolos/rotas-cadastro";
 import "../protocolos/protocolos.css";
-import { SeletorCatalogoProtocolo } from "../protocolos/SeletorCatalogoProtocolo";
+import { SelectBuscavel } from "../../../components/SelectBuscavel";
+import { opcoesProtocolo, detalheProdutoSanitario } from "../protocolos/opcoesProtocolo";
 import { type ReferenciasCustoCadastro } from "../protocolos/CamposReferenciasCusto";
 import { listarCadastrosProtocolos, type CadastroProtocoloMeta } from "../protocolos/cadastros-api";
 import { CatalogoModelosProtocolos } from "../protocolos/CatalogoModelosProtocolos";
@@ -808,7 +809,7 @@ export function PlanoEtapa({
   propriedadeId?: number;
   onChange: (e: EtapaIatf) => void;
 }) {
-  if (etapa.tipo === "EXAME") return <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="SANITARIO" opcao="TIPO_EXAME" rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
+  if (etapa.tipo === "EXAME") return <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO", propriedadeId })} rotulo="Exame sanitário planejado" valor={etapa.planoExame?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoExame: tipoExameId ? { tipoExameId } : undefined })}/>;
   if (etapa.tipo === "APLICACAO") {
     const p = etapa.planoAplicacao;
     const alterar = (
@@ -831,7 +832,7 @@ export function PlanoEtapa({
           Informe os parâmetros definidos pelo responsável. Planejar não aplica
           nem consome estoque.
         </p>
-        <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="SANITARIO" opcao="PRODUTO" rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
+        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO", propriedadeId })} detalhe={detalheProdutoSanitario} rotulo="Produto planejado" valor={p?.produtoId ?? ""} onChange={(produtoId, produto) => produtoId ? alterar({ produtoId, dose: produtoId === p?.produtoId ? p.dose : "", unidadeDose: produtoId === p?.produtoId ? p.unidadeDose : (produto?.unidade ?? "ML") as UnidadeMedida, via: produtoId === p?.produtoId ? p.via : produto?.perfilSanitario?.viaPadrao ?? null, tipoAplicacaoId: produtoId === p?.produtoId ? p.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? null }) : onChange({ ...etapa, planoAplicacao: undefined })}/>
         <label>
           Dose planejada
           <input
@@ -881,7 +882,7 @@ export function PlanoEtapa({
             <option value="TE">Transferência de embrião</option>
           </SelectCampo>
         </label>
-        <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="REPRODUTIVO" opcao="MATERIAL" tipoTentativa={p?.tipo ?? "IA"} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
+        <SelectBuscavel buscar={opcoesProtocolo({ opcao: "MATERIAL", origem: "REPRODUTIVO", tipoTentativa: p?.tipo ?? "IA", propriedadeId })} rotulo="Material planejado" valor={p?.materialId ?? ""} onChange={materialId => materialId ? alterar({ materialId }) : onChange({ ...etapa, planoTentativa: undefined })}/>
         <label>
           Quantidade planejada
           <input
@@ -900,7 +901,7 @@ export function PlanoEtapa({
   if (etapa.tipo === "AVALIACAO")
     return (
       <div className="col-span-full grid gap-3">
-      <SeletorCatalogoProtocolo propriedadeId={propriedadeId} origem="REPRODUTIVO" opcao="TIPO_EXAME" rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
+      <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "REPRODUTIVO", propriedadeId })} rotulo="Tipo de exame reprodutivo" valor={etapa.planoAvaliacao?.tipoExameId ?? ""} onChange={tipoExameId => onChange({ ...etapa, planoAvaliacao: { tipo: etapa.planoAvaliacao?.tipo ?? "DIAGNOSTICO", tipoExameId: tipoExameId || undefined } })}/>
       <p className="text-sm">Sem tipo definido, mantém a avaliação reprodutiva padrão de compatibilidade.</p>
       <label>
         Avaliação planejada

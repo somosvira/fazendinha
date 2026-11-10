@@ -1,4 +1,3 @@
-import { UNIDADES_CONCENTRACAO, type UnidadeConcentracao } from '../../../estoque/catalogos-api';
 import { useEffect, useState } from "react";
 import { ClassificarCustoAplicacao } from "./ClassificarCustoAplicacao";
 import { CarenciasSanitarias } from "./CarenciasSanitarias";
@@ -55,22 +54,6 @@ function DesvioProtocolo({ valor }: { valor: unknown }) {
   const realizado = registro(exibicao.realizado);
   const naoAferido = snapshot.aferido === false || snapshot.referencia === "LEGADO_SEM_SNAPSHOT";
   return <section className="grid gap-2 rounded-lg border border-border p-3"><h3 className="font-semibold">Planejado e realizado</h3>{naoAferido && <p>Planejamento antigo sem todos os parâmetros congelados. Conformidade não aferida.</p>}{diferencas.length ? <ul className="list-inside list-disc">{diferencas.map((d, i) => <li key={i}>{rotulos[String(d.campo)] ?? String(d.campo)}: {valorComparacaoExecucao(String(d.campo), d.planejado, planejado[String(d.campo)])} → {valorComparacaoExecucao(String(d.campo), d.realizado, realizado[String(d.campo)])}</li>)}</ul> : !naoAferido && <p>Conforme o planejado.</p>}{(diferencas.length > 0 || naoAferido) && <p><strong>Motivo:</strong> {textoDetalhe(snapshot.motivo)}</p>}</section>;
-}
-function ComposicaoRegistrada({ valor }: { valor: unknown }) {
-  if (valor == null) return <p>Composição não registrada neste atendimento</p>;
-  const snapshot = registro(valor);
-  if (snapshot.schemaVersion !== 1 || !Array.isArray(snapshot.itens)) return <p>Composição registrada em formato não reconhecido.</p>;
-  const itens = snapshot.itens.map(registro);
-  return <section className="grid gap-2"><h3 className="font-semibold">Composição registrada</h3>
-    <p>{snapshot.contexto === "CADASTRO_NA_GRAVACAO" ? "Composição do cadastro consultada na gravação — não confirma a fórmula do lote" : "Contexto da composição não identificado neste atendimento."}</p>
-    {typeof snapshot.capturadoEm === "string" && <p className="text-ink-3">Consulta ao cadastro: {dataHoraSanitaria(snapshot.capturadoEm)}</p>}
-    {itens.length ? <ul className="list-inside list-disc">{itens.map((item, indice) => {
-      const valor = typeof item.concentracaoValor === "string" ? item.concentracaoValor.replace(".", ",") : null;
-      const unidade = typeof item.concentracaoUnidade === "string" ? UNIDADES_CONCENTRACAO[item.concentracaoUnidade as UnidadeConcentracao] : null;
-      return <li key={indice}>{textoDetalhe(item.nomePrincipioSnapshot)} — {valor != null && unidade ? `${valor} ${unidade}` : "Concentração não informada"}</li>;
-    })}</ul> : <p>Composição não informada no cadastro consultado.</p>}
-    {typeof snapshot.referencia === "string" && snapshot.referencia && <p><strong>Referência da composição:</strong> {snapshot.referencia}</p>}
-  </section>;
 }
 export function DetalheSanitario({ tipo, valor, abrir, onAtualizado }: { tipo: string; valor: unknown; abrir: (tipo: string, id: string, propriedadeId?: number) => void; onAtualizado?: () => void }) {
   const IconeDetalhe = tipo === "exame" ? FlaskConical : tipo === "tarefa" ? CalendarDays : tipo === "aplicacao" ? Syringe : Activity;
@@ -148,7 +131,6 @@ export function DetalheSanitario({ tipo, valor, abrir, onAtualizado }: { tipo: s
     </>}
     {(tipo === "aplicacao" || fato.observacao != null || fato.motivoAnulacao != null) && <section className="sanitario-observacoes"><h3>Observações</h3>{tipo === "aplicacao" && fato.observacao == null && <p>Sem observações.</p>}{fato.observacao != null && <p>{textoDetalhe(fato.observacao)}</p>}{fato.motivoAnulacao != null && <p><strong>Motivo da anulação:</strong> {textoDetalhe(fato.motivoAnulacao)}</p>}</section>}
     {fato.criadoEm != null && <dl className="sanitario-dados sanitario-autoria"><div><dt>Registrado em</dt><dd>{dataHoraSanitaria(String(fato.criadoEm))}</dd></div>{!!registro(fato.criadoPor).nome && <div><dt>Registrado por</dt><dd>{String(registro(fato.criadoPor).nome)}</dd></div>}</dl>}
-    {tipo === "aplicacao" && <ComposicaoRegistrada valor={fato.composicaoSnapshot} />}
     {!!fato.loteNome && typeof fato.partidaCodigoSnapshot === "string" && fato.partidaCodigoSnapshot !== fato.loteNome && !/^LOTE-[0-9a-f-]{36}$/i.test(fato.partidaCodigoSnapshot) && <p className="text-ink-3">Referência histórica do lote: {fato.partidaCodigoSnapshot}</p>}
     {!!movimento.id && <p><strong>Saída do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(movimento.id))}${fato.propriedadeId ? `&propriedadeId=${encodeURIComponent(String(fato.propriedadeId))}` : ""}`}>Ver movimento</LinkInterno></p>}
     {!!estorno.id && <p><strong>Estorno do estoque:</strong> <LinkInterno area="estoque" href={`/estoque?movimentoId=${encodeURIComponent(String(estorno.id))}&propriedadeId=${encodeURIComponent(String(fato.propriedadeId ?? ""))}`}>Ver movimento de estorno</LinkInterno></p>}

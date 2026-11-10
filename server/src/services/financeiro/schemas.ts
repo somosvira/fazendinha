@@ -1,3 +1,4 @@
+import { refinarProdutoOuCatalogo } from "../estoque/produtos-catalogo.schemas.js";
 import { z } from "zod";
 
 const dataIso = z.coerce.date();
@@ -136,6 +137,8 @@ export const itemOperacaoSchema = z.object({
   // null = explicitamente "herda o centro da operação".
   centroCustoId: z.string().uuid().nullable().optional(),
   produtoId: z.string().uuid().optional(),
+  // Item do catálogo: adotado como Produto da fazenda ao confirmar, com a categoria da própria linha (docs/produtos.md, Adoção).
+  produtoCatalogoId: z.string().uuid().optional(),
   descricao: z.string().trim().min(1).max(160),
   quantidade: valorPositivo,
   unidade: z.string().trim().min(1).max(20),
@@ -151,7 +154,8 @@ export const itemOperacaoSchema = z.object({
     validade: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe uma validade válida").nullish(),
     quantidade: z.coerce.number().finite(),
   })).optional(),
-}).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] });
+}).refine((item) => item.valorUnitario !== undefined || item.valorTotal !== undefined, { message: "Informe o valor unitário ou total do item", path: ["valorUnitario"] })
+  .superRefine(refinarProdutoOuCatalogo({ obrigatorio: false }));
 
 const parcelaSchema = z.object({
   valor: z.coerce.number({ invalid_type_error: "Informe um valor numérico válido para a parcela" }).positive("Nenhuma parcela pode ficar sem valor. Informe um valor maior que zero ou remova a parcela."),

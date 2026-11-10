@@ -204,8 +204,8 @@ it("configura tipo padrão e orientação opcionais no produto compartilhado", a
   fireEvent.click(screen.getByLabelText("Sanitário"));
   fireEvent.click(screen.getByRole("radio", { name: "Sem carência de leite (0 horas)" }));
   fireEvent.click(screen.getByRole("radio", { name: "Sem carência de carne (0 horas)" }));
-  fireEvent.click(screen.getByRole("button", { name: "Selecionar Tipo de aplicação padrão (opcional)" }));
-  fireEvent.click(await screen.findByRole("button", { name: "Usar Hormônio" }));
+  fireEvent.click(screen.getByRole("combobox", { name: "Tipo de aplicação padrão (opcional)" }));
+  fireEvent.click(await screen.findByRole("option", { name: "Hormônio" }));
   fireEvent.change(screen.getByLabelText("Orientação de uso (opcional)"), { target: { value: "Conferir o rótulo do produto" } });
   fireEvent.click(screen.getByRole("button", { name: "Criar produto" }));
   await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledWith(expect.objectContaining({ perfilSanitario: expect.objectContaining({ tipoAplicacaoId: uid(77), orientacaoUso: "Conferir o rótulo do produto", viaPadrao: null }) })));
@@ -263,45 +263,91 @@ describe("carência explícita do produto sanitário", () => {
   });
 });
 
-it('preserva composição e perfil descritivo omitidos ao editar somente cadastro comercial', async () => {
+it('edita o cadastro comercial preservando o código de referência', async () => {
   vi.clearAllMocks();
-  const produto = { ...produtoCriado, unidade: 'KG' as const, revisaoCadastro: 7, codigoReferencia: 'ORIG-10', composicao: { id: uid(300), numero: 1, situacao: 'NAO_INFORMADA' as const, referencia: null, itens: [] }, informacoesNutricionais: { id: uid(301), numero: 1, situacao: 'NAO_INFORMADA' as const, referencia: null, itens: [] } };
+  const produto = { ...produtoCriado, unidade: 'KG' as const, codigoReferencia: 'ORIG-10' };
   mocks.editarProduto.mockResolvedValue(produto);
   render(<FormProduto produto={produto} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
   fireEvent.change(screen.getByLabelText('Apresentação'), { target: { value: 'Saco 25 kg' } });
   fireEvent.click(screen.getByRole('button', { name: 'Salvar produto' }));
   await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalled());
   const dados = mocks.editarProduto.mock.calls[0][1];
-  expect(dados).toMatchObject({ codigoReferencia: 'ORIG-10', apresentacao: 'Saco 25 kg', revisaoEsperada: 7, chaveReenvio: expect.any(String) });
-  expect(dados).not.toHaveProperty('composicao'); expect(dados).not.toHaveProperty('informacoesNutricionais');
+  expect(dados).toMatchObject({ codigoReferencia: 'ORIG-10', apresentacao: 'Saco 25 kg' });
+  expect(dados).not.toHaveProperty('composicao'); expect(dados).not.toHaveProperty('chaveReenvio');
 });
 
-it('mantém chave de reenvio para payload idêntico e troca após corrigir o rascunho', async () => {
-  vi.clearAllMocks(); mocks.criarProduto.mockRejectedValue(new Error('Falha de rede'));
-  render(<FormProduto produto={null} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
-  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Produto inicial' } });
-  await alterarControle(screen.getByLabelText('Categoria'), { target: { value: uid(11) } });
-  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
-  await screen.findByText('Falha de rede');
-  const chave = mocks.criarProduto.mock.calls[0][0].chaveReenvio;
-  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
-  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledTimes(2));
-  expect(mocks.criarProduto.mock.calls[1][0].chaveReenvio).toBe(chave);
-  await screen.findByText('Falha de rede');
-  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Produto corrigido' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Criar produto' }));
-  await waitFor(() => expect(mocks.criarProduto).toHaveBeenCalledTimes(3));
-  expect(mocks.criarProduto.mock.calls[2][0].chaveReenvio).not.toBe(chave);
-});
-
-it('permite consultar histórico no modo somente leitura', async () => {
-  const buscar = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ itens: [{ id: uid(300), numero: 1, situacao: 'NAO_INFORMADA', referencia: 'Documento conferido', itens: [], criadoPor: { id: 1, nome: 'Autor do registro' } }], total: 1, pagina: 1, porPagina: 10 }) });
-  vi.stubGlobal('fetch', buscar);
+it('no modo somente leitura não oferece salvar nem cadastro de catálogo', () => {
   render(<FormProduto produto={{ ...produtoCriado, unidade: 'KG' as const }} categorias={categorias} centros={[]} parceiros={[]} somenteLeitura onSalvo={vi.fn()} onFechar={vi.fn()} />);
-  const historico = screen.getByRole('button', { name: 'Consultar histórico da composição' });
-  expect((historico as HTMLButtonElement).disabled).toBe(false);
-  fireEvent.click(historico);
-  expect(await screen.findByText('Autor: Autor do registro')).toBeTruthy();
-  expect(buscar).toHaveBeenCalledWith(expect.stringContaining('/composicoes?pagina=1'), expect.any(Object));
   expect(screen.queryByRole('button', { name: 'Salvar produto' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /Cadastrar (fabricante|classificação técnica)/ })).toBeNull();
+});
+
+describe("produto adotado do catálogo", () => {
+  const adotado = {
+    ...produtoCriado, unidade: "G" as const, produtoCatalogoId: uid(500), nomeAlterado: true,
+    nome: "Biomox da fazenda", apresentacao: "sachê 100 g", fabricanteId: null, classificacaoTecnicaId: null,
+    origemCampos: { nome: "fazenda", apresentacao: "catalogo", fabricante: "catalogo", classificacaoTecnica: "catalogo" } as const,
+    catalogo: { id: uid(500), nomeCompleto: "Biomox 20% PS (sachê 100 g)", ativo: true },
+    principiosAtivos: [{ id: uid(600), nome: "Amoxicilina", ordem: 1 }, { id: uid(601), nome: "Colistina", ordem: 2 }],
+  };
+  beforeEach(() => { vi.clearAllMocks(); });
+  const montar = (extra: Partial<Parameters<typeof FormProduto>[0]> = {}) => render(<FormProduto produto={adotado} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} {...extra} />);
+
+  it("marca a origem de cada campo e mostra os princípios ativos somente leitura", () => {
+    montar();
+    const origens = Array.from(document.querySelectorAll("[data-origem]")).map((e) => [e.getAttribute("data-origem"), e.textContent]);
+    expect(origens).toEqual([["fazenda", "Alterado pela fazendaRestaurar"], ["catalogo", "Do catálogo"], ["catalogo", "Do catálogo"], ["catalogo", "Do catálogo"]]);
+    const secao = screen.getByRole("region", { name: "Princípios ativos" });
+    expect(secao.textContent).toContain("Amoxicilina");
+    expect(secao.textContent).toContain("Colistina");
+    expect(secao.querySelector("input, button")).toBeNull();
+  });
+
+  it("produto manual não mostra marcas nem princípios ativos", () => {
+    render(<FormProduto produto={{ ...produtoCriado, unidade: "KG" as const }} categorias={categorias} centros={[]} parceiros={[]} onSalvo={vi.fn()} onFechar={vi.fn()} />);
+    expect(document.querySelector("[data-origem]")).toBeNull();
+    expect(screen.queryByText("Princípios ativos")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
+  });
+
+  it("Restaurar nome envia restaurarNome, traz o nome do catálogo e avisa a ficha sem fechar o painel", async () => {
+    const restaurado = { ...adotado, nome: "Biomox 20% PS (sachê 100 g)", nomeAlterado: false, origemCampos: { ...adotado.origemCampos, nome: "catalogo" as const } };
+    mocks.editarProduto.mockResolvedValue(restaurado);
+    const onRestaurado = vi.fn(); const onFechar = vi.fn();
+    montar({ onRestaurado, onFechar });
+    fireEvent.click(screen.getByRole("button", { name: "Restaurar nome do catálogo" }));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(adotado.id, { restaurarNome: true }));
+    await waitFor(() => expect((screen.getByLabelText("Nome do produto", { exact: false }) as HTMLInputElement).value).toBe("Biomox 20% PS (sachê 100 g)"));
+    expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
+    expect(onRestaurado).toHaveBeenCalledWith(restaurado);
+    expect(onFechar).not.toHaveBeenCalled();
+  });
+
+  it("Restaurar apresentação alterada envia null; conflito de nome ao restaurar mostra a mensagem", async () => {
+    const alterada = { ...adotado, origemCampos: { ...adotado.origemCampos, apresentacao: "fazenda" as const } };
+    mocks.editarProduto.mockRejectedValueOnce(new Error("Já existe um produto chamado “Biomox 20% PS (sachê 100 g)”."));
+    montar({ produto: alterada });
+    fireEvent.click(screen.getAllByRole("button", { name: /Restaurar/ })[1]);
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledWith(adotado.id, { apresentacao: null }));
+    expect((await screen.findAllByRole("alert")).some((a) => a.textContent?.includes("Já existe um produto chamado"))).toBe(true);
+    expect(screen.getAllByRole("button", { name: /Restaurar/ })).toHaveLength(2);
+  });
+
+  it("salvar sem mexer nos campos herdados não os envia (a herança é preservada); alterar um deles envia o valor", async () => {
+    mocks.editarProduto.mockResolvedValue(adotado);
+    montar();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledTimes(1));
+    for (const campo of ["apresentacao", "fabricanteId", "classificacaoTecnicaId"]) expect(mocks.editarProduto.mock.calls[0][1]).not.toHaveProperty(campo);
+    fireEvent.change(screen.getByLabelText("Apresentação"), { target: { value: "sachê 200 g" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar produto" }));
+    await waitFor(() => expect(mocks.editarProduto).toHaveBeenCalledTimes(2));
+    expect(mocks.editarProduto.mock.calls[1][1]).toMatchObject({ apresentacao: "sachê 200 g" });
+  });
+
+  it("no modo somente leitura mostra a origem mas não oferece Restaurar", () => {
+    montar({ somenteLeitura: true });
+    expect(screen.getByText("Alterado pela fazenda")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Restaurar/ })).toBeNull();
+  });
 });

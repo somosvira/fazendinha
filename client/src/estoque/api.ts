@@ -20,7 +20,7 @@ async function req<T>(path: string, init?: RequestInit, escopo?: number | null):
     let msg = `HTTP ${res.status}`;
     if (typeof b?.error === "string") msg = b.error;                                   // erro do service (ex.: número duplicado)
     else if (b?.error?.issues?.length) msg = b.error.issues.map((i: any) => i.message).join("; "); // ZodError do zValidator
-    throw new ApiError(msg, res.status, b?.code, b?.campo);
+    throw new ApiError(msg, res.status, b?.code, b?.campo, b?.produtoExistente);
   }
   return res.json();
 }
@@ -54,7 +54,8 @@ export interface MovimentoDTO { id: string; propriedadeId?: number | null; seq: 
   operacaoNumero: number | null;
   /** Talhão de origem das saídas automáticas (aplicação agrícola); null nos demais. */
   vinculo: VinculoMovimento | null; }
-export interface MovimentoInput { produtoId: string; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; observacao?: string; centroCustoId?: string; }
+/** `produtoId` ou `produtoCatalogoId` (adotado ao confirmar; `categoriaId` só junto do catálogo) — nunca os dois. */
+export interface MovimentoInput { produtoId?: string; produtoCatalogoId?: string; categoriaId?: string; tipo: "AJUSTE"; data: string; quantidade: number; custoUnitario?: number; observacao?: string; centroCustoId?: string; }
 export interface MovimentoResult { id: string; operacaoId: string; }
 
 export const listarSaldos = (f?: { centroCustoId?: string; propriedadeId?: number }) => req<SaldoDTO[]>(`/estoque/saldos${qs(f?.centroCustoId ? { centroCustoId: f.centroCustoId } : undefined)}`, undefined, f?.propriedadeId);
@@ -97,10 +98,11 @@ export function useSaldos(f?: { centroCustoId?: string; propriedadeId?: number }
 export type ProdutoDTO = Produto;
 export type UsoProduto = "genetico" | "sanitario" | "nutricional";
 export interface ProdutoInput {
-  chaveReenvio?: string; revisaoEsperada?: number; codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null;
-  composicao?: import("./catalogos-api").ComposicaoInput; informacoesNutricionais?: import("./catalogos-api").NutricionalInput;
+  codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean; rastrearPartidas?: boolean;
   nome: string; unidade: UnidadeMedida;
+  /** Produto adotado: volta ao nome do catálogo (apresentação, fabricante e classificação voltam com `null`). */
+  restaurarNome?: true;
   // Categoria obrigatória para classificação financeira. Se o produto entra no estoque quem decide é a operação.
   minimoEstoque?: number | null; ativo?: boolean; categoriaId: string; centroCustoIds?: string[]; fornecedorIds?: string[];
   perfilSanitario?: { carenciaLeiteHoras: number | null; carenciaCarneHoras: number | null; viaPadrao?: string | null; referenciaTecnica?: string | null; orientacaoUso?: string | null; tipoAplicacaoId?: string | null };
@@ -109,6 +111,17 @@ export interface ProdutoInput {
 export type TipoAplicacaoSanitariaProduto = { id: string; nome: string; ativo: boolean };
 export const listarTiposAplicacaoSanitarios = (f: { pagina: number; porPagina?: number; busca?: string; selecionadoId?: string }) => req<{ itens: TipoAplicacaoSanitariaProduto[]; total: number; pagina: number; porPagina: number }>(`/estoque/tipos-aplicacao-sanitarios${qs({ ...f, porPagina: 10 })}`);
 export const listarProdutos = (f?: { uso?: UsoProduto; q?: string; ativo?: boolean; fabricanteId?: string; classificacaoTecnicaId?: string; principioAtivoId?: string }, propriedadeId?: number) => req<ProdutoDTO[]>(`/estoque/produtos${qs(f)}`, undefined, propriedadeId);
+
+/** Item do catálogo do sistema ainda não adotado, como o seletor unificado o recebe. */
+export type ItemCatalogoBusca = {
+  id: string; nome: string; apresentacao: string | null; nomeCompleto: string;
+  fabricante: { id: string; nome: string } | null; classificacaoTecnica: { id: string; nome: string } | null;
+  unidadeSugerida: UnidadeMedida; categoriaSugeridaId: string | null;
+  usoSanitario: boolean; usoNutricional: boolean; usoGenetico: boolean;
+};
+export type BuscaProdutosDTO = { meus: ProdutoDTO[]; catalogo: ItemCatalogoBusca[] };
+export const buscarProdutosUnificado = (f: { q?: string; uso?: UsoProduto; limite?: number }, opcoes?: { propriedadeId?: number; signal?: AbortSignal }) =>
+  req<BuscaProdutosDTO>(`/estoque/produtos/busca${qs(f)}`, { signal: opcoes?.signal }, opcoes?.propriedadeId);
 export const criarProduto = (p: ProdutoInput) => req<ProdutoDTO>(`/estoque/produtos`, { method: "POST", body: JSON.stringify(p) });
 export const editarProduto = (id: string, p: Partial<ProdutoInput>) => req<ProdutoDTO>(`/estoque/produtos/${id}`, { method: "PATCH", body: JSON.stringify(p) });
 

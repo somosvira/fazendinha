@@ -16,13 +16,13 @@ import { getPropriedadeAtiva } from "../propriedadeScope";
 import { getUsuario } from "../lib/auth";
 import { Button, dataBR, brl, ErrorBox, PageHeader, PaginaFinanceira, Panel, TabelaFinanceira, Paginacao, Pill, Empty, type ColunaTabela } from "../financeiro/financeiro-ui";
 import { classeInput } from "../financeiro/PainelCadastro";
-import { FormProduto } from "../financeiro/FormProduto";
+import { FormProduto, OrigemCampo, type CampoHerdavel } from "../financeiro/FormProduto";
 import { ValorizacaoProduto } from "./ValorizacaoProduto";
 import { PartidasProduto } from "./PartidasProduto";
 import { nomeLoteProduto } from "./SelecaoPartidas";
 import { destinoDoMovimento, podeAcessarArea, podeAjustarEstoque, abrirAjusteEstoque } from "./navegacao";
 import { ROTULO_ORIGEM } from "./rotulos";
-import { obterProdutoEstoque, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type LoteProdutoDTO, type MovimentoDTO, type OrigemProdutoDTO, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
+import { obterProdutoEstoque, editarProduto, listarProdutos, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto, type LoteProdutoDTO, type MovimentoDTO, type OrigemProdutoDTO, type ProdutoDTO, type ProdutoEstoqueDTO, type PaginaLotesProduto, type PaginaMovimentos, type PaginaOrigensProduto } from "./api";
 import { EsqueletoFicha } from "../components/Esqueleto";
 
 type Aba = "resumo" | "lotes" | "movimentos" | "origens";
@@ -50,6 +50,7 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
   const [nome, setNome] = useState("");
   const [salvando, setSalvando] = useState(false);
   const enviandoNome = useRef(false);
+  const [restaurando, setRestaurando] = useState(false);
   const usuario = getUsuario();
   const podeEditar = !usuario || !!usuario.dono || usuario.flags.includes("lancar");
   useEffect(() => { let vivo = true; listarPropriedades({ incluirInativos: true }).then((s) => { if (vivo) setSitios(s); }).catch((e: unknown) => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, []);
@@ -76,6 +77,14 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
     try { await renomearLoteProduto(renomeando, nome.trim()); setRenomeando(null); setRevisao((r) => r + 1); } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { enviandoNome.current = false; setSalvando(false); }
   }
   const produto = dados;
+  /** Volta um campo do produto adotado ao valor do catálogo (null / restaurarNome) e recarrega a ficha. */
+  async function restaurarCampo(campo: CampoHerdavel) {
+    if (!podeEditar || restaurando) return; setRestaurando(true); setErro(null);
+    try {
+      await editarProduto(produtoId, campo === "nome" ? { restaurarNome: true } : campo === "apresentacao" ? { apresentacao: null } : campo === "fabricante" ? { fabricanteId: null } : { classificacaoTecnicaId: null });
+      setRevisao((r) => r + 1);
+    } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setRestaurando(false); }
+  }
   const total = lotes?.total ?? movimentos?.total ?? origens?.total ?? 0;
   const vazio = !carregando && !erro && aba !== "resumo" && total === 0;
 
@@ -114,6 +123,14 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
           <div className="produto-ficha-disponivel"><span className="text-sm text-muted-foreground">Disponível</span><p className="estoque-ficha-saldo tabular-nums">{Number(dados.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidade}</p><p className="mt-2 text-sm text-ink-3">{produto.rastrearPartidas ? "Controle de lotes por validade ativo" : "Sem controle de lotes por validade"}</p>{!podeEditar && <p className="mt-3 text-sm text-ink-3">Você tem acesso de consulta.</p>}</div>
           <dl className="estoque-ficha-dados"><div><dt>Lotes com saldo</dt><dd>{dados.lotesComSaldo} <small>de {dados.totalLotes} cadastrados</small></dd></div><div><dt>Categoria</dt><dd>{produto.categoria?.nome ?? produto.categoriaNome ?? "Sem categoria"}</dd></div>{dados.custoMedio != null && <><div><dt>Custo médio</dt><dd>{brl(dados.custoMedio)}</dd></div><div><dt>Valor em estoque</dt><dd>{brl(dados.valor ?? 0)}</dd></div></>}</dl>
         </div>
+        {produto.produtoCatalogoId && <section aria-labelledby="ficha-cadastro-catalogo" className="estoque-ficha-opcoes">
+          <h3 id="ficha-cadastro-catalogo" className="text-sm font-semibold">Cadastro do catálogo</h3>
+          <dl className="mt-3 grid gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+            {([["nome", "Nome", produto.nome], ["apresentacao", "Apresentação", produto.apresentacao], ["fabricante", "Fabricante", produto.fabricante?.nome], ["classificacaoTecnica", "Classificação técnica", produto.classificacaoTecnica?.nome]] as [CampoHerdavel, string, string | null | undefined][]).map(([campo, rotulo, valor]) =>
+              <div key={campo} className="min-w-0"><dt className="text-ink-3">{rotulo}</dt><dd className="mt-1 break-words font-medium">{valor || "Não informado"}</dd><dd className="mt-1"><OrigemCampo campo={campo} origem={produto.origemCampos?.[campo] ?? "fazenda"} ocupado={restaurando} somenteLeitura={!podeEditar} onRestaurar={(c) => { void restaurarCampo(c); }} /></dd></div>)}
+            <div className="min-w-0 sm:col-span-2"><dt className="text-ink-3">Princípios ativos</dt><dd className="mt-1 break-words font-medium">{produto.principiosAtivos?.length ? produto.principiosAtivos.map((p) => p.nome).join(", ") : "Nenhum informado no catálogo"}</dd></div>
+          </dl>
+        </section>}
         {podeAcessarArea("pecuaria") && <UsoProdutoDietas produtoId={produto.id} propriedadeId={sitioId} saldo={Number(dados.saldo)} unidade={unidade} />}
         {podeAjustarEstoque() && <div className="estoque-ficha-opcoes">{sitioId ? <Button secondary onClick={() => { onSelecionarSitio?.(sitioId); abrirAjusteEstoque(produto.id); }}><SlidersHorizontal size={16} />Ajustar quantidade</Button> : <p className="text-sm text-ink-3">Para ajustar a quantidade, escolha um sítio no campo Sítio acima.</p>}</div>}
         {podeEditar && sitioId && <details className="estoque-ficha-opcoes"><summary className="cursor-pointer text-sm font-medium">Opções avançadas</summary><div className="mt-3"><PartidasProduto key={`${produto.id}-${sitioId}`} produtoId={produto.id} propriedadeId={sitioId} rastreado={!!produto.rastrearPartidas} configuracao onMudou={() => setRevisao(r => r + 1)} /></div></details>}
@@ -132,6 +149,6 @@ export function ProdutoEstoqueDetalhe({ produtoId, onSelecionarSitio }: { produt
       <form id="renomear-lote" className="grid gap-3 p-5" onSubmit={e => { e.preventDefault(); void salvarNome(); }}><ErrorBox erro={erro} /><div className="flex items-start gap-2"><label className="flex-1 text-sm">Novo nome<input required maxLength={160} className={classeInput} value={nome} onChange={e => setNome(e.target.value)} /></label></div></form>
     </DialogFinanceiro>}
     {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto} propriedadeId={sitioId} unidade={unidade} onFechar={() => setMovimentoAberto(null)} />}
-    {editando && produtoEdicao && <FormProduto somenteLeitura={!podeEditar} produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onFechar={() => setEditando(false)} />}
+    {editando && produtoEdicao && <FormProduto somenteLeitura={!podeEditar} produto={produtoEdicao} onSalvo={() => { setEditando(false); setRevisao(r => r + 1); }} onRestaurado={() => setRevisao(r => r + 1)} onFechar={() => setEditando(false)} />}
   </div></PaginaFinanceira>;
 }

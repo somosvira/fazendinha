@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
-import { composicaoSchema, informacoesNutricionaisSchema } from "./composicao.schemas.js";
 
 // Limite compatível com Produto.minimoEstoque (Decimal(12,2))
 const MAX_PRODUTO_VALOR = 9_999_999_999.99;
@@ -18,10 +17,6 @@ const produtoBaseSchema = z.object({
   conservacao: z.string().trim().max(1000).nullable().optional(),
   fabricanteId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
   classificacaoTecnicaId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
-  revisaoEsperada: z.number().int().positive().optional(),
-  chaveReenvio: z.string().uuid().optional(),
-  composicao: composicaoSchema.optional(),
-  informacoesNutricionais: informacoesNutricionaisSchema.optional(),
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   usoGenetico: z.boolean().optional(),
@@ -47,7 +42,12 @@ export const produtoSchema = produtoBaseSchema.superRefine((produto, ctx) => {
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 
-export const patchProdutoSchema = produtoBaseSchema.partial().extend({ ativo: z.boolean().optional() });
+// Produto adotado do catálogo: null em apresentacao/fabricanteId/classificacaoTecnicaId restaura a herança;
+// `restaurarNome` volta ao nome do catálogo (docs/produtos.md, Herança).
+export const patchProdutoSchema = produtoBaseSchema.partial().extend({
+  ativo: z.boolean().optional(),
+  restaurarNome: z.literal(true).optional(),
+});
 export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 
 // Filtro de produtos por seus tipos de uso — usado por

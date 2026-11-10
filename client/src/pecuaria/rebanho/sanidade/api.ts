@@ -4,17 +4,7 @@ import { comPropriedade } from "../../../propriedadeScope";
 
 type EstadoCarencia = { estado: "NENHUMA" | "NAO_APLICAVEL" | "NAO_INFORMADO" } | { estado: "CONHECIDO"; ate: string; precisaoAproximada: boolean; prazoZero?: boolean };
 export type CarenciaAnimal = { leite: EstadoCarencia; carne: EstadoCarencia; revisaoLeitePendente?: boolean; revisaoAdministracaoPendente?: boolean };
-export type ComposicaoSanitariaSnapshot = {
-  schemaVersion: 1;
-  versaoComposicaoId: string | null;
-  situacao: "INFORMADA" | "NAO_INFORMADA";
-  referencia: string | null;
-  itens: import("../../../estoque/catalogos-api").ItemComposicao[];
-  capturadoEm: string;
-  contexto: "CADASTRO_NA_GRAVACAO";
-};
 export type AplicacaoSanitaria = {
-  composicaoSnapshot?: ComposicaoSanitariaSnapshot | null;
   animal?: { id: string; brinco: string; nome: string | null }; produtoId?: string | null;
   produto?: { id: string; nome: string; unidade: string } | null;
   id: string; animalId: string; propriedadeId?: number | null; data: string; aplicadaEm: string | null; finalidade: "TRATAMENTO" | "VACINA" | "VERMIFUGO" | null;
@@ -33,7 +23,7 @@ export type AplicacaoSanitaria = {
 export type ServicoSanitario = { id: string; numero: number; data: string; descricao: string | null; propriedadeId?: number | null; propriedade?: { id: number; nome: string } | null; valorTotal?: string; parceiro: { nome: string } | null };
 
 export class SanidadeApiError extends Error {
-  constructor(message: string, public readonly code?: string, public readonly campo?: string) {
+  constructor(message: string, public readonly code?: string, public readonly campo?: string, public readonly produtoExistente?: { id: string; nome: string }) {
     super(message);
     this.name = "SanidadeApiError";
   }
@@ -44,7 +34,7 @@ export async function reqSanidade<T>(caminho: string, init?: RequestInit, propri
     ...init, headers: { ...comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }), ...(propriedadeId ? { "X-Propriedade-Id": String(propriedadeId) } : {}) },
   });
   const dados = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo);
+  if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo, dados.produtoExistente);
   return dados as T;
 }
 const req = reqSanidade;
@@ -73,7 +63,7 @@ export type AplicacaoInput = {
   tarefaId?: string;
   ocorrenciaId?: string;
   origemInsumo: "BAIXA_ESTOQUE" | "INCLUSO_SERVICO" | "COMPRA_CONSUMO_DIRETO" | "SEM_ORIGEM_JUSTIFICADA";
-  nomeProdutoAplicado: string; produtoId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
+  nomeProdutoAplicado: string; produtoId?: string; /** Item do catálogo adotado ao confirmar; `categoriaId` só junto dele. Nunca com `produtoId`. */ produtoCatalogoId?: string; categoriaId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
   operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string; cienciaValidadeDesconhecida?: boolean;
   justificativaSemOrigem?: string; estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   documentacaoExcepcional?: boolean; motivoDocumentacaoExcepcional?: string;

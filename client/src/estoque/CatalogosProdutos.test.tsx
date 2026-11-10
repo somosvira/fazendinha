@@ -1,62 +1,55 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { CatalogosProdutos, SeletorCatalogoProduto } from './CatalogosProdutos';
-import { ApiError } from './api';
-const mocks = vi.hoisted(() => ({ listarCatalogo: vi.fn(), salvarCatalogo: vi.fn() }));
+import { CatalogoProdutos, SeletorCatalogoProduto, rotuloUsoCatalogo } from './CatalogosProdutos';
+const mocks = vi.hoisted(() => ({ listarCatalogo: vi.fn(), listarCatalogoProdutos: vi.fn() }));
 vi.mock('./catalogos-api', async importar => ({ ...(await importar<typeof import('./catalogos-api')>()), ...mocks }));
-const item = { id: 'fabricante-a', nome: 'Fabricante registrado', ativo: true, revisao: 3 };
-beforeEach(() => { vi.clearAllMocks(); mocks.listarCatalogo.mockResolvedValue({ itens: [item], total: 1, pagina: 1, porPagina: 10 }); vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); Element.prototype.scrollIntoView = vi.fn(); });
+const base = { apresentacao: 'Frasco 50 ml', fabricante: { id: 'f1', nome: 'Fabricante A' }, classificacaoTecnica: { id: 'c1', nome: 'Endectocidas' }, usoSanitario: true, usoNutricional: false, usoGenetico: false };
+const naoAdotado = { ...base, id: 'cat-1', nomeCompleto: 'Abamectina 1% (Frasco 50 ml)', produtoId: null };
+const adotado = { ...base, id: 'cat-2', nomeCompleto: 'Ivermectina 1% (Frasco 50 ml)', produtoId: 'prod-9' };
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.listarCatalogoProdutos.mockResolvedValue({ itens: [naoAdotado, adotado], total: 2, pagina: 1, porPagina: 10 });
+  mocks.listarCatalogo.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} }); Element.prototype.scrollIntoView = vi.fn();
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
-it('somente leitura permite consultar sem ações de escrita', async () => {
-  render(<CatalogosProdutos tipo="fabricantes" somenteLeitura />);
-  expect(await screen.findAllByText(item.nome)).toBeTruthy();
-  expect(screen.queryByRole('button', { name: 'Cadastrar fabricante' })).toBeNull();
-  fireEvent.click(screen.getAllByRole('button', { name: 'Consultar' })[0]);
-  expect(screen.getByLabelText('Nome').matches(':disabled')).toBe(true);
-  expect(screen.queryByRole('button', { name: 'Salvar cadastro' })).toBeNull();
-  expect(mocks.salvarCatalogo).not.toHaveBeenCalled();
+
+it('lista produtos do catálogo com fabricante, classificação e uso, sem ações de cadastro', async () => {
+  render(<CatalogoProdutos />);
+  expect((await screen.findAllByText(naoAdotado.nomeCompleto)).length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Fabricante A').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Endectocidas').length).toBeGreaterThan(0);
+  expect(screen.queryByRole('button', { name: /Cadastrar|Editar/ })).toBeNull();
 });
-it('envia busca e paginação remotas', async () => {
-  render(<CatalogosProdutos tipo="fabricantes" somenteLeitura={false} />);
-  await screen.findAllByText(item.nome);
-  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar fabricante' }), { target: { value: 'novo' } });
-  await waitFor(() => expect(mocks.listarCatalogo).toHaveBeenLastCalledWith('fabricantes', expect.objectContaining({ busca: 'novo', pagina: 1, porPagina: 10 })));
+
+it('envia busca e paginação remotas, voltando à primeira página', async () => {
+  render(<CatalogoProdutos />);
+  await screen.findAllByText(naoAdotado.nomeCompleto);
+  fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar por produto ou fabricante' }), { target: { value: 'ivermec' } });
+  await waitFor(() => expect(mocks.listarCatalogoProdutos).toHaveBeenLastCalledWith(expect.objectContaining({ busca: 'ivermec', pagina: 1, porPagina: 10 })));
 });
-it('conserva rascunho após conflito e exige revisão explícita', async () => {
-  mocks.salvarCatalogo.mockRejectedValue(new ApiError('Cadastro alterado por outra pessoa', 409));
-  render(<CatalogosProdutos tipo="fabricantes" somenteLeitura={false} />);
-  await screen.findAllByText(item.nome);
-  fireEvent.click(screen.getAllByRole('button', { name: 'Editar' })[0]);
-  fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Meu rascunho' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar cadastro' }));
-  expect(await screen.findByText(/Seu rascunho foi preservado/)).toBeTruthy();
-  expect((screen.getByLabelText('Nome') as HTMLInputElement).value).toBe('Meu rascunho');
-  expect(mocks.salvarCatalogo).toHaveBeenCalledWith('fabricantes', expect.objectContaining({ nome: 'Meu rascunho', revisaoEsperada: 3, chaveReenvio: expect.any(String) }), item.id);
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar cadastro' }));
-  expect(mocks.salvarCatalogo).toHaveBeenCalledTimes(1);
+
+it('erro de consulta oferece Tentar novamente', async () => {
+  mocks.listarCatalogoProdutos.mockRejectedValueOnce(new Error('Falha de rede'));
+  render(<CatalogoProdutos />);
+  expect(await screen.findByText('Falha de rede')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }));
+  expect((await screen.findAllByText(naoAdotado.nomeCompleto)).length).toBeGreaterThan(0);
 });
-it('cadastro rápido conserva formulário pai e retorna o novo id', async () => {
-  const submeterProduto = vi.fn();
-  const onChange = vi.fn(); mocks.salvarCatalogo.mockResolvedValue({ ...item, id: 'novo', nome: 'Novo fabricante' });
-  render(<form onSubmit={submeterProduto}><SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor="" onChange={onChange} /></form>);
-  fireEvent.click(screen.getByRole('button', { name: 'Cadastrar fabricante' }));
-  fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Novo fabricante' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar cadastro' }));
-  await waitFor(() => expect(onChange).toHaveBeenCalledWith('novo', expect.objectContaining({ nome: 'Novo fabricante' })));
-  expect(screen.queryByRole('heading', { name: 'Cadastrar fabricante' })).toBeNull();
-  expect(submeterProduto).not.toHaveBeenCalled();
+
+it('busca sem resultado mostra estado vazio', async () => {
+  mocks.listarCatalogoProdutos.mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+  render(<CatalogoProdutos />);
+  expect(await screen.findByText('Nenhum produto encontrado')).toBeTruthy();
 });
-it('duplicidade permite corrigir o nome e reenviar com outra chave', async () => {
-  mocks.salvarCatalogo.mockRejectedValueOnce(new ApiError('Nome já cadastrado', 409, 'CONFLITO', 'nome')).mockResolvedValueOnce(item);
+
+it('rótulo de uso junta os usos marcados', () => {
+  expect(rotuloUsoCatalogo({ usoSanitario: true, usoNutricional: true, usoGenetico: false })).toBe('Sanitário · Nutricional');
+  expect(rotuloUsoCatalogo({ usoSanitario: false, usoNutricional: false, usoGenetico: false })).toBe('—');
+});
+
+it('seletor de fabricante não oferece cadastro rápido', () => {
   render(<SeletorCatalogoProduto tipo="fabricantes" rotulo="Fabricante" valor="" onChange={vi.fn()} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Cadastrar fabricante' }));
-  fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Nome repetido' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar cadastro' }));
-  await screen.findByText('Nome já cadastrado');
-  const chave = mocks.salvarCatalogo.mock.calls[0][1].chaveReenvio;
-  fireEvent.change(screen.getByLabelText('Nome'), { target: { value: 'Nome corrigido' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Salvar cadastro' }));
-  await waitFor(() => expect(mocks.salvarCatalogo).toHaveBeenCalledTimes(2));
-  expect(mocks.salvarCatalogo.mock.calls[1][1].chaveReenvio).not.toBe(chave);
+  expect(screen.queryByRole('button', { name: 'Cadastrar fabricante' })).toBeNull();
 });

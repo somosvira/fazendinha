@@ -22,7 +22,7 @@ import { consumirEstoqueTx } from "../consumo.js";
 import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
 import { conferirTarefaProtocoloTx, tipoAplicacaoLegadaId, type DesvioInput } from "./desvios.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
-import { capturarComposicaoTx } from "../../estoque/composicao.js";
+import { prefixarCampoErro, resolverProdutoIdTx } from "../../estoque/produtos-catalogo.js";
 
 export type AplicacaoInput = {
   chave?: string;
@@ -44,6 +44,10 @@ export type AplicacaoInput = {
   origemInsumo: OrigemInsumoSanitario;
   nomeProdutoAplicado: string;
   produtoId?: string | null;
+  /** Item do catálogo adotado como Produto da fazenda ao confirmar (alternativa a produtoId). */
+  produtoCatalogoId?: string | null;
+  /** Categoria do Produto criado na adoção; sem ela, vale a sugestão do catálogo. */
+  categoriaId?: string | null;
   dose: string;
   unidadeDose: UnidadeMedida;
   carenciaLeiteHoras?: number | null;
@@ -213,7 +217,6 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
       desvioProtocoloSnapshot.exibicao.realizado.tipoAplicacaoId = tipoAplicacao!.nome;
     }
     const dadosCriacao: Prisma.AplicacaoProdutoUncheckedCreateInput = {
-      ...(!previa && dados.produtoId ? { composicaoSnapshot: await capturarComposicaoTx(tx, dados.produtoId) } : {}),
       animalId: dados.animalId, propriedadeId: dados.propriedadeId, produtoId: dados.produtoId ?? null,
       nomeProdutoAplicado: origem.nomeProdutoAplicado, ocorrenciaId: dados.ocorrenciaId ?? null, tarefaId: dados.tarefaId ?? null,
       data, aplicadaEm: dados.aplicadaEm ? new Date(dados.aplicadaEm) : null, precisaoTemporal: dados.aplicadaEm ? "HORA" : "DIA", finalidade: dados.finalidade,
@@ -236,7 +239,15 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
     return { dadosCriacao, desvioProtocoloSnapshot };
 }
 
-export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, opcoes: { impactosConferidos?: Awaited<ReturnType<typeof conferirImpactosTx>>; adiarEfeitos?: boolean } = {}) {
+/** Troca `produtoCatalogoId` pelo produtoId efetivo, adotando o item na transação da aplicação (docs/produtos.md, Adoção). */
+export async function resolverProdutoAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null): Promise<AplicacaoInput> {
+  if (!input.produtoCatalogoId) return input;
+  const produtoId = await resolverProdutoIdTx(tx, { produtoId: input.produtoId, produtoCatalogoId: input.produtoCatalogoId, categoriaId: input.categoriaId }, usuarioId);
+  return { ...input, produtoId, produtoCatalogoId: null, categoriaId: null };
+}
+
+export async function criarAplicacaoTx(tx: Prisma.TransactionClient, entrada: AplicacaoInput, usuarioId: number | null, opcoes: { impactosConferidos?: Awaited<ReturnType<typeof conferirImpactosTx>>; adiarEfeitos?: boolean } = {}) {
+    const input = await resolverProdutoAplicacaoTx(tx, entrada, usuarioId);
     const previaImpacto = opcoes.impactosConferidos ?? await conferirImpactosTx(tx, {
       origem: "PROCEDIMENTO", animalId: input.animalId, propriedadeId: input.propriedadeId, data: input.data,
       tipoAplicacaoId: input.tipoAplicacaoId ?? tipoAplicacaoLegadaId(input.finalidade),
@@ -251,7 +262,7 @@ export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: Apli
     const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
-      depois: { composicaoSnapshot: criada.composicaoSnapshot, origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
+      depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     await vincularAplicacaoAlertaTx(tx, input, criada, usuarioId);
     if(!opcoes.adiarEfeitos)await aplicarImpactosTx(tx,previaImpacto,{tipo:"AplicacaoProduto",id:criada.id},input.impacto,usuarioId);
     return criada;
@@ -274,10 +285,16 @@ export async function criarAplicacoesColetivas(input: { chave: string; proprieda
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "APLICACAO_COLETIVA") throw new RebanhoError("CONFLITO", "Chave já utilizada com outros dados");
       return { aplicacoes: anterior.resultadoIds };
     }
-    await travarOrigensAplicacoesTx(tx, input.itens);
-    const aplicacoes = [];
+    // Adoções antes das travas de origem, que dependem do produtoId efetivo.
+    const itens: AplicacaoInput[] = [];
     for (const [linha, item] of input.itens.entries()) {
-      try { const a = await criarAplicacaoTx(tx, item, usuarioId); aplicacoes.push({ id: a.id, animalId: a.animalId }); }
+      try { itens.push(await resolverProdutoAplicacaoTx(tx, item, usuarioId)); }
+      catch (e) { throw prefixarCampoErro(e, `itens.${linha}.`); }
+    }
+    await travarOrigensAplicacoesTx(tx, itens);
+    const aplicacoes = [];
+    for (const [linha, item] of itens.entries()) {
+      try { const a = await criarAplicacaoTx(tx, item, usuarioId); aplicacoes.push({ id: a.id, animalId: a.animalId, produtoId: a.produtoId }); }
       catch (e) { if (e instanceof RebanhoError) throw new RebanhoError(e.code, `Linha ${linha + 1}: ${e.message}. Nenhuma aplicação foi gravada.`, `itens.${linha}.${e.campo ?? "animalId"}`); throw e; }
     }
     await tx.requisicaoPecuaria.create({ data: { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao: "APLICACAO_COLETIVA", hashPayload, resultadoIds: aplicacoes } });

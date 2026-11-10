@@ -1,5 +1,6 @@
-import { CatalogosProdutos, SeletorCatalogoProduto, ROTULOS_CATALOGOS } from "./CatalogosProdutos";
-import type { TipoCatalogo } from "./catalogos-api";
+import { CatalogoProdutos, SeletorCatalogoProduto } from "./CatalogosProdutos";
+// Abas antigas dos cadastros auxiliares (fabricantes, classificações, princípios ativos) abrem o Catálogo.
+const ABAS_CATALOGO = new Set(["catalogo", "fabricantes", "classificacoes-tecnicas", "principios-ativos"]);
 import { getUsuario } from "../lib/auth";
 import { CartoesProdutos } from "./CartoesProdutos";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
@@ -16,7 +17,7 @@ import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
 import "./estoque-theme.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History, ArrowLeftRight, ChevronDown } from "lucide-react";
+import { BookOpen, Package, PackagePlus, Plus, Search, SlidersHorizontal, TriangleAlert, History, ArrowLeftRight, ChevronDown } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { LinkInterno } from "../components/LinkInterno";
 import { rotuloUnidade, type UnidadeMedida } from "../lib/unidades";
@@ -104,12 +105,12 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
     navegarPara(`${window.location.pathname}?${params}${window.location.hash}`);
   }
   const movimentoId = urlEstoque.get("movimentoId") ?? "";
-  const catalogo = Object.keys(ROTULOS_CATALOGOS).includes(urlEstoque.get("aba") ?? "") ? urlEstoque.get("aba") as TipoCatalogo : null;
+  const catalogo = ABAS_CATALOGO.has(urlEstoque.get("aba") ?? "") ? "catalogo" : null;
   const usuario = getUsuario();
-  const podeEditarCatalogos = !usuario || !!usuario.dono || usuario.flags.includes("lancar");
+  const podeCadastrarProduto = !usuario || !!usuario.dono || usuario.flags.includes("lancar");
   const aba = catalogo ?? (urlEstoque.get("aba") === "produtos" ? "produtos" : urlEstoque.get("aba") === "movimentacoes" || movimentoId ? "movimentacoes" : "produtos");
   const mudarAba = (valor: string) => {
-    if (valor !== "produtos" && valor !== "movimentacoes" && !(valor in ROTULOS_CATALOGOS)) return;
+    if (valor !== "produtos" && valor !== "movimentacoes" && valor !== "catalogo") return;
     const parametros = new URLSearchParams(window.location.search);
     parametros.set("aba", valor);
     navegarPara(`${window.location.pathname}?${parametros}${window.location.hash}`);
@@ -257,7 +258,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
   const filtrosAtivos = busca.trim() !== "" || soAbaixoMin || soNegativos;
   const acao = <div className="flex flex-wrap gap-2">
     {podeAjustar && <DropdownMenu><DropdownMenuTrigger asChild><Botao variant="outline"><ArrowLeftRight size={16} aria-hidden="true" />Movimentar estoque<ChevronDown size={14} aria-hidden="true" /></Botao></DropdownMenuTrigger><DropdownMenuContent align="end" className="estoque-menu-acoes"><DropdownMenuItem onSelect={() => setTransferindo(true)}>Transferir estoque</DropdownMenuItem><DropdownMenuItem onSelect={() => abrirAjusteEstoque()}>Ajustar quantidade</DropdownMenuItem><DropdownMenuItem onSelect={() => setPerdendo(true)}>Registrar perda</DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
-    {podeEditarCatalogos && <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>}
+    {podeCadastrarProduto && <Button onClick={() => setCadastrandoProduto(true)}><Plus size={16} /> Cadastrar produto</Button>}
   </div>;
 
   const edicaoSaldos = useRascunhoConsulta({ centro: centroFiltro, ordem, abaixo: soAbaixoMin, negativos: soNegativos }, { centro: "", ordem: "nome" as Ordem, abaixo: false, negativos: false }, v => { setCentroFiltro(v.centro); setOrdem(v.ordem); setSoAbaixoMin(v.abaixo); setSoNegativos(v.negativos); setPaginaSaldos(1); });
@@ -282,8 +283,8 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <div className="estoque-resumo-valor"><span>{valoresPendentes > 0 && valoresConhecidos > 0 ? "Valor conhecido em estoque (parcial)" : "Valor em estoque"}<AjudaCampo rotulo="Como o valor é calculado" texto="O valor corresponde ao saldo monetário remanescente. Grupos rastreados usam média do saldo; produtos sem rastreio usam aquisições mais antigas. Valores desconhecidos ficam separados." /></span><strong>{saldos.loading ? "—" : saldos.erro ? "Indisponível" : valoresPendentes > 0 && valoresConhecidos === 0 ? "Indisponível" : brl(valorTotal)}</strong>{valoresPendentes > 0 && valoresConhecidos > 0 && <span role="status">{valoresPendentes} produto(s) sem valor disponível. O total conhecido é parcial.</span>}</div>
     </Panel>
     <Tabs className="estoque-consulta-abas" value={aba} onValueChange={mudarAba}>
-      <TabsList aria-label="Consultas de estoque"><TabsTrigger value="produtos"><Package aria-hidden="true" />Produtos</TabsTrigger><TabsTrigger value="movimentacoes"><History aria-hidden="true" />Movimentações</TabsTrigger>{Object.entries(ROTULOS_CATALOGOS).map(([chave, rotulo]) => <TabsTrigger key={chave} value={chave}>{rotulo.plural}</TabsTrigger>)}</TabsList>
-      {catalogo && <TabsContent key={catalogo} value={catalogo}><CatalogosProdutos tipo={catalogo} somenteLeitura={!podeEditarCatalogos} /></TabsContent>}
+      <TabsList aria-label="Consultas de estoque"><TabsTrigger value="produtos"><Package aria-hidden="true" />Produtos</TabsTrigger><TabsTrigger value="movimentacoes"><History aria-hidden="true" />Movimentações</TabsTrigger><TabsTrigger value="catalogo"><BookOpen aria-hidden="true" />Catálogo</TabsTrigger></TabsList>
+      {catalogo && <TabsContent value="catalogo"><CatalogoProdutos /></TabsContent>}
       <TabsContent value="produtos" forceMount hidden={aba !== "produtos"}>
 
     <section className="mt-6" aria-label="Saldos de estoque">
@@ -291,9 +292,9 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
       <BarraConsulta ordenacao={ordenacaoSaldos.controle} campos={camposSaldos} erroFiltros={consultaSaldos.erro} edicaoFiltros={edicaoCompletaSaldos} adicionais={<><label>Centro de custo<SelectFiltro rotulo="Filtrar por centro de custo" valor={edicaoSaldos.rascunho.centro} onChange={v => edicaoSaldos.editar("centro", v)} opcoes={[{ valor: "", texto: "Todos os centros" }, { valor: SEM_VINCULO, texto: "Sem centro" }, ...centros.map((c) => ({ valor: c.id, texto: c.nome }))]} className="w-full sm:!w-full" /></label>
 <label>Ordenar por<SelectFiltro rotulo="Ordenar por" valor={edicaoSaldos.rascunho.ordem} onChange={v => edicaoSaldos.editar("ordem", v as Ordem)} opcoes={[{ valor: "nome", texto: "Ordenar por nome" }, { valor: "categoria", texto: "Ordenar por categoria" }, { valor: "valor", texto: "Ordenar por maior valor" }]} className="w-full sm:!w-full" /></label>
-<SeletorCatalogoProduto tipo="fabricantes" rotulo="Filtrar por fabricante" valor={filtroFabricante} onChange={id => mudarFiltroCatalogo('fabricanteId', id)} permitirCadastro={false} />
-<SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Filtrar por classificação técnica" valor={filtroClassificacao} onChange={id => mudarFiltroCatalogo('classificacaoTecnicaId', id)} permitirCadastro={false} />
-<SeletorCatalogoProduto tipo="principios-ativos" rotulo="Filtrar por princípio ativo" valor={filtroPrincipio} onChange={id => mudarFiltroCatalogo('principioAtivoId', id)} permitirCadastro={false} />
+<SeletorCatalogoProduto tipo="fabricantes" rotulo="Filtrar por fabricante" valor={filtroFabricante} onChange={id => mudarFiltroCatalogo('fabricanteId', id)} />
+<SeletorCatalogoProduto tipo="classificacoes-tecnicas" rotulo="Filtrar por classificação técnica" valor={filtroClassificacao} onChange={id => mudarFiltroCatalogo('classificacaoTecnicaId', id)} />
+<SeletorCatalogoProduto tipo="principios-ativos" rotulo="Filtrar por princípio ativo" valor={filtroPrincipio} onChange={id => mudarFiltroCatalogo('principioAtivoId', id)} />
 </>} criterios={[...consultaSaldos.criterios, ...([['principioAtivoId', filtroPrincipio, 'Princípio ativo'], ['fabricanteId', filtroFabricante, 'Fabricante'], ['classificacaoTecnicaId', filtroClassificacao, 'Classificação técnica']] as const).filter(([, valor]) => !!valor).map(([chave,, rotulo]) => ({ id: chave, rotulo, limpar: () => mudarFiltroCatalogo(chave, '') })), ...(soAbaixoMin ? [{id:"abaixo",rotulo:"Só abaixo do mínimo",limpar:()=>setSoAbaixoMin(false)}] : []), ...(soNegativos ? [{id:"negativos",rotulo:"Saldo negativo",limpar:()=>setSoNegativos(false)}] : []), ...(centroFiltro ? [{id:"centro",rotulo:`Centro: ${centros.find(c=>c.id===centroFiltro)?.nome ?? "Sem centro"}`,limpar:()=>setCentroFiltro("")}] : []), ...(ordem !== "nome" ? [{id:"ordem",rotulo:`Ordenação: ${ordem === "valor" ? "Maior valor" : "Categoria"}`,limpar:()=>setOrdem("nome")}] : [])]} onLimpar={()=>{consultaSaldos.limpar();limparFiltrosCatalogo();setBusca("");setCentroFiltro("");setOrdem("nome");setSoAbaixoMin(false);setSoNegativos(false);}}>
         <BuscaLista rotulo="Buscar produto" placeholder="Buscar por produto ou categoria" valor={busca} onChange={setBusca} />
 
@@ -359,7 +360,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
 
     {perdendo && <TransferirEstoque perda onFechar={() => setPerdendo(false)} onSalvo={() => { setPerdendo(false); recarregarTudo(); }} />}
     {transferindo && <TransferirEstoque onFechar={() => setTransferindo(false)} onSalvo={() => { setTransferindo(false); recarregarTudo(); }} />}
-    {cadastrandoProduto && podeEditarCatalogos && <FormProduto somenteLeitura={!podeEditarCatalogos} produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={(salvo) => { setCadastrandoProduto(false); setProdutoCriado(salvo.nome); recarregarTudo(); }} />}
+    {cadastrandoProduto && podeCadastrarProduto && <FormProduto produto={null} onFechar={() => setCadastrandoProduto(false)} onSalvo={(salvo) => { setCadastrandoProduto(false); setProdutoCriado(salvo.nome); recarregarTudo(); }} />}
     {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto.id} propriedadeId={movimentoAberto.propriedadeId} unidade={movimentoAberto.unidade} onFechar={() => setMovimentoAberto(null)} />}
   </PaginaFinanceira>;
 }

@@ -1,3 +1,4 @@
+import { detalheErroProduto } from "../../services/estoque/produtos-catalogo.js";
 import { registrarRetiradaDispositivo, retiradaDispositivoAvulsaSchema, corrigirRetiradaDispositivo, corrigirRetiradaDispositivoSchema } from "../../services/pecuaria/reproducao/retirada-dispositivo.js";
 import { preverImpactos, revisarImpactoParticipacao } from "../../services/pecuaria/reproducao/impactos.js";
 import { previaImpactoSchema, confirmacaoImpactoSchema, revisarImpactoSchema } from "../../services/pecuaria/reproducao/impactos.schemas.js";
@@ -46,7 +47,7 @@ function falha(c: Context, e: unknown) {
   if (e instanceof z.ZodError) return c.json({ error: e.issues[0].message, code: "VALIDACAO", campo: e.issues[0].path.join(".") }, 422);
   if (e instanceof RebanhoError || e instanceof AlertaError || e instanceof FinanceiroError) {
     const status = e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409;
-    return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) }, status);
+    return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}), ...detalheErroProduto(e) }, status);
   }
   if (conflitoTransacaoPecuaria(e) || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) {
     return c.json({ error: "Os dados mudaram durante a confirmação. Recarregue e tente novamente.", code: "CONFLITO" }, 409);

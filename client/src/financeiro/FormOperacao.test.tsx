@@ -9,6 +9,23 @@ import { enfileirarSalvamentoRascunho, estadoRascunhoAtivo, limparRascunhoAtivo 
 import { uid } from "../lib/uid.fixture";
 import * as permissoes from "./permissoes";
 
+// O seletor unificado tem testes próprios (estoque/SeletorProdutoCatalogo.test.tsx); aqui um select simples escolhe o produto
+// (ids de produto da fazenda ou o item de catálogo CATALOGO_ITEM), para exercitar só a linha da operação.
+const CATALOGO_ITEM = { id: "00000000-0000-7000-8000-0000000000c1", nome: "Biomox 20% PS (sachê 100 g)", unidade: "KG", categoria: "00000000-0000-7000-8000-0000000000ca" };
+vi.mock("../estoque/SeletorProdutoCatalogo", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../estoque/SeletorProdutoCatalogo")>();
+  const ids = [1, 2].map((n) => `00000000-0000-7000-8000-${String(n).padStart(12, "0")}`);
+  return { ...original, SeletorProdutoCatalogo: ({ id, rotulo, value, onChange }: { id?: string; rotulo: string; value: import("../estoque/SeletorProdutoCatalogo").ProdutoEscolhido | null; onChange: (v: import("../estoque/SeletorProdutoCatalogo").ProdutoEscolhido | null) => void }) => (
+    <select id={id} role="combobox" aria-label={rotulo} value={value?.tipo === "produto" ? value.produtoId : value ? value.produtoCatalogoId : ""} onChange={(e) => {
+      const v = e.target.value;
+      if (!v) return onChange(null);
+      if (v === CATALOGO_ITEM.id) return onChange({ tipo: "catalogo", produtoCatalogoId: v, nomeCompleto: CATALOGO_ITEM.nome, unidadeSugerida: "KG", categoriaSugeridaId: CATALOGO_ITEM.categoria });
+      onChange({ tipo: "produto", produtoId: v, nome: v });
+    }}>
+      <option value="">Selecione</option>{ids.map((v) => <option key={v} value={v}>{v}</option>)}<option value={CATALOGO_ITEM.id}>{CATALOGO_ITEM.nome}</option>
+    </select>
+  ) };
+});
 beforeEach(() => limparRascunhoAtivo());
 afterEach(() => { limparRascunhoAtivo(); cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -1003,6 +1020,79 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
       expect(secao).toBe(document.activeElement);
     });
     expect(scroll).toHaveBeenCalled();
+  });
+});
+
+describe("item do catálogo na linha de compra", () => {
+  const categoriaCatalogo = { id: CATALOGO_ITEM.categoria, nome: "Sanidade", classificacao: "CUSTEIO" as const, ativo: true, ordem: 0, usoGenetico: false };
+  const configCatalogo = { ...config, categorias: [categoriaCatalogo] };
+  const respostaRascunho = { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 2, documentos: [], updatedAt: "2026-09-11T12:00:00Z" }) };
+
+  it("preenche unidade e categoria como um produto, sem diálogo, e envia produtoCatalogoId sem produtoId", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respostaRascunho);
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={configCatalogo} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    await alterarControle(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: CATALOGO_ITEM.id } });
+    expect((screen.getByLabelText("Descrição do item 1") as HTMLInputElement).value).toBe(CATALOGO_ITEM.nome);
+    expect(screen.getByLabelText("Unidade do item 1").textContent).toBe("kg");
+    expect(screen.getByRole("combobox", { name: "Categoria do item 1" }).textContent).toContain("Sanidade");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await alterarControle(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Compra de sanitários" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho", expect.objectContaining({ method: "PUT" })), { timeout: 2000 });
+    const [, init] = fetchMock.mock.calls.find(([url]) => url === "/api/financeiro/operacoes/rascunho")!;
+    const item = JSON.parse(String(init.body)).dados.operacao.itens[0];
+    expect(item).toMatchObject({ produtoCatalogoId: CATALOGO_ITEM.id, categoriaId: CATALOGO_ITEM.categoria, unidade: "kg", estocavel: true });
+    expect(item.produtoId).toBeUndefined();
+  });
+
+  it("trocar para um tipo que não aceita catálogo limpa o item do catálogo da linha", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(respostaRascunho);
+    vi.stubGlobal("fetch", fetchMock);
+    render(<FormOperacao config={configCatalogo} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    await alterarControle(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: CATALOGO_ITEM.id } });
+    expect((screen.getByLabelText("Descrição do item 1") as HTMLInputElement).value).toBe(CATALOGO_ITEM.nome);
+    await alterarControle(screen.getByRole("combobox", { name: "Tipo de operação" }), { target: { value: "VENDA" } });
+    expect((screen.getByLabelText("Descrição do item 1") as HTMLInputElement).value).toBe("");
+    await alterarControle(screen.getByRole("textbox", { name: "Descrição" }), { target: { value: "Venda" } });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/financeiro/operacoes/rascunho", expect.objectContaining({ method: "PUT" })), { timeout: 2000 });
+    const chamadas = fetchMock.mock.calls.filter(([url]) => url === "/api/financeiro/operacoes/rascunho");
+    const item = JSON.parse(String(chamadas[chamadas.length - 1][1].body)).dados.operacao.itens[0];
+    expect(item.produtoCatalogoId).toBeUndefined();
+    expect(item.produtoId ?? "").toBe("");
+  });
+
+  it("sem categoria sugerida a categoria da linha fica vazia e obrigatória", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respostaRascunho));
+    render(<FormOperacao config={{ ...config, categorias: [] }} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
+    await alterarControle(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: CATALOGO_ITEM.id } });
+    expect(screen.getByRole("combobox", { name: "Categoria do item 1" }).textContent).toContain("Sem categoria");
+    expect(screen.getByText("Categoria *")).toBeTruthy();
+    await alterarControle(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Compra de sanitários" } });
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    await waitFor(() => expect(screen.getByLabelText("Descrição do item 1").closest('[id^="item-"]')?.getAttribute("aria-invalid")).toBe("true"));
+    expect(screen.getAllByText(/e a categoria deste item/).length).toBeGreaterThan(0);
+  });
+
+  it("conflito de nome na adoção mostra a mensagem e 'Usar produto existente' troca a linha pelo produto da fazenda", async () => {
+    const mensagem = "Já existe um produto da fazenda chamado “Ração”. Use esse produto ou renomeie-o antes de usar o item do catálogo.";
+    const fetchMock = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const caminho = String(url);
+      if (caminho.endsWith("/financeiro/operacoes/rascunho") && init?.method === "PUT") return { ok: true, json: async () => ({ id: "draft", dados: {}, versao: 4, documentos: [] }) };
+      if (caminho.endsWith("/financeiro/operacoes/rascunho/confirmacao")) return { ok: false, status: 409, json: async () => ({ error: mensagem, code: "CONFLITO", campo: "itens.0.produtoCatalogoId", produtoExistente: { id: uid(1), nome: "Ração" } }) };
+      return { ok: true, json: async () => ({ existente: null }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const item = { id: 900, produtoId: "", produtoCatalogoId: CATALOGO_ITEM.id, catalogoNome: CATALOGO_ITEM.nome, descricao: CATALOGO_ITEM.nome, quantidade: "10", unidade: "kg", modoValor: "UNITARIO", valorUnitario: "2", valorTotal: "", categoriaId: CATALOGO_ITEM.categoria, classificacao: "CUSTEIO", centroCustoId: "" };
+    render(<FormOperacao config={configCatalogo} rascunho={{ id: "draft", versao: 3, updatedAt: "2026-10-04", documentos: [], dados: { formulario: { tipo: "INVENTARIO_INICIAL", condicao: "SEM_EFEITO_FINANCEIRO", descricao: "Estoque conferido", itens: [item] } } }} onSalvo={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar operação" }));
+    const usar = await screen.findByRole("button", { name: "Usar produto existente" });
+    expect(usar.closest('[role="alert"]')?.textContent).toContain(mensagem);
+    fireEvent.click(usar);
+    expect(screen.queryByRole("button", { name: "Usar produto existente" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: "Produto do item 1" })).toHaveProperty("value", uid(1));
+    expect((screen.getByLabelText("Descrição do item 1") as HTMLInputElement).value).toBe("Ração");
   });
 });
 

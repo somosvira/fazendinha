@@ -249,20 +249,13 @@ model Produto {
   apresentacao String? @db.VarChar(200)
   observacao String? @db.VarChar(2000)
   conservacao String? @db.VarChar(1000)
-  revisaoCadastro Int @default(1)
   fabricanteId String? @db.Uuid
   fabricante FabricanteProduto? @relation(fields: [fabricanteId], references: [id], onDelete: Restrict)
   classificacaoTecnicaId String? @db.Uuid
   classificacaoTecnica ClassificacaoTecnicaProduto? @relation(fields: [classificacaoTecnicaId], references: [id], onDelete: Restrict)
-  composicaoVersaoAtualId String? @unique @db.Uuid
-  composicaoVersaoAtual ComposicaoProdutoVersao? @relation("ComposicaoAtual", fields: [id, composicaoVersaoAtualId], references: [produtoId, id], onDelete: Restrict)
-  composicoes ComposicaoProdutoVersao[] @relation("ComposicoesProduto")
-  perfilNutricionalVersaoAtualId String? @unique @db.Uuid
-  perfilNutricionalVersaoAtual PerfilNutricionalProdutoVersao? @relation("PerfilAtual", fields: [id, perfilNutricionalVersaoAtualId], references: [produtoId, id], onDelete: Restrict)
-  perfisNutricionais PerfilNutricionalProdutoVersao[] @relation("PerfisProduto")
-  origensCadastro OrigemCadastroProduto[]
-  @@unique([id, composicaoVersaoAtualId])
-  @@unique([id, perfilNutricionalVersaoAtualId])
+  produtoCatalogoId String? @unique @db.Uuid
+  produtoCatalogo ProdutoCatalogo? @relation(fields: [produtoCatalogoId], references: [id], onDelete: Restrict)
+  nomeAlterado Boolean @default(false)
   id                       String                    @id @default(uuid())
   nome                     String                    @unique
   usoGenetico              Boolean                   @default(false)
@@ -989,18 +982,6 @@ model Usuario {
   ExposicaoTouro                   ExposicaoTouro[]
   ExameAnimal                      ExameAnimal[]
   DecisaoElegibilidadeCiclo        DecisaoElegibilidadeCiclo[]
-  fabricanteProdutocriadoPorId FabricanteProduto[] @relation("FabricanteProdutocriadoPorId")
-  fabricanteProdutoatualizadoPorId FabricanteProduto[] @relation("FabricanteProdutoatualizadoPorId")
-  classificacaoTecnicaProdutocriadoPorId ClassificacaoTecnicaProduto[] @relation("ClassificacaoTecnicaProdutocriadoPorId")
-  classificacaoTecnicaProdutoatualizadoPorId ClassificacaoTecnicaProduto[] @relation("ClassificacaoTecnicaProdutoatualizadoPorId")
-  principioAtivocriadoPorId PrincipioAtivo[] @relation("PrincipioAtivocriadoPorId")
-  principioAtivoatualizadoPorId PrincipioAtivo[] @relation("PrincipioAtivoatualizadoPorId")
-  nutrienteProdutoCatalogocriadoPorId NutrienteProdutoCatalogo[] @relation("NutrienteProdutoCatalogocriadoPorId")
-  nutrienteProdutoCatalogoatualizadoPorId NutrienteProdutoCatalogo[] @relation("NutrienteProdutoCatalogoatualizadoPorId")
-  composicaoProdutoVersaocriadoPorId ComposicaoProdutoVersao[] @relation("ComposicaoProdutoVersaocriadoPorId")
-  perfilNutricionalProdutoVersaocriadoPorId PerfilNutricionalProdutoVersao[] @relation("PerfilNutricionalProdutoVersaocriadoPorId")
-  origemCadastroProdutoimportadoPorId OrigemCadastroProduto[] @relation("OrigemCadastroProdutoimportadoPorId")
-  origemPrincipioAtivoimportadoPorId OrigemPrincipioAtivo[] @relation("OrigemPrincipioAtivoimportadoPorId")
   manejosProtocolos ManejoAnimal[] @relation("ManejoCriadoPor")
   pecEventosTarefaRegistrados EventoTarefaProtocolo[]
   id                       Int                           @id @default(autoincrement())
@@ -1843,7 +1824,6 @@ model TipoAplicacaoSanitaria {
 }
 
 model AplicacaoProduto {
-  composicaoSnapshot Json?
   insercaoDispositivoSnapshot Json?
   retiradasDispositivo ManejoAnimal[] @relation("InsercaoDispositivo")
   destinosPreparoCusto VinculoPreparoTentativa[]
@@ -5151,198 +5131,68 @@ model DecisaoOperacionalAcompanhamento {
 
 model FabricanteProduto {
   id String @id @default(uuid()) @db.Uuid
+  codigoOrigem String @unique
   nome String @db.VarChar(160)
   nomeNormalizado String @unique
   ativo Boolean @default(true)
-  revisao Int @default(1)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  atualizadoEm DateTime @updatedAt @db.Timestamptz(3)
-  atualizadoPorId Int?
   produtos Produto[]
-  origensCadastro OrigemCadastroProduto[]
+  produtosCatalogo ProdutoCatalogo[]
   @@schema("public")
-  criadoPor Usuario? @relation("FabricanteProdutocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-  atualizadoPor Usuario? @relation("FabricanteProdutoatualizadoPorId", fields:[atualizadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
 }
 
 model ClassificacaoTecnicaProduto {
   id String @id @default(uuid()) @db.Uuid
+  codigoOrigem String @unique
   nome String @db.VarChar(160)
   nomeNormalizado String @unique
   ativo Boolean @default(true)
-  revisao Int @default(1)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  atualizadoEm DateTime @updatedAt @db.Timestamptz(3)
-  atualizadoPorId Int?
   produtos Produto[]
-  origensCadastro OrigemCadastroProduto[]
+  produtosCatalogo ProdutoCatalogo[]
   @@schema("public")
-  criadoPor Usuario? @relation("ClassificacaoTecnicaProdutocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-  atualizadoPor Usuario? @relation("ClassificacaoTecnicaProdutoatualizadoPorId", fields:[atualizadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
 }
 
 model PrincipioAtivo {
   id String @id @default(uuid()) @db.Uuid
+  codigoOrigem String @unique
   nome String @db.VarChar(100)
   nomeNormalizado String @unique
   ativo Boolean @default(true)
-  revisao Int @default(1)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  atualizadoEm DateTime @updatedAt @db.Timestamptz(3)
-  atualizadoPorId Int?
-  itens ComposicaoProdutoItem[]
-  origens OrigemPrincipioAtivo[]
+  produtosCatalogo ProdutoCatalogoPrincipioAtivo[]
   @@schema("public")
-  criadoPor Usuario? @relation("PrincipioAtivocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-  atualizadoPor Usuario? @relation("PrincipioAtivoatualizadoPorId", fields:[atualizadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
 }
 
-model NutrienteProdutoCatalogo {
+model ProdutoCatalogo {
   id String @id @default(uuid()) @db.Uuid
-  nome String @db.VarChar(100)
-  nomeNormalizado String @unique
-  ativo Boolean @default(true)
-  revisao Int @default(1)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  atualizadoEm DateTime @updatedAt @db.Timestamptz(3)
-  atualizadoPorId Int?
-  nomeCompleto String? @db.VarChar(300)
-  unidadeReferencia String @db.VarChar(20)
-  itens PerfilNutricionalProdutoItem[]
-  origensCadastro OrigemCadastroProduto[]
-  @@schema("public")
-  criadoPor Usuario? @relation("NutrienteProdutoCatalogocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-  atualizadoPor Usuario? @relation("NutrienteProdutoCatalogoatualizadoPorId", fields:[atualizadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-}
-
-model ComposicaoProdutoVersao {
-  id String @id @default(uuid()) @db.Uuid
-  produtoId String
-  produto Produto @relation("ComposicoesProduto", fields: [produtoId], references: [id], onDelete: Restrict)
-  produtoAtual Produto? @relation("ComposicaoAtual")
-  numero Int
-  situacao String @db.VarChar(20)
-  referencia String? @db.VarChar(500)
-  motivoAlteracao String? @db.VarChar(500)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  itens ComposicaoProdutoItem[]
-  @@unique([produtoId, numero])
-  @@unique([produtoId, id])
-  @@schema("public")
-  criadoPor Usuario? @relation("ComposicaoProdutoVersaocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-}
-model ComposicaoProdutoItem {
-  id String @id @default(uuid()) @db.Uuid
-  versaoId String @db.Uuid
-  versao ComposicaoProdutoVersao @relation(fields: [versaoId], references: [id], onDelete: Restrict)
-  principioAtivoId String @db.Uuid
-  principioAtivo PrincipioAtivo @relation(fields: [principioAtivoId], references: [id], onDelete: Restrict)
-  nomePrincipioSnapshot String @db.VarChar(100)
-  ordem Int
-  concentracaoValor Decimal? @db.Decimal(18,6)
-  concentracaoUnidade String? @db.VarChar(35)
-  origem OrigemComposicaoProdutoItem?
-  @@unique([versaoId, principioAtivoId])
-  @@unique([versaoId, ordem])
-  @@schema("public")
-}
-model PerfilNutricionalProdutoVersao {
-  id String @id @default(uuid()) @db.Uuid
-  produtoId String
-  produto Produto @relation("PerfisProduto", fields: [produtoId], references: [id], onDelete: Restrict)
-  produtoAtual Produto? @relation("PerfilAtual")
-  numero Int
-  situacao String @db.VarChar(20)
-  referencia String? @db.VarChar(500)
-  motivoAlteracao String? @db.VarChar(500)
-  materiaSecaSnapshot Decimal? @db.Decimal(5,2)
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  criadoPorId Int?
-  itens PerfilNutricionalProdutoItem[]
-  @@unique([produtoId, numero])
-  @@unique([produtoId, id])
-  @@schema("public")
-  criadoPor Usuario? @relation("PerfilNutricionalProdutoVersaocriadoPorId", fields:[criadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-}
-model PerfilNutricionalProdutoItem {
-  id String @id @default(uuid()) @db.Uuid
-  versaoId String @db.Uuid
-  versao PerfilNutricionalProdutoVersao @relation(fields: [versaoId], references: [id], onDelete: Restrict)
-  nutrienteId String @db.Uuid
-  nutriente NutrienteProdutoCatalogo @relation(fields: [nutrienteId], references: [id], onDelete: Restrict)
-  nomeNutrienteSnapshot String @db.VarChar(100)
-  unidadeSnapshot String @db.VarChar(20)
-  ordem Int
-  valor Decimal? @db.Decimal(18,6)
-  base String @db.VarChar(20)
-  @@unique([versaoId, nutrienteId])
-  @@unique([versaoId, ordem])
-  @@schema("public")
-}
-model ReenvioCadastroEstoque {
-  id String @id @default(uuid()) @db.Uuid
-  autor String
-  operacao String
-  chave String @db.Uuid
-  hashPayload String @db.Char(64)
-  resultado Json
-  criadoEm DateTime @default(now()) @db.Timestamptz(3)
-  @@unique([autor, operacao, chave])
-  @@schema("public")
-}
-model OrigemCadastroProduto {
-  id String @id @default(uuid()) @db.Uuid
-  sistema String
-  catalogo String
-  entidade String
+  fonte String @db.VarChar(40)
   codigoOrigem String
-  hashRegistro String @db.Char(64)
-  arquivoSha256 String @db.Char(64)
-  revisaoDecisao String
-  importadoEm DateTime @default(now()) @db.Timestamptz(3)
-  importadoPorId Int?
-  produtoId String?
-  produto Produto? @relation(fields: [produtoId], references: [id], onDelete: Restrict)
+  nome String @db.VarChar(200)
+  nomeNormalizado String
+  apresentacao String? @db.VarChar(200)
   fabricanteId String? @db.Uuid
   fabricante FabricanteProduto? @relation(fields: [fabricanteId], references: [id], onDelete: Restrict)
   classificacaoTecnicaId String? @db.Uuid
   classificacaoTecnica ClassificacaoTecnicaProduto? @relation(fields: [classificacaoTecnicaId], references: [id], onDelete: Restrict)
-  nutrienteId String? @db.Uuid
-  nutriente NutrienteProdutoCatalogo? @relation(fields: [nutrienteId], references: [id], onDelete: Restrict)
-  @@unique([sistema, catalogo, entidade, codigoOrigem])
+  unidadeSugerida UnidadeMedida @default(UN)
+  usoSanitario Boolean @default(false)
+  usoNutricional Boolean @default(false)
+  usoGenetico Boolean @default(false)
+  ativo Boolean @default(true)
+  versaoCatalogo Int
+  atualizadoEm DateTime @default(now()) @db.Timestamptz(3)
+  principiosAtivos ProdutoCatalogoPrincipioAtivo[]
+  produtoDaFazenda Produto?
+  @@unique([fonte, codigoOrigem])
+  @@index([nomeNormalizado])
   @@schema("public")
-  importadoPor Usuario? @relation("OrigemCadastroProdutoimportadoPorId", fields:[importadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
 }
-model OrigemPrincipioAtivo {
-  id String @id @default(uuid()) @db.Uuid
+
+model ProdutoCatalogoPrincipioAtivo {
+  produtoCatalogoId String @db.Uuid
+  produtoCatalogo ProdutoCatalogo @relation(fields: [produtoCatalogoId], references: [id], onDelete: Cascade)
   principioAtivoId String @db.Uuid
   principioAtivo PrincipioAtivo @relation(fields: [principioAtivoId], references: [id], onDelete: Restrict)
-  sistema String
-  catalogo String
-  codigoOrigem String
-  hashRegistro String @db.Char(64)
-  arquivoSha256 String @db.Char(64)
-  importadoEm DateTime @default(now()) @db.Timestamptz(3)
-  importadoPorId Int?
-  @@unique([sistema, catalogo, codigoOrigem])
-  @@schema("public")
-  importadoPor Usuario? @relation("OrigemPrincipioAtivoimportadoPorId", fields:[importadoPorId], references:[id], onDelete:Restrict, onUpdate:NoAction)
-}
-model OrigemComposicaoProdutoItem {
-  id String @id @default(uuid()) @db.Uuid
-  itemId String @unique @db.Uuid
-  item ComposicaoProdutoItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
-  sistema String
-  catalogo String
-  codigoProdutoOrigem String
-  codigoVinculoOrigem String
-  hashRegistro String @db.Char(64)
-  arquivoSha256 String @db.Char(64)
-  revisaoImportacaoId String
+  ordem Int
+  @@id([produtoCatalogoId, principioAtivoId])
+  @@unique([produtoCatalogoId, ordem])
   @@schema("public")
 }

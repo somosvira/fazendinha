@@ -31,11 +31,11 @@ vi.mock("../../db.js", () => {
   return { prisma: { produto: { findMany: mocks.produtoFindMany }, itemOperacao: { findFirst: mocks.itemFindFirst }, $transaction: mocks.transaction } };
 });
 
-import { atualizarProduto, criarProduto, obterUltimoPreco } from "./produtos.js";
+import { atualizarProduto, criarProduto, obterUltimoPreco, produtoDTO } from "./produtos.js";
 import { Prisma } from "@prisma/client";
 import { uid } from "../../lib/uid.fixture.js";
 
-const base = { revisaoCadastro: 1, codigoReferencia: "REFERENCIA", apresentacao: "Saco", observacao: null, conservacao: null, fabricanteId: null, classificacaoTecnicaId: null, id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", } };
+const base = { codigoReferencia: "REFERENCIA", apresentacao: "Saco", observacao: null, conservacao: null, fabricanteId: null, classificacaoTecnicaId: null, id: uid(1), nome: "Ração", unidade: "KG", minimoEstoque: null, categoriaId: uid(3), ativo: true, categoria: { id: uid(3), nome: "Alimentação", classificacao: "CUSTEIO", } };
 const fornecedor = { id: uid(7), nome: "Cooperativa", ativo: true, tipo: "FORNECEDOR", papeis: [{ papel: "FORNECEDOR" }] };
 const centro = { id: uid(4), nome: "Pecuária", ativo: true };
 
@@ -98,7 +98,7 @@ describe("cadastro de produtos (estoque)", () => {
     mocks.produtoFindUnique.mockResolvedValue(anterior);
     mocks.produtoUpdate.mockResolvedValue({ ...anterior, perfilSanitarioProduto: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } });
     await atualizarProduto(uid(1), { perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } }, 9);
-    expect(mocks.produtoUpdate.mock.calls[0][0].data).toEqual({ revisaoCadastro: { increment: 1 }, perfilSanitarioProduto: { upsert: { create: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }, update: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } } } });
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).toEqual({ perfilSanitarioProduto: { upsert: { create: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }, update: { carenciaLeiteHoras: 0, carenciaCarneHoras: 72 } } } });
     expect(mocks.auditoria).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ usuarioId: 9, estadoAnterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: null }) }), estadoPosterior: expect.objectContaining({ perfilSanitario: expect.objectContaining({ carenciaLeiteHoras: 0, carenciaCarneHoras: 72 }) }) }) }));
   });
 
@@ -107,18 +107,10 @@ describe("cadastro de produtos (estoque)", () => {
     await expect(atualizarProduto(uid(1),{usoSanitario:false})).rejects.toMatchObject({code:"CONFLITO",campo:"usoSanitario"});
     expect(mocks.produtoUpdate).not.toHaveBeenCalled();
   });
-  it("exige revisão e reenvio ao enviar atributos ampliados", async () => {
-    await expect(atualizarProduto(uid(1), { apresentacao: "Frasco" })).rejects.toMatchObject({code:"VALIDACAO",campo:"chaveReenvio"});
-    await expect(atualizarProduto(uid(1), { apresentacao: "Frasco", chaveReenvio: uid(10) })).rejects.toMatchObject({code:"VALIDACAO",campo:"revisaoEsperada"});
-    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
-  });
-  it("bloqueia revisão antiga antes de escrever e mantém atributos omitidos", async () => {
-    await expect(atualizarProduto(uid(1), { nome: "Novo", revisaoEsperada: 2 })).rejects.toMatchObject({code:"CONFLITO",campo:"revisaoEsperada"});
-    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
-    const dto=await atualizarProduto(uid(1),{nome:"Novo"});
-    expect(dto).toMatchObject({codigoReferencia:"REFERENCIA",apresentacao:"Saco"});
+  it("mantém atributos ampliados omitidos na atualização", async () => {
+    const dto = await atualizarProduto(uid(1), { nome: "Novo" });
+    expect(dto).toMatchObject({ codigoReferencia: "REFERENCIA", apresentacao: "Saco" });
     expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("codigoReferencia");
-    expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("composicaoVersaoAtualId");
   });
   it("cria produto sem exigir fornecedor nem centro de custo", async () => {
     await criarProduto(input(), 9);
@@ -136,7 +128,6 @@ describe("cadastro de produtos (estoque)", () => {
     await atualizarProduto(uid(1), { fornecedorIds: [uid(7), uid(8)], centroCustoIds: [uid(4), uid(5)] }, 9);
     expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({
       data: {
-        revisaoCadastro: { increment: 1 },
         fornecedores: { deleteMany: {}, create: [{ fornecedorId: uid(7) }, { fornecedorId: uid(8) }] },
         centrosCusto: { deleteMany: {}, create: [{ centroCustoId: uid(4) }, { centroCustoId: uid(5) }] },
       },
@@ -191,7 +182,7 @@ describe("cadastro de produtos (estoque)", () => {
   it("produto legado sem categoria ainda pode ser ativado/desativado", async () => {
     mocks.produtoFindUnique.mockResolvedValue({ ...base, categoriaId: null, categoria: null, fornecedores: [], centrosCusto: [] });
     await atualizarProduto(uid(1), { ativo: false }, 9);
-    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { ativo: false, revisaoCadastro: { increment: 1 } } }));
+    expect(mocks.produtoUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { ativo: false } }));
   });
 });
 
@@ -272,5 +263,86 @@ describe("obterUltimoPreco", () => {
     mocks.itemFindFirst.mockResolvedValue(null);
     expect(await obterUltimoPreco(uid(12))).toBeNull();
     expect(mocks.itemFindFirst).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("produto adotado do catálogo (herança)", () => {
+  const fabricanteCatalogo = { id: uid(20), nome: "Zoetis", ativo: true };
+  const classificacaoCatalogo = { id: uid(21), nome: "Endectocidas", ativo: true };
+  const produtoCatalogo = {
+    id: uid(30), nome: "Ivomec", apresentacao: "Frasco 50 mL", ativo: true,
+    fabricanteId: fabricanteCatalogo.id, fabricante: fabricanteCatalogo,
+    classificacaoTecnicaId: classificacaoCatalogo.id, classificacaoTecnica: classificacaoCatalogo,
+    principiosAtivos: [{ ordem: 1, principioAtivo: { id: uid(40), nome: "Ivermectina" } }, { ordem: 2, principioAtivo: { id: uid(41), nome: "Abamectina" } }],
+  };
+  const adotado = { ...base, nome: "Ivomec (Frasco 50 mL)", apresentacao: null, fabricante: null, classificacaoTecnica: null,
+    produtoCatalogoId: produtoCatalogo.id, produtoCatalogo, nomeAlterado: false, fornecedores: [], centrosCusto: [] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.protocoloIatfCount.mockResolvedValue(0);
+    mocks.produtoFindUnique.mockResolvedValue(adotado);
+    mocks.produtoUpdate.mockImplementation(async ({ data }) => ({ ...adotado, ...data, fornecedores: [], centrosCusto: [] }));
+  });
+
+  it("DTO devolve valores efetivos, origem de cada campo e princípios ativos do catálogo", () => {
+    const dto = produtoDTO(adotado as never);
+    expect(dto).toMatchObject({
+      apresentacao: "Frasco 50 mL", fabricanteId: uid(20), fabricante: fabricanteCatalogo, classificacaoTecnicaId: uid(21), classificacaoTecnica: classificacaoCatalogo,
+      produtoCatalogoId: uid(30), nomeAlterado: false, catalogo: { id: uid(30), nomeCompleto: "Ivomec (Frasco 50 mL)", ativo: true },
+      origemCampos: { nome: "catalogo", apresentacao: "catalogo", fabricante: "catalogo", classificacaoTecnica: "catalogo" },
+      principiosAtivos: [{ id: uid(40), nome: "Ivermectina", ordem: 1 }, { id: uid(41), nome: "Abamectina", ordem: 2 }],
+    });
+  });
+
+  it("DTO de valor alterado pela fazenda prevalece sobre o catálogo", () => {
+    const fabricanteFazenda = { id: uid(22), nome: "Ourofino", ativo: true };
+    const dto = produtoDTO({ ...adotado, apresentacao: "Caixa", fabricanteId: fabricanteFazenda.id, fabricante: fabricanteFazenda, nomeAlterado: true } as never);
+    expect(dto).toMatchObject({ apresentacao: "Caixa", fabricante: fabricanteFazenda, classificacaoTecnica: classificacaoCatalogo });
+    expect(dto.origemCampos).toEqual({ nome: "fazenda", apresentacao: "fazenda", fabricante: "fazenda", classificacaoTecnica: "catalogo" });
+  });
+
+  it("DTO de produto manual não herda nem tem princípios ativos", () => {
+    const dto = produtoDTO({ ...base, fornecedores: [], centrosCusto: [] } as never);
+    expect(dto).toMatchObject({ apresentacao: "Saco", produtoCatalogoId: null, catalogo: null, principiosAtivos: [] });
+    expect(dto.origemCampos).toEqual({ nome: "fazenda", apresentacao: "fazenda", fabricante: "fazenda", classificacaoTecnica: "fazenda" });
+  });
+
+  it("renomear produto adotado marca nomeAlterado", async () => {
+    await atualizarProduto(uid(1), { nome: "Ivomec da fazenda" }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).toMatchObject({ nome: "Ivomec da fazenda", nomeAlterado: true });
+  });
+
+  it("restaurarNome volta ao nome completo do catálogo e não grava a flag como coluna", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...adotado, nome: "Outro nome", nomeAlterado: true });
+    await atualizarProduto(uid(1), { restaurarNome: true }, 9);
+    const data = mocks.produtoUpdate.mock.calls[0][0].data;
+    expect(data).toMatchObject({ nome: "Ivomec (Frasco 50 mL)", nomeAlterado: false });
+    expect(data).not.toHaveProperty("restaurarNome");
+  });
+
+  it("null nos herdáveis restaura a herança", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...adotado, apresentacao: "Caixa", fabricanteId: uid(22), fabricante: { id: uid(22), nome: "Ourofino", ativo: true } });
+    const dto = await atualizarProduto(uid(1), { apresentacao: null, fabricanteId: null, classificacaoTecnicaId: null }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).toMatchObject({ apresentacao: null, fabricanteId: null, classificacaoTecnicaId: null });
+    expect(dto).toMatchObject({ apresentacao: "Frasco 50 mL", fabricanteId: uid(20), origemCampos: { apresentacao: "catalogo", fabricante: "catalogo" } });
+  });
+
+  it("restaurar nome junto com novo nome, ou em produto manual, é recusado", async () => {
+    await expect(atualizarProduto(uid(1), { restaurarNome: true, nome: "Outro" }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "restaurarNome" });
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
+    await expect(atualizarProduto(uid(1), { restaurarNome: true }, 9)).rejects.toMatchObject({ code: "VALIDACAO", campo: "restaurarNome" });
+    expect(mocks.produtoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("restaurar nome com colisão vira 409 (CONFLITO)", async () => {
+    mocks.produtoUpdate.mockRejectedValue(new Prisma.PrismaClientKnownRequestError("único", { code: "P2002", clientVersion: "x", meta: { target: ["nome"] } }));
+    await expect(atualizarProduto(uid(1), { restaurarNome: true }, 9)).rejects.toMatchObject({ code: "CONFLITO", campo: "nome" });
+  });
+
+  it("produto manual renomeado segue como hoje, sem nomeAlterado", async () => {
+    mocks.produtoFindUnique.mockResolvedValue({ ...base, fornecedores: [], centrosCusto: [] });
+    await atualizarProduto(uid(1), { nome: "Ração nova" }, 9);
+    expect(mocks.produtoUpdate.mock.calls[0][0].data).not.toHaveProperty("nomeAlterado");
   });
 });
