@@ -1,6 +1,6 @@
 # Plano de implementação — compra de animais
 
-Status: decisões de produto fechadas. Backend implementado na branch `claude/compra-animais-plano`: migration `20261109180000_compra_animais`, serviço `services/financeiro/compra-animais.ts`, rotas, ficha, filtros e rótulos. Interface da compra (T8) implementada, com o cadastro compartilhado em modal. Pendentes: tela de devolução, conferência no navegador com banco migrado e retirada deste plano após a entrega. As regras vigentes já estão incorporadas aos [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md). Este plano será retirado quando a interface for entregue.
+Status: decisões de produto fechadas. Backend implementado na branch `claude/compra-animais-plano`: migration `20261109180000_compra_animais`, serviço `services/financeiro/compra-animais.ts`, rotas, ficha, filtros e rótulos. Interface da compra (T8) implementada, com o cadastro compartilhado em modal. Pendentes: correção de compra com animais pela interface, conferência no navegador com banco migrado e retirada deste plano após a entrega. A devolução de cabeças pela ficha da compra está implementada. As regras vigentes já estão incorporadas aos [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md). Este plano será retirado quando a interface for entregue.
 
 ## Problema
 
@@ -215,3 +215,16 @@ Revisão do mockup pelo usuário: a grade com campos por animal foi descartada. 
 Total estimado sem cache: **US$ 0,95–1,70**. T8a, T8b e T13 ficam num só agente Sonnet porque dependem um do outro e dividem os mesmos arquivos; separar custaria a releitura do `FormOperacao.tsx` (cerca de 1.000 linhas) duas vezes. O Opus fica só na revisão.
 
 Limite local: o banco `fazendinha_seedatev3` não tem a migration da compra (há migrations de outras branches pendentes), então a conferência no navegador cobre a tela, o rascunho e o payload; a confirmação real é coberta pelos testes de integração na CI.
+
+## Rodada de interface — devolução de cabeças (aprovada em 10/11/2026)
+
+Na ficha de uma compra de animais confirmada, o botão **Devolver cabeças** abre um modal centralizado com os animais da compra (seleção por caixa, valor devolvido preenchido com o valor pago e editável), data, condição financeira (a receber com vencimento, ou recebido em conta) e motivo opcional na descrição. A confirmação usa a API existente: uma operação `DEVOLUCAO` ao mesmo fornecedor, um item `cab` por animal com `animalId`, categoria e centro do item da compra. Animais já devolvidos ou fora do rebanho aparecem desabilitados, com o motivo. A ficha da devolução continua usando "Cancelar operação" para estornar.
+
+| ID | Entrega e aceite | Modelo / esforço | Entrada k | Saída k | US$ estimado |
+|---|---|---|---|---|---|
+| D1 | Situação de cada animal na leitura da operação (ativo, devolvido, fora do rebanho) e o modal "Devolver cabeças" com testes | Sonnet 5.5 / high (retoma o agente da tela de compra, que já conhece o `FormOperacao` e o detalhe) | 60–110 | 10–20 | 0,22–0,42 |
+| D2 | Conferência no navegador, inclusive uma devolução real num sítio de demonstração e seu estorno | Opus 5.5 (integrador, já com o preview configurado) | 30–60 | 3–6 | 0,18–0,36 |
+| D3 | Revisão independente do diff | Opus 5.5 / medium | 40–70 | 4–8 | 0,24–0,44 |
+| D4 | Contrato, lacunas e manual | Haiku 5.5 / medium | 15–30 | 3–6 | 0,01 |
+
+Total estimado sem cache: **US$ 0,65–1,23**. Retomar o agente da tela de compra evita reler cerca de 1.500 linhas de interface.

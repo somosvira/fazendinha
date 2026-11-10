@@ -663,6 +663,12 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
 
 const includeOperacaoDetalhe = Prisma.validator<Prisma.OperacaoInclude>()({
   ...includeOperacao,
+  // Situação de cada animal da compra/devolução, na mesma consulta: baixa ativa e devolução confirmada que o contém.
+  itens: { orderBy: { ordem: "asc" }, include: { animal: { select: {
+    id: true, brinco: true, nome: true,
+    baixas: { where: { estornadaEm: null }, select: { tipo: true, data: true }, take: 1 },
+    itensOperacao: { where: { operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } }, select: { operacao: { select: { id: true, numero: true } } }, take: 1 },
+  } } } },
   movimentosEstoque: { include: {
     ...includeOperacao.movimentosEstoque.include,
     propriedade: { select: { id: true, nome: true } },
@@ -754,7 +760,12 @@ export async function obterOperacao(id: string, propriedadeId?: number | null) {
     })),
   }));
   const procedimentosServico = operacao.tipo === "SERVICO" ? await procedimentosOperacaoServico(operacao.id, operacao.propriedadeId) : [];
-  return { ...operacao, perdas, procedimentosServico, transferencias: detalheTransferencias(operacao.movimentosEstoque), compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
+  // `animal.situacao`: o que o detalhe precisa para devolver cabeças e mostrar onde cada animal está.
+  const itens = operacao.itens.map(({ animal, ...item }) => ({
+    ...item,
+    animal: animal ? { id: animal.id, brinco: animal.brinco, nome: animal.nome, situacao: { baixa: animal.baixas[0] ? { tipo: animal.baixas[0].tipo, data: animal.baixas[0].data } : null, devolucao: animal.itensOperacao[0]?.operacao ?? null } } : null,
+  }));
+  return { ...operacao, itens, perdas, procedimentosServico, transferencias: detalheTransferencias(operacao.movimentosEstoque), compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {
