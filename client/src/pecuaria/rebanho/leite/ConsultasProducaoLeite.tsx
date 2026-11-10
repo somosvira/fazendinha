@@ -1,6 +1,4 @@
 import { DatePicker } from "../../../components/DatePicker";
-import { Badge } from '@/components/ui/badge';
-import { AjudaCampo } from '@/components/Dica';
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import { RegistroVisualProducaoLeite } from "./RegistroVisualProducaoLeite";
 import type { GrupoProducaoLeite } from "./resumo-producao";
@@ -21,7 +19,7 @@ import { CustosLeite } from "./CustosLeite";
 import { HistoricoColetivoLeite } from "./HistoricoColetivoLeite";
 import "./consultas-leite.css";
 type Grupo = GrupoProducaoLeite;
-interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[]; coberturaCompleta: boolean; mesEmAndamento: boolean }
+interface Consulta { grupos: Grupo[]; ordenhas: { posicaoId: string; nome: string }[] }
 const datasVisao = (data: string, visao: string) => ({ inicio: visao === "dia" ? data : `${data.slice(0, 7)}-01`, fim: visao === "dia" ? data : new Date(Date.UTC(Number(data.slice(0, 4)), Number(data.slice(5, 7)), 0)).toISOString().slice(0, 10) });
 const iniciais = () => { const q = new URLSearchParams(location.search); const hoje = hojeOperacional(); const valor = q.get("producaoData") ?? hoje; const data = /^\d{4}-\d{2}-\d{2}$/.test(valor) && Number.isFinite(Date.parse(valor)) ? valor : hoje; const visao = q.get("producaoVisao") === "mes" ? "mes" : "dia"; const periodo = datasVisao(data, q.has("producaoVisao") ? visao : "mes"); return { visao, data, natureza: q.get("natureza") ?? "", inicio: q.get("inicio") || periodo.inicio, fim: q.get("fim") || periodo.fim }; };
 
@@ -48,15 +46,21 @@ export function ConsultasProducaoLeite({ podeExportar: _podeExportar = false }: 
     return () => { ativa = false; };
   }, [inicio, fim, natureza, visao, data, sitio, revisao, periodoInvalido]);
   return <section className="leite-operacoes leite-consultas">
-    <BarraConsulta edicaoFiltros={draft} adicionais={<>
+    <BarraConsulta acao={<div className="leite-agrupamento-producao">
+      <span>Agrupar por</span>
+      <Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}>
+        <TabsList variant="default" aria-label="Agrupamento da produção">
+          <TabsTrigger value="dia">Dia</TabsTrigger>
+          <TabsTrigger value="mes">Mês</TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </div>} edicaoFiltros={draft} adicionais={<>
       <CampoFiltro rotulo="Consultar produção por"><SelectCampo value={draft.rascunho.visao} onValueChange={v => draft.editar("visao", v)}><option value="dia">Dia</option><option value="mes">Mês</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Data de produção"><DatePicker value={draft.rascunho.data} onChange={(valor) => { if(valor) { draft.editar("data", valor); const periodo = datasVisao(valor, draft.rascunho.visao); draft.editar("inicio", periodo.inicio); draft.editar("fim", periodo.fim); } }} /></CampoFiltro>
       <CampoFiltro rotulo="Natureza"><SelectCampo value={draft.rascunho.natureza === "A_CLASSIFICAR" ? "" : draft.rascunho.natureza} onValueChange={v => draft.editar("natureza", v)}><option value="">Todas</option><option value="COMERCIAL">Comercial</option><option value="NAO_COMERCIAL">Não comercial</option><option value="COLOSTRO">Colostro</option></SelectCampo></CampoFiltro>
       <CampoFiltro rotulo="Classificação"><span className="leite-checkbox"><input type="checkbox" checked={draft.rascunho.natureza === "A_CLASSIFICAR"} onChange={e => draft.editar("natureza", e.target.checked ? "A_CLASSIFICAR" : "")} />Sem classificação</span></CampoFiltro>
     </>}><PeriodoFinanceiroControl showIcon inicio={inicio} fim={fim} label="Período da produção" onChange={v => aplicar({ ...filtros, ...v, data: v.inicio || data })} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando produção…</p> : <>
-      <div className="leite-producao-controles"><div className="leite-producao-cobertura">{!dados.coberturaCompleta && <Badge variant="outline" role="status">Produção parcial<AjudaCampo rotulo="Sobre a cobertura da produção" texto="Há registros ausentes no período. Ausência não significa produção zero."/></Badge>}{dados.mesEmAndamento && <Badge variant="outline">Mês em andamento</Badge>}</div>
-      <div className="leite-agrupamento-producao"><span>Agrupar volumes por</span><Tabs value={visao} onValueChange={v => aplicar({ ...filtros, visao: v })}><TabsList variant="default" aria-label="Agrupamento da produção"><TabsTrigger value="dia">Dia</TabsTrigger><TabsTrigger value="mes">Mês</TabsTrigger></TabsList></Tabs></div></div>
       <div className="leite-producao-painel"><div className="leite-producao-evolucao"><GraficoProducaoLeite grupos={grupos} /></div><section className="leite-producao-registro" aria-label="Consulta dos registros de produção">
       <div className="producao-registro-cabecalho"><h3>Registro da produção</h3><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização da produção" /></div>
       {visualizacao.modo === "visual" ? <RegistroVisualProducaoLeite sitio={sitio} inicio={inicio} fim={fim} grupos={grupos} ordenhas={dados.ordenhas ?? []} data={data} /> : <>

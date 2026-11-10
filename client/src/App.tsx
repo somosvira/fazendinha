@@ -1,3 +1,4 @@
+import "./components/consulta-operacional.css";
 import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
 /* Rio Novo — raiz.
@@ -9,6 +10,8 @@ import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/des
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isNovoRelatorioFinanceiro, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
+import { Header } from "./components/Header";
+import { VisualizacaoNoCabecalho } from "./components/VisualizacaoConsulta";
 import { AppSidebar } from "./components/AppSidebar";
 import "./financeiro/financeiro-theme.css";
 import { descartarRascunhoOperacao, descartarRascunhoRelatorioFinanceiro, obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
@@ -469,7 +472,7 @@ export function App() {
     temAcessoArea(effectiveUser?.areas, area, !!effectiveUser?.dono);
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
-  // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
+  // tem entrada na área de Configurações e no menu autorizado do cabeçalho).
   const visibleTabs = useMemo<NavTab[]>(() => {
     if (!effectiveUser || !hasArea("financeiro")) return [];
     return ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
@@ -633,6 +636,7 @@ export function App() {
           }}
         />
       )}
+    <VisualizacaoNoCabecalho key={usuario.id} usuarioId={usuario.id}>
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <AppSidebar
@@ -643,14 +647,10 @@ export function App() {
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
-        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
-        user={effectiveUser}
         colapsada={sideColapsada}
         onToggleColapsar={toggleSidebar}
-        onAcessos={() => navegarTab("acessos")}
-        onSair={onSair}
         // O atalho só aparece depois de se saber se há rascunho, para o "+" não
         // piscar antes de o rascunho existente carregar.
         trabalhoAtivo={podeVerRascunho && (rascunhoAtivo.conhecido || !!rascunhoAtivo.recuperacao)
@@ -659,6 +659,15 @@ export function App() {
         trabalhoAtivoRelatorio={podeVerRascunhoRelatorio && (rascunhoRelatorioAtivo.conhecido || !!rascunhoRelatorioAtivo.recuperacao) && resumoRascunhoRelatorioAtivo
           ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo, onExcluir: () => excluirTrabalho("relatorio") }
           : null}
+      />
+      <Header
+        user={effectiveUser}
+        mobileOpen={mobileOpen}
+        onMobileToggle={setMobileOpen}
+        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
+        onBuscarAnimal={podeAcessarCaminho(usuario, "/pecuaria/rebanho/animais") ? () => { setModoBusca("animais"); setBuscaAberta(true); } : undefined}
+        onAcessos={effectiveUser.dono || effectiveUser.flags.includes("gerenciarAcessos") ? () => navegarTab("acessos") : undefined}
+        onSair={onSair}
       />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
@@ -691,6 +700,7 @@ export function App() {
         }}
       />
     </div>
+    </VisualizacaoNoCabecalho>
     </>
   );
 }

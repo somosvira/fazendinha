@@ -35,7 +35,7 @@ A pesquisa externa inspira soluções; não muda contratos. Quando a organizaç�
 
 ### Aberturas em modal
 
-Detalhes de registro, formulários, conferências e filtros abrem em **modal centralizado**, também em telas pequenas. Não criar drawers, sheets ou painéis que entram pela lateral para esses fluxos. Usar os diálogos existentes com largura adequada, altura limitada à janela e rolagem interna, mantendo título, botão de fechar e ações acessíveis.
+Detalhes de registro, formulários, conferências e filtros abrem em **modal centralizado**, também em telas pequenas. Não criar drawers, sheets ou painéis que entram pela lateral para esses fluxos. Usar os diálogos existentes com largura adequada, altura limitada à janela e rolagem interna, mantendo título, botão de fechar e ações acessíveis. Formulários de cadastro, incluindo os do Bezerreiro, usam `PainelCadastro` para manter cabeçalho e ações fixos e rolar só o corpo.
 
 Preservar foco dentro do modal, retorno ao acionador, fechamento por Escape quando permitido, proteção de rascunho e bloqueio durante gravação. As URLs e os retornos dos fluxos continuam funcionando, inclusive ao abrir um registro pela busca global. A navegação fixa entre áreas não é um painel de detalhe.
 
@@ -103,7 +103,7 @@ Sequência recomendada: **título e contexto → busca e filtros → lista → p
 
 Busca e dois ou três filtros de uso frequente podem ficar diretamente visíveis. Os demais entram em “Filtros”, com critérios ativos removíveis e botão para limpar. A quantidade de filtros disponíveis não deve determinar o tamanho do cabeçalho.
 
-Quando a pessoa escolhe explicitamente Tabela, preservar as colunas também no celular, com rolagem horizontal dentro da consulta e acesso por teclado; não converter essa escolha em cartões. O modo automático dos consumidores sem essa escolha continua disponível. Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
+Quando a pessoa escolhe explicitamente Tabela, preservar as colunas também no celular, com rolagem horizontal dentro da consulta e acesso por teclado; não converter essa escolha em cartões. Listas operacionais podem aderir ao seletor global com `ConsultaOperacional`, que reaproveita as colunas, links e ações nas duas apresentações. O modo automático dos consumidores sem essa escolha continua disponível. Uma tabela serve para comparar muitos registros. Um cartão serve para reconhecer um registro e agir. A alternância **Cartões / Tabela** aprovada no projeto conserva população, ordenação, filtros, paginação e acesso ao detalhe; a visualização não pode mudar o significado do resultado.
 
 Na tabela, priorizar identificação, situação relevante, data e medida de comparação. Colunas extras ficam disponíveis conforme o contexto e os recursos existentes. Não exibir todos os identificadores, genitores e metadados por padrão. Valores e identificadores críticos não devem ficar sistematicamente cortados.
 
@@ -249,7 +249,7 @@ Manter as primitivas Radix/shadcn já adotadas, com Tailwind e os tokens compart
 
 Cálculo de negócio não pertence à renderização. A interface formata e apresenta o contrato; não recalcula indicadores do servidor para caber no desenho. Filtros e destinos mantêm a History API, os parâmetros e as guardas vigentes.
 
-Os cartões de animais mostram apenas nome/brinco/situação no cabeçalho, imagem/categoria/finalidade/lote no centro e ações no rodapé. Abrem a ficha por toda a superfície, com seleção e comandos independentes. Não exibem sítio, contexto clínico/produtivo, papel ou campos adicionais, mesmo com todas as colunas habilitadas na tabela. A tabela principal apresenta Reprodução e DEL; peso/GMD ficam nas colunas adicionais e na ficha. Cabeçalho da tabela e rodapés usam os tokens compartilhados de cor. Tabelas de consulta em tela usam fonte de 13px, inclusive nos textos das tags e comandos internos. A opção explícita de tabela mantém suas colunas com rolagem própria no celular.
+Em Rebanho → Animais, a consulta usa tabela compacta no desktop e lista de duas linhas no celular. Brinco e nome vêm primeiro, seguidos de categoria, lote e situação. A linha abre a ficha, com seleção independente. A tabela conserva as ações de linha e oferece Reprodução, DEL, peso e GMD em **Mostrar todas as colunas**. Essa aba não registra o seletor global Cartões/Tabela.
 
 ### Espaçamento, largura útil e propriedade dos estilos
 
@@ -306,10 +306,12 @@ As permissões de uma pessoa são abertas em modal pela seleção explícita em 
 
 A composição operacional usa o cabeçalho da rotina para data e ação principal, sem repetir um título dentro da consulta. No Leite, os turnos exibem volume, naturezas e confirmação das origens; paginação e tamanho ficam após os registros. Produção separa evolução e consulta do registro em blocos próprios. O formulário de ordenha prioriza litros e agrupa origem, identificação e conferência, mantendo o salvamento distinto da entrada em estoque.
 
-Receitas apresentam composição e uso diretamente; a ficha nutricional aproxima dieta, efetivo e vigência. Ocorrências sanitárias reúnem fatos e acompanhamento no próprio registro. Visitas apresentam trabalho em aberto antes do histórico; os formulários separam identidade/contexto dos dados do fato. Cadastros mantêm criação no cabeçalho e consultam histórico em modal sob demanda. O catálogo de relatórios usa seletores superiores e resultado em largura integral. Sítios abre em cartões com tabela alternativa; Estoque aproxima saldo, lotes e rastreabilidade e agrupa as operações de transferência/perda. Essas composições preservam os recortes, estados de ausência, permissões e destinos de cada domínio.
+Receitas apresentam composição e uso diretamente; a ficha nutricional aproxima dieta, efetivo e vigência. Ocorrências sanitárias reúnem fatos e acompanhamento no próprio registro. Visitas apresentam trabalho em aberto antes do histórico; os formulários separam identidade/contexto dos dados do fato. Cadastros mantêm criação no cabeçalho e consultam histórico em modal sob demanda. O catálogo de relatórios usa seletores superiores e resultado em largura integral. Sítios abre em cartões com tabela alternativa; Estoque aproxima saldo, lotes e rastreabilidade e agrupa as operações de transferência/perda. Em Movimentações, a superfície do cartão abre o detalhe e os links de produto e origem continuam com seus próprios destinos. Essas composições preservam os recortes, estados de ausência, permissões e destinos de cada domínio.
 
 
 ### Densidade responsiva da navegação e dos protocolos
+
+O cabeçalho reúne a busca global, o atalho Buscar animal e o menu da conta. O seletor Cartões/Tabela aparece quando a tela tem consultas nesses formatos e aplica a escolha a todas as consultas compatíveis ao navegar. A preferência fica salva por usuário no navegador e prevalece sobre os modos antigos das consultas. Calendários, linhas do tempo, gráficos e outras visualizações específicas têm controles próprios. As consultas com preferências e parâmetros de URL conservam suas chaves.
 
 O shell usa gutters iguais: 24px no desktop, 20px entre 901–1100px e 16px até 900px. IA Terrano e Metas usam páginas próprias na sidebar, sem botão flutuante. IA Terrano reúne Conversa/Radar; Metas é independente e conserva seleção de fazenda, gráficos, histórico e formulários em modal centralizado. Títulos compartilhados usam 24px/22px; abas usam 14px e alvos de 40px no desktop e 44px no móvel. Escalas específicas de documentos e indicadores continuam próprias. A sidebar recolhida centraliza desenhos proporcionais em acionadores de 44px, com um único fundo no seletor de sítio; mantém navegação móvel, colapso manual e expansão temporária do trilho automático.
 

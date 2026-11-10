@@ -47,8 +47,8 @@
 .consumo-cartao h3 a{color:inherit}
 .consumo-cartao-sitios{list-style:none;margin:0;padding:0;display:grid;gap:10px}
 .consumo-cartao-sitios li{display:grid;grid-template-columns:minmax(0,1fr);gap:4px}
-.consumo-cartao-linha{display:flex;justify-content:space-between;gap:8px;font-size:13px}
-.consumo-cartao-linha strong{font-weight:650;margin-left:auto;white-space:nowrap}
+.consumo-cartao-linha{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:4px 8px;font-size:13px}
+.consumo-cartao-linha > .fin-selo{margin-left:auto;max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .consumo-cartao-sitios small{font-size:12px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
 .consumo-cartao-barra{height:6px;border-radius:999px;background:var(--border);overflow:hidden}
 .consumo-cartao-barra span{display:block;height:100%;border-radius:inherit;background:var(--primary,#00766f)}

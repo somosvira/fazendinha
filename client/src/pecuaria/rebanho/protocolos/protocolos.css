@@ -329,3 +329,16 @@
 .clinica-avaliacao-pagina .clinica-dados-comuns>legend{padding-inline:4px}
 .clinica-avaliacao-pagina .clinica-dados-comuns>.flex{grid-column:1/-1}
 @media(max-width:640px){.clinica-avaliacao-pagina .clinica-dados-comuns{grid-template-columns:1fr;padding:16px}}
+
+
+@media (max-width: 760px) {
+  .protocolo-operacao-compacta [data-tarefas-individuais] .protocolo-tabela-dados { display: block; min-width: 0; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .protocolo-operacao-compacta [data-tarefas-individuais] tbody { display: block; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] tr:not(.protocolo-detalhe-linha) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td { min-width: 0; overflow-wrap: anywhere; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label]::before { display: block; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] :is(td[data-label="Etapa"], td[data-label="Ações"]) { grid-column: 1 / -1; width: auto; white-space: normal; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label="Ações"] > div { flex-wrap: wrap; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label="Ações"] button { height: auto; white-space: normal; }
+}

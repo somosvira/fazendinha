@@ -13,7 +13,6 @@ import { Landmark, MapPin, Users, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { navegarPara } from "../router";
 import { ConfiguracoesPecuaria } from "./ConfiguracoesPecuaria";
-import { cn } from "@/lib/utils";
 import type { Tab } from "./Shell";
 import { SubTabs, type SubTab } from "./SubTabs";
 import { EmptyState } from "./EmptyState";
@@ -71,11 +70,10 @@ export function ConfiguracoesHub({ tab, onNav, isAdmin, podeCategorias = true, p
   // As views trazem a própria casca (shell-wide). Alinhamos a barra de sub-abas a ela.
   return (
     <>
-      <div className={cn("configuracoes-navegacao pt-7", "px-[var(--gutter)]")}>
-
-        <SubTabs tabs={tabs.map(t => atual === "categorias" ? {...t, icon: undefined} : t)} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
+      <div className="configuracoes-navegacao px-[var(--gutter)] pt-5">
+        <SubTabs tabs={tabs} active={atual} ariaLabel="Áreas de configurações" variant="financeiro" onSelect={(id) => id === "pecuaria" ? navegarPara("/configuracoes/pecuaria") : onNav(TAB_BY_SUB[id])} />
       </div>
-      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length < 4 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} podeGerenciarAlertas={podeGerenciarAlertas} /></div>}
+      {atual === "pecuaria" && <div className="shell-wide pagina-financeira financeiro-colorido">{path.split("/").filter(Boolean).length <= 2 && <PageHeader titulo={<span className="rotina-titulo"><span><Settings/></span>Configurações da Pecuária</span>} />}<ConfiguracoesPecuaria podeLancar={podeLancarPecuaria} podeGerenciarAlertas={podeGerenciarAlertas} /></div>}
       {atual === "categorias" && <PlanoContas onNav={onNav} />}
       {atual === "sitios" && isAdmin && <Sitios />}
       {atual === "acessos" && isAdmin && <Acessos />}

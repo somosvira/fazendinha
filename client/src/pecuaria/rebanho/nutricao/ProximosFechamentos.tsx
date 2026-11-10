@@ -63,7 +63,7 @@ export function ProximosFechamentos({ podeLancar, somentePendentes = false, lote
       </dl>}
     </header>
     {consulta.carregando ? <EsqueletoTabela label="Carregando próximos fechamentos" colunas={4} linhas={3} /> : consulta.erro ? <p role="alert" className="nutricao-aviso">{consulta.erro}</p> : !linhas.length ? <Panel><Empty>Nenhum lote com dieta vigente. <LinkNutricional href={rotaNutricao({ aba: "lotes" })}>Atribuir uma dieta</LinkNutricional></Empty></Panel> :
-      visualizacao.modo === "visual" ? <CartoesFechamento linhas={linhas} acao={acao} /> : <Panel className="overflow-hidden"><TabelaFinanceira rotulo={somentePendentes ? "Lotes com consumo a fechar" : "Próximos fechamentos por lote"} itens={linhas} chaveDe={l => l.resumo.lote.id} colunas={[
+      visualizacao.modo === "visual" ? <CartoesFechamento linhas={linhas} acao={acao} /> : <Panel className="overflow-hidden"><TabelaFinanceira visualizacao="tabela" rotulo={somentePendentes ? "Lotes com consumo a fechar" : "Próximos fechamentos por lote"} itens={linhas} chaveDe={l => l.resumo.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: l => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: l.resumo.lote.id })}>{l.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{l.resumo.lote.propriedade.nome}</p></> },
         { chave: "dieta", titulo: "Dieta vigente", celula: l => <>{l.resumo.vigente!.dieta.nome}<p className="nutricao-secundario">v{l.resumo.vigente!.dieta.versao} desde {formatarDataBR(l.resumo.vigente!.desde)}</p></> },
         { chave: "ultimo", titulo: "Fechado até", celula: l => l.ultimoFim ? formatarDataBR(l.ultimoFim) : <span className="nutricao-secundario">Nenhum fechamento</span> },

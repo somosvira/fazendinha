@@ -196,7 +196,7 @@ export function ListaLotes({ podeLancar = true, onAbrirLote }: { podeLancar?: bo
       <fieldset disabled={processando} aria-busy={processando} className="min-w-0">
         {lotes === null
           ? <EsqueletoTabela label="Carregando lotes" className="p-6" />
-          : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
+          : visual.modo === "visual" ? <CartoesLotes lotes={lotesDaPagina} todos={lotesFiltrados} onAbrir={onAbrirLote} acoes={l=>podeLancar?<AcoesLinha nome={l.nome} ativo={l.ativo} onEditar={()=>editar(l)} onAlternar={()=>alternar(l)}/>:null}/> : <TabelaFinanceira visualizacao="tabela" ordenacao={ordemLotes.controle} filtrosColunas={filtrosDasColunas(camposLotes,edicaoLotes)} rotulo="Lotes" itens={lotesDaPagina} colunas={colunasLotes(editar, alternar).filter(c=>podeLancar||!c.acoes)} chaveDe={(l) => l.id} onAbrir={(l) => onAbrirLote(l.id)} classeLinha={(l) => !l.ativo ? "opacity-55" : ""} />}
       </fieldset>
       {lotes !== null && <Paginacao paginaAtual={paginaLotesAtual} totalPaginas={totalPaginasLotes} totalItens={lotesFiltrados.length} itensPorPagina={LOTES_POR_PAGINA} onPaginaChange={setPaginaLotes} rotulo="lotes" idSelect="pagina-lista-lotes" />}
     </Panel>

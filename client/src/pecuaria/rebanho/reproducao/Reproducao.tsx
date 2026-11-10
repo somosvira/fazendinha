@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
 import { VisaoGeralReprodutiva } from "./VisaoGeralReprodutiva";
 import { LinkInterno } from "../../../components/LinkInterno";
@@ -34,8 +35,7 @@ import {
   PaginaFinanceira,
   Panel,
   Pill,
-  TabelaFinanceira,
-} from "../../../financeiro/financeiro-ui";
+  } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { navegarPara } from "../../../router";
 import {
@@ -395,7 +395,7 @@ function ConteudoReproducao({
           </p>
         )}
         {!carregando && painel && (
-          <TabelaFinanceira filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
+          <ConsultaOperacional filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
             rotulo="Animais e ciclos reprodutivos"
             itens={animais}
             chaveDe={(a) => a.animalId}
@@ -465,7 +465,7 @@ function ConteudoReproducao({
       {painel && (
         <Panel>
           <CabecalhoTabela titulo="Histórico reprodutivo" />
-          <TabelaFinanceira
+          <ConsultaOperacional
             rotulo="Histórico reprodutivo"
             onAbrir={(f) => setFatoAberto(f)}
             itens={fatos.filter((f) => !animalId || f.animalId === animalId)}

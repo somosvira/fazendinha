@@ -19,27 +19,72 @@ function pendenciasCusto(f: Fechamento) {
   return f.itens.filter(i => custoDoItem(i) == null).map(i => i.leite ? `${i.produto.nome}: aguardando a apuração do custo de produção do leite` : `${i.produto.nome}: sem valor na baixa de estoque`);
 }
 
-export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarregar }: { fechamento: Fechamento; podeLancar?: boolean; onRecarregar?: () => Promise<void> }) {
+export function MetadadosFechamento({ fechamento: f }: { fechamento: Fechamento }) {
+  return <span className="nutricao-fechamento-metadados">
+    <span>{periodoFechamento(f)} · {f.propriedade.nome} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</span>
+    <SituacaoFechamento status={f.status} />
+  </span>;
+}
+
+function diferencaConsumo(i: Item) {
+  const previsto = Number(i.quantidadePrevista);
+  const diferenca = Number(i.quantidadeConfirmada) - previsto;
+  if (Math.abs(diferenca) < 0.0005) return null;
+  const proporcao = previsto > 0 ? diferenca / previsto : null;
+  const sinal = diferenca > 0 ? "+" : "−";
+  const quantidade = quantidadeNutricional(String(Math.round(Math.abs(diferenca) * 1000) / 1000));
+  return {
+    texto: `${sinal}${quantidade} ${un(i.unidade)}${proporcao == null ? "" : ` (${sinal}${Math.round(Math.abs(proporcao) * 100)}%)`}`,
+    alerta: proporcao == null || Math.abs(proporcao) > LIMITE_DIVERGENCIA,
+  };
+}
+
+function DiferencaConsumo({ item }: { item: Item }) {
+  const diferenca = diferencaConsumo(item);
+  return diferenca
+    ? <span className={diferenca.alerta ? "nutricao-fechamento-diferenca nutricao-alerta-texto" : undefined}>{diferenca.texto}</span>
+    : <span className="nutricao-secundario">Igual ao previsto</span>;
+}
+
+export function DetalhesFechamento({ fechamento: f, podeLancar = false, metadadosNoCabecalho = false, onRecarregar }: { fechamento: Fechamento; podeLancar?: boolean; metadadosNoCabecalho?: boolean; onRecarregar?: () => Promise<void> }) {
   // Até 8 ingredientes a tabela vai direta, sem busca, filtros nem ordenação.
   const colunasItens: ColunaTabela<Fechamento["itens"][number]>[] = [
         { chave: "ingrediente", titulo: "Ingrediente", principal: true, celula: (i) => <strong>{i.produto.nome}</strong> },
         { chave: "previsto", alinhamento: "direita" as const, titulo: "Previsto", celula: (i) => `${quantidadeNutricional(i.quantidadePrevista)} ${un(i.unidade)}` },
         { chave: "conferido", alinhamento: "direita" as const, titulo: "Conferido", celula: (i) => `${quantidadeNutricional(i.quantidadeConfirmada)} ${un(i.unidade)}` },
-        { chave: "diferenca", alinhamento: "direita" as const, titulo: "Diferença", celula: (i) => { const p = Number(i.quantidadePrevista), c = Number(i.quantidadeConfirmada), d = c - p; if (Math.abs(d) < 0.0005) return <span className="nutricao-secundario">Igual ao previsto</span>; const v = p > 0 ? d / p : null; return <span className={v == null || Math.abs(v) > LIMITE_DIVERGENCIA ? "nutricao-alerta-texto" : undefined}>{d > 0 ? "+" : "−"}{quantidadeNutricional(String(Math.round(Math.abs(d) * 1000) / 1000))} {un(i.unidade)}{v != null && ` (${d > 0 ? "+" : "−"}${Math.round(Math.abs(v) * 100)}%)`}</span>; } },
+        { chave: "diferenca", alinhamento: "direita", titulo: "Diferença", celula: i => <DiferencaConsumo item={i} /> },
         { chave: "origem", titulo: "Origem", larguraMinima: 220, celula: (i) => <>{i.leite ? <Pill tone="green">Origens de leite produzido</Pill> : i.movimentoEstoque ? <><Pill tone="green">Baixa de estoque</Pill>{i.movimentoEstoque.alocacaoPartidaEstoques.map((a, idx) => <p className="nutricao-secundario mt-2" key={idx}>Partida {a.partida.nome || a.partida.codigo}: {quantidadeNutricional(a.quantidade)} {un(i.unidade)}</p>)}</> : <Pill tone={Number(i.quantidadeConfirmada) === 0 ? "neutral" : "amber"}>{Number(i.quantidadeConfirmada) === 0 ? "Sem consumo" : "Sem baixa de estoque"}</Pill>}</> },
         ...(f.verValores ? [{ chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (i: Item) => custoTexto(custoDoItem(i)) }] : []),
       ];
   // Sem custo em nenhum animal, as colunas de custo só repetiriam "Não apurado".
   const custoAnimais = f.verValores && f.participacoes.some(p => p.custoConhecido != null);
   return <div className="nutricao-conteudo">
-    <Panel className="nutricao-fechamento-resumo"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Resumo do fechamento</h2><p>{periodoFechamento(f)} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</p></div><SituacaoFechamento status={f.status} /></div><div className="nutricao-card-corpo nutricao-resumo">
-      <div><span>Lote</span><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional></div><div><span>Sítio</span><strong>{f.propriedade.nome}</strong></div><div><span>Receita</span><strong>{f.vigencia.dieta.nome} · v{f.vigencia.dieta.versao}</strong></div><div><span>Centro de custo</span><strong>{f.centroCusto.nome}</strong></div>
-    </div>{f.verValores && <dl className="nutricao-fatos nutricao-fatos-fechamento">
-      <div><dt>Custo do fechamento</dt><dd>{custoTexto(f.custoConhecido)}</dd><p>{f.coberturaCustoCompleta ? "Custo integralmente apurado" : f.custoConhecido == null ? "Nenhum ingrediente com custo ainda" : "Parcial: falta o custo de parte dos ingredientes"}</p></div>
-      {f.custoConhecido != null ? <div><dt>Custo por animal-dia</dt><dd>{custoTexto(f.animalDias > 0 ? String(Number(f.custoConhecido) / f.animalDias) : null)}</dd><p>Média do fechamento{f.coberturaCustoCompleta ? "" : " · parcial"}</p></div>
-        : <div><dt>O que falta</dt><ul className="nutricao-motivos">{pendenciasCusto(f).map(m => <li key={m}>{m}</li>)}</ul></div>}
-    </dl>}
-    {f.status === "ESTORNADO" && <p className="nutricao-aviso mx-5 mb-5">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}</Panel>
+    <section className="nutricao-fechamento-resumo" aria-labelledby="nutricao-resumo-fechamento">
+      <h2 id="nutricao-resumo-fechamento" className="sr-only">Resumo do fechamento</h2>
+      {!metadadosNoCabecalho && <MetadadosFechamento fechamento={f} />}
+      <dl className="nutricao-fechamento-indicadores">
+        <div>
+          <dt>Consumo conferido</dt>
+          {f.itens.length === 1 ? <><dd>{quantidadeNutricional(f.itens[0].quantidadeConfirmada)} {un(f.itens[0].unidade)}</dd>
+            <dd>{quantidadeNutricional(f.itens[0].quantidadePrevista)} {un(f.itens[0].unidade)} previstos · <DiferencaConsumo item={f.itens[0]} /></dd>
+          </> : <dd>{f.itens.length} ingredientes</dd>}
+        </div>
+        {f.verValores && <div>
+          <dt>Custo do fechamento</dt><dd>{custoTexto(f.custoConhecido)}</dd>
+          <dd>{f.coberturaCustoCompleta ? <p>Custo integralmente apurado</p> : <>
+            {f.custoConhecido != null && <p>Parcial: falta o custo de parte dos ingredientes</p>}
+            <ul className="nutricao-motivos">{pendenciasCusto(f).map(m => <li key={m}>{m}</li>)}</ul>
+          </>}
+          {f.custoConhecido != null && <p>Custo por animal-dia: <strong>{custoTexto(f.animalDias > 0 ? String(Number(f.custoConhecido) / f.animalDias) : null)}</strong></p>}</dd>
+        </div>}
+      </dl>
+      <dl className="nutricao-fechamento-contexto">
+        <div><dt>Receita</dt><dd>{f.vigencia.dieta.nome} · v{f.vigencia.dieta.versao}</dd></div>
+        <div><dt>Centro de custo</dt><dd>{f.centroCusto.nome}</dd></div>
+        <div><dt className="sr-only">Lote</dt><dd><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>Ver lote</LinkNutricional></dd></div>
+      </dl>
+      {f.status === "ESTORNADO" && <p className="nutricao-aviso">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}
+    </section>
     <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque </h2></div></div>
       <div className="nutricao-consumo-composicao"><div className="min-w-0">{f.itens.length > 8 ? <TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
         {chave:"ingrediente",rotulo:"Ingrediente",tipo:"texto",obter:i=>i.produto.nome},
@@ -59,7 +104,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, onRecarr
           { chave: "custo", alinhamento: "direita" as const, titulo: "Custo conhecido", celula: (p: Fechamento["participacoes"][number]) => <>{custoTexto(p.custoConhecido)}{p.custoConhecido != null && !p.coberturaCustoCompleta && <p className="nutricao-secundario">Parcial</p>}</> },
           { chave: "medio", alinhamento: "direita" as const, titulo: "Por animal-dia", celula: (p: Fechamento["participacoes"][number]) => custoTexto(p.custoConhecidoPorDia) },
         ] : []),
-        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => p.itens.length === 1 ? <span>{quantidadeNutricional(p.itens[0].quantidadeAtribuida)} {p.itens[0].unidade} <span className="nutricao-secundario">(≈ {quantidadeNutricional(p.itens[0].quantidadePorDia)} {p.itens[0].unidade}/dia)</span></span> : <details className="nutricao-consumo-atribuido"><summary>Ver ingredientes ({p.itens.length})</summary><div>{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {un(i.unidade)} (≈ {quantidadeNutricional(i.quantidadePorDia)} {un(i.unidade)}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</div></details> },
+        { chave: "consumo", titulo: "Consumo atribuído", larguraMinima: 240, celula: (p) => p.itens.length === 1 ? <span>{quantidadeNutricional(p.itens[0].quantidadeAtribuida)} {p.itens[0].unidade} <span className="nutricao-secundario">(≈ {quantidadeNutricional(p.itens[0].quantidadePorDia)} {p.itens[0].unidade}/dia)</span></span> : <div className="nutricao-consumo-atribuido">{p.itens.map((i) => <p key={i.produtoId} className="nutricao-secundario mt-2">{f.itens.find((item) => item.produtoId === i.produtoId)?.produto.nome}: {quantidadeNutricional(i.quantidadeAtribuida)} {un(i.unidade)} (≈ {quantidadeNutricional(i.quantidadePorDia)} {un(i.unidade)}/dia){f.verValores && <> · {custoTexto(i.custoConhecido)}</>}</p>)}</div> },
       ]} />
     </Panel>
   </div>;
