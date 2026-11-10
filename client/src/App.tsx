@@ -156,7 +156,6 @@ export function App() {
       : deveTocarIntro(pathToTab(window.location.pathname) ?? DEFAULT_TAB),
   );
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [termoBuscaInicial, setTermoBuscaInicial] = useState("");
   const [buscaAberta, setBuscaAberta] = useState(false);
   const [modoBusca, setModoBusca] = useState<"tudo" | "animais">("tudo");
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
@@ -328,7 +327,7 @@ export function App() {
         const modo = e.shiftKey ? "animais" : "tudo";
         const atual = buscaRef.current;
         if (atual.aberta && atual.modo === modo) { setBuscaAberta(false); return; }
-        setTermoBuscaInicial(""); setModoBusca(modo); setBuscaAberta(true);
+        setModoBusca(modo); setBuscaAberta(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -665,7 +664,7 @@ export function App() {
         user={effectiveUser}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
-        onAbrirBusca={(termo = "") => { setTermoBuscaInicial(termo); setModoBusca("tudo"); setBuscaAberta(true); }}
+        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
         onBuscarAnimal={podeAcessarCaminho(usuario, "/pecuaria/rebanho/animais") ? () => { setModoBusca("animais"); setBuscaAberta(true); } : undefined}
         onAcessos={effectiveUser.dono || effectiveUser.flags.includes("gerenciarAcessos") ? () => navegarTab("acessos") : undefined}
         onSair={onSair}
@@ -684,7 +683,6 @@ export function App() {
         podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
         modo={modoBusca}
-        termoInicial={termoBuscaInicial}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, _entidadeId, caminho) => {
           if (!caminho) { navegarTab(t); return; }

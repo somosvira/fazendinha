@@ -539,3 +539,9 @@
 @media (min-width: 1100px) {
   .nutricao-alertas[data-modo="visual"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+.nutricao-fechamentos > .consulta-barra .consulta-linha { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px; }
+.nutricao-fechamentos > .consulta-barra .consulta-controles { flex: 1 1 200px; }
+.nutricao-fechamentos > .consulta-barra .consulta-mais-filtros { margin-inline-start: 0; }
+.nutricao-fechamentos > .consulta-barra .consulta-acoes { margin-inline-start: auto; }
+.nutricao-fechamentos-contagem { color: var(--muted-foreground); font-variant-numeric: tabular-nums; }

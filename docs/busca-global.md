@@ -1,6 +1,6 @@
 # Busca global
 
-A busca global (`Ctrl/⌘ K` ou campo Buscar no Terrano no cabeçalho) reúne registros reais, páginas e atalhos dos domínios ativos. Os filtros Tudo, Registros, Páginas e Ações conservam o termo digitado. O desenho aprovado está em `client/mockups/busca-global/index.html`; seus dados são ilustrativos e não provam disponibilidade.
+A busca global (`Ctrl/⌘ K` ou botão Buscar no Terrano no cabeçalho) reúne registros reais, páginas e atalhos dos domínios ativos. Os filtros Tudo, Registros, Páginas e Ações conservam o termo digitado. O desenho aprovado está em `client/mockups/busca-global/index.html`; seus dados são ilustrativos e não provam disponibilidade.
 
 ## Busca exclusiva de animais
 

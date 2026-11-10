@@ -106,7 +106,7 @@ export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleCo
   onMobileToggle: (open: boolean) => void;
   colapsada?: boolean;
   onToggleColapsar?: () => void;
-  onAbrirBusca?: (termo?: string) => void;
+  onAbrirBusca?: () => void;
   onBuscarAnimal?: () => void;
   onPreferencias?: () => void;
   onAcessos?: () => void;
@@ -143,21 +143,12 @@ export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleCo
       )}
 
       {onAbrirBusca && (
-        <div className="app-header-busca">
+        <button className="app-header-busca" type="button" aria-haspopup="dialog"
+          aria-keyshortcuts="Control+k Meta+k" onClick={onAbrirBusca}>
           <Search size={17} aria-hidden />
-          <input
-            type="search"
-            aria-label="Pesquisar páginas e recursos"
-            aria-haspopup="dialog"
-            aria-keyshortcuts="Control+k Meta+k"
-            placeholder="Buscar no Terrano"
-            value=""
-            onClick={() => onAbrirBusca()}
-            onChange={e => onAbrirBusca(e.currentTarget.value)}
-            onKeyDown={e => { if (e.key === "Enter") onAbrirBusca(); }}
-          />
+          <span>Buscar no Terrano</span>
           <kbd aria-hidden>Ctrl/⌘ K</kbd>
-        </div>
+        </button>
       )}
       {onBuscarAnimal && (
         <button className="app-header-animal" type="button" onClick={onBuscarAnimal} aria-label="Buscar animal" aria-haspopup="dialog" aria-keyshortcuts="Control+Shift+k Meta+Shift+k">

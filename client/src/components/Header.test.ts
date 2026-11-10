@@ -76,15 +76,15 @@ describe("Header", () => {
   it("chama onAbrirBusca ao clicar no gatilho de busca", () => {
     const props = baseProps();
     render(h(Header, props));
-    fireEvent.click(screen.getByLabelText("Pesquisar páginas e recursos"));
+    fireEvent.click(screen.getByRole("button", { name: "Buscar no Terrano" }));
     expect(props.onAbrirBusca).toHaveBeenCalledTimes(1);
   });
 
-  it("encaminha o termo digitado e oferece o atalho de animais", () => {
+  it("expõe a busca como botão de diálogo e oferece o atalho de animais", () => {
     const props = { ...baseProps(), onBuscarAnimal: vi.fn() };
     render(h(Header, props));
-    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "ração" } });
-    expect(props.onAbrirBusca).toHaveBeenCalledWith("ração");
+    expect(screen.queryByRole("searchbox")).toBeNull();
+    expect(screen.getByRole("button", { name: "Buscar no Terrano" }).getAttribute("aria-haspopup")).toBe("dialog");
     fireEvent.click(screen.getByRole("button", { name: "Buscar animal" }));
     expect(props.onBuscarAnimal).toHaveBeenCalledOnce();
   });

@@ -285,3 +285,5 @@ Na consulta de ordenha, origens já confirmadas no estoque são apresentadas com
 ## Integração com Bezerreiro e banco de colostro
 
 O [Bezerreiro](bezerreiro.md) reutiliza o núcleo nutricional para ofertas coletivas e o estoque compartilhado para colostro. Entradas confirmadas geridas por uma origem de colostro têm reserva/destinação própria e recusam baixas genéricas que ignorem esse vínculo. A retirada vincula parto/matriz à produção existente ou a nova parcela, preservando origem física e sem duplicar volume. A migration aditiva correspondente ainda requer aplicação e homologação; a baseline aplicada é preservada.
+
+Na aba Produção, período, filtros e agrupamento Dia/Mês compartilham a barra de consulta. O resumo de custos separa total conhecido e custo por litro, preservando a indicação **A apurar** quando o valor não está disponível.

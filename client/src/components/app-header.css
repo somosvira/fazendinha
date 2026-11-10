@@ -12,29 +12,33 @@
   background: var(--card);
 }
 .app-header-busca {
-  position: relative;
-  display: flex;
-  flex: 1 1 380px;
+  display: inline-flex;
+  flex: 0 1 auto;
   align-items: center;
   gap: 8px;
-  max-width: 460px;
   min-width: 0;
   min-height: var(--campo-altura);
-  padding-inline: 10px;
+  padding-inline: 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--background);
-  color: var(--muted-foreground);
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  cursor: pointer;
 }
-.app-header-busca input { width: 100%; min-width: 0; height: 38px; font-size: 14px; outline: none; }
+.app-header-busca:hover { background: var(--accent); }
 .app-header-busca svg { flex: none; }
-.app-header-busca:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.app-header-busca:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .app-header-busca kbd {
   flex: none;
   padding: 2px 5px;
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 11px;
+  font-weight: 400;
+  background: var(--card);
 }
 .app-header-animal {
   display: flex;
