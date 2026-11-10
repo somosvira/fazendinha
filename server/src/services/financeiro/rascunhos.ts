@@ -4,9 +4,10 @@ import type { z } from "zod";
 import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
 import { confirmarRascunhoOperacao, envolveAnimais } from "./operacoes.js";
-import { transacaoPecuaria } from "../pecuaria/transacao.js";
+import { contarItensAnimais } from "./compra-animais.js";
+import { timeoutTransacaoAnimais, transacaoPecuaria } from "../pecuaria/transacao.js";
 import { auditar, FinanceiroError } from "./regras.js";
-import { operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
+import { MAX_ANIMAIS_POR_OPERACAO, operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
 import { includeOperacaoConfirmada } from "./idempotencia.js";
 
 type SalvarRascunhoInput = z.infer<typeof rascunhoOperacaoSchema> & {
@@ -63,18 +64,28 @@ export async function descartarRascunho(propriedadeId: number, usuarioId: number
   return removido;
 }
 
+/** Leitura prévia do rascunho: se a operação toca o Rebanho e quantos animais ela envolve. */
+export type PreviaRascunho = { envolveAnimais: boolean; animais: number };
+
 /** Rascunho cuja operação cadastra, devolve ou corrige animais (também escreve no Rebanho). */
-export async function rascunhoEnvolveAnimais(propriedadeId: number, usuarioId: number): Promise<boolean> {
+export async function lerPreviaRascunho(propriedadeId: number, usuarioId: number): Promise<PreviaRascunho> {
   const previa = await prisma.rascunhoOperacao.findUnique({ where: chave(propriedadeId, usuarioId), select: { dados: true } });
   const operacao = operacaoSchema.safeParse((previa?.dados as { operacao?: unknown } | undefined)?.operacao);
-  return operacao.success && envolveAnimais(operacao.data);
+  if (!operacao.success) return { envolveAnimais: false, animais: 0 };
+  return { envolveAnimais: envolveAnimais(operacao.data), animais: contarItensAnimais(operacao.data) };
 }
 
-export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean } = {}) {
+/**
+ * `opcoes.previa`: leitura prévia que quem chama já fez (a rota confere a permissão da Pecuária com ela);
+ * sem ela, o serviço lê. Mesmo com ela, o conteúdo é conferido de novo dentro da transação.
+ */
+export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean; previa?: PreviaRascunho } = {}) {
   // Com animais, a confirmação segue a isolação do Rebanho. A leitura prévia escolhe a transação;
   // dentro dela o conteúdo é conferido de novo, para um rascunho regravado no meio não escapar.
-  const comAnimais = await rascunhoEnvolveAnimais(propriedadeId, usuarioId);
-  const executar = comAnimais ? transacaoPecuaria : transacaoValidada;
+  // O tempo usa o teto: o rascunho pode ter ganho animais depois da leitura prévia.
+  const previa = opcoes.previa ?? await lerPreviaRascunho(propriedadeId, usuarioId);
+  const comAnimais = previa.envolveAnimais;
+  const executar: typeof transacaoValidada = comAnimais ? (fn) => transacaoPecuaria(fn, { timeout: timeoutTransacaoAnimais(MAX_ANIMAIS_POR_OPERACAO) }) : transacaoValidada;
   return executar(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;

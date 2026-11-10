@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({ criarOperacao: vi.fn(), obterConfiguracoesFina
 vi.mock("./novo-api", async (importOriginal) => ({ ...(await importOriginal<typeof import("./novo-api")>()), ...mocks }));
 
 const animal = (n: number, situacao: { baixa?: { tipo: string; data: string }; devolucao?: { id: string; numero: number } } = {}) => ({
-  id: uid(100 + n), brinco: String(100 + n), nome: null, situacao: { baixa: situacao.baixa ?? null, devolucao: situacao.devolucao ?? null },
+  id: uid(100 + n), brinco: String(100 + n), nome: null, sexo: "M" as const, rotuloComposicao: "Nelore", aptidao: "CORTE", situacao: { baixa: situacao.baixa ?? null, devolucao: situacao.devolucao ?? null },
 });
 const itemAnimal = (n: number, valor: string, situacao = {}) => ({
   id: uid(200 + n), ordem: n, descricao: `Animal ${100 + n}`, quantidade: "1", unidade: "cab", valorUnitario: valor, valorTotal: valor, estocavel: false, produtoId: null,
@@ -96,7 +96,49 @@ describe("ficha da compra", () => {
   });
 });
 
+describe("perfil sem Pecuária (detalhe sem `situacao`)", () => {
+  const semSituacao = () => { const c = compra(); return compra({ itens: c.itens.map((item) => item.animal ? { ...item, animal: { ...item.animal, situacao: undefined } } : item) }); };
+
+  it("não mostra a coluna de situação nem o botão Devolver cabeças", async () => {
+    await abrir({ operacao: semSituacao() });
+    expect(screen.queryByRole("columnheader", { name: "Situação do animal" })).toBeNull();
+    expect(screen.queryByText("Ativo")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Devolver cabeças" })).toBeNull();
+  });
+});
+
 describe("modal Devolver cabeças", () => {
+  it("avisa quando o valor devolvido passa do valor pago e não envia", async () => {
+    await abrir();
+    const dialogo = await abrirModal();
+    fireEvent.click(within(dialogo).getByLabelText("Devolver animal 101"));
+    fireEvent.click(within(dialogo).getByLabelText("Devolver animal 104"));
+    fireEvent.change(within(dialogo).getByLabelText("Valor devolvido do animal 104"), { target: { value: "3000.01" } });
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar devolução" }));
+    const linha = dialogo.querySelector<HTMLElement>(`#devolucao-animal-${uid(204)}`)!;
+    expect(await within(linha).findByText(/O valor devolvido não pode passar do valor pago \(R\$\s3\.000,00\)/)).toBeTruthy();
+    expect(within(linha).getByLabelText("Valor devolvido do animal 104").getAttribute("aria-invalid")).toBe("true");
+    expect(within(dialogo).getByLabelText("Valor devolvido do animal 101").getAttribute("aria-invalid")).toBeNull();
+    expect(mocks.criarOperacao).not.toHaveBeenCalled();
+  });
+
+  it("mostra o erro itens.N.valorTotal do servidor no animal certo", async () => {
+    const { ApiError } = await import("./novo-api");
+    mocks.criarOperacao.mockRejectedValueOnce(new ApiError("O valor devolvido não pode passar do valor pago (R$ 3.000,00)", 400, "VALIDACAO", "itens.1.valorTotal"));
+    await abrir();
+    const dialogo = await abrirModal();
+    fireEvent.click(within(dialogo).getByLabelText("Devolver animal 101"));
+    fireEvent.click(within(dialogo).getByLabelText("Devolver animal 104"));
+    fireEvent.click(within(dialogo).getByRole("button", { name: "Confirmar devolução" }));
+    const linha = await waitFor(() => {
+      const el = dialogo.querySelector<HTMLElement>(`#devolucao-animal-${uid(204)}`)!;
+      expect(within(el).getByLabelText("Valor devolvido do animal 104").getAttribute("aria-invalid")).toBe("true");
+      return el;
+    });
+    expect(within(linha).getByText("O valor devolvido não pode passar do valor pago (R$ 3.000,00)")).toBeTruthy();
+    expect(within(dialogo).getByLabelText("Valor devolvido do animal 101").getAttribute("aria-invalid")).toBeNull();
+  });
+
   it("desabilita animais devolvidos ou fora do rebanho e diz o motivo", async () => {
     await abrir();
     const dialogo = await abrirModal();

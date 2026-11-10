@@ -24,6 +24,7 @@ Base da análise: código da `main` em `b63931e4`, que integra Reprodução/cons
 | Venda de animais vinculada à operação | `BaixaAnimal` do tipo `VENDA` não tem vínculo com operação financeira | Próximo passo: mesmo padrão da compra (um item por animal, baixa e estorno) |
 | Valor de compra do animal fora da Pecuária | Custos da Pecuária e variável de compra no builder de relatórios não consideram o valor de compra do animal | Exige decisão sobre compra cancelada e corrigida antes da implementação |
 | Devolução e compromisso em aberto | Devolução não abate o compromisso a pagar em aberto da compra | Depende da lacuna Liquidação com abatimento |
+| Cadastro em lote na compra de animais | Hoje o modal cadastra um animal por vez | Próximo passo: "Adicionar vários" com dados comuns e lista de brincos, com mockup próprio |
 
 ## Perguntas de produto, sem implementação nesta revisão
 

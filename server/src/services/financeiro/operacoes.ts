@@ -14,8 +14,9 @@ import { conferirReenvioOperacaoTx, hashConfirmacao, includeOperacaoConfirmada, 
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
 import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../pecuaria/reproducao/atribuicoes-servico.js";
 import { METODO_LEITE, registrarBaixaLeiteTx, valoresMovimentosLeiteTx, type PlanoBaixaLeite } from "../estoque/leite.js";
-import { concluirAnimaisTx, estornarAnimaisTx, prepararAnimaisTx, temItensAnimais, type ContextoAnimaisOperacao } from "./compra-animais.js";
-import { transacaoPecuaria } from "../pecuaria/transacao.js";
+import { concluirAnimaisTx, contarItensAnimais, estornarAnimaisTx, prepararAnimaisTx, temItensAnimais, type ContextoAnimaisOperacao } from "./compra-animais.js";
+import { normalizarComposicao, rotuloComposicao } from "../pecuaria/rebanho/composicao.calc.js";
+import { timeoutTransacaoAnimais, transacaoPecuaria } from "../pecuaria/transacao.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null; propriedadeId?: number };
@@ -371,12 +372,13 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 
 export async function criarOperacao(input: OperacaoInput) {
   // Com animais, a escrita também é do Rebanho: mesma isolação serializável e repetição dele.
-  if (envolveAnimais(input)) return transacaoPecuaria((tx) => criarOperacaoTx(tx, input));
+  if (envolveAnimais(input)) return transacaoPecuaria((tx) => criarOperacaoTx(tx, input), { timeout: timeoutTransacaoAnimais(contarItensAnimais(input)) });
   return transacaoValidada((tx) => criarOperacaoTx(tx, input));
 }
 
-export async function operacaoTemAnimais(id: string, propriedadeId?: number): Promise<boolean> {
-  return !!await prisma.itemOperacao.findFirst({ where: { operacaoId: id, animalId: { not: null }, ...(propriedadeId != null ? { operacao: { propriedadeId } } : {}) }, select: { id: true } });
+/** Quantidade de animais ligados à operação (0 = não toca o Rebanho). */
+export async function contarAnimaisOperacao(id: string, propriedadeId?: number): Promise<number> {
+  return prisma.itemOperacao.count({ where: { operacaoId: id, animalId: { not: null }, ...(propriedadeId != null ? { operacao: { propriedadeId } } : {}) } });
 }
 
 export function envolveAnimais(input: { tipo: string; itens: Array<{ animal?: unknown; animalId?: string }> }): boolean {
@@ -566,9 +568,14 @@ export async function estornarTransacao(id: string, motivo: string, contexto: Co
   return transacaoValidada((tx) => estornarTransacaoTx(tx, id, motivo, contexto));
 }
 
-export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
-  const comAnimais = await operacaoTemAnimais(id, contexto.propriedadeId);
-  const executarTransacao = comAnimais ? transacaoPecuaria : transacaoValidada;
+/**
+ * `opcoes.animais`: quantidade de animais da operação, quando quem chama já a leu (a rota confere a
+ * permissão da Pecuária com ela). Sem ela, o serviço consulta.
+ */
+export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno, opcoes: { animais?: number } = {}) {
+  const animais = opcoes.animais ?? await contarAnimaisOperacao(id, contexto.propriedadeId);
+  const comAnimais = animais > 0;
+  const executarTransacao: typeof transacaoValidada = comAnimais ? (executar) => transacaoPecuaria(executar, { timeout: timeoutTransacaoAnimais(animais) }) : transacaoValidada;
   return executarTransacao(async (tx) => {
     const produtos = await tx.movimentoEstoque.findMany({ where: { operacaoId: id }, select: { produtoId: true } });
     await travarValorizacaoTx(tx, produtos.map(p => p.produtoId));
@@ -665,7 +672,9 @@ const includeOperacaoDetalhe = Prisma.validator<Prisma.OperacaoInclude>()({
   ...includeOperacao,
   // Situação de cada animal da compra/devolução, na mesma consulta: baixa ativa e devolução confirmada que o contém.
   itens: { orderBy: { ordem: "asc" }, include: { animal: { select: {
-    id: true, brinco: true, nome: true,
+    id: true, brinco: true, nome: true, sexo: true,
+    composicao: { select: { fracao64: true, raca: { select: { sigla: true } } } },
+    destinos: { where: { ate: null }, orderBy: { desde: "desc" }, take: 1, select: { aptidao: true } },
     baixas: { where: { estornadaEm: null }, select: { tipo: true, data: true }, take: 1 },
     itensOperacao: { where: { operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } }, select: { operacao: { select: { id: true, numero: true } } }, take: 1 },
   } } } },
@@ -760,10 +769,16 @@ export async function obterOperacao(id: string, propriedadeId?: number | null) {
     })),
   }));
   const procedimentosServico = operacao.tipo === "SERVICO" ? await procedimentosOperacaoServico(operacao.id, operacao.propriedadeId) : [];
-  // `animal.situacao`: o que o detalhe precisa para devolver cabeças e mostrar onde cada animal está.
+  // `animal`: resumo para a ficha e a correção (sexo, raça, finalidade atual) e `situacao`, que o detalhe
+  // usa para devolver cabeças e mostrar onde cada animal está (a rota a omite sem a área Pecuária).
   const itens = operacao.itens.map(({ animal, ...item }) => ({
     ...item,
-    animal: animal ? { id: animal.id, brinco: animal.brinco, nome: animal.nome, situacao: { baixa: animal.baixas[0] ? { tipo: animal.baixas[0].tipo, data: animal.baixas[0].data } : null, devolucao: animal.itensOperacao[0]?.operacao ?? null } } : null,
+    animal: animal ? {
+      id: animal.id, brinco: animal.brinco, nome: animal.nome, sexo: animal.sexo,
+      rotuloComposicao: rotuloComposicao(normalizarComposicao(animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })))),
+      aptidao: animal.destinos[0]?.aptidao ?? null,
+      situacao: { baixa: animal.baixas[0] ? { tipo: animal.baixas[0].tipo, data: animal.baixas[0].data } : null, devolucao: animal.itensOperacao[0]?.operacao ?? null },
+    } : null,
   }));
   return { ...operacao, itens, perdas, procedimentosServico, transferencias: detalheTransferencias(operacao.movimentosEstoque), compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
 }

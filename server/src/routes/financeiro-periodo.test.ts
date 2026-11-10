@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ dashboard: vi.fn(), compromissos: vi.fn(), leitura: vi.fn() }));
 vi.mock("../services/financeiro/dashboard.js", () => ({ obterDashboard: mocks.dashboard }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, operacaoTemAnimais: async () => false, listarCompromissos: mocks.compromissos }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, contarAnimaisOperacao: async () => 0, listarCompromissos: mocks.compromissos }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: vi.fn() }));
 import { financeiroRouter } from "./financeiro.js";
 const app = new Hono().use("*", async (c, next) => { c.set("usuario" as never, { dono: false, flags: ["verValores"], areas: ["financeiro"] } as never); await next(); }).route("/", financeiroRouter);

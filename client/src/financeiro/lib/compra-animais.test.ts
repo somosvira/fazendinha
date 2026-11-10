@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { formatarCentavos, itemPrecoAnimal, paraEscalado, precoMedioDoLote, ratearValorLote, reaisParaCentavos, valoresDosAnimais } from "./compra-animais";
 
@@ -90,5 +92,28 @@ describe("conversões", () => {
     expect(paraEscalado("-1", 2)).toBeNull();
     expect(paraEscalado("1e3", 2)).toBeNull();
     expect(paraEscalado("12.", 2)).toBe(1200n);
+  });
+});
+
+describe("paridade com o cálculo do servidor (casos compartilhados)", () => {
+  // Mesmo arquivo lido pelo teste do servidor: compra-animais.calc.test.ts.
+  const casos = JSON.parse(readFileSync(fileURLToPath(new URL("../../../../server/src/services/financeiro/compra-animais.casos.json", import.meta.url)), "utf8")) as {
+    itens: { unidade: "CABECA" | "KG" | "ARROBA"; preco: string; pesoPagoKg: string | null; quantidade: string; valorTotal: string }[];
+    lotes: { total: string; animais: number; partes: string[] }[];
+  };
+
+  it("há casos de cada unidade e de lote", () => {
+    expect(new Set(casos.itens.map((c) => c.unidade))).toEqual(new Set(["CABECA", "KG", "ARROBA"]));
+    expect(casos.lotes.length).toBeGreaterThan(3);
+  });
+
+  it.each(casos.itens)("item $unidade preço $preco peso $pesoPagoKg", (caso) => {
+    const item = itemPrecoAnimal({ unidade: caso.unidade, preco: caso.preco, pesoPagoKg: caso.pesoPagoKg });
+    expect(item?.quantidade).toBe(caso.quantidade);
+    expect(item?.valorTotal).toBe(caso.valorTotal);
+  });
+
+  it.each(casos.lotes)("lote $total em $animais animais", (caso) => {
+    expect(ratearValorLote(reaisParaCentavos(caso.total)!, caso.animais).map(formatarCentavos)).toEqual(caso.partes);
   });
 });

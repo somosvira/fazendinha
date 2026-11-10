@@ -25,7 +25,7 @@ const config: ConfiguracoesFinanceiras = {
 type ItemOriginal = { n: number; unidade: string; quantidade: string; valorUnitario: string; valorTotal: string };
 const itemAnimal = ({ n, unidade, quantidade, valorUnitario, valorTotal }: ItemOriginal) => ({
   id: uid(200 + n), ordem: n, descricao: `Animal ${100 + n}`, quantidade, unidade, valorUnitario, valorTotal, estocavel: false, produtoId: null,
-  animalId: uid(100 + n), animal: { id: uid(100 + n), brinco: String(100 + n), nome: n === 1 ? "Estrela" : null, situacao: { baixa: { tipo: "COMPRA_ESTORNADA", data: "2026-10-02" }, devolucao: null } },
+  animalId: uid(100 + n), animal: { id: uid(100 + n), brinco: String(100 + n), nome: n === 1 ? "Estrela" : null, sexo: n === 1 ? "F" : "M", rotuloComposicao: n === 1 ? "Nelore 50% / Angus 50%" : "Desconhecida", aptidao: n === 1 ? "LEITE" : null, situacao: { baixa: { tipo: "COMPRA_ESTORNADA", data: "2026-10-02" }, devolucao: null } },
   categoriaId: uid(300), categoriaNome: "Compra de animais", centroCustoId: null, centroCustoNome: null,
 });
 const frete = (ordem: number) => ({ id: uid(250), ordem, descricao: "Frete do caminhão", quantidade: "1", unidade: "un", valorUnitario: "300", valorTotal: "300", estocavel: false, produtoId: null, categoriaId: uid(300), centroCustoId: null });
@@ -106,6 +106,15 @@ describe("FormOperacao em modo correção da compra de animais", () => {
     expect(previa).not.toContain("Cadastrar 2 animais");
     expect(screen.getByRole("heading", { name: "Outros itens da compra" })).toBeTruthy();
     expect((screen.getByLabelText("Descrição do item 1") as HTMLInputElement).value).toBe("Frete do caminhão");
+  });
+
+  it("mostra o mesmo resumo da compra nova (sexo, raça e finalidade) e mantém o link da ficha", () => {
+    montarCorrecao(compraCancelada(porKg));
+    const [primeiro, segundo] = within(screen.getByRole("list", { name: "Animais da compra" })).getAllByRole("listitem");
+    expect(primeiro.textContent).toContain("Fêmea · Nelore 50% / Angus 50% · Leite");
+    expect(primeiro.textContent).not.toContain("peso de entrada");
+    expect(segundo.textContent).toContain("Macho · Desconhecida · Finalidade não informada");
+    expect(within(primeiro).getByRole("link", { name: /Dados do animal 101 na ficha/ })).toBeTruthy();
   });
 
   it("deduz kg: unidade, peso pago e preço vêm da original", () => {

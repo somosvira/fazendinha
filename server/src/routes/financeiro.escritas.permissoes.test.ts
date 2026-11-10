@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../lib/uid.fixture.js";
 
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), salvar: vi.fn(), descartar: vi.fn(), confirmar: vi.fn(), criar: vi.fn(), escrita: vi.fn() }));
-vi.mock("../services/financeiro/rascunhos.js", () => ({ rascunhoEnvolveAnimais: async () => false, obterRascunho: mocks.obter, salvarRascunho: mocks.salvar, descartarRascunho: mocks.descartar, confirmarRascunho: mocks.confirmar }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, operacaoTemAnimais: async () => false, criarOperacao: mocks.criar }));
+vi.mock("../services/financeiro/rascunhos.js", () => ({ lerPreviaRascunho: async () => ({ envolveAnimais: false, animais: 0 }), obterRascunho: mocks.obter, salvarRascunho: mocks.salvar, descartarRascunho: mocks.descartar, confirmarRascunho: mocks.confirmar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, contarAnimaisOperacao: async () => 0, criarOperacao: mocks.criar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 
@@ -67,7 +67,7 @@ describe("escritas financeiras exigem lancar antes de validar ou acessar dados",
     expect(mocks.salvar).toHaveBeenCalledWith({ dados: { formulario: {} }, propriedadeId: 3, usuarioId: 7 });
     const chave = uid(9);
     expect((await operador.request(`${prefixo}/rascunho/confirmacao`, { method: "POST", headers, body: JSON.stringify({ chave, versao: 1 }) })).status).toBe(201);
-    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave, { permitirAnimais: expect.any(Boolean) });
+    expect(mocks.confirmar).toHaveBeenCalledWith(3, 7, 1, chave, { permitirAnimais: expect.any(Boolean), previa: { envolveAnimais: false, animais: 0 } });
     expect((await operador.request(`${prefixo}/rascunho`, { method: "DELETE" })).status).toBe(204);
     expect(mocks.descartar).toHaveBeenCalledWith(3, 7);
   });

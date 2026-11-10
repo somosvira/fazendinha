@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { Prisma } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 import {
@@ -125,5 +126,22 @@ describe("ratearValorLote", () => {
         expect(partes.every((p) => !p.isNegative() && p.decimalPlaces() <= 2)).toBe(true);
       }
     }
+  });
+});
+
+describe("paridade com o cálculo do client (casos compartilhados)", () => {
+  const casos = JSON.parse(readFileSync(new URL("./compra-animais.casos.json", import.meta.url), "utf8")) as {
+    itens: { unidade: "CABECA" | "KG" | "ARROBA"; preco: string; pesoPagoKg: string | null; quantidade: string; valorTotal: string }[];
+    lotes: { total: string; animais: number; partes: string[] }[];
+  };
+
+  it.each(casos.itens)("item $unidade preço $preco peso $pesoPagoKg", (caso) => {
+    const item = itemPrecoAnimal({ unidade: caso.unidade, preco: caso.preco, pesoPagoKg: caso.pesoPagoKg });
+    expect(item.quantidade.toString()).toBe(caso.quantidade);
+    expect(item.valorTotal.toFixed(2)).toBe(caso.valorTotal);
+  });
+
+  it.each(casos.lotes)("lote $total em $animais animais", (caso) => {
+    expect(ratearValorLote(caso.total, caso.animais).map((parte) => parte.toFixed(2))).toEqual(caso.partes);
   });
 });

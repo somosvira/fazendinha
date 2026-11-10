@@ -31,7 +31,7 @@ export type AnimalCompraForm = {
   payload?: AnimalPayload;
   /** A data de entrada acompanha a data da operação enquanto o usuário não a muda no cadastro. */
   entradaSegueOperacao?: boolean;
-  /** Na correção, só brinco e nome vêm da leitura da compra original. */
+  /** Na correção, o detalhe da compra original traz brinco, nome, sexo, raça (rótulo da composição) e finalidade; sem peso de entrada (`undefined`). */
   resumo: { brinco: string; nome: string | null; sexo?: Sexo; composicao?: string; aptidao?: Aptidao; pesoEntradaKg?: number | null };
   pesoPago: string;
   preco: string;
@@ -133,9 +133,8 @@ export function SecaoAnimais({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <strong className="break-words text-sm">Animal {resumo.brinco}</strong>{resumo.nome && <span className="text-sm text-ink-3"> · {resumo.nome}</span>}
-              {animal.animalId && !resumo.sexo
-                ? <p className="mt-1 text-sm text-ink-3"><a className="font-semibold underline" href={linkFichaAnimal(animal.animalId)} target="_blank" rel="noopener noreferrer" aria-label={`Dados do animal ${rotulo} na ficha (abre em nova aba)`}>Dados do animal na ficha</a></p>
-                : <p className="mt-1 break-words text-sm text-ink-3">{resumo.sexo ? ROTULO_SEXO[resumo.sexo] : "Sexo não informado"} · {resumo.composicao || "Raça não informada"} · {resumo.aptidao ? ROTULO_APTIDAO[resumo.aptidao] : "Finalidade não informada"} · {resumo.pesoEntradaKg != null ? `${fmtKg(resumo.pesoEntradaKg)} na entrada` : "Sem peso de entrada"}</p>}
+              {animal.animalId && <p className="mt-1 text-sm text-ink-3"><a className="font-semibold underline" href={linkFichaAnimal(animal.animalId)} target="_blank" rel="noopener noreferrer" aria-label={`Dados do animal ${rotulo} na ficha (abre em nova aba)`}>Dados do animal na ficha</a></p>}
+              {(!animal.animalId || resumo.sexo) && <p className="mt-1 break-words text-sm text-ink-3">{resumo.sexo ? ROTULO_SEXO[resumo.sexo] : "Sexo não informado"} · {resumo.composicao || "Raça não informada"} · {resumo.aptidao ? ROTULO_APTIDAO[resumo.aptidao] : "Finalidade não informada"}{resumo.pesoEntradaKg !== undefined && <> · {resumo.pesoEntradaKg !== null ? `${fmtKg(resumo.pesoEntradaKg)} na entrada` : "Sem peso de entrada"}</>}</p>}
             </div>
             {!correcao && <div className="flex shrink-0 gap-1">
               <UiButton type="button" variant="ghost" aria-label={`Editar animal ${rotulo}`} onClick={() => setModal({ id: animal.id })} className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-card"><Pencil size={16} /></UiButton>
@@ -260,7 +259,10 @@ export function animaisDaCompraOriginal(operacao: Pick<Operacao, "itens" | "comp
       }
     }
     return {
-      id: indice + 1, animalId: item.animalId!, resumo: { brinco: item.animal?.brinco ?? item.descricao.replace(/^Animal\s+/, ""), nome: item.animal?.nome ?? null },
+      id: indice + 1, animalId: item.animalId!, resumo: {
+        brinco: item.animal?.brinco ?? item.descricao.replace(/^Animal\s+/, ""), nome: item.animal?.nome ?? null,
+        ...(item.animal ? { sexo: item.animal.sexo, composicao: item.animal.rotuloComposicao, aptidao: (item.animal.aptidao as Aptidao | null) ?? undefined } : {}),
+      },
       pesoPago, preco, categoriaId: item.categoriaId ?? "", centroCustoId: item.centroCustoId ?? "", elegivelDesconto: comercial?.elegivel,
     };
   });

@@ -58,4 +58,10 @@ describe("operação de compra de animais — forma dos itens", () => {
     ], { tipo: "DEVOLUCAO" }));
     expect(erros).toEqual(expect.arrayContaining(["Devolva animais em uma operação própria, sem outros itens", "Animal repetido nesta operação"]));
   });
+
+  it("limita a operação a 200 animais", () => {
+    const itens = (n: number) => Array.from({ length: n }, (_, i) => ({ descricao: "N", quantidade: 1, unidade: "cab", valorTotal: 1, animal: animal(`B${i}`) }));
+    expect(mensagens(base(itens(200)))).toEqual([]);
+    expect(mensagens(base(itens(201)))).toContain("Uma operação aceita até 200 animais; divida a compra");
+  });
 });

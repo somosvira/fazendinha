@@ -45,6 +45,20 @@ function apresentarOperacao<T extends {
   return apresentarValores(c, dados, valoresOperacao);
 }
 
+/** Situação, sexo, raça e finalidade do animal são dados do Rebanho: o detalhe só os entrega a quem tem a área Pecuária. */
+function ocultarSituacaoSemPecuaria<T extends { itens?: Array<{ animal?: object | null }> }>(c: Context, dados: T): T {
+  const usuario = getUsuario(c);
+  if (!usuario || temArea(usuario, "pecuaria") || !Array.isArray(dados.itens)) return dados;
+  return {
+    ...dados,
+    itens: dados.itens.map((item) => {
+      if (!item.animal) return item;
+      const { situacao: _situacao, sexo: _sexo, rotuloComposicao: _rotulo, aptidao: _aptidao, ...animal } = item.animal as { situacao?: unknown; sexo?: unknown; rotuloComposicao?: unknown; aptidao?: unknown };
+      return { ...item, animal };
+    }),
+  };
+}
+
 const uploadIntentSchema = z.object({
   tipo: tipoDocumentoFinanceiroSchema,
   nome: z.string().max(180),
@@ -210,10 +224,11 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
     try {
       const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
-      const semAcesso = exigirPecuariaParaAnimais(c, await rascunhos.rascunhoEnvolveAnimais(propriedadeId, uid));
+      const previa = await rascunhos.lerPreviaRascunho(propriedadeId, uid);
+      const semAcesso = exigirPecuariaParaAnimais(c, previa.envolveAnimais);
       if (semAcesso) return semAcesso;
       const usuario = getUsuario(c);
-      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria") })), 201);
+      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria"), previa })), 201);
     }
     catch (e) { return falha(c, e); }
   })
@@ -253,7 +268,7 @@ export const financeiroRouter = new Hono()
   .get("/financeiro/operacoes/:id", async (c) => {
     try {
       const dados = await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c));
-      return c.json(apresentarOperacao(c, dados));
+      return c.json(apresentarOperacao(c, ocultarSituacaoSemPecuaria(c, dados)));
     }
     catch (e) { return falha(c, e); }
   })
@@ -279,9 +294,10 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      const semAcesso = exigirPecuariaParaAnimais(c, await operacoes.operacaoTemAnimais(c.req.param("id"), propriedadeId));
+      const animais = await operacoes.contarAnimaisOperacao(c.req.param("id"), propriedadeId);
+      const semAcesso = exigirPecuariaParaAnimais(c, animais > 0);
       if (semAcesso) return semAcesso;
-      const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
+      const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }, { animais });
       const dados = await operacoes.obterOperacao(cancelada.id, propriedadeId);
       return c.json(apresentarOperacao(c, dados), 201);
     }

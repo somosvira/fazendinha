@@ -26,7 +26,7 @@ export interface PainelGeralDTO {
   ultimosEventos: EventoPainel[];
 }
 
-const ORDEM_TIPO_BAIXA: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "COMPRA_ESTORNADA", "NAO_DETERMINADO"];
+const ORDEM_TIPO_BAIXA: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "NAO_DETERMINADO"];
 const ORDEM_CLASSE_BAIXA: Array<ClasseMotivoBaixa | "SEM_MOTIVO"> = ["DESCARTE_VOLUNTARIO", "DESCARTE_INVOLUNTARIO", "MORTE", "SEM_MOTIVO"];
 
 /** Visão geral do rebanho: contagens + últimos eventos, escopados por sítio quando aplicável. */
@@ -45,9 +45,11 @@ export async function buscarPainelGeral(escopo: number | null, periodoDias = 30)
   // mesmo critério de sítio da lista: ativo pela localização aberta, quem foi baixado pela localização que a baixa fechou
   const animalNoEscopo = whereSituacao({ situacao: "TODOS", propriedadeId: escopo });
   const baixaNoEscopo: Prisma.BaixaAnimalWhereInput = escopo != null ? { localizacaoFechada: { propriedadeId: escopo } } : {};
-  // CADASTRO_INDEVIDO é o "excluir cadastro" (interno), não uma baixa de verdade — não conta
-  // no painel de baixas nem aparece nos últimos eventos, nem quando estornada (K6)
-  const baixaSemCadastroIndevido: Prisma.BaixaAnimalWhereInput = { ...baixaNoEscopo, tipo: { not: "CADASTRO_INDEVIDO" } };
+  // CADASTRO_INDEVIDO ("excluir cadastro", interno) e COMPRA_ESTORNADA (compra desfeita/animal devolvido
+  // ao vendedor, D1) não são saídas produtivas — não entram em baixas30d, baixasPorTipo, baixasPorClasse
+  // nem nos últimos eventos, nem quando estornadas (K6). O animal segue baixado (não conta como ativo:
+  // `ativos` vem da lista, que filtra pela localização aberta); só some dos indicadores de saída.
+  const baixaSemCadastroIndevido: Prisma.BaixaAnimalWhereInput = { ...baixaNoEscopo, tipo: { notIn: ["CADASTRO_INDEVIDO", "COMPRA_ESTORNADA"] } };
   const baixaNoPeriodo: Prisma.BaixaAnimalWhereInput = { estornadaEm: null, data: { gte: cutoff }, ...baixaSemCadastroIndevido };
 
   const categoriasIds = painel.porCategoria.flatMap((c) => c.categoria ? [c.categoria.id] : []);

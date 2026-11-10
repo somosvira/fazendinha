@@ -65,7 +65,7 @@ export function DevolucaoAnimais({ operacao, onFechar, onCriada }: {
   const contas = (config?.contas ?? []).filter((conta) => conta.ativo && (conta.propriedadeId == null || conta.propriedadeId === operacao.propriedadeId));
 
   const situacoes = new Map(itens.map((item) => [item.id, situacaoDoAnimal(item, operacao.id)]));
-  const disponivel = (item: ItemOperacao) => { const s = situacoes.get(item.id); return !s || s.estado === "ATIVO"; };
+  const disponivel = (item: ItemOperacao) => { const s = situacoes.get(item.id); return s?.estado === "ATIVO"; }; // sem situação (perfil sem Pecuária) não é "Ativo"
   const escolhidos = itens.filter((item) => selecionados[item.id] && disponivel(item));
   const totalCentavos = escolhidos.reduce((soma, item) => soma + (paraCentavos(valores[item.id]) ?? 0), 0);
   const descricaoPadrao = `Devolução de ${escolhidos.length || 0} ${escolhidos.length === 1 ? "cabeça" : "cabeças"} da ${codigoOperacao(operacao.numero)}`;
@@ -92,7 +92,10 @@ export function DevolucaoAnimais({ operacao, onFechar, onCriada }: {
   const validar = () => {
     const porAnimal: Record<string, string> = {};
     for (const item of escolhidos) {
-      if (!((paraCentavos(valores[item.id]) ?? 0) > 0)) porAnimal[item.id] = "Informe o valor devolvido, maior que zero.";
+      const devolvido = paraCentavos(valores[item.id]) ?? 0;
+      const pago = paraCentavos(item.valorTotal);
+      if (!(devolvido > 0)) porAnimal[item.id] = "Informe o valor devolvido, maior que zero.";
+      else if (pago !== null && devolvido > pago) porAnimal[item.id] = `O valor devolvido não pode passar do valor pago (${brl(item.valorTotal)})`;
       else if (!(item.centroCustoId || operacao.centroCustoId)) porAnimal[item.id] = "A compra não tem centro de custo para este animal.";
     }
     let geral: string | null = null;

@@ -234,11 +234,15 @@ export const operacaoSchema = z.object({
 });
 
 const UNIDADES_ITEM_ANIMAL = new Set<string>(Object.values(UNIDADE_ITEM_ANIMAL));
+/** Cada animal é um cadastro no Rebanho dentro da transação da operação: o volume tem teto. */
+export const MAX_ANIMAIS_POR_OPERACAO = 200;
 /** Regras de forma dos itens de animal; vínculo com compras e o rebanho são conferidos no serviço. */
 function validarItensAnimais(input: { tipo: string; corrigeOperacaoId?: string; itens: z.infer<typeof itemOperacaoSchema>[] }, ctx: z.RefinementCtx) {
   const deAnimal = input.itens.map((item, indice) => ({ item, indice })).filter(({ item }) => item.animal || item.animalId);
   if (input.tipo === "COMPRA_ANIMAIS" && !deAnimal.length)
     ctx.addIssue({ code: "custom", path: ["itens"], message: "Informe ao menos um animal na compra" });
+  if (deAnimal.length > MAX_ANIMAIS_POR_OPERACAO)
+    ctx.addIssue({ code: "custom", path: ["itens"], message: `Uma operação aceita até ${MAX_ANIMAIS_POR_OPERACAO} animais; divida a compra` });
   if (input.tipo === "DEVOLUCAO" && deAnimal.length && deAnimal.length !== input.itens.length)
     ctx.addIssue({ code: "custom", path: ["itens"], message: "Devolva animais em uma operação própria, sem outros itens" });
   const unidades = new Set<string>();
