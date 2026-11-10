@@ -32,16 +32,12 @@ export function FechamentosNutricao({ loteId }: { loteId?: string }) {
   const status = situacao === "CONFIRMADO" || situacao === "ESTORNADO" ? situacao : "";
   const numeroPagina = Number(params.get("paginaFechamentos") ?? 1);
   const pagina = Number.isInteger(numeroPagina) && numeroPagina >= 1 && numeroPagina <= 100000 ? numeroPagina : 1;
-  // No calendário a consulta é o mês exibido inteiro, não a página da lista.
-  const calendario = visual.modo === "visual";
-  // Sem mês escolhido, o calendário abre no mês do fechamento mais recente.
-  const lista = useConsulta(useCallback(() => calendario
-    ? todosDoMes(loteId || filtroLote || undefined, status || undefined, de ? de.slice(0, 7) : null)
-    : de || ate ? listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined, {de:de||undefined,ate:ate||undefined}) : listarFechamentos(loteId || filtroLote || undefined, pagina, status || undefined),
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  [loteId, filtroLote, pagina, status, de, ate, calendario]));
-  const mesDados = (lista.dados as { mes?: string } | null)?.mes;
-  const mesCalendario = intervaloMesFechamento(mesDados ?? (de || hojeISO()).slice(0, 7));
+  const lote = loteId || filtroLote || undefined;
+  const lista = useConsulta(useCallback(() => de || ate
+    ? listarFechamentos(lote, pagina, status || undefined, { de: de || undefined, ate: ate || undefined })
+    : listarFechamentos(lote, pagina, status || undefined),
+  [lote, pagina, status, de, ate]));
+  const mesCalendario = params.get("mesCalendarioFechamentos") || de.slice(0, 7);
   const lotes = useConsulta(useCallback(() => loteId ? buscarLote(loteId).then(l => [l]) : listarLotes(), [loteId]));
   const edicao = useRascunhoConsulta({lote:filtroLote,status,de,ate},{lote:"",status:"",de:"",ate:""},v=>atualizar({filtroLoteId:v.lote,statusFechamento:v.status,fechamentosDe:v.de,fechamentosAte:v.ate,paginaFechamentos:""}));
   const campos: CampoConsulta[] = [
@@ -49,19 +45,54 @@ export function FechamentosNutricao({ loteId }: { loteId?: string }) {
     {chave:"datas",naBarra:true,ativo:!!de||!!ate,limpar:()=>{edicao.editar("de","");edicao.editar("ate","");},conteudo:<><CampoFiltro rotulo="Data inicial"><DatePicker aria-label="Data inicial do período" value={edicao.rascunho.de} onChange={v=>edicao.editar("de",v)}/></CampoFiltro><CampoFiltro rotulo="Data final"><DatePicker aria-label="Data final do período" value={edicao.rascunho.ate} onChange={v=>edicao.editar("ate",v)}/></CampoFiltro></>},
     {chave:"situacao",ativo:!!status,limpar:()=>edicao.editar("status",""),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Situação do fechamento" value={edicao.rascunho.status} onValueChange={v=>edicao.editar("status",v)}><option value="">Todas as situações</option><option value="CONFIRMADO">Confirmados</option><option value="ESTORNADO">Estornados</option></SelectCampo></CampoFiltro>},
   ];
-  return <Panel className="nutricao-conteudo nutricao-fechamentos">
+  return <>
+  <Panel className="nutricao-conteudo nutricao-fechamentos">
     <BarraConsulta campos={campos} edicaoFiltros={edicao} erroFiltros={edicao.rascunho.de && edicao.rascunho.ate && edicao.rascunho.de>edicao.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null} criterios={[...(de||ate?[{id:"datas",rotulo:`Período: ${de?formatarDataBR(de):"início"} a ${ate?formatarDataBR(ate):"hoje"}`,limpar:()=>atualizar({fechamentosDe:"",fechamentosAte:"",paginaFechamentos:""})}]:[]),...(filtroLote?[{id:"lote",rotulo:`Lote: ${lotes.dados?.find(l=>l.id===filtroLote)?.nome ?? "Selecionado"}`,limpar:()=>atualizar({filtroLoteId:"",paginaFechamentos:""})}]:[]),...(status?[{id:"status",rotulo:status==="CONFIRMADO"?"Confirmados":"Estornados",limpar:()=>atualizar({statusFechamento:"",paginaFechamentos:""})}]:[])]} resumo={<>{loteId && <span><LinkNutricional href={rotaNutricao({aba:"fechamentos",statusFechamento:status || undefined})}>Ver fechamentos de todos os lotes</LinkNutricional></span>}</>}><PeriodoFinanceiroControl allowAll inicio={de} fim={ate} label="Período dos fechamentos" onChange={v=>atualizar({fechamentosDe:v.inicio,fechamentosAte:v.fim,paginaFechamentos:""})}/></BarraConsulta>
-    <div className="consulta-visual-barra"><span>{lista.dados ? `${lista.dados.total} ${lista.dados.total === 1 ? "fechamento" : "fechamentos"}${calendario ? " no mês" : ""}` : ""}</span><AlternarVisualizacaoConsulta rotulo="Visualização dos fechamentos" visual="Calendário" {...visual}/></div>
+    <div className="consulta-visual-barra"><span>{lista.dados ? `${lista.dados.total} ${lista.dados.total === 1 ? "fechamento" : "fechamentos"}` : ""}</span><AlternarVisualizacaoConsulta rotulo="Visualização dos fechamentos" {...visual}/></div>
     <div className="px-5"><EstadoConsulta erro={lista.erro} carregando={lista.carregando} recarregar={lista.carregar} estrutura="lista" label="Carregando fechamentos nutricionais…" /></div>
-    {lista.dados && !lista.carregando && !lista.erro && <>{visual.modo === "visual" ? <CalendarioFechamentos itens={lista.dados.itens} total={lista.dados.total} de={mesCalendario.de} onMes={periodo=>atualizar({fechamentosDe:periodo.de,fechamentosAte:periodo.ate,paginaFechamentos:""})} onAbrir={f=>navegarPara(rotaFechamento(f.id,loteId))}/> : !lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} cartaoComLinks onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
-      { chave: "periodo", titulo: "Período / situação", principal: true, larguraMinima: 210, celula: (f) => <><LinkNutricional href={rotaFechamento(f.id, loteId)}>{periodoFechamento(f)}</LinkNutricional><div className="mt-2"><SituacaoFechamento status={f.status} /></div></> },
+    {lista.dados && !lista.carregando && !lista.erro && <>{!lista.dados.itens.length ? <Empty>Nenhum fechamento encontrado neste contexto.</Empty> : <TabelaFinanceira visualizacao={visual.modo === "visual" ? "cartoes" : "tabela"} compacta filtrosColunas={filtrosDasColunas(campos,edicao)} cartaoComLinks onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))} rotulo="Fechamentos de nutrição" itens={lista.dados.itens} chaveDe={(f) => f.id} colunas={[
+      { chave: "periodo", titulo: "Período / situação", principal: true, larguraMinima: 210, celula: (f) => <div className="nutricao-fechamento-periodo"><LinkNutricional href={rotaFechamento(f.id, loteId)}>{periodoFechamento(f)}</LinkNutricional><SituacaoFechamento status={f.status} /></div> },
       ...(!loteId ? [{ chave: "lote", titulo: "Lote / sítio", larguraMinima: 180, celula: (f: Fechamento) => <><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>{f.lote.nome}</LinkNutricional><p className="nutricao-secundario">{f.propriedade.nome}</p></> }] : []),
       { chave: "dieta", titulo: "Receita", larguraMinima: 200, larguraFlexivel: true, celula: (f) => <>{f.vigencia.dieta.nome}<p className="nutricao-secundario">v{f.vigencia.dieta.versao} · {f.animalDias.toLocaleString("pt-BR")} animal-dias</p></> },
       ...(lista.dados.itens.some((f) => f.verValores) ? [{ chave: "custo", titulo: "Custo conhecido", alinhamento: "direita" as const, celula: (f: Fechamento) => f.verValores ? <>{custoTexto(f.custoConhecido)}{!f.coberturaCustoCompleta && f.custoConhecido != null && <p className="nutricao-secundario">Parcial</p>}</> : "—" }] : []),
     ]} />}
-      {!calendario && <PaginacaoNutricao pagina={pagina} total={lista.dados.total} limite={lista.dados.limite} onPagina={(p) => atualizar({ paginaFechamentos: String(p) })} nome="fechamentos" />}
+      <PaginacaoNutricao pagina={pagina} total={lista.dados.total} limite={lista.dados.limite} onPagina={(p) => atualizar({ paginaFechamentos: String(p) })} nome="fechamentos" />
     </>}
-  </Panel>;
+  </Panel>
+  <ConsultaCalendarioFechamentos
+    lote={lote}
+    loteId={loteId}
+    status={status || undefined}
+    mes={/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(mesCalendario) ? mesCalendario : null}
+    onMes={mes => atualizar({ mesCalendarioFechamentos: mes })}
+  />
+  </>;
+}
+
+function ConsultaCalendarioFechamentos({ lote, loteId, status, mes, onMes }: {
+  lote?: string;
+  loteId?: string;
+  status?: Fechamento["status"];
+  mes: string | null;
+  onMes: (mes: string) => void;
+}) {
+  const consulta = useConsulta(useCallback(() => todosDoMes(lote, status, mes), [lote, status, mes]));
+  const mesVisivel = mes ?? consulta.dados?.mes ?? hojeISO().slice(0, 7);
+
+  return <section className="nutricao-calendario-fechamentos" aria-label="Calendário de fechamentos">
+    <h2 className="h3">Calendário de fechamentos</h2>
+    <EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="lista" label="Carregando calendário de fechamentos…" />
+    {!consulta.erro && (consulta.dados || mes) && (
+      <CalendarioFechamentos
+        itens={consulta.dados?.itens ?? []}
+        total={consulta.dados?.total ?? 0}
+        de={`${mesVisivel}-01`}
+        carregando={consulta.carregando}
+        onMes={periodo => onMes(periodo.de.slice(0, 7))}
+        onAbrir={f => navegarPara(rotaFechamento(f.id, loteId))}
+      />
+    )}
+  </section>;
 }
 
 /** Todos os fechamentos do mês, percorrendo as páginas; sem mês, usa o do fechamento mais recente. */

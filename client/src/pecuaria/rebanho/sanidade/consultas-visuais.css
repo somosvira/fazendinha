@@ -24,3 +24,27 @@
 :root [data-design-operacional] .san-exame-cartao footer { margin-top:12px; padding-top:10px; }
 .san-exame-fatos .consulta-escala { margin-top:0; }
 @media(max-width:600px) { .san-exames-cartoes { padding:12px 0; }.san-exame-cartao .consulta-entidade-identidade { flex-basis:170px; }.san-exame-cartao .consulta-entidade-status { max-width:none; }.san-exame-cartao .consulta-entidade-seta { display:none; } }
+
+.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) {
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-items:start;
+  gap:12px;
+  padding:12px 16px;
+  background:transparent;
+}
+:root [data-design-operacional] .sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-entidade {
+  padding:12px;
+  border-radius:8px;
+}
+.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-entidade-conteudo {
+  margin-top:6px;
+}
+.sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) .consulta-fatos {
+  gap:6px 12px;
+  padding-top:6px;
+}
+@media(max-width:900px) {
+  .sanidade-pagina :is(.san-exames-cartoes,.san-aplicacoes-cartoes,.san-carencias-cartoes) {
+    grid-template-columns:minmax(0,1fr);
+  }
+}

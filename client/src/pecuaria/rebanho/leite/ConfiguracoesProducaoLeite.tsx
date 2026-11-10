@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { Card } from "@/components/ui/card";
 import { CalendarDays, Milk, Plus, Settings2 } from "lucide-react";
@@ -60,7 +61,7 @@ export function ConfiguracoesProducaoLeite({ podeLancar, tituloPagina = false }:
         { chave: "acoes", titulo: "Ação", acoes: true, celula: t => <Button variant="outline" onClick={() => setDetalhe(t)}>Equipamento e tabela</Button> },
       ]} />}
       <CabecalhoTabela titulo="Vigências anteriores" />
-      {!historico.length ? <Empty>Nenhuma configuração anterior.</Empty> : <TabelaFinanceira rotulo="Histórico das configurações" itens={historico} chaveDe={h => h.id ?? h.vigenteDesde} colunas={[
+      {!historico.length ? <Empty>Nenhuma configuração anterior.</Empty> : <ConsultaOperacional rotulo="Histórico das configurações" itens={historico} chaveDe={h => h.id ?? h.vigenteDesde} colunas={[
         { chave: "vigencia", titulo: "Vigência", principal: true, celula: h => formatarDataBR(h.vigenteDesde) },
         { chave: "ordenhas", titulo: "Ordenhas", celula: h => h.ordenhas.map(o => o.nome).join(" · ") },
         { chave: "fonte", titulo: "Fonte", celula: h => h.fonteProducao === "GERAL" ? "Geral" : "Individual" },

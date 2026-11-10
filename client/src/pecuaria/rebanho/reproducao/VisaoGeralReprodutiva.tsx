@@ -1,9 +1,9 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   Button,
   Empty,
   ErrorBox,
-  TabelaFinanceira,
   type ColunaTabela,
 } from "../../../financeiro/financeiro-ui";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
@@ -450,7 +450,7 @@ export function VisaoGeralReprodutiva({
           ) : !etapasHoje || !gruposHoje ? (
             <p role="status">Consultando cuidados de hoje…</p>
           ) : totalHoje ? (
-            <TabelaFinanceira
+            <ConsultaOperacional
               visualizacao="tabela"
               colunas={colunasCuidados}
               itens={linhasHoje}
@@ -497,7 +497,7 @@ export function VisaoGeralReprodutiva({
           ) : !proximosFiltrados ? (
             <p role="status">Consultando próximos cuidados…</p>
           ) : proximosFiltrados.length ? (
-            <TabelaFinanceira
+            <ConsultaOperacional
               visualizacao="tabela"
               colunas={colunasCuidados.filter(
                 (c) => !["atendidos", "pendentes"].includes(c.chave),
@@ -539,7 +539,7 @@ export function VisaoGeralReprodutiva({
               protocolos.
             </p>
           ) : organizados.emAndamento.length ? (
-            <TabelaFinanceira
+            <ConsultaOperacional
               visualizacao="tabela"
               colunas={colunasExecucoes}
               itens={organizados.emAndamento}
@@ -580,7 +580,7 @@ export function VisaoGeralReprodutiva({
                     {alertas.totaisFiltrados.cuidados} cuidados ·{" "}
                     {alertas.totaisFiltrados.animais} animais
                   </p>
-                  <TabelaFinanceira
+                  <ConsultaOperacional
                     visualizacao="tabela"
                     colunas={colunasAlertas}
                     itens={alertas.itens}

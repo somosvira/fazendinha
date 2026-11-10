@@ -1,6 +1,7 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CabecalhoTabela, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite } from "./operacoes-api";
 import { hojeOperacional } from "./modelo";
@@ -20,7 +21,7 @@ export function CustosLeite({ periodo, podeExportar: _podeExportar = false }: { 
   return <section className="leite-consulta-custos"><CabecalhoTabela titulo="Custos da produção" rotuloAjuda="Sobre custos da produção" />
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando custos…</p> : <>
       {oculto ? <p>Sem acesso a valores.</p> : <>
-        <TabelaFinanceira rotulo="Custos registrados por classificação" itens={dados.porClassificacao ?? []} chaveDe={l => l.finalidade} colunas={[
+        <ConsultaOperacional rotulo="Custos registrados por classificação" itens={dados.porClassificacao ?? []} chaveDe={l => l.finalidade} colunas={[
           { chave: "classificacao", titulo: "Classificação", principal: true, celula: l => nomes[l.finalidade] ?? l.finalidade },
           { chave: "valor", titulo: "Custo registrado", alinhamento: "direita", celula: l => dinheiro(l.custos.totalConhecido) },
         ]} />

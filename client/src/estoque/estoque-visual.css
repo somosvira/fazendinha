@@ -34,3 +34,46 @@
  .estoque-visao-visual > .consulta-cartoes { padding: 12px; }
  .produto-cartao-saldo { gap: 12px; }
 }
+
+.estoque-visao-visual > .consulta-cartoes { gap: 12px; padding: 12px; }
+:root [data-design-operacional].estoque-content .produto-cartao { padding: 14px; gap: 8px; }
+.produto-cartao-icone { width: 34px; height: 34px; }
+.produto-cartao header h2 { font-size: 16px; }
+.produto-cartao-saldo > div > strong { font-size: 24px; }
+.produto-cartao-saldo strong small { font-size: 14px; }
+:root [data-design-operacional].estoque-content .produto-validade,
+:root [data-design-operacional].estoque-content .produto-cartao footer { padding-top: 8px; }
+
+.estoque-historico { container-type: inline-size; }
+.estoque-movimentos-cartoes { display: grid; align-items: start; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 12px; }
+.estoque-movimento-cartao {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  opacity: 1;
+}
+.estoque-movimento-cartao > header { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+.estoque-movimento-cartao h3 { font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+.estoque-movimento-cartao header p,
+.estoque-movimento-cartao dt { font-size: 12px; color: var(--muted-foreground); }
+.estoque-movimento-cartao dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: 6px 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.estoque-movimento-cartao dd { font-size: 13px; overflow-wrap: anywhere; }
+.estoque-movimento-abrir { position: absolute; inset: 0; z-index: 1; border-radius: inherit; cursor: pointer; }
+.estoque-movimento-abrir:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+.estoque-movimento-cartao:has(.estoque-movimento-abrir:hover) { border-color: var(--primary); }
+.estoque-movimento-cartao :is(a, button:not(.estoque-movimento-abrir)) { position: relative; z-index: 2; }
+@container (min-width: 760px) {
+  .estoque-movimentos-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

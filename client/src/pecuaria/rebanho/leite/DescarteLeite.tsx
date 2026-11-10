@@ -259,7 +259,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
       )}</DialogContent></Dialog>}
       {lista && (
         <>
-          <ListaConsultaLeite tituloDe={d => interna ? d.destino === "CASA" ? "Casa" : "Funcionários" : d.produtoNome} detalheDe={d => d.data.split("-").reverse().join("/")} layout="linhas" destaque="litros" preferencia={interna ? "retiradasInternasLeiteVisualizacao" : "descartesLeiteVisualizacao"} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite tituloDe={d => interna ? d.destino === "CASA" ? "Casa" : "Funcionários" : d.produtoNome} detalheDe={d => d.data.split("-").reverse().join("/")} layout="grade" destaque="litros" preferencia={interna ? "retiradasInternasLeiteVisualizacao" : "descartesLeiteVisualizacao"} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[
           ...(interna ? [{ chave: "destino", titulo: "Destino", ocultarNoCartao: true, celula: (d: Descarte) => d.destino === "CASA" ? "Casa" : "Funcionários" }, { chave: "responsavel", titulo: "Responsável", celula: (d: Descarte) => d.responsavel ?? "Não informado" }] : []),
             { chave: "data", titulo: "Data", principal: true, celula: d => d.data.split("-").reverse().join("/") },
             { chave: "produto", titulo: "Produto", ocultarNoCartao: true, celula: d => d.produtoNome },

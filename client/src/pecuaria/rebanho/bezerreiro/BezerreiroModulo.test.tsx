@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { AlternadorDoCabecalho, VisualizacaoNoCabecalho } from '@/components/VisualizacaoConsulta';
 import { BezerreiroModulo } from './BezerreiroModulo';
 import { AcompanhamentoBezerreiro } from './AcompanhamentoBezerreiro';
 import { consultarBezerreiro } from './api';
@@ -18,6 +19,35 @@ describe('Bezerreiro: consultas e acessos',()=>{
     expect(screen.getByRole('heading',{name:'Histórico de saídas'})).toBeTruthy();
     expect(screen.queryByRole('button',{name:'Regularizar participação'})).toBeNull();
     expect(vi.mocked(consultarBezerreiro).mock.calls.some(([path,sitio])=>path.includes('historico=true')&&path.includes('coleiraId=coleira-a')&&path.includes('faseVersaoId=fase-v1')&&sitio===1)).toBe(true);
+  });
+  it('alterna o histórico pelo cabeçalho global e preserva os filtros', async () => {
+    const participacao: Participacao = {
+      id: 'participacao', animalId: 'animal', animal: { id: 'animal', brinco: '601', nome: 'Lua' },
+      perfilId: 'perfil', perfil: { id: 'perfil', loteId: 'lote', ativo: true, lote: { id: 'lote', nome: 'Bezerreiro' } },
+      desde: '2026-09-01', ate: '2026-10-20', motivoSaida: 'Desmame', versao: 2, fases: [],
+    };
+    vi.mocked(consultarBezerreiro).mockImplementation(async path =>
+      path === '/configuracoes' ? config : { itens: [participacao], total: 1, pagina: 1, porPagina: 20 },
+    );
+    const chave = 'terrano:consultas:teste-bezerreiro:visualizacao-global';
+    localStorage.setItem(chave, 'visual');
+    try {
+      render(<VisualizacaoNoCabecalho usuarioId="teste-bezerreiro">
+        <header><AlternadorDoCabecalho /></header>
+        <BezerreiroModulo podeLancar={false} />
+      </VisualizacaoNoCabecalho>);
+      const rotulo = 'Histórico de saídas do bezerreiro';
+      expect(await screen.findByRole('list', { name: rotulo })).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Ver histórico · Lua · 601' })).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'Tabela' }));
+      expect(await screen.findByRole('table', { name: rotulo })).toBeTruthy();
+      expect(screen.queryByRole('button', { name: 'Ver histórico · Lua · 601' })).toBeNull();
+      expect(new URLSearchParams(location.search).get('historico')).toBe('true');
+      expect(new URLSearchParams(location.search).get('coleira')).toBe('coleira-a');
+      expect(localStorage.getItem(chave)).toBe('tabela');
+    } finally {
+      localStorage.removeItem(chave);
+    }
   });
   it('mantém falha de consulta distinta de ausência e permite tentar novamente',async()=>{
     let falhar=true;vi.mocked(consultarBezerreiro).mockImplementation(async(path)=>{if(path==='/configuracoes')return config;if(falhar)throw new Error('Conexão indisponível');return {itens:[],total:0,pagina:1};});

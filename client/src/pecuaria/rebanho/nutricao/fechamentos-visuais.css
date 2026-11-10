@@ -2,3 +2,38 @@
 
 .fechamento-comparacao>header{align-items:flex-start}.fechamentos-calendario h2{text-transform:none}.fechamentos-calendario h2::first-letter{text-transform:uppercase}.nutricao-conteudo .fechamentos-faixas button{min-height:24px;height:auto;justify-content:flex-start}.fechamentos-semana{position:relative}.fechamentos-semana::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / 7 - 1px),var(--border) calc(100% / 7 - 1px),var(--border) calc(100% / 7))}.fechamentos-dia-numeros,.fechamentos-faixas{position:relative}.fechamentos-dia-numeros time{border-right:0}
 .fechamento-ingrediente>small[data-divergente] strong{color:var(--campo-atraso,#8d3931)}
+
+.nutricao-calendario-fechamentos { display: grid; min-width: 0; gap: 8px; margin-top: 20px; }
+
+.nutricao-fechamentos { container-type: inline-size; }
+.nutricao-fechamento-periodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+.nutricao-fechamentos .fin-tabela-cartoes .nutricao-fechamento-periodo {
+  justify-content: space-between;
+}
+.nutricao-fechamentos .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+.nutricao-fechamentos .fin-tabela-cartoes > li {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+}
+.nutricao-fechamentos .fin-tabela-cartoes > li > .relative { height: 100%; }
+.nutricao-fechamentos .fin-tabela-cartoes dl {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 104px), 1fr));
+  gap: 8px 12px;
+}
+@container (min-width: 760px) {
+  .nutricao-fechamentos .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

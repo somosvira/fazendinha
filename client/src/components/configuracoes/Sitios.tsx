@@ -94,7 +94,7 @@ export function Sitios() {
             <header><span className="sitio-identidade"><MapPin size={24} aria-hidden="true" /></span><div><h2>{s.nome}</h2><p>{[s.cidade, s.uf].filter(Boolean).join(" — ") || "Localização não informada"}</p></div></header>
             <div className="sitio-situacao"><Pill tone={s.ativo ? "green" : "neutral"}>{s.ativo ? "Ativo" : "Inativo"}</Pill>{s.principal && <Pill tone="blue">Sítio principal</Pill>}</div>
             <footer><Button secondary onClick={() => editar(s)} aria-label={`Editar ${s.nome}`}><Pencil size={15} aria-hidden="true" />Editar sítio</Button><button type="button" onClick={() => alternar(s)} aria-label={`${s.ativo ? "Desativar" : "Reativar"} ${s.nome}`}>{s.ativo ? "Desativar" : "Reativar"}</button></footer>
-          </article>)}</div> : <TabelaFinanceira filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />}
+          </article>)}</div> : <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosDasColunas(campos,edicao)} rotulo="Sítios" itens={paginacao.itens} colunas={colunas(editar, alternar)} chaveDe={(s) => s.id} onAbrir={editar} classeLinha={(s) => !s.ativo ? "opacity-55" : ""} />}
           <PaginacaoLocal controles={paginacao.controles} substantivo="sítios" id="pagina-sitios" />
           {!visiveis.length && <p className="p-5 text-sm text-ink-3">{busca ? "Nenhum sítio corresponde à busca." : "Nenhum sítio cadastrado."}</p>}
         </Panel>}

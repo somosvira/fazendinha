@@ -1,0 +1,77 @@
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--header-h);
+  margin-left: var(--side-w);
+  padding: 10px var(--gutter);
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+.app-header-busca {
+  position: relative;
+  display: flex;
+  flex: 1 1 380px;
+  align-items: center;
+  gap: 8px;
+  max-width: 460px;
+  min-width: 0;
+  min-height: var(--campo-altura);
+  padding-inline: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+.app-header-busca input { width: 100%; min-width: 0; height: 38px; font-size: 14px; outline: none; }
+.app-header-busca svg { flex: none; }
+.app-header-busca:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; }
+.app-header-busca kbd {
+  flex: none;
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+}
+.app-header-animal {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: var(--campo-altura);
+  padding-inline: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.app-header-animal:hover { background: var(--accent); }
+.app-header-visualizacao { margin-inline-start: auto; }
+.app-header-visualizacao:empty { display: none; }
+.app-header-perfil { flex: none; margin-inline-start: auto; }
+.app-header-visualizacao:not(:empty) + .app-header-perfil {
+  margin-inline-start: 0;
+  padding-inline-start: 12px;
+  border-inline-start: 1px solid var(--border);
+}
+@media (max-width: 900px) {
+  .app-header { margin-left: 0; gap: 6px; }
+  .app-header-visualizacao:not(:empty) + .app-header-perfil { padding-inline-start: 6px; }
+  .app-header-busca kbd, .app-header-animal span { display: none; }
+  .app-header-animal { min-width: 44px; }
+  .app-header .consulta-visual-alternador > button { min-width: 40px; padding-inline: 6px; }
+  .app-header .consulta-visual-alternador > button > span:last-child { display: none; }
+  :root .app-header .consulta-visual-alternador { height: 44px; }
+}
+@media (max-width: 520px) {
+  .app-header { flex-wrap: wrap; }
+  .app-header-busca { flex: 1 1 calc(100% - 56px); max-width: none; }
+  .app-header .consulta-visual-alternador > button > span:last-child { display: inline; }
+}
+@media (max-width: 520px) {
+  .app { --header-h: 115px; }
+}

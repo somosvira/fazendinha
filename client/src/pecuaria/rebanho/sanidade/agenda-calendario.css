@@ -13,3 +13,24 @@
 .agenda-marcacao{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;color:var(--primary)}
 .agenda-ajuda{position:relative}.agenda-ajuda [role=tooltip]{position:absolute;z-index:4;right:0;top:44px;width:260px;max-width:70vw;padding:12px;border-radius:6px;background:var(--foreground);color:var(--background);font-size:12px;box-shadow:0 5px 16px #203c3926}
 @media(max-width:900px){.agenda-calendario-layout{grid-template-columns:1fr}.agenda-calendario-meses{grid-template-columns:repeat(6,minmax(0,1fr))}.agenda-calendario-evento{padding:16px}}
+
+.agenda-calendario-layout:not(.agenda-calendario-anual):has(.agenda-calendario-cartoes) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.agenda-calendario-cartoes {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+  padding:12px;
+}
+.agenda-calendario-cartoes .agenda-calendario-evento {
+  min-width:0;
+  padding:12px;
+  gap:8px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  overflow-wrap:anywhere;
+}
+@media(max-width:900px) {
+  .agenda-calendario-cartoes { grid-template-columns:minmax(0,1fr); }
+}

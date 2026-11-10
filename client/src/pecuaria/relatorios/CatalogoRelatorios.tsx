@@ -1,3 +1,4 @@
+import { AlternarVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import {BarraRelatorio,PeriodoRelatorio,AcoesRelatorio} from "./ConsultaRelatorioUI";
 import {DatePicker} from "@/components/DatePicker";
 import {PainelFiltrosRelatorio} from './PainelFiltrosRelatorio';
@@ -12,7 +13,7 @@ import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/compon
 import {Dialog,DialogContent,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {AjudaCampo} from '@/components/Dica';
 import {SelectCampo} from '@/financeiro/SelectCampo';
-import {Columns3,Download,FileText,LayoutGrid,List,Search} from 'lucide-react';
+import {Columns3,Download,FileText,Search} from 'lucide-react';
 import {getHojeISO,formatBRDateISO} from '@/lib/hoje';
 import {dateFromIso} from '@/components/DateRangePicker';
 import {usePeriodoConsulta} from '../rebanho/reproducao/periodo-consulta';
@@ -32,7 +33,7 @@ export function CatalogoRelatorios({propriedadeId,fonte,selecionar,personalizar,
  const def=catalogo[fonte],periodoUrl=usePeriodoConsulta('indicadores');
  const [inicio,setInicio]=useState(periodoUrl.inicio),[fim,setFim]=useState(periodoUrl.fim),[periodo,setPeriodo]=useState({inicio,fim});
  const [contexto,setContexto]=useState(()=>new URLSearchParams(window.location.search).get(def.contexto==='lote'?'loteId':'animalId')??'');
- const [busca,setBusca]=useState(''),[pagina,setPagina]=useState(1),[modo,setModo]=useState<'tabela'|'cartoes'>('tabela'),[selecao,setSelecao]=useState<string[]>([...def.padrao]);
+ const [busca,setBusca]=useState(''),[pagina,setPagina]=useState(1),[modo,setModo]=useState<'tabela'|'visual'>('tabela'),[selecao,setSelecao]=useState<string[]>([...def.padrao]);
  const [camposAbertos,setCamposAbertos]=useState(false),[dados,setDados]=useState<(ResultadoBuilder&{chave:string})|null>(null),[erro,setErro]=useState(''),[ocupado,setOcupado]=useState(true),[revisao,setRevisao]=useState(0);
  const contextoPendente=!!def.contexto&&!contexto;
  const contextoOpcoes=def.contexto==='animal'?{animalId:contexto||undefined}:def.contexto==='lote'?{loteId:contexto||undefined}:{};
@@ -58,7 +59,7 @@ export function CatalogoRelatorios({propriedadeId,fonte,selecionar,personalizar,
  {def.contexto&&<ContextoRelatorio key={`${fonte}:${propriedadeId}`} tipo={def.contexto} historico={fonte==='custos'} propriedadeId={propriedadeId} valor={contexto} onChange={aplicarContexto}/>}
  {contextoPendente?<div className="rel-complementar-estado"><h3>Selecione {def.contexto==='animal'?'um animal':'um lote'} para consultar</h3></div>:carregando?<EsqueletoTabela label="Carregando relatório" className="rel-complementar-estado"/>:erro?<div className="rel-complementar-estado" role="alert"><p>{erro}</p><Button variant="outline" onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button></div>:<>
 
- <div className="rel-leitura"><label className="rel-complementar-busca"><Search size={16}/><Input aria-label={paginado?'Buscar nesta página':'Buscar registro'} placeholder={paginado?'Buscar nesta página':'Buscar registro'} value={busca} onChange={e=>setBusca(e.target.value)}/></label><div className="rel-modo"><Button size="sm" variant={modo==='cartoes'?'default':'ghost'} aria-pressed={modo==='cartoes'} onClick={()=>setModo('cartoes')}><LayoutGrid size={15}/>Cartões</Button><Button size="sm" variant={modo==='tabela'?'default':'ghost'} aria-pressed={modo==='tabela'} onClick={()=>setModo('tabela')}><List size={15}/>Tabela</Button></div></div>
+ <div className="rel-leitura"><label className="rel-complementar-busca"><Search size={16}/><Input aria-label={paginado?'Buscar nesta página':'Buscar registro'} placeholder={paginado?'Buscar nesta página':'Buscar registro'} value={busca} onChange={e=>setBusca(e.target.value)}/></label><div className="rel-modo"><AlternarVisualizacaoConsulta modo={modo} mudar={setModo} rotulo="Visualização do relatório"/></div></div>
  {!selecionados.length?<div className="rel-complementar-estado">Selecione ao menos uma variável.</div>:!linhas.length?<div className="rel-complementar-estado"><h3>Nenhum registro neste recorte</h3>{busca&&<Button size="sm" variant="outline" onClick={()=>setBusca('')}>Limpar busca</Button>}</div>:modo==='tabela'?<Table containerLabel={def.nome}><TableHeader><TableRow>{selecionados.map(c=><TableHead key={c.id}>{c.nome}{c.unidade&&` (${c.unidade})`}<AjudaCampo rotulo={`Sobre ${c.nome}`} texto={c.ajuda}/></TableHead>)}</TableRow></TableHeader><TableBody>{exibidas.map((l,i)=><TableRow key={`${l.id??'registro'}:${l.campo??''}:${i}`}>{selecionados.map(c=><TableCell key={c.id}>{formatarCelula(l[c.id],c.unidade)}</TableCell>)}</TableRow>)}</TableBody></Table>:<div className="rel-complementar-cartoes">{exibidas.map((l,i)=><article key={`${l.id??'registro'}:${l.campo??''}:${i}`}><dl>{selecionados.map(c=><div key={c.id}><dt>{c.nome}</dt><dd>{formatarCelula(l[c.id],c.unidade)}</dd></div>)}</dl></article>)}</div>}
  <footer className="rel-rodape"><span>{exibidas.length} registros exibidos{paginado?' nesta página':''}<AjudaCampo rotulo="Sobre a página e a exportação" texto={paginado?'A busca e o CSV usam somente a página carregada. Navegue para consultar as demais páginas.':'A busca filtra esta consulta; o CSV inclui as linhas correspondentes, sem recalcular indicadores.'}/></span>{totalPaginas>1&&<div><Button size="sm" variant="outline" disabled={paginaAtual<=1} onClick={()=>{setPagina(paginaAtual-1);setBusca('')}}>Anterior</Button><span>Página {paginaAtual} de {totalPaginas}</span><Button size="sm" variant="outline" disabled={paginaAtual>=totalPaginas} onClick={()=>{setPagina(paginaAtual+1);setBusca('')}}>Próxima</Button></div>}</footer></>}
  </section><Dialog open={camposAbertos} onOpenChange={setCamposAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Variáveis de {def.nome}</DialogTitle></DialogHeader><div className="rel-complementar-campos">{def.campos.map(c=><label key={c.id}><Checkbox checked={selecao.includes(c.id)} onCheckedChange={v=>setSelecao(ids=>v?[...ids,c.id]:ids.filter(id=>id!==c.id))}/><span>{c.nome}{c.unidade&&` (${c.unidade})`}</span><AjudaCampo rotulo={`Ajuda de ${c.nome}`} texto={c.ajuda}/></label>)}</div><Button onClick={()=>setCamposAbertos(false)}>Concluir seleção</Button></DialogContent></Dialog></div>;

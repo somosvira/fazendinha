@@ -207,7 +207,7 @@
 .nutricao-dietas-panorama .nutricao-dietas-distribuicao { flex: 1 1 260px; }
 .nutricao-dietas-panorama .nutricao-dietas-efetivo { flex: 0 1 220px; font-size: 14px; }
 
-@media(min-width:1100px){.nutricao-lote-visual{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start}.nutricao-lote-visual > :nth-child(n+3){grid-column:1 / -1}}
+@media(min-width:1100px){.nutricao-lote-visual{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start}.nutricao-lote-visual > :not(.nutricao-dieta-vigente,.nutricao-consumo-resumo,.nutricao-estoque-dieta,.nutricao-lote-historico){grid-column:1 / -1}.nutricao-lote-visual > .nutricao-lote-historico{grid-column:2}}
 .nutricao-lote-visual .nutricao-dieta-vigente .nutricao-card-corpo{padding-top:12px}.nutricao-lote-visual .nutricao-dieta-vigente .font-serif{font-family:inherit;font-weight:600}
 
 .dietas-linha-tempo{padding:20px}.dietas-linha-eixo{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--muted-foreground);padding-bottom:12px;border-bottom:1px solid var(--border)}.dietas-linha-registro{padding:16px 0;border-bottom:1px solid var(--border)}.dietas-linha-registro:last-child{border:0}.dietas-linha-registro>header{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.dietas-linha-registro h3{font-size:15px;font-weight:600;flex:1}.dietas-linha-registro h3 span{font-weight:400;color:var(--muted-foreground)}.dietas-linha-trilho{height:12px;background:var(--accent);border-radius:6px;margin:18px 0;overflow:hidden}.dietas-linha-trilho>span{display:block;height:100%;background:var(--primary);border-radius:6px;min-width:3px}.dietas-linha-trilho>span[data-futura=true]{background:var(--muted-foreground)}.dietas-linha-registro footer{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px}
@@ -383,7 +383,7 @@
 .nutricao-receita-card .receita-acoes-novas { display: flex; justify-content: flex-end; gap: 8px; }
 .receita-compacta li small { text-align: right; color: var(--muted-foreground); font-size: 13px; font-variant-numeric: tabular-nums; }
 .receita-uso-compacto { margin: 12px 0 16px; }
-.nutricao-estoque-dieta td a.text-primary,.nutricao-alerta-secao td a.text-primary{color:var(--campo-pasto,#006f68)}
+.nutricao-estoque-ingredientes a.text-primary,.nutricao-alerta-secao td a.text-primary{color:var(--campo-pasto,#006f68)}
 
 /* No formulário, a linha de contexto do topo não é um cabeçalho de cartão: sem divisória nem respiro extra. */
 .nutricao-formulario > .nutricao-card-cabecalho { border-bottom: 0; padding: 0 0 4px; }
@@ -431,3 +431,90 @@
 .conferencia-parte-rodape { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; padding: 10px 14px; background: var(--campo-papel, #f7f8fa); border-top: 1px solid var(--border); font-size: 13px; color: var(--muted-foreground); }
 .conferencia-parte-rodape strong { color: var(--foreground); font-weight: 650; }
 @media (max-width: 640px) { .conferencia-faixa { grid-template-columns: repeat(2, minmax(0, 1fr)); } .conferencia-diferenca { text-align: left; } }
+
+
+.nutricao-lote-historico { min-width: 0; }
+.nutricao-lote-historico .nutricao-card-cabecalho { flex-wrap: wrap; }
+.nutricao-estoque-ingredientes {
+  display: grid;
+  gap: 8px;
+  padding: 0 18px 16px;
+}
+.nutricao-estoque-ingredientes > li {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.nutricao-estoque-ingredientes header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: 13px;
+}
+.nutricao-estoque-ingredientes h3 { font-weight: 650; overflow-wrap: anywhere; }
+.nutricao-estoque-ingredientes dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(110px, 100%), 1fr));
+  gap: 6px 12px;
+  margin-block: 8px;
+}
+.nutricao-estoque-ingredientes dt { color: var(--muted-foreground); font-size: 12px; }
+.nutricao-estoque-ingredientes dd { font-size: 13px; font-weight: 600; }
+
+.nutricao-estoque-dieta .nutricao-card-cabecalho { flex-wrap: wrap; }
+.nutricao-estoque-ingredientes { padding-top: 12px; }
+.nutricao-alertas { gap: 16px; align-items: start; }
+.nutricao-alertas-controles { display: flex; justify-content: flex-end; grid-column: 1 / -1; }
+.nutricao-alertas-estado { grid-column: 1 / -1; }
+.nutricao-alerta-secao { min-width: 0; gap: 0; container-type: inline-size; }
+.nutricao-alerta-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+.nutricao-alerta-cabecalho h2 { font-size: 16px; }
+.nutricao-alerta-total {
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 650;
+}
+.nutricao-alerta-secao .fin-tabela-cartoes > li a.text-primary { color: var(--campo-pasto,#006f68); }
+.nutricao-alerta-secao .fin-tabela-cartoes > li {
+  display: grid;
+  gap: 8px 12px;
+  padding: 10px 14px;
+}
+.nutricao-alerta-secao .fin-tabela-cartoes > li > :first-child {
+  min-width: 0;
+  padding: 0;
+}
+.nutricao-alerta-secao .fin-tabela-cartoes dl {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 110px), 1fr));
+  gap: 4px 12px;
+  margin-top: 4px;
+}
+.nutricao-alerta-secao .fin-tabela-cartoes dd { margin-top: 1px; }
+.nutricao-alerta-secao .fin-cartao-acoes { padding: 0; }
+@container (min-width: 420px) {
+  .nutricao-alerta-secao .fin-tabela-cartoes > li:has(> .fin-cartao-acoes) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  .nutricao-alerta-secao .fin-tabela-cartoes > li > div:has(> dl > div:only-child) {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    align-items: center;
+    gap: 12px;
+  }
+  .nutricao-alerta-secao .fin-tabela-cartoes dl:has(> div:only-child) { margin-top: 0; }
+}
+@media (min-width: 1100px) {
+  .nutricao-alertas[data-modo="visual"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

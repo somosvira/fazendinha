@@ -61,7 +61,13 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
  // Ponto único das variações de configuração da nutrição, aberto pelo botão Configurações da própria Nutrição.
  if (path === "/configuracoes/pecuaria/nutricao") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Configurações da Nutrição</h1><section className="pec-config-grupo pec-config-nutricao">{CONFIG_NUTRICAO.map(c => <LinkCadastro key={c.href} href={c.href}><span><strong>{c.nome}</strong><small>{c.descricao}</small></span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section></>;
  if (path === "/configuracoes/pecuaria/nutricao/fechamento") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><LinkCadastro href="/configuracoes/pecuaria/nutricao">Nutrição</LinkCadastro><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Modelo e prazo de fechamento</h1><GestaoMensal podeLancar={podeLancar} vista="configuracao" /></>;
- if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <ConfiguracoesBezerreiro podeLancar={podeLancar} />;
+ if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <>
+   <nav className="pec-config-caminho" aria-label="Configurações da produção">
+     <LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro>
+     <ChevronRight size={14} aria-hidden /><span>Produção de leite</span>
+   </nav>
+   <ConfiguracoesBezerreiro podeLancar={podeLancar} />
+ </>;
  if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo pec-config-producao"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada tituloPagina podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite tituloPagina podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);
@@ -75,10 +81,10 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
  const termo = busca.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
  const corresponde = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(termo);
  const grupos = GRUPOS.map(g => ({ ...g, itens: g.itens.filter(i => corresponde(`${g.nome} ${i.nome}`)) })).filter(g => g.itens.length);
- const mostrarNutricao = corresponde(`Nutrição ${CONFIG_NUTRICAO.map(c => c.nome).join(" ")}`);
+ const nutricao = CONFIG_NUTRICAO.filter(c => corresponde(`Nutrição ${c.nome} ${c.descricao}`));
  return <><div className="pec-config-busca"><BuscaLista rotulo="Buscar configuração" placeholder="Buscar categoria, raça, protocolo…" valor={busca} onChange={setBusca} /></div><div className="pec-config-grid">
   {grupos.map(({ icon: Icon, ...g }) => <section key={g.id} className="pec-config-grupo"><h2><span className="fin-section-icon"><Icon size={20} aria-hidden /></span>{g.nome}</h2>{g.itens.map(i => <LinkCadastro key={i.id} href={"href" in i && i.href ? i.href : "/configuracoes/pecuaria/"+g.id+"/"+i.id}><span>{i.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>)}
-  {mostrarNutricao && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2>{CONFIG_NUTRICAO.map(c => <LinkCadastro key={c.href} href={c.href}><span>{c.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>}
-  {!grupos.length && !mostrarNutricao && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
+  {nutricao.length > 0 && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2>{nutricao.map(c => <LinkCadastro key={c.href} href={c.href}><span>{c.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>}
+  {!grupos.length && !nutricao.length && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
  </div></>;
 }

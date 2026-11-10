@@ -173,7 +173,7 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="linhas" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="grade" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
             { chave: "natureza", titulo: "Natureza", ocultarNoCartao: true, celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },

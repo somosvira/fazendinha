@@ -1,3 +1,4 @@
+import { AlternarVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import{useState}from'react';
 import{Button}from'@/components/ui/button';
 import{Badge}from'@/components/ui/badge';
@@ -5,19 +6,19 @@ import{Input}from'@/components/ui/input';
 import{Dialog,DialogContent,DialogHeader,DialogTitle}from'@/components/ui/dialog';
 import{Tabs,TabsList,TabsTrigger,TabsContent}from'@/components/ui/tabs';
 import{Table,TableHeader,TableHead,TableBody,TableRow,TableCell}from'@/components/ui/table';
-import{LayoutGrid,List,ChevronRight,HeartPulse}from'lucide-react';
+import{ChevronRight,HeartPulse}from'lucide-react';
 import type{PartoRelatorio,SnapshotRelatorioPartos}from'../rebanho/reproducao/RelatorioPartos';
 import{formatarCelula}from'./catalogo';
 import{rotuloRelatorio}from'./fontes';
 import{formatBRDateISO}from'@/lib/hoje';
 import{textoPreservado,registro}from'../rebanho/reproducao/folha-regras';
 export function PartosVisual({snapshot:s}:{snapshot:SnapshotRelatorioPartos}){
- const[modo,setModo]=useState('tabela'),[busca,setBusca]=useState(''),[selecionado,setSelecionado]=useState<PartoRelatorio|null>(null),[pagina,setPagina]=useState(1);
+ const[modo,setModo]=useState<'tabela'|'visual'>('tabela'),[busca,setBusca]=useState(''),[selecionado,setSelecionado]=useState<PartoRelatorio|null>(null),[pagina,setPagina]=useState(1);
  const filtrados=[...s.partos].reverse().filter(p=>`${p.matriz.brinco} ${p.matriz.nome??''}`.toLowerCase().includes(busca.toLowerCase()));
  const atual=Math.min(pagina,Math.max(1,Math.ceil(filtrados.length/8))),itens=filtrados.slice((atual-1)*8,atual*8);
  const vivas=s.partos.reduce((n,p)=>n+p.crias.filter(c=>c.viva).length,0),semVida=s.partos.reduce((n,p)=>n+p.crias.filter(c=>!c.viva).length,0);
  const animal=(p:PartoRelatorio)=>`${p.matriz.brinco}${p.matriz.nome?` · ${p.matriz.nome}`:''}`;
- return <><div className="rel-resumo"><div><span>Partos no período</span><strong>{s.totalPartos}</strong></div><div><span>Crias vivas</span><strong>{vivas}</strong></div><div><span>Crias sem vida</span><strong>{semVida}</strong></div><div><span>Abortos</span><strong>{s.partos.filter(p=>p.desfecho==='ABORTO').length}</strong></div></div><div className="rel-leitura"><Input aria-label="Buscar matriz" placeholder="Buscar matriz ou brinco" value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}}/><div className="rel-modo"><Button size="sm" variant={modo==='visual'?'default':'ghost'} onClick={()=>setModo('visual')}><LayoutGrid size={15}/>Cartões</Button><Button size="sm" variant={modo==='tabela'?'default':'ghost'} onClick={()=>setModo('tabela')}><List size={15}/>Tabela</Button></div></div>
+ return <><div className="rel-resumo"><div><span>Partos no período</span><strong>{s.totalPartos}</strong></div><div><span>Crias vivas</span><strong>{vivas}</strong></div><div><span>Crias sem vida</span><strong>{semVida}</strong></div><div><span>Abortos</span><strong>{s.partos.filter(p=>p.desfecho==='ABORTO').length}</strong></div></div><div className="rel-leitura"><Input aria-label="Buscar matriz" placeholder="Buscar matriz ou brinco" value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}}/><AlternarVisualizacaoConsulta modo={modo} mudar={setModo} rotulo="Visualização dos partos do relatório"/></div>
  {!filtrados.length?<p className="p-5">{s.partos.length?'Nenhuma matriz corresponde à busca.':'Nenhum parto válido neste período.'}</p>:modo==='visual'?<div className="rel-partos-grade">{itens.map(p=><Button variant="outline" key={p.id} aria-label={`Abrir parto de ${animal(p)}`} className="rel-parto-card" onClick={()=>setSelecionado(p)}><header><HeartPulse size={21}/><div><h3>{animal(p)}</h3><span>{formatBRDateISO(p.data)}</span></div><ChevronRight size={16}/></header><div className="rel-parto-desfecho"><Badge variant="outline">{rotuloRelatorio(p.desfecho)??'Não informado'}</Badge><strong>{p.crias.length} {p.crias.length===1?'cria':'crias'}</strong></div><dl><div><dt>Retenção de placenta</dt><dd>{formatarCelula(p.retencaoPlacenta)}</dd></div><div><dt>Colostro</dt><dd>{p.crias.some(c=>c.colostro.length)?'Há eventos registrados':'Não informado'}</dd></div></dl></Button>)}</div>:<Table containerLabel="Partos do período"><TableHeader><TableRow>{['Matriz','Data do parto','Desfecho','Crias','Consulta'].map(n=><TableHead key={n}>{n}</TableHead>)}</TableRow></TableHeader><TableBody>{itens.map(p=><TableRow key={p.id}><TableCell>{animal(p)}</TableCell><TableCell>{formatBRDateISO(p.data)}</TableCell><TableCell>{rotuloRelatorio(p.desfecho)??'Não informado'}</TableCell><TableCell>{p.crias.length}</TableCell><TableCell><Button size="sm" variant="outline" onClick={()=>setSelecionado(p)}>Ver detalhes</Button></TableCell></TableRow>)}</TableBody></Table>}
  <footer className="rel-rodape"><span>{filtrados.length} partos encontrados</span>{filtrados.length>8&&<div><Button size="sm" variant="outline" disabled={atual===1} onClick={()=>setPagina(atual-1)}>Anterior</Button><span>Página {atual} de {Math.ceil(filtrados.length/8)}</span><Button size="sm" variant="outline" disabled={atual*8>=filtrados.length} onClick={()=>setPagina(atual+1)}>Próxima</Button></div>}</footer>
  <Dialog open={!!selecionado} onOpenChange={v=>{if(!v)setSelecionado(null)}}><DialogContent className="rel-detalhe-dialog rel-parto-detalhe" aria-describedby={undefined}><DialogHeader><DialogTitle>{selecionado&&animal(selecionado)}</DialogTitle></DialogHeader><div className="rel-detalhe-corpo">{selecionado&&<DetalheParto p={selecionado}/>}</div></DialogContent></Dialog></>;

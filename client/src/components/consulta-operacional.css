@@ -1,0 +1,97 @@
+.consulta-operacional { min-width: 0; }
+.consulta-operacional > .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border: 0;
+}
+.consulta-operacional .fin-tabela-cartoes > li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+.consulta-operacional .fin-tabela-cartoes > li > :is(div.p-4, div.relative > div) { padding: 12px; }
+.consulta-operacional .fin-tabela-cartoes dl { gap: 6px 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.consulta-operacional .fin-tabela-cartoes .fin-cartao-acoes { margin-top: auto; padding: 0 12px 10px; }
+@media (max-width: 900px) {
+  .consulta-operacional > .fin-consulta-responsiva[data-fin-visualizacao="cartoes"] > .fin-tabela-cartoes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Consultas com cartões próprios mantêm a composição de cada registro. */
+.app-main :is(.leite-lista-consulta[data-layout] > .leite-cartoes-consulta,
+  .pecuaria-content .reproducao-manejo-cartoes, .pecuaria-content .reproducao-cartoes,
+  .sitios-cartoes, .consulta-visitas-grade, .cuidados-alertas-cartoes) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.app-main :is(.leite-lista-consulta .leite-card-visual, .leite-cartoes-consulta .consulta-entidade,
+  .pecuaria-content .reproducao-cartoes .reproducao-cartao, .sitio-cartao, .consulta-visita) {
+  padding: 12px;
+  border-radius: 8px;
+  gap: 8px;
+}
+.app-main :is(.consulta-visita-conteudo, .consulta-visita-fatos) { gap: 6px; }
+.app-main .consulta-visita-data { padding: 6px; min-width: 60px; }
+.app-main .consulta-visita-data strong { font-size: 24px; }
+.app-main .consulta-visita-abrir { padding-top: 6px; }
+@media (max-width: 900px) {
+  .app-main :is(.leite-lista-consulta[data-layout] > .leite-cartoes-consulta,
+    .pecuaria-content .reproducao-manejo-cartoes, .pecuaria-content .reproducao-cartoes,
+    .sitios-cartoes, .consulta-visitas-grade, .cuidados-alertas-cartoes) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.app-main .repro-agenda-grade:has(.repro-agenda-lista-cartoes) { grid-template-columns: minmax(0, 1fr); }
+.app-main .repro-agenda-lista-cartoes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 12px;
+}
+.app-main .repro-agenda-lista-cartoes > li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+.app-main .repro-agenda-lista-cartoes > li > time { grid-column: 1 / -1; }
+.app-main .repro-agenda-grade:has(.repro-agenda-lista-cartoes) .repro-agenda-calendario {
+  max-width: 460px;
+  border-left: 0;
+  padding-left: 0;
+}
+@media (max-width: 900px) {
+  .app-main .repro-agenda-lista-cartoes { grid-template-columns: minmax(0, 1fr); }
+}
+
+.app-main .leite-cartoes-consulta :is(.leite-produto-visual,.leite-coleta-visual) { flex-wrap: wrap; gap: 8px; }
+.app-main .leite-cartoes-consulta .consulta-entidade > header { margin-bottom: 6px; }
+.app-main .leite-cartoes-consulta .consulta-fato { padding-block: 3px; }
+.app-main .lotes-cartoes.consulta-cartoes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 900px) {
+  .app-main .lotes-cartoes.consulta-cartoes { grid-template-columns: minmax(0, 1fr); }
+}
+
+.app-main :is(.repro-periodos-visuais, .rel-partos-grade, .rel-complementar-cartoes, .catalogo-modelos-cartoes) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.app-main :is(.repro-periodo-visual, .rel-parto-card, .rel-complementar-cartoes article) {
+  padding: 12px;
+  border-radius: 8px;
+}
+@media (max-width: 900px) {
+  .app-main :is(.repro-periodos-visuais, .rel-partos-grade, .rel-complementar-cartoes, .catalogo-modelos-cartoes) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
