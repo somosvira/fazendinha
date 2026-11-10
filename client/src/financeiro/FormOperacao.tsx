@@ -2,6 +2,9 @@ import { AjudaCampo } from "@/components/Dica";
 import { useDescarteTrabalhoAtivo } from "./descarteTrabalhoAtivo";
 import { previaDesconto } from "./lib/composicaoCompra";
 import { PageHeader, Empty } from "./financeiro-ui";
+import { CAMPO, CampoErro, SELECT } from "./CamposOperacao";
+import { SecaoAnimais, pendenciaPrecoAnimal, type AnimalCompraForm, type ErroAnimalApi } from "./AnimaisCompra";
+import { UNIDADE_ITEM_ANIMAL, valoresDosAnimais, type UnidadePrecoAnimal } from "./lib/compra-animais";
 import { podeVerValoresFinanceiros } from "./permissoes";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -40,7 +43,11 @@ type EstadoFormulario = {
   referenciaValor?: string; evidenciaValor?: string; centroCustoPorItem?: boolean; descontoComercial?: string; logisticaValor?: string; logisticaCategoriaId?: string; logisticaCentroId?: string;
   formaPagamento: string; data: string; valorAgora: string; parcelas: ParcelaForm[];
   geradorParcelas?: { quantidade: string; frequencia: FrequenciaParcelas; primeiroVencimento: string };
+  /** Compra de animais: animais já confirmados no modal, unidade de preço e valor do lote. */
+  animais?: AnimalCompraForm[]; unidadePrecoAnimal?: UnidadePrecoAnimal; valorLote?: string;
 };
+/** Linha que entra no cálculo de desconto, categorias e centros: um animal ou um item da lista. */
+type LinhaCompra = { chave: string; rotulo: string; total: number; elegivelDesconto?: boolean; categoriaId: string; centroCustoId: string; animalId?: number; itemId?: number };
 
 // AJUSTE_ESTOQUE fica de fora dos dois conjuntos de propósito: ele não tem itens
 // livres — é uma contagem de UM produto (saldo lido × quantidade contada) e vai
@@ -48,13 +55,11 @@ type EstadoFormulario = {
 const TIPO_AJUSTE = "AJUSTE_ESTOQUE";
 const MSG_CONFLITO_SALDO = "O estoque mudou desde que você abriu esta tela. Atualize o saldo e confira a diferença.";
 const MAX_QTD_AJUSTE = 999999999.999; // mesmo limite do servidor (ajusteContagemSchema)
-const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
+const TIPOS_COM_ITENS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
 const TIPOS_COM_ESTOQUE = new Set(["COMPRA_ESTOQUE", "VENDA", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO"]);
-const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
-const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "DEVOLUCAO"]);
+const TIPOS_FINANCEIROS = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "DEVOLUCAO"]);
+const TIPOS_COM_PARCEIRO = new Set(["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "DEVOLUCAO"]);
 const TIPOS_DOCUMENTO = { NOTA_FISCAL: "Nota fiscal", BOLETO: "Boleto", CONTRATO: "Contrato", RECIBO: "Recibo", COMPROVANTE: "Comprovante", JUSTIFICATIVA: "Justificativa", OUTRO: "Outro" };
-const CAMPO = "mt-1.5 w-full rounded-lg border border-input bg-card px-3 py-2.5 font-normal text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
-const SELECT = `${CAMPO} cursor-pointer`;
 const normalizarMoeda = (valor: string) => valor === "" ? "" : Number(valor).toFixed(2);
 // valorUnitario do item é Decimal(14,4) no server — normalizarMoeda (2 casas)
 // truncaria insumos fracionários (ex.: R$ 0,1234/un ou R$ 0,00045/g) para
@@ -94,11 +99,6 @@ const novaParcela = (indice = 0): ParcelaForm => ({ id: proximoId++, valor: "", 
 const totalItem = (item: ItemForm) => item.modoValor === "TOTAL" ? Number(item.valorTotal || 0) : Number(item.quantidade || 0) * Number(item.valorUnitario || 0);
 const parceiroLabel = (tipo: string) => tipo === "VENDA" ? "Cliente" : tipo === "SERVICO" ? "Prestador de serviço" : tipo === "DEVOLUCAO" ? "Fornecedor da devolução" : "Fornecedor ou parceiro";
 
-/** Mensagem de erro de campo, sempre com o mesmo destaque: ícone + texto em vermelho. */
-function CampoErro({ id, className = "mt-1.5", children }: { id?: string; className?: string; children: React.ReactNode }) {
-  return <span id={id} role="alert" className={`flex items-start gap-1.5 text-xs font-semibold text-destructive ${className}`}><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{children}</span></span>;
-}
-
 export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoInicial, produtoInicial, operacaoBase = null, onSalvo }: { config: ConfiguracoesFinanceiras; rascunho?: RascunhoOperacao | null; condicaoInicial?: Condicao; tipoInicial?: string; /** Produto pré-selecionado no tipo Ajuste de estoque (atalho da tela de Estoque). */ produtoInicial?: string; operacaoBase?: Operacao | null; onSalvo: (operacao: Pick<Operacao, "id">, aviso?: string) => void }) {
   // Aberto pelo atalho do Estoque (tipoInicial = ajuste): ignora o conteúdo do
   // rascunho — o ajuste não usa rascunho e não deve herdar/atropelar o dele.
@@ -121,7 +121,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // estocável sem centro efetivo" consistente com o fluxo de edição manual.
   const [itens, setItens] = useState<ItemForm[]>(() => inicial?.itens
     ? inicial.itens.map((item) => ({ ...item, centroCustoId: item.centroCustoId ?? "" }))
-    : (operacaoBase?.itens.length ? operacaoBase.itens.filter(item => !operacaoBase.composicaoComercial?.logistica || item.ordem <= operacaoBase.composicaoComercial.itens.length).map((item) => ({ elegivelDesconto: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.elegivel, id: proximoId++, categoriaId: String(item.categoriaId ?? ""), centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: operacaoBase.composicaoComercial ? "TOTAL" : "UNITARIO", valorUnitario: item.valorUnitario ?? "", valorTotal: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.bruto ?? item.valorTotal ?? "" })) : [novoItem()]));
+    : (operacaoBase?.itens.length ? operacaoBase.itens.filter(item => !operacaoBase.composicaoComercial?.logistica || item.ordem <= operacaoBase.composicaoComercial.itens.length).map((item) => ({ elegivelDesconto: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.elegivel, id: proximoId++, categoriaId: String(item.categoriaId ?? ""), centroCustoId: String(item.centroCustoId ?? ""), produtoId: item.produtoId ? String(item.produtoId) : "", descricao: item.descricao, quantidade: item.quantidade, unidade: item.unidade, modoValor: operacaoBase.composicaoComercial ? "TOTAL" : "UNITARIO", valorUnitario: item.valorUnitario ?? "", valorTotal: operacaoBase.composicaoComercial?.itens.find(p => p.ordem === item.ordem)?.bruto ?? item.valorTotal ?? "" })) : (inicial?.tipo ?? tipoInicial) === "COMPRA_ANIMAIS" ? [] : [novoItem()]));
+  const [animais, setAnimais] = useState<AnimalCompraForm[]>(() => inicial?.animais ?? []);
+  const [unidadePrecoAnimal, setUnidadePrecoAnimal] = useState<UnidadePrecoAnimal>(inicial?.unidadePrecoAnimal ?? "CABECA");
+  const [valorLote, setValorLote] = useState(inicial?.valorLote ?? "");
+  // Recusas da API por animal, pelo índice do animal na lista (que é o índice do item no envio).
+  const [errosAnimais, setErrosAnimais] = useState<Record<number, ErroAnimalApi>>({});
   const [referenciaValor, setReferenciaValor] = useState(inicial?.referenciaValor ?? "");
   const [evidenciaValor, setEvidenciaValor] = useState(inicial?.evidenciaValor ?? "");
   const [descontoComercial, setDescontoComercial] = useState(inicial?.descontoComercial ?? operacaoBase?.composicaoComercial?.descontoComercial ?? "");
@@ -142,7 +147,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [centroEscolhidoManualmente, setCentroEscolhidoManualmente] = useState(inicial?.centroEscolhidoManualmente ?? (!!inicial?.centroCustoId || !!operacaoBase?.centroCustoId));
   const [categoriaId, setCategoriaId] = useState(inicial?.categoriaId ?? (operacaoBase?.categoriaId ? String(operacaoBase.categoriaId) : ""));
   const [centroCustoId, setCentroCustoId] = useState(inicial?.centroCustoId ?? (operacaoBase?.centroCustoId ? String(operacaoBase.centroCustoId) : ""));
-  const [porItem, setPorItem] = useState(inicial?.centroCustoPorItem ?? itens.some((item) => item.centroCustoId));
+  const [porItem, setPorItem] = useState(inicial?.centroCustoPorItem ?? (itens.some((item) => item.centroCustoId) || (inicial?.animais ?? []).some((animal) => animal.centroCustoId)));
   const [contaId, setContaId] = useState(inicial?.contaId ?? (transacaoBase?.movimentos?.[0]?.contaId ? String(transacaoBase.movimentos[0].contaId) : ""));
   const [formaPagamento, setFormaPagamento] = useState(inicial?.formaPagamento ?? transacaoBase?.formaPagamento ?? "PIX");
   const [data, setData] = useState(inicial?.data ?? hoje());
@@ -234,6 +239,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [saldosErro, setSaldosErro] = useState<string | null>(null);
   const saldosPedidoRef = useRef(0);
   const ehAjuste = tipo === TIPO_AJUSTE;
+  const ehCompraAnimais = tipo === "COMPRA_ANIMAIS";
+  // O animal é cadastrado no sítio da operação: o ativo, ou o único da fazenda. Com vários sítios e
+  // nenhum ativo não há como saber onde cadastrar.
+  const [sitiosAtivos, setSitiosAtivos] = useState<{ id: number; nome: string }[] | null>(null);
+  useEffect(() => {
+    if (!ehCompraAnimais || sitiosAtivos !== null) return;
+    let ativo = true;
+    listarPropriedades().then((lista) => { if (ativo) setSitiosAtivos(Array.isArray(lista) ? lista.filter((p) => p.ativo).map(({ id, nome }) => ({ id, nome })) : []); }).catch(() => { if (ativo) setSitiosAtivos([]); });
+    return () => { ativo = false; };
+  }, [ehCompraAnimais, sitiosAtivos]);
+  const sitioAtivoId = getPropriedadeAtiva();
+  const sitioCompra = !ehCompraAnimais || sitiosAtivos === null ? null : sitioAtivoId != null ? sitiosAtivos.find((sitio) => sitio.id === sitioAtivoId) ?? null : sitiosAtivos.length === 1 ? sitiosAtivos[0] : null;
+  const motivoSemSitio = sitiosAtivos === null ? "Carregando o sítio da compra…" : sitioAtivoId == null && sitiosAtivos.length >= 2 ? "Selecione uma fazenda no seletor do topo para cadastrar os animais — a compra é feita em uma fazenda por vez." : "Não foi possível identificar o sítio da compra. Atualize a página ou escolha a fazenda no seletor do topo.";
+  const valoresAnimais = useMemo(() => ehCompraAnimais ? valoresDosAnimais(unidadePrecoAnimal, valorLote, animais) : [], [ehCompraAnimais, unidadePrecoAnimal, valorLote, animais]);
   // Sem sítio ativo e com mais de um sítio, o saldo lido soma todos os sítios mas o
   // ajuste é gravado em um só: o `saldoEsperado` nunca bateria (loop de CONFLITO).
   const [totalSitios, setTotalSitios] = useState<number | null>(null);
@@ -279,8 +298,13 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const entradaFinanceira = tipo === "VENDA" || tipo === "DEVOLUCAO";
   // O backend arredonda cada item antes de somá-los; repetir a mesma ordem
   // evita validar na tela uma distribuição de parcelas que o servidor rejeita.
-  const compraComComposicao = tipo === "COMPRA_ESTOQUE" || tipo === "COMPRA_CONSUMO_DIRETO";
-  const composicaoCompra = previaDesconto(itens.map(totalItem), itens.map(i => i.elegivelDesconto !== false), compraComComposicao ? Number(descontoComercial || 0) : 0);
+  const compraComComposicao = tipo === "COMPRA_ESTOQUE" || tipo === "COMPRA_CONSUMO_DIRETO" || ehCompraAnimais;
+  // Animais primeiro, depois os demais itens: a mesma ordem do envio, que é a do `itens.N` dos erros da API.
+  const linhasCompra: LinhaCompra[] = [
+    ...(ehCompraAnimais ? animais.map((animal, indice) => ({ chave: `animal-${animal.id}`, rotulo: `Animal ${animal.resumo.brinco}`, total: (valoresAnimais[indice]?.centavos ?? 0) / 100, elegivelDesconto: animal.elegivelDesconto, categoriaId: animal.categoriaId, centroCustoId: animal.centroCustoId, animalId: animal.id })) : []),
+    ...itens.map((item) => ({ chave: `item-${item.id}`, rotulo: item.descricao, total: totalItem(item), elegivelDesconto: item.elegivelDesconto, categoriaId: item.categoriaId, centroCustoId: item.centroCustoId, itemId: item.id })),
+  ];
+  const composicaoCompra = previaDesconto(linhasCompra.map((linha) => linha.total), linhasCompra.map((linha) => linha.elegivelDesconto !== false), compraComComposicao ? Number(descontoComercial || 0) : 0);
   const logisticaPayload = compraComComposicao && Number(logisticaValor) > 0 ? { valor: logisticaValor, descricao: "Logística da aquisição", categoriaId: logisticaCategoriaId, centroCustoId: logisticaCentroId || centroCustoId || undefined } : undefined;
   const centavosTotal = comItens
     ? composicaoCompra.liquidos.reduce((soma, valor) => soma + Math.round(valor * 100), 0) + (compraComComposicao ? Math.round(Number(logisticaValor || 0)*100) : 0)
@@ -294,13 +318,16 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const movimentosEstoque = movimentaEstoque ? itens.filter((item) => !!item.produtoId).length : 0;
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const entradaSimulacao = useMemo(() => ({
-    itens: comItens ? itens.map((item) => item.modoValor === "TOTAL"
-      ? { quantidade: item.quantidade, valorTotal: item.valorTotal, elegivelDesconto: item.elegivelDesconto }
-      : { quantidade: item.quantidade, valorUnitario: item.valorUnitario, elegivelDesconto: item.elegivelDesconto }) : [],
+    itens: comItens ? [
+      ...(ehCompraAnimais ? animais.map((animal, indice) => ({ quantidade: valoresAnimais[indice]?.quantidade ?? "1", valorTotal: valoresAnimais[indice]?.valorTotal ?? "0", elegivelDesconto: animal.elegivelDesconto })) : []),
+      ...itens.map((item) => item.modoValor === "TOTAL"
+        ? { quantidade: item.quantidade, valorTotal: item.valorTotal, elegivelDesconto: item.elegivelDesconto }
+        : { quantidade: item.quantidade, valorUnitario: item.valorUnitario, elegivelDesconto: item.elegivelDesconto }),
+    ] : [],
     valorTotal: comItens ? undefined : valorOperacao,
     descontoComercial: compraComComposicao ? descontoComercial || undefined : undefined, logistica: logisticaPayload,
     valorPagoAgora: condicao === "PARCIAL" ? valorAgora : undefined,
-  }), [comItens, itens, valorAgora, valorOperacao, condicao, compraComComposicao, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId, centroCustoId]);
+  }), [comItens, itens, animais, valoresAnimais, ehCompraAnimais, valorAgora, valorOperacao, condicao, compraComComposicao, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId, centroCustoId]);
   const assinaturaSimulacao = JSON.stringify(entradaSimulacao);
   const simulacaoAtual = simulacao?.assinatura === assinaturaSimulacao ? simulacao.resultado : null;
   const totalFinanceiro = simulacaoAtual ? Number(simulacaoAtual.totalOperacao) : total;
@@ -326,27 +353,36 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
 
   const estadoFormulario = useMemo<EstadoFormulario>(() => ({
     tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroEscolhidoManualmente, centroCustoId, referenciaValor, evidenciaValor, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId,
-    centroCustoPorItem: porItem,
+    centroCustoPorItem: porItem, animais, unidadePrecoAnimal, valorLote,
     contaId, formaPagamento, data, valorAgora, parcelas, geradorParcelas,
-  }), [tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroEscolhidoManualmente, centroCustoId, porItem, contaId, formaPagamento, data, valorAgora, parcelas, geradorParcelas, referenciaValor, evidenciaValor, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId]);
+  }), [animais, unidadePrecoAnimal, valorLote, tipo, condicao, descricao, valorOperacao, itens, parceiroId, categoriaId, centroEscolhidoManualmente, centroCustoId, porItem, contaId, formaPagamento, data, valorAgora, parcelas, geradorParcelas, referenciaValor, evidenciaValor, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId]);
   const operacaoSemChave = useMemo(() => {
     const financeiro = condicao === "A_VISTA" ? { condicao, contaId, formaPagamento }
       : condicao === "A_PRAZO" ? { condicao, parcelas: parcelas.map((parcela) => ({ valor: parcela.valor, dataVencimento: parcela.vencimento })) }
         : condicao === "PARCIAL" ? { condicao, contaId, valorPago: valorAgora, formaPagamento, parcelas: parcelas.map((parcela) => ({ valor: parcela.valor, dataVencimento: parcela.vencimento })) }
           : { condicao: "SEM_EFEITO_FINANCEIRO" };
+    // Animal novo: o cadastro vai dentro do item; origem e sítio vêm da operação (o servidor os define).
+    const itensAnimais = ehCompraAnimais ? animais.map((animal, indice) => {
+      const valor = valoresAnimais[indice];
+      return {
+        elegivelDesconto: animal.elegivelDesconto, categoriaId: animal.categoriaId || null, centroCustoId: (porItem ? animal.centroCustoId : "") || null,
+        descricao: `Animal ${animal.resumo.brinco}`, quantidade: valor?.quantidade ?? "1", unidade: valor?.unidade ?? UNIDADE_ITEM_ANIMAL[unidadePrecoAnimal], valorTotal: valor?.valorTotal ?? "0.00",
+        estocavel: false, animal: { ...animal.payload, dataEntrada: animal.entradaSegueOperacao ? data : animal.payload.dataEntrada },
+      };
+    }) : [];
     return {
       tipo, data, descricao: descricao.trim(), valorTotal: comItens ? undefined : valorOperacao,
       ...(["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) ? { documentacaoValor: { referencia: referenciaValor, evidencia: evidenciaValor } } : {}),
       descontoComercial: compraComComposicao ? descontoComercial || undefined : undefined, logistica: logisticaPayload,
       parceiroId: parceiroId || undefined, categoriaId: !comItens && categoriaId ? categoriaId : undefined,
       centroCustoId: centroCustoId || undefined, corrigeOperacaoId: operacaoBase?.id,
-      itens: comItens ? itens.map((item) => {
+      itens: comItens ? [...itensAnimais, ...itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId);
         const centroEfetivo = porItem ? item.centroCustoId : "";
-        return { elegivelDesconto: item.elegivelDesconto, categoriaId: item.categoriaId || null, centroCustoId: centroEfetivo || null, produtoId: item.produtoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), partidas: item.partidas, estocavel: movimentaEstoque && !!item.produtoId };
-      }) : [], financeiro,
+        return { elegivelDesconto: item.elegivelDesconto, categoriaId: item.categoriaId || null, centroCustoId: centroEfetivo || null, produtoId: ehCompraAnimais ? undefined : item.produtoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), partidas: ehCompraAnimais ? undefined : item.partidas, estocavel: movimentaEstoque && !!item.produtoId };
+      })] : [], financeiro,
     };
-  }, [categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao, referenciaValor, evidenciaValor, compraComComposicao, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId]);
+  }, [animais, valoresAnimais, unidadePrecoAnimal, ehCompraAnimais, categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao, referenciaValor, evidenciaValor, compraComComposicao, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId]);
   const operacaoRascunho = useMemo(() => {
     const assinatura = JSON.stringify(operacaoSemChave);
     if (identidadeOperacao.current.assinatura && identidadeOperacao.current.assinatura !== assinatura) identidadeOperacao.current.chave = crypto.randomUUID();
@@ -358,7 +394,8 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     documentosSalvos.length || descricao.trim() || valorOperacao || parceiroId || categoriaId || centroCustoId || contaId || valorAgora
     || itens.some((item) => item.produtoId || item.descricao.trim() || item.valorUnitario || item.valorTotal || item.quantidade !== "1")
     || parcelas.some((parcela) => parcela.valor)
-  ), [categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
+    || (ehCompraAnimais && (animais.length > 0 || !!valorLote))
+  ), [animais, ehCompraAnimais, valorLote, categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
 
   const contextoRascunho = useRef(contextoEdicaoRascunho()).current;
   useEffect(() => {
@@ -455,10 +492,12 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // No modo Único, o centro de cada item é sempre ignorado (a operação inteira usa
   // um único centro); mantemos o valor limpo para não vazar no payload enviado.
   const centroEfetivoItem = (item: ItemForm) => porItem ? item.centroCustoId : "";
+  const centroEfetivoAnimal = (animal: AnimalCompraForm) => porItem ? animal.centroCustoId : "";
   const alterarModoCentro = (novoPorItem: boolean) => {
     setPorItem(novoPorItem);
     if (!novoPorItem) {
       setItens((atuais) => atuais.map((item) => ({ ...item, centroCustoId: "" })));
+      setAnimais((atuais) => atuais.map((animal) => ({ ...animal, centroCustoId: "" })));
     } else {
       // Deixa "" (não o centro da operação) quando o produto não tem centro
       // único: o item continua herdando do padrão da operação (null no payload),
@@ -522,6 +561,10 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const alterarTipo = (novoTipo: string) => {
     if (atalhoAjuste) return;
     setTipo(novoTipo);
+    // A compra de animais não começa com um item em branco (os animais vêm do modal); as demais precisam de ao menos um.
+    if (novoTipo === "COMPRA_ANIMAIS") setItens((atuais) => atuais.filter((item) => item.descricao.trim() || item.valorUnitario || item.valorTotal).map((item) => ({ ...item, produtoId: "", partidas: undefined })));
+    else setItens((atuais) => atuais.length ? atuais : [novoItem()]);
+    setErrosAnimais({});
     if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
       setParceiroId("");
       if (TIPOS_COM_PARCEIRO.has(novoTipo)) setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
@@ -569,14 +612,14 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     evento.target.value = "";
   };
 
-  const categoriasResumo = itens.reduce<Record<string,number>>((acc,item,i) => {
+  const categoriasResumo = linhasCompra.reduce<Record<string,number>>((acc,item,i) => {
     const nome = categorias.find(c=>c.id===item.categoriaId)?.nome ?? "Sem categoria";
     acc[nome]=(acc[nome]??0)+Math.round(composicaoCompra.liquidos[i]*100); return acc;
   },{});
   if (logisticaPayload) { const nome=categorias.find(c=>c.id===logisticaCategoriaId)?.nome ?? "Sem categoria"; categoriasResumo[nome]=(categoriasResumo[nome]??0)+Math.round(Number(logisticaValor)*100); }
   const resumoCategorias = comItens ? Object.entries(categoriasResumo) : [[categorias.find(c=>c.id===categoriaId)?.nome ?? "Sem categoria",Math.round(total*100)]] as [string,number][];
-  const centrosResumo = itens.reduce<Record<string,number>>((acc,item,i) => {
-    const id=centroEfetivoItem(item)||centroCustoId, nome=config.centrosCusto.find(c=>String(c.id)===id)?.nome ?? "Sem centro";
+  const centrosResumo = linhasCompra.reduce<Record<string,number>>((acc,item,i) => {
+    const id=(porItem ? item.centroCustoId : "")||centroCustoId, nome=config.centrosCusto.find(c=>String(c.id)===id)?.nome ?? "Sem centro";
     acc[nome]=(acc[nome]??0)+Math.round(composicaoCompra.liquidos[i]*100); return acc;
   },{});
   if (logisticaPayload) { const nome=config.centrosCusto.find(c=>c.id===(logisticaCentroId||centroCustoId))?.nome ?? "Sem centro"; centrosResumo[nome]=(centrosResumo[nome]??0)+Math.round(Number(logisticaValor)*100); }
@@ -606,7 +649,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (estocavel) return false;
     return !(centroEfetivoItem(item) || centroCustoId);
   };
-  const podeConfirmar = ehAjuste ? ajustePronto : (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (!compraComComposicao || composicaoCompra.valido) && (total > 0 || (!permiteFinanceiro && total >= 0));
+  // A entrada que acompanha a data da operação precisa continuar entre o nascimento e hoje.
+  const entradaAnimalValida = (animal: { entradaSegueOperacao: boolean; payload: { dataNascimento: string } }) =>
+    !animal.entradaSegueOperacao || (data >= animal.payload.dataNascimento && data <= hoje());
+  const animaisValidos = !ehCompraAnimais || (!!sitioCompra && animais.length > 0 && animais.every((animal, i) => !pendenciaPrecoAnimal(unidadePrecoAnimal, animal, valoresAnimais[i] ?? null) && entradaAnimalValida(animal) && !!(centroEfetivoAnimal(animal) || centroCustoId)));
+  const podeConfirmar = ehAjuste ? ajustePronto : animaisValidos && (!comItens || itens.every((item, i) => !itemCentroInvalido(i, item))) && descricao.trim().length >= 2 && (!exigeParceiro || !!parceiroSelecionado) && itensValidos && contaValida && parcelasValidas && (!compraComComposicao || composicaoCompra.valido) && (total > 0 || (!permiteFinanceiro && total >= 0));
 
   // No modo Único não existe select por item — o único jeito de resolver uma
   // pendência de centro de custo (local ou vinda do servidor) é preencher o
@@ -653,10 +700,20 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (exigeParceiro && !parceiroSelecionado) return { campo: "parceiroId", elementId: "campo-parceiroId" };
     if (descricao.trim().length < 2) return { campo: "descricao", elementId: "campo-descricao" };
     if (comItens) {
+      if (ehCompraAnimais) {
+        if (!sitioCompra || !animais.length) return { campo: "animais", elementId: "secao-animais" };
+        if (unidadePrecoAnimal === "LOTE" && !(Number(valorLote) > 0)) return { campo: "valorLote", elementId: "campo-valorLote" };
+        const animalPendente = animais.find((animal, i) => pendenciaPrecoAnimal(unidadePrecoAnimal, animal, valoresAnimais[i] ?? null));
+        if (animalPendente) return { campo: `animal-${animalPendente.id}`, elementId: `animal-${animalPendente.id}` };
+        const animalEntradaInvalida = animais.find((animal) => !entradaAnimalValida(animal));
+        if (animalEntradaInvalida) return { campo: `animal-${animalEntradaInvalida.id}`, elementId: `animal-${animalEntradaInvalida.id}` };
+        const indiceAnimalSemCentro = animais.findIndex((animal) => !(centroEfetivoAnimal(animal) || centroCustoId));
+        if (indiceAnimalSemCentro !== -1) return mapearCampoCentro(`itens.${indiceAnimalSemCentro}.centroCustoId`);
+      }
       const itemInvalido = itens.find((item) => !item.descricao.trim() || !(Number(item.quantidade) > 0) || (movimentaEstoque && !item.produtoId));
       if (itemInvalido) return { campo: `item-${itemInvalido.id}`, elementId: `item-${itemInvalido.id}` };
       const indiceCentroInvalido = itens.findIndex((item, i) => itemCentroInvalido(i, item));
-      if (indiceCentroInvalido !== -1) return mapearCampoCentro(`itens.${indiceCentroInvalido}.centroCustoId`);
+      if (indiceCentroInvalido !== -1) return mapearCampoCentro(`itens.${indiceCentroInvalido + (ehCompraAnimais ? animais.length : 0)}.centroCustoId`);
     } else if (permiteFinanceiro && !(total > 0)) {
       return { campo: "valorOperacao", elementId: "campo-valorOperacao" };
     }
@@ -686,6 +743,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (autosaveTimerRef.current != null) { window.clearTimeout(autosaveTimerRef.current); autosaveTimerRef.current = null; }
     setCampoInvalido(null);
     setErroPartidas(null);
+    setErrosAnimais({});
     setSalvando(true);
     try {
       const conferir = (partidas: DistribuicaoPartida[], quantidade: number, saida: boolean, campo: string) => {
@@ -734,10 +792,19 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         // Erros de centro de custo por item (`itens.<i>.centroCustoId`) recebem o
         // mesmo tratamento da validação local: no modo Único esse select nem
         // existe na tela, então o campo e o foco vão para o centro da operação.
-        const mapeado = mapearCampo(falha.campo);
-        if (/^(itens\.\d+\.partidas|partidas)(\.|$)/.test(falha.campo)) setErroPartidas({ campo: falha.campo, mensagem });
-        setCampoInvalido(mapeado.campo);
-        setFocoPendente(mapeado);
+        // Recusa de um animal (`itens.N.animal.<campo>` e demais campos do item): marca a linha dele.
+        const doAnimal = ehCompraAnimais ? falha.campo.match(/^itens\.(\d+)\.(?!centroCustoId$)(.+)$/) : null;
+        const animalRecusado = doAnimal ? animais[Number(doAnimal[1])] : undefined;
+        if (doAnimal && animalRecusado) {
+          setErrosAnimais({ [Number(doAnimal[1])]: { campo: doAnimal[2], mensagem } });
+          setCampoInvalido(`animal-${animalRecusado.id}`);
+          setFocoPendente({ campo: falha.campo, elementId: `animal-${animalRecusado.id}` });
+        } else {
+          const mapeado = mapearCampo(falha.campo);
+          if (/^(itens\.\d+\.partidas|partidas)(\.|$)/.test(falha.campo)) setErroPartidas({ campo: falha.campo, mensagem });
+          setCampoInvalido(mapeado.campo);
+          setFocoPendente(mapeado);
+        }
       }
     } finally { envioEmCurso.current = false; setSalvando(false); }
   };
@@ -822,22 +889,31 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         <section>
           <h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Info aria-hidden /></span>Identificação</h3>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            <label className="text-sm font-medium">Tipo de operação<SelectCampo aria-label="Tipo de operação" disabled={atalhoAjuste} className={SELECT} value={tipo} onValueChange={(valor) => alterarTipo(valor)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA", "COMPRA_ANIMAIS"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>{atalhoAjuste && <span className="mt-1 block text-xs font-normal text-ink-3">Aberto pelo Estoque para corrigir o saldo de um produto.</span>}</label>
+            <label className="text-sm font-medium">Tipo de operação<SelectCampo aria-label="Tipo de operação" disabled={atalhoAjuste} className={SELECT} value={tipo} onValueChange={(valor) => alterarTipo(valor)}>{Object.entries(TIPO_OPERACAO).filter(([chave]) => !["TRANSFERENCIA_FINANCEIRA", "TRANSFERENCIA_ESTOQUE", "APORTE", "RETIRADA"].includes(chave)).map(([chave, nome]) => <option key={chave} value={chave}>{nome}</option>)}</SelectCampo>{atalhoAjuste && <span className="mt-1 block text-xs font-normal text-ink-3">Aberto pelo Estoque para corrigir o saldo de um produto.</span>}</label>
             {!ehAjuste && <label className="text-sm font-medium">Data<DatePicker id="campo-data" aria-label="Data" required className="mt-1.5" value={data} onChange={setData} />{inicial?.data && data === inicial.data && data < hoje() && <span role="status" className="mt-1 block text-xs font-normal text-[var(--warn)]">Data trazida do rascunho salvo antes. Confira se a operação é mesmo de {dataBR(data)}.</span>}</label>}
             {exigeParceiro && <label className="text-sm font-medium">{parceiroLabel(tipo)} *<SelectCampo id="campo-parceiroId" aria-label={parceiroLabel(tipo)} aria-invalid={campoInvalido === "parceiroId" || undefined} aria-describedby={campoInvalido === "parceiroId" ? "erro-parceiroId" : undefined} required className={SELECT + classeCampoErro("parceiroId")} value={parceiroId} onValueChange={(valor) => { setParceiroId(valor); limparCampoInvalido("parceiroId"); }}><option value="">Selecione</option>{parceiros.map((parceiro) => <option key={parceiro.id} value={parceiro.id}>{parceiro.nome}</option>)}</SelectCampo>{campoInvalido === "parceiroId" && <CampoErro id="erro-parceiroId">Selecione um parceiro válido.</CampoErro>}</label>}
             {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <>{ehCompraAnimais && <SecaoAnimais
+          animais={animais} valores={valoresAnimais} unidade={unidadePrecoAnimal} valorLote={valorLote} sitio={sitioCompra} motivoSemSitio={motivoSemSitio} dataOperacao={data}
+          config={config} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erros={errosAnimais}
+          onUnidade={(unidade) => { if (unidade === unidadePrecoAnimal) return; setUnidadePrecoAnimal(unidade); setAnimais((atuais) => atuais.map((animal) => ({ ...animal, preco: "" }))); setErrosAnimais({}); limparCampoInvalido("valorLote"); }}
+          onValorLote={setValorLote}
+          onAdicionar={(novo) => { setAnimais((atuais) => [...atuais, { ...novo, id: Math.max(0, ...atuais.map((animal) => animal.id)) + 1 }]); setErrosAnimais({}); limparCampoInvalido("animais"); }}
+          onSalvar={(id, dados) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...dados } : animal)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
+          onAtualizar={(id, patch) => { setAnimais((atuais) => atuais.map((animal) => animal.id === id ? { ...animal, ...patch } : animal)); setErrosAnimais(({ [animais.findIndex((animal) => animal.id === id)]: _descartado, ...resto }) => resto); }}
+          onRemover={(id) => { setAnimais((atuais) => atuais.filter((animal) => animal.id !== id)); setErrosAnimais({}); limparCampoInvalido(`animal-${id}`); }}
+        />}<ItensOperacao compraAnimais={ehCompraAnimais} deslocamento={ehCompraAnimais ? animais.length : 0} dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /></> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         {["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Evidência do valor disponibilizado</h3><p className="text-sm text-ink-3">Informe o valor comprovado nos itens, inclusive zero quando documentado. Este registro não cria uma compra ou pagamento.</p><label className="text-sm">Referência do inventário ou origem<Input aria-label="Referência do inventário ou origem" required minLength={2} maxLength={200} value={referenciaValor} onChange={e=>setReferenciaValor(e.target.value)} /></label><label className="text-sm">Evidência do valor do inventário<Textarea aria-label="Evidência do valor do inventário" required minLength={5} maxLength={2000} value={evidenciaValor} onChange={e=>setEvidenciaValor(e.target.value)} /></label></section>}
         {compraComComposicao && <section className="grid gap-3 rounded-lg border border-border p-4"><div><h3 className="font-semibold">Desconto e frete da nota</h3><p className="mt-1 text-sm text-ink-3">Opcional. Preencha só se a nota do fornecedor tiver desconto ou frete.</p></div>
-          <label className="text-sm">Desconto na nota (R$)<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">Abatimento que o fornecedor deu sobre os produtos. Ele reduz o custo dos itens no estoque. Desconto por pagar à vista não entra aqui: ele é registrado no pagamento.</span><Input aria-label="Desconto comercial global" type="number" min="0" step="0.01" value={descontoComercial} onChange={e => setDescontoComercial(e.target.value)} /></label>
-          {Number(descontoComercial)>0 && <fieldset><legend className="text-sm">Quais itens recebem o desconto<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">O desconto é dividido entre os itens marcados, proporcionalmente ao valor de cada um.</span></legend>{itens.map(item => <label key={item.id} className="mr-3 inline-flex gap-2 text-sm"><input type="checkbox" checked={item.elegivelDesconto !== false} onChange={e => atualizarItem(item.id,{elegivelDesconto:e.target.checked})} />{item.descricao || "Item sem descrição"}</label>)}</fieldset>}
+          <label className="text-sm">Desconto na nota (R$)<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">{ehCompraAnimais ? "Abatimento que o fornecedor deu sobre os animais e demais itens. Ele reduz o custo de cada item." : "Abatimento que o fornecedor deu sobre os produtos. Ele reduz o custo dos itens no estoque."} Desconto por pagar à vista não entra aqui: ele é registrado no pagamento.</span><Input aria-label="Desconto comercial global" type="number" min="0" step="0.01" value={descontoComercial} onChange={e => setDescontoComercial(e.target.value)} /></label>
+          {Number(descontoComercial)>0 && <fieldset><legend className="text-sm">Quais itens recebem o desconto<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">O desconto é dividido entre os itens marcados, proporcionalmente ao valor de cada um.</span></legend>{linhasCompra.map(linha => <label key={linha.chave} className="mr-3 inline-flex gap-2 text-sm"><input type="checkbox" checked={linha.elegivelDesconto !== false} onChange={e => linha.animalId !== undefined ? setAnimais(atuais => atuais.map(animal => animal.id === linha.animalId ? { ...animal, elegivelDesconto: e.target.checked } : animal)) : atualizarItem(linha.itemId!,{elegivelDesconto:e.target.checked})} />{linha.rotulo || "Item sem descrição"}</label>)}</fieldset>}
           {!composicaoCompra.valido && <p role="alert" className="text-sm text-destructive">O desconto supera o valor dos itens elegíveis. Nenhum item pode ficar negativo.</p>}
           <label className="text-sm">Frete cobrado na mesma nota (R$)<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">Frete ou entrega cobrados por este fornecedor. Vira uma despesa separada e não entra no custo dos produtos. Se outra transportadora cobrou o frete, registre em outra operação.</span><Input aria-label="Logística do mesmo fornecedor" type="number" min="0" step="0.01" value={logisticaValor} onChange={e => setLogisticaValor(e.target.value)} /></label>
           {Number(logisticaValor)>0 && <div className="grid gap-3 md:grid-cols-2"><label className="text-sm">Categoria do frete<SelectCampo aria-label="Categoria da logística" value={logisticaCategoriaId} onValueChange={setLogisticaCategoriaId}><option value="">Selecione</option>{categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label><label className="text-sm">Centro de custo do frete<SelectCampo aria-label="Centro de custo da logística" value={logisticaCentroId} onValueChange={setLogisticaCentroId}><option value="">Usar centro da operação</option>{config.centrosCusto.filter(c => c.ativo).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label></div>}
 
-          {Number(descontoComercial)>0 && <ul className="text-xs">{itens.map((item,i) => <li key={item.id}>{item.descricao || "Item"}: desconto {brl(composicaoCompra.descontos[i])}; material líquido {brl(composicaoCompra.liquidos[i])}</li>)}</ul>}
+          {Number(descontoComercial)>0 && <ul className="text-xs">{linhasCompra.map((linha,i) => <li key={linha.chave}>{linha.rotulo || "Item"}: desconto {brl(composicaoCompra.descontos[i])}; material líquido {brl(composicaoCompra.liquidos[i])}</li>)}</ul>}
         </section>}
         <section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Categoria e centro</h3>
           {comItens && <RadioGroup value={porItem ? "POR_ITEM" : "UNICO"} onValueChange={valor => alterarModoCentro(valor === "POR_ITEM")} aria-label="Modo do centro de custo" className="mb-4 flex flex-wrap items-center gap-5 text-sm font-medium">
@@ -859,7 +935,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         {!podeRascunho && <p role="status" className="rounded-lg bg-muted p-3 text-sm">Você pode registrar os valores informados nesta operação. Seu perfil não consulta valores anteriores, rascunhos ou documentos financeiros. Este formulário não é salvo ao sair.</p>}
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4"><Button type="button" secondary disabled={salvando} onClick={() => { if (!podeRascunho && temConteudoRascunho) { setConfirmarSaida(true); return; } navegarPara("/financeiro/operacoes"); }}>Voltar para operações</Button>{podeRascunho && !operacaoBase && !ehAjuste && !atalhoAjuste && temConteudoRascunho && <Button type="button" secondary disabled={salvando} onClick={() => setConfirmarLimpeza(true)}>Limpar rascunho</Button>}</footer>
       </div>
-      <aside data-testid="resumo-operacao" className="fin-criacao-resumo flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card text-ink"><Collapsible open={resumoAberto} onOpenChange={setResumoAberto} className="max-h-[40dvh] min-h-0 overflow-y-auto lg:max-h-none lg:flex-1"><CollapsibleTrigger asChild><UiButton type="button" variant="ghost" className="w-full justify-between lg:hidden">Revisar efeitos · {brl(total)}</UiButton></CollapsibleTrigger><CollapsibleContent forceMount className="data-[state=closed]:hidden lg:data-[state=closed]:block"><div data-testid="conteudo-resumo-operacao" className="min-h-0 p-4 lg:flex-1 lg:overflow-y-auto"><div className="flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><ListChecks aria-hidden /></span>Prévia dos efeitos</div><p className="mt-2 text-xs leading-5 text-ink-3">{podeConfirmar ? "Confira os efeitos previstos antes de confirmar. Nada foi registrado." : "Prévia incompleta. Preencha os campos obrigatórios para revisar os efeitos; nenhum fato foi registrado."}</p><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-3 space-y-2 text-sm leading-5">{compraComComposicao && (Number(logisticaValor) > 0 || Number(descontoComercial) > 0) && <ReviewLine>Produtos {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}{Number(descontoComercial) > 0 && <> já com desconto de {brl(Number(descontoComercial))}</>}{Number(logisticaValor) > 0 && <>; frete {brl(Number(logisticaValor))} como despesa separada</>}.</ReviewLine>}<ReviewLine>Ao confirmar: registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : diferencaMilesimos === null ? "Informe a quantidade contada para ver o efeito no estoque." : "Nenhum movimento físico de estoque será gerado: a quantidade contada é igual ao saldo."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : !podeConfirmar ? "Preencha os dados da operação para conferir o efeito no estoque." : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-ink-3">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--fin-warning-bg)] p-3 text-xs leading-5 text-[var(--warn)]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
+      <aside data-testid="resumo-operacao" className="fin-criacao-resumo flex min-h-0 min-w-0 flex-col rounded-2xl border border-border bg-card text-ink"><Collapsible open={resumoAberto} onOpenChange={setResumoAberto} className="max-h-[40dvh] min-h-0 overflow-y-auto lg:max-h-none lg:flex-1"><CollapsibleTrigger asChild><UiButton type="button" variant="ghost" className="w-full justify-between lg:hidden">Revisar efeitos · {brl(total)}</UiButton></CollapsibleTrigger><CollapsibleContent forceMount className="data-[state=closed]:hidden lg:data-[state=closed]:block"><div data-testid="conteudo-resumo-operacao" className="min-h-0 p-4 lg:flex-1 lg:overflow-y-auto"><div className="flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><ListChecks aria-hidden /></span>Prévia dos efeitos</div><p className="mt-2 text-xs leading-5 text-ink-3">{podeConfirmar ? "Confira os efeitos previstos antes de confirmar. Nada foi registrado." : "Prévia incompleta. Preencha os campos obrigatórios para revisar os efeitos; nenhum fato foi registrado."}</p><div className="mt-3 text-3xl font-semibold tabular-nums text-primary">{ehAjuste ? (diferencaMilesimos === null ? "—" : `${fmtDiferenca(diferencaMilesimos / 1000)} ${unidadeAjuste}`) : brl(total)}</div>{ehAjuste && <div className="mt-1 text-xs text-ink-3">Diferença de estoque</div>}{comItens && <div className="mt-3 border-y border-border py-3"><div className="mb-3 flex items-center gap-2 text-xs font-semibold text-primary"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</div><div className="space-y-2">{ehCompraAnimais && animais.map((animal, indice) => { const valor = valoresAnimais[indice]; return <div key={`animal-${animal.id}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">Animal {animal.resumo.brinco}</div><div className="text-ink-3">{valor ? `${Number(valor.quantidade).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${valor.unidade}` : "Preço pendente"}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl((valor?.centavos ?? 0) / 100)}</strong></div>; })}{itens.map((item) => { const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId); return <div key={item.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-xs leading-4"><div className="min-w-0"><div className="truncate font-medium text-ink">{produto?.nome || item.descricao || "Produto não selecionado"}</div><div className="text-ink-3">{Number(item.quantidade || 0).toLocaleString("pt-BR")} {produto ? rotuloUnidade(produto.unidade) : (item.unidade || "un")}</div></div><strong className="self-center whitespace-nowrap text-ink">{brl(totalItem(item))}</strong></div>; })}</div></div>}<div className={ehAjuste ? "hidden" : "mt-4 flex flex-wrap gap-3 text-xs"}><div className="space-y-2"><p className="flex items-center gap-2 font-semibold text-ink-3"><span className="fin-section-icon fin-form-icon"><ChartPie aria-hidden /></span>Valores por categoria</p>{resumoCategorias.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>{porItem && resumoCentros.length > 0 && <div className="space-y-2"><p className="font-semibold text-ink-3">Valores por centro de custo</p>{resumoCentros.map(([nome, centavos]) => <div key={nome} className="flex justify-between gap-3"><span>{nome}</span><strong>{brl(centavos / 100)}</strong></div>)}</div>}</div><div className="mt-3 space-y-2 text-sm leading-5">{compraComComposicao && (Number(logisticaValor) > 0 || Number(descontoComercial) > 0) && <ReviewLine>{ehCompraAnimais ? "Animais e itens" : "Produtos"} {brl(composicaoCompra.liquidos.reduce((s,v)=>s+v,0))}{Number(descontoComercial) > 0 && <> já com desconto de {brl(Number(descontoComercial))}</>}{Number(logisticaValor) > 0 && <>; frete {brl(Number(logisticaValor))} como despesa separada</>}.</ReviewLine>}<ReviewLine>Ao confirmar: registrar {TIPO_OPERACAO[tipo]?.toLowerCase()}.</ReviewLine>{ehCompraAnimais && <><ReviewLine tone="brown">{animais.length > 0 ? <>Cadastrar {animais.length} {animais.length === 1 ? "animal" : "animais"} no Rebanho{sitioCompra ? ` do sítio ${sitioCompra.nome}` : ""}, com origem comprado.</> : "Adicione os animais para ver o cadastro no Rebanho."}</ReviewLine><ReviewLine tone="brown">Nenhum movimento de estoque será gerado.</ReviewLine></>}{ehAjuste && <ReviewLine tone="brown">{saldoProduto && diferencaMilesimos !== null && !ajusteSemDiferenca ? <>Gerar 1 movimento físico de ajuste em {saldoProduto.nome}: saldo de {fmtQuantidade(saldoProduto.saldo)} para {fmtQuantidade(contadaMilesimos / 1000)} {unidadeAjuste}.</> : diferencaMilesimos === null ? "Informe a quantidade contada para ver o efeito no estoque." : "Nenhum movimento físico de estoque será gerado: a quantidade contada é igual ao saldo."}</ReviewLine>}{movimentaEstoque && <ReviewLine tone="brown">{tipo === "VENDA" || tipo === "DEVOLUCAO" ? "Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda." : movimentosEstoque > 0 ? <>Gerar {movimentosEstoque} movimento{movimentosEstoque === 1 ? "" : "s"} físico{movimentosEstoque === 1 ? "" : "s"} de estoque.</> : !podeConfirmar ? "Preencha os dados da operação para conferir o efeito no estoque." : "Nenhum movimento físico de estoque será gerado."}</ReviewLine>}{condicao === "A_VISTA" && <ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} integral de {brl(total)}.</ReviewLine>}{condicao === "A_PRAZO" && <ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} {entradaFinanceira ? "a receber" : "a pagar"}, totalizando {brl(totalParcelas)}. O saldo não muda agora.</ReviewLine>}{condicao === "PARCIAL" && <><ReviewLine>Registrar {entradaFinanceira ? "recebimento" : "pagamento"} de {brl(realizadoAgora)} agora.</ReviewLine><ReviewLine tone="amber">Criar {parcelas.length} compromisso{parcelas.length === 1 ? "" : "s"} para o saldo de {brl(totalParcelas)}.</ReviewLine></>}{condicao === "SEM_EFEITO_FINANCEIRO" && <ReviewLine tone="neutral">Nenhuma conta financeira ou compromisso será movimentado.</ReviewLine>}{!ehAjuste && (anexos.length + documentosSalvos.length) > 0 && <ReviewLine tone="neutral">Anexar {anexos.length + documentosSalvos.length} documento{anexos.length + documentosSalvos.length === 1 ? "" : "s"} à operação.</ReviewLine>}</div></div></CollapsibleContent></Collapsible><div data-testid="confirmacao-operacao" className="shrink-0 border-t border-border p-4">{erroConfirmacao && <div id="erro-confirmacao" ref={erroConfirmacaoRef} role="alert" tabIndex={-1} className="mb-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive">{erroConfirmacao}</div>}<p className="mb-3 text-center text-[11px] leading-4 text-ink-3">A confirmação cria somente os efeitos descritos acima.</p><Button type="submit" carregando={salvando || anexosEnviando.length > 0} disabled={salvando || anexosEnviando.length > 0 || (ehAjuste && (ajusteSemDiferenca || ajusteConsolidado))} ariaDescribedby={[erroConfirmacao ? "erro-confirmacao" : null, !podeConfirmar ? "motivo-pendencia" : null].filter(Boolean).join(" ") || undefined} className="w-full ">{salvando ? "Confirmando…" : anexosEnviando.length ? "Anexando documento…" : ehAjuste ? "Confirmar ajuste" : "Confirmar operação"}</Button>{!podeConfirmar && <p id="motivo-pendencia" role="status" className="mt-3 flex items-start gap-2 rounded-lg bg-[var(--fin-warning-bg)] p-3 text-xs leading-5 text-[var(--warn)]"><CircleAlert size={14} className="mt-px shrink-0" aria-hidden /><span>{ehAjuste && ajusteSemDiferenca ? "Nenhum ajuste necessário: a quantidade contada é igual ao saldo atual." : "Ainda há campos pendentes ou incompletos nesta operação. Revise os itens destacados para confirmar."}</span></p>}</div></aside>
     </form>
     <ConfirmDialog open={confirmarSaida} title="Sair sem registrar?" message="Este perfil não salva rascunhos financeiros. Os dados deste formulário serão perdidos ao sair." confirmLabel="Sair sem registrar" cancelLabel="Continuar preenchendo" onConfirm={() => navegarPara("/financeiro/operacoes")} onCancel={() => setConfirmarSaida(false)} />
     <ConfirmDialog open={confirmarSugestao} title="Usar a sugestão do parceiro?" message="As condições sugeridas substituirão as condições e parcelas correspondentes já preenchidas. Depois você poderá editá-las livremente." confirmLabel="Aplicar sugestão" onConfirm={aplicarSugestao} onCancel={() => setConfirmarSugestao(false)} />
@@ -876,27 +952,27 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido, erroPartidas }: { erroPartidas: { campo: string; mensagem: string } | null; dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ compraAnimais, deslocamento, dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido, erroPartidas }: { /** compra de animais: só despesas sem produto (frete, comissão, GTA); os animais ficam na seção própria */ compraAnimais: boolean; /** quantos animais vêm antes dos itens no envio (para o `itens.N` dos erros) */ deslocamento: number; erroPartidas: { campo: string; mensagem: string } | null; dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
-    <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
+    <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>{compraAnimais ? "Outros itens da compra" : "Itens da operação"}</h3><p className="mt-1 text-xs text-ink-3">{compraAnimais ? "Frete, comissão, GTA e outras despesas da compra, sem produto e sem estoque. Os animais ficam na seção acima." : "Informe o valor unitário ou alterne para o valor total de cada item."}</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
       const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId);
       const unidade = produto ? rotuloUnidade(produto.unidade) : item.unidade;
       const invalido = item.id === itemInvalidoId;
       const ultimo = ultimosPrecos[item.id]?.produtoId === item.produtoId ? ultimosPrecos[item.id] : null;
       const custoMedio = !ultimo && item.produtoId ? custosMedios[item.id] : undefined;
-      const campoCentro = `itens.${indice}.centroCustoId`;
+      const campoCentro = `itens.${indice + deslocamento}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} aria-invalid={invalido || undefined} className={`rounded-xl border p-4 outline-none ${invalido ? "border-destructive bg-[var(--fin-danger-bg)] ring-2 ring-destructive/20" : "border-border bg-muted"}`}>
-        <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <UiButton type="button" variant="ghost" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-destructive hover:bg-[var(--fin-danger-bg)]"><Trash2 size={16} /></UiButton>}</div>
+        <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{(compraAnimais || itens.length > 1) && <UiButton type="button" variant="ghost" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-destructive hover:bg-[var(--fin-danger-bg)]"><Trash2 size={16} /></UiButton>}</div>
         {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""} deste item.</CampoErro>}
-        <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)]">
-          <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<SelectCampo aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onValueChange={(valor) => alterarProduto(item.id, valor)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</SelectCampo></label>
+        <div className={`grid gap-4 ${compraAnimais ? "" : "md:grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)]"}`}>
+          {!compraAnimais && <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<SelectCampo aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onValueChange={(valor) => alterarProduto(item.id, valor)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</SelectCampo></label>}
           <label className="text-sm font-medium">Descrição do item *<Input aria-label={`Descrição do item ${indice + 1}`} required className={CAMPO} value={item.descricao} onChange={(e) => atualizarItem(item.id, { descricao: e.target.value })} /></label>
         </div>
         <div className={`mt-4 grid gap-4 ${porItem ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           <label className="text-sm font-medium">Categoria<SelectCampo aria-label={`Categoria do item ${indice + 1}`} className={SELECT} value={item.categoriaId ?? ""} onValueChange={(valor) => atualizarItem(item.id, { categoriaId: valor })}><option value="">Sem categoria</option>{config.categorias.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
-          {porItem && <label className="text-sm font-medium">Centro de custo<SelectCampo id={`campo-itens-${indice}-centroCustoId`} aria-label={`Centro de custo do item ${indice + 1}`} aria-invalid={centroInvalido || undefined} aria-describedby={centroInvalido ? `erro-${campoCentro}` : undefined} className={SELECT + (centroInvalido ? " border-destructive ring-2 ring-destructive/20" : "")} value={item.centroCustoId} onValueChange={(valor) => { atualizarItem(item.id, { centroCustoId: valor }); limparCampoInvalido(campoCentro); }}><option value="">Padrão da operação{centroCustoOperacao ? ` (${config.centrosCusto.find((c) => String(c.id) === centroCustoOperacao)?.nome ?? ""})` : ""}</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</SelectCampo>{centroInvalido && <CampoErro id={`erro-${campoCentro}`}>Informe o centro de custo deste item ou um centro padrão para a operação.</CampoErro>}</label>}
+          {porItem && <label className="text-sm font-medium">Centro de custo<SelectCampo id={`campo-itens-${indice + deslocamento}-centroCustoId`} aria-label={`Centro de custo do item ${indice + 1}`} aria-invalid={centroInvalido || undefined} aria-describedby={centroInvalido ? `erro-${campoCentro}` : undefined} className={SELECT + (centroInvalido ? " border-destructive ring-2 ring-destructive/20" : "")} value={item.centroCustoId} onValueChange={(valor) => { atualizarItem(item.id, { centroCustoId: valor }); limparCampoInvalido(campoCentro); }}><option value="">Padrão da operação{centroCustoOperacao ? ` (${config.centrosCusto.find((c) => String(c.id) === centroCustoOperacao)?.nome ?? ""})` : ""}</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</SelectCampo>{centroInvalido && <CampoErro id={`erro-${campoCentro}`}>Informe o centro de custo deste item ou um centro padrão para a operação.</CampoErro>}</label>}
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">
           <label className="text-sm font-medium">Quantidade *<div className="mt-1.5 flex"><Input aria-label={`Quantidade do item ${indice + 1}`} required min="0.001" step="0.001" type="number" className="min-w-0 flex-1 rounded-l-lg border border-input bg-card px-3 py-2.5 font-normal outline-none focus:border-primary focus:ring-2 focus:ring-primary/20" value={item.quantidade} onChange={(e) => atualizarItem(item.id, { quantidade: e.target.value })} /><span aria-label={`Unidade do item ${indice + 1}`} className="inline-flex min-w-14 items-center justify-center rounded-r-lg border border-l-0 border-input bg-muted px-3 text-sm text-ink-3">{unidade || "un"}</span></div></label>

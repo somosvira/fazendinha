@@ -23,7 +23,7 @@ export function parceiroCompativel(parceiro: DadosParceiro & { tipo: TipoParceir
   const papeis = papeisDoParceiro(parceiro);
   if (operacao === "VENDA") return papeis.includes("CLIENTE");
   if (operacao === "SERVICO") return papeis.includes("PRESTADOR_SERVICO") || papeis.includes("FORNECEDOR");
-  if (["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "DEVOLUCAO"].includes(operacao)) return papeis.includes("FORNECEDOR");
+  if (["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "DEVOLUCAO"].includes(operacao)) return papeis.includes("FORNECEDOR");
   return true;
 }
 

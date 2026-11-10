@@ -1,6 +1,6 @@
 # Plano de implementação — compra de animais
 
-Status: decisões de produto fechadas. Backend implementado na branch `claude/compra-animais-plano`: migration `20261109180000_compra_animais`, serviço `services/financeiro/compra-animais.ts`, rotas, ficha, filtros e rótulos. Interface do formulário pendente de aprovação do mockup (T7) e de implementação (T8, T13). As regras vigentes já estão incorporadas aos [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md). Este plano será retirado quando a interface for entregue.
+Status: decisões de produto fechadas. Backend implementado na branch `claude/compra-animais-plano`: migration `20261109180000_compra_animais`, serviço `services/financeiro/compra-animais.ts`, rotas, ficha, filtros e rótulos. Interface da compra (T8) implementada, com o cadastro compartilhado em modal. Pendentes: tela de devolução, conferência no navegador com banco migrado e retirada deste plano após a entrega. As regras vigentes já estão incorporadas aos [contrato financeiro](../../financeiro-rebuild-contrato.md) e ao [contrato da Pecuária](../README.md). Este plano será retirado quando a interface for entregue.
 
 ## Problema
 
@@ -191,3 +191,27 @@ Os testes de integração usam somente `fazendinha_seedatev3`, criam e removem a
 - Contratos atualizados na mesma alteração; busca global e builder de relatórios atualizados ou com a exclusão documentada.
 - Revisão T12 sem achados materiais em aberto.
 - Sem deploy ou alteração de ambiente como efeito colateral.
+
+## Rodada de interface — cadastro reutilizado (aprovada em 10/11/2026)
+
+Revisão do mockup pelo usuário: a grade com campos por animal foi descartada. A tela usa **as mesmas bases que já existem**:
+
+- **Operação:** o `FormOperacao.tsx` de sempre (identificação, fornecedor, centro, categoria, desconto/logística, condição financeira, parcelas, documentos, rascunho e prévia dos efeitos). A compra de animais segue o mesmo fluxo das demais compras; a diferença é só a seção de animais vinculados.
+- **Animal:** o mesmo cadastro de `NovoAnimal.tsx` (identificação, datas e filiação, genitores, localização e finalidade, composição racial, peso de entrada, observação), extraído para um componente compartilhado e aberto em **modal centralizado**. Na compra, origem e sítio vêm da operação, e a data de entrada vem preenchida com a data da operação. Assim não há divergência entre o cadastro avulso e o cadastro pela operação.
+- **Resumo:** cada animal confirmado no modal vira uma linha resumida na operação (brinco, sexo, raça, finalidade, peso de entrada), com os campos financeiros do item (peso pago quando por kg ou arroba, preço, valor) e as ações editar (reabre o modal com os dados) e remover.
+- **Unidade de preço:** por cabeça, kg, arroba ou valor do lote, como no backend.
+- Itens sem animal (frete, comissão, GTA) usam a lista de itens já existente.
+
+### Tarefas e modelos
+
+| ID | Entrega e aceite | Modelo / esforço | Entrada k | Saída k | US$ estimado |
+|---|---|---|---|---|---|
+| T8a | Extrair o cadastro de `NovoAnimal.tsx` para componente compartilhado (estado, validação, campos), sem mudar a tela atual; testes existentes passam | Sonnet 5.5 / high | 60–100 | 10–18 | 0,22–0,38 |
+| T8b | `FormOperacao.tsx`: tipo "Compra de animais", modal com o cadastro compartilhado, resumo dos animais, unidade de preço e lote, payload e rascunho; erros da API por animal | Sonnet 5.5 / high (mesmo agente de T8a, para aproveitar o contexto) | 90–150 | 15–27 | 0,33–0,57 |
+| T13 | Conferência no navegador (desktop e 390 px) | Sonnet 5.5 / medium (mesmo agente) | 40–80 | 3–6 | 0,11–0,22 |
+| T12b | Revisão independente do diff da interface | Opus 5.5 / medium | 50–90 | 4–8 | 0,28–0,52 |
+| T11b | Atualizar contrato, manual e lacunas | Haiku 5.5 / medium | 20–40 | 4–8 | 0,01 |
+
+Total estimado sem cache: **US$ 0,95–1,70**. T8a, T8b e T13 ficam num só agente Sonnet porque dependem um do outro e dividem os mesmos arquivos; separar custaria a releitura do `FormOperacao.tsx` (cerca de 1.000 linhas) duas vezes. O Opus fica só na revisão.
+
+Limite local: o banco `fazendinha_seedatev3` não tem a migration da compra (há migrations de outras branches pendentes), então a conferência no navegador cobre a tela, o rascunho e o payload; a confirmação real é coberta pelos testes de integração na CI.
