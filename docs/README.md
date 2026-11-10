@@ -68,3 +68,4 @@ O material conceitual de [protocolos](pecuaria/artefatos/protocolos/index.html),
 ## Propostas em execução
 
 - [Plano da ficha do animal — Geral](pecuaria/planos/ficha-animal-geral.md): reorganização proposta, dependências, critérios de aceite e orçamento de execução por modelo. Ainda não implementado.
+- [Plano da compra de animais](pecuaria/planos/compra-animais.md): tipo de operação `COMPRA_ANIMAIS` com um item por animal e cadastro atômico no Rebanho, decisões a confirmar, tarefas por modelo/esforço com custo estimado e fluxo de testes. Ainda não implementado.
