@@ -80,15 +80,18 @@ async function carregarCadastros(configuracao: ConfiguracaoRelatorioFinanceiro) 
   const categoriaIds = configuracao.categoriaIds.filter(semSentinela);
   const centroCustoIds = configuracao.centroCustoIds.filter(semSentinela);
   const parceiroIds = configuracao.parceiroIds.filter(semSentinela);
-  const [categorias, centrosCusto, parceiros] = await Promise.all([
+  const grupoIds = configuracao.grupoIds.filter(semSentinela);
+  const [categorias, centrosCusto, parceiros, grupos] = await Promise.all([
     categoriaIds.length ? prisma.categoria.findMany({ where: { id: { in: categoriaIds } }, select: { id: true, nome: true } }) : [],
     centroCustoIds.length ? prisma.centroCusto.findMany({ where: { id: { in: centroCustoIds } }, select: { id: true, nome: true } }) : [],
     parceiroIds.length ? prisma.parceiro.findMany({ where: { id: { in: parceiroIds } }, select: { id: true, nome: true } }) : [],
+    grupoIds.length ? prisma.grupoCategoria.findMany({ where: { id: { in: grupoIds } }, select: { id: true, nome: true } }) : [],
   ]);
   if (categorias.length !== categoriaIds.length) throw new FinanceiroError("VALIDACAO", "Uma das categorias selecionadas não existe mais", "categoriaIds");
   if (centrosCusto.length !== centroCustoIds.length) throw new FinanceiroError("VALIDACAO", "Um dos centros de custo selecionados não existe mais", "centroCustoIds");
   if (parceiros.length !== parceiroIds.length) throw new FinanceiroError("VALIDACAO", "Um dos parceiros selecionados não existe mais", "parceiroIds");
-  return { categorias, centrosCusto, parceiros };
+  if (grupos.length !== grupoIds.length) throw new FinanceiroError("VALIDACAO", "Um dos grupos de categorias selecionados não existe mais", "grupoIds");
+  return { categorias, centrosCusto, parceiros, grupos };
 }
 
 export async function gerarRelatorio(propriedadeId: number, usuario: { id: number | null; nome: string }, configuracao: ConfiguracaoRelatorioFinanceiro, versaoRascunho?: number, idReenvio?: string) {
@@ -105,8 +108,19 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
   });
   if (existente) await prisma.relatorioFinanceiro.update({ where: { id: existente.id }, data: { status: "PROCESSANDO", erro: null } });
   try {
+    // Grupo vivo de cada categoria: o filtro por grupo vira a lista das suas
+    // categorias, que é o que o rateio de cada parte conhece.
+    const categoriasCadastradas = await prisma.categoria.findMany({ select: { id: true, grupo: { select: { id: true, nome: true } } } });
+    const gruposPorCategoria = new Map(categoriasCadastradas.map((c) => [c.id, c.grupo]));
+    const filtro = {
+      ...configuracao,
+      categoriasDosGrupos: [
+        ...categoriasCadastradas.filter((c) => configuracao.grupoIds.includes(c.grupo?.id ?? SEM_VINCULO)).map((c) => c.id),
+        ...(configuracao.grupoIds.includes(SEM_VINCULO) ? [SEM_VINCULO] : []),
+      ],
+    };
     const [gerencial, operacoes, centros] = await Promise.all([
-      gerarRelatorioGerencial({ inicio: configuracao.dataInicio, fim: configuracao.dataFim, regime: configuracao.regime }, propriedadeId, configuracao),
+      gerarRelatorioGerencial({ inicio: configuracao.dataInicio, fim: configuracao.dataFim, regime: configuracao.regime }, propriedadeId, filtro),
       prisma.operacao.findMany({
         where: {
           propriedadeId,
@@ -124,8 +138,8 @@ export async function gerarRelatorio(propriedadeId: number, usuario: { id: numbe
     // nome antigo e duplicaria a linha.
     const nomesCentro = new Map(centros.map((c) => [c.id, c.nome]));
     const snapshot: SnapshotRelatorio = {
-      versao: 1, nome: configuracao.nome, geradoEm: criado.geradoEm.toISOString(), autor: usuario.nome,
-      propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, configuracao, nomesCentro),
+      versao: 2, nome: configuracao.nome, geradoEm: criado.geradoEm.toISOString(), autor: usuario.nome,
+      propriedade: gerencial.meta.propriedade, configuracao, filtros, gerencial, composicao: comporItens(operacoes, filtro, nomesCentro, gruposPorCategoria),
     };
     const storageKey = `${env.STORAGE_NAMESPACE}/relatorios-financeiros/${propriedadeId}/${criado.id}.pdf`;
     await (await getStorage()).putObject({ key: storageKey, body: gerarPdfRelatorio(snapshot), contentType: "application/pdf" });

@@ -15,9 +15,9 @@ function comReferencias<T extends { tipo: TipoParceiro; papeis?: { papel: PapelP
   return { ...parceiro, papeis: papeisDoParceiro(parceiro), referencias: totalReferencias(contagens) };
 }
 
-function validarPreferencias(dados: { condicaoPagamentoPreferida?: string | null; prazosPagamento?: number[] }) {
-  if (dados.condicaoPagamentoPreferida === "A_PRAZO" && !dados.prazosPagamento?.length) {
-    throw new FinanceiroError("VALIDACAO", "Informe os prazos da sugestão de pagamento", "prazosPagamento");
+function validarPreferencias(dados: { condicaoPagamentoPreferida?: string | null; prazosPagamento?: number[]; intervaloPagamentoDias?: number | null }) {
+  if (dados.condicaoPagamentoPreferida === "A_PRAZO" && !dados.prazosPagamento?.length && dados.intervaloPagamentoDias == null) {
+    throw new FinanceiroError("VALIDACAO", "Informe o intervalo em dias", "intervaloPagamentoDias");
   }
 }
 

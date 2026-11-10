@@ -98,8 +98,8 @@ SelectScrollDownButton.displayName = SelectPrimitive.ScrollDownButton.displayNam
 
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
->(({ className, children, position = "popper", onCloseAutoFocus, onKeyDownCapture, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content> & { pesquisavel?: boolean }
+>(({ pesquisavel = true, className, children, position = "popper", onCloseAutoFocus, onKeyDownCapture, ...props }, ref) => {
   const [busca, setBusca] = React.useState("");
   const contentRef = React.useRef<React.ElementRef<typeof SelectPrimitive.Content> | null>(null);
   const buscaRef = React.useRef<HTMLInputElement>(null);
@@ -123,7 +123,7 @@ const SelectContent = React.forwardRef<
       onCloseAutoFocus={event => { setBusca(""); onCloseAutoFocus?.(event); }}
       onKeyDownCapture={event => {
         onKeyDownCapture?.(event);
-        if (event.defaultPrevented || event.target === buscaRef.current) return;
+        if (!pesquisavel || event.defaultPrevented || event.target === buscaRef.current) return;
         if (event.key === "Tab" || (event.key.length === 1 && event.key !== " " && !event.ctrlKey && !event.metaKey && !event.altKey) || event.key === "Backspace") {
           event.preventDefault();
           event.stopPropagation();
@@ -133,7 +133,7 @@ const SelectContent = React.forwardRef<
         }
       }}
     >
-      <div className="flex items-center gap-2 border-b border-border bg-popover px-3 py-2">
+      {pesquisavel && <div className="flex items-center gap-2 border-b border-border bg-popover px-3 py-2">
         <Search size={15} className="shrink-0 text-muted-foreground" aria-hidden="true" />
         <input ref={buscaRef} type="search" aria-label="Buscar opções" placeholder="Buscar opção…" autoComplete="off" value={busca}
           onChange={event => setBusca(event.target.value)}
@@ -149,7 +149,7 @@ const SelectContent = React.forwardRef<
             }
           }}
           className="h-8 min-h-0 w-full min-w-0 rounded-md border-0 bg-transparent px-1 text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
-      </div>
+      </div>}
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         className={cn(

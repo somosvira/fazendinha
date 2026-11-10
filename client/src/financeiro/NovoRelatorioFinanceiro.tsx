@@ -14,7 +14,7 @@ import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarP
 import { Button, ErrorBox, TIPO_OPERACAO } from "./financeiro-ui";
 import { concluirEdicaoRascunhoRelatorio, contextoEdicaoRascunhoRelatorio, enfileirarSalvamentoRascunhoRelatorio, estadoRascunhoRelatorioAtivo, guardarEdicaoRascunhoRelatorio, limparRascunhoRelatorioAtivo, marcarEdicaoRascunhoRelatorio } from "./rascunhoRelatorioAtivo";
 import { SEM_VINCULO } from "../lib/ids";
-import { CLASSIFICACOES_RELATORIO, REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
+import { REGIMES_RELATORIO, SEM_CATEGORIA, SEM_CENTRO, SEM_GRUPO, STATUS_RELATORIO, TIPOS_RELATORIO, configuracaoPadrao, erroPeriodo, isoLocal, mesclarRascunho, podeGerar, resumoConfiguracao, secoesDoRelatorio } from "./lib/relatorios";
 
 const CAMPO = "mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2.5 text-sm font-normal";
 const TITULO_SECAO = "mb-3 text-sm font-semibold text-ink";
@@ -171,8 +171,10 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
   const tipos = useMemo(() => TIPOS_RELATORIO.map((tipo) => [tipo, TIPO_OPERACAO[tipo] ?? tipo] as const), []);
   const centros = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, SEM_CENTRO], ...cadastros.centrosCusto.map((c): OpcaoValor => [c.id, `${c.nome}${c.ativo ? "" : " (inativo)"}`])], [cadastros.centrosCusto]);
   const categorias = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, SEM_CATEGORIA], ...cadastros.categorias.map((c): OpcaoValor => [c.id, `${c.nome}${c.ativo ? "" : " (inativa)"}`])], [cadastros.categorias]);
+  const gruposCadastrados = cadastros.gruposCategorias;
+  const grupos = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, SEM_GRUPO], ...(gruposCadastrados ?? []).map((g): OpcaoValor => [g.id, `${g.nome}${g.ativo ? "" : " (inativo)"}`])], [gruposCadastrados]);
   const parceiros = useMemo<OpcaoValor[]>(() => [[SEM_VINCULO, "Sem parceiro"], ...cadastros.parceiros.map((p): OpcaoValor => [p.id, `${p.nome}${p.ativo ? "" : " (inativo)"}`])], [cadastros.parceiros]);
-  const resumo = resumoConfiguracao(config, { categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, parceiros: cadastros.parceiros, tipos: TIPO_OPERACAO });
+  const resumo = resumoConfiguracao(config, { grupos: gruposCadastrados ?? [], categorias: cadastros.categorias, centrosCusto: cadastros.centrosCusto, parceiros: cadastros.parceiros, tipos: TIPO_OPERACAO });
   const bloqueio = !config.nome.trim() ? "Informe um nome para o relatório." : problemaPeriodo;
   // Fazenda de um sítio não vê a camada; na visão consolidada o servidor emite para a principal.
   const ativas = propriedades.filter((p) => p.ativo);
@@ -208,14 +210,14 @@ export function NovoRelatorioFinanceiro({ cadastros, rascunho, onVoltar, onGerad
           </label>)}</RadioGroup>
         </fieldset>
 
-        <SecaoFinanceira titulo="Filtros avançados" detalhe={`${config.tipos.length + config.status.length + config.centroCustoIds.length + config.parceiroIds.length + config.categoriaIds.length + config.classificacoes.length} selecionados`}>
+        <SecaoFinanceira titulo="Filtros avançados" detalhe={`${config.tipos.length + config.status.length + config.centroCustoIds.length + config.parceiroIds.length + config.categoriaIds.length + config.grupoIds.length} selecionados`}>
         <div className="grid gap-4 md:grid-cols-2">
           <MultiSelect label="Tipos de operação" placeholder="Todos os tipos" options={opcoesMultiSelect(tipos)} value={config.tipos} onValueChange={(value) => alterar("tipos", value)} />
           <MultiSelect label="Situação da operação" placeholder="Todas as situações" ajuda="O filtro vale para operações e itens; o caixa inclui todo movimento." options={opcoesMultiSelect(STATUS_RELATORIO)} value={config.status} onValueChange={(value) => alterar("status", value)} />
           <MultiSelect label="Centro de custo" placeholder="Todos os centros de custo" options={opcoesMultiSelect(centros)} value={config.centroCustoIds} onValueChange={(value) => alterar("centroCustoIds", value)} />
           <MultiSelect label="Parceiro" placeholder="Todos os parceiros" options={opcoesMultiSelect(parceiros)} value={config.parceiroIds} onValueChange={(value) => alterar("parceiroIds", value)} />
-          <MultiSelect label="Categoria dos itens" placeholder="Todas as categorias" ajuda="Sem seleção, inclui todas as categorias. Categoria e classificação valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro." options={opcoesMultiSelect(categorias)} value={config.categoriaIds} onValueChange={(value) => alterar("categoriaIds", value)} />
-          <MultiSelect label="Classificação" placeholder="Todas as classificações" options={opcoesMultiSelect(CLASSIFICACOES_RELATORIO)} value={config.classificacoes} onValueChange={(value) => alterar("classificacoes", value)} />
+          <MultiSelect label="Categoria dos itens" placeholder="Todas as categorias" ajuda="Sem seleção, inclui todas as categorias. Categoria e grupo de categorias valem por item: numa compra com itens de categorias diferentes, entra só a parte de cada item que corresponde ao filtro." options={opcoesMultiSelect(categorias)} value={config.categoriaIds} onValueChange={(value) => alterar("categoriaIds", value)} />
+          <MultiSelect label="Grupos de categorias" placeholder="Todos os grupos" options={opcoesMultiSelect(grupos)} value={config.grupoIds} onValueChange={(value) => alterar("grupoIds", value)} />
         </div>
         </SecaoFinanceira>
 

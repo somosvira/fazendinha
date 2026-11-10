@@ -11,7 +11,6 @@ export const TIPOS_RELATORIO = [
 // Operações nascem CONFIRMADA (o rascunho vive em RascunhoOperacao) e só podem
 // passar a CANCELADA; RASCUNHO não existe como situação de uma operação.
 export const STATUS_RELATORIO = ["CONFIRMADA", "CANCELADA"] as const;
-export const CLASSIFICACOES_RELATORIO = ["CUSTEIO", "INVESTIMENTO", "SEM_CLASSIFICACAO"] as const;
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida")
   .refine((v) => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Data inválida");
@@ -28,7 +27,7 @@ const campos = {
   centroCustoIds: ids,
   parceiroIds: ids,
   categoriaIds: ids,
-  classificacoes: unicos(z.enum(CLASSIFICACOES_RELATORIO)),
+  grupoIds: ids,
 };
 
 /** O rascunho guarda o que o usuário estiver digitando, mesmo incompleto. */

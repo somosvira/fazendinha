@@ -4,7 +4,7 @@ import XLSX from "xlsx";
 import { prisma } from "../src/db.js";
 import { env } from "../src/env.js";
 import { criarConta } from "../src/services/financeiro/contas.js";
-import { criarCategoria, criarCentroCusto } from "../src/services/financeiro/cadastros-gerenciais.js";
+import { criarCategoria, criarCentroCusto, criarGrupoCategoria } from "../src/services/financeiro/cadastros-gerenciais.js";
 import { criarOperacao } from "../src/services/financeiro/operacoes.js";
 import { criarParceiro, atualizarParceiro } from "../src/services/financeiro/parceiros.js";
 import { criarPropriedade } from "../src/services/propriedade.js";
@@ -51,9 +51,11 @@ function ehPatrimonial(linha: Linha) {
   return categoria.includes("transfer") || categoria.includes("saldo inicial") || categoria.includes("aplica") || categoria.includes("estorno") || categoria.includes("ajuste") || categoria.includes("identificar") || categoria.includes("reembolso");
 }
 
-function classificacao(categoria: string | null) {
-  const nome = categoria?.toLocaleLowerCase("pt-BR") ?? "";
-  return nome.includes("invest") || nome.includes("aquisição") || nome.includes("aquisicao") || nome.includes("material de construção") || nome.includes("maq e equip") || nome.includes("empreitada") ? "INVESTIMENTO" as const : null;
+/** Grupo de categorias da planilha: só entradas = Receitas; termos de investimento = Investimentos; o resto é Custeio. */
+function grupoDaCategoria(categoria: string, somenteEntradas: boolean) {
+  if (somenteEntradas) return "Receitas";
+  const nome = categoria.toLocaleLowerCase("pt-BR");
+  return nome.includes("invest") || nome.includes("aquisição") || nome.includes("aquisicao") || nome.includes("material de construção") || nome.includes("maq e equip") || nome.includes("empreitada") ? "Investimentos" : "Custeio";
 }
 
 /** Lê somente a tabela dinâmica detalhada; abas de totais e projeções não são fatos importáveis. */
@@ -95,9 +97,14 @@ async function garantirCadastro(nome: string, ordem: number, usuarioId: number) 
   return existente ?? criarCentroCusto({ nome, ordem }, usuarioId);
 }
 
-async function garantirCategoria(nome: string, ordem: number, usuarioId: number) {
+async function garantirGrupo(nome: string, usuarioId: number) {
+  const existente = await prisma.grupoCategoria.findUnique({ where: { nome } });
+  return existente ?? criarGrupoCategoria({ nome, ordem: 0 }, usuarioId);
+}
+
+async function garantirCategoria(nome: string, ordem: number, grupo: string, usuarioId: number) {
   const existente = await prisma.categoria.findUnique({ where: { nome } });
-  return existente ?? criarCategoria({ nome, ordem, classificacao: classificacao(nome) }, usuarioId);
+  return existente ?? criarCategoria({ nome, ordem, grupoId: (await garantirGrupo(grupo, usuarioId))!.id }, usuarioId);
 }
 
 async function garantirParceiro(nome: string, papeis: Array<"CLIENTE" | "FORNECEDOR" | "PRESTADOR_SERVICO">, usuarioId: number) {
@@ -147,7 +154,10 @@ async function main() {
   const grupos = [...new Set(lancamentos.map((item) => item.grupo).filter((item): item is string => Boolean(item)))];
   for (const [ordem, nome] of grupos.entries()) centros.set(nome, (await garantirCadastro(nome, ordem, usuario.id)).id);
   const nomesCategorias = [...new Set(lancamentos.map((item) => item.categoria).filter((item): item is string => Boolean(item)))];
-  for (const [ordem, nome] of nomesCategorias.entries()) categorias.set(nome, (await garantirCategoria(nome, ordem, usuario.id)).id);
+  for (const [ordem, nome] of nomesCategorias.entries()) {
+    const somenteEntradas = lancamentos.every((item) => item.categoria !== nome || item.natureza === "Credito");
+    categorias.set(nome, (await garantirCategoria(nome, ordem, grupoDaCategoria(nome, somenteEntradas), usuario.id))!.id);
+  }
   for (const nome of [...new Set(lancamentos.map((item) => item.parceiro).filter((item): item is string => Boolean(item)))]) {
     const usos = lancamentos.filter((item) => item.parceiro === nome).map((item) => item.natureza === "Credito" ? "CLIENTE" as const : "FORNECEDOR" as const);
     parceiros.set(nome, (await garantirParceiro(nome, usos, usuario.id)).id);
@@ -171,14 +181,14 @@ async function main() {
     if (item.natureza === "Debito") {
       await criarOperacao({
         chave: chave(item.linha), tipo: "SERVICO", data: item.data, descricao: descricao(item), valorTotal: item.valor,
-        parceiroId, categoriaId, centroCustoId, classificacao: classificacao(item.categoria), propriedadeId: propriedade.id, usuarioId: usuario.id,
+        parceiroId, categoriaId, centroCustoId, propriedadeId: propriedade.id, usuarioId: usuario.id,
         itens: [],
         financeiro: { condicao: "A_VISTA", contaId: conta.id, formaPagamento: "TRANSFERENCIA_BANCARIA" },
       });
     } else {
       await criarOperacao({
         chave: chave(item.linha), tipo: "VENDA", data: item.data, descricao: descricao(item), parceiroId, centroCustoId,
-        itens: [{ descricao: item.categoria ?? "Receita sem categoria", quantidade: 1, unidade: "UN", valorTotal: item.valor, estocavel: false, categoriaId, classificacao: classificacao(item.categoria) }],
+        itens: [{ descricao: item.categoria ?? "Receita sem categoria", quantidade: 1, unidade: "UN", valorTotal: item.valor, estocavel: false, categoriaId }],
         propriedadeId: propriedade.id, usuarioId: usuario.id,
         financeiro: { condicao: "A_VISTA", contaId: conta.id, formaPagamento: "TRANSFERENCIA_BANCARIA" },
       });

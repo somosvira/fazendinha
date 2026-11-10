@@ -201,14 +201,14 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
       if (!estocavelItens[indice] && item.partidas?.length) throw new FinanceiroError("VALIDACAO", "Lotes só podem ser informados para item que movimenta estoque");
     });
 
-    const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
+    const categorizar = async (categoriaId: string | null | undefined) => {
       if (historicoComercial && categoriaId === historicoComercial.item.categoriaId) {
         const anterior = historicoComercial.item;
-        return { categoriaId: anterior.categoriaId, categoriaNome: anterior.categoriaNome, classificacao: anterior.classificacao };
+        return { categoriaId: anterior.categoriaId, categoriaNome: anterior.categoriaNome };
       }
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
-      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
+      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null };
     };
     const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       ordem: indice + 1,
@@ -233,7 +233,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
         : dinheiro(item.valorTotal),
       estocavel: estocavelItens[indice],
       ...(item.partidas?.length ? { partidasSnapshot: item.partidas as Prisma.InputJsonValue } : {}),
-      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
+      ...await categorizar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId),
     })));
     if ((input.descontoComercial || input.logistica) && !["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"].includes(input.tipo))
       throw new FinanceiroError("VALIDACAO", "Desconto comercial e logística próprios deste fluxo são informados nas compras");
@@ -250,9 +250,9 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
       const valor = dinheiro(input.logistica.valor);
       itens.push({ ordem: itens.length+1, produtoId: undefined, centroCustoId: centro.id, centroCustoNome: centro.nome, descricao: input.logistica.descricao,
         quantidade: new Prisma.Decimal(1), unidade: "un", valorUnitario: valor, valorTotal: valor, estocavel: false,
-        ...await classificar(input.logistica.categoriaId) });
+        ...await categorizar(input.logistica.categoriaId) });
     }
-    const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
+    const categoriaOperacao = await categorizar(itens.length ? null : input.categoriaId);
     const totalItens = totalItensFinanceiros(itens);
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
@@ -285,7 +285,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoIn
           descontoComercial: dinheiro(input.descontoComercial ?? 0).toFixed(2) } } : {}),
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
-        ...classificacaoOperacao,
+        ...categoriaOperacao,
         centroCustoId: input.centroCustoId,
         corrigeOperacaoId: input.corrigeOperacaoId,
         criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
@@ -448,7 +448,7 @@ export async function corrigirVendaLeiteTx(tx: Prisma.TransactionClient, input: 
     centroCustoId: input.centroCustoId ?? original.centroCustoId ?? undefined, financeiro: input.financeiro,
     itens: [{ produtoId: versao.retirada.produtoId, quantidade: Number(versao.retirada.quantidade), unidade: item.unidade, descricao: item.descricao,
       valorTotal: input.valorTotal, categoriaId: input.categoriaId === undefined ? item.categoriaId : input.categoriaId,
-      classificacao: input.categoriaId === undefined || input.categoriaId === item.categoriaId ? item.classificacao : undefined, centroCustoId: input.centroCustoId ?? item.centroCustoId, estocavel: true }] };
+      centroCustoId: input.centroCustoId ?? item.centroCustoId, estocavel: true }] };
   await tx.compromissoFinanceiro.updateMany({ where: { operacaoId: original.id, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });
   await tx.operacao.update({ where: { id: original.id }, data: { status: "CANCELADA" } });
   const substituta = await criarOperacaoTx(tx, dados, { modo: "RETIRADA_EXISTENTE", produtoId: versao.retirada.produtoId, retiradaId: versao.retiradaId });

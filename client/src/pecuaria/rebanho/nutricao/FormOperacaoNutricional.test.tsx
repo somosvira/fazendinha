@@ -81,7 +81,7 @@ describe("formulários próprios de nutrição", () => {
     render(<FormOperacaoNutricional acao="consumo" loteId="lote" onVoltar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByText("Consumo lote no sítio 2 de 2026-10-21 a 2026-11-03");
     expect(screen.getByText("14 dias a fechar por período · 21/10/2026 a 03/11/2026")).toBeTruthy();
-    expect(screen.getByText("Fechamento por período")).toBeTruthy();
+    expect(screen.queryByText("Fechamento por período")).toBeNull();
     expect(screen.queryByText("Histórico de fechamentos")).toBeNull();
   });
   it("lote sem dieta não abre conferência", async () => {

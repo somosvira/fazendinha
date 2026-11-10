@@ -145,3 +145,13 @@
 .nutricao-config-check input[type=checkbox]{width:18px;height:18px;accent-color:var(--primary);flex-shrink:0}
 .nutricao-configuracao .nutricao-mensal section,.nutricao-mensal .nutricao-configuracao section{margin:0}
 .nutricao-config-calendario input[type=number]{max-width:140px}
+/* Próximos fechamentos: título com o alternador e os dois números à direita, em mini cards. */
+.nutricao-proximos-cabecalho { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
+.nutricao-proximos-titulo { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+.nutricao-proximos-numeros { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.nutricao-proximos-numeros > div { display: grid; gap: 0; min-width: 0; padding: 6px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--campo-papel, #f7f8fa); }
+.nutricao-proximos-numeros dt { font-size: 12px; color: var(--muted-foreground); }
+.nutricao-proximos-numeros dd { margin: 0; font-size: 15px; font-weight: 650; color: var(--campo-sucesso, #2f6b4f); }
+.nutricao-proximos-numeros > div[data-pendente] dd { color: var(--campo-atencao, #775930); }
+.fechamento-cartoes { padding: 0; }
+@media (max-width: 600px) { .nutricao-proximos-numeros > div { flex: 1 1 0; } }

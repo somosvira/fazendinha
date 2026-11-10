@@ -21,6 +21,7 @@ import { ConfiguracaoNutricao, modelosNutricionais as modelos } from "./Configur
 import { EsqueletoTabela } from "../../../components/Esqueleto";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 
+const PRIORIDADE_MES: Record<string, number> = { ATRASADO: 0, A_CONFERIR: 1, EM_ANDAMENTO: 2, REVISADO: 3 };
 // Situação calculada pelo servidor para o mês; o selo diz o que a pessoa precisa fazer.
 const SITUACAO_MES: Record<string, { rotulo: string; tom: "neutral" | "green" | "amber" | "red" }> = {
   EM_ANDAMENTO: { rotulo: "Mês em andamento", tom: "neutral" },
@@ -187,6 +188,8 @@ export function GestaoMensal({
               )}
               {lista
                 .filter((m) => vista !== "alertas" || !m.revisadoEm)
+                // Fila de trabalho: o que está atrasado ou já pode ser conferido vem antes do mês em andamento e do revisado.
+                .sort((a, b) => (PRIORIDADE_MES[a.situacao] ?? 9) - (PRIORIDADE_MES[b.situacao] ?? 9))
                 .map((m) => (
                   <article className="mensal-linha" key={m.id}>
                     <div>

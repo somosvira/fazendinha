@@ -14,7 +14,7 @@ function compra(numero: number, valor: string, categoria: string, centro: string
   return {
     id: uid(numero), numero, data: new Date("2026-09-01T00:00:00Z"), tipo: "COMPRA_CONSUMO_DIRETO", status: "CONFIRMADA",
     descricao: "Compra", valorTotal: valor, centroCustoId: uid(200 + numero), centroCusto: { nome: centro }, parceiro: null,
-    categoriaId: uid(300 + numero), categoriaNome: categoria, classificacao: "CUSTEIO", itens: [],
+    categoriaId: uid(300 + numero), categoriaNome: categoria, itens: [],
   };
 }
 

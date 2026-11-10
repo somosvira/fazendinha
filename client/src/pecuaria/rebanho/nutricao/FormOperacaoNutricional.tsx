@@ -53,13 +53,14 @@ function FormConsumo({ lote, onSalvo, onOcupado, acoes }: { lote: Lote; onSalvo:
     {s && <>
       <ContextoFechamento lote={s.resumo.lote} vigencia={s.resumo.vigente!} dieta={s.dieta} />
       {s.dias > 0 && <h3 className="nutricao-subtitulo">{s.dias} {s.dias === 1 ? "dia a fechar" : "dias a fechar"} por período · {formatarDataBR(s.inicio)} a {formatarDataBR(s.fim)}</h3>}
-      <p className="nutricao-modelo-lote">{s.mensal && s.dias > 0
+      {/* Sem diário ou mensal configurado, o fechamento por período já está claro no título acima. */}
+      {(s.mensal || s.adocao) && <p className="nutricao-modelo-lote">{s.mensal && s.dias > 0
         ? <>Até {formatarDataBR(s.fim)} o consumo fecha por período. Desde {formatarDataBR(s.adocao!)}, o lote usa o fechamento <strong>{MODELOS[s.mensal.modelo].rotulo.toLocaleLowerCase("pt-BR")}</strong>, com conferência no dia {s.mensal.diaConferencia} do mês seguinte ({s.mensal.loteId ? "exceção do lote" : "padrão do sítio"}).</>
         : s.mensal
         ? <><strong>Fechamento {MODELOS[s.mensal.modelo].rotulo.toLocaleLowerCase("pt-BR")} desde {formatarDataBR(s.adocao!)}</strong> · conferência no dia {s.mensal.diaConferencia} do mês seguinte ({s.mensal.loteId ? "exceção do lote" : "padrão do sítio"}).</>
         : s.adocao ? <><strong>Fechamento por período até {formatarDataBR(somarDias(s.adocao, -1))}</strong> · a partir de {formatarDataBR(s.adocao)}, o lote passa ao fechamento {s.configuracaoAdocao ? MODELOS[s.configuracaoAdocao.modelo].rotulo.toLocaleLowerCase("pt-BR") : "configurado"}.</>
-        : <><strong>Fechamento por período</strong> · você escolhe o intervalo, confere os ingredientes e confirma a baixa de estoque.</>}
-        {" "}<LinkNutricional href="/configuracoes/pecuaria/nutricao/fechamento">Configurar</LinkNutricional></p>
+        : null}
+        {" "}<LinkNutricional href="/configuracoes/pecuaria/nutricao/fechamento">Configurar</LinkNutricional></p>}
       {s.dias > 0 ? <>
         {conferencia({ inicio: s.inicio, fim: s.fim })}
       </> : s.mensal ? <div className="nutricao-acoes"><LinkNutricional className="nutricao-botao" href={rotaNutricao({ aba: "fechamentos", loteId: lote.id })}>Ver fechamentos do lote</LinkNutricional></div>

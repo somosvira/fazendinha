@@ -40,7 +40,7 @@ export function podeConsultarFinanceiro(ctx: ContextoAssistente, visao: string) 
   const u = ctx.usuario;
   const aba = visao === "saldo" ? "caixinha" : ["pagar", "receber"].includes(visao) ? "gastos" : "dashboard";
   return temArea(u, "financeiro") && (u.dono || u.abas.includes(aba))
-    && (["verValores", "verInvestimento", "verSalarios"] as const).every(flag => temPermissao(u, flag));
+    && (["verValores", "verSalarios"] as const).every(flag => temPermissao(u, flag));
 }
 export const ferramentaFinanceiro: FerramentaAssistente = {
   dominio: "financeiro", permitida: ctx => ["resumo", "saldo", "pagar", "receber"].some(v => podeConsultarFinanceiro(ctx, v)),

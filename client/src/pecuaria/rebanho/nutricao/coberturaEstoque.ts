@@ -1,10 +1,12 @@
 import { listarSaldos, type SaldoDTO } from "../../../estoque/api";
 import { hoje } from "../../../financeiro/financeiro-ui";
-import { listarDietas, listarPartidasNutricionais, type Dieta, type PartidaNutricional, type ResumoNutricional } from "./api";
+import { listarDietas, listarPartidasPorProduto, type Dieta, type PartidaNutricional, type ResumoNutricional } from "./api";
 import { diasEntre } from "./situacaoFechamento";
 
 /** Abaixo disso, o estoque de um ingrediente merece atenção. */
 export const DIAS_ATENCAO = 7;
+/** Perda por validade só vira alerta quando o lote de estoque que se perde vence dentro deste prazo. */
+export const DIAS_ALERTA_VALIDADE = 60;
 
 export type CoberturaIngrediente = {
   produtoId: string; nome: string; unidade: string; propriedadeId: number;
@@ -18,6 +20,8 @@ export type CoberturaIngrediente = {
   vencendo: number;
   /** Validade mais próxima entre os lotes de estoque com saldo. */
   proximaValidade: string | null;
+  /** Validade do primeiro lote de estoque com sobra que vence antes do uso; null sem perda. */
+  primeiraPerda: string | null;
   /** Dias que o saldo utilizável cobre o consumo do sítio; null quando não há consumo previsto. */
   dias: number | null;
 };
@@ -29,15 +33,16 @@ const disponivel = (s: SaldoDTO) => s.saldoProjetado ?? s.saldo;
 /** Quanto dos lotes de estoque vence antes de ser consumido no ritmo diário, gastando primeiro o que vence antes. */
 export function perdaPorValidade(partidas: PartidaNutricional[], consumoDia: number, dia = hoje()) {
   const datadas = partidas.filter(p => p.validade && Number(p.saldo) > 0).sort((a, b) => a.validade!.localeCompare(b.validade!));
-  let usado = 0, vencendo = 0;
+  let usado = 0, vencendo = 0, primeiraPerda: string | null = null;
   for (const p of datadas) {
     const validade = p.validade!.slice(0, 10);
     const capacidade = validade < dia ? 0 : Math.max(0, diasEntre(dia, validade) * consumoDia - usado);
     const uso = Math.min(Number(p.saldo), capacidade);
     usado += uso;
     vencendo += Number(p.saldo) - uso;
+    if (Number(p.saldo) - uso > 0) primeiraPerda ??= validade;
   }
-  return { vencendo, proximaValidade: datadas[0]?.validade?.slice(0, 10) ?? null };
+  return { vencendo, proximaValidade: datadas[0]?.validade?.slice(0, 10) ?? null, primeiraPerda };
 }
 
 /** Cobertura calculada com as dietas vigentes, o efetivo de hoje e o saldo de cada sítio. */
@@ -56,11 +61,11 @@ export function calcularCobertura(lotes: ResumoNutricional[], dietas: Dieta[], s
       const consumoSitioDia = demanda.get(`${r.lote.propriedadeId}:${i.produtoId}`) ?? 0;
       const saldoProduto = saldos.find(s => s.produtoId === i.produtoId);
       const saldo = saldoProduto ? Math.max(0, disponivel(saldoProduto)) : 0;
-      const { vencendo, proximaValidade } = perdaPorValidade(partidas.get(`${r.lote.propriedadeId}:${i.produtoId}`) ?? [], consumoSitioDia, dia);
+      const { vencendo, proximaValidade, primeiraPerda } = perdaPorValidade(partidas.get(`${r.lote.propriedadeId}:${i.produtoId}`) ?? [], consumoSitioDia, dia);
       const utilizavel = Math.max(0, saldo - vencendo);
       return {
         produtoId: i.produtoId, nome: i.produto?.nome ?? saldoProduto?.nome ?? "Produto", unidade: i.unidade, propriedadeId: r.lote.propriedadeId,
-        consumoLoteDia: Number(i.quantidadeCabecaDia) * r.lote.animaisAtivos, consumoSitioDia, saldo, vencendo: Math.min(vencendo, saldo), proximaValidade, custoUnitario: saldoProduto?.custoMedio ?? null,
+        consumoLoteDia: Number(i.quantidadeCabecaDia) * r.lote.animaisAtivos, consumoSitioDia, saldo, vencendo: Math.min(vencendo, saldo), proximaValidade, primeiraPerda, custoUnitario: saldoProduto?.custoMedio ?? null,
         dias: consumoSitioDia > 0 ? Math.floor(utilizavel / consumoSitioDia) : null,
       };
     });
@@ -81,15 +86,23 @@ export async function consultarCobertura(lotes: ResumoNutricional[]) {
   const porDieta = new Map(dietas.map(d => [d.id, d]));
   const chaves = [...new Set(comDieta.flatMap(r => (porDieta.get(r.vigente!.dieta.id)?.itens ?? []).map(i => `${r.lote.propriedadeId}:${i.produtoId}`)))];
   // Validade é complemento: produto sem rastreio ou consulta que falha conta o saldo inteiro.
-  const partidas = await Promise.all(chaves.map(c => { const [sitio, produtoId] = c.split(":"); return listarPartidasNutricionais(produtoId, Number(sitio)).catch(() => []); }));
-  return calcularCobertura(comDieta, dietas, new Map(sitios.map((id, i) => [id, saldos[i]])), new Map(chaves.map((c, i) => [c, partidas[i]])));
+  // Uma consulta por sítio com todos os ingredientes das dietas dele.
+  const porSitio = new Map<number, string[]>();
+  for (const c of chaves) { const [sitio, produtoId] = c.split(":"); porSitio.set(Number(sitio), [...(porSitio.get(Number(sitio)) ?? []), produtoId]); }
+  const respostas = await Promise.all([...porSitio].map(([sitio, ids]) => listarPartidasPorProduto(ids, sitio).catch(() => ({} as Record<string, PartidaNutricional[]>))));
+  const partidas = new Map<string, PartidaNutricional[]>();
+  [...porSitio].forEach(([sitio, ids], i) => { for (const id of ids) partidas.set(`${sitio}:${id}`, respostas[i][id] ?? []); });
+  return calcularCobertura(comDieta, dietas, new Map(sitios.map((id, i) => [id, saldos[i]])), partidas);
 }
 
+/** Há sobra que se perde por validade num lote de estoque que vence dentro do prazo de alerta. */
+export const venceEmBreve = (i: CoberturaIngrediente, dia = hoje()) => i.vencendo > 0 && i.primeiraPerda != null && diasEntre(dia, i.primeiraPerda) <= DIAS_ALERTA_VALIDADE;
+
 /** Ingredientes com pouco estoque, um por produto e sítio, com os lotes que dependem dele. */
-export function ingredientesEmFalta(cobertura: Map<string, CoberturaLote>, lotes: ResumoNutricional[]) {
+export function ingredientesEmFalta(cobertura: Map<string, CoberturaLote>, lotes: ResumoNutricional[], dia = hoje()) {
   const porProduto = new Map<string, CoberturaIngrediente & { lotes: string[] }>();
   for (const r of lotes) for (const i of cobertura.get(r.lote.id)?.ingredientes ?? []) {
-    if ((i.dias === null || i.dias >= DIAS_ATENCAO) && !(i.vencendo > 0)) continue;
+    if ((i.dias === null || i.dias >= DIAS_ATENCAO) && !venceEmBreve(i, dia)) continue;
     const chave = `${i.propriedadeId}:${i.produtoId}`;
     const atual = porProduto.get(chave) ?? { ...i, lotes: [] };
     atual.lotes.push(r.lote.nome);

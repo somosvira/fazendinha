@@ -2,7 +2,6 @@
 // Presets de papel + checagem de permissão. Puro e testável.
 export type Flag =
   | "verValores"
-  | "verInvestimento"
   | "verSalarios"
   | "lancar"
   | "exportar"
@@ -15,13 +14,13 @@ const AREAS_LEGADAS_PECUARIA = new Set(["rebanho", "gado_corte"]);
 // `relatorio` é o identificador persistido por compatibilidade; na interface ele
 // representa a Central de Relatórios geral, não apenas o antigo fechamento.
 export const ABAS_IDS = ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"];
-export const FLAGS_IDS: Flag[] = ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"];
+export const FLAGS_IDS: Flag[] = ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos"];
 
 export const PAPEIS: Record<string, { abas: string[]; areas: Area[]; flags: Flag[] }> = {
   proprietario: {
     abas: ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"],
     areas: [...AREAS_IDS],
-    flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
+    flags: ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
   },
   secretaria: {
     abas: ["gastos", "lancar", "caixinha", "cadastros"],
@@ -31,17 +30,17 @@ export const PAPEIS: Record<string, { abas: string[]; areas: Area[]; flags: Flag
   contador: {
     abas: ["dashboard", "gastos", "caixinha", "cadastros", "relatorio"],
     areas: ["financeiro"],
-    flags: ["verValores", "verInvestimento", "verSalarios", "exportar"],
+    flags: ["verValores", "verSalarios", "exportar"],
   },
   gestor: {
     abas: ["dashboard", "gastos", "ia", "relatorio"],
     areas: [...AREAS_IDS],
-    flags: ["verValores", "verInvestimento"],
+    flags: ["verValores"],
   },
   consulta: {
     abas: ["dashboard", "relatorio"],
     areas: ["financeiro"],
-    flags: ["verValores", "verInvestimento"],
+    flags: ["verValores"],
   },
 };
 

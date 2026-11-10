@@ -1,3 +1,4 @@
+import "./form-produto.css";
 import { AjudaCampo } from "@/components/Dica";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SelectCampo } from "./SelectCampo";
@@ -27,9 +28,9 @@ function CampoCarenciaProduto({ destino, escolha, prazo, permiteDesconhecida, er
   onEscolha: (escolha: EscolhaCarencia) => void; onPrazo: (prazo: string) => void;
 }) {
   const id = `produto-carencia-${destino}`;
-  return <fieldset className="grid min-w-0 gap-2 border-0 p-0">
-    <legend className="mb-2 text-sm font-semibold">{destino === "leite" ? "Leite" : "Carne"}{!permiteDesconhecida && <span aria-hidden="true"> *</span>}</legend>
-    <div className="grid gap-1">
+  return <div role="group" aria-label={`Carência de ${destino}`} className="produto-carencia-linha">
+    <span className="produto-carencia-destino text-sm font-semibold">{destino === "leite" ? "Leite" : "Carne"}{!permiteDesconhecida && <span aria-hidden="true"> *</span>}</span>
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
       {([
         ["SEM", "Sem carência (0 horas)", `Sem carência de ${destino} (0 horas)`],
         ["COM", "Com carência", `Com carência de ${destino}`],
@@ -42,7 +43,7 @@ function CampoCarenciaProduto({ destino, escolha, prazo, permiteDesconhecida, er
     </div>
     {escolha === "COM" ? <CampoFormulario id={id} rotulo={`Prazo de ${destino} (horas)`} obrigatorio erro={erro}>{(p) => <Input {...p} type="number" min="1" step="1" value={prazo} onChange={(e) => onPrazo(e.target.value)} className={classeInput} />}</CampoFormulario>
       : erro && <p id={`${id}-erro`} role="alert" className="text-xs text-destructive">{erro}</p>}
-  </fieldset>;
+  </div>;
 }
 
 export type CampoHerdavel = "nome" | "apresentacao" | "fabricante" | "classificacaoTecnica";
@@ -229,13 +230,11 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       </div>
       {usos.usoSanitario && <fieldset className="grid gap-4 rounded-lg border border-border p-3 sm:col-span-2">
         <legend className="px-1 text-sm font-semibold">Perfil sanitário — sugestões para revisão<AjudaCampo rotulo="Ajuda: perfil sanitário" texto={<>Sem tipo padrão, o atendimento exige classificação manual. O cadastro do produto não define indicação clínica.</>} /></legend>
-        <p className="text-sm text-ink-3">Informe a carência sugerida separadamente para leite e carne. A aplicação conserva a carência confirmada na data do atendimento.</p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3">
           <CampoCarenciaProduto destino="leite" escolha={escolhaLeite} prazo={leite} permiteDesconhecida={legadoLeiteDesconhecido} erro={erros.carenciaLeiteHoras} onEscolha={setEscolhaLeite} onPrazo={setLeite} />
           <CampoCarenciaProduto destino="carne" escolha={escolhaCarne} prazo={carne} permiteDesconhecida={legadoCarneDesconhecido} erro={erros.carenciaCarneHoras} onEscolha={setEscolhaCarne} onPrazo={setCarne} />
         </div>
         {(legadoLeiteDesconhecido || legadoCarneDesconhecido) && <p className="text-sm text-ink-3">Prazos antigos não informados permanecem desconhecidos até serem conferidos.</p>}
-        <p className="text-sm text-ink-3">Alterar o produto não modifica as aplicações anteriores.</p>
         <CampoFormulario id="produto-via" rotulo="Via de aplicação sugerida" erro={erros.viaPadrao}>{(p) => <Input {...p} maxLength={80} value={via} onChange={(e) => setVia(e.target.value)} className={classeInput} />}</CampoFormulario>
         <SelectBuscavel rotulo="Tipo de aplicação padrão (opcional)" valor={tipoAplicacaoId} onChange={setTipoAplicacaoId} buscar={buscarTiposAplicacao} erroCampo={erros.tipoAplicacaoId} />
 
@@ -244,7 +243,7 @@ export function FormProduto({ produto, parceiros: parceirosProp, categorias: cat
       {usos.usoNutricional && <CampoFormulario id="produto-ms" rotulo="Matéria seca (%)" erro={erros.materiaSecaPercentual}>{(p) => <Input {...p} type="text" inputMode="decimal" value={materiaSeca} onChange={(e) => setMateriaSeca(e.target.value)} className={classeInput} />}</CampoFormulario>}
       {usos.usoGenetico && <div className="text-sm sm:col-span-2"><h3 className="font-semibold">Identidade genética</h3>{produto?.materialGeneticoId ? <LinkInterno href={`/pecuaria/rebanho/cadastros?aba=material-genetico&material=${encodeURIComponent(produto.materialGeneticoId)}`} area="pecuaria">Consultar material genético</LinkInterno> : <p className="text-ink-3">Nenhum material genético vinculado. A identidade permanece no cadastro de materiais genéticos.</p>}</div>}
       <CampoFormulario id="produto-conservacao" rotulo="Conservação e armazenamento">{p => <textarea {...p} maxLength={1000} value={conservacao} onChange={e => setConservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
-      {produto ? <PartidasProduto configuracao produtoId={produto.id} rastreado={rastrearPartidas} onMudou={() => setRastrearPartidas(true)} /> : <fieldset className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"><legend className="px-1 text-sm font-semibold">Lotes e validade</legend><label className="flex items-center gap-2 text-sm"><Checkbox  checked={rastrearPartidas} onCheckedChange={(checked) => setRastrearPartidas(checked === true)} />Controlar lotes por validade</label><p className="text-xs text-ink-3">Opcional. Entradas e saídas passam a identificar o lote do produto. Depois de ativado, o controle não pode ser desligado.</p></fieldset>}
+      {produto ? <PartidasProduto configuracao produtoId={produto.id} rastreado={rastrearPartidas} onMudou={() => setRastrearPartidas(true)} /> : <CampoFormulario id="produto-rastrear" rotulo="Controlar lotes por validade" ajuda="Entradas e saídas identificam o lote e a validade do produto. Depois de ativado, o controle não pode ser desligado.">{(p) => <SelectCampo {...p} pesquisavel={false} value={rastrearPartidas ? "SIM" : "NAO"} onValueChange={v => setRastrearPartidas(v === "SIM")} className={classeInput}><option value="NAO">Não</option><option value="SIM">Sim</option></SelectCampo>}</CampoFormulario>}
       <MultiSelect
         label="Centros de custo"
         placeholder="Nenhum centro de custo"
