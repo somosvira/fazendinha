@@ -14,21 +14,25 @@ import { CAMPO, CampoErro, SELECT } from "./CamposOperacao";
 import { DialogFinanceiro } from "./DialogFinanceiro";
 import { brl, Button, Empty, ErrorBox } from "./financeiro-ui";
 import { SelectCampo } from "./SelectCampo";
-import type { ConfiguracoesFinanceiras } from "./novo-api";
-import { precoMedioDoLote, ROTULO_UNIDADE_PRECO, type UnidadePrecoAnimal, type ValorItemAnimal } from "./lib/compra-animais";
+import type { ConfiguracoesFinanceiras, Operacao } from "./novo-api";
+import { linkFichaAnimal } from "../pecuaria/rebanho/lib/navegacao";
+import { itemPrecoAnimal, precoMedioDoLote, reaisParaCentavos, ROTULO_UNIDADE_PRECO, type UnidadePrecoAnimal, type ValorItemAnimal } from "./lib/compra-animais";
 
 export const PREFIXO_ANIMAL_COMPRA = "animal-compra";
 
 /** Animal já confirmado no modal, com os campos financeiros do item da compra. */
 export type AnimalCompraForm = {
   id: number;
-  /** Tudo o que foi preenchido no cadastro — reabre o modal para editar. */
-  cadastro: FormAnimal;
-  /** Corpo do cadastro enviado em `itens[].animal`. */
-  payload: AnimalPayload;
+  /** Correção: o animal já existe no Rebanho (o item vai com `animalId`, sem cadastro). */
+  animalId?: string;
+  /** Animal novo: tudo o que foi preenchido no cadastro — reabre o modal para editar. */
+  cadastro?: FormAnimal;
+  /** Animal novo: corpo do cadastro enviado em `itens[].animal`. */
+  payload?: AnimalPayload;
   /** A data de entrada acompanha a data da operação enquanto o usuário não a muda no cadastro. */
-  entradaSegueOperacao: boolean;
-  resumo: { brinco: string; nome: string | null; sexo: Sexo; composicao: string; aptidao: Aptidao; pesoEntradaKg: number | null };
+  entradaSegueOperacao?: boolean;
+  /** Na correção, só brinco e nome vêm da leitura da compra original. */
+  resumo: { brinco: string; nome: string | null; sexo?: Sexo; composicao?: string; aptidao?: Aptidao; pesoEntradaKg?: number | null };
   pesoPago: string;
   preco: string;
   categoriaId: string;
@@ -55,7 +59,7 @@ export function pendenciaPrecoAnimal(unidade: UnidadePrecoAnimal, animal: Pick<A
 
 export function SecaoAnimais({
   animais, valores, unidade, onUnidade, valorLote, onValorLote, sitio, motivoSemSitio, dataOperacao, config, porItem, centroCustoOperacao,
-  campoInvalido, limparCampoInvalido, erros, onAdicionar, onSalvar, onAtualizar, onRemover,
+  campoInvalido, limparCampoInvalido, erros, correcao = false, onAdicionar, onSalvar, onAtualizar, onRemover,
 }: {
   animais: AnimalCompraForm[];
   valores: (ValorItemAnimal | null)[];
@@ -74,6 +78,8 @@ export function SecaoAnimais({
   limparCampoInvalido: (campo: string) => void;
   /** Recusas da API por animal (índice do animal na lista). */
   erros: Record<number, ErroAnimalApi>;
+  /** Correção de uma compra: os animais são os da original; só os dados da compra mudam. */
+  correcao?: boolean;
   onAdicionar: (animal: Omit<AnimalCompraForm, "id">) => void;
   /** Substitui o cadastro de um animal já resumido, mantendo seus campos financeiros. */
   onSalvar: (id: number, cadastro: Pick<AnimalCompraForm, "cadastro" | "payload" | "entradaSegueOperacao" | "resumo">) => void;
@@ -94,11 +100,11 @@ export function SecaoAnimais({
     <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
       <div>
         <h3 className="mb-1 flex items-center gap-3 text-sm font-semibold text-ink">Animais</h3>
-        <p className="max-w-xl text-xs text-ink-3">Cada animal é cadastrado no Rebanho quando a compra é confirmada. Nada é cadastrado antes disso.</p>
+        <p className="max-w-xl text-xs text-ink-3">{correcao ? "São os animais da compra original: continuam os mesmos no Rebanho (os que estavam baixados pelo estorno voltam ao rebanho). Aqui só mudam os dados da compra; corrija os dados do animal na ficha." : "Cada animal é cadastrado no Rebanho quando a compra é confirmada. Nada é cadastrado antes disso."}</p>
       </div>
-      <Button type="button" secondary disabled={!sitio} onClick={() => setModal({ id: null })}><Plus size={15} /> Adicionar animal</Button>
+      {!correcao && <Button type="button" secondary disabled={!sitio} onClick={() => setModal({ id: null })}><Plus size={15} /> Adicionar animal</Button>}
     </div>
-    {!sitio && <p role="status" className="mb-4 rounded-lg border border-border bg-muted p-3 text-sm text-[var(--warn)]">{motivoSemSitio}</p>}
+    {!correcao && !sitio && <p role="status" className="mb-4 rounded-lg border border-border bg-muted p-3 text-sm text-[var(--warn)]">{motivoSemSitio}</p>}
 
     <RadioGroup value={unidade} onValueChange={(valor) => onUnidade(valor as UnidadePrecoAnimal)} aria-label="Unidade de preço dos animais" className="mb-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm font-medium">
       <span className="text-ink-3">Preço:</span>
@@ -127,12 +133,14 @@ export function SecaoAnimais({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <strong className="break-words text-sm">Animal {resumo.brinco}</strong>{resumo.nome && <span className="text-sm text-ink-3"> · {resumo.nome}</span>}
-              <p className="mt-1 break-words text-sm text-ink-3">{ROTULO_SEXO[resumo.sexo]} · {resumo.composicao || "Raça não informada"} · {ROTULO_APTIDAO[resumo.aptidao]} · {resumo.pesoEntradaKg != null ? `${fmtKg(resumo.pesoEntradaKg)} na entrada` : "Sem peso de entrada"}</p>
+              {animal.animalId && !resumo.sexo
+                ? <p className="mt-1 text-sm text-ink-3"><a className="font-semibold underline" href={linkFichaAnimal(animal.animalId)} target="_blank" rel="noopener noreferrer" aria-label={`Dados do animal ${rotulo} na ficha (abre em nova aba)`}>Dados do animal na ficha</a></p>
+                : <p className="mt-1 break-words text-sm text-ink-3">{resumo.sexo ? ROTULO_SEXO[resumo.sexo] : "Sexo não informado"} · {resumo.composicao || "Raça não informada"} · {resumo.aptidao ? ROTULO_APTIDAO[resumo.aptidao] : "Finalidade não informada"} · {resumo.pesoEntradaKg != null ? `${fmtKg(resumo.pesoEntradaKg)} na entrada` : "Sem peso de entrada"}</p>}
             </div>
-            <div className="flex shrink-0 gap-1">
+            {!correcao && <div className="flex shrink-0 gap-1">
               <UiButton type="button" variant="ghost" aria-label={`Editar animal ${rotulo}`} onClick={() => setModal({ id: animal.id })} className="min-h-11 min-w-11 rounded-lg p-2 hover:bg-card"><Pencil size={16} /></UiButton>
               <UiButton type="button" variant="ghost" aria-label={`Remover animal ${rotulo}`} onClick={() => onRemover(animal.id)} className="min-h-11 min-w-11 rounded-lg p-2 text-destructive hover:bg-[var(--fin-danger-bg)]"><Trash2 size={16} /></UiButton>
-            </div>
+            </div>}
           </div>
           {erroApi && <div className="mt-3 flex flex-wrap items-center gap-3"><CampoErro className="mt-0">{erroApi.mensagem}</CampoErro>{erroApi.campo.startsWith("animal.") && <Button type="button" secondary onClick={() => setModal({ id: animal.id, erro: erroApi })}>Corrigir no cadastro</Button>}</div>}
           {invalidoLocal && !erroApi && <CampoErro className="mt-3">{pendencia}</CampoErro>}
@@ -148,7 +156,7 @@ export function SecaoAnimais({
     {erroSecao && <CampoErro id="erro-animais" className="mt-3">{sitio ? "Adicione ao menos um animal à compra." : motivoSemSitio}</CampoErro>}
     {animais.length > 0 && <p className="mt-3 text-sm text-ink-3">{animais.length} {animais.length === 1 ? "animal" : "animais"} · valor dos animais <strong className="text-ink">{brl(total / 100)}</strong></p>}
 
-    {modal && sitio && <ModalAnimalCompra
+    {!correcao && modal && sitio && <ModalAnimalCompra
       key={modal.id ?? "novo"}
       sitio={sitio}
       dataOperacao={dataOperacao}
@@ -178,7 +186,7 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
   const errosIniciais = erro?.campo.startsWith("animal.") ? { [erro.campo.slice("animal.".length).split(".")[0]]: erro.mensagem } : undefined;
   const cadastro = useCadastroAnimal({
     prefixo: PREFIXO_ANIMAL_COMPRA, sitioFixo: sitio, dataEntradaInicial: dataOperacao, brincosReservados, errosIniciais,
-    valorInicial: inicial ? { ...inicial.cadastro, dataEntrada: inicial.entradaSegueOperacao ? dataOperacao : inicial.cadastro.dataEntrada } : null,
+    valorInicial: inicial?.cadastro ? { ...inicial.cadastro, dataEntrada: inicial.entradaSegueOperacao ? dataOperacao : inicial.cadastro.dataEntrada } : null,
   });
   const { catalogos, erroCatalogos, categoriaPrevista } = cadastro;
 
@@ -220,4 +228,41 @@ function ModalAnimalCompra({ sitio, dataOperacao, inicial, erro, brincosReservad
       <CadastroAnimalCampos cadastro={cadastro} />
     </form>
   </DialogFinanceiro>;
+}
+
+/**
+ * Seção Animais de uma correção: os animais e os dados da compra vêm do detalhe da operação original.
+ * Unidade e preços saem de `unidade`/`valorUnitario`/`valorTotal` do item; na original por cabeça não dá
+ * para saber se o preço foi por cabeça ou por lote, então volta por cabeça (o usuário pode trocar).
+ */
+export function animaisDaCompraOriginal(operacao: Pick<Operacao, "itens" | "composicaoComercial">): { animais: AnimalCompraForm[]; unidade: UnidadePrecoAnimal } {
+  const deAnimal = operacao.itens.filter((item) => item.animalId);
+  const unidade: UnidadePrecoAnimal = deAnimal[0]?.unidade === "kg" ? "KG" : deAnimal[0]?.unidade === "@" ? "ARROBA" : "CABECA";
+  const animais = deAnimal.map((item, indice): AnimalCompraForm => {
+    const comercial = operacao.composicaoComercial?.itens.find((parte) => parte.ordem === item.ordem);
+    const bruto = comercial?.bruto ?? item.valorTotal ?? "";
+    const quantidade = Number(item.quantidade);
+    let pesoPago = "", preco = "";
+    if (unidade === "CABECA") preco = bruto;
+    else {
+      const unitario = comercial ? (quantidade > 0 ? Number(bruto) / quantidade : 0) : Number(item.valorUnitario);
+      preco = unitario > 0 ? String(Number(unitario.toFixed(4))) : "";
+      // arroba = peso ÷ 15 com 3 casas: o peso exato sai do valor ÷ preço, não da quantidade arredondada
+      const pesoKg = unidade === "KG" ? quantidade : unitario > 0 && Number(bruto) > 0 ? Number(bruto) * 15 / unitario : quantidade * 15;
+      pesoPago = pesoKg > 0 ? String(Number(pesoKg.toFixed(3))) : "";
+      // O servidor grava valorUnitario = valor ÷ quantidade (ex.: 299,9963/@). Se o preço com 2 casas
+      // e o peso derivado dele reproduzem os mesmos centavos e a mesma quantidade, mostra esses números.
+      const precoRedondo = unitario > 0 ? Number(unitario.toFixed(2)) : 0;
+      const pesoRedondo = unidade === "KG" ? quantidade : precoRedondo > 0 ? Number((Number(bruto) * 15 / precoRedondo).toFixed(3)) : 0;
+      const conferido = precoRedondo > 0 ? itemPrecoAnimal({ unidade, preco: precoRedondo, pesoPagoKg: pesoRedondo }) : null;
+      if (conferido && conferido.centavos === reaisParaCentavos(bruto) && Number(conferido.quantidade) === quantidade) {
+        preco = String(precoRedondo); pesoPago = String(pesoRedondo);
+      }
+    }
+    return {
+      id: indice + 1, animalId: item.animalId!, resumo: { brinco: item.animal?.brinco ?? item.descricao.replace(/^Animal\s+/, ""), nome: item.animal?.nome ?? null },
+      pesoPago, preco, categoriaId: item.categoriaId ?? "", centroCustoId: item.centroCustoId ?? "", elegivelDesconto: comercial?.elegivel,
+    };
+  });
+  return { animais, unidade };
 }

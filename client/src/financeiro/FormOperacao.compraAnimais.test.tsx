@@ -290,7 +290,7 @@ describe("compra de animais: envio e rascunho", () => {
 
   it("a data de entrada acompanha a data da operação enquanto não foi mudada no cadastro", async () => {
     const api = simularApi();
-    montar(rascunhoCom({ data: "2026-09-01", animais: [animalForm(1, "101", { preco: "4500" }), animalForm(2, "102", { preco: "4500", entradaSegueOperacao: false, payload: { ...animalForm(2, "102").payload, dataEntrada: "2026-08-20" } })] }));
+    montar(rascunhoCom({ data: "2026-09-01", animais: [animalForm(1, "101", { preco: "4500" }), animalForm(2, "102", { preco: "4500", entradaSegueOperacao: false, payload: { ...animalForm(2, "102").payload!, dataEntrada: "2026-08-20" } })] }));
     alterarDescricao();
     await waitFor(() => expect(api.rascunhosSalvos().length).toBeGreaterThan(0), { timeout: 3000 });
     const itens = api.rascunhosSalvos().at(-1)!.dados.operacao.itens;
