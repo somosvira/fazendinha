@@ -18,7 +18,6 @@
 .nutricao-fatos dt { font-size: 14px; color: var(--muted-foreground); }
 .nutricao-fatos dd { font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 6px; }
 .nutricao-fatos p { font-size: 14px; color: var(--muted-foreground); margin-top: 6px; line-height: 1.6; }
-.nutricao-fatos-fechamento { border-top: 1px solid var(--border); }
 .nutricao-fatos-nota { border-top: 1px solid var(--border); padding: 12px 24px; font-size: 14px; margin-top: 0; }
 .nutricao-conteudo > section > .pec-ingredientes-graficos { margin: 0; }
 .nutricao-conteudo > section > .pec-ingredientes-graficos > section + section { border-top: 1px solid var(--border); }
@@ -78,7 +77,7 @@
 @media (max-width: 600px) { .nutricao-metricas .font-serif { font-size: 24px; } }
 
 .nutricao-uso-receita { border-top: 1px solid var(--border); margin-top: 1rem; padding-top: .5rem; display: grid; gap: .5rem; font-size: .875rem; }
-@media (max-width: 600px) { .nutricao-fatos,.nutricao-fatos-fechamento { grid-template-columns: minmax(0,1fr); padding: 18px; } }
+@media (max-width: 600px) { .nutricao-fatos { grid-template-columns: minmax(0,1fr); padding: 18px; } }
 
 .nutricao-conteudo { gap: 16px; margin-top: 16px; }
 .nutricao-conteudo[data-slot="financeiro-panel"] { display: flex; flex-direction: column; gap: 0; }
@@ -192,16 +191,39 @@
 .nutricao-custo-distribuicao ul { display: grid; gap: 10px; }
 .nutricao-custo-distribuicao li { display: grid; grid-template-columns: 8px minmax(0,1fr) auto auto; gap: 8px; align-items: baseline; font-size: 14px; font-variant-numeric: tabular-nums; }
 .nutricao-custo-legenda { width: 8px; height: 8px; border-radius: 2px; }
-.nutricao-consumo-atribuido summary { color: var(--primary); cursor: pointer; padding: 8px 0; font-weight: 500; }
-.nutricao-consumo-atribuido summary:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 
 @media(max-width:600px) { .nutricao-formulario .nutricao-ingrediente-form,.nutricao-custo-distribuicao { grid-template-columns: minmax(0,1fr); }.nutricao-custo-distribuicao h3,.nutricao-custo-distribuicao > p { grid-column: auto; }.nutricao-receita-linha { padding: 16px; }.nutricao-consumo-resumo .nutricao-fatos { grid-template-columns: minmax(0,1fr); } }
-.nutricao-fechamento-resumo { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); }
-.nutricao-fechamento-resumo > .nutricao-card-cabecalho,.nutricao-fechamento-resumo > .nutricao-aviso { grid-column: 1 / -1; }
-.nutricao-fechamento-resumo > .nutricao-resumo { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 16px 20px; gap: 12px 20px; }
-.nutricao-fechamento-resumo .nutricao-resumo span { font-size: 14px; margin-bottom: 3px; }
-.nutricao-fechamento-resumo > .nutricao-fatos-fechamento { align-items: start; border-top: 0; border-left: 1px solid var(--border); gap: 12px; padding: 16px 20px; }
-@media(max-width:800px) { .nutricao-fechamento-resumo { grid-template-columns: minmax(0,1fr); }.nutricao-fechamento-resumo > .nutricao-fatos-fechamento { border-left: 0; border-top: 1px solid var(--border); } }
+.nutricao-fechamento-resumo { display: grid; gap: 12px; min-width: 0; }
+.nutricao-fechamento-metadados { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.nutricao-fechamento-indicadores {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-block: 1px solid var(--border);
+  background: var(--muted);
+}
+.nutricao-fechamento-indicadores:has(> :only-child) { grid-template-columns: minmax(0, 1fr); }
+.nutricao-fechamento-indicadores > div { padding: 12px 16px; min-width: 0; overflow-wrap: anywhere; }
+.nutricao-fechamento-indicadores > div + div { border-inline-start: 1px solid var(--border); }
+.nutricao-fechamento-indicadores dt, .nutricao-fechamento-contexto dt { color: var(--muted-foreground); }
+.nutricao-fechamento-indicadores dd { margin: 0; font-size: 13px; }
+.nutricao-fechamento-indicadores dd:first-of-type { margin: 2px 0 4px; font-size: 23px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.nutricao-fechamento-indicadores p, .nutricao-fechamento-indicadores ul { margin-block: 4px 0; font-size: 13px; }
+.nutricao-fechamento-contexto { display: flex; flex-wrap: wrap; gap: 6px 24px; margin: 0; font-size: 13px; }
+.nutricao-fechamento-contexto > div { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.nutricao-fechamento-contexto dd { margin: 0; font-weight: 600; }
+.nutricao-fechamento-diferenca { display: inline-block; padding: 2px 5px; border-radius: 4px; background: var(--fin-danger-bg, var(--muted)); font-weight: 600; }
+.nutricao-referencia-leite { display: grid; gap: 12px; }
+.nutricao-referencia-leite-resumo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.nutricao-referencia-leite-resumo > div + div { padding-inline-start: 12px; border-inline-start: 1px solid var(--border); }
+.nutricao-referencia-leite h3 { margin-bottom: 6px; font-size: 14px; font-weight: 650; }
+.nutricao-referencia-historico, .nutricao-referencia-parcelas { border-top: 1px solid var(--border); padding-top: 10px; min-width: 0; }
+.nutricao-referencia-historico li + li { margin-top: 6px; }
+@media (max-width: 600px) {
+  .nutricao-fechamento-indicadores, .nutricao-referencia-leite-resumo { grid-template-columns: minmax(0, 1fr); }
+  .nutricao-fechamento-indicadores > div + div, .nutricao-referencia-leite-resumo > div + div { border-inline-start: 0; border-top: 1px solid var(--border); }
+  .nutricao-referencia-leite-resumo > div + div { padding: 8px 0 0; }
+}
 .nutricao-pagina .nutricao-dietas-panorama { flex-direction: row; min-height: 0; justify-content: space-between; }
 .nutricao-dietas-panorama > div:first-child { flex: 0 0 auto; }
 .nutricao-dietas-panorama .nutricao-dietas-distribuicao { flex: 1 1 260px; }
@@ -229,8 +251,7 @@
 .nutricao-formulario .nutricao-form-rodape { padding:18px 0 0; }
 .nutricao-formulario > .fin-painel { border:0; border-radius:0; box-shadow:none; }
 .nutricao-formulario .nutricao-vigencia-campos { max-width:none; }
-.nutricao-consumo-atribuido summary,.dietas-linha-registro summary { min-height:44px; }
-.nutricao-fechamento-resumo .nutricao-resumo strong { font-variant-numeric:tabular-nums; }
+.dietas-linha-registro summary { min-height:44px; }
 @media(max-width:767px) {
  .nutricao-formulario .nutricao-ingrediente-form { grid-template-columns:minmax(0,1fr); align-items:start; }
  .nutricao-formulario .nutricao-ingrediente-form > button { justify-self:start; }

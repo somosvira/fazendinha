@@ -64,3 +64,12 @@
 }
 /* Rótulo que quebra em duas linhas não desloca o campo: a linha alinha pela base. */
 .leite-registro-campos{align-items:end}
+
+.ordenha-registro-modal .leite-registro > .fin-tabela-cabecalho {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--card);
+  padding-inline-end: 48px;
+}
+.ordenha-registro-modal > [data-slot="dialog-close"] { z-index: 4; }

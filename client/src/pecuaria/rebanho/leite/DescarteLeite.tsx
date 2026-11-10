@@ -8,11 +8,11 @@ import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
 import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -154,13 +154,37 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
   const volume = /^\d+(?:[.,]\d{1,3})?$/.test(litros)
     ? Number(litros.replace(",", "."))
     : null;
+  const formId = useId();
+  const podeConfirmar = !!lista && !ocupado && !!origem && volume !== null && volume > 0 &&
+    volume <= Number(origem.quantidadeDisponivelLitros) && motivo.trim().length >= 5 &&
+    (!interna || responsavel.trim().length >= 2);
+  function fecharRegistro() {
+    setNovo(false);
+    setProduto("");
+    setEntradaId("");
+    setLitros("");
+    setMotivo("");
+    setResponsavel("");
+    setDestino("CASA");
+  }
   return (
     <section className="leite-operacoes" aria-label={interna ? "Retiradas para Casa e Funcionários" : "Descarte físico de leite"}>
       <CabecalhoTabela titulo={interna ? "Casa e Funcionários" : "Descarte físico"} rotuloAjuda={interna ? "Sobre retiradas internas" : "Sobre descarte físico"} acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />{interna ? "Registrar retirada interna" : "Registrar descarte"}</Button> : undefined} />
       <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Data de referência"><DatePicker aria-label={interna ? "Data das retiradas internas" : "Data do descarte"} value={filtros.rascunho.data} onChange={v => { if(v) filtros.editar("data", v); }} /></CampoFiltro>} resumo={<span className="leite-contexto-data"><CalendarDays size={17} aria-hidden />Mês até <time dateTime={data}>{data.split("-").reverse().join("/")}</time></span>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {aviso && <p role="status">{aviso}</p>}
-      {podeLancar && novo && <Dialog open onOpenChange={v => { setNovo(v); if (!v) { setProduto(""); setEntradaId(""); setLitros(""); setMotivo(""); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>{interna ? "Registrar retirada interna" : "Registrar descarte físico"}</DialogTitle></DialogHeader>{erro && <p role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}        <label>
+      {podeLancar && novo && <PainelCadastro aberto
+        titulo={interna ? "Registrar retirada interna" : "Registrar descarte físico"}
+        onFechar={fecharRegistro} bloqueado={ocupado} alteracoesExternas={!!produto}
+        rodape={fechar => <>
+          <Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar</Button>
+          <Button type="submit" form={formId} disabled={!podeConfirmar}>
+            {interna ? "Confirmar retirada interna" : "Confirmar descarte físico"}
+          </Button>
+        </>}>
+        <div className="leite-operacoes">
+        {erro && <p role="alert">{erro}</p>}{aviso && <p role="status">{aviso}</p>}
+        <label>
           {interna ? "Produto de leite" : "Produto para descarte"}
           <SelectCampo disabled={ocupado} value={produto} onValueChange={(valor) => setProduto(valor)}>
             <option value="">Selecione o produto</option>
@@ -173,7 +197,7 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
         </label>
 
       {produto && (
-        <form
+        <form id={formId}
           onSubmit={(e) => {
             e.preventDefault();
             if (!origem || volume === null) return;
@@ -241,22 +265,10 @@ export function DescarteLeite({ podeLancar, aoMudou, modo = "descarte" }: { pode
                 {formatarLitros(Number(origem.quantidadeDisponivelLitros))}.
               </p>
             )}
-            <Button
-              disabled={
-                !lista ||
-                ocupado ||
-                !origem ||
-                volume === null ||
-                volume <= 0 ||
-                volume > Number(origem.quantidadeDisponivelLitros) ||
-                motivo.trim().length < 5 || (interna && responsavel.trim().length < 2)
-              }
-            >
-              {interna ? "Confirmar retirada interna" : "Confirmar descarte físico"}
-            </Button>
           </fieldset>
         </form>
-      )}</DialogContent></Dialog>}
+      )}
+      </div></PainelCadastro>}
       {lista && (
         <>
           <ListaConsultaLeite tituloDe={d => interna ? d.destino === "CASA" ? "Casa" : "Funcionários" : d.produtoNome} detalheDe={d => d.data.split("-").reverse().join("/")} layout="grade" destaque="litros" preferencia={interna ? "retiradasInternasLeiteVisualizacao" : "descartesLeiteVisualizacao"} compacta rotulo={interna ? "Retiradas internas registradas" : "Descartes registrados"} itens={lista.itens} chaveDe={d => d.id} colunas={[

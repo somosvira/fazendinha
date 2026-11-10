@@ -4,11 +4,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleAlert, type LucideIcon } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 
-export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, largura = "sm:max-w-3xl", compacto = false, bloqueado = false, alteracoesExternas = false, camada = "padrao", erroRodape }: {
+export function PainelCadastro({ aberto, titulo, subtitulo, onFechar, children, rodape, largura = "sm:max-w-3xl", compacto = false, bloqueado = false, alteracoesExternas = false, rascunhoPersistido = false, camada = "padrao", erroRodape }: {
   erroRodape?: string | null;
   camada?: "padrao" | "sobreDetalhe";
   aberto: boolean;
   titulo: string;
+  subtitulo?: ReactNode;
   onFechar: () => void;
   children: ReactNode;
   rodape: ReactNode | ((fechar: () => void) => ReactNode);
@@ -17,6 +18,7 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   compacto?: boolean;
   bloqueado?: boolean;
   alteracoesExternas?: boolean;
+  rascunhoPersistido?: boolean;
   /** Mantido por compatibilidade e ignorado: o título do painel não leva ícone. */
   icon?: LucideIcon;
 }) {
@@ -25,12 +27,12 @@ export function PainelCadastro({ aberto, titulo, onFechar, children, rodape, lar
   const conteudoCamada = sobreDetalhe ? "z-[1300]" : "z-[1100]";
   const alterado = useRef(false);
   const [confirmarSaida, setConfirmarSaida] = useState(false);
-  const fechar = () => { if (bloqueado) return; if (alterado.current || alteracoesExternas) setConfirmarSaida(true); else onFechar(); };
+  const fechar = () => { if (bloqueado) return; if (!rascunhoPersistido && (alterado.current || alteracoesExternas)) setConfirmarSaida(true); else onFechar(); };
   const corpo = <div className="min-h-0 flex-1 overflow-y-auto p-4" onChangeCapture={() => { alterado.current = true; }}>{children}</div>;
   const confirmar = <ConfirmDialog camada={camada} open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" processando={bloqueado} onConfirm={() => { if (!bloqueado) onFechar(); }} onCancel={() => setConfirmarSaida(false)} />;
   return <><Dialog open={aberto} onOpenChange={v => { if (!v) fechar(); }}>
     <DialogContent className={`financeiro-colorido fin-cadastro-dialog ${conteudoCamada} flex max-h-[90dvh] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden p-0 ${compacto ? "max-w-lg" : largura}`} overlayClassName={overlay} onEscapeKeyDown={e => { if (bloqueado) e.preventDefault(); }}>
-      <DialogHeader className="fin-cabecalho shrink-0 border-b border-border p-5 pr-12"><DialogTitle>{titulo}</DialogTitle><DialogDescription className="sr-only">{titulo}</DialogDescription></DialogHeader>
+      <DialogHeader className="fin-cabecalho shrink-0 border-b border-border p-5 pr-12"><DialogTitle>{titulo}</DialogTitle><DialogDescription className={subtitulo ? "text-sm" : "sr-only"}>{subtitulo ?? titulo}</DialogDescription></DialogHeader>
       {corpo}<DialogFooter className="shrink-0 border-t border-border bg-card p-4">{erroRodape !== undefined ? <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center"><p role={erroRodape ? "alert" : undefined} className="min-w-0 flex-1 text-sm text-destructive">{erroRodape}</p><div className="flex shrink-0 justify-end gap-2">{typeof rodape === "function" ? rodape(fechar) : rodape}</div></div> : typeof rodape === "function" ? rodape(fechar) : rodape}</DialogFooter>
     </DialogContent>
   </Dialog>{confirmar}</>;

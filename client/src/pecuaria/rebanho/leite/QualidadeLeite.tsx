@@ -1,3 +1,4 @@
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { CalendarDays, Plus } from "lucide-react";
@@ -20,7 +21,7 @@ import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import {
   CamposFormatoExame,
@@ -165,7 +166,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       {aviso && <p role="status">{aviso}</p>}
       {carregando && <p role="status">Consultando laudos…</p>}
       {(novoFormato || derivar) && (
-        <Dialog open onOpenChange={v => { if (!v) { setNovoFormato(false); setDerivar(null); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Formato do laudo</DialogTitle></DialogHeader><EditorFormato
+        <EditorFormato
           key={derivar?.id ?? "novo"}
           anterior={derivar}
           sitio={sitio}
@@ -178,15 +179,15 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               "Formato de laudo salvo. As amostras anteriores conservam a versão original.",
             )
           }
-        /></DialogContent></Dialog>
+        />
       )}
       {nova && (
-        <Dialog open onOpenChange={v => { if (!v) setNova(false); }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar amostra</DialogTitle></DialogHeader><NovaAmostra
+        <NovaAmostra emModal
           formatos={formatos.filter((f) => f.ativo)}
           sitio={propriedadeResolvida}
           onCancelar={() => setNova(false)}
           onSalvo={() => salvo("Amostra registrada.")}
-        /></DialogContent></Dialog>
+        />
       )}
       {aba === "amostras" && amostras && (
         <>
@@ -218,7 +219,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
         /></DialogContent></Dialog>
       )}
-      <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
+      <SecaoDetalhesLeite className="leite-formatos-dialog" titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
 
 
         {!formatos.length && <Empty>Nenhum formato configurado.</Empty>}
@@ -286,6 +287,7 @@ function EditorFormato({
     [campos, setCampos] = useState<CampoExame[]>(anterior?.campos ?? []);
   const [erro, setErro] = useState(""),
     [ocupado, setOcupado] = useState(false);
+  const formId = useId();
   const trava = useRef(false);
   async function salvar() {
     if (trava.current) return;
@@ -307,7 +309,13 @@ function EditorFormato({
     }
   }
   return (
-    <form
+    <PainelCadastro aberto titulo="Formato do laudo" onFechar={onCancelar} bloqueado={ocupado}
+      alteracoesExternas={nome !== (anterior?.nome ?? "") || (anterior ? campos !== anterior.campos : campos.length > 0)}
+      rodape={fechar => <>
+        <Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar formato</Button>
+        <Button type="submit" form={formId} disabled={!campos.length || ocupado}>Salvar formato</Button>
+      </>}>
+    <form id={formId} className="leite-operacoes"
       onSubmit={(e) => {
         e.preventDefault();
         void salvar();
@@ -332,30 +340,27 @@ function EditorFormato({
           disabled={ocupado}
         />
         {erro && <p role="alert">{erro}</p>}
-        <div className="leite-form-inline">
-          <Button disabled={!campos.length || ocupado}>Salvar formato</Button>
-          <Button variant="outline" type="button"
-            className="leite-secondary"
-            onClick={onCancelar}>
-            Cancelar formato
-          </Button>
-        </div>
       </fieldset>
     </form>
+    </PainelCadastro>
   );
 }
 export function NovaAmostra({
+  emModal = false,
   formatos,
   sitio,
   onCancelar,
   onSalvo,
 }: {
+  emModal?: boolean;
   formatos: FormatoQualidade[];
   sitio: number | null;
   onCancelar: () => void;
   onSalvo: (amostra: AmostraQualidade) => void;
 }) {
-  const [data, setData] = useState(hojeOperacional),
+  const formId = useId();
+  const [dataInicial] = useState(hojeOperacional);
+  const [data, setData] = useState(dataInicial),
     [tipoId, setTipoId] = useState("");
   const [sujeito, setSujeito] = useState("ANIMAL"),
     [animal, setAnimal] = useState<CandidatoDestinoLeite | null>(null),
@@ -404,8 +409,14 @@ export function NovaAmostra({
       setOcupado(false);
     }
   }
-  return (
-    <form
+  const acoes = (fechar: () => void) => <>
+    <Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar amostra</Button>
+    <Button type="submit" form={formId} disabled={ocupado || !formato || (informar && !valores.length)}>
+      <Plus size={17} aria-hidden />Registrar amostra
+    </Button>
+  </>;
+  const formulario = (
+    <form id={formId} className="leite-operacoes"
       onSubmit={(e) => {
         e.preventDefault();
         void salvar();
@@ -520,19 +531,13 @@ export function NovaAmostra({
           </p>
         )}
         {erro && <p role="alert">{erro}</p>}
-        <div className="leite-form-inline">
-          <Button disabled={ocupado || !formato || (informar && !valores.length)}>
-            <Plus size={17} aria-hidden />Registrar amostra
-          </Button>
-          <Button variant="outline" className="leite-secondary"
-            type="button"
-            onClick={onCancelar}>
-            Cancelar amostra
-          </Button>
-        </div>
+        {!emModal && <div className="leite-form-inline">{acoes(onCancelar)}</div>}
       </fieldset>
     </form>
   );
+  return emModal ? <PainelCadastro aberto titulo="Registrar amostra" onFechar={onCancelar} bloqueado={ocupado}
+    alteracoesExternas={data !== dataInicial || !!tipoId || sujeito !== "ANIMAL" || !!animal || !!entradaId || !!dataResultado || !!dataRecebimento}
+    rodape={acoes}>{formulario}</PainelCadastro> : formulario;
 }
 function SeletorAnimal({
   sitio,

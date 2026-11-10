@@ -116,3 +116,17 @@
 .leite-superficie .producao-registro-cabecalho{margin:16px 0 10px}
 .leite-superficie .leite-grafico-area{height:210px;margin-top:10px}
 .leite-superficie .leite-consultas{gap:12px}.leite-producao-controles{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.leite-producao-controles .leite-producao-cobertura,.leite-superficie .leite-producao-controles .leite-agrupamento-producao{margin:0}.leite-superficie .leite-grafico-producao figcaption h2{margin:0}.leite-superficie .leite-producao-cobertura>[data-slot=badge]{border-radius:6px;min-height:28px}.leite-resumo-destinos .consumo-retiradas>div>div>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+
+/* Trilhas intrínsecas de formulários não podem alargar o portal. */
+:root [data-slot="dialog-content"].leite-consulta-dialog[data-fin-scroll="conteudo"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.leite-consulta-dialog > * { min-width: 0; }
+.leite-consulta-dialog .leite-form-inline > * { min-width: 0; max-width: 100%; }
+.leite-formatos-dialog .leite-form-inline > span { overflow-wrap: anywhere; }
+.leite-formatos-dialog .leite-form-inline button { height: auto; white-space: normal; text-align: start; }
+@media (max-width: 640px) {
+  .leite-formatos-dialog .leite-form-inline { align-items: stretch; flex-direction: column; gap: 8px; }
+  .leite-consulta-dialog [data-slot="select-trigger"] > span { min-width: 0; }
+}
