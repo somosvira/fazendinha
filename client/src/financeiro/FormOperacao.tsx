@@ -24,13 +24,15 @@ import { FORMAS_PAGAMENTO, parceiroCompativel, parcelasSugeridas } from "./lib/p
 import { deCentavos, paraCentavos, somarParcelas, type FrequenciaParcelas } from "./lib/parcelas";
 import { atualizarDocumentosRascunho, concluirEdicaoRascunho, contextoEdicaoRascunho, enfileirarSalvamentoRascunho, estadoRascunhoAtivo, guardarEdicaoRascunho, marcarEdicaoRascunho } from "./rascunhoAtivo";
 import { listarSaldos, obterCustoMedio, obterUltimoPreco, type SaldoDTO, type UltimoPrecoDTO } from "../estoque/api";
+import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../estoque/SeletorProdutoCatalogo";
 import { rotuloUnidade } from "../lib/unidades";
 import { navegarPara } from "../router";
 import { codigoOperacao } from "../estoque/navegacao";
 
 type Condicao = "A_VISTA" | "A_PRAZO" | "PARCIAL" | "SEM_EFEITO_FINANCEIRO";
 type ModoValor = "UNITARIO" | "TOTAL";
-type ItemForm = { elegivelDesconto?: boolean; categoriaId: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string; partidas?: DistribuicaoPartida[] };
+const TIPOS_COM_CATALOGO = new Set(["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO"]);
+type ItemForm = { /** Item do catálogo escolhido no seletor: adotado como produto da fazenda ao confirmar (docs/produtos.md, Adoção). */ produtoCatalogoId?: string; catalogoNome?: string; elegivelDesconto?: boolean; categoriaId: string; centroCustoId: string; id: number; produtoId: string; descricao: string; quantidade: string; unidade: string; modoValor: ModoValor; valorUnitario: string; valorTotal: string; partidas?: DistribuicaoPartida[] };
 type ParcelaForm = { id: number; valor: string; vencimento: string };
 type AnexoForm = { id: number; arquivo: File; tipo: string; numero: string };
 type AnexoEnviando = { id: number; nome: string; tamanho: number };
@@ -128,6 +130,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const [logisticaValor, setLogisticaValor] = useState(inicial?.logisticaValor ?? operacaoBase?.composicaoComercial?.logistica?.valor ?? "");
   const [logisticaCategoriaId, setLogisticaCategoriaId] = useState(inicial?.logisticaCategoriaId ?? operacaoBase?.composicaoComercial?.logistica?.categoriaId ?? "");
   const [logisticaCentroId, setLogisticaCentroId] = useState(inicial?.logisticaCentroId ?? operacaoBase?.composicaoComercial?.logistica?.centroCustoId ?? "");
+  const [conflitosCatalogo, setConflitosCatalogo] = useState<Record<number, { mensagem: string; produtoExistente: { id: string; nome: string } }>>({});
   const [ultimosPrecos, setUltimosPrecos] = useState<Record<number, UltimoPrecoDTO & { produtoId: string }>>({});
   // Marca, por item, para qual (produto, fornecedor) o valor unitário atual foi
   // sugerido — usado para saber se ainda é seguro sobrescrevê-lo quando o
@@ -291,7 +294,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const totalParcelas = centavosParcelas / 100;
   // Quem decide se o item mexe no estoque é o tipo da operação: em tipo com
   // estoque, todo item com produto gera movimento físico.
-  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => !!item.produtoId).length : 0;
+  const movimentosEstoque = movimentaEstoque ? itens.filter((item) => !!item.produtoId || !!item.produtoCatalogoId).length : 0;
   const saldoFuturo = Math.max(0, total - realizadoAgora);
   const entradaSimulacao = useMemo(() => ({
     itens: comItens ? itens.map((item) => item.modoValor === "TOTAL"
@@ -343,7 +346,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
       itens: comItens ? itens.map((item) => {
         const produto = config.produtos.find((produtoAtual) => produtoAtual.id === item.produtoId);
         const centroEfetivo = porItem ? item.centroCustoId : "";
-        return { elegivelDesconto: item.elegivelDesconto, categoriaId: item.categoriaId || null, centroCustoId: centroEfetivo || null, produtoId: item.produtoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), partidas: item.partidas, estocavel: movimentaEstoque && !!item.produtoId };
+        return { elegivelDesconto: item.elegivelDesconto, categoriaId: item.categoriaId || null, centroCustoId: centroEfetivo || null, produtoId: item.produtoId || undefined, produtoCatalogoId: item.produtoCatalogoId || undefined, descricao: item.descricao.trim(), quantidade: item.quantidade, unidade: item.unidade || (produto ? rotuloUnidade(produto.unidade) : "un"), ...(item.modoValor === "TOTAL" ? { valorTotal: item.valorTotal } : { valorUnitario: item.valorUnitario }), partidas: item.partidas, estocavel: movimentaEstoque && (!!item.produtoId || !!item.produtoCatalogoId) };
       }) : [], financeiro,
     };
   }, [categoriaId, centroCustoId, porItem, comItens, condicao, config.produtos, contaId, data, descricao, formaPagamento, itens, movimentaEstoque, operacaoBase?.id, parceiroId, parcelas, tipo, valorAgora, valorOperacao, referenciaValor, evidenciaValor, compraComComposicao, descontoComercial, logisticaValor, logisticaCategoriaId, logisticaCentroId]);
@@ -356,7 +359,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const dadosRascunho = useMemo(() => ({ formulario: estadoFormulario, operacao: operacaoRascunho }), [estadoFormulario, operacaoRascunho]);
   const temConteudoRascunho = useMemo(() => !!(
     documentosSalvos.length || descricao.trim() || valorOperacao || parceiroId || categoriaId || centroCustoId || contaId || valorAgora
-    || itens.some((item) => item.produtoId || item.descricao.trim() || item.valorUnitario || item.valorTotal || item.quantidade !== "1")
+    || itens.some((item) => item.produtoId || item.produtoCatalogoId || item.descricao.trim() || item.valorUnitario || item.valorTotal || item.quantidade !== "1")
     || parcelas.some((parcela) => parcela.valor)
   ), [categoriaId, centroCustoId, contaId, descricao, documentosSalvos.length, itens, parceiroId, parcelas, valorAgora, valorOperacao]);
 
@@ -499,12 +502,32 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const alterarProduto = (id: number, produtoId: string) => {
     const produto = config.produtos.find((item) => item.id === produtoId);
     const categoria = categorias.find((c) => c.id === produto?.categoriaId);
-    atualizarItem(id, produto ? { partidas: undefined, produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), centroCustoId: centroUnicoDoProduto(produtoId) } : { partidas: undefined, produtoId, categoriaId: "", centroCustoId: "" });
+    atualizarItem(id, produto ? { partidas: undefined, produtoCatalogoId: undefined, catalogoNome: undefined, produtoId, descricao: produto.nome, unidade: rotuloUnidade(produto.unidade), valorUnitario: "", categoriaId: String(categoria?.id ?? ""), centroCustoId: centroUnicoDoProduto(produtoId) } : { partidas: undefined, produtoCatalogoId: undefined, catalogoNome: undefined, produtoId, categoriaId: "", centroCustoId: "" });
+    setConflitosCatalogo(({ [id]: _conflito, ...resto }) => resto);
     setUltimosPrecos(({ [id]: _descartado, ...resto }) => resto);
     setCustosMedios(({ [id]: _descartado, ...resto }) => resto);
     setSugestaoValor(({ [id]: _descartado, ...resto }) => resto);
     if (!produto) return;
     buscarSugestaoPreco(id, produtoId, parceiroId, "");
+  };
+  /** Seletor unificado: produto da fazenda segue o fluxo de sempre; item do catálogo preenche a linha como um produto, sem diálogo. */
+  const escolherProdutoItem = (id: number, escolha: ProdutoEscolhido | null) => {
+    if (!escolha) return alterarProduto(id, "");
+    if (escolha.tipo === "produto") return alterarProduto(id, escolha.produtoId);
+    const categoria = categorias.find((c) => c.id === escolha.categoriaSugeridaId);
+    atualizarItem(id, { partidas: undefined, produtoId: "", produtoCatalogoId: escolha.produtoCatalogoId, catalogoNome: escolha.nomeCompleto, descricao: escolha.nomeCompleto, unidade: rotuloUnidade(escolha.unidadeSugerida), valorUnitario: "", categoriaId: categoria ? String(categoria.id) : "", centroCustoId: "" });
+    setUltimosPrecos(({ [id]: _descartado, ...resto }) => resto);
+    setCustosMedios(({ [id]: _descartado, ...resto }) => resto);
+    setSugestaoValor(({ [id]: _descartado, ...resto }) => resto);
+    setConflitosCatalogo(({ [id]: _conflito, ...resto }) => resto);
+  };
+  /** Conflito de nome na adoção: troca a linha pelo produto da fazenda que já usa o nome. */
+  const usarProdutoExistente = (id: number, existente: { id: string; nome: string }) => {
+    setConflitosCatalogo(({ [id]: _conflito, ...resto }) => resto);
+    setErro(null); setErroConfirmacao(null); setCampoInvalido(null);
+    const conhecido = config.produtos.some((p) => p.id === existente.id);
+    if (conhecido) alterarProduto(id, existente.id);
+    else atualizarItem(id, { partidas: undefined, produtoCatalogoId: undefined, catalogoNome: undefined, produtoId: existente.id, descricao: existente.nome });
   };
   // O fornecedor da operação mudou depois que algum item já tinha uma sugestão
   // de preço: refaz a busca para o novo fornecedor. Só reage à troca do
@@ -522,6 +545,11 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   const alterarTipo = (novoTipo: string) => {
     if (atalhoAjuste) return;
     setTipo(novoTipo);
+    // Item do catálogo só vale em compra, inventário inicial e bonificação (docs/produtos.md, Adoção): ao sair desses tipos o item volta a ser escolhido.
+    if (!TIPOS_COM_CATALOGO.has(novoTipo) && itens.some((item) => item.produtoCatalogoId)) {
+      setItens((atuais) => atuais.map((item) => item.produtoCatalogoId ? { ...item, partidas: undefined, produtoCatalogoId: undefined, catalogoNome: undefined, produtoId: "", descricao: "", valorUnitario: "", categoriaId: "", centroCustoId: "" } : item));
+      setConflitosCatalogo({});
+    }
     if (parceiroSelecionado && !parceiroCompativel(parceiroSelecionado, novoTipo)) {
       setParceiroId("");
       if (TIPOS_COM_PARCEIRO.has(novoTipo)) setErro("Selecione um parceiro com papel compatível com o novo tipo de operação.");
@@ -581,7 +609,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   },{});
   if (logisticaPayload) { const nome=config.centrosCusto.find(c=>c.id===(logisticaCentroId||centroCustoId))?.nome ?? "Sem centro"; centrosResumo[nome]=(centrosResumo[nome]??0)+Math.round(Number(logisticaValor)*100); }
   const resumoCentros = comItens && porItem ? Object.entries(centrosResumo) : [];
-  const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId));
+  const itensValidos = !comItens || itens.every((item) => item.descricao.trim() && Number(item.quantidade) > 0 && (!movimentaEstoque || item.produtoId || item.produtoCatalogoId) && (!item.produtoCatalogoId || item.categoriaId));
   const totalParcelasEmCentavos = somarParcelas(parcelas);
   const somaParcelasConfere = condicao === "A_PRAZO" ? parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(totalFinanceiro.toFixed(2))
     : condicao === "PARCIAL" ? realizadoAgora > 0 && saldoFuturoFinanceiro > 0 && parcelas.length > 0 && totalParcelasEmCentavos === paraCentavos(saldoFuturoFinanceiro.toFixed(2)) : true;
@@ -602,7 +630,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   // centro do item é sempre "").
   const itemCentroInvalido = (index: number, item: ItemForm) => {
     if (!comItens) return false;
-    const estocavel = movimentaEstoque && !!item.produtoId;
+    const estocavel = movimentaEstoque && (!!item.produtoId || !!item.produtoCatalogoId);
     if (estocavel) return false;
     return !(centroEfetivoItem(item) || centroCustoId);
   };
@@ -653,7 +681,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
     if (exigeParceiro && !parceiroSelecionado) return { campo: "parceiroId", elementId: "campo-parceiroId" };
     if (descricao.trim().length < 2) return { campo: "descricao", elementId: "campo-descricao" };
     if (comItens) {
-      const itemInvalido = itens.find((item) => !item.descricao.trim() || !(Number(item.quantidade) > 0) || (movimentaEstoque && !item.produtoId));
+      const itemInvalido = itens.find((item) => !item.descricao.trim() || !(Number(item.quantidade) > 0) || (movimentaEstoque && !item.produtoId && !item.produtoCatalogoId) || (!!item.produtoCatalogoId && !item.categoriaId));
       if (itemInvalido) return { campo: `item-${itemInvalido.id}`, elementId: `item-${itemInvalido.id}` };
       const indiceCentroInvalido = itens.findIndex((item, i) => itemCentroInvalido(i, item));
       if (indiceCentroInvalido !== -1) return mapearCampoCentro(`itens.${indiceCentroInvalido}.centroCustoId`);
@@ -728,6 +756,15 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
         return;
       }
       const mensagem = falha instanceof Error ? falha.message : String(falha);
+      const linhaConflito = falha instanceof ApiError && falha.produtoExistente ? /^itens\.(\d+)\./.exec(falha.campo ?? "")?.[1] : undefined;
+      if (falha instanceof ApiError && falha.produtoExistente && linhaConflito !== undefined && itens[Number(linhaConflito)]) {
+        // Nome já usado por um produto da fazenda: a linha oferece trocar pelo produto existente em vez de um erro genérico.
+        const alvo = itens[Number(linhaConflito)];
+        setConflitosCatalogo((atuais) => ({ ...atuais, [alvo.id]: { mensagem, produtoExistente: falha.produtoExistente! } }));
+        setErroConfirmacao(mensagem);
+        setErro(mensagem);
+        return;
+      }
       setErroConfirmacao(mensagem);
       setErro(mensagem);
       if ((falha instanceof ApiError || falha instanceof ErroDistribuicaoPartidas) && falha.campo) {
@@ -828,7 +865,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
             {!ehAjuste && campoDescricao}
           </div>
         </section>
-        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
+        {ehAjuste ? secaoAjuste : comItens ? <ItensOperacao dataFato={data} itens={itens} setItens={alterarListaItens} config={config} ultimosPrecos={ultimosPrecos} custosMedios={custosMedios} movimentaEstoque={movimentaEstoque} saidaEstoque={tipo === "VENDA" || tipo === "DEVOLUCAO"} atualizarItem={atualizarItem} alterarProduto={alterarProduto} escolherProdutoItem={escolherProdutoItem} usarProdutoExistente={usarProdutoExistente} conflitosCatalogo={conflitosCatalogo} aceitaCatalogo={TIPOS_COM_CATALOGO.has(tipo)} itemInvalidoId={itemInvalidoId} porItem={porItem} centroCustoOperacao={centroCustoId} campoInvalido={campoInvalido} limparCampoInvalido={limparCampoInvalido} erroPartidas={erroPartidas} /> :<section><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><ArrowUpDown aria-hidden /></span>Valor do serviço</h3><label className="block max-w-xs text-sm font-medium">Valor total *<Input id="campo-valorOperacao" aria-label="Valor total da operação" aria-invalid={campoInvalido === "valorOperacao" || undefined} aria-describedby={campoInvalido === "valorOperacao" ? "erro-valorOperacao" : undefined} required min="0.01" step="0.01" type="number" className={CAMPO + classeCampoErro("valorOperacao")} value={valorOperacao} onChange={(e) => { setValorOperacao(e.target.value); limparCampoInvalido("valorOperacao"); }} onBlur={(e) => setValorOperacao(normalizarMoeda(e.target.value))} />{campoInvalido === "valorOperacao" && <CampoErro id="erro-valorOperacao">Informe um valor total maior que zero.</CampoErro>}</label></section>}
         {["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(tipo) && <section className="grid gap-3 rounded-lg border border-border p-4"><h3 className="font-semibold">Evidência do valor disponibilizado</h3><p className="text-sm text-ink-3">Informe o valor comprovado nos itens, inclusive zero quando documentado. Este registro não cria uma compra ou pagamento.</p><label className="text-sm">Referência do inventário ou origem<Input aria-label="Referência do inventário ou origem" required minLength={2} maxLength={200} value={referenciaValor} onChange={e=>setReferenciaValor(e.target.value)} /></label><label className="text-sm">Evidência do valor do inventário<Textarea aria-label="Evidência do valor do inventário" required minLength={5} maxLength={2000} value={evidenciaValor} onChange={e=>setEvidenciaValor(e.target.value)} /></label></section>}
         {compraComComposicao && <section className="grid gap-3 rounded-lg border border-border p-4"><div><h3 className="font-semibold">Desconto e frete da nota</h3><p className="mt-1 text-sm text-ink-3">Opcional. Preencha só se a nota do fornecedor tiver desconto ou frete.</p></div>
           <label className="text-sm">Desconto na nota (R$)<span className="mt-1 block text-xs font-normal leading-5 text-ink-3">Abatimento que o fornecedor deu sobre os produtos. Ele reduz o custo dos itens no estoque. Desconto por pagar à vista não entra aqui: ele é registrado no pagamento.</span><Input aria-label="Desconto comercial global" type="number" min="0" step="0.01" value={descontoComercial} onChange={e => setDescontoComercial(e.target.value)} /></label>
@@ -876,7 +913,7 @@ export function FormOperacao({ config, rascunho = null, condicaoInicial, tipoIni
   </div>;
 }
 
-function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido, erroPartidas }: { erroPartidas: { campo: string; mensagem: string } | null; dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
+function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custosMedios, movimentaEstoque, saidaEstoque, atualizarItem, alterarProduto, escolherProdutoItem, usarProdutoExistente, conflitosCatalogo, aceitaCatalogo, itemInvalidoId, porItem, centroCustoOperacao, campoInvalido, limparCampoInvalido, erroPartidas }: { escolherProdutoItem: (id: number, escolha: ProdutoEscolhido | null) => void; usarProdutoExistente: (id: number, existente: { id: string; nome: string }) => void; conflitosCatalogo: Record<number, { mensagem: string; produtoExistente: { id: string; nome: string } }>; aceitaCatalogo: boolean; erroPartidas: { campo: string; mensagem: string } | null; dataFato: string; itens: ItemForm[]; setItens: React.Dispatch<React.SetStateAction<ItemForm[]>>; config: ConfiguracoesFinanceiras; ultimosPrecos: Record<number, UltimoPrecoDTO & { produtoId: string }>; custosMedios: Record<number, number | null>; movimentaEstoque: boolean; saidaEstoque: boolean; atualizarItem: (id: number, patch: Partial<ItemForm>) => void; alterarProduto: (id: number, produtoId: string) => void; itemInvalidoId: number | null; porItem: boolean; centroCustoOperacao: string; campoInvalido: string | null; limparCampoInvalido: (campo: string) => void }) {
   return <section>
     <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="mb-3 flex items-center gap-3 text-sm font-semibold text-ink"><span className="fin-section-icon fin-form-icon"><Package aria-hidden /></span>Itens da operação</h3><p className="mt-1 text-xs text-ink-3">Informe o valor unitário ou alterne para o valor total de cada item.</p></div><Button type="button" secondary onClick={() => setItens((atuais) => [...atuais, novoItem()])}><Plus size={15} /> Adicionar item</Button></div>
     <div className="space-y-3">{itens.map((item, indice) => {
@@ -884,18 +921,21 @@ function ItensOperacao({ dataFato, itens, setItens, config, ultimosPrecos, custo
       const unidade = produto ? rotuloUnidade(produto.unidade) : item.unidade;
       const invalido = item.id === itemInvalidoId;
       const ultimo = ultimosPrecos[item.id]?.produtoId === item.produtoId ? ultimosPrecos[item.id] : null;
+      const conflito = conflitosCatalogo[item.id];
+      const valorProduto: ProdutoEscolhido | null = item.produtoCatalogoId ? { tipo: "catalogo", produtoCatalogoId: item.produtoCatalogoId, nomeCompleto: item.catalogoNome ?? item.descricao, unidadeSugerida: "UN", categoriaSugeridaId: null } : item.produtoId ? { tipo: "produto", produtoId: item.produtoId, nome: produto?.nome ?? item.descricao } : null;
       const custoMedio = !ultimo && item.produtoId ? custosMedios[item.id] : undefined;
       const campoCentro = `itens.${indice}.centroCustoId`;
       const centroInvalido = campoInvalido === campoCentro;
       return <div key={item.id} id={`item-${item.id}`} tabIndex={-1} aria-invalid={invalido || undefined} className={`rounded-xl border p-4 outline-none ${invalido ? "border-destructive bg-[var(--fin-danger-bg)] ring-2 ring-destructive/20" : "border-border bg-muted"}`}>
         <div className="mb-3 flex items-center justify-between"><strong className="text-sm">Item {indice + 1}</strong>{itens.length > 1 && <UiButton type="button" variant="ghost" aria-label={`Remover item ${indice + 1}`} onClick={() => setItens((atuais) => atuais.filter((atual) => atual.id !== item.id))} className="rounded-lg p-1.5 text-destructive hover:bg-[var(--fin-danger-bg)]"><Trash2 size={16} /></UiButton>}</div>
-        {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""} deste item.</CampoErro>}
+        {invalido && <CampoErro className="mb-3">Preencha a descrição, a quantidade{movimentaEstoque ? " e o produto" : ""}{item.produtoCatalogoId && !item.categoriaId ? " e a categoria" : ""} deste item.</CampoErro>}
+        {conflito && <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-[var(--fin-danger-bg)] p-3 text-sm text-destructive"><span className="min-w-0 flex-1 break-words">{conflito.mensagem}</span><Button type="button" secondary onClick={() => usarProdutoExistente(item.id, conflito.produtoExistente)}>Usar produto existente</Button></div>}
         <div className="grid gap-4 md:grid-cols-[minmax(0,0.8fr)_minmax(0,2fr)]">
-          <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<SelectCampo aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onValueChange={(valor) => alterarProduto(item.id, valor)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</SelectCampo></label>
+          {aceitaCatalogo ? <div className="text-sm font-medium"><label htmlFor={`item-${item.id}-produto`}>Produto *</label><SeletorProdutoCatalogo id={`item-${item.id}-produto`} rotulo={`Produto do item ${indice + 1}`} value={valorProduto} onChange={(escolha) => escolherProdutoItem(item.id, escolha)} obrigatorio /></div> : <label className="text-sm font-medium">Produto{movimentaEstoque && " *"}<SelectCampo aria-label={`Produto do item ${indice + 1}`} required={movimentaEstoque} className={SELECT} value={item.produtoId} onValueChange={(valor) => alterarProduto(item.id, valor)}><option value="">{movimentaEstoque ? "Selecione" : "Sem produto cadastrado"}</option>{config.produtos.map((produtoAtual) => <option key={produtoAtual.id} value={produtoAtual.id}>{produtoAtual.nome}</option>)}</SelectCampo></label>}
           <label className="text-sm font-medium">Descrição do item *<Input aria-label={`Descrição do item ${indice + 1}`} required className={CAMPO} value={item.descricao} onChange={(e) => atualizarItem(item.id, { descricao: e.target.value })} /></label>
         </div>
         <div className={`mt-4 grid gap-4 ${porItem ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-          <label className="text-sm font-medium">Categoria<SelectCampo aria-label={`Categoria do item ${indice + 1}`} className={SELECT} value={item.categoriaId ?? ""} onValueChange={(valor) => atualizarItem(item.id, { categoriaId: valor })}><option value="">Sem categoria</option>{config.categorias.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
+          <label className="text-sm font-medium">Categoria{item.produtoCatalogoId && " *"}<SelectCampo aria-label={`Categoria do item ${indice + 1}`} className={SELECT} value={item.categoriaId ?? ""} onValueChange={(valor) => atualizarItem(item.id, { categoriaId: valor })}><option value="">Sem categoria</option>{config.categorias.filter((c) => c.ativo).map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo></label>
           {porItem && <label className="text-sm font-medium">Centro de custo<SelectCampo id={`campo-itens-${indice}-centroCustoId`} aria-label={`Centro de custo do item ${indice + 1}`} aria-invalid={centroInvalido || undefined} aria-describedby={centroInvalido ? `erro-${campoCentro}` : undefined} className={SELECT + (centroInvalido ? " border-destructive ring-2 ring-destructive/20" : "")} value={item.centroCustoId} onValueChange={(valor) => { atualizarItem(item.id, { centroCustoId: valor }); limparCampoInvalido(campoCentro); }}><option value="">Padrão da operação{centroCustoOperacao ? ` (${config.centrosCusto.find((c) => String(c.id) === centroCustoOperacao)?.nome ?? ""})` : ""}</option>{config.centrosCusto.filter((centro) => centro.ativo).map((centro) => <option key={centro.id} value={centro.id}>{centro.nome}</option>)}</SelectCampo>{centroInvalido && <CampoErro id={`erro-${campoCentro}`}>Informe o centro de custo deste item ou um centro padrão para a operação.</CampoErro>}</label>}
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.1fr]">

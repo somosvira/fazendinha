@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from "react";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { BuilderEtapasProtocolo } from "./BuilderEtapasProtocolo";
-import { SeletorCatalogoProtocolo } from "./SeletorCatalogoProtocolo";
+import { SelectBuscavel } from "../../../components/SelectBuscavel";
+import { opcoesProtocolo, detalheProdutoSanitario } from "./opcoesProtocolo";
 import { CamposReferenciasCusto, type ReferenciasCustoCadastro } from "./CamposReferenciasCusto";
 import { momentoParaCadastro, type MomentoCadastro, type SubtipoAplicacaoCadastro } from "./CamposMomentoAcao";
 import type { CadastroProtocoloMeta } from "./cadastros-api";
@@ -60,12 +61,12 @@ export function EditorModeloSanitario({ origemCadastro, etapas, setEtapas, setAc
                   mudar(i, { tipo, subtipo: tipo === "APLICACAO" ? valor === "INSERCAO_DISPOSITIVO" ? "INSERCAO_DISPOSITIVO" : "APLICACAO" : undefined, produtoId: "", tipoExameId: "", tipoAplicacaoId: "", dose: "", unidade: "", referenciasCusto: et.referenciasCusto ? { servico: et.referenciasCusto.servico } : undefined });
                 }}><option value="APLICACAO">Aplicação de produto</option><option value="INSERCAO_DISPOSITIVO">Inserção de dispositivo</option><option value="RETIRADA">Retirada de dispositivo</option><option value="EXAME">Exame / diagnóstico</option>{et.tipo === "MANEJO" && <option value="MANEJO">Manejo legado (compatibilidade)</option>}</SelectCampo></label>
                 {et.tipo === "APLICACAO" ? <>
-                  <SeletorCatalogoProtocolo origem="SANITARIO" opcao="PRODUTO" rotulo="Produto" valor={et.produtoId} onChange={(produtoId, produto) => mudar(i, { produtoId, dose: produtoId === et.produtoId ? et.dose : "", unidade: produtoId === et.produtoId ? et.unidade : produto?.unidade ?? "", tipoAplicacaoId: produtoId === et.produtoId ? et.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? "" })} />
+                  <SelectBuscavel buscar={opcoesProtocolo({ opcao: "PRODUTO", origem: "SANITARIO" })} detalhe={detalheProdutoSanitario} rotulo="Produto" valor={et.produtoId} onChange={(produtoId, produto) => mudar(i, { produtoId, dose: produtoId === et.produtoId ? et.dose : "", unidade: produtoId === et.produtoId ? et.unidade : produto?.unidade ?? "", tipoAplicacaoId: produtoId === et.produtoId ? et.tipoAplicacaoId : produto?.perfilSanitario?.tipoAplicacaoId ?? "" })} />
                   <div className="grid gap-3 sm:grid-cols-2"><label>Quantidade prevista ({et.unidade || "selecione o produto"})<input required type="number" min="0.001" step="0.001" value={et.dose} className={classeInput} onChange={e => mudar(i, { dose: e.target.value })} /></label><label>Unidade do produto<input className={classeInput} readOnly value={et.produtoId ? et.unidade : ""} /></label></div>
                   {et.momento?.modoAtendimento === "AUTOMATIZADA" && !et.tipoAplicacaoId && <p role="alert" className="text-sm">Configure o tipo padrão no produto ou utilize modo manual.</p>}
-                  {et.tipoAplicacaoId && <SeletorCatalogoProtocolo somenteLeitura origem="SANITARIO" opcao="TIPO_APLICACAO" rotulo="Classificação da aplicação" valor={et.tipoAplicacaoId} onChange={() => {}} />}
-                  {!et.momento?.modoAtendimento && <SeletorCatalogoProtocolo origem="SANITARIO" opcao="TIPO_APLICACAO" rotulo="Tipo de aplicação" valor={et.tipoAplicacaoId} onChange={tipoAplicacaoId => mudar(i, { tipoAplicacaoId })} />}
-                </> : et.tipo === "EXAME" ? <SeletorCatalogoProtocolo origem="SANITARIO" opcao="TIPO_EXAME" rotulo="Tipo de exame" valor={et.tipoExameId} onChange={tipoExameId => mudar(i, { tipoExameId })} /> : <p className="text-sm">{et.tipo === "RETIRADA" ? "Sem produto previsto. A inserção válida deste animal será conferida no atendimento, sem devolução ao estoque." : "Registro legado preservado. Escolha um procedimento suportado para uma nova configuração."}</p>}
+                  {et.tipoAplicacaoId && <SelectBuscavel somenteLeitura buscar={opcoesProtocolo({ opcao: "TIPO_APLICACAO", origem: "SANITARIO" })} rotulo="Classificação da aplicação" valor={et.tipoAplicacaoId} onChange={() => {}} />}
+                  {!et.momento?.modoAtendimento && <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_APLICACAO", origem: "SANITARIO" })} rotulo="Tipo de aplicação" valor={et.tipoAplicacaoId} onChange={tipoAplicacaoId => mudar(i, { tipoAplicacaoId })} />}
+                </> : et.tipo === "EXAME" ? <SelectBuscavel buscar={opcoesProtocolo({ opcao: "TIPO_EXAME", origem: "SANITARIO" })} rotulo="Tipo de exame" valor={et.tipoExameId} onChange={tipoExameId => mudar(i, { tipoExameId })} /> : <p className="text-sm">{et.tipo === "RETIRADA" ? "Sem produto previsto. A inserção válida deste animal será conferida no atendimento, sem devolução ao estoque." : "Registro legado preservado. Escolha um procedimento suportado para uma nova configuração."}</p>}
                 <details><summary className="cursor-pointer text-sm">Referências de custo (opcional)</summary><CamposReferenciasCusto valor={et.referenciasCusto} material={et.tipo === "APLICACAO"} onChange={referenciasCusto => mudar(i, { referenciasCusto })} /></details>
               </div>}
             />;

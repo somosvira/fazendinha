@@ -29,7 +29,7 @@ import {
   criarAplicacaoTx,
   travarOrigensAplicacoesTx,
 } from "../sanidade/aplicacoes.js";
-import { aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
+import { aplicacaoSemCatalogoSchema as aplicacaoSchema } from "../sanidade/aplicacoes.schemas.js";
 import { registrarExameTx } from "../sanidade/exames.js";
 import { iniciarExecucaoTx } from "../sanidade/protocolos.js";
 import { executarExameEtapaSchema } from "../sanidade/execucao-etapas.schemas.js";

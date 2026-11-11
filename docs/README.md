@@ -15,6 +15,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 
 | Documento | Quando consultar |
 |---|---|
+| [Produtos](produtos.md) | Catálogo de produtos do sistema (fabricante, classificação técnica, princípios ativos), produtos da fazenda e adoção; carga por migration de dados |
 | [Financeiro e Estoque](financeiro-rebuild-contrato.md) | Operações, obrigações, dinheiro, efeitos físicos, valores, estornos e autorização |
 | [Visão geral financeira](financeiro-dashboard-grid.md) | Bases dos indicadores e navegação para detalhes |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e integrações |

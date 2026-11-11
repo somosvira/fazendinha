@@ -4,10 +4,10 @@ import { EditorExecucaoProtocolo } from "../protocolos/EditorExecucaoProtocolo";
 import { reqProtocolo, type TarefaOperacional } from "../protocolos/api";
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { FormAplicacaoServico } from "./FormAplicacaoServico";
 import { listarComprasDiretas, listarServicos, reqSanidade } from "./api";
-import { listarProdutos } from "../../../estoque/api";
+import { buscarProdutosUnificado, listarCategorias, listarProdutos } from "../../../estoque/api";
 import { listarPartidasNutricionais } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
 import { getPropriedadeAtiva, setPropriedadeAtiva } from "../../../propriedadeScope";
@@ -18,7 +18,16 @@ vi.mock("./api", () => ({
   listarTiposAplicacao: vi.fn().mockResolvedValue([{ id: "tipo", nome: "Tratamento personalizado", ativo: true }, { id: "inativo", nome: "Inativo", ativo: false }]),
   listarComprasDiretas: vi.fn().mockResolvedValue([]), reqSanidade: vi.fn().mockResolvedValue([]), registrarAplicacao: vi.fn(),
 }));
-vi.mock("../../../estoque/api", () => ({ listarProdutos: vi.fn().mockResolvedValue([{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true, rastrearPartidas: false, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } }]) }));
+const { ITEM_CATALOGO } = vi.hoisted(() => ({ ITEM_CATALOGO: { id: "catalogo-1", nome: "Biomox 20% PS", apresentacao: "sachê 100 g", nomeCompleto: "Biomox 20% PS (sachê 100 g)", fabricante: { id: "fab", nome: "Vetbrands" }, classificacaoTecnica: null, unidadeSugerida: "G", categoriaSugeridaId: "categoria-sanitaria", usoSanitario: true, usoNutricional: false, usoGenetico: false } }));
+vi.mock("../../../estoque/api", () => ({
+  listarCategorias: vi.fn().mockResolvedValue([
+    { id: "cat-geral", nome: "Administrativo", ativo: true, ordem: 0, usoSanitario: false },
+    { id: "cat-off", nome: "Sanidade antiga", ativo: false, ordem: 0, usoSanitario: true },
+    { id: "cat-san", nome: "Sanidade", ativo: true, ordem: 5, usoSanitario: true },
+  ]),
+  listarProdutos: vi.fn().mockResolvedValue([{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true, rastrearPartidas: false, perfilSanitario: { carenciaLeiteHoras: 0, carenciaCarneHoras: 48 } }]),
+  buscarProdutosUnificado: vi.fn().mockResolvedValue({ meus: [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }], catalogo: [ITEM_CATALOGO] }),
+}));
 vi.mock("../nutricao/api", () => ({ listarPartidasNutricionais: vi.fn().mockResolvedValue([]) }));
 vi.mock("../api", () => ({ buscarFichaAnimal: vi.fn().mockResolvedValue({ sexo: "F", aptidao: "LEITE" }) }));
 vi.mock("../../../components/DatePicker", () => ({ DatePicker: ({ value, onChange, ...p }: { value: string; onChange: (v: string) => void }) => <input {...p} type="date" value={value} onChange={(e) => onChange(e.target.value)} /> }));
@@ -180,10 +189,84 @@ describe("aplicação sanitária V3", () => {
     await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
     expect(screen.getByLabelText(/Medicamento utilizado/)).toHaveProperty("value", "");
     expect(screen.getByLabelText(/^Leite$/)).toHaveProperty("value", "NAO_INFORMADO");
-    await alterarControle(screen.getByLabelText(/Produto cadastrado/), { target: { value: "produto" } });
+    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /Medicamento teste/ }));
     expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
-    await alterarControle(screen.getByLabelText(/Produto cadastrado/), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /Limpar produto cadastrado/ }));
     expect(screen.getByLabelText(/Medicamento utilizado/)).toHaveProperty("value", "");
+  });
+  it("item do catálogo no insumo incluso preenche unidade, sem diálogo, e envia produtoCatalogoId sem produtoId", async () => {
+    render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
+    await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
+    await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
+    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
+    const lista = await screen.findByRole("listbox", { name: /Produto cadastrado/ });
+    expect(within(lista).getAllByRole("group").map((g) => g.textContent)).toEqual([expect.stringContaining("Meus produtos"), expect.stringContaining("Catálogo")]);
+    fireEvent.click(screen.getByRole("option", { name: /Biomox 20% PS \(sachê 100 g\)/ }));
+    expect(screen.getAllByRole("dialog")).toHaveLength(1); // só o formulário: nenhum diálogo extra
+    expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
+    expect(screen.getByLabelText(/Unidade/)).toHaveProperty("value", expect.stringMatching(/G/i));
+    submeter();
+    await waitFor(() => expect(cargaAplicacao().itens[0]).toMatchObject({ produtoCatalogoId: "catalogo-1", categoriaId: "categoria-sanitaria", nomeProdutoAplicado: "Biomox 20% PS (sachê 100 g)", origemInsumo: "INCLUSO_SERVICO" }));
+    expect(cargaAplicacao().itens[0].produtoId).toBeUndefined();
+  });
+  it("item do catálogo sem categoria sugerida exige categoria ativa (uso sanitário primeiro) e a envia como categoriaId", async () => {
+    vi.mocked(buscarProdutosUnificado).mockResolvedValue({ meus: [], catalogo: [{ ...ITEM_CATALOGO, categoriaSugeridaId: null }] } as never);
+    try {
+      render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+      await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
+      await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
+      await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
+      expect(screen.queryByLabelText(/Categoria do produto novo/)).toBeNull();
+      fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
+      fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+      await screen.findByRole("combobox", { name: /Categoria do produto novo/ });
+      await screen.findByRole("option", { hidden: true, name: "Administrativo" });
+      const nomes = screen.getAllByRole("option", { hidden: true }).map((o) => o.textContent ?? "");
+      expect(nomes.filter((n) => ["Sanidade", "Administrativo", "Sanidade antiga"].includes(n))).toEqual(["Sanidade", "Administrativo"]);
+      submeter();
+      await waitFor(() => expect(document.getElementById("san-categoria-adocao-erro")?.textContent).toContain("Selecione a categoria"));
+      expect(vi.mocked(reqSanidade).mock.calls.some(([path]) => path === "/aplicacoes/coletivas")).toBe(false);
+      await alterarControle(screen.getByRole("combobox", { name: /Categoria do produto novo/ }), { target: { value: "cat-san" } });
+      submeter();
+      await waitFor(() => expect(cargaAplicacao().itens[0]).toMatchObject({ produtoCatalogoId: "catalogo-1", categoriaId: "cat-san" }));
+    } finally { vi.mocked(buscarProdutosUnificado).mockResolvedValue({ meus: [{ id: "produto", nome: "Medicamento teste", unidade: "ML", usoSanitario: true }], catalogo: [ITEM_CATALOGO] } as never); }
+  });
+  it("com categoria sugerida não pede categoria nem lista categorias", async () => {
+    render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
+    await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
+    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+    expect(screen.queryByLabelText(/Categoria do produto novo/)).toBeNull();
+    expect(listarCategorias).not.toHaveBeenCalled();
+  });
+  it.each([["tarefa com desvio", true], ["tarefa conforme o planejamento", false]])("%s: o seletor oferece só Meus produtos", async (_n, comDesvio) => {
+    render(<FormAplicacaoServico animalId="animal" propriedadeId={1} tarefa={{ id: "tarefa", produtoId: "produto", tipoAplicacaoId: "tipo", dose: "5", unidade: "ML" }} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" });
+    if (comDesvio) fireEvent.click(screen.getByRole("button", { name: "Registrar desvio" }));
+    await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
+    const seletor = screen.getByRole("combobox", { name: /Produto cadastrado/ });
+    if (!comDesvio) { expect(seletor).toHaveProperty("disabled", true); return; }
+    fireEvent.click(seletor);
+    const lista = await screen.findByRole("listbox", { name: /Produto cadastrado/ });
+    expect(within(lista).getAllByRole("group").map((g) => g.textContent)).toEqual([expect.stringContaining("Meus produtos")]);
+    expect(screen.queryByRole("option", { name: /Biomox/ })).toBeNull();
+  });
+  it("conflito de nome na adoção mostra a mensagem e 'Usar produto existente' troca para o produto da fazenda", async () => {
+    vi.mocked(reqSanidade).mockImplementation(async (path) => { if (path === "/aplicacoes/coletivas") throw Object.assign(new Error("Já existe um produto da fazenda chamado “Biomox”."), { campo: "itens.0.produtoCatalogoId", code: "CONFLITO", produtoExistente: { id: "produto", nome: "Medicamento teste" } }); return []; });
+    render(<FormAplicacaoServico animalId="animal" propriedadeId={1} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+    await screen.findByRole("option", { hidden: true, name: "Tratamento personalizado" }); await preencher();
+    await alterarControle(screen.getByLabelText(/Origem do medicamento/), { target: { value: "INCLUSO_SERVICO" } });
+    await alterarControle(screen.getByLabelText(/Serviço/), { target: { value: "servico" } });
+    fireEvent.click(screen.getByRole("combobox", { name: /Produto cadastrado/ }));
+    fireEvent.click(await screen.findByRole("option", { name: /Biomox/ }));
+    submeter();
+    fireEvent.click(await screen.findByRole("button", { name: "Usar produto existente" }));
+    expect(screen.queryByRole("button", { name: "Usar produto existente" })).toBeNull();
+    expect(screen.getByRole("combobox", { name: /Produto cadastrado/ })).toHaveProperty("value", "Medicamento teste");
+    expect(screen.queryByLabelText(/Medicamento utilizado/)).toBeNull();
   });
   it("compra direta deriva o nome do item e apaga vínculo ao trocar origem", async () => {
     vi.mocked(listarComprasDiretas).mockResolvedValueOnce([{ id: "compra", produtoId: "produto", disponivel: "50", unidade: "ML", produto: { nome: "Medicamento comprado" }, operacao: { numero: 3, data: "2026-09-01" } }]);

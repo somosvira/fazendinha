@@ -6,7 +6,7 @@ import {prisma} from "../../../../db.js";
 import {ativarProgramacao,previaAtivacaoProgramacao} from "./ativacao.js";
 const data=new Date("2026-10-28");
 const p:ProgramacaoSanitaria={id:"p",propriedadeId:1,nome:"Configuração fictícia",tipo:"VACINACAO",meses:[10],ano:2026,vigenciaInicio:data,vigenciaFim:null,precisao:"MES",dia:null,recorrencia:"SEM_REPETICAO",produtoId:"produto",procedimento:null,publico:{sexo:"F"},publicoConferido:true,fonte:null,observacao:null,executor:"APLICACAO",tipoExameId:null,sujeitoTipo:"ANIMAL",antecedenciaDias:0,ativo:false,revisao:1,ativadoEm:null,criadoPorId:1,regraEquivalenteId:null,criadoEm:data,atualizadoEm:data};
-const produto:Produto={id:"produto",nome:"Produto fictício",usoSanitario:true,usoGenetico:false,usoNutricional:false,rastrearPartidas:false,unidade:"UN",minimoEstoque:null,ativo:true,categoriaId:null,createdAt:data,updatedAt:data};
+const produto:Produto={codigoReferencia:null,apresentacao:null,observacao:null,conservacao:null,fabricanteId:null,classificacaoTecnicaId:null,produtoCatalogoId:null,nomeAlterado:false,id:"produto",nome:"Produto fictício",usoSanitario:true,usoGenetico:false,usoNutricional:false,rastrearPartidas:false,unidade:"UN",minimoEstoque:null,ativo:true,categoriaId:null,createdAt:data,updatedAt:data};
 const cobertura:AvaliacaoAlertas={id:"sanidade",produtor:"sanidade",estado:"CONCLUIDO",diaCoberto:data,ultimaConclusao:data,erro:null,cursor:null,posse:null,posseAte:null,versao:3,atualizadoEm:data};
 afterEach(()=>{vi.restoreAllMocks();m.auditar.mockClear();});
 describe("ativação exige reavaliar a cobertura",()=>{it("invalida checkpoint do dia sob a mesma trava ao ativar uma programação",async()=>{

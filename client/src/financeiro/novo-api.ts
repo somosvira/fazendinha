@@ -80,6 +80,13 @@ export type CentroCusto = { id: string; nome: string; ativo: boolean; ordem: num
 // Categoria organiza o financeiro; os tipos de uso pertencem ao Produto.
 export type ProdutoCategoria = { id: string; nome: string; usoGenetico: boolean; usoSanitario?: boolean; usoNutricional?: boolean };
 export type Produto = {
+  codigoReferencia?: string | null; apresentacao?: string | null; observacao?: string | null; conservacao?: string | null; fabricanteId?: string | null; classificacaoTecnicaId?: string | null; materialGeneticoId?: string | null;
+  fabricante?: import("../estoque/catalogos-api").ItemCatalogo | null; classificacaoTecnica?: import("../estoque/catalogos-api").ItemCatalogo | null;
+  /** Produto adotado do catálogo (docs/produtos.md, Herança): valores efetivos acima, origem de cada campo e princípios ativos do item. */
+  produtoCatalogoId?: string | null; nomeAlterado?: boolean;
+  origemCampos?: Record<"nome" | "apresentacao" | "fabricante" | "classificacaoTecnica", "catalogo" | "fazenda">;
+  catalogo?: { id: string; nomeCompleto: string; ativo: boolean } | null;
+  principiosAtivos?: { id: string; nome: string; ordem: number }[];
   id: string; nome: string;
   usoGenetico?: boolean; usoSanitario?: boolean; usoNutricional?: boolean;
   rastrearPartidas?: boolean;
@@ -152,7 +159,8 @@ export type RelatorioFinanceiroDetalhe = RelatorioFinanceiro & { snapshot: Snaps
 
 /** Erro da API financeira: `campo` indica o input ao qual a mensagem se refere. */
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string, public campo?: string) { super(message); this.name = "ApiError"; }
+  /** Conflito de nome na adoção de item do catálogo: o produto da fazenda que já usa o nome (docs/produtos.md, Adoção). */
+  constructor(message: string, public status: number, public code?: string, public campo?: string, public produtoExistente?: { id: string; nome: string }) { super(message); this.name = "ApiError"; }
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -164,7 +172,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
     throw new ApiError("Falha de conexão. Confira sua internet e tente novamente.", 0);
   });
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new ApiError(corpo.error ?? mensagemErroHttp(resposta.status), resposta.status, corpo.code, corpo.campo);
+  if (!resposta.ok) throw new ApiError(corpo.error ?? mensagemErroHttp(resposta.status), resposta.status, corpo.code, corpo.campo, corpo.produtoExistente);
   return corpo as T;
 }
 
