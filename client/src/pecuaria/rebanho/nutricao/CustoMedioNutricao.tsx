@@ -19,25 +19,27 @@ export function custoPrevisto(lotes: ResumoNutricional[], cobertura: Map<string,
   return animais ? { porAnimalDia: total / animais, totalDia: total, parcial: base.some(r => cobertura.get(r.lote.id)!.custoParcial), semCusto } : null;
 }
 
-/** Custo do mês corrente: o previsto pelas baixas diárias e o que já foi baixado e confirmado; o mês anterior como referência. */
+/** Custo previsto e custo apurado nas baixas confirmadas do mês corrente. */
 export function CustoMedioNutricao({ lotes, cobertura }: { lotes: ResumoNutricional[]; cobertura?: Map<string, CoberturaLote> | null }) {
-  const consulta = useConsulta(useCallback(async () => {
-    const [atual, anterior] = await Promise.all([consultarCustoMedio("atual"), consultarCustoMedio("anterior")]);
-    return { atual, anterior };
-  }, []));
+  const consulta = useConsulta(useCallback(() => consultarCustoMedio("atual"), []));
   const previsto = cobertura ? custoPrevisto(lotes, cobertura) : null;
-  const atual = consulta.dados?.atual, anterior = consulta.dados?.anterior;
+  const custoApurado = consulta.dados?.custoPorAnimalDia;
   const mes = MESES[Number(hoje().slice(5, 7)) - 1];
   return <div>
     <dt>Custo de {mes} <AjudaCampo rotulo="Como o custo é calculado" texto={<>
       <strong>Previsto</strong>: consumo diário das dietas vigentes com o efetivo de hoje, valorizado pelo custo médio de cada ingrediente no estoque, por animal e dia. Acompanha as baixas diárias e muda quando a dieta, o efetivo ou o custo do estoque mudam.{" "}
       <strong>Já baixado</strong>: o que já saiu do estoque em {mes} até ontem — baixas diárias efetivadas e fechamentos confirmados com custo apurado — dividido pelos animal-dias desses dias.
     </>} /></dt>
-    {cobertura === undefined ? <dd><Skeleton className="h-7 w-28" /></dd> : <dd>{previsto ? <>{custoTexto(previsto.porAnimalDia.toFixed(2))}<span className="dietas-resumo-unidade"> /animal/dia previsto</span></> : "Sem custo previsto"}</dd>}
-    {previsto && <small>{custoTexto(previsto.totalDia.toFixed(2))} por dia nos lotes{previsto.parcial ? " · há ingredientes sem custo" : ""}{previsto.semCusto ? ` · ${previsto.semCusto} ${previsto.semCusto === 1 ? "lote sem custo no estoque fica" : "lotes sem custo no estoque ficam"} fora` : ""}</small>}
-    {consulta.carregando ? <small><Skeleton className="h-4 w-36" /></small> : consulta.erro ? <small>Baixado indisponível</small> : <>
-      <small>Já baixado no mês: {atual?.custoPorAnimalDia != null ? <strong>{custoTexto(atual.custoPorAnimalDia)}/animal/dia</strong> : "nada ainda"}</small>
-      {anterior?.custoPorAnimalDia != null && <small>{MESES[Number(anterior.inicio.slice(5, 7)) - 1][0].toUpperCase() + MESES[Number(anterior.inicio.slice(5, 7)) - 1].slice(1)}: {custoTexto(anterior.custoPorAnimalDia)}/animal/dia</small>}
-    </>}
+    {cobertura === undefined ? <dd><Skeleton className="h-7 w-28" /></dd> : <dd className="dietas-resumo-valor">{previsto ? <>{custoTexto(previsto.porAnimalDia.toFixed(2))}<span className="dietas-resumo-unidade"> /animal/dia previsto</span></> : "Sem custo previsto"}</dd>}
+    {previsto && (previsto.parcial || previsto.semCusto > 0) && <dd><span className="dietas-resumo-etiqueta">
+      Previsão parcial
+      {previsto.semCusto > 0 && ` · ${previsto.semCusto} ${previsto.semCusto === 1 ? "lote sem custo" : "lotes sem custo"}`}
+      {previsto.parcial && " · ingredientes sem custo"}
+    </span></dd>}
+    {previsto && <dd>{custoTexto(previsto.totalDia.toFixed(2))} por dia nos lotes</dd>}
+    {consulta.erro && <dd>Custo baixado indisponível</dd>}
+    {custoApurado != null && <dd>
+      Já baixado no mês · <strong>{custoTexto(custoApurado)}</strong>/animal/dia
+    </dd>}
   </div>;
 }
