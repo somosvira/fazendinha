@@ -1,3 +1,4 @@
+import { Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
@@ -26,6 +27,8 @@ export function validarCriterios(c: CriteriosSelecao): string | null {
 }
 export type Opcao = {id: string; nome: string};
 export const enumerados: Partial<Record<CampoValor, Opcao[]>> = {
+  PEV: [{id:"EM_PEV",nome:"Em PEV"},{id:"CONCLUIDO",nome:"PEV concluído"},{id:"SEM_INFORMACAO",nome:"Sem informação"}],
+  APTIDAO_REPRODUTIVA: [{id:"APTA",nome:"Apta"},{id:"NAO_APTA",nome:"Inapta"},{id:"PENDENTE",nome:"Pendente"}],
   APTIDAO: [{id:"LEITE",nome:"Leite"},{id:"CORTE",nome:"Corte"},{id:"REPRODUCAO",nome:"Reprodução"}],
   SEXO: [{id:"F",nome:"Fêmea"},{id:"M",nome:"Macho"}], ORIGEM: [{id:"NASCIDO",nome:"Nascimento na fazenda"},{id:"COMPRADO",nome:"Compra"}],
   NASCIMENTO_ESTIMADO: [{id:"SIM",nome:"Estimado"},{id:"NAO",nome:"Conhecido"}], HISTORICO_PARTO: [{id:"CONHECIDO",nome:"Com parto registrado"},{id:"SEM_REGISTRO",nome:"Sem registro de parto"}],
@@ -37,14 +40,14 @@ export const enumerados: Partial<Record<CampoValor, Opcao[]>> = {
   RP: [{id:"SIM",nome:"Sim"},{id:"NAO",nome:"Não"}], DESCARTE: [{id:"SIM",nome:"Sim"},{id:"NAO",nome:"Não"}],
 };
 function novaCondicao(campo: CondicaoSelecao["campo"]): CondicaoSelecao { return campo in camposNumericos ? {tipo:"FAIXA",campo:campo as CampoNumerico,incluirMin:true,incluirMax:true} : {tipo:"VALORES",campo:campo as CampoValor,valores:[]}; }
-export function Condicoes({valor, mudar, opcoes}: {valor: CondicaoSelecao[]; mudar: (v: CondicaoSelecao[]) => void; opcoes: Partial<Record<CampoValor, Opcao[]>>}) {
+export function Condicoes({valor, mudar, opcoes, compacto = false}: {compacto?: boolean; valor: CondicaoSelecao[]; mudar: (v: CondicaoSelecao[]) => void; opcoes: Partial<Record<CampoValor, Opcao[]>>}) {
   const atualizar = (i: number, c: CondicaoSelecao) => mudar(valor.map((v,n) => n === i ? c : v));
-  return <div className="space-y-3">{valor.map((c,i) => <div key={i} className="rounded-lg border border-border p-3 space-y-2">
-    <div className="flex gap-2 flex-wrap"><label className="flex-1 min-w-40">Medida ou atributo<SelectCampo aria-label={`Campo da condição ${i+1}`} className={classeInput} value={c.campo} onValueChange={(valor) => atualizar(i,novaCondicao(valor as CondicaoSelecao["campo"]))}>{Object.entries(campos).map(([id,nome]) => <option key={id} value={id}>{nome}</option>)}</SelectCampo></label><label className="flex-1 min-w-40">Condição<SelectCampo className={classeInput} value={c.tipo} onValueChange={(valor) => atualizar(i,valor === "DESCONHECIDO" ? {tipo:"DESCONHECIDO",campo:c.campo} : novaCondicao(c.campo))}><option value={c.campo in camposNumericos ? "FAIXA" : "VALORES"}>{c.campo in camposNumericos ? "Dentro da faixa" : "Igual a um dos valores"}</option><option value="DESCONHECIDO">Não informado / conflito</option></SelectCampo></label><Button secondary onClick={() => mudar(valor.filter((_,n) => n !== i))}>Remover condição</Button></div>
+  return <div className="space-y-3">{valor.map((c,i) => <div key={i} className={compacto ? "template-condicao" : "rounded-lg border border-border p-3 space-y-2"}>
+    <div className="flex gap-2 flex-wrap"><label className="flex-1 min-w-40">Medida ou atributo<SelectCampo aria-label={`Campo da condição ${i+1}`} className={classeInput} value={c.campo} onValueChange={(valor) => atualizar(i,novaCondicao(valor as CondicaoSelecao["campo"]))}>{Object.entries(campos).map(([id,nome]) => <option key={id} value={id}>{nome}</option>)}</SelectCampo></label><label className="flex-1 min-w-40">Condição<SelectCampo className={classeInput} value={c.tipo} onValueChange={(valor) => atualizar(i,valor === "DESCONHECIDO" ? {tipo:"DESCONHECIDO",campo:c.campo} : novaCondicao(c.campo))}><option value={c.campo in camposNumericos ? "FAIXA" : "VALORES"}>{c.campo in camposNumericos ? "Dentro da faixa" : "Igual a um dos valores"}</option><option value="DESCONHECIDO">Não informado / conflito</option></SelectCampo></label><Button secondary onClick={() => mudar(valor.filter((_,n) => n !== i))} aria-label={compacto ? `Remover filtro ${i + 1}` : undefined}>{compacto ? <X size={16} aria-hidden /> : "Remover condição"}</Button></div>
     {c.tipo === "FAIXA" && <div className="grid grid-cols-2 gap-3">{(["min","max"] as const).map(limite => <label key={limite}>{limite === "min" ? "Mínimo (opcional)" : "Máximo (opcional)"}<input type="number" min={c.campo === "DIAS_ATE_RETORNO" ? -100000 : 0} max={100000} step={c.campo === "PESO_KG" ? "0.01" : 1} className={classeInput} value={c[limite] ?? ""} onChange={e => atualizar(i,{...c,[limite]:e.target.value === "" ? undefined : Number(e.target.value)})}/><span className="flex items-center gap-2 mt-2"><input type="checkbox" checked={c[limite === "min" ? "incluirMin" : "incluirMax"]} onChange={e => atualizar(i,{...c,[limite === "min" ? "incluirMin" : "incluirMax"]:e.target.checked})}/>Incluir limite</span></label>)}</div>}
     {c.tipo === "VALORES" && c.campo === "BUSCA" && <label>Brinco ou nome contém<input className={classeInput} value={c.valores.join(", ")} onChange={e=>atualizar(i,{...c,valores:e.target.value.split(",").map(v=>v.trim()).filter(Boolean)})}/></label>}
     {c.tipo === "VALORES" && c.campo !== "BUSCA" && <fieldset><legend className="text-sm">Aceitar um ou mais valores</legend><div className="flex flex-wrap gap-3 mt-2">{(opcoes[c.campo] ?? []).map(o => <label key={o.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.valores.includes(o.id)} onChange={e => atualizar(i,{...c,valores:e.target.checked ? [...c.valores,o.id] : c.valores.filter(v => v !== o.id)})}/>{o.nome}</label>)}{!opcoes[c.campo]?.length && <p className="text-sm text-ink-3">Nenhuma opção disponível. Cadastre os valores ou use “Não informado”.</p>}</div></fieldset>}
-  </div>)}<Button secondary disabled={valor.length >= 30} onClick={() => mudar([...valor,novaCondicao("DEL")])}>Adicionar condição em E</Button></div>;
+  </div>)}<Button secondary disabled={valor.length >= 30} onClick={() => mudar([...valor,novaCondicao("DEL")])}>{compacto ? <><Plus size={16} aria-hidden />Adicionar filtro</> : "Adicionar condição em E"}</Button></div>;
 }
 export function EditorSelecaoVisita({propriedadeId,data,selecao,onFechar,onSalvo,inline=false}: {propriedadeId:number;data:string;selecao?:SelecaoVisita;onFechar:()=>void;onSalvo:()=>void;inline?:boolean}) {
   const [nome,setNome] = useState(selecao?.nome ?? "");

@@ -1,12 +1,58 @@
-import { beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ animais:vi.fn(), calendario:vi.fn(), automacoes:vi.fn() }));
-vi.mock("../../../db.js",()=>({prisma:{animal:{findMany:mocks.animais}}}));
-vi.mock("./operacao.js",()=>({preverParticipacaoIndividual:mocks.calendario}));
-vi.mock("./automacao.js",()=>({preverAutomacoesAdesao:mocks.automacoes}));
-import { preverProgramacaoColetiva, previaProgramacaoSchema } from "./previa-programacao.js";
-const id=(n:number)=>`00000000-0000-4000-8000-${String(n).padStart(12,"0")}`;
-const input={propriedadeId:7,protocoloId:id(1),animaisIds:[id(2),id(3)],inicioReferencia:"2026-11-05"};
-beforeEach(()=>{vi.resetAllMocks();mocks.animais.mockResolvedValue(input.animaisIds.map(id=>({id,brinco:id,nome:null})));mocks.calendario.mockResolvedValue({protocolo:{nome:"Modelo",versao:2},itens:[{id:id(4),nome:"Inserção",previstaPara:"2026-11-05T00:00:00Z",precisaoTemporal:"DIA"}],total:1,pagina:1,porPagina:10});mocks.automacoes.mockResolvedValue({itens:[{etapaId:id(4),programadaPara:"2026-11-05T11:00:00Z"}]});});
-it("confere conjunto no sítio e reutiliza uma consulta de calendário com hora automática real",async()=>{const result=await preverProgramacaoColetiva(input);expect(mocks.calendario).toHaveBeenCalledTimes(1);expect(mocks.animais).toHaveBeenCalledWith(expect.objectContaining({where:expect.objectContaining({id:{in:input.animaisIds},localizacoes:{some:{propriedadeId:7,ate:null}},baixas:{none:{estornadaEm:null}}})}));expect(result.participantes).toHaveLength(2);expect(result.itens[0]).toMatchObject({previstaPara:"2026-11-05T11:00:00Z",precisaoTemporal:"HORA"});});
-it("recusa participantes ausentes sem consultar o calendário",async()=>{mocks.animais.mockResolvedValue([{id:id(2)}]);await expect(preverProgramacaoColetiva(input)).rejects.toThrow(/não estão disponíveis neste sítio/);expect(mocks.calendario).not.toHaveBeenCalled();});
-it("rejeita duplicação e lote maior que100",()=>{expect(previaProgramacaoSchema.safeParse({...input,animaisIds:[id(2),id(2)]}).success).toBe(false);expect(previaProgramacaoSchema.safeParse({...input,animaisIds:Array.from({length:101},(_,i)=>id(i+2))}).success).toBe(false);});
+import { expect, it, vi } from "vitest";
+import { AvisoAptidaoProgramacao } from "../reproducao/elegibilidade.js";
+import { preverAutomacoesAdesao } from "./automacao.js";
+import { RebanhoError } from "../rebanho/regras.js";
+import { conferirDisponibilidadeTx } from "../reproducao/registros.js";
+import { preverParticipacaoIndividual } from "./operacao.js";
+import { preverProgramacaoColetiva } from "./previa-programacao.js";
+
+const animais = vi.hoisted(() => [
+  { id: "00000000-0000-4000-8000-000000000001", brinco: "DEV-001", nome: null },
+  { id: "00000000-0000-4000-8000-000000000002", brinco: "DEV-002", nome: "Aurora" },
+]);
+vi.mock("../transacao.js", () => ({
+  transacaoPecuaria: (executar: (tx: unknown) => unknown) => executar({
+    animal: { findMany: async () => [...animais].reverse() },
+  }),
+}));
+vi.mock("../reproducao/registros.js", () => ({ conferirDisponibilidadeTx: vi.fn() }));
+vi.mock("./operacao.js", () => ({ preverParticipacaoIndividual: vi.fn() }));
+vi.mock("./automacao.js", () => ({ preverAutomacoesAdesao: vi.fn() }));
+
+it("bloqueia a prévia quando um participante posterior não tem aptidão", async () => {
+  vi.mocked(conferirDisponibilidadeTx).mockResolvedValueOnce({} as Awaited<ReturnType<typeof conferirDisponibilidadeTx>>)
+    .mockRejectedValueOnce(new RebanhoError("VALIDACAO", "Animal sem aptidão confirmada nesta data", "animalId"));
+  await expect(preverProgramacaoColetiva({
+    propriedadeId: 1,
+    protocoloId: "00000000-0000-4000-8000-000000000003",
+    inicioReferencia: "2026-01-10",
+    animaisIds: animais.map(animal => animal.id),
+    cienciaSanitaria: true,
+  })).rejects.toMatchObject({ campo: "animalId", message: "DEV-002 · Aurora: Animal sem aptidão confirmada nesta data" });
+  expect(conferirDisponibilidadeTx).toHaveBeenNthCalledWith(2, expect.anything(), animais[1].id, 1, expect.any(Date), "IATF", true);
+  expect(preverParticipacaoIndividual).not.toHaveBeenCalled();
+});
+
+it("lista os animais com aviso de aptidão na prévia da nova programação", async () => {
+  vi.mocked(conferirDisponibilidadeTx).mockRejectedValue(new AvisoAptidaoProgramacao("Aguarda exame"));
+  vi.mocked(preverParticipacaoIndividual).mockResolvedValueOnce({
+    tipo: "REPRODUTIVO", modo: "INDIVIDUAL", animal: animais[0], propriedadeId: 1,
+    inicioReferencia: "2026-01-10", precisaoTemporal: "DIA", avisos: [],
+    protocolo: { id: "protocolo", tipo: "REPRODUTIVO", nome: "Protocolo", versao: 1 },
+    itens: [], total: 0, pagina: 1, porPagina: 10,
+  });
+  vi.mocked(preverAutomacoesAdesao).mockResolvedValueOnce({ itens: [], automacaoHabilitada: false, referencia: "2026-01-10" });
+  await expect(preverProgramacaoColetiva({
+    propriedadeId: 1,
+    protocoloId: "00000000-0000-4000-8000-000000000003",
+    inicioReferencia: "2026-01-10",
+    animaisIds: animais.map(animal => animal.id),
+    aptidaoComoAviso: true,
+  })).resolves.toMatchObject({
+    participantes: animais,
+    avisosAptidao: [
+      { animalId: animais[0].id, mensagem: "DEV-001: Aguarda exame" },
+      { animalId: animais[1].id, mensagem: "DEV-002 · Aurora: Aguarda exame" },
+    ],
+  });
+});

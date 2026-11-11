@@ -3,6 +3,7 @@ import { lerEscoreCorporal } from "./escore-corporal.calc.js";
 import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import { garantirTipoToqueAptidaoTx } from "./toque-aptidao.js";
 import { FINALIDADE_APTIDAO } from "./toque-aptidao.calc.js";
+import { dataCalendarioContexto } from "./contexto-animal.calc.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
@@ -151,7 +152,8 @@ export async function carregarDadosElegibilidadeTx(tx: Prisma.TransactionClient,
     tx.pesagem.findMany({ where: { animalId, data: { lte: ate } } }),
     tx.exameAnimal.findMany({ where: { animalId, data: { lte: ate }, OR: [{ finalidadePrincipal: { in: [FINALIDADE_APTIDAO, "ESCORE_CORPORAL", "ECC"] } }, { interpretacao: { resultadoAptidao: { not: null } } }] },
       include: { resultados: { where: { vigente: true } }, interpretacao: true } }),
-    tx.ocorrenciaSanitaria.findMany({ where: { animalId, status: "VALIDO", inicio: { lte: ate } } }),
+    tx.ocorrenciaSanitaria.findMany({ where: { animalId, status: "VALIDO", inicio: { lte: ate } },
+      include: { doenca: { select: { nome: true } } } }),
     tx.regraSanitariaReprodutiva.findMany({ where: { ativo: true, efeito: "BLOQUEAR" } }),
   ]);
   const escores = exames.filter(e => e.status === "VALIDO" && ["ESCORE_CORPORAL", "ECC"].includes(e.finalidadePrincipal ?? "")).flatMap(e => {
@@ -162,7 +164,8 @@ export async function carregarDadosElegibilidadeTx(tx: Prisma.TransactionClient,
     resultadoAptidao: e.interpretacao?.resultadoAptidao ?? null,
     retornoEm: e.finalidadePrincipal === FINALIDADE_APTIDAO ? e.interpretacao?.retornoEm ?? null : e.interpretacao?.retornoAptidaoEm ?? null }));
   const impedimentosSanitarios = ocorrencias.filter(o => o.partoRetencaoPlacentaId || regrasSanitarias.some(r => r.doencaId === o.doencaId && r.propriedadeId === o.propriedadeId))
-    .map(o => ({ id: o.id, animalId: o.animalId, data: o.inicio, ate: o.fim, status: o.status }));
+    .map(o => ({ id: o.id, animalId: o.animalId, propriedadeId: o.propriedadeId, data: o.inicio, ate: o.fim,
+      status: o.status, nome: o.doencaNomeSnapshot?.trim() || o.doenca?.nome }));
   const crias=partos.length?await tx.criaParto.findMany({where:{partoId:{in:partos.map(p=>p.id)}},select:{partoId:true,viva:true}}):[];
   return { animais, partos:partos.map(p=>({...p,crias:crias.filter(c=>c.partoId===p.id)})), tentativas, lactacoes, gestacoes, localizacoes, avaliacoes, iniciais, vinculos, restricoes, papeis, baixas, politicas, decisoes, escores, toques, impedimentosSanitarios,
     pesagens: pesagens.map(p => ({ id: p.id, animalId: p.animalId, data: p.data, pesoKg: p.pesoKg.toNumber(), precisao: p.precisao })) };
@@ -181,10 +184,40 @@ export async function consultarElegibilidadeNaData(animalId: string, propriedade
   });
 }
 
+const motivosAvisoProgramacao = new Set([
+  "EXAME_APTIDAO_NECESSARIO", "APTIDAO_INCONCLUSIVA", "EXAME_NAO_APTA",
+  "CONDICAO_IMPEDITIVA_VIGENTE", "NOVO_EXAME_APOS_TRATAMENTO",
+  "EXAME_APOS_PERDA_NECESSARIO", "EXAME_ANULADO_REAVALIAR",
+]);
+
+export class AvisoAptidaoProgramacao extends RebanhoError {
+  constructor(mensagem: string) {
+    super("VALIDACAO", mensagem, "animalId");
+  }
+}
+
 /** A mesma aptidão vale para protocolo e qualquer tentativa. */
 export async function conferirAptidaoParaAcaoTx(tx: Prisma.TransactionClient, animalId: string, propriedadeId: number, data: Date, _acao: "PROTOCOLO" | "IA" | "TE" | "COBERTURA") {
-  const atual = (await obterElegibilidadesNaDataTx(tx, [animalId], propriedadeId, data)).get(animalId);
-  if (atual?.aptidao.estado !== "APTA") erro(`Animal sem aptidão confirmada nesta data: ${atual?.aptidao.motivos.join("; ") || "avaliação pendente"}`, "animalId");
+  const dados = await carregarDadosElegibilidadeTx(tx, [animalId], data);
+  const atual = calcularElegibilidadesDoConjunto(dados, propriedadeId, data).get(animalId);
+  if (atual?.aptidao.estado === "APTA") return;
+
+  const motivos = atual?.aptidao.motivos ?? [];
+  const referencia = dataCalendarioContexto(data);
+  const vigenteNoSitio = (fato: { propriedadeId?: number | null; status: string; data: Date; ate: Date | null }) =>
+    fato.propriedadeId === propriedadeId && fato.status === "VALIDO" && fato.data <= referencia && (!fato.ate || fato.ate > referencia);
+  const bloqueios = motivos.includes("CONDICAO_IMPEDITIVA_VIGENTE") ? [
+    ...dados.restricoes.filter(r => r.tipo !== "DESCARTE" && vigenteNoSitio(r))
+      .flatMap(r => r.motivo ? [`Restrição reprodutiva: ${r.motivo}`] : []),
+    ...(dados.impedimentosSanitarios ?? []).filter(vigenteNoSitio)
+      .flatMap(o => o.nome ? [`Condição sanitária: ${o.nome}`] : []),
+  ] : [];
+  const detalhes = bloqueios.length ? `. Bloqueios vigentes: ${[...new Set(bloqueios)].join("; ")}` : "";
+  const mensagem = `Animal sem aptidão confirmada nesta data: ${motivos.join("; ") || "avaliação pendente"}${detalhes}`;
+  if (motivos.length && motivos.every(motivo => motivosAvisoProgramacao.has(motivo))) {
+    throw new AvisoAptidaoProgramacao(mensagem);
+  }
+  erro(mensagem, "animalId");
 }
 
 /** Confere a conclusão antes de gravar, sob a mesma trava/transação do exame. */

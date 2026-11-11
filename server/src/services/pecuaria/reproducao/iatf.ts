@@ -4,7 +4,7 @@ import { conferirImpactosTx, aplicarImpactosTx } from "./impactos.js";
 import { snapshotPrazosAdesaoTx } from "./prazos-protocolo.js";
 import { quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../protocolos/automacao.schemas.js";
-import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
+import { AvisoAptidaoProgramacao, conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
 import { resolverTipoAplicacaoCadastroTx } from "../protocolos/cadastros-produtos.js";
 import { validarReferenciasCusto } from "../custos/referencias-planejadas.js";
 import { executarManejoDaTarefaIatfTx } from "../protocolos/execucao.manejos.js";
@@ -13,7 +13,7 @@ import { impactosInicioLegado } from "../protocolos/inicio-legado.calc.js";
 import crypto from "node:crypto";
 import { registrarEventoTarefaTx } from "../protocolos/eventos.js";
 import { garantirDemandaProtocoloTx, reconciliarDemandasAnimalTx, validarTiposPoliticaTx, criarDemandasDoFatoTx } from "./acompanhamento.js";
-import { lerDataIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
+import { lerDataIatf, dataDisponibilidadeIatf, diaIatf, anteriorIatf, serializarDataIatf, type PrecisaoIatf } from "./horarios.calc.js";
 import { conferirFormatoReprodutivo } from "../exames/formatos.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
 import { regularizarTarefaComumTx, substitutosTarefaComum } from "../protocolos/regularizacao.js";
@@ -281,28 +281,23 @@ export async function criarProgramacaoTx(
       criadoPorId: usuarioId,
     },
   });
+  const avisosAptidao: { animalId: string; mensagem: string }[] = [];
   for (const animal of input.animais) {
     const referenciaTemporal = lerDataIatf(animal.inicioPrevisto ?? input.inicioPrevisto);
     const inicioPrevisto = referenciaTemporal.instante;
-    const dataDisponibilidade =
-      inicioPrevisto > new Date()
-        ? new Date(
-            new Intl.DateTimeFormat("en-CA", {
-              timeZone: "America/Sao_Paulo",
-              year: "numeric",
-              month: "2-digit",
-              day: "2-digit",
-            }).format(new Date()),
-          )
-        : dia(referenciaTemporal.data);
-    await conferirDisponibilidadeTx(
-      tx,
-      animal.animalId,
-      input.propriedadeId,
-      dataDisponibilidade,
-      "IATF",
-      input.cienciaSanitaria,
-    );
+    try {
+      await conferirDisponibilidadeTx(
+        tx,
+        animal.animalId,
+        input.propriedadeId,
+        dataDisponibilidadeIatf(referenciaTemporal),
+        "IATF",
+        input.cienciaSanitaria,
+      );
+    } catch (erro) {
+      if (!(erro instanceof AvisoAptidaoProgramacao) || !input.cienciaAvisosAptidao?.includes(animal.animalId)) throw erro;
+      avisosAptidao.push({ animalId: animal.animalId, mensagem: erro.message });
+    }
     const participante = await criarParticipacaoReprodutivaTx(tx, {
       data: {
         programacaoId: programacao.id,
@@ -328,7 +323,7 @@ export async function criarProgramacaoTx(
     propriedadeId: input.propriedadeId,
     acao: "CRIACAO",
     usuarioId,
-    depois: { programacao, animais: ids },
+    depois: { programacao, animais: ids, ...(avisosAptidao.length ? { avisosAptidao } : {}) },
   });
   return programacao;
 }
@@ -1066,16 +1061,12 @@ export async function adicionarParticipantes(
               "animais",
             );
           const temporal = lerDataIatf(animal.inicioPrevisto);
-          const inicio = temporal.instante,
-            referencia =
-              inicio > new Date()
-                ? dia(dataNoBrasil(new Date()))
-                : dia(temporal.data);
+          const inicio = temporal.instante;
           await conferirDisponibilidadeTx(
             tx,
             animal.animalId,
             input.propriedadeId,
-            referencia,
+            dataDisponibilidadeIatf(temporal),
             "IATF",
             input.cienciaSanitaria,
           );

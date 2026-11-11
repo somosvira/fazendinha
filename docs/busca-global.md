@@ -90,3 +90,5 @@ Conversas privadas e propostas temporárias de pesagem não são indexadas na bu
 
 
 Metas individuais e medições ainda não têm fonte de registros na busca: a projeção versionada e os gates conservadores por indicador precisam de integração própria antes de indexar títulos com segurança. Nesta versão, a busca abre a página Metas, onde a lista é filtrada no servidor; não promete abrir uma meta exata a partir de seu título. Snapshots privados do Radar também não são indexados. Fontes do Radar e das medições automáticas abrem as consultas operacionais já filtradas, respeitando sítio e guarda de navegação.
+
+Filtros salvos da seleção de participantes são critérios reutilizáveis por sítio. Eles são consultados pelo seletor da programação, que fornece o contexto de sítio e data necessário para aplicar a prévia.

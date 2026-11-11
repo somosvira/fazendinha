@@ -160,6 +160,7 @@ it("execução reprodutiva conserva atendidos marcados sem repetir atendimento e
   const executar=vi.fn();
   render(<OperacaoProtocolo programacaoId="g1" propriedadeId={1} podeLancar aoExecutar={executar}/>);
   const concluido=await screen.findByRole("checkbox",{name:"Atendido Animal 1"});
+  expect(screen.queryByRole("button", { name: /Mais ações para/ })).toBeNull();
   expect(concluido.getAttribute("aria-checked")).toBe("true");
   expect(concluido).toHaveProperty("disabled",true);
   fireEvent.click(screen.getByRole("checkbox",{name:"Selecionar esta página"}));
