@@ -27,7 +27,10 @@ export async function ampliarContextosSelecaoTx(tx: Prisma.TransactionClient, co
     const ativos = participacoes.filter(p => p.animalId === id && ocorrida(p.protocolo.tipo === "SANITARIO" ? p.inicio : p.inicioEfetivo) && !ocorrida(p.canceladaEm)
       && (p.tarefas.length === 0 || p.tarefas.some(t => t.regularizacaoPendente || !(ocorrida(t.realizadaEm) || ocorrida(t.dispensadaEm) || t.aplicacoes.some(a => ocorrida(a.data)) || t.exames.some(e => ocorrida(e.data))))));
     const dominios = [...new Set(ativos.map(p => p.protocolo.tipo))];
+    const fimPev = elegibilidade?.pevOriginalAte;
     Object.assign(contexto, {
+      situacaoPev: fimPev ? (data < fimPev ? "EM_PEV" : "CONCLUIDO") : "SEM_INFORMACAO",
+      aptidaoReprodutiva: elegibilidade?.aptidao?.estado ?? null,
       identificacao: `${animal.brinco} ${animal.nome ?? ""}`, origem: animal.origem, sexo: animal.sexo,
       nascimentoEstimado: animal.nascimentoEstimado ? "SIM" : "NAO", idadeDias: dias(animal.dataNascimento),
       dataNascimento: diaTexto(animal.dataNascimento),

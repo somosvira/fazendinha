@@ -5,14 +5,18 @@
 /* Manejo por lote: resumo compacto e ações próprias, sem link estendido sobre botões. */
 .dietas-distribuicao-corpo{gap:20px}.dietas-rosca{width:126px;height:126px;flex:0 0 126px}.dietas-efetivo{margin-top:12px}.dietas-custo-medio{padding:22px}.dietas-custo-medio h2{font-size:18px}.dietas-custo-medio p,.dietas-custo-medio small{color:var(--fin-text-muted,#526863);font-size:13px;margin:8px 0}.dietas-custo-valor{font-size:30px;font-weight:750;margin:10px 0}.dietas-custo-valor span{font-size:13px;font-weight:400}.dietas-cartao-link:after{display:none}.dietas-cartao-acoes{display:flex;flex-wrap:wrap;gap:10px;padding:0 20px 20px}.dietas-cartao-acoes a{position:relative;z-index:1}.dietas-cartao-acoes a:focus-visible{outline:2px solid #006f68;outline-offset:3px}
 /* Faixa de resumo do topo: três números lado a lado, sem rosca. */
-.dietas-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;margin:0;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
-.dietas-resumo>div{background:var(--card);padding:14px 18px;display:grid;gap:2px;align-content:start}
+.dietas-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,245px),1fr));gap:1px;margin:0;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.dietas-resumo>div{background:var(--card);padding:16px 18px;display:grid;gap:6px;align-content:start;min-width:0}
 .dietas-resumo dt{font-size:13px;color:var(--muted-foreground);display:flex;align-items:center;gap:4px}
-.dietas-resumo dd{margin:0;font-size:24px;font-weight:700;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.dietas-resumo dd{margin:0;font-size:13px;color:var(--muted-foreground)}
+.dietas-resumo dd.dietas-resumo-valor{font-size:24px;font-weight:700;line-height:1.2;letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--foreground)}
+.dietas-resumo dd.dieta-cartao-alerta{color:var(--campo-atraso,#8d3931)}
 .dietas-resumo-unidade{font-size:13px;font-weight:500;color:var(--muted-foreground)}
-.dietas-resumo small{font-size:13px;color:var(--muted-foreground)}
-.dietas-resumo-filtro{justify-self:start;font-size:13px;font-weight:600;color:var(--campo-atencao,#775930);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
-.dietas-resumo-filtro[aria-pressed=true]{color:var(--primary)}
+.dietas-resumo-filtro,.dietas-resumo-etiqueta{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:4px 8px;border-radius:6px;font-weight:600;color:var(--campo-atencao,#775930);background:var(--campo-atencao-claro,#f6f0e5)}
+.dietas-resumo-filtro{cursor:pointer;text-decoration:none}
+.dietas-resumo-filtro svg{flex:none}
+.dietas-resumo-filtro:hover{text-decoration:underline;text-underline-offset:3px}
+.dietas-resumo-filtro[aria-pressed=true]{color:var(--primary);background:var(--accent)}
 .dietas-resumo-filtro:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .dietas-cartao header{display:block}
 /* Cartões no padrão compartilhado (consulta-cartao), três por linha como Lotes e Estoque. */

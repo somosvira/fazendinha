@@ -177,6 +177,16 @@ const motivos: Record<string, string> = {
 export const descreverMotivo = (codigo: string) =>
   motivos[codigo] ?? codigo.toLocaleLowerCase("pt-BR").replaceAll("_", " ");
 
+export function descreverErroDisponibilidade(mensagem: string): string {
+  return mensagem.replace(/(Animal sem aptidão confirmada nesta data: )([A-Z_]+(?:; [A-Z_]+)*)(?:\. Bloqueios vigentes: ([\s\S]+))?/,
+    (_, prefixo: string, codigos: string, detalhes?: string) => {
+      const motivos = codigos.split("; ")
+        .filter(codigo => !detalhes || codigo !== "CONDICAO_IMPEDITIVA_VIGENTE")
+        .map(descreverMotivo);
+      return prefixo + [...motivos, detalhes].filter(Boolean).join(" ");
+    });
+}
+
 export const registrarToqueAptidao = (input: { chave: string; animalId: string; propriedadeId: number; data: string; resultado: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; responsavel: string; observacao?: string | null }) =>
   reqV4("/reproducao/toques-aptidao", input, "POST", input.propriedadeId);
 export const corrigirToqueAptidao = (id: string, input: { chave: string; propriedadeId: number; motivo: string; resultado?: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; anular?: boolean }) =>

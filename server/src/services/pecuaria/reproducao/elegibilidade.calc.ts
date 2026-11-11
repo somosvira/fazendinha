@@ -102,12 +102,12 @@ export type DadosElegibilidade = {
   vinculos: Array<{ id: string; animalId: string; chaveCiclo: string; inicioCiclo: Date; politicaId: string | null; situacaoInicialId?: string | null }>;
   politicas: Array<{ id: string; versao: number; parametros: unknown; propriedadeId?: number; vigenteDesde?: Date }>;
   decisoes: Array<DecisaoElegibilidade & { vinculoCicloId: string }>;
-  restricoes: Array<{ id: string; animalId: string; data: Date; ate: Date | null; status: string; tipo: string }>;
+  restricoes: Array<{ id: string; animalId: string; data: Date; ate: Date | null; status: string; tipo: string; propriedadeId?: number | null; motivo?: string }>;
   papeis: Array<EvidenciaPapel & { animalId: string }>;
   pesagens?: Array<EvidenciaPesoAptidao & { animalId: string }>;
   escores?: Array<EvidenciaEccAptidao & { animalId: string }>;
   toques?: EvidenciaToqueAptidao[];
-  impedimentosSanitarios?: Array<{ id: string; animalId: string; data: Date; ate: Date | null; status: string }>;
+  impedimentosSanitarios?: Array<{ id: string; animalId: string; data: Date; ate: Date | null; status: string; propriedadeId?: number | null; nome?: string }>;
   baixas: Array<{ animalId: string; data: Date; estornadaEm: Date | null }>;
 };
 

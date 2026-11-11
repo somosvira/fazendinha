@@ -6,7 +6,7 @@ import { z } from "zod";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria, conflitoTransacaoPecuaria } from "../transacao.js";
 import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
-import { dia } from "./registros.js";
+import { conferirDisponibilidadeTx, dia } from "./registros.js";
 import { adicionarAtividadeTx, carregarContextosVisitaTx, contextoAnimalVisitaTx } from "./visitas.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 import { avaliarSelecaoAnimal, ordenarAnimaisSelecao, type AnimalSelecao } from "./selecoes.calc.js";
@@ -14,7 +14,7 @@ import { listarSelecoes, obterVersaoSelecaoTx } from "./selecoes.js";
 import { criteriosSelecaoSchema, type CriteriosSelecao } from "./selecoes.schemas.js";
 import { consultaPlannerSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema, type GrupoPlannerInput } from "./planner.schemas.js";
 import { fingerprintGrupoPlanner, identidadeGrupoProtocolo, janelaPlanner, ordenarMembrosPorBrinco, paginarPlanner, type JanelaPlanner } from "./planner.calc.js";
-import { serializarDataIatf } from "./horarios.calc.js";
+import { dataDisponibilidadeIatf, lerDataIatf, serializarDataIatf } from "./horarios.calc.js";
 import { ampliarContextosSelecaoTx, referenciasFiltrosSelecaoTx } from "./selecao-contexto.js";
 import { atividadeSchema } from "./schemas.js";
 
@@ -208,7 +208,7 @@ function fingerprint(grupo: Grupo, propriedadeId: number, data: string) {
 }
 /** Contexto legível sem projetar custos ou payloads de fatos de outros sítios. */
 function animalPrevia(membro: Membro) {
-  const campos = ["sexo", "origem", "idadeDias", "nascimentoEstimado", "diasAptidao", "pesoKg", "pesagemData", "diasPesagem", "composicaoSelecao", "participacoesAtivas", "historicoParto", "animalId", "brinco", "nome", "propriedadeId", "situacao", "partos", "tentativasCiclo", "categoria", "lote", "aptidao", "papelReprodutivo", "papelReprodutivoEstado", "dataReferencia", "versaoContexto", "convencaoDel", "del", "situacaoProdutiva", "diasPosParto", "diasDesdeConfirmacao", "idadeGestacionalDias", "baseIdadeGestacional", "pendenciasContexto", "retencaoPlacenta", "diasTentativa", "diasParto", "diasGestacao", "retornoEm", "retornoInformado", "diasAteRetorno"];
+  const campos = ["situacaoPev", "aptidaoReprodutiva", "sexo", "origem", "idadeDias", "nascimentoEstimado", "diasAptidao", "pesoKg", "pesagemData", "diasPesagem", "composicaoSelecao", "participacoesAtivas", "historicoParto", "animalId", "brinco", "nome", "propriedadeId", "situacao", "partos", "tentativasCiclo", "categoria", "lote", "aptidao", "papelReprodutivo", "papelReprodutivoEstado", "dataReferencia", "versaoContexto", "convencaoDel", "del", "situacaoProdutiva", "diasPosParto", "diasDesdeConfirmacao", "idadeGestacionalDias", "baseIdadeGestacional", "pendenciasContexto", "retencaoPlacenta", "diasTentativa", "diasParto", "diasGestacao", "retornoEm", "retornoInformado", "diasAteRetorno"];
   return { ...Object.fromEntries(campos.map(campo => [campo, membro.contexto[campo]])), animalId: membro.animalId, tarefaId: membro.tarefaId, motivos: membro.motivos, visitasAbertas: membro.visitasAbertas };
 }
 export async function consultarPlanner(input: z.infer<typeof consultaPlannerSchema>) {
@@ -239,7 +239,28 @@ export async function previaGrupoPlannerTx(tx: Prisma.TransactionClient, input: 
       const situacao = typeof membro.contexto.situacao === "string" ? membro.contexto.situacao : "NAO_INFORMADA";
       porSituacao.set(situacao,(porSituacao.get(situacao) ?? 0)+1);
     }
-    return { ...(input.grupo.origem === "LIVRE" ? {assinaturaContexto:hashDados(grupo.membros.map(m=>({animalId:m.animalId,tarefaId:m.tarefaId,contexto:m.contexto,estadoTarefa:m.estadoTarefa}))),resumoSelecao:{porSituacao:[...porSituacao].map(([situacao,animais])=>({situacao,animais}))}} : {}), grupo: resumoGrupo(grupo), animais: paginarPlanner(grupo.membros, input.pagina, input.tamanhoPagina).map(animalPrevia), total: grupo.membros.length,
+    const membros = paginarPlanner(grupo.membros, input.pagina, input.tamanhoPagina);
+    const referencia = input.inicioProgramacao && input.grupo.origem === "LIVRE" && input.grupo.tipo === "INICIAR_IATF"
+      ? dataDisponibilidadeIatf(lerDataIatf(input.inicioProgramacao))
+      : null;
+    const animais = [];
+    for (const membro of membros) {
+      const animal = animalPrevia(membro);
+      if (!referencia) {
+        animais.push(animal);
+        continue;
+      }
+      let impedimentoProgramacao: string | null = null;
+      try {
+        // Alertas que exigem apenas ciência podem ser tratados durante a preparação.
+        await conferirDisponibilidadeTx(tx, membro.animalId, input.propriedadeId, referencia, "IATF", true);
+      } catch (erro) {
+        if (!(erro instanceof RebanhoError)) throw erro;
+        impedimentoProgramacao = erro.message;
+      }
+      animais.push({ ...animal, impedimentoProgramacao });
+    }
+    return { ...(input.grupo.origem === "LIVRE" ? {assinaturaContexto:hashDados(grupo.membros.map(m=>({animalId:m.animalId,tarefaId:m.tarefaId,contexto:m.contexto,estadoTarefa:m.estadoTarefa}))),resumoSelecao:{porSituacao:[...porSituacao].map(([situacao,animais])=>({situacao,animais}))}} : {}), grupo: resumoGrupo(grupo), animais, total: grupo.membros.length,
       pagina: input.pagina, tamanhoPagina: input.tamanhoPagina, fingerprint: fingerprint(grupo, input.propriedadeId, input.data) };
 }
 export async function incluirGrupoPlanner(visitaId: string, input: z.infer<typeof incluirGrupoPlannerSchema>, usuarioId: number | null) {

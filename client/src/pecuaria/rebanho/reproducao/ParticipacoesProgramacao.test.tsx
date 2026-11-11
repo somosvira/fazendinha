@@ -39,15 +39,13 @@ it("não transforma falha de consulta em ausência de participação",async()=>{
 });
 
 const bloqueado = { id: "p", animalId: "a", animal: { brinco: "Matriz 1" }, encerradoEm: null, bloqueadaEm: "2026-11-08T12:00:00.000Z", motivoBloqueio: "Ocorrência exige revisão" };
-async function abrirMenu() { fireEvent.keyDown(await screen.findByRole("button", { name: "Ações de Matriz 1" }), { key: "ArrowDown" }); return screen.findByRole("menuitem", { name: "Detalhes da participação" }); }
 it("mostra bloqueio na matriz para leitura, sem permitir revisar", async () => {
  vi.mocked(reqProtocolo).mockResolvedValue({ itens: [bloqueado], total: 1, pagina: 1, porPagina: 10 });
  vi.mocked(obterTarefasProtocolo).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0} podeRevisarBloqueio={false}/>);
  await screen.findByText("Participação bloqueada");
  expect(screen.getByText("Ocorrência exige revisão")).toBeTruthy();
- await abrirMenu();
- expect(screen.queryByRole("menuitem", { name: "Revisar bloqueio" })).toBeNull();
+ expect(screen.queryByRole("button", { name: "Revisar bloqueio" })).toBeNull();
 });
 it("revisão confirmada atualiza participantes e avisa o executor da programação", async () => {
  vi.mocked(reqProtocolo).mockResolvedValueOnce({ itens: [bloqueado], total: 1, pagina: 1, porPagina: 10 }).mockResolvedValue({ itens: [{ ...bloqueado, bloqueadaEm: null, motivoBloqueio: null }], total: 1, pagina: 1, porPagina: 10 });
@@ -55,8 +53,7 @@ it("revisão confirmada atualiza participantes e avisa o executor da programaç�
  vi.mocked(revisarBloqueioParticipacao).mockResolvedValue({ id: "p", bloqueadaEm: null, canceladaEm: null });
  const atualizar = vi.fn();
  render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0} podeRevisarBloqueio aoRevisarBloqueio={atualizar}/>);
- await abrirMenu();
- fireEvent.click(screen.getByRole("menuitem", { name: "Revisar bloqueio" }));
+ fireEvent.click(await screen.findByRole("button", { name: "Revisar bloqueio" }));
  mudarCampo(screen.getByLabelText("Decisão sobre a participação"), { target: { value: "RETOMAR" } });
  fireEvent.change(screen.getByLabelText("Motivo da revisão"), { target: { value: "Revisão explícita da participação" } });
  fireEvent.click(screen.getByLabelText("Conferi o bloqueio e confirmo a decisão sobre esta participação."));
@@ -65,4 +62,13 @@ it("revisão confirmada atualiza participantes e avisa o executor da programaç�
  await waitFor(() => expect(screen.queryByText("Participação bloqueada")).toBeNull());
  expect(atualizar).toHaveBeenCalledOnce();
  expect(reqProtocolo).toHaveBeenCalledTimes(2);
+});
+
+it("retira pela ação direta da participação aberta", async () => {
+ vi.mocked(reqProtocolo).mockResolvedValue({ itens: [{ ...bloqueado, bloqueadaEm: null }], total: 1, pagina: 1, porPagina: 10 });
+ vi.mocked(obterTarefasProtocolo).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 10 });
+ const retirar = vi.fn();
+ render(<ParticipacoesProgramacao id="grupo" propriedadeId={7} revisao={0} aoRetirar={retirar}/>);
+ fireEvent.click(await screen.findByRole("button", { name: "Retirar do protocolo: Matriz 1" }));
+ expect(retirar).toHaveBeenCalledWith("p");
 });

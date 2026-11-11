@@ -53,9 +53,12 @@ describe("aptidão geral no comando operacional", () => {
   });
   it("RP em tratamento e encerramento exigem exame posterior, sem aptidão automática", async () => {
     const { tx, listas, exame } = fonte();
-    const rp = { id: "rp", animalId: "a", propriedadeId: 1, status: "VALIDO", inicio: dia("2026-10-12"), fim: null as Date | null, partoRetencaoPlacentaId: "parto", doencaId: "rp" };
+    const rp = { id: "rp", animalId: "a", propriedadeId: 1, status: "VALIDO", inicio: dia("2026-10-12"), fim: null as Date | null, partoRetencaoPlacentaId: "parto", doencaId: "rp", doencaNomeSnapshot: "Retenção de placenta" };
+    listas.ocorrenciaSanitaria = [rp, { ...rp, id: "antiga", propriedadeId: 2, doencaNomeSnapshot: "Condição de outro sítio" }];
+    await expect(conferirAptidaoParaAcaoTx(tx, "a", 1, dia("2026-10-29"), "IA")).rejects.toThrow(
+      /^Animal sem aptidão confirmada nesta data: CONDICAO_IMPEDITIVA_VIGENTE\. Bloqueios vigentes: Condição sanitária: Retenção de placenta$/,
+    );
     listas.ocorrenciaSanitaria = [rp];
-    await expect(conferirAptidaoParaAcaoTx(tx, "a", 1, dia("2026-10-29"), "IA")).rejects.toThrow("CONDICAO_IMPEDITIVA_VIGENTE");
     rp.fim = dia("2026-10-20");
     await expect(conferirAptidaoParaAcaoTx(tx, "a", 1, dia("2026-10-29"), "IA")).rejects.toThrow("NOVO_EXAME_APOS_TRATAMENTO");
     exame.data = dia("2026-10-21");

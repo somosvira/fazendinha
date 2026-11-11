@@ -10,7 +10,10 @@ import { ListaProtocolosReprodutivos } from "./ListaProtocolosReprodutivos";
 import type { ComponentProps } from "react";
 import { DatasDiagnosticoIndividual } from "../protocolos/DatasDiagnosticoIndividual";
 import "../telas/ficha-geral.css";
-import { ClipboardList } from "lucide-react";
+import { CalendarDays, ClipboardList, Info, Users } from "lucide-react";
+import { descreverErroDisponibilidade } from "./elegibilidade-api";
+import { MensagemAvisoAptidao } from "./MensagemAvisoAptidao";
+import { formatBRDateISO } from "../../../lib/hoje";
 import { PreparacaoAutomacao, type PreparacaoAutomacaoEntrada, type RevisaoRetroativaAutomacao } from "../protocolos/PreparacaoAutomacao";
 import { useAcoesInicioProtocolo } from "../protocolos/useAcoesInicioProtocolo";
 import { ParticipacoesProgramacao } from "./ParticipacoesProgramacao";
@@ -178,7 +181,7 @@ export const statusTarefaIatf = (t: TarefaIatf) =>
   t.historicoRegularizacao?.at(-1)?.acao === "ENCERRAR_SEM_SUBSTITUICAO" ? "Encerrada sem substituição" : t.realizadaEm ? "Realizada" : t.dispensadaEm ? "Dispensada" : "Pendente";
 export const statusParticipanteIatf = (p: ParticipanteIatf) =>
   p.encerradoEm ? "Encerrada" : p.inicioEfetivo ? "Iniciada" : "Prevista";
-type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:Array<{id:string;brinco:string;nome:string|null}>; avisos:string[] };
+type PreviaInicioColetivo = { protocolo:{nome:string;versao:number}; itens: Array<{id:string;nome:string;previstaPara:string|null;precisaoTemporal:"DIA"|"HORA"}>; total:number; pagina:number; porPagina:number; participantes:Array<{id:string;brinco:string;nome:string|null}>; avisos:string[]; avisosAptidao?: { animalId: string; mensagem: string }[] };
 export function Iatf({
   programacaoId, onAbrirProgramacao, onFecharDetalhe, paginaProgramacao = false, onCancelarProgramacao,
   solicitarProgramacao, onProgramacaoAberta, acaoProgramarNoCabecalho = false,
@@ -315,17 +318,21 @@ export function Iatf({
   const identidadeConferencia = JSON.stringify({ contexto, novo, nome, modeloInicioId, inicio, selecionados, diagnosticosIndividuais, cienciaSanitaria, preparo });
   const identidadeConferenciaAtual = useRef(identidadeConferencia);
   identidadeConferenciaAtual.current = identidadeConferencia;
-  const [conferenciaInicio, setConferenciaInicio] = useState<{identidade:string;dados:PreviaInicioColetivo}|null>(null);
-  const previaInicio = conferenciaInicio?.identidade === identidadeConferencia ? conferenciaInicio.dados : null;
+  const [conferenciaInicio, setConferenciaInicio] = useState<{identidade:string;dados:PreviaInicioColetivo; aguardaCiencia?: boolean}|null>(null);
+  const conferenciaAtual = conferenciaInicio?.identidade === identidadeConferencia ? conferenciaInicio : null;
+  const previaInicio = conferenciaAtual?.aguardaCiencia ? null : conferenciaAtual?.dados ?? null;
   async function conferirInicio(pagina=1) {
     const identidade = identidadeConferencia;
-    const dados = await reqProtocolo<PreviaInicioColetivo>("/programacoes/previa", prop(), { propriedadeId: prop(), protocoloId: modeloInicioId, inicioReferencia: dataHoraISO(inicio), animaisIds: selecionados, pagina, porPagina:10 });
+    const dados = await reqProtocolo<PreviaInicioColetivo>("/programacoes/previa", prop(), { propriedadeId: prop(), protocoloId: modeloInicioId, inicioReferencia: dataHoraISO(inicio), animaisIds: selecionados, cienciaSanitaria, ...(paginaProgramacao && novo === "programacao" ? { aptidaoComoAviso: true } : {}), pagina, porPagina:10 });
     if (identidadeConferenciaAtual.current !== identidade) return;
     if (!dados?.protocolo || typeof dados.protocolo.nome !== "string" || !dados.protocolo.nome.trim() || !Number.isInteger(dados.protocolo.versao) || !Array.isArray(dados.itens) || !Array.isArray(dados.participantes) || !Array.isArray(dados.avisos)) {
       setConferenciaInicio(null);
       throw new Error("A conferência retornou dados incompletos. Seu rascunho foi preservado; tente conferir o calendário novamente.");
     }
-    setConferenciaInicio({identidade,dados});
+    const avisosAnteriores = previaInicio?.avisosAptidao ?? [];
+    const aguardaCiencia = dados.avisosAptidao?.some(aviso =>
+      !avisosAnteriores.some(anterior => anterior.animalId === aviso.animalId && anterior.mensagem === aviso.mensagem));
+    setConferenciaInicio({ identidade, dados, aguardaCiencia });
   }
   const [operacaoRevisao, setOperacaoRevisao] = useState(0);
   const [acao, setAcao] = useState<{
@@ -463,7 +470,10 @@ export function Iatf({
       const alterou = await fn();
       if (alterou !== false && contextoAtual.current === contexto) { setOperacaoRevisao(v => v + 1); await onMudou?.(); }
     } catch (e) {
-      if (contextoAtual.current === contexto) setErro(e instanceof Error ? e.message : String(e));
+      if (contextoAtual.current === contexto) {
+        const mensagem = e instanceof Error ? e.message : String(e);
+        setErro(descreverErroDisponibilidade(mensagem));
+      }
     } finally {
       if (contextoAtual.current === contexto) setOcupado(false);
     }
@@ -474,7 +484,17 @@ export function Iatf({
   return (
     <div className="protocolos-pagina protocolos-superficie space-y-5">
       <ConfirmDialog open={confirmarSaida} title="Descartar programação?" message="A preparação ainda não foi salva." confirmLabel="Descartar" cancelLabel="Continuar editando" onConfirm={() => { setConfirmarSaida(false); resolverSaida.current?.(true); }} onCancel={() => { setConfirmarSaida(false); resolverSaida.current?.(false); }} />
-      <ErrorBox erro={erro} />
+      {conferenciaAtual?.aguardaCiencia && <ConfirmDialog
+        open title="Avisos de aptidão" confirmLabel="Continuar para conferência" cancelLabel="Revisar seleção"
+        message={<ul className="max-h-[45vh] space-y-2 overflow-y-auto">
+          {conferenciaAtual.dados.avisosAptidao?.map(aviso => <li key={aviso.animalId}>
+            <MensagemAvisoAptidao mensagem={aviso.mensagem} />
+          </li>)}
+        </ul>}
+        onConfirm={() => setConferenciaInicio({ ...conferenciaAtual, aguardaCiencia: false })}
+        onCancel={() => setConferenciaInicio(null)}
+      />}
+      {!paginaProgramacao && <ErrorBox erro={erro} />}
       {modo !== "operacao" && <BibliotecaReprodutiva propriedadeId={sitioEfetivo} podeLancar={podeLancar} onCopiou={()=>void carregar()}/>}
       {modo === "operacao" && !programacaoId && !paginaProgramacao && <Panel>
         <div className="repro-consulta-titulo"><h2>Protocolos</h2><div className="flex gap-1" role="group" aria-label="Situação dos protocolos">
@@ -583,7 +603,7 @@ export function Iatf({
         onNovaVersao={p=>abrirCadastro(p,true)} onConcluir={p=>abrirCadastro(p,false)}
         onInativar={p=>void executar(async()=>{await reqIatf(`/reproducao/protocolos/${p.id}/inativar`,{});await carregar();})}/>}
       {novo && (
-        <SuperficieProgramacao pagina={paginaProgramacao && novo === "programacao"} resumo={<dl className="programacao-resumo"><dt>Sítio</dt><dd><NomeSitioProgramacao id={sitioEfetivo}/></dd><dt>Modelo</dt><dd>{modeloEscolhido ? `${modeloEscolhido.nome} · versão ${modeloEscolhido.versao}` : "Não selecionado"}</dd><dt>Participantes</dt><dd>{selecionados.length} animais</dd><dt>Início previsto</dt><dd>{inicio ? horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "") : "Não definido"}</dd></dl>}
+        <SuperficieProgramacao pagina={paginaProgramacao && novo === "programacao"} conferencia={!!previaInicio} onVoltarPreparacao={() => setConferenciaInicio(null)} resumo={<dl className="programacao-resumo"><dt>Sítio</dt><dd><NomeSitioProgramacao id={sitioEfetivo}/></dd><dt>Modelo</dt><dd>{modeloEscolhido ? `${modeloEscolhido.nome} · versão ${modeloEscolhido.versao}` : "Não selecionado"}</dd><dt>Participantes</dt><dd>{selecionados.length} {selecionados.length === 1 ? "animal" : "animais"}</dd><dt>Início previsto</dt><dd>{inicio ? horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "") : "Não definido"}</dd></dl>}
           aberto
           largura="sm:max-w-3xl"
           titulo={novo === "participantes" ? "Adicionar ou reintegrar participantes" : "Programar protocolo"}
@@ -594,9 +614,9 @@ export function Iatf({
               <Button secondary onClick={() => { if (paginaProgramacao) void executarComGuardaNavegacao(() => onCancelarProgramacao?.()); else setNovo(null); }}>
                 Cancelar
               </Button>
-              {previaInicio && <Button secondary disabled={ocupado} onClick={() => setConferenciaInicio(null)}>Editar preparação</Button>}
+              {previaInicio && !paginaProgramacao && <Button secondary disabled={ocupado} onClick={() => setConferenciaInicio(null)}>Editar preparação</Button>}
               <Button type="submit" form="novo-iatf" disabled={ocupado || !modeloInicio.etapas || !automacaoPronta || !selecionados.length}>
-                {previaInicio ? "Confirmar programação" : "Conferir calendário"}
+                {previaInicio ? "Confirmar programação" : paginaProgramacao ? "Ir para conferência" : "Conferir calendário"}
               </Button>
             </>
           }
@@ -631,6 +651,9 @@ export function Iatf({
                     nome,
                     cienciaSanitaria,
                     protocoloId,
+                    ...(previaInicio.avisosAptidao?.length
+                      ? { cienciaAvisosAptidao: previaInicio.avisosAptidao.map(aviso => aviso.animalId) }
+                      : {}),
                     ...(temAutomaticas ? {automacoes:preparo!.entradas,revisaoRetroativa:preparo!.revisoes} : {}),
                     inicioPrevisto: dataHoraISO(inicio),
                     animais: selecionados.map((animalId) => ({ animalId, ...(diagnosticosIndividuais[animalId]?{diagnosticoIndividualEm:diagnosticosIndividuais[animalId]}:{}) })),
@@ -645,7 +668,7 @@ export function Iatf({
           >
             <ErrorBox erro={erro} />
             <fieldset className={previaInicio ? "hidden" : "grid gap-4"} hidden={!!previaInicio} disabled={!!previaInicio || ocupado}>
-            <section className={paginaProgramacao ? "programacao-bloco" : "contents"}>
+            <section className={paginaProgramacao ? "programacao-bloco programacao-identificacao" : "contents"}>
             {paginaProgramacao && <h2>Identificação e calendário</h2>}
             <div className={paginaProgramacao ? "programacao-campos" : "contents"}>
             {novo !== "participantes" && (
@@ -661,15 +684,16 @@ export function Iatf({
               </label>
             )}
                 {novo !== "participantes" && (
-                  paginaProgramacao ? <EscolhaModeloProgramacao onEscolhido={setModeloEscolhido} valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} /> : <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
+                  paginaProgramacao ? <EscolhaModeloProgramacao modeloAtual={modeloEscolhido} onEscolhido={setModeloEscolhido} valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} /> : <SeletorVersaoProtocolo tipo="REPRODUTIVO" rotulo="Versão publicada" valor={protocoloId} propriedadeId={sitioEfetivo ?? undefined} onChange={setProtocoloId} />
                 )}
-                <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio} />
+                <CampoDataIatf rotulo="Início previsto" valor={inicio} onChange={setInicio}
+                  className={paginaProgramacao ? "programacao-data" : undefined} />
                 {modeloInicioId && !modeloInicio.etapas && !modeloInicio.erro && <p role="status">Carregando etapas da versão…</p>}
                 <ErrorBox erro={modeloInicio.erro}/>
                 {modeloInicio.erro && <Button secondary onClick={modeloInicio.recarregar}>Atualizar etapas</Button>}
                 </div></section>
                 <section className={paginaProgramacao ? "programacao-bloco" : "contents"}>
-                {paginaProgramacao && <h2>Participantes</h2>}
+                {paginaProgramacao && !sitioEfetivo && <h2>Participantes</h2>}
                 {(!paginaProgramacao || selecionados.some(id => animais.find(a => a.animalId === id)?.restricoes?.length) || /sanitári|sanitari/i.test(erro ?? "")) && <label className="text-sm">
                   <input
                     type="checkbox"
@@ -682,26 +706,72 @@ export function Iatf({
                 {(animaisIndicadosInicialmente?.length ?? 0) > 100 && <p className="text-sm">
                   A programação aceita até 100 animais. Revise este subconjunto; os demais indicados continuam disponíveis para outra programação.
                 </p>}
-                <p className="text-sm">
-                  Participantes: {selecionados.length}/100
-                </p>
-                {!paginaProgramacao ? <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <label key={a.animalId}><input type="checkbox" checked={selecionados.includes(a.animalId)} disabled={!selecionados.includes(a.animalId) && selecionados.length >= 100} onChange={e => setSelecionados(e.target.checked ? [...selecionados, a.animalId] : selecionados.filter(id => id !== a.animalId))}/>{a.brinco} {a.nome}</label>}/> : sitioEfetivo && inicio ? <SelecaoAnimaisProgramacao propriedadeId={sitioEfetivo} data={inicio.slice(0,10)} selecionados={selecionados} onSelecionados={setSelecionados} onIdentificados={receberIdentificados} /> : <p>Informe a data de início para consultar os animais no sítio.</p>}
+                {!paginaProgramacao && <p className="text-sm">Participantes: {selecionados.length}/100</p>}
+                {!paginaProgramacao ? <ListaRascunho itens={animais} rotulo="animais disponíveis" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <label key={a.animalId}><input type="checkbox" checked={selecionados.includes(a.animalId)} disabled={!selecionados.includes(a.animalId) && selecionados.length >= 100} onChange={e => setSelecionados(e.target.checked ? [...selecionados, a.animalId] : selecionados.filter(id => id !== a.animalId))}/>{a.brinco} {a.nome}</label>}/> : sitioEfetivo ? <SelecaoAnimaisProgramacao key={sitioEfetivo} propriedadeId={sitioEfetivo} data={inicio.slice(0,10)} inicio={inicio} selecionados={selecionados} onSelecionados={setSelecionados} onIdentificados={receberIdentificados} /> : <p>Informe a data de início para consultar os animais no sítio.</p>}
                 {paginaProgramacao && !!selecionados.length && <details><summary>Revisar {selecionados.length} animais selecionados</summary><ListaRascunho itens={selecionados} rotulo="selecionados" texto={id => animaisConhecidos.find(a => a.animalId === id)?.brinco ?? id} renderizar={id => <label className="flex gap-2 py-2" key={id}><input type="checkbox" checked onChange={() => setSelecionados(ids => ids.filter(a => a !== id))}/>{animaisConhecidos.find(a => a.animalId === id)?.brinco ?? "Animal selecionado"} · {animaisConhecidos.find(a => a.animalId === id)?.nome ?? "Sem nome"}</label>}/></details>}
                 <DatasDiagnosticoIndividual animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado",nome:animaisConhecidos.find(a=>a.animalId===id)?.nome}))} valores={diagnosticosIndividuais} onChange={(id,data)=>{setDiagnosticosIndividuais(v=>({...v,[id]:data}));setChaveProgramacao(crypto.randomUUID());}}/>
                 {temAutomaticas && modeloInicio.etapas && sitioEfetivo != null && selecionados.length > 0 && <PreparacaoAutomacao protocoloId={modeloInicioId} etapas={modeloInicio.etapas} animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??id}))} propriedadeId={sitioEfetivo} inicio={inicio} onChange={receberPreparo}/>}
                 </section>
             </fieldset>
-            {previaInicio && <section className="grid gap-4" aria-label="Conferência do início coletivo">
-              <h3 className="font-semibold">Calendário previsto</h3>
-              <DatasDiagnosticoIndividual somenteLeitura animais={selecionados.map(id=>({id,brinco:animaisConhecidos.find(a=>a.animalId===id)?.brinco??"Animal selecionado"}))} valores={diagnosticosIndividuais} onChange={()=>{}}/>
-              <p>Modelo: {previaInicio.protocolo.nome} · versão {previaInicio.protocolo.versao}</p>
-              <p>{novo === "participantes" ? "Inclusão no grupo" : nome} · {previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"} · início {horarioIatf(dataHoraISO(inicio), inicio.includes("T") ? "HORA" : "DIA").replace(" · horário não informado", "")}</p>
-              <ListaRascunho itens={previaInicio.participantes} rotulo="animais selecionados" texto={a => `${a.brinco} ${a.nome ?? ""}`} renderizar={a => <p key={a.id}>{a.brinco}{a.nome ? ` · ${a.nome}` : ""}</p>} />
-              {previaInicio.itens.map(e => { const revisao = preparo?.revisoes.find(r => r.etapaId === e.id); const automatica = modeloInicio.etapas?.find(a => a.id === e.id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO"; return <div key={e.id}><p><strong>{e.nome}</strong> · {e.previstaPara ? horarioIatf(e.previstaPara,e.precisaoTemporal).replace(" · horário não informado", "") : "Previsão a definir: hora da referência não informada"}</p><p className="text-sm">{revisao ? revisao.decisao === "DISPENSAR" ? `Dispensar etapa vencida: ${revisao.motivo}` : `Registrar manualmente: ${revisao.motivo}` : automatica ? "Execução automática preparada" : "Confirmação obrigatória"}</p></div>; })}
-              {previaInicio.total > 10 && <Paginacao paginaAtual={previaInicio.pagina} totalPaginas={Math.ceil(previaInicio.total/10)} totalItens={previaInicio.total} itensPorPagina={10} onPaginaChange={p => void executar(async () => { await conferirInicio(p); return false; })} rotulo="etapas previstas" idSelect="previa-coletiva-etapas" />}
-              {temAutomaticas && <p>As etapas automáticas serão autorizadas com a preparação conferida. Etapas vencidas seguem a decisão registrada; nenhum fato passado será criado automaticamente.</p>}
-              <p>Exames e tentativas reprodutivas exigem registro e confirmação dos dados reais.</p>
-              {previaInicio.avisos.map(a => <p key={a} className="text-sm">{a}</p>)}
+            {previaInicio && <section className="programacao-conferencia" aria-label="Conferência do início coletivo">
+              <section className="programacao-bloco">
+                <header className="programacao-conferencia-cabecalho">
+                  <CalendarDays size={20} aria-hidden />
+                  <div>
+                    <h3>Calendário previsto</h3>
+                    <p>{novo === "participantes" ? "Inclusão no grupo" : nome}
+                      {!paginaProgramacao && <> · {previaInicio.protocolo.nome} · versão {previaInicio.protocolo.versao}</>}
+                    </p>
+                  </div>
+                  <span className="programacao-conferencia-total">{previaInicio.total} {previaInicio.total === 1 ? "etapa" : "etapas"}</span>
+                </header>
+                <ol className="programacao-calendario">
+                  {previaInicio.itens.map(etapa => {
+                    const revisao = preparo?.revisoes.find(r => r.etapaId === etapa.id);
+                    const automatica = modeloInicio.etapas?.find(a => a.id === etapa.id)?.momento?.politicaExecucao === "AUTOMATICA_EXCECAO";
+                    const modo = revisao?.decisao === "DISPENSAR" ? "Dispensa preparada"
+                      : revisao ? "Registro manual" : automatica ? "Execução automática" : "Confirmação obrigatória";
+                    return <li key={etapa.id}>
+                      <div className="programacao-calendario-data">
+                        {etapa.previstaPara
+                          ? <time dateTime={etapa.previstaPara}>{horarioIatf(etapa.previstaPara, etapa.precisaoTemporal).replace(" · horário não informado", "")}</time>
+                          : <span>Horário a definir</span>}
+                      </div>
+                      <div>
+                        <strong>{etapa.nome}</strong>
+                        {revisao && <p className="text-sm text-muted-foreground">{revisao.motivo}</p>}
+                      </div>
+                      <span className="programacao-calendario-modo" data-automatica={automatica && !revisao}>{modo}</span>
+                    </li>;
+                  })}
+                </ol>
+                {previaInicio.total > 10 && <Paginacao paginaAtual={previaInicio.pagina} totalPaginas={Math.ceil(previaInicio.total / 10)}
+                  totalItens={previaInicio.total} itensPorPagina={10}
+                  onPaginaChange={p => void executar(async () => { await conferirInicio(p); return false; })}
+                  rotulo="etapas previstas" idSelect="previa-coletiva-etapas" />}
+              </section>
+              <section className="programacao-bloco">
+                <header className="programacao-conferencia-cabecalho">
+                  <Users size={20} aria-hidden />
+                  <h3>Participantes</h3>
+                  <span className="programacao-conferencia-total">{previaInicio.participantes.length} {previaInicio.participantes.length === 1 ? "animal" : "animais"}</span>
+                </header>
+                <ListaRascunho itens={previaInicio.participantes} rotulo="animais selecionados"
+                  texto={previaInicio.participantes.length > 5 ? a => `${a.brinco} ${a.nome ?? ""}` : undefined}
+                  renderizar={a => <div key={a.id} className="programacao-conferencia-animal">
+                    <span><strong>{a.brinco}</strong>{a.nome && <> · {a.nome}</>}</span>
+                    {diagnosticosIndividuais[a.id] && <span className="programacao-calendario-modo">
+                      DG individual · {formatBRDateISO(diagnosticosIndividuais[a.id])}
+                    </span>}
+                  </div>} />
+              </section>
+              {(temAutomaticas || previaInicio.avisos.length > 0) && <aside className="programacao-conferencia-aviso" aria-label="Avisos da confirmação">
+                <Info size={16} aria-hidden />
+                <div>
+                  {temAutomaticas && <p>A confirmação autoriza as etapas automáticas e preserva a decisão registrada para as etapas vencidas.</p>}
+                  {previaInicio.avisos.map(aviso => <p key={aviso}>{aviso}</p>)}
+                </div>
+              </aside>}
             </section>}
           </form>
         </SuperficieProgramacao>
@@ -946,9 +1016,33 @@ export function OrientacaoTemporalEtapa({etapa,onChange}:{etapa:EtapaIatf;onChan
  return <fieldset className="space-y-2 rounded border p-3"><legend>Orientação temporal desta etapa </legend><label className="flex gap-2"><input type="checkbox" checked={!!r} onChange={e=>onChange({...etapa,orientacaoTemporal:e.target.checked?{versao:1,efeito:"ALERTA",referencia:"INICIO_EFETIVO",intervaloHoras:etapa.unidade==="HORAS"?etapa.intervalo:etapa.intervalo*24,toleranciaAntesMinutos:0,toleranciaDepoisMinutos:0}:undefined})}/>Configurar alerta de intervalo</label>{r&&<><label>Referência<SelectCampo className={classeInput} value={r.referencia} onValueChange={(valor) =>mudar({referencia:valor as typeof r.referencia})}><option value="INICIO_EFETIVO">Início efetivo</option><option value="ETAPA_ANTERIOR">Execução válida da etapa anterior</option></SelectCampo></label>{([["intervaloHoras","Intervalo (horas)"],["toleranciaAntesMinutos","Tolerância antes (minutos)"],["toleranciaDepoisMinutos","Tolerância depois (minutos)"]] as const).map(([campo,label])=><label key={campo}>{label}<input className={classeInput} type="number" required min={0} step={campo==="intervaloHoras"?"any":1} value={r[campo]} onChange={e=>mudar({[campo]:Number(e.target.value)})}/></label>)}</>}</fieldset>;
 }
 
-function SuperficieProgramacao({ pagina, resumo, ...props }: ComponentProps<typeof PainelCadastro> & { pagina: boolean; resumo: import("react").ReactNode }) {
+function SuperficieProgramacao({ pagina, conferencia, onVoltarPreparacao, resumo, ...props }: ComponentProps<typeof PainelCadastro> & {
+  pagina: boolean;
+  conferencia: boolean;
+  onVoltarPreparacao: () => void;
+  resumo: import("react").ReactNode;
+}) {
   if (!pagina) return <PainelCadastro {...props} />;
-  return <section className="programar-protocolo" aria-label={props.titulo}><header className="programacao-cabecalho"><h1>{props.titulo}</h1><Button secondary onClick={props.onFechar}>Voltar</Button></header><div className="programacao-layout"><div className="programacao-conteudo">{props.children}</div><aside className="programacao-revisao"><h2>Programação</h2>{resumo}<div className="programacao-acoes">{typeof props.rodape === "function" ? props.rodape(props.onFechar) : props.rodape}</div></aside></div></section>;
+  return <section className="programar-protocolo" aria-label={props.titulo}>
+    <header className="programacao-cabecalho">
+      <h1>{props.titulo}</h1>
+      <Button secondary disabled={conferencia && props.bloqueado} onClick={conferencia ? onVoltarPreparacao : props.onFechar}>
+        {conferencia ? "Voltar à preparação" : "Voltar"}
+      </Button>
+    </header>
+    <ol className="programacao-passos" aria-label="Etapas da programação">
+      <li aria-current={conferencia ? undefined : "step"}><span aria-hidden>1</span>Preparação</li>
+      <li aria-current={conferencia ? "step" : undefined}><span aria-hidden>2</span>Conferência</li>
+    </ol>
+    <div className="programacao-layout">
+      <div className="programacao-conteudo">{props.children}</div>
+      <aside className="programacao-revisao">
+        <h2>Programação</h2>
+        {resumo}
+        <div className="programacao-acoes">{typeof props.rodape === "function" ? props.rodape(props.onFechar) : props.rodape}</div>
+      </aside>
+    </div>
+  </section>;
 }
 
 function NomeSitioProgramacao({id}: {id: number | null}) {
