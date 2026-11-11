@@ -31,6 +31,7 @@ function preparar(parametros: Prisma.JsonValue, tipo:"APLICACAO"|"TENTATIVA"|"MA
     canceladaEm: null, motivoCancelamento: null, valorServicoAtribuido: null, criadoEm: instante, criadoPorId: null,
   } satisfies ParticipacaoProtocolo;
   const produto = {
+    codigoReferencia: null, apresentacao: null, observacao: null, conservacao: null, fabricanteId: null, classificacaoTecnicaId: null, produtoCatalogoId: null, nomeAlterado: false,
     id: "produto", nome: "Produto da fixture", unidade: "ML", ativo: true, categoriaId: null,
     usoGenetico: false, usoSanitario: true, usoNutricional: false, rastrearPartidas: false, minimoEstoque: null,
     createdAt: instante, updatedAt: instante,

@@ -10,7 +10,7 @@ A referência de produto é a [prévia navegável](../design/bezerreiro/index.ht
 
 ## Acesso e participação
 
-Bezerreiro é um item de Pecuária na sidebar, com Animais, Alimentação, Colostragem, Sanidade e Custos. A consulta de saídas é independente da lista de presentes. Busca, coleira/fase, período e paginação permanecem na URL dos fluxos correspondentes.
+Bezerreiro é um item de Pecuária na sidebar, com Animais, Alimentação, Colostragem, Sanidade e Custos. A consulta de saídas é independente da lista de presentes. Busca, coleira/fase, período e paginação permanecem na URL dos fluxos correspondentes. Na aba Animais, a lista de presentes e o histórico de saídas seguem a preferência Cartões / Tabela do cabeçalho global. Os cartões aparecem em duas colunas em telas largas e em uma nas estreitas.
 
 `PerfilBezerreiro` especializa um `Lote` existente. `ParticipacaoBezerreiro` registra animal, perfil, entrada/saída, motivo, autoria e versão; os intervalos são `[desde, ate)`: a data de saída não integra a permanência. A localização do animal comprova o lote/sítio e determina a participação: uma entrada em lote com perfil ativo abre a participação na mesma transação; saída, transferência e baixa encerram a permanência. Transferir entre dois Bezerreiros encerra a participação de origem e abre outra no destino. Categoria e nome do lote não são gatilhos. Cadastro, nascimento e importação reutilizam essa integração quando a localização inicial aponta para um lote configurado. Não se inventa localização ou data de entrada a partir de idade, nascimento ou compra.
 
@@ -36,6 +36,8 @@ A [ferramenta de prévia e o procedimento de regularização](bezerreiro-regular
 
 ## Configuração e aleitamento
 
+Na aba Alimentação, o seletor Cartões / Tabela do cabeçalho global alterna a previsão diária por coleira e os fornecimentos do dia em conjunto. Data e bezerreiro ficam junto às ações. As duas visualizações compartilham os totais do dia e a disponibilidade de leite, exibida ao lado da previsão em telas largas. O progresso percentual é exibido quando a previsão está completa e é maior que zero.
+
 Coleiras possuem nome e cor configuráveis. Fases publicadas conservam dose diária, identificação da coleira e programação de ofertas. A rotina inicial proposta pelo usuário é vermelha 4 L, verde 2 L e amarela 0 L por animal/dia; o formulário pode carregar esses valores, mas não cria cadastros ou seed antes de salvar.
 
 Uma oferta programada tem identidade estável, ordem, percentual diário e horário previsto opcional. Adicionar/Excluir modifica linhas explicitamente e não redistribui as demais silenciosamente. A programação publicada fecha 100% quando há ofertas; dose zero pode não ter ofertas. Rascunhos incompletos não são programação publicada.
@@ -58,6 +60,8 @@ Salvar retirada/medição não confirma entrada de estoque. A confirmação é a
 
 ## Brix e destinação
 
+Na aba Colostragem, o seletor Cartões / Tabela do cabeçalho global alterna origens, retiradas, banco, embalagens retiradas, históricos e listas nos detalhes. Os cartões ficam em duas colunas em telas largas e em uma em telas estreitas. O resumo do período separa o custo conhecido da alimentação, o custo completo e a referência comercial do leite.
+
 O Brix do colostro usa formato real versionado do núcleo de Qualidade, com campo e unidade explícitos e histórico. Referência inicial configurável: **maior ou igual a 25%**. Fornecimento abaixo da referência ou sem leitura exige motivo e responsável. A exceção não altera o resultado ou cria aprovação sanitária.
 
 Destinação permite consumo direto da cria, congelamento ou ambos na mesma transação. O formulário permite escolher novo fornecimento ou vincular registro existente compatível da cria. A seleção conserva data/hora conhecida e volume do fato, com busca paginada e resolução do ID selecionado fora da página. O servidor revalida status, sítio na data, cronologia e ausência de origem ativa; não duplica litros já consumidos. A cria destinatária pode ser de outra matriz. O peso e a política usados para referência de volume permanecem no histórico; 10% é referência configurável, não quantidade automaticamente confirmada.
@@ -74,11 +78,15 @@ Congelar porções de 2 L conserva o remanescente livre: por exemplo, volume fin
 
 ## Exame da cria e sanidade
 
+Na aba Sanidade, o seletor Cartões / Tabela do cabeçalho global alterna a lista de ações sanitárias. Os cartões ficam em duas colunas em telas largas e em uma em telas estreitas. O resumo do período separa o custo conhecido da alimentação, o custo completo e a referência comercial do leite. O período e a paginação valem para as duas visualizações.
+
 Acompanhamento da imunidade reutiliza `ExameAnimal`, `TipoExame`, formatos e resultados versionados. IgG sérica/plasmática, proteína total sérica e Brix sérico são métodos/resultados distintos. O limiar do Brix do alimento não é aplicado ao sangue. Método não identificado permanece pendente; não converter para IgG nem diagnosticar automaticamente.
 
 O acompanhamento é único por animal e sítio. Uma transferência permite novos fatos no sítio de destino, conservando IDs, exames, fornecimentos e políticas do acompanhamento anterior no seu escopo. O vínculo de exame conserva animal, sítio, método/material quando informados, resultado/unidade do formato original e política vista. Resultados e laudos individuais continuam acessíveis na ficha do animal. Sanidade consulta os fatos comuns dos participantes durante a permanência e usa os formulários e procedimentos existentes, incluindo protocolos, vacinas e ocorrências, sem duplicá-los no Bezerreiro.
 
 ## Custos e permissões
+
+Na aba Custos, o seletor Cartões / Tabela do cabeçalho global alterna os componentes de custo e a alimentação por animal juntos. Os cartões ficam em duas colunas em telas largas e em uma em telas estreitas. O resumo do período separa o custo conhecido da alimentação, o custo completo e a referência comercial do leite.
 
 Alimentação inclui os custos efetivos das origens de leite consumidas, outros alimentos comprovados e colostro/enriquecedores consumidos. Sanidade usa apenas custos vinculados aos bezerros durante a participação, com classificação/prova existentes. Não ratear despesas gerais, inventar custo completo ou tratar descarte como gratuito. Custos nutricionais usam o período efetivo de consumo: o fim do fechamento não exclui uma participação anterior. Valores já atribuídos são conservados quando o período ou seus segmentos comprovados cabem integralmente no recorte. Se faltar prova para separar um recorte parcial, o componente permanece pendente, sem divisão presumida pelos dias.
 

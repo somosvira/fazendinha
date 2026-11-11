@@ -11,6 +11,12 @@ const idsSchema = (campo: string) =>
     .refine((ids) => new Set(ids).size === ids.length, `${campo} repetidos`);
 
 const produtoBaseSchema = z.object({
+  codigoReferencia: z.string().trim().max(80).nullable().optional(),
+  apresentacao: z.string().trim().max(200).nullable().optional(),
+  observacao: z.string().trim().max(2000).nullable().optional(),
+  conservacao: z.string().trim().max(1000).nullable().optional(),
+  fabricanteId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
+  classificacaoTecnicaId: z.string().uuid().transform(id => id.toLowerCase()).nullable().optional(),
   nome: z.string().trim().min(2).max(80),
   unidade: z.nativeEnum(UnidadeMedida).default("UN"),
   usoGenetico: z.boolean().optional(),
@@ -36,13 +42,21 @@ export const produtoSchema = produtoBaseSchema.superRefine((produto, ctx) => {
 });
 export type ProdutoInput = z.infer<typeof produtoSchema>;
 
-export const patchProdutoSchema = produtoBaseSchema.partial().extend({ ativo: z.boolean().optional() });
+// Produto adotado do catálogo: null em apresentacao/fabricanteId/classificacaoTecnicaId restaura a herança;
+// `restaurarNome` volta ao nome do catálogo (docs/produtos.md, Herança).
+export const patchProdutoSchema = produtoBaseSchema.partial().extend({
+  ativo: z.boolean().optional(),
+  restaurarNome: z.literal(true).optional(),
+});
 export type ProdutoPatchInput = z.infer<typeof patchProdutoSchema>;
 
 // Filtro de produtos por seus tipos de uso — usado por
 // /estoque/produtos para validar o query param `uso`.
 export const usoQuerySchema = z.enum(["genetico", "sanitario", "nutricional"]);
 export const produtosQuerySchema = z.object({
+  fabricanteId: z.string().uuid().optional(),
+  classificacaoTecnicaId: z.string().uuid().optional(),
+  principioAtivoId: z.string().uuid().optional(),
   uso: usoQuerySchema.optional(),
   q: z.string().optional(),
   ativo: z.enum(["true", "false"]).optional(),

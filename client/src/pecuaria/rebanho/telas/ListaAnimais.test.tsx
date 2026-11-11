@@ -77,7 +77,45 @@ function escolherMultiplo(label:string, valor:string) {
   fireEvent.click(screen.getByRole("option",{name:nomes[valor]??valor}));
   fireEvent.keyDown(screen.getByPlaceholderText("Buscar opção…"),{key:"Escape"});
 }
+function mostrarTodasColunas() {
+  fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
+  fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
+  fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
+}
+
 describe("ListaAnimais", () => {
+  it("ignora a preferência antiga de cartões e mantém a tabela no desktop", async () => {
+    window.history.replaceState(null, "", "/pecuaria/rebanho/animais?visualAnimais=visual");
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
+    montar();
+
+    expect(await screen.findByRole("table", { name: "Animais" })).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "Visualização dos animais" })).toBeNull();
+  });
+
+  it("no celular, seleciona sem abrir a ficha e abre a ficha ao tocar na linha", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(max-width: 900px)", addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }));
+    try {
+      vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({ id: "animal-1", nome: "Mimosa" })], total: 1, painel: painelVazio });
+      const abrir = vi.fn();
+      montar({ onAbrirAnimal: abrir });
+
+      const lista = await screen.findByRole("list", { name: "Animais" });
+      expect(screen.queryByRole("table", { name: "Animais" })).toBeNull();
+      fireEvent.click(within(lista).getByRole("checkbox", { name: "Selecionar 0001" }));
+      expect(screen.getByText("1 selecionado")).toBeTruthy();
+      expect(abrir).not.toHaveBeenCalled();
+
+      fireEvent.click(within(lista).getByRole("button", { name: /Abrir ficha.*0001.*Mimosa/ }));
+      expect(abrir).toHaveBeenCalledTimes(1);
+      expect(abrir).toHaveBeenCalledWith("animal-1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("prioriza busca e lista sem repetir composição e indicadores do panorama", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     montar();
@@ -87,11 +125,11 @@ describe("ListaAnimais", () => {
     expect(screen.queryByLabelText("Resumo da consulta de animais")).toBeNull();
     expect(screen.queryByText("Composição por categoria")).toBeNull();
   });
-  it("selecionar todos fica na barra de filtros e só mostra ações coletivas após seleção", async () => {
+  it("selecionar todos fica no cabeçalho da tabela e só mostra ações coletivas após seleção", async () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({})], total: 1, painel: painelVazio });
     const { container } = montar();
     const checkbox = await screen.findByRole("checkbox", { name: "Selecionar todos os animais desta página" });
-    expect(checkbox.closest(".rebanho-filtros-principais")).toBeTruthy();
+    expect(checkbox.closest("thead")).toBeTruthy();
     expect(container.querySelector(".animais-acoes-coletivas")).toBeNull();
     fireEvent.click(checkbox);
     expect(screen.getByRole("button", { name: "Pesagem coletiva" })).toBeTruthy();
@@ -340,11 +378,11 @@ describe("ListaAnimais", () => {
     await screen.findAllByText("0001");
     expect(screen.queryByRole("columnheader", { name: "Último peso" })).toBeNull();
     expect(screen.queryByRole("columnheader", { name: "GMD" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "Reprodução" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "DEL" })).toBeNull();
+    mostrarTodasColunas();
     expect(screen.getByRole("columnheader", { name: "Reprodução" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "DEL" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
-    fireEvent.click(screen.getByLabelText("Mostrar todas as colunas"));
-    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expect(screen.getAllByText("+0,512 kg/dia").length).toBeGreaterThan(0);
   });
 
@@ -356,6 +394,7 @@ describe("ListaAnimais", () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao})], total: 1, painel: painelVazio });
     montar();
     await screen.findAllByText("0001");
+    mostrarTodasColunas();
     expect(screen.getAllByText("Gestante").length).toBeGreaterThan(0);
     expect(screen.getAllByText("0 dias").length).toBeGreaterThan(0);
   });
@@ -368,6 +407,7 @@ describe("ListaAnimais", () => {
     vi.mocked(listarAnimais).mockResolvedValue({ itens: [criarAnimal({contextoCartao}), criarAnimal({id:"macho",brinco:"M01",sexo:"M"})], total: 2, painel: painelVazio });
     montar();
     await screen.findAllByText("0001");
+    mostrarTodasColunas();
     expect(screen.queryByText("Sem informação")).toBeNull();
     expect(screen.getByRole("row", { name: /0001/ }).querySelector('[data-fin-coluna="reproducao"]')?.textContent).toBe("—");
     expect(screen.queryByText("Não se aplica")).toBeNull();
@@ -381,6 +421,7 @@ describe("ListaAnimais", () => {
     const onAbrirAnimal = vi.fn();
     montar({onAbrirAnimal});
     await screen.findAllByText("0001");
+    mostrarTodasColunas();
     const gatilho = within(screen.getByRole("row", {name:/0001/})).getAllByRole("button", {name:"Não se aplica"})[0];
     expect(gatilho.textContent).toBe("—");
     fireEvent.click(gatilho);

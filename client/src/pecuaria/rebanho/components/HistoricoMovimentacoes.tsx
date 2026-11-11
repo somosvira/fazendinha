@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import type { FiltrosColunas } from "@/financeiro/FiltroColunaConsulta";
 // Histórico de movimentações — extraído de DetalheLote.tsx para ser reaproveitado pela aba
 // "Lotes · Histórico" (visão geral, sem lote fixo). Quem chama decide os filtros: passa uma
@@ -73,9 +74,10 @@ export function HistoricoMovimentacoes({
 
   if (carregando && !itens.length) return <EsqueletoTabela label="Carregando histórico" className="p-6" />;
 
+  const ListaMovimentos = visualizacao === "automatica" ? ConsultaOperacional : TabelaFinanceira;
   return <>
     {erro && <div role="alert" className="p-5 text-sm text-destructive">{erro}</div>}
-    {itens.length ? <TabelaFinanceira visualizacao={visualizacao} filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
+    {itens.length ? <ListaMovimentos visualizacao={visualizacao} filtrosColunas={filtrosColunas} rotulo="Histórico de movimentações" itens={itens} chaveDe={m=>m.id} onAbrir={onAbrir} colunas={[
       {chave:"data",titulo:"Data",larguraMinima:110,principal:true,celula:m=>formatarDataBR(m.data)},
       {chave:"animais",titulo:"Animais",larguraMinima:100,celula:m=>m.quantidade},
       {chave:"origem",titulo:"Origem",larguraMinima:180,larguraFlexivel:true,celula:m=>m.origens.length?m.origens.join("; "):"Não identificada"},

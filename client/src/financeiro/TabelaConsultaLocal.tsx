@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useBuscaUrl } from "../lib/useBuscaUrl";
 import { useOrdenacaoTabela, type DefinicaoOrdenacao } from "./OrdenarConsulta";
 import type { ReactNode } from "react";
@@ -11,6 +12,7 @@ import { useFiltrosTabelaLocal, type DefinicaoFiltroLocal } from "./useFiltrosTa
 
 type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0] & {
   parametroBusca?: string;
+  cartoesNoCabecalho?: boolean;
   camposOrdenaveis?: DefinicaoOrdenacao<T>[];
   acao?: ReactNode;
   camposExternos?: CampoConsulta[];
@@ -21,8 +23,9 @@ type Props<T> = Parameters<typeof TabelaFinanceira<T>>[0] & {
   porPagina?: number;
 };
 /** Lista de registros já carregada integralmente. Nunca recebe uma página da API. */
-export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], buscarPor, porPagina = 15, itens, acao, camposExternos = [], criteriosExternos = [], edicaoExterna, parametroBusca, ...tabela }: Props<T>) {
+export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], buscarPor, porPagina = 15, itens, acao, camposExternos = [], criteriosExternos = [], edicaoExterna, parametroBusca, cartoesNoCabecalho, ...tabela }: Props<T>) {
   const id = useId();
+  const Consulta = cartoesNoCabecalho ? ConsultaOperacional<T> : TabelaFinanceira<T>;
   const camposOrdenacao: DefinicaoOrdenacao<T>[] = [...camposOrdenaveis, ...definicoes.filter(d => d.tipo !== "opcoes" && !camposOrdenaveis.some(c => c.chave === d.chave)).map<DefinicaoOrdenacao<T>>(d => ({ chave: d.chave, rotulo: d.rotulo, tipo: d.tipo === "valor" ? "numero" : d.tipo === "data" ? "data" : "texto", obter: item => { const v = d.obter(item); return Array.isArray(v) ? null : v; } }))];
   const [busca, setBusca] = useBuscaUrl(parametroBusca);
   const [pagina, setPagina] = useState(1);
@@ -39,7 +42,7 @@ export function TabelaConsultaLocal<T>({ definicoes, camposOrdenaveis = [], busc
     <BarraConsulta ordenacao={ordem.controle} acao={acao} campos={campos} edicaoFiltros={edicao} erroFiltros={consulta.erro} criterios={[...consulta.criterios,...criteriosExternos]} onLimpar={() => { setBusca(""); consulta.limpar(); criteriosExternos.forEach(c=>c.limpar()); }}>
       <BuscaLista rotulo={`Buscar ${tabela.rotulo.toLocaleLowerCase("pt-BR")}`} placeholder="Buscar registros…" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} />
     </BarraConsulta>
-    <TabelaFinanceira {...tabela} ordenacao={ordem.controle} itens={filtrados.slice((atual - 1) * porPagina, atual * porPagina)} filtrosColunas={filtrosDasColunas(campos,edicao,consulta.erro)} />
+    <Consulta {...tabela} ordenacao={ordem.controle} itens={filtrados.slice((atual - 1) * porPagina, atual * porPagina)} filtrosColunas={filtrosDasColunas(campos,edicao,consulta.erro)} />
     {!filtrados.length && <Empty>Nenhum registro corresponde aos filtros.</Empty>}
     <Paginacao pagina={atual} totalPaginas={totalPaginas} total={filtrados.length} porPagina={porPagina} onPagina={setPagina} substantivo="registros" rotulo={`Paginação de ${tabela.rotulo.toLocaleLowerCase("pt-BR")}`} idSelect={`pagina-consulta-${id}`} />
   </>;

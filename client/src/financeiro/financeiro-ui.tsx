@@ -224,7 +224,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
   larguraMinimaParaTabela?: number;
   /** Uma escolha explícita de tabela conserva as colunas com rolagem horizontal. */
-  visualizacao?: "automatica" | "tabela";
+  visualizacao?: "automatica" | "tabela" | "cartoes";
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -246,7 +246,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const consultaRef = useRef<HTMLDivElement>(null);
   const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
-  const exibirCartoes = visualizacao === "automatica" && modoCartao;
+  const exibirCartoes = visualizacao === "cartoes" || (visualizacao === "automatica" && modoCartao);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);

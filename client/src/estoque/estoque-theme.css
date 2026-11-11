@@ -38,6 +38,7 @@
 .estoque-resumo-alerta:hover { background: #fbe8c5; }
 .estoque-resumo-alerta[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
 .estoque-resumo-negativo { color: var(--destructive); background: #fff0ef; border-color: #edc6c3; }
+.estoque-consulta-abas > [role="tablist"] { max-width: 100%; overflow-x: auto; }
 .estoque-consulta-abas { min-width: 0; gap: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"] { min-width: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"][hidden] { display: none; }

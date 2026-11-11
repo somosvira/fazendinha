@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { Button } from "../../../components/ui/button";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useEffect, useState } from "react";
@@ -7,7 +8,6 @@ import {
   ErrorBox,
   Modal,
   Pill,
-  TabelaFinanceira,
   type ColunaTabela,
 } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
@@ -102,7 +102,7 @@ function Lista<T extends { id: string }>({
     atual = Math.min(pagina, total);
   return (
     <>
-      <TabelaFinanceira
+      <ConsultaOperacional
         rotulo={rotulo}
         itens={itens.slice((atual - 1) * 10, atual * 10)}
         chaveDe={(x) => x.id}

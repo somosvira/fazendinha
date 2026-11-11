@@ -1,8 +1,9 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { DatePicker } from "@/components/DatePicker";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { pontosSerieQualidade } from "./visuais-leite";
-import { TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { Paginacao } from "../../../financeiro/financeiro-ui";
 import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -74,7 +75,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
       </figure>}
 
       <p>{dados.total} resultado(s). </p>
-      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <TabelaFinanceira compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
+      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <ConsultaOperacional compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
         { chave: "data", titulo: "Amostra", principal: true, celula: r => r.dataAmostra.split("-").reverse().join("/") },
         { chave: "origem", titulo: "Origem", celula: r => r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco ?? "Sem brinco" },
         { chave: "resultado", titulo: "Resultado", celula: r => <>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</> },

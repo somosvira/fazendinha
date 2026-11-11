@@ -1,6 +1,7 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useEffect, useState } from "react";
 import { GitBranch, ListChecks, ShieldCheck } from "lucide-react";
-import { Button, ErrorBox, Modal, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Modal } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
 import { type CadastroProtocoloMeta, type PaginaCadastro } from "./cadastros-api";
 import { obterEstruturaCadastro, obterProcedimentosEtapaCadastro, type EtapaEstruturaCadastro, type ProcedimentoCadastro } from "./estrutura-cadastro-api";
@@ -26,7 +27,7 @@ function ProcedimentosEtapa({ origem, etapa }: { origem: CadastroProtocoloMeta; 
     <header><div><h3>{etapa.nome}</h3>{!etapa.agrupada && <p>Procedimento individual sem agrupamento em etapa</p>}</div><span>{etapa.modoAtendimento === "AUTOMATIZADA" ? "Confirmação do previsto" : etapa.modoAtendimento === "MANUAL" ? "Preenchimento no atendimento" : "Forma de atendimento não informada"}</span></header>
     <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v=>v+1)}>Tentar carregar procedimentos novamente</Button>}
     {carregando && <EsqueletoLista label="Carregando procedimentos" />}
-    {!carregando && !erro && <TabelaFinanceira<ProcedimentoCadastro> rotulo={`Procedimentos de ${etapa.nome}`} itens={dados.itens} chaveDe={p=>p.id} colunas={[
+    {!carregando && !erro && <ConsultaOperacional<ProcedimentoCadastro> rotulo={`Procedimentos de ${etapa.nome}`} itens={dados.itens} chaveDe={p=>p.id} colunas={[
       {chave:"quando",titulo:"Quando",larguraMinima:85,celula:p=>intervaloProcedimento(p.intervalo,p.unidadeIntervalo)},
       {chave:"procedimento",titulo:"Procedimento",larguraMinima:170,principal:true,celula:p=><><strong>{p.procedimento}</strong>{p.nome !== p.procedimento && <small>{p.nome}</small>}</>},
       {chave:"referencia",titulo:"Produto / modelo",larguraMinima:230,larguraFlexivel:true,celula:p=><>{p.definirMaterialNoAtendimento ? "Material genético definido no atendimento, por animal ou grupo" : p.referencia ?? (p.procedimento === "Retirada de dispositivo" ? "Sem produto vinculado" : "Referência não informada")}{p.via && <small>Via: {p.via}</small>}{p.orientacaoUso && <small>Orientação de uso: {p.orientacaoUso}</small>}</>},

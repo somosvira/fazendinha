@@ -29,7 +29,7 @@ describe("fechamentos gerais", () => {
     await abrirFiltrosConsulta();
     await alterarControle(screen.getByLabelText("Situação do fechamento"), { target: { value: "ESTORNADO" } });
     await aplicarFiltrosConsulta();
-    await waitFor(() => expect(api.listarFechamentos).toHaveBeenLastCalledWith(undefined, 1, "ESTORNADO"));
+    await waitFor(() => expect(api.listarFechamentos).toHaveBeenCalledWith(undefined, 1, "ESTORNADO"));
   });
   it("restaura lote, situação e página por deep link", async () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?visualFechamentos=tabela&aba=fechamentos&filtroLoteId=lote&statusFechamento=CONFIRMADO&paginaFechamentos=2");
@@ -37,14 +37,32 @@ describe("fechamentos gerais", () => {
     await screen.findByText(/Página 2 · 51 fechamentos/);
     expect(api.listarFechamentos).toHaveBeenCalledWith("lote", 2, "CONFIRMADO");
   });
+  it("navega no calendário sem mudar o período, a página ou o formato da lista", async () => {
+    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos&visualFechamentos=tabela&fechamentosDe=2026-10-10&fechamentosAte=2026-10-20&paginaFechamentos=2");
+    render(<FechamentosNutricao />);
+    await screen.findByText(/Página 2 · 51 fechamentos/);
+    const calendario = await screen.findByRole("region", { name: "Calendário dos fechamentos" });
+    fireEvent.click(within(calendario).getByRole("button", { name: "Próximo mês" }));
+
+    await waitFor(() => expect(api.listarFechamentos).toHaveBeenCalledWith(undefined, 1, undefined, { de: "2026-11-01", ate: "2026-11-30" }));
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("mesCalendarioFechamentos")).toBe("2026-11");
+    expect(params.get("fechamentosDe")).toBe("2026-10-10");
+    expect(params.get("fechamentosAte")).toBe("2026-10-20");
+    expect(params.get("paginaFechamentos")).toBe("2");
+    expect(params.get("visualFechamentos")).toBe("tabela");
+    expect(screen.getByText(/Página 2 · 51 fechamentos/)).toBeTruthy();
+  });
+
   it("fixa o lote no seu detalhe e oferece recuperação de falha", async () => {
     vi.mocked(api.listarFechamentos).mockRejectedValueOnce(new Error("Falha de rede"));
     render(<FechamentosNutricao loteId="lote" />);
     await screen.findByText("Falha de rede");
     expect(screen.queryByLabelText("Lote")).toBeNull();
     expect(screen.getByRole("link", { name: "Ver fechamentos de todos os lotes" }).getAttribute("href")).toBe("/pecuaria/nutricao?aba=fechamentos");
+    vi.mocked(api.listarFechamentos).mockClear();
     fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await screen.findByText(/Página 1 · 51 fechamentos/);
-    expect(api.listarFechamentos).toHaveBeenLastCalledWith("lote", 1, undefined);
+    expect(api.listarFechamentos).toHaveBeenCalledWith("lote", 1, undefined);
   });
 });

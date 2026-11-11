@@ -2,6 +2,7 @@ import { useConferenciaImpactos } from "./ConferenciaImpactos";
 import type { EntradaImpacto } from "./impactos-api";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import type { Categoria } from "../../../financeiro/novo-api";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
@@ -12,7 +13,8 @@ import { CircleAlert , Syringe } from "lucide-react";
 import { listarPartidasNutricionais, type PartidaNutricional } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
 import type { AnimalFicha } from "../types";
-import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
+import { listarCategorias, listarProdutos, type ProdutoDTO } from "../../../estoque/api";
+import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../../../estoque/SeletorProdutoCatalogo";
 import { UNIDADES, UNIDADES_ORDENADAS, type UnidadeMedida } from "../../../lib/unidades";
 import { ConferenciaExecucao, type PreviaExecucao } from "./PreviaExecucao";
 import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIndividualAplicacao";
@@ -59,6 +61,13 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [servicoId, setServicoId] = useState("");
   const [produtoId, setProdutoId] = useState(tarefa?.produtoId ?? parametrosIniciais?.produtoId ?? "");
   const [compraId, setCompraId] = useState("");
+  /** Item do catálogo escolhido no seletor (só no insumo incluso no serviço): adotado como produto ao confirmar. */
+  const [catalogoSel, setCatalogoSel] = useState<Extract<ProdutoEscolhido, { tipo: "catalogo" }> | null>(null);
+  /** Categoria de adoção, obrigatória só quando o item do catálogo não traz categoria sugerida. */
+  const [categoriaAdocao, setCategoriaAdocao] = useState("");
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [erroCategorias, setErroCategorias] = useState<string | null>(null);
+  const [conflitoCatalogo, setConflitoCatalogo] = useState<{ id: string; nome: string } | null>(null);
   const [cienciaValidadeDesconhecida, setCienciaValidadeDesconhecida] = useState(false);
   const [cienciaVencida, setCienciaVencida] = useState(false);
   const [motivoVencida, setMotivoVencida] = useState("");
@@ -103,13 +112,25 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   }, [errosCampos]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  useEffect(() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }, [tipoId, origem, servicoId, produtoId, compraId, partidaId, data, hora, nome, dose, unidade, responsavel, via, ocorrenciaId, justificativa, estadoLeite, estadoCarne, leite, carne, motivoCarne, partida, validade, cienciaValidadeDesconhecida, cienciaVencida, motivoVencida, quantidades, motivoDesvio, desvio]);
+  useEffect(() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }, [tipoId, origem, servicoId, produtoId, catalogoSel?.produtoCatalogoId, categoriaAdocao, compraId, partidaId, data, hora, nome, dose, unidade, responsavel, via, ocorrenciaId, justificativa, estadoLeite, estadoCarne, leite, carne, motivoCarne, partida, validade, cienciaValidadeDesconhecida, cienciaVencida, motivoVencida, quantidades, motivoDesvio, desvio]);
   const emCurso = useRef(false);
   const localDoFato = ficha?.historicoLocalizacoes?.find((l) => l.propriedade && l.desde.slice(0, 10) <= data && (l.ate == null || l.ate.slice(0, 10) > data || (ficha.baixa?.data.slice(0, 10) === data && l.ate.slice(0, 10) === data)));
   const sitioDoFato = animais?.length ? propriedadeId : localDoFato?.propriedade?.id ?? propriedadeId;
   const produto = produtos.find((p) => p.id === produtoId);
-  const nomeAplicado = origem === "COMPRA_CONSUMO_DIRETO" ? compras.find((c) => c.id === compraId)?.produto.nome ?? "" : produto?.nome ?? nome;
-  const unidadesCompativeis = produto ? UNIDADES_ORDENADAS.filter((u) => UNIDADES[u].base === UNIDADES[produto.unidade].base) : UNIDADES_ORDENADAS;
+  const catalogo = origem === "INCLUSO_SERVICO" ? catalogoSel : null;
+  const precisaCategoria = !!catalogo && !catalogo.categoriaSugeridaId;
+  // Tarefa, visita, IATF e execução de protocolo não aceitam item do catálogo (contratos estritos): só Meus produtos.
+  const somenteMeus = !!tarefa || !!tarefas?.length || !!onRegistrar || !!onConferirConjunto || momentoIatf !== undefined;
+  useEffect(() => {
+    if (!precisaCategoria) return;
+    let vivo = true; setErroCategorias(null);
+    listarCategorias().then((c) => { if (vivo) setCategorias(c); }).catch((e: unknown) => { if (vivo) setErroCategorias(e instanceof Error ? e.message : String(e)); });
+    return () => { vivo = false; };
+  }, [precisaCategoria, catalogo?.produtoCatalogoId]);
+  const categoriasAdocao = [...categorias].filter((c) => c.ativo).sort((a, b) => Number(!!b.usoSanitario) - Number(!!a.usoSanitario) || a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
+  const nomeAplicado = origem === "COMPRA_CONSUMO_DIRETO" ? compras.find((c) => c.id === compraId)?.produto.nome ?? "" : produto?.nome ?? catalogo?.nomeCompleto ?? nome;
+  const unidadeReferencia = produto?.unidade ?? catalogo?.unidadeSugerida;
+  const unidadesCompativeis = unidadeReferencia ? UNIDADES_ORDENADAS.filter((u) => UNIDADES[u].base === UNIDADES[unidadeReferencia].base) : UNIDADES_ORDENADAS;
   const partidaSugerida = partidas.filter((p) => Number(p.saldo) > 0 && p.validade && p.validade.slice(0, 10) >= data)
     .sort((a, b) => (a.validade ?? "").localeCompare(b.validade ?? ""))[0];
   useEffect(() => {
@@ -128,19 +149,28 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     return () => { vivo = false; };
   }, [produto?.id, produto?.rastrearPartidas, origem, sitioDoFato]);
   function limparProduto() {
-    setProdutoId(""); setNome(""); setVia(""); setLeite(""); setCarne(""); setUnidade("ML");
+    setProdutoId(""); setCatalogoSel(null); setCategoriaAdocao(""); setConflitoCatalogo(null); setNome(""); setVia(""); setLeite(""); setCarne(""); setUnidade("ML");
     setEstadoLeite("NAO_INFORMADO"); setEstadoCarne("NAO_INFORMADO"); setMotivoCarne("");
     setPartidaId(""); setPartida(""); setValidade(""); setCienciaValidadeDesconhecida(false); setCienciaVencida(false); setMotivoVencida("");
     if (tarefa && !desvio) { setProdutoId(tarefa.produtoId); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); }
   }
+  /** Item do catálogo preenche a aplicação como um produto: unidade sugerida, sem diálogo; carência segue "não informada". */
+  function selecionarCatalogo(item: Extract<ProdutoEscolhido, { tipo: "catalogo" }>) { limparProduto(); setCatalogoSel(item); setUnidade(item.unidadeSugerida); }
+  function usarProdutoExistente(existente: { id: string; nome: string }) { selecionarProduto(existente.id); }
+  function escolherNoSeletor(escolha: ProdutoEscolhido | null) {
+    if (!escolha) limparProduto();
+    else if (escolha.tipo === "catalogo") selecionarCatalogo(escolha);
+    else selecionarProduto(escolha.produtoId);
+  }
   function selecionarProduto(id: string) { limparProduto(); setProdutoId(id); const p = produtos.find((v) => v.id === id); if (p) { setUnidade(p.unidade); setVia(p.perfilSanitario?.viaPadrao ?? ""); setLeite(p.perfilSanitario?.carenciaLeiteHoras?.toString() ?? ""); setCarne(p.perfilSanitario?.carenciaCarneHoras?.toString() ?? ""); setEstadoLeite(p.perfilSanitario?.carenciaLeiteHoras == null ? "NAO_INFORMADO" : "INFORMADO"); setEstadoCarne(p.perfilSanitario?.carenciaCarneHoras == null ? "NAO_INFORMADO" : "INFORMADO"); } }
   function erroDaApi(falha: unknown) {
     const mensagem = falha instanceof Error ? falha.message : String(falha);
+    if (falha instanceof Error && "produtoExistente" in falha && falha.produtoExistente) setConflitoCatalogo(falha.produtoExistente as { id: string; nome: string });
     const campo = falha instanceof Error && "campo" in falha && typeof falha.campo === "string" ? falha.campo : "";
     const partes = /^itens\.(\d+)\.(.+)$/.exec(campo);
     const atributo = partes?.[2] ?? campo;
     const animal = partes && animais?.[Number(partes[1])];
-    const ids: Record<string, string> = { tipoAplicacaoId: "san-tipo", origemInsumo: "san-origem", nomeProdutoAplicado: origem === "BAIXA_ESTOQUE" ? "san-produto" : origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : produtoId ? "san-produto" : "san-nome", produtoId: origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : "san-produto", operacaoServicoId: "san-servico", itemCompraDiretaId: "san-compra", partidaId: "san-lote", dose: animal ? `san-dose-${animal.id}` : "san-dose", unidadeDose: "san-unidade", data: "san-data", aplicadaEm: "san-hora", propriedadeId: "san-data", animalId: animal ? `san-dose-${animal.id}` : "san-data", justificativaSemOrigem: "san-justificativa", cienciaValidadeDesconhecida: "san-ciencia", documentacaoExcepcional: "san-vencida", motivoDocumentacaoExcepcional: "san-motivo-vencida", carenciaLeiteHoras: "san-prazo-0", carenciaCarneHoras: "san-prazo-1", justificativaCarenciaCarne: "san-motivo-carne", ocorrenciaId: "ap-ocorrencia" };
+    const ids: Record<string, string> = { tipoAplicacaoId: "san-tipo", origemInsumo: "san-origem", nomeProdutoAplicado: origem === "BAIXA_ESTOQUE" ? "san-produto" : origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : produtoId || catalogo ? "san-produto" : "san-nome", produtoCatalogoId: "san-produto", categoriaId: precisaCategoria ? "san-categoria-adocao" : "san-produto", produtoId: origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : "san-produto", operacaoServicoId: "san-servico", itemCompraDiretaId: "san-compra", partidaId: "san-lote", dose: animal ? `san-dose-${animal.id}` : "san-dose", unidadeDose: "san-unidade", data: "san-data", aplicadaEm: "san-hora", propriedadeId: "san-data", animalId: animal ? `san-dose-${animal.id}` : "san-data", justificativaSemOrigem: "san-justificativa", cienciaValidadeDesconhecida: "san-ciencia", documentacaoExcepcional: "san-vencida", motivoDocumentacaoExcepcional: "san-motivo-vencida", carenciaLeiteHoras: "san-prazo-0", carenciaCarneHoras: "san-prazo-1", justificativaCarenciaCarne: "san-motivo-carne", ocorrenciaId: "ap-ocorrencia" };
     Object.assign(ids, { estadoCarenciaLeite: "san-estado-0", estadoCarenciaCarne: "san-estado-1", carenciaLeiteHoras: estadoLeite === "INFORMADO" ? "san-prazo-0" : "san-estado-0", carenciaCarneHoras: estadoCarne === "INFORMADO" ? "san-prazo-1" : "san-estado-1", partidaCodigo: "san-codigo", partidaValidade: "san-validade", responsavel: "san-responsavel", via: "san-via", tarefaId: "san-tipo" });
     const mensagemLocalizada = animal ? `${animal.brinco}: ${mensagem}` : mensagem;
     setErro(mensagemLocalizada);
@@ -163,7 +193,8 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     if (!tipoId) erros["san-tipo"] = "Selecione o tipo de aplicação.";
     if (origem === "BAIXA_ESTOQUE" && !produtoId) erros["san-produto"] = "Selecione o medicamento do estoque.";
     if (origem === "COMPRA_CONSUMO_DIRETO" && !compraId) erros["san-compra"] = "Selecione o item da compra.";
-    if ((origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId) && !nomeAplicado.trim()) erros["san-nome"] = "Informe o medicamento utilizado.";
+    if ((origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId && !catalogo) && !nomeAplicado.trim()) erros["san-nome"] = "Informe o medicamento utilizado.";
+    if (precisaCategoria && !categoriaAdocao) erros["san-categoria-adocao"] = "Selecione a categoria do produto novo.";
     if (origem === "INCLUSO_SERVICO" && !servicoId) erros["san-servico"] = "Selecione o Serviço que incluiu o medicamento.";
     if (origem === "SEM_ORIGEM_JUSTIFICADA" && !justificativa.trim()) erros["san-justificativa"] = "Explique a origem não localizada.";
     if (origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && !partidaId) erros["san-lote"] = "Selecione o lote de estoque.";
@@ -194,6 +225,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: hora ? dataHoraISO(`${data}T${hora}`) : undefined, tipoAplicacaoId: tipoId, origemInsumo: origem,
         nomeProdutoAplicado: nomeAplicado.trim(), dose, unidadeDose: unidade, responsavel: responsavel.trim() || undefined, via: via.trim() || undefined, ocorrenciaId: ocorrenciaId || undefined,
         produtoId: origem === "SEM_ORIGEM_JUSTIFICADA" && !tarefa ? undefined : produtoId || undefined,
+        ...(catalogo ? { produtoCatalogoId: catalogo.produtoCatalogoId, categoriaId: catalogo.categoriaSugeridaId ?? (categoriaAdocao || undefined) } : {}),
         operacaoServicoId: servicoId || undefined, itemCompraDiretaId: origem === "COMPRA_CONSUMO_DIRETO" ? compraId : undefined,
         partidaId: origem === "BAIXA_ESTOQUE" ? partidaId || undefined : undefined,
         cienciaValidadeDesconhecida: origem === "BAIXA_ESTOQUE" ? cienciaValidadeDesconhecida : undefined,
@@ -257,8 +289,12 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       <CampoFormulario id="san-tipo" erro={errosCampos["san-tipo"]} rotulo="Tipo de aplicação" obrigatorio>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio && !!tarefa.tipoAplicacaoId} required value={tipoId} onValueChange={(valorSelecionado) => setTipoId(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{tipos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="san-origem" erro={errosCampos["san-origem"]} rotulo="Origem do medicamento" obrigatorio>{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => { setOrigem(valorSelecionado as typeof origem); setServicoId(""); setCompraId(""); setJustificativa(""); limparProduto(); setErrosCampos({}); setErro(null); }} className={classeInput}><option value="BAIXA_ESTOQUE">Estoque da fazenda</option><option value="INCLUSO_SERVICO">Incluído em Serviço</option><option value="COMPRA_CONSUMO_DIRETO">Compra para consumo direto</option><option value="SEM_ORIGEM_JUSTIFICADA">Origem não localizada</option></SelectCampo>}</CampoFormulario>
       {origem === "COMPRA_CONSUMO_DIRETO" && <CampoFormulario id="san-compra" erro={errosCampos["san-compra"]} rotulo="Item confirmado com quantidade disponível" obrigatorio>{(p) => <SelectCampo {...p} required value={compraId} onValueChange={(valorSelecionado) => { setCompraId(valorSelecionado); const c = compras.find((v) => v.id === valorSelecionado); selecionarProduto(c?.produtoId ?? ""); const unidadeCompra = c && UNIDADES_ORDENADAS.find((u) => u === c.unidade.toUpperCase() || UNIDADES[u].rotulo.toLowerCase() === c.unidade.toLowerCase()); if (unidadeCompra) setUnidade(unidadeCompra); }} className={classeInput}><option value="">Selecione</option>{compras.map((c) => <option key={c.id} value={c.id}>#{c.operacao.numero} · {c.produto.nome} · disponível {c.disponivel} {c.unidade}</option>)}</SelectCampo>}</CampoFormulario>}
-      {(origem === "BAIXA_ESTOQUE" || origem === "INCLUSO_SERVICO") && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo={origem === "BAIXA_ESTOQUE" ? "Medicamento do estoque" : "Produto cadastrado (opcional)"} obrigatorio={origem === "BAIXA_ESTOQUE"}>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio} required={origem === "BAIXA_ESTOQUE"} value={produtoId} onValueChange={(valorSelecionado) => selecionarProduto(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{produtos.filter((v) => v.usoSanitario).map((v) => <option key={v.id} value={v.id}>{v.nome} · {unidadeSanitaria(v.unidade)}</option>)}</SelectCampo>}</CampoFormulario>}
-      {(origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId) && <CampoFormulario id="san-nome" erro={errosCampos["san-nome"]} rotulo="Medicamento utilizado" obrigatorio>{(p) => <input {...p} required maxLength={160} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>}
+      {origem === "INCLUSO_SERVICO" && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo="Produto cadastrado (opcional)">{(p) => <><SeletorProdutoCatalogo id={p.id} rotulo={p["aria-label"]} uso="sanitario" somenteMeus={somenteMeus} propriedadeId={sitioDoFato} disabled={!!tarefa && !desvio} invalido={p["aria-invalid"]} descricaoId={p["aria-describedby"]}
+        value={catalogo ? catalogo : produtoId ? { tipo: "produto", produtoId, nome: produto?.nome ?? nome } : null} onChange={escolherNoSeletor} />
+        {conflitoCatalogo && <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-normal"><span>O produto “{conflitoCatalogo.nome}” já existe na fazenda.</span><Button secondary onClick={() => usarProdutoExistente(conflitoCatalogo)}>Usar produto existente</Button></div>}</>}</CampoFormulario>}
+      {origem === "INCLUSO_SERVICO" && precisaCategoria && <CampoFormulario id="san-categoria-adocao" erro={errosCampos["san-categoria-adocao"] ?? erroCategorias ?? undefined} rotulo="Categoria do produto novo" obrigatorio ajuda="Este item do catálogo não tem categoria sugerida. A categoria organiza o produto que será cadastrado na fazenda.">{(p) => <SelectCampo {...p} required value={categoriaAdocao} onValueChange={(valor) => setCategoriaAdocao(valor)} className={classeInput}><option value="">Selecione</option>{categoriasAdocao.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo>}</CampoFormulario>}
+      {origem === "BAIXA_ESTOQUE" && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo={origem === "BAIXA_ESTOQUE" ? "Medicamento do estoque" : "Produto cadastrado (opcional)"} obrigatorio={origem === "BAIXA_ESTOQUE"}>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio} required={origem === "BAIXA_ESTOQUE"} value={produtoId} onValueChange={(valorSelecionado) => selecionarProduto(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{produtos.filter((v) => v.usoSanitario).map((v) => <option key={v.id} value={v.id}>{v.nome} · {unidadeSanitaria(v.unidade)}</option>)}</SelectCampo>}</CampoFormulario>}
+      {(origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId && !catalogo) && <CampoFormulario id="san-nome" erro={errosCampos["san-nome"]} rotulo="Medicamento utilizado" obrigatorio>{(p) => <input {...p} required maxLength={160} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>}
       {origem !== "SEM_ORIGEM_JUSTIFICADA" && <CampoFormulario id="san-servico" erro={errosCampos["san-servico"]} rotulo={origem === "INCLUSO_SERVICO" ? "Serviço que incluiu o medicamento" : "Serviço de atendimento (opcional)"} obrigatorio={origem === "INCLUSO_SERVICO"}>{(p) => <SelectCampo {...p} required={origem === "INCLUSO_SERVICO"} value={servicoId} onValueChange={(valorSelecionado) => setServicoId(valorSelecionado)} className={classeInput}><option value="">{origem === "INCLUSO_SERVICO" ? "Selecione" : "Sem Serviço — aplicação pela fazenda"}</option>{servicos.map((s) => <option key={s.id} value={s.id}>#{s.numero} · {s.descricao || s.parceiro?.nome || "Serviço"}</option>)}</SelectCampo>}</CampoFormulario>}
       {origem === "SEM_ORIGEM_JUSTIFICADA" && <CampoFormulario id="san-justificativa" erro={errosCampos["san-justificativa"]} rotulo="Justificativa da origem não localizada" obrigatorio>{(p) => <textarea {...p} required maxLength={500} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} className={classeInput} />}</CampoFormulario>}
       {origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && <><CampoFormulario id="san-lote" erro={errosCampos["san-lote"]} rotulo="Lote de estoque" obrigatorio>{(p) => <SelectCampo {...p} required value={partidaId} onValueChange={(valorSelecionado) => { setPartidaId(valorSelecionado); setCienciaValidadeDesconhecida(false); }} className={classeInput}><option value="">Selecione o lote de estoque</option>{partidas.map((v) => <option key={v.id} value={v.id}>{v.nome || (v.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem validade informada" : v.codigo)} · saldo {Number(v.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidadeSanitaria(produto.unidade)} · validade {v.validade ? dataSanitaria(v.validade) : "não informada"}</option>)}</SelectCampo>}</CampoFormulario>{partidaSugerida && <p className="text-sm text-ink-3">Vencimento válido mais próximo na data do fato: {partidaSugerida.nome || partidaSugerida.codigo} · {dataSanitaria(partidaSugerida.validade)}.{partidaId !== partidaSugerida.id && <> <button type="button" className="font-medium text-primary underline underline-offset-4" onClick={() => { setPartidaId(partidaSugerida.id); setCienciaValidadeDesconhecida(false); }}>Usar este lote</button></>}</p>}</>}

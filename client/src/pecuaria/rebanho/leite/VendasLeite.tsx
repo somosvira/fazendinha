@@ -74,9 +74,11 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
     <DialogComercialLeite titulo={nova ? "Nova operação por período" : "Detalhe da operação"} aberto={!!selecionada || nova} onFechar={fecharDetalhe}>
       <OperacoesComerciaisLeite key={nova ? "nova" : selecionada!} integrado operacaoId={selecionada} iniciarNova={nova} podeLancar={podeLancar} podeFinanceiro={podeFinanceiro} onMudou={id => { setRevisao(r => r + 1); setSelecionada(id); setNova(false); const url = new URL(location.href); url.searchParams.delete("novaOperacaoLeite"); if (id) url.searchParams.set("operacaoLeiteId", id); history.replaceState(null,"",url); }} />
     </DialogComercialLeite>
-    <DialogComercialLeite titulo="Venda avulsa" aberto={avulsa && podeFinanceiro && podeLancar} onFechar={() => setAvulsa(false)}>
-      {config ? <NovaVendaAvulsaLeite sitio={dados?.propriedadeId ?? sitio} config={config} produtos={cadastros.produtos} onCancelar={() => setAvulsa(false)} onSalvar={() => { setAvulsa(false); setRevisao(r => r + 1); setAviso("Retirada e venda registradas. Acompanhe o recebimento no Financeiro."); }} /> : <EsqueletoFormulario label="Carregando cadastros financeiros" />}
-    </DialogComercialLeite>
+    {avulsa && podeFinanceiro && podeLancar && (config
+      ? <NovaVendaAvulsaLeite sitio={dados?.propriedadeId ?? sitio} config={config} produtos={cadastros.produtos} onCancelar={() => setAvulsa(false)} onSalvar={() => { setAvulsa(false); setRevisao(r => r + 1); setAviso("Retirada e venda registradas. Acompanhe o recebimento no Financeiro."); }} />
+      : <DialogComercialLeite titulo="Venda avulsa" aberto onFechar={() => setAvulsa(false)}>
+          <EsqueletoFormulario label="Carregando cadastros financeiros" />
+        </DialogComercialLeite>)}
     <DialogComercialLeite titulo={historico?.referencia ?? "Venda avulsa"} aberto={!!historico} onFechar={() => setHistorico(null)}>
       {historico && <><dl className="leite-comercial-fatos"><div><dt>Comprador</dt><dd>{historico.parceiroNome ?? "Não informado"}</dd></div><div><dt>Data</dt><dd>{dataPt(historico.data)}</dd></div><div><dt>Retirado</dt><dd>{formatarLitros(Number(historico.quantidadeLitros))}</dd></div><div><dt>Situação</dt><dd>{situacoes[historico.situacao] ?? historico.situacao}</dd></div></dl>
         {podeFinanceiro ? <HistoricoVendasLeite produtoId="" data={historico.data} de={historico.data} propriedadeId={dados?.propriedadeId ?? sitio} config={config} podeLancar={podeLancar} revisao={revisao} onMudou={() => { setHistorico(null); setRevisao(r => r + 1); setAviso("Correção comercial confirmada. Os litros e a saída física única foram preservados."); }} operacaoInicial={historico.operacaoId ?? undefined} /> : <p>Valores e correções comerciais exigem acesso ao Financeiro.</p>}</>}

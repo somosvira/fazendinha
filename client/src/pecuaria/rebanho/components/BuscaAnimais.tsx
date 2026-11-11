@@ -35,6 +35,7 @@ function caminhoAnimal(animal: AnimalResumo): string {
 }
 
 export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, onFechar, onAbrir }: Props) {
+  const focoAnterior = useRef<HTMLElement | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const corpoTabela = useRef<HTMLTableSectionElement>(null);
   const id = useId();
@@ -132,7 +133,7 @@ export function BuscaAnimais({ aberto, escopo, podeConsultar, podeVerCaminho, on
   const escopoVisivel = sitioDoShell == null ? escopo : propriedades.find(p => p.id === sitioDoShell)?.nome ?? escopo;
 
   return <Dialog open={aberto} onOpenChange={valor => { if (!valor) onFechar(); }}>
-    <DialogContent className="busca-animais" showCloseButton={false} onOpenAutoFocus={e => { e.preventDefault(); input.current?.focus(); }}>
+    <DialogContent className="busca-animais" showCloseButton={false} onOpenAutoFocus={e => { e.preventDefault(); focoAnterior.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; input.current?.focus(); }} onCloseAutoFocus={e => { if (focoAnterior.current?.isConnected) { e.preventDefault(); focoAnterior.current.focus(); } }}>
       <header className="busca-animais-cabecalho">
         <div><DialogTitle>Buscar animais</DialogTitle><DialogDescription>{escopoVisivel}</DialogDescription></div>
         <Button variant="ghost" size="icon" onClick={onFechar} aria-label="Fechar busca"><X aria-hidden /></Button>

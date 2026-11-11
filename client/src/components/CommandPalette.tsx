@@ -16,6 +16,7 @@ type Props = {
   podeVer: (t: Tab) => boolean;
   podeVerCaminho?: (caminho: string) => boolean;
   podeLancar?: boolean; podeVerValores?: boolean; escopo?: string;
+  termoInicial?: string;
   modo?: "tudo" | "animais";
   /** Sítio ativo: o contexto mostra seu nome em vez de um rótulo genérico. */
   propriedadeId?: number | null;
@@ -29,7 +30,7 @@ function eResultadoBusca(v: unknown): v is ResultadoBusca {
     && (r.caminho as string).startsWith("/") && !(r.caminho as string).startsWith("//");
 }
 
-function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null }: Props) {
+function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null, termoInicial = "" }: Props) {
   const [nomeSitio, setNomeSitio] = useState<string | null>(null);
   useEffect(() => {
     if (!aberto || propriedadeId == null || nomeSitio) return;
@@ -44,6 +45,7 @@ function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLan
   const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
+  const focoAnterior = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listaRef = useRef<HTMLDivElement | null>(null);
   const termo = query.trim();
@@ -57,8 +59,8 @@ function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLan
   useEffect(() => { setValorSelecionado(primeiroId); if (listaRef.current) listaRef.current.scrollTop = 0; }, [primeiroId, termo, filtro]);
 
   useEffect(() => {
-    if (aberto) { setQuery(""); setFiltro("Tudo"); setResposta(null); setErro(false); }
-  }, [aberto]);
+    if (aberto) { setQuery(termoInicial); setFiltro("Tudo"); setResposta(null); setErro(false); }
+  }, [aberto, termoInicial]);
   useEffect(() => {
     if (!aberto || !consultaValida(termo)) { setResposta(null); setBuscando(false); setErro(false); return; }
     const controller = new AbortController();
@@ -82,7 +84,7 @@ function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLan
   const semResultados = !paginas.length && !acoes.length && !registros.length && !(mostrarRegistros && (buscando || erro));
   const escolher = (tab: Tab, id: string | undefined, caminho: string) => { onNav(tab, id, caminho); onFechar(); };
   return <Dialog open={aberto} onOpenChange={open => { if (!open) onFechar(); }}>
-    <DialogContent showCloseButton={false} aria-describedby={undefined} className="busca-global" onOpenAutoFocus={e => { e.preventDefault(); inputRef.current?.focus(); }}>
+    <DialogContent showCloseButton={false} aria-describedby={undefined} className="busca-global" onOpenAutoFocus={e => { e.preventDefault(); focoAnterior.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; inputRef.current?.focus(); }} onCloseAutoFocus={e => { if (focoAnterior.current?.isConnected) { e.preventDefault(); focoAnterior.current.focus(); } }}>
       <DialogTitle className="sr-only">Busca global</DialogTitle>
       <Command value={valorSelecionado} onValueChange={setValorSelecionado} shouldFilter={false} vimBindings={false} label="Busca global" className="busca-global-comando">
         <div className="busca-global-entrada">

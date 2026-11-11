@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { Composicao } from "./CartoesLotes";
 import { ResumoPesagensLote } from "./ResumoPesagensLote";
 // Página do lote — resumo (efetivo, peso, GMD, idade), animais do lote (com
@@ -17,7 +18,7 @@ import type { AnimalResumo, Catalogos, Lote, PeriodoGmd, ResumoLote as ResumoLot
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloPapelReprodutivo, rotuloSexo, rotuloTipoBaixa } from "../lib/rotulos";
 import { formatarGmd, formatarKg, PERIODO_GMD_PADRAO } from "../lib/peso";
 import { navegarPara } from "../../../router";
-import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, type ColunaTabela, Empty, ErrorBox, Metric, PageHeader, PaginaFinanceira, Panel, Pill } from "../../../financeiro/financeiro-ui";
 import { CategoriaPill, Paginacao, useAoMovimentarComToast } from "../ui";
 import { mensagemDesativar } from "./ListaLotes";
 import { FormLote } from "../cadastros/FormLote";
@@ -221,7 +222,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
         <Metric label="Idade média" valor={resumo.idadeMediaMeses != null ? formatarIdade(resumo.idadeMediaMeses) : "—"} icon={Calendar} />
       </div>
       <div className="mt-4 grid gap-4 xl:grid-cols-2"><Panel className="p-5"><h2 className="h3 mb-3">Composição do lote</h2><Composicao resumo={resumo} /></Panel><ResumoPesagensLote resumo={resumo} /></div>
-      <Panel className="mt-4 overflow-hidden"><div className="consulta-visual-barra"><h2 className="h3">Animais do lote</h2><Button secondary onClick={() => document.getElementById("lote-aba-animais")?.click()}>Ver todos</Button></div>{animais.length ? <TabelaFinanceira rotulo="Prévia dos animais do lote" itens={animais.slice(0, 3)} colunas={COLUNAS_ANIMAIS.filter(c => !["selecionar", "acoes"].includes(c.chave))} chaveDe={a => a.id} onAbrir={a => navegarPara(linkFichaAnimal(a.id))} /> : <Empty>Nenhum animal disponível nesta consulta.</Empty>}</Panel>
+      <Panel className="mt-4 overflow-hidden"><div className="consulta-visual-barra"><h2 className="h3">Animais do lote</h2><Button secondary onClick={() => document.getElementById("lote-aba-animais")?.click()}>Ver todos</Button></div>{animais.length ? <ConsultaOperacional rotulo="Prévia dos animais do lote" itens={animais.slice(0, 3)} colunas={COLUNAS_ANIMAIS.filter(c => !["selecionar", "acoes"].includes(c.chave))} chaveDe={a => a.id} onAbrir={a => navegarPara(linkFichaAnimal(a.id))} /> : <Empty>Nenhum animal disponível nesta consulta.</Empty>}</Panel>
     </>}
     </div>
 
@@ -238,7 +239,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
         </>}
       </div>}
       {animais.length ? <>
-        <TabelaFinanceira rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
+        <ConsultaOperacional rotulo="Animais do lote" itens={animais} colunas={COLUNAS_ANIMAIS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
         <Paginacao paginaAtual={paginaAnimais} totalPaginas={totalPaginasAnimais} totalItens={totalAnimais} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaAnimais} rotulo="animais" idSelect="pagina-animais-lote" />
       </> : <Empty>Nenhum animal ativo neste lote.</Empty>}
     </Panel>
@@ -248,7 +249,7 @@ export function DetalheLote({ id, podeLancar = true, onVoltar, rotuloVoltar = "L
     <Panel className="mt-6 overflow-hidden">
       <span id="lote-baixas" />
       {baixados.length ? <>
-        <TabelaFinanceira rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
+        <ConsultaOperacional rotulo="Animais que saíram por baixa" itens={baixados} colunas={COLUNAS_BAIXADOS} chaveDe={(item) => item.id} onAbrir={(item) => navegarPara(linkFichaAnimal(item.id))} />
         <Paginacao paginaAtual={paginaBaixados} totalPaginas={totalPaginasBaixados} totalItens={totalBaixados} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPaginaBaixados} rotulo="animais baixados" idSelect="pagina-baixados-lote" />
       </> : <Empty>Nenhum animal deste lote saiu por baixa.</Empty>}
     </Panel>

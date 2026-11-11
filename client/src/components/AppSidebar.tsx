@@ -17,13 +17,11 @@ import { Target, Sparkles, LayoutDashboard, Bell, GitBranch, ClipboardList, Hear
 import type { Tab } from "./Shell";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { TerranoSymbol } from "./TerranoLogo";
 import { VacaIcon } from "./icons/VacaIcon";
 import { BezerroIcon } from "./icons/BezerroIcon";
 import { SidebarFarmPicker } from "./FarmPicker";
 import { temAcessoArea, temAcessoEstoque } from "@/lib/areas";
-import { PAPEIS, type User } from "@/data/acessos";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { quandoSalvo, type ResumoRascunho } from "@/financeiro/lib/rascunho";
 
@@ -133,44 +131,6 @@ function Item({ id, label, current, onNav, nested, chevron, activeWhen }: {
         <span className={cn("flex-none text-[11px] text-[var(--side-mute,#8B8672)]", RAIL_HIDE)} aria-hidden>›</span>
       )}
     </Button>
-  );
-}
-
-function SearchControl({ onClick }: { onClick: () => void }) {
-  return (
-    <Button variant="ghost"
-      type="button"
-      onClick={onClick}
-      title="Buscar (Ctrl/⌘ K) · só animais: Ctrl/⌘ Shift K"
-      aria-keyshortcuts="Control+k Meta+k"
-      aria-label="Buscar páginas, animais e ações"
-      className="order-1 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-2 [.side-collapsed_&]:order-2"
-    >
-      <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} aria-hidden>
-        <circle cx="11" cy="11" r="7" />
-        <path d="m20 20-4-4" />
-      </svg>
-    </Button>
-  );
-}
-
-function UserMenu({ user, onAcessos, onSair }: { user: User; onAcessos: () => void; onSair?: () => void }) {
-  const papel = user.papel === "personalizado" ? "Personalizado" : PAPEIS[user.papel]?.nome ?? "";
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" type="button" aria-label="Menu da conta" className={cn("flex w-full items-center gap-3 rounded-[8px] px-2 py-2 text-left hover:bg-[rgba(232,220,196,0.08)]", RAIL_ICON_BTN)}>
-          <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-leite text-sm font-semibold text-ink">{user.inicial}</span>
-          <span className={cn("min-w-0 flex-1 text-left", RAIL_LABEL)}><span className="block truncate text-[13px] font-semibold text-mast-ink">{user.nome}</span><span className="mt-0.5 block truncate text-[10.5px] text-[var(--side-mute)]">{papel}</span></span>
-          <span className={cn("text-xs text-[var(--side-mute)]", RAIL_HIDE)} aria-hidden>⌃</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side="right" align="end" sideOffset={8} className="w-[240px] rounded-[11px] p-1.5">
-        <div className="mb-1 border-b border-rule-soft px-2.5 pb-2.5 pt-2"><div className="text-sm font-semibold text-ink">{user.nome}</div>{user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}</div>
-        {(user.dono || user.flags.includes("gerenciarAcessos")) && <DropdownMenuItem onSelect={onAcessos} className="rounded-[7px] px-2.5 py-2 text-[13.5px]">Acessos</DropdownMenuItem>}
-        {onSair && <><DropdownMenuSeparator /><DropdownMenuItem onSelect={onSair} className="rounded-[7px] px-2.5 py-2 text-[13.5px] text-[color:var(--prejuizo)] focus:text-[color:var(--prejuizo)]">Sair</DropdownMenuItem></>}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }
 
@@ -302,18 +262,16 @@ function MoreToggle({ context, isOpen, onToggle }: { context: string; isOpen: bo
 
 export function AppSidebar({
   current, onNav, financeiro, isAdmin, areas,
-  mobileOpen, onMobileToggle, onAbrirBusca, propAtiva, onTrocarProp,
-  user, colapsada, onToggleColapsar, onAcessos, onSair, trabalhoAtivo, trabalhoAtivoRelatorio,
+  mobileOpen, onMobileToggle, propAtiva, onTrocarProp,
+  colapsada, onToggleColapsar, trabalhoAtivo, trabalhoAtivoRelatorio,
 }: {
   current: Tab; onNav: (t: Tab) => void; financeiro: { id: Tab; label: string }[];
   isAdmin: boolean;
   areas?: string[];
   mobileOpen: boolean; onMobileToggle: (open: boolean) => void;
-  onAbrirBusca: () => void;
   // Contexto de fazenda/sítio — o switcher agora vive no topo da sidebar.
   propAtiva: number | null; onTrocarProp: (id: number | null) => void;
-  user: User; colapsada: boolean; onToggleColapsar: () => void;
-  onAcessos: () => void; onSair?: () => void;
+  colapsada: boolean; onToggleColapsar: () => void;
   // Atalhos acima do Financeiro; o item de operação permanece disponível para iniciar uma nova.
   trabalhoAtivo?: { resumo: ResumoTrabalhoAtivo | null; ativo: boolean; onAbrir: () => void; onExcluir?: () => Promise<void> } | null;
   trabalhoAtivoRelatorio?: { resumo: ResumoTrabalhoAtivo; ativo: boolean; onAbrir: () => void; onExcluir?: () => Promise<void> } | null;
@@ -377,7 +335,6 @@ export function AppSidebar({
   const itensFinanceiros = financeiro.filter((t) => !DOBRADAS.has(t.id));
   // wrapper: clicar em qualquer aba fecha o drawer no mobile
   const nav = (t: Tab) => { onNav(t); onMobileToggle(false); };
-  const abrirBusca = () => { onMobileToggle(false); onAbrirBusca(); };
   const toggleExtras = (id: AreaTrabalhoId) => setOpenExtras((cur) => (cur === id ? null : id));
   const toggleGroup = (id: SidebarGroupId) => setCollapsedGroups((atuais) => {
     const proximos = new Set(atuais);
@@ -405,7 +362,6 @@ export function AppSidebar({
           <TerranoSymbol size={30} tone="light" strokeWidth={4.4} className="ah-brand-symbol flex-none" />
           <span className={cn("font-sans text-[21px] font-semibold leading-none tracking-[-0.01em] text-[var(--mast-ink)]", RAIL_LABEL)}>Terrano</span>
           <div className="sidebar-marca-controles ml-auto hidden items-center gap-1 min-[901px]:flex min-[901px]:max-[1101px]:ml-0 min-[901px]:max-[1101px]:flex-col [.side-collapsed_&]:ml-0 [.side-collapsed_&]:flex-col">
-            <SearchControl onClick={abrirBusca} />
             <Button variant="ghost" type="button" onClick={onToggleColapsar} aria-label={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} title={colapsada ? "Expandir menu lateral" : "Recolher menu lateral"} className="order-2 grid h-8 w-8 flex-none place-items-center rounded-lg text-[var(--side-mute)] hover:bg-white/5 hover:text-mast-ink min-[901px]:max-[1101px]:order-1 [.side-collapsed_&]:order-1">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-[18px] w-[18px]" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>{colapsada ? <path d="m13 9 3 3-3 3"/> : <path d="m16 9-3 3 3 3"/>}</svg>
             </Button>
@@ -500,18 +456,8 @@ export function AppSidebar({
     </div>
   );
 
-  // Rodapé ancorado: somente identidade e ações do usuário.
-  const sideFoot = (
-    <div className="sidebar-rodape flex-none border-t border-[var(--side-hair,rgba(232,220,196,0.1))] px-3.5 py-2.5 min-[901px]:max-[1101px]:px-2 [.side-collapsed_&]:px-2">
-      <div className="flex flex-col gap-px">
-        <UserMenu user={user} onAcessos={onAcessos} onSair={onSair} />
-      </div>
-    </div>
-  );
-
   return (
     <>
-      {!mobileOpen && <Button variant="ghost" type="button" onClick={() => onMobileToggle(true)} aria-label="Abrir menu" className="fixed left-3 top-3 z-30 hidden h-11 w-11 items-center justify-center rounded-lg border border-border bg-bg-card text-ink shadow-sm max-[901px]:flex print:hidden"><svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg></Button>}
       {/* DESKTOP — trilho persistente (sempre no DOM, >=901px). `group` habilita
          o hover/focus-within-expande dos filhos na faixa 901–1100px. */}
       <aside
@@ -523,7 +469,6 @@ export function AppSidebar({
       >
         {sideHead}
         {navBody}
-        {sideFoot}
       </aside>
 
       {/* MOBILE — drawer via shadcn Sheet (Radix Dialog): overlay, clique-fora,
@@ -541,7 +486,6 @@ export function AppSidebar({
           <div className="flex h-full flex-col overflow-hidden">
             {sideHead}
             {navBody}
-            {sideFoot}
           </div>
         </SheetContent>
       </Sheet>

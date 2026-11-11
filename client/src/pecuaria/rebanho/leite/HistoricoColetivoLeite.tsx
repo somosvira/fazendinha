@@ -22,7 +22,6 @@ export function HistoricoColetivoLeite({ propriedadeId, inicio, fim }: { proprie
   if (!dados) return <p role="status">Consultando agregados históricos…</p>;
   return <>
     <ControlesHistoricosLeite itens={dados.itens} coletivo />
-    <p className="controles-historicos-nota">O filtro de natureza não se aplica aos agregados históricos.</p>
     {dados.total > dados.tamanho && <nav className="historico-produtivo-paginas" aria-label="Páginas dos agregados históricos">
       <Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(p => p - 1)}>Agregados anteriores</Button>
       <span>Página {dados.pagina} · {dados.total} documentos</span>

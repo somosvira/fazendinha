@@ -1,3 +1,4 @@
+import { AlternarVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
 import {BarraRelatorio,PeriodoRelatorio,AcoesRelatorio} from "./ConsultaRelatorioUI";
 import {DatePicker} from "@/components/DatePicker";
 import {PainelFiltrosRelatorio} from './PainelFiltrosRelatorio';
@@ -10,7 +11,7 @@ import {Skeleton} from '@/components/ui/skeleton';
 import {Dialog,DialogContent,DialogHeader,DialogTitle} from '@/components/ui/dialog';
 import {Table,TableHeader,TableBody,TableRow,TableHead,TableCell} from '@/components/ui/table';
 import {AjudaCampo} from '@/components/Dica';
-import {Columns3,Download,FileText,LayoutGrid,List,Search} from 'lucide-react';
+import {Columns3,Download,FileText,Search} from 'lucide-react';
 import {getHojeISO,formatBRDateISO} from '@/lib/hoje';
 import {usePeriodoConsulta} from '../rebanho/reproducao/periodo-consulta';
 import {dateFromIso} from '@/components/DateRangePicker';
@@ -28,7 +29,7 @@ export function RelatoriosComplementares({propriedadeId,fonte,selecionar,persona
  const filtros=useFiltrosRelatorio(fonte,propriedadeId);
  const [consulta,setConsulta]=useState(()=>({inicio:periodoUrl.inicio,fim:periodoUrl.fim,opcoes:{} as OpcoesAcompanhamento}));
  const [dados,setDados]=useState<(ResultadoBuilder&{chave:string})|null>(null),[erro,setErro]=useState(''),[ocupado,setOcupado]=useState(true),[revisao,setRevisao]=useState(0);
- const [modo,setModo]=useState<'tabela'|'cartoes'>('tabela'),[busca,setBusca]=useState(''),[pagina,setPagina]=useState(1),[dialogo,setDialogo]=useState(false);
+ const [modo,setModo]=useState<'tabela'|'visual'>('tabela'),[busca,setBusca]=useState(''),[pagina,setPagina]=useState(1),[dialogo,setDialogo]=useState(false);
  const [selecao,setSelecao]=useState<{fonte:FonteAcompanhamento;ids:string[]}|null>(null);
  const opcoes={...consulta.opcoes,...filtros.config};
  const comFiltros=Object.keys(filtros.config).length>0;
@@ -53,7 +54,7 @@ export function RelatoriosComplementares({propriedadeId,fonte,selecionar,persona
  {ocupado||(!resultado&&!erro)?<Esqueleto label="Carregando relatório" className="rel-complementar-estado"><EsqueletoMetricasCorpo/><EsqueletoTabelaCorpo/></Esqueleto>:erro?<div className="rel-complementar-estado" role="alert"><p>{erro}</p><Button variant="outline" onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button></div>:<>
  <dl className="rel-complementar-resumo">{resultado?.resumo?.map(m=><div key={m.nome}><dt>{m.nome}</dt><dd className={m.valor==null?"rel-valor-ausente":undefined}>{formatarCelula(m.valor,m.unidade)}</dd></div>)}</dl>
  {!!resultado?.avisos?.length&&<div className="rel-complementar-avisos"><AjudaCampo rotulo="Pendências e cobertura da consulta" texto={resultado.avisos.join(' ')}/>Cobertura parcial</div>}
- <div className="rel-leitura"><label className="rel-complementar-busca"><Search size={16}/><Input aria-label={paginado?'Buscar nesta página':'Buscar animal ou brinco'} placeholder={paginado?'Buscar nesta página':'Buscar animal ou brinco'} value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}}/></label><div className="rel-modo"><Button size="sm" aria-pressed={modo==='cartoes'} variant={modo==='cartoes'?'default':'ghost'} onClick={()=>setModo('cartoes')}><LayoutGrid size={15}/>Cartões</Button><Button size="sm" aria-pressed={modo==='tabela'} variant={modo==='tabela'?'default':'ghost'} onClick={()=>setModo('tabela')}><List size={15}/>Tabela</Button></div></div>
+ <div className="rel-leitura"><label className="rel-complementar-busca"><Search size={16}/><Input aria-label={paginado?'Buscar nesta página':'Buscar animal ou brinco'} placeholder={paginado?'Buscar nesta página':'Buscar animal ou brinco'} value={busca} onChange={e=>{setBusca(e.target.value);setPagina(1)}}/></label><div className="rel-modo"><AlternarVisualizacaoConsulta modo={modo} mudar={setModo} rotulo="Visualização do relatório complementar"/></div></div>
  {!campos.length?<div className="rel-complementar-estado">Selecione ao menos uma variável.</div>:!linhas.length?<div className="rel-complementar-estado"><h3>Nenhum registro neste recorte</h3><Button variant="outline" size="sm" onClick={()=>busca?setBusca(''):setPeriodoAberto(true)}>{busca?'Limpar busca':'Ajustar período'}</Button></div>:modo==='tabela'?<Table containerLabel={definicao.nome}><TableHeader><TableRow>{selecionados.map(c=><TableHead key={c.id}>{c.nome}{c.unidade&&` (${c.unidade})`}<AjudaCampo rotulo={`Sobre ${c.nome}`} texto={c.ajuda}/></TableHead>)}</TableRow></TableHeader><TableBody>{exibidas.map(l=><TableRow key={String(l.id)}>{selecionados.map(c=><TableCell key={c.id}>{mostrar(c.id,l[c.id],c.unidade)}</TableCell>)}</TableRow>)}</TableBody></Table>:<div className="rel-complementar-cartoes">{exibidas.map(l=><article key={String(l.id)}><dl>{selecionados.map(c=><div key={c.id}><dt>{c.nome}</dt><dd>{mostrar(c.id,l[c.id],c.unidade)}</dd></div>)}</dl></article>)}</div>}
  <footer className="rel-rodape"><span>{linhas.length} registros{paginado?` nesta página · ${resultado?.total??0} na consulta`:''}{busca?` de ${resultado?.total??0}`:''}</span>{totalPaginas>1&&<div><Button size="sm" variant="outline" disabled={paginaAtual<=1} onClick={()=>setPagina(paginaAtual-1)}>Anterior</Button><span>Página {paginaAtual} de {totalPaginas}</span><Button size="sm" variant="outline" disabled={paginaAtual>=totalPaginas} onClick={()=>setPagina(paginaAtual+1)}>Próxima</Button></div>}</footer></>}
  </section><Dialog open={dialogo} onOpenChange={setDialogo}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Variáveis de {definicao.nome}</DialogTitle></DialogHeader><div className="rel-complementar-campos">{definicao.campos.map(c=><label key={c.id}><Checkbox checked={campos.includes(c.id)} onCheckedChange={v=>setSelecao({fonte,ids:v?[...campos,c.id]:campos.filter(id=>id!==c.id)})}/><span>{c.nome}{c.unidade&&` (${c.unidade})`}</span><AjudaCampo rotulo={`Ajuda de ${c.nome}`} texto={c.ajuda}/></label>)}</div><Button onClick={()=>setDialogo(false)}>Concluir seleção</Button></DialogContent></Dialog></div>;
