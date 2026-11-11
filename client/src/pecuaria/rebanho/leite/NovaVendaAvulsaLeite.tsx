@@ -1,5 +1,6 @@
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { DatePicker } from "../../../components/DatePicker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
@@ -8,7 +9,9 @@ import { numeroComercial } from "./comercial-types";
 import { lerValorCorrecao } from "./vendas-types";
 import { hojeOperacional, formatarLitros } from "./modelo";
 export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCancelar }: { sitio: number | null; config: ConfiguracoesFinanceiras; produtos: { id: string; nome: string }[]; onSalvar: () => void; onCancelar: () => void }) {
-  const [produto, setProduto] = useState(""), [parceiro, setParceiro] = useState(""), [data, setData] = useState(hojeOperacional), [litros, setLitros] = useState(""), [valor, setValor] = useState(""), [condicao, setCondicao] = useState("A_PRAZO"), [conta, setConta] = useState(""), [vencimento, setVencimento] = useState(hojeOperacional);
+  const formId = useId();
+  const [dataInicial] = useState(hojeOperacional);
+  const [produto, setProduto] = useState(""), [parceiro, setParceiro] = useState(""), [data, setData] = useState(dataInicial), [litros, setLitros] = useState(""), [valor, setValor] = useState(""), [condicao, setCondicao] = useState("A_PRAZO"), [conta, setConta] = useState(""), [vencimento, setVencimento] = useState(dataInicial);
   const [saldo, setSaldo] = useState<EstoqueLeiteDTO | null>(null), [erro, setErro] = useState(""), [salvando, setSalvando] = useState(false);
   const trava = useRef(false), vivo = useRef(true);
   useEffect(() => { vivo.current = true; return () => { vivo.current = false; }; }, []);
@@ -30,7 +33,13 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     } catch (e) { if (vivo.current) setErro(e instanceof Error ? e.message : "Não foi possível registrar a venda. Os campos foram preservados."); }
     finally { trava.current = false; if (vivo.current) setSalvando(false); }
   }
-  return <form onSubmit={e => { e.preventDefault(); void salvar(); }}><fieldset disabled={salvando}>
+  return <PainelCadastro aberto titulo="Venda avulsa" onFechar={onCancelar} bloqueado={salvando}
+    alteracoesExternas={!!produto || !!parceiro || data !== dataInicial || vencimento !== dataInicial || condicao !== "A_PRAZO"}
+    rodape={fechar => <>
+      <Button variant="outline" type="button" disabled={salvando} onClick={fechar}>Cancelar</Button>
+      <Button type="submit" form={formId} disabled={salvando || !saldo?.comercial.confiavel || !produto || !parceiro}>{salvando ? "Registrando…" : "Confirmar retirada e venda"}</Button>
+    </>}>
+    <form id={formId} className="leite-operacoes" onSubmit={e => { e.preventDefault(); void salvar(); }}><fieldset disabled={salvando}>
     <legend>Registrar retirada e venda avulsa</legend>
     <p>O preço deve estar acordado. Confirmar registra uma saída física e a venda no Financeiro.</p>
     <div className="leite-form-inline">
@@ -46,6 +55,6 @@ export function NovaVendaAvulsaLeite({ sitio, config, produtos, onSalvar, onCanc
     {saldo && <p>{saldo.comercial.confiavel ? `Disponível para venda: ${formatarLitros(saldo.comercial.quantidadeLitros === null ? null : Number(saldo.comercial.quantidadeLitros))}.` : saldo.comercial.motivoNaoAferivel ?? "Saldo comercial não aferível. Confira as origens no Estoque."}</p>}
     {condicao === "A_VISTA" && <p>Recebido agora também registra o recebimento na conta escolhida.</p>}
     {erro && <p role="alert">{erro}</p>}
-    <div className="leite-comercial-acoes"><Button variant="outline" type="button" onClick={onCancelar}>Cancelar</Button><Button disabled={salvando || !saldo?.comercial.confiavel || !produto || !parceiro}>{salvando ? "Registrando…" : "Confirmar retirada e venda"}</Button></div>
-  </fieldset></form>;
+
+  </fieldset></form></PainelCadastro>;
 }

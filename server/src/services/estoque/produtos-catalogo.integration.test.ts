@@ -77,11 +77,12 @@ comBanco("Adoção de item do catálogo com PostgreSQL", () => {
 
   it("compra que falha depois da adoção não deixa Produto", async () => {
     const item = await criarItem("compra");
-    // Item sem centro de custo numa compra para consumo direto: a validação de centro vem depois da adoção.
-    const input = operacaoSchema.parse({ tipo: "COMPRA_CONSUMO_DIRETO", data: new Date().toISOString().slice(0, 10), descricao: `QA compra ${run}`, parceiroId: ids.parceiro,
+    // Unidade que não é de nenhum produto conhecido: o item é adotado com a unidade sugerida (mL) e a conferência
+    // de unidade, que vem depois da adoção, recusa a linha. A transação inteira precisa desfazer a adoção.
+    const input = operacaoSchema.parse({ tipo: "COMPRA_ESTOQUE", data: new Date().toISOString().slice(0, 10), descricao: `QA compra ${run}`, parceiroId: ids.parceiro,
       financeiro: { condicao: "SEM_EFEITO_FINANCEIRO" },
-      itens: [{ produtoCatalogoId: item.id, categoriaId: ids.categoria, descricao: "Item do catálogo", quantidade: 1, unidade: "mL", valorTotal: 10 }] });
-    await expect(criarOperacao({ ...input, propriedadeId: ids.propriedade, usuarioId: null })).rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.centroCustoId" });
+      itens: [{ produtoCatalogoId: item.id, categoriaId: ids.categoria, descricao: "Item do catálogo", quantidade: 1, unidade: "frasco", valorTotal: 10 }] });
+    await expect(criarOperacao({ ...input, propriedadeId: ids.propriedade, usuarioId: null })).rejects.toMatchObject({ code: "VALIDACAO", campo: "itens.0.unidade" });
     expect(await prisma.produto.count({ where: { produtoCatalogoId: item.id } })).toBe(0);
   }, 30_000);
 });

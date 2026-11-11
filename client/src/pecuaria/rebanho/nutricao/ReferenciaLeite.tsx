@@ -1,7 +1,7 @@
 import { AjudaCampo } from "@/components/Dica";
 import { formatarLitros } from "../leite/modelo";
 import { useState } from "react";
-import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { formatarDataBR } from "../lib/rotulos";
 import { custoTexto } from "./componentes";
@@ -21,12 +21,26 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
     catch(e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
   const candidatoEscolhido = candidatos?.find(c => c.fechamentoId === escolhido);
-  return <div className="grid gap-3 py-3">
-    <p><strong>{formatarLitros(Number(leite.quantidadeLitros))} fornecidos</strong> · {leite.movimentos.map(m => `${formatarLitros(Number(m.quantidadeLitros))} ${m.natureza === "NAO_COMERCIAL" ? "não comerciais" : "comerciais"}`).join(" + ")}</p>
-    {verValores && <p>Custo de produção: <strong>{custoTexto(leite.custoProducao)}</strong></p>}
-    {verReferenciasComerciais && <><p>Referência gerencial: <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>{leite.referencia && <> ({leite.referencia.provisoria ? "provisória, mês anterior" : "preço do período"} · versão {leite.referencia.versao})</>} <AjudaCampo rotulo="Sobre a referência gerencial" texto={"A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna."} /></p>
-
-      {!!leite.referencias.length && <details><summary className="cursor-pointer">Histórico das referências</summary>{leite.referencias.map(r => <p key={r.id} className="mt-2 text-sm">Versão {r.versao} · {r.provisoria ? "provisória" : "do período"} · {formatarDataBR(r.periodoInicio)} a {formatarDataBR(r.periodoFim)} · {custoTexto(r.precoUnitario)}/L · {custoTexto(r.valorTotal)} · {r.motivo}</p>)}</details>}
+  return <div className="nutricao-referencia-leite">
+    <div className="nutricao-referencia-leite-resumo">
+      <div>
+        <p><strong>{formatarLitros(Number(leite.quantidadeLitros))} fornecidos</strong></p>
+        {leite.movimentos.length > 0 && <p>{leite.movimentos.map(m => `${formatarLitros(Number(m.quantidadeLitros))} ${m.natureza === "NAO_COMERCIAL" ? "não comerciais" : "comerciais"}`).join(" + ")}</p>}
+        {verValores && <p>Custo de produção: <strong>{custoTexto(leite.custoProducao)}</strong></p>}
+      </div>
+      {verReferenciasComerciais && <div>
+        <p>Referência gerencial <AjudaCampo rotulo="Sobre a referência gerencial" texto="A referência mostra o valor comercial dos litros. Ela não é somada ao custo de produção e não cria compra ou receita interna." /></p>
+        <strong>{leite.referencia ? custoTexto(leite.referencia.valorTotal) : "Pendente — sem preço comprovado"}</strong>
+        {leite.referencia && <p className="nutricao-secundario">{leite.referencia.provisoria ? "Provisória, mês anterior" : "Preço do período"} · versão {leite.referencia.versao}</p>}
+      </div>}
+    </div>
+    {verReferenciasComerciais && <>
+      {leite.referencias.length > 0 && <section className="nutricao-referencia-historico">
+        <h3>Histórico das referências</h3>
+        <ul>{leite.referencias.map(r => <li key={r.id}>
+          <strong>Versão {r.versao}</strong> · {r.provisoria ? "provisória" : "do período"} · {formatarDataBR(r.periodoInicio)} a {formatarDataBR(r.periodoFim)} · {custoTexto(r.precoUnitario)}/L · {custoTexto(r.valorTotal)}
+        </li>)}</ul>
+      </section>}
       {podeLancar && leite.status === "CONFIRMADO" && <>
         <Button secondary className="justify-self-start" disabled={ocupado} onClick={() => void consultar()}>{ocupado ? "Consultando referências…" : "Conferir preço de referência"}</Button>
         <ErrorBox erro={erro} />
@@ -41,6 +55,14 @@ export function ReferenciaLeite({ leite, propriedadeId, verValores, verReferenci
         </fieldset></form>}
       </>}
     </>}
-    <details><summary className="cursor-pointer">Litros atribuídos por animal</summary>{leite.parcelas.map(p => <p key={p.animalId} className="mt-2 text-sm">Animal {animais.find(a => a.animalId === p.animalId)?.brinco ?? p.animalId}: {formatarLitros(Number(p.quantidadeLitros))} atribuídos por {p.dias} dias{verReferenciasComerciais && <> · referência {custoTexto(p.valorGerencial)}</>}</p>)}</details>
+    {leite.parcelas.length > 0 && <section className="nutricao-referencia-parcelas">
+      <h3>Litros atribuídos por animal</h3>
+      <TabelaFinanceira compacta rotulo="Litros atribuídos por animal" itens={leite.parcelas} chaveDe={p => p.animalId} colunas={[
+        { chave: "animal", titulo: "Animal", principal: true, celula: p => animais.find(a => a.animalId === p.animalId)?.brinco ?? p.animalId },
+        { chave: "litros", titulo: "Volume atribuído", alinhamento: "direita", celula: p => formatarLitros(Number(p.quantidadeLitros)) },
+        { chave: "dias", titulo: "Dias no lote", alinhamento: "direita", celula: p => p.dias },
+        ...(verReferenciasComerciais ? [{ chave: "referencia", titulo: "Referência gerencial", alinhamento: "direita" as const, celula: (p: FornecimentoLeiteNutricional["parcelas"][number]) => custoTexto(p.valorGerencial) }] : []),
+      ]} />
+    </section>}
   </div>;
 }

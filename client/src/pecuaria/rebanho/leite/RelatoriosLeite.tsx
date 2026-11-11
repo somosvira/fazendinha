@@ -1,3 +1,4 @@
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import {BarraRelatorio,AcoesRelatorio} from "../../relatorios/ConsultaRelatorioUI";
 import {Card} from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, Table
 import { Button } from "@/components/ui/button";
 import { ExportacaoProducaoLeite } from "./ExportacaoProducaoLeite";
 import { SecaoDetalhesLeite } from "./SecaoDetalhesLeite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { getPropriedadeAtiva, comPropriedade } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { hojeOperacional, formatarLitros } from "./modelo";
@@ -201,6 +202,7 @@ export function RelatoriosLeite({
   podeFinanceiro: boolean;
   propriedadeId?: number;
 }) {
+  const formPeriodoId = useId();
   const sitio = propriedadeId ?? getPropriedadeAtiva();
   const [historicoAberto,setHistoricoAberto]=useState(false),[filtrosAbertos,setFiltrosAbertos]=useState(false);
 
@@ -325,9 +327,15 @@ export function RelatoriosLeite({
         ...(emissao?[{rotulo:'Voltar à consulta atual',executar:()=>setEmissao(null)}]:[]),
       ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{dataPt(emissao?.snapshot.filtros.inicio??periodoAtual.inicio)} a {dataPt(emissao?.snapshot.filtros.fim??periodoAtual.fim)}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e emissão</Button></Card>{emissao&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
       {!emissao && sitio!=null && <ResumoRelatorioLeite key={`${sitio}:${periodoAtual.inicio}:${periodoAtual.fim}`} propriedadeId={sitio} inicio={periodoAtual.inicio} fim={periodoAtual.fim}/>}
-      <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog leite-relatorio-dialog leite-operacoes" aria-describedby={undefined}><DialogHeader><DialogTitle>Período e emissão de leite</DialogTitle></DialogHeader><div className="rel-emissao-grupos"><section aria-label="Exportar consulta de produção"><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} /></section><section aria-label="Consultar ou preservar relatório"><h3>Período do relatório <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h3>
+      <PainelCadastro aberto={filtrosAbertos} titulo="Período e emissão de leite"
+        onFechar={() => setFiltrosAbertos(false)} bloqueado={ocupado} rascunhoPersistido
+        largura="sm:max-w-5xl"
+        rodape={<>
+          <Button variant="outline" type="button" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={ocupado||!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button>
+          {podeExportar && <Button type="submit" form={formPeriodoId} disabled={ocupado || !lista}>Emitir relatório preservado</Button>}
+        </>}><div className="leite-operacoes rel-emissao-grupos"><section aria-label="Exportar consulta de produção"><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} /></section><section aria-label="Consultar ou preservar relatório"><h3>Período do relatório <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h3>
 
-      <form
+      <form id={formPeriodoId}
           className="leite-form-inline"
           onSubmit={(e) => {
             e.preventDefault();
@@ -362,11 +370,9 @@ export function RelatoriosLeite({
               Incluir valores financeiros
             </label>
           )}
-          {podeExportar && <Button disabled={ocupado || !lista}>
-            Emitir relatório preservado
-          </Button>}
         </form>
-      <Button variant="outline" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button></section></div></DialogContent></Dialog>
+        </section></div>
+      </PainelCadastro>
       {erro && <p role="alert">{erro}</p>}
       <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog leite-relatorio-dialog leite-operacoes" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões preservadas de leite</DialogTitle></DialogHeader>{lista && (
         <section aria-label="Emissões disponíveis">

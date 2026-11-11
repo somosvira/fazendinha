@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button, ErrorBox, Panel } from "../../../financeiro/financeiro-ui";
 import { classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { formatarDataBR } from "../lib/rotulos";
-import { DetalhesFechamento } from "./DetalhesFechamento";
+import { DetalhesFechamento, MetadadosFechamento } from "./DetalhesFechamento";
 import { estornarConsumo, obterFechamento, type Fechamento } from "./api";
 import { retornoFichaNutricional, rotaFechamento } from "./navegacao";
 import { useConsulta } from "./consulta";
@@ -18,7 +18,7 @@ export function ConsultaFechamento({ id, onVoltar, podeLancar = false, estorno =
   const f = consulta.dados;
   const origem = retornoFichaNutricional();
   const rotuloVoltar = estorno ? "Voltar ao fechamento" : origem ? origem.includes("/animais/") ? "Voltar ao animal" : "Voltar ao lote" : "Voltar aos fechamentos";
-  return <PainelCadastro aberto titulo={estorno && podeLancar && f?.status !== "ESTORNADO" ? "Conferir estorno" : f ? `Fechamento · ${f.lote.nome}` : "Detalhes do fechamento"} icon={estorno ? Undo2 : ClipboardCheck} onFechar={onVoltar} bloqueado={ocupado} largura="sm:max-w-6xl" rodape={fechar => <>{f && podeLancar && f.status === "CONFIRMADO" && !estorno && <LinkNutricional className="nutricao-botao-secundario mr-auto" href={rotaFechamento(f.id, undefined, "estorno")}><Undo2 size={18} aria-hidden />Estornar fechamento</LinkNutricional>}<Button secondary disabled={ocupado} onClick={fechar}>{estorno ? "Cancelar" : rotuloVoltar}</Button></>}><div className="nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="detalhe" label="Carregando detalhes do fechamento…" />{f && (estorno && podeLancar && f.status === "CONFIRMADO" ? <FormEstorno fechamento={f} onOcupado={setOcupado} onSalvo={async () => { await consulta.carregar(); }} /> : <DetalhesFechamento fechamento={f} podeLancar={podeLancar} onRecarregar={consulta.carregar} />)}</div></PainelCadastro>;
+  return <PainelCadastro aberto titulo={estorno && podeLancar && f?.status !== "ESTORNADO" ? "Conferir estorno" : f ? `Fechamento · ${f.lote.nome}` : "Detalhes do fechamento"} subtitulo={f && !estorno ? <MetadadosFechamento fechamento={f} /> : undefined} icon={estorno ? Undo2 : ClipboardCheck} onFechar={onVoltar} bloqueado={ocupado} largura="sm:max-w-6xl" rodape={fechar => <>{f && podeLancar && f.status === "CONFIRMADO" && !estorno && <LinkNutricional className="nutricao-botao-secundario mr-auto" href={rotaFechamento(f.id, undefined, "estorno")}><Undo2 size={18} aria-hidden />Estornar fechamento</LinkNutricional>}<Button secondary disabled={ocupado} onClick={fechar}>{estorno ? "Cancelar" : rotuloVoltar}</Button></>}><div className="nutricao-conteudo"><EstadoConsulta erro={consulta.erro} carregando={consulta.carregando} recarregar={consulta.carregar} estrutura="detalhe" label="Carregando detalhes do fechamento…" />{f && (estorno && podeLancar && f.status === "CONFIRMADO" ? <FormEstorno fechamento={f} onOcupado={setOcupado} onSalvo={async () => { await consulta.carregar(); }} /> : <DetalhesFechamento metadadosNoCabecalho={!estorno} fechamento={f} podeLancar={podeLancar} onRecarregar={consulta.carregar} />)}</div></PainelCadastro>;
 }
 function FormEstorno({ fechamento: f, onOcupado, onSalvo }: { fechamento: Fechamento; onOcupado: (valor: boolean) => void; onSalvo: () => Promise<void> }) {
   const [motivo, setMotivo] = useState("");

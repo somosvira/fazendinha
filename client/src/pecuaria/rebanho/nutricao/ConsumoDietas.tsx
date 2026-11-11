@@ -1,7 +1,7 @@
 import { LinkInterno } from "@/components/LinkInterno";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { CalendarDays, MapPin, Wallet } from "lucide-react";
-import { Panel, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { CalendarDays, Check, MapPin, Wallet, X } from "lucide-react";
+import { Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { consumoDasDietas, hrefProdutoEstoque, type CoberturaLote } from "./coberturaEstoque";
 import { custoTexto } from "./componentes";
 import { quantidadeNutricional, un } from "./quantidades";
@@ -36,8 +36,15 @@ function CartoesConsumo({ itens, verValores, sitios, variosSitios }: { itens: It
       <ul className="consumo-cartao-sitios" aria-label={`Saldo de ${g.nome} contra o previsto no mês`}>{g.sitios.map(s => {
         const cobre = s.mesPrevisto > 0 ? Math.min(1, s.saldo / s.mesPrevisto) : 1;
         const curto = s.saldo < s.mesPrevisto;
+        const IconeCobertura = curto ? X : Check;
         return <li key={s.propriedadeId}>
-          <div className="consumo-cartao-linha">{variosSitios && <span>{sitios.get(s.propriedadeId)}</span>}<strong className={curto ? "dieta-cartao-alerta" : undefined}>{curto ? `faltam ${qtd(s.mesPrevisto - s.saldo)} ${un(s.unidade)}` : "cobre o mês"}</strong></div>
+          <div className="consumo-cartao-linha">
+            {variosSitios && <span>{sitios.get(s.propriedadeId)}</span>}
+            <Pill tone={curto ? "red" : "green"}>
+              <IconeCobertura size={12} aria-hidden="true" />
+              {curto ? `Faltam ${qtd(s.mesPrevisto - s.saldo)} ${un(s.unidade)}` : "Cobre o mês"}
+            </Pill>
+          </div>
           <div className="consumo-cartao-barra" data-curto={curto || undefined}><span style={{ width: `${Math.round(cobre * 100)}%` }} /></div>
           <small>Estoque {qtd(s.saldo)} {un(s.unidade)} · mês {qtd(s.mesPrevisto)} {un(s.unidade)}</small>
         </li>;
@@ -59,7 +66,7 @@ export function ConsumoDietas({ cobertura, verValores, sitios }: { cobertura: Ma
       <div className="consumo-cabecalho-titulo"><h2 className="h3">Consumo das dietas</h2><AlternarVisualizacaoConsulta {...visualizacao} rotulo="Visualização do consumo das dietas" /></div>
       {verValores && custoMes > 0 && <div className="consumo-custo-previsto"><span>Custo previsto no mês</span><strong>{custoTexto(custoMes.toFixed(2))}</strong></div>}
     </div>
-    {visualizacao.modo === "visual" ? <CartoesConsumo itens={itens} verValores={verValores} sitios={sitios} variosSitios={variosSitios} /> : <TabelaFinanceira rotulo="Consumo diário das dietas vigentes" itens={itens} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
+    {visualizacao.modo === "visual" ? <CartoesConsumo itens={itens} verValores={verValores} sitios={sitios} variosSitios={variosSitios} /> : <TabelaFinanceira visualizacao="tabela" rotulo="Consumo diário das dietas vigentes" itens={itens} chaveDe={i => `${i.propriedadeId}:${i.produtoId}`} colunas={[
       { chave: "produto", titulo: "Ingrediente", principal: true, celula: (i: Item) => <><LinkInterno area="estoque" href={hrefProdutoEstoque(i.produtoId)}>{i.nome}</LinkInterno>{variosSitios && <p className="nutricao-secundario">{sitios.get(i.propriedadeId)}</p>}</> },
       { chave: "dia", titulo: "Por dia", alinhamento: "direita", celula: (i: Item) => `${qtd(i.consumoSitioDia)} ${un(i.unidade)}` },
       { chave: "mes", titulo: "Previsto no mês", alinhamento: "direita", celula: (i: Item) => `${qtd(i.mesPrevisto)} ${un(i.unidade)}` },

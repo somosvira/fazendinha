@@ -106,3 +106,13 @@
   .leite-superficie .leite-card-visual header .leite-estado-visual { margin-left: 0; }
   .leite-contexto-data { justify-content: flex-start; }
 }
+
+
+@media (max-width: 700px) {
+  .leite-resumo-destinos > .consumo-distribuicao { grid-template-columns: minmax(0, 1fr); }
+  .leite-resumo-destinos .consumo-distribuicao header { flex-wrap: wrap; }
+  .leite-resumo-destinos .consumo-legenda dt { flex-wrap: wrap; overflow-wrap: anywhere; }
+  .leite-resumo-destinos .consumo-retiradas > div { grid-template-columns: minmax(0, 1fr); }
+  .leite-resumo-destinos .consumo-retiradas > div > div { flex-wrap: wrap; }
+  .leite-historicos-destinos { min-width: 0; }
+}

@@ -1,14 +1,7 @@
-/* Rio Novo — header global (enxuto).
- *
- * Layout novo (handoff "Shell - sidebar + header"): a marca e o seletor de
- * fazenda desceram para o TOPO da sidebar. O header ficou com apenas a busca
- * global + o menu de conta (ações da conta — NUNCA troca de usuário; o "ver como"
- * do admin vive dentro de Acessos). O burger só aparece no mobile e controla o
- * drawer da sidebar.
- *
- * Usa o primitivo shadcn `DropdownMenu` (Radix): outside-click, Escape e foco de
- * graça — sem `useClickOutside` manual. */
-
+import { Search } from "lucide-react";
+import { VacaIcon } from "@/components/icons/VacaIcon";
+import { AlternadorDoCabecalho } from "./VisualizacaoConsulta";
+import "./app-header.css";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -63,9 +56,10 @@ function AcctItem({ icon, children, danger, onSelect }: {
 
 /** Menu de conta — AÇÕES da conta (perfil, preferências, ajuda, sair). Nunca
  *  troca de usuário: o "ver como" do admin mora em Acessos. */
-function UserPicker({ user, onPreferencias, onSair }: {
+function UserPicker({ user, onPreferencias, onAcessos, onSair }: {
   user: User;
   onPreferencias?: () => void;
+  onAcessos?: () => void;
   onSair?: () => void;
 }) {
   const papelNome = (u: User) => (u.papel === "personalizado" ? "Personalizado" : PAPEIS[u.papel]?.nome || "");
@@ -74,11 +68,11 @@ function UserPicker({ user, onPreferencias, onSair }: {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="group flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-transparent bg-transparent py-1 pl-1.5 pr-2 font-sans hover:bg-[var(--bg-card)]"
+          className="group flex min-h-[var(--campo-altura)] cursor-pointer items-center gap-2.5 rounded-[8px] border border-transparent bg-transparent py-1 pl-1.5 pr-2 font-sans hover:bg-[var(--bg-card)]"
           aria-haspopup="menu"
           aria-label="Menu da conta"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-leite font-sans text-sm font-semibold text-[var(--ink)]">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-[var(--fin-nav-selected,var(--accent))] font-sans text-sm font-semibold text-foreground">
             {user.inicial}
           </span>
           <span className="flex flex-col items-start leading-[1.15] max-[760px]:hidden">
@@ -93,7 +87,8 @@ function UserPicker({ user, onPreferencias, onSair }: {
           <div className="text-sm font-semibold text-ink">{user.nome}</div>
           {user.email && <div className="mt-0.5 text-xs text-ink-mute">{user.email}</div>}
         </div>
-        <AcctItem icon={AccIcon.gear} onSelect={onPreferencias}>Preferências</AcctItem>
+        {onPreferencias && <AcctItem icon={AccIcon.gear} onSelect={onPreferencias}>Preferências</AcctItem>}
+        {onAcessos && (user.dono || user.flags.includes("gerenciarAcessos")) && <AcctItem icon={AccIcon.gear} onSelect={onAcessos}>Acessos</AcctItem>}
         {onSair && (
           <>
             <DropdownMenuSeparator className="my-1 bg-[var(--rule-soft)]" />
@@ -105,23 +100,24 @@ function UserPicker({ user, onPreferencias, onSair }: {
   );
 }
 
-export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleColapsar, onAbrirBusca, onPreferencias, onSair }: {
+export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleColapsar, onAbrirBusca, onBuscarAnimal, onPreferencias, onAcessos, onSair }: {
   user: User;
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
   colapsada?: boolean;
   onToggleColapsar?: () => void;
   onAbrirBusca?: () => void;
+  onBuscarAnimal?: () => void;
   onPreferencias?: () => void;
+  onAcessos?: () => void;
   onSair?: () => void;
 }) {
   return (
-    <header
-      className="fixed left-[var(--side-w)] right-0 top-0 z-10 flex h-[var(--header-h)] items-center gap-3.5 border-b border-[var(--rule-soft)] bg-[var(--bg)] px-[22px] text-ink print:hidden max-[900px]:left-0 max-[900px]:gap-2.5 max-[900px]:px-3 max-[560px]:gap-2 max-[560px]:px-2.5"
-    >
+    <header className="app-header print:hidden">
       <button
-        className="hidden h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent p-0 text-ink max-[900px]:flex max-[900px]:h-[34px] max-[900px]:w-[34px]"
+        className="hidden h-[38px] w-[38px] cursor-pointer items-center justify-center rounded-lg border border-[var(--border)] bg-transparent p-0 text-ink max-[900px]:flex max-[900px]:h-11 max-[900px]:w-11 shrink-0"
         aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+        aria-expanded={mobileOpen}
         onClick={() => onMobileToggle(!mobileOpen)}
       >
         <svg className="h-[18px] w-[18px] max-[900px]:h-4 max-[900px]:w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
@@ -147,26 +143,22 @@ export function Header({ user, mobileOpen, onMobileToggle, colapsada, onToggleCo
       )}
 
       {onAbrirBusca && (
-        <button
-          className="flex max-w-[460px] flex-1 cursor-text items-center gap-2.5 rounded-[8px] border border-[var(--border)] bg-[var(--bg-card)] px-3 py-2 text-left font-sans text-ink-mute hover:border-[var(--ink-mute)] max-[760px]:max-w-none max-[760px]:flex-[0_0_auto] max-[760px]:px-2 max-[760px]:py-1.5"
-          onClick={onAbrirBusca}
-          aria-label="Pesquisar páginas e recursos"
-        >
-          <svg className="h-4 w-4 flex-none opacity-85" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="11" cy="11" r="7" />
-            <path d="M20 20l-3.5-3.5" />
-          </svg>
-          <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] max-[760px]:hidden">
-            Pesquisar páginas e recursos…
-          </span>
-          <span className="ml-auto flex-none rounded-[4px] border border-[var(--border)] px-1.5 py-0.5 text-[11px] leading-none text-ink-mute max-[760px]:hidden" aria-hidden>
-            ⌘K
-          </span>
+        <button className="app-header-busca" type="button" aria-haspopup="dialog"
+          aria-keyshortcuts="Control+k Meta+k" onClick={onAbrirBusca}>
+          <Search size={17} aria-hidden />
+          <span>Buscar no Terrano</span>
+          <kbd aria-hidden>Ctrl/⌘ K</kbd>
         </button>
       )}
-
-      <div className="ml-auto flex items-center gap-3">
-        <UserPicker user={user} onPreferencias={onPreferencias} onSair={onSair} />
+      {onBuscarAnimal && (
+        <button className="app-header-animal" type="button" onClick={onBuscarAnimal} aria-label="Buscar animal" aria-haspopup="dialog" aria-keyshortcuts="Control+Shift+k Meta+Shift+k">
+          <VacaIcon width={18} height={18} aria-hidden />
+          <span>Buscar animal</span>
+        </button>
+      )}
+      <div className="app-header-visualizacao"><AlternadorDoCabecalho /></div>
+      <div className="app-header-perfil">
+        <UserPicker user={user} onPreferencias={onPreferencias} onAcessos={onAcessos} onSair={onSair} />
       </div>
     </header>
   );

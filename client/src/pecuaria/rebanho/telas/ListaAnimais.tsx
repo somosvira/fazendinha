@@ -1,8 +1,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { ReactNode } from "react";
 import { VacaIcon } from "../../../components/icons/VacaIcon";
-import { CartaoAnimal } from "../components/CartaoAnimal";
-import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
+import { useTelaPequena } from "@/financeiro/useTelaPequena";
 import { OrdenarConsulta } from "@/financeiro/OrdenarConsulta";
 import { Settings2 } from "lucide-react";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
@@ -26,7 +25,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FormColetivoSanitario } from "../sanidade/FormColetivoSanitario";
 import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
 import { PesagemColetiva } from "../manejo/ManejoAnimal";
-import { ArrowRightLeft, Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRightLeft, ChevronRight, Pencil, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { listarAnimais, buscarFichaAnimal, listarCategorias, obterCatalogos, RebanhoApiError } from "../api";
 import type { AnimalFicha, AnimalResumo, Aptidao, CategoriaDTO, Catalogos, ListarFiltros, Origem, PapelReprodutivo, Sexo, Situacao, TipoBaixa } from "../types";
 import { formatarDataBR, formatarIdade, rotuloAptidao, rotuloOpcaoCategoria, rotuloPapelReprodutivo, rotuloSituacao, rotuloTipoBaixa } from "../lib/rotulos";
@@ -116,8 +115,8 @@ function AjudaCelula({ texto, children }: { texto: string; children: ReactNode }
 }
 
 export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, variante = "rebanho" }: { onAbrirAnimal: (id: string) => void; onNovoAnimal: () => void; podeLancar?: boolean; variante?: "rebanho" | "pesagem" }) {
-  const visual = useVisualizacaoConsulta("visualAnimais");
   const pesagem = variante === "pesagem";
+  const listaCompacta = useTelaPequena(900) && !pesagem;
   const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [mostrarColunasAdicionais, setMostrarColunasAdicionais] = useState(false);
   const sitioGlobal = useMemo(() => getPropriedadeAtiva(), []);
@@ -265,8 +264,6 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
   // (o roteamento por aba olha só `window.location.pathname` — ver router.ts)
   useEffect(() => {
     const params = new URLSearchParams();
-    const preferenciaVisual = new URLSearchParams(window.location.search).get("visualAnimais");
-    if (preferenciaVisual === "visual" || preferenciaVisual === "tabela") params.set("visualAnimais", preferenciaVisual);
     if (busca) params.set("busca", busca);
     if (sitioGlobal == null && propriedadeId) params.set("propriedadeId", propriedadeId);
     if (loteId) params.set("loteId", loteId);
@@ -373,13 +370,24 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     {chave:"idade",ativo:!!idadeMinMeses||!!idadeMaxMeses,limpar:()=>{editarFiltro("idadeMinMeses","");editarFiltro("idadeMaxMeses","");},conteudo:rascunho&&<GrupoCamposFiltro titulo="Idade em meses"><CampoFiltro rotulo="Mínima"><input aria-label="Idade mínima (meses)" type="number" min={0} placeholder="Mínima" value={rascunho.idadeMinMeses} onChange={e=>editarFiltro("idadeMinMeses",e.target.value)}/></CampoFiltro><CampoFiltro rotulo="Máxima"><input aria-label="Idade máxima (meses)" type="number" min={0} placeholder="Máxima" value={rascunho.idadeMaxMeses} onChange={e=>editarFiltro("idadeMaxMeses",e.target.value)}/></CampoFiltro></GrupoCamposFiltro>},
   ];
   const filtrosColunas = filtrosDasColunas(camposColunas,{iniciar:iniciarFiltros,aplicar:aplicarFiltros,limpar:limparRascunho});
+  const selecionarTodos = <input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página"
+    ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }}
+    checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} />;
+  const selecionarAnimal = (item: AnimalResumo) => item.situacao === "ATIVO" &&
+    <label className="animais-selecao-linha" onClick={e => e.stopPropagation()}>
+      <input className="animal-checkbox" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} />
+    </label>;
+  const identidadeAnimal = (item: AnimalResumo) => <span className="animais-identidade-linha">
+    <strong className="animais-brinco-linha">{item.brinco}</strong>
+    {item.nome && <span>{item.nome}</span>}
+  </span>;
   const COLUNAS_TODAS: ColunaTabela<AnimalResumo>[] = [
-    { chave: "selecionar", titulo: "", larguraMinima: 44, acoes: true, celula: (item) => item.situacao === "ATIVO" ? <label className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center" onClick={(e) => e.stopPropagation()}><input className="animal-checkbox" type="checkbox" aria-label={`Selecionar ${item.brinco}`} checked={selecionados.has(item.id)} onChange={() => alternarSelecao(item)} /></label> : null },
-    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 180, principal: true, celula: (item) => <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> },
+    { chave: "selecionar", titulo: "", larguraMinima: 52, alinhamento: "centro", acoes: true, celula: selecionarAnimal, cabecalho: !pesagem && itensSelecionaveis.length ? selecionarTodos : undefined },
+    { chave: "brinco", titulo: "Brinco / nome", larguraMinima: 200, larguraFlexivel: !pesagem, principal: true, celula: item => pesagem ? <><strong className="break-words">{item.brinco}</strong>{item.nome && <div className="mt-1 text-sm text-ink-3">{item.nome}</div>}</> : identidadeAnimal(item) },
     { chave: "categoria", titulo: "Categoria", larguraMinima: 110, celula: (item) => <CategoriaPill categoria={item.categoria} categoriaOrigem={item.categoriaOrigem} categoriaCalculada={item.categoriaCalculada} /> },
     { chave: "idade", titulo: "Idade", larguraMinima: 90, celula: (item) => formatarIdade(item.idadeMeses) },
     { chave: "sitio", titulo: "Sítio", larguraMinima: 140, celula: (item) => item.propriedade?.nome ?? "—" },
-    { chave: "lote", titulo: "Lote", larguraMinima: 120, larguraFlexivel: true, celula: (item) => item.lote
+    { chave: "lote", titulo: "Lote", larguraMinima: 120, larguraFlexivel: pesagem, celula: (item) => item.lote
       ? <a href={`/pecuaria/rebanho/lotes/${item.lote.id}`} onClick={(e) => { e.stopPropagation(); if(!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){e.preventDefault();navegarPara(`/pecuaria/rebanho/lotes/${item.lote!.id}`);} }} className="break-words font-semibold text-mast hover:underline">{item.lote.nome}</a>
       : "—" },
     { chave: "aptidao", titulo: "Finalidade", larguraMinima: 100, celula: (item) => item.aptidao ? <Pill tone="brown">{rotuloAptidao(item.aptidao)}</Pill> : "—" },
@@ -409,9 +417,9 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
     </div> },
   ];
   // sem permissão de lançar: sem seleção em massa e sem ações de linha
-  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "reproducao", "del", "situacao", "acoes"];
+  const principais = pesagem ? ["selecionar", "brinco", "lote", "categoria", "situacao"] : ["selecionar", "brinco", "categoria", "lote", "situacao", "acoes"];
   const colunasVisiveis = mostrarColunasAdicionais ? COLUNAS_TODAS : principais.flatMap((chave) => COLUNAS_TODAS.filter((c) => c.chave === chave));
-  const exibirSituacao = mostrarColunasAdicionais || situacao !== "ATIVO" || multiplos.situacoes.some(s => s !== "ATIVO") || itens.some(item => item.situacao !== "ATIVO");
+  const exibirSituacao = !pesagem || mostrarColunasAdicionais || situacao !== "ATIVO" || multiplos.situacoes.some(s => s !== "ATIVO") || itens.some(item => item.situacao !== "ATIVO");
   const colunasContexto = colunasVisiveis.filter(c => c.chave !== "situacao" || exibirSituacao);
   const COLUNAS = podeLancar ? colunasContexto : colunasContexto.filter((c) => c.chave !== "selecionar" && c.chave !== "acoes");
 
@@ -433,15 +441,37 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
         const nome = catalogos?.propriedades.find(p => String(p.id)===v)?.nome ?? catalogos?.lotes.find(l=>l.id===v)?.nome ?? categorias.find(c=>c.id===v)?.nome ?? catalogos?.racas.find(r=>r.id===v)?.nome ?? ({ATIVO:"Ativos",BAIXADO:"Baixados",F:"Fêmeas",M:"Machos",NASCIDO:"Nascido",COMPRADO:"Comprado",LEITE:"Leite",CORTE:"Corte",REPRODUCAO:"Reprodução",NENHUM:"Nenhum",DOADORA:"Doadora",RECEPTORA:"Receptora"} as Record<string,string>)[v] ?? "Selecionado";
         return <button key={f+v} type="button" className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm" aria-label={`Remover filtro: ${nomes[f]}: ${nome}`} onClick={()=>{if(f==="propriedadeIds"){setLoteId("");setSelecionados(new Map());}setMultiplos(m=>({...m,[f]:m[f].filter(x=>x!==v),...(f==="propriedadeIds"?{loteIds:[]}: {})}));setPagina(1);}}>{nomes[f]}: {nome} ×</button>;
       }))}{filtrosAtivos.map(f => <button key={f.rotulo} type="button" onClick={f.limpar} aria-label={`Remover filtro: ${f.rotulo}`} className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm text-ink-2">{f.rotulo} <span aria-hidden="true">×</span></button>)}</div>
-      {!pesagem && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos"><input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página" ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }} checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}</div>
+      </div>
       {podeLancar && itensSelecionaveis.length > 0 && (pesagem || selecionados.size > 0) && <div className="animais-acoes-coletivas flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
         {selecionados.size > 0 && <><Button secondary={!pesagem} onClick={() => setPesando(true)}>Pesagem coletiva</Button>{!pesagem && <><Button secondary onClick={() => setAplicando(true)}>Aplicação sanitária coletiva</Button><Button secondary onClick={() => setColetivoSanitario("exame")}>Coleta coletiva</Button><Button secondary onClick={() => setColetivoSanitario("protocolo")}>Protocolos coletivos</Button></>}</>}
-        {pesagem && <label className="flex items-center gap-2 font-medium"><input className="animal-checkbox" type="checkbox" aria-label="Selecionar todos os animais desta página" ref={el => { if (el) el.indeterminate = !todosDaPaginaSelecionados && itensSelecionaveis.some(item => selecionados.has(item.id)); }} checked={todosDaPaginaSelecionados} onChange={alternarSelecaoTodos} /> Selecionar todos</label>}
+        {pesagem && <label className="flex items-center gap-2 font-medium">{selecionarTodos} Selecionar todos</label>}
         {selecionados.size > 0 && <><span className="text-ink-3">{selecionados.size} selecionado{selecionados.size === 1 ? "" : "s"}</span><Button secondary onClick={() => setSelecionados(new Map())}>Limpar seleção</Button>{!pesagem && <Button onClick={() => setMovimentando({ animais: [...selecionados.values()] })}>Movimentar {selecionados.size} {selecionados.size === 1 ? "animal" : "animais"}</Button>}</>}
       </div>}
-      {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos animais" /></div>}
+      {!pesagem && <div className="consulta-visual-barra"><span>{total} animais na consulta</span>
+        {listaCompacta && podeLancar && itensSelecionaveis.length > 0 && <label className="animais-selecionar-todos">{selecionarTodos} Selecionar todos</label>}
+      </div>}
       {carregando ? <p role="status" className="p-5 text-sm text-ink-3">Atualizando animais…</p> : erro && !itens.length ? <Empty>Não foi possível carregar os animais.</Empty> : itens.length ? <>
-        {!pesagem && visual.modo === "visual" ? <div className="consulta-entidades animais-cartoes">{itens.map(item => <CartaoAnimal key={item.id} animal={item} onAbrir={() => onAbrirAnimal(item.id)} selecionado={selecionados.has(item.id)} selecao={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "selecionar")?.celula(item) : undefined} acoes={podeLancar ? COLUNAS_TODAS.find(c => c.chave === "acoes")?.celula(item) : undefined}/>)}</div> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }} filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={(item) => item.id} onAbrir={(item) => onAbrirAnimal(item.id)} cartaoComLinks />}
+        {listaCompacta ? <ul aria-label="Animais" className="animais-lista-compacta">
+          {itens.map(item => <li key={item.id} data-selecionado={selecionados.has(item.id)}>
+            {podeLancar && selecionarAnimal(item)}
+            <button type="button" className="animais-abrir-linha"
+              aria-label={`Abrir ficha de ${item.brinco}${item.nome ? ` · ${item.nome}` : ""}`}
+              onClick={() => onAbrirAnimal(item.id)}>
+              <span className="min-w-0">
+                {identidadeAnimal(item)}
+                <span className="animais-contexto-linha">
+                  <span>{item.categoria?.nome ?? "Sem categoria"}</span>
+                  <span>{item.lote ? `Lote ${item.lote.nome}` : "Sem lote"}</span>
+                  {pillSituacao(item.situacao)}
+                </span>
+              </span>
+              <ChevronRight size={16} aria-hidden />
+            </button>
+          </li>)}
+        </ul> : <TabelaFinanceira visualizacao={pesagem ? undefined : "tabela"} compacta={!pesagem}
+          ordenacao={{ campo: opcaoOrdenacao.ordenar === "ultimoPeso" ? "peso" : opcaoOrdenacao.ordenar, direcao: opcaoOrdenacao.direcao }}
+          filtrosColunas={filtrosColunas} rotulo="Animais" itens={itens} colunas={COLUNAS} chaveDe={item => item.id}
+          onAbrir={item => onAbrirAnimal(item.id)} cartaoComLinks />}
         <Paginacao paginaAtual={pagina} totalPaginas={totalPaginas} totalItens={total} itensPorPagina={ITENS_POR_PAGINA} onPaginaChange={setPagina} rotulo="animais" idSelect="pagina-animais" />
       </> : <Empty>Nenhum animal encontrado com os filtros selecionados.</Empty>}
     </Panel>
@@ -473,7 +503,7 @@ export function ListaAnimais({ onAbrirAnimal, onNovoAnimal, podeLancar = true, v
           </SelectCampo>
         </label>
           <Button secondary onClick={() => navegarPara("/configuracoes/pecuaria/rebanho/categorias")}>Gerenciar categorias</Button>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rascunho.mostrarColunasAdicionais} onChange={(e) => editarFiltro("mostrarColunasAdicionais", e.target.checked)} /> Mostrar todas as colunas</label>
+          {!listaCompacta && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={rascunho.mostrarColunasAdicionais} onChange={(e) => editarFiltro("mostrarColunasAdicionais", e.target.checked)} /> Mostrar todas as colunas</label>}
       </div>
     </PainelFiltros>}
     {editando && <FormDadosAnimal animal={editando} onFechar={() => setEditando(null)} onSalvo={async () => { setEditando(null); await recarregar(); }} />}
