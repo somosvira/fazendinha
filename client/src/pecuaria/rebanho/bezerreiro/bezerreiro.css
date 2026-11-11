@@ -212,3 +212,18 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
   .bez-painel-operacional .bez-indicadores { grid-template-columns: minmax(0, 1fr); }
   .bez-painel-operacional .bez-indicadores > div + div { border-inline-start: 0; border-top: 1px solid var(--border); }
 }
+
+/* Detalhe de origem do colostro: resumo em linhas alinhadas e ação ao lado do registro. */
+.bez-resumo-origem{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px 28px;margin:16px 0 20px}
+.bez-resumo-origem dt{font-size:13px;color:var(--text-muted,#526863)}
+.bez-resumo-origem dd{margin:4px 0 0;font-size:15px;font-weight:600}
+.bez-registros{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bez-registros li{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--border,#dfe7e5);border-radius:8px;font-size:14px}
+
+/* Ficha chave/valor em tabela e células com ação alinhadas. */
+.bez-ficha{width:100%;border-collapse:collapse;margin:8px 0 20px;font-size:14px}
+.bez-ficha th,.bez-ficha td{padding:10px 12px;border-bottom:1px solid var(--border,#dfe7e5);text-align:left;vertical-align:middle}
+.bez-ficha th{width:240px;font-weight:600;color:var(--text-muted,#526863);background:var(--surface-subtle,#f1f5f4)}
+.bez-celula-acao{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
+@media(max-width:640px){.bez-ficha th{width:40%}}
+.bez-destinatarios{display:grid;gap:8px}
