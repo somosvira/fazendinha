@@ -28,6 +28,9 @@ import { navegarPara } from "../router";
 import { linkOperacaoFinanceira, validarRetornoInterno } from "./navegacao";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
+/** Devolução também liga animais, mas retira do rebanho em vez de cadastrar. */
+const temAnimais = (operacao: Operacao) => operacao.tipo !== "DEVOLUCAO" && operacao.itens.some((item) => !!item.animalId);
+
 function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
   if (filtro === "TODOS") return true;
   const transacoes = operacao.transacoes.filter((item) => item.tipo !== "REVERSAO");
@@ -37,7 +40,8 @@ function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
   if (filtro === "TRANSFERENCIA") return transacoes.some((item) => item.tipo === "TRANSFERENCIA");
   if (filtro === "A_PAGAR") return operacao.compromissos.some((item) => item.tipo === "PAGAR");
   if (filtro === "A_RECEBER") return operacao.compromissos.some((item) => item.tipo === "RECEBER");
-  return !operacao.movimentosEstoque.length && !transacoes.length && !operacao.compromissos.length;
+  if (filtro === "ANIMAIS") return temAnimais(operacao);
+  return !operacao.movimentosEstoque.length && !transacoes.length && !operacao.compromissos.length && !temAnimais(operacao);
 }
 
 const inicioMes = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`; };

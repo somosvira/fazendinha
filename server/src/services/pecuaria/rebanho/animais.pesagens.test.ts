@@ -11,6 +11,7 @@ const m = vi.hoisted(() => {
     finalidadeAnimal: { findMany: vi.fn(), update: vi.fn() },
     exameAnimal: { findMany: vi.fn() },
     pesagem: { findMany: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), update: vi.fn(), delete: vi.fn() },
+    itemOperacao: { findFirst: vi.fn().mockResolvedValue(null) },
     vinculoPesagemParto: { findMany: vi.fn(), count: vi.fn() },
     vinculoPesagemSecagem: { findFirst: vi.fn(), count: vi.fn() },
     baixaAnimal: { findMany: vi.fn(), findFirst: vi.fn() },

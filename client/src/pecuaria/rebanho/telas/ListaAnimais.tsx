@@ -48,7 +48,7 @@ const CATEGORIA_SEM = "__sem_categoria__";
 const CATEGORIA_FORCADA = "__so_forcadas__";
 
 /** tipos de baixa oferecidos no filtro — CADASTRO_INDEVIDO é interno do "excluir cadastro" e não aparece aqui */
-const TIPOS_BAIXA_FILTRO: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "NAO_DETERMINADO"];
+const TIPOS_BAIXA_FILTRO: TipoBaixa[] = ["VENDA", "ABATE", "MORTE", "DOACAO", "EXTRAVIO", "COMPRA_ESTORNADA", "NAO_DETERMINADO"];
 
 type OpcaoOrdenacao = { valor: string; ordenar: "brinco" | "nascimento" | "entrada" | "ultimoPeso" | "gmd"; direcao: "asc" | "desc"; rotulo: string };
 const OPCOES_ORDENACAO: OpcaoOrdenacao[] = [
