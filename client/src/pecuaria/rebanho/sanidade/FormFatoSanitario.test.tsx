@@ -1,3 +1,4 @@
+import { previaImpactosTeste } from "./impactos.fixture";
 // @vitest-environment jsdom
 import { alterarControle } from "../../../lib/controles.fixture";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -27,12 +28,7 @@ it("oferece seleção própria sem animal inicial", async () => {
   render(<FormFatoSanitario tipo="exame" onFechar={vi.fn()} onSalvo={vi.fn()} />);
   await screen.findByText("GV3-1");
   expect(screen.getByLabelText("Animal")).toHaveProperty("value", "");
-  fireEvent.click(screen.getByRole("button",{name:"Ajuda sobre seleção do animal"}));
-  expect(screen.getByText(/Busque por brinco ou nome para reduzir/)).toBeTruthy();
-  fireEvent.blur(screen.getByRole("button",{name:"Ajuda sobre seleção do animal"}));
-  fireEvent.click(screen.getByRole("button",{name:"Ajuda sobre coleta e resultado"}));
-  expect(screen.getByText(/Registre a coleta agora/)).toBeTruthy();
-  fireEvent.blur(screen.getByRole("button",{name:"Ajuda sobre coleta e resultado"}));
+  expect(screen.getByText(/O resultado é opcional/)).toBeTruthy();
   await alterarControle(screen.getByLabelText("Animal"), { target: { value: "a" } });
   await screen.findByText(/Sítio na data: Sítio B/);
 });
@@ -51,4 +47,18 @@ it("associa erro coletivo de tipo inativo ao campo e preserva os dados", async (
   await waitFor(() => expect(screen.getByLabelText("Tipo de exame").getAttribute("aria-invalid")).toBe("true"));
   expect(document.activeElement).toBe(screen.getByLabelText("Tipo de exame"));
   expect(screen.getByLabelText("Tipo de exame")).toHaveProperty("value", "tipo");
+});
+
+it("ocorrência salva confirmação e fato juntos pelo sítio histórico", async () => {
+  vi.mocked(reqSanidade).mockImplementation(async (path, init) => path === "/doencas" ? [{ id: "doenca", nome: "Retenção", ativo: true }] : path === "/impactos-protocolares/previa" ? previaImpactosTeste(JSON.parse(String(init?.body))) : []);
+  render(<FormFatoSanitario tipo="ocorrencia" animalInicial="a" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await screen.findByText("Retenção");
+  await alterarControle(screen.getByLabelText("Data"), { target: { value: "2026-09-10" } });
+  await alterarControle(screen.getByLabelText("Doença"), { target: { value: "doenca" } });
+  fireEvent.submit(document.getElementById("novo-fato-sanitario")!); await screen.findByText("Preparo autorizado · v2");
+  expect(vi.mocked(reqSanidade).mock.calls.filter(([p]) => p === "/ocorrencias")).toHaveLength(0);
+  fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Impactos conferidos no fato" } }); fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
+  await waitFor(() => expect(vi.mocked(reqSanidade).mock.calls.some(([p]) => p === "/ocorrencias")).toBe(true));
+  const envio = vi.mocked(reqSanidade).mock.calls.find(([p]) => p === "/ocorrencias")!;
+  expect(JSON.parse(String(envio[1]?.body))).toMatchObject({ propriedadeId: 1, inicio: "2026-09-10", chave: expect.any(String), impacto: { revisao: "a".repeat(64), motivo: "Impactos conferidos no fato" } }); expect(envio[2]).toBe(1);
 });

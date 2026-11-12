@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Modal, StatusPill, brl, dataBR } from "./financeiro-ui";
 import { podeVerValoresFinanceiros } from "./permissoes";
 import { podeAcessarArea } from "../estoque/navegacao";
+import { MovimentoEstoqueModal } from "../estoque/MovimentoEstoqueModal";
 import { PAPEIS_PARCEIRO, papeisDoParceiro } from "./lib/parceiros";
 import { formatarDocumento } from "./lib/validacao";
 import type { Operacao, Parceiro, ParceiroBase } from "./novo-api";
@@ -50,15 +51,22 @@ export function ImpactosOperacao({ operacao }: { operacao: Operacao }) {
   const transacoes = operacao.transacoes.filter(t => t.tipo !== "REVERSAO");
   const temEstoque = operacao.movimentosEstoque.length > 0;
   const temCompromissos = operacao.compromissos.length > 0;
+  const animais = operacao.tipo === "DEVOLUCAO" ? [] : operacao.itens.filter(i => i.animalId);
+  const [movimentoAberto, setMovimentoAberto] = useState<{ id: string; unidade?: string } | null>(null);
   return <div className="fin-efeitos-operacao flex flex-wrap gap-1.5">
+    {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto.id} propriedadeId={operacao.propriedadeId} unidade={movimentoAberto.unidade} onFechar={() => setMovimentoAberto(null)} />}
     {temEstoque && <Contexto titulo="Movimentos de estoque" icone={<Package size={18} aria-hidden />} acionador="estoque" rotulo="Ver impacto no estoque" classe="operacoes-impacto-trigger">
       <p>Esta operação registrou os movimentos abaixo. Entradas acrescentam unidades ao estoque e saídas retiram unidades.</p>
       <ul className="operacoes-contexto-lista">{operacao.movimentosEstoque.map(m => {
         const item = operacao.itens.find(i => i.produtoId === m.produtoId);
         return <li key={m.id}><strong>{m.tipo === "ENTRADA" ? "Entrada" : m.tipo === "SAIDA" ? "Saída" : "Ajuste"} · {item?.descricao ?? "Produto vinculado"}</strong><span>{Number(m.quantidade).toLocaleString("pt-BR")} {item?.unidade ?? "unidades"} · <StatusPill status={m.status} /></span>
-          {podeAcessarArea("financeiro") && <a className="operacoes-contexto-destino" href={`/estoque?movimentoId=${encodeURIComponent(m.id)}`}>Ver movimento #{m.seq}<ArrowUpRight size={14} aria-hidden /></a>}
+          {podeAcessarArea("financeiro") && <button type="button" className="operacoes-contexto-destino" onClick={() => setMovimentoAberto({ id: m.id, unidade: item?.unidade })}>Ver movimento #{m.seq}<ArrowUpRight size={14} aria-hidden /></button>}
         </li>;
       })}</ul>
+    </Contexto>}
+    {animais.length > 0 && <Contexto titulo="Animais cadastrados" icone={<Package size={18} aria-hidden />} acionador="animais" rotulo="Ver animais cadastrados" classe="operacoes-impacto-trigger">
+      <p>Esta operação cadastrou os animais abaixo no rebanho.</p>
+      <ul className="operacoes-contexto-lista">{animais.map(i => <li key={i.id}><strong>{i.animal ? [i.animal.brinco, i.animal.nome].filter(Boolean).join(" · ") : i.descricao}</strong></li>)}</ul>
     </Contexto>}
     {(["PAGAMENTO", "RECEBIMENTO", "TRANSFERENCIA"] as const).map(tipo => {
       const registros = transacoes.filter(t => t.tipo === tipo);
@@ -77,6 +85,6 @@ export function ImpactosOperacao({ operacao }: { operacao: Operacao }) {
         <ul className="operacoes-contexto-lista">{parcelas.map(c => <li key={c.id}><strong>{c.numeroParcela ? `Parcela ${c.numeroParcela}${c.totalParcelas ? ` de ${c.totalParcelas}` : ""}` : "Compromisso"}{verValores && c.valorOriginal != null ? ` · ${brl(c.valorOriginal)}` : ""}</strong><span>Vencimento {dataBR(c.dataVencimento)}</span><StatusPill status={c.status} /><LinkContexto href={`/financeiro/compromissos?${new URLSearchParams({ situacao: tipo === "PAGAR" ? "pagar" : "receber", compromisso: c.id })}`}>Ver compromisso</LinkContexto></li>)}</ul>
       </Contexto>;
     })}
-    {!temEstoque && !transacoes.length && !temCompromissos && <Contexto titulo="Sem impactos gerados" icone={<Wallet size={18} aria-hidden />} acionador="sem impactos" rotulo="Entender operação sem impactos" classe="operacoes-impacto-trigger"><p>Não há movimentos de estoque, pagamentos, recebimentos ou compromissos vinculados a esta operação.</p></Contexto>}
+    {!temEstoque && !transacoes.length && !temCompromissos && !animais.length && <Contexto titulo="Sem impactos gerados" icone={<Wallet size={18} aria-hidden />} acionador="sem impactos" rotulo="Entender operação sem impactos" classe="operacoes-impacto-trigger"><p>Não há movimentos de estoque, pagamentos, recebimentos ou compromissos vinculados a esta operação.</p></Contexto>}
   </div>;
 }

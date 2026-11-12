@@ -11,7 +11,7 @@ import type { ContextoAssistente } from "./tipos.js";
 
 const ctx: ContextoAssistente = { usuario: { id: 1, nome: "Fixture", email: "fixture@example.test", papel: "proprietario", status: "ATIVO", dono: true, flags: [], areas: [], abas: [] }, propriedadeId: 8, nomeEscopo: "Sítio teste", agora: new Date("2026-10-14T02:00:00Z") };
 const consultar = (visao: string, inicio: string | null = "2026-09-01", fim: string | null = "2026-09-30", contexto = ctx) => ferramentaFinanceiro.executar({ visao, inicio, fim }, contexto);
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); mocks.compromissos.mockResolvedValue([]); });
 
 describe("consulta financeira por serviços operacionais", () => {
   it("reutiliza dashboard com sítio e limites inclusivos e separa caixa de pendências", async () => {
@@ -22,6 +22,17 @@ describe("consulta financeira por serviços operacionais", () => {
     expect(r.resposta).toContain("Resultado realizado: R$ 1.000,00");
     expect(r.resposta).toContain("A pagar: R$ 0,01");
     expect(r.fontes[0].url).toBe("/financeiro?inicio=2026-09-01&fim=2026-09-30");
+    expect(r.dados?.titulo).toBe("Financeiro de setembro");
+    expect(r.dados?.numeros.map(n => [n.rotulo, n.valor, !!n.destaque])).toEqual([["A pagar no período", "R$ 0,01", true], ["Resultado realizado", "R$ 1.000,00", false], ["A receber", "R$ 10,00", false]]);
+  });
+  it("estrutura pendências com vencidos marcados e o total em destaque", async () => {
+    mocks.compromissos.mockResolvedValue([
+      { tipo: "PAGAR", status: "PENDENTE", seq: 2, dataVencimento: new Date("2026-10-20T00:00:00Z"), parceiro: { nome: "Energia" }, saldoPendente: new Prisma.Decimal("200") },
+      { tipo: "PAGAR", status: "PENDENTE", seq: 1, dataVencimento: new Date("2026-09-02T00:00:00Z"), parceiro: { nome: "Ração" }, saldoPendente: new Prisma.Decimal("100") },
+    ]);
+    const r = await consultar("pagar");
+    expect(r.dados?.numeros[0]).toMatchObject({ rotulo: "A pagar", valor: "R$ 300,00", detalhe: "2 compromissos · 1 vencido", destaque: true });
+    expect(r.dados?.tabela?.linhas.map(l => [l.celulas[0], !!l.atraso])).toEqual([["02/09 · vencido", true], ["20/10", false]]);
   });
   it("paga só saldo pendente e não inclui liquidados/cancelados ou outro tipo", async () => {
     mocks.compromissos.mockResolvedValue([
@@ -63,14 +74,14 @@ describe("consulta financeira por serviços operacionais", () => {
   });
 });
 describe("autorização e extensibilidade", () => {
-  it.each(["verValores", "verInvestimento", "verSalarios"])("não consulta valores sem %s, mesmo com aba e área", async flag => {
-    const restrito = { ...ctx, usuario: { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["dashboard", "gastos", "caixinha"], flags: ["verValores", "verInvestimento", "verSalarios"].filter(f => f !== flag) } };
+  it.each(["verValores", "verSalarios"])("não consulta valores sem %s, mesmo com aba e área", async flag => {
+    const restrito = { ...ctx, usuario: { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["dashboard", "gastos", "caixinha"], flags: ["verValores", "verSalarios"].filter(f => f !== flag) } };
     expect((await consultar("resumo", null, null, restrito)).modo).toBe("acesso_negado");
     expect(mocks.dashboard).not.toHaveBeenCalled();
     expect(ferramentasDisponiveis(restrito).some(f => f.name === "consultar_financeiro")).toBe(false);
   });
   it("área e aba são conferidas novamente na execução, não só nos specs", async () => {
-    const usuario = { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["caixinha"], flags: ["verValores", "verInvestimento", "verSalarios"] };
+    const usuario = { ...ctx.usuario, dono: false, areas: ["financeiro"], abas: ["caixinha"], flags: ["verValores", "verSalarios"] };
     expect((await executarFerramenta("consultar_financeiro", { visao: "resumo", inicio: null, fim: null }, { ...ctx, usuario })).modo).toBe("acesso_negado");
     expect(mocks.dashboard).not.toHaveBeenCalled();
     expect((await consultar("resumo", null, null, { ...ctx, usuario: { ...usuario, areas: ["pecuaria"] } })).modo).toBe("acesso_negado");

@@ -1,3 +1,4 @@
+import { lerEscoreCorporal, TIPO_EXAME_ESCORE_CORPORAL } from "../reproducao/escore-corporal.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { completarContextoCartoes } from "./contexto-cartao.js";
 import { reavaliarContinuidadeAnimalTx } from "../sanidade/alertas/continuidade.js";
@@ -305,7 +306,12 @@ async function rotularComposicaoCalculada(db: DbPecuaria, itens: FracaoRaca[] | 
 
 // ---------- cadastrar ----------
 
-export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+/**
+ * Cadastro dentro de uma transação já aberta: usado pelo cadastro avulso e pela compra de
+ * animais, que precisa criar operação e animais no mesmo commit. Leituras de validação usam
+ * a própria transação para enxergar o mesmo estado que a escrita.
+ */
+export async function cadastrarTx(tx: Prisma.TransactionClient, input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<{ animal: { id: string; brinco: string }; avisos: Array<{ campo: string; mensagem: string }> }> {
   // A exceção existe apenas para preparação técnica de históricos/seeds; não é campo da API.
   if (input.origem === "NASCIDO" && !contextoTecnico?.nascimentoHistorico) throw new RebanhoError("VALIDACAO", "Registre o parto da matriz para cadastrar as crias nascidas na fazenda", "origem");
   const erosDatas = validarDatasAnimal({ dataNascimento: input.dataNascimento, dataEntrada: input.dataEntrada, origem: input.origem });
@@ -324,14 +330,14 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
     if (errosComposicao.length) throw new RebanhoError("VALIDACAO", errosComposicao[0].mensagem, errosComposicao[0].campo);
   }
 
-  const propriedade = await prisma.propriedade.findFirst({ where: { id: input.propriedadeId, ativo: true } });
+  const propriedade = await tx.propriedade.findFirst({ where: { id: input.propriedadeId, ativo: true } });
   if (!propriedade) throw new RebanhoError("NAO_ENCONTRADO", "Propriedade não encontrada ou inativa", "propriedadeId");
 
   // filiação (v2 · Genética): validada antes da transação — o animal ainda não existe, então o
   // "ciclo" não pode ocorrer (nenhum descendente aponta pra um id que ainda não foi gerado).
   const temFiliacao = input.maeId != null || input.paiId != null || input.maeExternaId != null || input.paiExternoId != null;
   const filiacaoResolvida = temFiliacao
-    ? await resolverFiliacao(prisma, { id: crypto.randomUUID(), dataNascimento: new Date(input.dataNascimento) }, input)
+    ? await resolverFiliacao(tx, { id: crypto.randomUUID(), dataNascimento: new Date(input.dataNascimento) }, input)
     : null;
   const composicaoSugeridaCadastro = filiacaoResolvida ? composicaoDosGenitores(filiacaoResolvida.maeComposicao, filiacaoResolvida.paiComposicao) : null;
   const herdadaCadastro = composicaoSugeridaCadastro ?? [];
@@ -339,14 +345,14 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
   if (input.composicao.length) {
     const herdadas = new Set(herdadaCadastro.map((c) => c.sigla));
     const racaIds = [...new Set(input.composicao.map((c) => c.racaId))];
-    const encontradas = await prisma.raca.findMany({ where: { id: { in: racaIds } }, select: { id: true, ativo: true } });
+    const encontradas = await tx.raca.findMany({ where: { id: { in: racaIds } }, select: { id: true, ativo: true } });
     if (encontradas.length !== racaIds.length || encontradas.some((r) => !r.ativo && !herdadas.has(r.id))) {
       throw new RebanhoError("NAO_ENCONTRADO", "Raça da composição não encontrada ou inativa", "composicao");
     }
   }
 
   // animal novo (id ainda não existe): não há trava de animal; lote antes do brinco (ordem em regras.ts)
-  const criado = await transacaoPecuaria(async (tx) => {
+  const criado = await (async () => {
     if (input.loteId) await travarLoteAtivo(tx, input.loteId, input.propriedadeId);
     await exigirBrincoLivre(tx, input.brinco, input.propriedadeId);
 
@@ -407,9 +413,14 @@ export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number |
     await sincronizarLocalizacoesBezerreiroTx(tx, [animal.id], usuarioId, [], "INICIAIS");
     await reavaliarContinuidadeAnimalTx(tx, animal.id, usuarioId, "CADASTRO");
     return animal;
-  });
+  })();
 
-  return buscarFicha(criado.id, null).then((f) => ({ ...f, avisos: filiacaoResolvida?.avisos ?? [] }) as AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> });
+  return { animal: { id: criado.id, brinco: criado.brinco }, avisos: filiacaoResolvida?.avisos ?? [] };
+}
+
+export async function cadastrar(input: CadastrarAnimalInput, usuarioId: number | null, contextoTecnico?: { nascimentoHistorico: true }): Promise<AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> }> {
+  const { animal, avisos } = await transacaoPecuaria((tx) => cadastrarTx(tx, input, usuarioId, contextoTecnico));
+  return buscarFicha(animal.id, null).then((f) => ({ ...f, avisos }) as AnimalResumo & { avisos: Array<{ campo: string; mensagem: string }> });
 }
 
 // ---------- editar (só campos fixos) ----------
@@ -827,10 +838,21 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     prisma.periodoReprodutivoAnimal.findMany({ where: { animalId: id } }),
   ]);
 
-  const [mae, pai, filhosCount] = await Promise.all([
+  const [mae, pai, filhosCount, itemCompra, itemDevolucao] = await Promise.all([
     fichaFiliacaoLado(prisma, animal.maeId, animal.maeExternaId),
     fichaFiliacaoLado(prisma, animal.paiId, animal.paiExternoId),
     prisma.animal.count({ where: { OR: [{ maeId: id }, { paiId: id }] } }),
+    prisma.itemOperacao.findFirst({
+      where: { animalId: id, operacao: { tipo: "COMPRA_ANIMAIS", status: { in: ["CONFIRMADA", "CANCELADA"] } } },
+      select: { operacao: { select: { id: true, numero: true, data: true, status: true, parceiro: { select: { nome: true } } } } },
+      // A compra vigente (CONFIRMADA) vem antes de uma original cancelada pela correção.
+      orderBy: [{ operacao: { status: "asc" } }, { operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
+    }),
+    prisma.itemOperacao.findFirst({
+      where: { animalId: id, operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } },
+      select: { operacao: { select: { id: true, numero: true, data: true } } },
+      orderBy: [{ operacao: { data: "desc" } }, { operacao: { numero: "desc" } }],
+    }),
   ]);
 
   const locAtual = localizacoes.find((l) => l.ate == null) ?? null;
@@ -844,6 +866,10 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
   const baixaAtual = baixas.find((s) => s.estornadaEm == null) ?? null;
   // baixado: idade/categoria contam até a data da baixa, não até hoje (K5)
   const hoje = baixaAtual ? baixaAtual.data : hojeFazendaDate();
+  const examesEcc = await prisma.exameAnimal.findMany({ where: { animalId: id, status: "VALIDO", data: { lte: hoje },
+    ...(propriedadeEscopo != null ? { propriedadeId: propriedadeEscopo } : {}), OR: [{ finalidadePrincipal: { in: ["ESCORE_CORPORAL", "ECC"] } }, { tipoExameId: TIPO_EXAME_ESCORE_CORPORAL }] },
+    include: { resultados: { where: { vigente: true } } }, orderBy: [{ data: "asc" }, { id: "asc" }] });
+  const historicoEcc = examesEcc.map(lerEscoreCorporal);
   const pesos = pesagens.map(p => ({ ...p, pesoKg: Number(p.pesoKg) }));
   const pesagensIndicadores = pesagensParaIndicadores(pesos, hoje);
   const ultimoPeso = pesagensIndicadores.at(-1) ?? null;
@@ -916,6 +942,7 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
       id: m.id, categoria: m.categoria, desde: m.desde.toISOString().slice(0, 10), ate: m.ate ? m.ate.toISOString().slice(0, 10) : null,
       motivo: m.motivo, motivoEncerramento: m.motivoEncerramento,
     })),
+    historicoEcc,
     historicoPesagens: pesagens.map((p) => ({ id: p.id, data: p.data.toISOString().slice(0, 10), pesoKg: Number(p.pesoKg), tipo: p.tipo, origem: p.origem, observacao: p.observacao, precisao: p.precisao, contextoHistorico: p.contextoHistorico, propriedadeId: p.propriedadeId, referenciaHistorica: p.referenciaHistorica })),
     baixa: baixaAtual ? {
       id: baixaAtual.id, data: baixaAtual.data.toISOString().slice(0, 10), tipo: baixaAtual.tipo,
@@ -937,6 +964,8 @@ export async function buscarFicha(id: string, propriedadeEscopo: number | null, 
     peso,
     filiacao: { mae, pai },
     filhosCount,
+    aquisicao: itemCompra ? { operacaoId: itemCompra.operacao.id, numero: itemCompra.operacao.numero, data: itemCompra.operacao.data.toISOString().slice(0, 10), status: itemCompra.operacao.status, parceiroNome: itemCompra.operacao.parceiro?.nome ?? null } : null,
+    devolucao: itemDevolucao ? { operacaoId: itemDevolucao.operacao.id, numero: itemDevolucao.operacao.numero, data: itemDevolucao.operacao.data.toISOString().slice(0, 10) } : null,
   };
 }
 
@@ -1600,7 +1629,11 @@ export async function registrarBaixaTx(
   const { carenciaAnimalTx } = await import("../sanidade/aplicacoes.js");
   const carencias = await carenciaAnimalTx(tx, animalId, input.data);
   await conferirFatosNaBaixa(tx, animalId, new Date(input.data));
-  if (input.tipo === "CADASTRO_INDEVIDO") await conferirCadastroIndevidoSemFatosTx(tx, animalId);
+  if (input.tipo === "CADASTRO_INDEVIDO") {
+    await conferirCadastroIndevidoSemFatosTx(tx, animalId);
+    const compra = await tx.itemOperacao.findFirst({ where: { animalId, operacao: { tipo: "COMPRA_ANIMAIS", status: "CONFIRMADA" } }, select: { operacao: { select: { numero: true } } } });
+    if (compra) throw new RebanhoError("CONFLITO", `Animal da compra #${compra.operacao.numero}: estorne a compra ou registre a devolução no Financeiro.`, "tipo");
+  }
   const fimDia = new Date(`${input.data}T00:00:00-03:00`);
   const restricoes = [carencias.leite, carencias.carne].filter((p) => p.estado === "NAO_INFORMADO" || (p.estado === "CONHECIDO" && p.ate > fimDia));
   if (["VENDA", "ABATE", "NAO_DETERMINADO"].includes(input.tipo) && restricoes.length && (!input.cienciaSanitaria || !input.justificativaSanitaria?.trim())) throw new RebanhoError("VALIDACAO", "Há carência vigente ou desconhecida. Confirme ciência e justifique a baixa", "justificativaSanitaria");
@@ -1660,12 +1693,24 @@ export async function darBaixa(input: BaixaInput & { animalId: string }, usuario
 
 export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, usuarioId: number | null, escopo: number | null = null): Promise<AnimalResumo> {
   await exigirNoEscopo(prisma, animalId, escopo);
+  await transacaoPecuaria((tx) => estornarBaixaTx(tx, animalId, input, usuarioId));
+  return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
+}
 
-  await transacaoPecuaria(async (tx) => {
+/**
+ * Reabre a baixa ativa do animal. A baixa `COMPRA_ESTORNADA` nasce do estorno da compra ou da
+ * devolução e só é desfeita pela operação financeira (`origemOperacao`), para o dinheiro e o
+ * rebanho não divergirem.
+ */
+export async function estornarBaixaTx(tx: Prisma.TransactionClient, animalId: string, input: EstornoBaixaInput, usuarioId: number | null, origemOperacao = false) {
     await travarAnimais(tx, [animalId]);
     const animal = await exigirAnimal(tx, animalId);
     const baixa = await baixaAberta(tx, animalId);
     if (!baixa) throw new RebanhoError("JA_ESTORNADA", "Não há baixa ativa para estornar (ou já foi estornada)");
+    if (baixa.tipo === "COMPRA_ESTORNADA" && !origemOperacao)
+      throw new RebanhoError("CONFLITO", "Esta baixa veio da compra ou devolução do animal. Estorne a devolução ou corrija a compra no Financeiro.", "tipo");
+    if (baixa.tipo !== "COMPRA_ESTORNADA" && origemOperacao)
+      throw new RebanhoError("CONFLITO", "A baixa ativa do animal não veio da compra ou devolução; regularize-a no Rebanho antes.", "tipo");
 
     const [localAberta, destAberto] = await Promise.all([localizacaoAberta(tx, animalId), destinoAberto(tx, animalId)]);
     const plano = planejar(() => planejarEstornoBaixa({
@@ -1695,9 +1740,7 @@ export async function estornarBaixa(animalId: string, input: EstornoBaixaInput, 
     await sincronizarLocalizacoesBezerreiroTx(tx, [animalId], usuarioId, locaisAntes);
     await reavaliarContinuidadeAnimalTx(tx, animalId, usuarioId, "ESTORNO_BAIXA");
     await auditar(tx, { entidade: "BaixaAnimal", entidadeId: baixa.id, animalId, acao: "ESTORNO", usuarioId, antes: baixa, depois: atualizada });
-  });
-
-  return buscarFicha(animalId, null).then((f) => f as AnimalResumo);
+    return atualizada;
 }
 
 // ---------- pesagem ----------

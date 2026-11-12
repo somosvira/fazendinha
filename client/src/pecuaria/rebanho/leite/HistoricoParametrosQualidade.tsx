@@ -1,9 +1,9 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { DatePicker } from "@/components/DatePicker";
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip } from "recharts";
 import { pontosSerieQualidade } from "./visuais-leite";
-import { AjudaCampo } from "@/components/Dica";
-import { TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { Paginacao } from "../../../financeiro/financeiro-ui";
 import { DialogConsultaLeite } from "./DialogConsultaLeite";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -51,7 +51,7 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
   const serie = series.find(r=>r.serie===serieEscolhida) ?? series[0];
   const pontos = serie ? pontosSerieQualidade(dados?.serieItens??[],serie.serie) : [];
   return <section aria-label="Histórico por parâmetro">
-    <h2>Histórico por parâmetro <AjudaCampo rotulo="Sobre os parâmetros de qualidade" texto={"Consulte CPP, gordura, proteína, NU, extrato seco e lactose conforme os campos cadastrados no laudo. Unidades e métodos não são presumidos."} /></h2>
+    <h2>Histórico por parâmetro </h2>
 
     <div className="leite-form-inline">
       <label>Parâmetro do laudo<SelectCampo aria-label="Parâmetro do laudo" value={campo} onValueChange={v => { setCampo(v); setPagina(1); setSerieEscolhida(""); }}>
@@ -70,12 +70,12 @@ export function HistoricoParametrosQualidade({ sitio, formatos, data, revisao }:
     {dados && <>
       {dados.serieCompleta === false && <div role="status" className="p-4">Refine o período ou o tipo de amostra para visualizar a evolução. A tabela continua disponível com todos os resultados paginados.</div>}
       {dados.serieCompleta && series.length > 0 && <figure className="leite-parametro-grafico">
-        <figcaption><h3>Evolução de {serie?.rotulo}<AjudaCampo rotulo="Sobre o gráfico do parâmetro" texto="Todos os resultados vigentes do recorte da mesma identidade de série: origem, formato preservado e unidade. Sem médias, conversões, limites clínicos ou preço presumidos."/></h3><label>Série comparável<SelectCampo aria-label="Série comparável" value={serie?.serie??""} onValueChange={setSerieEscolhida}>{series.map(r=><option key={r.serie} value={r.serie}>{r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco??"Sem brinco"} · {r.formato.nome} v{r.formato.versao} · {r.unidade??"Unidade não informada"}</option>)}</SelectCampo></label></figcaption>
+        <figcaption><h3>Evolução de {serie?.rotulo}</h3><label>Série comparável<SelectCampo aria-label="Série comparável" value={serie?.serie??""} onValueChange={setSerieEscolhida}>{series.map(r=><option key={r.serie} value={r.serie}>{r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco??"Sem brinco"} · {r.formato.nome} v{r.formato.versao} · {r.unidade??"Unidade não informada"}</option>)}</SelectCampo></label></figcaption>
         {pontos.length > 0 ? <><div className="leite-parametro-area" role="img" aria-label={`${pontos.length} resultados de ${serie?.rotulo}, unidade ${serie?.unidade??"não informada"}, no recorte completo. Valores na tabela de resultados.`}><ResponsiveContainer width="100%" height="100%"><LineChart data={pontos} margin={{top:15,right:25,bottom:10,left:15}}><CartesianGrid vertical={false} stroke="var(--border)"/><XAxis dataKey="dataAmostra" tickFormatter={v=>String(v).split("-").reverse().slice(0,2).join("/")} tick={{fontSize:11}} minTickGap={32}/><YAxis domain={['auto','auto']} tick={{fontSize:11}} tickFormatter={v=>Number(v).toLocaleString('pt-BR')}/><Tooltip labelFormatter={v=>String(v).split("-").reverse().join("/")} formatter={v=>[`${Number(v).toLocaleString('pt-BR',{maximumFractionDigits:12})} ${serie?.unidade??''}`,serie?.rotulo??'Resultado']}/><Line type="linear" dataKey="valor" stroke="var(--primary)" strokeWidth={2} dot={{r:4}} connectNulls={false} isAnimationActive={false}/></LineChart></ResponsiveContainer></div><span className="text-xs text-muted-foreground">{pontos.length} {pontos.length===1?'amostra · sem tendência comparativa':'amostras na série'}</span></> : <p>Este parâmetro não tem valores numéricos comparáveis. Consulte os resultados abaixo.</p>}
       </figure>}
 
-      <p>{dados.total} resultado(s). <AjudaCampo rotulo="Sobre as séries de resultados" texto="Cada origem e versão de formato conserva sua própria série; não calculamos médias ou preço automaticamente." /></p>
-      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <TabelaFinanceira compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
+      <p>{dados.total} resultado(s). </p>
+      {!dados.itens.length ? <Empty>Nenhum resultado informado para este parâmetro no período.</Empty> : <ConsultaOperacional compacta rotulo="Resultados pela data da amostra" itens={dados.itens} chaveDe={r => `${r.amostraId}:${r.serie ?? campo}`} colunas={[
         { chave: "data", titulo: "Amostra", principal: true, celula: r => r.dataAmostra.split("-").reverse().join("/") },
         { chave: "origem", titulo: "Origem", celula: r => r.sujeito.tipo === "COLETIVO" ? r.sujeito.origem : r.animal?.brinco ?? "Sem brinco" },
         { chave: "resultado", titulo: "Resultado", celula: r => <>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : r.valor} {r.unidade ?? "(unidade não informada)"}</> },

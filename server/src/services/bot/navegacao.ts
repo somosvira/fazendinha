@@ -70,9 +70,9 @@ export const NAV_CATALOG: RotaNav[] = [
       "Quando a resposta trata de compras, vendas, serviços ou lançamentos já registrados, e o usuário pode querer ver a lista com os efeitos de cada um (estoque, pagamento, recebimento, compromisso).",
     filtros: [
       { param: "busca", desc: "texto livre: descrição, parceiro ou número da operação" },
-      { param: "tipo", desc: "tipo da operação", valores: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA", "TRANSFERENCIA_FINANCEIRA", "DEVOLUCAO"] },
+      { param: "tipo", desc: "tipo da operação", valores: ["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "APORTE", "RETIRADA", "TRANSFERENCIA_FINANCEIRA", "DEVOLUCAO"] },
       { param: "status", desc: "situação da operação", valores: ["CONFIRMADA", "CANCELADA"] },
-      { param: "efeito", desc: "efeito gerado pela operação", valores: ["ESTOQUE", "PAGAMENTO", "RECEBIMENTO", "A_PAGAR", "A_RECEBER", "TRANSFERENCIA", "SEM_EFEITOS"] },
+      { param: "efeito", desc: "efeito gerado pela operação", valores: ["ESTOQUE", "PAGAMENTO", "RECEBIMENTO", "A_PAGAR", "A_RECEBER", "TRANSFERENCIA", "ANIMAIS", "SEM_EFEITOS"] },
       { param: "de", desc: "data inicial, YYYY-MM-DD" },
       { param: "ate", desc: "data final, YYYY-MM-DD" },
     ],

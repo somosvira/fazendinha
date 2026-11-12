@@ -1,4 +1,4 @@
-import { AjudaCampo } from "@/components/Dica";
+import { AjudaCampo, Dica } from "@/components/Dica";
 import { FiltroColunaConsulta, type FiltrosColunas } from "./FiltroColunaConsulta";
 import "./barra-consulta.css";
 import { SelectCampo } from "./SelectCampo";
@@ -23,7 +23,7 @@ export const mesAtual = () => getHojeISO().slice(0, 7);
 export const limitesMes = (mes: string) => { const [ano, numero] = mes.split("-").map(Number); return { inicio: `${mes}-01`, fim: new Date(Date.UTC(ano, numero, 0, 23, 59, 59)).toISOString() }; };
 
 export const TIPO_OPERACAO: Record<string, string> = {
-  COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto",
+  COMPRA_ESTOQUE: "Compra para estoque", COMPRA_CONSUMO_DIRETO: "Compra para consumo direto", COMPRA_ANIMAIS: "Compra de animais",
   SERVICO: "Serviço", VENDA: "Venda", APORTE: "Aporte", RETIRADA: "Retirada",
   TRANSFERENCIA_FINANCEIRA: "Transferência", AJUSTE_ESTOQUE: "Ajuste de estoque",
   TRANSFERENCIA_ESTOQUE: "Transferência de estoque", INVENTARIO_INICIAL: "Inventário inicial",
@@ -119,7 +119,7 @@ export function Paginacao({ pagina, totalPaginas, total, porPagina, rotulo, subs
 }) {
   if (total === 0 && totalPaginas <= 1) return null;
   return <nav aria-label={rotulo} className="fin-paginacao flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-sm">
-    <span className="text-ink-3">{total ? (pagina - 1) * porPagina + 1 : 0}–{Math.min(pagina * porPagina, total)} de {total} {substantivo}</span>
+    <span className="text-ink-3">{(total ? (pagina - 1) * porPagina + 1 : 0).toLocaleString("pt-BR")}–{Math.min(pagina * porPagina, total).toLocaleString("pt-BR")} de {total.toLocaleString("pt-BR")} {substantivo}</span>
     {(!ocultarControlesPaginaUnica || totalPaginas > 1) && <div className="flex items-center gap-2 max-sm:w-full">
       <Button secondary disabled={pagina === 1} onClick={() => onPagina(pagina - 1)}>Anterior</Button>
       <label className="sr-only" htmlFor={idSelect}>Ir para a página</label>
@@ -154,8 +154,8 @@ export function AcoesLinha({ nome, ativo, onEditar, onAlternar, onSubir, onDesce
   return <div className="flex items-center justify-end gap-1">
     {onSubir && <ShadcnButton variant="ghost" type="button" disabled={!podeSubir} onClick={parar(onSubir)} aria-label={`Mover ${nome} para cima`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowUp size={16} /></ShadcnButton>}
     {onDescer && <ShadcnButton variant="ghost" type="button" disabled={!podeDescer} onClick={parar(onDescer)} aria-label={`Mover ${nome} para baixo`} className={`${cls} disabled:cursor-not-allowed disabled:opacity-30`}><ArrowDown size={16} /></ShadcnButton>}
-    <ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} title="Editar" aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton>
-    <ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} title={alternar} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-destructive` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton>
+    <Dica asChild rotulo={`Editar ${nome}`} conteudo="Editar"><ShadcnButton variant="ghost" type="button" onClick={parar(onEditar)} aria-label={`Editar ${nome}`} className={cls}><Pencil size={16} /></ShadcnButton></Dica>
+    <Dica asChild rotulo={`${alternar} ${nome}`} conteudo={alternar}><ShadcnButton variant="ghost" type="button" onClick={parar(onAlternar)} aria-label={`${alternar} ${nome}`} className={ativo ? `${cls} hover:text-destructive` : cls}>{ativo ? <PowerOff size={16} /> : <Power size={16} />}</ShadcnButton></Dica>
   </div>;
 }
 
@@ -224,7 +224,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   /** Limite do contêiner para tabelas curtas em painéis; respeita também a soma das colunas. */
   larguraMinimaParaTabela?: number;
   /** Uma escolha explícita de tabela conserva as colunas com rolagem horizontal. */
-  visualizacao?: "automatica" | "tabela";
+  visualizacao?: "automatica" | "tabela" | "cartoes";
   compacta?: boolean;
   /** Mantém links independentes da área clicável do cartão. */
   cartaoComLinks?: boolean;
@@ -246,7 +246,7 @@ export function TabelaFinanceira<T>({ colunas, itens, chaveDe, onAbrir, classeLi
   const acoes = colunas.filter((coluna) => coluna.acoes);
   const consultaRef = useRef<HTMLDivElement>(null);
   const [modoCartao, setModoCartao] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
-  const exibirCartoes = visualizacao === "automatica" && modoCartao;
+  const exibirCartoes = visualizacao === "cartoes" || (visualizacao === "automatica" && modoCartao);
   const tabelaRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
   const [temRolagem, setTemRolagem] = useState(false);

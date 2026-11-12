@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IA Terrano — proposta</title>
+<!-- Mockup estático para aprovação. Dados ilustrativos, no formato da seed de desenvolvimento. -->
+<style>
+@font-face { font-family: "Public Sans"; src: url("../../public/fonts/public-sans/public-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --papel: #f7f8fa; --folha: #ffffff; --tinta: #203c39; --tinta-2: #526863; --tinta-3: #6d817c;
+  --linha: #dfe7e5; --linha-forte: #7a928d; --pasto: #006f68; --pasto-claro: #e0efec;
+  --atraso: #8d3931; --atraso-claro: #fbefec; --atencao: #775930; --atencao-claro: #f6f0e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--papel); color: var(--tinta); font: 14px/1.5 "Public Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: var(--pasto); font-weight: 600; text-underline-offset: 3px; }
+button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px solid var(--pasto); outline-offset: 2px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--linha-forte); border-radius: 8px; background: var(--folha); font-weight: 600; }
+.btn.primario { background: var(--pasto); border-color: var(--pasto); color: #fff; }
+.btn.discreto { border-color: transparent; background: transparent; color: var(--tinta-2); padding: 0 8px; }
+svg { flex: none; }
+
+/* Página */
+.pagina { max-width: 1240px; margin: 0 auto; padding: 28px 32px 48px; }
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.acoes { display: flex; gap: 8px; }
+.abas { display: flex; gap: 24px; border-bottom: 1px solid var(--linha); margin: 16px 0 24px; }
+.abas button { border: 0; background: none; padding: 10px 0; color: var(--tinta-2); border-bottom: 2px solid transparent; font-weight: 500; }
+.abas button[aria-selected="true"] { color: var(--tinta); border-color: var(--pasto); font-weight: 650; }
+[hidden] { display: none !important; }
+
+/* Conversa + painel lateral */
+.conversa-grade { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; }
+.fio { display: grid; gap: 22px; min-height: 520px; align-content: start; }
+.pergunta { justify-self: end; max-width: 70%; background: var(--pasto-claro); border-radius: 12px 12px 2px 12px; padding: 10px 14px; }
+.resposta { background: var(--folha); border: 1px solid var(--linha); border-radius: 12px; overflow: hidden; }
+.resposta header { padding: 16px 18px 4px; }
+.resposta h2 { font-size: 16px; font-weight: 650; margin: 0; }
+.resposta .contexto { color: var(--tinta-2); font-size: 13px; margin: 2px 0 0; }
+.numeros { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 1px; background: var(--linha); border-block: 1px solid var(--linha); margin-top: 14px; }
+.numeros div { background: var(--folha); padding: 12px 18px; }
+.numeros dt { font-size: 13px; color: var(--tinta-2); }
+.numeros dd { margin: 2px 0 0; font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.numeros .destaque { background: var(--atencao-claro); }
+.numeros .destaque dd { color: var(--atencao); }
+.numeros small { display: block; font-size: 12px; color: var(--tinta-2); font-weight: 500; }
+.resposta p.leitura { margin: 14px 18px 0; max-width: 64ch; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.resposta table { margin: 12px 0 0; }
+th { text-align: left; font-weight: 600; color: var(--tinta-2); background: var(--papel); padding: 8px 18px; }
+td { padding: 9px 18px; border-top: 1px solid var(--linha); }
+td.valor, th.valor { text-align: right; }
+.vencido { color: var(--atraso); font-weight: 600; }
+.resposta footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 12px 10px 18px; border-top: 1px solid var(--linha); font-size: 13px; color: var(--tinta-2); }
+.resposta footer div { display: flex; gap: 4px; align-items: center; }
+
+.confirmacao { border-color: var(--pasto); }
+.confirmacao .ficha { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 18px 0; padding: 12px 14px; background: var(--papel); border-radius: 8px; }
+.ficha dt { font-size: 12px; color: var(--tinta-2); }
+.ficha dd { margin: 0; font-weight: 650; }
+.confirmacao .botoes { display: flex; gap: 8px; padding: 14px 18px 16px; }
+.selo { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--pasto-claro); color: var(--pasto); }
+
+/* Compositor */
+/* No app o compositor fica fixo no rodapé da conversa; no mockup estático ele segue o fluxo. */
+.compositor { margin-top: 24px; }
+.aviso { font-size: 13px; color: var(--tinta-2); margin: 0 0 8px; }
+.caixa { background: var(--folha); border: 1px solid var(--linha-forte); border-radius: 12px; padding: 10px 10px 8px 14px; }
+.caixa textarea { width: 100%; border: 0; resize: none; font: inherit; font-size: 15px; min-height: 44px; outline: none; background: transparent; color: var(--tinta); }
+.caixa .linha { display: flex; align-items: center; gap: 6px; }
+.modo { display: inline-flex; border: 1px solid var(--linha); border-radius: 8px; padding: 2px; margin-right: 6px; }
+.modo button { border: 0; background: none; padding: 4px 10px; border-radius: 6px; font-size: 13px; color: var(--tinta-2); }
+.modo button[aria-pressed="true"] { background: var(--pasto); color: #fff; font-weight: 600; }
+.caixa .enviar { margin-left: auto; width: 38px; height: 38px; border-radius: 8px; border: 0; background: var(--pasto); color: #fff; display: grid; place-items: center; }
+.sugestoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.sugestoes button { border: 1px solid var(--linha); background: var(--folha); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+
+/* Painel lateral: hoje na fazenda */
+.lateral { position: sticky; top: 20px; background: var(--folha); border: 1px solid var(--linha); border-radius: 12px; padding: 16px; }
+.lateral h2 { font-size: 15px; margin: 0; }
+.lateral .data { color: var(--tinta-2); font-size: 13px; margin: 2px 0 12px; }
+.lateral ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.lateral li { display: grid; gap: 2px; padding-left: 10px; border-left: 3px solid var(--linha); font-size: 13px; }
+.lateral li strong { font-size: 14px; }
+.lateral li.atraso { border-color: var(--atraso); }
+.lateral li.hoje { border-color: var(--atencao); }
+.lateral .rodape { margin-top: 14px; font-size: 13px; }
+
+/* Radar */
+.radar-topo { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 18px; }
+.radar-topo h2 { font-size: 20px; margin: 0; }
+.radar-topo p { margin: 2px 0 0; color: var(--tinta-2); font-size: 13px; }
+.radar-grade { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; align-items: start; }
+.prioridades { display: grid; gap: 10px; }
+.prioridade { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 16px; align-items: center; background: var(--folha); border: 1px solid var(--linha); border-left: 4px solid var(--linha-forte); border-radius: 10px; padding: 14px 16px; }
+.prioridade.atraso { border-left-color: var(--atraso); }
+.prioridade.hoje { border-left-color: var(--atencao); }
+.prioridade .qtd { font-size: 26px; font-weight: 700; line-height: 1; }
+.prioridade .qtd small { display: block; font-size: 12px; font-weight: 500; color: var(--tinta-2); margin-top: 4px; }
+.prioridade h3 { font-size: 15px; margin: 0; }
+.prioridade p { margin: 2px 0 0; color: var(--tinta-2); font-size: 13px; }
+.urgencia { font-size: 12px; font-weight: 650; }
+.atraso .urgencia { color: var(--atraso); }
+.hoje .urgencia { color: var(--atencao); }
+.semana .urgencia { color: var(--tinta-2); }
+.prioridade .botoes { display: flex; gap: 6px; }
+.leitura-fazenda { background: var(--folha); border: 1px solid var(--linha); border-radius: 12px; }
+.leitura-fazenda h3 { font-size: 15px; margin: 0; padding: 14px 16px 10px; }
+.leitura-fazenda dl { margin: 0; }
+.leitura-fazenda div { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 16px; border-top: 1px solid var(--linha); }
+.leitura-fazenda dt { color: var(--tinta-2); font-size: 13px; }
+.leitura-fazenda dd { margin: 0; font-weight: 650; text-align: right; }
+.leitura-fazenda span { grid-column: 1 / -1; font-size: 12px; color: var(--tinta-3); }
+details.cobertura { margin-top: 20px; border-top: 1px solid var(--linha); padding-top: 12px; color: var(--tinta-2); font-size: 13px; }
+details.cobertura summary { cursor: pointer; font-weight: 600; color: var(--tinta); }
+
+/* Notas de design (só no mockup) */
+.notas { max-width: 1240px; margin: 0 auto 48px; padding: 0 32px; color: var(--tinta-2); font-size: 13px; }
+.notas h2 { font-size: 14px; color: var(--tinta); }
+.notas li { margin: 4px 0; }
+
+@media (max-width: 1000px) {
+  .conversa-grade, .radar-grade { grid-template-columns: 1fr; }
+  .lateral { position: static; order: -1; }
+  .lateral ol { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
+@media (max-width: 640px) {
+  .pagina { padding: 68px 14px 32px; }
+  .cabecalho { flex-wrap: wrap; }
+  .acoes .btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pergunta { max-width: 90%; }
+  .numeros { grid-template-columns: 1fr 1fr; }
+  .numeros .destaque { grid-column: 1 / -1; }
+  .confirmacao .ficha { grid-template-columns: 1fr 1fr; }
+  .prioridade { grid-template-columns: 56px minmax(0, 1fr); }
+  .prioridade .botoes { grid-column: 1 / -1; }
+  .lateral ol { grid-template-columns: 1fr; }
+  .notas { padding: 0 14px; }
+}
+</style>
+</head>
+<body>
+<main class="pagina">
+  <div class="cabecalho">
+    <h1>IA Terrano</h1>
+    <div class="acoes" data-so="conversa">
+      <button class="btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Histórico</span></button>
+      <button class="btn primario"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nova conversa</span></button>
+    </div>
+  </div>
+  <div class="abas" role="tablist" aria-label="IA Terrano">
+    <button role="tab" aria-selected="true" data-aba="conversa">Conversa</button>
+    <button role="tab" aria-selected="false" data-aba="radar">Radar</button>
+  </div>
+
+  <!-- CONVERSA -->
+  <section data-painel="conversa" class="conversa-grade">
+    <div>
+      <div class="fio">
+        <p class="pergunta">Como está o financeiro deste mês?</p>
+
+        <article class="resposta" aria-label="Resposta do Terrano">
+          <header>
+            <h2>Financeiro de novembro</h2>
+            <p class="contexto">Sítio principal · 01/11 a 30/11 · regime de caixa</p>
+          </header>
+          <dl class="numeros">
+            <div class="destaque"><dt>A pagar no mês</dt><dd>R$ 32.140,00</dd><small>4 compromissos · 1 vencido</small></div>
+            <div><dt>Realizado</dt><dd>R$ 0,00</dd><small>sem entradas ou saídas</small></div>
+            <div><dt>A receber</dt><dd>R$ 0,00</dd><small>nenhum previsto</small></div>
+          </dl>
+          <p class="leitura">Ainda não há movimento de caixa em novembro. O que pesa no mês são os compromissos a pagar, e o maior vence dia 10.</p>
+          <table>
+            <thead><tr><th>Vencimento</th><th>Compromisso</th><th class="valor">Valor</th></tr></thead>
+            <tbody>
+              <tr><td class="vencido">01/11 · vencido</td><td>Ração lactação — Agropecuária Vale</td><td class="valor">R$ 6.480,00</td></tr>
+              <tr><td>10/11</td><td>Folha de pagamento</td><td class="valor">R$ 18.200,00</td></tr>
+              <tr><td>15/11</td><td>Energia elétrica</td><td class="valor">R$ 2.860,00</td></tr>
+              <tr><td>20/11</td><td>Sêmen — Central Genética</td><td class="valor">R$ 4.600,00</td></tr>
+            </tbody>
+          </table>
+          <footer>
+            <a href="#">Abrir compromissos de novembro</a>
+            <div><button class="btn discreto">Ouvir</button><button class="btn discreto">Copiar</button></div>
+          </footer>
+        </article>
+
+        <p class="pergunta">Registra 482 kg para a DEV-012, pesei hoje na balança.</p>
+
+        <article class="resposta confirmacao" aria-label="Pesagem para confirmar">
+          <header>
+            <span class="selo">Editar · confira antes de gravar</span>
+            <h2 style="margin-top:8px">Pesagem da DEV-012</h2>
+            <p class="contexto">Nada é gravado até você confirmar.</p>
+          </header>
+          <dl class="ficha">
+            <div><dt>Animal</dt><dd>DEV-012 · Lactantes 12</dd></div>
+            <div><dt>Data</dt><dd>03/11/2026</dd></div>
+            <div><dt>Peso</dt><dd>482 kg</dd></div>
+            <div><dt>Origem</dt><dd>Balança</dd></div>
+          </dl>
+          <p class="leitura">Última pesagem: 468 kg em 03/10 (+14 kg em 31 dias, 0,45 kg/dia).</p>
+          <div class="botoes"><button class="btn primario">Gravar pesagem</button><button class="btn">Corrigir</button></div>
+        </article>
+      </div>
+
+      <div class="compositor">
+        <p class="aviso">A conversa livre ainda não está configurada. As consultas rápidas funcionam normalmente.</p>
+        <div class="caixa">
+          <textarea aria-label="Mensagem" placeholder="Pergunte sobre a fazenda ou peça um registro…"></textarea>
+          <div class="linha">
+            <div class="modo" role="group" aria-label="Modo"><button aria-pressed="true">Consultar</button><button aria-pressed="false">Editar</button></div>
+            <button class="btn discreto">Anexar</button>
+            <button class="btn discreto">Ditar</button>
+            <button class="enviar" aria-label="Enviar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
+          </div>
+        </div>
+        <div class="sugestoes" aria-label="Sugestões">
+          <button>Resumo do mês</button><button>Saldo atual</button><button>A pagar na semana</button><button>Registrar pesagem</button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="lateral" aria-label="Hoje na fazenda">
+      <h2>Hoje na fazenda</h2>
+      <p class="data">Terça, 03/11 · do Radar</p>
+      <ol>
+        <li class="atraso"><span class="urgencia" style="color:var(--atraso);font-size:12px;font-weight:650">Atrasado</span><strong>1 conta vencida</strong>Ração lactação · R$ 6.480</li>
+        <li class="hoje"><span class="urgencia" style="color:var(--atencao);font-size:12px;font-weight:650">Hoje</span><strong>64 vacinações</strong>Campanha anual · Sítio principal</li>
+        <li><span style="color:var(--tinta-2);font-size:12px;font-weight:650">Esta semana</span><strong>2 dias sem produção apurada</strong>30 e 31/10 · parcelas a confirmar</li>
+      </ol>
+      <p class="rodape"><a href="#" data-ir="radar">Ver o Radar completo</a></p>
+    </aside>
+  </section>
+
+  <!-- RADAR -->
+  <section data-painel="radar" hidden>
+    <div class="radar-topo">
+      <div><h2>Hoje na fazenda</h2><p>Sítio principal · leitura automática das 07:00 de 03/11</p></div>
+      <button class="btn">Atualizar</button>
+    </div>
+    <div class="radar-grade">
+      <div class="prioridades">
+        <article class="prioridade atraso">
+          <div class="qtd">1<small>conta</small></div>
+          <div><span class="urgencia">Atrasado desde 01/11</span><h3>Compromisso a pagar vencido</h3><p>Ração lactação — Agropecuária Vale · R$ 6.480,00</p></div>
+          <div class="botoes"><button class="btn">Abrir</button><button class="btn discreto">Perguntar à IA</button></div>
+        </article>
+        <article class="prioridade hoje">
+          <div class="qtd">64<small>animais</small></div>
+          <div><span class="urgencia">Hoje</span><h3>Campanha anual de vacinação</h3><p>64 necessidades em aberto no Sítio principal</p></div>
+          <div class="botoes"><button class="btn">Abrir</button><button class="btn discreto">Perguntar à IA</button></div>
+        </article>
+        <article class="prioridade semana">
+          <div class="qtd">2<small>dias</small></div>
+          <div><span class="urgencia">Esta semana</span><h3>Produção sem apuração</h3><p>30 e 31/10 têm parcelas sem confirmação no estoque</p></div>
+          <div class="botoes"><button class="btn">Confirmar parcelas</button><button class="btn discreto">Perguntar à IA</button></div>
+        </article>
+        <article class="prioridade semana">
+          <div class="qtd">3<small>compromissos</small></div>
+          <div><span class="urgencia">Até 20/11</span><h3>Contas a pagar no mês</h3><p>R$ 25.660,00 · folha, energia e sêmen</p></div>
+          <div class="botoes"><button class="btn">Abrir</button><button class="btn discreto">Perguntar à IA</button></div>
+        </article>
+      </div>
+      <section class="leitura-fazenda" aria-label="Leitura da fazenda">
+        <h3>Leitura da fazenda</h3>
+        <dl>
+          <div><dt>Rebanho</dt><dd>72 animais</dd><span>36 em lactação · 12 secas</span></div>
+          <div><dt>Produção do último dia apurado</dt><dd>875 L</dd><span>02/11 · abaixo da meta de 900 L</span></div>
+          <div><dt>Pesagens de hoje</dt><dd>2 de 72</dd><span>última campanha completa em 03/10</span></div>
+          <div><dt>Sanidade</dt><dd>Em dia</dd><span>alertas avaliados hoje</span></div>
+        </dl>
+      </section>
+    </div>
+    <details class="cobertura"><summary>De onde vem esta leitura · 4 fontes</summary><p>Rebanho e localizações, ordenhas confirmadas, alertas sanitários e compromissos a pagar dos últimos 30 dias. Saldos bancários não entram.</p></details>
+  </section>
+</main>
+
+<section class="notas" aria-label="Notas da proposta">
+  <h2>O que muda em relação ao PR #357</h2>
+  <ul>
+    <li><strong>Respostas em formato de dados:</strong> título, contexto em uma linha, três números com o mais importante em destaque, uma frase de leitura e a tabela curta. As ressalvas viram contexto (regime de caixa) em vez de parágrafo final.</li>
+    <li><strong>Registro como cartão de confirmação:</strong> a pesagem aparece como ficha com os quatro campos e a comparação com a última pesagem; “Gravar” e “Corrigir” no próprio cartão.</li>
+    <li><strong>Modo junto da caixa de texto:</strong> Consultar/Editar sai do topo e vira parte do compositor; as sugestões ficam abaixo dele.</li>
+    <li><strong>Radar ao lado da conversa:</strong> as três prioridades do dia aparecem em “Hoje na fazenda”, ligando as duas abas. No celular o painel só aparece com a conversa vazia, para não empurrar as mensagens.</li>
+    <li><strong>Radar por urgência:</strong> cada prioridade tem quantidade, prazo (Atrasado, Hoje, Esta semana) e uma ação que resolve, não só “conferir fonte”.</li>
+  </ul>
+  <p><a href="metas.html">Ver a proposta de Metas</a></p>
+</section>
+
+<script>
+const abas = document.querySelectorAll('[data-aba]');
+function ir(aba) {
+  abas.forEach(b => b.setAttribute('aria-selected', String(b.dataset.aba === aba)));
+  document.querySelectorAll('[data-painel]').forEach(p => p.hidden = p.dataset.painel !== aba);
+  document.querySelectorAll('[data-so]').forEach(e => e.hidden = e.dataset.so !== aba);
+  history.replaceState(null, '', aba === 'radar' ? '#radar' : '#');
+}
+abas.forEach(b => b.addEventListener('click', () => ir(b.dataset.aba)));
+document.querySelectorAll('[data-ir]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); ir(a.dataset.ir); }));
+if (location.hash === '#radar') ir('radar');
+</script>
+</body>
+</html>

@@ -32,6 +32,8 @@ export type DemandaManejo = {
   dataReferencia: string; previstaPara: string | null; pendencias: string[];
 };
 export type ElegibilidadeNaData = {
+  situacaoReprodutiva?: string;
+  aptidao?: { finalidadePrincipal?: string | null; bloqueioAnteriorId?: string | null; estado: "APTA" | "NAO_APTA" | "PENDENTE"; exameId: string | null; data: string | null; retornoEm: string | null; motivos: string[] };
   animalId: string;
   propriedadeId: number;
   dataReferencia: string;
@@ -129,6 +131,14 @@ export const anularDecisao = (
     input.propriedadeId,
   );
 const motivos: Record<string, string> = {
+  EXAME_APTIDAO_NECESSARIO: "Aguarda exame para definir aptidão.",
+  APTIDAO_INCONCLUSIVA: "A avaliação de aptidão foi inconclusiva; aguarda reavaliação.",
+  EXAME_NAO_APTA: "O último exame concluiu que o animal não está apto.",
+  CONDICAO_IMPEDITIVA_VIGENTE: "Há restrição ou condição sanitária impeditiva em vigência.",
+  NOVO_EXAME_APOS_TRATAMENTO: "Tratamento ou restrição encerrado. É necessário novo exame de aptidão.",
+  EXAME_APOS_PERDA_NECESSARIO: "Aguarda novo exame após a perda gestacional.",
+  EXAME_ANULADO_REAVALIAR: "O exame foi anulado. Reavalie a aptidão.",
+  PEV_ANTECIPADO_POR_EXAME: "Aptidão definida pelo exame antes do fim do PEV original.",
   EXAME_ORIGEM_INVALIDO: "O exame que fundamentou este acompanhamento está inválido; confira a evidência de origem antes de registrar a resolução.",
   DATA_PARTO_NAO_COMPROVADA: "Há parto anterior comprovado, mas falta sua data para calcular a avaliação pós-parto.",
   CLASSE_REPRODUTIVA_CONFLITANTE: "A classificação informada conflita com o histórico de partos; confira a evidência.",
@@ -166,6 +176,16 @@ const motivos: Record<string, string> = {
 };
 export const descreverMotivo = (codigo: string) =>
   motivos[codigo] ?? codigo.toLocaleLowerCase("pt-BR").replaceAll("_", " ");
+
+export function descreverErroDisponibilidade(mensagem: string): string {
+  return mensagem.replace(/(Animal sem aptidão confirmada nesta data: )([A-Z_]+(?:; [A-Z_]+)*)(?:\. Bloqueios vigentes: ([\s\S]+))?/,
+    (_, prefixo: string, codigos: string, detalhes?: string) => {
+      const motivos = codigos.split("; ")
+        .filter(codigo => !detalhes || codigo !== "CONDICAO_IMPEDITIVA_VIGENTE")
+        .map(descreverMotivo);
+      return prefixo + [...motivos, detalhes].filter(Boolean).join(" ");
+    });
+}
 
 export const registrarToqueAptidao = (input: { chave: string; animalId: string; propriedadeId: number; data: string; resultado: "APTO" | "NAO_APTO" | "INCONCLUSIVO"; retornoEm?: string | null; responsavel: string; observacao?: string | null }) =>
   reqV4("/reproducao/toques-aptidao", input, "POST", input.propriedadeId);

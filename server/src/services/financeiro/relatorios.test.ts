@@ -74,7 +74,7 @@ describe("geração de relatório financeiro", () => {
     const r = await gerarRelatorio(7, { id: 2, nome: "Rafael" }, config, 1);
 
     expect(mocks.relatorio.create).toHaveBeenCalledWith({ data: expect.objectContaining({ propriedadeId: 7, autorId: 2, autorNome: "Rafael", parametros: config }) });
-    expect(mocks.gerencial).toHaveBeenCalledWith({ inicio: "2026-09-01", fim: "2026-09-30", regime: "ambos" }, 7, config);
+    expect(mocks.gerencial).toHaveBeenCalledWith({ inicio: "2026-09-01", fim: "2026-09-30", regime: "ambos" }, 7, { ...config, categoriasDosGrupos: [] });
     expect(mocks.operacao.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 7, status: { in: ["CONFIRMADA"] } }) }));
     expect(mocks.putObject).toHaveBeenCalledWith(expect.objectContaining({ key: `test/relatorios-financeiros/7/${uid(5)}.pdf`, contentType: "application/pdf" }));
     expect(mocks.putObject.mock.calls[0][0].body.subarray(0, 8).toString()).toBe("%PDF-1.4");

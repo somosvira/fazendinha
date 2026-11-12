@@ -10,7 +10,7 @@ const dia = (s: string) => new Date(`${s}T00:00:00Z`);
 export async function listarDietas(propriedadeId: number | null) {
   const hoje = hojeFazendaDate();
   return prisma.$transaction(async tx => {
-    const [dietas, vigencias] = await Promise.all([
+    const [dietas, vigencias, leites] = await Promise.all([
       tx.dieta.findMany({ include: { itens: { include: { produto: { select: { nome: true, unidade: true } } } } },
         orderBy: [{ nome: "asc" }, { versao: "desc" }] }),
       tx.vigenciaDietaLote.findMany({
@@ -19,14 +19,17 @@ export async function listarDietas(propriedadeId: number | null) {
         select: { dietaId: true, lote: { select: { id: true, nome: true, propriedade: { select: { id: true, nome: true } } } } },
         distinct: ["loteId"], orderBy: [{ desde: "desc" }, { id: "asc" }],
       }),
+      // Produtos de leite produzido na fazenda: seguem o fluxo de fornecimento, não a baixa diária ou mensal.
+      tx.entradaProducaoLeite.findMany({ select: { movimento: { select: { produtoId: true } } } }),
     ]);
+    const produtosLeite = new Set(leites.map(l => l.movimento.produtoId));
     const porDieta = new Map<string, typeof vigencias[number]["lote"][]>();
     for (const { dietaId, lote } of vigencias) {
       const lotes = porDieta.get(dietaId) ?? [];
       lotes.push(lote);
       porDieta.set(dietaId, lotes);
     }
-    return dietas.map(dieta => ({ ...dieta, lotesEmUso: porDieta.get(dieta.id) ?? [] }));
+    return dietas.map(dieta => ({ ...dieta, lotesEmUso: porDieta.get(dieta.id) ?? [], usaLeiteProprio: dieta.itens.some(i => produtosLeite.has(i.produtoId)) }));
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 }
 

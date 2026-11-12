@@ -1,4 +1,3 @@
-import { AjudaCampo } from "../../../components/Dica";
 import { useEffect, useId, useState } from "react";
 import { Paginacao } from "../ui";
 
@@ -42,7 +41,7 @@ export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, seleciona
   const paginaAtual = paginacao?.pagina ?? Math.min(pagina, Math.max(1, Math.ceil(visiveis.length / 10)));
   return <section className="rounded-xl border border-border bg-card p-4 sm:p-5" aria-labelledby={`${id}-titulo`}>
     <div className="flex flex-wrap items-start justify-between gap-2">
-      <div><h3 id={`${id}-titulo`} className="font-semibold">Animais da seleção livre <AjudaCampo rotulo="Ajuda sobre preenchimento da visita" texto="Abra um animal para preencher seu atendimento. Os rascunhos ficam separados da confirmação."/></h3>
+      <div><h3 id={`${id}-titulo`} className="font-semibold">Animais da seleção livre </h3>
         </div>
       <p className="text-sm text-ink-3" aria-live="polite">{paginacao ? `${total} participantes nos filtros` : `${visiveis.length} de ${grupos.size} animais`}</p>
     </div>

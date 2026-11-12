@@ -10,7 +10,7 @@ vi.mock('../../src/db.js', () => ({ prisma: {
 vi.mock('./rebanho.js', () => ({animaisSeed:[]}));
 vi.mock('../../src/services/pecuaria/leite/carencia-producao.js', () => ({conferirCarenciaProducaoTx:vi.fn()}));
 vi.mock('../../src/services/pecuaria/leite/custos.js', () => ({consultarCustosLeiteTx:vi.fn()}));
-import { verificar, verificarQualidadeSeed } from './verificacao.js';
+import { verificar, verificarQualidadeSeed, conferirLactantesSeed } from './verificacao.js';
 import { Contexto, BANCO } from './contexto.js';
 import { aplicarPreset } from '../../src/services/auth/papeis.js';
 import { hashSenha } from '../../src/services/auth/hash.js';
@@ -51,4 +51,21 @@ describe('envelope operacional da qualidade individual e coletiva', () => {
     for (const a of amostras.filter(a => a.exameAnimal?.animalId === 'animal-0')) a.exameAnimal!.status = 'ANULADO';
     expect(() => verificarQualidadeSeed(amostras)).toThrow('12 animais');
   });
+});
+
+
+describe('população leiteira após secagens demonstrativas', () => {
+ const id = (n: number) => `animal-${n}`;
+ const trintaSeis = Array.from({length:36},(_,i)=>({animalId:id(i+1)}));
+ it('preserva as 36 lactantes na data-base quando as secagens são posteriores', () => {
+  expect(() => conferirLactantesSeed(trintaSeis, id, [])).not.toThrow();
+ });
+ it('exige as 34 identidades corretas quando 33 e 34 já estão secas na data-base', () => {
+  const secas = [{animalId:id(33)}, {animalId:id(34)}];
+  expect(() => conferirLactantesSeed(trintaSeis.filter(a=>![id(33),id(34)].includes(a.animalId)), id, secas)).not.toThrow();
+  expect(() => conferirLactantesSeed(trintaSeis.slice(0,34), id, secas)).toThrow('lactantes');
+ });
+ it('não aceita reduzir a população por secagem de outro animal', () => {
+  expect(() => conferirLactantesSeed(trintaSeis.slice(0,35), id, [{animalId:id(1)}])).toThrow('secagens');
+ });
 });

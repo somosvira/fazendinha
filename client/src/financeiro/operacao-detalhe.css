@@ -22,7 +22,7 @@
 .fin-ficha-operacao .fin-ficha-grid > :is(section, div:has(> section)) { padding: 22px; border: 1px solid var(--border); background: var(--card); border-radius: 14px; box-shadow: var(--fin-shadow); }
 .fin-ficha-grid > div:has(> section) > section { padding: 0; border: 0; }
 .fin-ficha-contagem { margin-left: auto; color: var(--muted-foreground); font-size: 13px; font-weight: 400; white-space: nowrap; }
-.fin-ficha-item-classificacao { margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; font-weight: 400; }
+.fin-ficha-item-categoria { margin: 5px 0 0; color: var(--muted-foreground); font-size: 12px; font-weight: 400; }
 .fin-ficha-itens .fin-operacao-itens { display: block; margin-top: 18px; }
 .fin-ficha-itens .fin-tabela-wrapper { border-radius: 8px 8px 0 0; }
 .fin-ficha-total-itens { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 18px 16px 0; border-top: 1px solid var(--border); font-size: 14px; font-variant-numeric: tabular-nums; }

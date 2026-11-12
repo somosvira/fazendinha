@@ -13,7 +13,7 @@ import { BarraFiltros, CategoriaPill, Paginacao } from "../ui";
 import { ROTULO_APTIDAO } from "../lib/rotulos";
 import { Button, type ColunaTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro, classeInput } from "../../../financeiro/PainelCadastro";
-import { Loader } from "../../../components/Loading";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 /** Lote máximo por requisição da API de animais. */
@@ -222,7 +222,7 @@ export function SelecaoAnimais({ excluirLoteId, sexo: sexoFixo, titulo = "Seleci
             {algumFiltro && <button type="button" onClick={limparFiltros} className="text-ink-3 underline-offset-2 hover:underline">Limpar filtros</button>}
             {quantidade > 0 && <span className="text-ink-3 lg:hidden">{quantidade} {quantidade === 1 ? "animal selecionado" : "animais selecionados"} no total</span>}
           </div>
-          {carregando && !itens.length ? <div className="p-6"><Loader label="Carregando animais" /></div>
+          {carregando && !itens.length ? <EsqueletoTabela label="Carregando animais" className="p-6" />
             // total > 0 mantém a paginação visível mesmo que esta página específica venha vazia
             : total > 0 ? <>
               {itens.length > 0

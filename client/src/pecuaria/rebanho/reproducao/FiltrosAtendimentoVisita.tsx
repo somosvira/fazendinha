@@ -2,6 +2,7 @@ import { useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 type FiltrosAtendimentoVisitaProps = {
   busca: string;
@@ -35,13 +36,13 @@ export function FiltrosAtendimentoVisita({
           <DialogHeader><DialogTitle>Filtrar atendimentos</DialogTitle></DialogHeader>
         <div className="grid gap-4 text-base">
           <label className="grid gap-2">Atendimento
-            <select className="h-auto min-h-11 rounded-lg border border-border bg-background px-3" value={status} onChange={e => onStatus(e.target.value)}>
+            <SelectCampo className="h-auto min-h-11 rounded-lg border border-border bg-background px-3" value={status} onValueChange={(valor) => onStatus(valor)}>
               <option value="">Todos</option>
               <option value="PENDENTE">Pendentes</option>
               <option value="CONFIRMADO">Confirmados</option>
               <option value="ADIADO">Adiados</option>
               <option value="NAO_ATENDIDO">Não atendidos</option>
-            </select>
+            </SelectCampo>
           </label>
           {motivosDisponiveis.map(motivo => <label key={motivo} className="flex min-h-11 items-center gap-3">
             <input type="checkbox" checked={motivos.includes(motivo)}

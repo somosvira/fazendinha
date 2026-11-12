@@ -38,6 +38,7 @@
 .estoque-resumo-alerta:hover { background: #fbe8c5; }
 .estoque-resumo-alerta[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
 .estoque-resumo-negativo { color: var(--destructive); background: #fff0ef; border-color: #edc6c3; }
+.estoque-consulta-abas > [role="tablist"] { max-width: 100%; overflow-x: auto; }
 .estoque-consulta-abas { min-width: 0; gap: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"] { min-width: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"][hidden] { display: none; }
@@ -69,3 +70,10 @@
  .estoque-resumo-alerta { width: 100%; min-height: 44px; }
  .estoque-content .consulta-visual-barra { gap: 8px; }
 }
+.produto-ficha-dietas{border-top:1px solid var(--border)}
+.produto-ficha-dietas>header{padding:22px 28px 14px}
+.produto-ficha-dietas h3{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:650}
+.produto-ficha-dietas h3 svg{color:var(--primary)}
+.produto-ficha-dietas>header p{margin-top:6px;font-size:14px;color:var(--muted-foreground)}
+.produto-ficha-dietas>header p strong{color:var(--foreground);font-weight:650}
+@media(max-width:700px){.produto-ficha-dietas>header{padding:20px 20px 12px}}

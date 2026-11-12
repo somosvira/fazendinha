@@ -120,14 +120,14 @@ export async function gerarRelatorioGerencial(query: RelatorioGerencialQuery, pr
   const linhaBase = (operacao: (typeof movimentos)[number]["transacao"]["operacao"]) => {
     const id = operacao?.centroCustoId ?? operacao?.centroCusto?.id ?? null;
     return {
-      categoria: { nome: operacao?.categoriaNome ?? "Sem categoria", classificacao: operacao?.classificacao ?? null },
+      categoria: { nome: operacao?.categoriaNome ?? "Sem categoria" },
       centroCusto: { id, nome: id ? nomesCentro.get(id) ?? operacao?.centroCusto?.nome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
     };
   };
-  const linhaParte = (parte: { categoriaNome: string; classificacao: "CUSTEIO" | "INVESTIMENTO" | null; centroCustoId: string | null; centroCustoNome: string | null }) => {
+  const linhaParte = (parte: { categoriaNome: string; centroCustoId: string | null; centroCustoNome: string | null }) => {
     const id = parte.centroCustoId ?? null;
     return {
-      categoria: { nome: parte.categoriaNome, classificacao: parte.classificacao },
+      categoria: { nome: parte.categoriaNome },
       centroCusto: { id, nome: id ? nomesCentro.get(id) ?? parte.centroCustoNome ?? SEM_CENTRO_GERENCIAL : SEM_CENTRO_GERENCIAL },
     };
   };

@@ -38,7 +38,7 @@
 
 /* Ícone em caixa ao lado de cada título repete o rótulo: sai. A ficha do animal
  * mantém sua identidade visual e fica fora desta regra. */
-:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.rotina-titulo > span:first-child, .ger-bloco-icone, .consulta-entidade-icone, .produto-cartao-icone, .fin-section-icon):not(.pec-ficha *) { display: none; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(.rotina-titulo > span:first-child, .ger-bloco-icone, .consulta-entidade-icone, .produto-cartao-icone, .fin-section-icon, .leite-identidade-rotina):not(.pec-ficha *) { display: none; }
 :root [data-design-operacional] .rotina-titulo { gap: 0; }
 
 /* Setas no fim de links ("Ver contas →") são enfeite: o sublinhado já diz que é link. */

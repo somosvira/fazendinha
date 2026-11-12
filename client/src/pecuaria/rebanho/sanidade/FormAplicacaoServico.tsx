@@ -1,6 +1,8 @@
-import { AjudaCampo } from "../../../components/Dica";
+import { useConferenciaImpactos } from "./ConferenciaImpactos";
+import type { EntradaImpacto } from "./impactos-api";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SelectCampo } from "@/financeiro/SelectCampo";
+import type { Categoria } from "../../../financeiro/novo-api";
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Button, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
@@ -11,12 +13,14 @@ import { CircleAlert , Syringe } from "lucide-react";
 import { listarPartidasNutricionais, type PartidaNutricional } from "../nutricao/api";
 import { buscarFichaAnimal } from "../api";
 import type { AnimalFicha } from "../types";
-import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
+import { listarCategorias, listarProdutos, type ProdutoDTO } from "../../../estoque/api";
+import { SeletorProdutoCatalogo, type ProdutoEscolhido } from "../../../estoque/SeletorProdutoCatalogo";
 import { UNIDADES, UNIDADES_ORDENADAS, type UnidadeMedida } from "../../../lib/unidades";
 import { ConferenciaExecucao, type PreviaExecucao } from "./PreviaExecucao";
 import { AjusteIndividualAplicacao, type AjusteEtapaAplicacao } from "./AjusteIndividualAplicacao";
 import { dataHoraISO, inputHorarioIatf } from "../reproducao/CampoDataIatf";
 import { dataSanitaria, unidadeSanitaria } from "./rotulos";
+import { EsqueletoLinhas } from "../../../components/Esqueleto";
 
 export type TarefaAplicacao = { id: string; produtoId: string; tipoAplicacaoId: string; dose: string; unidade: string; previstaPara?: string; via?: string; protocoloNome?: string; protocoloVersao?: number; animalId?: string };
 export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFechar, tarefa, tarefas, animais, onRegistrar, dataInicial, momentoIatf, conteudoExtra, parametrosIniciais, onConferirConjunto, rotuloSubmeter, aoEditarExecucao, inline = false }: {
@@ -36,6 +40,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   tarefas?: TarefaAplicacao[];
   animais?: Array<{ id: string; brinco: string; propriedadeId: number | null }>;
 }) {
+  const impactos = useConferenciaImpactos();
   const [leiteRelevante, setLeiteRelevante] = useState<boolean | null>(null);
   const [ficha, setFicha] = useState<AnimalFicha | null>(null);
   useEffect(() => { let vivo = true; setFicha(null); setLeiteRelevante(null); if (animais?.length) return; buscarFichaAnimal(animalId, undefined, propriedadeId).then((a) => { if (vivo) { setFicha(a); setLeiteRelevante(a.sexo === "F" && a.aptidao === "LEITE"); if (a.baixa && momentoIatf === undefined) setData(a.baixa.data.slice(0, 10)); } }).catch(() => { if (vivo) setLeiteRelevante(null); }); return () => { vivo = false; }; }, [animalId, animais?.length, propriedadeId]);
@@ -56,6 +61,13 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   const [servicoId, setServicoId] = useState("");
   const [produtoId, setProdutoId] = useState(tarefa?.produtoId ?? parametrosIniciais?.produtoId ?? "");
   const [compraId, setCompraId] = useState("");
+  /** Item do catálogo escolhido no seletor (só no insumo incluso no serviço): adotado como produto ao confirmar. */
+  const [catalogoSel, setCatalogoSel] = useState<Extract<ProdutoEscolhido, { tipo: "catalogo" }> | null>(null);
+  /** Categoria de adoção, obrigatória só quando o item do catálogo não traz categoria sugerida. */
+  const [categoriaAdocao, setCategoriaAdocao] = useState("");
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [erroCategorias, setErroCategorias] = useState<string | null>(null);
+  const [conflitoCatalogo, setConflitoCatalogo] = useState<{ id: string; nome: string } | null>(null);
   const [cienciaValidadeDesconhecida, setCienciaValidadeDesconhecida] = useState(false);
   const [cienciaVencida, setCienciaVencida] = useState(false);
   const [motivoVencida, setMotivoVencida] = useState("");
@@ -100,13 +112,25 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
   }, [errosCampos]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
-  useEffect(() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }, [tipoId, origem, servicoId, produtoId, compraId, partidaId, data, hora, nome, dose, unidade, responsavel, via, ocorrenciaId, justificativa, estadoLeite, estadoCarne, leite, carne, motivoCarne, partida, validade, cienciaValidadeDesconhecida, cienciaVencida, motivoVencida, quantidades, motivoDesvio, desvio]);
+  useEffect(() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); }, [tipoId, origem, servicoId, produtoId, catalogoSel?.produtoCatalogoId, categoriaAdocao, compraId, partidaId, data, hora, nome, dose, unidade, responsavel, via, ocorrenciaId, justificativa, estadoLeite, estadoCarne, leite, carne, motivoCarne, partida, validade, cienciaValidadeDesconhecida, cienciaVencida, motivoVencida, quantidades, motivoDesvio, desvio]);
   const emCurso = useRef(false);
   const localDoFato = ficha?.historicoLocalizacoes?.find((l) => l.propriedade && l.desde.slice(0, 10) <= data && (l.ate == null || l.ate.slice(0, 10) > data || (ficha.baixa?.data.slice(0, 10) === data && l.ate.slice(0, 10) === data)));
   const sitioDoFato = animais?.length ? propriedadeId : localDoFato?.propriedade?.id ?? propriedadeId;
   const produto = produtos.find((p) => p.id === produtoId);
-  const nomeAplicado = origem === "COMPRA_CONSUMO_DIRETO" ? compras.find((c) => c.id === compraId)?.produto.nome ?? "" : produto?.nome ?? nome;
-  const unidadesCompativeis = produto ? UNIDADES_ORDENADAS.filter((u) => UNIDADES[u].base === UNIDADES[produto.unidade].base) : UNIDADES_ORDENADAS;
+  const catalogo = origem === "INCLUSO_SERVICO" ? catalogoSel : null;
+  const precisaCategoria = !!catalogo && !catalogo.categoriaSugeridaId;
+  // Tarefa, visita, IATF e execução de protocolo não aceitam item do catálogo (contratos estritos): só Meus produtos.
+  const somenteMeus = !!tarefa || !!tarefas?.length || !!onRegistrar || !!onConferirConjunto || momentoIatf !== undefined;
+  useEffect(() => {
+    if (!precisaCategoria) return;
+    let vivo = true; setErroCategorias(null);
+    listarCategorias().then((c) => { if (vivo) setCategorias(c); }).catch((e: unknown) => { if (vivo) setErroCategorias(e instanceof Error ? e.message : String(e)); });
+    return () => { vivo = false; };
+  }, [precisaCategoria, catalogo?.produtoCatalogoId]);
+  const categoriasAdocao = [...categorias].filter((c) => c.ativo).sort((a, b) => Number(!!b.usoSanitario) - Number(!!a.usoSanitario) || a.ordem - b.ordem || a.nome.localeCompare(b.nome, "pt-BR"));
+  const nomeAplicado = origem === "COMPRA_CONSUMO_DIRETO" ? compras.find((c) => c.id === compraId)?.produto.nome ?? "" : produto?.nome ?? catalogo?.nomeCompleto ?? nome;
+  const unidadeReferencia = produto?.unidade ?? catalogo?.unidadeSugerida;
+  const unidadesCompativeis = unidadeReferencia ? UNIDADES_ORDENADAS.filter((u) => UNIDADES[u].base === UNIDADES[unidadeReferencia].base) : UNIDADES_ORDENADAS;
   const partidaSugerida = partidas.filter((p) => Number(p.saldo) > 0 && p.validade && p.validade.slice(0, 10) >= data)
     .sort((a, b) => (a.validade ?? "").localeCompare(b.validade ?? ""))[0];
   useEffect(() => {
@@ -125,23 +149,42 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     return () => { vivo = false; };
   }, [produto?.id, produto?.rastrearPartidas, origem, sitioDoFato]);
   function limparProduto() {
-    setProdutoId(""); setNome(""); setVia(""); setLeite(""); setCarne(""); setUnidade("ML");
+    setProdutoId(""); setCatalogoSel(null); setCategoriaAdocao(""); setConflitoCatalogo(null); setNome(""); setVia(""); setLeite(""); setCarne(""); setUnidade("ML");
     setEstadoLeite("NAO_INFORMADO"); setEstadoCarne("NAO_INFORMADO"); setMotivoCarne("");
     setPartidaId(""); setPartida(""); setValidade(""); setCienciaValidadeDesconhecida(false); setCienciaVencida(false); setMotivoVencida("");
     if (tarefa && !desvio) { setProdutoId(tarefa.produtoId); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); }
   }
+  /** Item do catálogo preenche a aplicação como um produto: unidade sugerida, sem diálogo; carência segue "não informada". */
+  function selecionarCatalogo(item: Extract<ProdutoEscolhido, { tipo: "catalogo" }>) { limparProduto(); setCatalogoSel(item); setUnidade(item.unidadeSugerida); }
+  function usarProdutoExistente(existente: { id: string; nome: string }) { selecionarProduto(existente.id); }
+  function escolherNoSeletor(escolha: ProdutoEscolhido | null) {
+    if (!escolha) limparProduto();
+    else if (escolha.tipo === "catalogo") selecionarCatalogo(escolha);
+    else selecionarProduto(escolha.produtoId);
+  }
   function selecionarProduto(id: string) { limparProduto(); setProdutoId(id); const p = produtos.find((v) => v.id === id); if (p) { setUnidade(p.unidade); setVia(p.perfilSanitario?.viaPadrao ?? ""); setLeite(p.perfilSanitario?.carenciaLeiteHoras?.toString() ?? ""); setCarne(p.perfilSanitario?.carenciaCarneHoras?.toString() ?? ""); setEstadoLeite(p.perfilSanitario?.carenciaLeiteHoras == null ? "NAO_INFORMADO" : "INFORMADO"); setEstadoCarne(p.perfilSanitario?.carenciaCarneHoras == null ? "NAO_INFORMADO" : "INFORMADO"); } }
   function erroDaApi(falha: unknown) {
     const mensagem = falha instanceof Error ? falha.message : String(falha);
+    if (falha instanceof Error && "produtoExistente" in falha && falha.produtoExistente) setConflitoCatalogo(falha.produtoExistente as { id: string; nome: string });
     const campo = falha instanceof Error && "campo" in falha && typeof falha.campo === "string" ? falha.campo : "";
     const partes = /^itens\.(\d+)\.(.+)$/.exec(campo);
     const atributo = partes?.[2] ?? campo;
     const animal = partes && animais?.[Number(partes[1])];
-    const ids: Record<string, string> = { tipoAplicacaoId: "san-tipo", origemInsumo: "san-origem", nomeProdutoAplicado: origem === "BAIXA_ESTOQUE" ? "san-produto" : origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : produtoId ? "san-produto" : "san-nome", produtoId: origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : "san-produto", operacaoServicoId: "san-servico", itemCompraDiretaId: "san-compra", partidaId: "san-lote", dose: animal ? `san-dose-${animal.id}` : "san-dose", unidadeDose: "san-unidade", data: "san-data", aplicadaEm: "san-hora", propriedadeId: "san-data", animalId: animal ? `san-dose-${animal.id}` : "san-data", justificativaSemOrigem: "san-justificativa", cienciaValidadeDesconhecida: "san-ciencia", documentacaoExcepcional: "san-vencida", motivoDocumentacaoExcepcional: "san-motivo-vencida", carenciaLeiteHoras: "san-prazo-0", carenciaCarneHoras: "san-prazo-1", justificativaCarenciaCarne: "san-motivo-carne", ocorrenciaId: "ap-ocorrencia" };
+    const ids: Record<string, string> = { tipoAplicacaoId: "san-tipo", origemInsumo: "san-origem", nomeProdutoAplicado: origem === "BAIXA_ESTOQUE" ? "san-produto" : origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : produtoId || catalogo ? "san-produto" : "san-nome", produtoCatalogoId: "san-produto", categoriaId: precisaCategoria ? "san-categoria-adocao" : "san-produto", produtoId: origem === "COMPRA_CONSUMO_DIRETO" ? "san-compra" : "san-produto", operacaoServicoId: "san-servico", itemCompraDiretaId: "san-compra", partidaId: "san-lote", dose: animal ? `san-dose-${animal.id}` : "san-dose", unidadeDose: "san-unidade", data: "san-data", aplicadaEm: "san-hora", propriedadeId: "san-data", animalId: animal ? `san-dose-${animal.id}` : "san-data", justificativaSemOrigem: "san-justificativa", cienciaValidadeDesconhecida: "san-ciencia", documentacaoExcepcional: "san-vencida", motivoDocumentacaoExcepcional: "san-motivo-vencida", carenciaLeiteHoras: "san-prazo-0", carenciaCarneHoras: "san-prazo-1", justificativaCarenciaCarne: "san-motivo-carne", ocorrenciaId: "ap-ocorrencia" };
     Object.assign(ids, { estadoCarenciaLeite: "san-estado-0", estadoCarenciaCarne: "san-estado-1", carenciaLeiteHoras: estadoLeite === "INFORMADO" ? "san-prazo-0" : "san-estado-0", carenciaCarneHoras: estadoCarne === "INFORMADO" ? "san-prazo-1" : "san-estado-1", partidaCodigo: "san-codigo", partidaValidade: "san-validade", responsavel: "san-responsavel", via: "san-via", tarefaId: "san-tipo" });
     const mensagemLocalizada = animal ? `${animal.brinco}: ${mensagem}` : mensagem;
     setErro(mensagemLocalizada);
     setErrosCampos(ids[atributo] ? { [ids[atributo]]: mensagemLocalizada } : {});
+  }
+  async function conferirImpactosAplicacoes(entradas: AplicacaoInput[], reutilizar = false) {
+    const confirmacoes = await impactos.conferir(
+      entradas.map((i): EntradaImpacto => ({ origem: "PROCEDIMENTO", animalId: i.animalId, propriedadeId: i.propriedadeId, data: i.data, tipoAplicacaoId: i.tipoAplicacaoId })),
+      Object.fromEntries(animais?.map(a => [a.id, a.brinco]) ?? [[animalId, ficha?.brinco ?? "Animal selecionado"]]),
+      reutilizar ? JSON.stringify(entradas) : undefined,
+    );
+    if (!confirmacoes) return false;
+    entradas.forEach((item, indice) => { item.impacto = confirmacoes[indice]; });
+    return true;
   }
   async function submeter(e: FormEvent) {
     e.preventDefault(); if (emCurso.current) return;
@@ -150,10 +193,11 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
     if (!tipoId) erros["san-tipo"] = "Selecione o tipo de aplicação.";
     if (origem === "BAIXA_ESTOQUE" && !produtoId) erros["san-produto"] = "Selecione o medicamento do estoque.";
     if (origem === "COMPRA_CONSUMO_DIRETO" && !compraId) erros["san-compra"] = "Selecione o item da compra.";
-    if ((origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId) && !nomeAplicado.trim()) erros["san-nome"] = "Informe o medicamento utilizado.";
+    if ((origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId && !catalogo) && !nomeAplicado.trim()) erros["san-nome"] = "Informe o medicamento utilizado.";
+    if (precisaCategoria && !categoriaAdocao) erros["san-categoria-adocao"] = "Selecione a categoria do produto novo.";
     if (origem === "INCLUSO_SERVICO" && !servicoId) erros["san-servico"] = "Selecione o Serviço que incluiu o medicamento.";
     if (origem === "SEM_ORIGEM_JUSTIFICADA" && !justificativa.trim()) erros["san-justificativa"] = "Explique a origem não localizada.";
-    if (origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && !partidaId) erros["san-lote"] = "Selecione o lote do produto.";
+    if (origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && !partidaId) erros["san-lote"] = "Selecione o lote de estoque.";
     const lote = partidas.find((p) => p.id === partidaId);
     if (origem === "BAIXA_ESTOQUE" && lote?.validade === null && !cienciaValidadeDesconhecida) erros["san-ciencia"] = "Confirme a ciência da validade não informada.";
     if (origem === "BAIXA_ESTOQUE" && lote?.validade && lote.validade.slice(0, 10) < data) {
@@ -181,6 +225,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       const input: AplicacaoInput = { animalId, propriedadeId: sitioDoFato, tarefaId: tarefa?.id, data, aplicadaEm: hora ? dataHoraISO(`${data}T${hora}`) : undefined, tipoAplicacaoId: tipoId, origemInsumo: origem,
         nomeProdutoAplicado: nomeAplicado.trim(), dose, unidadeDose: unidade, responsavel: responsavel.trim() || undefined, via: via.trim() || undefined, ocorrenciaId: ocorrenciaId || undefined,
         produtoId: origem === "SEM_ORIGEM_JUSTIFICADA" && !tarefa ? undefined : produtoId || undefined,
+        ...(catalogo ? { produtoCatalogoId: catalogo.produtoCatalogoId, categoriaId: catalogo.categoriaSugeridaId ?? (categoriaAdocao || undefined) } : {}),
         operacaoServicoId: servicoId || undefined, itemCompraDiretaId: origem === "COMPRA_CONSUMO_DIRETO" ? compraId : undefined,
         partidaId: origem === "BAIXA_ESTOQUE" ? partidaId || undefined : undefined,
         cienciaValidadeDesconhecida: origem === "BAIXA_ESTOQUE" ? cienciaValidadeDesconhecida : undefined,
@@ -190,13 +235,17 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne,
         carenciaLeiteHoras: estadoLeite === "INFORMADO" ? Number(leite) : null, carenciaCarneHoras: estadoCarne === "INFORMADO" ? Number(carne) : null,
         justificativaCarenciaCarne: estadoCarne === "NAO_APLICAVEL" ? motivoCarne.trim() : undefined };
-      if (onRegistrar) { await onRegistrar(input); onSalvo(undefined, sitioDoFato); return; }
       const entradas = animais?.length ? animais.map((a) => {
         const t = tarefas?.find((t) => t.animalId === a.id);
         const { motivoDesvio: _motivo, ...ajuste } = ajustesEtapa[a.id] ?? {};
         const dataComum = momentoIatf !== undefined ? input.data : t?.previstaPara?.slice(0,10) ?? input.data;
         return { ...input, ...(t && !desvio ? { data: dataComum, aplicadaEm: hora ? dataHoraISO(`${dataComum}T${hora}`) : undefined, produtoId: t.produtoId, dose: t.dose, unidadeDose: t.unidade, via: t.via, tipoAplicacaoId: t.tipoAplicacaoId || input.tipoAplicacaoId } : desvio ? ajuste : {}), animalId: a.id, tarefaId: t?.id ?? tarefa?.id, dose: desvio || !t ? quantidades[a.id] : t.dose };
       }) : [input];
+      if (onRegistrar) {
+        if (!await conferirImpactosAplicacoes([input])) return;
+        input.chave = chave;
+        await onRegistrar(input); onSalvo(undefined, sitioDoFato); return;
+      }
       if (tarefa) {
         if (animais?.length) {
           const fichas = await Promise.all(entradas.map((i) => buscarFichaAnimal(i.animalId, undefined, i.propriedadeId)));
@@ -213,6 +262,7 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         }
         const sitioExecucao = entradas[0].propriedadeId;
         if (entradas.some((i) => i.propriedadeId !== sitioExecucao)) throw new Error("As aplicações selecionadas precisam ocorrer no mesmo sítio nas datas realizadas.");
+        if (!await conferirImpactosAplicacoes(entradas, true)) return;
         const itensExecucao = entradas.map(i => ({ ...i, ...(desvio ? { desvio: { motivo: (ajustesEtapa[i.animalId]?.motivoDesvio || motivoDesvio).trim() } } : {}) }));
         if (onConferirConjunto) { await onConferirConjunto(itensExecucao); return; }
         const payload = { propriedadeId: sitioExecucao, itens: itensExecucao.map(i => ({ ...i, tipo: "APLICACAO" })) };
@@ -221,27 +271,33 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
         await reqSanidade("/tarefas/execucao/confirmacao", { method: "POST", body: JSON.stringify({ ...payload, chave, fingerprint: previaExecucao.fingerprint }) }, sitioExecucao);
         onSalvo(undefined, sitioExecucao); return;
       }
+      if (!await conferirImpactosAplicacoes(entradas, true)) return;
       if (onConferirConjunto) { await onConferirConjunto(entradas); return; }
       const resultado = await reqSanidade<{ aplicacoes: string[] }>("/aplicacoes/coletivas", { method: "POST", body: JSON.stringify({ chave, propriedadeId: animais?.length ? propriedadeId : sitioDoFato, itens: entradas }) }, sitioDoFato);
       onSalvo(resultado?.aplicacoes?.[0], sitioDoFato);
-    } catch (falha) { erroDaApi(falha); }
+    } catch (falha) { impactos.invalidar(); setPreviaExecucao(null); erroDaApi(falha); }
     finally { emCurso.current = false; setSalvando(false); }
   }
-  return <FormShellAplicacao inline={inline} titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={onFechar} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : rotuloSubmeter ?? (tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação")}</Button></div></div>}>
+  return <>{impactos.painel}<FormShellAplicacao inline={inline} titulo={animais?.length ? "Aplicação sanitária coletiva" : "Registrar aplicação sanitária"} onFechar={onFechar} rodape={<div className="grid w-full gap-2">{erro && <p role="alert" className="flex items-start gap-2 text-sm text-destructive"><CircleAlert size={16} className="shrink-0" aria-hidden />{erro}</p>}<div className="flex justify-end gap-2"><Button secondary onClick={onFechar} disabled={salvando}>Fechar</Button><Button type="submit" form="form-aplicacao-sanitaria" disabled={salvando || carregando}>{salvando ? "Salvando…" : rotuloSubmeter ?? (tarefa ? previaExecucao ? "Confirmar execução" : "Conferir execução" : animais?.length ? conferindo ? "Confirmar todas as aplicações" : "Conferir por animal" : "Registrar aplicação")}</Button></div></div>}>
     <form ref={formulario} noValidate id="form-aplicacao-sanitaria" onSubmit={submeter} onChange={() => { setChave(crypto.randomUUID()); setPreviaExecucao(null); aoEditarExecucao?.(); }} className="grid gap-4">
+      <fieldset disabled={salvando} className="contents">
       {conteudoExtra&&<fieldset disabled={salvando}>{conteudoExtra}</fieldset>}
-      {carregando && <p>Carregando cadastros…</p>}
+      {carregando && <EsqueletoLinhas label="Carregando cadastros" linhas={2} />}
       {tarefa && <section className="grid gap-3 rounded-lg border border-border p-3"><strong>{tarefa.protocoloNome ?? "Protocolo"} · v{tarefa.protocoloVersao ?? "—"} · Aplicação</strong><p>Animal: {animais?.map((a) => a.brinco).join(", ") ?? ficha?.brinco ?? "Carregando animal…"}. Versão e natureza são fixas. Planejado: {tarefa.previstaPara ? dataSanitaria(tarefa.previstaPara) : "Data não registrada"} · {produto?.nome ?? "Produto planejado"} · {tarefa.dose} {unidadeSanitaria(tarefa.unidade)} · {tarefa.via ?? "Via não informada"}</p><Button secondary disabled={salvando} onClick={() => { setDesvio((v) => !v); setPreviaExecucao(null); if (desvio) { setData(tarefa.previstaPara?.slice(0, 10) ?? hoje()); setTipoId(tarefa.tipoAplicacaoId); setProdutoId(tarefa.produtoId); setDose(tarefa.dose); setUnidade(tarefa.unidade); setVia(tarefa.via ?? ""); setMotivoDesvio(""); setAjustesEtapa({}); } }}>{desvio ? "Voltar ao planejamento" : "Registrar desvio"}</Button>{desvio && <CampoFormulario id="san-desvio" erro={errosCampos["san-desvio"]} rotulo="Motivo do desvio" obrigatorio>{(p) => <textarea {...p} minLength={5} maxLength={500} className={classeInput} value={motivoDesvio} onChange={(e) => setMotivoDesvio(e.target.value)} />}</CampoFormulario>}</section>}
       <fieldset disabled={salvando} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2"><CampoFormulario id="san-data" erro={errosCampos["san-data"]} rotulo="Data" obrigatorio>{(p) => <DatePicker {...p} disabled={momentoIatf !== undefined || !!tarefa && !desvio} required max={ficha?.baixa?.data.slice(0, 10) ?? hoje()} value={data} onChange={setData} />}</CampoFormulario><CampoFormulario id="san-hora" erro={errosCampos["san-hora"]} rotulo={momentoIatf !== undefined && !hora ? "Horário não informado na IATF" : "Hora"} obrigatorio={momentoIatf === undefined}>{(p) => <input {...p} type="time" required={momentoIatf === undefined} disabled={momentoIatf !== undefined} value={hora} onChange={(e) => setHora(e.target.value)} className={classeInput} />}</CampoFormulario></div>
       <CampoFormulario id="san-tipo" erro={errosCampos["san-tipo"]} rotulo="Tipo de aplicação" obrigatorio>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio && !!tarefa.tipoAplicacaoId} required value={tipoId} onValueChange={(valorSelecionado) => setTipoId(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{tipos.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="san-origem" erro={errosCampos["san-origem"]} rotulo="Origem do medicamento" obrigatorio>{(p) => <SelectCampo {...p} value={origem} onValueChange={(valorSelecionado) => { setOrigem(valorSelecionado as typeof origem); setServicoId(""); setCompraId(""); setJustificativa(""); limparProduto(); setErrosCampos({}); setErro(null); }} className={classeInput}><option value="BAIXA_ESTOQUE">Estoque da fazenda</option><option value="INCLUSO_SERVICO">Incluído em Serviço</option><option value="COMPRA_CONSUMO_DIRETO">Compra para consumo direto</option><option value="SEM_ORIGEM_JUSTIFICADA">Origem não localizada</option></SelectCampo>}</CampoFormulario>
       {origem === "COMPRA_CONSUMO_DIRETO" && <CampoFormulario id="san-compra" erro={errosCampos["san-compra"]} rotulo="Item confirmado com quantidade disponível" obrigatorio>{(p) => <SelectCampo {...p} required value={compraId} onValueChange={(valorSelecionado) => { setCompraId(valorSelecionado); const c = compras.find((v) => v.id === valorSelecionado); selecionarProduto(c?.produtoId ?? ""); const unidadeCompra = c && UNIDADES_ORDENADAS.find((u) => u === c.unidade.toUpperCase() || UNIDADES[u].rotulo.toLowerCase() === c.unidade.toLowerCase()); if (unidadeCompra) setUnidade(unidadeCompra); }} className={classeInput}><option value="">Selecione</option>{compras.map((c) => <option key={c.id} value={c.id}>#{c.operacao.numero} · {c.produto.nome} · disponível {c.disponivel} {c.unidade}</option>)}</SelectCampo>}</CampoFormulario>}
-      {(origem === "BAIXA_ESTOQUE" || origem === "INCLUSO_SERVICO") && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo={origem === "BAIXA_ESTOQUE" ? "Medicamento do estoque" : "Produto cadastrado (opcional)"} obrigatorio={origem === "BAIXA_ESTOQUE"}>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio} required={origem === "BAIXA_ESTOQUE"} value={produtoId} onValueChange={(valorSelecionado) => selecionarProduto(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{produtos.filter((v) => v.usoSanitario).map((v) => <option key={v.id} value={v.id}>{v.nome} · {v.unidade}</option>)}</SelectCampo>}</CampoFormulario>}
-      {(origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId) && <CampoFormulario id="san-nome" erro={errosCampos["san-nome"]} rotulo="Medicamento utilizado" obrigatorio>{(p) => <input {...p} required maxLength={160} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>}
+      {origem === "INCLUSO_SERVICO" && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo="Produto cadastrado (opcional)">{(p) => <><SeletorProdutoCatalogo id={p.id} rotulo={p["aria-label"]} uso="sanitario" somenteMeus={somenteMeus} propriedadeId={sitioDoFato} disabled={!!tarefa && !desvio} invalido={p["aria-invalid"]} descricaoId={p["aria-describedby"]}
+        value={catalogo ? catalogo : produtoId ? { tipo: "produto", produtoId, nome: produto?.nome ?? nome } : null} onChange={escolherNoSeletor} />
+        {conflitoCatalogo && <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-normal"><span>O produto “{conflitoCatalogo.nome}” já existe na fazenda.</span><Button secondary onClick={() => usarProdutoExistente(conflitoCatalogo)}>Usar produto existente</Button></div>}</>}</CampoFormulario>}
+      {origem === "INCLUSO_SERVICO" && precisaCategoria && <CampoFormulario id="san-categoria-adocao" erro={errosCampos["san-categoria-adocao"] ?? erroCategorias ?? undefined} rotulo="Categoria do produto novo" obrigatorio ajuda="Este item do catálogo não tem categoria sugerida. A categoria organiza o produto que será cadastrado na fazenda.">{(p) => <SelectCampo {...p} required value={categoriaAdocao} onValueChange={(valor) => setCategoriaAdocao(valor)} className={classeInput}><option value="">Selecione</option>{categoriasAdocao.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}</SelectCampo>}</CampoFormulario>}
+      {origem === "BAIXA_ESTOQUE" && <CampoFormulario id="san-produto" erro={errosCampos["san-produto"]} rotulo={origem === "BAIXA_ESTOQUE" ? "Medicamento do estoque" : "Produto cadastrado (opcional)"} obrigatorio={origem === "BAIXA_ESTOQUE"}>{(p) => <SelectCampo {...p} disabled={!!tarefa && !desvio} required={origem === "BAIXA_ESTOQUE"} value={produtoId} onValueChange={(valorSelecionado) => selecionarProduto(valorSelecionado)} className={classeInput}><option value="">Selecione</option>{produtos.filter((v) => v.usoSanitario).map((v) => <option key={v.id} value={v.id}>{v.nome} · {unidadeSanitaria(v.unidade)}</option>)}</SelectCampo>}</CampoFormulario>}
+      {(origem === "SEM_ORIGEM_JUSTIFICADA" || origem === "INCLUSO_SERVICO" && !produtoId && !catalogo) && <CampoFormulario id="san-nome" erro={errosCampos["san-nome"]} rotulo="Medicamento utilizado" obrigatorio>{(p) => <input {...p} required maxLength={160} value={nome} onChange={(e) => setNome(e.target.value)} className={classeInput} />}</CampoFormulario>}
       {origem !== "SEM_ORIGEM_JUSTIFICADA" && <CampoFormulario id="san-servico" erro={errosCampos["san-servico"]} rotulo={origem === "INCLUSO_SERVICO" ? "Serviço que incluiu o medicamento" : "Serviço de atendimento (opcional)"} obrigatorio={origem === "INCLUSO_SERVICO"}>{(p) => <SelectCampo {...p} required={origem === "INCLUSO_SERVICO"} value={servicoId} onValueChange={(valorSelecionado) => setServicoId(valorSelecionado)} className={classeInput}><option value="">{origem === "INCLUSO_SERVICO" ? "Selecione" : "Sem Serviço — aplicação pela fazenda"}</option>{servicos.map((s) => <option key={s.id} value={s.id}>#{s.numero} · {s.descricao || s.parceiro?.nome || "Serviço"}</option>)}</SelectCampo>}</CampoFormulario>}
       {origem === "SEM_ORIGEM_JUSTIFICADA" && <CampoFormulario id="san-justificativa" erro={errosCampos["san-justificativa"]} rotulo="Justificativa da origem não localizada" obrigatorio>{(p) => <textarea {...p} required maxLength={500} value={justificativa} onChange={(e) => setJustificativa(e.target.value)} className={classeInput} />}</CampoFormulario>}
-      {origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && <><CampoFormulario id="san-lote" erro={errosCampos["san-lote"]} rotulo="Lote do Produto" obrigatorio>{(p) => <SelectCampo {...p} required value={partidaId} onValueChange={(valorSelecionado) => { setPartidaId(valorSelecionado); setCienciaValidadeDesconhecida(false); }} className={classeInput}><option value="">Selecione — confira saldo e validade</option>{partidas.map((v) => <option key={v.id} value={v.id}>{v.nome || (v.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem validade informada" : v.codigo)} · saldo {v.saldo} {produto.unidade} · validade {v.validade?.slice(0, 10) ?? "não informada"}</option>)}</SelectCampo>}</CampoFormulario>{partidaSugerida && <p className="text-sm text-ink-3">Vencimento válido mais próximo na data do fato: {partidaSugerida.nome || partidaSugerida.codigo} · {partidaSugerida.validade?.slice(0, 10)}. Sugestão apenas: confirme o lote.</p>}</>}
+      {origem === "BAIXA_ESTOQUE" && produto?.rastrearPartidas && <><CampoFormulario id="san-lote" erro={errosCampos["san-lote"]} rotulo="Lote de estoque" obrigatorio>{(p) => <SelectCampo {...p} required value={partidaId} onValueChange={(valorSelecionado) => { setPartidaId(valorSelecionado); setCienciaValidadeDesconhecida(false); }} className={classeInput}><option value="">Selecione o lote de estoque</option>{partidas.map((v) => <option key={v.id} value={v.id}>{v.nome || (v.origemRastreio === "LEGADO_NAO_IDENTIFICADO" ? "Estoque sem validade informada" : v.codigo)} · saldo {Number(v.saldo).toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {unidadeSanitaria(produto.unidade)} · validade {v.validade ? dataSanitaria(v.validade) : "não informada"}</option>)}</SelectCampo>}</CampoFormulario>{partidaSugerida && <p className="text-sm text-ink-3">Vencimento válido mais próximo na data do fato: {partidaSugerida.nome || partidaSugerida.codigo} · {dataSanitaria(partidaSugerida.validade)}.{partidaId !== partidaSugerida.id && <> <button type="button" className="font-medium text-primary underline underline-offset-4" onClick={() => { setPartidaId(partidaSugerida.id); setCienciaValidadeDesconhecida(false); }}>Usar este lote</button></>}</p>}</>}
       {origem === "BAIXA_ESTOQUE" && partidas.some((p) => p.id === partidaId && p.validade === null) && <ConfirmacaoCiencia id="san-ciencia" erro={errosCampos["san-ciencia"]} obrigatorio checked={cienciaValidadeDesconhecida} onChange={setCienciaValidadeDesconhecida}>Estou ciente de que a validade deste lote não foi informada.</ConfirmacaoCiencia>}
       {origem === "BAIXA_ESTOQUE" && partidas.some((p) => p.id === partidaId && p.validade != null && p.validade.slice(0, 10) < data) && <section className="grid gap-2 rounded-lg border border-destructive/30 p-3"><p className="text-sm">Lote vencido na data informada: uso operacional bloqueado. Esta exceção documenta somente um fato já ocorrido; não autoriza uma nova aplicação.</p><ConfirmacaoCiencia id="san-vencida" erro={errosCampos["san-vencida"]} obrigatorio checked={cienciaVencida} onChange={setCienciaVencida}>Confirmo que o fato já ocorreu e estou ciente do vencimento.</ConfirmacaoCiencia><CampoFormulario id="san-motivo-vencida" erro={errosCampos["san-motivo-vencida"]} rotulo="Justificativa da documentação excepcional" obrigatorio>{(p) => <textarea {...p} minLength={5} maxLength={500} value={motivoVencida} onChange={(e) => setMotivoVencida(e.target.value)} className={classeInput} />}</CampoFormulario></section>}
       {origem === "INCLUSO_SERVICO" && <div className="grid gap-4 sm:grid-cols-2"><CampoFormulario id="san-codigo" erro={errosCampos["san-codigo"]} rotulo="Lote do fabricante (opcional)">{(p) => <input {...p} value={partida} onChange={(e) => setPartida(e.target.value)} className={classeInput} />}</CampoFormulario><CampoFormulario id="san-validade" erro={errosCampos["san-validade"]} rotulo="Validade (opcional)">{(p) => <DatePicker {...p} value={validade} onChange={setValidade} />}</CampoFormulario></div>}
@@ -250,13 +306,14 @@ export function FormAplicacaoServico({ animalId, propriedadeId, onSalvo, onFecha
       {ficha?.baixa && <p className="text-sm text-ink-3">Animal baixado: registre somente fato ocorrido até {ficha.baixa.data.slice(0, 10)}. O sítio será o da localização nessa data; o lançamento não reativa o animal.</p>}
       <CampoFormulario id="san-responsavel" erro={errosCampos["san-responsavel"]} rotulo="Responsável pela aplicação (opcional)">{(p) => <input {...p} maxLength={160} value={responsavel} onChange={(e) => setResponsavel(e.target.value)} className={classeInput} />}</CampoFormulario>
       {!animais?.length && <CampoFormulario id="ap-ocorrencia" erro={errosCampos["ap-ocorrencia"]} rotulo="Ocorrência associada (opcional)">{(p) => <SelectCampo {...p} className={classeInput} value={ocorrenciaId} onValueChange={(valorSelecionado) => setOcorrenciaId(valorSelecionado)}><option value="">Sem ocorrência</option>{ocorrencias.map((o) => <option key={o.id} value={o.id}>{o.doenca.nome} · {o.inicio.slice(0, 10)}</option>)}</SelectCampo>}</CampoFormulario>}
-      <fieldset className="grid gap-4 rounded-lg border border-border p-3"><legend className="px-1 font-semibold">Carência <AjudaCampo rotulo="Ajuda sobre os prazos de carência" texto="Zero é um prazo confirmado. Não informado mantém a restrição desconhecida. O autor do lançamento será registrado na auditoria, separadamente do responsável."/></legend>{([{ destino: "Leite", estado: estadoLeite, setEstado: setEstadoLeite, prazo: leite, setPrazo: setLeite }, { destino: "Abate/carne", estado: estadoCarne, setEstado: setEstadoCarne, prazo: carne, setPrazo: setCarne }]).map((c, i) => <section key={c.destino} className="grid gap-3">{i === 0 && leiteRelevante === false && <p className="mb-2 text-sm text-ink-3">Na finalidade atual, leite pode não se aplicar. Confirme explicitamente no campo abaixo; nenhum prazo vazio será tratado como zero.</p>}<CampoFormulario id={`san-estado-${i}`} erro={errosCampos[`san-estado-${i}`]} rotulo={c.destino}>{(p) => <SelectCampo {...p} value={c.estado} onValueChange={(valorSelecionado) => c.setEstado(valorSelecionado as EstadoPrazo)} className={classeInput}><option value="NAO_INFORMADO">Não informado</option><option value="INFORMADO">Prazo informado</option><option value="NAO_APLICAVEL">Não se aplica — confirmado por mim</option></SelectCampo>}</CampoFormulario>{c.estado === "INFORMADO" && <CampoFormulario id={`san-prazo-${i}`} erro={errosCampos[`san-prazo-${i}`]} rotulo="Prazo em horas" obrigatorio>{(p) => <input {...p} required type="number" min="0" step="1" value={c.prazo} onChange={(e) => c.setPrazo(e.target.value)} className={classeInput} />}</CampoFormulario>}</section>)}{estadoCarne === "NAO_APLICAVEL" && <CampoFormulario id="san-motivo-carne" erro={errosCampos["san-motivo-carne"]} rotulo="Justificativa de não aplicabilidade para abate/carne" obrigatorio>{(p) => <textarea {...p} required value={motivoCarne} onChange={(e) => setMotivoCarne(e.target.value)} className={classeInput} />}</CampoFormulario>}</fieldset>
+      <fieldset className="grid gap-4 rounded-lg border border-border p-3"><legend className="px-1 font-semibold">Carência</legend><p className="-mt-2 text-xs text-ink-3">Zero é um prazo confirmado. "Não informado" mantém a restrição como desconhecida.</p>{([{ destino: "Leite", estado: estadoLeite, setEstado: setEstadoLeite, prazo: leite, setPrazo: setLeite }, { destino: "Abate/carne", estado: estadoCarne, setEstado: setEstadoCarne, prazo: carne, setPrazo: setCarne }]).map((c, i) => <section key={c.destino} className="grid gap-3">{i === 0 && leiteRelevante === false && <p className="mb-2 text-sm text-ink-3">Na finalidade atual, leite pode não se aplicar. Confirme explicitamente no campo abaixo; nenhum prazo vazio será tratado como zero.</p>}<CampoFormulario id={`san-estado-${i}`} erro={errosCampos[`san-estado-${i}`]} rotulo={c.destino}>{(p) => <SelectCampo {...p} value={c.estado} onValueChange={(valorSelecionado) => c.setEstado(valorSelecionado as EstadoPrazo)} className={classeInput}><option value="NAO_INFORMADO">Não informado</option><option value="INFORMADO">Prazo informado</option><option value="NAO_APLICAVEL">Não se aplica — confirmado por mim</option></SelectCampo>}</CampoFormulario>{c.estado === "INFORMADO" && <CampoFormulario id={`san-prazo-${i}`} erro={errosCampos[`san-prazo-${i}`]} rotulo="Prazo em horas" obrigatorio>{(p) => <input {...p} required type="number" min="0" step="1" value={c.prazo} onChange={(e) => c.setPrazo(e.target.value)} className={classeInput} />}</CampoFormulario>}</section>)}{estadoCarne === "NAO_APLICAVEL" && <CampoFormulario id="san-motivo-carne" erro={errosCampos["san-motivo-carne"]} rotulo="Justificativa de não aplicabilidade para abate/carne" obrigatorio>{(p) => <textarea {...p} required value={motivoCarne} onChange={(e) => setMotivoCarne(e.target.value)} className={classeInput} />}</CampoFormulario>}</fieldset>
       </fieldset>
       {previaExecucao && <ConferenciaExecucao previa={previaExecucao} animais={animais ?? [{ id: animalId, brinco: ficha?.brinco ?? animalId }]} />}
       {tarefa && desvio && conferindo && animais && <ListaRascunho itens={animais} rotulo="ajustes individuais" texto={a => a.brinco} renderizar={a => <AjusteIndividualAplicacao key={a.id} brinco={a.brinco} ajuste={ajustesEtapa[a.id] ?? {}} comum={{ propriedadeId, data, hora, produtoId, tipoAplicacaoId: tipoId, unidadeDose: unidade, via, responsavel, partidaId, origemInsumo: origem, estadoCarenciaLeite: estadoLeite, estadoCarenciaCarne: estadoCarne, carenciaLeiteHoras: leite === "" ? null : Number(leite), carenciaCarneHoras: carne === "" ? null : Number(carne), operacaoServicoId: servicoId, itemCompraDiretaId: compraId, justificativaSemOrigem: justificativa }} produtos={produtos} tipos={tipos} compras={compras} servicos={servicos} onChange={(patch: AjusteEtapaAplicacao) => { setPreviaExecucao(null); setChave(crypto.randomUUID()); setAjustesEtapa((v) => ({ ...v, [a.id]: { ...v[a.id], ...patch } })); }} />} />}
       {conferindo && animais && <section className="grid gap-3"><h3 className="font-semibold">Revisão por animal</h3><p className="text-sm">Os dados acima serão usados para todos e continuam disponíveis para correção. Cada linha permite ajustar a quantidade. A confirmação é atômica; erro em uma linha impede o conjunto.</p><ListaRascunho itens={animais} rotulo="quantidades individuais" texto={a => a.brinco} renderizar={a => <CampoFormulario key={a.id} id={`san-dose-${a.id}`} erro={errosCampos[`san-dose-${a.id}`]} rotulo={`Quantidade aplicada em ${a.brinco}`} obrigatorio>{(p) => <input {...p} disabled={salvando || !!tarefa && !desvio} type="number" min="0.001" step="0.001" className={classeInput} value={quantidades[a.id] ?? ""} onChange={(e) => { setQuantidades((q) => ({ ...q, [a.id]: e.target.value })); }} />}</CampoFormulario>} /><Button secondary disabled={salvando} onClick={() => setConferindo(false)}>Voltar aos dados comuns</Button></section>}
+      </fieldset>
     </form>
-  </FormShellAplicacao>;
+  </FormShellAplicacao></>;
 }
 
 function FormShellAplicacao({ inline, titulo, onFechar, rodape, children }: { inline: boolean; titulo: string; onFechar: () => void; rodape: ReactNode; children: ReactNode }) {

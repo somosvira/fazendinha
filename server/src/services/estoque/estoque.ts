@@ -12,6 +12,8 @@ import { SEM_VINCULO } from "../../lib/ids.js";
 import { planejarSaidaTx, registrarEntradaValorizadaTx, registrarSaidaValorizadaTx, registrarInversoValorizadoTx, saldosBasesTx, travarValorizacaoTx, ValorizacaoError } from "./valorizacao.js";
 import { conferirSaldoEstornoPartidasTx, idsGrupoPartidaTx, prepararPartidasTx } from "./partidas.js";
 import { METODO_LEITE, valoresMovimentosLeiteTx } from "./leite.js";
+import { resolverProdutoIdTx } from "./produtos-catalogo.js";
+import { refinarProdutoOuCatalogo } from "./produtos-catalogo.schemas.js";
 
 export class EstoqueError extends Error {
   constructor(public code: "NAO_ENCONTRADO" | "MES_FECHADO" | "ORIGEM_AUTOMATICA" | "CONFLITO" | "VALIDACAO", m: string, public campo?: string) {
@@ -37,7 +39,11 @@ const distribuicaoPartidasSchema = z.array(z.object({
 
 export const movimentoSchema = z
   .object({
-    produtoId: z.string().uuid(),
+    // Produto da fazenda ou item do catálogo, adotado ao confirmar o ajuste (docs/produtos.md, Adoção).
+    produtoId: z.string().uuid().optional(),
+    produtoCatalogoId: z.string().uuid().optional(),
+    // Categoria do Produto criado na adoção; sem ela, vale a sugestão do catálogo.
+    categoriaId: z.string().uuid().optional(),
     // Entradas e saídas nascem de operações financeiras ou eventos operacionais; aqui só ajuste de inventário.
     tipo: z.literal("AJUSTE"),
     data: naoFutura,
@@ -54,8 +60,10 @@ export const movimentoSchema = z
   // AJUSTE aceita negativa (correção de saldo) mas nunca zero.
   .superRefine((v, ctx) => {
     if (v.quantidade === 0) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "quantidade não pode ser zero", path: ["quantidade"] });
+    refinarProdutoOuCatalogo({ obrigatorio: true, campoCategoriaAdocao: "categoriaId" })(v, ctx);
   });
 export type MovimentoInput = z.infer<typeof movimentoSchema>;
+type MovimentoTxInput = Omit<MovimentoInput, "produtoId" | "produtoCatalogoId" | "categoriaId"> & { produtoId: string };
 
 export const ajusteContagemSchema = z.object({
   produtoId: z.string().uuid(),
@@ -401,14 +409,16 @@ export async function registrarMovimento(input: MovimentoInput & { usuarioId?: n
   const propriedadeId = input.propriedadeId ?? (await propriedadePrincipalId()); // sítio ativo ou principal
 
   return transacaoValidada(async (tx) => {
-    const resultado = await registrarMovimentoTx(tx, input, propriedadeId, input.usuarioId);
+    const { produtoCatalogoId, categoriaId, ...dados } = input;
+    const produtoId = await resolverProdutoIdTx(tx, { produtoId: input.produtoId, produtoCatalogoId, categoriaId }, input.usuarioId);
+    const resultado = await registrarMovimentoTx(tx, { ...dados, produtoId }, propriedadeId, input.usuarioId);
     await auditar(tx, { entidade: "Operacao", entidadeId: resultado.operacaoId, acao: "AJUSTE_MANUAL", usuarioId: input.usuarioId, motivo: input.observacao,
-      depois: { produtoId: input.produtoId, propriedadeId, quantidade: input.quantidade, data: input.data, centroCustoId: input.centroCustoId ?? null, movimentoId: resultado.id } });
-    return resultado;
+      depois: { produtoId, propriedadeId, quantidade: input.quantidade, data: input.data, centroCustoId: input.centroCustoId ?? null, movimentoId: resultado.id } });
+    return { ...resultado, produtoId };
   }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
 }
 
-async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoInput, propriedadeId: number, usuarioId?: number | null) {
+async function registrarMovimentoTx(tx: Prisma.TransactionClient, input: MovimentoTxInput, propriedadeId: number, usuarioId?: number | null) {
     await travarValorizacaoTx(tx, [input.produtoId]);
     const produto = await tx.produto.findUnique({ where: { id: input.produtoId }, include: { centrosCusto: { select: { centroCustoId: true } } } });
     if (!produto) throw new EstoqueError("NAO_ENCONTRADO", "produto não encontrado");

@@ -9,7 +9,7 @@ export type Aptidao = "LEITE" | "CORTE" | "REPRODUCAO";
 export type PapelReprodutivo = "NENHUM" | "RECEPTORA" | "DOADORA";
 export type Origem = "NASCIDO" | "COMPRADO";
 export type Situacao = "ATIVO" | "BAIXADO";
-export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "NAO_DETERMINADO" | "CADASTRO_INDEVIDO";
+export type TipoBaixa = "VENDA" | "ABATE" | "MORTE" | "DOACAO" | "EXTRAVIO" | "NAO_DETERMINADO" | "CADASTRO_INDEVIDO" | "COMPRA_ESTORNADA";
 export type ClasseMotivoBaixa = "DESCARTE_VOLUNTARIO" | "DESCARTE_INVOLUNTARIO" | "MORTE";
 export type PeriodoGmd = 30 | 90 | 180 | 365 | "entrada";
 export type TipoPesagem = "NASCIMENTO" | "ENTRADA" | "DESMAMA" | "ROTINA" | "SAIDA" | "PARTO" | "SECAGEM";
@@ -92,7 +92,7 @@ export type RegularizarBaixaHistoricaInput = {
   cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
 };
 export type RevisarClassificacaoBaixaInput = {
-  chave: string; tipo: Exclude<TipoBaixa, "NAO_DETERMINADO" | "CADASTRO_INDEVIDO">;
+  chave: string; tipo: Exclude<TipoBaixa, "NAO_DETERMINADO" | "CADASTRO_INDEVIDO" | "COMPRA_ESTORNADA">;
   motivoId?: string | null; evidencia: string; motivo: string;
   cienciaSanitaria?: boolean; justificativaSanitaria?: string | null;
 };
@@ -132,6 +132,7 @@ export type AnimalFicha = AnimalResumo & {
   historicoLocalizacoes: HistoricoLocalizacao[];
   historicoDestinos: HistoricoDestino[];
   historicoPapeisReprodutivos?: Array<{ id: string; tipo: string; inicio: string; fim: string | null; origem: string; revogado: boolean }>;
+  historicoEcc?: { id: string; data: string; valor: number | null; escalaMin: number | null; escalaMax: number | null; responsavel: string | null }[];
   historicoPesagens: HistoricoPesagem[];
   /** trocas manuais de categoria, mais recente primeiro */
   historicoCategoriasManuais: HistoricoCategoriaManual[];
@@ -139,6 +140,8 @@ export type AnimalFicha = AnimalResumo & {
   filiacao: { mae: FiliacaoLadoDTO | null; pai: FiliacaoLadoDTO | null };
   /** quantos filhos (como mãe ou pai) este animal tem registrados */
   filhosCount: number;
+  aquisicao?: { operacaoId: string; numero: number; data: string; status: string; parceiroNome: string | null } | null;
+  devolucao?: { operacaoId: string; numero: number; data: string } | null;
   baixa: BaixaAnimalResumo | null;
   peso: {
     ultimo: { kg: number; data: string } | null;

@@ -7,14 +7,9 @@ import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, Table
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CalendarDays, Settings2 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "../../../components/ui/dialog";
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -59,6 +54,12 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
     setErro("");
     setCarregando(true);
     if (!dataValida(data)) {
+      setCarregando(false);
+      return;
+    }
+    // A programação é por sítio: no consolidado, só orienta a escolher um, sem consultar a API.
+    if (sitio == null) {
+      setErro("Selecione um sítio para consultar a programação de retirada");
       setCarregando(false);
       return;
     }
@@ -122,7 +123,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
           )}
           {dados.meta && (
             <div>
-              <h2>Conferência da meta <AjudaCampo rotulo="Sobre a conferência da meta" texto={"A conferência usa o produto configurado neste sítio. Uma retirada parcial altera o saldo na próxima consulta. Não há alerta persistente ou retirada automática."} /></h2>
+              <h2>Conferência da meta </h2>
               <p>
                 {dados.meta.estado === "NAO_AFERIVEL"
                   ? "Meta não aferível"
@@ -338,20 +339,18 @@ function ConfigurarRetirada({
       if (vivo.current) setSalvando(false);
     }
   }
+  const formId = useId();
   return (
-    <Dialog
-      open
-      onOpenChange={(aberto) => {
-        if (!aberto && !salvando) aoFechar();
-      }}
-    >
-      <DialogContent className="leite-config leite-operacoes">
-        <DialogTitle>Configurar rotina de coleta</DialogTitle>
-        <DialogDescription>
-          Escolha uma única regra. A nova vigência preserva as programações
-          anteriores e não registra retirada física.
-        </DialogDescription>
-        <form
+    <PainelCadastro aberto titulo="Configurar rotina de coleta" onFechar={aoFechar} bloqueado={salvando}
+      alteracoesExternas={vigencia !== minima || tipo !== (vigente?.tipo ?? "DIARIA") ||
+        dia !== (vigente?.diaSemana ?? 1) || dias.length !== (vigente?.diasSemana?.length ?? 0) ||
+        dias.some((d, i) => d !== vigente?.diasSemana?.[i]) || produto !== (vigente?.produtoId ?? "")}
+      rodape={fechar => <>
+        <Button variant="outline" type="button" disabled={salvando} onClick={fechar}>Cancelar</Button>
+        <Button type="submit" form={formId} disabled={salvando}>{salvando ? "Salvando…" : "Salvar rotina de coleta"}</Button>
+      </>}>
+        <p className="text-sm text-muted-foreground">Escolha uma única regra. A nova vigência preserva as programações anteriores e não registra retirada física.</p>
+        <form id={formId} className="leite-operacoes"
           onSubmit={(e) => {
             e.preventDefault();
             void salvar();
@@ -462,17 +461,8 @@ function ConfigurarRetirada({
               </>
             )}
             {erro && <p role="alert">{erro}</p>}
-            <div className="leite-form-inline">
-              <Button variant="outline" type="button"
-                className="leite-secondary"
-                onClick={aoFechar}>
-                Cancelar
-              </Button>
-              <Button >{salvando ? "Salvando…" : "Salvar rotina de coleta"}</Button>
-            </div>
           </fieldset>
         </form>
-      </DialogContent>
-    </Dialog>
+    </PainelCadastro>
   );
 }

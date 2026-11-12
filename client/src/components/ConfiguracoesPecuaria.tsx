@@ -7,6 +7,8 @@ import { RegrasAlertas } from "../pecuaria/rebanho/alertas/RegrasAlertas";
 import { ProgramacoesSanitariasConfig } from "../pecuaria/rebanho/sanidade/ProgramacoesSanitariasConfig";
 import { executarComGuardaNavegacao } from "../navegacaoGuardada";
 import { PaginaCadastroProtocolo } from "../pecuaria/rebanho/protocolos/PaginaCadastroProtocolo";
+import { CatalogoAvaliacaoConfig } from "../pecuaria/rebanho/reproducao/CatalogoAvaliacaoConfig";
+import { ConfiguracaoAlertasReprodutivos } from "../pecuaria/rebanho/reproducao/ConfiguracaoAlertasReprodutivos";
 import { ConfiguracaoReprodutiva } from "../pecuaria/rebanho/reproducao/ConfiguracaoReprodutiva";
 import { ConsultaPorSitio } from "../pecuaria/rebanho/reproducao/ConsultaPorSitio";
 import { Iatf } from "../pecuaria/rebanho/reproducao/Iatf";
@@ -25,14 +27,18 @@ const GRUPOS = [
   { id: "rebanho", nome: "Rebanho", icon: Beef, itens: [{ id: "categorias", nome: "Categorias de animais", rebanho: "categorias" }, { id: "motivos", nome: "Motivos de baixa", rebanho: "motivos" }] },
   { id: "genetica", nome: "Genética", icon: Dna, itens: [{ id: "racas", nome: "Raças", rebanho: "racas" }, { id: "genitores", nome: "Genitores externos", rebanho: "genitores" }, { id: "material-genetico", nome: "Materiais genéticos", rebanho: "material-genetico" }] },
   { id: "sanidade", nome: "Sanidade", icon: HeartPulse, itens: [{ id: "alertas", nome: "Alertas", href: "/configuracoes/pecuaria/sanidade/alertas" }, { id: "protocolos", nome: "Protocolos sanitários", sanitario: "protocolos" }, { id: "doencas", nome: "Doenças", sanitario: "doenca" }, { id: "tipos-aplicacao", nome: "Tipos de aplicação", sanitario: "aplicacao" }, { id: "tipos-exame", nome: "Tipos de exame", sanitario: "exame" }] },
-  { id: "reproducao", nome: "Reprodução", icon: Dna, itens: [{ id: "politica", nome: "Política reprodutiva", reproducao: "politica" }, { id: "protocolos", nome: "Protocolos reprodutivos", reproducao: "protocolos" }, { id: "tipos-exame", nome: "Tipos de exame reprodutivo", reproducao: "exames" }, { id: "regras-sanitarias", nome: "Regras sanitárias por doença", reproducao: "regras" }] },
+  { id: "reproducao", nome: "Reprodução", icon: Dna, itens: [{ id: "politica", nome: "Política reprodutiva e acompanhamento", reproducao: "politica" }, { id: "avaliacao", nome: "Campos e encaminhamentos da avaliação", reproducao: "avaliacao" }, { id: "alertas", nome: "Alertas operacionais", reproducao: "alertas" }, { id: "protocolos", nome: "Protocolos reprodutivos", reproducao: "protocolos" }, { id: "tipos-exame", nome: "Tipos de exame reprodutivo", reproducao: "exames" }, { id: "regras-sanitarias", nome: "Regras sanitárias e impactos em protocolos", reproducao: "regras" }] },
 ] satisfies { id: string; nome: string; icon: typeof Beef; itens: { id: string; nome: string; rebanho?: AbaCadastroRebanho; sanitario?: AbaCadastroSanitario; reproducao?: string; href?: string }[] }[];
 
 function LinkCadastro({ href, children }: { href: string; children: React.ReactNode }) {
  return <a href={href} onClick={e => { if (e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) { e.preventDefault(); navegarPara(href); } }}>{children}</a>;
 }
 
-/** Agrupa os cadastros existentes sem recriar seus formulários nem contratos. */
+/** Só o que se configura: receitas e dietas por lote vivem nas abas da própria Nutrição. */
+const CONFIG_NUTRICAO = [
+  { nome: "Modelo e prazo de fechamento", descricao: "Baixa diária, conferência mensal e exceções por lote.", href: "/configuracoes/pecuaria/nutricao/fechamento" },
+  { nome: "Leite no bezerreiro", descricao: "Fases, ofertas diárias e referências do colostro.", href: "/configuracoes/pecuaria/producao/bezerreiro" },
+] as const;
 export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false }: { podeLancar: boolean; podeGerenciarAlertas?: boolean }) {
  const [localizacao, setLocalizacao] = useState(() => window.location.pathname + window.location.search);
  const path = localizacao.split("?")[0];
@@ -49,8 +55,19 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
    window.addEventListener("popstate", sync);
    return () => window.removeEventListener("popstate", sync);
  }, []);
- if (path === "/configuracoes/pecuaria/nutricao/fechamento") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span></nav><h1 className="mb-5 text-2xl font-semibold">Modelo e prazo de fechamento</h1><GestaoMensal podeLancar={podeLancar} vista="configuracao" /></>;
- if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <ConfiguracoesBezerreiro podeLancar={podeLancar} />;
+ const sitioConfiguracao = new URLSearchParams(localizacao.split("?")[1] ?? "").get("sitio");
+ const comSitioConfiguracao = (href: string) => sitioConfiguracao ? `${href}?${new URLSearchParams({sitio:sitioConfiguracao})}` : href;
+ if (path === "/configuracoes/pecuaria/reproducao") return <><nav className="pec-config-caminho" aria-label="Configurações da Reprodução"><LinkCadastro href={comSitioConfiguracao("/configuracoes/pecuaria")}>Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Reprodução</span><LinkCadastro href={comSitioConfiguracao("/pecuaria/reproducao")}>Voltar à Reprodução</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Configurações da Reprodução</h1><section className="pec-config-grupo pec-config-nutricao">{GRUPOS.find(g=>g.id==="reproducao")!.itens.map(item=><LinkCadastro key={item.id} href={comSitioConfiguracao(`/configuracoes/pecuaria/reproducao/${item.id}`)}><span>{item.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section></>;
+ // Ponto único das variações de configuração da nutrição, aberto pelo botão Configurações da própria Nutrição.
+ if (path === "/configuracoes/pecuaria/nutricao") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Nutrição</span><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Configurações da Nutrição</h1><section className="pec-config-grupo pec-config-nutricao">{CONFIG_NUTRICAO.map(c => <LinkCadastro key={c.href} href={c.href}><span><strong>{c.nome}</strong><small>{c.descricao}</small></span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section></>;
+ if (path === "/configuracoes/pecuaria/nutricao/fechamento") return <><nav className="pec-config-caminho" aria-label="Configurações da Nutrição"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><LinkCadastro href="/configuracoes/pecuaria/nutricao">Nutrição</LinkCadastro><LinkCadastro href="/pecuaria/nutricao">Voltar à Nutrição</LinkCadastro></nav><h1 className="mb-5 text-2xl font-semibold">Modelo e prazo de fechamento</h1><GestaoMensal podeLancar={podeLancar} vista="configuracao" /></>;
+ if (path === "/configuracoes/pecuaria/producao/bezerreiro") return <>
+   <nav className="pec-config-caminho" aria-label="Configurações da produção">
+     <LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro>
+     <ChevronRight size={14} aria-hidden /><span>Produção de leite</span>
+   </nav>
+   <ConfiguracoesBezerreiro podeLancar={podeLancar} />
+ </>;
  if (path === "/configuracoes/pecuaria/producao/leite" || path === "/configuracoes/pecuaria/producao/coleta") return <div className="leite-modulo pec-config-producao"><nav className="pec-config-caminho" aria-label="Configurações da produção"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden /><span>Produção de leite</span></nav>{path.endsWith("/coleta") ? <ProgramacaoRetirada tituloPagina podeLancar={podeLancar} /> : <ConfiguracoesProducaoLeite tituloPagina podeLancar={podeLancar} />}</div>;
  const partes = path.split("/").filter(Boolean);
  const grupo = GRUPOS.find(g => g.id === partes[2]);
@@ -59,15 +76,15 @@ export function ConfiguracoesPecuaria({ podeLancar, podeGerenciarAlertas = false
  if (item?.id === "protocolos" && (grupo?.id === "sanidade" || grupo?.id === "reproducao") && partes[4] === "novo") return <PaginaCadastroProtocolo key={localizacao} tipo={grupo.id === "sanidade" ? "SANITARIO" : "REPRODUTIVO"} podeLancar={podeLancar} />;
  if (item && grupo && !("href" in item)) return <>
    <nav className="pec-config-caminho" aria-label="Cadastros da Pecuária"><LinkCadastro href="/configuracoes/pecuaria">Configurações da Pecuária</LinkCadastro><ChevronRight size={14} aria-hidden="true" /><span>{grupo.nome}</span></nav>
-   {"rebanho" in item ? <Cadastros key={item.id} cadastro={item.rebanho} embutido podeLancar={podeLancar} /> : "sanitario" in item ? <CadastrosSanitarios key={item.id} cadastro={item.sanitario} embutido podeLancar={podeLancar} /> : "reproducao" in item ? item.reproducao === "politica" ? <><h1 className="mb-5 text-2xl font-semibold">Política reprodutiva</h1><ConsultaPorSitio>{id => <ConfiguracaoReprodutiva key={id} propriedadeId={id} podeLancar={podeLancar}/>}</ConsultaPorSitio></> : item.reproducao === "protocolos" ? <Iatf modo="cadastros" podeLancar={podeLancar} /> : item.reproducao === "regras" ? <RegrasSanitarias podeEditar={podeLancar} /> : <CadastrosSanitarios cadastro="exame" contextoExames="REPRODUTIVO" embutido podeLancar={podeLancar} /> : null}
+   {"rebanho" in item ? <Cadastros key={item.id} cadastro={item.rebanho} embutido podeLancar={podeLancar} /> : "sanitario" in item ? <CadastrosSanitarios key={item.id} cadastro={item.sanitario} embutido podeLancar={podeLancar} /> : "reproducao" in item ? item.reproducao === "politica" ? <><h1 className="mb-5 text-2xl font-semibold">Política reprodutiva</h1><ConsultaPorSitio>{id => <ConfiguracaoReprodutiva key={id} propriedadeId={id} podeLancar={podeLancar}/>}</ConsultaPorSitio></> : item.reproducao === "avaliacao" ? <ConsultaPorSitio>{id => <CatalogoAvaliacaoConfig key={id} propriedadeId={id} podeLancar={podeGerenciarAlertas}/>}</ConsultaPorSitio> : item.reproducao === "alertas" ? <ConsultaPorSitio>{id => <ConfiguracaoAlertasReprodutivos key={id} propriedadeId={id} podeLancar={podeGerenciarAlertas}/>}</ConsultaPorSitio> : item.reproducao === "protocolos" ? <Iatf modo="cadastros" podeLancar={podeLancar} /> : item.reproducao === "regras" ? <ConsultaPorSitio>{id => <RegrasSanitarias key={id} propriedadeId={id} podeEditar={podeGerenciarAlertas}/>}</ConsultaPorSitio> : <CadastrosSanitarios cadastro="exame" contextoExames="REPRODUTIVO" embutido podeLancar={podeLancar} /> : null}
  </>;
  const termo = busca.trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
  const corresponde = (texto: string) => texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").includes(termo);
  const grupos = GRUPOS.map(g => ({ ...g, itens: g.itens.filter(i => corresponde(`${g.nome} ${i.nome}`)) })).filter(g => g.itens.length);
- const mostrarNutricao = corresponde("Nutrição Receitas de dieta Modelo e prazo de fechamento");
+ const nutricao = CONFIG_NUTRICAO.filter(c => corresponde(`Nutrição ${c.nome} ${c.descricao}`));
  return <><div className="pec-config-busca"><BuscaLista rotulo="Buscar configuração" placeholder="Buscar categoria, raça, protocolo…" valor={busca} onChange={setBusca} /></div><div className="pec-config-grid">
   {grupos.map(({ icon: Icon, ...g }) => <section key={g.id} className="pec-config-grupo"><h2><span className="fin-section-icon"><Icon size={20} aria-hidden /></span>{g.nome}</h2>{g.itens.map(i => <LinkCadastro key={i.id} href={"href" in i && i.href ? i.href : "/configuracoes/pecuaria/"+g.id+"/"+i.id}><span>{i.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>)}
-  {mostrarNutricao && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2><LinkCadastro href="/configuracoes/pecuaria/nutricao/fechamento"><span>Modelo e prazo de fechamento</span><ChevronRight size={16} aria-hidden /></LinkCadastro><LinkCadastro href="/pecuaria/nutricao?aba=receitas"><span>Receitas de dieta</span><ChevronRight size={16} aria-hidden /></LinkCadastro></section>}
-  {!grupos.length && !mostrarNutricao && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
+  {nutricao.length > 0 && <section className="pec-config-grupo"><h2><span className="fin-section-icon"><Leaf size={20} aria-hidden /></span>Nutrição</h2>{nutricao.map(c => <LinkCadastro key={c.href} href={c.href}><span>{c.nome}</span><ChevronRight size={16} aria-hidden /></LinkCadastro>)}</section>}
+  {!grupos.length && !nutricao.length && <Empty>Nenhuma configuração corresponde à busca.</Empty>}
  </div></>;
 }

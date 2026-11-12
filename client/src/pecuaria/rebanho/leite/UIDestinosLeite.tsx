@@ -1,14 +1,15 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Plus } from "lucide-react";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { BarraConsulta } from "../../../financeiro/BarraConsulta";
 import { CampoFiltro } from "../../../financeiro/PainelFiltros";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { CabecalhoTabela, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
 import { Button } from "@/components/ui/button";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { listarProdutos, type ProdutoDTO } from "../../../estoque/api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
@@ -135,36 +136,27 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
       setEstornando(false);
     }
   }
+  const campoData = <label>
+    Data do fornecimento
+    <DatePicker value={data} max={hojeOperacional()} onChange={valor => { if (dataValida(valor)) setData(valor); }} />
+  </label>;
   return (
     <section className="leite-operacoes">
-      <CabecalhoTabela titulo="Histórico de fornecimentos" ajuda="Fornecimentos com origem e volume por animal." rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
+      <CabecalhoTabela titulo="Histórico de fornecimentos" rotuloAjuda="Sobre destinos internos" acao={podeLancar ? <Button onClick={() => setNovo(true)}><Plus size={17} aria-hidden />Registrar fornecimento</Button> : undefined} />
       {podeLancar && novo ? (
-        <Dialog open onOpenChange={setNovo}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar fornecimento</DialogTitle></DialogHeader>
-          <label>
-            Data do fornecimento
-            <input
-              type="date"
-              value={data}
-              max={hojeOperacional()}
-              onChange={(e) => setData(e.target.value)}
-            />
-          </label>
-          {dataValida(data) && (
-            <FormularioDestino
-              key={`${sitio}:${data}:${revisao}`}
-              data={data}
-              sitio={sitio}
-              aoSalvar={() => {
-                setAviso(
-                  "Destino registrado e volume baixado uma vez do estoque.",
-                );
-                setRevisao((r) => r + 1);
-                aoMudou?.();
-                setNovo(false);
-              }}
-            />
-          )}
-        </DialogContent></Dialog>
+        <FormularioDestino
+          key={`${sitio}:${data}:${revisao}`}
+          data={data}
+          sitio={sitio}
+          campoData={campoData}
+          aoFechar={() => setNovo(false)}
+          aoSalvar={() => {
+            setAviso("Destino registrado e volume baixado uma vez do estoque.");
+            setRevisao(r => r + 1);
+            aoMudou?.();
+            setNovo(false);
+          }}
+        />
       ) : !podeLancar ? (
         <p>
           Acesso de consulta. Os destinos registrados permanecem disponíveis no
@@ -172,12 +164,12 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
         </p>
       ) : null}
       {aviso && <p role="status">{aviso}</p>}
-      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><input type="date" value={filtros.rascunho.de} onChange={e => filtros.editar("de", e.target.value)} /></CampoFiltro><CampoFiltro rotulo="Até"><input type="date" value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={e => filtros.editar("ate", e.target.value)} /></CampoFiltro></>} />
+      <BarraConsulta edicaoFiltros={filtros} adicionais={<><CampoFiltro rotulo="Desde"><DatePicker value={filtros.rascunho.de} onChange={(valor) => filtros.editar("de", valor)} /></CampoFiltro><CampoFiltro rotulo="Até"><DatePicker value={filtros.rascunho.ate} min={filtros.rascunho.de || undefined} onChange={(valor) => filtros.editar("ate", valor)} /></CampoFiltro></>} />
       {erro && <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p>}
       {ocupado && <p role="status">Consultando os destinos…</p>}
       {historico && (
         <>
-          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="linhas" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
+          <ListaConsultaLeite tituloDe={d => nomeNaturezaDestino(d.natureza)} detalheDe={d => dataPt(d.data)} layout="grade" destaque="litros" preferencia="destinosLeiteVisualizacao" compacta rotulo="Destinos registrados" itens={historico.itens} chaveDe={d => d.id} colunas={[
             { chave: "data", titulo: "Data", principal: true, celula: d => dataPt(d.data) },
             { chave: "natureza", titulo: "Natureza", ocultarNoCartao: true, celula: d => nomeNaturezaDestino(d.natureza) },
             { chave: "litros", titulo: "Volume", alinhamento: "direita", celula: d => formatarLitros(d.quantidadeLitros) },
@@ -275,12 +267,17 @@ export function DestinosLeite({ podeLancar, aoMudou }: { podeLancar: boolean; ao
 function FormularioDestino({
   data,
   sitio,
+  campoData,
+  aoFechar,
   aoSalvar,
 }: {
   data: string;
   sitio: number | null;
+  campoData: ReactNode;
+  aoFechar: () => void;
   aoSalvar: () => void;
 }) {
+  const formId = useId();
   const armazenamento = `terrano:leite:destinos:rascunho:${sitio}:${data}`;
   const [rascunho, setRascunho] = useState<RascunhoDestino>(() => {
     try {
@@ -511,7 +508,23 @@ function FormularioDestino({
     }
   }
   return (
-    <form
+    <PainelCadastro aberto titulo="Registrar fornecimento" largura="sm:max-w-4xl"
+      onFechar={aoFechar} bloqueado={salvando} rascunhoPersistido rodape={<>
+        <Button type="button" variant="outline" disabled={salvando} onClick={aoFechar}>Fechar</Button>
+        <Button type="submit" form={formId} disabled={
+            salvando ||
+            !(sitio ?? rascunho.propriedadeId) ||
+            !origemEscolhida ||
+            !resumo.validas ||
+            resumo.excedeu ||
+            rascunho.declaracao.trim().length < 10
+          }>
+          {salvando
+            ? "Registrando…"
+            : `Confirmar destino e baixar ${formatarLitros(resumo.total)}`}
+        </Button>
+      </>}>
+    <form id={formId} className="leite-operacoes"
       onSubmit={(e) => {
         e.preventDefault();
         void salvar();
@@ -519,6 +532,7 @@ function FormularioDestino({
     >
       <fieldset disabled={salvando}>
         <legend>Registrar fornecimento interno</legend>
+        {campoData}
         <div className="leite-form-inline">
           <label>
             Produto de origem
@@ -823,23 +837,12 @@ function FormularioDestino({
           </label>
         </div>
         {erro && <p role="alert">{erro}</p>}
-        <Button disabled={
-            salvando ||
-            !(sitio ?? rascunho.propriedadeId) ||
-            !origemEscolhida ||
-            !resumo.validas ||
-            resumo.excedeu ||
-            rascunho.declaracao.trim().length < 10
-          }>
-          {salvando
-            ? "Registrando…"
-            : `Confirmar destino e baixar ${formatarLitros(resumo.total)}`}
-        </Button>
         <small>
           A confirmação registra as parcelas e uma única baixa do estoque. Em
           caso de falha, o rascunho e a chave do retry são preservados.
         </small>
       </fieldset>
     </form>
+    </PainelCadastro>
   );
 }

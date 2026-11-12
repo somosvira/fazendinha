@@ -1,10 +1,11 @@
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MultiSelect } from "@/components/MultiSelect";
 import type { ReactNode } from "react";
 import { Condicoes, enumerados } from "./EditorSelecaoVisita";
 import type { CampoNumerico, CampoValor, CondicaoSelecao, CriteriosSelecao, OpcoesSelecao } from "./planner-api";
 
-type Props = { criterios: CriteriosSelecao; onMudar: (c: CriteriosSelecao) => void; opcoes: OpcoesSelecao; data: string; sitio: string };
-export function FiltrosSelecaoLivre({ criterios: c, onMudar, opcoes, data, sitio }: Props) {
+type Props = { criterios: CriteriosSelecao; onMudar: (c: CriteriosSelecao) => void; opcoes: OpcoesSelecao; data: string; sitio: string; contexto?: "visita" | "programacao"; categoriaInicial?: string };
+export function FiltrosSelecaoLivre({ criterios: c, onMudar, opcoes, data, sitio, contexto = "visita", categoriaInicial = "cadastro" }: Props) {
   const mudar = (valor: CriteriosSelecao) => onMudar({...valor,versao:2});
   const condicao = (campo: CondicaoSelecao["campo"]) => c.todas.find(v=>v.campo===campo);
   const alterar = (campo: CondicaoSelecao["campo"], valor?: CondicaoSelecao) => mudar({...c,todas:[...c.todas.filter(v=>v.campo!==campo),...(valor?[valor]:[])]});
@@ -24,8 +25,77 @@ export function FiltrosSelecaoLivre({ criterios: c, onMudar, opcoes, data, sitio
     return <div className="livre-regra"><label><input type="checkbox" checked={!!b} onChange={e=>mudar({...c,qualquer:[...c.qualquer.filter(v=>v.id!==id),...(e.target.checked?[{id,todas:[{tipo:"VALORES" as const,campo:"SITUACAO" as const,valores},{tipo:"FAIXA" as const,campo,min:0,incluirMin:false,incluirMax:true}]}]:[])]})}/>{titulo}</label><label>mais de <input type="number" aria-label={`Dias: ${titulo}`} disabled={!b} min={0} max={100000} step={1} value={f?.tipo==="FAIXA"?f.min??"":""} onChange={e=>mudar({...c,qualquer:c.qualquer.map(v=>v.id!==id?v:{...v,todas:v.todas.map(t=>t.campo===campo?{tipo:"FAIXA",campo,min:e.target.value===""?undefined:Number(e.target.value),incluirMin:false,incluirMax:true}:t)})})}/> dias</label></div>;
   }
   const gestacoes=c.qualquer.filter(v=>v.id.startsWith("gestacao-"));
+  if (contexto === "programacao") {
+    const secoes = [
+      { id: "identificacao", nome: "Identificação", campos: <>
+        <label>Brinco ou nome<input value={valores("BUSCA")[0] ?? ""} onChange={e => alterar("BUSCA", e.target.value.trim()
+          ? { tipo: "VALORES", campo: "BUSCA", valores: [e.target.value] } : undefined)} /></label>
+        {seletor("SEXO", "Sexo")}
+      </> },
+      { id: "cadastro", nome: "Cadastro e localização", campos: <>
+        {seletor("LOTE", "Lotes")}{seletor("CATEGORIA", "Categorias")}
+        {seletor("RACA", "Raças na composição")}{seletor("ORIGEM", "Origem")}
+        {faixa("IDADE_DIAS", "Idade em dias")}{seletor("NASCIMENTO_ESTIMADO", "Precisão do nascimento")}
+      </> },
+      { id: "producao", nome: "Produção e lactação", campos: <>
+        {faixa("DEL", "DEL · Dias em lactação")}{seletor("SITUACAO_PRODUTIVA", "Situação de lactação")}
+        {faixa("PESO_KG", "Último peso conhecido (kg)")}{seletor("APTIDAO", "Finalidade")}
+      </> },
+      { id: "parto", nome: "Parto e pós-parto", campos: <>
+        {faixa("DIAS_POS_PARTO", "Dias pós-parto")}{faixa("PARTOS", "Número de partos")}
+        {seletor("HISTORICO_PARTO", "Histórico de parto")}{seletor("RP", "Retenção de placenta")}
+      </> },
+      { id: "aptidao", nome: "PEV e aptidão", campos: <>
+        {seletor("PEV", "Situação do PEV")}{seletor("APTIDAO_REPRODUTIVA", "Aptidão reprodutiva")}
+        {faixa("DIAS_APTIDAO", "Dias desde a aptidão")}
+      </> },
+      { id: "reproducao", nome: "Situação reprodutiva", campos: <>
+        {seletor("SITUACAO", "Situação reprodutiva")}{seletor("PAPEL_REPRODUTIVO", "Papel reprodutivo")}
+        {seletor("DESCARTE", "Descarte reprodutivo")}{faixa("IDADE_GESTACIONAL", "Idade gestacional")}
+      </> },
+      { id: "tentativas", nome: "Tentativas e diagnóstico", campos: <>
+        {faixa("TENTATIVAS_CICLO", "Tentativas no ciclo")}{faixa("DIAS_TENTATIVA", "Dias desde a tentativa")}
+        {faixa("DIAS_CONFIRMACAO", "Dias desde a confirmação")}{faixa("DIAS_ATE_RETORNO", "Dias até o retorno")}
+        {seletor("RETORNO_INFORMADO", "Retorno informado")}
+      </> },
+      { id: "protocolos", nome: "Protocolos", campos: <>
+        {seletor("PROTOCOLO_ATIVO", "Participação ativa")}{seletor("PROTOCOLO", "Protocolo específico")}
+      </> },
+    ];
+    return <Tabs defaultValue={categoriaInicial} orientation="vertical" className="programacao-filtros">
+      <TabsList variant="line" aria-label="Categorias de filtros">
+        {secoes.map(secao => <TabsTrigger key={secao.id} value={secao.id}>{secao.nome}</TabsTrigger>)}
+        <TabsTrigger value="combinacoes">Condições e alternativas</TabsTrigger>
+      </TabsList>
+      {secoes.map(secao => <TabsContent key={secao.id} value={secao.id}>
+        <h3 className="mb-4 font-semibold">{secao.nome}</h3>
+        <div className="livre-grid">{secao.campos}</div>
+      </TabsContent>)}
+      <TabsContent value="combinacoes" className="grid gap-4">
+        <h3 className="font-semibold">Condições e alternativas</h3>
+        <Condicoes compacto valor={c.todas} mudar={todas => mudar({ ...c, todas })} opcoes={escolhas} />
+        {c.qualquer.map((grupo, indice) => <fieldset key={grupo.id} className="grid gap-2 rounded-lg border p-3">
+          <legend>Alternativa {indice + 1}</legend>
+          <Condicoes compacto valor={grupo.todas} opcoes={escolhas} mudar={todas => mudar({
+            ...c, qualquer: c.qualquer.map(item => item.id === grupo.id ? { ...item, todas } : item),
+          })} />
+          <button type="button" className="visita-link" onClick={() => mudar({
+            ...c, qualquer: c.qualquer.filter(item => item.id !== grupo.id),
+          })}>Remover alternativa</button>
+        </fieldset>)}
+        <button type="button" className="visita-link" disabled={c.qualquer.length >= 20}
+          onClick={() => mudar({ ...c, qualquer: [...c.qualquer, { id: crypto.randomUUID(), todas: [] }] })}>
+          Adicionar alternativa
+        </button>
+        <label className="livre-politica">Dados ausentes<select value={c.politicaDesconhecidos}
+          onChange={e => mudar({ ...c, politicaDesconhecidos: e.target.value as CriteriosSelecao["politicaDesconhecidos"] })}>
+          <option value="EXCLUIR">Excluir da seleção</option><option value="INCLUIR">Incluir e sinalizar</option>
+        </select></label>
+      </TabsContent>
+    </Tabs>;
+  }
   return <>
-    {painel("Onde e quando procurar","As informações são consideradas na data da visita.","1 · Contexto",<div className="livre-grid"><label>Sítio<input readOnly value={sitio}/></label><label>Data da visita<input type="date" readOnly value={data}/></label>{seletor("LOTE","Lotes")}{seletor("CATEGORIA","Categorias")}</div>)}
+    {painel("Onde e quando procurar","As informações são consideradas na data da visita.","1 · Contexto",<div className="livre-grid"><label>Sítio<input readOnly value={sitio}/></label><label>{"Data da visita"}<input type="date" readOnly value={data}/></label>{seletor("LOTE","Lotes")}{seletor("CATEGORIA","Categorias")}</div>)}
     <section className="visita-painel"><div className="visita-painel-cabecalho"><div><h2>Quais animais deseja avaliar?</h2><p>Inclua um ou mais grupos na mesma seleção.</p></div><span className="visita-badge">2 · Manejo</span></div><div className="livre-regra-intro"><strong>Incluir quem atender a pelo menos uma condição abaixo</strong><p>As faixas são alternativas. Os filtros gerais continuam valendo para todos.</p></div>
       {manejo("vazias","Vazias após o parto","VAZIA","DIAS_POS_PARTO")}{manejo("tentativa","Aguardando diagnóstico após tentativa","AGUARDANDO_DIAGNOSTICO","DIAS_TENTATIVA")}
       <div className="livre-corpo"><label className="livre-check"><input type="checkbox" checked={!!gestacoes.length} onChange={e=>mudar({...c,qualquer:[...c.qualquer.filter(v=>!v.id.startsWith("gestacao-")),...(e.target.checked?[{id:"gestacao-1",todas:[{tipo:"VALORES" as const,campo:"SITUACAO" as const,valores:["GESTANTE"]},{tipo:"FAIXA" as const,campo:"IDADE_GESTACIONAL" as const,min:0,incluirMin:true,incluirMax:true}]}]:[])]})}/>Gestantes nas faixas escolhidas</label>
@@ -35,6 +105,6 @@ export function FiltrosSelecaoLivre({ criterios: c, onMudar, opcoes, data, sitio
       {manejo("aptidao","Não gestantes após aptidão reprodutiva (aptas ou vazias)",["APTA","VAZIA"],"DIAS_APTIDAO")}
       <div className="livre-corpo"><label className="livre-check"><input type="checkbox" checked={!!c.qualquer.find(v=>v.id==="sem-parto")} onChange={e=>mudar({...c,qualquer:[...c.qualquer.filter(v=>v.id!=="sem-parto"),...(e.target.checked?[{id:"sem-parto",todas:[{tipo:"VALORES" as const,campo:"HISTORICO_PARTO" as const,valores:["SEM_REGISTRO"]}]}]:[])]})}/>Sem registro de parto</label><p className="visita-dica">Sem histórico não significa que nunca pariu. Sem condições de manejo, são usados apenas os filtros gerais.</p><label className="livre-check"><input type="checkbox" checked={valores("PROTOCOLO_ATIVO").includes("NENHUM")} onChange={e=>alterar("PROTOCOLO_ATIVO",e.target.checked?{tipo:"VALORES",campo:"PROTOCOLO_ATIVO",valores:["NENHUM"]}:undefined)}/>Desconsiderar animais em protocolo ativo</label></div>
     </section>
-    {painel("Características do animal","O animal precisa atender aos filtros gerais selecionados.","3 · Filtros gerais",<><div className="livre-grid tres">{seletor("SEXO","Sexo")}{seletor("PAPEL_REPRODUTIVO","Papel reprodutivo")}{seletor("SITUACAO_PRODUTIVA","Situação de lactação")}{seletor("SITUACAO","Situação reprodutiva")}{seletor("DESCARTE","Descarte reprodutivo")}</div><details className="livre-avancado"><summary>Mais características · idade, raça, peso, RP e identificação</summary><div className="livre-grid">{seletor("RACA","Raças na composição")}{seletor("ORIGEM","Origem")}{seletor("APTIDAO","Finalidade")}{seletor("NASCIMENTO_ESTIMADO","Precisão do nascimento")}{faixa("IDADE_DIAS","Idade em dias")}{faixa("PESO_KG","Último peso conhecido (kg)")}{faixa("DEL","DEL")}{faixa("PARTOS","Partos")}{faixa("TENTATIVAS_CICLO","Tentativas no ciclo")}{seletor("RP","RP no parto de referência")}{seletor("PROTOCOLO_ATIVO","Protocolos ativos por domínio")}{seletor("PROTOCOLO","Protocolo específico")}<label>Brinco ou nome<input placeholder="Ex.: Aurora ou 042" value={valores("BUSCA")[0]??""} onChange={e=>alterar("BUSCA",e.target.value.trim()?{tipo:"VALORES",campo:"BUSCA",valores:[e.target.value]}:undefined)}/></label></div><p className="visita-dica">Peso usa a última pesagem até a visita. Composição alterada depois da data consultada fica desconhecida. Idade pode ter nascimento estimado.</p></details><details className="livre-avancado"><summary>Condições avançadas e ordenação</summary><p className="visita-dica">Todas as condições gerais são obrigatórias; basta um dos blocos alternativos. Valores dentro de um atributo são alternativas.</p><Condicoes valor={c.todas} mudar={todas=>mudar({...c,todas})} opcoes={escolhas}/>{c.qualquer.map(b=><fieldset key={b.id}><legend>Bloco alternativo</legend><Condicoes valor={b.todas} mudar={todas=>mudar({...c,qualquer:c.qualquer.map(v=>v.id===b.id?{...b,todas}:v)})} opcoes={escolhas}/><button type="button" className="visita-link" onClick={()=>mudar({...c,qualquer:c.qualquer.filter(v=>v.id!==b.id)})}>Remover bloco</button></fieldset>)}<button type="button" className="visita-link" onClick={()=>mudar({...c,qualquer:[...c.qualquer,{id:crypto.randomUUID(),todas:[]}]})}>Adicionar alternativa</button><label>Ordenar por<select value={c.ordenacao[0].campo} onChange={e=>mudar({...c,ordenacao:[{campo:e.target.value as CriteriosSelecao["ordenacao"][number]["campo"],direcao:c.ordenacao[0].direcao}]})}><option value="BRINCO">Brinco</option><option value="NOME">Nome</option><option value="DEL">DEL</option><option value="DIAS_TENTATIVA">Dias desde tentativa</option></select></label><label>Direção<select value={c.ordenacao[0].direcao} onChange={e=>mudar({...c,ordenacao:c.ordenacao.map((v,i)=>i?v:{...v,direcao:e.target.value as "ASC"|"DESC"})})}><option value="ASC">Crescente</option><option value="DESC">Decrescente</option></select></label></details><label className="livre-politica">Quando o dado exigido não estiver informado<select value={c.politicaDesconhecidos} onChange={e=>mudar({...c,politicaDesconhecidos:e.target.value as "EXCLUIR"|"INCLUIR"})}><option value="EXCLUIR">Excluir da seleção</option><option value="INCLUIR">Incluir e sinalizar no motivo</option></select></label></>)}
+    {painel("Características do animal","O animal precisa atender aos filtros gerais selecionados.","3 · Filtros gerais",<><div className="livre-grid tres">{seletor("SEXO","Sexo")}{seletor("PAPEL_REPRODUTIVO","Papel reprodutivo")}{seletor("SITUACAO_PRODUTIVA","Situação de lactação")}{seletor("SITUACAO","Situação reprodutiva")}{seletor("DESCARTE","Descarte reprodutivo")}</div><details className="livre-avancado"><summary>Mais características · idade, raça, peso, RP e identificação</summary><div className="livre-grid">{seletor("RACA","Raças na composição")}{seletor("ORIGEM","Origem")}{seletor("APTIDAO","Finalidade")}{seletor("NASCIMENTO_ESTIMADO","Precisão do nascimento")}{faixa("IDADE_DIAS","Idade em dias")}{faixa("PESO_KG","Último peso conhecido (kg)")}{faixa("DEL","DEL")}{faixa("PARTOS","Partos")}{faixa("TENTATIVAS_CICLO","Tentativas no ciclo")}{seletor("RP","RP no parto de referência")}{seletor("PROTOCOLO_ATIVO","Protocolos ativos por domínio")}{seletor("PROTOCOLO","Protocolo específico")}<label>Brinco ou nome<input placeholder="Ex.: Aurora ou 042" value={valores("BUSCA")[0]??""} onChange={e=>alterar("BUSCA",e.target.value.trim()?{tipo:"VALORES",campo:"BUSCA",valores:[e.target.value]}:undefined)}/></label></div><p className="visita-dica">Peso usa a última pesagem até a data consultada. Composição alterada depois da data consultada fica desconhecida. Idade pode ter nascimento estimado.</p></details><details className="livre-avancado"><summary>Condições avançadas e ordenação</summary><p className="visita-dica">Todas as condições gerais são obrigatórias; basta um dos blocos alternativos. Valores dentro de um atributo são alternativas.</p><Condicoes valor={c.todas} mudar={todas=>mudar({...c,todas})} opcoes={escolhas}/>{c.qualquer.map(b=><fieldset key={b.id}><legend>Bloco alternativo</legend><Condicoes valor={b.todas} mudar={todas=>mudar({...c,qualquer:c.qualquer.map(v=>v.id===b.id?{...b,todas}:v)})} opcoes={escolhas}/><button type="button" className="visita-link" onClick={()=>mudar({...c,qualquer:c.qualquer.filter(v=>v.id!==b.id)})}>Remover bloco</button></fieldset>)}<button type="button" className="visita-link" onClick={()=>mudar({...c,qualquer:[...c.qualquer,{id:crypto.randomUUID(),todas:[]}]})}>Adicionar alternativa</button><label>Ordenar por<select value={c.ordenacao[0].campo} onChange={e=>mudar({...c,ordenacao:[{campo:e.target.value as CriteriosSelecao["ordenacao"][number]["campo"],direcao:c.ordenacao[0].direcao}]})}><option value="BRINCO">Brinco</option><option value="NOME">Nome</option><option value="DEL">DEL</option><option value="DIAS_TENTATIVA">Dias desde tentativa</option></select></label><label>Direção<select value={c.ordenacao[0].direcao} onChange={e=>mudar({...c,ordenacao:c.ordenacao.map((v,i)=>i?v:{...v,direcao:e.target.value as "ASC"|"DESC"})})}><option value="ASC">Crescente</option><option value="DESC">Decrescente</option></select></label></details><label className="livre-politica">Quando o dado exigido não estiver informado<select value={c.politicaDesconhecidos} onChange={e=>mudar({...c,politicaDesconhecidos:e.target.value as "EXCLUIR"|"INCLUIR"})}><option value="EXCLUIR">Excluir da seleção</option><option value="INCLUIR">Incluir e sinalizar no motivo</option></select></label></>)}
   </>;
 }

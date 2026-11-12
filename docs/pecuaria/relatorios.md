@@ -102,3 +102,8 @@ O catálogo apresenta Área e Relatório em seletores superiores, com o resultad
 ### Apresentação compartilhada
 
 Barra, período, resumo do leite e modal de emissão possuem estilos carregados pelos componentes consumidores. A abertura direta em Leite e a entrada pelo hub devem manter a mesma estrutura. O catálogo aproxima escolha, critérios e resultado, preservando campos, filtros e paginação. Estes ajustes de apresentação não acrescentam variáveis, fontes ou adapters ao builder; os catálogos vigentes continuam sendo a fonte de seleção e exportação.
+
+
+## Metas e Radar
+
+[Metas](../metas.md) é acompanhamento de alvos com medições versionadas; Radar é uma leitura diária privada do assistente. Não são relatórios operacionais nem novas variáveis do builder. O adaptador automático de volume de leite reutiliza fatos de produção geral confirmada e aponta à rotina filtrada; não acrescenta uma segunda variável de produção nem soma controle individual ao geral. Medições manuais e etapas de projetos não entram no builder nesta versão, pois não têm a mesma semântica dos fatos operacionais.

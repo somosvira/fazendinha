@@ -1,3 +1,4 @@
+import { StrictMode } from "react";
 // @vitest-environment jsdom
 import { cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
@@ -5,7 +6,7 @@ import { alterarControle } from "../../../lib/controles.fixture";
 import { reqV4 } from "./api";
 import { DemandasAcompanhamento } from "./DemandasAcompanhamento";
 vi.mock("./api", () => ({ reqV4: vi.fn().mockResolvedValue({ itens: [{ id: "d", tarefaId: "t", finalidade: "SEXAGEM", ocorrencia: 1, tentativaId: null, gestacaoId: null, previstaPara: null, estado: "PENDENTE", motivoEncerramento: null, regraSnapshot: {}, exameResolucaoId: null }], total: 1, pagina: 1, porPagina: 10, resumo: { total: 1, pendentes: 1, resolvidas: 0, encerradas: 0, semData: 1 } }) }));
-afterEach(cleanup);
+afterEach(()=>{cleanup();window.history.replaceState(null,"","/");});
 it("mostra acompanhamento sem prazo configurado sem inventar data ou regra", async () => {
   render(<DemandasAcompanhamento animalId="a" propriedadeId={7} painel={{ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] }} podeLancar={false} onAvaliar={vi.fn()} atualizacao={1} />);
   expect(await screen.findByText("Sem data definida")).toBeTruthy();
@@ -53,4 +54,70 @@ it("permite repetir uma consulta de calendário que falhou", async () => {
  fireEvent.click(screen.getByRole("button",{name:"Calendário"}));
  fireEvent.click(await screen.findByRole("button",{name:"Tentar carregar calendário novamente"}));
  expect(await screen.findByRole("region",{name:"Calendário de avaliações e retornos"})).toBeTruthy();
+});
+
+it("endereço abre o cuidado exato fora da primeira página inclusive em StrictMode", async () => {
+  window.history.replaceState(
+    null,
+    "",
+    "/pecuaria/rebanho/animais/a?sitio=7&demandaId=d2#reproducao",
+  );
+  vi.mocked(reqV4).mockImplementation(async (path) => {
+    if (path.endsWith("/politicas")) return [];
+    const pagina = Number(
+      new URLSearchParams(path.split("?")[1]).get("pagina"),
+    );
+    return {
+      itens: [
+        {
+          id: `d${pagina}`,
+          finalidade: "DIAGNOSTICO",
+          ocorrencia: 1,
+          tentativaId: "tentativa",
+          gestacaoId: null,
+          previstaPara: pagina === 2 ? "2026-11-20" : null,
+          estado: "PENDENTE",
+          motivoEncerramento: null,
+          regraSnapshot: {},
+          exameResolucaoId: null,
+        },
+      ],
+      total: 2,
+      pagina,
+      porPagina: 1,
+      resumo: {
+        total: 2,
+        pendentes: 2,
+        resolvidas: 0,
+        encerradas: 0,
+        semData: 1,
+      },
+    };
+  });
+  const avaliar = vi.fn();
+  render(
+    <StrictMode>
+      <DemandasAcompanhamento
+        naFicha
+        animalId="a"
+        propriedadeId={7}
+        painel={{
+          animais: [],
+          tentativas: [],
+          avaliacoes: [],
+          partos: [],
+          restricoes: [],
+        }}
+        podeLancar
+        onAvaliar={avaliar}
+        atualizacao={1}
+      />
+    </StrictMode>,
+  );
+  await screen.findByRole("heading", { name: "Avaliação ou retorno" });
+  expect(screen.getByText("20/11/2026")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Registrar avaliação" }));
+  expect(avaliar).toHaveBeenCalledWith(
+    expect.objectContaining({ id: "d2", previstaPara: "2026-11-20" }),
+  );
 });

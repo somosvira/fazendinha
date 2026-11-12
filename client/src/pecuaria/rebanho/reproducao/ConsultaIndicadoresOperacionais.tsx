@@ -5,12 +5,13 @@ import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useRascunhoConsulta } from "../../../financeiro/useRascunhoConsulta";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
-import { DateRangePicker } from "../../../components/DateRangePicker";
+import { dateFromIso } from "../../../components/DateRangePicker";
 import { getHojeISO } from "../../../lib/hoje";
 import { usePeriodoConsulta } from "./periodo-consulta";
 import { consultarIndicadores, type FiltrosIndicadores, type SnapshotIndicadoresReprodutivos } from "./indicadores-api";
 import { reqV4 } from "./api";
 import { PainelIndicadores } from "./PainelIndicadores";
+import { EsqueletoPainel } from "../../../components/Esqueleto";
 
 type Criterios = { lote: string; tipos: string[]; papeis: string[]; te: string; estimativa: string; perdas: string; iep: string };
 const padrao: Criterios = { lote: "", tipos: [], papeis: [], te: "7", estimativa: "", perdas: "", iep: "VIVOS_NATIMORTOS" };
@@ -20,7 +21,7 @@ function lerCriterios(): Criterios {
   return { lote:p.get("indicadoresLote")??"", tipos:lista("indicadoresTipos",["IA","TE","COBERTURA"]), papeis:lista("indicadoresPapeis",["NENHUM","DOADORA","RECEPTORA"]), te:p.get("indicadoresTe")??"7", estimativa:p.get("indicadoresEstimativa")??"", perdas:p.get("indicadoresPerdas")??"", iep:p.get("indicadoresIep")==="TODOS_PARTOS"?"TODOS_PARTOS":"VIVOS_NATIMORTOS" };
 }
 export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedadeId: number }) {
-  const periodo = usePeriodoConsulta("indicadores");
+  const periodo = usePeriodoConsulta("indicadores-mensal");
   const [criterios,setCriterios] = useState(lerCriterios);
   const [snapshot,setSnapshot] = useState<SnapshotIndicadoresReprodutivos|null>(null);
   const [lotes,setLotes] = useState<Array<{id:string;nome:string}>>([]);
@@ -61,10 +62,17 @@ export function ConsultaIndicadoresOperacionais({ propriedadeId }: { propriedade
       ...(criterios.estimativa!==""?[{id:"estimativa",rotulo:`Concepção estimada: ${criterios.estimativa}%`,limpar:()=>remover("estimativa","Estimativa")}]:[]),
       ...(criterios.perdas!==""?[{id:"perdas",rotulo:`Perdas: ${criterios.perdas} dias`,limpar:()=>remover("perdas","Perdas")}]:[]),
       ...(criterios.iep!==padrao.iep?[{id:"iep",rotulo:"IEP: todos os partos",limpar:()=>remover("iep","Iep")}]:[]),
-    ]}><DateRangePicker value={periodo.range} onChange={periodo.alterar}/></BarraConsulta>
+    ]}><label className="flex items-center gap-3">Mês de referência
+      <input type="month" className={classeInput} aria-label="Mês de referência" max={getHojeISO().slice(0,7)} value={periodo.inicio.slice(0,7)} onChange={e => {
+        const mes = e.target.value;
+        if (!/^\d{4}-\d{2}$/.test(mes)) return;
+        const [ano, numeroMes] = mes.split("-").map(Number);
+        periodo.alterar({start: dateFromIso(`${mes}-01`), end: new Date(ano, numeroMes, 0)});
+      }}/>
+    </label><span className="text-sm text-muted-foreground">{periodo.inicio.split("-").reverse().join("/")} a {periodo.fim.split("-").reverse().join("/")}{periodo.fim.slice(0,7) === getHojeISO().slice(0,7) ? " · Mês em andamento" : ""}</span></BarraConsulta>
     {periodo.aviso&&<p role="status" className="text-sm">{periodo.aviso}</p>}{erroLotes&&<p role="status" className="text-sm">{erroLotes}</p>}
     <ErrorBox erro={erro}/>{erro&&<Button secondary onClick={()=>setRevisao(v=>v+1)}>Tentar novamente</Button>}
-    {carregando&&<p role="status">Carregando indicadores…</p>}
+    {carregando&&<EsqueletoPainel label="Carregando indicadores" />}
     {!carregando&&snapshot?.filtros.propriedadeId===propriedadeId&&<PainelIndicadores key={JSON.stringify(snapshot.filtros)} snapshot={snapshot}/>}
   </section>;
 }

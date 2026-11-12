@@ -19,6 +19,7 @@ Essas entidades são separadas porque suas datas e seus efeitos podem ser difere
 | Transferência financeira | Circulação entre contas próprias | Duas pontas equivalentes; não cria receita ou despesa consolidada |
 | Inventário, bonificação e devolução | Origens físicas específicas | Conferir documentação, quantidade, valor e vínculo exigidos |
 | Ajuste e transferência de estoque | Regularização ou mudança física | Fluxo próprio de Estoque; não usar para simular compra/pagamento |
+| Compra de animais | Compra de animais com cadastro no Rebanho | Mesmos efeitos de uma compra; animais entram no Rebanho na confirmação; devolução de cabeças pela ficha da compra; correção pela ficha da compra cancelada |
 | Produção de leite | Fato produtivo da V5 | Entrada pela Pecuária; não criar operação financeira fictícia de valor zero |
 
 A presença de um identificador no enum técnico não significa que exista um formulário livre para qualquer combinação. O motor valida os efeitos permitidos por tipo; Leite usa seus próprios comandos para preservar a origem produtiva.

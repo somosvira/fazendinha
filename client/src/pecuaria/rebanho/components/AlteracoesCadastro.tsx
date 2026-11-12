@@ -8,10 +8,10 @@
 
 import { useEffect, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { Loader } from "../../../components/Loading";
 import { Button, Empty, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { listarAuditoriaCadastro, RebanhoApiError } from "../api";
 import type { EntidadeCadastro, EntradaAuditoria } from "../types";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 10;
 
@@ -65,7 +65,7 @@ export function AlteracoesCadastro({ entidade, entidadeId, recarregarToken }: { 
     return novo;
   });
 
-  if (carregando) return <div className="p-6"><Loader label="Carregando alterações" /></div>;
+  if (carregando) return <EsqueletoLista label="Carregando alterações" className="p-6" />;
 
   return <>
     <ErrorBox erro={erro} />

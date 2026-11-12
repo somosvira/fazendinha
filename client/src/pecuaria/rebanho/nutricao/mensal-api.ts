@@ -56,6 +56,8 @@ export type MesNutricional = {
 const base = "/pecuaria/rebanho/nutricao/mensal";
 export const statusMensal = () =>
   req<{ habilitada: boolean; automacao: boolean }>(base + "/status");
+export const processadosMensais = () =>
+  req<Record<string, string>>(base + "/processados");
 export const configuracoesMensais = () =>
   req<ConfiguracaoMensal[]>(base + "/configuracoes");
 export const salvarConfiguracaoMensal = (

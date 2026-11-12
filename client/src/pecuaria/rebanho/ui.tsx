@@ -142,12 +142,14 @@ export function SubAbas<T extends string>({ abas, ativa, onSelecionar }: {
 /** Editor de composição racial: raça + fração em 64 avos, com pré-sets e
  *  validação de soma <= 64 (mesma regra de lib/composicao.ts). Usado no
  *  cadastro do animal e na edição de composição. */
-export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }: {
+export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64, idBase = "composicao" }: {
   racas: CatalogoRaca[];
   itens: ComposicaoItemInput[];
   onChange: (itens: ComposicaoItemInput[]) => void;
   erro?: string;
   limite64?: number;
+  /** prefixo dos ids (`<idBase>-raca-N`, `<idBase>-fracao-N`) */
+  idBase?: string;
 }) {
   const soma = somaFracoes(itens);
   const atualizar = (indice: number, patch: Partial<ComposicaoItemInput>) =>
@@ -159,15 +161,15 @@ export function CampoComposicao({ racas, itens, onChange, erro, limite64 = 64 }:
     <p className="text-xs text-ink-3">A composição usa 64 partes: 32/64 equivale à metade (1/2) e 64/64 ao total. A parcela não preenchida permanece não informada.</p>
     {itens.map((item, indice) => <div key={indice} className="flex flex-wrap items-end gap-3 rounded-lg border border-border p-3">
       <div className="min-w-[180px] flex-1 text-sm font-medium">
-        <label htmlFor={`composicao-raca-${indice}`}>Raça</label>
-        <SelectCampo id={`composicao-raca-${indice}`} className={classeInput} value={item.racaId} onValueChange={(valorSelecionado) => atualizar(indice, { racaId: valorSelecionado })}>
+        <label htmlFor={`${idBase}-raca-${indice}`}>Raça</label>
+        <SelectCampo id={`${idBase}-raca-${indice}`} className={classeInput} value={item.racaId} onValueChange={(valorSelecionado) => atualizar(indice, { racaId: valorSelecionado })}>
           <option value="">Selecione</option>
           {racas.map((raca) => <option key={raca.id} value={raca.id}>{raca.nome} ({raca.sigla})</option>)}
         </SelectCampo>
       </div>
       <div className="w-28 text-sm font-medium">
-        <label htmlFor={`composicao-fracao-${indice}`}>Fração (/64)</label>
-        <input id={`composicao-fracao-${indice}`} type="number" min={1} max={limite64} className={classeInput} value={item.fracao64 || ""} onChange={(e) => atualizar(indice, { fracao64: Number(e.target.value) })} />
+        <label htmlFor={`${idBase}-fracao-${indice}`}>Fração (/64)</label>
+        <input id={`${idBase}-fracao-${indice}`} type="number" min={1} max={limite64} className={classeInput} value={item.fracao64 || ""} onChange={(e) => atualizar(indice, { fracao64: Number(e.target.value) })} />
       </div>
       {item.fracao64 >= 1 && item.fracao64 <= 64 && <span className="pb-2.5 text-sm font-semibold text-ink" aria-label={`Fração reduzida ${fracaoReduzida(item.fracao64)}`}>= {fracaoReduzida(item.fracao64)}</span>}
       <div className="flex flex-wrap gap-1 pb-0.5">

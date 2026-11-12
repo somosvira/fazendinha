@@ -3,7 +3,7 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { corrigirToqueAptidao } from "./elegibilidade-api";
-export function RevisarToqueAptidao({ exameId, propriedadeId, onMudou }: { exameId: string; propriedadeId: number; onMudou: () => void }) {
+export function RevisarToqueAptidao({ exameId, propriedadeId, onMudou, combinado = false }: { combinado?: boolean; exameId: string; propriedadeId: number; onMudou: () => void }) {
   const [acao, setAcao] = useState("CORRIGIR");
   const [resultado, setResultado] = useState<"APTO" | "NAO_APTO" | "INCONCLUSIVO">("INCONCLUSIVO");
   const [motivo, setMotivo] = useState("");
@@ -19,8 +19,9 @@ export function RevisarToqueAptidao({ exameId, propriedadeId, onMudou }: { exame
     catch (e) { setErro(e instanceof Error ? e.message : "Não foi possível revisar o exame."); }
     finally { setOcupado(false); }
   }}>
-    <p className="text-sm text-muted-foreground">A revisão conserva o exame e a decisão anteriores. A liberação precisa ser conferida novamente.</p>
-    <label>Revisão do toque<SelectCampo value={acao} onValueChange={setAcao}><option value="CORRIGIR">Corrigir resultado</option><option value="ANULAR">Anular exame</option></SelectCampo></label>
+    <p className="text-sm text-muted-foreground">A revisão preserva o histórico e atualiza a aptidão conforme o resultado corrigido e as condições vigentes.</p>
+    {combinado && <p>A revisão altera somente a aptidão. O DG e seus vínculos são preservados.</p>}
+    <label>Revisão do toque<SelectCampo value={acao} onValueChange={setAcao}><option value="CORRIGIR">Corrigir resultado</option>{!combinado && <option value="ANULAR">Anular exame</option>}</SelectCampo></label>
     {acao === "CORRIGIR" && <label>Resultado corrigido<SelectCampo value={resultado} onValueChange={v => setResultado(v as typeof resultado)}><option value="APTO">Apta</option><option value="NAO_APTO">Não apta</option><option value="INCONCLUSIVO">Inconclusivo</option></SelectCampo></label>}
     <label>Motivo da revisão<Input required minLength={5} maxLength={1000} value={motivo} onChange={e => setMotivo(e.target.value)}/></label>
     {erro && <p role="alert">{erro}</p>}<Button type="submit" disabled={ocupado}>{ocupado ? "Registrando…" : "Confirmar revisão do exame"}</Button>

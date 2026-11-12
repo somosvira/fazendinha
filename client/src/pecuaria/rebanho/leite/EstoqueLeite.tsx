@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { ClipboardCheck } from "lucide-react";
@@ -157,15 +158,10 @@ function DetalheEstoqueLeite({
         </label>
         <label>
           Dia da produção / retirada
-          <input
-            type="date"
-            value={data}
-            disabled={ocupado}
-            onChange={(e) => {
-              setData(e.target.value);
+          <DatePicker value={data} disabled={ocupado} onChange={(valor) => {
+              setData(valor);
               setAviso("");
-            }}
-          />
+            }} />
         </label>
       </div>
       {!produtos.length && (
@@ -510,12 +506,12 @@ export function EstoqueLeite({ podeLancar, podeFinanceiro }: { podeLancar: boole
   const [selecionado, setSelecionado] = useState<ItemResumoEstoque | null>(null);
   const [confirmacao, setConfirmacao] = useState(false);
   useEffect(() => { let ativo = true; setDados(null); setErro(""); void consultarLeite<ResumoEstoque>(`/estoque/resumo?${new URLSearchParams({ busca, pagina: String(pagina), porPagina: "20" })}`, sitio).then(r => { if (ativo) setDados(r); }).catch(e => { if (ativo) setErro(e instanceof Error ? e.message : "Não foi possível consultar o estoque."); }); return () => { ativo = false; }; }, [sitio, busca, pagina, revisao]);
-  return <section className="leite-operacoes leite-consultas"><CabecalhoRotinaLeite titulo="Estoque de leite" ajuda="Saldo das origens confirmadas, por produto." rotuloAjuda="Sobre estoque de leite" acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}><ClipboardCheck size={17} aria-hidden />Confirmar produção individual</Button> : undefined} />
+  return <section className="leite-operacoes leite-consultas"><CabecalhoRotinaLeite titulo="Estoque de leite" rotuloAjuda="Sobre estoque de leite" acao={podeLancar ? <Button onClick={() => setConfirmacao(true)}><ClipboardCheck size={17} aria-hidden />Confirmar produção individual</Button> : undefined} />
     <BarraConsulta><BuscaLista rotulo="Buscar produto" placeholder="Buscar produto de leite" valor={busca} onChange={v => { setBusca(v); setPagina(1); }} /></BarraConsulta>
     {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando estoque…</p> : <>
       <ResumoEstoqueVisual resumo={dados.resumo}/>
       {dados.resumo.produtosSemLastro > 0 && <p role="status">Há produtos com saldo sem lastro conciliado.</p>}
-      <ListaConsultaLeite layout="linhas" renderizarVisual={i => <ProdutoEstoqueVisual item={i} abrir={() => setSelecionado(i)}/>} preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
+      <ListaConsultaLeite layout="grade" renderizarVisual={i => <ProdutoEstoqueVisual item={i} abrir={() => setSelecionado(i)}/>} preferencia="estoqueLeiteVisualizacao" destaque="saldo" rotulo="Saldos de leite por produto" itens={dados.itens} chaveDe={i => i.produtoId} colunas={[
         { chave: "produto", titulo: "Produto", principal: true, celula: i => i.nome },
         { chave: "saldo", titulo: "Saldo físico", alinhamento: "direita", celula: i => litrosResumo(i.quantidadeLitros) },
         { chave: "comercial", titulo: "Comercial", alinhamento: "direita", celula: i => litrosResumo(i.comercial.quantidadeLitros) },

@@ -7,6 +7,7 @@ import type { AcompanhamentoIndicadores } from "./IndicadoresAcompanhamento";
 export type FilaLegadaManejo = "liberadas" | "diagnostico" | "pendencias";
 export type FilaManejo = FilaLegadaManejo | "avaliacao" | "agendamento" | "retorno" | "aptidao";
 export type LinhaManejo = {
+  situacaoReprodutiva?: string;
   animalId: string;
   brinco: string;
   nome: string | null;

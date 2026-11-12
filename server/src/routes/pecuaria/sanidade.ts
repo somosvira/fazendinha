@@ -1,3 +1,7 @@
+import { detalheErroProduto } from "../../services/estoque/produtos-catalogo.js";
+import { registrarRetiradaDispositivo, retiradaDispositivoAvulsaSchema, corrigirRetiradaDispositivo, corrigirRetiradaDispositivoSchema } from "../../services/pecuaria/reproducao/retirada-dispositivo.js";
+import { preverImpactos, revisarImpactoParticipacao } from "../../services/pecuaria/reproducao/impactos.js";
+import { previaImpactoSchema, confirmacaoImpactoSchema, revisarImpactoSchema } from "../../services/pecuaria/reproducao/impactos.schemas.js";
 import { AlertaError } from "../../services/alertas/erros.js";
 import { paginaSubstitutosTarefa } from "../../services/pecuaria/protocolos/substitutos.js";
 import { referenciasCustoSchema } from "../../services/pecuaria/custos/referencias-planejadas.js";
@@ -43,7 +47,7 @@ function falha(c: Context, e: unknown) {
   if (e instanceof z.ZodError) return c.json({ error: e.issues[0].message, code: "VALIDACAO", campo: e.issues[0].path.join(".") }, 422);
   if (e instanceof RebanhoError || e instanceof AlertaError || e instanceof FinanceiroError) {
     const status = e.code === "NAO_ENCONTRADO" ? 404 : e.code === "VALIDACAO" ? 422 : 409;
-    return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}) }, status);
+    return c.json({ error: e.message, code: e.code, ...(e.campo ? { campo: e.campo } : {}), ...detalheErroProduto(e) }, status);
   }
   if (conflitoTransacaoPecuaria(e) || (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) {
     return c.json({ error: "Os dados mudaram durante a confirmação. Recarregue e tente novamente.", code: "CONFLITO" }, 409);
@@ -70,6 +74,18 @@ const ocultarCustos = <T extends { valorProdutoAtribuido: unknown; valorServicoA
 export const sanidadeRouter = new Hono()
   .route("/", rodadasRouter)
   .route("/", execucaoEtapasRouter)
+  .post("/manejos/:id/correcao-retirada", validar(corrigirRetiradaDispositivoSchema), async c=>{
+    try{const u=getUsuario(c);if(!u||u.id<1)return c.json({error:"Correção física exige sessão real"},401);if(!temArea(u,"pecuaria")||!temPermissao(u,"lancar"))return c.json({error:"Sem permissão para lançar"},403);const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);return c.json(await corrigirRetiradaDispositivo(uuid.parse(c.req.param("id")),{...body,propriedadeId},u.id));}catch(e){return falha(c,e);}
+  })
+  .post("/dispositivos/:id/retirada", validar(retiradaDispositivoAvulsaSchema), async c=>{
+    try{const u=getUsuario(c);if(!u||u.id<1)return c.json({error:"Retirada física exige sessão real"},401);if(!temArea(u,"pecuaria")||!temPermissao(u,"lancar"))return c.json({error:"Sem permissão para lançar"},403);const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);return c.json(await registrarRetiradaDispositivo(uuid.parse(c.req.param("id")),{...body,propriedadeId},u.id),201);}catch(e){return falha(c,e);}
+  })
+  .post("/impactos-protocolares/previa", validar(previaImpactoSchema), async c=>{
+    try{const u=getUsuario(c);if(!u||u.id<1)return c.json({error:"Prévia de impactos exige sessão real"},401);if(!temArea(u,"pecuaria")||!temPermissao(u,"lancar"))return c.json({error:"Sem permissão para lançar"},403);const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);return c.json(await preverImpactos({...body,propriedadeId}));}catch(e){return falha(c,e);}
+  })
+  .post("/participacoes/:id/revisao-impacto", validar(revisarImpactoSchema), async c=>{
+    try{const u=getUsuario(c);if(!u||u.id<1)return c.json({error:"Revisão de impacto exige sessão real"},401);if(!temArea(u,"pecuaria")||!temPermissao(u,"lancar"))return c.json({error:"Sem permissão para lançar"},403);const body=c.req.valid("json");const propriedadeId=await resolverEscopoEscrita(c,body.propriedadeId);return c.json(await revisarImpactoParticipacao(uuid.parse(c.req.param("id")),{...body,propriedadeId},u.id));}catch(e){return falha(c,e);}
+  })
   .get("/servicos/:id/procedimentos", async (c) => {
     try {
       const usuario = getUsuario(c);
@@ -205,9 +221,10 @@ export const sanidadeRouter = new Hono()
       return c.json(filtro.paginado === "true" ? await ocorrencias.listarOcorrenciasPaginadas(animalId, sitio, filtro) : await ocorrencias.listarOcorrencias(animalId, sitio, filtro));
     } catch (e) { return falha(c, e); }
   })
-  .post("/ocorrencias", validar(z.object({ animalId: uuid, propriedadeId: z.number().int().positive(), doencaId: uuid,
+  .post("/ocorrencias", validar(z.object({ chave:uuid.optional(), impacto:confirmacaoImpactoSchema.optional(), animalId: uuid, propriedadeId: z.number().int().positive(), doencaId: uuid,
     inicio: data, observacao: z.string().trim().max(500).nullish() })), async (c) => {
     try { const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c, body.propriedadeId);
+      if(body.impacto&&(!getUsuario(c)||getUsuario(c)!.id<1))return c.json({error:"Impactos exigem sessão real"},401);
       return c.json(await ocorrencias.criarOcorrencia({ ...body, propriedadeId }, getUsuario(c)?.id ?? null), 201); }
     catch (e) { return falha(c, e); }
   })

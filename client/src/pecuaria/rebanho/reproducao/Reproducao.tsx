@@ -1,4 +1,10 @@
-import { GitBranch } from "lucide-react";
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
+import { executarComGuardaNavegacao } from "../../../navegacaoGuardada";
+import { VisaoGeralReprodutiva } from "./VisaoGeralReprodutiva";
+import { LinkInterno } from "../../../components/LinkInterno";
+import { abrirPreparacaoIatf } from "./preparar-iatf";
+import { Settings, Plus } from "lucide-react";
+import "./reproducao-navegacao.css";
 import { ParticipacaoProtocolo } from "../protocolos/ParticipacaoProtocolo";
 import { filtrosDasColunas, type CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useRascunhoConsulta } from "@/financeiro/useRascunhoConsulta";
@@ -29,8 +35,7 @@ import {
   PaginaFinanceira,
   Panel,
   Pill,
-  TabelaFinanceira,
-} from "../../../financeiro/financeiro-ui";
+  } from "../../../financeiro/financeiro-ui";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { navegarPara } from "../../../router";
 import {
@@ -44,6 +49,7 @@ import { Exposicoes } from "./Exposicoes";
 import { Iatf } from "./Iatf";
 import { DetalheFato } from "./DetalheFato";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 function acaoDaUrl(): AcaoReprodutiva | null {
   const acao = new URLSearchParams(window.location.search).get("acao");
   return ["avaliacao", "tentativa", "parto", "situacao", "restricao"].includes(acao ?? "") ? acao as AcaoReprodutiva : null;
@@ -87,6 +93,7 @@ export function ReproducaoAnimal({
   );
 }
 const ROTINAS = [
+  { id:"geral", label:"Visão geral" },
   { id: "ciclos", label: "Animais e acompanhamentos" },
   { id: "agenda", label: "Agenda" },
   { id: "programacoes", label: "Protocolos" },
@@ -96,8 +103,18 @@ const ROTINAS = [
 type Rotina = typeof ROTINAS[number]["id"];
 function rotinaDaUrl(): Rotina {
   const valor = new URLSearchParams(window.location.search).get("rotina");
-  return ROTINAS.find(r => r.id === valor)?.id ?? (new URLSearchParams(window.location.search).has("programacaoId") ? "programacoes" : "ciclos");
+  const p = new URLSearchParams(window.location.search);
+  return (
+    ROTINAS.find((r) => r.id === valor)?.id ??
+    (p.has("programacaoId")
+      ? "programacoes"
+      : p.get("visao") === "historico" ||
+          ["animalId", "fatoId", "tentativaId", "acao"].some((k) => p.has(k))
+        ? "ciclos"
+        : "geral")
+  );
 }
+
 export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   const [caminho,setCaminho]=useState(window.location.pathname);
   const [rotina, setRotina] = useState<Rotina>(rotinaDaUrl);
@@ -112,7 +129,7 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   function selecionarRotina(valor: Rotina) {
     const url = new URL(window.location.href);
     url.searchParams.set("rotina", valor);
-    navegarPara(url.pathname + url.search + url.hash);
+    void executarComGuardaNavegacao(() => navegarPara(url.pathname + url.search + url.hash));
   }
   function conteudoDaRotina() {
     const parametros = new URLSearchParams(consultaUrl);
@@ -127,7 +144,8 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
       <ConteudoReproducao podeLancar={podeLancar} propriedadeId={propriedadeId ?? (Number(parametros.get("sitio")) || null)}/>
     </>;
     return <ConsultaPorSitio>{sitioId => <div key={`${sitioId}:${rotina}`} className="space-y-5">
-      {rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
+      {rotina === "geral" ? <VisaoGeralReprodutiva propriedadeId={sitioId}/>
+        : rotina === "partos" ? <PartosPosParto propriedadeId={sitioId}/>
         : rotina === "indicadores" ? <IndicadoresReprodutivos propriedadeId={sitioId} podeLancar={podeLancar} modo="painel"/>
         : rotina === "agenda" ? <AcompanhamentoReprodutivo atualizacao={sitioId} propriedadeId={sitioId} podeLancar={podeLancar}/>
         : rotina === "programacoes" ? <ConteudoReproducao propriedadeId={sitioId} podeLancar={podeLancar} secao="programacoes"/>
@@ -139,17 +157,27 @@ export function Reproducao({ podeLancar }: { podeLancar: boolean }) {
   }
   const participacaoRota = caminho.match(/^\/pecuaria\/reproducao\/participacoes\/([^/]+)\/?$/);
   if (participacaoRota) return <ParticipacaoProtocolo key={participacaoRota[1]} id={decodeURIComponent(participacaoRota[1])} tipo="REPRODUTIVO" propriedadeId={Number(new URLSearchParams(consultaUrl).get("sitio")) || propriedadeId || undefined} podeLancar={podeLancar} />;
+  if (caminho === "/pecuaria/reproducao/programacoes/nova") {
+    const retorno = new URLSearchParams(consultaUrl).get("retorno");
+    const voltar = () => navegarPara(retorno?.startsWith("/pecuaria/") ? retorno : urlConsultaComSitio("/pecuaria/reproducao?rotina=programacoes", propriedadeId ?? undefined));
+    return <PaginaFinanceira><ConsultaPorSitio>{sitioId => <ConteudoReproducao secao="programacoes" propriedadeId={sitioId} podeLancar={podeLancar} paginaProgramacao solicitarProgramacao onCancelarProgramacao={voltar}/>}</ConsultaPorSitio></PaginaFinanceira>;
+  }
   const detalheRota = caminho.match(/^\/pecuaria\/reproducao\/(programacoes|partos)\/([^/]+)\/?$/);
   if(detalheRota) {
     const [,tipo,id]=detalheRota;
-    const voltar=()=>{const retorno=new URLSearchParams(window.location.search).get("retorno");navegarPara(retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`));};
-    return <PaginaFinanceira><PageHeader titulo={tipo==="partos"?"Parto e pós-parto":"Programação IATF"} acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/><ConsultaPorSitio>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
+    const retorno=new URLSearchParams(window.location.search).get("retorno");
+    const destinoRetorno=retorno?.startsWith("/pecuaria/")?retorno:urlConsultaComSitio(`/pecuaria/reproducao?rotina=${tipo==="partos"?"partos":"programacoes"}`);
+    const voltar=()=>navegarPara(destinoRetorno);
+    return <PaginaFinanceira>{tipo === "programacoes" ? <nav aria-label="Caminho do protocolo" className="protocolo-caminho"><LinkInterno area="pecuaria" href={destinoRetorno}>Reprodução · Protocolos</LinkInterno><span aria-hidden="true">/</span><span>Programação</span></nav> : <PageHeader titulo="Parto e pós-parto" acao={<Button secondary onClick={voltar}>Voltar à lista</Button>}/>}<ConsultaPorSitio cabecalho={tipo === "programacoes" ? () => null : undefined}>{sitioId=><div key={`${tipo}:${id}:${sitioId}`} className="mt-5">{tipo==="partos"?<DetalheParto id={id} propriedadeId={sitioId} podeLancar={podeLancar}/>:<ConteudoReproducao secao="programacoes" programacaoId={id} propriedadeId={sitioId} podeLancar={podeLancar} onFecharDetalhe={voltar}/>}</div>}</ConsultaPorSitio></PaginaFinanceira>;
   }
   return (
     <PaginaFinanceira>
     <div className={`reproducao-v4 ${rotina === "indicadores" ? "reproducao-v4-indicadores" : ""}`}>
-      <PageHeader titulo={<span className="rotina-titulo"><span><GitBranch/></span>Reprodução</span>} />
-      <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={[...ROTINAS]}
+      <PageHeader titulo="Reprodução" acao={<div className="reproducao-comandos">
+        <Button secondary onClick={() => { void executarComGuardaNavegacao(() => navegarPara(urlConsultaComSitio("/configuracoes/pecuaria/reproducao", propriedadeId ?? (Number(new URLSearchParams(consultaUrl).get("sitio")) || undefined)))); }}><Settings size={17} aria-hidden/>Configurações</Button>
+        {podeLancar && <Button onClick={() => { void executarComGuardaNavegacao(() => navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/nova?retorno=${encodeURIComponent(window.location.pathname + window.location.search + window.location.hash)}`, propriedadeId ?? undefined))); }}><Plus size={18} aria-hidden/>Programar protocolo</Button>}
+      </div>} />
+      <SubTabs variant="financeiro" ariaLabel="Rotinas da reprodução" tabs={ROTINAS.filter(rotina => rotina.id !== "ciclos")}
         active={rotina} onSelect={selecionarRotina} />
 
       <div className="abas-superficie">{conteudoDaRotina()}</div>
@@ -166,7 +194,15 @@ function ConteudoReproducao({
   recarregarToken = 0,
   programacaoId,
   onFecharDetalhe,
+  solicitarProgramacao,
+  onProgramacaoAberta,
+  paginaProgramacao,
+  onCancelarProgramacao,
 }: {
+  paginaProgramacao?: boolean;
+  onCancelarProgramacao?: () => void;
+  solicitarProgramacao?: boolean;
+  onProgramacaoAberta?: () => void;
   secao?: "historico" | "programacoes";
   programacaoId?: string;
   onFecharDetalhe?: () => void;
@@ -275,11 +311,18 @@ function ConteudoReproducao({
     const id = new URLSearchParams(consultaUrl).get("fatoId");
     if (id && painel) setFatoAberto(fatos.find(f => f.id === id||f.exame?.id===id) ?? null);
   }, [painel, consultaUrl]);
+  if (acao === "avaliacao" && painel && podeLancar) return <FormReproducao
+    pagina acao="avaliacao" painel={painel} animalInicial={animalAcao}
+    demandaInicial={demandaAvaliada ?? undefined} finalidadeInicial={demandaAvaliada?.finalidade}
+    tipoExameInicial={demandaAvaliada?.regraSnapshot.tipoExameId ?? undefined}
+    propriedadeId={propriedadeId ?? undefined}
+    onPrepararIatf={propriedadeId ? ids => abrirPreparacaoIatf(ids, propriedadeId) : undefined}
+    onFechar={fecharFormulario} onSalvo={() => { fecharFormulario(); void carregar(); }}/>;
   if (secao === "programacoes") return <div className="space-y-5">
     <ErrorBox erro={erro}/>
     {erro && <Button secondary onClick={() => void carregar()}>Tentar novamente</Button>}
-    {carregando && <p role="status">Carregando programações…</p>}
-    {!carregando && painel && <Iatf programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
+    {carregando && <EsqueletoTabela label="Carregando programações" />}
+    {!carregando && painel && <Iatf paginaProgramacao={paginaProgramacao} onCancelarProgramacao={onCancelarProgramacao} solicitarProgramacao={solicitarProgramacao} onProgramacaoAberta={onProgramacaoAberta} acaoProgramarNoCabecalho={!programacaoId} programacaoId={programacaoId} onFecharDetalhe={onFecharDetalhe} onMudou={carregar} animais={painel.animais} propriedadeId={propriedadeId ?? undefined} painel={painel} podeLancar={podeLancar} onAbrirProgramacao={id=>navegarPara(urlConsultaComSitio(`/pecuaria/reproducao/programacoes/${id}?retorno=${encodeURIComponent(window.location.pathname+window.location.search)}`,propriedadeId??undefined))}/>}
   </div>;
   return (
     <div className="space-y-5">
@@ -352,7 +395,7 @@ function ConteudoReproducao({
           </p>
         )}
         {!carregando && painel && (
-          <TabelaFinanceira filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
+          <ConsultaOperacional filtrosColunas={filtrosDasColunas(camposConsulta,edicaoConsulta)}
             rotulo="Animais e ciclos reprodutivos"
             itens={animais}
             chaveDe={(a) => a.animalId}
@@ -422,7 +465,7 @@ function ConteudoReproducao({
       {painel && (
         <Panel>
           <CabecalhoTabela titulo="Histórico reprodutivo" />
-          <TabelaFinanceira
+          <ConsultaOperacional
             rotulo="Histórico reprodutivo"
             onAbrir={(f) => setFatoAberto(f)}
             itens={fatos.filter((f) => !animalId || f.animalId === animalId)}
@@ -499,8 +542,8 @@ function ConteudoReproducao({
           <a className="text-sm underline" href="/configuracoes/pecuaria/reproducao/regras-sanitarias">Gerenciar regras sanitárias da reprodução</a>
         </>
       )}
-      {acao && painel && (
-        <FormReproducao
+      {acao && painel && podeLancar && (
+        <FormReproducao onPrepararIatf={propriedadeId ? ids => abrirPreparacaoIatf(ids, propriedadeId) : undefined}
           acao={acao}
           painel={painel}
           animalInicial={animalAcao}

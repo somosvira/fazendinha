@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { AppSidebar, TrabalhoAtivo } from "./AppSidebar";
-import type { User } from "@/data/acessos";
 
 vi.mock("../api/propriedades", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../api/propriedades")>()),
@@ -16,14 +15,13 @@ afterEach(() => {
   localStorage.clear();
 });
 
-const usuario: User = { id: "1", nome: "Ana", email: "ana@exemplo.com", inicial: "A", papel: "personalizado", status: "ativo", ultimoAcesso: "", abas: ["dashboard", "lancar"], areas: ["financeiro"], flags: [] };
 const resumo = { titulo: "Ração para o gado", tipo: "Compra para estoque", detalhe: "R$ 1.250,00 · Compra para estoque", atualizadoEm: new Date(Date.now() - 5 * 60_000).toISOString() };
 
 function renderSidebar(props: Partial<ComponentProps<typeof AppSidebar>> = {}) {
   const base: ComponentProps<typeof AppSidebar> = {
     current: "dashboard", onNav: vi.fn(), financeiro: [{ id: "dashboard", label: "Visão geral" }, { id: "lancar", label: "Operações" }],
-    isAdmin: false, areas: ["financeiro"], mobileOpen: false, onMobileToggle: vi.fn(), onAbrirBusca: vi.fn(),
-    propAtiva: null, onTrocarProp: vi.fn(), user: usuario, colapsada: false, onToggleColapsar: vi.fn(), onAcessos: vi.fn(),
+    isAdmin: false, areas: ["financeiro"], mobileOpen: false, onMobileToggle: vi.fn(),
+    propAtiva: null, onTrocarProp: vi.fn(), colapsada: false, onToggleColapsar: vi.fn(),
   };
   const final = { ...base, ...props };
   const view = render(<AppSidebar {...final} />);

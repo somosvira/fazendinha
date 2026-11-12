@@ -27,7 +27,9 @@ const numero = (valor: unknown) => {
 function valorDoRascunho(operacao: Registro | null, formulario: Registro | null) {
   const itens = Array.isArray(operacao?.itens) ? operacao.itens.map(registro).filter((item): item is Registro => !!item) : [];
   if (itens.length) {
-    const soma = itens.reduce((total, item) => total + numero(item.quantidade) * numero(item.valorUnitario), 0);
+    // Item por valor total (animais da compra, ou "valor total do item") não traz valor unitário.
+    const valorDoItem = (item: Registro) => texto(item.valorTotal) !== "" || typeof item.valorTotal === "number" ? numero(item.valorTotal) : numero(item.quantidade) * numero(item.valorUnitario);
+    const soma = itens.reduce((total, item) => total + valorDoItem(item), 0);
     return Math.round(soma * 100) / 100;
   }
   return numero(operacao?.valorTotal ?? formulario?.valorOperacao);

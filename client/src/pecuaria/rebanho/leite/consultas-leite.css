@@ -1,7 +1,6 @@
 .leite-consultas { display: grid; gap: 18px; }
 .leite-consulta-custos { margin-top: 20px; display: grid; gap: 14px; }
 .leite-consulta-nota { color: var(--muted-foreground); font-size: 14px; }
-.leite-consulta-total { font-variant-numeric: tabular-nums; padding-block: 12px; }
 .leite-consulta-dialog { width: min(960px, calc(100vw - 32px)); max-width: 960px; max-height: 88vh; overflow-y: auto; }
 .leite-consulta-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .leite-consulta-resumo {
@@ -109,10 +108,42 @@
 .leite-superficie .leite-consulta-resumo dd{margin-top:0;font-size:22px}
 .leite-superficie .leite-lista-opcoes{margin-bottom:10px}
 .leite-superficie .leite-ordenhas-consulta .fin-tabela-cabecalho{min-height:48px;padding:8px 0}
-.leite-producao-cobertura{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
-.leite-producao-cobertura [data-slot=badge]{gap:6px;font-weight:500}
-.leite-producao-cobertura:empty{display:none}
-.leite-superficie .leite-agrupamento-producao{margin:8px 0}
 .leite-superficie .producao-registro-cabecalho{margin:16px 0 10px}
 .leite-superficie .leite-grafico-area{height:210px;margin-top:10px}
-.leite-superficie .leite-consultas{gap:12px}.leite-producao-controles{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.leite-producao-controles .leite-producao-cobertura,.leite-superficie .leite-producao-controles .leite-agrupamento-producao{margin:0}.leite-superficie .leite-grafico-producao figcaption h2{margin:0}.leite-superficie .leite-producao-cobertura>[data-slot=badge]{border-radius:6px;min-height:28px}.leite-resumo-destinos .consumo-retiradas>div>div>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.leite-superficie .leite-consultas{gap:12px}.leite-superficie .leite-grafico-producao figcaption h2{margin:0}.leite-resumo-destinos .consumo-retiradas>div>div>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+
+/* Trilhas intrínsecas de formulários não podem alargar o portal. */
+:root [data-slot="dialog-content"].leite-consulta-dialog[data-fin-scroll="conteudo"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.leite-consulta-dialog > * { min-width: 0; }
+.leite-consulta-dialog .leite-form-inline > * { min-width: 0; max-width: 100%; }
+.leite-formatos-dialog .leite-form-inline > span { overflow-wrap: anywhere; }
+.leite-formatos-dialog .leite-form-inline button { height: auto; white-space: normal; text-align: start; }
+@media (max-width: 640px) {
+  .leite-formatos-dialog .leite-form-inline { align-items: stretch; flex-direction: column; gap: 8px; }
+  .leite-consulta-dialog [data-slot="select-trigger"] > span { min-width: 0; }
+}
+
+.leite-consultas > .consulta-barra .consulta-linha { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px; }
+.leite-consultas > .consulta-barra .consulta-controles { flex: 1 1 250px; }
+.leite-consultas > .consulta-barra .consulta-mais-filtros { margin-inline-start: 0; }
+.leite-consultas > .consulta-barra .consulta-acoes { margin-inline-start: auto; }
+.leite-agrupamento-producao [role="tablist"] { height: auto; border: 1px solid var(--border); background: var(--muted); }
+.leite-agrupamento-producao [role="tab"] { min-height: 32px; padding-inline: 12px; }
+.leite-agrupamento-producao [role="tab"][data-state="active"] { background: var(--primary); color: var(--primary-foreground); }
+.leite-custos-resumo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: 460px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--muted);
+}
+.leite-custos-resumo > div { padding: 8px 12px; }
+.leite-custos-resumo > div + div { border-inline-start: 1px solid var(--border); }
+.leite-custos-resumo dt { color: var(--muted-foreground); font-size: 12px; }
+.leite-custos-resumo dd { margin: 2px 0 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .leite-agrupamento-producao [role="tab"] { min-height: 44px; } }

@@ -9,6 +9,10 @@ import { OrigemMovimentoEstoque } from "@prisma/client";
 import { prisma } from "../db.js";
 import * as svc from "../services/estoque/estoque.js";
 import * as produtosSvc from "../services/estoque/produtos.js";
+import * as catalogosSvc from "../services/estoque/catalogos.js";
+import { consultaCatalogoSchema } from "../services/estoque/catalogos.schemas.js";
+import * as catalogoProdutosSvc from "../services/estoque/produtos-catalogo.js";
+import { buscaProdutosSchema, consultaCatalogoProdutosSchema } from "../services/estoque/produtos-catalogo.schemas.js";
 import * as partidasSvc from "../services/estoque/partidas.js";
 import * as fichaSvc from "../services/estoque/ficha-produto.js";
 import { transferirEstoque } from "../services/estoque/transferencias.js";
@@ -24,10 +28,10 @@ import { temArea, temPermissao } from "../services/auth/papeis.js";
 import { SEM_VINCULO } from "../lib/ids.js";
 
 type Status = 400 | 404 | 409 | 500;
-function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string } } {
+function fail(e: unknown): { status: Status; body: { error: string; code?: string; campo?: string; produtoExistente?: catalogoProdutosSvc.ProdutoExistente } } {
   if (conflitoTransacaoValidada(e)) return { status: 409, body: { error: "Os dados mudaram. Recarregue e confirme novamente.", code: "CONFLITO" } };
   if (e instanceof ValorizacaoError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
-  if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code } };
+  if (e instanceof FinanceiroError) return { status: e.code === "VALIDACAO" ? 400 : 409, body: { error: e.message, code: e.code, ...catalogoProdutosSvc.detalheErroProduto(e) } };
   if (e instanceof svc.EstoqueError) {
     const map = { NAO_ENCONTRADO: 404, MES_FECHADO: 409, ORIGEM_AUTOMATICA: 409, CONFLITO: 409, VALIDACAO: 400 } as const;
     // `code` deixa o cliente distinguir CONFLITO (saldo mudou) de MES_FECHADO, ambos 409.
@@ -39,10 +43,10 @@ function fail(e: unknown): { status: Status; body: { error: string; code?: strin
 
 // Mapeamento de erro dos cadastros de referência (produto) para status HTTP —
 // essas rotas ficam sob o gate mais amplo de /api/estoque/*: pecuária ou financeiro.
-function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; campo?: string } } {
+function failCadastro(e: unknown): { status: 400 | 404 | 409 | 500; body: { error: string; campo?: string; produtoExistente?: catalogoProdutosSvc.ProdutoExistente } } {
   if (e instanceof FinanceiroError) {
     const map = { VALIDACAO: 400, NAO_ENCONTRADO: 404, CONFLITO: 409, PERIODO_FECHADO: 409, SALDO_INSUFICIENTE: 409, JA_REVERTIDO: 409 } as const;
-    return { status: map[e.code], body: { error: e.message, ...(e.campo ? { campo: e.campo } : {}) } };
+    return { status: map[e.code], body: { error: e.message, ...(e.campo ? { campo: e.campo } : {}), ...catalogoProdutosSvc.detalheErroProduto(e) } };
   }
   console.error("[estoque/cadastros]", e);
   return { status: 500, body: { error: "Erro inesperado ao processar. Tente novamente." } };
@@ -89,6 +93,29 @@ function validarProduto<T extends z.ZodTypeAny>(schema: T) {
 
 // Leituras ficam só com o gate de área (app.ts); escritas exigem a flag `lancar`.
 export const estoqueRouter = new Hono()
+  .get("/estoque/fabricantes", zValidator("query", consultaCatalogoSchema), async c => {
+    try { return c.json(await catalogosSvc.listarFabricantes(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/classificacoes-tecnicas", zValidator("query", consultaCatalogoSchema), async c => {
+    try { return c.json(await catalogosSvc.listarClassificacoesTecnicas(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/principios-ativos", zValidator("query", consultaCatalogoSchema), async c => {
+    try { return c.json(await catalogosSvc.listarPrincipiosAtivos(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+
+  // Catálogo de produtos do sistema (somente leitura) e busca unificada dos seletores (docs/produtos.md, API).
+  .get("/estoque/catalogo", zValidator("query", consultaCatalogoProdutosSchema), async c => {
+    try { return c.json(await catalogoProdutosSvc.listarCatalogo(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/catalogo/:id", async c => {
+    try {
+      if (!z.string().uuid().safeParse(c.req.param("id")).success) return c.json({ error: "Item do catálogo não encontrado" }, 404);
+      return c.json(await catalogoProdutosSvc.detalheCatalogo(c.req.param("id")));
+    } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
+  .get("/estoque/produtos/busca", zValidator("query", buscaProdutosSchema), async c => {
+    try { return c.json(await catalogoProdutosSvc.buscarProdutos(c.req.valid("query"))); } catch(e) { const f=failCadastro(e); return c.json(f.body,f.status); }
+  })
   .get("/estoque/tipos-aplicacao-sanitarios", zValidator("query", tiposAplicacaoProdutoQuerySchema), async c => c.json(await produtosSvc.listarTiposAplicacaoSanitarios(c.req.valid("query"))))
   .post("/estoque/perdas", exigePermissao("lancar"), validarProduto(perdaEstoqueSchema), async (c) => {
     try { const body = c.req.valid("json"); const origemId = await resolverEscopoEscrita(c, body.origemId); return c.json(await transferirEstoque({ ...body, origemId, destinoId: origemId, modo: "PERDA" }, usuarioId(c)), 201); } catch (e) { const f = fail(e); return c.json(f.body, f.status); }
@@ -136,6 +163,18 @@ export const estoqueRouter = new Hono()
       return c.json(await partidasSvc.listarPartidas(c.req.valid("query").produtoId, propriedadeId));
     } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
   })
+  // Vários produtos numa só consulta: a cobertura da Nutrição precisava de uma chamada por ingrediente.
+  .get("/estoque/partidas/lote", zValidator("query", z.object({
+    produtoIds: z.string().transform((v) => [...new Set(v.split(",").filter(Boolean))]).pipe(z.array(z.string().uuid()).min(1).max(50)),
+    propriedadeId: z.coerce.number().int().positive().optional(),
+  })), async (c) => {
+    try {
+      const { produtoIds, propriedadeId: informado } = c.req.valid("query");
+      const propriedadeId = informado ?? await resolverEscopoLeitura(c);
+      const listas = await Promise.all(produtoIds.map((id) => partidasSvc.listarPartidas(id, propriedadeId)));
+      return c.json(Object.fromEntries(produtoIds.map((id, i) => [id, listas[i]])));
+    } catch (e) { const { status, body } = fail(e); return c.json(body, status); }
+  })
   .get("/estoque/produtos/:id/valorizacao", zValidator("query", consultaValorizacaoSchema), async c => {
     if (!podeVerCustos(c)) return c.json({ error: "Sem permissão para consultar valores", code: "SEM_PERMISSAO" }, 403);
     try {
@@ -174,8 +213,8 @@ export const estoqueRouter = new Hono()
     } catch (e) { const { status, body } = e instanceof FinanceiroError ? failCadastro(e) : fail(e); return c.json(body, status); }
   })
   .get("/estoque/produtos", zValidator("query", produtosQuerySchema), async (c) => {
-    const { uso, q, ativo } = c.req.valid("query");
-    return c.json(await produtosSvc.listarProdutos({ uso, q, ativo: parseAtivo(ativo), incluirInativos: true }));
+    const { uso, q, ativo, fabricanteId, classificacaoTecnicaId, principioAtivoId } = c.req.valid("query");
+    return c.json(await produtosSvc.listarProdutos({ uso, q, ativo: parseAtivo(ativo), fabricanteId, classificacaoTecnicaId, principioAtivoId, incluirInativos: true }));
   })
   .patch("/estoque/partidas/:id", exigePermissao("lancar"), validarProduto(z.object({ nome: nomeLoteSchema }).strict()), async (c) => {
     try { return c.json(await partidasSvc.renomearLote(c.req.param("id"), c.req.valid("json").nome, usuarioId(c))); }

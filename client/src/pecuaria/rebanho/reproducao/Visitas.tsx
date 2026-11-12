@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { CalendarDays, Plus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, CabecalhoTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
@@ -18,6 +19,8 @@ import { chaveGrupo, type GrupoPlannerInput } from "./planner-api";
 import { EntradaVisita } from "./EntradaVisita";
 import { ConsultaVisitas } from "./ConsultaVisitas";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -139,7 +142,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   return <PaginaFinanceira><div className={`print:hidden${mostraAtendimento ? " visita-fluxo visita-atendimento" : ""}`}>
     {rota.tipo === "lista" ? <>
       <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><CalendarDays aria-hidden/></span>Visitas veterinárias</span>} acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); setPropriedadeId(getPropriedadeAtiva() ?? ""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}><Plus size={18} aria-hidden/>Nova visita</Button>}/>
-      <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visitas…</p>}
+      <ErrorBox erro={erro}/>{carregando && <EsqueletoTabela label="Carregando visitas" />}
       {!carregando && !erro && <ConsultaVisitas visitas={lista} propriedades={propriedades} podeLancar={podeLancar} sitioSelecionado={!!getPropriedadeAtiva()} onAbrir={id => { navegarPara(`/pecuaria/visitas/${encodeURIComponent(id)}`); setRota(parseRotaVisita(window.location.pathname, window.location.search)!); }}/>}
     </> : rota.tipo === "nova" ? <>
       <ErrorBox erro={erro}/><EntradaVisita ocupado={ocupado} podeLancar={podeLancar} onVoltar={voltarLista} onContinuar={modo=>void executar(async()=>{
@@ -149,13 +152,13 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         navegarPara(urlEtapaVisita(v.id,modo==="agenda"?"planejamento":"selecao",{modo}));setRota(parseRotaVisita(window.location.pathname,window.location.search)!);
       })} contexto={<>
         <label>Nome da visita<input required minLength={2} maxLength={120} value={nome} onChange={e=>setNome(e.target.value)}/></label>
-        <label>Data da visita<input type="date" required value={data} onChange={e=>setData(e.target.value)}/></label>
-        <label>Sítio<select required value={propriedadeId} onChange={e=>setPropriedadeId(e.target.value?Number(e.target.value):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</select></label>
+        <label>Data da visita<DatePicker required value={data} onChange={(valor) => setData(valor)} /></label>
+        <label>Sítio<SelectCampo required value={propriedadeId} onValueChange={(valor) =>setPropriedadeId(valor?Number(valor):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
         <label>Responsável (opcional)<input maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
       </>}/>
     </> : <>
       {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={()=>void executarComGuardaNavegacao(()=>{void executar(async()=>{await reqV4(`/visitas/${visita.id}/encerramento`,{propriedadeId:propDaVisita()});await carregar();});})}>Encerrar visita</Button>}</div>}/>}
-      <ErrorBox erro={erro}/>{carregando && <p role="status">Carregando visita…</p>}
+      <ErrorBox erro={erro}/>{carregando && <EsqueletoFicha label="Carregando visita" />}
 
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
         <dl><div><dt>Nome da visita</dt><dd>{visita.nome}</dd></div><div><dt>Data da visita</dt><dd>{dataBR(visita.data)}</dd></div><div><dt>Sítio</dt><dd>{rotuloSitio}</dd></div><div><dt>Responsável</dt><dd>{visita.responsavel??"Não informado"}</dd></div></dl>

@@ -23,7 +23,14 @@ export class FinanceiroError extends Error {
 /** Traduz violação de unicidade do Prisma (P2002) em FinanceiroError CONFLITO apontando o campo. Relança o resto. */
 export function traduzirConflitoUnico(erro: unknown, mensagens: Record<string, string>): never {
   if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") {
-    const alvos = (erro.meta?.target as string[] | undefined) ?? [];
+    const objeto = (valor: unknown): Record<string, unknown> | undefined =>
+      typeof valor === "object" && valor !== null ? valor as Record<string, unknown> : undefined;
+    // O adapter PostgreSQL informa os campos na causa, sem meta.target.
+    const causa = objeto(objeto(erro.meta?.driverAdapterError)?.cause);
+    const camposAdapter = causa?.kind === "UniqueConstraintViolation"
+      ? objeto(causa.constraint)?.fields : undefined;
+    const alvos = [erro.meta?.target, camposAdapter].flatMap((campos) =>
+      Array.isArray(campos) ? campos.filter((campo): campo is string => typeof campo === "string") : []);
     for (const [campo, mensagem] of Object.entries(mensagens)) {
       if (alvos.includes(campo)) throw new FinanceiroError("CONFLITO", mensagem, campo);
     }

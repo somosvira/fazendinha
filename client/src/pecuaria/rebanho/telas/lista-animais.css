@@ -104,3 +104,64 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 
 :root .app-main .fin-tabela .animal-ajuda-celula { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0; background:transparent; color:inherit; cursor:help; border-radius:6px; }
 .animal-ajuda-celula:focus-visible { outline:2px solid var(--ring); outline-offset:2px; }
+
+.animais-identidade-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 6px;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+.animais-brinco-linha {
+  border-radius: 5px;
+  padding: 2px 6px;
+  background: var(--fin-tag-bg);
+  color: var(--fin-tag-text);
+  font-variant-numeric: tabular-nums;
+}
+.animais-selecao-linha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  min-width: 34px;
+  cursor: pointer;
+}
+:root .pecuaria-content .animais-pagina-refinada .fin-tabela[data-fin-compacta] :is(th,td) { padding-block: 6px; }
+.animais-lista-compacta { margin: 0; padding: 0; list-style: none; }
+.animais-lista-compacta li { display: flex; align-items: stretch; border-top: 1px solid var(--border); }
+.animais-lista-compacta li[data-selecionado="true"] { background: var(--accent); }
+.animais-lista-compacta .animais-selecao-linha { flex: 0 0 44px; }
+.animais-abrir-linha {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+}
+.animais-selecao-linha + .animais-abrir-linha { padding-inline-start: 0; }
+.animais-abrir-linha:hover { background: var(--muted); }
+.animais-abrir-linha:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+.animais-abrir-linha > svg { flex: none; color: var(--primary); }
+.animais-contexto-linha {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.animais-contexto-linha > span + span:not(.fin-selo)::before { content: "·"; margin-inline-end: 6px; }
+@media (max-width: 900px) {
+  :root .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais > :first-child { flex-basis: 100%; }
+  :root .pecuaria-content .animais-pagina-refinada .rebanho-filtros-principais input { font-size: 16px; }
+}

@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { Card } from "@/components/ui/card";
 import { CalendarDays, Milk, Plus, Settings2 } from "lucide-react";
@@ -17,6 +18,7 @@ import type { ConfiguracaoOrdenha } from "./types";
 import type { TanqueLeite } from "./tanques-types";
 import { dataValida, hojeOperacional, formatarLitros } from "./modelo";
 import { formatarDataBR } from "../lib/rotulos";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
 
 export function ConfiguracoesProducaoLeite({ podeLancar, tituloPagina = false }: { podeLancar: boolean; tituloPagina?: boolean }) {
   const Cabecalho = tituloPagina ? PageHeader : CabecalhoTabela;
@@ -45,7 +47,7 @@ export function ConfiguracoesProducaoLeite({ podeLancar, tituloPagina = false }:
   const criterio = dados?.contexto?.criterioColostro ?? dados?.configuracao.criterioColostro;
   return <div className="leite-page leite-configuracoes-consulta">
     <Cabecalho titulo="Rotina de produção" acao={<><Button variant="outline" onClick={() => navegarPara("/configuracoes/pecuaria/producao/bezerreiro")}>Bezerreiro e colostro</Button><DatePicker aria-label="Data de referência da configuração" value={data} onChange={v => { if (dataValida(v)) setData(v); }} /></>} />
-    {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <p role="status" className="p-5">Carregando configurações…</p> : <>
+    {erro ? <div role="alert" className="p-5">{erro}<Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></div> : !dados ? <EsqueletoFormulario label="Carregando configurações" className="p-5" /> : <>
       <div className="p-5 grid gap-5">
         <div className="leite-configuracao-vigencia"><div><h3>Configuração vigente</h3><span><CalendarDays size={16} aria-hidden />Desde {formatarDataBR(dados.configuracao.vigenteDesde)}</span></div>{podeLancar && <Button variant="outline" onClick={() => setConfig(true)}><Settings2 size={17} aria-hidden />Nova configuração</Button>}</div>
         <dl className="grid gap-4 leite-configuracao-fatos"><div><dt>Ordenhas do dia</dt><dd>{dados.configuracao.ordenhas.map(o => o.nome).join(" · ")}</dd></div><div><dt>Controle individual</dt><dd>A cada {dados.configuracao.intervaloIndividualQuantidade ?? 1} {dados.configuracao.intervaloIndividualUnidade === "DIAS" ? "dia(s)" : "mês(es)"} · Fonte {dados.configuracao.fonteProducao === "GERAL" ? "geral" : "individual"}</dd></div><div><dt>Critério de colostro</dt><dd>{criterio?.tipo === "PRIMEIRA_ORDENHA" ? "Primeira ordenha após o parto" : criterio?.tipo === "JANELA_DIAS" ? `Janela pós-parto de ${criterio.dias} dias, incluindo D0` : "Não informado"}</dd></div></dl>
@@ -59,7 +61,7 @@ export function ConfiguracoesProducaoLeite({ podeLancar, tituloPagina = false }:
         { chave: "acoes", titulo: "Ação", acoes: true, celula: t => <Button variant="outline" onClick={() => setDetalhe(t)}>Equipamento e tabela</Button> },
       ]} />}
       <CabecalhoTabela titulo="Vigências anteriores" />
-      {!historico.length ? <Empty>Nenhuma configuração anterior.</Empty> : <TabelaFinanceira rotulo="Histórico das configurações" itens={historico} chaveDe={h => h.id ?? h.vigenteDesde} colunas={[
+      {!historico.length ? <Empty>Nenhuma configuração anterior.</Empty> : <ConsultaOperacional rotulo="Histórico das configurações" itens={historico} chaveDe={h => h.id ?? h.vigenteDesde} colunas={[
         { chave: "vigencia", titulo: "Vigência", principal: true, celula: h => formatarDataBR(h.vigenteDesde) },
         { chave: "ordenhas", titulo: "Ordenhas", celula: h => h.ordenhas.map(o => o.nome).join(" · ") },
         { chave: "fonte", titulo: "Fonte", celula: h => h.fonteProducao === "GERAL" ? "Geral" : "Individual" },

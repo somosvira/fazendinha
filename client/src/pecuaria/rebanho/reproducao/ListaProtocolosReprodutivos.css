@@ -1,0 +1,6 @@
+.repro-protocolos-grupos { display:grid; gap:24px; min-width:0; }
+.repro-protocolos-grupo { border:1px solid var(--border); border-radius:8px; overflow:hidden; min-width:0; }
+.repro-protocolos-grupo > header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:16px; border-bottom:1px solid var(--border); }
+.repro-protocolos-grupo > header h3 { font-size:16px; font-weight:600; }
+.repro-protocolos-grupo > header > span { font-size:13px; color:var(--muted-foreground); }
+.repro-protocolos-grupo > .reproducao-cartoes { padding:16px; }

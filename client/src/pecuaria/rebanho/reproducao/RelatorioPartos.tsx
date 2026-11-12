@@ -4,7 +4,6 @@ import {CalendarDays} from "lucide-react";
 import {DatePicker} from "@/components/DatePicker";
 import { PartosVisual } from "../../relatorios/PartosVisual";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { History, SlidersHorizontal, Download, Printer, Archive } from "lucide-react";
 import { formatBRDateISO } from "@/lib/hoje";
@@ -17,6 +16,7 @@ import { reqV4 } from "./api";
 import { periodoPadrao } from "./periodo-consulta";
 import { registro, textoPreservado } from "./folha-regras";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export type CriaRelatorio = {
   id: string; animalId: string | null; ordem: number; sexo: string; viva: boolean;
@@ -33,7 +33,7 @@ export type PartoRelatorio = {
   id: string; versao: number; matriz: { id: string; brinco: string; nome: string | null };
   data: string; ocorridoEm: string | null; horarioEstimado: boolean;
   desfecho: string | null; tipo: string; induzido: boolean | null;
-  dificuldade: boolean | null; assistenciaDescricao: string | null; retencaoPlacenta: boolean | null;
+  dificuldade: boolean | null; assistenciaDescricao: string | null; retencaoPlacenta: boolean | null; grauRetencaoPlacenta?: number | null;
   responsavel: string | null; observacao: string | null;
   lancador: { id: number; nome: string | null } | null; criadoEm: string;
   ocorrenciasRetencaoPlacenta: Array<{ id: string; inicio: string; fim: string | null }>;
@@ -59,11 +59,11 @@ function pesos(itens: Array<{ data: string; pesoKg: string }>) {
 }
 export function csvRelatorioPartos(snapshot: SnapshotRelatorioPartos): string {
   const escape = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escores matriz datados/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
+  const linhas: unknown[][] = [["Emissão", "Versão relatório", "Sítio", "Início inclusivo", "Fim inclusivo", "Total partos", "ID parto", "Versão parto", "Contagem parto", "Matriz", "Data/hora", "Desfecho", "Tipo", "Induzido", "Dificuldade", "Assistência", "RP", "Grau de RP", "Responsável parto", "Lançador", "Observação parto", "Pesos matriz datados", "Escores matriz datados/escala", "ID cria", "Ordem cria", "Identificação preservada cria", "Sexo", "Viva", "Peso informado no nascimento", "Pesos cria datados", "Colostro por evento"]];
   for (const { parto: p, cria: c, contarParto } of linhasCriasPartos(snapshot)) linhas.push([
     snapshot.emitidoEm, snapshot.versao, snapshot.propriedadeId, snapshot.periodo.inicio, snapshot.periodo.fim, snapshot.totalPartos,
     p.id, p.versao, contarParto, `${p.matriz.brinco} ${p.matriz.nome ?? ""}`, horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado),
-    p.desfecho, p.tipo, textoPreservado(p.induzido), textoPreservado(p.dificuldade), p.assistenciaDescricao, rp(p.retencaoPlacenta), p.responsavel,
+    p.desfecho, p.tipo, textoPreservado(p.induzido), textoPreservado(p.dificuldade), p.assistenciaDescricao, rp(p.retencaoPlacenta), p.grauRetencaoPlacenta ?? null, p.responsavel,
     p.lancador?.nome ?? p.lancador?.id, p.observacao, pesos(p.pesosMatriz), JSON.stringify(p.escoresMatriz),
     c?.id, c?.ordem, c ? JSON.stringify(c.filiacaoSnapshot) : "Sem cria registrada", c?.sexo, c ? textoPreservado(c.viva) : "", c ? textoPreservado(registro(c.filiacaoSnapshot).pesoKg) : "", c ? pesos(c.pesos) : "", c ? JSON.stringify(c.colostro) : "",
   ]);
@@ -173,7 +173,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
       ...(emissaoId?[{rotulo:'Voltar à consulta atual',executar:()=>{void consultar()},desabilitado:ocupado}]:[]),
     ]}/>}><Card className="rel-periodo-compacto"><CalendarDays size={19} aria-hidden/><strong>{visivel?`${formatBRDateISO(visivel.periodo.inicio)} a ${formatBRDateISO(visivel.periodo.fim)}`:`${formatBRDateISO(inicio)} a ${formatBRDateISO(fim)}`}</strong><Button variant="outline" size="sm" onClick={()=>setFiltrosAbertos(true)}><SlidersHorizontal size={15}/>Período e filtros</Button></Card>{emissaoId&&<Badge variant="outline">Emissão preservada</Badge>}</BarraRelatorio>
     {erro && <div role="alert" className="rel-erro print:hidden">{erro}<Button variant="outline" onClick={() => ultimaOperacao.current?.()}>Tentar novamente</Button></div>}
-    {ocupado && !visivel && <div role="status" aria-label="Carregando ficha de partos" className="space-y-3 p-5 print:hidden">{[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full"/>)}</div>}
+    {ocupado && !visivel && <EsqueletoTabela label="Carregando ficha de partos" className="p-5 print:hidden"/>}
     {visivel && <><section className="rel-superficie print:hidden"><header className="rel-resultado-topo"><h2>Partos e acompanhamento</h2></header><PartosVisual key={`${visivel.emitidoEm}:${emissaoId??'atual'}`} snapshot={visivel}/></section><div className="hidden print:block"><FolhaRelatorioPartos snapshot={visivel}/></div></>}
     <Dialog open={filtrosAbertos} onOpenChange={setFiltrosAbertos}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Período da ficha de partos</DialogTitle></DialogHeader><form className="rel-form" onSubmit={e => {e.preventDefault();setFiltrosAbertos(false);void consultar();}}><label>Início (inclusive)<DatePicker  required max={fim} value={inicio} onChange={setInicio}/></label><label>Fim (inclusive)<DatePicker  required min={inicio} value={fim} onChange={setFim}/></label>{periodoAlterado && <p role="status">As datas editadas ainda não foram consultadas. O resultado mantém o período exibido até aplicar.</p>}<Button disabled={ocupado}>Consultar ficha de partos</Button></form></DialogContent></Dialog>
     <Dialog open={historicoAberto} onOpenChange={setHistoricoAberto}><DialogContent className="rel-detalhe-dialog" aria-describedby={undefined}><DialogHeader><DialogTitle>Emissões anteriores de partos</DialogTitle></DialogHeader><div className="rel-emissoes">{emissoes.length ? emissoes.map(e => <Button variant="outline" key={e.id} disabled={ocupado} onClick={() => {setHistoricoAberto(false);void abrir(e.id);}}><History size={18}/><span><strong>Partos e pós-parto · Sítio {propriedadeId}</strong><small>Emitido em {new Date(e.criadoEm).toLocaleString("pt-BR")}</small></span></Button>) : <Empty>Nenhuma emissão preservada neste sítio.</Empty>}</div></DialogContent></Dialog>
@@ -183,7 +183,7 @@ export function RelatorioPartos({ propriedadeId, podeLancar }: { propriedadeId: 
 export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapshot: SnapshotRelatorioPartos; operacional?: boolean }) {
   return <article className="space-y-5 text-sm print:text-sm">
     <header>
-      <h2 className="text-lg font-semibold">Ficha de partos e pós-parto <AjudaCampo rotulo="Ajuda sobre a ficha de partos" texto="RP: retenção de placenta; Não informado é diferente de Não. Partos válidos do sítio na data do fato; um parto pode ter várias crias. Pesos e escores têm vínculo explícito com o parto. Quantidade desconhecida de colostro não significa zero. Complementos representam os dados consultados, inclusive quando registrados após o período."/></h2>
+      <h2 className="text-lg font-semibold">Ficha de partos e pós-parto <AjudaCampo rotulo="Ajuda sobre a ficha de partos" texto="RP: retenção de placenta. Um parto pode ter várias crias."/></h2>
       <p>Sítio {snapshot.propriedadeId} · {snapshot.periodo.inicio} a {snapshot.periodo.fim} (ambas inclusive) · {snapshot.totalPartos} partos</p>
       {!operacional && <p>Emissão: {snapshot.emitidoEm} · Versão do relatório: {snapshot.versao} · Ordem: data e ID do parto crescentes.</p>}
 
@@ -193,7 +193,7 @@ export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapsh
       <h3 className="font-semibold">Matriz {p.matriz.brinco} {p.matriz.nome} · {horarioRelatorio(p.data, p.ocorridoEm, p.horarioEstimado)}</h3>
       <p>Parto {p.id} · Versão {p.versao} · Desfecho: {p.desfecho ?? "Não informado"} · Tipo registrado: {p.tipo}</p>
       <p>Induzido: {textoPreservado(p.induzido)} · Dificuldade: {textoPreservado(p.dificuldade)} · Assistência: {p.assistenciaDescricao ?? "Não informada"}</p>
-      <p>RP: {rp(p.retencaoPlacenta)} · Acompanhamentos vinculados: {p.ocorrenciasRetencaoPlacenta.length ? p.ocorrenciasRetencaoPlacenta.map(o => `${o.inicio.slice(0, 10)} a ${o.fim?.slice(0, 10) ?? "em aberto"}`).join("; ") : "Nenhum"}</p>
+      <p>RP: {rp(p.retencaoPlacenta)}{p.grauRetencaoPlacenta != null ? ` · Grau: ${p.grauRetencaoPlacenta}` : ""} · Acompanhamentos vinculados: {p.ocorrenciasRetencaoPlacenta.length ? p.ocorrenciasRetencaoPlacenta.map(o => `${o.inicio.slice(0, 10)} a ${o.fim?.slice(0, 10) ?? "em aberto"}`).join("; ") : "Nenhum"}</p>
       <p>Responsável pelo parto: {p.responsavel ?? "Não informado"} · Lançador: {p.lancador?.nome ?? p.lancador?.id ?? "Não informado"} · Registro: {p.criadoEm}</p>
       <p>Observações: {p.observacao ?? "—"}</p>
       <p>Pesagens da matriz: {pesos(p.pesosMatriz)}</p>

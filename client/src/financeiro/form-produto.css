@@ -1,0 +1,13 @@
+.produto-carencia-linha {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) 180px;
+  align-items: end;
+  gap: 12px;
+  min-width: 0;
+}
+.produto-carencia-destino { display: flex; align-items: center; min-height: 40px; }
+.produto-carencia-linha > [role="alert"] { grid-column: 2 / -1; }
+@media (max-width: 639px) {
+  .produto-carencia-linha { grid-template-columns: 1fr; gap: 4px; }
+  .produto-carencia-linha > [role="alert"] { grid-column: 1; }
+}

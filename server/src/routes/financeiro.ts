@@ -1,3 +1,4 @@
+import { detalheErroProduto } from "../services/estoque/produtos-catalogo.js";
 import { conflitoTransacaoValidada } from "../lib/transacao-validada.js";
 import { ValorizacaoError } from "../services/estoque/valorizacao.calc.js";
 import { Hono, type Context } from "hono";
@@ -27,6 +28,13 @@ import { apresentarValores, podeVerValores, valoresConta, valoresOperacao, valor
 export const filtroPeriodoSchema = z.object({ inicio: z.string().date().optional(), fim: z.string().date().optional() }).refine(p => (!p.inicio && !p.fim) || (!!p.inicio && !!p.fim && p.inicio <= p.fim), { message: "Informe um intervalo válido, com início igual ou anterior ao fim." });
 const validarPeriodo = zValidator("query", filtroPeriodoSchema, (resultado, c) => { if (!resultado.success) return c.json({ error: resultado.error.issues[0].message }, 422); });
 
+/** Compra e devolução de animais também escrevem no Rebanho: exigem a área da Pecuária. */
+function exigirPecuariaParaAnimais(c: Context, comAnimais: boolean) {
+  const usuario = getUsuario(c);
+  if (comAnimais && usuario && !temArea(usuario, "pecuaria")) return c.json({ error: "Compra e devolução de animais exigem acesso à Pecuária" }, 403);
+  return null;
+}
+
 function apresentarOperacao<T extends {
   tipo?: string;
   valorTotal: unknown;
@@ -36,6 +44,20 @@ function apresentarOperacao<T extends {
   procedimentosServico?: { valor: unknown }[];
 }>(c: Context, dados: T) {
   return apresentarValores(c, dados, valoresOperacao);
+}
+
+/** Situação, sexo, raça e finalidade do animal são dados do Rebanho: o detalhe só os entrega a quem tem a área Pecuária. */
+function ocultarSituacaoSemPecuaria<T extends { itens?: Array<{ animal?: object | null }> }>(c: Context, dados: T): T {
+  const usuario = getUsuario(c);
+  if (!usuario || temArea(usuario, "pecuaria") || !Array.isArray(dados.itens)) return dados;
+  return {
+    ...dados,
+    itens: dados.itens.map((item) => {
+      if (!item.animal) return item;
+      const { situacao: _situacao, sexo: _sexo, rotuloComposicao: _rotulo, aptidao: _aptidao, ...animal } = item.animal as { situacao?: unknown; sexo?: unknown; rotuloComposicao?: unknown; aptidao?: unknown };
+      return { ...item, animal };
+    }),
+  };
 }
 
 const uploadIntentSchema = z.object({
@@ -68,7 +90,7 @@ function falha(c: Context, erro: unknown) {
   }
   if (erro instanceof FinanceiroError) {
     const status = erro.code === "NAO_ENCONTRADO" ? 404 : erro.code === "VALIDACAO" ? 422 : 409;
-    return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}) }, status);
+    return c.json({ error: erro.message, code: erro.code, ...(erro.campo ? { campo: erro.campo } : {}), ...detalheErroProduto(erro) }, status);
   }
   console.error("[financeiro]", erro);
   return c.json({ error: "Erro inesperado ao processar a solicitação" }, 500);
@@ -201,7 +223,14 @@ export const financeiroRouter = new Hono()
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/rascunho/confirmacao", exigePermissao("lancar"), zValidator("json", z.object({ versao: z.number().int().positive().optional(), chave: z.string().uuid().optional() })), async (c) => {
-    try { const body = c.req.valid("json"); return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(await resolverEscopoEscrita(c), exigirUsuarioId(c), body.versao, body.chave)), 201); }
+    try {
+      const body = c.req.valid("json"); const propriedadeId = await resolverEscopoEscrita(c); const uid = exigirUsuarioId(c);
+      const previa = await rascunhos.lerPreviaRascunho(propriedadeId, uid);
+      const semAcesso = exigirPecuariaParaAnimais(c, previa.envolveAnimais);
+      if (semAcesso) return semAcesso;
+      const usuario = getUsuario(c);
+      return c.json(apresentarOperacao(c, await rascunhos.confirmarRascunho(propriedadeId, uid, body.versao, body.chave, { permitirAnimais: !usuario || temArea(usuario, "pecuaria"), previa })), 201);
+    }
     catch (e) { return falha(c, e); }
   })
   .post("/financeiro/operacoes/simulacao-parcelas", exigePermissao("lancar"), validarCadastro(simulacaoParcelasSchema), async (c) => {
@@ -240,7 +269,7 @@ export const financeiroRouter = new Hono()
   .get("/financeiro/operacoes/:id", async (c) => {
     try {
       const dados = await operacoes.obterOperacao(c.req.param("id"), await resolverEscopoLeitura(c));
-      return c.json(apresentarOperacao(c, dados));
+      return c.json(apresentarOperacao(c, ocultarSituacaoSemPecuaria(c, dados)));
     }
     catch (e) { return falha(c, e); }
   })
@@ -257,6 +286,8 @@ export const financeiroRouter = new Hono()
     try {
       const input = c.req.valid("json");
       if (input.corrigeOperacaoId && !podeVerValores(c)) return c.json({ error: "É necessário poder ver valores para corrigir uma operação." }, 403);
+      const semAcesso = exigirPecuariaParaAnimais(c, operacoes.envolveAnimais(input));
+      if (semAcesso) return semAcesso;
       const propriedadeId = await resolverEscopoEscrita(c, input.propriedadeId ?? null);
       return c.json(apresentarValores(c, await operacoes.criarOperacao({ ...input, propriedadeId, usuarioId: usuarioId(c) }), valoresOperacao), 201);
     } catch (e) { return falha(c, e); }
@@ -264,7 +295,10 @@ export const financeiroRouter = new Hono()
   .post("/financeiro/operacoes/:id/estorno", exigePermissao("lancar"), exigePermissao("verValores"), zValidator("json", estornoSchema), async (c) => {
     try {
       const propriedadeId = await resolverEscopoEscrita(c);
-      const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) });
+      const animais = await operacoes.contarAnimaisOperacao(c.req.param("id"), propriedadeId);
+      const semAcesso = exigirPecuariaParaAnimais(c, animais > 0);
+      if (semAcesso) return semAcesso;
+      const cancelada = await operacoes.estornarOperacao(c.req.param("id"), c.req.valid("json").motivo, { propriedadeId, usuarioId: usuarioId(c) }, { animais });
       const dados = await operacoes.obterOperacao(cancelada.id, propriedadeId);
       return c.json(apresentarOperacao(c, dados), 201);
     }

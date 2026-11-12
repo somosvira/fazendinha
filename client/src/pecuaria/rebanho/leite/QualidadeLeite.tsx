@@ -1,3 +1,5 @@
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
+import { DatePicker } from "../../../components/DatePicker";
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
 import { CalendarDays, Plus } from "lucide-react";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
@@ -19,7 +21,7 @@ import "./consultas-leite.css";
 import { Button } from "@/components/ui/button";
 import { SecaoDetalhesLeite as SecaoHistoricoLeite } from "./SecaoDetalhesLeite";
 import { DialogConsultaLeite as SecaoDetalhesLeite } from "./DialogConsultaLeite";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import {
   CamposFormatoExame,
@@ -42,6 +44,7 @@ import { HistoricoParametrosQualidade } from "./HistoricoParametrosQualidade";
 import { CamposDatasQualidade, DatasQualidade } from "./DatasQualidade";
 import { LaudosQualidade } from "./LaudosQualidade";
 import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 const mensagem = (e: unknown) =>
   e instanceof Error ? e.message : "Não foi possível concluir a operação";
 export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
@@ -136,9 +139,9 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
   }
   return (
     <section className="leite-operacoes">
-      <CabecalhoRotinaLeite titulo="Qualidade do leite" ajuda="Amostras individuais e coletivas, com o histórico de cada laudo." rotuloAjuda="Sobre qualidade do leite" />
+      <CabecalhoRotinaLeite titulo="Qualidade do leite" rotuloAjuda="Sobre qualidade do leite" />
       <SubTabs variant="financeiro" ariaLabel="Consultas da qualidade" tabs={[{ id: "amostras", label: "Amostras" }, { id: "resultados", label: "Resultados" }]} active={aba} onSelect={setAba} />
-      {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><input type="date" required value={filtros.rascunho.data} onChange={e => { if(e.target.value) filtros.editar("data", e.target.value); }} /></CampoFiltro>} acao={<>
+      {aba === "amostras" && <BarraConsulta edicaoFiltros={filtros} adicionais={<CampoFiltro rotulo="Consultar até"><DatePicker required value={filtros.rascunho.data} onChange={(valor) => { if(valor) filtros.editar("data", valor); }} /></CampoFiltro>} acao={<>
         {podeLancar && (
           <Button disabled={!propriedadeResolvida}
             onClick={() => {
@@ -163,7 +166,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
       {aviso && <p role="status">{aviso}</p>}
       {carregando && <p role="status">Consultando laudos…</p>}
       {(novoFormato || derivar) && (
-        <Dialog open onOpenChange={v => { if (!v) { setNovoFormato(false); setDerivar(null); } }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Formato do laudo</DialogTitle></DialogHeader><EditorFormato
+        <EditorFormato
           key={derivar?.id ?? "novo"}
           anterior={derivar}
           sitio={sitio}
@@ -176,15 +179,15 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
               "Formato de laudo salvo. As amostras anteriores conservam a versão original.",
             )
           }
-        /></DialogContent></Dialog>
+        />
       )}
       {nova && (
-        <Dialog open onOpenChange={v => { if (!v) setNova(false); }}><DialogContent className="leite-consulta-dialog" data-fin-scroll="conteudo" aria-describedby={undefined}><DialogHeader><DialogTitle>Registrar amostra</DialogTitle></DialogHeader><NovaAmostra
+        <NovaAmostra emModal
           formatos={formatos.filter((f) => f.ativo)}
           sitio={propriedadeResolvida}
           onCancelar={() => setNova(false)}
           onSalvo={() => salvo("Amostra registrada.")}
-        /></DialogContent></Dialog>
+        />
       )}
       {aba === "amostras" && amostras && (
         <>
@@ -216,7 +219,7 @@ export function QualidadeLeite({ podeLancar }: { podeLancar: boolean }) {
           onSalvo={() => salvo("Amostra atualizada com histórico preservado.")}
         /></DialogContent></Dialog>
       )}
-      <SecaoDetalhesLeite  titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
+      <SecaoDetalhesLeite className="leite-formatos-dialog" titulo={<>Formatos de laudo</>} acoes={<AjudaCampo rotulo="Sobre os formatos de laudo" texto={"Campos e unidades vêm do laudo. Alterar um formato já utilizado exige nova versão; não altera amostras anteriores."} />}>
 
 
         {!formatos.length && <Empty>Nenhum formato configurado.</Empty>}
@@ -284,6 +287,7 @@ function EditorFormato({
     [campos, setCampos] = useState<CampoExame[]>(anterior?.campos ?? []);
   const [erro, setErro] = useState(""),
     [ocupado, setOcupado] = useState(false);
+  const formId = useId();
   const trava = useRef(false);
   async function salvar() {
     if (trava.current) return;
@@ -305,7 +309,13 @@ function EditorFormato({
     }
   }
   return (
-    <form
+    <PainelCadastro aberto titulo="Formato do laudo" onFechar={onCancelar} bloqueado={ocupado}
+      alteracoesExternas={nome !== (anterior?.nome ?? "") || (anterior ? campos !== anterior.campos : campos.length > 0)}
+      rodape={fechar => <>
+        <Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar formato</Button>
+        <Button type="submit" form={formId} disabled={!campos.length || ocupado}>Salvar formato</Button>
+      </>}>
+    <form id={formId} className="leite-operacoes"
       onSubmit={(e) => {
         e.preventDefault();
         void salvar();
@@ -330,30 +340,27 @@ function EditorFormato({
           disabled={ocupado}
         />
         {erro && <p role="alert">{erro}</p>}
-        <div className="leite-form-inline">
-          <Button disabled={!campos.length || ocupado}>Salvar formato</Button>
-          <Button variant="outline" type="button"
-            className="leite-secondary"
-            onClick={onCancelar}>
-            Cancelar formato
-          </Button>
-        </div>
       </fieldset>
     </form>
+    </PainelCadastro>
   );
 }
 export function NovaAmostra({
+  emModal = false,
   formatos,
   sitio,
   onCancelar,
   onSalvo,
 }: {
+  emModal?: boolean;
   formatos: FormatoQualidade[];
   sitio: number | null;
   onCancelar: () => void;
   onSalvo: (amostra: AmostraQualidade) => void;
 }) {
-  const [data, setData] = useState(hojeOperacional),
+  const formId = useId();
+  const [dataInicial] = useState(hojeOperacional);
+  const [data, setData] = useState(dataInicial),
     [tipoId, setTipoId] = useState("");
   const [sujeito, setSujeito] = useState("ANIMAL"),
     [animal, setAnimal] = useState<CandidatoDestinoLeite | null>(null),
@@ -402,8 +409,14 @@ export function NovaAmostra({
       setOcupado(false);
     }
   }
-  return (
-    <form
+  const acoes = (fechar: () => void) => <>
+    <Button type="button" variant="outline" disabled={ocupado} onClick={fechar}>Cancelar amostra</Button>
+    <Button type="submit" form={formId} disabled={ocupado || !formato || (informar && !valores.length)}>
+      <Plus size={17} aria-hidden />Registrar amostra
+    </Button>
+  </>;
+  const formulario = (
+    <form id={formId} className="leite-operacoes"
       onSubmit={(e) => {
         e.preventDefault();
         void salvar();
@@ -414,17 +427,11 @@ export function NovaAmostra({
         <div className="leite-form-inline">
           <label>
             Data da coleta
-            <input
-              required
-              type="date"
-              value={data}
-              max={hojeOperacional()}
-              onChange={(e) => {
-                setData(e.target.value);
+            <DatePicker required value={data} max={hojeOperacional()} onChange={(valor) => {
+                setData(valor);
                 setAnimal(null);
                 setEntradaId("");
-              }}
-            />
+              }} />
           </label>
           <label>
             Formato do laudo
@@ -524,19 +531,13 @@ export function NovaAmostra({
           </p>
         )}
         {erro && <p role="alert">{erro}</p>}
-        <div className="leite-form-inline">
-          <Button disabled={ocupado || !formato || (informar && !valores.length)}>
-            <Plus size={17} aria-hidden />Registrar amostra
-          </Button>
-          <Button variant="outline" className="leite-secondary"
-            type="button"
-            onClick={onCancelar}>
-            Cancelar amostra
-          </Button>
-        </div>
+        {!emModal && <div className="leite-form-inline">{acoes(onCancelar)}</div>}
       </fieldset>
     </form>
   );
+  return emModal ? <PainelCadastro aberto titulo="Registrar amostra" onFechar={onCancelar} bloqueado={ocupado}
+    alteracoesExternas={data !== dataInicial || !!tipoId || sujeito !== "ANIMAL" || !!animal || !!entradaId || !!dataResultado || !!dataRecebimento}
+    rodape={acoes}>{formulario}</PainelCadastro> : formulario;
 }
 function SeletorAnimal({
   sitio,
@@ -702,7 +703,7 @@ function DetalheAmostra({
   return (
     <section className="leite-operacoes" aria-label="Detalhe da amostra">
       <header className="leite-laudo-identidade"><div><h2>{inicial.sujeito.tipo === "COLETIVO" ? inicial.sujeito.origem : [inicial.animal?.brinco,inicial.animal?.nome].filter(Boolean).join(" · ")}</h2><span>{inicial.formatoSnapshot.nome}</span></div><Badge variant="outline">{inicial.status === "ANULADO" ? "Anulada" : inicial.realizacao === "COLETA_REGISTRADA" ? "Aguardando resultado" : "Resultado informado"}</Badge></header>
-      <dl className="leite-laudo-metadados"><div><dt>Coleta</dt><dd>{formatarDataBR(inicial.data.slice(0,10))}</dd></div><div><dt>Resultado</dt><dd>{inicial.dataResultadoLaboratorial ? formatarDataBR(inicial.dataResultadoLaboratorial) : "Não informado"}</dd></div><div><dt>Recebimento</dt><dd>{inicial.dataRecebimentoLaudo ? formatarDataBR(inicial.dataRecebimentoLaudo) : "Não informado"}</dd></div><div><dt>Formato</dt><dd>Versão {inicial.formatoSnapshot.versao ?? 1}<AjudaCampo rotulo="Sobre o formato preservado" texto="O formato utilizado na coleta permanece preservado; alterações posteriores não reescrevem o laudo."/></dd></div>{inicial.criadoEm&&<div><dt>Cadastro da amostra</dt><dd>{new Date(inicial.criadoEm).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}</dd></div>}</dl>
+      <dl className="leite-laudo-metadados"><div><dt>Coleta</dt><dd>{formatarDataBR(inicial.data.slice(0,10))}</dd></div><div><dt>Resultado</dt><dd>{inicial.dataResultadoLaboratorial ? formatarDataBR(inicial.dataResultadoLaboratorial) : "Não informado"}</dd></div><div><dt>Recebimento</dt><dd>{inicial.dataRecebimentoLaudo ? formatarDataBR(inicial.dataRecebimentoLaudo) : "Não informado"}</dd></div><div><dt>Formato</dt><dd>Versão {inicial.formatoSnapshot.versao ?? 1}</dd></div>{inicial.criadoEm&&<div><dt>Cadastro da amostra</dt><dd>{new Date(inicial.criadoEm).toLocaleString("pt-BR",{timeZone:"America/Sao_Paulo"})}</dd></div>}</dl>
       <SubTabs variant="financeiro" ariaLabel="Detalhes da amostra" tabs={[{id:"resultado",label:"Resultados"},...(podeLancar&&inicial.status!=="ANULADO"?[{id:"corrigir",label:"Informar ou corrigir"}]:[]),{id:"arquivos",label:"Arquivos"},{id:"historico",label:"Histórico"}]} active={abaDetalhe} onSelect={setAbaDetalhe}/>
       <div hidden={abaDetalhe!=="resultado"}><Resultados amostra={inicial}/>{inicial.anotacaoOriginal&&!inicial.resultados.some(r=>typeof r.valor==='string'&&r.valor.trim()===inicial.anotacaoOriginal?.trim())&&<section className="leite-laudo-observacao"><h3>Observação</h3><p>{inicial.anotacaoOriginal}</p></section>}</div>
       <div hidden={abaDetalhe!=="corrigir"}>
@@ -794,7 +795,7 @@ function DetalheAmostra({
             ))}
           </ol>
         ) : (
-          <p>Carregando histórico…</p>
+          <EsqueletoLista label="Carregando histórico" />
         )}
         {historico && (
           <div className="leite-form-inline">

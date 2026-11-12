@@ -149,3 +149,196 @@
 .protocolo-custos-cards article:last-child { background:transparent; }
 .protocolo-custos-cards strong { font-size:26px; }
 .protocolos-superficie .protocolo-detalhe-linha > td { font-size:16px; }
+
+/* Etapas permanecem acima do atendimento, inclusive em telas estreitas. */
+.protocolo-etapas { display:flex; flex-wrap:nowrap; overflow-x:auto; scroll-snap-type:x proximity; }
+.protocolo-etapas > button { flex:1 0 184px; max-width:280px; min-height:112px; padding:14px 16px; gap:6px; scroll-snap-align:start; }
+.protocolo-etapas strong { font-size:16px; }
+.protocolo-etapas > button:nth-child(even) { border-right:1px solid var(--border); }
+.protocolo-etapas > button:last-child { border-right:0; }
+.protocolo-etapas small { font-size:13px; }
+@media(max-width:760px) { .protocolo-etapas > button { flex:0 0 190px; min-height:120px; } }
+
+@media(min-width:760px) {
+  .clinica-dados-comuns { grid-template-columns: minmax(0,2fr) minmax(0,1fr); }
+  .clinica-dados-comuns > .clinica-campos-tentativa, .clinica-dados-comuns > label:has(input[type=checkbox]) { grid-column:1 / -1; }
+  .clinica-campos-tentativa { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .clinica-campos-tentativa > :is(div,p,details), .clinica-campos-tentativa > label:has(textarea), .clinica-campos-tentativa > label:has(input[type=checkbox]) { grid-column:1 / -1; }
+}
+
+.protocolos-superficie .protocolo-operacao-compacta > .secao-recolhivel-cabecalho { display:none; }
+.protocolos-superficie .protocolo-operacao-compacta { overflow:hidden; }
+.repro-programacao-detalhe > .protocolos-superficie.protocolo-conteudo { padding-top:12px; border-top:0; }
+.repro-programacao-detalhe .repro-programacao-identidade { padding-bottom:8px; border-bottom:0; gap:8px; }
+.repro-programacao-detalhe .repro-programacao-identidade p { margin-top:4px; }
+.repro-programacao-detalhe .repro-programacao-resumo { padding:8px 0 12px; gap:20px; margin-bottom:0; }
+.repro-programacao-detalhe .repro-programacao-resumo > div { flex-direction:row-reverse; align-items:baseline; gap:6px; }
+.repro-programacao-detalhe .repro-programacao-resumo dd { font-size:14px; }
+:root:has(.protocolos-pagina) .fin-cabecalho-pagina .h1 { font-size:24px; }
+
+.protocolo-custos-resumo { display:flex; flex-wrap:wrap; gap:16px 32px; padding-block:12px; }
+.protocolo-custos-resumo > div { display:flex; align-items:baseline; flex-wrap:wrap; gap:8px; }
+.protocolo-custos-resumo strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.protocolo-custos-resumo span { font-size:14px; color:var(--muted-foreground); }
+
+/* Composição aprovada: ficha, etapas horizontais e consulta compacta. */
+.repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { display:grid; grid-template-columns:72px minmax(0,1fr); padding:24px; gap:16px; margin-bottom:8px; align-items:center; }
+.repro-programacao-detalhe .ficha-animal-ilustracao { display:grid; place-items:center; }
+.repro-programacao-detalhe .ficha-status { margin-top:8px; }
+.repro-programacao-detalhe > .protocolo-conteudo { padding:0 24px 24px; gap:24px; }
+.repro-programacao-detalhe .protocolo-conteudo > div:has(> .abas-pasta) { margin:0; }
+.protocolos-superficie .protocolo-operacao-compacta { border:0; border-radius:0; box-shadow:none; background:transparent; }
+.protocolo-operacao-compacta .protocolo-etapas { gap:0; border:1px solid var(--border); border-radius:8px; padding-bottom:0; margin-bottom:24px; }
+.protocolo-operacao-compacta .protocolo-etapas > button { border:0; border-right:1px solid var(--border); border-radius:0; padding:12px 16px; min-height:100px; gap:8px; max-width:none; }
+.protocolo-operacao-compacta .protocolo-etapas > button:last-child { border-right:0; }
+.protocolo-etapa-titulo > span { white-space:nowrap; margin-right:4px; }
+.protocolo-operacao-compacta .protocolo-filtros { padding:0; margin:16px 0 12px; gap:12px; }
+.protocolo-operacao-compacta .protocolo-filtros > label { order:-1; flex:1; }
+.protocolo-operacao-compacta .protocolo-filtros input { margin-top:4px; }
+.protocolo-operacao-compacta .protocolo-tabela-dados :is(th,td) { padding:12px 16px; }
+.protocolo-operacao-compacta .protocolo-tabela-dados th:first-child:has([role=checkbox]) { width:48px; }
+@media(max-width:760px) {
+  .repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { padding:16px; gap:12px; }
+  .repro-programacao-detalhe > .protocolo-conteudo { padding:0 16px 16px; }
+  .protocolo-operacao-compacta .protocolo-filtros { gap:8px; }
+}
+
+.clinica-dados-comuns > .clinica-material { grid-column:1 / -1; padding-top:8px; }
+@media(max-width:760px) {
+  .protocolo-operacao-compacta .protocolo-tabela-dados { min-width:680px; }
+  .protocolo-operacao-compacta .protocolo-tabela thead { display:table-header-group; }
+  .protocolo-operacao-compacta .protocolo-tabela tbody { display:table-row-group; }
+  .protocolo-operacao-compacta .protocolo-tabela tr:not(.protocolo-detalhe-linha) { display:table-row; }
+  .protocolo-operacao-compacta .protocolo-tabela td[data-label]:before { display:none; }
+  .repro-programacao-detalhe .ficha-status { grid-column:1 / -1; }
+}
+.protocolo-operacao-compacta .protocolo-tabela-dados td[data-label="Ações"] > div { flex-wrap:nowrap; }
+.protocolo-operacao-compacta .protocolo-tabela-dados td[data-label="Ações"] { width:1%; white-space:nowrap; }
+
+/* Abas da ficha de referência, restritas à programação. */
+/* Abas compartilhadas. A variante de botões e filtros não recebe esta classe. */
+/* Abas sublinhadas, como a ficha aprovada. */
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta { display:flex; flex-wrap:wrap; width:100%; gap:4px; padding:0; margin:0; border:0; border-bottom:1px solid var(--border); border-radius:0; background:transparent; box-shadow:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected] { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:10px 16px; margin:0 0 -1px; border:0; border-bottom:2px solid transparent; border-radius:0; background:transparent; color:var(--muted-foreground); font-size:14px; font-weight:500; box-shadow:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]::after { display:none; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] { color:var(--primary); border-bottom-color:var(--primary); font-weight:700; }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:hover { color:var(--primary); }
+:root .app-main .repro-programacao-detalhe [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { outline:2px solid var(--ring); outline-offset:-3px; }
+
+/* Mesma escala tipográfica medida na ficha animal. */
+:root .app-main .repro-programacao-detalhe .protocolo-tabela table > thead > tr > th {
+  font-size:13px; font-weight:600; line-height:1.4;
+}
+:root .app-main .repro-programacao-detalhe .protocolo-tabela table > tbody > tr > td {
+  font-size:13px; font-weight:500; line-height:1.45;
+}
+:root .app-main .repro-programacao-detalhe .protocolo-tabela td > a {
+  font-size:inherit; font-weight:inherit; line-height:inherit;
+}
+:root .app-main .repro-programacao-detalhe .protocolo-filtros input {
+  font-size:16px; font-weight:500; line-height:24px;
+}
+:root .app-main .repro-programacao-detalhe .protocolo-etapa-titulo {
+  font-family:var(--sans); font-size:16px; font-weight:600; line-height:24px;
+}
+
+/* Cabeçalho compacto da programação; mantém a tipografia da ficha. */
+.repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns: 56px minmax(0,1fr) auto; padding: 16px; gap: 16px; align-items: center; }
+.pecuaria-content .pec-ficha.repro-programacao-detalhe.ficha-animal-geral .ficha-animal-identidade { min-height: 56px; }
+.pecuaria-content .pec-ficha.repro-programacao-detalhe.ficha-animal-geral .ficha-animal-ilustracao { width: 56px; height: 56px; min-width: 56px; }
+.repro-programacao-detalhe .protocolo-cabecalho-acoes { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.repro-programacao-detalhe .protocolo-cabecalho-acoes .ficha-status { margin: 0; }
+@media (max-width: 767px) {
+ .repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns: 56px minmax(0,1fr); }
+ .repro-programacao-detalhe .protocolo-cabecalho-acoes { grid-column: 1 / -1; width: 100%; flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+}
+.pecuaria-content .pec-ficha.repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { padding: 16px; }
+.pecuaria-content .pec-ficha.repro-programacao-detalhe .protocolo-cabecalho-acoes .ficha-status { margin: 0; width: auto; justify-content: flex-end; }
+/* Mesmo contorno e cabeçalho das seções da ficha, sem recolhimento. */
+.pecuaria-content .repro-programacao-detalhe { min-width:0; max-width:100%; }
+.pecuaria-content .repro-programacao-detalhe > .protocolo-conteudo { padding:0; min-width:0; max-width:100%; }
+.repro-programacao-detalhe .protocolo-conteudo > *, .repro-programacao-detalhe .secao-recolhivel-conteudo { min-width:0; }
+.pecuaria-content .repro-programacao-detalhe .protocolo-etapa-ficha { margin-top:0; border:1px solid var(--border); border-radius:12px; background:var(--card); overflow:hidden; }
+.pecuaria-content .repro-programacao-detalhe .protocolo-etapa-ficha > .secao-recolhivel-cabecalho { padding:16px; border-bottom:1px solid var(--border); }
+.pecuaria-content .repro-programacao-detalhe .protocolo-etapa-ficha > .secao-recolhivel-conteudo { padding:16px; }
+.protocolo-etapa-titulo > span { color:var(--primary); font-weight:700; }
+.pecuaria-content .repro-programacao-detalhe .protocolo-filtros { display:flex; align-items:center; flex-wrap:wrap; margin-top:0; }
+.pecuaria-content .repro-programacao-detalhe .protocolo-filtros input { margin:0; }
+.pecuaria-content .repro-programacao-detalhe .protocolo-filtros > label { min-width:160px; }
+.pecuaria-content .repro-programacao-detalhe.ficha-animal-geral > .ficha-animal-cabecalho { grid-template-columns:56px minmax(0,1fr); }
+.protocolo-status-inline { display:inline-flex; margin-left:12px; vertical-align:middle; }
+.repro-programacao-detalhe .protocolo-tabela { width:100%; max-width:100%; min-width:0; overflow-x:auto; }
+.repro-programacao-detalhe .protocolo-tabela table { width:100%; table-layout:auto; }
+.repro-programacao-detalhe .protocolo-tabela :is(th,td) { white-space:normal; overflow-wrap:anywhere; }
+.repro-programacao-detalhe .protocolo-tabela td[data-label="Ações"] > div { flex-wrap:wrap; }
+@media(max-width:760px) {
+ .repro-programacao-detalhe .protocolo-tabela table { min-width:640px; }
+ .repro-programacao-detalhe .protocolo-tabela thead { display:table-header-group; }
+ .repro-programacao-detalhe .protocolo-tabela tbody { display:table-row-group; }
+ .repro-programacao-detalhe .protocolo-tabela tr:not(.protocolo-detalhe-linha) { display:table-row; }
+ .repro-programacao-detalhe .protocolo-tabela td[data-label]:before { display:none; }
+ .repro-programacao-detalhe .protocolo-filtros > label { flex-basis:100%; }
+ .repro-programacao-detalhe .protocolo-filtros > button { max-width:100%; white-space:normal; }
+ .repro-programacao-detalhe .secao-recolhivel-acoes button { white-space:normal; }
+}
+
+.protocolo-etapas { position:relative; }
+@media(min-width:761px) { .repro-programacao-detalhe .protocolo-tabela-dados td[data-label="Ações"] { width:240px; } }
+
+/* Execução reprodutiva: os marcadores conectam a sequência; o corpo identifica a etapa ativa. */
+.protocolo-operacao-conectada > .secao-recolhivel-cabecalho { display:none; }
+.protocolo-operacao-conectada .protocolo-etapas { gap:0; border:0; border-radius:0; margin:0; padding:24px 8px 12px; }
+.protocolo-operacao-conectada .protocolo-etapas > button { position:relative; isolation:isolate; flex:1 0 200px; align-items:center; border:0; background:transparent; box-shadow:none; padding:0 8px; gap:12px; min-height:150px; }
+.protocolo-operacao-conectada .protocolo-etapas > button::before { content:""; position:absolute; top:17px; left:0; right:0; height:1px; background:var(--fin-control-border); z-index:-1; }
+.protocolo-operacao-conectada .protocolo-etapas > button:first-child::before { left:50%; }
+.protocolo-operacao-conectada .protocolo-etapas > button:last-child::before { right:50%; }
+.protocolo-operacao-conectada .protocolo-etapa-marca { display:flex; align-items:center; justify-content:center; width:36px; height:36px; flex:none; border:1px solid var(--fin-control-border); border-radius:50%; background:var(--card); color:var(--muted-foreground); font-weight:700; }
+.protocolo-operacao-conectada .protocolo-etapa-marca.concluida { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+.protocolo-operacao-conectada .protocolo-etapa-corpo { display:flex; flex:1; flex-direction:column; align-items:center; justify-content:flex-start; width:100%; gap:7px; padding:8px 10px 12px; border:1px solid transparent; border-bottom-width:3px; border-radius:8px; text-align:center; }
+.protocolo-operacao-conectada .protocolo-etapa-corpo > span { font-size:13px; }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-corpo { border-color:var(--fin-filter-border); border-bottom-color:var(--primary); background:var(--fin-filter-bg); }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-marca { color:var(--primary); border:2px solid var(--primary); outline:4px solid var(--fin-filter-bg); }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-marca.concluida { color:var(--primary-foreground); }
+.protocolo-operacao-conectada .protocolo-etapas > button:hover .protocolo-etapa-corpo { background:var(--fin-table-hover); }
+.protocolo-operacao-conectada .protocolo-etapa-total { margin-left:auto; white-space:nowrap; font-size:13px; color:var(--muted-foreground); }
+.protocolo-acao-tooltip { z-index:1300; border-radius:6px; padding:7px 10px; background:var(--fin-heading); color:var(--card); font-size:13px; box-shadow:var(--fin-popover-shadow); }
+.protocolo-acao-tooltip svg { fill:var(--fin-heading); }
+@media(max-width:760px) { .protocolo-operacao-conectada .protocolo-etapas > button { flex-basis:190px; } }
+.protocolo-caminho { display:flex; flex-wrap:wrap; align-items:center; gap:10px; font-size:14px; color:var(--muted-foreground); }
+.protocolo-caminho a { color:var(--primary); text-decoration:underline; text-underline-offset:3px; }
+
+.repro-programacao-detalhe .ficha-animal-identificacao .ficha-animal-nome { display:block; margin-top:6px; font-size:14px; font-weight:500; line-height:1.45; color:var(--muted-foreground); }
+.protocolo-resultados-contagens { display:grid; grid-template-columns:repeat(9,minmax(0,1fr)); gap:12px; }
+.protocolo-resultados-contagens > div,.protocolo-resultados-taxas > div { min-width:0; display:flex; flex-direction:column; gap:8px; padding:14px 12px; background:var(--card); border-bottom:1px solid var(--border); }
+.protocolo-resultados-contagens span { min-height:2.7em; line-height:1.35; font-size:13px; color:var(--muted-foreground); }
+.protocolo-resultados-contagens strong { font-size:20px; font-variant-numeric:tabular-nums; }
+.protocolo-resultados-taxas { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; font-size:14px; }
+@media(max-width:1200px) { .protocolo-resultados-contagens { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) { .protocolo-resultados-contagens { grid-template-columns:repeat(2,minmax(0,1fr)); } .protocolo-resultados-taxas { grid-template-columns:minmax(0,1fr); } }
+
+/* Sequência aprovada: a etapa ativa mantém a mesma geometria das demais. */
+.protocolo-operacao-conectada .protocolo-etapas > button { flex-basis:180px; min-height:140px; }
+.protocolo-operacao-conectada .protocolo-etapas > button::before { top:19px; height:2px; }
+.protocolo-operacao-conectada .protocolo-etapa-marca { width:40px; height:40px; border-width:2px; box-shadow:0 0 0 5px var(--card); }
+.protocolo-operacao-conectada .protocolo-etapa-corpo { border-bottom-width:1px; border-radius:6px; }
+.protocolo-operacao-conectada .protocolo-etapas > button[aria-pressed=true] .protocolo-etapa-corpo { border-color:var(--fin-filter-border); }
+.protocolo-operacao-conectada .protocolo-etapas > button:focus-visible { outline:2px solid var(--primary); outline-offset:-2px; border-radius:8px; }
+
+.clinica-avaliacao-pagina{max-width:1200px;width:100%;margin-inline:auto}
+.clinica-avaliacao-pagina .clinica-dados-comuns{padding:20px;border:1px solid var(--border);border-radius:8px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.clinica-avaliacao-pagina .clinica-dados-comuns>legend{padding-inline:4px}
+.clinica-avaliacao-pagina .clinica-dados-comuns>.flex{grid-column:1/-1}
+@media(max-width:640px){.clinica-avaliacao-pagina .clinica-dados-comuns{grid-template-columns:1fr;padding:16px}}
+
+
+@media (max-width: 760px) {
+  .protocolo-operacao-compacta [data-tarefas-individuais] .protocolo-tabela-dados { display: block; min-width: 0; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .protocolo-operacao-compacta [data-tarefas-individuais] tbody { display: block; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] tr:not(.protocolo-detalhe-linha) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td { min-width: 0; overflow-wrap: anywhere; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label]::before { display: block; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] :is(td[data-label="Etapa"], td[data-label="Ações"]) { grid-column: 1 / -1; width: auto; white-space: normal; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label="Ações"] > div { flex-wrap: wrap; }
+  .protocolo-operacao-compacta [data-tarefas-individuais] td[data-label="Ações"] button { height: auto; white-space: normal; }
+}

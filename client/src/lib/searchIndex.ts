@@ -5,6 +5,8 @@ import type { Tab } from "../components/Shell";
 export type GrupoComando =
   | "Financeiro"
   | "Pecuária"
+  | "Gestão"
+  | "IA Terrano"
   | "Administração"
   | "Ações";
 
@@ -37,6 +39,9 @@ export interface ResultadoBusca {
 // Labels REAIS (mesmos do AppSidebar). O AppSidebar relabela "plano"→"Categorias";
 // replicamos aqui para o usuário achar pelos dois nomes.
 const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
+  { id: "assistente", tab: "assistente", label: "IA Terrano", grupo: "IA Terrano", caminho: "/assistente", sinonimos: ["assistente", "chat", "conversa", "inteligência artificial"], descricao: "Conversar sobre os dados e o uso do Terrano" },
+  { id: "assistente-radar", tab: "assistente", label: "Radar da fazenda", grupo: "IA Terrano", caminho: "/assistente?aba=radar", sinonimos: ["insights", "análise diária", "avisos"], descricao: "Análises e avisos das áreas autorizadas" },
+  { id: "metas", tab: "metas", label: "Metas da fazenda", grupo: "Gestão", caminho: "/metas", sinonimos: ["objetivos", "progresso", "indicadores"], descricao: "Acompanhar e cadastrar metas" },
   // — Financeiro (grupo "Visão & gestão" / abas do ABAS) —
   { id: "fin-dashboard", tab: "dashboard", label: "Visão geral", grupo: "Financeiro", sinonimos: ["dashboard", "painel", "início", "home", "executivo"], descricao: "Resultados, saldos e compromissos do período" },
   { id: "fin-gastos", tab: "gastos", label: "Compromissos", grupo: "Financeiro", sinonimos: ["gastos", "despesa", "despesas", "custo", "custos", "saída", "saídas", "lançamentos", "notas"], descricao: "Valores a pagar e a receber" },
@@ -88,8 +93,8 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["configuracoes", "Configurações de produção", "tanques recipientes ordenha posições vigência"],
   ].map(([secao, label, termos]) => ({ id: `leite-${secao}`, tab: "pec-leite" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/leite?leiteSecao=${secao}`, sinonimos: termos.split(" ") })),
   ...[
-    ["ciclos", "Manejo reprodutivo", "tentativas avaliação gestação inseminação cobertura"],
-    ["programacoes", "Programações de protocolos", "iatf rodadas tarefas agenda"],
+    ["ciclos", "Manejo reprodutivo", "tentativas avaliação gestação inseminação cobertura diagnóstico DG"],
+    ["programacoes", "Programações de protocolos", "iatf rodadas tarefas agenda etapas automação atendimento coletivo"],
     ["partos", "Partos", "nascimentos crias aborto natimorto"],
     ["indicadores", "Indicadores reprodutivos", "fertilidade concepção iep"],
   ].map(([rotina, label, termos]) => ({ id: `repro-${rotina}`, tab: "pec-reproducao" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/pecuaria/reproducao?rotina=${rotina}`, sinonimos: termos.split(" ") })),
@@ -109,7 +114,11 @@ const comandosBase: (Omit<Comando, "caminho"> & { caminho?: string })[] = [
     ["genetica/material-genetico", "Material genético", "sêmen embriões doadoras touros genética"],
     ["sanidade/protocolos", "Protocolos sanitários", "modelos etapas versão"], ["sanidade/doencas", "Doenças", "sanidade diagnósticos"],
     ["sanidade/tipos-exame", "Tipos de exame", "formatos resultados sanidade"], ["sanidade/tipos-aplicacao", "Tipos de aplicação", "vacinas medicamentos sanidade"],
-    ["reproducao/politica", "Política reprodutiva", "reprodução elegibilidade"],
+    ["reproducao/protocolos", "Modelos de protocolos reprodutivos", "reprodução protocolos modelos IATF TETF etapas"],
+    ["reproducao/politica", "Política reprodutiva e acompanhamento", "reprodução aptidão idade peso PEV prazo diagnóstico reconfirmação"],
+    ["reproducao/avaliacao", "Campos e encaminhamentos da avaliação", "reprodução catálogo avaliação exame útero ovários conduta"],
+    ["reproducao/alertas", "Alertas operacionais da reprodução", "reprodução prazo atenção avaliação encaminhamento preparo"],
+    ["reproducao/regras-sanitarias", "Regras sanitárias e impactos em protocolos", "reprodução doença procedimento bloqueio retirada impacto"],
   ].map(([rota, label, termos]) => ({ id: `config-pec-${rota}`, tab: "config" as Tab, label, grupo: "Pecuária" as GrupoComando, caminho: `/configuracoes/pecuaria/${rota}`, sinonimos: termos.split(" ") })),
   { id: "acao-nova-operacao", tab: "lancar", label: "Nova operação", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/financeiro/operacoes/nova", sinonimos: ["registrar compra", "registrar venda", "lançar despesa"] },
   { id: "acao-nova-visita", tab: "pec-visitas", label: "Planejar visita", grupo: "Ações", acao: true, exigeLancamento: true, caminho: "/pecuaria/visitas/nova", sinonimos: ["nova visita", "veterinário"] },

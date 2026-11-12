@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Iatf } from './Iatf';
+import { obterCabecalhoProtocolo } from '../protocolos/api';
 import { reqV4 } from './api';
 import { setPropriedadeAtiva } from '../../../propriedadeScope';
 
@@ -14,7 +15,7 @@ vi.mock('../protocolos/api', async original => {
   const api = await original<typeof import('../protocolos/api')>();
   const contagens = { total: 1, atendidos: 0, pendentes: 1 };
   return { ...api,
-    obterCabecalhoProtocolo: vi.fn().mockResolvedValue({ id: 'programa', modo: 'COLETIVO', tipo: 'REPRODUTIVO', nome: 'Turma QA', propriedadeId: 7, inicioReferencia: '2026-10-01', precisaoTemporal: 'DIA', protocolo: { id: 'p', nome: 'Protocolo QA', versao: 1 }, contagens }),
+    obterCabecalhoProtocolo: vi.fn().mockResolvedValue({ id: 'programa', modo: 'COLETIVO', tipo: 'REPRODUTIVO', nome: 'Turma QA', propriedadeId: 7, inicioReferencia: '2026-10-01', precisaoTemporal: 'DIA', protocolo: { id: 'p', nome: 'Protocolo QA', versao: 1 }, status: 'ABERTA', contagens }),
     obterEtapasProtocolo: vi.fn().mockResolvedValue({ itens: [{ id: 'etapa', nome: 'Manejo', diaRelativo: 0, unidadeIntervalo: 'DIAS', previstaPara: '2026-10-01', precisaoTemporal: 'DIA', contagens }], total: 1, pagina: 1, porPagina: 10 }),
     obterTarefasProtocolo: vi.fn().mockResolvedValue({ itens: [{ id: 'tarefa', participacaoId: 'participacao', animal: { id: 'animal', brinco: 'QA', nome: null }, propriedadeId: 7, situacao: 'SEM_REGISTRO', previstaPara: '2026-10-01', precisaoTemporal: 'DIA', realizadaEm: null, acoes: { atender: true, regularizar: true }, tarefaOrigem: { id: 'tarefa', tipo: 'MANEJO', previstaEm: '2026-10-01', precisaoTemporal: 'DIA', historicoRegularizacao: [] } }], total: 1, pagina: 1, porPagina: 10 }),
     reqProtocolo: vi.fn().mockImplementation(async (path: string) => path.startsWith("/programacoes?") ? { itens: [{ id: "programa", nome: "Turma QA", status: "ABERTA", inicioReferencia: "2026-10-01", precisaoTemporal: "DIA", participantesTotal: 1, protocolo: { id: "p", nome: "Protocolo QA", versao: 1 }, contagens }], total: 1, pagina: 1, porPagina: 10 } : { exigeCiencia: false, modoLegado: false, itens: [], total: 0, pagina: 1, porPagina: 10 }),
@@ -27,7 +28,7 @@ const referencia = { id: 'ref', nome: 'Referência QA', familia: 'IATF', versaoR
 const programa = { id: 'programa', nome: 'Turma QA', inicioPrevisto: '2026-10-01T00:00:00Z', precisaoTemporal: 'DIA', status: 'ABERTA',
   protocolo: { nome: 'Protocolo QA', versao: 1 }, participantes: [{ id: 'participacao', animalId: 'animal', inicioPrevisto: '2026-10-01T00:00:00Z', inicioEfetivo: null, tarefas: [{ id: 'tarefa', tipo: 'MANEJO', regularizacaoPendente: true, previstaEm: '2026-10-01T00:00:00Z', historicoRegularizacao: [] }] }] };
 beforeEach(() => {
-  vi.clearAllMocks(); setPropriedadeAtiva(99);
+  vi.clearAllMocks(); window.history.replaceState(null,"","/pecuaria/reproducao?rotina=programacoes"); setPropriedadeAtiva(99);
   vi.mocked(reqV4).mockImplementation(async (path, body) => {
     if (path === '/reproducao/biblioteca') return [referencia];
     if (path.startsWith('/reproducao/biblioteca/')) return { id: 'copia' };
@@ -52,6 +53,7 @@ it.each([99, null])('custos da programação inteira conservam sítio explícito
   setPropriedadeAtiva(ativo);
   render(<Iatf propriedadeId={7} podeLancar />);
   fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
+  fireEvent.click(await screen.findByRole('tab', { name: 'Custos' }));
   expect(await screen.findByTestId('custos-programacao')).toHaveProperty('textContent', '7 · programa');
   expect(screen.queryByTestId('custos-participacao')).toBeNull();
 });
@@ -63,9 +65,10 @@ it('regularização usa o mesmo sítio explícito dos custos e do programa', asy
 });
 
 it('atendimento comum recebe o sítio explícito da programação', async () => {
-  render(<Iatf propriedadeId={7} podeLancar />);
-  fireEvent.click((await screen.findAllByRole('link', { name: /Turma QA/ }))[0]);
+  render(<Iatf programacaoId="programa" propriedadeId={7} podeLancar />);
+  await waitFor(()=>expect(screen.getByRole('tab',{name:'Execução'})).toBeTruthy());
   fireEvent.click(await screen.findByRole('button', { name: 'Atender' }));
   expect(await screen.findByRole('heading', { name: /Registrar manejo protocolar/i })).toBeTruthy();
+  expect(obterCabecalhoProtocolo).toHaveBeenCalledWith({programacaoId:'programa'},7);
   expect(screen.queryByRole('heading', { name: 'Executar Manejo' })).toBeNull();
 });

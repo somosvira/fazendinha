@@ -14,6 +14,11 @@ import { conferirReenvioOperacaoTx, hashConfirmacao, includeOperacaoConfirmada, 
 import { procedimentosOperacaoServico } from "../pecuaria/sanidade/servicos.js";
 import { tentativaComAtribuicaoServico, aplicacaoComConsumoOuAtribuicao } from "../pecuaria/reproducao/atribuicoes-servico.js";
 import { METODO_LEITE, registrarBaixaLeiteTx, valoresMovimentosLeiteTx, type PlanoBaixaLeite } from "../estoque/leite.js";
+import { concluirAnimaisTx, contarItensAnimais, estornarAnimaisTx, prepararAnimaisTx, temItensAnimais, type ContextoAnimaisOperacao } from "./compra-animais.js";
+import { normalizarComposicao, rotuloComposicao } from "../pecuaria/rebanho/composicao.calc.js";
+import { timeoutTransacaoAnimais, transacaoPecuaria } from "../pecuaria/transacao.js";
+import { prefixarCampoErro, resolverProdutoIdTx } from "../estoque/produtos-catalogo.js";
+import { unidadePorRotulo } from "../estoque/produtos-catalogo.calc.js";
 
 type OperacaoInput = z.infer<typeof operacaoSchema> & { propriedadeId: number; usuarioId?: number | null };
 type LiquidacaoInput = z.infer<typeof liquidacaoSchema> & { usuarioId?: number | null; propriedadeId?: number };
@@ -89,19 +94,51 @@ async function resolverCentros(tx: Prisma.TransactionClient, ids: string[], hist
 }
 
 type EfeitoLeite = { modo: "RETIRAR"; produtoId: string; plano: PlanoBaixaLeite } | { modo: "RETIRADA_EXISTENTE"; produtoId: string; retiradaId: string } | { modo: "FECHAMENTO_PERIODO"; comercialId: string };
-async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInput, leite?: EfeitoLeite) {
+/**
+ * Itens com `produtoCatalogoId` adotam o item do catálogo na mesma transação (docs/produtos.md, Adoção):
+ * unidade da linha (quando reconhecida) e categoria da própria linha, senão a sugerida.
+ * Devolve os itens só com `produtoId`; o restante da operação não conhece o catálogo.
+ */
+async function resolverProdutosItensTx(tx: Prisma.TransactionClient, itens: OperacaoInput["itens"], usuarioId?: number | null) {
+  const resolvidos: OperacaoInput["itens"] = [];
+  for (const [indice, item] of itens.entries()) {
+    const { produtoCatalogoId, ...resto } = item;
+    if (!produtoCatalogoId) { resolvidos.push(resto); continue; }
+    try {
+      const produtoId = await resolverProdutoIdTx(tx, { produtoId: item.produtoId, produtoCatalogoId, unidade: unidadePorRotulo(item.unidade), categoriaId: item.categoriaId }, usuarioId);
+      resolvidos.push({ ...resto, produtoId });
+    } catch (erro) { throw prefixarCampoErro(erro, `itens.${indice}.`); }
+  }
+  return resolvidos;
+}
+
+/** Itens do catálogo só entram nos fluxos de entrada de estoque (docs/produtos.md, Adoção). */
+const TIPOS_QUE_ACEITAM_CATALOGO: readonly string[] = ["COMPRA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO"];
+function exigirCatalogoPermitido(entrada: OperacaoInput) {
+  if (TIPOS_QUE_ACEITAM_CATALOGO.includes(entrada.tipo)) return;
+  const indice = entrada.itens.findIndex((item) => item.produtoCatalogoId);
+  if (indice >= 0) throw new FinanceiroError("VALIDACAO", "Produto do catálogo só pode ser usado em compra de estoque, inventário inicial ou bonificação. Cadastre o produto na fazenda antes", `itens.${indice}.produtoCatalogoId`);
+}
+
+async function criarOperacaoTx(tx: Prisma.TransactionClient, entrada: OperacaoInput, leite?: EfeitoLeite) {
+    let input = entrada;
     if (input.tipo === "AJUSTE_ESTOQUE") throw new FinanceiroError("VALIDACAO", "Use a conferência de ajuste do Estoque para preservar a base de valor", "tipo");
     if (["INVENTARIO_INICIAL", "BONIFICACAO", "PRODUCAO"].includes(input.tipo) && !input.documentacaoValor) throw new FinanceiroError("VALIDACAO", "Informe referência e evidência do valor disponibilizado, inclusive quando for zero", "documentacaoValor");
+    exigirCatalogoPermitido(input);
     const reenvio = await conferirReenvioOperacaoTx(tx, input);
     if (reenvio) return reenvio;
     await exigirPeriodoAberto(tx, input.propriedadeId, input.data);
+    if (input.itens.some((item) => item.produtoCatalogoId)) input = { ...input, itens: await resolverProdutosItensTx(tx, input.itens, input.usuarioId) };
     if (input.parceiroId) await exigirParceiroAtivo(tx, input.parceiroId, input.tipo);
+    let animaisOriginais: string[] = [];
     if (input.corrigeOperacaoId) {
-      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true } });
+      const original = await tx.operacao.findFirst({ where: { id: input.corrigeOperacaoId, propriedadeId: input.propriedadeId }, include: { versaoComercialLeite: true, fechamentoComercialLeite: true, itens: { where: { animalId: { not: null } }, select: { animalId: true } } } });
       if (!original) throw new FinanceiroError("NAO_ENCONTRADO", "Operação original da correção não encontrada");
       if (original.status !== "CANCELADA") throw new FinanceiroError("CONFLITO", "Somente uma operação cancelada pode receber uma correção");
       if (original.fechamentoComercialLeite && leite?.modo !== "FECHAMENTO_PERIODO") throw new FinanceiroError("CONFLITO", "Corrija o fechamento pelo fluxo de leite, preservando todas as retiradas");
       if (original.versaoComercialLeite && leite?.modo !== "RETIRADA_EXISTENTE") throw new FinanceiroError("CONFLITO", "Corrija esta venda pelo fluxo de leite, preservando a retirada original");
+      if ((original.tipo === "COMPRA_ANIMAIS") !== (input.tipo === "COMPRA_ANIMAIS")) throw new FinanceiroError("CONFLITO", "A correção de uma compra de animais continua sendo compra de animais", "tipo");
+      animaisOriginais = (original.itens ?? []).flatMap((item) => item.animalId ? [item.animalId] : []);
     }
     if (leite?.modo === "FECHAMENTO_PERIODO") {
       const comercial = await tx.operacaoComercialLeite.findFirst({ where: { id: leite.comercialId, propriedadeId: input.propriedadeId }, include: { retiradas: true } });
@@ -170,18 +207,24 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       if (!estocavelItens[indice] && item.partidas?.length) throw new FinanceiroError("VALIDACAO", "Lotes só podem ser informados para item que movimenta estoque");
     });
 
-    const classificar = async (categoriaId: string | null | undefined, classificacao?: "CUSTEIO" | "INVESTIMENTO" | null) => {
+    const categorizar = async (categoriaId: string | null | undefined) => {
       if (historicoComercial && categoriaId === historicoComercial.item.categoriaId) {
         const anterior = historicoComercial.item;
-        return { categoriaId: anterior.categoriaId, categoriaNome: anterior.categoriaNome, classificacao: anterior.classificacao };
+        return { categoriaId: anterior.categoriaId, categoriaNome: anterior.categoriaNome };
       }
       const categoria = categoriaId ? await tx.categoria.findFirst({ where: { id: categoriaId, ativo: true } }) : null;
       if (categoriaId && !categoria) throw new FinanceiroError("VALIDACAO", "Selecione uma categoria ativa", "categoriaId");
-      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null, classificacao: classificacao === undefined ? categoria?.classificacao ?? null : classificacao };
+      return { categoriaId: categoria?.id ?? null, categoriaNome: categoria?.nome ?? null };
     };
+    // Animais entram (ou são conferidos) depois das validações dos itens e antes de gravar a
+    // operação, na mesma transação: uma recusa do Rebanho desfaz tudo.
+    const contextoAnimais: ContextoAnimaisOperacao = { tipo: input.tipo, data: input.data, propriedadeId: input.propriedadeId, parceiroId: input.parceiroId,
+      corrigeOperacaoId: input.corrigeOperacaoId, animaisOriginais, usuarioId: input.usuarioId, itens: input.itens };
+    const animalIds = input.tipo === "COMPRA_ANIMAIS" || temItensAnimais(input) || animaisOriginais.length ? await prepararAnimaisTx(tx, contextoAnimais) : input.itens.map(() => null);
     const itens = await Promise.all(input.itens.map(async (item, indice) => ({
       ordem: indice + 1,
       produtoId: item.produtoId,
+      ...(animalIds[indice] ? { animalId: animalIds[indice]! } : {}),
       centroCustoId: centrosItens[indice],
       centroCustoNome: historicoComercial && centrosItens[indice] === historicoComercial.item.centroCustoId ? historicoComercial.item.centroCustoNome
         : centrosItens[indice] ? centros.get(centrosItens[indice]!) ?? null : null,
@@ -202,9 +245,9 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
         : dinheiro(item.valorTotal),
       estocavel: estocavelItens[indice],
       ...(item.partidas?.length ? { partidasSnapshot: item.partidas as Prisma.InputJsonValue } : {}),
-      ...await classificar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId, item.classificacao),
+      ...await categorizar(item.categoriaId === undefined ? produtosPorId.get(item.produtoId ?? "")?.categoriaId : item.categoriaId),
     })));
-    if ((input.descontoComercial || input.logistica) && !["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO"].includes(input.tipo))
+    if ((input.descontoComercial || input.logistica) && !["COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS"].includes(input.tipo))
       throw new FinanceiroError("VALIDACAO", "Desconto comercial e logística próprios deste fluxo são informados nas compras");
     const composicao = descontarItens(itens.map((item,i) => ({ valor: item.valorTotal, elegivel: input.itens[i].elegivelDesconto !== false })), input.descontoComercial ?? 0, input.distribuicaoDesconto);
     for (const [i, parte] of composicao.entries()) if (!parte.desconto.isZero()) {
@@ -219,9 +262,9 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       const valor = dinheiro(input.logistica.valor);
       itens.push({ ordem: itens.length+1, produtoId: undefined, centroCustoId: centro.id, centroCustoNome: centro.nome, descricao: input.logistica.descricao,
         quantidade: new Prisma.Decimal(1), unidade: "un", valorUnitario: valor, valorTotal: valor, estocavel: false,
-        ...await classificar(input.logistica.categoriaId) });
+        ...await categorizar(input.logistica.categoriaId) });
     }
-    const classificacaoOperacao = await classificar(itens.length ? null : input.categoriaId, input.classificacao);
+    const categoriaOperacao = await categorizar(itens.length ? null : input.categoriaId);
     const totalItens = totalItensFinanceiros(itens);
     const valorTotal = input.valorTotal === undefined ? totalItens : dinheiro(input.valorTotal);
     if (itens.length > 0 && input.valorTotal !== undefined && !totalItens.equals(valorTotal)) {
@@ -254,7 +297,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
           descontoComercial: dinheiro(input.descontoComercial ?? 0).toFixed(2) } } : {}),
         propriedadeId: input.propriedadeId,
         parceiroId: input.parceiroId,
-        ...classificacaoOperacao,
+        ...categoriaOperacao,
         centroCustoId: input.centroCustoId,
         corrigeOperacaoId: input.corrigeOperacaoId,
         criadoPorId: input.usuarioId && input.usuarioId > 0 ? input.usuarioId : null,
@@ -306,6 +349,8 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
       }
     }
 
+    if (animalIds.some(Boolean)) await concluirAnimaisTx(tx, contextoAnimais, operacao, animalIds);
+
     const parcelas = input.financeiro.condicao === "A_PRAZO" || input.financeiro.condicao === "PARCIAL"
       ? input.financeiro.parcelas : [];
     for (const [indice, parcela] of parcelas.entries()) {
@@ -327,7 +372,7 @@ async function criarOperacaoTx(tx: Prisma.TransactionClient, input: OperacaoInpu
 
     await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMADA", usuarioId: input.usuarioId, depois: operacao });
     if (input.chave) await auditar(tx, { entidade: "Operacao", entidadeId: operacao.id, acao: "CONFIRMACAO_OPERACAO_IDEMPOTENTE", usuarioId: input.usuarioId,
-      depois: { chave: input.chave, hash: hashConfirmacao(input), propriedadeId: input.propriedadeId } });
+      depois: { chave: input.chave, hash: hashConfirmacao(entrada), propriedadeId: input.propriedadeId } });
     return tx.operacao.findUniqueOrThrow({
       where: { id: operacao.id },
       include: includeOperacaoConfirmada,
@@ -357,7 +402,18 @@ export function confirmarRascunhoOperacao(tx: Prisma.TransactionClient, input: O
 }
 
 export async function criarOperacao(input: OperacaoInput) {
+  // Com animais, a escrita também é do Rebanho: mesma isolação serializável e repetição dele.
+  if (envolveAnimais(input)) return transacaoPecuaria((tx) => criarOperacaoTx(tx, input), { timeout: timeoutTransacaoAnimais(contarItensAnimais(input)) });
   return transacaoValidada((tx) => criarOperacaoTx(tx, input));
+}
+
+/** Quantidade de animais ligados à operação (0 = não toca o Rebanho). */
+export async function contarAnimaisOperacao(id: string, propriedadeId?: number): Promise<number> {
+  return prisma.itemOperacao.count({ where: { operacaoId: id, animalId: { not: null }, ...(propriedadeId != null ? { operacao: { propriedadeId } } : {}) } });
+}
+
+export function envolveAnimais(input: { tipo: string; itens: Array<{ animal?: unknown; animalId?: string }> }): boolean {
+  return input.tipo === "COMPRA_ANIMAIS" || temItensAnimais(input);
 }
 
 /** Somente a orquestração leiteira pode fornecer o plano conferido sob trava. */
@@ -417,7 +473,7 @@ export async function corrigirVendaLeiteTx(tx: Prisma.TransactionClient, input: 
     centroCustoId: input.centroCustoId ?? original.centroCustoId ?? undefined, financeiro: input.financeiro,
     itens: [{ produtoId: versao.retirada.produtoId, quantidade: Number(versao.retirada.quantidade), unidade: item.unidade, descricao: item.descricao,
       valorTotal: input.valorTotal, categoriaId: input.categoriaId === undefined ? item.categoriaId : input.categoriaId,
-      classificacao: input.categoriaId === undefined || input.categoriaId === item.categoriaId ? item.classificacao : undefined, centroCustoId: input.centroCustoId ?? item.centroCustoId, estocavel: true }] };
+      centroCustoId: input.centroCustoId ?? item.centroCustoId, estocavel: true }] };
   await tx.compromissoFinanceiro.updateMany({ where: { operacaoId: original.id, status: { not: "CANCELADO" } }, data: { status: "CANCELADO" } });
   await tx.operacao.update({ where: { id: original.id }, data: { status: "CANCELADA" } });
   const substituta = await criarOperacaoTx(tx, dados, { modo: "RETIRADA_EXISTENTE", produtoId: versao.retirada.produtoId, retiradaId: versao.retiradaId });
@@ -543,8 +599,15 @@ export async function estornarTransacao(id: string, motivo: string, contexto: Co
   return transacaoValidada((tx) => estornarTransacaoTx(tx, id, motivo, contexto));
 }
 
-export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno) {
-  return transacaoValidada(async (tx) => {
+/**
+ * `opcoes.animais`: quantidade de animais da operação, quando quem chama já a leu (a rota confere a
+ * permissão da Pecuária com ela). Sem ela, o serviço consulta.
+ */
+export async function estornarOperacao(id: string, motivo: string, contexto: ContextoEstorno, opcoes: { animais?: number } = {}) {
+  const animais = opcoes.animais ?? await contarAnimaisOperacao(id, contexto.propriedadeId);
+  const comAnimais = animais > 0;
+  const executarTransacao: typeof transacaoValidada = comAnimais ? (executar) => transacaoPecuaria(executar, { timeout: timeoutTransacaoAnimais(animais) }) : transacaoValidada;
+  return executarTransacao(async (tx) => {
     const produtos = await tx.movimentoEstoque.findMany({ where: { operacaoId: id }, select: { produtoId: true } });
     await travarValorizacaoTx(tx, produtos.map(p => p.produtoId));
     if (!await bloquearOperacao(tx, id, contexto.propriedadeId)) throw new FinanceiroError("NAO_ENCONTRADO", "Operação não encontrada");
@@ -566,6 +629,7 @@ export async function estornarOperacao(id: string, motivo: string, contexto: Con
       throw new FinanceiroError("CONFLITO", "Esta operação financia uma tentativa reprodutiva válida ou com consumo mantido. Revise o vínculo na reprodução antes de cancelar o Serviço.");
     }
     await exigirPeriodoAberto(tx, operacao.propriedadeId, new Date());
+    if (comAnimais) await estornarAnimaisTx(tx, operacao, motivo, contexto.usuarioId);
 
     for (const transacao of operacao.transacoes.filter((item) => item.status === "CONFIRMADA" && item.tipo !== "REVERSAO")) {
       await estornarTransacaoTx(tx, transacao.id, `${PREFIXO_CANCELAMENTO_OPERACAO}${operacao.numero}: ${motivo}`, contexto);
@@ -604,7 +668,7 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
   versaoComercialLeite: { select: versaoComercialLeitePublica },
   parceiro: true,
   centroCusto: { select: { id: true, nome: true } },
-  itens: { orderBy: { ordem: "asc" } },
+  itens: { orderBy: { ordem: "asc" }, include: { animal: { select: { id: true, brinco: true, nome: true } } } },
   compromissos: {
     include: {
       liquidacoes: {
@@ -637,6 +701,14 @@ const includeOperacao = Prisma.validator<Prisma.OperacaoInclude>()({
 
 const includeOperacaoDetalhe = Prisma.validator<Prisma.OperacaoInclude>()({
   ...includeOperacao,
+  // Situação de cada animal da compra/devolução, na mesma consulta: baixa ativa e devolução confirmada que o contém.
+  itens: { orderBy: { ordem: "asc" }, include: { animal: { select: {
+    id: true, brinco: true, nome: true, sexo: true,
+    composicao: { select: { fracao64: true, raca: { select: { sigla: true } } } },
+    destinos: { where: { ate: null }, orderBy: { desde: "desc" }, take: 1, select: { aptidao: true } },
+    baixas: { where: { estornadaEm: null }, select: { tipo: true, data: true }, take: 1 },
+    itensOperacao: { where: { operacao: { tipo: "DEVOLUCAO", status: "CONFIRMADA" } }, select: { operacao: { select: { id: true, numero: true } } }, take: 1 },
+  } } } },
   movimentosEstoque: { include: {
     ...includeOperacao.movimentosEstoque.include,
     propriedade: { select: { id: true, nome: true } },
@@ -728,7 +800,18 @@ export async function obterOperacao(id: string, propriedadeId?: number | null) {
     })),
   }));
   const procedimentosServico = operacao.tipo === "SERVICO" ? await procedimentosOperacaoServico(operacao.id, operacao.propriedadeId) : [];
-  return { ...operacao, perdas, procedimentosServico, transferencias: detalheTransferencias(operacao.movimentosEstoque), compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
+  // `animal`: resumo para a ficha e a correção (sexo, raça, finalidade atual) e `situacao`, que o detalhe
+  // usa para devolver cabeças e mostrar onde cada animal está (a rota a omite sem a área Pecuária).
+  const itens = operacao.itens.map(({ animal, ...item }) => ({
+    ...item,
+    animal: animal ? {
+      id: animal.id, brinco: animal.brinco, nome: animal.nome, sexo: animal.sexo,
+      rotuloComposicao: rotuloComposicao(normalizarComposicao(animal.composicao.map((c) => ({ sigla: c.raca.sigla, fracao64: c.fracao64 })))),
+      aptidao: animal.destinos[0]?.aptidao ?? null,
+      situacao: { baixa: animal.baixas[0] ? { tipo: animal.baixas[0].tipo, data: animal.baixas[0].data } : null, devolucao: animal.itensOperacao[0]?.operacao ?? null },
+    } : null,
+  }));
+  return { ...operacao, itens, perdas, procedimentosServico, transferencias: detalheTransferencias(operacao.movimentosEstoque), compromissos: operacao.compromissos.map(valoresCompromisso), resumoCancelamento: resumoCancelamento(operacao) };
 }
 
 export async function listarOperacoes(propriedadeId?: number | null, inicio?: Date, fim?: Date) {

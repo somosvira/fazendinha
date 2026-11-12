@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/DatePicker";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarDays, CircleAlert, LockKeyhole, RefreshCw, LayoutDashboard, Wallet, ClipboardList, TrendingUp, Layers, Leaf, Scale, Package, Milk } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
@@ -64,8 +65,8 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
     <header className="ger-cabecalho">
       <div><h1 className="rotina-titulo"><span><LayoutDashboard/></span>Painel administrativo</h1></div>
       <div className="ger-filtros"><Dialog open={periodoAberto} onOpenChange={aberto => { setPeriodoAberto(aberto); if (aberto) setEdicao(periodo); }}><DialogTrigger asChild><Botao variant="outline" aria-label="Selecionar período"><CalendarDays size={17} aria-hidden="true" />{dataBR(periodo.inicio)} – {dataBR(periodo.fim)}</Botao></DialogTrigger><DialogContent aria-describedby={undefined} className="ger-periodo-modal"><form onSubmit={e => { e.preventDefault(); setPeriodo({ ...edicao }); onPeriodo(edicao); setPeriodoAberto(false); }}>
-        <DialogHeader><DialogTitle><CalendarDays size={22}/>Período do painel</DialogTitle></DialogHeader><div className="ger-periodo-campos"><label>Início<input required type="date" className={classeInput} value={edicao.inicio} max={edicao.fim} onChange={e => setEdicao(p => ({ ...p, inicio: e.target.value }))} /></label>
-        <label>Fim<input required type="date" className={classeInput} value={edicao.fim} min={edicao.inicio} max={hojeGerencial()} onChange={e => setEdicao(p => ({ ...p, fim: e.target.value }))} /></label></div>
+        <DialogHeader><DialogTitle><CalendarDays size={22}/>Período do painel</DialogTitle></DialogHeader><div className="ger-periodo-campos"><label>Início<DatePicker required className="mt-1.5" value={edicao.inicio} max={edicao.fim} onChange={(valor) => setEdicao(p => ({ ...p, inicio: valor }))} /></label>
+        <label>Fim<DatePicker required className="mt-1.5" value={edicao.fim} min={edicao.inicio} max={hojeGerencial()} onChange={(valor) => setEdicao(p => ({ ...p, fim: valor }))} /></label></div>
         <Button type="submit">Aplicar período</Button></form></DialogContent></Dialog><Button secondary type="button" disabled={carregando} onClick={() => setRevisao(r => r + 1)}><RefreshCw size={16} aria-hidden="true" />Atualizar</Button></div>
     </header>
     <p className="ger-contexto">{dados ? <>{dados.escopo.propriedadeId == null ? "Todos os sítios · consolidado" : dados.escopo.sitios[0]?.nome ?? "Sítio selecionado"} <span>· {dataBR(dados.periodo.inicio)} a {dataBR(dados.periodo.fim)} · consulta em {new Date(dados.corte).toLocaleString("pt-BR")}</span></> : "Selecione o sítio no menu da fazenda."}</p>

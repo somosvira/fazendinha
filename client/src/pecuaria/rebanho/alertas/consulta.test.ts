@@ -8,3 +8,24 @@ describe('contexto dos cuidados',()=>{
  it('mantém busca, lote e histórico ao abrir participantes e valida retorno local',()=>{const origem='/pecuaria/rebanho/alertas/historico?busca=Estrela&loteId=novilhas';const destino=urlParticipantes(g,{disposicao:'HISTORICO',busca:'Estrela',loteId:'novilhas'},origem);window.history.replaceState(null,'',destino);expect(filtrosDaUrl()).toMatchObject({disposicao:'HISTORICO',busca:'Estrela',loteId:'novilhas'});expect(retornoAlertas()).toBe(origem);});
  it('recusa retorno externo e não interpreta outro domínio como central',()=>{window.history.replaceState(null,'','/pecuaria/rebanho/alertas/participantes?retorno=https%3A%2F%2Fexample.test');expect(retornoAlertas()).toBe('/pecuaria/rebanho/alertas');});
 });
+
+it("preserva Reprodução, tipo, sítio e retorno à visão geral ao abrir o mesmo cuidado", () => {
+  const origem = "/pecuaria/reproducao?rotina=geral&sitio=7";
+  const destino = urlParticipantes(
+    { ...g, produtor: "reproducao", tipo: "DG_VENCIDO" },
+    {
+      propriedadeId: 7,
+      produtor: "reproducao",
+      tipo: "DG_VENCIDO",
+      disposicao: "ATENCAO",
+    },
+    origem,
+  );
+  window.history.replaceState(null, "", destino);
+  expect(filtrosDaUrl()).toMatchObject({
+    produtor: "reproducao",
+    tipo: "DG_VENCIDO",
+    propriedadeId: 7,
+  });
+  expect(retornoAlertas()).toBe(origem);
+});

@@ -1,0 +1,15 @@
+import { useEffect, useState } from "react";
+import { Clock } from "lucide-react";
+import { ErrorBox, Button } from "../../../financeiro/financeiro-ui";
+import { reqProtocolo } from "../protocolos/api";
+import { horarioIatf } from "./CampoDataIatf";
+import { formatBRDateISO } from "../../../lib/hoje";
+import { LinkReproducao } from "./ConsultaReproducaoUI";
+import { Paginacao } from "../ui";
+type Lembrete = { id: string; participacaoId: string; estado: string; programadaPara: string; erro: string | null; momento: { id: string; nome: string }; participacao: { rodadaId: string | null; animal: { id: string; brinco: string; nome: string | null } } };
+export function LembretesAutomaticos({ propriedadeId, data }: { propriedadeId: number; data: string }) {
+  const [itens, setItens] = useState<Lembrete[]>([]), [erro, setErro] = useState<string | null>(null), [revisao, setRevisao] = useState(0), [pagina, setPagina] = useState(1);
+  useEffect(() => { let vivo = true; setItens([]); setErro(null); setPagina(1); reqProtocolo<Lembrete[]>(`/automacoes/lembretes?data=${data}`, propriedadeId).then(r => { if (vivo) setItens(r); }).catch(e => { if (vivo) setErro(e instanceof Error ? e.message : String(e)); }); return () => { vivo = false; }; }, [propriedadeId, data, revisao]);
+  if (!itens.length && !erro) return null;
+  return <section className="grid gap-3 rounded-xl border border-border bg-card p-4" aria-label="Lembretes de execução automática"><h3 className="flex items-center gap-2 font-semibold"><Clock size={18} />Etapas automáticas · {formatBRDateISO(data)}</h3><p className="text-sm">Lembretes do dia, inclusive das etapas já executadas. A execução não depende de confirmar este lembrete.</p><ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Recarregar lembretes</Button>}<ul className="divide-y divide-border">{itens.slice((pagina - 1) * 10, pagina * 10).map(i => <li key={i.id} className="flex flex-wrap items-center justify-between gap-3 py-3"><div><strong>{i.momento.nome} · {i.participacao.animal.brinco}</strong><p className="text-sm">{horarioIatf(i.programadaPara, "HORA")} · {({ AGENDADA: "Programada", EXECUTADA: "Executada", FALHOU: "Revisão necessária", REVERTIDA: "Revertida" } as Record<string, string>)[i.estado] ?? i.estado}</p></div><LinkReproducao botao sitio={propriedadeId} href={i.participacao.rodadaId ? `/pecuaria/reproducao/programacoes/${encodeURIComponent(i.participacao.rodadaId)}?momentoId=${encodeURIComponent(i.momento.id)}` : `/pecuaria/rebanho/animais/${encodeURIComponent(i.participacao.animal.id)}?participacaoId=${encodeURIComponent(i.participacaoId)}&protocoloContexto=${encodeURIComponent(i.participacaoId)}&momentoId=${encodeURIComponent(i.momento.id)}&retorno=${encodeURIComponent(window.location.pathname + window.location.search)}#reproducao`}>Abrir etapa</LinkReproducao></li>)}</ul>{itens.length > 10 && <Paginacao paginaAtual={pagina} totalPaginas={Math.ceil(itens.length / 10)} totalItens={itens.length} itensPorPagina={10} onPaginaChange={setPagina} rotulo="lembretes" idSelect="lembretes-automaticos" />}</section>;
+}

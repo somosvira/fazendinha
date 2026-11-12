@@ -4,6 +4,7 @@ import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { NovoRelatorioFinanceiro } from "./NovoRelatorioFinanceiro";
 import { descartarRascunhoRelatorioFinanceiro, gerarRelatorioFinanceiro, salvarPdfRelatorioFinanceiro, salvarRascunhoRelatorioFinanceiro, type ConfiguracoesFinanceiras, type RascunhoRelatorioFinanceiro, type RelatorioFinanceiro } from "./novo-api";
 import { uid } from "../lib/uid.fixture";
@@ -26,10 +27,11 @@ afterEach(async () => { cleanup(); await act(async () => { await new Promise(res
 
 const cadastros: ConfiguracoesFinanceiras = {
   contas: [], parceiros: [], produtos: [],
-  categorias: [{ id: uid(3), nome: "Nutrição", ativo: true, ordem: 0, classificacao: "CUSTEIO", usoGenetico: false }, { id: uid(4), nome: "Silagem antiga", ativo: false, ordem: 1, classificacao: null, usoGenetico: false }],
+  gruposCategorias: [{ id: uid(5), nome: "Custeio", ativo: true, ordem: 0 }, { id: uid(6), nome: "Investimentos", ativo: true, ordem: 1 }, { id: uid(7), nome: "Grupo antigo", ativo: false, ordem: 2 }],
+  categorias: [{ id: uid(3), nome: "Nutrição", ativo: true, ordem: 0, usoGenetico: false }, { id: uid(4), nome: "Silagem antiga", ativo: false, ordem: 1, usoGenetico: false }],
   centrosCusto: [{ id: uid(1), nome: "Pecuária", ativo: true, ordem: 0 }],
 };
-const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], classificacoes: [] };
+const configuracao = { nome: "Pecuária — agosto", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [], categoriaIds: [], grupoIds: [] };
 const rascunho: RascunhoRelatorioFinanceiro = { id: uid(1), versao: 3, updatedAt: "2026-09-14T10:00:00Z", configuracao };
 const relatorio = { id: uid(9), nome: configuracao.nome, status: "CONCLUIDO" } as unknown as RelatorioFinanceiro;
 
@@ -47,6 +49,12 @@ function selecionar(filtro: string, opcao: string) {
 }
 
 describe("novo relatório financeiro", () => {
+  it("só abrir a tela não cria rascunho, nem com os efeitos repetidos do StrictMode", async () => {
+    render(<StrictMode><NovoRelatorioFinanceiro cadastros={cadastros} rascunho={null} onVoltar={vi.fn()} onGerado={vi.fn()} /></StrictMode>);
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 900)); });
+    expect(salvarRascunhoRelatorioFinanceiro).not.toHaveBeenCalled();
+    expect(estadoRascunhoRelatorioAtivo().rascunho).toBeNull();
+  });
   it("continua o rascunho e resume as escolhas em tempo real", () => {
     const { resumo } = renderizar();
     expect(screen.getByLabelText<HTMLInputElement>("Nome do relatório").value).toBe("Pecuária — agosto");
@@ -59,11 +67,16 @@ describe("novo relatório financeiro", () => {
 
     selecionar("Categoria dos itens", "Nutrição");
     selecionar("Centro de custo", "Sem centro de custo");
-    selecionar("Classificação", "Investimento");
+    fireEvent.click(screen.getByRole("button", { name: "Grupos de categorias" }));
+    expect(screen.getByRole("option", { name: "Grupo antigo (inativo)" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "Sem grupo" })).toBeTruthy();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(resumo().getByText("Todos os grupos")).toBeTruthy();
+    selecionar("Grupos de categorias", "Investimentos");
 
     expect(resumo().getByText("Nutrição")).toBeTruthy();
     expect(resumo().getByText("Sem centro de custo")).toBeTruthy();
-    expect(resumo().getByText("Investimento")).toBeTruthy();
+    expect(resumo().getByText("Investimentos")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Conteúdo do PDF" }));
     expect(resumo().getByText("Saldo das contas (sempre sem filtros)")).toBeTruthy();
   });

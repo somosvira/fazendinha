@@ -1,7 +1,6 @@
 import { preferirTabelas } from "@/lib/visualizacao.fixture";
-import { alterarControle, alterarFiltroAdicional } from "../lib/controles.fixture";
+import { abrirFiltrosConsulta, alterarControle, alterarFiltroAdicional, aplicarFiltrosConsulta } from "../lib/controles.fixture";
 // @vitest-environment jsdom
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import { ContasFinanceiras } from "./ContasFinanceiras";

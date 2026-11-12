@@ -1,3 +1,5 @@
+import { previaImpactosTeste } from "../sanidade/impactos.fixture";
+import { reqSanidade } from "../sanidade/api";
 // @vitest-environment jsdom
 import { alterarControle } from "@/lib/controles.fixture";
 import {
@@ -12,6 +14,7 @@ import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { lactacaoSecagem } from "./PesoSecagem.fixture";
 import { CorrigirFato } from "./CorrigirFato";
 import { obterReproducao, reqV4, type FatoReprodutivo } from "./api";
+vi.mock("../sanidade/api", () => ({ reqSanidade: vi.fn() }));
 vi.mock("./api", () => ({ obterReproducao: vi.fn(), reqV4: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); setPropriedadeAtiva(null); });
 it("desvincula parto somente por escolha explícita e conserva período físico da lactação", async () => {
@@ -121,6 +124,7 @@ it("carrega correção e complementos pelo sítio do fato com outro sítio ativo
     propriedadeId: 7, pesoMatriz: { acao: "VINCULAR", pesagemId: "peso7" },
     ocorrenciaRetencao: { acao: "VINCULAR", ocorrenciaId: "rp7" },
   }), "POST", 7));
+  expect(reqSanidade).not.toHaveBeenCalled();
 });
 
 async function abrirCorrecaoAborto(alteracoes: Partial<FatoReprodutivo> = {}) {
@@ -166,7 +170,7 @@ it("reabertura exige ciência explícita de revogação e conserva o peso no his
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [], partos: [], lactacoes: [lactacaoSecagem] });
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="lactacao" id="l1" animalId="a1" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "2026-10-29"));
+  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "29/10/2026"));
   fireEvent.change(screen.getByLabelText("Encerramento (opcional)"), { target: { value: "" } });
   fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Encerramento lançado indevidamente" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
@@ -180,7 +184,7 @@ it("trocar data do encerramento exige revisão do peso na mesma correção", asy
   vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [], partos: [], lactacoes: [lactacaoSecagem] });
   vi.mocked(reqV4).mockReset().mockResolvedValue({});
   render(<CorrigirFato tipo="lactacao" id="l1" animalId="a1" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
-  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "2026-10-29"));
+  await waitFor(() => expect(screen.getByLabelText("Encerramento (opcional)")).toHaveProperty("value", "29/10/2026"));
   fireEvent.change(screen.getByLabelText("Encerramento (opcional)"), { target: { value: "2026-10-28" } });
   fireEvent.change(screen.getByLabelText("Motivo da correção"), { target: { value: "Conferência da data real da secagem" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
@@ -189,4 +193,19 @@ it("trocar data do encerramento exige revisão do peso na mesma correção", asy
   await alterarControle(screen.getByLabelText("Revisão do peso do encerramento"), { target: { value: "DESVINCULAR" } });
   fireEvent.click(screen.getByRole("button", { name: "Salvar correção" }));
   await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/lactacoes/l1/correcao", expect.objectContaining({ encerradaEm: "2026-10-28", pesoSecagem: { acao: "DESVINCULAR", vinculoId: "v1", motivo: "Conferência da data real da secagem" } }), "POST", 7));
+});
+
+it("correção que cria ocorrência de RP confirma fato e impacto sem reaplicar vínculo existente", async () => {
+  vi.mocked(obterReproducao).mockResolvedValue({ animais: [], tentativas: [], avaliacoes: [], restricoes: [], partos: [{ id: "p", animalId: "a", data: "2026-10-13", tipo: "NORMAL", status: "VALIDO", versao: 4 }] });
+  vi.mocked(reqV4).mockImplementation(async path => path === "/sanidade/doencas" ? [{ id: "rp", nome: "Retenção no parto" }] : {});
+  vi.mocked(reqSanidade).mockImplementation(async (_path, init) => previaImpactosTeste(JSON.parse(String(init?.body))));
+  render(<CorrigirFato tipo="parto" id="p" animalId="a" propriedadeId={7} onFechar={vi.fn()} onSalvo={vi.fn()} />);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Salvar correção" })).toHaveProperty("disabled", false));
+  await alterarControle(screen.getByLabelText("Retenção de placenta"), { target: { value: "SIM" } }); await alterarControle(screen.getByLabelText("Ocorrência sanitária de retenção"), { target: { value: "CRIAR" } }); await esperarOpcao("Retenção no parto");
+  await alterarControle(screen.getByLabelText("Doença da ocorrência"), { target: { value: "rp" } }); await alterarControle(screen.getByLabelText("Início real da ocorrência"), { target: { value: "2026-10-14" } });
+  await alterarControle(screen.getByLabelText("Motivo da correção"), { target: { value: "Completar registro da RP" } });
+  fireEvent.submit(document.getElementById("corrigir-fato-v4")!); await screen.findByText("Preparo autorizado · v2");
+  expect(vi.mocked(reqV4).mock.calls.some(([p]) => p.endsWith("/correcao"))).toBe(false);
+  fireEvent.change(screen.getByLabelText("Motivo da confirmação"), { target: { value: "Efeitos conferidos com responsável" } }); fireEvent.click(screen.getByLabelText(/Conferi as participações/)); fireEvent.click(screen.getByRole("button", { name: "Confirmar dados e impactos" }));
+  await waitFor(() => expect(reqV4).toHaveBeenCalledWith("/reproducao/partos/p/correcao", expect.objectContaining({ propriedadeId: 7, versaoEsperada: 4, ocorrenciaRetencao: { acao: "CRIAR", doencaId: "rp", inicio: "2026-10-14", impacto: { revisao: "a".repeat(64), motivo: "Efeitos conferidos com responsável" } } }), "POST", 7));
 });

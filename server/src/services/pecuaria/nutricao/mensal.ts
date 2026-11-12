@@ -203,7 +203,7 @@ async function baseDiaTx(
     itens,
     pendencia,
   };
-  return { ...base, baseHash: hash(base) };
+  return { ...base, baseHash: hash(base), leiteProprio };
 }
 async function sincronizarDiaTx(
   tx: Tx,
@@ -221,6 +221,21 @@ async function sincronizarDiaTx(
     configuracaoEfetiva(configs, loteId, competencia) ?? config;
   const inicio =
     configInicial.desde > competencia ? configInicial.desde : competencia;
+  const base = await baseDiaTx(tx, loteId, propriedadeId, data);
+  // Sem dieta não há consumo a processar; com leite produzido na fazenda, o lote segue fechando por período.
+  if (!base.dietaId || base.leiteProprio) {
+    const existente = await tx.mesNutricao.findUnique({ where: { loteId_competencia: { loteId, competencia } }, select: { id: true } });
+    const dia = existente && await tx.consumoDiario.findUnique({ where: { mesId_data: { mesId: existente.id, data } }, include: { itens: { include: { movimentos: true } } } });
+    if (!dia) return null;
+    if (dia.situacao !== "EFETIVADO" && dia.itens.every(i => !i.movimentos.length)) {
+      await tx.itemConsumoDiario.deleteMany({ where: { diaId: dia.id } });
+      await tx.participacaoConsumoDiario.deleteMany({ where: { diaId: dia.id } });
+      await tx.consumoDiario.delete({ where: { id: dia.id } });
+      // O mês criado só com dias sem consumo deixa de existir.
+      if (!await tx.consumoDiario.count({ where: { mesId: existente.id } })) await tx.mesNutricao.deleteMany({ where: { id: existente.id, revisadoEm: null } });
+      return null;
+    }
+  }
   const mes = await tx.mesNutricao.upsert({
     where: { loteId_competencia: { loteId, competencia } },
     create: {
@@ -233,7 +248,6 @@ async function sincronizarDiaTx(
     update: {},
   });
   if (mes.revisadoEm) return null;
-  const base = await baseDiaTx(tx, loteId, propriedadeId, data);
   const atual = await tx.consumoDiario.findUnique({
     where: { mesId_data: { mesId: mes.id, data } },
     include: { itens: { include: { movimentos: true } }, participantes: true },
@@ -428,6 +442,13 @@ export async function processarDia(
       });
     }
 }
+/** Último dia já processado no tipo de fechamento (diário ou mensal) de cada lote do escopo. */
+export async function ultimosDiasProcessados(propriedadeId: number | null) {
+  const linhas = await prisma.$queryRaw<Array<{ loteId: string; data: Date }>>(Prisma.sql`
+    SELECT m."loteId", MAX(d.data) AS data FROM pecuaria."ConsumoDiario" d JOIN pecuaria."MesNutricao" m ON m.id = d."mesId"
+    ${propriedadeId == null ? Prisma.empty : Prisma.sql`WHERE m."propriedadeId" = ${propriedadeId}`} GROUP BY m."loteId"`);
+  return Object.fromEntries(linhas.map(l => [l.loteId, l.data.toISOString().slice(0, 10)]));
+}
 export async function processarPendentes(
   loteId?: string,
   propriedadeId?: number,
@@ -479,7 +500,8 @@ export async function processarPendentes(
         OR: [{ situacao: { not: "EFETIVADO" } }, { pendencia: { not: null } }],
       },
       orderBy: { atualizadoEm: "asc" },
-      take: 3,
+      // Um mês inteiro por rodada; o limite total de 50 trabalhos segue valendo.
+      take: 31,
     });
     for (const f of falhas)
       trabalhos.push({

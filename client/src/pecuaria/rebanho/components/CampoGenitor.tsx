@@ -31,7 +31,7 @@ export function mensagemGenitorIncompleto(rotulo: string, sexo: Sexo): string {
   return `Escolha ${sexo === "F" ? "a" : "o"} ${rotulo.toLowerCase()} ou marque ${sexo === "F" ? "Desconhecida" : "Desconhecido"}`;
 }
 
-export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false, erro }: {
+export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor, onChange, obrigatorio = false, erro, idBase = "campo-genitor" }: {
   rotulo: string;
   sexo: Sexo;
   /** ficha atual (edição) — se ausente, começa em "Desconhecida/o" */
@@ -43,6 +43,8 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
   /** sem a opção "Desconhecida/o" (ex.: touro e doadora de material genético) */
   obrigatorio?: boolean;
   erro?: string;
+  /** prefixo do id do campo (`<idBase>-mae`/`-pai`); muda quando a tela abriga outro cadastro */
+  idBase?: string;
 }) {
   const [interno, setInterno] = useState<ValorGenitor>(() => valor ?? ladoParaValor(ladoInicial ?? null));
   const [genitoresExternos, setGenitoresExternos] = useState<GenitorDTO[] | null>(null);
@@ -63,7 +65,7 @@ export function CampoGenitor({ rotulo, sexo, ladoInicial, excluirAnimalId, valor
 
   const animalSelecionado: AnimalSelecionado | null = atual.tipo === "ANIMAL" && atual.id ? { id: atual.id, brinco: atual.brinco, nome: atual.nome } : null;
 
-  return <div id={`campo-genitor-${sexo === "F" ? "mae" : "pai"}`} tabIndex={-1} className="space-y-2 outline-none">
+  return <div id={`${idBase}-${sexo === "F" ? "mae" : "pai"}`} tabIndex={-1} className="space-y-2 outline-none">
     <span className="block text-sm font-medium">{rotulo}</span>
     <div className="flex flex-wrap gap-1.5" role="group" aria-label={`Tipo de ${rotulo.toLowerCase()}`}>
       {([

@@ -1,3 +1,4 @@
+import type { CamposAvaliacaoContextual, PreviaAvaliacaoContextual } from "../reproducao/avaliacao-contextual-api";
 import { reqProtocolo } from "./api";
 import type { CampoExame, ObservacaoExame } from "../sanidade/CamposExame";
 import type { PreviaExecucao } from "../sanidade/PreviaExecucao";
@@ -7,20 +8,22 @@ export type FormatoClinico = { tipoResultado: "TEXTO" | "NUMERO" | "OPCAO" | "MU
 export type EscolhaClinica = { id: string; nome: string; tipo?: string; data?: string; validade?: string | null; formatoExameHash?: string; versaoFormato?: number; tipoResultado?: FormatoClinico["tipoResultado"]; unidade?: string | null; opcoes?: string[] | null; campos?: CampoExame[]; produto?: { unidade: string; rastrearPartidas?: boolean }; externo?: boolean };
 export type AcompanhamentoClinico = { id: string; estado: string; finalidade: string; tentativaId?: string | null; gestacaoId?: string | null; previstaPara?: string | null; versao: number };
 export type PaginaClinica<T> = { itens: T[]; total: number; pagina: number; porPagina: number; acompanhamento?: AcompanhamentoClinico | null };
-export type DadosClinicos = {
+export type DadosClinicos = CamposAvaliacaoContextual & {
   momento: string; responsavel: string; tipoExameId: string; formato?: FormatoClinico;
   informarResultado: boolean; resultado: string; resultados: ObservacaoExame[]; valorResultado: string; observacao: string; motivoDesvio: string;
   tipoTentativa: "IA" | "TE" | "COBERTURA"; origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";
-  materialId: string; partidaId: string; operacaoServicoId: string; quantidade: string; justificativaSemOrigem: string;
+  materialId: string; partidaId: string; operacaoServicoId: string; quantidade: string; motivoQuantidadeExcepcional?: string; justificativaSemOrigem: string;
   cienciaValidadeDesconhecida: boolean; documentacaoExcepcional: boolean; motivoDocumentacaoExcepcional: string;
   touroId: string; touroExternoId: string; tentativaId: string; gestacaoId: string; sexoFetal: string; finalidade: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
   motivoVinculoDesconhecido: string; retornoEm: string; previsaoParto: string; cienciaSanitaria: boolean; cienciaRecalendarioLegado: boolean;
   reprodutorExterno: boolean;
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: string | null;
+  decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   demandaAcompanhamentoId?: string; reavaliacao?: boolean;
 };
 export type ItemClinico = { tarefaId: string; animalId: string; propriedadeId: number; tipo: TipoClinico; data: string; realizadaEm: string; [campo: string]: unknown };
 export type EntradaClinica = { versao: 1; propriedadeId: number; itens: ItemClinico[] };
-export type PreviaClinica = { fingerprint: string; temDesvios: boolean; tarefas: PaginaClinica<PreviaExecucao["itens"][number] & { inicioLegado: { exigeCiencia: boolean; total: number } }>; consumos: PaginaClinica<PreviaExecucao["consumos"][number]> };
+export type PreviaClinica = { fingerprint: string; temDesvios: boolean; tarefas: PaginaClinica<PreviaExecucao["itens"][number] & { inicioLegado: { exigeCiencia: boolean; total: number }; avaliacaoContextual?:PreviaAvaliacaoContextual|null }>; consumos: PaginaClinica<PreviaExecucao["consumos"][number]> };
 export type ReciboClinico = PaginaClinica<{ tarefaId: string; animalId: string; id: string; tipo: TipoClinico; exameId?: string; demandaAcompanhamentoId?: string | null; acompanhamentoPendente?: boolean }> & { chave: string; versao: 1 };
 export function obterOpcoesClinicas(tarefaId: string, propriedadeId: number, opcao: OpcaoClinica, pagina: number, busca: string, selecionadoId?: string, materialId?: string, tipoTentativa?: "IA" | "TE", externo?: boolean) {
   const q = new URLSearchParams({ opcao, pagina: String(pagina), porPagina: "10", busca });

@@ -1,3 +1,6 @@
+import * as avaliacaoContextual from "../../services/pecuaria/reproducao/avaliacao-contextual.js";
+import { criarCatalogoAvaliacaoSchema } from "../../services/pecuaria/reproducao/avaliacao-contextual.schemas.js";
+import { automacoesAdesaoSchema, revisaoRetroativaSchema } from "../../services/pecuaria/protocolos/automacao.schemas.js";
 import { consultarManejoAptidao } from "../../services/pecuaria/reproducao/manejo-aptidao.js";
 import { encerramentoLactacaoSchema, manterPesoSecagemSchema, pesoSecagemSchema } from "../../services/pecuaria/reproducao/peso-secagem.schemas.js";
 import { manterPesoSecagem } from "../../services/pecuaria/reproducao/peso-secagem.js";
@@ -25,6 +28,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../db.js";
+import { temPermissao } from "../../services/auth/papeis.js";
 import { getUsuario } from "../../middleware/permissao.js";
 import { podeConsultarCustosPecuaria, podeVerValoresFinanceiros } from "../../services/pecuaria/custos/permissoes.js";
 import { PropriedadeError } from "../../services/propriedade.js";
@@ -157,6 +161,8 @@ export const reproducaoRouter = new Hono()
   .get("/acompanhamento",async c=>{try{const {propriedadeId:_sitio,...consulta}=c.req.query();return c.json(await acompanhamento.listarAcompanhamentosPaginados(s.sitio.parse(await resolverEscopoLeitura(c)),consulta));}catch(e){return falhaV4(c,e);}})
   .post("/acompanhamento/adocao/previa",validarV4(acompanhamentoSchemas.previaAdocaoAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.previaAdocaoAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)}));}catch(e){return falhaV4(c,e);}})
   .post("/acompanhamento/adocao",validarV4(acompanhamentoSchemas.adotarAcompanhamentoSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.adotarAcompanhamento({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},usuarioV4(c)));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/prazos/previa",validarV4(acompanhamentoSchemas.previaRevisaoPrazosSchema),async c=>{try{const b=c.req.valid("json");return c.json(await acompanhamento.previaRevisaoPrazos({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)}));}catch(e){return falhaV4(c,e);}})
+  .post("/acompanhamento/prazos/revisao",validarV4(acompanhamentoSchemas.revisarPrazosSchema),async c=>{try{const b=c.req.valid("json");const ator=usuarioV4(c);if(!ator)return c.json({error:"Sessão de usuário necessária para revisar prazos",code:"SEM_PERMISSAO"},403);return c.json(await acompanhamento.revisarPrazos({...b,propriedadeId:await resolverEscopoEscrita(c,b.propriedadeId)},ator));}catch(e){return falhaV4(c,e);}})
   .get("/colostro", async (c) => {
     try {
       const criaId = s.uuid.parse(c.req.query("criaId"));
@@ -302,6 +308,25 @@ export const reproducaoRouter = new Hono()
     } catch (e) {
       return falhaV4(c, e);
     }
+  })
+  .get("/avaliacoes/contexto/catalogo", async c => {
+    try {
+      const propriedadeId = s.sitio.parse(await resolverEscopoLeitura(c));
+      const contexto = z.enum(["NOVILHA", "APOS_TENTATIVA", "GESTACAO_CONHECIDA", "OUTRO"]).optional().parse(c.req.query("contexto"));
+      return c.json(await avaliacaoContextual.catalogoAvaliacao(propriedadeId, contexto));
+    } catch (e) { return falhaV4(c, e); }
+  })
+  .get("/avaliacoes/:id/contexto", async c => {
+    try { return c.json(await avaliacaoContextual.obterAvaliacaoContextual(s.uuid.parse(c.req.param("id")), s.sitio.parse(await resolverEscopoLeitura(c)))); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/avaliacoes/contexto/catalogo", validarV4(criarCatalogoAvaliacaoSchema), async c => {
+    try { const usuario = getUsuario(c); if (!usuario || usuario.id < 1 || !temPermissao(usuario, "lancar") || (!usuario.dono && !usuario.abas.includes("cadastros"))) return c.json({ error: "Gerenciar catálogo exige sessão de usuário, cadastro e permissão para lançar", code: "SEM_PERMISSAO" }, 403); const b = c.req.valid("json"); return c.json(await avaliacaoContextual.criarCatalogoAvaliacao({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c)), 201); }
+    catch (e) { return falhaV4(c, e); }
+  })
+  .post("/avaliacoes/contexto/previa", validarV4(s.avaliacaoSchema), async c => {
+    try { const b = c.req.valid("json"); return c.json(await registros.previaAvaliacaoContextual({ ...b, propriedadeId: await resolverEscopoEscrita(c, b.propriedadeId) }, usuarioV4(c))); }
+    catch (e) { return falhaV4(c, e); }
   })
   .post("/avaliacoes", validarV4(s.avaliacaoSchema), async (c) => {
     try {
@@ -478,6 +503,7 @@ export const reproducaoRouter = new Hono()
   .post("/programacoes", validarV4(s.programacaoSchema), async (c) => {
     try {
       const b = c.req.valid("json");
+      if (b.automacoes?.some(i => i.dados.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
       return c.json(
         await iatf.criarProgramacao(
           {
@@ -740,6 +766,7 @@ reproducaoRouter.post(
       .object({
         propriedadeId: s.sitio,
         chave: s.uuid,
+        automacoes: automacoesAdesaoSchema.optional(), revisaoRetroativa: revisaoRetroativaSchema.optional(),
         cienciaSanitaria: z.boolean().optional(),
         animais: z
           .array(
@@ -758,6 +785,7 @@ reproducaoRouter.post(
   async (c) => {
     try {
       const b = c.req.valid("json");
+      if (b.automacoes?.some(i => i.dados.valorServicoAtribuido != null) && !podeVerValoresFinanceiros(getUsuario(c) ?? null)) return c.json({ error: "Permissão financeira para editar valores necessária", code: "SEM_PERMISSAO" }, 403);
       return c.json(
         await iatf.adicionarParticipantes(
           c.req.param("id"),

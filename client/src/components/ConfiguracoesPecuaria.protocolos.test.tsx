@@ -25,3 +25,14 @@ it("Voltar da página de novo protocolo aguarda confirmação e cancelar preserv
   expect(window.location.pathname).toBe(lista);
   expect(screen.queryByLabelText("Nome do protocolo")).toBeNull();
 });
+
+it("abre somente as configurações de Reprodução e preserva o sítio nos destinos", () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao?sitio=7");
+  render(<ConfiguracoesPecuaria podeLancar />);
+  expect(screen.getByRole("heading", {name:"Configurações da Reprodução"})).toBeTruthy();
+  expect(screen.queryByRole("heading", {name:"Nutrição"})).toBeNull();
+  const itens = screen.getAllByRole("link").filter(a => a.getAttribute("href")?.startsWith("/configuracoes/pecuaria/reproducao/"));
+  expect(itens).toHaveLength(6);
+  expect(itens.every(a => a.getAttribute("href")?.endsWith("?sitio=7"))).toBe(true);
+  expect(screen.getByRole("link", {name:"Voltar à Reprodução"}).getAttribute("href")).toBe("/pecuaria/reproducao?sitio=7");
+});

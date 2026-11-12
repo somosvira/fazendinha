@@ -15,6 +15,7 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 
 | Documento | Quando consultar |
 |---|---|
+| [Produtos](produtos.md) | Catálogo de produtos do sistema (fabricante, classificação técnica, princípios ativos), produtos da fazenda e adoção; carga por migration de dados |
 | [Financeiro e Estoque](financeiro-rebuild-contrato.md) | Operações, obrigações, dinheiro, efeitos físicos, valores, estornos e autorização |
 | [Visão geral financeira](financeiro-dashboard-grid.md) | Bases dos indicadores e navegação para detalhes |
 | [Pecuária](pecuaria/README.md) | Rebanho, genética, sanidade, peso, nutrição e integrações |
@@ -31,7 +32,8 @@ A documentação vigente descreve a base integrada até a V5. Comece pelo manual
 | [Referência IDEAGRI do leite](pecuaria/leite-ideagri-referencia.md) | Proveniência e limites do mapeamento, sem presumir importação automática |
 | [Painel gerencial](painel-gerencial.md) | Caixa, estoque, custos, nutrição, produção e cobertura |
 | [Busca global](busca-global.md) | Registros, páginas, ações, destinos, escopo, permissões e manutenção do catálogo |
-| [Assistente de consulta](assistente-consulta.md) | Ferramentas de leitura, ajuda, gates e política de custo |
+| [Assistente Terrano](assistente-consulta.md) | Conversa, pesagem com confirmação, Radar, gates e política de custo |
+| [Metas](metas.md) | Página independente, indicadores, medições, etapas, histórico e permissões |
 | [Nutrição mensal](pecuaria/nutricao-mensal.md) | Modelos configuráveis, consumo diário real/virtual, conferência mensal e alertas |
 
 ## Arquitetura, design e desenvolvimento

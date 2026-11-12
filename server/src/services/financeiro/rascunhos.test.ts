@@ -12,7 +12,7 @@ vi.mock("../../db.js", () => ({ prisma: {
   $transaction: mocks.transaction,
 } }));
 vi.mock("../../lib/storage.js", () => ({ getStorage: vi.fn(async () => ({ deleteObject: mocks.deleteObject })) }));
-vi.mock("./operacoes.js", () => ({ confirmarRascunhoOperacao: mocks.confirmarOperacao }));
+vi.mock("./operacoes.js", () => ({ envolveAnimais: () => false, confirmarRascunhoOperacao: mocks.confirmarOperacao }));
 
 import { confirmarRascunho, salvarRascunho } from "./rascunhos.js";
 

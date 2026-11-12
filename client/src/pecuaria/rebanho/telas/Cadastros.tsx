@@ -20,7 +20,6 @@ import type { CampoConsulta } from "@/financeiro/FiltroColunaConsulta";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dna, FlaskConical, History, LogOut, Pencil, Plus, Tags, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Loader } from "@/components/Loading";
 import { AcoesLinha, Button, type ColunaTabela, Empty, ErrorBox, PageHeader, PaginaFinanceira, Panel, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { SubAbas } from "../ui";
 import { NavRebanho } from "./NavRebanho";
@@ -37,6 +36,7 @@ import { FormGenitor } from "../cadastros/FormGenitor";
 import { FormMaterialGenetico } from "../cadastros/FormMaterialGenetico";
 import { FormCategoria, type DadosFormCategoria } from "../cadastros/FormCategoria";
 import { CadastrosSanitarios } from "../sanidade/CadastrosSanitarios";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export type AbaCadastroRebanho = "categorias" | "racas" | "motivos" | "genitores" | "material-genetico" | "sanidade";
 type EntidadePainel = "raca" | "motivo" | "genitor" | "material";
@@ -357,7 +357,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
 
     {aba === "sanidade" && <CadastrosSanitarios podeLancar={podeLancar} />}
     {carregando
-      ? <div className="mt-5"><Loader label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} /></div>
+      ? <EsqueletoTabela label={`Carregando ${aba === "categorias" ? "categorias" : aba === "racas" ? "raças" : aba === "genitores" ? "genitores externos" : aba === "material-genetico" ? "material genético" : "motivos de baixa"}`} colunas={3} className="mt-5" />
       // os filtros ("Mostrar inativas/os") ficam fora do fieldset de escrita — quem só pode ver
       // continua podendo filtrar (K7); só a tabela (edição/ativação) é desabilitada sem podeLancar.
       : <>
@@ -370,7 +370,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
           {semCategoriaAtual > 0 && <div role="status" className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{semCategoriaAtual} {semCategoriaAtual === 1 ? "animal ativo" : "animais ativos"} sem categoria — nenhuma regra casou.</div>}
           <Panel className="mt-4 overflow-hidden">
             <fieldset disabled={bloqueado} aria-busy={bloqueado} className="min-w-0">
-              <TabelaConsultaLocal parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={c=>c.nome} definicoes={[{chave:"nome",rotulo:"Nome",tipo:"texto",obter:c=>c.nome},{chave:"regra",rotulo:"Regra / sexo",tipo:"texto",obter:c=>`${c.regra} ${rotuloSexo(c.sexo)}`} ]} rotulo="Categorias" itens={categoriasExibidas} colunas={colunasCategorias(categoriasExibidas, (c) => setPainelCategoria({ modo: "editar", categoria: c }), alternarCategoria, moverCategoria).filter(c=>podeLancar||!c.acoes)} chaveDe={(c) => c.id} onAbrir={podeLancar ? (c) => setPainelCategoria({ modo: "editar", categoria: c }) : undefined} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
+              <TabelaConsultaLocal cartoesNoCabecalho parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={c=>c.nome} definicoes={[{chave:"nome",rotulo:"Nome",tipo:"texto",obter:c=>c.nome},{chave:"regra",rotulo:"Regra / sexo",tipo:"texto",obter:c=>`${c.regra} ${rotuloSexo(c.sexo)}`} ]} rotulo="Categorias" itens={categoriasExibidas} colunas={colunasCategorias(categoriasExibidas, (c) => setPainelCategoria({ modo: "editar", categoria: c }), alternarCategoria, moverCategoria).filter(c=>podeLancar||!c.acoes)} chaveDe={(c) => c.id} onAbrir={podeLancar ? (c) => setPainelCategoria({ modo: "editar", categoria: c }) : undefined} classeLinha={(c) => !c.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
         </>}
@@ -378,7 +378,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
         {aba === "racas" && <>
           <Panel className="mt-5 overflow-hidden">
             <fieldset disabled={bloqueado} aria-busy={bloqueado} className="min-w-0">
-              <TabelaConsultaLocal parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={r=>`${r.nome} ${r.sigla}`} definicoes={[{chave:"raca",rotulo:"Raça",tipo:"texto",obter:r=>r.nome},{chave:"sigla",naBarra:true,rotulo:"Sigla",tipo:"texto",obter:r=>r.sigla},{chave:"tipo",rotulo:"Tipo",tipo:"opcoes",obter:r=>r.base?"BASE":"COMPOSTA",opcoes:[{valor:"BASE",texto:"Base"},{valor:"COMPOSTA",texto:"Composta"}]}]} rotulo="Raças" itens={racasExibidas} colunas={colunasRacas((r) => editar("raca", r), alternarRaca).filter(c=>podeLancar||!c.acoes)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
+              <TabelaConsultaLocal cartoesNoCabecalho parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={r=>`${r.nome} ${r.sigla}`} definicoes={[{chave:"raca",rotulo:"Raça",tipo:"texto",obter:r=>r.nome},{chave:"sigla",naBarra:true,rotulo:"Sigla",tipo:"texto",obter:r=>r.sigla},{chave:"tipo",rotulo:"Tipo",tipo:"opcoes",obter:r=>r.base?"BASE":"COMPOSTA",opcoes:[{valor:"BASE",texto:"Base"},{valor:"COMPOSTA",texto:"Composta"}]}]} rotulo="Raças" itens={racasExibidas} colunas={colunasRacas((r) => editar("raca", r), alternarRaca).filter(c=>podeLancar||!c.acoes)} chaveDe={(r) => r.id} onAbrir={podeLancar ? (r) => editar("raca", r) : undefined} classeLinha={(r) => !r.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
         </>}
@@ -386,7 +386,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
         {aba === "motivos" && <>
           <Panel className="mt-5 overflow-hidden">
             <fieldset disabled={bloqueado} aria-busy={bloqueado} className="min-w-0">
-              <TabelaConsultaLocal parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={m=>`${m.nome} ${rotuloClasseMotivo(m.classe)}`} definicoes={[{chave:"motivo",rotulo:"Motivo",tipo:"texto",obter:m=>m.nome},{chave:"classe",rotulo:"Classe",tipo:"opcoes",obter:m=>m.classe,opcoes:ORDEM_CLASSE.map(valor=>({valor,texto:rotuloClasseMotivo(valor)}))}]} rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo).filter(c=>podeLancar||!c.acoes)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
+              <TabelaConsultaLocal cartoesNoCabecalho parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={m=>`${m.nome} ${rotuloClasseMotivo(m.classe)}`} definicoes={[{chave:"motivo",rotulo:"Motivo",tipo:"texto",obter:m=>m.nome},{chave:"classe",rotulo:"Classe",tipo:"opcoes",obter:m=>m.classe,opcoes:ORDEM_CLASSE.map(valor=>({valor,texto:rotuloClasseMotivo(valor)}))}]} rotulo="Motivos de baixa" itens={motivosExibidos} colunas={colunasMotivos((m) => editar("motivo", m), alternarMotivo).filter(c=>podeLancar||!c.acoes)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("motivo", m) : undefined} classeLinha={(m) => !m.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
         </>}
@@ -394,7 +394,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
         {aba === "genitores" && <>
           <Panel className="mt-5 overflow-hidden">
             <fieldset disabled={bloqueado} aria-busy={bloqueado} className="min-w-0">
-              <TabelaConsultaLocal parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={g=>`${g.nome} ${g.codigo??""} ${g.fornecedor??""}`} definicoes={[{chave:"nome",rotulo:"Nome / identificação",tipo:"texto",obter:g=>`${g.nome} ${g.codigo??""}`},{chave:"fornecedor",naBarra:true,rotulo:"Fornecedor",tipo:"texto",obter:g=>g.fornecedor},{chave:"composicao",rotulo:"Composição",tipo:"texto",obter:g=>g.composicaoRotulo}]} rotulo="Genitores externos" itens={genitores ?? []} colunas={colunasGenitores((g) => editar("genitor", g), alternarGenitor).filter(c=>podeLancar||!c.acoes)} chaveDe={(g) => g.id} onAbrir={podeLancar ? (g) => editar("genitor", g) : undefined} classeLinha={(g) => !g.ativo ? "opacity-55" : ""} />
+              <TabelaConsultaLocal cartoesNoCabecalho parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={g=>`${g.nome} ${g.codigo??""} ${g.fornecedor??""}`} definicoes={[{chave:"nome",rotulo:"Nome / identificação",tipo:"texto",obter:g=>`${g.nome} ${g.codigo??""}`},{chave:"fornecedor",naBarra:true,rotulo:"Fornecedor",tipo:"texto",obter:g=>g.fornecedor},{chave:"composicao",rotulo:"Composição",tipo:"texto",obter:g=>g.composicaoRotulo}]} rotulo="Genitores externos" itens={genitores ?? []} colunas={colunasGenitores((g) => editar("genitor", g), alternarGenitor).filter(c=>podeLancar||!c.acoes)} chaveDe={(g) => g.id} onAbrir={podeLancar ? (g) => editar("genitor", g) : undefined} classeLinha={(g) => !g.ativo ? "opacity-55" : ""} />
             </fieldset>
           </Panel>
         </>}
@@ -404,7 +404,7 @@ export function Cadastros({ podeLancar = true, cadastro, embutido = false }: { p
             <fieldset disabled={bloqueado} aria-busy={bloqueado} className="min-w-0">
               {(materiais ?? []).length === 0
                 ? <Empty>Sêmen e embrião entram no estoque pela compra (Financeiro › Nova operação). Cadastre aqui de quem é o material.</Empty>
-                : <TabelaConsultaLocal parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={m=>`${m.produto.nome} ${nomeGenitorMaterial(m.touro)} ${nomeGenitorMaterial(m.doadora)}`} definicoes={[{chave:"produto",rotulo:"Produto",tipo:"texto",obter:m=>m.produto.nome},{chave:"tipo",rotulo:"Tipo",tipo:"opcoes",obter:m=>m.tipo,opcoes:Object.entries(ROTULO_TIPO_MATERIAL).map(([valor,texto])=>({valor,texto}))},{chave:"touro",naBarra:true,rotulo:"Touro",tipo:"texto",obter:m=>nomeGenitorMaterial(m.touro)},{chave:"doadora",naBarra:true,rotulo:"Doadora",tipo:"texto",obter:m=>nomeGenitorMaterial(m.doadora)}]} rotulo="Material genético" itens={materiais ?? []} colunas={colunasMaterial((m) => editar("material", m)).filter(c=>podeLancar||!c.acoes)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("material", m) : undefined} classeLinha={(m) => !m.produto.ativo ? "opacity-55" : ""} />}
+                : <TabelaConsultaLocal cartoesNoCabecalho parametroBusca="busca" camposExternos={camposSituacao} edicaoExterna={edicaoSituacao} criteriosExternos={mostrarInativos?[{id:"inativos",rotulo:"Inclui inativos",limpar:()=>setMostrarInativos(false)}]:[]} buscarPor={m=>`${m.produto.nome} ${nomeGenitorMaterial(m.touro)} ${nomeGenitorMaterial(m.doadora)}`} definicoes={[{chave:"produto",rotulo:"Produto",tipo:"texto",obter:m=>m.produto.nome},{chave:"tipo",rotulo:"Tipo",tipo:"opcoes",obter:m=>m.tipo,opcoes:Object.entries(ROTULO_TIPO_MATERIAL).map(([valor,texto])=>({valor,texto}))},{chave:"touro",naBarra:true,rotulo:"Touro",tipo:"texto",obter:m=>nomeGenitorMaterial(m.touro)},{chave:"doadora",naBarra:true,rotulo:"Doadora",tipo:"texto",obter:m=>nomeGenitorMaterial(m.doadora)}]} rotulo="Material genético" itens={materiais ?? []} colunas={colunasMaterial((m) => editar("material", m)).filter(c=>podeLancar||!c.acoes)} chaveDe={(m) => m.id} onAbrir={podeLancar ? (m) => editar("material", m) : undefined} classeLinha={(m) => !m.produto.ativo ? "opacity-55" : ""} />}
             </fieldset>
           </Panel>
         </>}

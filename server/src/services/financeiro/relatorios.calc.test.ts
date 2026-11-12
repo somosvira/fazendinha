@@ -6,24 +6,27 @@ import { uid } from "../../lib/uid.fixture.js";
 // Centros (C) e categorias (K) com uuids fixos.
 const C1 = uid(201), C2 = uid(202), C9 = uid(209);
 const K3 = uid(303), K4 = uid(304), K5 = uid(305), K6 = uid(306), K7 = uid(307);
+// Grupos de categorias (G).
+const G1 = uid(401), G2 = uid(402);
+const grupos = new Map([[K3, { id: G1, nome: "Custeio" }], [K4, { id: G2, nome: "Investimentos" }]]);
 
-const semFiltro: FiltroRelatorio = { tipos: [], status: [], centroCustoIds: [], categoriaIds: [], classificacoes: [] };
+const semFiltro: FiltroRelatorio = { tipos: [], status: [], centroCustoIds: [], categoriaIds: [] };
 const filtro = (parcial: Partial<FiltroRelatorio>): FiltroRelatorio => ({ ...semFiltro, ...parcial });
 
 function operacao(parcial: Partial<OperacaoComposicao> & { numero: number }): OperacaoComposicao {
   return {
     id: uid(1000 + parcial.numero), data: new Date("2026-09-02T00:00:00Z"), tipo: "COMPRA_CONSUMO_DIRETO", status: "CONFIRMADA", descricao: `Operação ${parcial.numero}`, valorTotal: "0",
     centroCustoId: C1, centroCusto: { nome: "Pecuária" }, parceiro: { nome: "Agropecuária Boa Vista" },
-    categoriaId: null, categoriaNome: null, classificacao: null, itens: [], ...parcial,
+    categoriaId: null, categoriaNome: null, itens: [], ...parcial,
   };
 }
 
-// Compra mista: ração (custeio) + cerca (investimento) na mesma operação.
+// Compra mista: ração (grupo Custeio) + cerca (grupo Investimentos) na mesma operação.
 const mista = operacao({
   numero: 7, valorTotal: "1300.00",
   itens: [
-    { id: uid(11), ordem: 1, descricao: "Ração lactação", quantidade: "10", unidade: "sc", valorTotal: "800.00", categoriaId: K3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: null, centroCustoNome: null },
-    { id: uid(12), ordem: 2, descricao: "Mourões", quantidade: "50", unidade: "un", valorTotal: "500.00", categoriaId: K4, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+    { id: uid(11), ordem: 1, descricao: "Ração lactação", quantidade: "10", unidade: "sc", valorTotal: "800.00", categoriaId: K3, categoriaNome: "Nutrição", centroCustoId: null, centroCustoNome: null },
+    { id: uid(12), ordem: 2, descricao: "Mourões", quantidade: "50", unidade: "un", valorTotal: "500.00", categoriaId: K4, categoriaNome: "Benfeitorias", centroCustoId: null, centroCustoNome: null },
   ],
 });
 // Nota mista por centro: ração com centro próprio (Pecuária), adubo com outro
@@ -31,9 +34,9 @@ const mista = operacao({
 const mistaPorCentro = operacao({
   numero: 13, valorTotal: "1000.00", centroCustoId: C9, centroCusto: { nome: "Sede" },
   itens: [
-    { id: uid(21), ordem: 1, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "500.00", categoriaId: K3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: C1, centroCustoNome: "Pecuária" },
-    { id: uid(22), ordem: 2, descricao: "Adubo", quantidade: "1", unidade: "sc", valorTotal: "300.00", categoriaId: K6, categoriaNome: "Adubação", classificacao: "CUSTEIO", centroCustoId: C2, centroCustoNome: "Agronomia" },
-    { id: uid(23), ordem: 3, descricao: "Frete", quantidade: "1", unidade: "un", valorTotal: "200.00", categoriaId: K7, categoriaNome: "Logística", classificacao: "CUSTEIO", centroCustoId: null, centroCustoNome: null },
+    { id: uid(21), ordem: 1, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "500.00", categoriaId: K3, categoriaNome: "Nutrição", centroCustoId: C1, centroCustoNome: "Pecuária" },
+    { id: uid(22), ordem: 2, descricao: "Adubo", quantidade: "1", unidade: "sc", valorTotal: "300.00", categoriaId: K6, categoriaNome: "Adubação", centroCustoId: C2, centroCustoNome: "Agronomia" },
+    { id: uid(23), ordem: 3, descricao: "Frete", quantidade: "1", unidade: "un", valorTotal: "200.00", categoriaId: K7, categoriaNome: "Logística", centroCustoId: null, centroCustoNome: null },
   ],
 });
 
@@ -41,7 +44,7 @@ describe("filtros do relatório", () => {
   it("sem filtro deixa tudo passar", () => {
     expect(operacaoPassa(semFiltro, { tipo: "VENDA", status: "CANCELADA" })).toBe(true);
     expect(operacaoPassa(semFiltro, null)).toBe(true);
-    expect(partePassa(semFiltro, { categoriaId: null, classificacao: null })).toBe(true);
+    expect(partePassa(semFiltro, { categoriaId: null })).toBe(true);
   });
 
   it("filtra operação por tipo e situação; o centro é decidido por parte", () => {
@@ -67,17 +70,18 @@ describe("filtros do relatório", () => {
     expect(operacaoPassa(filtro({ status: ["CONFIRMADA"] }), null)).toBe(false);
   });
 
-  it("filtra fatias por categoria (SEM_VINCULO = sem categoria) e classificação", () => {
+  it("filtra fatias por categoria (SEM_VINCULO = sem categoria) e pelas categorias do grupo", () => {
     expect(partePassa(filtro({ categoriaIds: [SEM_VINCULO] }), { categoriaId: null })).toBe(true);
     expect(partePassa(filtro({ categoriaIds: [K3] }), { categoriaId: K4 })).toBe(false);
-    expect(partePassa(filtro({ classificacoes: ["SEM_CLASSIFICACAO"] }), { classificacao: null })).toBe(true);
-    expect(partePassa(filtro({ classificacoes: ["INVESTIMENTO"] }), { classificacao: "CUSTEIO" })).toBe(false);
+    expect(partePassa(filtro({ grupoIds: [G2], categoriasDosGrupos: [K4] }), { categoriaId: K4 })).toBe(true);
+    expect(partePassa(filtro({ grupoIds: [G2], categoriasDosGrupos: [K4] }), { categoriaId: K3 })).toBe(false);
+    expect(partePassa(filtro({ grupoIds: [SEM_VINCULO], categoriasDosGrupos: [SEM_VINCULO] }), { categoriaId: null })).toBe(true);
   });
 
   it("descreve filtros com os nomes vigentes na emissão", () => {
-    expect(descreverFiltros(filtro({ tipos: ["SERVICO"], status: ["CANCELADA"], centroCustoIds: [SEM_VINCULO, C2], categoriaIds: [K3], classificacoes: ["INVESTIMENTO"] }), {
-      categorias: [{ id: K3, nome: "Nutrição" }], centrosCusto: [{ id: C2, nome: "Agronomia" }],
-    })).toEqual({ tipos: ["Serviço"], status: ["Cancelada"], centrosCusto: ["Sem centro de custo", "Agronomia"], parceiros: [], categorias: ["Nutrição"], classificacoes: ["Investimento"] });
+    expect(descreverFiltros(filtro({ tipos: ["SERVICO"], status: ["CANCELADA"], centroCustoIds: [SEM_VINCULO, C2], categoriaIds: [K3], grupoIds: [G2, SEM_VINCULO] }), {
+      categorias: [{ id: K3, nome: "Nutrição" }], centrosCusto: [{ id: C2, nome: "Agronomia" }], grupos: [{ id: G2, nome: "Investimentos" }],
+    })).toEqual({ tipos: ["Serviço"], status: ["Cancelada"], centrosCusto: ["Sem centro de custo", "Agronomia"], parceiros: [], categorias: ["Nutrição"], grupos: ["Investimentos", "Sem grupo"] });
   });
 
   it("cadastro que não existe mais é descrito como (removido)", () => {
@@ -89,12 +93,13 @@ describe("filtros do relatório", () => {
 
 describe("composição por item", () => {
   it("gera uma linha por item com a categoria do próprio item", () => {
-    const c = comporItens([mista], semFiltro);
-    expect(c.linhas.map((l) => [l.item, l.categoria, l.classificacao, l.valor, l.centroCusto])).toEqual([
-      ["Ração lactação", "Nutrição", "CUSTEIO", "800.00", "Pecuária"],
-      ["Mourões", "Benfeitorias", "INVESTIMENTO", "500.00", "Pecuária"],
+    const c = comporItens([mista], semFiltro, undefined, grupos);
+    expect(c.linhas.map((l) => [l.item, l.categoria, l.grupo, l.valor, l.centroCusto])).toEqual([
+      ["Ração lactação", "Nutrição", "Custeio", "800.00", "Pecuária"],
+      ["Mourões", "Benfeitorias", "Investimentos", "500.00", "Pecuária"],
     ]);
-    expect(c.despesas).toMatchObject({ total: "1300.00", custeio: "800.00", investimento: "500.00", semClassificacao: "0.00" });
+    expect(c.despesas.total).toBe("1300.00");
+    expect(c.despesas.porGrupo).toEqual([{ nome: "Custeio", total: "800.00", pct: 61.54 }, { nome: "Investimentos", total: "500.00", pct: 38.46 }]);
     expect(c.despesas.porCategoria.map((p) => [p.nome, p.total, p.pct])).toEqual([["Nutrição", "800.00", 61.54], ["Benfeitorias", "500.00", 38.46]]);
     expect(c.despesas.porCentro).toEqual([{ nome: "Pecuária", total: "1300.00", pct: 100 }]);
     expect(c.linhas.map((l) => [l.operacaoId, l.operacaoNumero])).toEqual([[uid(1007), 7], [uid(1007), 7]]);
@@ -124,8 +129,8 @@ describe("composição por item", () => {
     const duasGrafias = operacao({
       numero: 30, valorTotal: "600.00",
       itens: [
-        { id: uid(31), ordem: 1, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "400.00", categoriaId: K3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: C1, centroCustoNome: "Pecuária" },
-        { id: uid(32), ordem: 2, descricao: "Sal", quantidade: "1", unidade: "sc", valorTotal: "200.00", categoriaId: K3, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: C1, centroCustoNome: "Bovinocultura (antigo)" },
+        { id: uid(31), ordem: 1, descricao: "Ração", quantidade: "1", unidade: "sc", valorTotal: "400.00", categoriaId: K3, categoriaNome: "Nutrição", centroCustoId: C1, centroCustoNome: "Pecuária" },
+        { id: uid(32), ordem: 2, descricao: "Sal", quantidade: "1", unidade: "sc", valorTotal: "200.00", categoriaId: K3, categoriaNome: "Nutrição", centroCustoId: C1, centroCustoNome: "Bovinocultura (antigo)" },
       ],
     });
     const c = comporItens([duasGrafias], semFiltro);
@@ -155,9 +160,9 @@ describe("composição por item", () => {
   });
 
   it("operação sem itens usa a classificação da operação", () => {
-    const servico = operacao({ numero: 8, tipo: "SERVICO", valorTotal: "250.00", centroCustoId: null, centroCusto: null, categoriaId: K5, categoriaNome: "Manutenção", classificacao: "CUSTEIO" });
+    const servico = operacao({ numero: 8, tipo: "SERVICO", valorTotal: "250.00", centroCustoId: null, centroCusto: null, categoriaId: K5, categoriaNome: "Manutenção" });
     const [linha] = comporItens([servico], semFiltro).linhas;
-    expect(linha).toMatchObject({ item: null, categoria: "Manutenção", centroCusto: "Sem centro de custo", classificacao: "CUSTEIO", valor: "250.00" });
+    expect(linha).toMatchObject({ item: null, categoria: "Manutenção", centroCusto: "Sem centro de custo", valor: "250.00" });
   });
 
   it("vendas e canceladas aparecem nas linhas, mas não somam despesa nem volume por tipo", () => {

@@ -9,7 +9,6 @@ import {
 } from "@testing-library/react";
 import { GestaoMensal } from "./GestaoMensal";
 import * as api from "./mensal-api";
-vi.mock("./LotesSemDieta", () => ({ LotesSemDieta: () => null }));
 vi.mock("./mensal-api", () => ({
   statusMensal: vi.fn(),
   configuracoesMensais: vi.fn(),
@@ -42,19 +41,16 @@ describe("configuração nutricional", () => {
   it("explica os três modelos e envia o dia exato e o escopo", async () => {
     render(<GestaoMensal vista="configuracao" podeLancar />);
     await screen.findByText("Como dar baixa no estoque");
-    expect((screen.getByLabelText("Válido a partir de") as HTMLInputElement).readOnly).toBe(true);
+    expect(screen.getByText("Vale a partir de")).toBeTruthy();
     expect(screen.getAllByRole("radio")).toHaveLength(3);
     expect(
       (
         screen.getByRole("radio", {
-          name: /Baixa automática diária/,
+          name: /Diário automático/,
         }) as HTMLInputElement
       ).checked,
     ).toBe(true);
-    fireEvent.change(
-      screen.getByLabelText("Data de referência da conferência"),
-      { target: { value: "31/01/2027" } },
-    );
+    fireEvent.change(screen.getByLabelText(/Dia da conferência/), { target: { value: "31" } });
     fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Confirmar configuração" }),
@@ -66,7 +62,7 @@ describe("configuração nutricional", () => {
           loteId: null,
           modelo: "AUTOMATICO",
           diaConferencia: 31,
-          autorizaValidade: false,
+          autorizaValidade: true,
         }),
       ),
     );
@@ -80,8 +76,9 @@ describe("configuração nutricional", () => {
   });
   it("pede filtro de alertas ao servidor antes da paginação", async () => {
     render(<GestaoMensal vista="alertas" podeLancar={false} />);
-    await screen.findByText("O que precisa de atenção");
-    expect(api.mesesNutricionais).toHaveBeenCalledWith(1, undefined, true);
+    // Sem meses pendentes a seção some; a consulta continua filtrada no servidor.
+    await waitFor(() => expect(api.mesesNutricionais).toHaveBeenCalledWith(1, undefined, true));
+    expect(screen.queryByText("Meses para conferir")).toBeNull();
   });
   it("preserva os campos após falha e não duplica submissão concorrente", async () => {
     let rejeitar!: (e: Error) => void;
@@ -93,10 +90,7 @@ describe("configuração nutricional", () => {
     );
     render(<GestaoMensal vista="configuracao" podeLancar />);
     await screen.findByRole("button", { name: "Revisar configuração" });
-    fireEvent.change(
-      screen.getByLabelText("Data de referência da conferência"),
-      { target: { value: "09/01/2027" } },
-    );
+    fireEvent.change(screen.getByLabelText(/Dia da conferência/), { target: { value: "9" } });
     fireEvent.click(screen.getByRole("button", { name: "Revisar configuração" }));
     const botao = screen.getByRole("button", { name: "Confirmar configuração" });
     fireEvent.click(botao);
@@ -104,12 +98,6 @@ describe("configuração nutricional", () => {
     expect(api.salvarConfiguracaoMensal).toHaveBeenCalledTimes(1);
     rejeitar(new Error("Falha de rede"));
     await screen.findByText("Falha de rede");
-    expect(
-      (
-        screen.getByLabelText(
-          "Data de referência da conferência",
-        ) as HTMLInputElement
-      ).value,
-    ).toBe("09/01/2027");
+    expect((screen.getByLabelText(/Dia da conferência/) as HTMLInputElement).value).toBe("9");
   });
 });

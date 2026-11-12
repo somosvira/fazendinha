@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { Paginacao } from "../ui";
 import { obterAcoesCadastro, type CadastroProtocoloMeta, type PaginaCadastro } from "./cadastros-api";
+import { EsqueletoLista } from "../../../components/Esqueleto";
 
 export function AcoesCadastroPersistidas<T>({ origem, renderizar }: { origem: CadastroProtocoloMeta; renderizar: (item: T, indice: number) => ReactNode }) {
   const [pagina, setPagina] = useState(1);
@@ -14,7 +15,7 @@ export function AcoesCadastroPersistidas<T>({ origem, renderizar }: { origem: Ca
     obterAcoesCadastro<T>(origem, pagina).then(p => { if (vivo) setDados(p); }).catch(e => { if (vivo) setErro(e.message); }).finally(() => { if (vivo) setCarregando(false); });
     return () => { vivo = false; };
   }, [origem.id, origem.atualizadoEm, pagina, revisao]);
-  return <div className="grid gap-3"><ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar carregar ações novamente</Button>}{carregando && <p role="status">Carregando ações…</p>}{dados?.itens.map((item, i) => renderizar(item, (dados.pagina - 1) * dados.porPagina + i))}{dados && dados.total > 10 && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.ceil(dados.total / 10)} totalItens={dados.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="ações da versão" idSelect={`acoes-${origem.id}`} />}</div>;
+  return <div className="grid gap-3"><ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar carregar ações novamente</Button>}{carregando && <EsqueletoLista label="Carregando ações" />}{dados?.itens.map((item, i) => renderizar(item, (dados.pagina - 1) * dados.porPagina + i))}{dados && dados.total > 10 && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.ceil(dados.total / 10)} totalItens={dados.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="ações da versão" idSelect={`acoes-${origem.id}`} />}</div>;
 }
 
 /** Navegação explícita carrega cada página uma vez; nenhuma página substitui edições já feitas. */
@@ -75,7 +76,7 @@ export function EditorAcoesCadastro<T extends { ordem?: number; chaveEdicao?: st
     {!completo && <p role="status" className="text-sm">{itens.length} de {origem?.totalEtapas} ações carregadas. Visite todas as páginas para salvar ou derivar esta versão sem perder ações. Adicionar e remover ficam disponíveis após o carregamento completo.</p>}
     {origem && origem.totalEtapas > 100 && <p role="alert">Esta versão excede o limite de 100 ações deste editor.</p>}
     <ErrorBox erro={erro} />{erro && <Button secondary type="button" onClick={() => setRevisao(v => v + 1)}>Tentar carregar ações novamente</Button>}
-    {carregando && <p role="status">Carregando ações…</p>}
+    {carregando && <EsqueletoLista label="Carregando ações" />}
     {visiveis.map(({ item, indice }) => <div key={item.chaveEdicao ?? item.ordem ?? indice} data-acao-cadastro data-indice-acao={indice}>{renderizar(item, indice)}</div>)}
     {total > 10 && <Paginacao paginaAtual={atual} totalPaginas={Math.ceil(total / 10)} totalItens={total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="ações do rascunho" idSelect="pagina-acoes-cadastro" />}
   </div>;

@@ -1,4 +1,4 @@
-import { AjudaCampo } from "@/components/Dica";
+import { DatePicker } from "../../../components/DatePicker";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
@@ -173,32 +173,24 @@ export function OperacoesComerciaisLeite({
       className="leite-operacoes"
       aria-label="Operações comerciais de leite"
     >
-      {!integrado && <><h2 className="leite-titulo-secao">Operações de leite <AjudaCampo rotulo="Sobre as operações comerciais de leite" texto={"Reúna as coletas de um comprador no período. Registre a retirada com preço pendente e confira o acordo antes de fechar a venda."} /></h2>
+      {!integrado && <><h2 className="leite-titulo-secao">Operações de leite </h2>
 
       <div className="leite-form-inline">
         <label>
           Período inicial
-          <input
-            type="date"
-            value={de}
-            onChange={(e) => {
-              setDe(e.target.value);
+          <DatePicker value={de} onChange={(valor) => {
+              setDe(valor);
               setPagina(1);
               setAcao(null);
-            }}
-          />
+            }} />
         </label>
         <label>
           Período final
-          <input
-            type="date"
-            value={ate}
-            onChange={(e) => {
-              setAte(e.target.value);
+          <DatePicker value={ate} onChange={(valor) => {
+              setAte(valor);
               setPagina(1);
               setAcao(null);
-            }}
-          />
+            }} />
         </label>
         <Button variant="outline" type="button"
           className="leite-secondary"
@@ -249,22 +241,11 @@ export function OperacoesComerciaisLeite({
               </label>
               <label>
                 Início
-                <input
-                  required
-                  type="date"
-                  value={inicio}
-                  onChange={(e) => setInicio(e.target.value)}
-                />
+                <DatePicker required value={inicio} onChange={(valor) => setInicio(valor)} />
               </label>
               <label>
                 Fim
-                <input
-                  required
-                  type="date"
-                  value={fim}
-                  min={inicio}
-                  onChange={(e) => setFim(e.target.value)}
-                />
+                <DatePicker required value={fim} min={inicio} onChange={(valor) => setFim(valor)} />
               </label>
               <label>
                 Referência
@@ -439,16 +420,9 @@ export function OperacoesComerciaisLeite({
                   </label>
                   <label>
                     Data real da retirada
-                    <input
-                      required
-                      type="date"
-                      min={o.inicio}
-                      max={
+                    <DatePicker required min={o.inicio} max={
                         o.fim < hojeOperacional() ? o.fim : hojeOperacional()
-                      }
-                      value={data}
-                      onChange={(e) => setData(e.target.value)}
-                    />
+                      } value={data} onChange={(valor) => setData(valor)} />
                   </label>
                   <label>
                     Litros retirados

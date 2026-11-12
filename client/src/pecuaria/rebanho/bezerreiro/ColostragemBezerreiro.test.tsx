@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { AlternadorDoCabecalho, VisualizacaoNoCabecalho } from '@/components/VisualizacaoConsulta';
 import { alterarControle } from '../../../lib/controles.fixture';
 import { ColostragemBezerreiro } from './ColostragemBezerreiro';
 import { consultarBezerreiro } from './api';
@@ -27,12 +28,37 @@ beforeEach(()=>{rastrearPartidas=false;brixTeste=null;vi.clearAllMocks();vi.mock
   return {itens:[origem(congelada)],total:1,pagina:1,tamanho:30};
 });});
 afterEach(cleanup);
+it('alterna origens, banco, embalagens retiradas e históricos juntos no cabeçalho global', async () => {
+  const usuarioId = 'teste-colostragem';
+  const chave = `terrano:consultas:${usuarioId}:visualizacao-global`;
+  const url = location.href;
+  localStorage.setItem(chave, 'visual');
+  try {
+    render(<VisualizacaoNoCabecalho usuarioId={usuarioId}>
+      <header><AlternadorDoCabecalho /></header>
+      <ColostragemBezerreiro sitio={1} podeLancar revisao={0} aoSalvar={vi.fn()}
+        config={config} params={new URLSearchParams()} mudar={vi.fn()} />
+    </VisualizacaoNoCabecalho>);
+
+    const rotulos = ['Origens de colostro', 'Banco de colostro', 'Embalagens retiradas',
+      'Histórico de destinações', 'Enriquecimentos registrados'];
+    const cartoes = await Promise.all(rotulos.map(name => screen.findByRole('list', { name })));
+    fireEvent.click(screen.getByRole('button', { name: 'Tabela' }));
+    for (const name of rotulos) expect(await screen.findByRole('table', { name })).toBeTruthy();
+    expect(cartoes.every(lista => !lista.isConnected)).toBe(true);
+  } finally {
+    localStorage.removeItem(chave);
+    localStorage.removeItem('terrano:bezerreiro:sessao:visualColostragemBezerreiro');
+    history.replaceState(null, '', url);
+  }
+});
+
 describe('Consumo parcial das embalagens de colostro',()=>{
   it('separa congeladas de remanescentes retirados e confirma 1,5 L sem impor os 2 L iniciais',async()=>{
     montar();
-    expect(await screen.findByRole('table',{name:'Origens de colostro'})).toBeTruthy();
+    expect(await screen.findByRole('list',{name:'Origens de colostro'})).toBeTruthy();
     expect(screen.getByRole('heading',{name:'Banco de colostro'})).toBeTruthy();
-    const banco=await screen.findByRole('table',{name:'Banco de colostro'}),fora=await screen.findByRole('table',{name:'Embalagens retiradas'});
+    const banco=await screen.findByRole('list',{name:'Banco de colostro'}),fora=await screen.findByRole('list',{name:'Embalagens retiradas'});
     expect(within(banco).getByText('BC001')).toBeTruthy();expect(within(fora).getByText('BC002')).toBeTruthy();expect(within(fora).getByText('0,5 L')).toBeTruthy();
     fireEvent.click(within(banco).getByRole('button',{name:'Fornecer à cria'}));
     const dialog=await screen.findByRole('dialog',{name:'Fornecer unidade BC001'});
@@ -46,7 +72,7 @@ describe('Consumo parcial das embalagens de colostro',()=>{
     await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalledWith('/colostro/origens/origem-unidade/destinacoes',1,expect.objectContaining({unidadeId:'unidade',versaoEsperada:2,crias:[{criaId:'cria',quantidadeLitros:1.5,tipo:'DESCONGELADO'}],unidades:[]})));
   });
   it('limita enriquecimento ao saldo de 0,5 L da embalagem retirada',async()=>{
-    montar();const fora=await screen.findByRole('table',{name:'Embalagens retiradas'});
+    montar();const fora=await screen.findByRole('list',{name:'Embalagens retiradas'});
     fireEvent.click(within(fora).getByRole('button',{name:'Enriquecer'}));
     const dialog=await screen.findByRole('dialog',{name:'Enriquecer colostro'}),volume=within(dialog).getByLabelText('Volume consumido da origem (L)') as HTMLInputElement;
     expect(volume.readOnly).toBe(false);expect(volume.value).toBe('0.5');expect(volume.max).toBe('0.5');
@@ -57,7 +83,7 @@ describe('Consumo parcial das embalagens de colostro',()=>{
     await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalledWith('/colostro/enriquecimentos',1,expect.objectContaining({origens:[{origemId:'origem-retirada',versaoEsperada:2,quantidadeLitros:0.3,unidadeId:'retirada'}],volumeFinalLitros:0.32})));
   });
   it('consulta e exige partida do insumo com rastreamento na data operacional',async()=>{
-    rastrearPartidas=true;montar();const fora=await screen.findByRole('table',{name:'Embalagens retiradas'});fireEvent.click(within(fora).getByRole('button',{name:'Enriquecer'}));
+    rastrearPartidas=true;montar();const fora=await screen.findByRole('list',{name:'Embalagens retiradas'});fireEvent.click(within(fora).getByRole('button',{name:'Enriquecer'}));
     const dialog=await screen.findByRole('dialog',{name:'Enriquecer colostro'});
     await alterarControle(within(dialog).getByLabelText('Insumo utilizado'),{target:{value:'insumo'}});
     await waitFor(()=>expect(vi.mocked(consultarBezerreiro).mock.calls.some(([path])=>path.startsWith('/insumos/insumo/partidas?data='))).toBe(true));
@@ -73,7 +99,7 @@ describe('Consumo parcial das embalagens de colostro',()=>{
   ])('usa política Brix da amostra (limite $limite) em vez da configuração atual ($atual)',async caso=>{
     brixTeste={amostraId:'amostra',data:'2026-10-28',resultado:'24',limiteInclusivo:caso.limite,situacao:caso.situacao};
     montar({...config,vigente:{...config.vigente!,brixReferencia:caso.atual}});
-    const banco=await screen.findByRole('table',{name:'Banco de colostro'});fireEvent.click(within(banco).getByRole('button',{name:'Fornecer à cria'}));
+    const banco=await screen.findByRole('list',{name:'Banco de colostro'});fireEvent.click(within(banco).getByRole('button',{name:'Fornecer à cria'}));
     const dialog=await screen.findByRole('dialog',{name:'Fornecer unidade BC001'}),motivo=within(dialog).getByLabelText('Motivo da exceção Brix') as HTMLTextAreaElement;
     expect(motivo.required).toBe(caso.obrigatorio);expect(within(dialog).getByText(new RegExp(`Limite registrado: ≥ ${caso.limite}%`))).toBeTruthy();
     await alterarControle(within(dialog).getByLabelText('Cria destinatária'),{target:{value:'cria'}});fireEvent.change(within(dialog).getByLabelText('Responsável'),{target:{value:'Operadora'}});
@@ -103,7 +129,7 @@ describe('fornecimento existente e seleção histórica',()=>{
    return base(path,sitio,body);
   });
  }
- async function abrirDestino(){montar();const tabela=await screen.findByRole('table',{name:'Origens de colostro'});fireEvent.click(within(tabela).getByRole('button',{name:'Destinar'}));const d=await screen.findByRole('dialog',{name:'Destinar colostro para cria / banco'});await alterarControle(within(d).getByLabelText('Cria destinatária'),{target:{value:'cria'}});fireEvent.change(within(d).getByLabelText('Responsável'),{target:{value:'Operadora'}});return d;}
+ async function abrirDestino(){montar();const lista=await screen.findByRole('list',{name:'Origens de colostro'});fireEvent.click(within(lista).getByRole('button',{name:'Destinar'}));const d=await screen.findByRole('dialog',{name:'Destinar colostro para cria / banco'});await alterarControle(within(d).getByLabelText('Cria destinatária'),{target:{value:'cria'}});fireEvent.change(within(d).getByLabelText('Responsável'),{target:{value:'Operadora'}});return d;}
  it('vincula 4 L existentes sem mandar um segundo fornecimento e conserva horário desconhecido',async()=>{
   contextoHistorico();const d=await abrirDestino();await alterarControle(within(d).getByLabelText('Fornecimento'),{target:{value:'existente'}});
   await alterarControle(within(d).getByLabelText(/^Registro existente/),{target:{value:'fornecimento-4L'}});

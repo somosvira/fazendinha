@@ -3,12 +3,13 @@ import { alterarControle } from "../lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ProdutoEstoqueDetalhe } from "./ProdutoEstoqueDetalhe";
-import { obterProdutoEstoque, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, renomearLoteProduto } from "./api";
+import { obterProdutoEstoque, editarProduto, listarLotesProduto, listarMovimentosProduto, listarOrigensProduto, listarProdutos, renomearLoteProduto } from "./api";
 import { getUsuario } from "../lib/auth";
 import { setPropriedadeAtiva } from "../propriedadeScope";
-vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), obterProdutoEstoque: vi.fn(), listarLotesProduto: vi.fn(), listarMovimentosProduto: vi.fn(), listarOrigensProduto: vi.fn(), renomearLoteProduto: vi.fn() }));
+vi.mock("./api", async (original) => ({ ...(await original<typeof import("./api")>()), obterProdutoEstoque: vi.fn(), editarProduto: vi.fn(), listarProdutos: vi.fn(), listarLotesProduto: vi.fn(), listarMovimentosProduto: vi.fn(), listarOrigensProduto: vi.fn(), renomearLoteProduto: vi.fn() }));
 vi.mock("../api/propriedades", () => ({ listarPropriedades: vi.fn().mockResolvedValue([{ id: 1, nome: "Fazenda Rio Novo", ativo: true }, { id: 2, nome: "Sítio Novo", ativo: true }]) }));
 vi.mock("../lib/auth", async (original) => ({ ...(await original<typeof import("../lib/auth")>()), getUsuario: vi.fn() }));
+vi.mock("../financeiro/FormProduto", async (original) => ({ ...(await original<typeof import("../financeiro/FormProduto")>()), FormProduto: ({ somenteLeitura }: { somenteLeitura?: boolean }) => <div role="dialog" aria-label="Cadastro do produto">{somenteLeitura ? "Cadastro somente leitura" : "Cadastro editável"}</div> }));
 vi.mock("./PartidasProduto", () => ({ PartidasProduto: () => <p>Controle avançado</p> }));
 const produto = { id: "p", nome: "Ração", unidade: "KG" as const, rastrearPartidas: true, saldo: "25", custoMedio: null, valor: null, propriedadeId: null, totalLotes: 1, lotesComSaldo: 1 };
 const lote = { id: "l", nome: "Vence dezembro", codigo: "AUTO", validade: "2026-12-31", saldo: "25", origemRastreio: "INFORMADA" };
@@ -16,6 +17,7 @@ beforeEach(() => {
   history.replaceState(null, "", "/estoque/produtos/p");
   vi.clearAllMocks(); setPropriedadeAtiva(null); vi.mocked(getUsuario).mockReturnValue(null);
   vi.mocked(obterProdutoEstoque).mockResolvedValue(produto);
+  vi.mocked(listarProdutos).mockResolvedValue([produto]);
   vi.mocked(listarLotesProduto).mockResolvedValue({ itens: [lote], total: 16, pagina: 1, porPagina: 15 });
   vi.mocked(listarMovimentosProduto).mockResolvedValue({ itens: [], total: 0 });
   vi.mocked(listarOrigensProduto).mockResolvedValue({ itens: [], total: 0, pagina: 1, porPagina: 15 });
@@ -23,6 +25,25 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 describe("ficha do produto", () => {
+  it("produto adotado mostra a origem de cada campo e os princípios ativos; Restaurar envia null e recarrega", async () => {
+    const adotado = { ...produto, nome: "Biomox da fazenda", apresentacao: "sachê 100 g", fabricante: { id: "f", nome: "Vetbrands", ativo: true }, classificacaoTecnica: null, produtoCatalogoId: "c1", nomeAlterado: true,
+      origemCampos: { nome: "fazenda", apresentacao: "catalogo", fabricante: "fazenda", classificacaoTecnica: "catalogo" } as const,
+      principiosAtivos: [{ id: "pa1", nome: "Amoxicilina", ordem: 1 }, { id: "pa2", nome: "Colistina", ordem: 2 }] };
+    vi.mocked(obterProdutoEstoque).mockResolvedValueOnce(adotado as never);
+    vi.mocked(editarProduto).mockResolvedValue(adotado as never);
+    render(<ProdutoEstoqueDetalhe produtoId="p" />);
+    const secao = await screen.findByRole("region", { name: "Cadastro do catálogo" });
+    expect(within(secao).getByText("Amoxicilina, Colistina")).toBeTruthy();
+    expect(Array.from(secao.querySelectorAll("[data-origem]")).map((e) => e.getAttribute("data-origem"))).toEqual(["fazenda", "catalogo", "fazenda", "catalogo"]);
+    fireEvent.click(within(secao).getByRole("button", { name: "Restaurar fabricante do catálogo" }));
+    await waitFor(() => expect(editarProduto).toHaveBeenCalledWith("p", { fabricanteId: null }));
+    await waitFor(() => expect(obterProdutoEstoque).toHaveBeenCalledTimes(2));
+  });
+  it("produto manual não mostra o bloco do catálogo", async () => {
+    render(<ProdutoEstoqueDetalhe produtoId="p" />);
+    await screen.findByText("Saldo consolidado");
+    expect(screen.queryByRole("region", { name: "Cadastro do catálogo" })).toBeNull();
+  });
   it("preserva nome após 403 e bloqueia renomeações concorrentes", async () => {
     let recusar!: (erro: Error) => void;
     vi.mocked(renomearLoteProduto).mockImplementationOnce(() => new Promise((_, reject) => { recusar = reject; }));
@@ -111,4 +132,15 @@ it("recebe lote do produto por link e consulta seus movimentos exatos", async ()
   await waitFor(() => expect(listarMovimentosProduto).toHaveBeenCalledWith("p", expect.objectContaining({ partidaId: "l" })));
   history.pushState(null, "", "/estoque/produtos/p?partidaId=outro"); fireEvent.popState(window);
   await waitFor(() => expect(listarMovimentosProduto).toHaveBeenLastCalledWith("p", expect.objectContaining({ partidaId: "outro" })));
+});
+
+it("consulta abre cadastro em somente leitura e conserva histórico e saldo", async () => {
+  vi.mocked(getUsuario).mockReturnValue({ id: 1, nome: "Leitor", email: "leitor@fazenda.test", papel: "OPERADOR", abas: [], areas: ["pecuaria"], flags: [], status: "ATIVO", dono: false });
+  render(<ProdutoEstoqueDetalhe produtoId="p" />);
+  await screen.findByText("Saldo consolidado");
+  expect(screen.queryByRole("button", { name: "Editar produto" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Consultar cadastro" }));
+  expect(await screen.findByText("Cadastro somente leitura")).toBeTruthy();
+  expect(screen.queryByText("Cadastro editável")).toBeNull();
+  expect(screen.getByText("25 kg")).toBeTruthy();
 });

@@ -1,4 +1,3 @@
-import { AjudaCampo } from "@/components/Dica";
 import { useEffect, useState } from "react";
 import { ArrowDownRight, CornerUpLeft, ChartPie, ChevronRight, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ function LancamentoCategoria({ linha, inicio, fim }: { linha: Linha; inicio: str
     </div>
     <div className="flex flex-wrap items-center gap-2 text-sm sm:pl-12">
       <Badge variant="secondary" className="max-w-full whitespace-normal break-words"><Layers className="size-3" aria-hidden="true" />{linha.categoria}</Badge>
-      <Badge variant="outline" className={`whitespace-normal ${linha.classificacao === "INVESTIMENTO" ? "border-[var(--rural)] bg-[color-mix(in_srgb,var(--rural)_8%,transparent)]" : linha.classificacao === "CUSTEIO" ? "border-[var(--rural)] bg-[color-mix(in_srgb,var(--rural)_8%,transparent)]" : ""}`}>{linha.classificacao === "CUSTEIO" ? "Custeio" : linha.classificacao === "INVESTIMENTO" ? "Investimento" : "Sem classificação"}</Badge>
       <span className="break-words text-muted-foreground">Centro: {linha.centroCusto}</span>
     </div>
     <div className="flex items-center justify-between border-t border-border pt-2 sm:hidden"><strong className="fin-valor tabular-nums">{brl(linha.valor)}</strong>{href && <ChevronRight className="size-4 text-muted-foreground" aria-hidden="true" />}</div>
@@ -54,7 +52,7 @@ export function DetalheCategoriaDespesa({ categorias, inicio, fim, onClose }: {
   return <DialogFinanceiro icon={ChartPie} tom="saida" titulo={categorias.length === 1 ? categorias[0].label : "Outras categorias"} eyebrow={`Despesas realizadas · ${dataBR(inicio)} a ${dataBR(fim)}`} onClose={onClose} className="max-w-5xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
     <div className="min-h-0 min-w-0 overflow-auto p-4 sm:p-5">
       {erro ? <div role="alert" className="text-sm"><p>{erro}</p><Button variant="outline" onClick={() => setTentativa(valor => valor + 1)}>Tentar novamente</Button></div> : !dados ? <SkeletonCategorias /> : <>
-        <div data-fin-tom="saida" className="fin-cabecalho fin-painel mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"><div><p className="text-sm text-muted-foreground">Total líquido</p><AjudaCampo rotulo="Ajuda: total da categoria" texto={<>Estornos abatem o total. Clique em um lançamento para consultar seus documentos e detalhes completos.</>} /><strong className="fin-valor font-sans text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>
+        <div data-fin-tom="saida" className="fin-cabecalho fin-painel mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4"><div><p className="text-sm text-muted-foreground">Total líquido</p><strong className="fin-valor font-sans text-2xl tabular-nums">{brl(total)}</strong></div><Badge variant="secondary">{linhas.length} lançamentos</Badge></div>
 
         {linhas.length ? <ul aria-label="Lançamentos da categoria" className="space-y-3">{linhas.slice((pagina - 1) * 15, pagina * 15).map((linha, indice) => <li key={`${linha.movimentoId ?? linha.operacaoId}-${indice}`}><LancamentoCategoria linha={linha} inicio={inicio} fim={fim} /></li>)}</ul> : <p role="status" className="py-6">Nenhum lançamento nesta categoria no período.</p>}
         {linhas.length > 15 && <nav aria-label="Paginação dos lançamentos" className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm"><span>{(pagina - 1) * 15 + 1}–{Math.min(pagina * 15, linhas.length)} de {linhas.length} lançamentos</span><div className="flex gap-2"><Button variant="outline" disabled={pagina === 1} onClick={() => setPagina(atual => atual - 1)}>Anterior</Button><Button variant="outline" disabled={pagina * 15 >= linhas.length} onClick={() => setPagina(atual => atual + 1)}>Próxima</Button></div></nav>}

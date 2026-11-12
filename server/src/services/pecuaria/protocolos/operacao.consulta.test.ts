@@ -52,6 +52,14 @@ describe("participantes paginados da operação coletiva",()=>{
     expect(count.where).toMatchObject({rodadaId:id,animal:{OR:[{brinco:{contains:"Selecionado",mode:"insensitive"}},{nome:{contains:"Selecionado",mode:"insensitive"}}]}});
     expect(JSON.stringify(count.where.AND)).toContain('"propriedadeId":2');
   });
+  it("expõe instante e motivo do bloqueio sem ampliar os dados da participação", async () => {
+    banco.tx.participacaoProtocolo.count.mockResolvedValue(1);
+    banco.tx.participacaoProtocolo.findMany.mockResolvedValue([{ id, animalId: id, animal: { id, brinco: "10", nome: null }, canceladaEm: null, motivoCancelamento: null, bloqueadaEm: data, motivoBloqueio: "Revisar ocorrência", inicio: data, inicioEfetivo: null, precisaoTemporal: "DIA", precisaoInicioEfetivo: null, impactoSnapshot: { interno: "Não devolver" } }]);
+    const r = await listarParticipantesOperacao({ programacaoId: id }, 1, consultaOperacaoSchema.parse({}));
+    expect(r.itens[0]).toMatchObject({ bloqueadaEm: data.toISOString(), motivoBloqueio: "Revisar ocorrência" });
+    expect(r.itens[0]).not.toHaveProperty("impactoSnapshot");
+    expect(banco.tx.participacaoProtocolo.findMany).toHaveBeenCalledWith(expect.objectContaining({ select: expect.objectContaining({ bloqueadaEm: true, motivoBloqueio: true }) }));
+  });
   it("recupera última página válida após retirada e rejeita teto acima de dez",async()=>{
     banco.tx.participacaoProtocolo.count.mockResolvedValue(11);banco.tx.participacaoProtocolo.findMany.mockResolvedValue([]);
     expect(await listarParticipantesOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({pagina:3}))).toMatchObject({total:11,pagina:2,porPagina:10});
@@ -132,4 +140,24 @@ it("resumo da participação usa a versão e apenas vínculos explícitos do sí
   const selecionado = banco.tx.participacaoProtocolo.findMany.mock.calls[0][0].select;
   expect(selecionado._count.select.tarefas.where.OR).toEqual([{ tentativas: { some: { propriedadeId: 2 } } }, { vinculos: { some: { tentativa: { is: { propriedadeId: 2 } } } } }]);
   expect(JSON.stringify(selecionado._count)).not.toContain("data");
+});
+
+it.each(["REGISTRAR_MANUALMENTE", "DISPENSAR"])("expõe revisão retroativa %s sem substituir o snapshot histórico", async decisao => {
+  const revisao={decisao,motivo:"Revisão do início retroativo",usuarioId:7,revisadaEm:"2026-11-03T12:00:00Z"};
+  const snapshot={momento:{politicaExecucao:"AUTOMATICA_EXCECAO"}};
+  banco.tx.tarefaProtocolo.findMany.mockReset().mockResolvedValueOnce([{...tarefa,parametros:snapshot,historicoRegularizacao:[{acao:"REVISAO_AUTOMACAO_RETROATIVA",...revisao},{acao:"OUTRA_REVISAO",motivo:"Não substituir a decisão"}]}]).mockResolvedValueOnce([]);
+  const r=await listarTarefasOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({}),{dono:true,areas:[],flags:[]});
+  expect(r.itens[0].revisaoAutomacaoRetroativa).toEqual(revisao);
+  expect(r.itens[0].tarefaOrigem.revisaoAutomacaoRetroativa).toEqual(revisao);
+  expect(r.itens[0].tarefaOrigem.planejadoSnapshot).toEqual(snapshot);
+});
+
+it("dispensa operacional preserva estado clínico e impede reavaliação",async()=>{
+ const acompanhamento={id:"d",estado:"PENDENTE",finalidade:"DIAGNOSTICO",previstaPara:data,versao:1,exameResolucaoId:null,decisaoOperacional:{id:"decisao",tipo:"DISPENSAR",data:null,destino:null,motivo:"Decisão explícita"}};
+ banco.tx.tarefaProtocolo.findMany.mockReset().mockResolvedValueOnce([{...tarefa,regularizacaoPendente:false,etapa:{...tarefa.etapa,configuracao:{tipo:"AVALIACAO"}},demandaAcompanhamento:acompanhamento}]).mockResolvedValueOnce([{id,execucao:{propriedadeId:1},vinculos:[]}]);
+ banco.tx.$queryRaw.mockReset().mockResolvedValueOnce([{total:1n}]).mockResolvedValueOnce([{id,situacao:"ATENDIDO",acompanhamentoPendente:false}]).mockResolvedValueOnce([{situacao:"ATENDIDO",total:1n,atrasadas:0n}]).mockResolvedValueOnce([{animaisPendentes:0n,acompanhamentosPendentes:0n}]);
+ const r=await listarTarefasOperacao({programacaoId:id},1,consultaOperacaoSchema.parse({}),{dono:true,areas:[],flags:[]});
+ expect(r.itens[0].acoes.reavaliar).toBe(false);
+ expect(r.itens[0].acompanhamento).toMatchObject({estado:"ENCERRADA",motivoEncerramento:"DISPENSA_ADMINISTRATIVA"});
+ expect(acompanhamento.estado).toBe("PENDENTE");
 });

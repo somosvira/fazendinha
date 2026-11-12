@@ -193,9 +193,9 @@ it.each([true, false])("operações integrais e datas de qualidade preservam o r
   expect(screen.getAllByText(/Resultado laboratorial: 15\/10\/2026/).length).toBe(2);
   expect(screen.getAllByText(/Recebimento do laudo: 16\/10\/2026/).length).toBe(2);
   const ajudaPeriodo = screen.getByRole("button", { name: "Sobre o período comercial integral" });
-  fireEvent.focus(ajudaPeriodo);
+  fireEvent.click(ajudaPeriodo);
   expect(screen.getByText(/sem rateio diário/)).toBeTruthy();
-  fireEvent.blur(ajudaPeriodo);
+  fireEvent.mouseLeave(ajudaPeriodo);
   expect(screen.queryByText(/R\$\s*20,00/)!==null).toBe(autorizado);
   expect(screen.queryByText(/R\$\s*2,0000/)!==null).toBe(autorizado);
   expect(screen.queryByRole("columnheader", { name: "Valor integral da venda (BRL)" })!==null).toBe(autorizado);

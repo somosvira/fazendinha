@@ -37,3 +37,7 @@
 .busca-global-familias button[aria-pressed="true"]{border-color:var(--primary);background:var(--nav-selected,#edf5f3);color:var(--primary);font-weight:650}
 .busca-global-familias button[aria-pressed="true"] span{color:var(--primary)}
 @media(max-width:600px){.busca-global-familias{padding-inline:16px}}
+
+/* O campo de comando usa a linha da entrada como indicador de foco. */
+:root .busca-global[data-slot="dialog-content"] [cmdk-input]:focus-visible{outline:none;box-shadow:none}
+.busca-global-entrada [cmdk-input-wrapper]:has([cmdk-input]:focus-visible){box-shadow:inset 0 -1px 0 var(--primary)}

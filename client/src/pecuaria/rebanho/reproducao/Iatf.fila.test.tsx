@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { Iatf } from "./Iatf";
 import { reqV4 } from "./api";
-import type { CabecalhoProtocolo } from "../protocolos/api";
+import { obterCabecalhoProtocolo, type CabecalhoProtocolo } from "../protocolos/api";
 const cabecalho = vi.hoisted(() => ({
   id: "g", modo: "COLETIVO", nome: "Turma", status: "ABERTA", tipo: "REPRODUTIVO",
   propriedadeId: 1, animal: null, protocolo: { id: "p", nome: "Protocolo", versao: 1 },
@@ -22,7 +22,7 @@ it("conclusão comum atualiza programação uma vez sem abrir a fila legada", as
   render(<Iatf programacaoId="g" propriedadeId={1} animais={[]} painel={{ animais: [], tentativas: [], avaliacoes: [], partos: [], restricoes: [] }} podeLancar onMudou={onMudou} />);
   fireEvent.click(await screen.findByRole("button", { name: "Concluir atendimento conjunto" }));
   await waitFor(() => expect(onMudou).toHaveBeenCalledTimes(1));
-  expect(screen.getByText("Procedimentos atendidos").nextElementSibling?.textContent).toBe("5");
-  expect(screen.getByText("Procedimentos pendentes").nextElementSibling?.textContent).toBe("7");
+  await waitFor(() => expect(obterCabecalhoProtocolo).toHaveBeenCalledTimes(2));
+  expect(screen.getByText(/3 participantes/)).toBeTruthy();
   expect(vi.mocked(reqV4).mock.calls.some(([path]) => path.includes("/tarefas-iatf/"))).toBe(false);
 });

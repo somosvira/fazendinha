@@ -5,9 +5,11 @@ const mocks = vi.hoisted(() => ({
   tx: { tarefaProtocolo: { findFirst: vi.fn(), findUnique: vi.fn() }, finalidadeAnimal: { findFirst: vi.fn() }, tipoAplicacaoSanitaria: { findFirst: vi.fn() }, produto: { findUnique: vi.fn() },
     movimentoEstoque: { findMany: vi.fn(), create: vi.fn() }, aplicacaoProduto: { create: vi.fn() }, $executeRaw: vi.fn() },
   conferir: vi.fn(), travar: vi.fn(), auditar: vi.fn(), periodo: vi.fn(), base: vi.fn(), partida: vi.fn(), saldoPartida: vi.fn(),
+  conferirImpactos: vi.fn(), aplicarImpactos: vi.fn(),
 }));
 vi.mock("../../estoque/valorizacao.js", () => ({ travarValorizacaoTx: vi.fn(), registrarSaidaValorizadaTx: vi.fn(), planejarSaidaTx: async () => ({ metodo: "MEDIA_SALDO_V1", parcelas: [], valorTotal: new Prisma.Decimal("1"), custoUnitario: new Prisma.Decimal("10") }) }));
 vi.mock("../protocolos/vinculos.js", () => ({ vincularFatoTarefaTx: vi.fn() }));
+vi.mock("../reproducao/impactos.js", () => ({ conferirImpactosTx: mocks.conferirImpactos, aplicarImpactosTx: mocks.aplicarImpactos }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../rebanho/regras.js", async (original) => ({ ...await original<typeof import("../rebanho/regras.js")>(), auditar: mocks.auditar, travarAnimais: mocks.travar }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: mocks.conferir }));
@@ -20,6 +22,7 @@ import { prepararAplicacaoTx, criarAplicacaoTx, travarOrigensAplicacoesTx, type 
 const input: AplicacaoInput = { animalId: "animal", propriedadeId: 2, tarefaId: "tarefa", data: "2026-10-05", aplicadaEm: "2026-10-05T12:00:00Z", produtoId: "produto", nomeProdutoAplicado: "Vacina", tipoAplicacaoId: "tipo", dose: "0.1", unidadeDose: "ML", via: "Subcutânea", origemInsumo: "BAIXA_ESTOQUE", partidaId: "partida", estadoCarenciaLeite: "INFORMADO", estadoCarenciaCarne: "INFORMADO", carenciaLeiteHoras: 0, carenciaCarneHoras: 0 };
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.conferirImpactos.mockImplementation(async (_tx, entrada) => ({ versao: 1, entrada, itens: [], dispositivos: [], exigeConfirmacao: false, revisao: "a".repeat(64) }));
   mocks.tx.tarefaProtocolo.findFirst.mockResolvedValue({ id: "tarefa" });
   mocks.tx.tarefaProtocolo.findUnique.mockResolvedValue({ id: "tarefa", etapaId: "etapa", previstaPara: new Date("2026-10-05"),
     parametros: { tipo: "APLICACAO", produtoId: "produto", dose: "0.1", unidade: "ML", via: "Subcutânea", tipoAplicacaoId: "tipo" },
@@ -64,10 +67,13 @@ describe("preparação compartilhada da aplicação", () => {
     const fato = await criarAplicacaoTx(tx(), { ...input, dose: "0.2", desvio: { motivo: "Dose revisada pelo veterinário" } }, 7);
     expect(fato).toMatchObject({ via: "Subcutânea", movimentoEstoqueId: "movimento", desvioProtocoloSnapshot: { diferencas: [{ campo: "dose", planejado: "0.1", realizado: "0.2" }] } });
     expect(mocks.auditar).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ depois: expect.objectContaining({ via: "Subcutânea", desvioProtocoloSnapshot: fato.desvioProtocoloSnapshot }) }));
+    expect(mocks.conferirImpactos).toHaveBeenCalledWith(mocks.tx, { origem: "PROCEDIMENTO", animalId: input.animalId, propriedadeId: input.propriedadeId, data: input.data, tipoAplicacaoId: input.tipoAplicacaoId }, undefined);
+    expect(mocks.aplicarImpactos).toHaveBeenCalledWith(mocks.tx, expect.objectContaining({ entrada: expect.objectContaining({ animalId: input.animalId }) }), { tipo: "AplicacaoProduto", id: fato.id }, undefined, 7);
   });
   it("recusa dose desviada sem motivo antes de consumir estoque", async () => {
     await expect(criarAplicacaoTx(tx(), { ...input, dose: "0.2" }, 7)).rejects.toMatchObject({ campo: "desvio.motivo" });
     expect(mocks.tx.movimentoEstoque.create).not.toHaveBeenCalled();
+    expect(mocks.aplicarImpactos).not.toHaveBeenCalled();
   });
   it("não aceita finalidade legada como forma de ocultar troca do tipo efetivo", async () => {
     const tarefa = await mocks.tx.tarefaProtocolo.findUnique();

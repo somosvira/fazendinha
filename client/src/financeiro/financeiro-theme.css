@@ -61,14 +61,14 @@
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido .tabular-nums { font-variant-numeric: tabular-nums; }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) [data-slot="table-head"] { text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is([data-slot="dialog-title"], [data-slot="sheet-title"]) { font-family: var(--font-display); color: var(--fin-heading); font-size: 22px; font-weight: 750; line-height: 1.3; }
-:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([role="tab"]):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]),
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]) { min-height: 40px; }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([data-slot="toggle-group-item"]):not([role="tab"]):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]),
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([data-slot="toggle-group-item"]):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]) { min-height: 40px; }
 @media (max-width: 900px) { :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .pagina-financeira { padding: 56px 16px 32px; } }
 @media (max-width: 900px) {
   :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .h1 { font-size: var(--fin-titulo-pagina-movel, 22px); }
   :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-cabecalho-pagina { margin-bottom: 16px; }
-  :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]),
-  :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]) { min-height: 44px; }
+  :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([data-slot="toggle-group-item"]):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]),
+  :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(button,input,[data-slot="select-trigger"]):not(.h-auto):not([data-slot="toggle-group-item"]):not([type="checkbox"]):not([type="radio"]):not([role="radio"]):not([role="checkbox"]) { min-height: 44px; }
 }
 :is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) .fin-form-icon,
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido .fin-form-icon { width: 28px; height: 28px; }
@@ -136,9 +136,9 @@
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"][data-fin-scroll="conteudo"] { overflow-y: auto; overflow-x: hidden; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] [data-slot="dialog-title"] { font-family: var(--font-display); color: var(--fin-heading); font-weight: 750; }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-cabecalho, .fin-modal-cabecalho, [data-slot="sheet-header"], [data-slot="dialog-header"].fin-cabecalho) { background: var(--card); border-bottom-color: var(--border); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-rodape, [data-slot="sheet-footer"], [data-slot="dialog-footer"]) { background: var(--fin-surface-subtle); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is(.fin-dialogo-rodape, [data-slot="sheet-footer"]) { background: var(--fin-surface-subtle); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-header"] { background: var(--card); border-bottom-color: var(--border); }
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-footer"] { background: var(--fin-surface-subtle); }
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) [data-slot="dialog-content"] > [data-slot="dialog-footer"] { background: var(--card); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido .fin-dialogo-cabecalho .fin-section-icon,
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido :is([data-slot="sheet-header"], [data-slot="dialog-header"]) .fin-section-icon { background: var(--primary); color: var(--primary-foreground); }
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) .financeiro-colorido [data-slot="dialog-description"] { color: var(--muted-foreground); }

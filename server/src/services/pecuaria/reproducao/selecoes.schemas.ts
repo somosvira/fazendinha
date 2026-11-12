@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const camposNumericosSelecao = ["DEL", "DIAS_POS_PARTO", "DIAS_TENTATIVA", "DIAS_CONFIRMACAO", "IDADE_GESTACIONAL", "DIAS_ATE_RETORNO", "PARTOS", "TENTATIVAS_CICLO", "DIAS_APTIDAO", "IDADE_DIAS", "PESO_KG"] as const;
-export const camposValoresSelecao = ["CATEGORIA", "LOTE", "SITUACAO", "PAPEL_REPRODUTIVO", "SITUACAO_PRODUTIVA", "RP", "DESCARTE", "RETORNO_INFORMADO", "SEXO", "ORIGEM", "BUSCA", "RACA", "PROTOCOLO", "PROTOCOLO_ATIVO", "NASCIMENTO_ESTIMADO", "HISTORICO_PARTO", "APTIDAO"] as const;
+export const camposValoresSelecao = ["PEV", "APTIDAO_REPRODUTIVA", "CATEGORIA", "LOTE", "SITUACAO", "PAPEL_REPRODUTIVO", "SITUACAO_PRODUTIVA", "RP", "DESCARTE", "RETORNO_INFORMADO", "SEXO", "ORIGEM", "BUSCA", "RACA", "PROTOCOLO", "PROTOCOLO_ATIVO", "NASCIMENTO_ESTIMADO", "HISTORICO_PARTO", "APTIDAO"] as const;
 const campo = z.enum([...camposNumericosSelecao, ...camposValoresSelecao]);
 const faixa = z.object({
   tipo: z.literal("FAIXA"), campo: z.enum(camposNumericosSelecao),
@@ -31,7 +31,7 @@ export const criteriosSelecaoSchema = z.object({
     direcao: z.enum(["ASC", "DESC"]) }).strict()).min(1).max(5),
   politicaDesconhecidos: z.enum(["EXCLUIR", "INCLUIR"]),
 }).strict().superRefine((c, ctx) => {
-  const novos = new Set(["DIAS_APTIDAO", "IDADE_DIAS", "PESO_KG", "SEXO", "ORIGEM", "BUSCA", "RACA", "PROTOCOLO", "PROTOCOLO_ATIVO", "NASCIMENTO_ESTIMADO", "HISTORICO_PARTO", "APTIDAO"]);
+  const novos = new Set(["PEV", "APTIDAO_REPRODUTIVA", "DIAS_APTIDAO", "IDADE_DIAS", "PESO_KG", "SEXO", "ORIGEM", "BUSCA", "RACA", "PROTOCOLO", "PROTOCOLO_ATIVO", "NASCIMENTO_ESTIMADO", "HISTORICO_PARTO", "APTIDAO"]);
   if (c.versao === 1 && [...c.todas, ...c.qualquer.flatMap(b => b.todas), ...c.ordenacao].some(v => novos.has(v.campo))) ctx.addIssue({ code: "custom", message: "Novos atributos exigem critérios da versão 2" });
   if (new Set(c.qualquer.map(b => b.id)).size !== c.qualquer.length)
     ctx.addIssue({ code: "custom", path: ["qualquer"], message: "Cada bloco alternativo precisa de identificador único" });
