@@ -10,7 +10,6 @@ import { criteriosVazios } from "./EditorSelecaoVisita";
 import { grupoLivre } from "./SelecaoLivreVisita";
 import { obterVisita, type Visita } from "./visitas-api";
 
-vi.mock("../../../financeiro/PainelCadastro", () => ({ classeInput: "", PainelCadastro: ({ titulo, children }: { titulo: string; children: React.ReactNode }) => <div><h2>{titulo}</h2>{children}</div> }));
 vi.mock("./planner-api", async importar => ({ ...await importar<typeof import("./planner-api")>(), consultarAgenda: vi.fn(), obterOpcoesSelecao: vi.fn(), previaGrupo: vi.fn(), listarSelecoes: vi.fn(), carregarPreviaCompleta: vi.fn(), incluirGrupo: vi.fn() }));
 vi.mock("./visitas-api", async importar => ({ ...await importar<typeof import("./visitas-api")>(), obterVisita: vi.fn() }));
 const grupo = (n: number): GrupoPlanner => ({ grupo: { origem: "PROTOCOLO", identidade: String(n) }, nome: `Protocolo ${n}`, secao: "REPRODUCAO", janela: "DIA", tipo: "TAREFA_IATF", protocolo: { id: String(n), nome: `Protocolo ${n}`, versao: 1 }, turma: { id: String(n), nome: `Turma ${n}` }, etapa: { id: String(n), nome: "Avaliação", ordem: 1 }, previstaPara: "2026-10-14", precisaoTemporal: "DIA", criterios: null, totalAnimais: 1, totalProcedimentos: 1, emVisitaAberta: 0 });
@@ -36,7 +35,7 @@ async function abrirRevisao(n: number) {
 }
 async function salvarRevisao() {
   fireEvent.click(screen.getByRole("button", { name: "Salvar grupo revisado" }));
-  await screen.findByText(/Grupos revisados \(1\)/);
+  await screen.findByRole("heading", {name:"Grupos selecionados"});
 }
 describe("planner da visita", () => {
   it("seleciona um grupo sem abrir revisão e retoma a seleção após recarga", async () => {
@@ -106,14 +105,14 @@ describe("planner da visita", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "Revisar animais" })[1]);
     await screen.findByText("100");
     fireEvent.click(screen.getByRole("button", { name: "Salvar grupo revisado" }));
-    await screen.findByText(/Grupos revisados \(2\)/);
+    await screen.findByRole("heading", {name:"Grupos selecionados"});
     fireEvent.click(screen.getByRole("button", { name: "Revisar seleção" }));
     await screen.findByText("100");
     fireEvent.click(screen.getByRole("button", { name: "Preparar visita e ir ao atendimento" }));
     await screen.findByText(/Rede indisponível/);
     await waitFor(() => expect(incluirGrupo).toHaveBeenCalledTimes(2));
     const chavePendente = vi.mocked(incluirGrupo).mock.calls[1]?.[1].chave;
-    expect(screen.getByText(/Grupos revisados \(1\)/)).toBeTruthy();
+    expect(screen.getByRole("heading", {name:"Grupos selecionados"})).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Revisar seleção" }));
     await screen.findByText("100");
     fireEvent.click(screen.getByRole("button", { name: "Preparar visita e ir ao atendimento" }));
@@ -150,7 +149,7 @@ describe("percurso livre independente",()=>{
   it("usa filtro salvo na data da visita e não importa escolhas da agenda",async()=>{
     configurar();const criterios={versao:1 as const,todas:[],qualquer:[],ordenacao:[{campo:"BRINCO" as const,direcao:"ASC" as const}],politicaDesconhecidos:"EXCLUIR" as const};
     vi.mocked(listarSelecoes).mockResolvedValue({selecoes:[{id:"s",nome:"Rotina da fazenda",ativo:true,versaoAtual:{id:"v",numero:1,criterios}}]});
-    render(<Livre/>);fireEvent.click(screen.getByRole("button",{name:"Usar filtros salvos"}));await screen.findByText("Rotina da fazenda");fireEvent.click(screen.getByRole("button",{name:"Usar filtros"}));
+    render(<Livre/>);fireEvent.click(screen.getByRole("button",{name:"Usar filtros salvos"}));fireEvent.click(await screen.findByRole("button",{name:"Rotina da fazenda"}));fireEvent.click(screen.getByRole("button",{name:"Usar filtros"}));
     await waitFor(()=>expect(previaGrupo).toHaveBeenCalledWith(1,"2026-10-14",expect.objectContaining({origem:"LIVRE",criterios:{...criterios,versao:2}})));
     expect(consultarAgenda).not.toHaveBeenCalled();expect(incluirGrupo).not.toHaveBeenCalled();
   });
@@ -179,7 +178,8 @@ describe("percurso livre independente",()=>{
     render(<Rotas/>);
     await waitFor(()=>expect(concluirAntiga).toBeTypeOf("function"));
     fireEvent.click(screen.getByRole("button",{name:"Usar filtros salvos"}));
-    fireEvent.click(await screen.findByRole("button",{name:"Usar filtros"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Somente machos"}));
+    fireEvent.click(screen.getByRole("button",{name:"Usar filtros"}));
     await act(async()=>{concluirAntiga({...previa(grupo(1)),grupo:{...grupo(1),grupo:grupoLivre(criteriosVazios())}});});
     const revisar=await screen.findByRole("button",{name:"Revisar 4 animais"});
     expect((revisar as HTMLButtonElement).disabled).toBe(false);
@@ -202,7 +202,8 @@ describe("percurso livre independente",()=>{
     fireEvent.click(await screen.findByRole("button",{name:"Revisar 1 animais"}));await screen.findByRole("table");
     fireEvent.click(screen.getByRole("button",{name:"Voltar aos filtros"}));
     fireEvent.click(screen.getByRole("button",{name:"Usar filtros salvos"}));
-    fireEvent.click(await screen.findByRole("button",{name:"Usar filtros"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Machos"}));
+    fireEvent.click(screen.getByRole("button",{name:"Usar filtros"}));
     await screen.findByText("Prévia indisponível");
     expect((screen.getByRole("button",{name:"Revisar 0 animais"}) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button",{name:/AtividadeDefinir o atendimento/}) as HTMLButtonElement).disabled).toBe(true);
@@ -245,18 +246,19 @@ describe("percurso livre independente",()=>{
     await screen.findByRole("heading",{name:"O que será feito neste grupo?"});
     fireEvent.change(screen.getByRole("textbox",{name:"Nome do grupo"}),{target:{value:"Sanidade grupo manhã"}});
     fireEvent.click(screen.getByRole("radio",{name:/Exame sanitário/}));
-    fireEvent.change(screen.getByRole("combobox",{name:"Tipo de exame"}),{target:{value:"exame-1"}});
+    fireEvent.click(await screen.findByRole("combobox",{name:"Tipo de exame"}));
+    fireEvent.click(await screen.findByRole("option",{name:"Exame da manhã"}));
     fireEvent.click(screen.getAllByRole("button",{name:"Rever animais"}).at(-1)!);
     await screen.findByRole("table");
     fireEvent.click(screen.getByRole("button",{name:"Definir atividade e visita"}));
     expect((screen.getByRole("textbox",{name:"Nome do grupo"}) as HTMLInputElement).value).toBe("Sanidade grupo manhã");
-    await waitFor(()=>expect((screen.getByRole("combobox",{name:"Tipo de exame"}) as HTMLSelectElement).value).toBe("exame-1"));
+    await waitFor(()=>expect(screen.getByRole("combobox",{name:"Tipo de exame"}).textContent).toContain("Exame da manhã"));
     await waitFor(()=>expect(sessionStorage.getItem("fazendinha:visitas:livre:sessao:1:visita")).toContain("Sanidade grupo manhã"));
     unmount();render(<Livre/>);
     fireEvent.click(await screen.findByRole("button",{name:"Revisar 1 animais"}));await screen.findByRole("table");
     fireEvent.click(screen.getByRole("button",{name:"Definir atividade e visita"}));
     expect((screen.getByRole("textbox",{name:"Nome do grupo"}) as HTMLInputElement).value).toBe("Sanidade grupo manhã");
-    await waitFor(()=>expect((screen.getByRole("combobox",{name:"Tipo de exame"}) as HTMLSelectElement).value).toBe("exame-1"));
+    await waitFor(()=>expect(screen.getByRole("combobox",{name:"Tipo de exame"}).textContent).toContain("Exame da manhã"));
     fireEvent.click(screen.getAllByRole("button",{name:"Rever animais"}).at(-1)!);
     fireEvent.click(screen.getByRole("button",{name:"Voltar aos filtros"}));
     fireEvent.click(await screen.findByRole("button",{name:"Novo grupo"}));
@@ -292,22 +294,23 @@ describe("percurso livre independente",()=>{
     fireEvent.click(await screen.findByRole("button",{name:"Revisar 1 animais"}));await screen.findByRole("table");
     fireEvent.click(screen.getByRole("button",{name:"Definir atividade e visita"}));
     fireEvent.click(screen.getByRole("radio",{name:/Iniciar protocolo reprodutivo/}));
-    await waitFor(()=>expect(screen.getByRole("option",{name:"IATF manhã"})).toBeTruthy());
-    fireEvent.change(screen.getByRole("combobox",{name:"Protocolo"}),{target:{value:"protocolo-1"}});
+    fireEvent.click(await screen.findByRole("combobox",{name:"Protocolo"}));
+    fireEvent.click(await screen.findByRole("option",{name:"IATF manhã"}));
     fireEvent.click(screen.getAllByRole("button",{name:"Rever animais"}).at(-1)!);
     fireEvent.click(screen.getByRole("button",{name:"Definir atividade e visita"}));
-    await waitFor(()=>expect((screen.getByRole("combobox",{name:"Protocolo"}) as HTMLSelectElement).value).toBe("protocolo-1"));
+    await waitFor(()=>expect(screen.getByRole("combobox",{name:"Protocolo"}).textContent).toContain("IATF manhã"));
     unmount();
     vi.mocked(obterOpcoesSelecao).mockResolvedValue({lotes:[],categorias:[],racas:[],protocolos:[],tiposExame:[]});
     render(<Livre/>);
     fireEvent.click(await screen.findByRole("button",{name:"Revisar 1 animais"}));await screen.findByRole("table");
     fireEvent.click(screen.getByRole("button",{name:"Definir atividade e visita"}));
     await screen.findByText(/A referência anterior não está disponível/);
-    expect((screen.getByRole("combobox",{name:"Protocolo"}) as HTMLSelectElement).value).toBe("protocolo-1");
+    expect(screen.getByRole("button",{name:"Limpar Protocolo"})).toBeTruthy();
     expect((screen.getByRole("button",{name:"Incluir grupo na visita"}) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("radio",{name:/Aplicação sanitária/}));
     fireEvent.click(screen.getByRole("radio",{name:/Iniciar protocolo reprodutivo/}));
-    expect((screen.getByRole("combobox",{name:"Protocolo"}) as HTMLSelectElement).value).toBe("");
+    await screen.findByRole("combobox",{name:"Protocolo"});
+    expect(screen.queryByRole("button",{name:"Limpar Protocolo"})).toBeNull();
   });
 
   it("leva a ordem alterada na revisão e as exclusões para a preparação",async()=>{
@@ -343,7 +346,8 @@ describe("percurso livre independente",()=>{
     await waitFor(()=>expect(concluir).toBeTypeOf("function"));
     fireEvent.click(screen.getByRole("button",{name:"Ajustar filtros"}));
     fireEvent.click(screen.getByRole("button",{name:"Usar filtros salvos"}));
-    fireEvent.click(await screen.findByRole("button",{name:"Usar filtros"}));
+    fireEvent.click(await screen.findByRole("button",{name:"Machos"}));
+    fireEvent.click(screen.getByRole("button",{name:"Usar filtros"}));
     await act(async()=>{concluir({...await original(1,"2026-10-14",{...grupoLivre(criteriosVazios()),criterios:{...criteriosVazios(),ordenacao:[{campo:"BRINCO",direcao:"DESC"}]}})});});
     expect(screen.getByRole("heading",{name:"Selecionar animais por filtros"})).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();

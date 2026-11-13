@@ -57,9 +57,12 @@ describe("intenções concorrentes de navegação da visita", () => {
     render(<Visitas podeLancar/>);
     await screen.findByText("Atendimento ativo a1");
     fireEvent.click(screen.getByRole("button", { name: "Encerrar visita" }));
+    expect(reqV4).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar encerramento" }));
     await waitFor(() => expect(mocks.guarda).toHaveBeenCalledOnce());
     expect(reqV4).not.toHaveBeenCalled();
     concluir(false);
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Encerrar visita" })).toBeTruthy());
     expect(reqV4).not.toHaveBeenCalled();
     expect(screen.getByText("Atendimento ativo a1")).toBeTruthy();
