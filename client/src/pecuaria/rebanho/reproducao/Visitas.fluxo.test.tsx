@@ -71,7 +71,8 @@ describe("páginas de visita e guarda de rascunho", () => {
     vi.mocked(obterVisita).mockResolvedValue({...visita,atividades:[{...atividades[0],contexto:{grupoPlanner:grupo,percursoVisita:{versao:1,origem:"LIVRE"}}}]});
     render(<Visitas podeLancar/>);
     await screen.findByText("Atendimento ativo a1");
-    fireEvent.click(screen.getByRole("button",{name:"Rever grupo"}));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mais ações da visita" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Rever grupo" }));
     await screen.findByText("Planner ativo");
     expect(new URLSearchParams(location.search).get("etapa")).toBe("revisao");
     expect(new URLSearchParams(location.search).get("grupo")).toBe(chaveGrupo(grupo));
