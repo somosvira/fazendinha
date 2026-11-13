@@ -16,9 +16,10 @@ import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 
-export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
+export function SeletorAnimais({ excluirLoteId, animaisIniciais = [], onConfirmar, onCancelar }: {
   /** oculta este lote do filtro de origem e exclui da lista os animais que estão nele hoje */
   excluirLoteId?: string;
+  animaisIniciais?: AnimalResumo[];
   onConfirmar: (animais: AnimalResumo[]) => void;
   onCancelar: () => void;
 }) {
@@ -34,7 +35,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
   const [loteId, setLoteId] = useState("");
   const [pagina, setPagina] = useState(1);
 
-  const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
+  const [selecionados, setSelecionados] = useState(() => new Map(animaisIniciais.map(animal => [animal.id, animal])));
 
   useEffect(() => { obterCatalogos().then(setCatalogos).catch((e) => setErro(e instanceof Error ? e.message : String(e))); }, []);
 
