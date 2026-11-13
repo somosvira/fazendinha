@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SelectBuscavel } from '@/components/SelectBuscavel';
 import { SelectCampo } from '@/financeiro/SelectCampo';
 import { Button } from '@/components/ui/button';
 import { consultaBezerreiro, consultarBezerreiro } from './api';
@@ -29,6 +30,29 @@ export function SelecaoColostro({consulta,valor,alvo,aoSelecionar}:{consulta:Ret
     {valor&&consulta.dados&&!consulta.valido&&<p role="alert" className="bez-aviso">A seleção não está disponível neste sítio e data. Escolha outro registro; os demais campos foram preservados.</p>}
     {consulta.dados&&<PaginacaoBezerreiro pagina={consulta.pagina} total={consulta.dados.total} tamanho={consulta.dados.porPagina} mudar={consulta.setPagina}/>}
   </div>;
+}
+export function SeletorCriaColostro({ sitio, data, valor, aoSelecionar, erro }: {
+  sitio: number;
+  data: string;
+  valor: string;
+  aoSelecionar: (valor: string) => void;
+  erro?: string;
+}) {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  return <div ref={setContainer} className="min-w-0"><SelectBuscavel containerPopover={container} key={`${sitio}:${data}`} rotulo="Cria destinatária" valor={valor} onChange={aoSelecionar}
+    placeholder="Selecionar cria" erroCampo={erro} contentClassName="rounded-lg"
+    buscar={async ({ busca, selecionadoId }) => {
+      const query = consultaBezerreiro({ data, alvo: 'CRIA', busca, pagina: 1, porPagina: 20, criaId: selecionadoId });
+      const { itens, selecionado, total } = await consultarBezerreiro<PartosColostro>(`/colostro/partos${query}`, sitio);
+      const partos = selecionadoId ? (selecionado ? [selecionado] : []) : itens;
+      return {
+        total,
+        itens: partos.flatMap(p => p.crias.map(c => ({
+          id: c.id,
+          nome: [c.animal?.brinco ?? 'Cria cadastrada', c.animal?.nome, formatarDataBR(p.data)].filter(Boolean).join(' · '),
+        }))),
+      };
+    }} /></div>;
 }
 export function useOrigemConferida(sitio:number,origem:OrigemColostro,contexto:ContextoBezerreiro,data:string,alvo:string) {
  const identidade=JSON.stringify([sitio,origem.id,data,alvo]);

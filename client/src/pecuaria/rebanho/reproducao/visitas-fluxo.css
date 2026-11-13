@@ -343,3 +343,8 @@
 @media (max-width: 639px) {
   .visita-avaliacao-individual .visita-contexto-inline {grid-template-columns:repeat(2,minmax(0,1fr));}
 }
+
+.visita-revisao-retomada { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+@media (max-width: 650px) {
+  .visita-revisao-painel > .visita-painel-cabecalho { flex-direction: column; gap: 10px; }
+}

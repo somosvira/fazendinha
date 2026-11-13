@@ -22,7 +22,7 @@ import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
 import { Button as BotaoInterface } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -170,7 +170,19 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
         <dl><div><dt>Nome da visita</dt><dd>{visita.nome}</dd></div><div><dt>Data da visita</dt><dd>{dataBR(visita.data)}</dd></div><div><dt>Sítio</dt><dd>{rotuloSitio}</dd></div><div><dt>Responsável</dt><dd>{visita.responsavel??"Não informado"}</dd></div></dl>
       </>}/>}
-      {mostraPlanner && visita && rota.tipo === "visita" && <PlannerVisita key={`${getUsuario()?.id ?? "sessao"}:${visita.propriedadeId}:${visita.id}:${modo}:${revisaoPreparada ? `preparado:${rota.grupo}` : "rascunho"}`} visita={visita} podeLancar={podeLancar} propriedadeNome={propriedades.find(p=>p.id===visita.propriedadeId)?.nome} modo={modo} etapa={rota.etapa??"planejamento"} grupo={rota.grupo} onEtapa={irEtapa} onMudou={carregar}/>}
+      {mostraPlanner && visita && rota.tipo === "visita" && <PlannerVisita key={`${getUsuario()?.id ?? "sessao"}:${visita.propriedadeId}:${visita.id}:${modo}:${revisaoPreparada ? `preparado:${rota.grupo}` : "rascunho"}`} visita={visita} podeLancar={podeLancar} propriedadeNome={propriedades.find(p=>p.id===visita.propriedadeId)?.nome} modo={modo} etapa={rota.etapa??"planejamento"} grupo={rota.grupo} onEtapa={irEtapa} onMudou={carregar}
+        acoesRevisao={rota.etapa === "revisao" && (podeLancar || visita.impressoes.length > 0) ? (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <BotaoInterface variant="outline" size="icon" className="size-11" aria-label="Mais ações da visita" title="Mais ações da visita"><Ellipsis aria-hidden /></BotaoInterface>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {podeLancar && <DropdownMenuItem disabled={ocupado} onSelect={() => void imprimir()}><Printer aria-hidden />Imprimir ficha de campo</DropdownMenuItem>}
+              {visita.impressoes.map(i => <DropdownMenuItem key={i.id} disabled={ocupado} onSelect={() => void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0, 10) ?? i.id.slice(0, 8)}</DropdownMenuItem>)}
+              {podeLancar && <><DropdownMenuSeparator /><DropdownMenuItem disabled={ocupado} onSelect={() => setConfirmarEncerramento(true)}>Encerrar visita</DropdownMenuItem></>}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : undefined}/>}
       {visita && rota.etapa === "atendimento" && <>
         <div className="visita-breadcrumb"><a href="/pecuaria/visitas" onClick={e=>{e.preventDefault();voltarLista();}}>Visitas veterinárias</a><span>/</span><span>Visita de {visita.data.slice(0,10).split("-").reverse().join("/")}</span></div>
         <header className="visita-cabecalho items-center">
@@ -204,7 +216,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         <div className="visita-atividades" aria-label="Atividades da visita">{visita.atividades.map(a=><button key={a.id} type="button" aria-pressed={a.id===atividadeAtiva?.id} onClick={()=>irEtapa("atendimento",{atividade:a.id})}><span>{nomeAtividadeVisita(a)}</span><small>{lotesAtividadeVisita(a)} · {a.totais?.totalParticipantes ?? a.participantes.length} animais · {a.totais?.confirmados ?? a.participantes.filter(p=>p.status === "CONFIRMADO").length} confirmados</small></button>)}{!visita.atividades.length && <Empty>Nenhuma atividade preparada.</Empty>}</div>
         {atividadeAtiva && <Transcricao key={atividadeAtiva.id} visita={visita} atividade={atividadeAtiva} podeLancar={podeLancar && visita.status !== "ENCERRADA"} podeRegularizar={podeLancar} onMudou={carregar} registrarGuardaSaida={registrarGuardaSaida}/>}
       </>}
-      {visita && (mostraPlanner || mostraAtendimento) && ((mostraPlanner && podeLancar) || visita.impressoes.length > 0) && <Panel className="mt-6">
+      {visita && (mostraAtendimento || (mostraPlanner && rota.etapa !== "revisao")) && ((mostraPlanner && podeLancar) || visita.impressoes.length > 0) && <Panel className="mt-6">
         <CabecalhoTabela titulo="Opções da visita" />
         <div className="flex flex-wrap gap-3 p-4">
           {podeLancar && <>
