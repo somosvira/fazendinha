@@ -1,5 +1,5 @@
 import { DatePicker } from "../../../components/DatePicker";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, Ellipsis, Plus, Printer } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button, CabecalhoTabela, dataBR, ErrorBox, PageHeader, PaginaFinanceira, Panel } from "../../../financeiro/financeiro-ui";
 import { getHojeISO as hoje } from "../../../lib/hoje";
@@ -21,6 +21,8 @@ import { ConsultaVisitas } from "./ConsultaVisitas";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
 import { PainelCadastro } from "@/financeiro/PainelCadastro";
+import { Button as BotaoInterface } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -162,7 +164,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         <label>Responsável (opcional)<input maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
       </>}/>}
     </> : <>
-      {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}</div>}/>}
+      {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary={rota.etapa !== "atendimento"} disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}</div>}/>}
       <ErrorBox erro={erro}/>{carregando && <EsqueletoFicha label="Carregando visita" />}
 
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
@@ -171,17 +173,43 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       {mostraPlanner && visita && rota.tipo === "visita" && <PlannerVisita key={`${getUsuario()?.id ?? "sessao"}:${visita.propriedadeId}:${visita.id}:${modo}:${revisaoPreparada ? `preparado:${rota.grupo}` : "rascunho"}`} visita={visita} podeLancar={podeLancar} propriedadeNome={propriedades.find(p=>p.id===visita.propriedadeId)?.nome} modo={modo} etapa={rota.etapa??"planejamento"} grupo={rota.grupo} onEtapa={irEtapa} onMudou={carregar}/>}
       {visita && rota.etapa === "atendimento" && <>
         <div className="visita-breadcrumb"><a href="/pecuaria/visitas" onClick={e=>{e.preventDefault();voltarLista();}}>Visitas veterinárias</a><span>/</span><span>Visita de {visita.data.slice(0,10).split("-").reverse().join("/")}</span></div>
-        <header className="visita-cabecalho"><div><div className="visita-eyebrow">Visita veterinária · {rotuloSitio}{visita.status === "ENCERRADA" ? " · Encerrada" : ""}</div><h1>Atendimento da visita</h1><p>Registre o resultado de cada animal. As referências da lista continuam visíveis durante o atendimento.</p></div><div className="visita-acoes">{visita.status !== "ENCERRADA" && <><button className="visita-botao" onClick={voltarOrigem}>Rever grupo</button><button className="visita-botao" onClick={()=>irEtapa("entrada")}>Adicionar grupo</button></>}{podeLancar && <button className="visita-botao" disabled={ocupado} onClick={()=>void imprimir()}>Imprimir ficha de campo</button>}</div></header>
+        <header className="visita-cabecalho items-center">
+          <div>
+            <div className="visita-eyebrow">Visita veterinária · {rotuloSitio}{visita.status === "ENCERRADA" ? " · Encerrada" : ""}</div>
+            <h1>Atendimento da visita</h1>
+          </div>
+          <div className="visita-acoes">
+            {mostraAtendimento && podeLancar && visita.status !== "ENCERRADA" && <BotaoInterface type="button" className="h-11"
+              disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>
+              Encerrar visita
+            </BotaoInterface>}
+            {podeLancar && <BotaoInterface type="button" variant="outline" size="icon" className="size-11"
+              aria-label="Imprimir ficha de campo" title="Imprimir ficha de campo" disabled={ocupado} onClick={() => void imprimir()}>
+              <Printer aria-hidden />
+            </BotaoInterface>}
+            {visita.status !== "ENCERRADA" && <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <BotaoInterface type="button" variant="outline" size="icon" className="size-11" aria-label="Mais ações da visita" title="Mais ações da visita">
+                  <Ellipsis aria-hidden />
+                </BotaoInterface>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={voltarOrigem}>Rever grupo</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => irEtapa("entrada")}>Adicionar grupo</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>}
+          </div>
+        </header>
         <EtapasVisita modo={atividadeAtiva ? origemAtividadeVisita(atividadeAtiva)??undefined : undefined} etapa="atendimento" podeRevisar={false} podeAtender onNavegar={e=>e === "atendimento" ? irEtapa(e,{atividade:atividadeAtiva?.id}) : voltarOrigem()} bloqueado={visita.status === "ENCERRADA"}/>
         <div className="visita-atividades" aria-label="Atividades da visita">{visita.atividades.map(a=><button key={a.id} type="button" aria-pressed={a.id===atividadeAtiva?.id} onClick={()=>irEtapa("atendimento",{atividade:a.id})}><span>{nomeAtividadeVisita(a)}</span><small>{lotesAtividadeVisita(a)} · {a.totais?.totalParticipantes ?? a.participantes.length} animais · {a.totais?.confirmados ?? a.participantes.filter(p=>p.status === "CONFIRMADO").length} confirmados</small></button>)}{!visita.atividades.length && <Empty>Nenhuma atividade preparada.</Empty>}</div>
         {atividadeAtiva && <Transcricao key={atividadeAtiva.id} visita={visita} atividade={atividadeAtiva} podeLancar={podeLancar && visita.status !== "ENCERRADA"} podeRegularizar={podeLancar} onMudou={carregar} registrarGuardaSaida={registrarGuardaSaida}/>}
       </>}
-      {visita && (mostraPlanner || mostraAtendimento) && ((podeLancar && (!mostraAtendimento || visita.status !== "ENCERRADA")) || visita.impressoes.length > 0) && <Panel className="mt-6">
+      {visita && (mostraPlanner || mostraAtendimento) && ((mostraPlanner && podeLancar) || visita.impressoes.length > 0) && <Panel className="mt-6">
         <CabecalhoTabela titulo="Opções da visita" />
         <div className="flex flex-wrap gap-3 p-4">
           {podeLancar && <>
             {!mostraAtendimento && <Button secondary disabled={ocupado} onClick={() => void imprimir()}>Gerar lista para impressão</Button>}
-            {visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}
+            {mostraPlanner && <Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}
           </>}
           {visita.impressoes.map(i => <Button secondary key={i.id} onClick={() => void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0, 10) ?? i.id.slice(0, 8)}</Button>)}
         </div>

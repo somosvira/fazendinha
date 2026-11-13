@@ -40,7 +40,8 @@ describe("intenções concorrentes de navegação da visita", () => {
 
   it("retorna à escolha do percurso com guarda quando a origem antiga é desconhecida", async () => {
     render(<Visitas podeLancar/>); await screen.findByText("Atendimento ativo a1");
-    fireEvent.click(screen.getByRole("button", {name:"Rever grupo"}));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mais ações da visita" }), { key: "Enter" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Rever grupo" }));
     await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});
     expect(mocks.guarda).toHaveBeenCalledOnce();
     expect(screen.queryByText("Formulário inline de atividade extra")).toBeNull();
@@ -56,14 +57,18 @@ describe("intenções concorrentes de navegação da visita", () => {
     mocks.guarda.mockReturnValue(new Promise<boolean>(resolve => { concluir = resolve; }));
     render(<Visitas podeLancar/>);
     await screen.findByText("Atendimento ativo a1");
-    fireEvent.click(screen.getByRole("button", { name: "Encerrar visita" }));
+    const encerrar = screen.getByRole("button", { name: "Encerrar visita" });
+    expect(encerrar.closest("header")).toBeTruthy();
+    expect(encerrar.getAttribute("data-variant")).toBe("default");
+    fireEvent.click(encerrar);
     expect(reqV4).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar encerramento" }));
     await waitFor(() => expect(mocks.guarda).toHaveBeenCalledOnce());
     expect(reqV4).not.toHaveBeenCalled();
     concluir(false);
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Encerrar visita" })).toBeTruthy());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Encerrar visita?" })).toBeNull());
+    expect(screen.getByRole("button", { name: "Mais ações da visita" })).toBeTruthy();
     expect(reqV4).not.toHaveBeenCalled();
     expect(screen.getByText("Atendimento ativo a1")).toBeTruthy();
   });
