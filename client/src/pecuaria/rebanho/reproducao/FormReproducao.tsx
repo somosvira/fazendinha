@@ -608,7 +608,7 @@ export function FormReproducao({
       >
         <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="A avaliação preenchida não será salva." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" processando={ocupado} onConfirm={() => responderSaida(true)} onCancel={() => responderSaida(false)}/>
         <ErrorBox erro={erro} />
-        <>{previaContextual ? <PreviaAvaliacaoContextual dados={previaContextual.dados} /> : previaConvencional && <ConferenciaAvaliacao input={previaConvencional} animal={animal?.brinco ?? animalId} tipoExame={tipoExame} />}</>
+        <>{previaContextual ? <PreviaAvaliacaoContextual dados={previaContextual.dados} /> : previaConvencional && <ConferenciaAvaliacao input={previaConvencional} animal={animal?.brinco ?? animalId} tipoExame={tipoExame} expandirVinculos={!!onRegistrar} />}</>
       </FormShellReproducao>
     );
   if (registroSalvo) return <FormShellReproducao inline={inline} pagina={pagina} titulo="Avaliação registrada" onFechar={onSalvo} bloqueado={false} rodape={<><Button variant="outline" onClick={onSalvo}>Concluir</Button><Button onClick={() => { try { onPrepararIatf?.([registroSalvo]); } catch { setErro("Diagnóstico já salvo. Não foi possível abrir a preparação; tente novamente sem registrar o diagnóstico outra vez."); } }}>Preparar próxima IATF</Button></>}><ErrorBox erro={erro} /><p role="status">Gestação não confirmada. Indicação para nova IATF registrada. A preparação exige revisão e confirmação próprias.</p></FormShellReproducao>;
@@ -945,7 +945,7 @@ function FormShellReproducao({ inline, pagina, titulo, onFechar, bloqueado, roda
   return inline ? <section className="grid gap-4 rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{titulo}</h3><div className="flex flex-wrap gap-2">{rodape}</div></div>{children}</section> : <PainelCadastro aberto titulo={titulo} onFechar={onFechar} bloqueado={bloqueado} rodape={rodape}>{children}</PainelCadastro>;
 }
 
-function ConferenciaAvaliacao({ input, animal, tipoExame }: { input: AvaliacaoInput; animal: string; tipoExame?: TipoExame }) {
+function ConferenciaAvaliacao({ input, animal, tipoExame, expandirVinculos }: { input: AvaliacaoInput; animal: string; tipoExame?: TipoExame; expandirVinculos: boolean }) {
   const aptidao: Record<string, string> = { APTO: "Apta", NAO_APTO: "Não apta", INCONCLUSIVO: "Inconclusiva" };
   const finalidade: Record<string, string> = { DIAGNOSTICO: "Diagnóstico de gestação", RECONFIRMACAO: "Reconfirmação", SEXAGEM: "Sexagem" };
   const itens: Array<[string, ReactNode]> = [
@@ -959,12 +959,14 @@ function ConferenciaAvaliacao({ input, animal, tipoExame }: { input: AvaliacaoIn
     ["Encaminhamento", input.conduta ? rotulosCondutaAvaliacao[input.conduta] ?? input.conduta : "Não informado"],
     ["Retorno previsto", input.retornoEm ? formatBRDateISO(input.retornoEm) : "Não informado"],
   ];
-  return <section className="grid gap-4" aria-label="Conferência da avaliação">
-    <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{itens.map(([rotulo, valor]) => <div key={rotulo}><dt className="text-sm text-ink-3">{rotulo}</dt><dd className="font-medium">{valor}</dd></div>)}</dl>
-    <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes e vínculos do exame</summary><dl className="grid gap-3 pt-4">
+  const vinculos = <dl className="grid gap-3 pt-4">
       {input.resultados?.map(r => <div key={r.campo}><dt className="text-sm text-ink-3">{nomeCampoExame(tipoExame?.campos?.find(c => c.codigo === r.campo) ?? {codigo:r.campo})}</dt><dd>{typeof r.valor === "boolean" ? r.valor ? "Sim" : "Não" : String(r.valor)}</dd></div>)}
       {([ ["Tentativa relacionada", input.tentativaId], ["Gestação relacionada", input.gestacaoId], ["Motivo do vínculo desconhecido", input.motivoVinculoDesconhecido], ["Anotação original", input.anotacaoOriginal], ["Motivo / observação", input.motivo], ["Previsão de parto informada", input.previsaoParto], ["Retorno de aptidão", input.retornoAptidaoEm] ] as const).map(([rotulo, valor]) => valor ? <div key={rotulo}><dt className="text-sm text-ink-3">{rotulo}</dt><dd>{valor}</dd></div> : null)}
-    </dl></details>
+    </dl>;
+  return <section className="grid gap-4" aria-label="Conferência da avaliação">
+    <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{itens.map(([rotulo, valor]) => <div key={rotulo}><dt className="text-sm text-ink-3">{rotulo}</dt><dd className="font-medium">{valor}</dd></div>)}</dl>
+    {expandirVinculos ? <section className="border-t border-border pt-4"><h3 className="font-semibold">Detalhes e vínculos do exame</h3>{vinculos}</section>
+      : <details className="border-t border-border pt-4"><summary className="cursor-pointer font-semibold">Detalhes e vínculos do exame</summary>{vinculos}</details>}
     <p className="text-sm text-ink-3">Confirme apenas o que foi observado. Um encaminhamento para protocolo exige programação e confirmação próprias.</p>
   </section>;
 }

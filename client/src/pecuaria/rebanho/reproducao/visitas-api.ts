@@ -10,6 +10,7 @@ export type TipoAtividade =
   | "INICIAR_SANITARIO";
 export type RascunhoVisita = CamposAvaliacaoContextual & {
   resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: string | null;
+  responsavel?: string;
   tipoExameId?: string;
   formatoExameHash?: string;
   resultados?: import("../sanidade/CamposExame").ObservacaoExame[];

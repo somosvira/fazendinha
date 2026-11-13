@@ -6,9 +6,10 @@ import { classeInput } from "../../../financeiro/PainelCadastro";
 type Dados = DadosAptidaoExame & { resultado?: unknown; finalidade?: unknown; sexoFetal?: unknown; conduta?: unknown };
 export type AlteracaoAvaliacao = { resultadoAptidao?: ConclusaoAptidao | null; retornoAptidaoEm?: string | null; resultado?: string; finalidade?: string; sexoFetal?: string | null; conduta?: string | null };
 /** Finalidade, observações e conduta são independentes; as siglas da fazenda não são resultados obrigatórios. */
-export function CamposAvaliacao({ dados, onChange, secao, identificacao, administrativo, indicacaoExplicita = false }: {
+export function CamposAvaliacao({ dados, onChange, secao, identificacao, administrativo, indicacaoExplicita = false, incluirAptidao = true }: {
   dados: Dados;
   indicacaoExplicita?: boolean;
+  incluirAptidao?: boolean;
   onChange: (dados: AlteracaoAvaliacao) => void;
   secao?: "resultado" | "conduta" | "detalhes";
   identificacao?: string;
@@ -52,7 +53,7 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao, adminis
     </SelectCampo>
   );
   if (secao === "detalhes") return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="col-span-full grid min-w-0 gap-3 sm:grid-cols-2">
       {resultado && resultado !== "NAO_AVALIADO" && <>
         <label>Finalidade do exame
           <SelectCampo aria-label={rotulo("Finalidade do exame")} className={classeInput} value={finalidade}
@@ -77,7 +78,7 @@ export function CamposAvaliacao({ dados, onChange, secao, identificacao, adminis
           </SelectCampo>
         </label>}
       </>}
-      {resultado && resultado !== "NAO_AVALIADO" && <CamposAptidao dados={dados} onChange={onChange}/>}
+      {incluirAptidao && resultado && resultado !== "NAO_AVALIADO" && <CamposAptidao dados={dados} onChange={onChange}/>}
     </div>
   );
   return <div className="grid gap-3">

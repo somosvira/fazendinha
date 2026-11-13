@@ -77,6 +77,7 @@ export function AvaliacaoContextualCampos({
   onTipoExame,
   disabled = false,
   identificacao,
+  ocultarSemCatalogo = false,
 }: {
   propriedadeId: number;
   contexto: ContextoAvaliacao;
@@ -87,6 +88,7 @@ export function AvaliacaoContextualCampos({
   onTipoExame: (tipoExameId: string) => void | Promise<void>;
   disabled?: boolean;
   identificacao?: string;
+  ocultarSemCatalogo?: boolean;
 }) {
   const [contexto, setContexto] = useState(contextoInicial);
   const [catalogo, setCatalogo] = useState<CatalogoAvaliacao | null>(null);
@@ -182,6 +184,7 @@ export function AvaliacaoContextualCampos({
         ? "APTIDAO_REPRODUTIVA"
         : "CONCLUSAO_GESTACIONAL";
   }
+  if (ocultarSemCatalogo && !carregando && !erro && !catalogo && !dados.avaliacaoContextual) return null;
   return (
     <fieldset
       disabled={disabled || adotando}

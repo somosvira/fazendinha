@@ -20,7 +20,7 @@ import { EntradaVisita } from "./EntradaVisita";
 import { ConsultaVisitas } from "./ConsultaVisitas";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFicha, EsqueletoTabela } from "../../../components/Esqueleto";
-import { SelectCampo } from "@/financeiro/SelectCampo";
+import { PainelCadastro } from "@/financeiro/PainelCadastro";
 
 const caminhoLista = "/pecuaria/visitas";
 export function Visitas({ podeLancar }: { podeLancar: boolean }) {
@@ -28,10 +28,13 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   const [lista, setLista] = useState<VisitaResumo[]>([]), [visita, setVisita] = useState<Visita | null>(null);
   const [erro, setErro] = useState<string | null>(null), [carregando, setCarregando] = useState(false), [ocupado, setOcupado] = useState(false);
   const ocupadoRef = useRef(false);
-  const [data, setData] = useState(hoje()), [nome, setNome] = useState(""), [responsavel, setResponsavel] = useState(""), [propriedadeId, setPropriedadeId] = useState<number | "">(getPropriedadeAtiva() ?? "");
+  const [data, setData] = useState(hoje()), [nome, setNome] = useState(""), [responsavel, setResponsavel] = useState("");
+  const [confirmarEncerramento, setConfirmarEncerramento] = useState(false);
   const [impressao, setImpressao] = useState<{ atividades: AtividadeVisita[]; nome?: string; data?: string } | null>(null);
   const criacaoRef = useRef<{ conteudo: string; chave: string } | null>(null);
   const { data: propriedades = [] } = usePropriedades({ incluirInativos: true });
+  const sitiosAtivos = propriedades.filter(p => p.ativo);
+  const sitioCadastro = getPropriedadeAtiva() ?? (sitiosAtivos.length === 1 ? sitiosAtivos[0].id : null);
   const guardarSaida = useRef<null | (() => Promise<boolean>)>(null);
   const cancelarGuardaGlobal = useRef<null | (() => void)>(null);
   const ignorarProximoPop = useRef(false);
@@ -42,6 +45,8 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
     if (!visita?.atividades.length) return null;
     return visita.atividades.find(a => a.id === (rota.tipo === "visita" ? rota.atividade : null)) ?? visita.atividades[0];
   }, [visita, rota]);
+  const pendentes = visita?.atividades.reduce((total, atividade) =>
+    total + (atividade.totais?.pendentes ?? atividade.participantes.filter(p => p.status === "PENDENTE").length), 0) ?? 0;
   const irEtapa = useCallback((etapa: EtapaVisita, opcoes: { grupo?: string; atividade?: string; modo?: ModoVisita } = {}) => {
     void executarComGuardaNavegacao(() => {
       if (rota.tipo !== "visita") return;
@@ -87,7 +92,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
   const sitioVisita = propriedades.find(p=>p.id===visita?.propriedadeId)?.nome;
   const rotuloSitio = sitioVisita ? (/^sítio\b/i.test(sitioVisita) ? sitioVisita : `Sítio ${sitioVisita}`) : "Sítio da visita";
   const propDaVisita = () => {
-    const p = visita?.propriedadeId ?? (typeof propriedadeId === "number" ? propriedadeId : getPropriedadeAtiva());
+    const p = rota.tipo === "nova" ? sitioCadastro : visita?.propriedadeId ?? getPropriedadeAtiva();
     if (!p) throw new Error("Selecione o sítio da visita.");
     return p;
   };
@@ -141,11 +146,11 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
 
   return <PaginaFinanceira><div className={`print:hidden${mostraAtendimento ? " visita-fluxo visita-atendimento" : ""}`}>
     {rota.tipo === "lista" ? <>
-      <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><CalendarDays aria-hidden/></span>Visitas veterinárias</span>} acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); setPropriedadeId(getPropriedadeAtiva() ?? ""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}><Plus size={18} aria-hidden/>Nova visita</Button>}/>
+      <PageHeader eyebrow="" titulo={<span className="rotina-titulo"><span><CalendarDays aria-hidden/></span>Visitas veterinárias</span>} acao={podeLancar && <Button onClick={() => { criacaoRef.current=null; setData(hoje()); setNome(""); setResponsavel(""); navegarPara(`${caminhoLista}/nova`); setRota({ tipo: "nova" }); }}><Plus size={18} aria-hidden/>Nova visita</Button>}/>
       <ErrorBox erro={erro}/>{carregando && <EsqueletoTabela label="Carregando visitas" />}
       {!carregando && !erro && <ConsultaVisitas visitas={lista} propriedades={propriedades} podeLancar={podeLancar} sitioSelecionado={!!getPropriedadeAtiva()} onAbrir={id => { navegarPara(`/pecuaria/visitas/${encodeURIComponent(id)}`); setRota(parseRotaVisita(window.location.pathname, window.location.search)!); }}/>}
     </> : rota.tipo === "nova" ? <>
-      <ErrorBox erro={erro}/><EntradaVisita ocupado={ocupado} podeLancar={podeLancar} onVoltar={voltarLista} onContinuar={modo=>void executar(async()=>{
+      <ErrorBox erro={erro}/>{sitioCadastro == null ? <><PageHeader titulo="Nova visita" acao={<Button secondary onClick={voltarLista}>Voltar às visitas</Button>} /><Empty>Selecione um sítio na barra lateral para criar a visita.</Empty></> : <EntradaVisita ocupado={ocupado} podeLancar={podeLancar} onVoltar={voltarLista} onContinuar={modo=>void executar(async()=>{
         const dados={propriedadeId:propDaVisita(),data,nome,responsavel:responsavel||undefined};
         const conteudo=JSON.stringify(dados);if(criacaoRef.current?.conteudo!==conteudo)criacaoRef.current={conteudo,chave:crypto.randomUUID()};
         const v=await criarVisita({...dados,chave:criacaoRef.current!.chave});
@@ -153,11 +158,11 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
       })} contexto={<>
         <label>Nome da visita<input required minLength={2} maxLength={120} value={nome} onChange={e=>setNome(e.target.value)}/></label>
         <label>Data da visita<DatePicker required value={data} onChange={(valor) => setData(valor)} /></label>
-        <label>Sítio<SelectCampo required value={propriedadeId} onValueChange={(valor) =>setPropriedadeId(valor?Number(valor):"")}><option value="">Selecione</option>{propriedades.filter(p=>p.ativo||p.id===propriedadeId).map(p=><option key={p.id} value={p.id}>{p.nome}</option>)}</SelectCampo></label>
+        <div><span className="text-sm text-muted-foreground">Sítio da visita</span><p className="font-semibold">{propriedades.find(p => p.id === sitioCadastro)?.nome ?? "Sítio selecionado"}</p></div>
         <label>Responsável (opcional)<input maxLength={160} value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
-      </>}/>
+      </>}/>}
     </> : <>
-      {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={()=>void executarComGuardaNavegacao(()=>{void executar(async()=>{await reqV4(`/visitas/${visita.id}/encerramento`,{propriedadeId:propDaVisita()});await carregar();});})}>Encerrar visita</Button>}</div>}/>}
+      {!mostraEntrada && !mostraPlanner && !mostraAtendimento && <PageHeader eyebrow="" titulo={visita?.nome ?? "Visita veterinária"} descricao={visita ? `${visita.data.slice(0,10).split("-").reverse().join("/")} · ${propriedades.find(p=>p.id===visita.propriedadeId)?.nome ?? "Sítio"} · ${visita.status}` : "Carregando visita…"} acao={<div className="flex flex-wrap gap-2"><Button secondary onClick={voltarLista}>Voltar às visitas</Button>{visita && podeLancar && visita.status !== "ENCERRADA" && rota.etapa === "atendimento" && <Button secondary onClick={()=>irEtapa("planejamento")}>Planejar visita</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}{visita && podeLancar && <Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>}{visita && podeLancar && visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}</div>}/>}
       <ErrorBox erro={erro}/>{carregando && <EsqueletoFicha label="Carregando visita" />}
 
       {mostraEntrada && visita && <EntradaVisita key={`entrada:${visita.id}`} existente ocupado={ocupado} podeLancar={podeLancar} onContinuar={modo=>irEtapa(modo==="agenda"?"planejamento":"selecao",{modo})} onVoltar={()=>visita.atividades.length?irEtapa("atendimento",{atividade:atividadeAtiva?.id}):voltarLista()} contexto={<>
@@ -168,11 +173,32 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         <div className="visita-breadcrumb"><a href="/pecuaria/visitas" onClick={e=>{e.preventDefault();voltarLista();}}>Visitas veterinárias</a><span>/</span><span>Visita de {visita.data.slice(0,10).split("-").reverse().join("/")}</span></div>
         <header className="visita-cabecalho"><div><div className="visita-eyebrow">Visita veterinária · {rotuloSitio}{visita.status === "ENCERRADA" ? " · Encerrada" : ""}</div><h1>Atendimento da visita</h1><p>Registre o resultado de cada animal. As referências da lista continuam visíveis durante o atendimento.</p></div><div className="visita-acoes">{visita.status !== "ENCERRADA" && <><button className="visita-botao" onClick={voltarOrigem}>Rever grupo</button><button className="visita-botao" onClick={()=>irEtapa("entrada")}>Adicionar grupo</button></>}{podeLancar && <button className="visita-botao" disabled={ocupado} onClick={()=>void imprimir()}>Imprimir ficha de campo</button>}</div></header>
         <EtapasVisita modo={atividadeAtiva ? origemAtividadeVisita(atividadeAtiva)??undefined : undefined} etapa="atendimento" podeRevisar={false} podeAtender onNavegar={e=>e === "atendimento" ? irEtapa(e,{atividade:atividadeAtiva?.id}) : voltarOrigem()} bloqueado={visita.status === "ENCERRADA"}/>
-        {atividadeAtiva && <p className="visita-dica">Origem do grupo: {origemAtividadeVisita(atividadeAtiva) === "agenda" ? "Agenda do dia" : origemAtividadeVisita(atividadeAtiva) === "livre" ? "Seleção livre" : "Não informada"}</p>}
         <div className="visita-atividades" aria-label="Atividades da visita">{visita.atividades.map(a=><button key={a.id} type="button" aria-pressed={a.id===atividadeAtiva?.id} onClick={()=>irEtapa("atendimento",{atividade:a.id})}><span>{nomeAtividadeVisita(a)}</span><small>{lotesAtividadeVisita(a)} · {a.totais?.totalParticipantes ?? a.participantes.length} animais · {a.totais?.confirmados ?? a.participantes.filter(p=>p.status === "CONFIRMADO").length} confirmados</small></button>)}{!visita.atividades.length && <Empty>Nenhuma atividade preparada.</Empty>}</div>
-        {atividadeAtiva && <Transcricao key={atividadeAtiva.id} visita={visita} atividade={atividadeAtiva} podeLancar={podeLancar && visita.status !== "ENCERRADA"} podeRegularizar={podeLancar} onMudou={carregar} registrarGuardaSaida={registrarGuardaSaida} onPlanejar={()=>irEtapa("entrada")}/>}
+        {atividadeAtiva && <Transcricao key={atividadeAtiva.id} visita={visita} atividade={atividadeAtiva} podeLancar={podeLancar && visita.status !== "ENCERRADA"} podeRegularizar={podeLancar} onMudou={carregar} registrarGuardaSaida={registrarGuardaSaida}/>}
       </>}
-      {visita && (mostraPlanner || mostraAtendimento) && <details className="mt-6 text-sm text-ink-3"><summary className="cursor-pointer">Opções da visita</summary><div className="mt-3 flex flex-wrap gap-3">{podeLancar && <>{!mostraPlanner && visita.status !== "ENCERRADA" && <Button secondary onClick={()=>irEtapa("entrada")}>Adicionar grupo</Button>}<Button secondary disabled={ocupado} onClick={()=>void imprimir()}>Gerar lista para impressão</Button>{visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={()=>void executarComGuardaNavegacao(()=>{void executar(async()=>{await reqV4(`/visitas/${visita.id}/encerramento`,{propriedadeId:propDaVisita()});await carregar();});})}>Encerrar visita</Button>}</>}{visita.impressoes.map(i=><Button secondary key={i.id} onClick={()=>void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0,10)??i.id.slice(0,8)}</Button>)}</div></details>}
+      {visita && (mostraPlanner || mostraAtendimento) && ((podeLancar && (!mostraAtendimento || visita.status !== "ENCERRADA")) || visita.impressoes.length > 0) && <Panel className="mt-6">
+        <CabecalhoTabela titulo="Opções da visita" />
+        <div className="flex flex-wrap gap-3 p-4">
+          {podeLancar && <>
+            {!mostraAtendimento && <Button secondary disabled={ocupado} onClick={() => void imprimir()}>Gerar lista para impressão</Button>}
+            {visita.status !== "ENCERRADA" && <Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(true)}>Encerrar visita</Button>}
+          </>}
+          {visita.impressoes.map(i => <Button secondary key={i.id} onClick={() => void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0, 10) ?? i.id.slice(0, 8)}</Button>)}
+        </div>
+      </Panel>}
+      {visita && confirmarEncerramento && <PainelCadastro aberto compacto titulo="Encerrar visita?" bloqueado={ocupado}
+        onFechar={() => setConfirmarEncerramento(false)} erroRodape={erro}
+        rodape={<><Button secondary disabled={ocupado} onClick={() => setConfirmarEncerramento(false)}>Cancelar</Button>
+          <Button disabled={ocupado} onClick={() => void executarComGuardaNavegacao(() => {
+            void executar(async () => {
+              await reqV4("/visitas/" + visita.id + "/encerramento", { propriedadeId: propDaVisita() });
+              setConfirmarEncerramento(false);
+              await carregar();
+            });
+          })}>{ocupado ? "Encerrando…" : "Confirmar encerramento"}</Button></>}>
+        <p>A visita será encerrada e ficará disponível para consulta e impressão.</p>
+        <p className="mt-2 font-medium">{pendentes} {pendentes === 1 ? "atendimento pendente" : "atendimentos pendentes"}</p>
+      </PainelCadastro>}
       {visita && rota.etapa !== "atendimento" && visita.status === "ENCERRADA" && <Panel><CabecalhoTabela titulo="Visita encerrada" descricao="A lista permanece disponível para consulta e impressão."/><div className="p-4">{visita.atividades.map(a=><Button key={a.id} secondary onClick={()=>void irEtapa("atendimento",{atividade:a.id})}>{a.nome}</Button>)}</div></Panel>}
       {visita && !mostraPlanner && !mostraAtendimento && visita.impressoes.length > 0 && <Panel className="mt-5"><CabecalhoTabela titulo="Listas de impressão preservadas"/><div className="p-4 flex flex-wrap gap-2">{visita.impressoes.map(i=><Button secondary key={i.id} onClick={()=>void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0,10)??i.id.slice(0,8)}</Button>)}{!visita.impressoes.length&&<p className="text-sm text-ink-3">Nenhuma lista gerada.</p>}</div></Panel>}
     </>}

@@ -7,9 +7,12 @@ import { criarVisita, obterVisita, type AtividadeVisita, type Visita } from "./v
 import { chaveGrupo } from "./planner-api";
 import { criteriosVazios } from "./EditorSelecaoVisita";
 import { grupoLivre } from "./SelecaoLivreVisita";
+import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import { mudarCampo } from "@/lib/controles.fixture";
-const mocks = vi.hoisted(() => ({ guarda: vi.fn<() => Promise<boolean>>(), desmontou: vi.fn(), registrou: vi.fn() }));
-vi.mock("../../../api/propriedades", () => ({ usePropriedades: () => ({ data: [{ id: 1, nome: "Principal", ativo: true }] }) }));
+const mocks = vi.hoisted(() => ({ guarda: vi.fn<() => Promise<boolean>>(), desmontou: vi.fn(), registrou: vi.fn(),
+  propriedades: [{ id: 1, nome: "Principal", ativo: true }],
+}));
+vi.mock("../../../api/propriedades", () => ({ usePropriedades: () => ({ data: mocks.propriedades }) }));
 vi.mock("./visitas-api", async original => ({ ...await original<typeof import("./visitas-api")>(), criarVisita: vi.fn(), obterVisita: vi.fn(), listarVisitas: vi.fn().mockResolvedValue([]) }));
 vi.mock("./TranscricaoVisita", () => ({ Transcricao: ({ atividade, registrarGuardaSaida }: { atividade: AtividadeVisita; registrarGuardaSaida?: (fn: (() => Promise<boolean>) | null) => void }) => {
   useEffect(() => { registrarGuardaSaida?.(mocks.guarda); mocks.registrou(atividade.id); return () => { registrarGuardaSaida?.(null); mocks.desmontou(atividade.id); }; }, [atividade.id, registrarGuardaSaida]);
@@ -21,7 +24,7 @@ vi.mock("./FormAtividadeVisita", () => ({ FormAtividade: () => null }));
 const atividades: AtividadeVisita[] = ["a1", "a2"].map(id => ({ id, tipo: "AVALIACAO_REPRODUTIVA", nome: `Grupo ${id}`, extra: false, participantes: [] }));
 const visita: Visita = { id: "visita", nome: "Atendimento do dia", propriedadeId: 1, data: "2026-10-15", status: "ABERTA", atividades, impressoes: [] };
 beforeEach(() => { vi.stubGlobal("ResizeObserver", class { observe() {} unobserve() {} disconnect() {} }); vi.clearAllMocks(); localStorage.clear(); sessionStorage.clear(); mocks.guarda.mockResolvedValue(true); vi.mocked(obterVisita).mockResolvedValue(visita); window.history.replaceState({}, "", "/pecuaria/visitas/visita?etapa=atendimento&atividade=a1"); });
-afterEach(cleanup);
+afterEach(() => { cleanup(); setPropriedadeAtiva(null); mocks.propriedades = [{ id: 1, nome: "Principal", ativo: true }]; });
 function pendente() { let resolver!: (value: boolean) => void; const promessa = new Promise<boolean>(resolve => { resolver = resolve; }); return { promessa, resolver }; }
 describe("páginas de visita e guarda de rascunho", () => {
   it("aguarda o salvamento antes de desmontar a atividade na troca por botão", async () => {
@@ -77,11 +80,20 @@ describe("páginas de visita e guarda de rascunho", () => {
 });
 
 describe("entrada independente de visitas",()=>{
+ it("pede a seleção global de sítio quando há vários no Consolidado", async () => {
+  mocks.propriedades.push({ id: 2, nome: "Arrendado", ativo: true });
+  window.history.replaceState({}, "", "/pecuaria/visitas/nova");
+  render(<Visitas podeLancar />);
+  expect(await screen.findByText("Selecione um sítio na barra lateral para criar a visita.")).toBeTruthy();
+  expect(screen.queryByLabelText("Nome da visita")).toBeNull();
+  expect(criarVisita).not.toHaveBeenCalled();
+ });
  it("só cria ao continuar e reutiliza a chave após falha de resposta",async()=>{
+  setPropriedadeAtiva(1);
   window.history.replaceState({},"","/pecuaria/visitas/nova");vi.mocked(criarVisita).mockRejectedValueOnce(new Error("Falha simulada")).mockResolvedValueOnce(visita);
   render(<Visitas podeLancar/>);await screen.findByRole("heading",{name:/Nova visita|Adicionar grupo/});
   expect(document.querySelectorAll('input[type="radio"]:checked')).toHaveLength(0);
-  mudarCampo(screen.getByLabelText("Nome da visita"),{target:{value:"Visita de teste"}});mudarCampo(screen.getByLabelText("Sítio"),{target:{value:"1"}});
+  mudarCampo(screen.getByLabelText("Nome da visita"),{target:{value:"Visita de teste"}});expect(screen.getByText("Sítio da visita")).toBeTruthy();
   fireEvent.click(screen.getByRole("radio",{name:/Agenda do dia/}));expect(criarVisita).not.toHaveBeenCalled();
   fireEvent.submit(document.querySelector("#entrada-visita")!);await screen.findByText("Falha simulada");
   const chave=vi.mocked(criarVisita).mock.calls[0][0].chave;expect(chave).toBeTruthy();fireEvent.submit(document.querySelector("#entrada-visita")!);
