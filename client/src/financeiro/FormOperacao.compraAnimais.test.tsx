@@ -140,9 +140,9 @@ describe("compra de animais: tela", () => {
     expect(lista.textContent).toContain("Raça não informada");
     expect(lista.textContent).toContain("Sem peso de entrada");
     expect(cadastrarAnimal).not.toHaveBeenCalled();
-    const previa = screen.getByTestId("conteudo-resumo-operacao").textContent ?? "";
-    expect(previa).toContain("Cadastrar 2 animais no Rebanho do sítio Sítio Sede");
-    expect(previa).toContain("Nenhum movimento de estoque será gerado.");
+    const previa = screen.getByTestId("conteudo-resumo-operacao");
+    expect(within(previa).getByText("Prévia indisponível")).toBeTruthy();
+    expect(previa.textContent).not.toContain("Cadastrar 2 animais no Rebanho");
   });
 
   it("o modal usa o cadastro compartilhado: sítio fixo, data de entrada da operação e validação do brinco", async () => {
@@ -215,7 +215,10 @@ describe("compra de animais: preço", () => {
     montar(rascunhoCom({ animais: [animalForm(1, "101", { preco: "4500" }), animalForm(2, "102", { preco: "4000.5" })] }));
     expect(screen.getByLabelText("Valor do animal 101").textContent).toBe(brl(4500));
     expect(screen.getByLabelText("Valor do animal 102").textContent).toBe(brl(4000.5));
-    expect(screen.getByTestId("conteudo-resumo-operacao").textContent).toContain(brl(8500.5));
+    const previa = screen.getByTestId("conteudo-resumo-operacao");
+    await waitFor(() => expect(previa.textContent).toContain(brl(8500.5)));
+    expect(previa.textContent).toContain("Cadastrar 2 animais no Rebanho do sítio Sítio Sede");
+    expect(previa.textContent).toContain("Nenhum movimento de estoque será gerado.");
   });
 
   it("por kg pede o peso pago e calcula peso × preço", async () => {
@@ -244,7 +247,10 @@ describe("compra de animais: preço", () => {
     expect(screen.getByLabelText("Valor do animal G7").textContent).toBe(brl(1428.58));
     expect(screen.getByRole("status", { name: "Preço médio por animal" }).textContent).toContain(brl(1428.57));
     expect(screen.queryByLabelText("Preço do animal G1")).toBeNull();
-    expect(screen.getByTestId("conteudo-resumo-operacao").textContent).toContain(brl(10000));
+    const previa = screen.getByTestId("conteudo-resumo-operacao");
+    await waitFor(() => expect(previa.textContent).toContain(brl(10000)));
+    expect(previa.textContent).toContain("Cadastrar 7 animais no Rebanho do sítio Sítio Sede");
+    expect(previa.textContent).toContain("Nenhum movimento de estoque será gerado.");
   });
 
   it("trocar a unidade limpa os preços e escolher o lote mostra o campo do valor total", async () => {
