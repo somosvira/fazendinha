@@ -16,7 +16,7 @@ const rotuloOpcao = (o: OpcaoBuscavel) => (o.ativo === false ? `${o.nome} (inati
  * (o filtro do cmdk fica desligado); `selecionadoId` pede a opção já escolhida, mesmo inativa, para
  * exibir seu nome sem depender da busca atual.
  */
-export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChange, buscar, somenteLeitura, erroCampo, placeholder = "Selecione ou digite", detalhe, limpavel = true, contentClassName }: {
+export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChange, buscar, somenteLeitura, erroCampo, placeholder = "Selecione ou digite", detalhe, limpavel = true, contentClassName, containerPopover }: {
   rotulo: string;
   valor: string;
   onChange: (id: string, opcao?: T) => void;
@@ -31,6 +31,7 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
   limpavel?: boolean;
   /** Classes extras do painel (ex.: z-index quando o campo vive dentro de um modal). */
   contentClassName?: string;
+  containerPopover?: HTMLElement | null;
 }) {
   const id = useId();
   const [aberto, setAberto] = useState(false), [busca, setBusca] = useState("");
@@ -84,7 +85,7 @@ export function SelectBuscavel<T extends OpcaoBuscavel>({ rotulo, valor, onChang
         </PopoverTrigger>
         {valor && limpavel && <button type="button" aria-label={`Limpar ${rotulo}`} onClick={limpar} className="absolute right-9 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-3 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"><X className="size-3.5" aria-hidden="true" /></button>}
       </div>
-      <PopoverContent align="start" className={cn("w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0", contentClassName)}>
+      <PopoverContent container={containerPopover} align="start" className={cn("w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0", contentClassName)}>
         <Command shouldFilter={false}>
           <CommandInput value={busca} onValueChange={setBusca} placeholder={`Buscar ${rotulo.toLowerCase()}`} />
           <CommandList className="max-h-64">

@@ -227,3 +227,28 @@ p.bez-estado:not([role]){margin:16px 0;padding:24px 20px;border:1px dashed var(-
 .bez-celula-acao{display:inline-flex;align-items:center;gap:12px;flex-wrap:wrap}
 @media(max-width:640px){.bez-ficha th{width:40%}}
 .bez-destinatarios{display:grid;gap:8px}
+
+.bez-destinacao-resumo {
+  display: grid;
+  grid-template-columns: minmax(0, .7fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--muted);
+}
+.bez-destinacao-resumo > div { min-width: 0; }
+.bez-destinacao-unidade { grid-column: 1 / -1; }
+.bez-destinacao-unidade dd { font-size: .8125rem; }
+.bez-destinacao-resumo dt { font-size: .75rem; color: var(--muted-foreground); }
+.bez-destinacao-resumo dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.bez-destinacao-resumo dd small { display: block; font-weight: 400; color: var(--muted-foreground); }
+.bez-destinacao-brix-atencao { color: var(--ink-2); }
+.bez-destinacao-conferencia {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+}

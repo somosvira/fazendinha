@@ -53,6 +53,12 @@ it('alterna origens, banco, embalagens retiradas e históricos juntos no cabeça
   }
 });
 
+async function selecionarCriaNaUnidade(dialog: HTMLElement) {
+  fireEvent.click(within(dialog).getByRole('combobox', { name: 'Cria destinatária' }));
+  fireEvent.click(await screen.findByRole('option', { name: /601 · Lua/ }));
+  await waitFor(() => expect(consultarBezerreiro).toHaveBeenCalledWith(expect.stringContaining('criaId=cria'), 1));
+}
+
 describe('Consumo parcial das embalagens de colostro',()=>{
   it('separa congeladas de remanescentes retirados e confirma 1,5 L sem impor os 2 L iniciais',async()=>{
     montar();
@@ -61,11 +67,11 @@ describe('Consumo parcial das embalagens de colostro',()=>{
     const banco=await screen.findByRole('list',{name:'Banco de colostro'}),fora=await screen.findByRole('list',{name:'Embalagens retiradas'});
     expect(within(banco).getByText('BC001')).toBeTruthy();expect(within(fora).getByText('BC002')).toBeTruthy();expect(within(fora).getByText('0,5 L')).toBeTruthy();
     fireEvent.click(within(banco).getByRole('button',{name:'Fornecer à cria'}));
-    const dialog=await screen.findByRole('dialog',{name:'Fornecer unidade BC001'});
+    const dialog=await screen.findByRole('dialog',{name:'Fornecer colostro à cria'});
     const volume=within(dialog).getByLabelText('Fornecido à cria (L)') as HTMLInputElement;
     expect(volume.readOnly).toBe(false);expect(volume.max).toBe('2');
     fireEvent.change(volume,{target:{value:'1.5'}});
-    await alterarControle(within(dialog).getByLabelText('Cria destinatária'),{target:{value:'cria'}});
+    await selecionarCriaNaUnidade(dialog);
     fireEvent.change(within(dialog).getByLabelText('Responsável'),{target:{value:'Operadora'}});
     fireEvent.click(within(dialog).getByRole('checkbox'));
     fireEvent.click(within(dialog).getByRole('button',{name:'Confirmar destinação'}));
@@ -100,9 +106,9 @@ describe('Consumo parcial das embalagens de colostro',()=>{
     brixTeste={amostraId:'amostra',data:'2026-10-28',resultado:'24',limiteInclusivo:caso.limite,situacao:caso.situacao};
     montar({...config,vigente:{...config.vigente!,brixReferencia:caso.atual}});
     const banco=await screen.findByRole('list',{name:'Banco de colostro'});fireEvent.click(within(banco).getByRole('button',{name:'Fornecer à cria'}));
-    const dialog=await screen.findByRole('dialog',{name:'Fornecer unidade BC001'}),motivo=within(dialog).getByLabelText('Motivo da exceção Brix') as HTMLTextAreaElement;
+    const dialog=await screen.findByRole('dialog',{name:'Fornecer colostro à cria'}),motivo=within(dialog).getByLabelText('Motivo da exceção Brix') as HTMLTextAreaElement;
     expect(motivo.required).toBe(caso.obrigatorio);expect(within(dialog).getByText(new RegExp(`Limite registrado: ≥ ${caso.limite}%`))).toBeTruthy();
-    await alterarControle(within(dialog).getByLabelText('Cria destinatária'),{target:{value:'cria'}});fireEvent.change(within(dialog).getByLabelText('Responsável'),{target:{value:'Operadora'}});
+    await selecionarCriaNaUnidade(dialog);fireEvent.change(within(dialog).getByLabelText('Responsável'),{target:{value:'Operadora'}});
     if(caso.obrigatorio){fireEvent.submit(dialog.querySelector('form')!);await screen.findByText('Informe um motivo de pelo menos cinco caracteres para a exceção Brix.');}
     fireEvent.change(motivo,{target:{value:'Exceção registrada na data'}});fireEvent.click(within(dialog).getByRole('checkbox'));fireEvent.click(within(dialog).getByRole('button',{name:'Confirmar destinação'}));
     await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalledWith('/colostro/origens/origem-unidade/destinacoes',1,expect.objectContaining({excecaoBrix:{motivo:'Exceção registrada na data',responsavel:'Operadora'}})));
@@ -134,7 +140,7 @@ describe('fornecimento existente e seleção histórica',()=>{
   contextoHistorico();const d=await abrirDestino();await alterarControle(within(d).getByLabelText('Fornecimento'),{target:{value:'existente'}});
   await alterarControle(within(d).getByLabelText(/^Registro existente/),{target:{value:'fornecimento-4L'}});
   await waitFor(()=>expect(vi.mocked(consultarBezerreiro).mock.calls.some(([p])=>p.includes('fornecimentoId=fornecimento-4L'))).toBe(true));
-  await waitFor(()=>expect(within(d).getByText(/Total: 4 L/)).toBeTruthy());
+  await waitFor(()=>expect(within(d).getByText('4 L', { selector: 'strong' })).toBeTruthy());
   fireEvent.click(within(d).getByRole('checkbox'));fireEvent.click(within(d).getByRole('button',{name:'Confirmar destinação'}));
   await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalledWith('/colostro/origens/origem-unidade/destinacoes',1,expect.objectContaining({ocorridoEm:null,horarioEstimado:false,crias:[{criaId:'cria',quantidadeLitros:4,tipo:'FRESCO',fornecimentoColostroId:'fornecimento-4L'}]})));
  });

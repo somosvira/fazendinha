@@ -426,7 +426,7 @@ describe("percurso livre independente",()=>{
     function Caminho(){const [etapa,setEtapa]=useState<import("../../../router").EtapaVisita>("revisao");const historico=etapa==="revisao";return <PlannerVisita key={historico?"historico":"rascunho"} visita={visitaPreparada} podeLancar modo="livre" etapa={etapa} grupo={historico?chave:null} onEtapa={e=>setEtapa(e)}/>;}
     render(<Caminho/>);
     await screen.findByRole("table");
-    expect(screen.getByText(/Este grupo já foi preparado/)).toBeTruthy();
+    expect(screen.getByText("Grupo já preparado")).toBeTruthy();
     expect(JSON.parse(sessionStorage.getItem(chaveEstado)!).criterios).toEqual(criteriosVazios());
     fireEvent.click(screen.getByRole("button",{name:"Ajustar filtros"}));
     await screen.findByRole("heading",{name:"Selecionar animais por filtros"});
