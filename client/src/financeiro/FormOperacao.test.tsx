@@ -1,7 +1,7 @@
 import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { FormOperacao } from "./FormOperacao";
 import { setPropriedadeAtiva } from "../propriedadeScope";
 import type { ConfiguracoesFinanceiras } from "./novo-api";
@@ -460,6 +460,9 @@ describe("FormOperacao", () => {
 
   it("resume produto, quantidade e valor total de cada item", async () => {
     montar();
+    await alterarControle(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Compra de ração" } });
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
     await alterarControle(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: uid(1) } });
     await alterarControle(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "3" } });
     await alterarControle(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
@@ -467,14 +470,6 @@ describe("FormOperacao", () => {
     expect(resumo.textContent).toContain("Ração");
     expect(resumo.textContent).toContain("3 kg");
     expect(resumo.textContent?.replaceAll("\u00a0", " ")).toContain("R$ 15,00");
-  });
-
-  it("remove a introdução e posiciona o aviso antes da confirmação", () => {
-    montar();
-    expect(screen.queryByText(/Registre o fato de negócio uma vez/)).toBeNull();
-    const aviso = screen.getByText("A confirmação cria somente os efeitos descritos acima.");
-    const botao = screen.getByRole("button", { name: "Confirmar operação" });
-    expect(aviso.compareDocumentPosition(botao) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("configura os compromissos derivados da condição a prazo", async () => {
@@ -486,11 +481,16 @@ describe("FormOperacao", () => {
 
   it("soma itens já arredondados em centavos como o backend", async () => {
     montar();
-    await alterarControle(screen.getByRole("spinbutton", { name: "Quantidade do item 1" }), { target: { value: "0.001" } });
-    await alterarControle(screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }), { target: { value: "5" } });
+    await alterarControle(screen.getByLabelText("Fornecedor ou parceiro"), { target: { value: uid(1) } });
+    await alterarControle(screen.getByLabelText("Descrição"), { target: { value: "Compra de ração" } });
+    await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
     fireEvent.click(screen.getByRole("button", { name: /Adicionar item/i }));
-    await alterarControle(screen.getByRole("spinbutton", { name: "Quantidade do item 2" }), { target: { value: "0.001" } });
-    await alterarControle(screen.getByRole("spinbutton", { name: "Valor unitário do item 2" }), { target: { value: "5" } });
+    for (const numero of [1, 2]) {
+      await alterarControle(screen.getByLabelText(`Produto do item ${numero}`), { target: { value: uid(1) } });
+      await alterarControle(screen.getByLabelText(`Descrição do item ${numero}`), { target: { value: "Ração" } });
+      await alterarControle(screen.getByLabelText(`Quantidade do item ${numero}`), { target: { value: "0.001" } });
+      await alterarControle(screen.getByLabelText(`Valor unitário do item ${numero}`), { target: { value: "5" } });
+    }
     // As parcelas passaram a ser geradas sob demanda pelo servidor; a regra local
     // que resta é o total da operação: cada item arredondado (0,005 → 0,01) e depois somado.
     expect(screen.getAllByText(/R\$\s*0,02/).length).toBeGreaterThan(0);
@@ -881,9 +881,13 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     expect((screen.getByRole("button", { name: "Confirmar operação" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it("mostra o motivo pendente abaixo do botão enquanto o formulário não está completo, e some quando fica válido", async () => {
+  it("lista os campos pendentes na prévia e só exibe valores e efeitos depois de completar o formulário", async () => {
     montar();
-    const motivo = screen.getByText(/Ainda há campos pendentes ou incompletos/);
+    const previa = screen.getByTestId("conteudo-resumo-operacao");
+    const motivo = within(previa).getByText("Prévia indisponível");
+    expect(within(previa).getByText("Descrição")).toBeTruthy();
+    expect(within(previa).queryByText("R$ 0,00")).toBeNull();
+    expect(within(previa).queryByText(/Registrar pagamento integral/)).toBeNull();
     expect(motivo.closest('[role="status"]')?.id).toBe("motivo-pendencia");
     expect(screen.getByRole("button", { name: "Confirmar operação" }).getAttribute("aria-describedby")).toContain("motivo-pendencia");
 
@@ -895,7 +899,8 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     await alterarControle(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
     await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
 
-    expect(screen.queryByText(/Ainda há campos pendentes ou incompletos/)).toBeNull();
+    expect(within(previa).queryByText("Prévia indisponível")).toBeNull();
+    expect(within(previa).getByText(/Registrar pagamento integral/)).toBeTruthy();
   });
 
   it("descrição vazia: rola e foca o campo ao tentar confirmar", async () => {
@@ -1333,17 +1338,14 @@ describe("tipo Ajuste de estoque", () => {
 });
 
 describe("painel de revisão — movimentos de estoque", () => {
-  it("VENDA e DEVOLUCAO não prometem N movimentos; a compra mantém a contagem exata", () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) })));
-    const { unmount } = render(<FormOperacao config={config} tipoInicial="VENDA" onSalvo={vi.fn()} />);
-    expect(screen.getByText("Movimenta o estoque dos produtos que já tiveram entrada nesta fazenda.")).toBeTruthy();
-    expect(screen.queryByText(/Nenhum movimento físico/)).toBeNull();
-    unmount();
-    render(<FormOperacao config={config} tipoInicial="COMPRA_ESTOQUE" onSalvo={vi.fn()} />);
-    expect(screen.queryByText(/Movimenta o estoque dos produtos/)).toBeNull();
-    expect(screen.getByText("Preencha os dados da operação para conferir o efeito no estoque.")).toBeTruthy();
-    expect(screen.getByText(/Prévia incompleta/)).toBeTruthy();
-    expect(screen.getByTestId("conteudo-resumo-operacao").querySelector(".lucide-check")).toBeNull();
+  it("não promete movimentos de estoque em operações incompletas", () => {
+    for (const tipo of ["VENDA", "DEVOLUCAO", "COMPRA_ESTOQUE"] as const) {
+      const { unmount } = render(<FormOperacao config={config} tipoInicial={tipo} onSalvo={vi.fn()} />);
+      const previa = screen.getByTestId("conteudo-resumo-operacao");
+      expect(within(previa).getByText("Prévia indisponível")).toBeTruthy();
+      expect(within(previa).queryByText(/movimento físico|Movimenta o estoque/)).toBeNull();
+      unmount();
+    }
   });
 });
 

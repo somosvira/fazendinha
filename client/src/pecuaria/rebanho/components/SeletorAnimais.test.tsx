@@ -110,6 +110,16 @@ describe("SeletorAnimais", () => {
     expect(screen.queryByText("Nenhum animal ativo encontrado com os filtros selecionados.")).toBeNull();
   });
 
+  it("preserva a seleção inicial ao reabrir o seletor", async () => {
+    const animal = criarAnimal({ id: "a1", brinco: "0001" });
+    vi.mocked(listarAnimais).mockResolvedValue({ itens: [animal], total: 1, painel: painelVazio });
+    const confirmar = vi.fn();
+    render(<SeletorAnimais animaisIniciais={[animal]} onConfirmar={confirmar} onCancelar={vi.fn()} />);
+    expect((await screen.findAllByRole("checkbox", { name: "Selecionar 0001" }))[0]).toHaveProperty("checked", true);
+    fireEvent.click(screen.getByRole("button", { name: "Continuar (1)" }));
+    expect(confirmar).toHaveBeenCalledWith([animal]);
+  });
+
   it("onConfirmar recebe os animais selecionados", async () => {
     const itens = [criarAnimal({ id: "a1", brinco: "0001" }), criarAnimal({ id: "a2", brinco: "0002" })];
     vi.mocked(listarAnimais).mockResolvedValue({ itens, total: 2, painel: painelVazio });

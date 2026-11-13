@@ -1,4 +1,6 @@
-import { SeletorVersaoProtocolo } from "../protocolos/SeletorVersaoProtocolo";
+import { SelectBuscavel } from "../../../components/SelectBuscavel";
+import { consultaProtocolo, reqProtocolo } from "../protocolos/api";
+import type { PaginaProtocolo } from "../protocolos/EtapasProtocolo";
 import { ListaRascunho } from "../protocolos/ListaRascunho";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { CalendarDays } from "lucide-react";
@@ -9,14 +11,13 @@ import { Button, ErrorBox, hoje } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro } from "../../../financeiro/PainelCadastro";
 import { SeletorAnimais } from "../components/SeletorAnimais";
 import type { AnimalResumo } from "../types";
-import { reqSanidade } from "./api";
 import { criarRodada, preverRodada, preverParticipantes, adicionarParticipantes, type ItemEntradaRodada, type PreviaRodada, type RodadaSanitaria } from "./rodadas-api";
 import { buscarFichaAnimal, obterCatalogos } from "../api";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { SanidadeApiError } from "./api";
 import { dataSanitaria, nomeAnimalSanitario, unidadeSanitaria } from "./rotulos";
 
-type Protocolo = { id: string; nome: string; versao: number; ativo: boolean; publicadoEm: string | null };
+type VersaoPublicada = { id: string; nome: string; versao: number };
 
 function prepararItem(item: ItemEntradaRodada) {
   const justificativaInicio = item.justificativaInicio?.trim();
@@ -36,7 +37,19 @@ export function FormRodada({ rodada, animalInicial, animaisIniciais, onFechar, o
   const [sitios, setSitios] = useState<Array<{ id: number; nome: string }>>([]);
   const [campoErro, setCampoErro] = useState("");
   const formulario = useRef<HTMLFormElement>(null);
-  const [protocoloId, setProtocoloId] = useState(rodada?.protocoloId ?? "");
+  const [protocolo, setProtocolo] = useState<VersaoPublicada | null>(rodada?.protocolo ?? null);
+  const [portal, setPortal] = useState<HTMLDivElement | null>(null);
+  const protocoloId = protocolo?.id ?? "";
+  async function buscarProtocolos({ busca, selecionadoId }: { busca: string; selecionadoId?: string }) {
+    if (selecionadoId) {
+      const itens = protocolo?.id === selecionadoId ? [protocolo] : [];
+      return { itens, total: itens.length };
+    }
+    const dados = await reqProtocolo<PaginaProtocolo<VersaoPublicada>>(
+      `/versoes${consultaProtocolo({ tipo: "SANITARIO", busca })}`, sitioId ?? undefined,
+    );
+    return { ...dados, itens: dados.itens.map(item => ({ ...item, nome: `${item.nome} · v${item.versao}` })) };
+  }
   const [inicio, setInicio] = useState(rodada?.inicioReferencia.slice(0, 10) ?? hoje());
   const [animais, setAnimais] = useState<AnimalResumo[]>(animaisIniciais ?? []);
   const [itens, setItens] = useState<Record<string, ItemEntradaRodada>>(Object.fromEntries((animaisIniciais ?? []).map((a) => [a.id, { animalId: a.id }])));
@@ -57,6 +70,7 @@ export function FormRodada({ rodada, animalInicial, animaisIniciais, onFechar, o
     if (trava.current) return;
     const propriedadeId = rodada?.propriedadeId ?? sitioId;
     if (!propriedadeId) { setErro("Selecione o sítio do ciclo na data de início."); setCampoErro("propriedadeId"); return; }
+    if (!protocoloId) { setErro("Selecione um protocolo publicado."); setCampoErro("protocoloId"); return; }
     if (!animais.length || animais.length > 100) { setErro("Selecione entre 1 e 100 animais."); return; }
     const entradas = animais.map((a) => prepararItem({ ...itens[a.id], animalId: a.id }));
     if (entradas.some((i) => i.inicio && i.inicio !== inicio && (i.justificativaInicio?.trim().length ?? 0) < 5)) { setErro("Explique a data diferente de cada animal com pelo menos 5 caracteres."); return; }
@@ -71,20 +85,38 @@ export function FormRodada({ rodada, animalInicial, animaisIniciais, onFechar, o
     } catch (e: unknown) { if (atual === revisao.current) { setErro(e instanceof Error ? e.message : String(e)); setCampoErro(e instanceof SanidadeApiError ? e.campo ?? "" : ""); } }
     finally { trava.current = false; setOcupado(false); }
   }
-  if (selecionando) return <SeletorAnimais onCancelar={() => setSelecionando(false)} onConfirmar={(v) => { editar(); setAnimais(v); setItens(Object.fromEntries(v.map((a) => [a.id, itens[a.id] ?? { animalId: a.id }]))); setSelecionando(false); }} />;
-  return <PainelCadastro icon={CalendarDays} aberto titulo={rodada ? "Adicionar participantes" : "Iniciar ciclo de protocolo"} onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><ErrorBox erro={erro} /><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="form-rodada" disabled={ocupado || !animais.length}>{ocupado ? "Aguarde…" : previa ? "Confirmar ciclo" : "Conferir calendário"}</Button></>}>
-    <form data-pec-formulario  ref={formulario} id="form-rodada" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void enviar(!!previa); }}>
-      <ErrorBox erro={erro} />
+  if (selecionando) return <SeletorAnimais animaisIniciais={animais} onCancelar={() => setSelecionando(false)} onConfirmar={(v) => { editar(); setAnimais(v); setItens(Object.fromEntries(v.map((a) => [a.id, itens[a.id] ?? { animalId: a.id }]))); setSelecionando(false); }} />;
+  return <PainelCadastro icon={CalendarDays} aberto bloqueado={ocupado} alteracoesExternas={revisao.current > 0} titulo={rodada ? "Adicionar participantes" : "Iniciar ciclo de protocolo"} onFechar={() => { if (!ocupado) onFechar(); }} rodape={<><Button secondary disabled={ocupado} onClick={onFechar}>Cancelar</Button><Button type="submit" form="form-rodada" disabled={ocupado || !animais.length}>{ocupado ? "Aguarde…" : previa ? "Confirmar ciclo" : "Conferir calendário"}</Button></>}>
+    <form data-pec-formulario ref={formulario} id="form-rodada" className="grid gap-4" onSubmit={(e) => { e.preventDefault(); void enviar(!!previa); }}>
+      {!["nome", "protocoloId", "inicioReferencia", "propriedadeId"].includes(campoErro) && <ErrorBox erro={erro} />}
       <fieldset disabled={ocupado} className="grid gap-4">
-        <CampoFormulario id="rodada-inicio" rotulo="Início de referência" erro={campoErro === "inicioReferencia" ? erro ?? undefined : undefined} obrigatorio>{(p) => <DatePicker {...p} required disabled={!!rodada} value={inicio} onChange={(v) => { editar(); setInicio(v); setItens((p) => Object.fromEntries(Object.entries(p).map(([id, i]) => [id, { ...i, confirmarSobreposicao: false, justificativaSobreposicao: "" }]))); }} />}</CampoFormulario>
-        <CampoFormulario id="rodada-sitio" rotulo="Sítio na data de início" erro={campoErro === "propriedadeId" ? erro ?? undefined : undefined} obrigatorio>{(p) => <SelectCampo {...p} required disabled={!!rodada} className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { editar(); setSitioId(valorSelecionado ? Number(valorSelecionado) : null); setItens((v) => Object.fromEntries(Object.entries(v).map(([id, i]) => [id, { ...i, confirmarSobreposicao: false, justificativaSobreposicao: "" }]))); }}><option value="">Selecione</option>{rodada && !sitios.some((s) => s.id === rodada.propriedadeId) && <option value={rodada.propriedadeId}>Sítio do ciclo</option>}{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo>}</CampoFormulario>
-        <CampoFormulario id="rodada-nome" rotulo="Nome do ciclo" erro={campoErro === "nome" ? erro ?? undefined : undefined} obrigatorio>{(p) => <input {...p} required maxLength={120} disabled={!!rodada} className={classeInput} value={nome} onChange={(e) => { editar(); setNome(e.target.value); }} />}</CampoFormulario>
-        <SeletorVersaoProtocolo tipo="SANITARIO" valor={protocoloId} propriedadeId={sitioId ?? undefined} fixa={rodada?.protocolo} invalido={campoErro === "protocoloId"} onChange={id => { editar(); setProtocoloId(id); setItens(v => Object.fromEntries(Object.entries(v).map(([chave, item]) => [chave, { ...item, confirmarSobreposicao: false, justificativaSobreposicao: "" }]))); }} />
-
-        <Button secondary onClick={() => setSelecionando(true)}>Selecionar animais ({animais.length})</Button>
-        <ListaRascunho itens={animais} rotulo="animais selecionados" texto={nomeAnimalSanitario} renderizar={(a, indice) => <section key={a.id} className="grid gap-3 rounded-lg border border-border p-3"><strong>{nomeAnimalSanitario(a)}</strong>{campoErro.startsWith(`itens.${indice}.`) && <p role="alert" className="text-sm text-destructive">{erro}</p>}<label>Início de {a.brinco}<DatePicker aria-invalid={campoErro === `itens.${indice}.inicio` || undefined} value={itens[a.id]?.inicio ?? inicio} onChange={(v) => alterarItem(a.id, { inicio: v, confirmarSobreposicao: false, justificativaSobreposicao: "" })} /></label>{itens[a.id]?.inicio && itens[a.id].inicio !== inicio && <label>Motivo da data diferente<textarea required minLength={5} maxLength={500} className={classeInput} value={itens[a.id]?.justificativaInicio ?? ""} onChange={(e) => alterarItem(a.id, { justificativaInicio: e.target.value })} /></label>}<details><summary className="cursor-pointer text-sm">Sobreposição ou reentrada</summary><p className="text-sm">O histórico da participação anterior permanece. Reentrada cria outra participação; tarefas pendentes exigem confirmação e motivo.</p><ConfirmacaoCiencia id={`sobreposicao-${a.id}`} checked={itens[a.id]?.confirmarSobreposicao ?? false} onChange={(v) => alterarItem(a.id, { confirmarSobreposicao: v })}>Confirmo sobreposição de {a.brinco}</ConfirmacaoCiencia>{itens[a.id]?.confirmarSobreposicao && <label>Motivo da sobreposição<textarea required minLength={5} maxLength={500} className={classeInput} value={itens[a.id]?.justificativaSobreposicao ?? ""} onChange={(e) => alterarItem(a.id, { justificativaSobreposicao: e.target.value })} /></label>}</details></section>} />
+        <section className="grid min-w-0 gap-3" aria-labelledby="rodada-identificacao">
+          <h3 id="rodada-identificacao" className="font-semibold">Identificação</h3>
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <CampoFormulario id="rodada-nome" rotulo="Nome do ciclo" erro={campoErro === "nome" ? erro ?? undefined : undefined} obrigatorio>{(p) => <input {...p} required maxLength={120} disabled={!!rodada} className={classeInput} value={nome} onChange={(e) => { editar(); setNome(e.target.value); }} />}</CampoFormulario>
+            {rodada ? <label className="grid gap-1.5 text-sm font-medium">Protocolo publicado<input disabled className={classeInput} value={`${rodada.protocolo.nome} · v${rodada.protocolo.versao}`} /></label> :
+              <SelectBuscavel key={sitioId} rotulo="Protocolo publicado" valor={protocoloId} buscar={buscarProtocolos} containerPopover={portal} placeholder="Selecionar protocolo" erroCampo={campoErro === "protocoloId" ? erro ?? undefined : undefined} onChange={(_, item) => {
+                editar();
+                setProtocolo(item ?? null);
+                setItens(v => Object.fromEntries(Object.entries(v).map(([id, dados]) => [id, { ...dados, confirmarSobreposicao: false, justificativaSobreposicao: "" }])));
+              }} />}
+            <CampoFormulario id="rodada-inicio" rotulo="Início de referência" erro={campoErro === "inicioReferencia" ? erro ?? undefined : undefined} obrigatorio>{(p) => <DatePicker {...p} required disabled={!!rodada} value={inicio} onChange={(v) => { editar(); setInicio(v); setItens((p) => Object.fromEntries(Object.entries(p).map(([id, i]) => [id, { ...i, confirmarSobreposicao: false, justificativaSobreposicao: "" }]))); }} />}</CampoFormulario>
+            <CampoFormulario id="rodada-sitio" rotulo="Sítio na data de início" erro={campoErro === "propriedadeId" ? erro ?? undefined : undefined} obrigatorio>{(p) => <SelectCampo {...p} required disabled={!!rodada} className={classeInput} value={sitioId ?? ""} onValueChange={(valorSelecionado) => { editar(); setSitioId(valorSelecionado ? Number(valorSelecionado) : null); setItens((v) => Object.fromEntries(Object.entries(v).map(([id, i]) => [id, { ...i, confirmarSobreposicao: false, justificativaSobreposicao: "" }]))); }}><option value="">Selecione</option>{rodada && !sitios.some((s) => s.id === rodada.propriedadeId) && <option value={rodada.propriedadeId}>Sítio do ciclo</option>}{sitios.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</SelectCampo>}</CampoFormulario>
+          </div>
+        </section>
+        <section aria-labelledby="rodada-participantes" className="grid gap-3 border-t border-border pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 id="rodada-participantes" className="font-semibold">Participantes</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium tabular-nums">{animais.length} selecionados</span>
+              <Button secondary onClick={() => setSelecionando(true)}>Selecionar animais</Button>
+            </div>
+          </div>
+          {animais.length > 0 && <ListaRascunho itens={animais} rotulo="animais selecionados" texto={nomeAnimalSanitario} renderizar={(a, indice) => <section key={a.id} className="grid gap-3 rounded-lg border border-border p-3"><strong>{nomeAnimalSanitario(a)}</strong>{campoErro.startsWith(`itens.${indice}.`) && <p role="alert" className="text-sm text-destructive">{erro}</p>}<label>Início de {a.brinco}<DatePicker aria-invalid={campoErro === `itens.${indice}.inicio` || undefined} value={itens[a.id]?.inicio ?? inicio} onChange={(v) => alterarItem(a.id, { inicio: v, confirmarSobreposicao: false, justificativaSobreposicao: "" })} /></label>{itens[a.id]?.inicio && itens[a.id].inicio !== inicio && <label>Motivo da data diferente<textarea required minLength={5} maxLength={500} className={classeInput} value={itens[a.id]?.justificativaInicio ?? ""} onChange={(e) => alterarItem(a.id, { justificativaInicio: e.target.value })} /></label>}<ConfirmacaoCiencia id={`sobreposicao-${a.id}`} checked={itens[a.id]?.confirmarSobreposicao ?? false} onChange={(v) => alterarItem(a.id, { confirmarSobreposicao: v })}>Confirmo sobreposição de {a.brinco}</ConfirmacaoCiencia>{itens[a.id]?.confirmarSobreposicao && <label>Motivo da sobreposição<textarea required minLength={5} maxLength={500} className={classeInput} value={itens[a.id]?.justificativaSobreposicao ?? ""} onChange={(e) => alterarItem(a.id, { justificativaSobreposicao: e.target.value })} /></label>}</section>} />}
+        </section>
       </fieldset>
-      {previa && <section className="grid gap-3" aria-label="Calendário previsto"><h3 className="font-semibold">Calendário previsto por animal</h3>{previa.avisos?.map((a, i) => <p key={i} role="alert">{a}</p>)}<ListaRascunho itens={previa.itens} rotulo="animais do calendário" texto={i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <div key={i.animalId}><strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? i.animalId}</strong>{i.avisos?.map((a, n) => <p key={n} role="alert">{a}</p>)}<ListaRascunho itens={i.tarefas} rotulo="etapas previstas" renderizar={t => <p key={t.etapaId}>{dataSanitaria(t.previstaPara)} · {t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"} · {t.parametros.dose ? `${t.parametros.produtoNomeSnapshot ?? "Produto planejado"} · ${t.parametros.dose} ${unidadeSanitaria(t.parametros.unidade ?? "")}` : t.parametros.tipoExameNomeSnapshot}</p>} /></div>} /><p className="text-sm text-ink-3">Este planejamento não consome estoque. Confira datas e animais antes de confirmar.</p></section>}
+      <div ref={setPortal} />
+      {previa && <section className="grid gap-3" aria-label="Calendário previsto"><h3 className="font-semibold">Calendário previsto por animal</h3>{previa.avisos?.map((a, i) => <p key={i} role="alert">{a}</p>)}<ListaRascunho itens={previa.itens} rotulo="animais do calendário" texto={i => animais.find(a => a.id === i.animalId)?.brinco ?? i.animalId} renderizar={i => <div key={i.animalId}><strong>{animais.find((a) => a.id === i.animalId)?.brinco ?? i.animalId}</strong>{i.avisos?.map((a, n) => <p key={n} role="alert">{a}</p>)}<ListaRascunho itens={i.tarefas} rotulo="etapas previstas" renderizar={t => <p key={t.etapaId}>{dataSanitaria(t.previstaPara)} · {t.parametros.tipo === "APLICACAO" ? "Aplicação" : "Exame"} · {t.parametros.dose ? `${t.parametros.produtoNomeSnapshot ?? "Produto planejado"} · ${t.parametros.dose} ${unidadeSanitaria(t.parametros.unidade ?? "")}` : t.parametros.tipoExameNomeSnapshot}</p>} /></div>} /></section>}
     </form>
   </PainelCadastro>;
 }
