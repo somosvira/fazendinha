@@ -11,7 +11,7 @@
 .agenda-calendario-scroll{overflow:auto}.agenda-calendario-scroll table{min-width:1050px}.agenda-calendario-scroll th:first-child{min-width:230px}.agenda-calendario-scroll td{text-align:center}
 .agenda-calendario-scroll th small{display:block;margin-top:4px;font-weight:400;color:var(--muted-foreground)}
 .agenda-marcacao{width:36px;height:36px;border:1px solid var(--border);border-radius:6px;color:var(--primary)}
-.agenda-ajuda{position:relative}.agenda-ajuda [role=tooltip]{position:absolute;z-index:4;right:0;top:44px;width:260px;max-width:70vw;padding:12px;border-radius:6px;background:var(--foreground);color:var(--background);font-size:12px;box-shadow:0 5px 16px #203c3926}
+.agenda-ajuda{position:relative}.agenda-ajuda [role=tooltip]{position:absolute;z-index:4;right:0;top:44px;width:260px;max-width:70vw;padding:12px;border-radius:6px;background:var(--foreground);color:var(--background);font-size:12px;box-shadow:0 5px 16px color-mix(in srgb, var(--fin-heading) 15%, transparent)}
 @media(max-width:900px){.agenda-calendario-layout{grid-template-columns:1fr}.agenda-calendario-meses{grid-template-columns:repeat(6,minmax(0,1fr))}.agenda-calendario-evento{padding:16px}}
 
 .agenda-calendario-layout:not(.agenda-calendario-anual):has(.agenda-calendario-cartoes) {

@@ -5,7 +5,7 @@
 .consulta-visual-alternador button:focus-visible{outline:2px solid var(--ring);outline-offset:3px}
 .consulta-visual-barra{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:10px 18px;border-bottom:1px solid var(--border)}
 .consulta-visual-barra>span{font-size:13px;color:var(--muted-foreground)}
-.consulta-cartoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px;background:#f6f9f8}
+.consulta-cartoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:18px;background:var(--muted)}
 .consulta-cartao{display:flex;flex-direction:column;gap:14px;min-width:0;padding:18px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
 .consulta-cartao h2{font-size:17px;line-height:1.35;font-weight:650;overflow-wrap:anywhere}
 .consulta-cartao>header{display:flex;align-items:start;justify-content:space-between;gap:12px}

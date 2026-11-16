@@ -67,7 +67,7 @@
 .protocolo-tabela { overflow-x: auto; min-width: 0; }
 .protocolos-superficie table {
   width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; line-height: 1.45;
-  border: 1px solid var(--fin-table-divider,#d8e0e5);
+  border: 1px solid var(--fin-tag-border);
 }
 .protocolos-superficie table > thead > tr > th {
   font-size: 14px; font-weight: 600; color: var(--fin-table-heading);
@@ -75,7 +75,7 @@
   border-bottom: 1px solid var(--fin-table-rule);
 }
 .protocolos-superficie table > :is(thead,tbody,tfoot) > tr > :is(th,td):not(:last-child) {
-  border-inline-end: 1px solid var(--fin-table-divider,#d8e0e5);
+  border-inline-end: 1px solid var(--fin-tag-border);
 }
 .protocolos-superficie table > tbody > tr > td {
   padding: 12px 16px; min-width: 0; height: 64px; vertical-align: middle;

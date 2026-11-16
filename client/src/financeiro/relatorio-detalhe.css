@@ -137,8 +137,8 @@
 .analise-grupo-titulo h2 { margin: 0; color: var(--ink); font-size: 20px; font-weight: 650; line-height: 1.3; scroll-margin-top: 60px; }
 .analise-grupo-titulo h2:focus { outline: none; }
 .analise-regime { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 5px; }
-.analise-regime-realizado { background: #e0f1e4; color: #1b6133; }
-.analise-regime-previsto { background: #e4efff; color: #154c91; }
+.analise-regime-realizado { background: var(--fin-status-positive-bg); color: var(--fin-status-positive-text); }
+.analise-regime-previsto { background: var(--campo-info-claro); color: var(--campo-info); }
 .analise-posicao { color: var(--ink-3); font-size: 12px; }
 .analise-quadro { min-width: 0; }
 .analise-quadro-titulo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; min-height: 32px; padding-bottom: 4px; }
@@ -155,8 +155,8 @@
 .analise-base-pagamentos { margin-top: 12px; color: var(--ink-2); font-size: 13px; font-weight: 500; }
 .analise-pagamentos .analise-par { margin-top: 2px; }
 .analise-compromissos-detalhe { margin-top: 16px; }
-.analise-vencido { color: #b42318; font-weight: 600; }
-.analise-pendente-documento { color: #946200; }
+.analise-vencido { color: var(--fin-status-danger-text); font-weight: 600; }
+.analise-pendente-documento { color: var(--warn); }
 .analise-auditoria { min-width: 0; }
 .analise-auditoria-grupos { display: grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap: 16px; margin-top: 8px; }
 .analise-auditoria-grupos > section + section { padding-left: 16px; border-left: 1px solid var(--border); }
@@ -169,7 +169,7 @@
 .analise-meses p + p { margin-top: 4px; }
 :root .app-main .relatorio-analises .fin-tabela { font-size: 13px; }
 :root .app-main .relatorio-analises .fin-tabela > tbody > tr > td, :root .app-main .relatorio-analises .fin-tabela > tfoot > tr > td { height: 30px; padding: 5px 10px; font-size: 13px; }
-.relatorio-analises .fin-tabela-rodape { background: #eef1f3; font-weight: 650; }
+.relatorio-analises .fin-tabela-rodape { background: var(--fin-tag-bg); font-weight: 650; }
 .relatorio-analises .fin-cartao-rodape { background: var(--muted); }
 .relatorio-analises .fin-tabela-desktop { border-top: 0; }
 @media (max-width: 1400px) {
@@ -197,16 +197,16 @@
 .relatorio-itens-cabecalho p { margin-top: 4px; font-size: 13px; color: var(--ink-3); }
 .relatorio-itens-contagem { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-3); }
 .relatorio-itens-aviso { padding: 12px 20px; background: var(--muted); border-top: 1px solid var(--border); font-size: 13px; }
-.relatorio-item-grupo { display: inline-block; padding: 4px 9px; border-radius: 5px; color: #79470d; background: #fff0d4; font-size: 12px; font-weight: 500; }
+.relatorio-item-grupo { display: inline-block; padding: 4px 9px; border-radius: 5px; color: var(--warn); background: var(--fin-warning-bg); font-size: 12px; font-weight: 500; }
 :root .app-main .relatorio-itens .fin-tabela > tbody > tr > td { padding: 16px; height: 76px; font-size: 13px; }
 .relatorio-documento { min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
 .relatorio-documento-barra { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .relatorio-documento-titulo, .relatorio-documento-controles { display: flex; align-items: center; gap: 8px; }
 .relatorio-documento-titulo h2 { font-size: 15px; font-weight: 600; }
 .relatorio-documento-controles output { width: 48px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
-.relatorio-documento-canvas { max-height: 78vh; min-height: 360px; overflow: auto; padding: 24px; background: #e4e9ed; scrollbar-color: #91a5ad #e4e9ed; }
+.relatorio-documento-canvas { max-height: 78vh; min-height: 360px; overflow: auto; padding: 24px; background: var(--fin-table-header); scrollbar-color: var(--campo-linha-forte) var(--fin-table-header); }
 .relatorio-documento-canvas:focus-visible { outline: 2px solid var(--primary); outline-offset: -3px; }
-.relatorio-documento-papel { width: 960px; margin: 0 auto; box-shadow: 0 3px 14px #183d4b18; }
+.relatorio-documento-papel { width: 960px; margin: 0 auto; box-shadow: 0 3px 14px color-mix(in srgb, var(--foreground) 9%, transparent); }
 .relatorio-documento-papel .rg-doc { width: 100%; max-width: none; padding: 40px; font-size: 14px; color: var(--ink); background: white; }
 .relatorio-documento-papel .rg-doc h1 { font-family: var(--sans); font-size: 28px; font-weight: 600; }
 .relatorio-documento-papel .rg-doc h2 { font-family: var(--sans); font-size: 20px; font-weight: 600; }
@@ -219,7 +219,7 @@
 .relatorio-documento-papel .rg-kpi-rotulo { text-transform: none; letter-spacing: normal; font-size: 12px; }
 .relatorio-documento-papel .rg-kpi strong { font-family: var(--sans); font-size: 22px; font-weight: 600; }
 .relatorio-documento-papel .rg-tabela { font-size: 13px; }
-.relatorio-documento-papel .rg-tabela th { background: #e2e8ec; font-family: var(--sans); font-style: normal; }
+.relatorio-documento-papel .rg-tabela th { background: var(--fin-table-header); font-family: var(--sans); font-style: normal; }
 .relatorio-documento-papel .rg-tabela th, .relatorio-documento-papel .rg-tabela td { padding: 9px 10px; }
 .relatorio-documento-papel .rg-regime { letter-spacing: normal; text-transform: none; font-size: 11px; }
 @media (max-width: 600px) {

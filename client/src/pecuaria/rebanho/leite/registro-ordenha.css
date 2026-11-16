@@ -20,7 +20,7 @@
 .leite-registro-natureza { gap: 12px; }
 .leite-registro-natureza h3 { font-size: 16px; }
 .leite-registro-parcela { gap: 12px; }
-.leite-registro-rodape { position: sticky; bottom: 12px; z-index: 2; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 6px 18px #203c3910; }
+.leite-registro-rodape { position: sticky; bottom: 12px; z-index: 2; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--card); box-shadow: 0 6px 18px color-mix(in srgb, var(--fin-heading) 6%, transparent); }
 @media(min-width: 1000px) { .leite-registro-campos { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); } }
 @media(max-width: 640px) { .leite-registro-corpo { padding: 12px 0 0; } .leite-registro-rodape { bottom: 8px; padding: 10px; } }
 .leite-registro-layout { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(230px, 1fr); gap: 28px; align-items: start; }

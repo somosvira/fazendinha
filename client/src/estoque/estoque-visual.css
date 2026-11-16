@@ -17,8 +17,8 @@
 .produto-minimo { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted-foreground); }
 .produto-minimo > span { height: 9px; border-radius: 6px; background: var(--muted); flex: 1; overflow: hidden; }
 .produto-minimo i { display: block; height: 100%; background: var(--primary); }
-.produto-minimo i[data-alerta] { background: #a66c16; }
-.produto-vencido { color: #b02b2b; }
+.produto-minimo i[data-alerta] { background: var(--campo-atencao-forte); }
+.produto-vencido { color: var(--fin-status-danger-text); }
 .produto-validade { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 14px; }
 .produto-validade > span { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .produto-validade small { font-size: 14px; color: var(--muted-foreground); }

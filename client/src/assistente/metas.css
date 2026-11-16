@@ -66,12 +66,12 @@
 }
 .metas-no_alvo,
 .metas-concluido {
-  background: #ddf3e1;
-  color: #246a36;
+  background: var(--fin-status-positive-bg);
+  color: var(--fin-status-positive-text);
 }
 .metas-fora_do_alvo {
-  background: #fce1df;
-  color: #a3312a;
+  background: var(--fin-status-danger-bg);
+  color: var(--fin-status-danger-text);
 }
 .metas-corpo {
   display: grid;
@@ -189,7 +189,7 @@
   border-top: 1px solid var(--border);
 }
 .metas-erro {
-  color: #8d3931;
+  color: var(--destructive);
 }
 .metas-campos .metas-checkbox {
   flex-direction: row;
@@ -294,7 +294,7 @@ details.metas-formula p { margin-top: 6px; }
 .metas-vazio > button { margin-top: 14px; }
 
 /* Cartão de meta: situação com contexto, leitura antes do gráfico e ações com nome. */
-.terrano-metas { --metas-linha: var(--campo-pasto, #006f68); --metas-barra: #7fb3ad; --metas-fora: var(--campo-atraso, #8d3931); --metas-fora-fundo: #fbefec; --metas-ok-fundo: #e0efec; --metas-atencao: var(--campo-atencao, #775930); --metas-grade: #e6ecea; --metas-hachura: #d9cbb5; }
+.terrano-metas { --metas-linha: var(--campo-pasto, #006f68); --metas-barra: var(--fin-filter-border); --metas-fora: var(--campo-atraso, #8d3931); --metas-fora-fundo: var(--fin-danger-bg); --metas-ok-fundo: var(--fin-filter-bg); --metas-atencao: var(--campo-atencao, #775930); --metas-grade: var(--border); --metas-hachura: var(--campo-atencao-linha); }
 .metas-resumo { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .metas-resumo button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--card); font-size: 14px; color: var(--muted-foreground); cursor: pointer; }
 .metas-resumo button b { color: var(--foreground); font-weight: 650; }
@@ -312,7 +312,7 @@ details.metas-formula p { margin-top: 6px; }
 .metas-situacao { font-weight: 600; border-radius: 999px; padding: 4px 12px; }
 .metas-situacao-ok { background: var(--metas-ok-fundo); color: var(--metas-linha); }
 .metas-situacao-fora { background: var(--metas-fora-fundo); color: var(--metas-fora); }
-.metas-situacao-marco { background: #f6f0e5; color: var(--metas-atencao); }
+.metas-situacao-marco { background: var(--fin-warning-bg); color: var(--metas-atencao); }
 .metas-meta > .metas-corpo { grid-template-columns: minmax(240px, 1fr) minmax(0, 1.7fr); gap: 28px; margin: 0; padding: 16px 20px 18px; align-items: start; }
 .metas-atual { margin: 0; }
 .metas-atual > dt { font-size: 13px; color: var(--muted-foreground); }
@@ -339,7 +339,7 @@ details.metas-formula p { margin-top: 6px; }
 .metas-meta .metas-etapas li:last-child { border-bottom: 0; }
 .metas-marca { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); font-size: 12px; font-weight: 700; flex-shrink: 0; }
 .metas-etapas li.feita { color: var(--foreground); }
-.metas-etapas li.feita .metas-marca { background: var(--metas-linha); border-color: var(--metas-linha); color: #fff; }
+.metas-etapas li.feita .metas-marca { background: var(--metas-linha); border-color: var(--metas-linha); color: var(--primary-foreground); }
 .metas-etapas li.agora { color: var(--foreground); font-weight: 600; }
 .metas-etapas li.agora .metas-marca { border-color: var(--metas-atencao); }
 .metas-sem-etapas { color: var(--muted-foreground); font-size: 14px; }

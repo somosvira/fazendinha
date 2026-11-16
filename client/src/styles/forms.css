@@ -71,7 +71,7 @@
 }
 .field-input.is-error, .field-textarea.is-error {
   border-color: var(--prejuizo);
-  background: linear-gradient(0deg, rgba(198, 40, 40, 0.04), rgba(198, 40, 40, 0.04)), var(--bg-card);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--destructive) 4%, transparent), color-mix(in srgb, var(--destructive) 4%, transparent)), var(--bg-card);
 }
 .field-input.is-error:focus, .field-textarea.is-error:focus { border-color: var(--prejuizo); }
 .field-error {
@@ -136,7 +136,7 @@
 
 .modal-overlay {
   position: fixed; inset: 0;
-  background: rgba(20, 25, 26, 0.35);
+  background: var(--fin-overlay);
   z-index: 60;
   display: grid; place-items: center;
 }
@@ -144,7 +144,7 @@
   background: var(--bg);
   width: 520px; max-width: 92vw;
   border: 1px solid var(--rule);
-  box-shadow: 0 18px 60px rgba(20, 25, 26, 0.25);
+  box-shadow: var(--fin-dialog-shadow);
 }
 .modal-head {
   background: var(--mast-bg); color: var(--mast-ink);

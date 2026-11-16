@@ -56,7 +56,7 @@
 .fin-abas { background: white; border: 1px solid var(--border); padding: 6px; }
 .fin-abas [role="tab"] { color: var(--ink-2); border: 1px solid transparent; }
 .fin-abas [role="tab"]:hover { background: color-mix(in srgb, var(--rural) 8%, white); color: var(--ink); }
-.fin-abas [role="tab"][data-state="active"] { background: var(--ink); color: white; border-color: var(--ink); box-shadow: 0 1px 3px #0002; }
+.fin-abas [role="tab"][data-state="active"] { background: var(--ink); color: white; border-color: var(--ink); box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 13%, transparent); }
 
 /* Estado vazio dentro de listas e seções (componente Empty). */
 .fin-vazio { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 16px; padding: 24px 20px; border: 1px dashed var(--border); border-radius: 10px; background: var(--bg-card-2, var(--muted)); text-align: center; }

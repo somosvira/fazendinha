@@ -30,7 +30,7 @@
   gap: 12px;
   padding: 32px 16px;
   text-align: center;
-  color: var(--text-muted, #526863);
+  color: var(--muted-foreground);
 }
 .historico-sanitario-animal
   .ficha-sanitaria-evento.consulta-entidade:has(footer) {
@@ -72,8 +72,8 @@
   font-size: 13px;
 }
 .ficha-sanitaria-calendario th {
-  background: var(--table-header, #e2e7ea);
-  color: var(--table-heading, #34434b);
+  background: var(--fin-table-header);
+  color: var(--fin-table-heading);
   text-align: left;
   padding: 8px;
 }
@@ -87,7 +87,7 @@
   padding: 8px;
 }
 .ficha-sanitaria-calendario td[data-fora] {
-  background: var(--surface-subtle, #f1f5f4);
+  background: var(--muted);
 }
 .ficha-sanitaria-calendario time {
   display: inline-flex;
@@ -120,10 +120,10 @@
   border-radius: 8px;
   text-align: left;
   overflow-wrap: anywhere;
-  background: var(--surface-subtle, #f1f5f4);
+  background: var(--muted);
 }
 .ficha-sanitaria-tarefa:hover {
-  background: var(--table-hover, #edf5f3);
+  background: var(--fin-table-hover);
 }
 .ficha-sanitaria-tarefa-linha {
   display: flex;

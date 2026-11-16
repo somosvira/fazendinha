@@ -59,7 +59,7 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 .pecuaria-content .animais-indicador:hover { background: var(--muted); }
 .pecuaria-content .animais-indicador:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 .pecuaria-content .animais-indicador:disabled { cursor: wait; }
-.pecuaria-content .animais-tooltip-composicao { min-width: 190px; max-width: 280px; padding: 12px 14px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px #20382f24; font-size:14px; }
+.pecuaria-content .animais-tooltip-composicao { min-width: 190px; max-width: 280px; padding: 12px 14px; background: var(--card); color: var(--foreground); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 28px color-mix(in srgb, var(--fin-heading) 14%, transparent); font-size:14px; }
 .pecuaria-content .animais-tooltip-composicao header { display: flex; justify-content: flex-start; gap: 8px; }
 .pecuaria-content .animais-tooltip-composicao i { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 .pecuaria-content .animais-tooltip-composicao p { margin-top: 5px; }
@@ -89,7 +89,7 @@ body:has(.animais-pagina-refinada) [aria-label="Abrir assistente do Terrano"] sv
 .animais-cartoes .animal-cartao .consulta-fato strong { font-size: 16px; }
 .animais-cartoes .animal-cartao .consulta-fato small { margin-top: 2px; }
 .animais-cartoes .animal-cartao footer { border: 0; padding-top: 4px; margin-top: auto; }
-.animal-checkbox { appearance: none; position: relative; display: inline-grid; place-content: center; width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--control-border, #7a928d); border-radius: 4px; background: var(--card); cursor: pointer; vertical-align: middle; }
+.animal-checkbox { appearance: none; position: relative; display: inline-grid; place-content: center; width: 18px; height: 18px; flex-shrink: 0; border: 1.5px solid var(--fin-control-border); border-radius: 4px; background: var(--card); cursor: pointer; vertical-align: middle; }
 .animal-checkbox:checked, .animal-checkbox:indeterminate { background: var(--primary); border-color: var(--primary); }
 .animal-checkbox:checked::after { content: ""; width: 9px; height: 5px; border-left: 2px solid white; border-bottom: 2px solid white; transform: translateY(-1px) rotate(-45deg); }
 .animal-checkbox:indeterminate::after { content: ""; width: 10px; height: 2px; background: white; transform: none; border: 0; }

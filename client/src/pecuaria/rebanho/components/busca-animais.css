@@ -17,16 +17,16 @@
 .busca-animais-resultados table{width:100%;min-width:1000px;border-collapse:collapse;font-size:13px;line-height:1.4;white-space:nowrap}
 .busca-animais-resultados :is(th,td){padding:14px 16px;border:0;border-bottom:1px solid var(--border);text-align:left}
 .busca-animais-resultados :is(th,td):first-child{padding-left:24px}
-.busca-animais-resultados th{position:sticky;top:0;z-index:1;background:var(--fin-table-head-bg,#e2e7ea);color:var(--fin-table-head-ink,#34434b);font-weight:600;font-size:13px}
+.busca-animais-resultados th{position:sticky;top:0;z-index:1;background:var(--fin-table-header);color:var(--fin-table-heading);font-weight:600;font-size:13px}
 .busca-animais-resultados tbody tr{cursor:pointer}
-.busca-animais-resultados tbody tr:nth-child(even){background:var(--surface-subtle,#f6f9f8)}
+.busca-animais-resultados tbody tr:nth-child(even){background:var(--muted)}
 .busca-animais-resultados tbody tr:is(:hover,[data-selecionado]){background:var(--fin-table-hover,#edf5f3)}
 .busca-animais-resultados td:first-child{min-width:175px;max-width:260px;white-space:normal;overflow-wrap:anywhere}
 .busca-animais-resultados td button{padding:0;border:0;background:transparent;color:var(--primary);font:inherit;font-weight:650;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .busca-animais-resultados td button:disabled{cursor:default;color:var(--muted-foreground)}
 .busca-animais-resultados td small{display:block;margin-top:3px;color:var(--muted-foreground);font-size:12px}
 .busca-animais-situacao{display:inline-block;padding:3px 8px;border-radius:5px;background:var(--muted);color:var(--muted-foreground)}
-.busca-animais-situacao.ativa{background:var(--status-positive-bg,#ddf3e1);color:var(--status-positive-text,#246a36)}
+.busca-animais-situacao.ativa{background:var(--fin-status-positive-bg);color:var(--fin-status-positive-text)}
 .busca-animais-estado{padding:64px 24px;text-align:center;color:var(--muted-foreground)}
 .busca-animais-estado h3{margin:0;color:var(--foreground);font-size:18px;font-weight:650}
 .busca-animais-estado p{margin:10px 0 20px;font-size:14px}

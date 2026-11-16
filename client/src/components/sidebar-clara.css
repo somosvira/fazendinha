@@ -1,38 +1,38 @@
 /* Navegação global clara; preserva rail, colapso, permissões e Sheet móvel. */
 .sidebar-clara {
-  --mast-bg: #e4e4e4;
-  --side-hover: #d8d8d8;
-  --side-active: #cccccc;
-  --side-active-ink: #262626;
-  --mast-ink: #262626;
-  --mast-ink-2: #626262;
-  --side-mute: #626262;
-  --side-hair: #cecece;
-  --border: #cecece;
-  --leite: #d9d9d9;
+  --mast-bg: var(--fin-table-header);
+  --side-hover: var(--fin-table-control-hover);
+  --side-active: var(--fin-table-control-hover);
+  --side-active-ink: var(--foreground);
+  --mast-ink: var(--foreground);
+  --mast-ink-2: var(--muted-foreground);
+  --side-mute: var(--muted-foreground);
+  --side-hair: var(--fin-table-control-hover);
+  --border: var(--fin-table-control-hover);
+  --leite: var(--fin-tag-border);
   background: var(--mast-bg);
-  color: #262626;
+  color: var(--foreground);
   border-right: 1px solid var(--side-hair);
 }
 .sidebar-clara button { height: auto; white-space: normal; font-weight: 400; box-shadow: none; }
 .sidebar-clara button:hover { background: var(--side-hover); color: var(--mast-ink); }
 .sidebar-clara button[aria-current="page"] { background: var(--side-active); color: var(--side-active-ink); font-weight: 600; }
 .sidebar-clara button[aria-current="page"]::before { display: none; }
-.sidebar-clara button[aria-expanded] { color: #626262; }
-.sidebar-clara button[aria-label="Menu da conta"] { color: #262626; }
-.sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: #262626; background: #d9d9d9; }
-.sidebar-clara button[aria-label="Propriedade / sítio ativo"] { border-color: #e1e5e2; background: var(--sidebar-sitio-fundo, #fff); }
-.sidebar-clara .ah-brand-symbol { color: #80634e; }
+.sidebar-clara button[aria-expanded] { color: var(--muted-foreground); }
+.sidebar-clara button[aria-label="Menu da conta"] { color: var(--foreground); }
+.sidebar-clara button[aria-label="Menu da conta"] > span:first-child { color: var(--foreground); background: var(--fin-tag-border); }
+.sidebar-clara button[aria-label="Propriedade / sítio ativo"] { border-color: var(--border); background: var(--sidebar-sitio-fundo, #fff); }
+.sidebar-clara .ah-brand-symbol { color: var(--rural); }
 .sidebar-clara .ah-brand > span { text-transform: uppercase; letter-spacing: .035em; }
 .sidebar-clara button[aria-label^="Recolher Financeiro"], .sidebar-clara button[aria-label^="Expandir Financeiro"],
-.sidebar-clara button[aria-label^="Recolher Pecuária"], .sidebar-clara button[aria-label^="Expandir Pecuária"] { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 600; color: #262626; }
+.sidebar-clara button[aria-label^="Recolher Pecuária"], .sidebar-clara button[aria-label^="Expandir Pecuária"] { font-size: 12px; text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--foreground); }
 
-.sidebar-clara h2 { color: #626262; }
+.sidebar-clara h2 { color: var(--muted-foreground); }
 @media (min-width: 1101px) {
   .app:not(.side-collapsed):has(.sidebar-clara) { --side-w: 224px; }
 }
 
-.sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: #626262; }
+.sidebar-clara button[aria-label="Propriedade / sítio ativo"] > span:first-child { color: var(--muted-foreground); }
 .sidebar-clara .ah-brand { gap: 6px; padding-inline: 0; }
 .sidebar-clara .ah-brand > span { font-size: 18px; }
 .sidebar-clara .ah-brand-symbol { width: 24px; height: 24px; }
@@ -83,7 +83,7 @@
 .trabalho-ativo-linha { position: relative; min-width: 0; }
 :root .sidebar-clara .trabalho-ativo-com-exclusao > .trabalho-ativo-abrir { padding-right: 34px; }
 :root .sidebar-clara .trabalho-ativo-excluir { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; min-height: 28px; padding: 5px; border-radius: 5px; color: var(--side-mute); }
-:root .sidebar-clara .trabalho-ativo-excluir:hover { background: #fce1df; color: #a3312a; }
+:root .sidebar-clara .trabalho-ativo-excluir:hover { background: var(--fin-status-danger-bg); color: var(--fin-status-danger-text); }
 :root .sidebar-clara .trabalho-ativo-excluir:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 .side-collapsed .trabalho-ativo-com-exclusao { padding-bottom: 24px; }
 :root .side-collapsed .trabalho-ativo-com-exclusao > .trabalho-ativo-abrir { padding-right: 0; }
@@ -108,7 +108,7 @@
   .side-collapsed .sidebar-clara .sidebar-sitio-icone { background: transparent; }
 }
 @media (min-width: 901px) and (max-width: 1100px) {
-  .app:not(.side-collapsed) .sidebar-clara:is(:hover, :focus-within) { width:240px; z-index:20; box-shadow:8px 0 30px rgba(32,60,57,.18); }
+  .app:not(.side-collapsed) .sidebar-clara:is(:hover, :focus-within) { width:240px; z-index:20; box-shadow:var(--fin-popover-shadow); }
   .sidebar-clara:not(:hover):not(:focus-within) .sidebar-trilho-controle {
     width: 44px; height: 44px; min-height: 44px; margin-inline: auto; padding: 0; gap: 0; justify-content: center;
   }
