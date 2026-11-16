@@ -18,7 +18,7 @@ function Cenário({ saida = false, quantidade = "10", dataFato = "2026-10-02", c
 describe("lotes do produto", () => {
   it("modo compacto conserva escolha e ciência e só pede quantidades ao dividir", async () => {
     render(<Cenário saida compacto />);
-    await screen.findByText(/Vencimento conhecido mais próximo/);
+    await screen.findByText(/Vencimento mais próximo/);
     expect(screen.queryByLabelText("Quantidade do lote 1")).toBeNull();
     expect(screen.getByTestId("escolhas").textContent).toContain('"quantidade":"10"');
     await alterarControle(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
@@ -29,7 +29,7 @@ describe("lotes do produto", () => {
   });
   it("exige nova ciência ao mudar a data sem apagar a escolha do lote", async () => {
     const tela = render(<Cenário saida />);
-    await screen.findByText(/Vencimento conhecido mais próximo/);
+    await screen.findByText(/Vencimento mais próximo/);
     await alterarControle(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
     fireEvent.click(screen.getByRole("switch"));
     expect((screen.getByRole("switch") as HTMLInputElement).checked).toBe(true);
@@ -98,10 +98,17 @@ describe("lotes do produto", () => {
   });
   it("sugere vencimento conhecido sem selecionar silenciosamente", async () => {
     render(<Cenário saida />);
-    await screen.findByText(/Vencimento conhecido mais próximo/);
+    await screen.findByText(/Vencimento mais próximo/);
     expect((screen.getByLabelText("Lote 1") as HTMLSelectElement).value).toBe("");
     fireEvent.click(screen.getByLabelText("Lote 1"));
     expect(await screen.findByRole("option", { name: /SEM.*não informada/ })).toBeTruthy();
+  });
+  it("usa a sugestão só com um clique explícito", async () => {
+    render(<Cenário saida />);
+    await screen.findByText(/Vencimento mais próximo/);
+    fireEvent.click(screen.getByRole("button", { name: "Usar este lote" }));
+    await waitFor(() => expect(screen.getByTestId("escolhas").textContent).toContain('"partidaId"'));
+    expect(screen.queryByRole("button", { name: "Usar este lote" })).toBeNull();
   });
   it("consulta entradas no consolidado e saídas no sítio do fato", async () => {
     const tela = render(<Cenário />);
@@ -113,7 +120,7 @@ describe("lotes do produto", () => {
     vi.mocked(listarPartidasNutricionais).mockResolvedValue([{ id: "velho", codigo: "VENCIDO", validade: "2026-09-30", saldo: "50", origemRastreio: "INFORMADA" }, { id: "novo", codigo: "VALIDO", validade: "2026-10-02", saldo: "10", origemRastreio: "INFORMADA" }]);
     render(<Cenário saida />);
     await screen.findByText("VALIDO");
-    expect(screen.getByText(/Vencimento conhecido mais próximo/).textContent).not.toContain("VENCIDO");
+    expect(screen.getByText(/Vencimento mais próximo/).textContent).not.toContain("VENCIDO");
   });
   it("nomes renomeados prevalecem e confirma ausência de validade fora de um form", () => {
     expect(nomeLoteProduto({ nome: "Recebimento sem validade", codigo: "LEGADO", origemRastreio: "LEGADO_NAO_IDENTIFICADO" })).toBe("Recebimento sem validade");
@@ -140,7 +147,7 @@ describe("lotes do produto", () => {
   });
   it("persiste ciência explícita e a zera quando muda o lote", async () => {
     render(<Cenário saida />);
-    await screen.findByText(/Vencimento conhecido mais próximo/);
+    await screen.findByText(/Vencimento mais próximo/);
     await alterarControle(screen.getByLabelText("Lote 1"), { target: { value: "sem" } });
     const ciencia = screen.getByRole("switch", { name: /Estou ciente/ }) as HTMLInputElement;
     expect(ciencia.required).toBe(true);

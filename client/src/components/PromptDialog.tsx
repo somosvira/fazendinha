@@ -67,12 +67,12 @@ export function PromptDialog({
         }}
         className="gap-0"
       >
-        <DialogHeader className="border-b border-[color:var(--rule-soft)] px-[22px] pb-3 pt-[18px]">
+        <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="px-[22px] py-4">
+        <div className="px-5 py-4">
           {label && (
-            <label className="mb-1.5 block text-[13px] font-medium text-muted-foreground">
+            <label className="mb-1.5 block text-sm font-medium text-foreground">
               {label}
             </label>
           )}
@@ -89,10 +89,9 @@ export function PromptDialog({
             }}
           />
         </div>
-        <DialogFooter className="border-t border-[color:var(--rule-soft)] px-[22px] pb-[18px] pt-3.5">
+        <DialogFooter className="border-t border-border bg-card px-5 py-4">
           <Button
             variant="outline"
-            className="h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
             onClick={onCancel}
           >
             {cancelLabel}
@@ -100,7 +99,6 @@ export function PromptDialog({
           <Button
             variant="default"
             disabled={!trimmed}
-            className="h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
             onClick={confirmar}
           >
             {confirmLabel}

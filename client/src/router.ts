@@ -16,6 +16,8 @@ import { ASSISTENTE_ATIVO } from "./featureFlags";
 // Fonte única dos caminhos canônicos; Record<Tab, string> obriga toda aba nova
 // a declarar sua URL e permite validar subrotas sem listas paralelas.
 const PATH_BY_TAB: Record<Tab, string> = {
+  metas: "/metas",
+  assistente: "/assistente",
   gerencial: "/gerencial",
   dashboard: "/financeiro",
   gastos: "/financeiro/compromissos",
@@ -67,6 +69,7 @@ export const DEFAULT_TAB: Tab = "dashboard";
 export function normalizarRotaPecuaria(caminho: string): string {
   const url = new URL(caminho, "https://terrano.internal");
   const path = url.pathname.replace(/\/$/, "").toLowerCase();
+  if (path === "/assistente" && url.searchParams.get("aba") === "metas") { url.pathname = "/metas"; url.searchParams.delete("aba"); }
   if (path === "/pecuaria/reproducao" && url.searchParams.get("rotina") === "configuracao") {
     url.pathname = "/configuracoes/pecuaria/reproducao/politica";
     url.searchParams.delete("rotina");

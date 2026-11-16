@@ -11,6 +11,7 @@ vi.mock("../financeiro/regras.js", async importarOriginal => ({
 }));
 
 import { exigirPeriodoAberto } from "../financeiro/regras.js";
+import { propriedadePrincipalId } from "../propriedade.js";
 import { criarOperacao } from "../financeiro/operacoes.js";
 import { operacaoSchema } from "../financeiro/schemas.js";
 import {
@@ -141,6 +142,7 @@ describe("contraprovas independentes do serviço de valorização, sem banco", (
     const posterior = { id: "posterior", seq: 4, data: new Date("2026-10-17"), origem: "REPRODUCAO" };
     tx.movimentoEstoque.findMany.mockResolvedValue([posterior]);
     const resultado = await previaRetroatividadeTx(banco(tx), "produto", 1, data);
+    expect(propriedadePrincipalId).toHaveBeenCalledWith(tx);
     expect(resultado).toMatchObject({ permitido: false, posteriores: [posterior] });
     expect(tx.movimentoEstoque.update).not.toHaveBeenCalled();
     await expect(planejarSaidaTx(banco(tx), { produtoId: "produto", propriedadeId: 1, data, quantidade: "1" })).rejects.toMatchObject({ code: "CONFLITO" });

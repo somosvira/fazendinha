@@ -67,8 +67,9 @@ describe("VisaoGeral do rebanho", () => {
     render(<VisaoGeral />);
     expect(screen.getByRole("tablist", { name: "Rebanho" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Animais" })).toBeTruthy();
-    expect(screen.getByText("Carregando rebanho…").getAttribute("role")).toBe("status");
-    expect(screen.getByRole("tab", { name: "Alertas" })).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Carregando rebanho" })).toBeTruthy();
+    // Alertas tem entrada própria na sidebar; não é uma seção do Rebanho.
+    expect(screen.queryByRole("tab", { name: "Alertas" })).toBeNull();
   });
   it("mostra gráficos e participação no total, com quantidade real de receptoras", async () => {
     await montar();

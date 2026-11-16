@@ -45,9 +45,10 @@ describe("cadastros gerenciais", () => {
     expect(mocks.centrosFindMany).toHaveBeenCalledWith(expect.objectContaining({ include: { _count: { select: { operacoes: true, produtos: true } } } }));
   });
 
-  it("cria categoria sem grupo e registra auditoria", async () => {
-    await criarCategoria({ nome: "Insumos", classificacao: null, ordem: 0 }, 9);
-    expect(mocks.categoriaCreate).toHaveBeenCalledWith({ data: { nome: "Insumos", classificacao: null, ordem: 0 } });
+  it("cria categoria no grupo e registra auditoria", async () => {
+    mocks.queryRaw.mockResolvedValue([{ ativo: true }]);
+    await criarCategoria({ nome: "Insumos", ordem: 0, grupoId: uid(8) }, 9);
+    expect(mocks.categoriaCreate).toHaveBeenCalledWith({ data: { nome: "Insumos", ordem: 0, grupoId: uid(8) } });
     expect(mocks.auditoria).toHaveBeenCalled();
   });
 
@@ -62,7 +63,7 @@ describe("cadastros gerenciais", () => {
 describe("grupos de categorias", () => {
   it("associa categoria a grupo ativo com validação transacional", async () => {
     mocks.queryRaw.mockResolvedValue([{ ativo: true }]);
-    await criarCategoria({ nome: "Internet", classificacao: null, ordem: 0, grupoId: uid(8) }, 9);
+    await criarCategoria({ nome: "Internet", ordem: 0, grupoId: uid(8) }, 9);
     expect(mocks.categoriaCreate).toHaveBeenCalledWith({ data: expect.objectContaining({ grupoId: uid(8) }) });
     expect(mocks.queryRaw).toHaveBeenCalled();
   });
@@ -70,17 +71,16 @@ describe("grupos de categorias", () => {
   it.each([{ grupos: [] }, { grupos: [{ ativo: false }] }])("recusa nova associação a grupo inexistente ou inativo", async ({ grupos }) => {
     mocks.categoriaCreate.mockClear();
     mocks.queryRaw.mockResolvedValue(grupos);
-    await expect(criarCategoria({ nome: "Internet", classificacao: null, ordem: 0, grupoId: uid(8) })).rejects.toMatchObject({ campo: "grupoId", code: "VALIDACAO" });
+    await expect(criarCategoria({ nome: "Internet", ordem: 0, grupoId: uid(8) })).rejects.toMatchObject({ campo: "grupoId", code: "VALIDACAO" });
     expect(mocks.categoriaCreate).not.toHaveBeenCalled();
   });
 
-  it("permite editar categoria que conserva seu grupo inativo e remover o vínculo", async () => {
+  it("permite editar categoria que conserva seu grupo inativo", async () => {
     mocks.queryRaw.mockClear();
     mocks.categoriaFindUnique.mockResolvedValue({ id: uid(2), grupoId: uid(8) });
     await atualizarCategoria(uid(2), { nome: "Internet rural", grupoId: uid(8) });
-    await atualizarCategoria(uid(2), { grupoId: null });
     expect(mocks.queryRaw).not.toHaveBeenCalled();
-    expect(mocks.categoriaUpdate).toHaveBeenLastCalledWith({ where: { id: uid(2) }, data: { grupoId: null } });
+    expect(mocks.categoriaUpdate).toHaveBeenLastCalledWith({ where: { id: uid(2) }, data: { nome: "Internet rural", grupoId: uid(8) } });
   });
 
   it("valida também a troca de grupo na edição", async () => {

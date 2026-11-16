@@ -1,3 +1,4 @@
+import { alterarControle } from "../lib/controles.fixture";
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -13,11 +14,11 @@ describe("controle de lotes por validade", () => {
     const onMudou = vi.fn();
     render(<PartidasProduto configuracao produtoId="p" propriedadeId={2} rastreado={false} onMudou={onMudou} />);
     expect(screen.queryByRole("button", { name: "Ativar controle de lotes por validade" })).toBeNull();
-    fireEvent.click(screen.getByLabelText("Controlar lotes por validade"));
+    await alterarControle(screen.getByLabelText("Controlar lotes por validade"), { target: { value: "SIM" } });
     await screen.findByRole("button", { name: "Confirmar ativação" });
     expect(onMudou).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
-    expect((screen.getByLabelText("Controlar lotes por validade") as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByLabelText("Controlar lotes por validade").textContent).toBe("Não");
   });
   it("ativo sem saldo não oferece identificação nem cria lote", async () => {
     render(<PartidasProduto produtoId="p" propriedadeId={2} rastreado onMudou={vi.fn()} />);

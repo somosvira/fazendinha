@@ -31,7 +31,7 @@ function demanda(id: string, patch: Record<string, unknown> = {}) {
 async function consultarComDemandas(demandas: ReturnType<typeof demanda>[]) {
   buscar.mockResolvedValue([{ id: "a" }]); buscarDemandas.mockResolvedValue(demandas);
   vi.mocked(obterElegibilidadesNaDataTx).mockResolvedValue(new Map([["a", {
-    animalId: "a", propriedadeId: 3, dataReferencia: "2026-10-29", estado: "NAO_ELEGIVEL", baseElegivel: false, elegivel: false,
+    situacaoReprodutiva: "DESCONHECIDA", aptidao: { finalidadePrincipal: null, bloqueioAnteriorId: null, estado: "NAO_APTA", exameId: null, data: null, retornoEm: null, motivos: ["GESTACAO_CONFIRMADA"] }, animalId: "a", propriedadeId: 3, dataReferencia: "2026-10-29", estado: "NAO_ELEGIVEL", baseElegivel: false, elegivel: false,
     aptaDesde: null, ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null, metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: null, motivos: ["GESTACAO_CONFIRMADA"], alertas: [], restricaoIds: [],
   }]]));
   vi.mocked(carregarFilasAptidaoTx).mockResolvedValue([]);

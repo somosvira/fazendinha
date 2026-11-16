@@ -27,7 +27,7 @@ it("cancelar edição de filtros não consulta; aplicar muda os dois recortes e 
   fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
   expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
   fireEvent.click(screen.getByRole("button", { name: "Filtros" }));
-  expect((screen.getByLabelText("Data de produção") as HTMLInputElement).value).toBe("2026-10-31");
+  expect((screen.getByLabelText("Data de produção") as HTMLInputElement).value).toBe("31/10/2026");
   fireEvent.change(screen.getByLabelText("Data de produção"), { target: { value: "2026-09-15" } });
   fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
   await waitFor(() => expect(consultarLeite).toHaveBeenCalledWith("/custos?inicio=2026-09-01&fim=2026-09-30", 2));

@@ -32,13 +32,14 @@ export function limiteInsercaoRetirada(realizadaEm: string) {
 export function filtroInsercoesRetirada(animalId: string, realizadaEm?: string): Prisma.AplicacaoProdutoWhereInput {
   const limite = realizadaEm ? limiteInsercaoRetirada(realizadaEm) : null;
   return {
-    animalId, status: "VALIDO",
+    animalId,
+    AND: [{ OR: [{ status: "VALIDO" }, { status: "ANULADO", consumoMantido: true, administracaoMantida: { not: false } }, { status: "ANULADO", consumoMantido: true, administracaoMantida: null }] }],
     OR: [
       { tarefa: { etapa: { tipo: "APLICACAO", configuracao: { path: ["subtipo"], equals: "INSERCAO_DISPOSITIVO" } } } },
       { insercaoDispositivoSnapshot: { not: Prisma.DbNull } },
     ],
     retiradasDispositivo: { none: { OR: [{ status: "VALIDO" }, { realizacaoMantida: true }] } },
-    ...(limite ? { AND: [{ OR: [
+    ...(limite ? { AND: [{ OR: [{ status: "VALIDO" }, { status: "ANULADO", consumoMantido: true, administracaoMantida: { not: false } }, { status: "ANULADO", consumoMantido: true, administracaoMantida: null }] }, { OR: [
       { precisaoTemporal: { not: "HORA" }, data: { lte: limite.dia } },
       { precisaoTemporal: "HORA", aplicadaEm: { lte: limite.limiteHora } },
       { precisaoTemporal: "HORA", aplicadaEm: null, data: { lte: limite.limiteHora } },

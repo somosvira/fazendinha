@@ -3,9 +3,11 @@ import { FileText, MapPin, X, CornerDownLeft } from "lucide-react";
 import type { Tab } from "./Shell";
 import { COMANDOS, buscar, type ResultadoBusca } from "../lib/searchIndex";
 import { comPropriedade } from "../propriedadeScope";
+import { listarPropriedades } from "../api/propriedades";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import "./busca-global.css";
+import { BuscaAnimais } from "../pecuaria/rebanho/components/BuscaAnimais";
 
 type FiltroBusca = "Tudo" | "Registros" | "Páginas" | "Ações";
 type Props = {
@@ -14,6 +16,10 @@ type Props = {
   podeVer: (t: Tab) => boolean;
   podeVerCaminho?: (caminho: string) => boolean;
   podeLancar?: boolean; podeVerValores?: boolean; escopo?: string;
+  termoInicial?: string;
+  modo?: "tudo" | "animais";
+  /** Sítio ativo: o contexto mostra seu nome em vez de um rótulo genérico. */
+  propriedadeId?: number | null;
 };
 const filtros: FiltroBusca[] = ["Tudo", "Registros", "Páginas", "Ações"];
 const consultaValida = (q: string) => q.length >= 2 || /^\d$/.test(q);
@@ -24,7 +30,14 @@ function eResultadoBusca(v: unknown): v is ResultadoBusca {
     && (r.caminho as string).startsWith("/") && !(r.caminho as string).startsWith("//");
 }
 
-export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado" }: Props) {
+function BuscaGlobal({ aberto, onFechar, onNav, podeVer, podeVerCaminho, podeLancar = true, podeVerValores = true, escopo = "Consolidado", propriedadeId = null, termoInicial = "" }: Props) {
+  const [nomeSitio, setNomeSitio] = useState<string | null>(null);
+  useEffect(() => {
+    if (!aberto || propriedadeId == null || nomeSitio) return;
+    let vivo = true;
+    listarPropriedades().then(lista => { if (vivo) setNomeSitio(lista.find(p => p.id === propriedadeId)?.nome ?? null); }).catch(() => undefined);
+    return () => { vivo = false; };
+  }, [aberto, propriedadeId, nomeSitio]);
   const [query, setQuery] = useState("");
   const [filtro, setFiltro] = useState<FiltroBusca>("Tudo");
   const [valorSelecionado, setValorSelecionado] = useState("");
@@ -32,6 +45,7 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
   const [buscando, setBuscando] = useState(false);
   const [erro, setErro] = useState(false);
   const [tentativa, setTentativa] = useState(0);
+  const focoAnterior = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listaRef = useRef<HTMLDivElement | null>(null);
   const termo = query.trim();
@@ -45,8 +59,8 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
   useEffect(() => { setValorSelecionado(primeiroId); if (listaRef.current) listaRef.current.scrollTop = 0; }, [primeiroId, termo, filtro]);
 
   useEffect(() => {
-    if (aberto) { setQuery(""); setFiltro("Tudo"); setResposta(null); setErro(false); }
-  }, [aberto]);
+    if (aberto) { setQuery(termoInicial); setFiltro("Tudo"); setResposta(null); setErro(false); }
+  }, [aberto, termoInicial]);
   useEffect(() => {
     if (!aberto || !consultaValida(termo)) { setResposta(null); setBuscando(false); setErro(false); return; }
     const controller = new AbortController();
@@ -70,14 +84,14 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
   const semResultados = !paginas.length && !acoes.length && !registros.length && !(mostrarRegistros && (buscando || erro));
   const escolher = (tab: Tab, id: string | undefined, caminho: string) => { onNav(tab, id, caminho); onFechar(); };
   return <Dialog open={aberto} onOpenChange={open => { if (!open) onFechar(); }}>
-    <DialogContent showCloseButton={false} aria-describedby={undefined} className="busca-global" onOpenAutoFocus={e => { e.preventDefault(); inputRef.current?.focus(); }}>
+    <DialogContent showCloseButton={false} aria-describedby={undefined} className="busca-global" onOpenAutoFocus={e => { e.preventDefault(); focoAnterior.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; inputRef.current?.focus(); }} onCloseAutoFocus={e => { if (focoAnterior.current?.isConnected) { e.preventDefault(); focoAnterior.current.focus(); } }}>
       <DialogTitle className="sr-only">Busca global</DialogTitle>
       <Command value={valorSelecionado} onValueChange={setValorSelecionado} shouldFilter={false} vimBindings={false} label="Busca global" className="busca-global-comando">
         <div className="busca-global-entrada">
           <CommandInput ref={inputRef} value={query} onValueChange={setQuery} placeholder="Buscar em tudo…" maxLength={60} aria-label="Buscar em tudo" />
           <button type="button" onClick={onFechar} aria-label="Fechar busca" className="busca-global-fechar"><X size={18} aria-hidden /></button>
         </div>
-        <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{escopo}</span></div>
+        <div className="busca-global-escopo"><MapPin size={14} aria-hidden /><span>{nomeSitio ?? escopo}</span></div>
         <nav className="busca-global-filtros" aria-label="Tipos de resultado">{filtros.map(f => <button key={f} type="button" aria-pressed={filtro === f} onClick={() => setFiltro(f)}>{f}</button>)}</nav>
         <CommandList ref={listaRef} className="busca-global-lista" aria-label="Resultados da busca" aria-busy={mostrarRegistros && buscando}>
           {!termo && <p className="busca-global-dica">Busque por nome, brinco, número ou referência.</p>}
@@ -91,8 +105,15 @@ export function CommandPalette({ aberto, onFechar, onNav, podeVer, podeVerCaminh
           {semResultados && <div className="busca-global-vazio"><strong>{termo ? `Nenhum resultado para «${termo}»` : "Digite para buscar"}</strong><p>{!consultaValida(termo) && termo ? "Digite pelo menos duas letras ou um número." : "Tente parte do nome, brinco ou referência do registro."}</p></div>}
           {registros.length >= 6 && <p className="busca-global-dica">Resultados limitados por tipo. Refine o termo para localizar outros registros.</p>}
         </CommandList>
-        <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl/⌘ K</kbd> buscar</span></div>
+        <div className="busca-global-rodape"><span><kbd>↑</kbd><kbd>↓</kbd> navegar</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span><span><kbd>Ctrl/⌘ Shift K</kbd> só animais</span></div>
       </Command>
     </DialogContent>
   </Dialog>;
+}
+
+/** Os dois atalhos compartilham abertura/guarda; cada modo conserva sua consulta. */
+export function CommandPalette(props: Props) {
+  if (props.modo !== "animais") return <BuscaGlobal {...props}/>;
+  const podeConsultar = props.podeVer("pec-rebanho") && (!props.podeVerCaminho || props.podeVerCaminho("/pecuaria/rebanho/animais"));
+  return <BuscaAnimais aberto={props.aberto} escopo={props.escopo ?? "Consolidado"} podeConsultar={podeConsultar} podeVerCaminho={props.podeVerCaminho} onFechar={props.onFechar} onAbrir={(id,caminho) => { props.onNav("pec-rebanho",id,caminho); props.onFechar(); }}/>;
 }

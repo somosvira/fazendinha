@@ -1,3 +1,5 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import crypto from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { prisma } from "../../../db.js";
@@ -7,6 +9,7 @@ import { hojeFazenda } from "../rebanho/regras.js";
 import { criarProtocolo, criarProgramacao } from "../reproducao/iatf.js";
 import { protocoloSchema, programacaoSchema } from "../reproducao/schemas.js";
 import { criarAvaliacao } from "../reproducao/registros.js";
+import { obterElegibilidadesNaDataTx } from "../reproducao/elegibilidade.js";
 import { listarAcompanhamentosPaginados } from "../reproducao/acompanhamento.js";
 import { anularFato, previaAnulacao } from "../reproducao/correcoes.js";
 import { TIPO_EXAME_REPRODUTIVO } from "../exames/evidencia-reprodutiva.js";
@@ -27,7 +30,9 @@ const uuid=()=>crypto.randomUUID();
 // Somente IDs criados por esta suíte; nenhuma limpeza global/seed/estrutura.
 afterAll(async()=>{
  if(!sitios.length)return;
- await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
+ await limparAlertasReprodutivosFixtureTx(prisma, animais);
+ await limparAptidaoFixture(prisma, animais);
+  await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});
  await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{animalId:{in:animais}},{propriedadeId:{in:sitios}},{entidadeId:{in:protocolos}}]}});
  await prisma.vinculoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});
  await prisma.demandaAcompanhamentoReprodutivo.updateMany({where:{animalId:{in:animais}},data:{estado:"PENDENTE",exameResolucaoId:null,resolvidaEm:null,resolucaoSnapshot:undefined}});
@@ -63,7 +68,7 @@ async function fixture(acao:"EXAME"|"TENTATIVA"|"AVALIACAO",quantidade=2,saldo=1
  const etapa={nome:`Ação ${acao}`,tipo:acao,intervalo:0,unidade:"DIAS",...(acao==="EXAME"?{planoExame:{tipoExameId:tipo.id}}:acao==="AVALIACAO"?{planoAvaliacao:{tipo:finalidade,tipoExameId:TIPO_EXAME_REPRODUTIVO}}:{planoTentativa:{tipo:"IA",materialId:material.id,quantidade:1}})};
  const protocolo=await criarProtocolo(protocoloSchema.parse({nome:`Clínica ${acao} ${run}`,versao:1,publicado:true,etapas:[etapa,...(acao!=="TENTATIVA"?[{nome:"Tentativa planejada",tipo:"TENTATIVA",intervalo:10,unidade:"DIAS",planoTentativa:{tipo:"IA",materialId:material.id,quantidade:1}}]:[])]}),null);protocolos.push(protocolo.id);
  const ids:string[]=[];
- for(let n=0;n<quantidade;n++){const animal=await cadastrar(cadastrarAnimalSchema.parse({brinco:`CL${run}${n}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(animal.id);ids.push(animal.id);}
+ for(let n=0;n<quantidade;n++){const animal=await cadastrar(cadastrarAnimalSchema.parse({brinco:`CL${run}${n}`,sexo:"F",origem:"COMPRADO",aptidao:"LEITE",dataNascimento:"2024-01-01",dataEntrada:"2026-08-01",propriedadeId:sitio.id}),null);animais.push(animal.id);ids.push(animal.id);await criarAptidaoFixture(prisma, animal.id, sitio.id, new Date("2026-08-01"));}
  const grupo=await criarProgramacao(programacaoSchema.parse({chave:uuid(),propriedadeId:sitio.id,protocoloId:protocolo.id,nome:`Clínica grupo ${run}`,inicioPrevisto:data,animais:ids.map(animalId=>({animalId}))}),null);
  const participacoes=await prisma.participacaoProtocolo.findMany({where:{rodadaId:grupo.id},include:{tarefas:{orderBy:{etapa:{ordem:"asc"}}}},orderBy:{animalId:"asc"}});
  await criarEntradaValorizadaFixture({data:{produtoId:produto.id,propriedadeId:sitio.id,data:new Date(`${data}T00:00:00Z`),tipo:"ENTRADA",origem:"INVENTARIO_INICIAL",quantidade:saldo,custoUnitario:1,valorTotal:saldo}});
@@ -135,6 +140,14 @@ banco("execução clínica comum preserva fatos e efeitos no PostgreSQL",()=>{
   expect(await prisma.gestacaoAnimal.count({where:{animalId:item.animalId,status:"VALIDO"}})).toBe(1);
   expect(await prisma.gestacaoAnimal.findUnique({where:{id:primeiro.gestacaoId!}})).toMatchObject({sexoFetal:"F"});
   expect(await prisma.exameAnimal.findUnique({where:{id:inconclusivo.itens[0].id}})).toMatchObject({status:"VALIDO"});
+  const atual=(await obterElegibilidadesNaDataTx(prisma,[item.animalId],f.sitio.id,new Date(data))).get(item.animalId);
+  expect(atual).toMatchObject({situacaoReprodutiva:"GESTANTE",aptidao:{estado:"NAO_APTA",motivos:expect.arrayContaining(["GESTACAO_CONFIRMADA"])}});
+  const tentativa=await prisma.tarefaProtocolo.findFirstOrThrow({where:{execucao:{rodadaId:f.grupo.id,animalId:item.animalId},etapa:{tipo:"TENTATIVA"}},include:{etapa:true}});
+  const plano=tentativa.etapa.configuracao as {planoTentativa:{materialId:string}};
+  const movimentosAntes=await prisma.movimentoEstoque.count({where:{produtoId:f.produto.id}});
+  await expect(confirmar({...f.input,itens:[{tipo:"TENTATIVA",tarefaId:tentativa.id,animalId:item.animalId,propriedadeId:f.sitio.id,data,tipoTentativa:"IA",materialId:plano.planoTentativa.materialId,origem:"ESTOQUE",quantidade:1}]})).rejects.toThrow(/gestação confirmada/);
+  expect(await prisma.tentativaReprodutiva.count({where:{animalId:item.animalId}})).toBe(0);
+  expect(await prisma.movimentoEstoque.count({where:{produtoId:f.produto.id}})).toBe(movimentosAntes);
  },60000);
  it("não realização legada não atende nas projeções Prisma/TS mesmo com realizadaEm",async()=>{
   const f=await fixture("EXAME",1);const item=f.itens[0];

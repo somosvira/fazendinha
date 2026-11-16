@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { paginaOperacao, contagensOperacao } from "./operacao.js";
+import { paginaOperacao, contagensOperacao, revisaoAutomacaoRetroativa } from "./operacao.js";
 import { consultaOperacaoSchema, consultaVersoesOperacaoSchema } from "./operacao.schemas.js";
 import { situacaoOperacionalTarefa, ultimoEventoOperacional, tarefaOperacionalAtrasada, contextoRegularizacaoOperacao, sqlAtrasoOperacional } from "./situacao.js";
 import { estimarPlanosProtocolos } from "../custos/estimativa-protocolo.js";
@@ -17,4 +17,10 @@ describe("operação comum de protocolos",()=>{
   it("regularização segue último fato histórico e respeita sítio de leitura",()=>{const tarefa={execucao:{propriedadeId:1},vinculos:[{exame:{propriedadeId:2}}]};expect(contextoRegularizacaoOperacao(tarefa,null)).toEqual({propriedadeRegularizacaoId:2});expect(contextoRegularizacaoOperacao(tarefa,2)).toEqual({propriedadeRegularizacaoId:2});expect(contextoRegularizacaoOperacao(tarefa,1)).toEqual({propriedadeRegularizacaoId:null});});
   it("seletor de versões exige domínio e mantém teto dez",()=>{expect(consultaVersoesOperacaoSchema.parse({tipo:"SANITARIO"})).toEqual({tipo:"SANITARIO",pagina:1,porPagina:10});expect(consultaVersoesOperacaoSchema.safeParse({tipo:"REPRODUTIVO",porPagina:11}).success).toBe(false);expect(consultaVersoesOperacaoSchema.safeParse({}).success).toBe(false);});
   it("estima com Decimal e distingue parcial, zero e desconhecido",()=>{expect(estimarPlanosProtocolos([{quantidade:"3",custoUnitario:"0.10"}]).total).toBe("0.30");expect(estimarPlanosProtocolos([{quantidade:"3",custoUnitario:null}]).totalConhecido).toBeNull();expect(estimarPlanosProtocolos([{quantidade:"3",custoUnitario:"0"}]).total).toBe("0.00");expect(estimarPlanosProtocolos([{quantidade:"3",custoUnitario:"2"}],1)).toMatchObject({situacao:"PARCIAL",total:null,totalConhecido:"6.00",componentesPendentes:1});});
+});
+
+it("revisão retroativa tolera legado, preserva última decisão e não expõe JSON extra",()=>{
+ expect(revisaoAutomacaoRetroativa(null)).toBeNull();
+ expect(revisaoAutomacaoRetroativa([null,[],{acao:"REVISAO_AUTOMACAO_RETROATIVA",decisao:"INVENTADA"}])).toBeNull();
+ expect(revisaoAutomacaoRetroativa([{acao:"REVISAO_AUTOMACAO_RETROATIVA",decisao:"REGISTRAR_MANUALMENTE"},{acao:"REVISAO_AUTOMACAO_RETROATIVA",decisao:"DISPENSAR",dadosFinanceiros:"Não deve sair"}])).toEqual({decisao:"DISPENSAR",motivo:null,usuarioId:null,revisadaEm:null});
 });

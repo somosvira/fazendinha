@@ -19,7 +19,7 @@ describe("navegação da Nutrição", () => {
     expect(screen.getByText("Fechamentos gerais")).toBeTruthy();
     expect(screen.queryByRole("tab", { name: "Fechamento mensal" })).toBeNull();
     expect(screen.queryByRole("tab", { name: "Configuração" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Configurar nutrição" }).getAttribute("href")).toBe("/configuracoes/pecuaria/nutricao/fechamento");
+    expect(screen.getByRole("link", { name: "Configurações" }).getAttribute("href")).toBe("/configuracoes/pecuaria/nutricao");
     expect(window.location.search).not.toContain("loteId");
   });
   it("restaura a aba depois de voltar no navegador e mantém links antigos de detalhe", () => {
@@ -44,7 +44,7 @@ describe("navegação da Nutrição", () => {
   it("conferência preserva filtros ao cancelar sem link de retorno redundante", () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?aba=fechamentos&filtroLoteId=l&statusFechamento=ESTORNADO&paginaFechamentos=2");
     render(<Nutricao podeLancar />);
-    fireEvent.click(screen.getByRole("link", { name: "Conferir consumo" }));
+    fireEvent.click(screen.getByRole("link", { name: "Novo fechamento" }));
     let params = new URLSearchParams(window.location.search);
     expect(params.get("acao")).toBe("consumo"); expect(params.get("statusFechamento")).toBe("ESTORNADO"); expect(params.get("paginaFechamentos")).toBe("2");
     expect(screen.queryByRole("link", { name: /Voltar à nutrição/ })).toBeNull();
@@ -52,11 +52,11 @@ describe("navegação da Nutrição", () => {
     params = new URLSearchParams(window.location.search);
     expect(params.get("acao")).toBeNull(); expect(params.get("filtroLoteId")).toBe("l"); expect(params.get("statusFechamento")).toBe("ESTORNADO"); expect(params.get("paginaFechamentos")).toBe("2");
   });
-  it("abre ações em tela própria e bloqueia o formulário para perfis de consulta", () => {
+  it("abre ações em painel sobre a página de origem e bloqueia o formulário para perfis de consulta", () => {
     window.history.replaceState(null, "", "/pecuaria/nutricao?acao=atribuir&loteId=l");
     const { rerender } = render(<Nutricao podeLancar />);
     expect(screen.getByText("Formulário próprio")).toBeTruthy();
-    expect(screen.queryByText("Nutrição específica do lote")).toBeNull();
+    expect(screen.getByText("Nutrição específica do lote")).toBeTruthy();
     rerender(<Nutricao podeLancar={false} />);
     expect(screen.queryByText("Formulário próprio")).toBeNull();
     expect(screen.getByRole("alert").textContent).toContain("permissão");

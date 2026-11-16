@@ -63,6 +63,10 @@ vi.mock('../../src/services/pecuaria/reproducao/iatf.js', () => ({
   executarTarefa: async () => undefined,
   retirarParticipante: async (id: string) => { banco.tabelas.participacaoProtocolo.find(p => p.id === id)!.canceladaEm = new Date(); },
 }));
+vi.mock('../../src/services/pecuaria/reproducao/toque-aptidao.js', () => ({ registrarToqueAptidao: async (d: { animalId: string; propriedadeId: number; data: string; resultado: string }) => {
+ const exame = { id: banco.id(), ...d, data: new Date(d.data), atualizadoEm: new Date(d.data), status: 'VALIDO', finalidadePrincipal: 'APTIDAO_REPRODUTIVA', resultadoOpcao: d.resultado, interpretacao: null };
+ (banco.tabelas.exameAnimal ??= []).push(exame); return exame;
+} }));
 import { ContextoSeed, type Manifesto } from './contexto.js';
 import { protocolosReprodutivos } from './reproducao.js';
 
@@ -108,12 +112,10 @@ describe('programações demonstrativas com o gate real de aptidão, sem banco',
     expect(banco.tabelas.situacaoInicialReprodutiva.some(i => i.animalId === c.id('animal:58'))).toBe(false);
     expect(banco.tabelas.vinculoPoliticaCiclo.some(v => v.animalId === c.id('animal:58'))).toBe(false);
   });
-  it('política V2 sem decisão continua recusando o novo grupo58 após preparar origem', async () => {
-    const c = contexto(2);
-    for (const _reenvio of [1, 2]) await expect(protocolosReprodutivos(c)).rejects.toThrow('Decisão de aptidão');
-    expect(banco.tabelas.situacaoInicialReprodutiva.filter(i => i.animalId === c.id('animal:58'))).toHaveLength(1);
-    expect(banco.tabelas.vinculoPoliticaCiclo.filter(v => v.animalId === c.id('animal:58'))).toHaveLength(1);
-    expect(banco.tabelas.programacaoProtocolo.map(p => p.nome)).toEqual(['Reprodução ativo', 'Reprodução programado']);
+  it('política V2 usa exame geral sem criar decisão por procedimento', async () => {
+    const c = contexto(2); await protocolosReprodutivos(c);
+    expect(banco.tabelas.programacaoProtocolo).toHaveLength(3);
+    expect(banco.tabelas.exameAnimal.filter(e => e.animalId === c.id('animal:58'))).toHaveLength(1);
     expect(banco.tabelas.decisaoElegibilidadeCiclo ?? []).toHaveLength(0);
   });
 });

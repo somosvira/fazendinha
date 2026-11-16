@@ -13,8 +13,7 @@ export const ROTULO_ATIVIDADE: Record<string, string> = { leite: "Leite", cafe: 
 
 export const ROTULO_TIPO: Record<TipoOperacao, string> = {
   receita: "Receitas",
-  custeio: "Despesas de custeio",
-  investimento: "Investimentos",
+  despesa: "Despesas",
   transferencia: "Transferências entre contas",
   compromisso: "Compromissos em aberto",
   parcial: "Liquidações parciais",
@@ -55,9 +54,9 @@ function tabelasDaSecao(id: SecaoId, dto: RelatorioGerencialDTO): string[][] | n
       ]] : null;
     case "resultado":
       return dto.resultado ? [[
-        linha("Atividade", "Receita", "Custeio", "Investimento", "Resultado"),
-        ...dto.resultado.porAtividade.map((a) => linha(ROTULO_ATIVIDADE[a.atividade] ?? a.atividade, a.receita, a.custeio, a.investimento, a.resultado)),
-        linha("Total", dto.resultado.receita, dto.resultado.custeio, dto.resultado.investimento, dto.resultado.resultado),
+        linha("Atividade", "Receita", "Despesas", "Resultado"),
+        ...dto.resultado.porAtividade.map((a) => linha(ROTULO_ATIVIDADE[a.atividade] ?? a.atividade, a.receita, a.despesa, a.resultado)),
+        linha("Total", dto.resultado.receita, dto.resultado.despesa, dto.resultado.resultado),
       ]] : null;
     case "compromissos": {
       if (!dto.compromissos) return null;

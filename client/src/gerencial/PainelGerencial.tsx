@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/DatePicker";
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarDays, CircleAlert, LockKeyhole, RefreshCw, LayoutDashboard, Wallet, ClipboardList, TrendingUp, Layers, Leaf, Scale, Package, Milk } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, Legend, ReferenceLine } from "recharts";
@@ -10,9 +11,10 @@ import { consultarResumo, periodoGerencial, hojeGerencial, type Bloco, type Resu
 import "../financeiro/financeiro-theme.css";
 import "./painel-gerencial.css";
 import { ResumoLeitePainel } from "../pecuaria/rebanho/leite/ResumoLeitePainel";
+import { Empty } from "@/financeiro/financeiro-ui";
 
 const dinheiro = (v: string | null) => v == null ? "Não apurado" : brl(v);
-const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 4, maximumFractionDigits: 4 }).format(Number(v));
+const dinheiroDiario = (v: string | null) => v == null ? "Não apurado" : new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v));
 const numero = (v: string | number) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 4 });
 const contagem = (n: number, singular: string, plural: string) => `${numero(n)} ${n === 1 ? singular : plural}`;
 const media = (v: string) => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -63,8 +65,8 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
     <header className="ger-cabecalho">
       <div><h1 className="rotina-titulo"><span><LayoutDashboard/></span>Painel administrativo</h1></div>
       <div className="ger-filtros"><Dialog open={periodoAberto} onOpenChange={aberto => { setPeriodoAberto(aberto); if (aberto) setEdicao(periodo); }}><DialogTrigger asChild><Botao variant="outline" aria-label="Selecionar período"><CalendarDays size={17} aria-hidden="true" />{dataBR(periodo.inicio)} – {dataBR(periodo.fim)}</Botao></DialogTrigger><DialogContent aria-describedby={undefined} className="ger-periodo-modal"><form onSubmit={e => { e.preventDefault(); setPeriodo({ ...edicao }); onPeriodo(edicao); setPeriodoAberto(false); }}>
-        <DialogHeader><DialogTitle><CalendarDays size={22}/>Período do painel</DialogTitle></DialogHeader><div className="ger-periodo-campos"><label>Início<input required type="date" className={classeInput} value={edicao.inicio} max={edicao.fim} onChange={e => setEdicao(p => ({ ...p, inicio: e.target.value }))} /></label>
-        <label>Fim<input required type="date" className={classeInput} value={edicao.fim} min={edicao.inicio} max={hojeGerencial()} onChange={e => setEdicao(p => ({ ...p, fim: e.target.value }))} /></label></div>
+        <DialogHeader><DialogTitle><CalendarDays size={22}/>Período do painel</DialogTitle></DialogHeader><div className="ger-periodo-campos"><label>Início<DatePicker required className="mt-1.5" value={edicao.inicio} max={edicao.fim} onChange={(valor) => setEdicao(p => ({ ...p, inicio: valor }))} /></label>
+        <label>Fim<DatePicker required className="mt-1.5" value={edicao.fim} min={edicao.inicio} max={hojeGerencial()} onChange={(valor) => setEdicao(p => ({ ...p, fim: valor }))} /></label></div>
         <Button type="submit">Aplicar período</Button></form></DialogContent></Dialog><Button secondary type="button" disabled={carregando} onClick={() => setRevisao(r => r + 1)}><RefreshCw size={16} aria-hidden="true" />Atualizar</Button></div>
     </header>
     <p className="ger-contexto">{dados ? <>{dados.escopo.propriedadeId == null ? "Todos os sítios · consolidado" : dados.escopo.sitios[0]?.nome ?? "Sítio selecionado"} <span>· {dataBR(dados.periodo.inicio)} a {dataBR(dados.periodo.fim)} · consulta em {new Date(dados.corte).toLocaleString("pt-BR")}</span></> : "Selecione o sítio no menu da fazenda."}</p>
@@ -95,7 +97,7 @@ export function PainelGerencial({ locationRevision = 0, propriedadeId, onPeriodo
             {c.mensal.some(m => Number(m.entradas) !== 0 || Number(m.saidas) !== 0) ? <div className="ger-grafico" aria-hidden="true"><ResponsiveContainer width="100%" height="100%"><BarChart accessibilityLayer={false} data={c.mensal.map(m => ({...m, nome: `${mesBR(m.mes)}${m.incompleto ? "*" : ""}`, Recebido:Number(m.entradas), Pago:Number(m.saidas)}))} margin={{top:12,right:8,left:0,bottom:5}}><CartesianGrid vertical={false} stroke="var(--ger-borda)" /><XAxis dataKey="nome" tick={{fontSize:11}} interval="preserveStartEnd" /><YAxis width={68} tickFormatter={eixoMonetario} tick={{fontSize:10}} /><ReferenceLine y={0} stroke="var(--ger-suave)" /><Legend /><Bar dataKey="Recebido" fill="var(--ger-verde)" isAnimationActive={false} /><Bar dataKey="Pago" fill="var(--ger-saida)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div> : <p className="ger-caixa-zerado">Entradas e saídas líquidas zeradas neste período.</p>}
             <div className="ger-tabela" tabIndex={0} role="region" aria-label="Valores mensais do caixa"><table className="consulta-tabela"><caption>Caixa por mês · * mês parcial</caption><thead><tr><th scope="col">Mês</th><th scope="col">Recebido</th><th scope="col">Pago</th></tr></thead><tbody>{c.mensal.map(m => <tr key={m.mes}><th scope="row">{mesBR(m.mes)}{m.incompleto ? " · parcial" : ""}</th><td>{brl(m.entradas)}</td><td>{brl(m.saidas)}</td></tr>)}</tbody></table></div>
             {!c.fontes.length && <p className="ger-muted">Sem recebimentos ou pagamentos registrados neste período.</p>}
-          </> : <p className="ger-vazio">Sem recebimentos ou pagamentos registrados neste período.</p>}
+          </> : <Empty>Sem recebimentos ou pagamentos registrados neste período.</Empty>}
         </>}</BlocoPainel>
         <BlocoPainel titulo="Pagamentos por centro de custo" bloco={dados.caixa} className="ger-centros">{c => <>
           <p className="ger-muted">Total pago no período: {brl(c.saidas)} · líquido de estornos.</p>

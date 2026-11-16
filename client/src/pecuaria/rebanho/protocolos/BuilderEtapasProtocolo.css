@@ -40,3 +40,19 @@
 @media (max-width: 950px) { .builder-etapas-layout { grid-template-columns: minmax(0, 1fr); } .builder-etapas-lista { border-right: 0; border-bottom: 1px solid var(--border); padding: 0 0 16px; } .builder-etapas-lista > .builder-etapas-titulo { flex-direction: row; align-items: center; } .builder-etapas-lista .pec-paginacao { flex-direction: row; } }
 @media (max-width: 650px) { .builder-form-protocolo { grid-template-columns: minmax(0, 1fr); } .builder-form-protocolo > label, .builder-form-protocolo > label:has(textarea) { grid-column: 1 / -1; } }
 @media (max-width: 480px) { .builder-etapas-acao-cabecalho { align-items: flex-start; } .builder-etapas-modo label { padding: 12px; } .builder-etapas .pec-paginacao > div { gap: 6px; flex-wrap: wrap; } }
+
+.builder-etapas-layout { grid-template-columns:minmax(0,1fr); gap:24px; }
+.builder-etapas-lista { border-right:0; padding-right:0; padding-bottom:16px; border-bottom:1px solid var(--border); }
+.builder-etapas-lista > .builder-etapas-titulo { flex-direction:row; align-items:center; }
+.builder-etapas-trilha { display:flex; gap:12px; overflow-x:auto; padding:4px; scroll-snap-type:x proximity; }
+.builder-etapas-trilha > .builder-etapas-opcao { flex:1 0 200px; max-width:280px; margin:0; scroll-snap-align:start; }
+.builder-etapas-lista .pec-paginacao { flex-direction:row; }
+
+.builder-etapas-em-lista .builder-etapas-layout { margin:0; }
+.builder-etapas-em-lista .builder-etapas-lista { display:block; padding-bottom:0; border-bottom:0; }
+.builder-etapas-em-lista .builder-etapas-trilha { display:grid; gap:0; padding:0; overflow:visible; }
+.builder-etapas-em-lista .builder-etapas-trilha > .builder-etapas-opcao { display:flex; align-items:center; gap:16px; max-width:none; width:100%; border:0; border-bottom:1px solid var(--border); border-radius:0; padding:20px 0; margin:0; background:transparent; }
+.builder-etapas-em-lista .builder-etapas-opcao > .builder-etapa-referencia { display:flex; flex:none; align-items:center; justify-content:center; min-width:44px; height:44px; margin:0; padding:6px; border-radius:8px; background:var(--secondary); color:var(--primary); font-weight:700; }
+.builder-etapas-em-lista .builder-etapa-identificacao { flex:1; min-width:0; margin:0; }
+.builder-etapas-em-lista .builder-etapa-identificacao strong { color:var(--foreground); }
+.builder-etapas-em-lista .builder-etapa-editar { flex:none; padding:8px 12px; margin:0; border:1px solid var(--fin-control-border); border-radius:8px; color:var(--foreground); }

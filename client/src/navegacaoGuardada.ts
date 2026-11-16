@@ -2,6 +2,7 @@ type GuardaNavegacao = () => Promise<boolean>;
 type RegistroGuarda = { id: symbol; guarda: GuardaNavegacao };
 
 let registro: RegistroGuarda | null = null;
+let registros: RegistroGuarda[] = [];
 let execucaoPendente: { id: symbol; promessa: Promise<boolean> } | null = null;
 let execucaoAutorizadaSincrona = 0;
 let proximaIntencao = 0;
@@ -19,9 +20,27 @@ function registrarIntencao(): number {
 /** Registra a guarda temporária de uma tela com alterações que precisam ser salvas. */
 export function registrarGuardaNavegacao(guarda: GuardaNavegacao): () => void {
   const novo = { id: Symbol("guarda-navegacao"), guarda };
-  registro = novo;
+  registros.push(novo);
+  atualizarRegistro();
   return () => {
-    if (registro?.id === novo.id) registro = null;
+    registros = registros.filter(item => item.id !== novo.id);
+    atualizarRegistro();
+  };
+}
+
+/** Uma tela pode conter vários formulários independentes; todos devem liberar a saída. */
+function atualizarRegistro() {
+  if (!registros.length) { registro = null; return; }
+  const atuais = [...registros];
+  registro = {
+    id: Symbol("conjunto-guardas-navegacao"),
+    guarda: async () => {
+      for (const item of atuais) {
+        if (!registros.some(ativo => ativo.id === item.id)) return false;
+        if (!await item.guarda()) return false;
+      }
+      return true;
+    },
   };
 }
 

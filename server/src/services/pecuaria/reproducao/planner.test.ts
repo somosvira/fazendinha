@@ -25,6 +25,7 @@ function fonte(quantidade = 2) {
   const visita = { id: randomUUID(), propriedadeId: 1, data: new Date("2026-10-14"), encerradaEm: null, nome: "Visita" };
   const tx = {
     localizacaoAnimal: { findMany: vi.fn(async () => animais.map(a => ({ animalId: a.id }))) },
+    necessidadeReprodutiva: { findMany: vi.fn(async (_args: { where: Prisma.NecessidadeReprodutivaWhereInput }): Promise<{ id: string; tarefaId: string; revisaoEm: Date; revisao: number }[]> => []) },
     demandaAcompanhamentoReprodutivo:{findMany:vi.fn(async()=>[])},
     tarefaProtocolo: { findMany: vi.fn(async () => tarefas) },
     participanteVisita: { findMany: vi.fn(async () => []) }, atividadeVisita: { findMany: vi.fn(async () => []) },
@@ -53,6 +54,31 @@ describe("planner completo, prévia e inclusão", () => {
     expect(pagina7.fingerprint).toBe(pagina1.fingerprint);
     expect(leitor.tarefaProtocolo.findMany).toHaveBeenCalledWith(expect.not.objectContaining({ take: expect.anything() }));
     expect(leitor.localizacaoAnimal.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 1, desde: { lte: new Date("2026-10-14") } }) }));
+  });
+  it("projeta revisão da tarefa suspensa sem demanda na agenda e preserva a previsão original", async () => {
+    const { tx, leitor, tarefas } = fonte(1);
+    const original = tarefas[0].previstaPara;
+    tarefas[0].previsaoPendente = true;
+    leitor.necessidadeReprodutiva.findMany.mockResolvedValue([{ id: randomUUID(), tarefaId: tarefas[0].id, revisaoEm: new Date("2026-10-20"), revisao: 2 }]);
+    const antes = await consultarPlannerTx(tx, consulta);
+    expect(antes.grupos[0]).toMatchObject({ previstaPara: "2026-10-20", precisaoTemporal: "DIA" });
+    const noDia = await consultarPlannerTx(tx, { ...consulta, data: "2026-10-20" });
+    expect(noDia.grupos[0]).toMatchObject({ previstaPara: "2026-10-20", janela: "DIA" });
+    expect(tarefas[0].previstaPara).toBe(original);
+    expect(tarefas[0].previsaoPendente).toBe(true);
+    expect(leitor.necessidadeReprodutiva.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ propriedadeId: 1, demandaId: null, convergidaParaId: null, decisao: "SUSPENDER", situacao: { notIn: ["RESOLVIDO", "DISPENSADO", "ENCERRADO"] } }) }));
+  });
+  it.each(["SUSPENSO", "PENDENTE", "ATRASADO", "RESOLVIDO", "DISPENSADO", "ENCERRADO"])("conserva revisão vigente após reconciliação em %s, excluindo estados terminais", async (situacao) => {
+    const { tx, leitor, tarefas } = fonte(1);
+    leitor.necessidadeReprodutiva.findMany.mockImplementation(async ({ where }) => {
+      const filtro = where.situacao;
+      const admitida = typeof filtro === "string" ? filtro === situacao : !Array.isArray(filtro?.notIn) || !filtro.notIn.includes(situacao);
+      return admitida ? [{ id: randomUUID(), tarefaId: tarefas[0].id, revisaoEm: new Date("2026-10-20"), revisao: 3 }] : [];
+    });
+    const resultado = await consultarPlannerTx(tx, { ...consulta, data: "2026-10-20" });
+    const terminal = ["RESOLVIDO", "DISPENSADO", "ENCERRADO"].includes(situacao);
+    expect(resultado.grupos[0].previstaPara).toBe(terminal ? "2026-10-14" : "2026-10-20");
+    if (!terminal) expect(resultado.grupos[0].janela).toBe("DIA");
   });
   it("ordena protocolo por brinco natural antes de paginar e preparar, mantendo empates estáveis", async () => {
     const { tx, animais, visita } = fonte(4);

@@ -57,7 +57,7 @@ export function RebModal({ title, onClose, children, actions, stacked, className
         )}
       >
         <DialogHeader className="mb-[18px] pr-8">
-          <DialogTitle className="m-0 font-serif text-[22px] font-medium">{title}</DialogTitle>
+          <DialogTitle className="m-0 font-sans text-[22px] font-medium">{title}</DialogTitle>
         </DialogHeader>
 
         {children}

@@ -4,6 +4,7 @@ import { formatBRDateISO, getHojeISO } from "../../../lib/hoje";
 import { navegarPara } from "../../../router";
 import { urlConsultaComSitio } from "./contexto-consulta";
 import { listarPoliticas, type PoliticaElegibilidade } from "./elegibilidade-api";
+import { EsqueletoLinhas } from "../../../components/Esqueleto";
 
 type ConsultaPolitica = { sitioId: number; politicas: PoliticaElegibilidade[] | null; erro: string | null };
 export function ResumoPoliticaReprodutiva({ propriedadeId }: { propriedadeId: number }) {
@@ -25,7 +26,7 @@ export function ResumoPoliticaReprodutiva({ propriedadeId }: { propriedadeId: nu
     <div className="min-w-0 flex-1 space-y-1"><h2 className="text-sm font-semibold">Política reprodutiva vigente</h2>
       <ErrorBox erro={erro}/>
       {erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
-      {!erro && politicas === null && <p role="status" className="text-sm text-muted-foreground">Carregando política…</p>}
+      {!erro && politicas === null && <EsqueletoLinhas label="Carregando política" />}
       {!erro && politicas !== null && (vigente ? <p className="text-sm text-muted-foreground">Versão {vigente.versao} · desde {formatBRDateISO(vigente.vigenteDesde)} · PEV: {vigente.parametros.pevPrimiparasDias} dias após primeiro parto e {vigente.parametros.pevMultiparasDias} dias após demais partos.</p> : <p className="text-sm text-muted-foreground">Nenhuma política vigente neste sítio. A elegibilidade permanece pendente quando não há regra comprovada.</p>)}
     </div>
     <a className="inline-flex min-h-10 items-center text-sm font-semibold underline underline-offset-4" href={destino}

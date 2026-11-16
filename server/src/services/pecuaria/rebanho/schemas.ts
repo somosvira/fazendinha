@@ -64,6 +64,16 @@ export const cadastrarAnimalSchema = z.object({
 }).merge(filiacaoCamposSchema).superRefine(exigirLadoUnico);
 export type CadastrarAnimalInput = z.infer<typeof cadastrarAnimalSchema>;
 
+/**
+ * Animal cadastrado por uma compra: origem COMPRADO e sítio vêm da operação; a data de entrada
+ * padrão é a data da compra. Os demais dados seguem o cadastro comum e depois só mudam na ficha.
+ */
+export const animalCompraSchema = cadastrarAnimalSchema.innerType()
+  .omit({ origem: true, propriedadeId: true, dataEntrada: true })
+  .extend({ dataEntrada: dataNaoFutura.optional() })
+  .superRefine(exigirLadoUnico);
+export type AnimalCompraInput = z.infer<typeof animalCompraSchema>;
+
 export const editarAnimalSchema = z.object({
   brinco: z.string().trim().min(1).max(40).optional(),
   nome: z.string().trim().max(120).nullable().optional(),

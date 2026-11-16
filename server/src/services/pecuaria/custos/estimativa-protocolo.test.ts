@@ -25,12 +25,13 @@ function preparar(parametros: Prisma.JsonValue, tipo:"APLICACAO"|"TENTATIVA"|"MA
   } satisfies TarefaProtocolo;
   const tarefa = {...tarefaBase, etapa: {tipo,nome:"Ação planejada",produtoId:"produto",dose:new Prisma.Decimal(10),unidade:"ML",material:null},execucao:{animal:{id:"a",brinco:"A1",nome:null}}};
   const participacao = {
-    id: "p", protocoloId: "protocolo", animalId: "a", propriedadeId: 1, inicio: instante, inicioEfetivo: null,
+    id: "p", protocoloId: "protocolo", animalId: "a", propriedadeId: 1, inicio: instante, inicioEfetivo: null, acompanhamentoSnapshot: null, bloqueadaEm: null, motivoBloqueio: null, impactoSnapshot: null,
     origemCalendario: "REFERENCIA_PROGRAMADA", precisaoTemporal: "DIA", precisaoInicioEfetivo: null,
     legadoIatfId: null, referenciaExterna: null, rodadaId: null, ocorrenciaId: null, operacaoServicoId: null,
     canceladaEm: null, motivoCancelamento: null, valorServicoAtribuido: null, criadoEm: instante, criadoPorId: null,
   } satisfies ParticipacaoProtocolo;
   const produto = {
+    codigoReferencia: null, apresentacao: null, observacao: null, conservacao: null, fabricanteId: null, classificacaoTecnicaId: null, produtoCatalogoId: null, nomeAlterado: false,
     id: "produto", nome: "Produto da fixture", unidade: "ML", ativo: true, categoriaId: null,
     usoGenetico: false, usoSanitario: true, usoNutricional: false, rastrearPartidas: false, minimoEstoque: null,
     createdAt: instante, updatedAt: instante,

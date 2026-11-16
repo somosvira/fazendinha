@@ -15,10 +15,10 @@ it("mostra atraso somente quando calendário e início efetivo são conhecidos",
 });
 it("preserva início e datas de cada participação sem data agregada", () => {
  const { rerender } = render(<ProtocoloTimeline participante={participante}/>);
- expect(screen.getByText("01/01/2020 · horário não informado")).toBeTruthy();
+ expect(screen.getByText("01/01/2020")).toBeTruthy();
  expect(screen.getByText("Atrasada")).toBeTruthy();
  rerender(<ProtocoloTimeline participante={{...participante,inicioEfetivo:"2020-03-01",tarefas:[{...tarefa,previstaEm:"2020-03-02",realizadaEm:"2020-03-03",precisaoRealizacao:"DIA"}]}}/>);
- expect(screen.queryByText("01/01/2020 · horário não informado")).toBeNull();
- expect(screen.getByText("01/03/2020 · horário não informado")).toBeTruthy();
- expect(screen.getByText("03/03/2020 · horário não informado")).toBeTruthy();
+ expect(screen.queryByText("01/01/2020")).toBeNull();
+ expect(screen.getByText("01/03/2020")).toBeTruthy();
+ expect(screen.getByText("03/03/2020")).toBeTruthy();
 });

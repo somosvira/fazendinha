@@ -24,3 +24,5 @@
  .rel-catalogo .rel-catalogo-definicao{font-size:14px;line-height:1.45}
  .rel-catalogo .rel-leitura{padding:12px 16px}
 }
+/* O nome longo do relatório trunca no seletor em vez de empurrar a coluna para fora da tela. */
+.rel-catalogo-seletores>label{grid-template-columns:minmax(0,1fr)}.rel-catalogo-seletores [role=combobox]{min-width:0}

@@ -1,3 +1,5 @@
+import type { ConfirmacaoImpacto } from "../sanidade/impactos-api";
+import type { CamposAvaliacaoContextual } from "./avaliacao-contextual-api";
 import { comPropriedade } from "../../../propriedadeScope";
 import { RebanhoApiError } from "../api";
 import type { Aptidao } from "../types";
@@ -57,6 +59,7 @@ export type ContextoTemporalAnimal = {
   diasDesdeConfirmacao?: number | null;
   idadeGestacionalDias?: number | null;
   retencaoPlacenta?: boolean | null;
+  grauRetencaoPlacenta?: number | null;
   pendenciasContexto?: string[];
 };
 export type PesoPartoInput =
@@ -66,7 +69,7 @@ export type PesoPartoInput =
   | { acao: "DESVINCULAR"; vinculoId: string; motivo: string };
 export type OcorrenciaRetencaoInput =
   | { acao: "VINCULAR"; ocorrenciaId: string }
-  | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null }
+  | { acao: "CRIAR"; doencaId: string; inicio: string; observacao?: string | null; impacto?: ConfirmacaoImpacto }
   | { acao: "DESVINCULAR"; ocorrenciaId: string; motivo: string };
 export type DadosEscoreParto = { data: string; valor: number; escalaMin: number; escalaMax: number; escalaDescricao?: string | null; responsavel?: string | null };
 export type EscorePartoInput =
@@ -81,6 +84,7 @@ export type CamposParto = {
   ocorridoEm?: string | null;
   horarioEstimado?: boolean;
   retencaoPlacenta?: boolean | null;
+  grauRetencaoPlacenta?: number | null;
   responsavel?: string | null;
   observacao?: string | null;
 };
@@ -121,6 +125,8 @@ export type FatoReprodutivo = CamposParto & {
   data: string;
   tipo?: string;
   resultado?: string;
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null;
+  retornoAptidaoEm?: string | null;
   motivo?: string | null;
   anotacaoOriginal?: string | null;
   sexoFetal?: string | null;
@@ -203,12 +209,13 @@ export type FatoBase = {
   data: string;
 };
 export type SituacaoInicialInput = FatoBase & {
-  situacao: "VAZIA" | "DESCONHECIDA" | "APTA";
+  situacao: "VAZIA" | "DESCONHECIDA";
   classeReprodutiva?: "NOVILHA" | "VACA" | null;
   observacao?: string | null;
   aptaDesde?: string | null;
 };
 export type TentativaInput = FatoBase & {
+  motivoQuantidadeExcepcional?: string;
   tipo: "IA" | "TE" | "COBERTURA";
   origem: "ESTOQUE" | "SERVICO" | "DOCUMENTADA";
   materialId?: string;
@@ -226,7 +233,8 @@ export type TentativaInput = FatoBase & {
   documentacaoExcepcional?: boolean;
   motivoDocumentacaoExcepcional?: string;
 };
-export type AvaliacaoInput = FatoBase & {
+export type AvaliacaoInput = FatoBase & CamposAvaliacaoContextual & {
+  responsavel?: string | null;
   demandaAcompanhamentoId?:string;
   formatoExameHash?: string;
   finalidade?: "DIAGNOSTICO" | "RECONFIRMACAO" | "SEXAGEM";
@@ -244,6 +252,9 @@ export type AvaliacaoInput = FatoBase & {
   gestacaoId?: string;
   sexoFetal?: "F" | "M";
   conduta?: "AGUARDAR" | "IATF" | "DESCARTE";
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null;
+  retornoAptidaoEm?: string | null;
+  decisaoIatf?: "INDICAR" | "NAO_INDICAR" | null;
   motivo?: string;
   anotacaoOriginal?: string;
   retornoEm?: string;

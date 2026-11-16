@@ -4,6 +4,7 @@ import { SecaoFicha } from "../components/SecaoRecolhivel";
 import { useEffect, useState } from "react";
 import type { CarenciaAnimal } from "./api";
 import { CarenciaIndicador } from "./IndicadoresSanitarios";
+import { Skeleton } from "../../../components/ui/skeleton";
 export { resumoCarencia } from "./carenciaRotulos";
 
 export function CarenciasSanitarias({ carencia, integrado = false, rotulo = "Carências atuais", horasRegistradas }: { carencia: CarenciaAnimal | null; integrado?: boolean; rotulo?: string; horasRegistradas?: { leite: number | null; carne: number | null } }) {
@@ -17,9 +18,9 @@ export function CarenciasSanitarias({ carencia, integrado = false, rotulo = "Car
   const conteudo = <>
     <div className={integrado ? "carencias-resumo-aplicacoes" : "mt-2 grid gap-2 sm:grid-cols-2"}>{(["leite", "carne"] as const).map((destino) => {
       const Icone = destino === "leite" ? Milk : Beef;
-      const estado = destino === "leite" && carencia?.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : carencia ? <CarenciaIndicador estado={carencia[destino]} agora={agora} revisao={destino === "leite" && carencia.revisaoLeitePendente} /> : "Carregando…";
+      const estado = destino === "leite" && carencia?.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : carencia ? <CarenciaIndicador estado={carencia[destino]} agora={agora} revisao={destino === "leite" && carencia.revisaoLeitePendente} /> : <Skeleton aria-label="Carregando" className="inline-block h-4 w-28 align-middle" />;
       if (integrado) return <div key={destino} className="carencia-destino-integrada"><span><Icone size={24} aria-hidden />{destino === "leite" ? "Carência do leite" : "Carência de abate / carne"}</span><p>{estado}</p>{horasRegistradas?.[destino] != null && <small>Prazo registrado: {horasRegistradas[destino]} h</small>}</div>;
-      return <div key={destino} className="carencia-destino"><Icone size={24} aria-hidden /><p><strong>{destino === "leite" ? "Leite" : "Abate/carne"}:</strong> {destino === "leite" && carencia?.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : carencia ? <CarenciaIndicador estado={carencia[destino]} agora={agora} revisao={destino === "leite" && carencia.revisaoLeitePendente} /> : "Carregando…"}</p></div>;
+      return <div key={destino} className="carencia-destino"><Icone size={24} aria-hidden /><p><strong>{destino === "leite" ? "Leite" : "Abate/carne"}:</strong> {destino === "leite" && carencia?.revisaoLeitePendente ? "Aplicabilidade pendente — revisar" : carencia ? <CarenciaIndicador estado={carencia[destino]} agora={agora} revisao={destino === "leite" && carencia.revisaoLeitePendente} /> : <Skeleton aria-label="Carregando" className="inline-block h-4 w-28 align-middle" />}</p></div>;
     })}</div>
     {carencia?.revisaoAdministracaoPendente ? <p className="mt-2 text-ink-3">Administração não confirmada: revise os dados da aplicação e das carências.</p> : carencia?.revisaoLeitePendente && <p className="mt-2 text-ink-3">Finalidade alterada: revise a aplicabilidade da carência de leite.</p>}
 

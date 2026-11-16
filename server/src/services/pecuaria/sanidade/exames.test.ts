@@ -85,6 +85,14 @@ describe("integridade de exames", () => {
   });
 });
 
+it("correção de ECC recusa valor fora da escala antes de alterar o histórico", async () => {
+  const original = { id: "ecc", animalId: "animal", tipoExameId: "b0841f3c-3f88-4c2d-9d0d-3ef33d49b841", formatoSnapshot: { tipoResultado: "MULTIPLO", campos: ["ESCORE", "ESCALA_MIN", "ESCALA_MAX"].map(codigo => ({ codigo, rotulo: codigo, tipo: "NUMERO", obrigatorio: true })) } };
+  mocks.tx.exameAnimal.findFirst.mockResolvedValueOnce({ animalId: "animal" }).mockResolvedValueOnce(original);
+  await expect(corrigirExame("ecc", 2, { motivo: "Correção de anotação", resultados: [{ campo: "ESCORE", valor: 6 }, { campo: "ESCALA_MIN", valor: 1 }, { campo: "ESCALA_MAX", valor: 5 }] }, 7)).rejects.toMatchObject({ code: "VALIDACAO", message: expect.stringContaining("dentro dos limites") });
+  expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  expect(mocks.auditar).not.toHaveBeenCalled();
+});
+
 describe("histórico de exame", () => {
   it("consulta uma página da auditoria existente, mantendo antes/depois e motivo sem inventar autor", async () => {
     mocks.tx.exameAnimal.findFirst.mockResolvedValue({ id: "e" });
@@ -137,5 +145,20 @@ describe("integração com qualidade do leite", () => {
     mocks.tx.exameAnimal.findFirst.mockResolvedValueOnce({ animalId: "animal" }).mockResolvedValueOnce({ id: "e", animalId: "animal", amostraQualidadeLeite: { id: "amostra" }, formatoSnapshot: { tipoResultado: "NUMERO" } });
     await expect(corrigirExame("e", 2, { resultadoNumero: 0, motivo: "Revisão" }, 7)).rejects.toMatchObject({ code: "CONFLITO" });
     expect(mocks.tx.exameAnimal.update).not.toHaveBeenCalled();
+  });
+});
+
+
+describe("formato adotado em catálogo reprodutivo publicado", () => {
+  it("expõe formato bloqueado mesmo sem exame ou etapa", async () => {
+    mocks.tx.tipoExame.findMany.mockResolvedValue([{ ...tipo, _count: { exames: 0, etapas: 0, catalogosAvaliacaoReprodutiva: 1 } }]);
+    expect(await listarTiposExame()).toEqual([{ ...tipo, formatoExameHash: expect.any(String), padraoReprodutivo: false, formatoBloqueado: true }]);
+    expect(mocks.tx.tipoExame.findMany).toHaveBeenCalledWith(expect.objectContaining({ include: expect.objectContaining({ _count: expect.objectContaining({ select: expect.objectContaining({ catalogosAvaliacaoReprodutiva: true }) }) }) }));
+  });
+  it("orienta nova versão antes de alterar formato de catálogo preservado", async () => {
+    mocks.tx.tipoExame.findUnique.mockResolvedValue({ ...tipo, _count: { catalogosAvaliacaoReprodutiva: 1 } });
+    await expect(editarTipoExame(tipo.id, { unidade: "g" }, 7)).rejects.toMatchObject({ code: "CONFLITO", message: expect.stringContaining("catálogo publicado") });
+    expect(mocks.tx.tipoExame.update).not.toHaveBeenCalled();
+    expect(await editarTipoExame(tipo.id, { nome: "Nome atualizado" }, 7)).toMatchObject({ nome: "Nome atualizado", formatoBloqueado: true });
   });
 });

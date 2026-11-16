@@ -137,15 +137,6 @@ export async function askBot(pergunta: string, sessao: string): Promise<BotReply
   return data as BotReply;
 }
 
-export async function reclassificarCategoria(id: number, classificacao: "INVESTIMENTO" | "CUSTEIO"): Promise<void> {
-  const res = await fetch(`/api/categorias/${id}/classificacao`, {
-    method: "PATCH",
-    headers: comPropriedade({ "content-type": "application/json" }),
-    body: JSON.stringify({ classificacao }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-}
-
 // ── Simulação financeira (read-only sobre o dashboard real) ──────────────────
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {

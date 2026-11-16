@@ -18,3 +18,5 @@
 .ordenar-rodape p { padding: 8px 4px 0; color: var(--muted-foreground); font-size: 12px; }
 .fin-cabecalho-ordem { display: inline-flex; align-items: center; gap: 6px; }
 .fin-cabecalho-ordem > svg { color: var(--primary); flex-shrink: 0; }
+/* Em colunas alinhadas à direita, ícones de filtro e ordem ficam antes do título, para o texto alinhar com os valores. */
+th.text-right .fin-cabecalho-ordem, th.text-right .operacoes-cabecalho-filtro { flex-direction: row-reverse; }

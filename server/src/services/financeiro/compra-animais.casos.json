@@ -1,0 +1,191 @@
+{
+  "itens": [
+    {
+      "unidade": "CABECA",
+      "preco": "2500",
+      "pesoPagoKg": null,
+      "quantidade": "1",
+      "valorTotal": "2500.00"
+    },
+    {
+      "unidade": "CABECA",
+      "preco": "2500.456",
+      "pesoPagoKg": null,
+      "quantidade": "1",
+      "valorTotal": "2500.46"
+    },
+    {
+      "unidade": "CABECA",
+      "preco": "1.005",
+      "pesoPagoKg": null,
+      "quantidade": "1",
+      "valorTotal": "1.01"
+    },
+    {
+      "unidade": "CABECA",
+      "preco": "0.005",
+      "pesoPagoKg": null,
+      "quantidade": "1",
+      "valorTotal": "0.01"
+    },
+    {
+      "unidade": "CABECA",
+      "preco": "0",
+      "pesoPagoKg": null,
+      "quantidade": "1",
+      "valorTotal": "0.00"
+    },
+    {
+      "unidade": "KG",
+      "preco": "12.5",
+      "pesoPagoKg": "430.5",
+      "quantidade": "430.5",
+      "valorTotal": "5381.25"
+    },
+    {
+      "unidade": "KG",
+      "preco": "9.99",
+      "pesoPagoKg": "0.333",
+      "quantidade": "0.333",
+      "valorTotal": "3.33"
+    },
+    {
+      "unidade": "KG",
+      "preco": "8.1234",
+      "pesoPagoKg": "412.345",
+      "quantidade": "412.345",
+      "valorTotal": "3349.64"
+    },
+    {
+      "unidade": "KG",
+      "preco": "7.25",
+      "pesoPagoKg": "1000",
+      "quantidade": "1000",
+      "valorTotal": "7250.00"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "300",
+      "pesoPagoKg": "450",
+      "quantidade": "30",
+      "valorTotal": "9000.00"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "310",
+      "pesoPagoKg": "437",
+      "quantidade": "29.133",
+      "valorTotal": "9031.33"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "299.99",
+      "pesoPagoKg": "391.7",
+      "quantidade": "26.113",
+      "valorTotal": "7833.74"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "315.5",
+      "pesoPagoKg": "12.001",
+      "quantidade": "0.8",
+      "valorTotal": "252.42"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "0",
+      "pesoPagoKg": "450",
+      "quantidade": "30",
+      "valorTotal": "0.00"
+    },
+    {
+      "unidade": "ARROBA",
+      "preco": "289.9",
+      "pesoPagoKg": "1",
+      "quantidade": "0.067",
+      "valorTotal": "19.33"
+    }
+  ],
+  "lotes": [
+    {
+      "total": "10000.00",
+      "animais": 3,
+      "partes": [
+        "3333.33",
+        "3333.33",
+        "3333.34"
+      ]
+    },
+    {
+      "total": "100.00",
+      "animais": 3,
+      "partes": [
+        "33.33",
+        "33.33",
+        "33.34"
+      ]
+    },
+    {
+      "total": "0.01",
+      "animais": 3,
+      "partes": [
+        "0.00",
+        "0.00",
+        "0.01"
+      ]
+    },
+    {
+      "total": "0.00",
+      "animais": 4,
+      "partes": [
+        "0.00",
+        "0.00",
+        "0.00",
+        "0.00"
+      ]
+    },
+    {
+      "total": "1234.565",
+      "animais": 7,
+      "partes": [
+        "176.36",
+        "176.36",
+        "176.36",
+        "176.36",
+        "176.36",
+        "176.36",
+        "176.41"
+      ]
+    },
+    {
+      "total": "50.00",
+      "animais": 1,
+      "partes": [
+        "50.00"
+      ]
+    },
+    {
+      "total": "1000.00",
+      "animais": 8,
+      "partes": [
+        "125.00",
+        "125.00",
+        "125.00",
+        "125.00",
+        "125.00",
+        "125.00",
+        "125.00",
+        "125.00"
+      ]
+    },
+    {
+      "total": "0.10",
+      "animais": 3,
+      "partes": [
+        "0.03",
+        "0.03",
+        "0.04"
+      ]
+    }
+  ]
+}

@@ -217,7 +217,7 @@ it("consulta origem confirmada como fatos legíveis preservando volume, régua, 
   vi.mocked(contextoParcelas).mockResolvedValue(contexto([confirmada]));
   armazenar([parcelaSalva(confirmada)]);
   abrir();
-  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
+  const resumo = await screen.findByRole("article", { name: "Origem 1 confirmada de Não comercial" });
   expect(within(resumo).getByText("25,125 L")).toBeTruthy();
   expect(within(resumo).getByText("0 mm")).toBeTruthy();
   expect(within(resumo).getByText("Maria")).toBeTruthy();
@@ -235,8 +235,8 @@ it("adiciona e salva outra origem na ordenha confirmada sem reenviar a parcela j
   vi.mocked(salvarParcelas).mockResolvedValue({ sessaoId: "s1", parcelas: [{ ...medicao, id: "m-nova", recipiente: "Novo balde", litros: 12, responsavel: "Ana", declaracaoDireta: { justificativa: "Origem separada conferida" } }] });
   armazenar([parcelaSalva(confirmada)]);
   abrir();
-  await screen.findByRole("article", { name: "Origem 1 confirmada de Descarte" });
-  const grupo = screen.getByRole("region", { name: "Parcelas de Descarte" });
+  await screen.findByRole("article", { name: "Origem 1 confirmada de Não comercial" });
+  const grupo = screen.getByRole("region", { name: "Parcelas de Não comercial" });
   fireEvent.click(within(grupo).getByRole("button", { name: "Incluir outra origem" }));
   fireEvent.change(screen.getByLabelText("Identificação do recipiente"), { target: { value: "Novo balde" } });
   fireEvent.change(screen.getByLabelText("Litros informados manualmente"), { target: { value: "12" } });
@@ -245,7 +245,7 @@ it("adiciona e salva outra origem na ordenha confirmada sem reenviar a parcela j
   fireEvent.click(screen.getByRole("button", { name: "Salvar ordenha" }));
   await screen.findByText("Ordenha salva. A entrada no estoque permanece pendente.");
   expect(salvarParcelas).toHaveBeenCalledWith(1, "2026-10-24", "manha", [expect.objectContaining({ recipiente: "Novo balde", litros: 12, responsavel: "Ana", versaoEsperada: 0 })]);
-  expect(within(screen.getByRole("article", { name: "Origem 1 confirmada de Descarte" })).getByText("25 L")).toBeTruthy();
+  expect(within(screen.getByRole("article", { name: "Origem 1 confirmada de Não comercial" })).getByText("25 L")).toBeTruthy();
 });
 
 it("mantém tanque versionado, régua ausente e alerta sanitário na consulta da origem confirmada", async () => {

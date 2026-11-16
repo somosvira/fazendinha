@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import "@/lib/controles.fixture";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
@@ -6,7 +7,7 @@ import { ResultadoVisualExame } from "./ResultadoVisualExame";
 import { ConsultaCarencias, ConsultaExames } from "./ConsultasSanitariasVisuais";
 import type { ExameResultado } from "./ResultadoExame";
 const exame: ExameResultado = { id: "exame", formatoSnapshot: { tipoResultado: "MULTIPLO" }, resultados: [{ campo: "ESCORE", valor: "3" }, { campo: "ESCALA_MIN", valor: "1" }, { campo: "ESCALA_MAX", valor: "5" }, { campo: "ESCALA_DESCRICAO", valor: "Escala registrada" }], resultadoNumero: null, resultadoTexto: null, resultadoOpcao: null };
-beforeEach(() => { localStorage.clear(); window.history.replaceState(null, "", "/pecuaria/sanidade"); });
+beforeEach(() => { localStorage.clear();preferirCartoes({sanidade:["visualExames"]}); window.history.replaceState(null, "", "/pecuaria/sanidade"); });
 afterEach(cleanup);
 it("mostra o escore com os limites históricos sem acrescentar interpretação clínica", () => {
   render(<ResultadoVisualExame exame={exame} />);

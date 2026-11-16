@@ -21,6 +21,8 @@ const tabelas = {
   demonstrativo: 'pecuaria."DemonstrativoLeite"', fornecimento: 'pecuaria."FornecimentoNutricionalLeite"', referencia: 'pecuaria."ReferenciaGerencialLeite"',
   apuracao: 'pecuaria."ApuracaoValorLeite"', conferencia: 'pecuaria."ConferenciaSaldoLeite"', programacaoLeite: 'pecuaria."ProgramacaoRetiradaLeite"',
   relatorio: 'pecuaria."EmissaoRelatorioLeite"', arquivoQualidade: 'pecuaria."LaudoQualidadeLeite"', arquivoEntrega: 'pecuaria."ComprovanteEntregaLeite"', arquivoRetirada: 'pecuaria."ComprovanteRetiradaOperacaoLeite"',
+  'regra-alerta': 'pecuaria."RegraAlertaSanitario"', 'programacao-sanitaria': 'pecuaria."ProgramacaoSanitaria"',
+  retiradaColostro: 'pecuaria."LoteColostro"', perfilBezerreiro: 'pecuaria."PerfilBezerreiro"',
 } as const;
 type Tabela = keyof typeof tabelas;
 export function tabelaReferencia(chave: string): Tabela | null {
@@ -64,6 +66,8 @@ export function tabelaReferencia(chave: string): Tabela | null {
   if (chave.startsWith('exame:tratamento:')) return 'exameFato';
   if (/^(positivo|negativo|inconclusivo|reconfirmacao):/.test(chave)) return 'avaliacao';
   if (chave.startsWith('nutricao:')) return 'fechamentoConsumo';
+  if (chave === 'bezerreiro:retirada') return 'retiradaColostro';
+  if (chave === 'bezerreiro:perfil') return 'perfilBezerreiro';
   const prefixo = chave.split(':')[0];
   if (Object.hasOwn(tabelas, prefixo)) return prefixo as Tabela;
   throw new Error(`Referência do manifesto sem contrato de existência: ${chave}. Atualize o mapa antes de retomar.`);

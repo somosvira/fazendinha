@@ -1,8 +1,7 @@
 import { beforeEach } from "vitest";
 import { preferirTabelas } from "@/lib/visualizacao.fixture";
 // @vitest-environment jsdom
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
-import { alterarControle } from "../../../lib/controles.fixture";
+import { abrirFiltrosConsulta, alterarControle, aplicarFiltrosConsulta, esperarOpcoes, mudarCampo } from "@/lib/controles.fixture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ req: vi.fn() }));
@@ -18,6 +17,20 @@ import { listarAnimais, buscarFichaAnimal } from "../api";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); vi.mocked(listarAnimais).mockResolvedValue({ itens: [] } as unknown as Awaited<ReturnType<typeof listarAnimais>>); window.history.replaceState(null, "", "/"); });
 describe("busca e atualização da Sanidade", () => {
+  it("preserva a semana dos links antigos e registra a volta à lista", () => {
+    mocks.req.mockResolvedValue([]);
+    window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&visaoAgenda=tarefas&visualTarefas=visual&semanaSanitaria=2026-10-19");
+    render(<Sanidade podeLancar={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Voltar à lista" }));
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get("agendaSanitaria")).toBe("lista");
+    expect(params.get("semanaSanitaria")).toBe("2026-10-19");
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver semana" }));
+    expect(new URLSearchParams(window.location.search).get("agendaSanitaria")).toBe("semana");
+  });
+
   it("limpa o filtro de doença do gráfico pelo modal somente após aplicar", async () => {
     mocks.req.mockResolvedValue([]);
     window.history.replaceState(null,"","/pecuaria/sanidade?aba=ocorrencias&doencaId=f42259e4-3872-4a27-9be0-740418d269db");
@@ -171,8 +184,8 @@ describe("busca e atualização da Sanidade", () => {
     window.history.replaceState(null, "", "/pecuaria/rebanho/sanidade?visualTarefas=tabela&visualOcorrencias=tabela&aba=agenda");
     render(<FormFatoSanitario tipo="protocolo" animalInicial="animal" fixo onFechar={vi.fn()} onSalvo={vi.fn()} />);
     await screen.findByText(/Sítio na data: Sítio B/);
-    await screen.findByRole("option", { name: "Protocolo A · v1" });
-    fireEvent.change(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
+    await esperarOpcoes(() => screen.getByLabelText(/Protocolo publicado/), o => o.some(i => i.texto === "Protocolo A · v1"));
+    mudarCampo(screen.getByLabelText(/Protocolo publicado/), { target: { value: "A" } });
     fireEvent.submit(document.getElementById("novo-fato-sanitario")!);
     const ciencia = await screen.findByRole("switch", { name: /Confirmo iniciar outro protocolo/ });
     fireEvent.click(ciencia);

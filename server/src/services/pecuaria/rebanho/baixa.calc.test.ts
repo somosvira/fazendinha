@@ -101,7 +101,7 @@ describe("motivoAceito (tipo × classe)", () => {
   });
 
   it("todo tipo está na tabela", () => {
-    expect(Object.keys(CLASSES_POR_TIPO).sort()).toEqual(["ABATE", "CADASTRO_INDEVIDO", "DOACAO", "EXTRAVIO", "MORTE", "NAO_DETERMINADO", "VENDA"]);
+    expect(Object.keys(CLASSES_POR_TIPO).sort()).toEqual(["ABATE", "CADASTRO_INDEVIDO", "COMPRA_ESTORNADA", "DOACAO", "EXTRAVIO", "MORTE", "NAO_DETERMINADO", "VENDA"]);
   });
 
   it("mensagens explicam a recusa", () => {

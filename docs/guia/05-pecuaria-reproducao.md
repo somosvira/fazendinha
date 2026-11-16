@@ -13,15 +13,15 @@ O **ciclo produtivo** acompanha início/encerramento de lactação e medições.
 | Momento | O que acontece | O que registrar | O que o app pode concluir |
 |---|---|---|---|
 | Entrada sem história suficiente | Conhecimento incompleto | Identidade, localização, finalidade e situação inicial comprovada | Reprodução desconhecida; produção não informada |
-| Avaliação e liberação | Decisão clínica/operacional | Situação inicial, política e/ou decisão individual, papel e restrições | Elegível, não elegível ou pendente conforme a data |
+| Avaliação de aptidão | Exame do animal | Conclusão de aptidão, responsável e retorno quando necessário | Apta, não apta ou pendente conforme a data |
 | Cio ou preparação | Oportunidade/planejamento | Observações, exames e protocolo aplicável | Não confirma concepção nem execução de tentativa |
 | IA, TE ou cobertura observada | Intervenção realizada | Tentativa, responsável, material/origem e data | Aguarda diagnóstico |
-| Diagnóstico negativo | Evidência conclusiva sem gestação | Exame/interpretação | Vazia; elegibilidade ainda precisa ser conferida |
+| Diagnóstico negativo | Evidência conclusiva sem gestação | Exame/interpretação | Vazia; aptidão tem conclusão independente |
 | Diagnóstico positivo | Gestação comprovada | Exame, gestação e tentativa vinculada quando conhecida | Gestante; vínculo desconhecido permanece explícito |
 | Reconfirmação/sexagem | Acompanhamento da mesma gestação | Novas evidências | Mantém gestação; não cria outra tentativa/gestação |
 | Secagem | Encerramento produtivo informado | Encerramento da lactação | Seca, podendo continuar gestante |
 | Parto | Nascimento/desfecho da gestação | Um parto e os resultados de cada cria | Encerra gestação e reinicia tentativas; lactação depende de registro |
-| Pós-parto | Recuperação e acompanhamento | Ocorrências, exames, política/decisão de liberação | Vazia não significa imediatamente elegível |
+| Pós-parto | Recuperação e acompanhamento | Ocorrências, tratamentos e exame de aptidão | Vazia não significa imediatamente apta |
 
 No pós-parto, retorno à atividade reprodutiva depende das condições do animal; o simples decurso do calendário não comprova recuperação ou aptidão. Referência de contexto: [Oregon State University — função reprodutiva bovina](https://extension.oregonstate.edu/catalog/basics-reproductive-function-beef-cows). Prazos de espera, diagnóstico e reconfirmação do software precisam de política explícita, sem copiar médias biológicas como prescrição.
 
@@ -30,36 +30,31 @@ No pós-parto, retorno à atividade reprodutiva depende das condições do anima
 | Estado | Evidência e motivo | Próxima ação possível |
 |---|---|---|
 | `DESCONHECIDA` | Não há conclusão válida suficiente; encerramento sem desfecho comprovado também pode exigir esclarecimento | Completar história ou avaliar |
-| `VAZIA` | Conclusão negativa ou encerramento comprovado por parto/perda | Conferir elegibilidade; não inseminar só pelo rótulo |
-| `APTA` | Situação inicial declarada, com data de aptidão quando informada | Submeter às regras atuais de elegibilidade |
+| `VAZIA` | Conclusão negativa ou encerramento comprovado por parto/perda | Conferir aptidão; não inseminar só pelo rótulo |
 | `AGUARDANDO_DIAGNOSTICO` | Existe tentativa válida mais recente sem desfecho conclusivo que a substitua | Atender a demanda diagnóstica |
 | `GESTANTE` | Gestação confirmada válida, com acompanhamento preservado | Acompanhar, reconfirmar, registrar desfecho |
 
 O cálculo considera fatos válidos até a referência, cronologia e prioridade das evidências. Gestação operacional aberta não é desfeita por um cadastro inicial posterior. Inconclusivo e “aguardar” não equivalem a negativo. Anulação de uma evidência exige reavaliar seus dependentes.
 
-## Elegibilidade: uma decisão diferente do diagnóstico
+## Aptidão: segundo eixo, independente da situação
 
-`ELEGIVEL`, `NAO_ELEGIVEL` e `PENDENTE` respondem se o conjunto de regras está satisfeito naquela data. O cálculo usa sexo, baixa, localização, ciclo, política congelada, papel, descarte, restrições, liberação individual e situação reprodutiva.
+A aptidão geral tem três valores: **Apta**, **Não apta** e **Pendente**. Vale para iniciar protocolo e registrar tentativa, inclusive a primeira tentativa da novilha. Ausência de exame e conclusão inconclusiva ficam pendentes. Gestação, descarte e condições impeditivas vigentes impedem aptidão; a tentativa sem diagnóstico deixa a decisão pendente.
 
-PEV é período de espera voluntário configurado pela fazenda. Pode distinguir primíparas e multíparas e o tratamento após aborto. A política é vinculada ao início do ciclo para não mudar silenciosamente o passado. Uma decisão individual pode liberar ou bloquear com sua própria evidência.
+O mesmo toque pode concluir DG e aptidão. São conclusões independentes: DG negativo informa Vazia, mas só uma conclusão explícita de aptidão permite seguir. “Não indicar IATF” não significa Não apta, e indicar protocolo não executa suas etapas. A revisão da aptidão de um exame combinado preserva seu DG e vínculos.
 
-Vazia durante o PEV pode ser não elegível. Aguardando diagnóstico pode ficar pendente. Sem política ou liberação suficiente, o sistema não fabrica aptidão. Gestante não é elegível a uma nova tentativa no cálculo. As guardas específicas do comando também verificam restrições sanitárias, material, estoque e período.
+PEV é a referência de espera voluntária configurada e preservada no ciclo. O veterinário pode declarar Apta antes do fim do PEV, sem uma segunda decisão e sem alterar o prazo original. A falta de uma política não substitui nem invalida um exame apto: as condições atuais continuam verificadas.
 
-### Critérios, avaliação e aptidão clínica
+Parto, inclusive aborto ou natimorto, inicia novo ciclo e exige novo exame. Após perda gestacional e após o fim de condição impeditiva, a aptidão antiga não é retomada automaticamente. Com a precisão diária desses registros, o novo exame precisa ter data posterior ao encerramento. RP ainda em tratamento segue impedindo aptidão. O grau de RP, quando informado, apenas quantifica a retenção.
 
-A política V2 separa critérios de vacas e novilhas. Selecione somente os critérios desejados: dias pós-parto para vacas, idade, peso absoluto, percentual do peso adulto ou ECC. Cada parâmetro só participa quando selecionado. Se dois critérios estiverem ativos, ambos precisam ser atendidos; evidência ausente ou vencida aparece como pendência. O padrão do critério de peso aceita apenas medido; estimado/informado só participa se a política autorizar explicitamente. ECC conserva sua escala e validade. Uma vaca com parto anterior declarado, mas sem sua data, não passa a ser tratada como novilha por faltar a data.
+### Avisos e acompanhamento
 
-Contador de partos igual a zero não prova que a fêmea nunca pariu. Quando houver evidência, registre a **Classe na data do registro** no formulário **Situação inicial**: Novilha ou Vaca, acompanhada de **Evidência ou referência**. O padrão **Não determinada** mantém a lacuna. Essa declaração não cria parto nem libera reprodução. Parto conhecido, saldo positivo e declaração de vaca comprovam a classe sem inventar uma data de parto; conflitos de nuliparidade precisam de reconciliação. Um parto posterior à declaração de novilha passa a identificar vaca na sua data.
+Idade e peso, inclusive percentual de peso adulto, são parâmetros configuráveis para avisar que a avaliação está devida. Não são mínimos obrigatórios de aptidão e não substituem o exame. **ECC** é um valor acompanhado por data e escala, com gráfico junto ao peso na ficha; não gera avisos nem condiciona aptidão nesta etapa.
 
-Atender aos critérios sinaliza **Avaliação devida**. Não agenda visita nem libera protocolo ou tentativa. Sem critérios ativos, o agendamento continua manual. A referência pós-parto depende de parto comprovado e da política adotada; salvar uma configuração não adota parâmetros em nome da fazenda nem muda silenciosamente o ciclo anterior.
+Contador de partos igual a zero não prova que a fêmea nunca pariu. Quando houver evidência, registre a **Classe na data do registro** em **Situação inicial**: Novilha ou Vaca, com **Evidência ou referência**. O padrão **Não determinada** conserva a lacuna. Essa declaração não cria parto nem comprova aptidão.
 
-O **toque de aptidão** usa o exame comum e registra Apta, Não apta ou Inconclusivo, com retorno quando informado. A conclusão clínica aparece separada dos impedimentos operacionais. DG negativo não comprova aptidão; idade, peso ou fim do PEV também não substituem o exame. Uma decisão individual explícita pode usar um toque apto válido para antecipar o PEV na ação escolhida, mantendo o prazo original, a justificativa e os outros impedimentos.
+Ficha, manejo e visita compartilham a necessidade de avaliação. As filas incluem **Aptas**, **Avaliação devida**, **Agendadas**, **Retornos de aptidão**, **Aptidão avaliada**, **Pendências de dados** e **Diagnóstico e reconfirmação**. Agendamento e retorno não pressupõem resultado. Uma fêmea pode estar em mais de uma fila; a lista combinada a conta uma vez.
 
-Ficha, agenda e visita compartilham a mesma necessidade de avaliação do ciclo. Agendar ou informar retorno não cria outra necessidade; corrigir/anular a evidência revalida os efeitos da decisão sem apagar o histórico. Um novo parto, inclusive aborto ou natimorto, reinicia o ciclo e não herda a liberação anterior. Políticas V1 históricas conservam sua compatibilidade documentada; isso não dispensa a validação do ciclo atual.
-
-Em **Animais e acompanhamentos**, consulte **Avaliação devida**, **Agendadas**, **Retornos de aptidão**, **Aptidão avaliada** e **Pendências de dados**, além de liberadas sem serviço e **Diagnóstico e reconfirmação**. A fila clínica inclui gestantes com demanda de reconfirmação pendente e conserva cada ocorrência e sua previsão; sem previsão, o prazo continua não informado. A fila padrão reúne avaliações e serviços; **Todas as filas** inclui também aptidão avaliada e pendências. Uma fêmea pode ter mais de um acompanhamento, mas a lista combinada a conta uma vez. As contagens por fila não devem ser somadas como animais distintos.
-
-A avaliação permanece disponível para fêmeas em PEV ainda sem liberação. Machos não entram nessa fila. Agendar uma visita move a mesma necessidade para Agendadas, com a data e o acesso ao atendimento existente. O retorno conserva a data informada no toque. Ficha, manejo e visita usam a mesma projeção; aptidão clínica e disponibilidade para protocolo/IA/TE continuam separadas. Crescimento com critérios ainda não atingidos não vira pendência cadastral por si só.
+Os registros antigos de situação inicial APTA e decisões individuais são preservados como histórico. Não substituem exame atual. Bloqueio histórico continua impeditivo até seu encerramento explícito, seguido de novo exame. Os relatórios versionados mantêm sua metodologia de indicadores; o denominador histórico não define aptidão operacional.
 
 ## Tentativas, materiais e filiação
 

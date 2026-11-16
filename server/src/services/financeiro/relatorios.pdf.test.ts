@@ -6,21 +6,21 @@ import { uid } from "../../lib/uid.fixture.js";
 function operacoes(quantidade: number): OperacaoComposicao[] {
   return Array.from({ length: quantidade }, (_, i) => ({
     id: uid(i + 1), numero: i + 1, data: new Date("2026-09-02T00:00:00Z"), tipo: "SERVICO", status: "CONFIRMADA", descricao: `Serviço (${i + 1}) de manutenção`, valorTotal: "150.00",
-    centroCustoId: uid(1), centroCusto: { nome: "Pecuária" }, parceiro: null, categoriaId: uid(2), categoriaNome: "Manutenção", classificacao: "CUSTEIO", itens: [],
+    centroCustoId: uid(1), centroCusto: { nome: "Pecuária" }, parceiro: null, categoriaId: uid(2), categoriaNome: "Manutenção", itens: [],
   }));
 }
 
 function snapshot(quantidade = 3): SnapshotRelatorio {
   return {
-    versao: 1, nome: "Fechamento de setembro", geradoEm: "2026-09-14T12:00:00.000Z", autor: "Rafael Toledo", propriedade: { id: 1, nome: "Fazenda Rio Novo" },
-    configuracao: { nome: "Fechamento de setembro", dataInicio: "2026-09-01", dataFim: "2026-09-30", regime: "ambos", tipos: [], status: [], centroCustoIds: [], parceiroIds: [], categoriaIds: [uid(2)], classificacoes: [] },
-    filtros: { tipos: [], status: [], centrosCusto: [], categorias: ["Manutenção"], classificacoes: [] },
+    versao: 2, nome: "Fechamento de setembro", geradoEm: "2026-09-14T12:00:00.000Z", autor: "Rafael Toledo", propriedade: { id: 1, nome: "Fazenda Rio Novo" },
+    configuracao: { nome: "Fechamento de setembro", dataInicio: "2026-09-01", dataFim: "2026-09-30", regime: "ambos", tipos: [], status: [], centroCustoIds: [], parceiroIds: [], categoriaIds: [uid(2)], grupoIds: [] },
+    filtros: { tipos: [], status: [], centrosCusto: [], categorias: ["Manutenção"] },
     gerencial: {
       meta: { geradoEm: "2026-09-14T12:00:00.000Z", propriedade: { id: 1, nome: "Fazenda Rio Novo" }, periodo: { inicio: "2026-09-01", fim: "2026-09-30" }, regime: "ambos", hoje: "2026-09-14" },
       resumo: { entradas: 0, saidas: 450, resultado: -450, saldoContasFinal: 10000, nLancamentos: 3, aPagar: 0, aReceber: 0 },
       saldoContas: { contas: [{ id: uid(1), nome: "Banco do Brasil", banco: null, saldoInicial: 10450, entradas: 0, saidas: 450, saldoFinal: 10000 }], total: { saldoInicial: 10450, entradas: 0, saidas: 450, saldoFinal: 10000 } },
       entradasSaidas: { meses: [{ mes: "2026-09", entradas: 0, saidas: 450, resultado: -450 }], total: { entradas: 0, saidas: 450, resultado: -450 } },
-      resultado: { receita: 0, custeio: 450, investimento: 0, resultado: -450, porAtividade: [] },
+      resultado: { receita: 0, despesa: 450, resultado: -450, porAtividade: [] },
       compromissos: { hoje: "2026-09-14", aPagar: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] }, aReceber: { total: 0, vencido: 0, aVencer: 0, quantidade: 0, itens: [] } },
       categorias: { itens: [{ categoria: "Manutenção", total: 450, pct: 100 }], centros: [{ centro: "Pecuária", total: 450, pct: 100 }] },
       operacoes: [],

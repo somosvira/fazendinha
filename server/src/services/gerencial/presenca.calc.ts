@@ -1,7 +1,9 @@
 import { contarPartos, type PartoParaContagem } from "../pecuaria/rebanho/partos.calc.js";
 
 export const DIA_MS = 86400000;
-export const textoDia = (data: Date) => data.toISOString().slice(0, 10);
+// Chamada milhões de vezes no painel (animal × dia), para poucas centenas de datas distintas.
+const textos = new Map<number, string>();
+export const textoDia = (data: Date) => { const t = data.getTime(); let texto = textos.get(t); if (texto === undefined) { texto = data.toISOString().slice(0, 10); if (textos.size > 20000) textos.clear(); textos.set(t, texto); } return texto; };
 export type AnimalPopulacao = {
   id: string;
   sexo: string;

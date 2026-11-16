@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { FileSearch } from "lucide-react";
 import { AjudaCampo } from "@/components/Dica";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -40,7 +41,7 @@ const rotulo = (s: string) =>
     NOVO_REGISTRO: "Novo registro para conferir",
     JA_REGISTRADO: "Já registrado",
     CONFLITO_EXISTENTE: "Conflito com registro existente",
-    DUPLICADO_NO_LOTE: "Repetido no lote",
+    DUPLICADO_NO_LOTE: "Repetido no arquivo",
     ANIMAL_NAO_CONCILIADO: "Animal não conciliado",
     CONTEXTO_INCOMPATIVEL: "Contexto histórico incompatível",
     ORDENHA_NAO_CONCILIADA: "Ordenha não conciliada",
@@ -72,7 +73,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
     setArquivo("");
     setLinhas([]);
     if (file.size > 8 * 1024 * 1024) {
-      setErro("Prepare um arquivo de até 8 MB por lote.");
+      setErro("Prepare um arquivo de até 8 MB por importação.");
       return;
     }
     const atual = geracao.current;
@@ -85,7 +86,7 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
           : null;
       if (!Array.isArray(dados))
         throw new Error(
-          "O arquivo precisa conter as linhas de preparação do lote.",
+          "O arquivo precisa conter as linhas de preparação da importação.",
         );
       if (atual === geracao.current) {
         setLinhas(dados);
@@ -138,34 +139,21 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
         }}
       >
         <fieldset disabled={ocupado || !podeLancar}>
-          <legend>Lote para conferência</legend>
+          <legend>Período da importação</legend>
           <div className="leite-form-inline">
             <label>
-              Início do lote
-              <input
-                type="date"
-                required
-                max={fim}
-                value={inicio}
-                onChange={(e) => {
-                  setInicio(e.target.value);
+              Primeiro dia
+              <DatePicker required max={fim} value={inicio} onChange={(valor) => {
+                  setInicio(valor);
                   invalidar();
-                }}
-              />
+                }} />
             </label>
             <label>
-              Fim do lote
-              <input
-                type="date"
-                required
-                min={inicio}
-                max={hojeOperacional()}
-                value={fim}
-                onChange={(e) => {
-                  setFim(e.target.value);
+              Último dia
+              <DatePicker required min={inicio} max={hojeOperacional()} value={fim} onChange={(valor) => {
+                  setFim(valor);
                   invalidar();
-                }}
-              />
+                }} />
             </label>
             <label>
               Arquivo de preparação (JSON)
@@ -217,11 +205,11 @@ export function PreviaHistoricaLeite({ podeLancar }: { podeLancar: boolean }) {
               !linhas.length ||
               referencia.trim().length < 5
             }>
-            {ocupado ? "Conferindo lote…" : "Conferir arquivo sem importar"}
+            {ocupado ? "Conferindo arquivo…" : "Conferir arquivo sem importar"}
           </Button>
         </fieldset>
       </form>
-      {!podeLancar && <p>Conferir lotes exige permissão de lançamento.</p>}
+      {!podeLancar && <p>Conferir importações exige permissão de lançamento.</p>}
       {erro && <p role="alert">{erro}</p>}
       {previa && (
         <>

@@ -1,12 +1,12 @@
 import { Prisma } from "@prisma/client";
 import { auditar, RebanhoError } from "../rebanho/regras.js";
 import { conferirAnimalNoFato } from "../fatos.js";
-import { criarOcorrenciaTx } from "../sanidade/ocorrencias.js";
+import { criarOcorrenciaOperacionalTx } from "../sanidade/ocorrencias.js";
 import { registrarPesagemTx, editarPesagemTx } from "../rebanho/animais.js";
 import type { CorrecaoPartoAmpliadaInput, PartoAmpliadoInput } from "./partos.schemas.js";
 
 function erro(mensagem: string, campo?: string): never { throw new RebanhoError("VALIDACAO", mensagem, campo); }
-type DetalhesParto = Pick<PartoAmpliadoInput, "tipo" | "desfecho" | "induzido" | "dificuldade" | "assistenciaDescricao" | "ocorridoEm" | "horarioEstimado" | "retencaoPlacenta">;
+type DetalhesParto = Pick<PartoAmpliadoInput, "tipo" | "desfecho" | "induzido" | "dificuldade" | "assistenciaDescricao" | "ocorridoEm" | "horarioEstimado" | "retencaoPlacenta" | "grauRetencaoPlacenta">;
 type PartoPersistido = Prisma.PartoAnimalGetPayload<Record<string, never>>;
 /** Compatibilidade antiga informa somente o que o código legado comprovava. */
 export function normalizarDetalhesParto(input: DetalhesParto, data: string, anterior?: PartoPersistido) {
@@ -26,7 +26,10 @@ export function normalizarDetalhesParto(input: DetalhesParto, data: string, ante
     if (`${obter("year")}-${obter("month")}-${obter("day")}` !== data) erro("O horário deve pertencer à data do parto em São Paulo", "ocorridoEm");
     if (ocorridoEm > new Date()) erro("Horário do parto não pode estar no futuro", "ocorridoEm");
   }
-  return { tipo, desfecho, dificuldade, ocorridoEm, horarioEstimado, induzido: input.induzido === undefined ? anterior?.induzido ?? null : input.induzido,
+  const retencaoPlacenta = input.retencaoPlacenta === undefined ? anterior?.retencaoPlacenta ?? null : input.retencaoPlacenta;
+  const grauRetencaoPlacenta = input.grauRetencaoPlacenta === undefined ? anterior?.grauRetencaoPlacenta ?? null : input.grauRetencaoPlacenta;
+  if (grauRetencaoPlacenta !== null && retencaoPlacenta !== true) erro("Grau exige RP Sim; remova explicitamente o grau ao corrigir a presença de RP", "grauRetencaoPlacenta");
+  return { grauRetencaoPlacenta, tipo, desfecho, dificuldade, ocorridoEm, horarioEstimado, induzido: input.induzido === undefined ? anterior?.induzido ?? null : input.induzido,
     assistenciaDescricao: input.assistenciaDescricao === undefined ? anterior?.assistenciaDescricao ?? null : input.assistenciaDescricao,
     retencaoPlacenta: input.retencaoPlacenta === undefined ? anterior?.retencaoPlacenta ?? null : input.retencaoPlacenta };
 }
@@ -41,7 +44,7 @@ export async function lerPartoTx(tx: Prisma.TransactionClient, id: string) {
 }
 
 /** A transação já deve ter travado matriz/crias. Desvínculos nunca apagam os fatos clínicos. */
-export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto: PartoPersistido, input: Pick<CorrecaoPartoAmpliadaInput, "ocorrenciaRetencao">, usuarioId: number | null) {
+export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto: PartoPersistido, input: Pick<CorrecaoPartoAmpliadaInput, "ocorrenciaRetencao" | "chave">, usuarioId: number | null) {
   const acao = input.ocorrenciaRetencao;
   if (!acao) {
     if (parto.retencaoPlacenta !== true && await tx.ocorrenciaSanitaria.count({ where: { partoRetencaoPlacentaId: parto.id, status: "VALIDO" } })) erro("Desvincule explicitamente a ocorrência antes de alterar a retenção", "retencaoPlacenta");
@@ -51,7 +54,7 @@ export async function aplicarRetencaoPartoTx(tx: Prisma.TransactionClient, parto
   let ocorrencia;
   if (acao.acao === "CRIAR") {
     if (new Date(acao.inicio) < parto.data) erro("Ocorrência não pode anteceder o parto", "ocorrenciaRetencao");
-    ocorrencia = await criarOcorrenciaTx(tx, { animalId: parto.animalId, propriedadeId: parto.propriedadeId!, doencaId: acao.doencaId, inicio: acao.inicio, observacao: acao.observacao }, usuarioId);
+    ocorrencia = await criarOcorrenciaOperacionalTx(tx, { chave:input.chave, impacto:acao.impacto, animalId: parto.animalId, propriedadeId: parto.propriedadeId!, doencaId: acao.doencaId, inicio: acao.inicio, observacao: acao.observacao }, usuarioId);
   } else ocorrencia = await tx.ocorrenciaSanitaria.findUnique({ where: { id: acao.ocorrenciaId } });
   if (!ocorrencia || ocorrencia.animalId !== parto.animalId || ocorrencia.propriedadeId !== parto.propriedadeId || ocorrencia.status !== "VALIDO" || ocorrencia.inicio < parto.data) erro("Ocorrência incompatível com animal, sítio ou cronologia do parto", "ocorrenciaRetencao");
   if (acao.acao === "DESVINCULAR") {

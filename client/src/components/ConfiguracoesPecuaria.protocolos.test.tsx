@@ -9,8 +9,7 @@ it("Voltar da página de novo protocolo aguarda confirmação e cancelar preserv
   const lista = "/configuracoes/pecuaria/sanidade/protocolos";
   window.history.replaceState(null, "", nova);
   render(<ConfiguracoesPecuaria podeLancar />);
-  fireEvent.click(screen.getByRole("radio", { name: /Começar do zero/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Definir novo protocolo" }));
+  fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ }));
   fireEvent.change(screen.getByLabelText("Nome do protocolo"), { target: { value: "Edição em campo" } });
   window.history.pushState(null, "", lista);
   fireEvent(window, new PopStateEvent("popstate"));
@@ -24,4 +23,15 @@ it("Voltar da página de novo protocolo aguarda confirmação e cancelar preserv
   await screen.findByRole("heading", { name: "Protocolos sanitários", level: 1 });
   expect(window.location.pathname).toBe(lista);
   expect(screen.queryByLabelText("Nome do protocolo")).toBeNull();
+});
+
+it("abre somente as configurações de Reprodução e preserva o sítio nos destinos", () => {
+  window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao?sitio=7");
+  render(<ConfiguracoesPecuaria podeLancar />);
+  expect(screen.getByRole("heading", {name:"Configurações da Reprodução"})).toBeTruthy();
+  expect(screen.queryByRole("heading", {name:"Nutrição"})).toBeNull();
+  const itens = screen.getAllByRole("link").filter(a => a.getAttribute("href")?.startsWith("/configuracoes/pecuaria/reproducao/"));
+  expect(itens).toHaveLength(6);
+  expect(itens.every(a => a.getAttribute("href")?.endsWith("?sitio=7"))).toBe(true);
+  expect(screen.getByRole("link", {name:"Voltar à Reprodução"}).getAttribute("href")).toBe("/pecuaria/reproducao?sitio=7");
 });

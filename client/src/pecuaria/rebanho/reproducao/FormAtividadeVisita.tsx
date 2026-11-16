@@ -14,6 +14,7 @@ import {
   type TipoAtividade,
   type Visita,
 } from "./visitas-api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 const TIPOS: [TipoAtividade, string][] = [
   ["AVALIACAO_REPRODUTIVA", "Avaliação reprodutiva"],
   ["APLICACAO_SANITARIA", "Aplicação sanitária"],
@@ -164,11 +165,11 @@ export function FormAtividade({
         <ErrorBox erro={erro} />
         <label className="text-sm">
           Tipo de atividade
-          <select
+          <SelectCampo
             className={classeInput}
             value={tipo}
-            onChange={(e) => {
-              const t = e.target.value as TipoAtividade;
+            onValueChange={(valor) => {
+              const t = valor as TipoAtividade;
               setTipo(t);
               if (t === "TAREFA_IATF") setOrigem("iatf");
               setEscolhidos([]);
@@ -180,7 +181,7 @@ export function FormAtividade({
                 {r}
               </option>
             ))}
-          </select>
+          </SelectCampo>
         </label>
         <label className="text-sm">
           Nome
@@ -201,27 +202,27 @@ export function FormAtividade({
         </label>
         <label className="text-sm">
           Sugestões / origem da seleção
-          <select
+          <SelectCampo
             className={classeInput}
             value={origem}
-            onChange={(e) => {
-              setOrigem(e.target.value);
+            onValueChange={(valor) => {
+              setOrigem(valor);
               setEscolhidos([]);
             }}
           >
             <option value="animais">Animais · atividade extra</option>
             <option value="sanidade">Tarefas sanitárias abertas</option>
             <option value="iatf">Tarefas IATF abertas</option>
-          </select>
+          </SelectCampo>
         </label>
         {tipo === "INICIAR_SANITARIO" && (
           <label className="text-sm">
             Protocolo sanitário publicado
-            <select
+            <SelectCampo
               required
               className={classeInput}
               value={contextoId}
-              onChange={(e) => setContextoId(e.target.value)}
+              onValueChange={(valor) => setContextoId(valor)}
             >
               <option value="">Selecione</option>
               {sugestoes?.protocolosSanitarios.map((p) => (
@@ -229,7 +230,7 @@ export function FormAtividade({
                   {p.nome} · v{p.versao}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
         )}
         {origem === "animais" && (
@@ -251,10 +252,10 @@ export function FormAtividade({
             ))}
             <label className="text-sm">
               Situação reprodutiva
-              <select
+              <SelectCampo
                 className={classeInput}
                 value={situacaoFiltro}
-                onChange={(e) => setSituacaoFiltro(e.target.value)}
+                onValueChange={(valor) => setSituacaoFiltro(valor)}
               >
                 <option value="">Todas</option>
                 {Array.from(new Set(animais.map((a) => a.situacao))).map(
@@ -262,7 +263,7 @@ export function FormAtividade({
                     <option key={s} value={s}>{({VAZIA:"Vazia",GESTANTE:"Gestante",DESCONHECIDA:"Desconhecida",APTA:"Apta",AGUARDANDO_DIAGNOSTICO:"Aguardando diagnóstico"} as Record<string,string>)[s] ?? s}</option>
                   ),
                 )}
-              </select>
+              </SelectCampo>
             </label>
             <fieldset>
               <legend className="text-sm">

@@ -1,3 +1,4 @@
+import { DatePicker } from "../components/DatePicker";
 import { ArrowDownLeft, ArrowUpRight, Info, LoaderCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -67,7 +68,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
     }
   };
 
-  return <Modal icon={compromisso.tipo === "PAGAR" ? ArrowUpRight : ArrowDownLeft} tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="Confirmação financeira" onClose={fechar} rodape={<div className="flex flex-wrap items-center justify-end gap-2"><p className="mr-auto w-full text-xs text-ink-3">Ao confirmar: {compromisso.tipo === "PAGAR" ? "saída" : "entrada"} de {brl(valor)} na conta {contas.find(c => c.id === contaId)?.nome ?? "a selecionar"}.</p>
+  return <Modal icon={compromisso.tipo === "PAGAR" ? ArrowUpRight : ArrowDownLeft} tom={compromisso.tipo === "PAGAR" ? "saida" : "entrada"} titulo={`Registrar ${compromisso.tipo === "PAGAR" ? "pagamento" : "recebimento"}`} eyebrow="" onClose={fechar} rodape={<div className="flex flex-wrap items-center justify-end gap-2"><p className="mr-auto w-full text-xs text-ink-3">Ao confirmar: {compromisso.tipo === "PAGAR" ? "saída" : "entrada"} de {brl(valor)} na conta {contas.find(c => c.id === contaId)?.nome ?? "a selecionar"}.</p>
         <Button variant="outline" disabled={processando} onClick={fechar}>Cancelar</Button>
         <Button disabled={!contaId || !valorValido || !data || data > hoje() || processando} aria-busy={processando || undefined} onClick={() => { void confirmar(); }}>{processando && <LoaderCircle aria-hidden="true" className="size-4 animate-spin motion-reduce:animate-none" />}{processando ? (enviandoNota ? "Enviando nota…" : "Registrando…") : "Confirmar liquidação"}</Button>
       </div>}>
@@ -85,7 +86,7 @@ export function LiquidarCompromissoModal({ compromisso, contas, onClose, onLiqui
         <label className="text-sm font-medium">Valor
           <Input disabled={processando} type="number" min="0.01" max={Number(compromisso.saldoPendente)} step="0.01" className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" value={valor} onChange={(e) => setValor(e.target.value)} />
         </label>
-        <label className="text-sm font-medium">Data da liquidação<Input disabled={processando} required type="date" max={hoje()} value={data} onChange={e => setData(e.target.value)} className="mt-1.5 w-full rounded-lg border border-border p-2.5 font-normal" /></label>
+        <label className="text-sm font-medium">Data da liquidação<DatePicker aria-label="Data da liquidação" disabled={processando} required max={hoje()} value={data} onChange={setData} className="mt-1.5" /></label>
         <label className="sm:col-span-2 text-sm font-medium">Forma de liquidação<Select disabled={processando} value={formaPagamento} onValueChange={setFormaPagamento}><SelectTrigger className="mt-1.5 w-full" aria-label="Forma de liquidação"><SelectValue /></SelectTrigger><SelectContent className="z-[1300]">{Object.entries(FORMAS_PAGAMENTO).map(([chave, nome]) => <SelectItem key={chave} value={chave}>{nome}</SelectItem>)}</SelectContent></Select></label>
       </div>
       {compromisso.tipo === "PAGAR" && <NotaFiscalAnexo arquivo={nota} salvo={notaSalva} disabled={processando} onArquivo={setNota} />}

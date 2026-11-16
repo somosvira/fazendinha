@@ -6,15 +6,15 @@ import { uid } from "../../lib/uid.fixture.js";
 const base = { nome: "Fluxo de maio", dataInicio: "2026-05-01", dataFim: "2026-05-31" };
 
 describe("configuração de relatório financeiro", () => {
-  it("aceita multisseleção de tipos, situação, centros, categorias e classificação", () => {
+  it("aceita multisseleção de tipos, situação, centros, categorias e grupos", () => {
     expect(configuracaoRelatorioFinanceiroSchema.parse({
       ...base, regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], status: ["CONFIRMADA"],
-      centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), uid(3), SEM_VINCULO], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"],
-    })).toMatchObject({ regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), SEM_VINCULO], classificacoes: ["INVESTIMENTO", "SEM_CLASSIFICACAO"] });
+      centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), uid(3), SEM_VINCULO], grupoIds: [uid(4), SEM_VINCULO, uid(4)],
+    })).toMatchObject({ regime: "realizado", tipos: ["COMPRA_ESTOQUE", "VENDA"], centroCustoIds: [SEM_VINCULO, uid(2)], categoriaIds: [uid(3), SEM_VINCULO], grupoIds: [uid(4), SEM_VINCULO] });
   });
 
   it("assume regime completo e dimensões livres por padrão", () => {
-    expect(configuracaoRelatorioFinanceiroSchema.parse(base)).toMatchObject({ regime: "ambos", tipos: [], status: [], centroCustoIds: [], categoriaIds: [], classificacoes: [] });
+    expect(configuracaoRelatorioFinanceiroSchema.parse(base)).toMatchObject({ regime: "ambos", tipos: [], status: [], centroCustoIds: [], categoriaIds: [], grupoIds: [] });
   });
 
   it("recusa valores que não existem no domínio de operações", () => {

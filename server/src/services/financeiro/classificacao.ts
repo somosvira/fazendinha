@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 type Classificada = {
-  categoriaId?: string | null; categoriaNome?: string | null; classificacao?: "CUSTEIO" | "INVESTIMENTO" | null;
+  categoriaId?: string | null; categoriaNome?: string | null;
   // Centro da parte. Num item, null = herda o da operação; o nome vem do
   // snapshot do item ou do cadastro vigente da operação.
   centroCustoId?: string | null; centroCustoNome?: string | null;
@@ -31,7 +31,7 @@ export function ratearCategorias(operacao: OperacaoClassificada | null, valor: P
   const pesos = itens.map((i) => new Prisma.Decimal(i.valorTotal).mul(100).toDecimalPlaces(0));
   const soma = pesos.reduce((a, b) => a.plus(b), new Prisma.Decimal(0));
   const centavos = new Prisma.Decimal(valor).mul(100).toDecimalPlaces(0);
-  if (soma.isZero()) return [{ categoriaId: null, categoriaNome: "Sem categoria", classificacao: null, ...semCentro, valor: centavos.div(100) }];
+  if (soma.isZero()) return [{ categoriaId: null, categoriaNome: "Sem categoria", ...semCentro, valor: centavos.div(100) }];
   const partes = pesos.map((peso, indice) => {
     const exato = centavos.abs().mul(peso).div(soma);
     const inteiro = exato.toDecimalPlaces(0, Prisma.Decimal.ROUND_FLOOR);
@@ -40,7 +40,7 @@ export function ratearCategorias(operacao: OperacaoClassificada | null, valor: P
   const faltam = centavos.abs().minus(partes.reduce((a, p) => a.plus(p.inteiro), new Prisma.Decimal(0))).toNumber();
   [...partes].sort((a, b) => b.resto.comparedTo(a.resto) || a.indice - b.indice).slice(0, faltam).forEach((p) => { p.inteiro = p.inteiro.plus(1); });
   return partes.map((p) => ({
-    categoriaId: itens[p.indice].categoriaId ?? null, categoriaNome: itens[p.indice].categoriaNome ?? "Sem categoria", classificacao: itens[p.indice].classificacao ?? null,
+    categoriaId: itens[p.indice].categoriaId ?? null, categoriaNome: itens[p.indice].categoriaNome ?? "Sem categoria",
     centroCustoId: itens[p.indice].centroCustoId ?? null, centroCustoNome: itens[p.indice].centroCustoNome ?? null,
     valor: p.inteiro.mul(centavos.isNegative() ? -1 : 1).div(100),
   }));

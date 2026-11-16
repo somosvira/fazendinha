@@ -61,3 +61,19 @@ describe("guarda de navegação local", () => {
     expect(semGuarda).toHaveBeenCalledOnce();
   });
 });
+
+it("consulta todas as guardas de formulários e preserva a restante ao desmontar uma", async () => {
+  const primeira = vi.fn().mockResolvedValue(true);
+  const segunda = vi.fn().mockResolvedValue(false);
+  const cancelarPrimeira = registrarGuardaNavegacao(primeira);
+  const cancelarSegunda = registrarGuardaNavegacao(segunda);
+  const navegar = vi.fn();
+  await expect(executarComGuardaNavegacao(navegar)).resolves.toBe(false);
+  expect(primeira).toHaveBeenCalledOnce(); expect(segunda).toHaveBeenCalledOnce();
+  expect(navegar).not.toHaveBeenCalled();
+  cancelarPrimeira();
+  segunda.mockResolvedValue(true);
+  await expect(executarComGuardaNavegacao(navegar)).resolves.toBe(true);
+  expect(navegar).toHaveBeenCalledOnce();
+  cancelarSegunda();
+});

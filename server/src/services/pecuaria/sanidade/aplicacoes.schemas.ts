@@ -1,5 +1,7 @@
+import { confirmacaoImpactoSchema } from "../reproducao/impactos.schemas.js";
 import { z } from "zod";
 import { UnidadeMedida } from "@prisma/client";
+import { refinarProdutoOuCatalogo } from "../../estoque/produtos-catalogo.schemas.js";
 const uuid = z.string().uuid();
 const data = z.string().date();
 const desvio = z
@@ -10,6 +12,7 @@ export const aplicacaoCamposSchema = z
   .object({
     desvio,
     chave: uuid.optional(),
+    impacto: confirmacaoImpactoSchema.optional(),
     animalId: uuid,
     propriedadeId: z.number().int().positive(),
     data,
@@ -36,6 +39,10 @@ export const aplicacaoCamposSchema = z
     ),
     nomeProdutoAplicado: z.string().trim().min(1).max(180),
     produtoId: uuid.nullish(),
+    // Item do catálogo: adotado como Produto da fazenda ao confirmar (docs/produtos.md, Adoção).
+    produtoCatalogoId: uuid.nullish(),
+    // Categoria do Produto criado na adoção; só com produtoCatalogoId.
+    categoriaId: uuid.nullish(),
     dose: z
       .string({
         required_error: "Informe a dose aplicada",
@@ -66,7 +73,19 @@ export const aplicacaoCamposSchema = z
   })
   .strict("Confira os campos informados para a aplicação");
 
-export const aplicacaoSchema = aplicacaoCamposSchema.superRefine((input, ctx) => {
+const refinarAplicacao = (input: z.infer<typeof aplicacaoCamposSchema>, ctx: z.RefinementCtx) => {
   if (input.alertaId && (!input.alertaRevisao || input.confirmarCuidadoAlerta !== true)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertaRevisao"], message: "Confira a revisão e o cuidado do alerta" });
   if (!input.alertaId && (input.alertaRevisao != null || input.confirmarCuidadoAlerta != null)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["alertaId"], message: "Informe o alerta de origem" });
+  refinarProdutoOuCatalogo({ obrigatorio: false, campoCategoriaAdocao: "categoriaId" })(input, ctx);
+};
+
+/** Aplicação individual ou coletiva fora de tarefa: aceita `produtoCatalogoId` (adoção na confirmação). */
+export const aplicacaoSchema = aplicacaoCamposSchema.superRefine(refinarAplicacao);
+
+export const CATALOGO_FORA_DO_FLUXO = "Produto do catálogo não é aceito neste fluxo. Use um produto da fazenda";
+
+/** Aplicação de tarefa, visita ou protocolo: sem item do catálogo (o contrato desses fluxos não tem o campo). */
+export const aplicacaoSemCatalogoSchema = aplicacaoCamposSchema.superRefine((input, ctx) => {
+  if (input.produtoCatalogoId != null) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["produtoCatalogoId"], message: CATALOGO_FORA_DO_FLUXO });
+  refinarAplicacao(input, ctx);
 });

@@ -22,10 +22,10 @@ describe("origem proposta da retirada", () => {
   });
   it("restringe ao animal, evidência de inserção e ausência de retirada mantida", () => {
     const filtro = filtroInsercoesRetirada("animal", "2026-10-19");
-    expect(filtro).toMatchObject({ animalId: "animal", status: "VALIDO", retiradasDispositivo: { none: { OR: [{ status: "VALIDO" }, { realizacaoMantida: true }] } } });
+    expect(filtro).toMatchObject({ animalId: "animal", retiradasDispositivo: { none: { OR: [{ status: "VALIDO" }, { realizacaoMantida: true }] } } });
     expect(filtro.OR).toHaveLength(2);
     expect(filtro.AND).toBeDefined();
-    expect(filtroInsercoesRetirada("animal").AND).toBeUndefined();
+    expect(filtroInsercoesRetirada("animal").AND).toMatchObject([{ OR: [{ status: "VALIDO" }, { status: "ANULADO", consumoMantido: true, administracaoMantida: { not: false } }, { status: "ANULADO", consumoMantido: true, administracaoMantida: null }] }]);
   });
   it("mantém limite de dez e rejeita data inválida sem consultar dados", () => {
     expect(consultaInsercoesRetiradaSchema.safeParse({ porPagina: 11 }).success).toBe(false);

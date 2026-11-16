@@ -1,3 +1,4 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
 import { consultarCustos,classificarCusto } from "../custos/custos.js";
 import { consultaCustosSchema } from "../custos/custos.schemas.js";
 import { listarProcedimentosServico,confirmarProcedimentosServico } from "../sanidade/servicos.js";
@@ -17,6 +18,7 @@ import type { ItemExecucaoManejo } from "./execucao.manejos.schemas.js";
 const banco=process.env.PECUARIA_DB_INTEGRATION==="1"?describe:describe.skip;
 const sitios:number[]=[],animais:string[]=[],protocolos:string[]=[],produtos:string[]=[],tipos:string[]=[];
 afterAll(async()=>{if(!sitios.length)return;
+ await limparAlertasReprodutivosFixtureTx(prisma, animais);
  await prisma.requisicaoPecuaria.deleteMany({where:{propriedadeId:{in:sitios}}});await prisma.auditoriaPecuaria.deleteMany({where:{OR:[{propriedadeId:{in:sitios}},{animalId:{in:animais}},{entidadeId:{in:protocolos}}]}});
  await prisma.classificacaoCustoPecuaria.deleteMany({where:{OR:[{manejo:{animalId:{in:animais}}},{aplicacao:{animalId:{in:animais}}}]}});await prisma.vinculoTarefaProtocolo.deleteMany({where:{tarefa:{execucao:{animalId:{in:animais}}}}});await prisma.manejoAnimal.deleteMany({where:{animalId:{in:animais}}});await prisma.exameAnimal.deleteMany({where:{animalId:{in:animais}}});await prisma.tipoExame.deleteMany({where:{id:{in:tipos}}});await prisma.aplicacaoProduto.deleteMany({where:{animalId:{in:animais}}});await prisma.tarefaProtocolo.deleteMany({where:{execucao:{animalId:{in:animais}}}});await prisma.participacaoProtocolo.deleteMany({where:{animalId:{in:animais}}});await prisma.programacaoProtocolo.deleteMany({where:{propriedadeId:{in:sitios}}});await prisma.protocolo.deleteMany({where:{id:{in:protocolos}}});await prisma.operacao.deleteMany({where:{propriedadeId:{in:sitios}}});await prisma.produto.deleteMany({where:{id:{in:produtos}}});await prisma.periodoReprodutivoAnimal.deleteMany({where:{animalId:{in:animais}}});await prisma.finalidadeAnimal.deleteMany({where:{animalId:{in:animais}}});await prisma.localizacaoAnimal.deleteMany({where:{animalId:{in:animais}}});await prisma.animal.deleteMany({where:{id:{in:animais}}});await prisma.propriedade.deleteMany({where:{id:{in:sitios}}});
 });

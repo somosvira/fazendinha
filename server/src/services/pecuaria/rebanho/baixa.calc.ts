@@ -17,6 +17,7 @@ export const CLASSES_POR_TIPO: Record<TipoBaixa, readonly ClasseMotivoBaixa[]> =
   EXTRAVIO: [],
   NAO_DETERMINADO: [],
   CADASTRO_INDEVIDO: [],
+  COMPRA_ESTORNADA: [],
 };
 
 export function motivoAceito(tipo: TipoBaixa, classe: ClasseMotivoBaixa): boolean {
@@ -31,6 +32,7 @@ const ROTULO_TIPO: Record<TipoBaixa, string> = {
   EXTRAVIO: "extravio",
   NAO_DETERMINADO: "tipo não determinado na origem",
   CADASTRO_INDEVIDO: "cadastro indevido",
+  COMPRA_ESTORNADA: "compra estornada ou animal devolvido",
 };
 
 const ROTULO_CLASSE: Record<ClasseMotivoBaixa, string> = {

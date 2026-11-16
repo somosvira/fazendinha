@@ -100,7 +100,7 @@ describe("ConfirmarDesfazerMovimentacao", () => {
     render(<ConfirmarDesfazerMovimentacao movimentacaoId="mov-1" onConfirmado={vi.fn()} onFechar={vi.fn()} />);
     fireEvent.change(screen.getByLabelText("Motivo"), { target: { value: "Motivo válido" } });
     expect((screen.getByRole("button", { name: "Salvando…" }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.getByText("Carregando movimentação")).toBeTruthy();
+    expect(screen.getByRole("status", { name: "Carregando movimentação" })).toBeTruthy();
     resolver(criarDetalhe());
     await screen.findByText("0001");
     expect((screen.getByRole("button", { name: "Desfazer movimentação" }) as HTMLButtonElement).disabled).toBe(false);

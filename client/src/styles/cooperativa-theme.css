@@ -1,17 +1,25 @@
-/* Manrope variável, hospedada junto da aplicação (SIL Open Font License). */
-@font-face {
-  font-family: "Manrope";
-  src: url("/fonts/manrope/manrope-variable.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 200 800;
-  font-display: swap;
-}
-
 /* O escopo no root alcança os portais Radix e restaura as outras áreas ao sair. */
 :root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
-  --radius: .5rem;
-  --radius-btn: .5rem;
-  --fin-radius-panel: 1rem;
+  /* Paleta da cooperativa (verde-azulado). Os nomes --campo-* são usados pelas
+   * regras de caderno de campo (campo.css, abas.css, operacional-aprovado.css). */
+  --campo-papel: #f7f8fa;
+  --campo-folha: #ffffff;
+  --campo-tinta: #203c39;
+  --campo-tinta-2: #526863;
+  --campo-linha: #dfe7e5;
+  --campo-linha-forte: #7a928d;
+  --campo-pasto: #006f68;
+  --campo-pasto-escuro: #005d57;
+  --campo-pasto-claro: #e0efec;
+  --campo-ouro: #009c91;
+  --campo-atraso: #8d3931;
+  --campo-atraso-claro: #fbefec;
+  --campo-atencao: #775930;
+  --campo-atencao-claro: #f6f0e5;
+
+  --radius: 6px;
+  --radius-btn: 6px;
+  --fin-radius-panel: 8px;
   --fin-heading: #203c39;
   --fin-canvas: #f7f8fa;
   --fin-canvas-light: #fcfdfe;
@@ -28,13 +36,15 @@
   --fin-warning-bg: #f6f0e5;
   --fin-control-border: #7a928d;
   --fin-overlay: rgba(32,60,57,.38);
-  --font-display: "Manrope", var(--sans);
+  --sans: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--sans);
   --fin-titulo-pagina: 24px;
-  --fin-titulo-pagina-movel: 22px;
+  --fin-titulo-pagina-movel: 21px;
   --fin-brand-accent: #009c91;
-  --fin-shadow: 0 3px 12px rgba(32,60,57,.045);
-  --fin-panel-shadow: 0 4px 18px rgba(32,60,57,.065), 0 1px 3px rgba(32,60,57,.025);
-  --fin-button-shadow: 0 2px 5px rgba(32,60,57,.14);
+  /* Sem sombras decorativas: só o que flutua sobre a página (menus, diálogos) tem elevação. */
+  --fin-shadow: none;
+  --fin-panel-shadow: none;
+  --fin-button-shadow: none;
   --fin-popover-shadow: 0 8px 24px rgba(32,60,57,.12), 0 2px 5px rgba(32,60,57,.04);
   --fin-dialog-shadow: 0 16px 48px rgba(32,60,57,.18), 0 4px 12px rgba(32,60,57,.05);
   --fin-skeleton: #d8e4e0;
@@ -80,6 +90,7 @@
   --ink: var(--foreground);
   --ink-2: var(--foreground);
   --ink-3: var(--muted-foreground);
+  --ink-mute: var(--muted-foreground);
   --lucro: #32683b;
   --pos: var(--lucro);
   --prejuizo: #8d3931;

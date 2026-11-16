@@ -6,7 +6,7 @@ type EstadoVoz = "inativa" | "conectando" | "ouvindo" | "processando" | "falando
 type Perguntar = (texto: string, signal: AbortSignal) => Promise<RespostaAssistenteVoz>;
 
 /** Conversa por turnos: captura local, pausa, transcrição, consulta autorizada e locução. */
-export function useConversaVoz(permitida: boolean, onPergunta: Perguntar, onErro: (mensagem: string) => void) {
+export function useConversaVoz(permitida: boolean, onPergunta: Perguntar, onErro: (mensagem: string) => void, sitio?: number | null) {
   const [estado, setEstado] = useState<EstadoVoz>("inativa");
   const [silenciado, setSilenciado] = useState(false);
   const versao = useRef(0);
@@ -70,7 +70,7 @@ export function useConversaVoz(permitida: boolean, onPergunta: Perguntar, onErro
         try {
           const wav = await prepararAudio(blob, true);
           if (controller.signal.aborted) return;
-          const { texto } = await transcreverAudioAssistente(wav, controller.signal);
+          const { texto } = await transcreverAudioAssistente(wav, controller.signal, sitio);
           if (controller.signal.aborted) return;
           const resposta = await callbacks.current.onPergunta(texto, controller.signal);
           if (controller.signal.aborted || token !== versao.current) return;

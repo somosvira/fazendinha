@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { AjudaCampo } from "../../../components/Dica";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 import { UNIDADES } from "../../../lib/unidades";
@@ -8,7 +9,7 @@ export function CamposReferenciasCusto({ valor = {}, material, onChange }: {valo
       <label>Valor unitário (R$)<input className={classeInput} required type="number" min="0" step="0.01" value={r.valorUnitario} onChange={e => onChange({...valor,[tipo]:{...r,valorUnitario:e.target.value}})} /></label>
       {tipo === "material" ? <label>Unidade da referência<select className={classeInput} value={r.unidade} onChange={e => onChange({...valor,[tipo]:{...r,unidade:e.target.value}})}>{Object.entries(UNIDADES).map(([id,u])=><option key={id} value={id}>{u.rotulo}</option>)}</select></label> : <p>Por atendimento de um animal</p>}
       <label>Origem da referência<input className={classeInput} required minLength={2} maxLength={200} value={r.origem} onChange={e => onChange({...valor,[tipo]:{...r,origem:e.target.value}})} /></label>
-      <label>Data da referência<input className={classeInput} required type="date" value={r.data} onChange={e => onChange({...valor,[tipo]:{...r,data:e.target.value}})} /></label>
+      <label>Data da referência<DatePicker className="mt-1.5" required value={r.data} onChange={(data) => onChange({...valor,[tipo]:{...r,data}})} /></label>
     </>}</fieldset>;})}
   </details>;
 }

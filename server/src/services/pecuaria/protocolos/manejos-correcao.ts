@@ -1,3 +1,4 @@
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -22,6 +23,7 @@ export async function anularManejoProtocolarTx(tx:Prisma.TransactionClient,id:st
   await tx.manejoAnimal.update({where:{id},data:{status:"ANULADO",anuladoEm:new Date(),motivoAnulacao:input.motivo,realizacaoMantida:input.realizacaoMantida}});
   await marcarRegularizacaoFatoTx(tx,{fatoTipo:"MANEJO",fatoId:id,destinoConsumo:input.realizacaoMantida?"MANTER_CONSUMO":null,motivo:input.motivo,usuarioId});
   await auditar(tx,{entidade:"ManejoAnimal",entidadeId:id,animalId:antes.animalId,propriedadeId:input.propriedadeId,acao:"ANULACAO",usuarioId,antes,depois:{status:"ANULADO",realizacaoMantida:input.realizacaoMantida,motivo:input.motivo}});
+  await reconciliarAlertasReprodutivosAnimalTx(tx,antes.animalId,usuarioId);
   return{id,status:"ANULADO" as const,animalId:antes.animalId};
 }
 export function anularManejoProtocolar(id:string,entrada:unknown,usuarioId:number|null){

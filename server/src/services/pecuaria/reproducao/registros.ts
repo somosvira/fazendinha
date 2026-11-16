@@ -1,13 +1,15 @@
+import { prepararContextoAvaliacaoTx, revisaoAvaliacaoContextual } from "./avaliacao-contextual.js";
+import { resolverDecisaoIatf, quantidadePadraoTentativa, validarConsumoExcepcionalTentativa } from "./atendimento.calc.js";
 import { sincronizarLocalizacoesBezerreiroTx } from '../bezerreiro/localizacao.js';
 import { resolverClasseReprodutiva } from "./classe-reprodutiva.calc.js";
 import { aplicarPesoSecagemTx, conferirPesoSecagemNaRevisaoTx, exigirAutorRealSecagemTx, lerLactacaoComPesoSecagemTx } from "./peso-secagem.js";
 import type { PesoSecagemInput } from "./peso-secagem.schemas.js";
-import { conferirAptidaoParaAcaoTx } from "./elegibilidade.js";
+import { conferirAptidaoParaAcaoTx, conferirConclusaoAptidaoTx } from "./elegibilidade.js";
 import { CAMPOS_CUSTO_OPERACIONAL } from "../custos/permissoes.js";
 import {construirMarcosReprodutivos} from "./marcos.calc.js";
 import {construirDadosAcompanhamento} from "./acompanhamento-indicadores.js";
 import {carregarDadosElegibilidadeTx} from "./elegibilidade.js";
-import { criarDemandasDoFatoTx, reconciliarDemandasAnimalTx, vincularExameDemandaTx } from "./acompanhamento.js";
+import { criarDemandasDoFatoTx, preverConclusoesAvaliacaoTx, preverDemandasNovaGestacaoTx, reconciliarDemandasAnimalTx, vincularConclusoesExameTx, vincularExameDemandaTx } from "./acompanhamento.js";
 import { vincularPoliticaCicloTx } from "./elegibilidade.js";
 import { aplicarEscorePartoTx } from "./escore-parto.js";
 import { obterContextosAnimaisNaDataTx } from "./contexto-animal.js";
@@ -86,7 +88,6 @@ export async function conferirDisponibilidadeTx(
   cienciaSanitaria = false,
 ) {
   const animal = await conferirMatrizTx(tx, animalId, propriedadeId, data);
-  if (["IA", "TE", "IATF"].includes(acao)) await conferirAptidaoParaAcaoTx(tx, animalId, propriedadeId, data, acao === "IATF" ? "PROTOCOLO" : acao as "IA" | "TE");
   const restricoes = await tx.restricaoReprodutiva.findMany({
     where: {
       animalId,
@@ -158,6 +159,7 @@ export async function conferirDisponibilidadeTx(
       "Confirme ciência dos alertas sanitários configurados para esta ação",
       "cienciaSanitaria",
     );
+  if (["IA", "TE", "IATF", "COBERTURA"].includes(acao)) await conferirAptidaoParaAcaoTx(tx, animalId, propriedadeId, data, acao === "IATF" ? "PROTOCOLO" : acao as "IA" | "TE" | "COBERTURA");
   return animal;
 }
 /** Projeção clínica acompanha o animal; o chamador autoriza sua localização na data consultada. */
@@ -313,8 +315,9 @@ export async function prepararTentativaTx(
     codigo: string;
     validade: Date | null;
   } | null = null;
-  const quantidade: Prisma.Decimal | null =
-    input.quantidade == null ? null : new Prisma.Decimal(input.quantidade);
+  const quantidadeInformada = quantidadePadraoTentativa(input.tipo, input.quantidade, material?.produto.unidade);
+  validarConsumoExcepcionalTentativa(input.tipo, quantidadeInformada, material?.produto.unidade, input.motivoQuantidadeExcepcional);
+  const quantidade = quantidadeInformada == null ? null : new Prisma.Decimal(quantidadeInformada);
   if (input.tipo === "COBERTURA") {
     if (input.origem === "ESTOQUE" || quantidade || input.partidaId)
       erro("Cobertura não possui baixa de insumo", "origem");
@@ -408,7 +411,7 @@ export async function prepararTentativaTx(
   };
   return { dadosCriacao, material, matriz, quantidade, data };
 }
-export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null) {
+export async function criarTentativaTx(tx: Prisma.TransactionClient, input: TentativaInput, usuarioId: number | null, opcoes?: { adiarAcompanhamento?: boolean }) {
   const { dadosCriacao, material, matriz, quantidade, data } = await prepararTentativaTx(tx, input, usuarioId);
   if (input.origem === "ESTOQUE" && material && quantidade) {
     const consumo = await consumirEstoqueTx(tx, { produto: material.produto, propriedadeId: input.propriedadeId,
@@ -430,6 +433,8 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
     depois: {
       ...criada,
       cienciaSanitaria: input.cienciaSanitaria === true,
+      quantidadeExcepcional: input.tipo !== "COBERTURA" && criada.quantidade != null && !criada.quantidade.eq(1),
+      motivoQuantidadeExcepcional: input.motivoQuantidadeExcepcional ?? null,
       cienciaValidadeDesconhecida: input.cienciaValidadeDesconhecida === true,
       documentacaoExcepcional: input.documentacaoExcepcional === true,
       motivoDocumentacaoExcepcional:
@@ -437,8 +442,10 @@ export async function criarTentativaTx(tx: Prisma.TransactionClient, input: Tent
       justificativaSemOrigem: input.justificativaSemOrigem ?? null,
     },
   });
-  await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
-  await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
+  if (!opcoes?.adiarAcompanhamento) {
+    await criarDemandasDoFatoTx(tx, { tentativaId: criada.id, tipoTentativa: criada.tipo, animalId: criada.animalId, propriedadeId: input.propriedadeId, data }, usuarioId);
+    await reconciliarDemandasAnimalTx(tx, criada.animalId, usuarioId);
+  }
   return criada;
 }
 export const criarTentativa = (
@@ -457,7 +464,9 @@ export async function prepararAvaliacaoTx(
   input: AvaliacaoInput,
   usuarioId: number | null,
 ) {
+  input = { ...input, ...resolverDecisaoIatf(input) };
   await travarAnimais(tx, [input.animalId]);
+  const contexto = await prepararContextoAvaliacaoTx(tx, input);
   const data = dia(input.data);
   if (input.sexoFetal && ["NAO_AVALIADO", "NEGATIVO"].includes(input.resultado)) erro("Sexo fetal exige exame realizado com evidência de gestação", "sexoFetal");
   if ((input.resultado === "SEXAGEM" && input.finalidade && input.finalidade !== "SEXAGEM") || (input.finalidade === "SEXAGEM" && !["SEXAGEM", "INCONCLUSIVO", "NAO_AVALIADO"].includes(input.resultado)) || (input.resultado === "RECONFIRMACAO" && input.finalidade && input.finalidade !== "RECONFIRMACAO")) erro("Finalidade e conclusão incompatíveis", "finalidade");
@@ -543,14 +552,37 @@ export async function prepararAvaliacaoTx(
     erro("Retorno não pode anteceder a avaliação", "retornoEm");
   if (input.previsaoParto && dia(input.previsaoParto) < data)
     erro("Previsão de parto não pode anteceder o diagnóstico", "previsaoParto");
+  await conferirConclusaoAptidaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data, resultadoAptidao: input.resultadoAptidao, resultadoGestacional: input.resultado });
   const evidencia = await prepararEvidenciaAvaliacaoTx(tx, {
-    ...input, data, resultado: input.resultado, gestacaoCriada,
+    ...input, data, resultado: input.resultado, gestacaoCriada, parcial: !!contexto, itensRealizados: contexto?.itens.some(i => i.estado !== "NAO_AVALIADO"), sexagemInconclusivaSemDG: !!contexto && input.finalidade === "SEXAGEM" && input.resultado === "INCONCLUSIVO",
+    retornoAptidaoEm: input.retornoAptidaoEm ? dia(input.retornoAptidaoEm) : null,
     retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
   });
-  return { data, tentativa, gestacao, gestacaoCriada, evidencia };
+  const necessidades = contexto ? await preverConclusoesAvaliacaoTx(tx, {
+    animalId: input.animalId, propriedadeId: input.propriedadeId, data, tentativaId: tentativa?.id ?? null, gestacaoId: gestacao?.id ?? null,
+    tipoExameId: evidencia.tipoExameId, versaoFormato: evidencia.tipo.versaoFormato, finalidades: evidencia.finalidades,
+    resultados: evidencia.resultados, resultadoAptidao: input.resultadoAptidao, vinculos: input.vinculosConclusao ?? [],
+  }) : null;
+  return { data, tentativa, gestacao, gestacaoCriada, evidencia, contexto, necessidades };
+}
+export async function resumirPreviaAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, preparada: Awaited<ReturnType<typeof prepararAvaliacaoTx>>) {
+  const necessidadesGeradas = preparada.gestacaoCriada ? await preverDemandasNovaGestacaoTx(tx, { animalId: input.animalId, propriedadeId: input.propriedadeId, data: preparada.data, tentativaId: preparada.tentativa?.id }) : [];
+  const resumo = { exame: { tipoExameId: preparada.evidencia.tipoExameId, data: input.data, resultado: input.resultado, sexoFetal: input.sexoFetal ?? null, resultadoAptidao: input.resultadoAptidao ?? null, gestacaoCriada: preparada.gestacaoCriada },
+    itens: preparada.contexto!.itens, condutas: preparada.contexto!.condutas, necessidades: preparada.necessidades, necessidadesGeradas };
+  return { ...resumo, revisao: revisaoAvaliacaoContextual({ ...input, ...resolverDecisaoIatf(input) }, resumo) };
+}
+export function previaAvaliacaoContextual(input: AvaliacaoInput, usuarioId: number | null) {
+  if (!input.avaliacaoContextual) erro("Informe o catálogo e os itens da avaliação", "avaliacaoContextual");
+  const normalizado = { ...input, ...resolverDecisaoIatf(input) };
+  return transacaoPecuaria(async tx => resumirPreviaAvaliacaoTx(tx, normalizado, await prepararAvaliacaoTx(tx, normalizado, usuarioId)));
 }
 export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: AvaliacaoInput, usuarioId: number | null) {
+  input = { ...input, ...resolverDecisaoIatf(input) };
   const preparada = await prepararAvaliacaoTx(tx, input, usuarioId);
+  if (preparada.contexto) {
+    const previa = await resumirPreviaAvaliacaoTx(tx, input, preparada);
+    if (!input.revisaoContextual || input.revisaoContextual !== previa.revisao) throw new RebanhoError("CONFLITO", "A avaliação ou suas necessidades mudaram; revise novamente a prévia");
+  }
   const { data, tentativa, gestacaoCriada } = preparada;
   let gestacao = preparada.gestacao;
   let restricaoId: string | null = null;
@@ -598,8 +630,8 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       })
     ).id;
   }
-  const criada = await registrarEvidenciaAvaliacaoTx(tx, {
-      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados,
+  let criada = await registrarEvidenciaAvaliacaoTx(tx, {
+      tipoExameId: input.tipoExameId, formatoExameHash: input.formatoExameHash, responsavel: input.responsavel, finalidade: input.finalidade, resultados: input.resultados, realizadoSemDG: input.realizadoSemDG, parcial: !!preparada.contexto, itensRealizados: preparada.contexto?.itens.some(i => i.estado !== "NAO_AVALIADO"), sexagemInconclusivaSemDG: !!preparada.contexto && input.finalidade === "SEXAGEM" && input.resultado === "INCONCLUSIVO", ...(preparada.contexto ? { contextualSnapshot: JSON.parse(JSON.stringify({ catalogoId: preparada.contexto.catalogoId, versao: preparada.contexto.versao, tipoExameId: preparada.contexto.tipoExameId, itens: preparada.contexto.itens })) } : {}),
       animalId: input.animalId,
       propriedadeId: input.propriedadeId,
       data,
@@ -610,12 +642,21 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
       gestacaoId: gestacao?.id,
       sexoFetal: input.sexoFetal,
       conduta: input.conduta,
+      decisaoIatf: input.decisaoIatf,
+      resultadoAptidao: input.resultadoAptidao,
+      retornoAptidaoEm: input.retornoAptidaoEm ? dia(input.retornoAptidaoEm) : null,
       motivo: input.motivo ?? input.motivoVinculoDesconhecido,
       anotacaoOriginal: input.anotacaoOriginal,
       retornoEm: input.retornoEm ? dia(input.retornoEm) : null,
       observacao: input.observacao,
       criadoPorId: usuarioId,
   });
+  if (preparada.contexto) {
+    const { condutas } = preparada.contexto;
+    const retorno = condutas.find(c => c.tipo === "RETORNO")?.retornoEm;
+    await tx.interpretacaoReprodutiva.update({where:{exameId:criada.id},data:{condutasContextuais:JSON.parse(JSON.stringify(condutas)),...(retorno ? { retornoEm: dia(retorno) } : {})}});
+    if (retorno) criada = { ...criada, retornoEm: dia(retorno) };
+  }
   await auditar(tx, {
     entidade: "AvaliacaoReprodutiva",
     entidadeId: criada.id,
@@ -623,11 +664,16 @@ export async function criarAvaliacaoTx(tx: Prisma.TransactionClient, input: Aval
     propriedadeId: input.propriedadeId,
     acao: "REGISTRO",
     usuarioId,
-    depois: { ...criada, cienciaSanitaria: input.cienciaSanitaria === true },
+    depois: { ...criada, decisaoIatf: input.decisaoIatf ?? null, cienciaSanitaria: input.cienciaSanitaria === true, ...(preparada.contexto ? { avaliacaoContextual: preparada.contexto } : {}) },
   });
-  if (input.demandaAcompanhamentoId) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
+  if (input.demandaAcompanhamentoId && !preparada.contexto) await vincularExameDemandaTx(tx, input.demandaAcompanhamentoId, criada.id);
+  if (input.vinculosConclusao?.length) await vincularConclusoesExameTx(tx, criada.id, input.vinculosConclusao, usuarioId);
   if (gestacaoCriada && gestacao) await criarDemandasDoFatoTx(tx, { gestacaoId: gestacao.id, animalId: input.animalId, propriedadeId: input.propriedadeId, data, exameOrigemId: criada.id }, usuarioId);
   await reconciliarDemandasAnimalTx(tx, input.animalId, usuarioId);
+  if (input.vinculosConclusao?.length) {
+    const confirmadas = await tx.demandaAcompanhamentoReprodutivo.count({where:{id:{in:input.vinculosConclusao.map(v=>v.demandaId)},estado:"RESOLVIDA",vinculoConclusaoResolucao:{vigente:true,OR:[{resultado:{exameId:criada.id}},{interpretacao:{exameId:criada.id}}]}}});
+    if(confirmadas!==input.vinculosConclusao.length) erro("As conclusões não são compatíveis com as demandas ou suas origens", "vinculosConclusao");
+  }
   return criada;
 }
 export const criarAvaliacao = (
@@ -639,7 +685,12 @@ export const criarAvaliacao = (
     usuarioId,
     "AVALIACAO_REPRODUTIVA",
     criarAvaliacaoTx,
-    (tx, id) => tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } }),
+    async (tx, id) => {
+      const avaliacao = await tx.avaliacaoReprodutiva.findUniqueOrThrow({ where: { id } });
+      const interpretacao = await tx.interpretacaoReprodutiva.findUnique({ where: { id }, select: { decisaoIatf: true, resultadoAptidao: true, retornoAptidaoEm: true } });
+      const decisaoIatf = interpretacao?.decisaoIatf === "INDICAR" ? "INDICAR" as const : interpretacao?.decisaoIatf === "NAO_INDICAR" ? "NAO_INDICAR" as const : null;
+      return { ...avaliacao, decisaoIatf, resultadoAptidao: interpretacao?.resultadoAptidao ?? null, retornoAptidaoEm: interpretacao?.retornoAptidaoEm ?? null };
+    },
   );
 export async function criarPartoTx(
   tx: Prisma.TransactionClient,
@@ -1386,9 +1437,10 @@ export async function painelReproducao(
   });
   const evidencias = await prisma.interpretacaoReprodutiva.findMany({
     where: { id: { in: avaliacoes.map(a => a.id) } },
-    select: { id: true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
+    select: { id: true, decisaoIatf:true, resultadoAptidao:true, retornoAptidaoEm:true, exame: { select: { id:true, finalidades:true, finalidadePrincipal:true, realizacao:true, responsavel:true, formatoSnapshot:true, resultados:{ where:{vigente:true}, select:{campo:true,valor:true,unidade:true} } } } },
   });
   const examesPorAvaliacao = new Map(evidencias.map(e => [e.id, e.exame]));
+  const decisoesPorAvaliacao = new Map(evidencias.map(e => [e.id, e]));
   let marcos:ReturnType<typeof construirMarcosReprodutivos>|null=null;
   if(animalId&&propriedadeId!=null&&estados.has(animalId)){
     const elegibilidade=await carregarDadosElegibilidadeTx(prisma,[animalId],hoje);
@@ -1425,7 +1477,7 @@ export async function painelReproducao(
       };
     }),
     tentativas,
-    avaliacoes: avaliacoes.map(a => ({ ...a, exame: examesPorAvaliacao.get(a.id) ?? null })),
+    avaliacoes: avaliacoes.map(a => ({ ...a, decisaoIatf:decisoesPorAvaliacao.get(a.id)?.decisaoIatf??null, resultadoAptidao:decisoesPorAvaliacao.get(a.id)?.resultadoAptidao??null, retornoAptidaoEm:decisoesPorAvaliacao.get(a.id)?.retornoAptidaoEm??null, exame: examesPorAvaliacao.get(a.id) ?? null })),
     partos: partos.map((p) => ({
       ...p,
       crias: crias

@@ -135,12 +135,12 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
 
       {!editando && <>
         <CampoGenitor rotulo="Touro" sexo="M" valor={touro} onChange={setTouro} obrigatorio />
-        {erros.touro && <p role="alert" className="-mt-2 text-sm text-red-600">{erros.touro}</p>}
+        {erros.touro && <p role="alert" className="-mt-2 text-sm text-destructive">{erros.touro}</p>}
 
         {tipo === "EMBRIAO" && <>
           <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
           <p className="text-xs text-ink-3">Se a doadora ainda não for conhecida, marque Desconhecida/o. Ela poderá ser informada depois.</p>
-          {erros.doadora && <p role="alert" className="-mt-2 text-sm text-red-600">{erros.doadora}</p>}
+          {erros.doadora && <p role="alert" className="-mt-2 text-sm text-destructive">{erros.doadora}</p>}
         </>}
 
         {erroCarga && <ErrorBox erro={`Não foi possível carregar as categorias: ${erroCarga}`} />}
@@ -161,7 +161,7 @@ export function FormMaterialGenetico({ material, onSalvo, onFechar }: {
       {editando && material.tipo === "EMBRIAO" && !material.doadora && <>
         <CampoGenitor rotulo="Doadora" sexo="F" valor={doadora} onChange={setDoadora} />
         <p className="text-xs text-ink-3">Doadora ainda não informada. Se for identificada, selecione-a para completar o cadastro.</p>
-        {erros.doadora && <p role="alert" className="text-sm text-red-600">{erros.doadora}</p>}
+        {erros.doadora && <p role="alert" className="text-sm text-destructive">{erros.doadora}</p>}
       </>}
 
       <CampoFormulario id="material-observacao" rotulo="Observação">

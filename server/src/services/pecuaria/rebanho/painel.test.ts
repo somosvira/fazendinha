@@ -44,7 +44,7 @@ describe("painel geral do rebanho", () => {
     expect(painel.baixasPorTipo).toEqual([{ tipo: "VENDA", qtd: 1 }, { tipo: "MORTE", qtd: 1 }]);
     expect(painel.periodoDias).toBe(365);
     expect(prisma.baixaAnimal.findMany).toHaveBeenNthCalledWith(1, expect.objectContaining({ where: expect.objectContaining({
-      estornadaEm: null, tipo: { not: "CADASTRO_INDEVIDO" }, localizacaoFechada: { propriedadeId: 7 },
+      estornadaEm: null, tipo: { notIn: ["CADASTRO_INDEVIDO", "COMPRA_ESTORNADA"] }, localizacaoFechada: { propriedadeId: 7 },
     }) }));
   });
 
@@ -62,6 +62,22 @@ describe("painel geral do rebanho", () => {
     expect(painel.baixas30d).toBe(2);
     expect(painel.baixasPorTipo).toEqual([{ tipo: "MORTE", qtd: 1 }, { tipo: "NAO_DETERMINADO", qtd: 1 }]);
     expect(painel.baixasPorClasse).toEqual([{ classe: "MORTE", qtd: 1 }, { classe: "SEM_MOTIVO", qtd: 1 }]);
+  });
+
+  it("compra estornada não é saída produtiva: fora das baixas e sem afetar os ativos", async () => {
+    // o banco já exclui COMPRA_ESTORNADA pelo filtro; o mock devolve só o que o filtro deixaria passar
+    vi.mocked(prisma.baixaAnimal.findMany).mockResolvedValueOnce([
+      { tipo: "VENDA", data: new Date("2026-10-01T12:00:00Z"), motivo: { classe: "DESCARTE_VOLUNTARIO" } },
+    ] as never);
+    const painel = await buscarPainelGeral(null, 365);
+    expect(painel.ativos).toBe(16);
+    expect(painel.baixas30d).toBe(1);
+    expect(painel.baixasPorTipo).toEqual([{ tipo: "VENDA", qtd: 1 }]);
+    expect(painel.baixasPorClasse).toEqual([{ classe: "DESCARTE_VOLUNTARIO", qtd: 1 }]);
+    // consultas de baixa (período, últimas baixas e estornos) excluem o tipo
+    const chamadas = vi.mocked(prisma.baixaAnimal.findMany).mock.calls;
+    expect(chamadas).toHaveLength(3);
+    for (const [args] of chamadas) expect(args?.where).toMatchObject({ tipo: { notIn: ["CADASTRO_INDEVIDO", "COMPRA_ESTORNADA"] } });
   });
 
 });

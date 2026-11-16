@@ -62,17 +62,17 @@ export function ConfirmDialog({
         overlayClassName={camada === "sobreDetalhe" ? "z-[1390]" : "z-[1200]"}
         className={camada === "sobreDetalhe" ? "z-[1400] gap-0" : "z-[1200] gap-0"}
       >
-        <DialogHeader className="border-b border-[color:var(--rule-soft)] px-[22px] pb-3 pt-[18px]">
+        <DialogHeader className="border-b border-border px-5 pb-4 pt-5">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="px-[22px] py-4 text-[15px] leading-relaxed text-muted-foreground">
+        <div className="px-5 py-4 text-[15px] leading-relaxed text-muted-foreground">
           {message}
         </div>
-        <DialogFooter className="border-t border-[color:var(--rule-soft)] px-[22px] pb-[18px] pt-3.5">
+        <DialogFooter className="border-t border-border bg-card px-5 py-4">
           {dismissLabel && onDismiss && <Button variant="ghost" disabled={processando} onClick={onDismiss}>{dismissLabel}</Button>}
           <Button
             variant="outline"
-            className={`h-auto px-3 py-1.5 text-xs tracking-[0.04em] ${cancelTone === "safe" ? "border-green-700 bg-green-50 text-green-800 hover:bg-green-100 hover:text-green-900" : ""}`}
+            className={cancelTone === "safe" ? "border-primary text-primary hover:bg-[color:var(--fin-positive-bg)]" : undefined}
             onClick={onCancel}
             disabled={processando}
           >
@@ -81,11 +81,6 @@ export function ConfirmDialog({
           <Button
             ref={confirmRef}
             variant={tone === "danger" ? "destructive" : "default"}
-            className={
-              tone === "danger"
-                ? "h-auto px-3 py-1.5 text-xs tracking-[0.04em]"
-                : "h-auto px-[22px] py-3 text-[13px] uppercase tracking-[0.08em]"
-            }
             onClick={onConfirm}
             disabled={processando}
           >

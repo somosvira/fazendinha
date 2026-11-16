@@ -12,7 +12,6 @@ import { env } from "./env.js";
 import { comPrismaPorRequisicao } from "./db.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { exigeArea, exigeQualquerArea } from "./middleware/permissao.js";
-import { categoriasRouter } from "./routes/categorias.js";
 import { financeiroRouter } from "./routes/financeiro.js";
 import { healthRouter } from "./routes/health.js";
 import { authPublicoRouter, authPrivadoRouter } from "./routes/auth.js";
@@ -72,7 +71,7 @@ app.use("/api/*", authMiddleware);
 // Autorização por domínio: o frontend também esconde os módulos, mas este gate
 app.use("/api/pecuaria/rebanho/*", exigeArea("pecuaria"));
 for (const path of [
-  "/api/financeiro", "/api/financeiro/*", "/api/categorias", "/api/categorias/*",
+  "/api/financeiro", "/api/financeiro/*",
 ]) app.use(path, exigeArea("financeiro"));
 app.use("/api/estoque/*", exigeQualquerArea(["pecuaria", "financeiro"]));
 
@@ -80,7 +79,6 @@ app.use("/api/estoque/*", exigeQualquerArea(["pecuaria", "financeiro"]));
 app.route("/api", authPrivadoRouter);
 app.route("/api", usuariosRouter);
 app.route("/api", propriedadeRouter);
-app.route("/api", categoriasRouter);
 app.route("/api", financeiroRouter);
 app.route("/api", gerencialRouter);
 app.route("/api/pecuaria/rebanho/sanidade/programacoes", programacoesSanitariasRouter);

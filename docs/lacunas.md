@@ -20,6 +20,11 @@ Base da análise: código da `main` em `b63931e4`, que integra Reprodução/cons
 | Liquidação com abatimento | Pagamento menor conserva pendente; desconto comercial pertence à compra | Abatimento posterior requer fato e regra próprios |
 | Rentabilidade integral | Caixa, compras, custo direto registrado e custo/L com cobertura têm contratos distintos | Depreciação, mão de obra própria e despesas gerais não atribuídas não viram custo total ou lucro automaticamente |
 | Assistente em todos os eixos | Registro de ferramentas atual concentra leitura financeira e ajuda | Estoque/Pecuária precisam de ferramentas autorizadas próprias; não estão disponíveis só porque há chat |
+| Formulário de devolução de animais | Correção de devolução com animais só pela API | Implementar a correção pela interface, no padrão da correção de compra |
+| Venda de animais vinculada à operação | `BaixaAnimal` do tipo `VENDA` não tem vínculo com operação financeira | Próximo passo: mesmo padrão da compra (um item por animal, baixa e estorno) |
+| Valor de compra do animal fora da Pecuária | Custos da Pecuária e variável de compra no builder de relatórios não consideram o valor de compra do animal | Exige decisão sobre compra cancelada e corrigida antes da implementação |
+| Devolução e compromisso em aberto | Devolução não abate o compromisso a pagar em aberto da compra | Depende da lacuna Liquidação com abatimento |
+| Cadastro em lote na compra de animais | Hoje o modal cadastra um animal por vez | Próximo passo: "Adicionar vários" com dados comuns e lista de brincos, com mockup próprio |
 
 ## Perguntas de produto, sem implementação nesta revisão
 

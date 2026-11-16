@@ -1,4 +1,5 @@
 import type { ConferenciaDraft, SituacaoEntrega } from "./comercial-types";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export function CamposConferenciaEntrega({
   valor,
   onChange,
@@ -11,12 +12,12 @@ export function CamposConferenciaEntrega({
       <div className="leite-form-inline">
         <label>
           Situação do aceite
-          <select
+          <SelectCampo
             value={valor.situacao}
-            onChange={(e) =>
+            onValueChange={(escolha) =>
               onChange({
                 ...valor,
-                situacao: e.target.value as SituacaoEntrega,
+                situacao: escolha as SituacaoEntrega,
               })
             }
           >
@@ -29,7 +30,7 @@ export function CamposConferenciaEntrega({
             <option value="DESTINACAO_POSTERIOR">
               Destinação posterior informada
             </option>
-          </select>
+          </SelectCampo>
         </label>
         {valor.situacao !== "PENDENTE" && (
           <label>

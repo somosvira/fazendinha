@@ -54,7 +54,7 @@ it("agrupa as menores categorias em 'Outras' para que cada fatia tenha cor próp
 
 it("abre os lançamentos da categoria e permite consultar a operação", async () => {
   const api = await import("./novo-api");
-  const obter = vi.spyOn(api, "obterAnaliseCategorias").mockResolvedValue({ base: "pagamentos", total: "800", categorias: [], linhas: [{ categoriaId: uid(1), operacaoId: uid(8), descricao: "Compra de silagem", data: "2026-10-08", categoria: "Silagem", centroCusto: "Rebanho", classificacao: "CUSTEIO", valor: "800" }] });
+  const obter = vi.spyOn(api, "obterAnaliseCategorias").mockResolvedValue({ base: "pagamentos", total: "800", categorias: [], linhas: [{ categoriaId: uid(1), operacaoId: uid(8), descricao: "Compra de silagem", data: "2026-10-08", categoria: "Silagem", centroCusto: "Rebanho", valor: "800" }] });
   render(<AnaliseCategorias despesas={despesas} categorias={[]} inicio="2026-10-01" fim="2026-10-31" />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhar Silagem" }));
   const dialog = screen.getByRole("dialog", { name: "Silagem" });
@@ -71,8 +71,8 @@ it("abre os lançamentos da categoria e permite consultar a operação", async (
 it("Outras abre só as categorias agrupadas, e permite tentar novamente após erro", async () => {
   const api = await import("./novo-api");
   const obter = vi.spyOn(api, "obterAnaliseCategorias").mockRejectedValueOnce(new Error("Falha na consulta")).mockResolvedValue({ base: "pagamentos", total: "900", categorias: [], linhas: [
-    { categoriaId: uid(6), operacaoId: null, descricao: "Lançamento agrupado", data: "2026-10-08", categoria: "Categoria 6", centroCusto: "Sede", classificacao: null, valor: "300" },
-    { categoriaId: uid(6), operacaoId: null, descricao: "Lançamento fora do grupo", data: "2026-10-08", categoria: "Categoria 1", centroCusto: "Sede", classificacao: null, valor: "800" },
+    { categoriaId: uid(6), operacaoId: null, descricao: "Lançamento agrupado", data: "2026-10-08", categoria: "Categoria 6", centroCusto: "Sede", valor: "300" },
+    { categoriaId: uid(6), operacaoId: null, descricao: "Lançamento fora do grupo", data: "2026-10-08", categoria: "Categoria 1", centroCusto: "Sede", valor: "800" },
   ] });
   const muitas = [800, 700, 600, 500, 400, 300, 200, 100].map((valor, indice) => ({ categoriaId: uid(indice + 1), categoria: `Categoria ${indice + 1}`, valor: String(valor) }));
   render(<AnaliseCategorias despesas={muitas} categorias={[]} inicio="2026-10-01" fim="2026-10-31" />);
@@ -88,7 +88,7 @@ it("Outras abre só as categorias agrupadas, e permite tentar novamente após er
 
 it("pagina lançamentos mantendo o total completo", async () => {
   const api = await import("./novo-api");
-  const obter = vi.spyOn(api, "obterAnaliseCategorias").mockResolvedValue({ base: "pagamentos", total: "16", categorias: [], linhas: Array.from({ length: 16 }, (_, indice) => ({ categoriaId: uid(1), operacaoId: uid(indice + 1), descricao: `Lançamento ${indice + 1}`, data: "2026-10-08", categoria: "Silagem", centroCusto: "Sede", classificacao: null, valor: "1" })) });
+  const obter = vi.spyOn(api, "obterAnaliseCategorias").mockResolvedValue({ base: "pagamentos", total: "16", categorias: [], linhas: Array.from({ length: 16 }, (_, indice) => ({ categoriaId: uid(1), operacaoId: uid(indice + 1), descricao: `Lançamento ${indice + 1}`, data: "2026-10-08", categoria: "Silagem", centroCusto: "Sede", valor: "1" })) });
   render(<AnaliseCategorias despesas={despesas} categorias={[]} inicio="2026-10-01" fim="2026-10-31" />);
   fireEvent.click(screen.getByRole("button", { name: "Detalhar Silagem" }));
   const dialog = screen.getByRole("dialog", { name: "Silagem" });

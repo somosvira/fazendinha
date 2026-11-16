@@ -8,8 +8,9 @@ import { regularizarBaixaHistoricaTx, revisarClassificacaoBaixaTx } from "./baix
 
 vi.mock("../fatos.js", async (importar) => ({ ...await importar<typeof import("../fatos.js")>(), conferirFatosNaBaixa: vi.fn() }));
 vi.mock("./papeis.js", async (importar) => ({ ...await importar<typeof import("./papeis.js")>(), papelReprodutivoNaDataTx: async () => ({ papel: "NENHUM" }) }));
-const m = vi.hoisted(() => ({ carencias: { leite: { estado: "NAO_APLICAVEL" }, carne: { estado: "NAO_APLICAVEL" } } }));
+const m = vi.hoisted(() => ({ carencias: { leite: { estado: "NAO_APLICAVEL" }, carne: { estado: "NAO_APLICAVEL" } }, reconciliarAlertasReprodutivos: vi.fn() }));
 vi.mock("../sanidade/aplicacoes.js", () => ({ carenciaAnimalTx: async () => m.carencias }));
+vi.mock("../reproducao/alertas/produtor.js", () => ({ reconciliarAlertasReprodutivosAnimalTx: m.reconciliarAlertasReprodutivos }));
 const origem = { data: "2024-08-12", bancoOrigem: "IDEAGRI", chaveOrigem: "BAIXA:1", evidencia: "Extrato da fazenda com saída comprovada", motivo: "Tipo ausente no documento original" };
 const revisao = { chave: "39ce15f7-bd59-4405-8757-45f5a627715c", tipo: "VENDA" as const, evidencia: "Nota de venda localizada pela fazenda", motivo: "Classificação comprovada posteriormente" };
 
@@ -41,7 +42,7 @@ function banco() {
   return { tx, estado };
 }
 
-beforeEach(() => { m.carencias = { leite: { estado: "NAO_APLICAVEL" }, carne: { estado: "NAO_APLICAVEL" } }; });
+beforeEach(() => { m.carencias = { leite: { estado: "NAO_APLICAVEL" }, carne: { estado: "NAO_APLICAVEL" } }; m.reconciliarAlertasReprodutivos.mockClear(); });
 
 describe("executor único de baixa", () => {
   it("recusa tipo não determinado fora da regularização, inclusive por chamada direta", async () => {
@@ -63,6 +64,8 @@ describe("regularização histórica", () => {
     expect(estado.destino.ate).toEqual(new Date(origem.data));
     expect(estado.auditorias).toHaveLength(1);
     expect(estado.baixa?.regularizacaoHistoricaSnapshot).toMatchObject({ ...origem, usuarioId: 7 });
+    expect(m.reconciliarAlertasReprodutivos).toHaveBeenCalledTimes(1);
+    expect(m.reconciliarAlertasReprodutivos).toHaveBeenCalledWith(tx, "animal", 7);
   });
   it("reenvio após estorno e transferência respeita o sítio original sem reativar a saída", async () => {
     const { tx, estado } = banco();
@@ -89,6 +92,7 @@ describe("regularização histórica", () => {
     await expect(regularizarBaixaHistoricaTx(tx, "animal", origem, 7, 9)).rejects.toMatchObject({ code: "NAO_ENCONTRADO" });
     await expect(regularizarBaixaHistoricaTx(tx, "animal", { ...origem, evidencia: "" }, 7, 3)).rejects.toThrow();
     expect(estado.baixa).toBeNull();
+    expect(m.reconciliarAlertasReprodutivos).not.toHaveBeenCalled();
   });
   it("não contorna cronologia ou ciência sanitária quando o tipo é desconhecido", async () => {
     const { tx, estado } = banco();

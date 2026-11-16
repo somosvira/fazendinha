@@ -1,3 +1,4 @@
+import { criarAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { randomUUID } from "node:crypto";
 import { Prisma, type Animal } from "@prisma/client";
 import { describe, expect, it } from "vitest";
@@ -23,6 +24,7 @@ async function fixture(tx: Prisma.TransactionClient) {
   const animais: Animal[] = [];
   for (let i = 0; i < 3; i++) animais.push(await tx.animal.create({ data: { sexo: "F", origem: "COMPRADO", brinco: `IV-${randomUUID()}`,
     dataNascimento: new Date("2020-01-01"), dataEntrada: new Date("2024-01-01"), localizacoes: { create: { propriedadeId: sitio.id, desde: new Date("2024-01-01") } } } }));
+  for (const a of animais) await criarAptidaoFixture(tx, a.id, sitio.id, new Date("2024-01-01"));
   const protocolo = await tx.protocolo.create({ data: { tipo: "REPRODUTIVO", nome: `Início IATF ${randomUUID()}`, versao: 1,
     etapas: { create: [
       { nome: "Retirada", ordem: 1, tipo: "RETIRADA", diaRelativo: 1, configuracao: { tipo: "RETIRADA", nome: "Retirada", intervalo: 1, unidade: "DIAS" } },

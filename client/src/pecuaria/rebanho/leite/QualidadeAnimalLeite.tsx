@@ -1,5 +1,4 @@
 import { DetalheProducao, VazioProducao } from "./ProducaoAnimalUI";
-import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker, dateFromIso, isoDate } from "@/components/DateRangePicker";
 import "./ordenhas-gerais.css";
@@ -13,6 +12,7 @@ import { FlaskConical } from "lucide-react";
 import type { AmostraQualidade } from "./qualidade-types";
 import "./operacoes.css";
 import "./historico-produtivo.css";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 type Consulta = {
   itens: AmostraQualidade[];
@@ -80,7 +80,7 @@ export function QualidadeAnimalLeite({
       titulo="Qualidade do leite"
 
     >
-      <div className="producao-barra"><strong>Amostras individuais</strong>{<><AjudaCampo rotulo="Sobre as amostras individuais" texto="Coletas e resultados independem da frequência de medição de litros." />{propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel="Período" triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
+      <div className="producao-barra"><strong>Amostras individuais</strong>{<>{propriedadeId != null ? <DateRangePicker anchor="right" allowAll triggerLabel="Período" triggerAriaLabel={!inicio && fim ? `Período das amostras: até ${dataSanitaria(fim)}` : "Período das amostras"} value={{ start: dateFromIso(inicio), end: dateFromIso(fim) }} onChange={({ start, end }) => {
         setInicio(start ? isoDate(start) : "");
         setFim(end ? isoDate(end) : "");
         setPagina(1);
@@ -101,7 +101,7 @@ export function QualidadeAnimalLeite({
               </Button>
             </div>
           ) : !dados ? (
-            <p role="status">Carregando análises individuais…</p>
+            <EsqueletoTabela label="Carregando análises individuais" />
           ) : (
             <>
               {dados.itens.length > 0 && <p className="producao-ficha-nota">{dados.total} amostra(s) deste animal no período e sítio consultados.</p>}

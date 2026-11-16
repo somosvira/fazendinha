@@ -3,3 +3,30 @@
 
 /* A nova visita aproxima os dados de identificação da escolha do percurso. */
 .entrada-conteudo{display:grid;gap:24px;align-items:start}.entrada-nova .entrada-conteudo{grid-template-columns:minmax(260px,.8fr) minmax(0,1.6fr)}.entrada-nova .entrada-conteudo>.visita-painel{margin:0;overflow:hidden;box-shadow:var(--fin-panel-shadow);border:0}.entrada-nova .livre-corpo.livre-grid{grid-template-columns:1fr;padding:20px;gap:18px}.entrada-nova .visita-painel-cabecalho{padding:20px;border-bottom:1px solid var(--border)}.entrada-nova .visita-painel-cabecalho h2{margin:0;font-size:18px}.entrada-percurso{min-width:0}.entrada-percurso .entrada-escolha-cab{margin:0 0 18px}.entrada-nova .entrada-opcoes{grid-template-columns:1fr;gap:14px}.entrada-nova .entrada-opcao{padding:20px;box-shadow:var(--fin-panel-shadow);border:1px solid transparent}.entrada-nova .entrada-opcao:has([data-state=checked]){border-color:var(--primary);background:var(--accent)}.entrada-nova .entrada-opcao-topo{margin-bottom:12px}.entrada-nova .entrada-opcao h3{font-size:18px}.entrada-nova .entrada-agenda{display:flex;gap:24px;flex-wrap:wrap}.entrada-nova .entrada-agenda>div+div{margin-top:0}.entrada-nova .entrada-agenda,.entrada-nova .entrada-filtros{min-height:0;padding:12px 14px;margin:0;background:var(--muted)}.entrada-nova .entrada-passos{margin-top:28px;padding:18px 20px;background:var(--card);border:0;border-radius:12px}.entrada-existente .entrada-contexto{margin-bottom:0}.entrada-existente .entrada-conteudo{gap:24px}@media(max-width:1000px){.entrada-nova .entrada-conteudo{grid-template-columns:1fr}.entrada-nova .livre-corpo.livre-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.entrada-nova .entrada-opcoes{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.entrada-nova .livre-corpo.livre-grid,.entrada-nova .entrada-opcoes{grid-template-columns:1fr}.entrada-nova .entrada-passos{padding:16px}.entrada-nova .entrada-agenda{gap:16px}}
+
+.pecuaria-content .shell-wide.pagina-financeira:has(.entrada-existente) {
+  min-height: auto;
+  padding: 24px var(--gutter) 40px;
+  background: transparent;
+}
+.entrada-existente.visita-entrada {
+  --vf-ink: var(--foreground);
+  --vf-muted: var(--muted-foreground);
+  max-width: none;
+  font-family: var(--sans);
+}
+.entrada-existente .visita-breadcrumb { margin-bottom: 8px; }
+.entrada-existente .visita-cabecalho h1 { margin: 0; }
+.entrada-existente .entrada-contexto { padding: 14px 18px; }
+.entrada-existente .entrada-fatos dt { margin-bottom: 4px; }
+.entrada-existente .entrada-opcoes { gap: 12px; }
+.entrada-existente .entrada-opcao { padding: 16px; }
+.entrada-existente .entrada-opcao h3 { font-size: 16px; }
+.entrada-existente .entrada-opcao:has([data-state=checked]) { background: var(--accent); }
+.entrada-existente .entrada-opcao-topo { margin-bottom: 8px; }
+.entrada-existente .entrada-opcao :is(.entrada-agenda,.entrada-filtros) {
+  background: transparent;
+  padding: 0;
+  min-height: 0;
+}
+.entrada-existente .entrada-passos { margin-top: 12px; }

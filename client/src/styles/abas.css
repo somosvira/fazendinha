@@ -1,80 +1,81 @@
 /* Abas compartilhadas. A variante de botões e filtros não recebe esta classe. */
+/* Caderno de campo: abas são marcadores de seção, não pastas. Sem contorno, sem
+ * fundo; a seção atual leva o traço turquesa (--campo-ouro). Ícones saem: o
+ * rótulo já diz o que é. */
 :root .app-main [role="tablist"].abas-pasta {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: stretch;
   justify-content: flex-start;
   width: 100%;
   max-width: 100%;
   height: auto;
   min-height: 0;
-  gap: 4px;
+  gap: 24px;
   padding: 0;
   margin-bottom: 0;
-  overflow: visible;
+  overflow-x: auto;
+  scrollbar-width: none;
   border: 0;
   border-bottom: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
 }
+:root .app-main [role="tablist"].abas-pasta::-webkit-scrollbar { display: none; }
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] {
   position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 0;
   height: auto;
-  min-height: 40px;
+  min-height: 42px;
   max-width: 100%;
-  padding: 8px 12px;
+  padding: 8px 0;
   margin: 0 0 -1px;
-  border: 1px solid var(--border);
-  border-radius: 8px 8px 0 0;
-  background: var(--muted);
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
   color: var(--muted-foreground);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  line-height: 1.4;
-  white-space: normal;
+  line-height: 1.3;
+  white-space: nowrap;
   text-align: center;
   cursor: pointer;
   box-shadow: none;
-  transition: background-color 120ms, color 120ms;
+  transition: color 120ms, border-color 120ms;
 }
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected]::after { display: none; }
-:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { flex-shrink: 0; width: 20px; height: 20px; }
-:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="false"]:hover { background: var(--fin-nav-hover, var(--accent)); color: var(--foreground); }
+:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] svg { display: none; }
+:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="false"]:hover { background: transparent; color: var(--foreground); border-bottom-color: var(--border); }
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"] {
   z-index: 1;
-  border-bottom-color: var(--card);
-  background: var(--card);
-  color: var(--primary);
-  font-weight: 650;
+  border-bottom-color: var(--primary);
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 700;
 }
-:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected="true"]::after { display: block; content: ""; position: absolute; inset: auto 0 -2px; height: 2px; background: var(--card); }
-:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { z-index: 2; outline: 2px solid var(--ring); outline-offset: -4px; }
+:root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected]:focus-visible { z-index: 2; outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 2px; }
 :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected]:disabled { cursor: not-allowed; opacity: .5; }
 
-/* Ligação com superfícies existentes, sem acrescentar cartões ao conteúdo. */
+/* Abaixo das abas, o conteúdo começa com respiro próprio (a aba não é mais uma pasta
+ * colada à superfície). */
 :root .app-main .abas-navegacao { margin-bottom: 0; }
-.pecuaria-content .sanidade-navegacao:has(.abas-pasta) { margin-bottom: 0; }
-.pecuaria-content .sanidade-navegacao:has(.abas-pasta) ~ .sanidade-lista { border-top-left-radius: 0; }
-.pecuaria-content .rebanho-nav:has(.abas-pasta) ~ .rebanho-lista,
-.pecuaria-content .rebanho-nav:has(.abas-pasta) + [data-slot="financeiro-panel"] { margin-top: 0; }
-.pecuaria-content .pec-painel-rebanho > .rebanho-nav:has(.abas-pasta) ~ .pec-panorama-grid { margin-top: 0; }
-.pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo { margin-top: 0; }
-.pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-conteudo > [data-slot="financeiro-panel"]:first-of-type,
-.pecuaria-content .nutricao-pagina > .abas-navegacao + [data-slot="financeiro-panel"],
-.pecuaria-content .nutricao-pagina > .abas-navegacao + .nutricao-receitas > .consulta-barra { border-top-left-radius: 0; }
-.app-main [data-slot="tabs"]:has(> .abas-pasta) { gap: 0; }
+.pecuaria-content .sanidade-navegacao:has(.abas-pasta) { margin-bottom: 16px; }
+.pecuaria-content .rebanho-nav:has(.abas-pasta) { margin-bottom: 16px; }
+.pecuaria-content .nutricao-pagina > .abas-navegacao { margin-bottom: 16px; }
+.app-main [data-slot="tabs"]:has(> .abas-pasta) { gap: 16px; }
 .app-main [data-slot="tabs"] > .abas-pasta + [data-slot="tabs-content"] { margin-top: 0; }
-.app-main [data-slot="tabs"] > .abas-pasta + [data-slot="tabs-content"] > fieldset > .fin-lista-cadastro { margin-top: 0; border-top-left-radius: 0; }
-.abas-superficie { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card); }
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) [class*="superficie"],
+:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content) [data-slot="financeiro-panel"] { border-top-left-radius: var(--fin-radius-panel, 8px); }
+.abas-superficie { min-width: 0; padding: 16px 0 0; border: 0; border-radius: 0; background: transparent; }
 
 @media (max-width: 600px) {
-  :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] { padding: 10px 12px; font-size: 14px; }
+  :root .app-main [role="tablist"].abas-pasta { gap: 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
   :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] { transition: none; }
@@ -84,3 +85,14 @@
 }
 
 @media (max-width: 900px) { :root .app-main [role="tablist"].abas-pasta > [role="tab"][aria-selected] { min-height: 44px; } }
+
+
+/* Em telas estreitas as abas rolam na horizontal: o esmaecimento à direita mostra que há
+ * mais abas, e o respiro final deixa a última sair do esmaecimento ao rolar até o fim. */
+@media (max-width: 900px) {
+  :root .app-main [role="tablist"].abas-pasta {
+    padding-right: 32px;
+    mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent);
+  }
+}

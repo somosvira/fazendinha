@@ -58,7 +58,7 @@ const ROTULO_PAPEL_REPRODUTIVO: Record<string, string> = { NENHUM: "Nenhum", REC
 const ROTULO_TIPO_PESAGEM: Record<string, string> = { NASCIMENTO: "Nascimento", ENTRADA: "Entrada", DESMAMA: "Desmama", ROTINA: "Rotina", SAIDA: "Saída" };
 const ROTULO_ORIGEM_PESAGEM: Record<string, string> = { MANUAL: "Manual", BALANCA: "Balança" };
 const ROTULO_TIPO_BAIXA: Record<string, string> = {
-  VENDA: "Venda", ABATE: "Abate", MORTE: "Morte", DOACAO: "Doação", EXTRAVIO: "Extravio", CADASTRO_INDEVIDO: "Cadastro indevido",
+  VENDA: "Venda", ABATE: "Abate", MORTE: "Morte", DOACAO: "Doação", EXTRAVIO: "Extravio", CADASTRO_INDEVIDO: "Cadastro indevido", COMPRA_ESTORNADA: "Compra estornada",
 };
 const ROTULO_CLASSE_MOTIVO: Record<string, string> = {
   DESCARTE_VOLUNTARIO: "Descarte voluntário", DESCARTE_INVOLUNTARIO: "Descarte involuntário", MORTE: "Morte",

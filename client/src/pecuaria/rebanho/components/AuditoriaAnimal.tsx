@@ -1,7 +1,6 @@
 import { formatarDataBR } from "../lib/rotulos";
 import { LinhaTempoConsulta, CartaoConsulta } from "@/components/ConsultaVisual";
 import { DatePicker } from "@/components/DatePicker";
-import { AjudaCampo } from "@/components/Dica";
 import { resumoAuditoriaLegivel } from "../lib/auditoriaRotulos";
 import { SelectCampo } from "@/financeiro/SelectCampo";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -15,6 +14,8 @@ import type { EntradaAuditoria, FiltrosAuditoriaAnimal, ResultadoAuditoriaAnimal
 import { RebModal } from "@/components/rb/RebModal";
 import { AuditoriaFatoAnimal, DadosAuditoria } from "./AuditoriaFatoAnimal";
 import { auditoriaConstituiFato, identidadeHistorico, dataRelativaFato } from "../lib/historicoAnimal";
+import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export type FatoHistoricoAnimal = { id: string; entidade: string; entidadeId: string; eixo: "REBANHO" | "REPRODUCAO" | "SANIDADE" | "NUTRICAO"; data: string; titulo: string; detalhe: ReactNode; textoBusca: string; Icone: LucideIcon; abrir?: () => void; projetarTransicao?: (transicao: TransicaoFatoAnimal) => { detalhe: ReactNode; textoBusca: string } };
 
@@ -152,21 +153,21 @@ function ConsultaAuditoriaAnimal({ id, recarregarToken, fatos, modo = "tabela", 
       </div></RebModal>}
       {consulta.periodo === "personalizado" && <div className="flex flex-wrap gap-3 md:col-span-5"><label className={rotulo}>De<DatePicker value={consulta.inicio} onChange={inicio => alterar({ inicio })} /></label><label className={rotulo}>Até<DatePicker value={consulta.fim} onChange={fim => alterar({ fim })} /></label></div>}
     </form>
-    {intervaloInvalido && <p role="alert" className="p-3 text-red-700">O início deve ser anterior ao fim.</p>}
-    {carregando && <p role="status" className="p-4 text-ink-3">Carregando auditoria…</p>}
-    {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-red-700">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
+    {intervaloInvalido && <p role="alert" className="p-3 text-destructive">O início deve ser anterior ao fim.</p>}
+    {carregando && <EsqueletoTabela label="Carregando auditoria" className="p-4" />}
+    {erro && <div className="flex items-center gap-3 p-3"><p role="alert" className="text-destructive">{erro}</p><Button secondary onClick={() => setTentativa((v) => v + 1)}>Tentar novamente</Button></div>}
     {!intervaloInvalido && (resultado || fatos) && <>
       {modo === "visual" ? <LinhaTempoConsulta rotulo="Fatos e alterações do animal" itens={linhas} dataDe={diaLinha} chaveDe={l => l.chave} complementoData={data => <span className="font-normal text-ink-3"> - {dataRelativaFato(data, agora)}</span>} render={linha => {
         const fato = linha.fato; const entrada = linha.entrada;
         return <CartaoConsulta className={`ficha-historico-item ${corEvento(fato?.entidade ?? entrada?.entidade)}`} icon={fato?.Icone ?? History} titulo={fato?.titulo ?? `Alteração · ${entrada?.registro ?? entrada?.entidade}`} acoes={acoesLinha(linha)}><div className="text-sm text-ink">{fato?.detalhe ?? (entrada && resumoAuditoriaLegivel(entrada))}{!fato && <span className="block text-ink-3">{dataLinha(linha)}</span>}</div></CartaoConsulta>;
       }} /> : <div className="overflow-x-auto"><table className="w-full min-w-[780px] text-center text-sm consulta-tabela"><caption className="sr-only">{fatos ? "Histórico e auditoria dos registros do animal" : "Auditoria dos registros do animal"}</caption>
-        <thead className="bg-surface-2 text-ink-3"><tr>{["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"].map(titulo => <th scope="col" key={titulo} className="px-3 py-2 text-center font-semibold">{titulo}{titulo === "Responsável" && <AjudaCampo rotulo="Sobre a autoria e os detalhes de auditoria" texto="Responsável é a autoria registrada na auditoria. Consulte a trilha do fato para ver todas as alterações." />}</th>)}</tr></thead>
+        <thead className="bg-surface-2 text-ink-3"><tr>{["Data e hora", "Eixo", "Ação", "Registro afetado", "Responsável", "Detalhes"].map(titulo => <th scope="col" key={titulo} className="px-3 py-2 text-center font-semibold">{titulo}</th>)}</tr></thead>
         <tbody className="divide-y divide-border">{linhas.map(linha => {
           const entrada = linha.entrada; const fato = linha.fato; const codigoEixo = fato?.eixo ?? entrada?.eixo; const eixo = codigoEixo ? EIXOS[codigoEixo] : null; const Icone = fato?.Icone ?? eixo?.Icone;
           return <tr key={linha.chave}><td className="px-3 py-2 text-center">{dataLinha(linha)}</td><td className="px-3 py-2 text-center">{eixo ? <span className="inline-flex items-center gap-2">{Icone && <Icone size={17} aria-hidden className={corEvento(fato?.entidade ?? entrada?.entidade)} />}{eixo.nome}</span> : "Não classificado"}</td><td className="px-3 py-2 text-center">{fato?.titulo ?? entrada?.acaoRotulo ?? entrada?.acao}</td><td className="px-3 py-2 text-center">{fato?.detalhe ?? entrada?.registro ?? (entrada && resumoAuditoriaLegivel(entrada))}</td><td className="px-3 py-2 text-center">{entrada?.usuarioNome ?? "Não informado"}</td><td className="px-3 py-2 text-center">{acoesLinha(linha)}</td></tr>;
         })}</tbody>
       </table></div>}
-      {!linhas.length && !carregando && !erro && <p className="p-5 text-center text-sm text-ink-3">Nenhum registro de auditoria neste período com os filtros selecionados.</p>}
+      {!linhas.length && !carregando && !erro && <Empty>Nenhum registro de auditoria neste período com os filtros selecionados.</Empty>}
       {resultado && <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-3"><span>{total ? `${(pagina - 1) * TAMANHO_PAGINA + 1}–${Math.min(pagina * TAMANHO_PAGINA, total)}` : "0"} de {total} registros{fatos && " de auditoria · fatos conhecidos da ficha exibidos no mesmo período"}</span><div className="flex items-center gap-2"><Button secondary disabled={pagina <= 1} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina - 1 }))}>Anterior</Button><label className="sr-only" htmlFor={`pagina-auditoria-${id}`}>Página da auditoria</label><SelectCampo id={`pagina-auditoria-${id}`} className="h-9 rounded-md border border-border bg-surface px-2 text-ink" value={pagina} onValueChange={(valorSelecionado) => setConsulta((q) => ({ ...q, pagina: Number(valorSelecionado) }))}>{Array.from({ length: paginas }, (_, i) => <option key={i + 1} value={i + 1}>Página {i + 1} de {paginas}</option>)}</SelectCampo><Button secondary disabled={pagina >= paginas} onClick={() => setConsulta((q) => ({ ...q, pagina: q.pagina + 1 }))}>Próxima</Button></div></div>}
     </>}
     {selecionado && ("detalhe" in selecionado ? <AuditoriaFatoAnimal key={identidadeHistorico(selecionado.entidade, selecionado.entidadeId)} animalId={id} entidade={selecionado.entidade} entidadeId={selecionado.entidadeId} resumo={selecionado.detalhe} onClose={() => setSelecionado(null)} /> : <RebModal title="Auditoria do registro" onClose={() => setSelecionado(null)} className="w-[min(900px,calc(100vw-32px))]"><DadosAuditoria entrada={selecionado} /></RebModal>)}

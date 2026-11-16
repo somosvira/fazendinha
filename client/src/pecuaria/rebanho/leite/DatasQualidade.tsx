@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Input } from "@/components/ui/input";
 import { formatarDataBR } from "../lib/rotulos";
 
@@ -18,7 +19,7 @@ export function CamposDatasQualidade({ resultado, recebimento, onResultado, onRe
   onResultado: (valor: string) => void; onRecebimento: (valor: string) => void;
 }) {
   return <div className="leite-form-inline">
-    <label>Data do resultado laboratorial (opcional)<Input type="date" value={resultado} onChange={e => onResultado(e.target.value)} /></label>
-    <label>Data de recebimento do laudo (opcional)<Input type="date" value={recebimento} onChange={e => onRecebimento(e.target.value)} /></label>
+    <label>Data do resultado laboratorial (opcional)<DatePicker value={resultado} onChange={(valor) => onResultado(valor)} /></label>
+    <label>Data de recebimento do laudo (opcional)<DatePicker value={recebimento} onChange={(valor) => onRecebimento(valor)} /></label>
   </div>;
 }

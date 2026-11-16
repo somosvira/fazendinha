@@ -33,7 +33,7 @@ export async function emitirRelatorioPartosTx(tx: Prisma.TransactionClient, inpu
     const linhas = partos.map(p => ({
       id: p.id, versao: p.versao, matriz: p.animal, data: p.data.toISOString().slice(0, 10), ocorridoEm: p.ocorridoEm?.toISOString() ?? null,
       horarioEstimado: p.horarioEstimado, desfecho: p.desfecho, tipo: p.tipo, induzido: p.induzido,
-      dificuldade: p.dificuldade, assistenciaDescricao: p.assistenciaDescricao, retencaoPlacenta: p.retencaoPlacenta,
+      dificuldade: p.dificuldade, assistenciaDescricao: p.assistenciaDescricao, retencaoPlacenta: p.retencaoPlacenta, grauRetencaoPlacenta: p.grauRetencaoPlacenta,
       responsavel: p.responsavel, observacao: p.observacao, lancador: p.criadoPorId == null ? null : { id: p.criadoPorId, nome: autoresPorId.get(p.criadoPorId) ?? null },
       criadoEm: p.criadoEm.toISOString(), ocorrenciasRetencaoPlacenta: p.ocorrenciasRetencaoPlacenta,
       pesosMatriz: p.vinculosPesagem.filter(v => v.sujeito === "MATRIZ" && !v.criaId).map(v => ({ id: v.pesagem.id, data: v.pesagem.data.toISOString().slice(0, 10), pesoKg: v.pesagem.pesoKg.toString() })),

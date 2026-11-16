@@ -19,8 +19,8 @@ export async function sintetizarResposta(texto: string): Promise<string> {
   });
   async function gerar() {
     const resposta = await client.audio.speech.create({
-      model: env.OPENAI_SPEECH_MODEL, voice: "coral", input: texto, response_format: "mp3",
-      instructions: "Leia fielmente o texto em português brasileiro, com clareza e ritmo natural. Não acrescente nem altere informações. A voz é de um assistente virtual.",
+      model: env.OPENAI_SPEECH_MODEL, voice: "cedar", input: texto, response_format: "mp3",
+      instructions: "Fale em português brasileiro, com pronúncia brasileira e tom adulto, tranquilo e próximo. Converse com uma pessoa, com naturalidade e leve calor humano. Ritmo moderado, pequenas pausas entre as ideias e variação sutil de entonação. Perguntas devem soar como um convite tranquilo. Sem voz de locutor, sem tom de propaganda, sem entusiasmo exagerado e sem cadência cantada. Leia exatamente o texto fornecido, sem acrescentar palavras nem alterar informações. A voz é de um assistente virtual.",
     }, { signal: controller.signal });
     const tamanho = Number(resposta.headers.get("content-length"));
     if (tamanho > 4 * 1024 * 1024) throw new Error("Áudio excessivo");

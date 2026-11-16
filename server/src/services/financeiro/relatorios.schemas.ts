@@ -5,13 +5,12 @@ import { LIMITE_MESES, REGIMES_RELATORIO, mesesEntreDatas } from "../relatorio-g
 // Transferência financeira só redistribui saldo entre contas próprias; não é
 // uma dimensão de composição do relatório.
 export const TIPOS_RELATORIO = [
-  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "SERVICO", "VENDA", "APORTE", "RETIRADA",
+  "COMPRA_ESTOQUE", "COMPRA_CONSUMO_DIRETO", "COMPRA_ANIMAIS", "SERVICO", "VENDA", "APORTE", "RETIRADA",
   "AJUSTE_ESTOQUE", "TRANSFERENCIA_ESTOQUE", "INVENTARIO_INICIAL", "BONIFICACAO", "DEVOLUCAO", "PRODUCAO",
 ] as const;
 // Operações nascem CONFIRMADA (o rascunho vive em RascunhoOperacao) e só podem
 // passar a CANCELADA; RASCUNHO não existe como situação de uma operação.
 export const STATUS_RELATORIO = ["CONFIRMADA", "CANCELADA"] as const;
-export const CLASSIFICACOES_RELATORIO = ["CUSTEIO", "INVESTIMENTO", "SEM_CLASSIFICACAO"] as const;
 
 const dia = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use uma data válida")
   .refine((v) => !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v, "Data inválida");
@@ -28,7 +27,7 @@ const campos = {
   centroCustoIds: ids,
   parceiroIds: ids,
   categoriaIds: ids,
-  classificacoes: unicos(z.enum(CLASSIFICACOES_RELATORIO)),
+  grupoIds: ids,
 };
 
 /** O rascunho guarda o que o usuário estiver digitando, mesmo incompleto. */

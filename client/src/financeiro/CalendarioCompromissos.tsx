@@ -39,7 +39,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
       <div className="flex items-center gap-2">
         <Button variant="outline" size="icon" type="button" aria-label="Mês anterior" onClick={() => mudarMes(deslocarMes(mes, -1))} className={`rounded-lg border border-border hover:bg-muted ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronLeft aria-hidden="true" size={16} strokeWidth={1.8} /></Button>
         <Button variant="outline" size="icon" type="button" aria-label="Próximo mês" onClick={() => mudarMes(deslocarMes(mes, 1))} className={`rounded-lg border border-border hover:bg-muted ${resumo ? "h-7 w-7 p-1" : "p-2"}`}><ChevronRight aria-hidden="true" size={16} strokeWidth={1.8} /></Button>
-        <h3 className="ml-1 text-sm font-semibold capitalize" aria-live="polite">{nomeMes(mes)}</h3>
+        <h3 className="ml-1 text-sm font-semibold" aria-live="polite">{nomeMes(mes)}</h3>
       </div>
       <Button variant="outline" size={resumo ? "sm" : "default"} onClick={() => mudarMes(mesAtual())}>Hoje</Button>
     </div>
@@ -72,7 +72,7 @@ export function CalendarioCompromissos({ itens, mes, onChangeMes, onLiquidar, co
         </TableCell>)}</TableRow>)}</TableBody>
       </Table>
     </div>}
-    {diaSelecionado && <Modal icon={CalendarDays} tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="Agenda financeira" onClose={() => setDiaSelecionado(null)}>
+    {diaSelecionado && <Modal icon={CalendarDays} tom="pendente" titulo={`Compromissos de ${dataBR(diaSelecionado)}`} eyebrow="" onClose={() => setDiaSelecionado(null)}>
       <ul className="divide-y divide-border">{(porDia.get(diaSelecionado) ?? []).map(c => <li key={c.id}><Button type="button" onClick={() => { setDiaSelecionado(null); setSelecionadoId(c.id); }} variant="ghost" className="h-auto w-full flex-col items-start whitespace-normal space-y-2 p-5 text-left hover:bg-muted"><strong className="block break-words text-sm">{tituloCompromisso(c)}</strong><span className="block text-sm">{c.tipo === "PAGAR" ? "A pagar" : "A receber"} · {brl(c.saldoPendente)}</span><Badge variant="outline">{STATUS[c.status] ?? c.status}</Badge>{c.vencido && <Badge variant="outline" className="border-destructive/20 text-destructive">Vencido</Badge>}</Button></li>)}</ul>
     </Modal>}
     {selecionado && <CompromissoDetalheDialog compromisso={selecionado} onClose={() => setSelecionadoId(null)} onLiquidar={onLiquidar} />}

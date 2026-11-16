@@ -23,7 +23,7 @@ describe("conferência nutricional dividida", () => {
     expect(confirmarPeriodos).toHaveBeenCalledTimes(1);
     const chave = vi.mocked(confirmarPeriodos).mock.calls[0][0].chave;
     await act(async () => { recusar(new Error("Falha de rede")); });
-    expect(screen.getByLabelText("Quantidade conferida (KG)")).toHaveProperty("value", "330");
+    expect(screen.getByLabelText(/Quantidade conferida de Ração V3/)).toHaveProperty("value", "330");
     fireEvent.click(confirmar);
     await waitFor(() => expect(confirmarPeriodos).toHaveBeenCalledTimes(2));
     expect(vi.mocked(confirmarPeriodos).mock.calls[1][0].chave).toBe(chave);
@@ -32,30 +32,29 @@ describe("conferência nutricional dividida", () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, verValores: false, itens: [{ ...previa.itens[0], custoPrevisto: "660" }] }], lacunas: [] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
     fireEvent.click(screen.getByText("Conferir período"));
-    await screen.findByText("Ração V3: previsto 330 KG");
-    expect(screen.queryByText(/Custo conferido|custo previsto/)).toBeNull();
+    await screen.findByText("Ração V3", { selector: "strong" });
+    expect(screen.queryByText(/Custo estimado/)).toBeNull();
     expect(screen.queryByText(/R\$/)).toBeNull();
   });
   it("atualiza MS e custo conferidos quando a quantidade e a origem mudam", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), periodos: [{ ...previa, itens: [{ ...previa.itens[0], custoPrevisto: "660" }] }], lacunas: [] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
     fireEvent.click(screen.getByText("Conferir período"));
-    await screen.findByText("Ração V3: previsto 330 KG");
-    await alterarControle(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "320" } });
-    expect(screen.getByText(/MS conferida conhecida ≈ 288.000 kg/)).toBeTruthy();
-    expect(screen.getByText(/Custo conferido estimado: ≈ R\$\s640,00/)).toBeTruthy();
-    expect(screen.getByText(/custo previsto R\$\s660/)).toBeTruthy();
-    await alterarControle(screen.getByLabelText("Origem"), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
-    expect(screen.getByText(/Custo conferido estimado: não apurado/)).toBeTruthy();
+    await screen.findByText("Ração V3", { selector: "strong" });
+    await alterarControle(screen.getByLabelText(/Quantidade conferida de Ração V3/), { target: { value: "320" } });
+    expect(screen.getByText("288 kg")).toBeTruthy();
+    expect(screen.getAllByText(/R\$\s640,00/).length).toBeGreaterThan(0);
+    await alterarControle(screen.getByLabelText(/Origem de Ração V3/), { target: { value: "SEM_BAIXA_JUSTIFICADA" } });
+    expect(screen.getByText("Apurado ao confirmar")).toBeTruthy();
   });
   it("mostra previsão, participantes e cobertura incompleta; exige motivo até para consumo zero", async () => {
     const onSalvo = vi.fn().mockResolvedValue(undefined);
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={onSalvo} />);
     fireEvent.click(screen.getByText("Conferir período"));
-    await screen.findByText("Ração V3: previsto 330 KG");
+    await screen.findByText("Ração V3", { selector: "strong" });
     expect(screen.getByText(/110 animal-dias/)).toBeTruthy();
-    expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
-    await alterarControle(screen.getByLabelText("Quantidade conferida (KG)"), { target: { value: "0" } });
+    expect(screen.getAllByText(/parcial/).length).toBeGreaterThan(0);
+    await alterarControle(screen.getByLabelText(/Quantidade conferida de Ração V3/), { target: { value: "0" } });
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
     await screen.findByText(/justifique a diferença/);
     expect(confirmarPeriodos).not.toHaveBeenCalled();
@@ -67,7 +66,7 @@ describe("conferência nutricional dividida", () => {
   it("confirma a dieta com origens distintas e quantidade efetiva, sem segundo ingrediente leiteiro", async () => {
     vi.mocked(previaPeriodos).mockResolvedValue({ revisao: "r".repeat(64), lacunas: [], periodos: [{...previa,animalDias:6,itens:[{...previa.itens[0],produtoId:"leite",nome:"Leite",unidade:"L",quantidadePrevista:"60",saldo:"100",leite:{quantidadePrevistaLitros:"60.000",quantidadeDisponivelLitros:"100.000",quantidadeAtendivelLitros:"60.000",custoPrevisto:null,composicaoPrevista:[],origens:[{entradaId:"nc",produtoId:"leite-nc",produtoNome:"Leite restrito",natureza:"NAO_COMERCIAL",data:"2026-09-01",quantidadeDisponivelLitros:"40.000"},{entradaId:"com",produtoId:"leite-com",produtoNome:"Leite comercial",natureza:"COMERCIAL",data:"2026-09-01",quantidadeDisponivelLitros:"60.000"}]}}]}] });
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()} />);
-    fireEvent.click(screen.getByText("Conferir período"));await screen.findByText("Leite: previsto 60 L");
+    fireEvent.click(screen.getByText("Conferir período"));await screen.findByText("Leite", { selector: "strong" });
     expect(screen.getByLabelText(/Leite restrito · Não comercial/)).toHaveProperty("checked",true);
     expect(screen.getByLabelText(/Leite comercial · Comercial/)).toHaveProperty("checked",true);
     fireEvent.click(screen.getByText("Confirmar conjunto conferido"));
@@ -82,7 +81,7 @@ describe("conferência nutricional dividida", () => {
     fireEvent.click(screen.getByText('Conferir período'));
     await screen.findByRole('region',{name:'Leite já registrado no Bezerreiro'});
     expect(screen.getByText(/03\/09\/2026 · 4 L já fornecidos/)).toBeTruthy();
-    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','60');
+    expect(screen.getByLabelText(/Quantidade conferida de Leite/)).toHaveProperty('value','60');
     expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
     fireEvent.click(screen.getByRole('button',{name:'Abrir no Bezerreiro'}));
     expect(navegarPara).toHaveBeenCalledWith('/pecuaria/bezerreiro?aba=alimentacao&propriedadeId=1&data=2026-09-03&animalId=animal%2F1');
@@ -91,15 +90,15 @@ describe("conferência nutricional dividida", () => {
   it("concilia apenas após ação explícita de zerar leite e conserva os demais ingredientes",async()=>{
     vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[comLeiteRegistrado()],lacunas:[]});
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
-    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite: previsto 60 L');
-    await alterarControle(screen.getByLabelText('Quantidade conferida (KG)'),{target:{value:'320'}});
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite', { selector: 'strong' });
+    await alterarControle(screen.getByLabelText(/Quantidade conferida de Ração V3/),{target:{value:'320'}});
     fireEvent.change(screen.getAllByLabelText('Motivo da diferença')[0],{target:{value:'Quantidade real da ração conferida'}});
     fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));
     expect(confirmarPeriodos).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','60');
+    expect(screen.getByLabelText(/Quantidade conferida de Leite/)).toHaveProperty('value','60');
     fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
-    expect(screen.getByLabelText('Quantidade conferida (L)')).toHaveProperty('value','0');
-    expect(screen.getByLabelText('Quantidade conferida (KG)')).toHaveProperty('value','320');
+    expect(screen.getByLabelText(/Quantidade conferida de Leite/)).toHaveProperty('value','0');
+    expect(screen.getByLabelText(/Quantidade conferida de Ração V3/)).toHaveProperty('value','320');
     expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',false);
     fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));
     await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledOnce());
@@ -112,13 +111,13 @@ describe("conferência nutricional dividida", () => {
   it("voltar a informar leite positivo ou apagar o motivo bloqueia outra vez, inclusive sem baixa",async()=>{
     vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[comLeiteRegistrado()],lacunas:[]});
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
-    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite: previsto 60 L');
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Leite', { selector: 'strong' });
     fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
     fireEvent.change(screen.getByLabelText('Motivo da diferença'),{target:{value:''}});
     expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
     fireEvent.click(screen.getByRole('button',{name:'Usar ofertas já registradas · zerar leite'}));
-    await alterarControle(screen.getByLabelText('Quantidade conferida (L)'),{target:{value:'56'}});
-    await alterarControle(screen.getAllByLabelText('Origem')[1],{target:{value:'SEM_BAIXA_JUSTIFICADA'}});
+    await alterarControle(screen.getByLabelText(/Quantidade conferida de Leite/),{target:{value:'56'}});
+    await alterarControle(screen.getByLabelText(/Origem de Leite/),{target:{value:'SEM_BAIXA_JUSTIFICADA'}});
     expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',true);
     fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));expect(confirmarPeriodos).not.toHaveBeenCalled();
   });
@@ -126,7 +125,7 @@ describe("conferência nutricional dividida", () => {
     const p=comLeiteRegistrado();p.itens=[previa.itens[0]];
     vi.mocked(previaPeriodos).mockResolvedValue({revisao:'r'.repeat(64),periodos:[p],lacunas:[]});
     render(<ConferenciaPeriodos loteId="lote" propriedadeId={1} centros={[]} onSalvo={vi.fn()}/>);
-    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Ração V3: previsto 330 KG');
+    fireEvent.click(screen.getByText('Conferir período'));await screen.findByText('Ração V3', { selector: 'strong' });
     expect(screen.getByRole('button',{name:'Confirmar conjunto conferido'})).toHaveProperty('disabled',false);
     expect(screen.queryByRole('button',{name:'Usar ofertas já registradas · zerar leite'})).toBeNull();
     fireEvent.click(screen.getByRole('button',{name:'Confirmar conjunto conferido'}));await waitFor(()=>expect(confirmarPeriodos).toHaveBeenCalledOnce());

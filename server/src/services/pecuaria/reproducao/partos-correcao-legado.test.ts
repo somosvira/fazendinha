@@ -1,6 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Prisma } from "@prisma/client";
 import { uid } from "../../../lib/uid.fixture.js";
+const m = vi.hoisted(() => ({ reconciliarAlertasReprodutivos: vi.fn() }));
+vi.mock("./alertas/produtor.js", () => ({ reconciliarAlertasReprodutivosAnimalTx: m.reconciliarAlertasReprodutivos }));
 vi.mock("../../../db.js", () => ({ prisma: {} }));
 vi.mock("../fatos.js", () => ({ conferirAnimalNoFato: vi.fn(async () => ({ sexo: "F" })) }));
 import { corrigirPartoTx } from "./registros.js";
@@ -20,12 +22,16 @@ function fixture(tipo = "ABORTO", observacao: string | null = null) {
   };
   return { tx: db as unknown as Prisma.TransactionClient, db, parto };
 }
+beforeEach(() => { m.reconciliarAlertasReprodutivos.mockClear(); });
 describe("correções independentes preservam a ausência de explicação de abortos legados", () => {
   it("corrige o responsável sem inventar observação no aborto histórico e audita o antes/depois", async () => {
     const f = fixture();
     const input = correcaoPartoAmpliadaSchema.parse({ propriedadeId: 7, motivo: "Responsável conferido na folha original", responsavel: "José" });
     const salvo = await corrigirPartoTx(f.tx, f.parto.id, input, 7);
     expect(salvo).toMatchObject({ id: uid(1), tipo: "ABORTO", observacao: null, responsavel: "José", versao: 2 });
+    expect(m.reconciliarAlertasReprodutivos).toHaveBeenCalledWith(f.tx, f.parto.animalId, 7);
+    expect(f.db.partoAnimal.update.mock.invocationCallOrder[0]).toBeLessThan(m.reconciliarAlertasReprodutivos.mock.invocationCallOrder[0]);
+    expect(m.reconciliarAlertasReprodutivos.mock.invocationCallOrder[0]).toBeLessThan(f.db.auditoriaPecuaria.create.mock.invocationCallOrder[0]);
     expect(f.db.auditoriaPecuaria.create).toHaveBeenCalledWith({ data: expect.objectContaining({ usuarioId: 7,
       antes: expect.objectContaining({ observacao: null, responsavel: null }),
       depois: expect.objectContaining({ observacao: null, responsavel: "José" }) }) });
@@ -41,6 +47,7 @@ describe("correções independentes preservam a ausência de explicação de abo
     await expect(corrigirPartoTx(f.tx, f.parto.id, input, 7)).rejects.toMatchObject({ code: "VALIDACAO", campo: "observacao" });
     expect(f.db.partoAnimal.update).not.toHaveBeenCalled();
     expect(f.db.auditoriaPecuaria.create).not.toHaveBeenCalled();
+    expect(m.reconciliarAlertasReprodutivos).not.toHaveBeenCalled();
   });
   it.each([null, "", "   ", "abc"])("alterar a observação do aborto para %s exige explicação suficiente", async observacao => {
     const f = fixture("ABORTO", "Aborto observado; causa desconhecida");

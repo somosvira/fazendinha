@@ -12,10 +12,10 @@ function snapshot(filtros: FiltrosIndicadores): SnapshotIndicadoresReprodutivos 
 }
 beforeEach(() => { vi.clearAllMocks(); window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=indicadores"); vi.mocked(consultarIndicadores).mockImplementation(async f => snapshot(f)); });
 afterEach(cleanup);
-it("carrega ao abrir com doze meses até hoje e deixa estimativas opcionais em branco", async () => {
+it("carrega ao abrir com o último mês completo e deixa estimativas opcionais em branco", async () => {
   render(<IndicadoresReprodutivos propriedadeId={7} podeLancar modo="painel"/>);
   await screen.findByText("Desempenho por período");
-  expect(consultarIndicadores).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, inicio: "2025-11-01", fim: "2026-10-17", corte: "2026-10-17" }));
+  expect(consultarIndicadores).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 7, inicio: "2026-09-01", fim: "2026-09-30", corte: "2026-10-17" }));
   expect(vi.mocked(consultarIndicadores).mock.calls[0][0]).not.toHaveProperty("concepcaoEstimada");
   expect(screen.queryByLabelText("Emissões preservadas")).toBeNull();
   expect(listarEmissoesIndicadores).not.toHaveBeenCalled(); expect(emitirIndicadores).not.toHaveBeenCalled();
@@ -32,7 +32,7 @@ it("recarrega após mudar período e não deixa resposta antiga sobrescrever o r
   await screen.findByText("Desempenho por período");
   resolver(snapshot({ propriedadeId: 7, inicio: "2020-01-01", fim: "2020-01-21", corte: "2020-01-21", deslocamentoTeDias: 7 }));
   await waitFor(() => expect(screen.queryByText(/01\/01\/2020/)).toBeNull());
-  expect(consultarIndicadores).toHaveBeenLastCalledWith(expect.objectContaining({ inicio: "2026-01-01", fim: "2026-01-21" }));
+  expect(consultarIndicadores).toHaveBeenLastCalledWith(expect.objectContaining({ inicio: "2026-01-01", fim: "2026-01-31" }));
 });
 it("trocar período reutiliza só os critérios confirmados, sem aplicar a estimativa em edição", async () => {
   render(<IndicadoresReprodutivos propriedadeId={7} podeLancar={false} modo="painel"/>);

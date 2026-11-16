@@ -1,13 +1,16 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { SelectCampo } from "../../../financeiro/SelectCampo";
 import { useEffect, useRef, useState } from "react";
-import { CabecalhoTabela, TabelaFinanceira, Paginacao } from "../../../financeiro/financeiro-ui";
+import { CabecalhoTabela, Paginacao } from "../../../financeiro/financeiro-ui";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
 import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { formatarLitros } from "./modelo";
 import { DialogComercialLeite } from "./ComercialConsultaLeite";
 import { lerValorCorrecao, nomeEstadoVenda, type VendaLeiteHistorico, type VendasLeiteHistorico } from "./vendas-types";
 import "./operacoes.css";
+import { Empty } from "@/financeiro/financeiro-ui";
 interface Props {
   produtoId: string; data: string; de?: string; operacaoInicial?: string;
   propriedadeId: number | null; config: ConfiguracoesFinanceiras | null;
@@ -33,7 +36,7 @@ export function HistoricoVendasLeite({ produtoId, data, de, operacaoInicial, pro
     <CabecalhoTabela titulo={produtoId ? "Vendas e versões comerciais" : "Vendas de leite do sítio"} descricao={`Versões de ${dataPt(inicio)} a ${dataPt(data)}.`} />
     {operacaoInicial && <p>Venda selecionada: {linhas.find(v => v.operacaoId === operacaoInicial)?.numero ? `#${linhas.find(v => v.operacaoId === operacaoInicial)!.numero}` : "consulte as versões abaixo"}. As versões anteriores permanecem neste histórico.</p>}
     {erro ? <p role="alert">{erro}<Button variant="outline" onClick={() => setAtualizacao(r => r + 1)}>Tentar novamente</Button></p> : !historico ? <p role="status">Consultando vendas e versões…</p> : <>
-      <TabelaFinanceira rotulo="Histórico comercial · versões vigentes e substituídas" itens={linhas} chaveDe={v => v.operacaoId} colunas={[
+      <ConsultaOperacional rotulo="Histórico comercial · versões vigentes e substituídas" itens={linhas} chaveDe={v => v.operacaoId} colunas={[
         { chave: "venda", titulo: "Venda", principal: true, celula: v => <strong>#{v.numero} · versão {v.versaoComercial}</strong> },
         { chave: "data", titulo: "Data", celula: v => dataPt(v.data) },
         { chave: "comprador", titulo: "Comprador", celula: v => v.parceiroNome ?? "Comprador não informado" },
@@ -41,7 +44,7 @@ export function HistoricoVendasLeite({ produtoId, data, de, operacaoInicial, pro
         { chave: "estado", titulo: "Situação", celula: v => nomeEstadoVenda(v.estadoFinanceiro) },
         { chave: "acoes", titulo: "Ações", acoes: true, celula: v => <><Button variant="outline" onClick={() => { setSelecionada(v); setCorrigir(false); }}>Ver venda #{v.numero}</Button>{podeLancar && corrigivel(v) && <Button variant="outline" disabled={!config} onClick={() => { setSelecionada(v); setCorrigir(true); }}>Corrigir venda #{v.numero}</Button>}</> },
       ]} />
-      {!linhas.length && <p>Nenhuma venda registrada para o filtro no período.</p>}
+      {!linhas.length && <Empty>Nenhuma venda registrada para o filtro no período.</Empty>}
       <Paginacao pagina={pagina} totalPaginas={Math.max(1,Math.ceil(historico.total / historico.porPagina))} total={historico.total} porPagina={historico.porPagina} rotulo="Paginação de versões comerciais" substantivo="versões" idSelect="pagina-versoes-leite" onPagina={setPagina} />
     </>}
     {aviso && <p role="status">{aviso}</p>}
@@ -220,12 +223,7 @@ export function FormularioCorrecao({
           {condicao === "A_PRAZO" && (
             <label>
               Vencimento da nova parcela
-              <input
-                type="date"
-                required
-                value={vencimento}
-                onChange={(e) => setVencimento(e.target.value)}
-              />
+              <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
             </label>
           )}
         </div>

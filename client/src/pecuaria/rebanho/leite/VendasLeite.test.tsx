@@ -41,7 +41,7 @@ it("descarta rascunho de filtros ao cancelar e aplica somente ao confirmar", asy
   expect(consultarLeite).toHaveBeenCalledTimes(chamadas);
   fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
   fireEvent.click(screen.getByRole("button",{name:"Filtros"}));
-  expect((screen.getByLabelText("Desde") as HTMLInputElement).value).toBe("2026-10-01");
+  expect((screen.getByLabelText("Desde") as HTMLInputElement).value).toBe("01/10/2026");
   fireEvent.change(screen.getByLabelText("Desde"),{target:{value:"2026-09-01"}});
   fireEvent.click(screen.getByRole("button",{name:"Aplicar filtros"}));
   await waitFor(() => expect(consultarLeite).toHaveBeenCalledWith(expect.stringContaining("de=2026-09-01"),2));

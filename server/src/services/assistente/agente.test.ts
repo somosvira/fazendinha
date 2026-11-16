@@ -10,9 +10,9 @@ beforeEach(() => { vi.clearAllMocks(); mocks.env.OPENAI_API_KEY = "unit-key"; mo
 it("interpreta só pergunta/contexto e devolve resposta do serviço, nunca prosa do modelo", async () => {
   mocks.create.mockResolvedValue({ status: "completed", output: [{ type: "function_call", name: "consultar_financeiro", arguments: '{"visao":"resumo","inicio":"2026-09-01","fim":"2026-09-30"}' }, { type: "message", content: "VALOR-INVENTADO" }] });
   mocks.executar.mockResolvedValue({ modo: "dados", resposta: "VALOR-REAL", fontes: [] });
-  const r = await responderPergunta({ pergunta: "E setembro?", historico: ["Como ficou o financeiro de agosto?"], pagina: "/financeiro/relatorios" }, ctx);
+  const r = await responderPergunta({ pergunta: "E setembro?", historico: ["Como ficou o financeiro de agosto?"], pagina: "/financeiro/relatorios" }, { ...ctx, modo: "consultar" });
   expect(r.resposta).toBe("VALOR-REAL");
-  expect(mocks.executar).toHaveBeenCalledWith("consultar_financeiro", { visao: "resumo", inicio: "2026-09-01", fim: "2026-09-30" }, ctx);
+  expect(mocks.executar).toHaveBeenCalledWith("consultar_financeiro", { visao: "resumo", inicio: "2026-09-01", fim: "2026-09-30" }, { ...ctx, modo: "consultar" });
   const enviado = mocks.create.mock.calls[0][0];
   expect(enviado).toMatchObject({ store: false, tool_choice: "required", parallel_tool_calls: false, max_output_tokens: 600 });
   expect(JSON.stringify(enviado)).not.toMatch(/NOME-SECRETO|EMAIL-SECRETO|VALOR-REAL|VALOR-INVENTADO/);
@@ -52,7 +52,7 @@ it("manda o print somente na pergunta atual e o trata como pista não confiável
   const imagem = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+XTKsAAAAASUVORK5CYII=";
   mocks.create.mockResolvedValue({ status: "completed", output: [{ type: "function_call", name: "consultar_ajuda", arguments: '{"artigoId":"financeiro-operacoes"}' }] });
   mocks.executar.mockResolvedValue({ modo: "ajuda", resposta: "Conteúdo revisado", fontes: [] });
-  await responderPergunta({ pergunta: "O que faz esta tela?", historico: ["Pergunta anterior"], imagem }, ctx);
+  await responderPergunta({ pergunta: "O que faz esta tela?", historico: ["Pergunta anterior"], imagem }, { ...ctx, modo: "consultar" });
   const enviado = mocks.create.mock.calls[0][0];
   expect(enviado.input[0]).toEqual({ role: "user", content: "Pergunta anterior" });
   expect(enviado.input[1].content).toContainEqual({ type: "input_image", image_url: imagem, detail: "low" });

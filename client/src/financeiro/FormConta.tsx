@@ -1,3 +1,5 @@
+import "./FormConta.css";
+import { DatePicker } from "../components/DatePicker";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -5,7 +7,7 @@ import { FormEvent, useRef, useState } from "react";
 import { ApiError, atualizarConta, criarConta, type Conta, type ContaPatch, type TipoConta, type TipoBancario } from "./novo-api";
 import { CamposCadastro } from "./CamposCadastro";
 import { Button, ErrorBox, hoje } from "./financeiro-ui";
-import { CampoFormulario, classeInput, PainelCadastro } from "./PainelCadastro";
+import { CampoFormulario, classeInput, PainelCadastro, useErrosCadastro } from "./PainelCadastro";
 import { formatarValorMonetario, validarConta, valorMonetario, type ErrosCampo } from "./lib/validacao";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
@@ -27,6 +29,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   const [incluirNoSaldoGeral, setIncluirNoSaldoGeral] = useState(conta?.incluirNoSaldoGeral ?? true);
   const [erros, setErros] = useState<ErrosCampo>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
+  const { formulario, mensagem } = useErrosCadastro(erros, erroGeral);
   const [salvando, setSalvando] = useState(false);
   const emCurso = useRef(false);
   const [tipoBancario, setTipoBancario] = useState<TipoBancario | "">(conta?.tipoBancario ?? "");
@@ -68,10 +71,9 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
   };
 
   const formId = "form-conta";
-  return <PainelCadastro icon={Building2} bloqueado={salvando} aberto={aberto} titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
+  return <PainelCadastro erroRodape={mensagem} icon={Building2} bloqueado={salvando} aberto={aberto} titulo={conta ? `Editar ${conta.nome}` : "Nova conta"} onFechar={() => { if (!emCurso.current) onFechar(); }}
     rodape={<><Button secondary onClick={onFechar} disabled={salvando}>Cancelar</Button><Button type="submit" form={formId} disabled={salvando} carregando={salvando}>{salvando ? "Salvando…" : conta ? "Salvar conta" : "Criar conta"}</Button></>}>
-    <form id={formId} onSubmit={submeter} noValidate className="grid gap-5">
-      <p className="text-sm text-ink-3">* Campos obrigatórios</p>
+    <form ref={formulario} id={formId} onInvalidCapture={(event) => { const campo = event.target; if (campo instanceof HTMLInputElement && campo.id === "conta-data") setErros({ dataSaldoAbertura: campo.validationMessage }); }} onSubmit={submeter} noValidate className="grid gap-5">
       <ErrorBox erro={erroGeral} />
       <section className="grid gap-4">
         <h3 className="text-sm font-semibold text-ink">Identificação da conta</h3>
@@ -93,11 +95,11 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Saldo e disponibilidade</h3>
       <div className="grid gap-4 sm:grid-cols-2">
-        <CampoFormulario id="conta-saldo" rotulo="Saldo de abertura" obrigatorio erro={erros.saldoAbertura}>{(p) => <div className={`fin-campo-moeda mt-1.5 flex overflow-hidden rounded-lg border bg-card transition focus-within:border-[var(--ring)] focus-within:ring-2 focus-within:ring-[var(--ring)]/15 ${erros.saldoAbertura ? "border-destructive" : "border-border"} ${!aberturaEditavel ? "bg-surface-2 text-ink-3" : ""}`}><span aria-hidden="true" className="inline-flex shrink-0 items-center pl-3 text-sm font-normal text-ink-3">R$</span><Input {...p} data-slot="input" required inputMode="decimal" disabled={!aberturaEditavel} value={saldoAbertura} onChange={(e) => { const v = e.target.value; if (/^-?[\d.]*,?\d{0,2}$/.test(v)) setSaldoAbertura(v); }} placeholder="0,00" onFocus={(e) => { const campo = e.currentTarget; setSaldoAbertura((atual) => atual.replace(/\./g, "")); requestAnimationFrame(() => campo.select()); }} onBlur={() => setSaldoAbertura((atual) => (atual.trim() === "" ? "" : formatarValorMonetario(atual)))} className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed" /></div>}</CampoFormulario>
-        <CampoFormulario id="conta-data" rotulo="Data do saldo de abertura" obrigatorio erro={erros.dataSaldoAbertura}>{(p) => <Input {...p} required type="date" disabled={!aberturaEditavel} value={dataSaldoAbertura} onChange={(e) => setDataSaldoAbertura(e.target.value)} className={classeInput} />}</CampoFormulario>
+        <CampoFormulario id="conta-saldo" rotulo="Saldo de abertura" obrigatorio erro={erros.saldoAbertura}>{(p) => <div className={`fin-campo-moeda mt-1.5 h-10 flex overflow-hidden rounded-lg border bg-card transition focus-within:border-[var(--ring)] focus-within:ring-2 focus-within:ring-[var(--ring)]/15 ${erros.saldoAbertura ? "border-destructive" : "border-border"} ${!aberturaEditavel ? "bg-surface-2 text-ink-3" : ""}`}><span aria-hidden="true" className="inline-flex shrink-0 items-center pl-3 text-sm font-normal text-ink-3">R$</span><Input {...p} data-slot="input" required inputMode="decimal" disabled={!aberturaEditavel} value={saldoAbertura} onChange={(e) => { const v = e.target.value; if (/^-?[\d.]*,?\d{0,2}$/.test(v)) setSaldoAbertura(v); }} placeholder="0,00" onFocus={(e) => { const campo = e.currentTarget; setSaldoAbertura((atual) => atual.replace(/\./g, "")); requestAnimationFrame(() => campo.select()); }} onBlur={() => setSaldoAbertura((atual) => (atual.trim() === "" ? "" : formatarValorMonetario(atual)))} className="min-w-0 flex-1 border-0 bg-transparent px-2 py-2.5 font-normal outline-none ring-0 focus:border-0 focus:outline-none focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed" /></div>}</CampoFormulario>
+        <CampoFormulario id="conta-data" rotulo="Data do saldo de abertura" obrigatorio erro={erros.dataSaldoAbertura}>{(p) => <DatePicker className="mt-1.5" popoverClassName="financeiro-colorido conta-calendario rounded-xl w-[min(360px,calc(100vw-24px))]" id={p.id} aria-invalid={p["aria-invalid"]} aria-describedby={p["aria-describedby"]} aria-label="Data do saldo de abertura" required disabled={!aberturaEditavel} value={dataSaldoAbertura} onChange={setDataSaldoAbertura} />}</CampoFormulario>
       </div>
       {!aberturaEditavel && <p className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-ink-2">Esta conta já possui movimentos; saldo e data de abertura não podem mais ser alterados.</p>}
-      <label className="flex items-start gap-3 text-sm font-medium"><Checkbox  aria-label="Incluir no saldo geral" checked={incluirNoSaldoGeral} onCheckedChange={(checked) => setIncluirNoSaldoGeral(checked === true)} className="mt-1" /><span>Incluir no saldo geral<span className="block text-xs font-normal text-ink-3">Contas fora do saldo geral continuam com extrato próprio.</span></span></label>
+      <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium"><Checkbox  aria-label="Incluir no saldo geral" checked={incluirNoSaldoGeral} onCheckedChange={(checked) => setIncluirNoSaldoGeral(checked === true)} /><span>Incluir no saldo geral</span><span className="text-xs font-normal text-ink-3">Contas fora do saldo geral continuam com extrato próprio.</span></label>
       </section>
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Observações</h3>

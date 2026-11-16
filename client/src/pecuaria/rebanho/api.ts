@@ -92,14 +92,14 @@ function comIncluirInativos(path: string, incluirInativos?: boolean): string {
 
 // ---------- animais ----------
 
-export const listarAnimais = (filtros: ListarFiltros, propriedadeId?: number) => {
+export const listarAnimais = (filtros: ListarFiltros, propriedadeId?: number, signal?: AbortSignal) => {
   const params = new URLSearchParams();
   for (const [chave, valor] of Object.entries(filtros)) {
     if (Array.isArray(valor)) valor.forEach(v => params.append(chave, String(v)));
     else if (valor !== undefined && valor !== null && valor !== "") params.set(chave, String(valor));
   }
   const query = params.toString();
-  return req<ListarResultado>(`/animais${query ? `?${query}` : ""}`, undefined, propriedadeId);
+  return req<ListarResultado>(`/animais${query ? `?${query}` : ""}`, { signal }, propriedadeId);
 };
 
 export const cadastrarAnimal = (input: CadastrarAnimalInput) =>
@@ -290,8 +290,8 @@ export const editarMotivoBaixa = (id: string, input: EditarMotivoBaixaInput) =>
 
 // ---------- categorias configuráveis (Cadastros > Categorias) ----------
 
-export const listarCategorias = (opts?: { incluirInativos?: boolean }) =>
-  req<ListarCategoriasResultado>(comIncluirInativos("/categorias", opts?.incluirInativos));
+export const listarCategorias = (opts?: { incluirInativos?: boolean }, signal?: AbortSignal) =>
+  req<ListarCategoriasResultado>(comIncluirInativos("/categorias", opts?.incluirInativos), { signal });
 
 export const criarCategoria = (input: CriarCategoriaInput) =>
   req<CategoriaRef>("/categorias", { method: "POST", body: JSON.stringify(input) });
@@ -317,4 +317,4 @@ export const obterPainelRebanho = (opts?: { periodoDias?: number }) => {
   return req<PainelGeral>(`/painel${query ? `?${query}` : ""}`);
 };
 
-export const obterCatalogos = () => req<Catalogos>("/catalogos");
+export const obterCatalogos = (signal?: AbortSignal) => req<Catalogos>("/catalogos", { signal });

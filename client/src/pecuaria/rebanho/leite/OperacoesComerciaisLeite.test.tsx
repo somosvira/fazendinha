@@ -13,6 +13,7 @@ import { consultarLeite, registrarLeite } from "./operacoes-api";
 import { setPropriedadeAtiva } from "../../../propriedadeScope";
 import type { OperacaoComercialLeiteDTO } from "./comercial-operacoes-types";
 import type { ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
+import { mudarCampo } from "@/lib/controles.fixture";
 vi.mock("./operacoes-api", () => ({
   consultarLeite: vi.fn(),
   registrarLeite: vi.fn(),
@@ -109,19 +110,19 @@ it("fechamento inclui todas as retiradas e usa total Decimal da prévia servidor
       aoCancelar={vi.fn()}
     />,
   );
-  fireEvent.change(screen.getByLabelText("Preço negociado por litro (R$)"), {
+  mudarCampo(screen.getByLabelText("Preço negociado por litro (R$)"), {
     target: { value: "2,50" },
   });
-  fireEvent.change(screen.getByLabelText("Motivo e referência do acordo"), {
+  mudarCampo(screen.getByLabelText("Motivo e referência do acordo"), {
     target: { value: "Acordo de outubro" },
   });
-  fireEvent.change(screen.getByLabelText("Centro de custo da receita"), {
+  mudarCampo(screen.getByLabelText("Centro de custo da receita"), {
     target: { value: "centro" },
   });
-  fireEvent.change(screen.getByLabelText("Condição financeira"), {
+  mudarCampo(screen.getByLabelText("Condição financeira"), {
     target: { value: "A_PRAZO" },
   });
-  fireEvent.change(screen.getByLabelText("Vencimento"), {
+  mudarCampo(screen.getByLabelText("Vencimento"), {
     target: { value: "2026-10-30" },
   });
   fireEvent.submit(
@@ -154,10 +155,10 @@ it("divergência por retirada pede motivo antes de calcular o fechamento", async
       aoCancelar={vi.fn()}
     />,
   );
-  fireEvent.change(screen.getByLabelText("Preço negociado por litro (R$)"), {
+  mudarCampo(screen.getByLabelText("Preço negociado por litro (R$)"), {
     target: { value: "2,50" },
   });
-  fireEvent.change(screen.getByLabelText("Litros reconhecidos em Coleta B"), {
+  mudarCampo(screen.getByLabelText("Litros reconhecidos em Coleta B"), {
     target: { value: "0" },
   });
   fireEvent.submit(
@@ -188,19 +189,19 @@ it("resposta perdida do fechamento reenvia payload sem exigir prévia com versã
       aoCancelar={vi.fn()}
     />,
   );
-  fireEvent.change(screen.getByLabelText("Preço negociado por litro (R$)"), {
+  mudarCampo(screen.getByLabelText("Preço negociado por litro (R$)"), {
     target: { value: "2,50" },
   });
-  fireEvent.change(screen.getByLabelText("Motivo e referência do acordo"), {
+  mudarCampo(screen.getByLabelText("Motivo e referência do acordo"), {
     target: { value: "Acordo de outubro" },
   });
-  fireEvent.change(screen.getByLabelText("Centro de custo da receita"), {
+  mudarCampo(screen.getByLabelText("Centro de custo da receita"), {
     target: { value: "centro" },
   });
-  fireEvent.change(screen.getByLabelText("Condição financeira"), {
+  mudarCampo(screen.getByLabelText("Condição financeira"), {
     target: { value: "A_PRAZO" },
   });
-  fireEvent.change(screen.getByLabelText("Vencimento"), {
+  mudarCampo(screen.getByLabelText("Vencimento"), {
     target: { value: "2026-10-30" },
   });
   fireEvent.submit(

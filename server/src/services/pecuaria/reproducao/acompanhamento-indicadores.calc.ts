@@ -1,4 +1,4 @@
-import { calcularElegibilidadeNaData, type EntradaElegibilidade } from "./elegibilidade.calc.js";
+import { calcularElegibilidadeNaData, type EntradaElegibilidade } from "./elegibilidade-indicadores-v2.calc.js";
 import { diasCalendarioContexto } from "./contexto-animal.calc.js";
 
 export const VERSAO_ACOMPANHAMENTO_INDICADORES = "ACOMPANHAMENTO_GERENCIAL_V1" as const;

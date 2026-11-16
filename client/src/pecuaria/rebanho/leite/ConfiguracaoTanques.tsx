@@ -119,7 +119,7 @@ export function ConfiguracaoTanques({
         <fieldset disabled={ocupado} className="leite-ajuste-secao">
           <div className="leite-ajuste-grade">
             <div className="grid gap-1.5">
-              <div className="flex items-center"><label htmlFor={`${formId}-nome`}>Nome do tanque</label><AjudaCampo rotulo="Sobre o cadastro do tanque" texto={"Especificações e tabela própria do tanque. As aferições anteriores conservam a versão utilizada."} /></div>
+              <div className="flex items-center"><label htmlFor={`${formId}-nome`}>Nome do tanque</label></div>
               <Input
                 id={`${formId}-nome`}
                 className={classeInput}

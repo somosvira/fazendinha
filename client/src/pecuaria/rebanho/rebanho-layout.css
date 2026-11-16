@@ -1,6 +1,6 @@
 /* Dimensões comuns ao fluxo Rebanho: consulta, ficha e cadastro. */
 .rebanho-content {
-  --rebanho-controle: 40px;
+  --rebanho-controle: var(--campo-altura);
   --rebanho-espaco: 16px;
 }
 .rebanho-content .pagina-financeira { padding: 20px var(--gutter) 32px; }
@@ -46,7 +46,7 @@
 .rebanho-form-acoes { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--border); }
 .rebanho-form-acoes > span { margin-right: auto; font-size: 14px; }
 @media (max-width: 900px) {
-  .rebanho-content { --rebanho-controle: 44px; }
+  .rebanho-content { --rebanho-controle: var(--campo-altura); }
   .rebanho-content .pagina-financeira { padding: 56px 16px 24px; }
   .rebanho-content .fin-abas { gap: 0 20px; }
   .rebanho-content .pec-lote-metricas { grid-template-columns: repeat(2,minmax(0,1fr)); }

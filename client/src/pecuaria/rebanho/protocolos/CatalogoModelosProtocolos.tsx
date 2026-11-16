@@ -9,6 +9,7 @@ import { DetalheModeloProtocolo, intervaloProcedimento } from "./DetalheModeloPr
 import { Button as BotaoMenu } from "../../../components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../../components/ui/dropdown-menu";
 import "./CatalogoModelosProtocolos.css";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 type Props = {
   tipo: CadastroProtocoloMeta["tipo"]; protocolos: CadastroProtocoloMeta[]; total: number; pagina: number;
@@ -55,7 +56,7 @@ export function CatalogoModelosProtocolos(props: Props) {
     </div>
     {!["TODAS","ATIVA"].includes(props.situacao) && <div className="catalogo-modelos-filtro-anterior"><span>Filtro do link anterior: {props.situacao === "INATIVA" ? "somente inativos" : props.situacao === "RASCUNHO" ? "cadastros não concluídos" : "cadastros concluídos ativos"}</span><Button secondary onClick={()=>props.onSituacao("ATIVA")}>Remover filtro</Button></div>}
     <div className="catalogo-modelos-estado"><ErrorBox erro={erro}/>{erro && <Button secondary disabled={carregando} onClick={props.onRecarregar}>Tentar novamente</Button>}
-      {carregando ? <p role="status">{protocolos.length ? "Atualizando protocolos… Os dados confirmados continuam visíveis." : "Carregando protocolos…"}</p> : <p role="status">{total} {total===1?"protocolo":"protocolos"}{props.situacao==="TODAS"?" · incluindo inativos":props.situacao==="INATIVA"?" inativos":" ativos"}{erro && " · última consulta confirmada"}</p>}
+      {carregando ? (protocolos.length ? <p role="status">Atualizando protocolos… Os dados confirmados continuam visíveis.</p> : <EsqueletoTabela label="Carregando protocolos" />) : <p role="status">{total} {total===1?"protocolo":"protocolos"}{props.situacao==="TODAS"?" · incluindo inativos":props.situacao==="INATIVA"?" inativos":" ativos"}{erro && " · última consulta confirmada"}</p>}
     </div>
     {carregando && !protocolos.length ? <div className="catalogo-modelos-esqueleto" aria-hidden="true"><div/><div/></div> : visual.modo === "visual" ? <div className="catalogo-modelos-cartoes">{protocolos.map(p=>{
       const restantes = Math.max(0,(p.totalMomentos??0)+(p.totalAcoesSemEtapa??0)-(p.previaEstrutura?.length??0));

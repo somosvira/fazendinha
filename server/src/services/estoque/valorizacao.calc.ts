@@ -89,6 +89,14 @@ export function repartirValor(valorTotal: Prisma.Decimal.Value, pesosInformados:
   }
   const soma = pesos.reduce((s, p) => s.plus(p), new Prisma.Decimal(0));
   if (total.isZero()) return pesos.map(() => new Prisma.Decimal(0));
+  // Pesos iguais (dias de um rateio): todas as quotas e restos empatam, então os centavos que sobram
+  // vão para as primeiras posições — mesmo resultado do caso geral, sem um Decimal por posição.
+  if (!total.isNegative() && pesos.length > 1 && !pesos[0].isZero() && pesos.every(p => p.eq(pesos[0]))) {
+    const centavos = total.mul(100), base = centavos.divToInt(pesos.length);
+    const sobra = centavos.minus(base.mul(pesos.length)).toNumber();
+    const menor = base.div(100), maior = base.plus(1).div(100);
+    return pesos.map((_, i) => i < sobra ? maior : menor);
+  }
   if (soma.isZero()) throw new ValorizacaoError("VALIDACAO", "Pesos zerados exigem distribuição explícita");
   const centavos = total.mul(100);
   const partes = pesos.map((peso, indice) => {

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PainelCadastro } from '@/financeiro/PainelCadastro';
 import { consultarBezerreiro } from './api';
 import { RebanhoApiError } from '../api';
+import { EsqueletoFormulario, EsqueletoTabela } from "../../../components/Esqueleto";
 export function useConsultaBezerreiro<T>(path: string | null, sitio: number | null, revisao = 0) {
   const [dados, setDados] = useState<T | null>(null), [erro, setErro] = useState('');
   const [tentativa, setTentativa] = useState(0);
@@ -14,7 +15,7 @@ export function useConsultaBezerreiro<T>(path: string | null, sitio: number | nu
   return {dados, erro, tentar: () => setTentativa(n => n+1)};
 }
 export function EstadoConsulta({erro, carregando, tentar, children}: {erro: string; carregando: boolean; tentar: () => void; children: ReactNode}) {
-  return erro ? <div className="bez-estado" role="alert"><p>{erro}</p><Button type="button" variant="outline" onClick={tentar}>Tentar novamente</Button></div> : carregando ? <div className="bez-estado" role="status" aria-live="polite">Carregando registros…</div> : <>{children}</>;
+  return erro ? <div className="bez-estado" role="alert"><p>{erro}</p><Button type="button" variant="outline" onClick={tentar}>Tentar novamente</Button></div> : carregando ? <EsqueletoTabela label="Carregando registros" className="bez-estado" /> : <>{children}</>;
 }
 /** `alvo` inclui recurso/data/animal para invalidar respostas ao mudar o formulário. */
 export function useComando(sitio: number, aoSalvar: () => void, alvo = '') {
@@ -91,11 +92,18 @@ export function RecuperacaoConflito({conflito, carregando, erro, atualizado, con
     <Button type="button" variant="outline" disabled={carregando} onClick={aoAtualizar}>{carregando ? 'Atualizando contexto…' : 'Atualizar contexto'}</Button>
     {erro && <p role="alert" className="bez-erro">{erro}</p>}
     {atualizado && <><div aria-live="polite">{children}</div><Button type="button" variant="outline" disabled={conferido} onClick={aoConferir}>{conferido ? 'Alterações conferidas' : 'Conferi as alterações'}</Button></>}
-    {carregando && <p role="status">Carregando a versão atual…</p>}
+    {carregando && <EsqueletoFormulario label="Carregando a versão atual" />}
   </section>;
 }
-export function ModalBezerreiro({titulo, aoFechar, children, ocupado = false, erro, form, textoSalvar = 'Salvar', textoCancelar = 'Cancelar'}: {titulo: string; aoFechar: () => void; children: ReactNode; ocupado?: boolean; erro?: string; form: string; textoSalvar?: string; textoCancelar?: string}) {
-  return <Dialog open onOpenChange={v => {if (!v && !ocupado) aoFechar();}}><DialogContent className="bez-modal max-w-4xl" aria-describedby={undefined}><DialogHeader><DialogTitle>{titulo}</DialogTitle></DialogHeader><div className="bez-modal-corpo">{children}{erro && <p role="alert" className="bez-erro">{erro}</p>}</div><DialogFooter><Button variant="outline" type="button" disabled={ocupado} onClick={aoFechar}>{textoCancelar}</Button><Button type="submit" form={form} disabled={ocupado}>{ocupado ? 'Salvando…' : textoSalvar}</Button></DialogFooter></DialogContent></Dialog>;
+export function ModalBezerreiro({titulo, aoFechar, children, ocupado = false, erro, form, textoSalvar = 'Salvar', textoCancelar = 'Cancelar', alteracoesExternas = false}: {titulo: string; aoFechar: () => void; children: ReactNode; ocupado?: boolean; erro?: string; form: string; textoSalvar?: string; textoCancelar?: string; alteracoesExternas?: boolean}) {
+  return <PainelCadastro aberto titulo={titulo} onFechar={aoFechar} largura="sm:max-w-4xl"
+    bloqueado={ocupado} alteracoesExternas={alteracoesExternas} erroRodape={erro || null}
+    rodape={fechar => <>
+      <Button variant="outline" type="button" disabled={ocupado} onClick={fechar}>{textoCancelar}</Button>
+      <Button type="submit" form={form} disabled={ocupado}>{ocupado ? 'Salvando…' : textoSalvar}</Button>
+    </>}>
+    <div className="bezerreiro">{children}</div>
+  </PainelCadastro>;
 }
 export function ColeiraBadge({nome, cor}: {nome?: string | null; cor?: string | null}) {return <span className="bez-coleira">{cor && <i style={{backgroundColor: cor}} aria-hidden />}{nome ?? 'Sem coleira'}</span>;}
 export function PaginacaoBezerreiro({pagina, total, tamanho = 20, mudar}: {pagina: number; total: number; tamanho?: number; mudar: (pagina: number) => void}) {return total > tamanho ? <nav className="bez-paginacao" aria-label="Paginação"><Button type="button" variant="outline" disabled={pagina===1} onClick={() => mudar(pagina-1)}>Anterior</Button><span>Página {pagina} de {Math.ceil(total/tamanho)}</span><Button type="button" variant="outline" disabled={pagina*tamanho>=total} onClick={() => mudar(pagina+1)}>Próxima</Button></nav> : null;}

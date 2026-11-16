@@ -264,3 +264,16 @@
 @media (max-width: 900px) {
   .pecuaria-content .sanidade-pagina .fin-abas [role="tab"] { min-height: 44px; }
 }
+.pec-config-nutricao{max-width:720px}.pec-config-nutricao a>span{display:grid;gap:2px}.pec-config-nutricao small{color:var(--campo-tinta-2,#526863);font-size:13px;font-weight:400}
+/* "Voltar à Nutrição" fica à direita do caminho, separado da hierarquia. */
+.pec-config-caminho > a:last-child:not(:first-child) { margin-left: auto; font-weight: 600; }
+
+/* Catálogo de configurações: busca curta e links com a mesma densidade. */
+.pec-config-busca { max-width: 32rem; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grid .pec-config-grupo { padding: 14px 16px; }
+:is(.pecuaria-content,.cooperativa-content) .pec-config-grid .pec-config-grupo a { min-height: 44px; padding-block: 8px; }
+.pec-config-grupo a > svg { flex: none; }
+.pec-config-grupo a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+@media (min-width: 1320px) {
+  :is(.pecuaria-content,.cooperativa-content) .pec-config-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

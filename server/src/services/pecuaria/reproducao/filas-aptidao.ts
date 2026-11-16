@@ -15,12 +15,13 @@ export async function carregarFilasAptidaoTx(tx: Prisma.TransactionClient, ids: 
   ]);
   return [...elegibilidades.values()].flatMap(e => {
     if (!permiteAvaliacaoAptidao(e)) return [];
-    if (!e.necessidadeAptidao && !e.aptidaoClinica?.exameId) return [];
+    if (!e.necessidadeAptidao && !e.aptidaoClinica?.exameId && !e.motivos.some(m => ["NOVO_EXAME_APOS_TRATAMENTO", "EXAME_APOS_PERDA_NECESSARIO", "EXAME_ANULADO_REAVALIAR"].includes(m))) return [];
     const necessidadeId = e.necessidadeAptidao?.necessidadeId ?? `APTIDAO:${e.animalId}:${e.ciclo?.chaveCiclo ?? "INICIAL"}`;
     const visitas = agendados.filter(p => p.animalId === e.animalId && (p.snapshot as Prisma.JsonObject).necessidadeAptidaoId === necessidadeId)
       .map(p => ({ id: p.AtividadeVisita.VisitaVeterinaria.id, nome: p.AtividadeVisita.VisitaVeterinaria.nome, data: p.AtividadeVisita.VisitaVeterinaria.data.toISOString().slice(0, 10) }));
     const clinica = e.aptidaoClinica;
-    const fila = visitas.length ? "AGENDAMENTO" : clinica?.retornoEm ? "RETORNO" : clinica?.estado === "APTA" || clinica?.estado === "NAO_APTA" ? "APTIDAO" : e.necessidadeAptidao?.estado ?? "MANUAL";
+    const reavaliar = clinica?.estado === "NAO_DETERMINADA" && (Boolean(clinica.exameId) || e.motivos.some(m => ["NOVO_EXAME_APOS_TRATAMENTO", "EXAME_APOS_PERDA_NECESSARIO", "EXAME_ANULADO_REAVALIAR"].includes(m)));
+    const fila = visitas.length ? "AGENDAMENTO" : clinica?.retornoEm ? "RETORNO" : clinica?.estado === "APTA" || clinica?.estado === "NAO_APTA" ? "APTIDAO" : reavaliar ? "AVALIACAO_DEVIDA" : e.necessidadeAptidao?.estado ?? "MANUAL";
     return [{ animalId: e.animalId, necessidadeId, fila, tipoExameId: tipo?.id ?? null, clinica,
       necessidade: e.necessidadeAptidao, visitasAbertas: visitas, pevOriginalAte: e.pevOriginalAte }];
   });

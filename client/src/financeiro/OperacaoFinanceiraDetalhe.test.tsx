@@ -64,7 +64,7 @@ describe("OperacaoFinanceiraDetalhe", () => {
     expect(screen.queryByRole("link", { name: /Movimentos de estoque/ })).toBeNull();
     expect(screen.getByText("Categoria").closest("dl")?.textContent).toContain("Sem categoria");
     expect(document.getElementById("estoque-operacao")).not.toBeNull();
-    expect(screen.getByRole("link", { name: /Entrada #1/ }).getAttribute("href")).toBe(`/estoque?movimentoId=${uid(1)}`);
+    expect(screen.getByRole("button", { name: /Entrada #1/ })).toBeTruthy();
     expect(screen.getByText(/Data da operação:/).closest("time")?.getAttribute("dateTime")).toBe("2026-09-02");
   });
   it("conserva os preços restritos também na tabela e no total dos itens", async () => {

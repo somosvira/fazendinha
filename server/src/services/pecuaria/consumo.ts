@@ -9,7 +9,7 @@ import { travarUsosProduto } from "../estoque/usos.js";
 
 export async function obterSaldo(tx: Prisma.TransactionClient, produtoId: string, propriedadeId: number, partidaId?: string | null) {
   if (partidaId) return saldoPartidaTx(tx, partidaId, propriedadeId);
-  const principal = await propriedadePrincipalId();
+  const principal = await propriedadePrincipalId(tx);
   const movimentos = await tx.movimentoEstoque.findMany({
     where: { produtoId, status: statusSaldoEstoque, ...(propriedadeId === principal ? { OR: [{ propriedadeId }, { propriedadeId: null }] } : { propriedadeId }) },
   });

@@ -1,4 +1,5 @@
 import { prisma } from "../db.js";
+import type { Prisma } from "@prisma/client";
 import type { Context } from "hono";
 import { z } from "zod";
 
@@ -28,11 +29,12 @@ export async function listarPropriedades(incluirInativos = false): Promise<Propr
 // id da propriedade principal (default de escrita). Cache de processo — a principal
 // não muda em runtime; invalida sozinho se o processo reiniciar.
 let _principalId: number | null = null;
-export async function propriedadePrincipalId(): Promise<number> {
+export async function propriedadePrincipalId(db: Pick<Prisma.TransactionClient, "propriedade"> = prisma): Promise<number> {
   // O cache evita consultas repetidas no fluxo normal, mas não pode transformar
   // uma mudança administrativa (ou a recriação do banco local) em um ID órfão.
   // Se o sítio deixou de existir ou deixou de ser o principal, recalculamos.
-  if (_principalId != null) {
+  // Consultas transacionais usam seu próprio snapshot e não compartilham o cache.
+  if (db === prisma && _principalId != null) {
     const emCache = await prisma.propriedade.findFirst({
       where: { id: _principalId, principal: true, ativo: true },
       select: { id: true },
@@ -41,10 +43,10 @@ export async function propriedadePrincipalId(): Promise<number> {
     _principalId = null;
   }
   const p =
-    (await prisma.propriedade.findFirst({ where: { principal: true }, orderBy: { id: "asc" } })) ??
-    (await prisma.propriedade.findFirst({ orderBy: { id: "asc" } }));
+    (await db.propriedade.findFirst({ where: { principal: true }, orderBy: { id: "asc" } })) ??
+    (await db.propriedade.findFirst({ orderBy: { id: "asc" } }));
   if (!p) throw new Error("nenhuma propriedade cadastrada");
-  _principalId = p.id;
+  if (db === prisma) _principalId = p.id;
   return p.id;
 }
 

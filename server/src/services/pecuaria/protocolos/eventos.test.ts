@@ -9,6 +9,11 @@ describe("contrato dos eventos operacionais da tarefa", () => {
     expect(eventoTarefaSchema.safeParse({ ...base, tipo: "NAO_ATENDIDO", previstaPara: "2026-10-20" }).success).toBe(false);
     expect(eventoTarefaSchema.safeParse({ ...base, tipo: "NAO_ATENDIDO", eventoCorrigidoId: base.chave }).success).toBe(false);
   });
+  it("dispensa tem motivo obrigatório e não aceita previsão nem fato fictício", () => {
+    expect(eventoTarefaSchema.parse({ ...base, tipo: "DISPENSA" }).tipo).toBe("DISPENSA");
+    for (const extra of [{ motivo: " " }, { previstaPara: "2026-10-20" }, { eventoCorrigidoId: base.chave }, { exameId: base.chave }])
+      expect(eventoTarefaSchema.safeParse({ ...base, tipo: "DISPENSA", ...extra }).success).toBe(false);
+  });
   it("adiamento aceita data sem inventar hora e exige nova previsão", () => {
     expect(eventoTarefaSchema.parse({ ...base, tipo: "ADIAMENTO", previstaPara: "2026-10-20" }).previstaPara).toBe("2026-10-20");
     expect(eventoTarefaSchema.safeParse({ ...base, tipo: "ADIAMENTO" }).success).toBe(false);

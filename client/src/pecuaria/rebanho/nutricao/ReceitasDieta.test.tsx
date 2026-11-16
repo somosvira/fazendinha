@@ -6,7 +6,8 @@ import * as api from "./api";
 vi.mock("./api", () => ({ listarDietas: vi.fn(), listarProdutosNutricionais: vi.fn(), listarCentrosNutricionais: vi.fn(), criarDieta: vi.fn(), editarDieta: vi.fn(), publicarDieta: vi.fn() }));
 const dieta = (id: string, publicadaEm: string | null): api.Dieta => ({ id, nome: "Dieta de lactação", versao: publicadaEm ? 1 : 2, publicadaEm, itens: [{ produtoId: "milho", quantidadeCabecaDia: "3.5", unidade: "KG", materiaSecaPercentualSnapshot: "85", produto: { nome: "Milho" } }] });
 beforeEach(() => {
-  window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas");
+  // Estes casos exercitam os formulários a partir dos cartões; a tabela tem teste próprio.
+  window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas&receitasVisualizacao=visual");
   vi.clearAllMocks();
   vi.mocked(api.listarDietas).mockResolvedValue([dieta("publicada", "2026-10-01"), dieta("rascunho", null)]);
   vi.mocked(api.listarProdutosNutricionais).mockResolvedValue([{ id: "milho", nome: "Milho", unidade: "KG" }] as api.ProdutoNutricional[]);
@@ -35,7 +36,7 @@ describe("gestão compartilhada de receitas", () => {
     await waitFor(() => expect(api.editarDieta).toHaveBeenCalledTimes(2));
   });
   it("bloqueia publicação via URL para consulta e recupera leitura após 404", async () => {
-    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas&formReceita=publicar&receitaId=rascunho");
+    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas&receitasVisualizacao=visual&formReceita=publicar&receitaId=rascunho");
     vi.mocked(api.listarDietas).mockRejectedValueOnce(new Error("Receitas não encontradas (404)"));
     render(<ReceitasDieta podeLancar={false} />);
     await screen.findByText("Receitas não encontradas (404)");
@@ -53,7 +54,7 @@ describe("gestão compartilhada de receitas", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Salvar rascunho" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Salvar rascunho" }));
     await waitFor(() => expect(api.editarDieta).toHaveBeenCalledWith("rascunho", { nome: "Dieta de lactação", itens: [{ produtoId: "milho", quantidadeCabecaDia: 3.5 }] }));
-    fireEvent.click(await screen.findByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Nova versão" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Criar rascunho" }).hasAttribute("disabled")).toBe(false));
     fireEvent.click(screen.getByRole("button", { name: "Criar rascunho" }));
     await waitFor(() => expect(api.criarDieta).toHaveBeenCalledWith({ nome: "Dieta de lactação", itens: [{ produtoId: "milho", quantidadeCabecaDia: 3.5 }] }));
@@ -61,7 +62,7 @@ describe("gestão compartilhada de receitas", () => {
   });
   it("cancelar preserva a lista e publicar só atua no rascunho", async () => {
     render(<ReceitasDieta podeLancar />);
-    fireEvent.click(await screen.findByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Nova versão" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByLabelText("Nome da dieta")).toBeNull();
     expect(screen.getByText("Publicada")).toBeTruthy();
@@ -80,7 +81,7 @@ describe("gestão compartilhada de receitas", () => {
     expect(uso.getAttribute("href")).toContain("loteId=lote");
     fireEvent.change(screen.getByLabelText("Buscar receita"), { target: { value: "lactação" } });
     expect(new URLSearchParams(window.location.search).get("buscaReceita")).toBe("lactação");
-    fireEvent.click(screen.getByRole("button", { name: "Criar nova versão a partir desta" }));
+    fireEvent.click(screen.getByRole("button", { name: "Nova versão" }));
     fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
     expect(screen.getByLabelText("Buscar receita")).toHaveProperty("value", "lactação");
   });
@@ -124,5 +125,15 @@ describe("gestão compartilhada de receitas", () => {
     expect(screen.queryByRole("button", { name: "Nova receita" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Publicar" })).toBeNull();
     expect(screen.queryByLabelText("Nome da dieta")).toBeNull();
+  });
+  it("abre em tabela com as mesmas ações dos cartões", async () => {
+    window.history.replaceState(null, "", "/pecuaria/nutricao?aba=receitas");
+    try { localStorage.clear(); } catch { /* armazenamento indisponível */ }
+    render(<ReceitasDieta podeLancar />);
+    const tabela = await screen.findByRole("table", { name: "Receitas de dieta" });
+    expect(within(tabela).getAllByText("3,5 kg")).toHaveLength(2);
+    expect(within(tabela).getAllByRole("button", { name: "Nova versão" })).toHaveLength(1);
+    expect(within(tabela).getAllByRole("button", { name: "Publicar" })).toHaveLength(1);
+    expect(screen.queryByRole("group", { name: /Visualização de Dieta/ })).toBeNull();
   });
 });

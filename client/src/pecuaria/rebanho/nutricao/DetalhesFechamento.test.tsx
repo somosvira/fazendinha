@@ -11,7 +11,7 @@ describe("lotes no histórico nutricional", () => {
   it("mostra nome do lote atual, mantendo o código apenas como compatibilidade", () => {
     const f: Fechamento = { id: "f", inicio: "2026-10-01", fim: "2026-10-02", animalDias: 2, status: "CONFIRMADO", propriedadeId: 1, propriedade: { id: 1, nome: "Principal" }, lote: { id: "rebanho", nome: "Vacas" }, verValores: false, custoConhecido: null, coberturaCustoCompleta: false, centroCusto: { nome: "Pecuária" }, vigencia: { dieta: { nome: "Dieta", versao: 1 } }, participacoes: [], itens: [{ produtoId: "p", quantidadePrevista: "10", quantidadeConfirmada: "10", unidade: "KG", situacaoCusto: "DESCONHECIDO", produto: { nome: "Ração" }, movimentoEstoque: { quantidade: "10", valorTotal: null, custoUnitario: null, alocacaoPartidaEstoques: [{ quantidade: "10", partida: { codigo: "LOTE-00000000-0000-7000-8000-000000000001", nome: "Vence dezembro", validade: "2026-12-31" } }] } }] };
     render(<DetalhesFechamento fechamento={f} />);
-    expect(screen.getAllByText(/lote Vence dezembro: 10 KG/)).toHaveLength(2);
+    expect(screen.getAllByText(/Partida Vence dezembro: 10 kg/)).toHaveLength(2);
     expect(screen.queryByText(/LOTE-00000000/)).toBeNull();
     expect(screen.queryByText(/Custo conhecido/)).toBeNull();
   });
@@ -21,7 +21,7 @@ describe("lotes no histórico nutricional", () => {
     expect(within(resumo).getByText(/2 animal-dias/)).toBeTruthy();
     expect(within(resumo).getByText(/100,00/)).toBeTruthy();
     expect(within(resumo).getByText(/50,00/)).toBeTruthy();
-    expect(within(resumo).getByText(/Cobertura incompleta/)).toBeTruthy();
+    expect(within(resumo).getByText(/Parcial: falta o custo de parte dos ingredientes/)).toBeTruthy();
     expect(within(resumo).getByText(/excluído dos custos atuais/)).toBeTruthy();
     expect(document.querySelector(".nutricao-metricas")).toBeNull();
   });
@@ -32,5 +32,13 @@ describe("lotes no histórico nutricional", () => {
     expect(screen.queryByText("Custo por animal-dia")).toBeNull();
     expect(screen.getByText(/2 animal-dias/)).toBeTruthy();
     expect(screen.getByText(/Conferência corrigida/)).toBeTruthy();
+  });
+});
+
+describe("período do fechamento", () => {
+  it("mostra uma data só quando o fechamento cobre um dia", async () => {
+    const { periodoFechamento } = await import("./DetalhesFechamento");
+    expect(periodoFechamento({ inicio: "2026-10-26T00:00:00.000Z", fim: "2026-10-26T00:00:00.000Z" })).toBe("26/10/2026");
+    expect(periodoFechamento({ inicio: "2026-10-01", fim: "2026-10-26" })).toBe("01/10/2026 a 26/10/2026");
   });
 });

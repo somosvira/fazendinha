@@ -1,39 +1,136 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/DatePicker';
 import { SelectCampo } from '@/financeiro/SelectCampo';
-import { TabelaFinanceira } from '@/financeiro/financeiro-ui';
+import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from '@/components/VisualizacaoConsulta';
+import { TabelaFinanceira, type ColunaTabela } from '@/financeiro/financeiro-ui';
 import { navegarPara } from '../../../router';
 import { hojeOperacional } from '../leite/modelo';
 import { consultaBezerreiro, consultarBezerreiro } from './api';
 import { dinheiro, horarioRealizado, litros, numero, idOfertaDaPrevisao, ofertaJaRealizada, ofertasDaPrevisao, ofertasConfiguracao, volumePrevisto } from './modelo';
 import { ColeiraBadge, EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, useComando, useConsultaBezerreiro, RecuperacaoConflito, useRecuperacaoConflito } from './ui';
 import type { Configuracao, Oferta, Pagina, Previsao } from './types';
+function CartoesAlimentacao<T>({ rotulo, itens, chaveDe, titulo, campos, situacao, acao }: {
+  rotulo: string;
+  itens: T[];
+  chaveDe: (item: T) => string;
+  titulo: (item: T) => ReactNode;
+  campos: ColunaTabela<T>[];
+  situacao?: (item: T) => ReactNode;
+  acao?: (item: T) => ReactNode;
+}) {
+  return <ul className="bez-alimentacao-cartoes" aria-label={rotulo}>
+    {itens.map(item => <li key={chaveDe(item)} className="bez-alimentacao-cartao">
+      <div className="bez-alimentacao-cartao-topo"><strong>{titulo(item)}</strong>{situacao?.(item)}</div>
+      <div className="bez-alimentacao-cartao-corpo">
+        <dl>{campos.map(campo => <div key={campo.chave}><dt>{campo.titulo}</dt><dd>{campo.celula(item)}</dd></div>)}</dl>
+        {acao?.(item)}
+      </div>
+    </li>)}
+  </ul>;
+}
+
 export function AlimentacaoBezerreiro({sitio,config,podeLancar,revisao,aoSalvar,params,mudar}: {sitio:number;config:Configuracao;podeLancar:boolean;revisao:number;aoSalvar:()=>void;params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {
   const data=params.get('data')??hojeOperacional(),perfil=params.get('perfil')??(config.perfis.filter(p=>p.ativo).length===1?config.perfis.find(p=>p.ativo)!.id:''),pagina=Math.max(1,Number(params.get('pagina'))||1);
   const [fornecer,setFornecer]=useState<{sitio:number;perfilId:string;data:string;previsao:Previsao}|null>(null),[estornar,setEstornar]=useState<Oferta|null>(null);
   const consulta=useConsultaBezerreiro<Previsao>(`/previsao${consultaBezerreiro({data,perfilId:perfil})}`,sitio,revisao);
   const ofertas=useConsultaBezerreiro<Pagina<Oferta>>(`/ofertas${consultaBezerreiro({de:data,ate:data,perfilId:perfil,animalId:params.get('animalId'),pagina})}`,sitio,revisao);
-  return <><div className="bez-sectionhead"><h2>Alimentação</h2>{podeLancar&&<Button disabled={!consulta.dados||!perfil} onClick={()=>consulta.dados&&setFornecer({sitio,perfilId:perfil,data,previsao:consulta.dados})}>Registrar fornecimento</Button>}</div><div className="bez-contexto"><label>Data<DatePicker value={data} onChange={v=>mudar({data:v,pagina:''})}/></label><label>Bezerreiro<SelectCampo value={perfil} onValueChange={v=>mudar({perfil:v,pagina:''})}><option value="">Todos os bezerreiros</option>{config.perfis.map(p=><option key={p.id} value={p.id}>{p.lote.nome}</option>)}</SelectCampo></label><Button variant="outline" onClick={()=>navegarPara('/configuracoes/pecuaria/producao/bezerreiro')}>Configurar rotina</Button></div>
-    <EstadoConsulta {...consulta} carregando={!consulta.dados}>{consulta.dados&&<><dl className="bez-indicadores"><div><dt>Previsto no dia</dt><dd>{litros(consulta.dados.totalPrevistoLitros)}</dd></div><div><dt>Fornecido</dt><dd>{litros(consulta.dados.totalFornecidoLitros)}</dd></div><div><dt>Restante previsto</dt><dd>{litros(consulta.dados.grupos.reduce((n,g)=>n+Number(g.restanteLitros),0))}</dd></div></dl>{!consulta.dados.previsaoCompleta&&<p className="bez-aviso">Previsão parcial: {consulta.dados.pendentes.length} animal(is) sem fase publicada ou localização comprovada.</p>}
-    <TabelaFinanceira rotulo="Previsão diária por coleira" itens={consulta.dados.grupos} chaveDe={g=>g.coleiraId??'sem-coleira'} colunas={[
-      {chave:'coleira',titulo:'Coleira',principal:true,celula:g=><ColeiraBadge nome={g.nome} cor={g.cor}/>},
+  const visual = useVisualizacaoConsulta('visualAlimentacaoBezerreiro', 'bezerreiro', 'visual');
+  type Grupo = Previsao['grupos'][number];
+  const chaveColeira = (g: Grupo) => g.coleiraId ?? 'sem-coleira';
+  const tituloColeira = (g: Grupo) => <ColeiraBadge nome={g.nome} cor={g.cor} />;
+  const camposPrevisao: ColunaTabela<Grupo>[] = [
       {chave:'fase',titulo:'Fase',celula:g=>[...new Set(g.participantes.map(p=>config.fases.find(f=>f.id===p.faseVersaoId)?.nome??'Fase anterior'))].join(' · ')},
       {chave:'animais',titulo:'Animais',celula:g=>g.participantes.length},
       {chave:'porAnimal',titulo:'L/animal/dia',celula:g=>[...new Set(g.participantes.map(p=>numero(p.litrosDia)))].join(' / ')},
       {chave:'previsto',titulo:'Previsto no dia',alinhamento:'direita',celula:g=>litros(g.litrosDia)},
-    ]}/><section className="bez-secao"><h3>Disponibilidade para as próximas ofertas</h3><div className="bez-origens">{['NAO_COMERCIAL','COMERCIAL'].map(n=><div key={n}><span>{n==='COMERCIAL'?'Leite comercial':'Leite de descarte'}</span><strong>{litros(consulta.dados!.origens.filter(o=>o.natureza===n).reduce((s,o)=>s+Number(o.quantidadeDisponivelLitros),0))}</strong></div>)}</div></section></>}</EstadoConsulta>
-    <section className="bez-secao"><div className="bez-sectionhead"><h3>Fornecimentos do dia</h3><Button variant="outline" onClick={()=>mudar({aba:'custos'})}>Consultar custos</Button></div><EstadoConsulta {...ofertas} carregando={!ofertas.dados}>{ofertas.dados&&(ofertas.dados.itens.length?<><TabelaFinanceira rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={o=>o.id} colunas={[
-      {chave:'oferta',titulo:'Oferta',principal:true,celula:o=>o.ofertaProgramadaId?`Oferta ${ofertasConfiguracao(config).findIndex(p=>p.id===o.ofertaProgramadaId||p.identidadeId===consulta.dados?.grupos.flatMap(g=>g.participantes.flatMap(p=>p.ofertas)).find(p=>p.id===o.ofertaProgramadaId)?.identidadeId)+1||'anterior'}`:'Avulsa'},
+  ];
+  const chaveOferta = (o: Oferta) => o.id;
+  function tituloOferta(o: Oferta) {
+    if (!o.ofertaProgramadaId) return 'Avulsa';
+    const identidade = consulta.dados?.grupos
+      .flatMap(g => g.participantes.flatMap(p => p.ofertas))
+      .find(p => p.id === o.ofertaProgramadaId)?.identidadeId;
+    const ordem = ofertasConfiguracao(config).findIndex(p => p.id === o.ofertaProgramadaId || p.identidadeId === identidade);
+    return `Oferta ${ordem + 1 || 'anterior'}`;
+  }
+  const camposOferta: ColunaTabela<Oferta>[] = [
       {chave:'horario',titulo:'Horário realizado',celula:o=>o.ocorridoEm?new Date(o.ocorridoEm).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'Não informado'},
       {chave:'volume',titulo:'Fornecido',alinhamento:'direita',celula:o=>litros(o.grupos.reduce((n,g)=>n+Number(g.quantidadeLitros),0))},
       {chave:'custo',titulo:'Custo',alinhamento:'direita',celula:o=>o.grupos.every(g=>g.custoProducao!=null)?dinheiro(o.grupos.reduce((n,g)=>n+Number(g.custoProducao),0)):'A apurar / oculto'},
-      {chave:'status',titulo:'Situação',celula:o=>o.status==='CONFIRMADO'?'Confirmado':'Estornado'},
-      {chave:'acao',titulo:'Ação',acoes:true,celula:o=>podeLancar&&o.status==='CONFIRMADO'?<Button variant="outline" onClick={()=>setEstornar(o)}>Estornar</Button>:'—'},
-    ]}/><PaginacaoBezerreiro pagina={pagina} total={ofertas.dados.total} mudar={v=>mudar({pagina:String(v)})}/></>:<p className="bez-estado">Nenhum fornecimento registrado nesta data.</p>)}</EstadoConsulta></section>
+  ];
+  const situacaoOferta = (o: Oferta) => o.status === 'CONFIRMADO' ? 'Confirmado' : 'Estornado';
+  const acaoEstorno = (o: Oferta) => podeLancar && o.status === 'CONFIRMADO'
+    ? <Button variant="outline" size="sm" onClick={() => setEstornar(o)}>Estornar</Button> : null;
+  const previsao = consulta.dados;
+  const previsto = Number(previsao?.totalPrevistoLitros);
+  const percentual = previsao?.previsaoCompleta && previsto > 0
+    ? Math.round(Number(previsao.totalFornecidoLitros) / previsto * 100)
+    : null;
+
+  return <div className="bez-painel-operacional">
+    <header className="bez-painel-cabecalho">
+      <h2>Alimentação</h2>
+      <AlternarVisualizacaoConsulta {...visual} rotulo="Visualização da alimentação" />
+      <div className="bez-contexto">
+        <label>Data<DatePicker value={data} onChange={v => mudar({data:v,pagina:''})} /></label>
+        <label>Bezerreiro<SelectCampo value={perfil} onValueChange={v => mudar({perfil:v,pagina:''})}>
+          <option value="">Todos os bezerreiros</option>
+          {config.perfis.map(p => <option key={p.id} value={p.id}>{p.lote.nome}</option>)}
+        </SelectCampo></label>
+        <Button variant="outline" onClick={() => navegarPara('/configuracoes/pecuaria/producao/bezerreiro')}>Configurar rotina</Button>
+        {podeLancar && <Button disabled={!previsao || !perfil} onClick={() => previsao && setFornecer({sitio,perfilId:perfil,data,previsao})}>
+          Registrar fornecimento
+        </Button>}
+      </div>
+    </header>
+    <EstadoConsulta {...consulta} carregando={!previsao}>
+      {previsao && <>
+        <dl className="bez-indicadores">
+          <div><dt>Previsto no dia</dt><dd>{litros(previsao.totalPrevistoLitros)}</dd></div>
+          <div>
+            <dt>Fornecido</dt>
+            <dd>{litros(previsao.totalFornecidoLitros)}
+              {percentual !== null && <>
+                <progress aria-label="Progresso do fornecimento" aria-valuetext={`${percentual}% da previsão`} max={100} value={Math.min(percentual, 100)} />
+                <small className="bez-subtexto">{percentual}% da previsão</small>
+              </>}
+            </dd>
+          </div>
+          <div><dt>Restante previsto</dt><dd>{litros(previsao.grupos.reduce((n,g) => n + Number(g.restanteLitros), 0))}</dd></div>
+        </dl>
+        {!previsao.previsaoCompleta && <p className="bez-aviso">Previsão parcial: {previsao.pendentes.length} animal(is) sem fase publicada ou localização comprovada.</p>}
+        <div className="bez-painel-alimentacao">
+          <section aria-label="Previsão diária por coleira">
+            <h3>Previsão diária por coleira</h3>
+            {visual.modo === 'visual' ?
+              <CartoesAlimentacao rotulo="Previsão diária por coleira" itens={previsao.grupos}
+                chaveDe={chaveColeira} titulo={tituloColeira} campos={camposPrevisao} />
+              : <TabelaFinanceira visualizacao="tabela" rotulo="Previsão diária por coleira" itens={previsao.grupos}
+                chaveDe={chaveColeira} colunas={[{chave:'coleira',titulo:'Coleira',principal:true,celula:tituloColeira}, ...camposPrevisao]} />}
+          </section>
+          <section className="bez-disponibilidade">
+            <h3>Disponibilidade para as próximas ofertas</h3>
+            <dl>{(['NAO_COMERCIAL', 'COMERCIAL'] as const).map(natureza => <div key={natureza}>
+              <dt>{natureza === 'COMERCIAL' ? 'Leite comercial' : 'Leite de descarte'}</dt>
+              <dd>{litros(previsao.origens.filter(o => o.natureza === natureza).reduce((s,o) => s + Number(o.quantidadeDisponivelLitros), 0))}</dd>
+            </div>)}</dl>
+          </section>
+        </div>
+      </>}
+    </EstadoConsulta>
+    <section className="bez-painel-secao"><div className="bez-sectionhead"><h3>Fornecimentos do dia</h3><Button variant="outline" onClick={()=>mudar({aba:'custos'})}>Consultar custos</Button></div><EstadoConsulta {...ofertas} carregando={!ofertas.dados}>{ofertas.dados&&(ofertas.dados.itens.length?<>{visual.modo === 'visual' ?
+      <CartoesAlimentacao rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
+        titulo={tituloOferta} campos={camposOferta}
+        situacao={o => <span className="bez-selo" data-confirmado={o.status === 'CONFIRMADO'}>{situacaoOferta(o)}</span>}
+        acao={acaoEstorno} />
+      : <TabelaFinanceira visualizacao="tabela" rotulo="Fornecimentos do dia" itens={ofertas.dados.itens} chaveDe={chaveOferta}
+        colunas={[{chave:'oferta',titulo:'Oferta',principal:true,celula:tituloOferta}, ...camposOferta,
+          {chave:'status',titulo:'Situação',celula:situacaoOferta},
+          {chave:'acao',titulo:'Ação',acoes:true,celula:o=>acaoEstorno(o)??'—'}]} />}<PaginacaoBezerreiro pagina={pagina} total={ofertas.dados.total} mudar={v=>mudar({pagina:String(v)})}/></>:<p className="bez-estado">Nenhum fornecimento registrado nesta data.</p>)}</EstadoConsulta></section>
     {fornecer&&<FormFornecimento {...fornecer} contextoAtivo={fornecer.sitio===sitio&&fornecer.perfilId===perfil&&fornecer.data===data} aoFechar={()=>setFornecer(null)} aoSalvar={()=>{setFornecer(null);aoSalvar();}}/>}
     {estornar&&<EstornoOferta sitio={sitio} oferta={estornar} aoFechar={()=>setEstornar(null)} aoSalvar={()=>{setEstornar(null);aoSalvar();}}/>}
-  </>;
+  </div>;
 }
 function FormFornecimento({sitio,perfilId,data,previsao:previsaoInicial,contextoAtivo,aoFechar,aoSalvar}: {sitio:number;perfilId:string;data:string;previsao:Previsao;contextoAtivo:boolean;aoFechar:()=>void;aoSalvar:()=>void}) {
   const [previsao,setPrevisao]=useState(previsaoInicial);

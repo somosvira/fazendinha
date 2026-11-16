@@ -10,9 +10,9 @@ A implementação está protegida por `NUTRICAO_MENSAL_ENABLED=false` e `NUTRICA
 
 | Modelo apresentado | Rotina | Quando altera o estoque confirmado | Conferência mensal |
 |---|---|---|---|
-| Baixa automática diária — recomendado | Calcula dieta × animais presentes em cada dia encerrado | A cada processamento diário bem-sucedido | Aceita o total ou registra diferença justificada |
-| Confirmar antes de baixar | Mantém o cálculo aguardando conferência; permite selecionar vários dias juntos e corrigir quantidades | Na confirmação dos dias selecionados | Revisa o conjunto; não repete as baixas |
-| Estimar e baixar no fechamento | Calcula consumo virtual diário | Somente ao confirmar o mês | Converte o total revisado em movimentos reais |
+| Diário automático — recomendado | Calcula dieta × animais presentes em cada dia encerrado | A cada processamento diário bem-sucedido | Aceita o total ou registra diferença justificada |
+| Diário manual | Mantém o cálculo aguardando conferência; permite selecionar vários dias juntos e corrigir quantidades | Na confirmação dos dias selecionados | Revisa o conjunto; não repete as baixas |
+| Mensal | Calcula consumo virtual diário | Somente ao confirmar o mês | Converte o total revisado em movimentos reais |
 
 O terceiro modelo conserva dois números: **saldo confirmado** e **saldo estimado**, este igual ao saldo confirmado menos o consumo virtual ainda não efetivado. A estimativa pode revelar falta de alimento; não permite saída física sem saldo ou sem base de valor. Não altera caixa nem cria compra. O cálculo representa atribuição por permanência no lote, não medição de ingestão de cada animal.
 
@@ -75,7 +75,9 @@ Nutrição tem uma única aba **Fechamentos**, com meses para conferência e a c
 
 A visão geral conserva o gráfico de lotes com/sem dieta e oferece tabela como padrão na ausência de preferência salva, com alternância para cartões. Situação e programação são filtros junto da busca, não cards adicionais. Ambas as apresentações mostram a dieta vigente e a próxima troca; usuários autorizados atribuem ou trocam diretamente no lote. Receitas publicadas também iniciam a atribuição, com a receita pré-selecionada. O formulário mostra composição por ingrediente/unidade, estimativa com o efetivo atual e início; a atribuição não confirma consumo nem faz baixa. Alertas reúne também lotes sem dieta vigente cadastrada, distinguindo eventual programação futura.
 
-O card de custo médio usa o último mês civil encerrado: custo conhecido dividido pelos animal-dias da mesma base, com `Prisma.Decimal` no servidor. Inclui somente lotes cuja base registrada no recorte está integralmente valorizada; exclui bases vazias, desconhecidas ou parcialmente valorizadas e exibe quantos lotes entraram. Fechamentos anteriores só entram se inteiramente contidos no mês, sem rateio fictício dos que cruzam suas bordas; dias mensais respeitam a data factual. Consumos virtuais/aguardando confirmação não viram custos realizados. Essa média de registros não comprova cobertura alimentar integral. O endpoint `/nutricao/custo-medio` resolve sítio e permissão no servidor e devolve `null` sem permissão de custos.
+O card de custo destaca a previsão por animal-dia, indica cobertura parcial e mostra o total diário previsto dos lotes. O custo por animal-dia já baixado aparece quando há valor apurado no mês atual, até ontem.
+
+O endpoint `/nutricao/custo-medio` consulta o mês civil encerrado por padrão e o mês corrente com `mes=atual`. A média divide o custo conhecido pelos animal-dias da mesma base, com `Prisma.Decimal` no servidor. Inclui somente lotes cuja base registrada no recorte está integralmente valorizada, exclui bases vazias, desconhecidas ou parcialmente valorizadas e informa quantos lotes entraram. Fechamentos só entram se inteiramente contidos no recorte, sem rateio fictício dos que cruzam suas bordas. Dias mensais respeitam a data factual. Consumos virtuais/aguardando confirmação não viram custos realizados. Essa média de registros não comprova cobertura alimentar integral. O endpoint resolve sítio e permissão no servidor e devolve `null` sem permissão de custos.
 
 Em Configurações → Pecuária → Nutrição, o formulário separa aplicação (padrão do sítio ou exceção de lote), modelo de baixa, conferência/vigência e autorização de seleção por validade. Exibe a regra vigente, explica o efeito dos três modelos e exemplifica o prazo no mês seguinte. Uma revisão antecede a escrita, conservando trava contra submissão concorrente, erros e campos. O servidor continua responsável pelas restrições temporais, sobreposições e autorização; a revisão visual não as substitui.
 

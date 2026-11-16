@@ -1,18 +1,20 @@
 import type { Key, ReactNode } from "react";
 import { CartaoConsulta, FatoConsulta } from "@/components/ConsultaVisual";
 import { AlternarVisualizacaoConsulta, useVisualizacaoConsulta } from "@/components/VisualizacaoConsulta";
-import { TabelaFinanceira, type ColunaTabela } from "@/financeiro/financeiro-ui";
+import { TabelaFinanceira, type ColunaTabela, Empty } from "@/financeiro/financeiro-ui";
 import "./consultas-leite.css";
 
 /** As duas apresentações compartilham as mesmas células, permissões e ações. */
-export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, chaveDe, onAbrir, compacta, tituloDe, detalheDe, destaque, visualizacao, renderizarVisual, layout }: {
+export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, chaveDe, onAbrir, compacta, tituloDe, detalheDe, destaque, visualizacao, renderizarVisual, layout, padrao = "tabela" }: {
   renderizarVisual?: (item: T) => ReactNode; layout?: "grade" | "linhas";
+  /** Listas abrem em tabela; cartões só quando mostram o que a tabela não mostra (ex.: ordenhas do dia). */
+  padrao?: "visual" | "tabela";
   visualizacao?: ReturnType<typeof useVisualizacaoConsulta>;
   preferencia: string; rotulo: string; itens: T[]; colunas: ColunaTabela<T>[];
   tituloDe?: (item: T) => ReactNode; detalheDe?: (item: T) => ReactNode; destaque?: string;
   chaveDe: (item: T) => Key; onAbrir?: (item: T) => void; compacta?: boolean;
 }) {
-  const preferenciaLocal = useVisualizacaoConsulta(preferencia, "leite");
+  const preferenciaLocal = useVisualizacaoConsulta(preferencia, "leite", padrao);
   const { modo, mudar } = visualizacao ?? preferenciaLocal;
   const principal = colunas.find(c => c.principal) ?? colunas[0];
   const acoes = colunas.filter(c => c.acoes || c.chave === "acao");
@@ -25,7 +27,7 @@ export function ListaConsultaLeite<T>({ preferencia, rotulo, itens, colunas, cha
         {volume && <div className="leite-cartao-volume"><strong>{volume.celula(item)}</strong><span>{volume.titulo}</span></div>}
         {fatos.map(c => <FatoConsulta key={c.chave} rotulo={c.titulo}>{c.celula(item)}</FatoConsulta>)}
       </CartaoConsulta>}</div>)}
-      {!itens.length && <p>Nenhum registro neste recorte.</p>}
+      {!itens.length && <Empty>Nenhum registro neste recorte.</Empty>}
     </div>}
   </div>;
 }

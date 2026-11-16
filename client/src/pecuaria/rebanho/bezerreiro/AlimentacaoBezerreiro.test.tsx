@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { AlternadorDoCabecalho, VisualizacaoNoCabecalho } from '@/components/VisualizacaoConsulta';
 import { alterarControle } from '../../../lib/controles.fixture';
 import { AlimentacaoBezerreiro } from './AlimentacaoBezerreiro';
 import { consultarBezerreiro } from './api';
 import { RebanhoApiError } from '../api';
 import { idOfertaDaPrevisao, ofertaJaRealizada } from './modelo';
-import type { Configuracao, Previsao } from './types';
+import type { Configuracao, Oferta, Previsao } from './types';
 vi.mock('./api',async()=>({...await vi.importActual<typeof import('./api')>('./api'),consultarBezerreiro:vi.fn()}));
 const identidade='00000000-0000-4000-8000-000000000001',versaoId='00000000-0000-4000-8000-000000000002',atualConfigId='00000000-0000-4000-8000-000000000003';
 const configuracao:Configuracao={vigente:null,coleiras:[],perfis:[{id:'perfil',loteId:'lote',ativo:true,lote:{id:'lote',nome:'Bezerreiro'}}],fases:[{id:'fase-config',identidadeId:'fase-identidade',nome:'Inicial',coleiraId:'vermelha',coleira:null,litrosDia:'4',publicada:true,ofertas:[{id:atualConfigId,identidadeId:identidade,ordem:0,percentual:'100'}]}]};
@@ -14,6 +15,42 @@ const previsao:Previsao={contextoToken:'a'.repeat(64),data:'2026-10-28',previsao
 beforeEach(()=>{vi.clearAllMocks();vi.mocked(consultarBezerreiro).mockImplementation(async(path,_sitio,body)=>body?{}:path.startsWith('/previsao')?previsao:{itens:[],total:0,pagina:1});});
 afterEach(cleanup);
 async function abrir(){render(<AlimentacaoBezerreiro sitio={1} config={configuracao} podeLancar revisao={0} aoSalvar={vi.fn()} params={new URLSearchParams('data=2026-10-28')} mudar={vi.fn()}/>);const botao=screen.getByRole('button',{name:'Registrar fornecimento'});await waitFor(()=>expect((botao as HTMLButtonElement).disabled).toBe(false));fireEvent.click(botao);return await screen.findByRole('dialog',{name:'Registrar fornecimento'});}
+it('alterna previsão e fornecimentos juntos pelo cabeçalho global', async () => {
+  const oferta: Oferta = {
+    id: 'oferta', data: previsao.data, ocorridoEm: null, status: 'CONFIRMADO', versao: 1,
+    perfilId: 'perfil', ofertaProgramadaId: null, responsavel: 'Operadora', observacao: null,
+    grupos: [{ id: 'grupo', coleiraId: 'vermelha', quantidadeLitros: '4', quantidadePrevistaLitros: '4',
+      custoProducao: null, referencia: null, parcelas: [] }],
+  };
+  vi.mocked(consultarBezerreiro).mockImplementation(async path =>
+    path.startsWith('/previsao') ? previsao : { itens: [oferta], total: 1, pagina: 1 },
+  );
+  const usuarioId = 'teste-alimentacao';
+  const chave = `terrano:consultas:${usuarioId}:visualizacao-global`;
+  localStorage.setItem(chave, 'visual');
+  const mudar = vi.fn();
+  try {
+    render(<VisualizacaoNoCabecalho usuarioId={usuarioId}>
+      <header><AlternadorDoCabecalho /></header>
+      <AlimentacaoBezerreiro sitio={1} config={configuracao} podeLancar revisao={0} aoSalvar={vi.fn()}
+        params={new URLSearchParams('data=2026-10-28&perfil=perfil')} mudar={mudar} />
+    </VisualizacaoNoCabecalho>);
+    const previsaoCartoes = await screen.findByRole('list', { name: 'Previsão diária por coleira' });
+    const ofertasCartoes = await screen.findByRole('list', { name: 'Fornecimentos do dia' });
+    expect(within(ofertasCartoes).getByRole('button', { name: 'Estornar' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tabela' }));
+    expect(await screen.findByRole('table', { name: 'Previsão diária por coleira' })).toBeTruthy();
+    expect(screen.getByRole('table', { name: 'Fornecimentos do dia' })).toBeTruthy();
+    expect(previsaoCartoes.isConnected).toBe(false);
+    expect(ofertasCartoes.isConnected).toBe(false);
+    expect(mudar).not.toHaveBeenCalled();
+  } finally {
+    localStorage.removeItem(chave);
+    localStorage.removeItem('terrano:bezerreiro:sessao:visualAlimentacaoBezerreiro');
+    history.replaceState(null, '', location.pathname);
+  }
+});
+
 describe('Contrato de ofertas versionadas',()=>{
   it('envia a versão da oferta da própria previsão e distingue identidade da configuração vigente',async()=>{
     const dialog=await abrir();fireEvent.change(within(dialog).getByLabelText('Responsável'),{target:{value:'Operadora'}});fireEvent.click(within(dialog).getByRole('checkbox',{name:'Conferi as quantidades fornecidas por coleira.'}));fireEvent.click(within(dialog).getByRole('button',{name:'Confirmar fornecimento'}));

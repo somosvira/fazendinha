@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { preferirCartoes } from "@/lib/visualizacao.fixture";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { CatalogoModelosProtocolos } from "./CatalogoModelosProtocolos";
@@ -11,7 +12,7 @@ const modelo:CadastroProtocoloMeta={id:"p",nome:"Modelo IATF",tipo:"REPRODUTIVO"
 const procedimento:ProcedimentoCadastro={id:"a",nome:"Aplicação inicial",procedimento:"Aplicação de produto",intervalo:0,unidadeIntervalo:"DIAS",referencia:"Produto congelado",quantidade:"2",unidadeQuantidade:"ML",definirMaterialNoAtendimento:false,via:null,orientacaoUso:null};
 const etapa:EtapaEstruturaCadastro={id:"m",nome:"Preparo",agrupada:true,modoAtendimento:"AUTOMATIZADA",instrucoesGerais:"Conferir identificação",procedimentos:pagina([procedimento])};
 function props(tipo:CadastroProtocoloMeta["tipo"]="REPRODUTIVO") {return {tipo,protocolos:[{...modelo,tipo}],total:11,pagina:1,carregando:false,erro:null,ocupado:false,podeLancar:false,busca:"preparo",situacao:"ATIVA",onBusca:vi.fn(),onSituacao:vi.fn(),onPagina:vi.fn(),onRecarregar:vi.fn(),onNovo:vi.fn(),onNovaVersao:vi.fn(),onConcluir:vi.fn(),onInativar:vi.fn()};}
-beforeEach(()=>{vi.resetAllMocks();localStorage.clear();window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos");vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([etapa]));});
+beforeEach(()=>{vi.resetAllMocks();localStorage.clear();preferirCartoes({SANITARIO:["visualCadastroProtocolos"],REPRODUTIVO:["visualCadastroProtocolos"]});window.history.replaceState(null,"","/configuracoes/pecuaria/reproducao/protocolos");vi.mocked(obterEstruturaCadastro).mockResolvedValue(pagina([etapa]));});
 afterEach(()=>{cleanup();vi.unstubAllGlobals();});
 it("apresenta intervalos fracionários sem arredondar o calendário cadastrado",()=>{
   expect(intervaloProcedimento(1.23456,"HORAS")).toBe("H1,23456");

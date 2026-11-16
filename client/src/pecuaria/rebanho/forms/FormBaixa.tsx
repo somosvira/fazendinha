@@ -80,7 +80,7 @@ export function FormBaixa({ animal, motivos, onSalvo, onFechar }: {
 
       <p className="text-sm text-ink-2">{animal.brinco} deixará o efetivo ativo. A baixa pode ser estornada para reabrir o animal.</p>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="text-sm font-medium">Data da baixa *<DatePicker id="baixa-data" required aria-label="Data da baixa" max={hoje()} value={data} onChange={setData} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className="mt-1.5" />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-sm font-normal text-red-700">{erroData}</p>}</label>
+        <label className="text-sm font-medium">Data da baixa *<DatePicker id="baixa-data" required aria-label="Data da baixa" max={hoje()} value={data} onChange={setData} aria-invalid={erroData ? true : undefined} aria-describedby={erroData ? "baixa-data-erro" : undefined} className="mt-1.5" />{erroData && <p id="baixa-data-erro" role="alert" className="mt-1 text-sm font-normal text-destructive">{erroData}</p>}</label>
         <label className="text-sm font-medium">Tipo *<SelectCampo required value={tipo} onValueChange={(valorSelecionado) => mudarTipo(valorSelecionado as TipoBaixa)} className={classeInput}>{TIPOS_BAIXA.map((t) => <option key={t} value={t}>{rotuloTipoBaixa(t)}</option>)}</SelectCampo></label>
         {grupos.length > 0 && <label className="text-sm font-medium sm:col-span-2">Motivo do catálogo<SelectCampo value={motivoId} onValueChange={(valorSelecionado) => setMotivoId(valorSelecionado)} className={classeInput}>
           <option value="">Sem motivo específico</option>

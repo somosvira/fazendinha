@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, expect, it, vi } from "vitest";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { reqV4 } from "./api";
+import { esperarOpcoes, mudarCampo, opcoesDoCampo } from "@/lib/controles.fixture";
 vi.mock("./api",()=>({reqV4:vi.fn()}));
 afterEach(cleanup);
 it("seleciona procedimento legível e envia só vínculo, preservando motivo/chave no retry",async()=>{
@@ -16,11 +17,11 @@ it("seleciona procedimento legível e envia só vínculo, preservando motivo/cha
   });
   render(<RegularizarOrigem path={path} propriedadeId={1} consumoMantido={false} onMudou={mudou}/>);
   fireEvent.click(screen.getByRole("button",{name:"Regularizar origem do fato anulado"}));
-  fireEvent.change(screen.getByLabelText("Ação"),{target:{value:"VINCULAR_SUBSTITUTO"}});
-  expect(await screen.findByRole("option",{name:"13/10/2026 · IA · Matriz 100"})).toBeTruthy();
+  mudarCampo(screen.getByLabelText("Ação"),{target:{value:"VINCULAR_SUBSTITUTO"}});
+  await esperarOpcoes(() => screen.getByLabelText("Fato substituto comprovado"), o => o.some(i => i.texto === "13/10/2026 · IA · Matriz 100"));
   expect(screen.queryByRole("textbox",{name:/ID/})).toBeNull();
-  fireEvent.change(screen.getByLabelText("Fato substituto comprovado"),{target:{value:"f"}});
-  fireEvent.change(screen.getByRole("textbox",{name:"Motivo"}),{target:{value:"Correção comprovada"}});
+  mudarCampo(screen.getByLabelText("Fato substituto comprovado"),{target:{value:"f"}});
+  mudarCampo(screen.getByRole("textbox",{name:"Motivo"}),{target:{value:"Correção comprovada"}});
   fireEvent.click(screen.getByRole("button",{name:"Confirmar regularização"}));
   await screen.findByText("Resposta perdida");
   fireEvent.click(screen.getByRole("button",{name:"Confirmar regularização"}));
@@ -48,14 +49,14 @@ it("onze candidatos paginam dez e conservam a escolha ao mudar de página",async
   });
   render(<RegularizarOrigem path="/reproducao/tarefas-iatf/t/regularizacao" propriedadeId={1} consumoMantido={false} onMudou={mudou}/>);
   fireEvent.click(screen.getByRole("button",{name:"Regularizar origem do fato anulado"}));
-  fireEvent.change(screen.getByLabelText("Ação"),{target:{value:"VINCULAR_SUBSTITUTO"}});
-  await screen.findByRole("option",{name:"Procedimento 0"});
-  expect(screen.getByLabelText<HTMLSelectElement>("Fato substituto comprovado").options).toHaveLength(11);
-  fireEvent.change(screen.getByLabelText("Fato substituto comprovado"),{target:{value:"f0"}});
-  fireEvent.change(screen.getByLabelText("Motivo"),{target:{value:"Vincular fato conferido"}});
+  mudarCampo(screen.getByLabelText("Ação"),{target:{value:"VINCULAR_SUBSTITUTO"}});
+  await esperarOpcoes(() => screen.getByLabelText("Fato substituto comprovado"), o => o.some(i => i.texto === "Procedimento 0"));
+  expect(opcoesDoCampo(screen.getByLabelText("Fato substituto comprovado"))).toHaveLength(11);
+  mudarCampo(screen.getByLabelText("Fato substituto comprovado"),{target:{value:"f0"}});
+  mudarCampo(screen.getByLabelText("Motivo"),{target:{value:"Vincular fato conferido"}});
   fireEvent.click(screen.getByRole("button",{name:"Próxima"}));
-  await screen.findByRole("option",{name:"Procedimento 10"});
-  expect(screen.getByLabelText<HTMLSelectElement>("Fato substituto comprovado").options).toHaveLength(2);
+  await esperarOpcoes(() => screen.getByLabelText("Fato substituto comprovado"), o => o.some(i => i.texto === "Procedimento 10"));
+  expect(opcoesDoCampo(screen.getByLabelText("Fato substituto comprovado"))).toHaveLength(2);
   expect(screen.getByText("Fato selecionado:")).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Confirmar regularização"}));
   await waitFor(()=>expect(mudou).toHaveBeenCalledOnce());

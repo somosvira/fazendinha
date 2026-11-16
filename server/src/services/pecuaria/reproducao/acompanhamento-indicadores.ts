@@ -1,4 +1,4 @@
-import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type EntradaElegibilidade } from "./elegibilidade.calc.js";
+import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type EntradaElegibilidade } from "./elegibilidade-indicadores-v2.calc.js";
 import { calcularAcompanhamentoIndicadores, type DadosAcompanhamentoIndicadores, type CicloAcompanhamentoIndicador, type LocalIndicadorAcompanhamento } from "./acompanhamento-indicadores.calc.js";
 import { resolverPapelReprodutivo } from "../rebanho/papel-reprodutivo.calc.js";
 import { classificarTentativaIndicador, type DadosIndicadores } from "./indicadores.calc.js";

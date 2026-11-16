@@ -22,6 +22,7 @@ import {
 import { rotuloTarefaSanitaria } from "./IndicadoresSanitarios";
 import { dataSanitaria } from "./rotulos";
 import "./ficha-sanitaria-consultas.css";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 export function AgendaSanitaria({
   animalId,
@@ -140,7 +141,7 @@ export function AgendaSanitaria({
           >
             <ChevronRight size={16} aria-hidden />
           </Button>
-          <strong aria-live="polite" className="capitalize">
+          <strong aria-live="polite">
             {nomeMes(mes)}
           </strong>
           <Button secondary onClick={() => setMes(hoje.slice(0, 7))}>
@@ -154,7 +155,7 @@ export function AgendaSanitaria({
           Tentar novamente
         </Button>
       ) : !dados ? (
-        <p role="status">Carregando agenda…</p>
+        <EsqueletoTabela label="Carregando agenda" />
       ) : (
         <>
           {!itens.length && (

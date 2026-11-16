@@ -35,7 +35,7 @@ export function OrigensAfericaoLeite({
   return (
     <section className="leite-origens-painel" aria-label="Animais de origem">
       <div>
-        <h4>Animais de origem · {selecionados.length} <AjudaCampo rotulo="Sobre a população de origem" texto={"Identifica a população de origem sem atribuir litros por animal."} /></h4>
+        <h4>Animais de origem · {selecionados.length} </h4>
         <p>{salva
           ? "Seleção preservada desta aferição."
           : "Pré-seleção: finalidade Leite e DEL > 0 na data da ordenha."}</p>

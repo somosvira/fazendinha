@@ -32,16 +32,20 @@ function renderOpcoes(children: ReactNode, disabled = false, selecionado = ""): 
 }
 
 /** Preserva as opções e os rótulos dos formulários ao compor o Select shadcn. */
-export function SelectCampo({ children, value, onValueChange, className, id, name, disabled, required, ...aria }: AriaAttributes & {
+export function SelectCampo({ children, value, onValueChange, className, id, name, disabled, required, title, onBlur, pesquisavel = true, ...aria }: AriaAttributes & {
   children: ReactNode; value?: string | number; onValueChange?: (valor: string) => void;
-  className?: string; id?: string; name?: string; disabled?: boolean; required?: boolean;
+  className?: string; id?: string; name?: string; disabled?: boolean; required?: boolean; title?: string; onBlur?: () => void; pesquisavel?: boolean;
 }) {
   const naColuna = useContext(ContextoFiltroColuna);
   const opcoes = opcoesDe(children);
   const selecionada = opcoes.find(opcao => valorDe(opcao) === String(value ?? ""));
   if (naColuna) return <ListaOpcoesFiltro rotulo={aria["aria-label"] ?? name ?? "Opções"} opcoes={opcoes.map(o => ({ valor: valorDe(o), texto: textoDe(o.children), disabled: o.disabled }))} valores={[String(value ?? "")]} onChange={v => onValueChange?.(v)} disabled={disabled} />;
-  return <Select value={String(value ?? "")} onValueChange={v => onValueChange?.(v === VAZIO ? "" : v)} name={name} disabled={disabled} required={required}>
-    <SelectTrigger value={value} id={id} {...aria} className={cn(className, "flex")}><SelectValue placeholder={selecionada?.children}>{selecionada?.children}</SelectValue></SelectTrigger>
-    <SelectContent className="z-[1300]">{renderOpcoes(children, false, String(value ?? ""))}</SelectContent>
+  return <Select value={String(value ?? "")} onValueChange={v => {
+    // As opções reais nunca valem "" (a vazia vira VAZIO). O "" vem do select oculto do Radix quando o valor
+    // chega antes das opções carregarem, e apagaria uma escolha ou sugestão já feita.
+    if (v !== "") onValueChange?.(v === VAZIO ? "" : v);
+  }} name={name} disabled={disabled} required={required}>
+    <SelectTrigger value={value} id={id} title={title} onBlur={onBlur} {...aria} className={cn(className, "flex")}><SelectValue placeholder={selecionada?.children}>{selecionada?.children}</SelectValue></SelectTrigger>
+    <SelectContent pesquisavel={pesquisavel} className="z-[1300]">{renderOpcoes(children, false, String(value ?? ""))}</SelectContent>
   </Select>;
 }

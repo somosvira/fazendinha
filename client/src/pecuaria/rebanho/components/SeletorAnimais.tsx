@@ -12,13 +12,14 @@ import type { AnimalResumo, Catalogos } from "../types";
 import { BarraFiltros, CategoriaPill, Paginacao } from "../ui";
 import { Button, type ColunaTabela, Empty, ErrorBox, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
 import { PainelCadastro } from "../../../financeiro/PainelCadastro";
-import { Loader } from "../../../components/Loading";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const ITENS_POR_PAGINA = 20;
 
-export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
+export function SeletorAnimais({ excluirLoteId, animaisIniciais = [], onConfirmar, onCancelar }: {
   /** oculta este lote do filtro de origem e exclui da lista os animais que estão nele hoje */
   excluirLoteId?: string;
+  animaisIniciais?: AnimalResumo[];
   onConfirmar: (animais: AnimalResumo[]) => void;
   onCancelar: () => void;
 }) {
@@ -34,7 +35,7 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
   const [loteId, setLoteId] = useState("");
   const [pagina, setPagina] = useState(1);
 
-  const [selecionados, setSelecionados] = useState<Map<string, AnimalResumo>>(new Map());
+  const [selecionados, setSelecionados] = useState(() => new Map(animaisIniciais.map(animal => [animal.id, animal])));
 
   useEffect(() => { obterCatalogos().then(setCatalogos).catch((e) => setErro(e instanceof Error ? e.message : String(e))); }, []);
 
@@ -101,15 +102,15 @@ export function SeletorAnimais({ excluirLoteId, onConfirmar, onCancelar }: {
       <ErrorBox erro={erro} />
       <div className="overflow-hidden rounded-xl border border-border">
         <BarraFiltros>
-          <label className="relative w-full min-w-0 flex-[1_1_200px]"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
-          <SelectCampo aria-label="Filtrar por sítio" value={propriedadeId} onValueChange={(valorSelecionado) => { filtrar(setPropriedadeId)(valorSelecionado); setLoteId(""); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>
-          <SelectCampo aria-label="Filtrar por lote de origem" value={loteId} onValueChange={(valorSelecionado) => filtrar(setLoteId)(valorSelecionado)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-white px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>
+          <label className="relative w-full min-w-0 flex-[1_1_200px]"><Search size={16} className="absolute left-3 top-3 text-ink-3" /><input aria-label="Buscar por brinco ou nome" value={textoBusca} onChange={(e) => setTextoBusca(e.target.value)} placeholder="Buscar por brinco ou nome" className="h-[42px] w-full rounded-lg border border-border bg-card py-2.5 pl-9 pr-3 text-sm" /></label>
+          <SelectCampo aria-label="Filtrar por sítio" value={propriedadeId} onValueChange={(valorSelecionado) => { filtrar(setPropriedadeId)(valorSelecionado); setLoteId(""); }} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-card px-3 text-sm"><option value="">Todos os sítios</option>{catalogos?.propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}</SelectCampo>
+          <SelectCampo aria-label="Filtrar por lote de origem" value={loteId} onValueChange={(valorSelecionado) => filtrar(setLoteId)(valorSelecionado)} className="h-[42px] w-full min-w-0 flex-[1_1_150px] rounded-lg border border-border bg-card px-3 text-sm"><option value="">Todos os lotes</option>{lotesDoSitio.map((lote) => <option key={lote.id} value={lote.id}>{lote.nome}</option>)}</SelectCampo>
         </BarraFiltros>
         {itens.length > 0 && <div className="flex flex-wrap items-center gap-3 border-b border-border bg-surface-2 px-4 py-2.5 text-sm">
           <label className="flex items-center gap-2 font-medium"><input type="checkbox" aria-label="Selecionar todos da página" checked={todosDaPaginaSelecionados} onChange={alternarTodosDaPagina} /> Selecionar todos da página</label>
           {quantidade > 0 && <span className="text-ink-3">{quantidade} {quantidade === 1 ? "animal selecionado" : "animais selecionados"} no total</span>}
         </div>}
-        {carregando && !itens.length ? <div className="p-6"><Loader label="Carregando animais" /></div>
+        {carregando && !itens.length ? <EsqueletoTabela label="Carregando animais" className="p-6" />
           // total > 0 mantém a paginação visível mesmo que esta página específica venha vazia
           : total > 0 ? <>
             {itens.length > 0

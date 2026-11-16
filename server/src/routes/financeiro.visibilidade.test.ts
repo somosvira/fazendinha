@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), listar: vi.fn(), criar: vi.fn(), transacao: vi.fn(), transferencia: vi.fn(), estornar: vi.fn(), configuracoes: vi.fn(), parceiros: vi.fn(), gerenciais: vi.fn(), produtos: vi.fn(), leitura: vi.fn(), escrita: vi.fn(), rascunho: vi.fn() }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ obterOperacao: mocks.obter, listarOperacoes: mocks.listar, criarOperacao: mocks.criar, criarTransacaoAvulsa: mocks.transacao, transferir: mocks.transferencia, estornarTransacao: mocks.estornar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, contarAnimaisOperacao: async () => 0, obterOperacao: mocks.obter, listarOperacoes: mocks.listar, criarOperacao: mocks.criar, criarTransacaoAvulsa: mocks.transacao, transferir: mocks.transferencia, estornarTransacao: mocks.estornar }));
 vi.mock("../services/financeiro/contas.js", () => ({ listarContas: mocks.configuracoes }));
 vi.mock("../services/financeiro/parceiros.js", () => ({ listarParceiros: mocks.parceiros }));
 vi.mock("../services/financeiro/cadastros-gerenciais.js", () => ({ listarCadastrosGerenciais: mocks.gerenciais }));
 vi.mock("../services/estoque/produtos.js", () => ({ listarProdutosCadastro: mocks.produtos }));
-vi.mock("../services/financeiro/rascunhos.js", () => ({ obterRascunho: mocks.rascunho }));
+vi.mock("../services/financeiro/rascunhos.js", () => ({ lerPreviaRascunho: async () => ({ envolveAnimais: false, animais: 0 }), obterRascunho: mocks.rascunho }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 import { uid } from "../lib/uid.fixture.js";
@@ -60,5 +60,17 @@ describe("perfis e escopo dos DTOs financeiros", () => {
     expect(r.status).toBe(201);
     expect(await r.json()).toMatchObject({ id: uid(4), valorTotal: null, movimentos: [{ quantidade: 2, valor: null, contaId: uid(2) }] });
     expect(mocks[mock]).toHaveBeenCalledWith(expect.objectContaining({ propriedadeId: 3, usuarioId: 7 }));
+  });
+  it.each([
+    { areas: ["financeiro"], dono: false, comSituacao: false },
+    { areas: ["financeiro", "pecuaria"], dono: false, comSituacao: true },
+    { areas: [], dono: true, comSituacao: true },
+  ])("detalhe de compra de animais só traz situação, sexo, raça e finalidade do animal com a área Pecuária (areas=$areas, dono=$dono)", async ({ areas, dono, comSituacao }) => {
+    const animal = { id: uid(5), brinco: "A1", nome: null, sexo: "F", rotuloComposicao: "1 NE", aptidao: "CORTE", situacao: { baixa: null, devolucao: null } };
+    mocks.obter.mockResolvedValue({ ...op, tipo: "COMPRA_ANIMAIS", itens: [{ quantidade: "1", valorUnitario: "10", valorTotal: "10", animal }, { quantidade: "1", valorUnitario: "5", valorTotal: "5", animal: null }] });
+    const detalhe = await (await app(["verValores"], dono, areas).request(`/financeiro/operacoes/${uid(1)}`)).json();
+    const semSituacao = { id: animal.id, brinco: animal.brinco, nome: animal.nome };
+    expect(detalhe.itens[0].animal).toEqual(comSituacao ? animal : semSituacao);
+    expect(detalhe.itens[1].animal).toBeNull();
   });
 });

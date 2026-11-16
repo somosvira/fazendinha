@@ -59,6 +59,7 @@ export function ehAvaliacaoTarefa(p: ParticipanteVisita): boolean {
 export function resultadoPrincipalVisita(tipo: TipoAtividade, p: ParticipanteVisita, r: RascunhoVisita): string | null {
   const resultado = tipo === "AVALIACAO_REPRODUTIVA" ? r.resultado
     : tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? String(r.dados?.resultado ?? "") : "";
+  if(resultado==="NAO_AVALIADO" && (r.avaliacaoContextual || r.dados?.avaliacaoContextual))return "Avaliação realizada sem DG";
   return resultado ? rotulosResultadoAvaliacao[resultado] ?? resultado : null;
 }
 

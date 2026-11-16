@@ -1,3 +1,4 @@
+import type { CamposAvaliacaoContextual } from "./avaliacao-contextual-api";
 import { reqV4 } from "./api";
 import type { ContextoTemporalAnimal } from "./api";
 export type TipoAtividade =
@@ -7,7 +8,9 @@ export type TipoAtividade =
   | "INICIAR_IATF"
   | "EXAME_SANITARIO"
   | "INICIAR_SANITARIO";
-export type RascunhoVisita = {
+export type RascunhoVisita = CamposAvaliacaoContextual & {
+  resultadoAptidao?: "APTO" | "NAO_APTO" | "INCONCLUSIVO" | null; retornoAptidaoEm?: string | null;
+  responsavel?: string;
   tipoExameId?: string;
   formatoExameHash?: string;
   resultados?: import("../sanidade/CamposExame").ObservacaoExame[];
@@ -18,8 +21,9 @@ export type RascunhoVisita = {
   gestacaoId?: string;
   motivoVinculoDesconhecido?: string;
   resultado?: string;
-  sexoFetal?: string;
+  sexoFetal?: string | null;
   conduta?: string;
+  decisaoIatf?: "INDICAR"|"NAO_INDICAR"|null;
   motivo?: string;
   anotacaoOriginal?: string;
   retornoEm?: string;
@@ -27,7 +31,7 @@ export type RascunhoVisita = {
   inicioEfetivo?: string;
   realizadaEm?: string;
   previstaPara?: string;
-  dados?: Record<string, unknown>;
+  dados?: Record<string, unknown> & Omit<RascunhoVisita,"dados">;
 };
 export type ParticipanteVisita = {
   id: string;
@@ -170,7 +174,7 @@ export const confirmarVisita = (
     itens: Array<{
       participanteId: string;
       versaoRascunho?: number;
-      dados?: Record<string, unknown>;
+      dados?: Record<string, unknown> & Omit<RascunhoVisita,"dados">;
       status?: string;
       motivo?: string;
     }>;
@@ -205,7 +209,7 @@ export type SugestoesVisita = {
   categorias?: Array<{id: string; nome: string}>;
   lotes?: Array<{id: string; nome: string}>;
   criterios?: Record<string, unknown>;
-  retornos?: Array<{precisaoTemporal?: "DIA" | "HORA"; previsaoPendente?: boolean; origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string}>;
+  retornos?: Array<{precisaoTemporal?: "DIA" | "HORA"; previsaoPendente?: boolean; origem: string; origemId: string | null; origemConsultavel?: boolean; animalId: string; data: string | null; status: string; propriedadeId: number; programacaoId?: string; participacaoId?: string; etapaId?: string; etapaNome?: string; momentoId?: string | null; momentoNome?: string | null; programacaoNome?: string | null}>;
   animais:
     | import("./api").AnimalReprodutivo[]
     | import("./api").PainelReprodutivo;

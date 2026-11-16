@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cartão compacto do animal — Terrano</title>
+<!-- Mockup estático para aprovação. Dados ilustrativos, no formato da seed de desenvolvimento. -->
+<style>
+@font-face { font-family: "Public Sans"; src: url("../../public/fonts/public-sans/public-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --papel: #f7f8fa; --folha: #ffffff; --tinta: #203c39; --tinta-2: #526863; --tinta-3: #6d817c;
+  --linha: #dfe7e5; --linha-forte: #7a928d; --pasto: #006f68; --pasto-claro: #e0efec; --ouro: #009c91;
+  --atraso: #8d3931; --atraso-claro: #fbefec; --atencao: #775930; --atencao-claro: #f6f0e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--papel); color: var(--tinta); font: 14px/1.45 "Public Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums slashed-zero; }
+main { max-width: 1320px; margin: 0 auto; padding: 32px 24px 64px; }
+h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+.intro { color: var(--tinta-2); margin: 0 0 28px; max-width: 70ch; }
+h2 { font-size: 15px; font-weight: 650; margin: 36px 0 12px; }
+.nota { color: var(--tinta-2); font-size: 13px; margin: -6px 0 14px; max-width: 72ch; }
+
+/* barra de lista, como no Rebanho */
+.barra { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--folha); border: 1px solid var(--linha); border-radius: 8px 8px 0 0; border-bottom: 0; font-size: 13px; color: var(--tinta-2); }
+.barra strong { color: var(--tinta); font-weight: 650; }
+.barra .acao { margin-left: auto; color: var(--pasto); font-weight: 600; }
+
+.grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 10px; padding: 14px; background: var(--folha); border: 1px solid var(--linha); border-radius: 0 0 8px 8px; }
+
+/* ---- cartão proposto ---- */
+.cartao { position: relative; display: grid; grid-template-columns: 22px 1fr 28px; column-gap: 10px; row-gap: 6px; padding: 12px 10px 12px 12px; border: 1px solid var(--linha); border-radius: 8px; background: var(--folha); cursor: pointer; }
+.cartao:hover { border-color: var(--linha-forte); }
+.cartao:focus-visible { outline: 2px solid var(--pasto); outline-offset: 2px; }
+.cartao.sel { border-color: var(--pasto); background: #f3f9f8; }
+.cartao input { margin: 4px 0 0; width: 16px; height: 16px; accent-color: var(--pasto); }
+.id { min-width: 0; }
+.brinco { font-size: 20px; line-height: 1.1; font-weight: 700; letter-spacing: -0.01em; }
+.brinco span { color: var(--tinta-3); font-weight: 500; }
+.nome { font-size: 13px; color: var(--tinta-2); margin-left: 6px; font-weight: 500; }
+.mais { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--tinta-3); font-size: 18px; line-height: 1; cursor: pointer; }
+.mais:hover { background: var(--papel); color: var(--tinta); }
+.onde, .estado, .alerta { grid-column: 2 / 4; }
+.onde { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--tinta-2); font-size: 13px; }
+.onde b { color: var(--tinta); font-weight: 600; }
+.estado { display: flex; flex-wrap: wrap; gap: 6px; }
+.fato { display: inline-flex; align-items: baseline; gap: 5px; padding: 2px 8px; border-radius: 4px; font-size: 12.5px; background: var(--papel); color: var(--tinta-2); }
+.fato b { font-weight: 650; color: var(--tinta); }
+.fato.gestante { background: var(--pasto-claro); color: var(--pasto); } .fato.gestante b { color: var(--pasto); }
+.fato.aguardando { background: var(--atencao-claro); color: var(--atencao); } .fato.aguardando b { color: var(--atencao); }
+.alerta { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--atraso); font-weight: 600; }
+.alerta::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--atraso); flex: none; }
+.menu { position: absolute; right: 10px; top: 42px; z-index: 2; min-width: 170px; padding: 4px; background: var(--folha); border: 1px solid var(--linha-forte); border-radius: 6px; }
+.menu div { padding: 7px 10px; border-radius: 4px; font-size: 13px; }
+.menu div:first-child { background: var(--papel); }
+
+/* ---- comparação: cartão atual (reprodução fiel, reduzida) ---- */
+.comparar { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.rotulo { font-size: 13px; font-weight: 650; margin-bottom: 8px; }
+.rotulo small { font-weight: 400; color: var(--tinta-2); margin-left: 6px; }
+.atual { width: 268px; border: 1px solid var(--linha); border-radius: 8px; background: var(--folha); overflow: hidden; }
+.atual .t { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; padding: 14px 12px 6px; }
+.atual .t .n { font-size: 15px; font-weight: 600; } .atual .t .tag { display: inline-block; margin-top: 4px; padding: 1px 6px; background: var(--papel); border-radius: 4px; font-size: 12px; color: var(--tinta-2); }
+.atual .ativo { align-self: start; padding: 2px 8px; border-radius: 4px; background: var(--pasto-claro); color: var(--pasto); font-size: 12px; }
+.atual .m { display: flex; gap: 10px; padding: 4px 12px 12px; align-items: center; }
+.atual .ret { width: 44px; height: 44px; border-radius: 6px; background: var(--pasto-claro); display: grid; place-items: center; font-size: 22px; }
+.atual .m p { margin: 0; font-size: 12.5px; color: var(--tinta-2); }
+.atual .r { display: flex; justify-content: flex-end; gap: 16px; padding: 10px 12px; background: var(--papel); border-top: 1px solid var(--linha); color: var(--pasto); font-size: 13px; font-weight: 600; }
+.ganhos { margin: 10px 0 0; padding-left: 18px; color: var(--tinta-2); font-size: 13px; }
+.ganhos li { margin: 3px 0; }
+
+/* ---- celular ---- */
+.celular { width: 390px; padding: 12px; background: var(--papel); border: 1px solid var(--linha); border-radius: 8px; }
+.celular .grade { grid-template-columns: 1fr; padding: 0; border: 0; background: transparent; gap: 8px; }
+.lado { display: grid; grid-template-columns: 390px 1fr; gap: 28px; align-items: start; }
+.lado ul { margin: 0; padding-left: 18px; color: var(--tinta-2); font-size: 13px; max-width: 60ch; }
+.lado li { margin: 6px 0; }
+@media (max-width: 860px) { .comparar, .lado { grid-template-columns: 1fr; } .celular { width: 100%; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cartão do animal, versão compacta</h1>
+  <p class="intro">Proposta para a lista do Rebanho no modo cartões. O brinco passa a ser o título, a informação igual em todos os cartões sai, e entram a situação reprodutiva e a produtiva, que o servidor já calcula para a ficha. O cartão inteiro abre a ficha. Editar e movimentar ficam no menu ⋯.</p>
+
+  <h2>Antes e depois</h2>
+  <div class="comparar">
+    <div>
+      <div class="rotulo">Hoje <small>cerca de 180 px de altura</small></div>
+      <div class="atual">
+        <div class="t"><input type="checkbox" aria-label="Selecionar"><div><div class="n">Lactantes 21</div><span class="tag">#DEV-021</span></div><span class="ativo">● Ativo</span></div>
+        <div class="m"><div class="ret" aria-hidden="true">🐄</div><p>Vaca · Leite<br>Lactantes</p></div>
+        <div class="r"><span>✎</span><span>⇄</span><span>Ver animal ›</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="rotulo">Proposta <small>cerca de 100 px de altura</small></div>
+      <div style="width:268px">
+        <article class="cartao" tabindex="0" aria-label="Animal DEV-021">
+          <input type="checkbox" aria-label="Selecionar DEV-021">
+          <div class="id"><span class="brinco"><span>DEV-</span>021</span><span class="nome">Lactantes 21</span></div>
+          <button class="mais" aria-label="Mais ações de DEV-021">⋯</button>
+          <div class="onde"><span><b>Vaca</b></span><span>Lote <b>Lactantes</b></span></div>
+          <div class="estado"><span class="fato gestante"><b>Gestante</b> 145 dias</span><span class="fato"><b>Lactante</b> DEL 451</span></div>
+        </article>
+      </div>
+      <ul class="ganhos">
+        <li>Brinco grande, com o prefixo discreto: dá para correr o olho pela coluna de números.</li>
+        <li>Sem ícone, sem selo “Ativo” e sem rodapé de botões. Um animal baixado ganha selo próprio, porque é exceção.</li>
+        <li>Cor só onde muda a ação: gestante em verde, aguardando diagnóstico em âmbar, alerta clínico em vermelho.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Lista no computador</h2>
+  <p class="nota">Com 1366 px de largura cabem quatro colunas. São cerca de 7 linhas por tela, contra 3 hoje: 28 animais no lugar de 12.</p>
+  <div class="barra"><input type="checkbox" aria-label="Selecionar todos"> <strong>2 selecionados</strong> de 72 animais ativos no Sítio principal <span class="acao">Movimentar selecionados</span></div>
+  <div class="grade" id="grade"></div>
+
+  <h2>No celular</h2>
+  <div class="lado">
+    <div class="celular"><div class="grade" id="grade-celular"></div></div>
+    <ul>
+      <li>Uma coluna. O cartão continua com quatro linhas no máximo, então cabem de 6 a 7 animais por tela.</li>
+      <li>Tocar no cartão abre a ficha. O ⋯ tem alvo de toque de 44 px na implementação; aqui ele está desenhado em 28 px.</li>
+      <li>A caixa de seleção continua à esquerda, como hoje, para movimentar em lote.</li>
+      <li>O menu ⋯ aberto, à direita, mostra as ações que saem do rodapé.</li>
+    </ul>
+  </div>
+</main>
+<script>
+// Dados ilustrativos no formato da seed (DEV-0xx, lote Lactantes/Secas/Novilhas).
+const A = [
+  ["021","Lactantes 21","Vaca","Lactantes",["gestante","Gestante","145 dias"],["","Lactante","DEL 451"],null,true],
+  ["022","Lactantes 22","Vaca","Lactantes",["gestante","Gestante","145 dias"],["","Lactante","DEL 451"],null,true],
+  ["001","Lactantes 1","Vaca","Lactantes",["","Vazia",""],["","Lactante","DEL 0"],"Colostro: leite descartado até 05/11"],
+  ["002","Lactantes 2","Vaca","Lactantes",["","Vazia",""],["","Lactante","DEL 1"],null],
+  ["005","Lactantes 5","Vaca","Lactantes",["aguardando","Aguardando diagnóstico","IA há 32 dias"],["","Lactante","DEL 4"],null],
+  ["006","Lactantes 6","Vaca","Lactantes",["","Vazia",""],["","Lactante","DEL 7"],"Mastite em tratamento"],
+  ["011","Lactantes 11","Vaca","Lactantes",["aguardando","Aguardando diagnóstico","IA há 18 dias"],["","Lactante","DEL 63"],null],
+  ["019","Lactantes 19","Vaca","Lactantes",["gestante","Gestante","210 dias"],["","Lactante","DEL 302"],"Secar até 12/11"],
+  ["037","Secas 37","Vaca","Secas",["gestante","Gestante","250 dias"],["","Seca",""],"Parto previsto em 03/12"],
+  ["038","Secas 38","Vaca","Secas",["gestante","Gestante","238 dias"],["","Seca",""],null],
+  ["049","Novilhas 49","Novilha","Novilhas",["","Apta",""],null,null],
+  ["050","Novilhas 50","Novilha","Novilhas",["aguardando","Aguardando diagnóstico","IA há 25 dias"],null,null],
+];
+function cartao(a, i, menu) {
+  const [n, nome, cat, lote, rep, prod, alerta, sel] = a;
+  const fato = f => f ? `<span class="fato ${f[0]}"><b>${f[1]}</b>${f[2] ? " " + f[2] : ""}</span>` : "";
+  return `<article class="cartao${sel ? " sel" : ""}" tabindex="0" aria-label="Animal DEV-${n}">
+    <input type="checkbox" ${sel ? "checked" : ""} aria-label="Selecionar DEV-${n}">
+    <div class="id"><span class="brinco"><span>DEV-</span>${n}</span><span class="nome">${nome}</span></div>
+    <button class="mais" aria-label="Mais ações de DEV-${n}">⋯</button>
+    <div class="onde"><span><b>${cat}</b></span><span>Lote <b>${lote}</b></span></div>
+    <div class="estado">${fato(rep)}${fato(prod)}</div>
+    ${alerta ? `<div class="alerta">${alerta}</div>` : ""}
+    ${menu ? `<div class="menu" role="menu"><div>Editar dados</div><div>Movimentar</div><div>Registrar pesagem</div></div>` : ""}
+  </article>`;
+}
+document.getElementById("grade").innerHTML = A.map((a, i) => cartao(a, i, false)).join("");
+document.getElementById("grade-celular").innerHTML = A.slice(2, 7).map((a, i) => cartao(a, i, i === 1)).join("");
+</script>
+</body>
+</html>

@@ -3,14 +3,14 @@ import { Input } from "../../../components/ui/input";
 import { classeInput } from "../../../financeiro/PainelCadastro";
 
 /** O valor sem T conserva somente o dia. Hora vazia não significa meia-noite. */
-export function CampoDataIatf({ valor, onChange, rotulo, disabled, onBlur }: {
-  valor: string; onChange: (valor: string) => void; rotulo: string; disabled?: boolean; onBlur?: () => void;
+export function CampoDataIatf({ valor, onChange, rotulo, disabled, onBlur, className = "grid gap-2 sm:grid-cols-2" }: {
+  valor: string; onChange: (valor: string) => void; rotulo: string; disabled?: boolean; onBlur?: () => void; className?: string;
 }) {
   const [data = "", hora = ""] = valor.split("T");
-  return <fieldset disabled={disabled} onBlur={onBlur} className="grid gap-2 sm:grid-cols-2">
-    <label className="text-sm">{rotulo}<DatePicker aria-label={rotulo} className={classeInput}  required value={data}
+  return <fieldset disabled={disabled} onBlur={onBlur} className={className}>
+    <label className="text-sm">{rotulo}<DatePicker aria-label={rotulo} className="mt-1.5" required value={data}
       onChange={valor => onChange(valor ? `${valor}${hora ? `T${hora}` : ""}` : "")} /></label>
-    <label className="text-sm">Horário (opcional)<Input aria-label={`Horário (opcional) · ${rotulo}`} className={classeInput} type="time" value={hora} disabled={!data}
+    <label className="text-sm"><span>Horário <small>(opcional)</small></span><Input aria-label={`Horário (opcional) · ${rotulo}`} className={classeInput} type="time" value={hora} disabled={!data}
       onChange={e => onChange(`${data}${e.target.value ? `T${e.target.value}` : ""}`)} /></label>
   </fieldset>;
 }

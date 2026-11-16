@@ -11,7 +11,7 @@ import type { ParceiroBase } from "./novo-api";
 export const IMPACTOS_OPERACAO = {
   TODOS: "Todos os impactos", ESTOQUE: "Movimentou estoque", PAGAMENTO: "Gerou pagamento",
   RECEBIMENTO: "Gerou recebimento", A_PAGAR: "Gerou conta a pagar", A_RECEBER: "Gerou conta a receber",
-  TRANSFERENCIA: "Transferiu entre contas", SEM_EFEITOS: "Sem impactos gerados",
+  TRANSFERENCIA: "Transferiu entre contas", ANIMAIS: "Cadastrou animais", SEM_EFEITOS: "Sem impactos gerados",
 };
 export type EfeitoFiltro = keyof typeof IMPACTOS_OPERACAO;
 export type FiltrosOperacoes = {

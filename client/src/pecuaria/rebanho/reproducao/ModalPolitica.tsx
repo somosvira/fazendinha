@@ -4,7 +4,7 @@ import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { registrarGuardaNavegacao } from "../../../navegacaoGuardada";
 
 /** A nova versão permanece protegida também ao trocar o sítio ou a rota. */
-export function ModalPolitica(props: ComponentProps<typeof PainelCadastro>) {
+export function ModalPolitica(props: ComponentProps<typeof PainelCadastro> & { emPagina?: boolean }) {
   const [alterado, setAlterado] = useState(false);
   const [confirmarSaida, setConfirmarSaida] = useState(false);
   const estado = useRef({ alterado: false, bloqueado: false });
@@ -36,10 +36,19 @@ export function ModalPolitica(props: ComponentProps<typeof PainelCadastro>) {
     concluir?.(permitir);
   }
 
+  const fechar = () => {
+    if (estado.current.bloqueado) return;
+    if (!estado.current.alterado) { props.onFechar(); return; }
+    resolver.current = permitir => { if (permitir) props.onFechar(); };
+    setConfirmarSaida(true);
+  };
   return <>
-    <PainelCadastro {...props} alteracoesExternas={estado.current.alterado}>
+    {props.emPagina ? <section className="space-y-4 rounded-lg border border-border bg-card p-4" aria-label={typeof props.titulo === "string" ? props.titulo : undefined}>
+      <div className="flex flex-wrap items-center justify-between gap-3"><h3 className="font-semibold">{props.titulo}</h3><div className="flex flex-wrap justify-end gap-2">{typeof props.rodape === "function" ? props.rodape(fechar) : props.rodape}</div></div>
       <div onChangeCapture={() => setAlterado(true)}>{props.children}</div>
-    </PainelCadastro>
+    </section> : <PainelCadastro {...props} alteracoesExternas={estado.current.alterado}>
+      <div onChangeCapture={() => setAlterado(true)}>{props.children}</div>
+    </PainelCadastro>}
     <ConfirmDialog open={confirmarSaida} title="Descartar alterações?" message="Os dados preenchidos não serão salvos." confirmLabel="Descartar alterações" cancelLabel="Continuar editando" tone="danger" processando={props.bloqueado} onConfirm={() => responder(true)} onCancel={() => responder(false)}/>
   </>;
 }

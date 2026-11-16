@@ -22,6 +22,7 @@ import type { UsuarioSessao } from "../lib/auth";
 import { useToast } from "./Toast";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Button, Modal, PageHeader, PaginaFinanceira } from "../financeiro/financeiro-ui";
+import { EsqueletoTabela } from "./Esqueleto";
 
 /* validação simples de email (suficiente p/ feedback antes do envio real) */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -143,7 +144,7 @@ function InviteModal({
   // única vez e some ao fechar, então nada de formulário competindo por atenção.
   if (criado) {
     return (
-      <Modal titulo="Convite criado" eyebrow="Acessos" onClose={onClose}>
+      <Modal titulo="Convite criado" eyebrow="" onClose={onClose}>
           <div className="modal-body">
             <p className="m-0 mb-5 text-[15px] leading-[1.6] text-ink-3">
               Envie este link para <strong className="text-[color:var(--ink)]">{criado.nome}</strong>. Ele vale por 7 dias,
@@ -167,7 +168,7 @@ function InviteModal({
   }
 
   return (
-    <Modal titulo="Convidar pessoa" eyebrow="Acessos" onClose={onClose}>
+    <Modal titulo="Convidar pessoa" eyebrow="" onClose={onClose}>
         <div className="modal-body">
           <div className="field">
             <label className="field-label" htmlFor="inv-nome">Nome</label>
@@ -285,7 +286,7 @@ function PermissionEditor({
     <div className="acessos-editor overflow-hidden rounded-xl border border-border bg-card">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-5">
         <div className="flex items-center gap-[14px]">
-          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-serif text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
+          <div className="grid h-[52px] w-[52px] place-items-center rounded-full bg-mast font-sans text-[22px] text-mast-ink">{inicialDe(user.nome)}</div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5 text-lg font-semibold">
               {user.nome}
@@ -335,7 +336,7 @@ function PermissionEditor({
 
       {user.dono ? (
         <div className="px-[26px] py-[30px]">
-          <span className="font-serif font-medium" style={{ fontSize: 17 }}>
+          <span className="font-sans font-medium" style={{ fontSize: 17 }}>
             Acesso total e irrevogável.
           </span>
           <p className="mt-2 max-w-[56ch] text-[15px] leading-[1.6] text-ink-3">
@@ -368,7 +369,7 @@ function PermissionEditor({
           <div className="border-b border-[color:var(--rule-soft)] px-[26px] py-[22px]">
             <div className="mb-[14px] flex items-baseline justify-between">
               <h2 className="text-base font-semibold">Papel</h2>
-              <span className="font-serif text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
+              <span className="font-sans text-[15px] italic text-[color:var(--ink)]">{papelNome}</span>
             </div>
             <div className="flex flex-wrap gap-2">
               {Object.entries(PAPEIS)
@@ -566,7 +567,7 @@ export function Acessos() {
             <label className="acessos-busca"><Search size={16} aria-hidden="true" /><input type="search" aria-label="Buscar pessoa" placeholder="Buscar nome ou e-mail" value={busca} onChange={e => setBusca(e.target.value)} /></label>
             <div className="acessos-status-filtros" aria-label="Filtrar pessoas por situação">{[["", "Todos"], ["ATIVO", "Ativos"], ["PENDENTE", "Pendentes"], ["INATIVO", "Inativos"]].map(([valor, texto]) => <button type="button" key={valor} aria-pressed={statusFiltro === valor} onClick={() => setStatusFiltro(valor)}>{texto}</button>)}</div>
           </div>
-          {carregando ? <div className="p-5 text-sm text-ink-3" role="status">Carregando pessoas…</div> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
+          {carregando ? <EsqueletoTabela label="Carregando pessoas" className="p-5" /> : erroCarga ? <div className="p-5 text-sm" role="alert"><p>{erroCarga}</p><Button secondary className="mt-3" onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button></div> : usersVisiveis.length === 0 ? (
             <div className="px-[18px] py-[22px] text-[13px] text-ink-3">{users.length ? "Nenhuma pessoa encontrada. Ajuste a busca ou a situação." : "Ninguém por aqui ainda. Convide a primeira pessoa."}</div>
           ) : (
             <div className="acessos-pessoas" aria-label="Selecionar pessoa">
@@ -579,7 +580,7 @@ export function Acessos() {
                   onClick={() => { setSelId(u.id); setEditorAberto(true); }}
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-serif text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
+                    <div className="grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-mast font-sans text-[17px] text-mast-ink">{inicialDe(u.nome)}</div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <span className="acessos-pessoa-nome break-words font-sans text-[14px] font-medium text-[color:var(--ink)]">{u.nome}</span>
@@ -603,7 +604,7 @@ export function Acessos() {
         </section>
 
         {editorAberto && sel ? (
-          <DialogFinanceiro titulo={`Permissões de ${sel.nome}`} eyebrow="Acessos e permissões" icon={ShieldCheck} className="max-w-4xl" onClose={() => { if (!salvando) setEditorAberto(false); }}><fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
+          <DialogFinanceiro titulo={`Permissões de ${sel.nome}`} eyebrow="" icon={ShieldCheck} className="max-w-4xl" onClose={() => { if (!salvando) setEditorAberto(false); }}><fieldset disabled={salvando} aria-busy={salvando} className="min-w-0 border-0 p-0 m-0">
           <legend className="sr-only">Permissões de {sel.nome}</legend>
           <span role="status" className={salvando ? "block mb-2 text-sm text-muted-foreground" : "sr-only"}>{salvando ? "Salvando permissões…" : ""}</span>
           <PermissionEditor

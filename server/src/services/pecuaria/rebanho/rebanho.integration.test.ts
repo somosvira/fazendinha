@@ -636,5 +636,5 @@ describeComBanco("pecuária v1 (rebanho) com PostgreSQL", () => {
     } finally {
       await prisma.categoriaAnimal.updateMany({ where: { id: { in: desligar.map((d) => d.id) } }, data: { ativo: true } });
     }
-  });
+  }, 30_000); // percorre vários filtros contra o banco: ~4 s no CI, perto demais do limite padrão de 5 s
 });

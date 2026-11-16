@@ -1,3 +1,4 @@
+import type { ConfirmacaoImpacto } from "./impactos-api";
 import type { ResumoCustos } from "../custos/api";
 import { comPropriedade } from "../../../propriedadeScope";
 
@@ -22,7 +23,7 @@ export type AplicacaoSanitaria = {
 export type ServicoSanitario = { id: string; numero: number; data: string; descricao: string | null; propriedadeId?: number | null; propriedade?: { id: number; nome: string } | null; valorTotal?: string; parceiro: { nome: string } | null };
 
 export class SanidadeApiError extends Error {
-  constructor(message: string, public readonly code?: string, public readonly campo?: string) {
+  constructor(message: string, public readonly code?: string, public readonly campo?: string, public readonly produtoExistente?: { id: string; nome: string }) {
     super(message);
     this.name = "SanidadeApiError";
   }
@@ -33,7 +34,7 @@ export async function reqSanidade<T>(caminho: string, init?: RequestInit, propri
     ...init, headers: { ...comPropriedade({ ...(init?.body ? { "content-type": "application/json" } : {}), ...((init?.headers as Record<string, string>) ?? {}) }), ...(propriedadeId ? { "X-Propriedade-Id": String(propriedadeId) } : {}) },
   });
   const dados = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo);
+  if (!resposta.ok) throw new SanidadeApiError(dados.error ?? `Erro HTTP ${resposta.status}`, dados.code, dados.campo, dados.produtoExistente);
   return dados as T;
 }
 const req = reqSanidade;
@@ -57,11 +58,12 @@ export const salvarTipoAplicacao = (body: { nome?: string; ativo?: boolean }, id
 export const listarComprasDiretas = (propriedadeId: number) => req<CompraDireta[]>(`/compras-diretas?propriedadeId=${propriedadeId}`, undefined, propriedadeId);
 export type EstadoPrazo = "INFORMADO" | "NAO_INFORMADO" | "NAO_APLICAVEL";
 export type AplicacaoInput = {
+  chave?: string; impacto?: ConfirmacaoImpacto;
   animalId: string; propriedadeId: number; data: string; aplicadaEm?: string; tipoAplicacaoId: string;
   tarefaId?: string;
   ocorrenciaId?: string;
   origemInsumo: "BAIXA_ESTOQUE" | "INCLUSO_SERVICO" | "COMPRA_CONSUMO_DIRETO" | "SEM_ORIGEM_JUSTIFICADA";
-  nomeProdutoAplicado: string; produtoId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
+  nomeProdutoAplicado: string; produtoId?: string; /** Item do catálogo adotado ao confirmar; `categoriaId` só junto dele. Nunca com `produtoId`. */ produtoCatalogoId?: string; categoriaId?: string; dose: string; unidadeDose: string; responsavel?: string; via?: string; referenciaCarencia?: string;
   operacaoServicoId?: string; itemCompraDiretaId?: string; partidaId?: string; partidaCodigo?: string; partidaValidade?: string; cienciaValidadeDesconhecida?: boolean;
   justificativaSemOrigem?: string; estadoCarenciaLeite: EstadoPrazo; estadoCarenciaCarne: EstadoPrazo;
   documentacaoExcepcional?: boolean; motivoDocumentacaoExcepcional?: string;

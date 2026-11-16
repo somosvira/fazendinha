@@ -52,7 +52,7 @@ function ExecutarExames({ tarefas, onFechar, onSalvo }: { tarefas: TarefaRodada[
   function editar() { chave.current = crypto.randomUUID(); setPrevia(null); setErro(null); setCampoErro(""); }
   const falhaCampo = (nome: string) => campoErro === nome || campoErro.replace(/^itens\.\d+\./, "") === nome;
   const atributosCampo = (nome: string) => ({ "aria-invalid": falhaCampo(nome) || undefined, "aria-describedby": falhaCampo(nome) ? `execucao-erro-${nome}` : undefined });
-  const avisoCampo = (nome: string) => falhaCampo(nome) ? <p id={`execucao-erro-${nome}`} role="alert" className="text-sm text-red-700">{erro}</p> : null;
+  const avisoCampo = (nome: string) => falhaCampo(nome) ? <p id={`execucao-erro-${nome}`} role="alert" className="text-sm text-destructive">{erro}</p> : null;
   async function enviar() {
     if (trava.current) return;
     const itens = tarefas.map((t) => {

@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { AjudaCampo } from "@/components/Dica";
 import { Button } from "@/components/ui/button";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
@@ -12,6 +13,7 @@ import {
   type PaginaComercial,
   type ComponenteDemonstrativo,
 } from "./comercial-types";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 interface Alocacao {
   entrega: EntregaComercial;
   quantidade: string;
@@ -204,11 +206,11 @@ export function NovoDemonstrativoLeite({
         <div className="leite-form-inline">
           <label>
             Comprador do demonstrativo
-            <select
+            <SelectCampo
               required
               value={parceiro}
-              onChange={(e) => {
-                setParceiro(e.target.value);
+              onValueChange={(valor) => {
+                setParceiro(valor);
                 setPagina(1);
               }}
             >
@@ -219,34 +221,21 @@ export function NovoDemonstrativoLeite({
                   {!p.ativo ? " (inativo · histórico)" : ""}
                 </option>
               ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Início comercial
-            <input
-              type="date"
-              required
-              max={fim}
-              value={inicio}
-              onChange={(e) => {
-                setInicio(e.target.value);
+            <DatePicker required max={fim} value={inicio} onChange={(valor) => {
+                setInicio(valor);
                 setPagina(1);
-              }}
-            />
+              }} />
           </label>
           <label>
             Fim comercial
-            <input
-              type="date"
-              required
-              min={inicio}
-              max={hojeOperacional()}
-              value={fim}
-              onChange={(e) => {
-                setFim(e.target.value);
+            <DatePicker required min={inicio} max={hojeOperacional()} value={fim} onChange={(valor) => {
+                setFim(valor);
                 setPagina(1);
-              }}
-            />
+              }} />
           </label>
           <label>
             Referência do demonstrativo

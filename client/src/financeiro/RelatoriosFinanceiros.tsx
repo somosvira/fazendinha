@@ -29,12 +29,13 @@ const dataHora = (valor: string) => new Intl.DateTimeFormat("pt-BR", { dateStyle
 const DESCRICAO = "Central dos relatórios emitidos: cada um preserva o recorte, o autor e o PDF gerado.";
 
 function recorte(r: RelatorioFinanceiro) {
-  const p = r.parametros;
+  // Relatórios antigos guardam `classificacoes`; os novos guardam `grupoIds`.
+  const p = r.parametros as typeof r.parametros & { classificacoes?: string[] };
   const partes = [
     p.tipos?.length ? `${p.tipos.length} tipo${p.tipos.length > 1 ? "s" : ""}` : null,
     p.centroCustoIds?.length ? `${p.centroCustoIds.length} centro${p.centroCustoIds.length > 1 ? "s" : ""}` : null,
     p.categoriaIds?.length ? `${p.categoriaIds.length} categoria${p.categoriaIds.length > 1 ? "s" : ""}` : null,
-    p.classificacoes?.length ? p.classificacoes.map((c) => c === "CUSTEIO" ? "custeio" : c === "INVESTIMENTO" ? "investimento" : "não classificadas").join(" + ") : null,
+    p.grupoIds?.length ? `${p.grupoIds.length} grupo${p.grupoIds.length > 1 ? "s" : ""}` : p.classificacoes?.length ? p.classificacoes.map((c) => c === "CUSTEIO" ? "custeio" : c === "INVESTIMENTO" ? "investimento" : "não classificadas").join(" + ") : null,
   ].filter(Boolean);
   return partes.length ? partes.join(" · ") : "Sem filtros";
 }
@@ -138,7 +139,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   const totalPaginas = Math.max(1, Math.ceil(relatoriosFiltrados.length / 15));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const colunas: ColunaTabela<RelatorioFinanceiro>[] = [
-    { chave: "nome", titulo: "Relatório", principal: true, larguraMinima: 240, celula: (r) => <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="break-words">{r.nome}</strong>{r.status !== "CONCLUIDO" && <StatusPill status={r.status} />}{r.id === recente && <span className="text-[11px] font-semibold uppercase tracking-[.1em] text-green-800">Novo</span>}</div><div className="mt-0.5 text-xs text-ink-3">{recorte(r)}</div>{r.erro && <div className="mt-1 text-xs text-red-700">{r.erro}</div>}</div> },
+    { chave: "nome", titulo: "Relatório", principal: true, larguraMinima: 240, celula: (r) => <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><strong className="break-words">{r.nome}</strong>{r.status !== "CONCLUIDO" && <StatusPill status={r.status} />}{r.id === recente && <span className="text-[11px] font-semibold uppercase tracking-[.1em] text-green-800">Novo</span>}</div><div className="mt-0.5 text-xs text-ink-3">{recorte(r)}</div>{r.erro && <div className="mt-1 text-xs text-destructive">{r.erro}</div>}</div> },
     { chave: "periodo", titulo: "Período", larguraMinima: 190, celula: (r) => <span className="whitespace-nowrap">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</span> },
     ...(variasPropriedades ? [{ chave: "propriedade", titulo: "Propriedade", larguraMinima: 150, celula: (r: RelatorioFinanceiro) => r.propriedade }] : []),
     { chave: "gerado", titulo: "Gerado em", larguraMinima: 140, celula: (r) => <span className="whitespace-nowrap">{dataHora(r.geradoEm)}</span> },
@@ -163,7 +164,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
       <div className="consulta-visual-barra"><span>{relatoriosFiltrados.length} relatórios</span><AlternarVisualizacaoConsulta {...visual} rotulo="Visualização dos relatórios" /></div>
       {relatoriosFiltrados.length === 0
         ? <Empty>{relatorios.length ? "Nenhum relatório emitido no período selecionado." : "Nenhum relatório foi gerado ainda."}</Empty>
-        : visual.modo === "visual" ? <div className="consulta-entidades" style={{ gridTemplateColumns: "1fr" }}>{relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15).map(r => <CartaoConsulta key={r.id} titulo={r.nome} detalhe={recorte(r)} icon={FileText} onAbrir={() => abrir(r)} status={<StatusPill status={r.status} />} acoes={podeExportar && r.status === "CONCLUIDO" ? <Button secondary onClick={() => void baixar(r)}><Download size={16} aria-hidden /> Baixar PDF</Button> : undefined}><div className="consulta-fatos"><FatoConsulta rotulo="Sítio">{r.propriedade}</FatoConsulta><FatoConsulta rotulo="Período do relatório">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</FatoConsulta><FatoConsulta rotulo="Gerado em">{dataHora(r.geradoEm)}</FatoConsulta><FatoConsulta rotulo="Autor">{r.autor}</FatoConsulta></div>{r.erro && <p className="mt-3 text-sm text-red-700">{r.erro}</p>}</CartaoConsulta>)}</div> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={consultaColunas.colunas} rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
+        : visual.modo === "visual" ? <div className="consulta-entidades" style={{ gridTemplateColumns: "1fr" }}>{relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15).map(r => <CartaoConsulta key={r.id} titulo={r.nome} detalhe={recorte(r)} icon={FileText} onAbrir={() => abrir(r)} status={<StatusPill status={r.status} />} acoes={podeExportar && r.status === "CONCLUIDO" ? <Button secondary onClick={() => void baixar(r)}><Download size={16} aria-hidden /> Baixar PDF</Button> : undefined}><div className="consulta-fatos"><FatoConsulta rotulo="Sítio">{r.propriedade}</FatoConsulta><FatoConsulta rotulo="Período do relatório">{dataCurta(r.parametros.dataInicio)} a {dataCurta(r.parametros.dataFim)}</FatoConsulta><FatoConsulta rotulo="Gerado em">{dataHora(r.geradoEm)}</FatoConsulta><FatoConsulta rotulo="Autor">{r.autor}</FatoConsulta></div>{r.erro && <p className="mt-3 text-sm text-destructive">{r.erro}</p>}</CartaoConsulta>)}</div> : <TabelaFinanceira ordenacao={ordem.controle} filtrosColunas={consultaColunas.colunas} rotulo="Relatórios gerados" colunas={colunas} compacta itens={relatoriosFiltrados.slice((paginaAtual - 1) * 15, paginaAtual * 15)} chaveDe={(r) => r.id} onAbrir={abrir} classeLinha={(r) => r.id === recente ? "bg-muted" : ""} />}
       <Paginacao pagina={paginaAtual} totalPaginas={totalPaginas} total={relatoriosFiltrados.length} porPagina={15} rotulo="Paginação de relatórios" substantivo="relatórios" idSelect="pagina-relatorios" onPagina={setPagina} />
     </Panel>
     <ConfirmDialog

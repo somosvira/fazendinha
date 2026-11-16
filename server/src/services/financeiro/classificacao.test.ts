@@ -6,8 +6,8 @@ const d = (v: number) => new Prisma.Decimal(v);
 const CAT_SILAGEM = uid(101), CAT_VACINAS = uid(102), CAT_SERVICOS = uid(103);
 const CENTRO_PECUARIA = uid(201), CENTRO_SEDE = uid(209);
 const op = { valorTotal: 1000, itens: [
-  { id: uid(1), ordem: 1, categoriaId: CAT_SILAGEM, categoriaNome: "Silagem", classificacao: "CUSTEIO" as const, valorTotal: 800 },
-  { id: uid(2), ordem: 2, categoriaId: CAT_VACINAS, categoriaNome: "Vacinas", classificacao: "CUSTEIO" as const, valorTotal: 200 },
+  { id: uid(1), ordem: 1, categoriaId: CAT_SILAGEM, categoriaNome: "Silagem", valorTotal: 800 },
+  { id: uid(2), ordem: 2, categoriaId: CAT_VACINAS, categoriaNome: "Vacinas", valorTotal: 200 },
 ] };
 const valores = (partes: ReturnType<typeof ratearCategorias>) => partes.map((p) => p.valor.toNumber());
 describe("classificação por item", () => {
@@ -46,8 +46,8 @@ describe("classificação por item", () => {
     const mista: OperacaoComFluxo & { compromissos: { id: string; seq: number; status: string; valorOriginal: Prisma.Decimal; liquidacoes: never[] }[] } = {
       valorTotal: 1000, centroCustoId: CENTRO_SEDE, centroCusto: { id: CENTRO_SEDE, nome: "Sede" },
       itens: [
-        { id: uid(1), ordem: 1, categoriaId: uid(111), categoriaNome: "Ração", classificacao: "CUSTEIO", valorTotal: 500, centroCustoId: CENTRO_PECUARIA, centroCustoNome: "Pecuária" },
-        { id: uid(2), ordem: 2, categoriaId: uid(112), categoriaNome: "Frete", classificacao: "CUSTEIO", valorTotal: 500, centroCustoId: null, centroCustoNome: null },
+        { id: uid(1), ordem: 1, categoriaId: uid(111), categoriaNome: "Ração", valorTotal: 500, centroCustoId: CENTRO_PECUARIA, centroCustoNome: "Pecuária" },
+        { id: uid(2), ordem: 2, categoriaId: uid(112), categoriaNome: "Frete", valorTotal: 500, centroCustoId: null, centroCustoNome: null },
       ],
       transacoes: [{ id: uid(11), seq: 1, tipo: "PAGAMENTO", valorTotal: 400, reversaoDeId: null, status: "CONFIRMADA" }],
       compromissos: [{ id: uid(21), seq: 1, status: "PENDENTE", valorOriginal: d(600), liquidacoes: [] }],

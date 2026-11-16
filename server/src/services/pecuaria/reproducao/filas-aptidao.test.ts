@@ -4,7 +4,7 @@ vi.mock("./elegibilidade.js", () => ({ obterElegibilidadesNaDataTx: vi.fn() }));
 import { obterElegibilidadesNaDataTx } from "./elegibilidade.js";
 import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import type { ElegibilidadeNaData } from "./elegibilidade.calc.js";
-const base: ElegibilidadeNaData = {
+const base: ElegibilidadeNaData = { situacaoReprodutiva: "DESCONHECIDA", aptidao: { finalidadePrincipal: null, bloqueioAnteriorId: null, estado: "PENDENTE", exameId: null, data: null, retornoEm: null, motivos: [] },
   animalId: "a", propriedadeId: 1, dataReferencia: "2026-10-29", estado: "PENDENTE", baseElegivel: null, elegivel: null,
   aptaDesde: null, ciclo: null, vinculoCicloId: null, politicaId: null, politicaVersao: null,
   metodologia: "IDEAGRI_IILB_BASE_V1", decisaoId: null, motivos: [], alertas: [], restricaoIds: [],

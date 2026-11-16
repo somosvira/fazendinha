@@ -35,7 +35,7 @@ describe("EntradaSaidaChart", () => {
     ]} />);
 
     expect(html).toContain("Totais acumulados de receitas e despesas");
-    expect(html).toContain("2026-09-02 — Receitas: R$ 100,00; Despesas: R$ 50,00");
+    expect(html).toContain("02/09/2026 — Receitas: R$ 100,00; Despesas: R$ 50,00");
   });
 });
 

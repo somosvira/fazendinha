@@ -48,7 +48,7 @@ export async function travarOrigensExecucaoProtocoloTx(tx:Tx,itens:ItemExecucaoP
 }
 
 /** Prepara todo o conjunto sem criar fatos, movimentar estoque ou alterar calendário. */
-export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProtocoloInput) {
+export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProtocoloInput, opcoes: { planejamentoFuturo?: boolean } = {}) {
   const input = ordenar(execucaoProtocoloSchema.parse(entrada));
   await travarAnimais(tx, input.itens.map(i => i.animalId));
   const tarefas = await tx.tarefaProtocolo.findMany({ where: { id: { in: input.itens.map(i => i.tarefaId) } },
@@ -61,6 +61,7 @@ export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProto
     throw new RebanhoError("VALIDACAO", "Selecione a mesma ação e programação; participação individual não se mistura a outra inscrição", "itens");
   if (tarefas.some(t => t.execucao.canceladaEm || t.execucao.rodada && t.execucao.rodada.status !== "ABERTA"))
     throw new RebanhoError("CONFLITO", "A participação ou programação está encerrada", "itens");
+  if(tarefas.some(t=>t.execucao.bloqueadaEm))throw new RebanhoError("CONFLITO","Participação bloqueada por impacto; registre revisão explícita antes de executar","itens");
   const aplicacoes=input.itens.filter((i):i is Extract<ItemExecucaoProtocolo,{tipo:"APLICACAO"}>=>i.tipo==="APLICACAO");
   const manejos=input.itens.filter((i):i is ItemExecucaoManejo=>i.tipo==="MANEJO"||i.tipo==="RETIRADA");
   const clinicos=input.itens.filter((i):i is ItemExecucaoClinica=>i.tipo==="EXAME"||i.tipo==="TENTATIVA"||i.tipo==="AVALIACAO");
@@ -73,28 +74,28 @@ export async function prepararExecucaoProtocoloTx(tx: Tx, entrada: ExecucaoProto
     const tarefa = tarefas.find(t => t.id === item.tarefaId)!;
     try {
       if(item.tipo!=="APLICACAO"){
-        const p=item.tipo==="MANEJO"||item.tipo==="RETIRADA"?await prepararExecucaoManejoTx(tx,item,null):await prepararExecucaoClinicaTx(tx,item,null);
+        const p=item.tipo==="MANEJO"||item.tipo==="RETIRADA"?await prepararExecucaoManejoTx(tx,item,null,opcoes.planejamentoFuturo):await prepararExecucaoClinicaTx(tx,item,null);
         if("consumo" in p)preparadosClinicos.push(p);
         basesFingerprint.push({tarefaId:tarefa.id,planejado:tarefa.parametros,momento:tarefa.momentoSnapshot,prevista:tarefa.previstaPara,preparada:p.dadosFingerprint});
-        itens.push({tarefaId:item.tarefaId,animalId:item.animalId,tipo:item.tipo,...p.desvio,inicioLegado:p.inicioLegado,carencia:null});
+        itens.push({tarefaId:item.tarefaId,animalId:item.animalId,tipo:item.tipo,...p.desvio,inicioLegado:p.inicioLegado,carencia:null,...("avaliacaoContextual" in p && p.avaliacaoContextual ? {avaliacaoContextual:p.avaliacaoContextual} : {})});
         continue;
       }
       let desvio;
       let preparada;
       let inicioLegado = { exigeCiencia: false, total: 0 };
       if (tarefa.execucao.protocolo.tipo === "REPRODUTIVO") {
-        const reprodutiva = await prepararExecucaoTarefaTx(tx, tarefa.id, entradaIatf(item), null);
+        const reprodutiva = await prepararExecucaoTarefaTx(tx, tarefa.id, entradaIatf(item), null, opcoes.planejamentoFuturo);
         // O executor IATF mantém seu plano e seus efeitos clínicos. A preparação
         // sanitária é reutilizada somente para validar a origem/custo/carência.
         const { tarefaId: _tarefaId, cienciaSanitaria: _ciencia, cienciaRecalendarioLegado: _legado, ...avulsa } = item;
-        preparada = await prepararAplicacaoTx(tx, avulsa, null, true);
+        preparada = await prepararAplicacaoTx(tx, avulsa, null, true, opcoes.planejamentoFuturo);
         desvio = { ...reprodutiva.desvio, referencia: reprodutiva.plano ? "SNAPSHOT_PLANEJADO" : "LEGADO_SEM_SNAPSHOT",
           motivo: item.desvio?.motivo ?? null, motivoObrigatorio: exigeMotivoExecucao(reprodutiva.desvio),
           planejado: reprodutiva.plano?.etapa ?? {}, realizado: reprodutiva.preparado };
         inicioLegado = { exigeCiencia: reprodutiva.impactosInicio.itens.length > 0, total: reprodutiva.impactosInicio.itens.length };
         basesFingerprint.push({ tarefaId: tarefa.id, plano: reprodutiva.plano, impactos: reprodutiva.impactosInicio });
       } else {
-        preparada = await prepararAplicacaoTx(tx, item, null, true);
+        preparada = await prepararAplicacaoTx(tx, item, null, true, opcoes.planejamentoFuturo);
         desvio = preparada.desvioProtocoloSnapshot!;
       }
       if (preparada.dadosCriacao.quantidadeCompraDireta != null)
@@ -150,7 +151,11 @@ export async function executarItensPreparadosProtocoloTx(tx:Tx,previa:Awaited<Re
     const tarefa = previa.tarefas.find(t => t.id === item.tarefaId)!;
     let id: string;
     if(item.tipo==="MANEJO"||item.tipo==="RETIRADA")id=(await executarExecucaoManejoTx(tx,item,usuarioId)).id;
-    else if(item.tipo!=="APLICACAO")id=(await executarExecucaoClinicaTx(tx,item,usuarioId)).id;
+    else if(item.tipo!=="APLICACAO"){
+      const projetado=previa.itens.find(i=>i.tarefaId===item.tarefaId);
+      const contextual=projetado && "avaliacaoContextual" in projetado ? projetado.avaliacaoContextual : null;
+      id=(await executarExecucaoClinicaTx(tx,item.tipo==="AVALIACAO" && contextual ? {...item,revisaoContextual:contextual.revisao} : item,usuarioId)).id;
+    }
     else if (tarefa.execucao.protocolo.tipo === "REPRODUTIVO") {
       const feita = await executarTarefaTx(tx, tarefa.id, entradaIatf(item), usuarioId);
       if (!feita.aplicacaoId) throw new RebanhoError("CONFLITO", "A execução não produziu a aplicação esperada");

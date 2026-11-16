@@ -1,0 +1,25 @@
+/* Composição comum às seis abas, sem alterar barras de outros módulos. */
+.financeiro-configuracoes { min-width: 0; }
+:root .financeiro-configuracoes .consulta-controles {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+  align-items: end;
+}
+:root .financeiro-configuracoes .consulta-controles > .fin-filtro-busca {
+  width: auto;
+  min-width: 0;
+  max-width: none;
+}
+:root .financeiro-configuracoes .consulta-controles > .consulta-mais-filtros {
+  grid-column: 2;
+  order: 0;
+  margin-left: 0;
+}
+@media (max-width: 639px) {
+  .financeiro-configuracoes .consulta-controles > .fin-filtro-busca { grid-column: 1 / -1; }
+}
+
+.financeiro-configuracoes .acoes-produto { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; align-items: center; width: 100%; gap: 4px; }
+.financeiro-configuracoes .acoes-produto > div { display: contents; }
+.financeiro-configuracoes .acoes-produto :is(button, a) { justify-self: center; }

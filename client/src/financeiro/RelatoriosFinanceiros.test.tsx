@@ -17,10 +17,10 @@ vi.mock("./novo-api", () => ({
 }));
 
 const base = { status: "CONCLUIDO" as const, propriedadeId: 1, propriedade: "Fazenda Rio Novo", concluidoEm: null, erro: null };
-const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [uid(1)], parceiroIds: [], categoriaIds: [uid(3), SEM_VINCULO], classificacoes: [] };
+const parametros = { nome: "", dataInicio: "2026-08-01", dataFim: "2026-08-31", regime: "ambos" as const, tipos: [], status: ["CONFIRMADA"], centroCustoIds: [uid(1)], parceiroIds: [], categoriaIds: [uid(3), SEM_VINCULO], grupoIds: [uid(5), SEM_VINCULO] };
 const relatorios: RelatorioFinanceiro[] = [
   { ...base, id: uid(12), nome: "Pecuária — agosto", autor: "Rafael", geradoEm: "2026-09-14T12:00:00Z", parametros },
-  { ...base, id: uid(11), nome: "Fechamento julho", autor: "Contadora", geradoEm: "2026-08-02T12:00:00Z", parametros: { ...parametros, centroCustoIds: [], categoriaIds: [] }, status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." },
+  { ...base, id: uid(11), nome: "Fechamento julho", autor: "Contadora", geradoEm: "2026-08-02T12:00:00Z", parametros: { ...parametros, centroCustoIds: [], categoriaIds: [], grupoIds: [] }, status: "FALHOU", erro: "Não foi possível montar o relatório. Tente gerar novamente." },
 ];
 
 beforeEach(() => {
@@ -42,10 +42,18 @@ describe("central de relatórios financeiros", () => {
     expect(linhas[0].textContent).toContain("Pecuária — agosto");
     expect(linhas[0].textContent).toContain("01/08/2026 a 31/08/2026");
     expect(linhas[0].textContent).toContain("Rafael");
-    expect(linhas[0].textContent).toContain("1 centro · 2 categorias");
+    expect(linhas[0].textContent).toContain("1 centro · 2 categorias · 2 grupos");
     expect(linhas[1].textContent).toContain("Falhou");
     expect(linhas[1].textContent).toContain("Sem filtros");
     expect(screen.queryByText("Volume por tipo de operação")).toBeNull();
+  });
+
+  it("mantém a descrição das classificações em relatórios emitidos antes dos grupos", async () => {
+    const antigo = { ...relatorios[0], parametros: { ...parametros, centroCustoIds: [], categoriaIds: [], grupoIds: undefined, classificacoes: ["CUSTEIO", "INVESTIMENTO"] } } as unknown as RelatorioFinanceiro;
+    vi.mocked(listarRelatoriosFinanceiros).mockResolvedValue([antigo]);
+    render(<RelatoriosFinanceiros />);
+    const tabela = (await screen.findAllByRole("table", { name: "Relatórios gerados" }))[0];
+    expect(tabela.querySelector("tbody tr")!.textContent).toContain("custeio + investimento");
   });
 
   it("baixa o PDF sem abrir o detalhe e só oferece download de concluídos", async () => {

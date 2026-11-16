@@ -1,3 +1,4 @@
+import { dataOperacionalDemanda, demandaDispensada } from "./agenda-demanda.calc.js";
 import { carregarFilasAptidaoTx } from "./filas-aptidao.js";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../../db.js";
@@ -5,7 +6,7 @@ import { z } from "zod";
 import { auditar, RebanhoError, travarAnimais } from "../rebanho/regras.js";
 import { transacaoPecuaria, conflitoTransacaoPecuaria } from "../transacao.js";
 import { condicaoSituacaoTarefa } from "../protocolos/situacao.js";
-import { dia } from "./registros.js";
+import { conferirDisponibilidadeTx, dia } from "./registros.js";
 import { adicionarAtividadeTx, carregarContextosVisitaTx, contextoAnimalVisitaTx } from "./visitas.js";
 import { hashDados, operacaoIdempotenteTx } from "./operacoes.js";
 import { avaliarSelecaoAnimal, ordenarAnimaisSelecao, type AnimalSelecao } from "./selecoes.calc.js";
@@ -13,7 +14,7 @@ import { listarSelecoes, obterVersaoSelecaoTx } from "./selecoes.js";
 import { criteriosSelecaoSchema, type CriteriosSelecao } from "./selecoes.schemas.js";
 import { consultaPlannerSchema, previaGrupoPlannerSchema, incluirGrupoPlannerSchema, type GrupoPlannerInput } from "./planner.schemas.js";
 import { fingerprintGrupoPlanner, identidadeGrupoProtocolo, janelaPlanner, ordenarMembrosPorBrinco, paginarPlanner, type JanelaPlanner } from "./planner.calc.js";
-import { serializarDataIatf } from "./horarios.calc.js";
+import { dataDisponibilidadeIatf, lerDataIatf, serializarDataIatf } from "./horarios.calc.js";
 import { ampliarContextosSelecaoTx, referenciasFiltrosSelecaoTx } from "./selecao-contexto.js";
 import { atividadeSchema } from "./schemas.js";
 
@@ -39,12 +40,18 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
   const tarefas = await tx.tarefaProtocolo.findMany({ where: { AND: [condicaoSituacaoTarefa("PENDENTE")],
     execucao: { animalId: { in: ids }, propriedadeId, OR: [{ rodadaId: null }, { rodada: { status: "ABERTA" } }] } },
     include: { etapa: true, execucao: { include: { protocolo: true, rodada: true } } }, orderBy: [{ previstaPara: "asc" }, { id: "asc" }] });
+  const tarefasReprodutivas = tarefas.filter(t => t.execucao.protocolo.tipo === "REPRODUTIVO").map(t => t.id);
+  const revisoes = tarefasReprodutivas.length ? await tx.necessidadeReprodutiva.findMany({
+    where: { propriedadeId, tarefaId: { in: tarefasReprodutivas }, demandaId: null, convergidaParaId: null, decisao: "SUSPENDER", situacao: { notIn: ["RESOLVIDO", "DISPENSADO", "ENCERRADO"] }, revisaoEm: { not: null } },
+    select: { id: true, tarefaId: true, revisaoEm: true, revisao: true },
+  }) : [];
+  const revisoesPorTarefa = new Map(revisoes.map(n => [n.tarefaId, n]));
   const participantesVisita = tarefas.length ? await tx.participanteVisita.findMany({ where: { tarefaId: { in: tarefas.map(t => t.id) } }, select: { tarefaId: true, atividadeId: true } }) : [];
   const atividades = participantesVisita.length ? await tx.atividadeVisita.findMany({ where: { id: { in: participantesVisita.map(p => p.atividadeId) } }, select: { id: true, visitaId: true } }) : [];
   const visitas = atividades.length ? await tx.visitaVeterinaria.findMany({ where: { id: { in: atividades.map(a => a.visitaId) }, encerradaEm: null, propriedadeId }, select: { id: true, nome: true } }) : [];
   const grupos = new Map<string, Grupo>();
   const avaliacoes = await tx.avaliacaoReprodutiva.findMany({ where: { animalId: { in: ids }, status: "VALIDO", data: { lte: referencia } }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }, { id: "desc" }] });
-  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:ids},estado:"PENDENTE",dataReferencia:{lte:referencia}},orderBy:[{previstaPara:"asc"},{ocorrencia:"asc"},{id:"asc"}]});
+  const demandas=await tx.demandaAcompanhamentoReprodutivo.findMany({where:{animalId:{in:ids},estado:"PENDENTE",dataReferencia:{lte:referencia}},include:{decisaoOperacional:true},orderBy:[{previstaPara:"asc"},{ocorrencia:"asc"},{id:"asc"}]});
   const examesRetorno=avaliacoes.length?await tx.interpretacaoReprodutiva.findMany({where:{id:{in:avaliacoes.map(a=>a.id)}},select:{id:true,exame:{select:{tipoExameId:true,finalidadePrincipal:true,formatoSnapshot:true,demandaAcompanhamentoId:true}}}}):[];
   const origemCompativel=(d:(typeof demandas)[number],a:(typeof avaliacoes)[number])=>{
     const exame=examesRetorno.find(e=>e.id===a.id)?.exame;
@@ -59,20 +66,23 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
   for (const tarefa of tarefas) {
     const execucao = tarefa.execucao, protocolo = execucao.protocolo;
     const demanda=demandas.find(d=>d.tarefaId===tarefa.id);
+    if (demanda && demandaDispensada(demanda)) continue;
     const retornoInformado=demanda?avaliacoes.find(a=>a.retornoEm&&compativel(demanda,a))?.retornoEm:null;
-    const previstaAgenda=retornoInformado??tarefa.previstaPara;
+    const revisao = !demanda ? revisoesPorTarefa.get(tarefa.id) : undefined;
+    const dataOperacional = demanda?.decisaoOperacional?.data ?? revisao?.revisaoEm ?? retornoInformado;
+    const previstaAgenda = dataOperacional ?? tarefa.previstaPara;
     const identidade = identidadeGrupoProtocolo({ protocoloId: protocolo.id, versao: protocolo.versao, tipo: protocolo.tipo,
       programacaoId: execucao.rodadaId, participacaoId: execucao.id, etapaId: tarefa.etapaId, previstaPara: previstaAgenda,
-      precisaoTemporal: tarefa.precisaoTemporal, previsaoPendente: tarefa.previsaoPendente });
+      precisaoTemporal: dataOperacional ? "DIA" : tarefa.precisaoTemporal, previsaoPendente: dataOperacional ? false : tarefa.previsaoPendente });
     let grupo = grupos.get(identidade);
     if (!grupo) {
       const tipo: TipoAtividade = protocolo.tipo === "REPRODUTIVO" ? "TAREFA_IATF" : tarefa.etapa.tipo === "EXAME" ? "EXAME_SANITARIO" : "APLICACAO_SANITARIA";
       grupo = { grupo: { origem: "PROTOCOLO", identidade }, nome: `${protocolo.nome} · ${tarefa.etapa.nome}`,
-        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(previstaAgenda, retornoInformado?"DIA":tarefa.precisaoTemporal,retornoInformado?false:tarefa.previsaoPendente,data), tipo,
+        secao: protocolo.tipo === "REPRODUTIVO" ? "REPRODUCAO" : "SANIDADE", janela: janelaPlanner(previstaAgenda, dataOperacional?"DIA":tarefa.precisaoTemporal,dataOperacional?false:tarefa.previsaoPendente,data), tipo,
         protocolo: { id: protocolo.id, nome: protocolo.nome, versao: protocolo.versao },
         turma: { id: execucao.rodadaId ?? execucao.id, nome: execucao.rodada?.nome ?? "Participação individual" },
         etapa: { id: tarefa.etapaId, nome: tarefa.etapa.nome, ordem: tarefa.etapa.ordem },
-        previstaPara: retornoInformado?retornoInformado.toISOString().slice(0,10):tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: retornoInformado?"DIA":tarefa.precisaoTemporal,
+        previstaPara: dataOperacional?previstaAgenda.toISOString().slice(0,10):tarefa.previsaoPendente ? null : serializarDataIatf(tarefa.previstaPara, tarefa.precisaoTemporal), precisaoTemporal: dataOperacional?"DIA":tarefa.precisaoTemporal,
         criterios: null, contexto: { protocoloId: protocolo.id, programacaoId: execucao.rodadaId, etapaId: tarefa.etapaId }, membros: [] };
       grupos.set(identidade, grupo);
     }
@@ -81,20 +91,21 @@ async function carregarBaseTx(tx: Prisma.TransactionClient, propriedadeId: numbe
       const atividade = atividades.find(a => a.id === p.atividadeId), visita = visitas.find(v => v.id === atividade?.visitaId);
       return visita ? [[visita.id, visita] as const] : [];
     })).values()];
-    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`,...(retornoInformado?[`Retorno informado prevalece na agenda; tarefa planejada para ${tarefa.previstaPara.toISOString().slice(0,10)}`]:[])], visitasAbertas,
-      estadoTarefa: { acompanhamento:demanda??null,retornoInformadoEm:retornoInformado??null,previstaParaAgenda:previstaAgenda,previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
+    grupo.membros.push({ animalId: execucao.animalId, tarefaId: tarefa.id, contexto, motivos: [`${protocolo.nome}, ${tarefa.etapa.nome}`, `Previsão: ${grupo.previstaPara ?? "não definida"}`,...(dataOperacional?[`Agenda operacional; tarefa planejada para ${tarefa.previstaPara.toISOString().slice(0,10)}`]:[])], visitasAbertas,
+      estadoTarefa: { revisaoOperacional: revisao ?? null, acompanhamento:demanda??null,retornoInformadoEm:retornoInformado??null,previstaParaAgenda:previstaAgenda,previstaPara: tarefa.previstaPara, previsaoPendente: tarefa.previsaoPendente, precisaoTemporal: tarefa.precisaoTemporal,
         parametros: tarefa.parametros, execucaoId: execucao.id, inicio: execucao.inicio, inicioEfetivo: execucao.inicioEfetivo, precisaoInicioEfetivo: execucao.precisaoInicioEfetivo } });
   }
   for(const demanda of demandas){
+    if(demandaDispensada(demanda))continue;
     if(demanda.tarefaId&&tarefas.some(t=>t.id===demanda.tarefaId))continue;
     const manual=avaliacoes.find(a=>a.retornoEm&&compativel(demanda,a));
-    const prevista=manual?.retornoEm??demanda.previstaPara;
+    const prevista=demanda.decisaoOperacional?.data??manual?.retornoEm??dataOperacionalDemanda(demanda);
     const regra=demanda.regraSnapshot as Record<string,unknown>;
     const identidade=hashDados({origem:"RETORNO",finalidade:demanda.finalidade,ocorrencia:demanda.ocorrencia,politicaId:demanda.politicaId,tipoExameId:regra.tipoExameId,previstaPara:prevista});
     let grupo=grupos.get(identidade);
     if(!grupo){grupo={grupo:{origem:"RETORNO",identidade},nome:demanda.finalidade==="DIAGNOSTICO"?"Diagnóstico pendente":`Reconfirmação ${demanda.ocorrencia}`,secao:"REPRODUCAO",janela:prevista?janelaPlanner(prevista,"DIA",false,data):"SEM_PREVISAO",tipo:"AVALIACAO_REPRODUTIVA",protocolo:null,turma:null,etapa:null,previstaPara:prevista?.toISOString().slice(0,10)??null,precisaoTemporal:"DIA",criterios:null,contexto:{demandasPorAnimal:{}},membros:[]};grupos.set(identidade,grupo);}
     (grupo.contexto.demandasPorAnimal as Record<string,string>)[demanda.animalId]=demanda.id;
-    grupo.membros.push({animalId:demanda.animalId,tarefaId:null,contexto:{...contextos.get(demanda.animalId)!,acompanhamento:demanda},motivos:[`${grupo.nome}; regra versão ${regra.politicaVersao}`,demanda.previstaPara?`Previsão da regra: ${demanda.previstaPara.toISOString().slice(0,10)}`:"Sem data definida",...(manual?.retornoEm?[`Retorno informado: ${manual.retornoEm.toISOString().slice(0,10)}`]:[])],estadoTarefa:{demandaId:demanda.id,versao:demanda.versao,regraSnapshot:demanda.regraSnapshot,retornoInformadoEm:manual?.retornoEm??null},visitasAbertas:[]});
+    grupo.membros.push({animalId:demanda.animalId,tarefaId:null,contexto:{...contextos.get(demanda.animalId)!,acompanhamento:demanda},motivos:[`${grupo.nome}; regra versão ${regra.politicaVersao}`,demanda.previstaPara?`Previsão da regra: ${demanda.previstaPara.toISOString().slice(0,10)}`:"Sem data definida",...(manual?.retornoEm?[`Retorno informado: ${manual.retornoEm.toISOString().slice(0,10)}`]:[])],estadoTarefa:{decisaoOperacionalId:demanda.decisaoOperacionalId,demandaId:demanda.id,versao:demanda.versao,regraSnapshot:demanda.regraSnapshot,retornoInformadoEm:manual?.retornoEm??null},visitasAbertas:[]});
   }
   const vistos = new Set<string>();
   for (const avaliacao of avaliacoes) {
@@ -188,16 +199,16 @@ async function resolverGrupoTx(tx: Prisma.TransactionClient, propriedadeId: numb
 }
 function resumoGrupo(grupo: Grupo) {
   const { membros, ...dados } = grupo;
-  return { ...dados, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
+  return { ...dados, contexto: {...dados.contexto, ...(grupo.grupo.origem === "PROTOCOLO" ? {tarefasIds: membros.flatMap(m => m.tarefaId ? [m.tarefaId] : []), animaisPorTarefa: Object.fromEntries(membros.flatMap(m => m.tarefaId ? [[m.tarefaId,m.animalId]] : []))} : {})}, totalAnimais: new Set(membros.map(m => m.animalId)).size, totalProcedimentos: membros.length,
     emVisitaAberta: membros.filter(m => m.visitasAbertas.length > 0).length };
 }
 function fingerprint(grupo: Grupo, propriedadeId: number, data: string) {
-  return fingerprintGrupoPlanner({ ...resumoGrupo(grupo), emVisitaAberta: undefined }, propriedadeId, data,
+  return fingerprintGrupoPlanner({ ...resumoGrupo(grupo), contexto: grupo.contexto, emVisitaAberta: undefined }, propriedadeId, data,
     grupo.membros.map(({ visitasAbertas: _avisos, ...membro }) => membro));
 }
 /** Contexto legível sem projetar custos ou payloads de fatos de outros sítios. */
 function animalPrevia(membro: Membro) {
-  const campos = ["sexo", "origem", "idadeDias", "nascimentoEstimado", "diasAptidao", "pesoKg", "pesagemData", "diasPesagem", "composicaoSelecao", "participacoesAtivas", "historicoParto", "animalId", "brinco", "nome", "propriedadeId", "situacao", "partos", "tentativasCiclo", "categoria", "lote", "aptidao", "papelReprodutivo", "papelReprodutivoEstado", "dataReferencia", "versaoContexto", "convencaoDel", "del", "situacaoProdutiva", "diasPosParto", "diasDesdeConfirmacao", "idadeGestacionalDias", "baseIdadeGestacional", "pendenciasContexto", "retencaoPlacenta", "diasTentativa", "diasParto", "diasGestacao", "retornoEm", "retornoInformado", "diasAteRetorno"];
+  const campos = ["situacaoPev", "aptidaoReprodutiva", "sexo", "origem", "idadeDias", "nascimentoEstimado", "diasAptidao", "pesoKg", "pesagemData", "diasPesagem", "composicaoSelecao", "participacoesAtivas", "historicoParto", "animalId", "brinco", "nome", "propriedadeId", "situacao", "partos", "tentativasCiclo", "categoria", "lote", "aptidao", "papelReprodutivo", "papelReprodutivoEstado", "dataReferencia", "versaoContexto", "convencaoDel", "del", "situacaoProdutiva", "diasPosParto", "diasDesdeConfirmacao", "idadeGestacionalDias", "baseIdadeGestacional", "pendenciasContexto", "retencaoPlacenta", "diasTentativa", "diasParto", "diasGestacao", "retornoEm", "retornoInformado", "diasAteRetorno"];
   return { ...Object.fromEntries(campos.map(campo => [campo, membro.contexto[campo]])), animalId: membro.animalId, tarefaId: membro.tarefaId, motivos: membro.motivos, visitasAbertas: membro.visitasAbertas };
 }
 export async function consultarPlanner(input: z.infer<typeof consultaPlannerSchema>) {
@@ -228,7 +239,28 @@ export async function previaGrupoPlannerTx(tx: Prisma.TransactionClient, input: 
       const situacao = typeof membro.contexto.situacao === "string" ? membro.contexto.situacao : "NAO_INFORMADA";
       porSituacao.set(situacao,(porSituacao.get(situacao) ?? 0)+1);
     }
-    return { ...(input.grupo.origem === "LIVRE" ? {assinaturaContexto:hashDados(grupo.membros.map(m=>({animalId:m.animalId,tarefaId:m.tarefaId,contexto:m.contexto,estadoTarefa:m.estadoTarefa}))),resumoSelecao:{porSituacao:[...porSituacao].map(([situacao,animais])=>({situacao,animais}))}} : {}), grupo: resumoGrupo(grupo), animais: paginarPlanner(grupo.membros, input.pagina, input.tamanhoPagina).map(animalPrevia), total: grupo.membros.length,
+    const membros = paginarPlanner(grupo.membros, input.pagina, input.tamanhoPagina);
+    const referencia = input.inicioProgramacao && input.grupo.origem === "LIVRE" && input.grupo.tipo === "INICIAR_IATF"
+      ? dataDisponibilidadeIatf(lerDataIatf(input.inicioProgramacao))
+      : null;
+    const animais = [];
+    for (const membro of membros) {
+      const animal = animalPrevia(membro);
+      if (!referencia) {
+        animais.push(animal);
+        continue;
+      }
+      let impedimentoProgramacao: string | null = null;
+      try {
+        // Alertas que exigem apenas ciência podem ser tratados durante a preparação.
+        await conferirDisponibilidadeTx(tx, membro.animalId, input.propriedadeId, referencia, "IATF", true);
+      } catch (erro) {
+        if (!(erro instanceof RebanhoError)) throw erro;
+        impedimentoProgramacao = erro.message;
+      }
+      animais.push({ ...animal, impedimentoProgramacao });
+    }
+    return { ...(input.grupo.origem === "LIVRE" ? {assinaturaContexto:hashDados(grupo.membros.map(m=>({animalId:m.animalId,tarefaId:m.tarefaId,contexto:m.contexto,estadoTarefa:m.estadoTarefa}))),resumoSelecao:{porSituacao:[...porSituacao].map(([situacao,animais])=>({situacao,animais}))}} : {}), grupo: resumoGrupo(grupo), animais, total: grupo.membros.length,
       pagina: input.pagina, tamanhoPagina: input.tamanhoPagina, fingerprint: fingerprint(grupo, input.propriedadeId, input.data) };
 }
 export async function incluirGrupoPlanner(visitaId: string, input: z.infer<typeof incluirGrupoPlannerSchema>, usuarioId: number | null) {

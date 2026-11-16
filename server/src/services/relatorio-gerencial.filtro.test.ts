@@ -20,15 +20,15 @@ import { uid } from "../lib/uid.fixture.js";
 
 const d = (v: string) => new Prisma.Decimal(v);
 const PECUARIA = uid(201), AGRONOMIA = uid(202), NUTRICAO = uid(303), BENFEITORIAS = uid(304), CONTA = uid(501);
-const semFiltro = { tipos: [], status: [], centroCustoIds: [], categoriaIds: [], classificacoes: [] };
+const semFiltro = { tipos: [], status: [], centroCustoIds: [], categoriaIds: [] };
 
 // Pagamento integral de uma compra mista (ração + mourões) e um pagamento avulso.
 const compraMista = {
   id: uid(1), numero: 1, tipo: "COMPRA_ESTOQUE", status: "CONFIRMADA", descricao: "Compra mista", valorTotal: d("1300"), centroCustoId: PECUARIA,
-  categoriaNome: null, classificacao: null, parceiro: null, documentos: [], centroCusto: { nome: "Pecuária" }, compromissos: [],
+  categoriaNome: null, parceiro: null, documentos: [], centroCusto: { nome: "Pecuária" }, compromissos: [],
   itens: [
-    { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição", classificacao: "CUSTEIO" },
-    { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO" },
+    { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição" },
+    { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias" },
   ],
   transacoes: [{ id: uid(10), seq: 10, tipo: "PAGAMENTO", valorTotal: d("1300"), reversaoDeId: null, status: "CONFIRMADA" }],
 };
@@ -58,7 +58,7 @@ describe("relatório gerencial com filtro de composição", () => {
       { categoria: "Benfeitorias", total: 500, pct: 33.33 },
       { categoria: "Sem categoria", total: 200, pct: 13.33 },
     ]);
-    expect(dto.resultado).toMatchObject({ custeio: 1000, investimento: 500 });
+    expect(dto.resultado).toMatchObject({ despesa: 1500 });
   });
 
   it("filtro de categoria mantém só a fatia pedida, mas não altera o saldo das contas", async () => {
@@ -82,8 +82,8 @@ describe("relatório gerencial com filtro de composição", () => {
     const mistaPorCentro = {
       ...compraMista,
       itens: [
-        { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição", classificacao: "CUSTEIO", centroCustoId: AGRONOMIA, centroCustoNome: "Agronomia" },
-        { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias", classificacao: "INVESTIMENTO", centroCustoId: null, centroCustoNome: null },
+        { id: uid(21), ordem: 1, valorTotal: d("800"), categoriaId: NUTRICAO, categoriaNome: "Nutrição", centroCustoId: AGRONOMIA, centroCustoNome: "Agronomia" },
+        { id: uid(22), ordem: 2, valorTotal: d("500"), categoriaId: BENFEITORIAS, categoriaNome: "Benfeitorias", centroCustoId: null, centroCustoNome: null },
       ],
     };
     mocks.movimentos.mockResolvedValue([movimento(100, { id: uid(10), seq: 10, tipo: "PAGAMENTO", operacao: mistaPorCentro }, "1300")]);
@@ -119,8 +119,8 @@ describe("relatório gerencial com filtro de composição", () => {
     expect(dto.resumo.saidas).toBe(dto.saldoContas!.total.saidas);
   });
 
-  it("filtro por classificação separa investimento", async () => {
-    const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, classificacoes: ["INVESTIMENTO"] });
-    expect(dto.resultado).toMatchObject({ custeio: 0, investimento: 500 });
+  it("filtro por grupo recorta as categorias do grupo", async () => {
+    const dto = await gerarRelatorioGerencial(query, 7, { ...semFiltro, grupoIds: [uid(401)], categoriasDosGrupos: [BENFEITORIAS] });
+    expect(dto.resultado).toMatchObject({ despesa: 500 });
   });
 });

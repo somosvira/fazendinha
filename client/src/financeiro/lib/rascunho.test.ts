@@ -24,6 +24,15 @@ describe("resumoRascunho", () => {
     expect(resumo.detalhe).toBe(`${brl(35)} · Venda`);
   });
 
+  it("soma itens lançados só por valor total, como os animais da compra", () => {
+    const resumo = resumoRascunho(rascunho({ operacao: { tipo: "COMPRA_ANIMAIS", descricao: "Garrotes", itens: [
+      { descricao: "Animal 101", quantidade: "1", unidade: "cab", valorTotal: "1428.57" },
+      { descricao: "Animal 102", quantidade: "1", unidade: "cab", valorTotal: "1428.58" },
+      { descricao: "Frete", quantidade: "1", unidade: "un", valorUnitario: "300" },
+    ] } }));
+    expect(resumo.detalhe).toBe(`${brl(3157.15)} · Compra de animais`);
+  });
+
   it("sem descrição, usa o primeiro item descrito e omite valor zerado", () => {
     const resumo = resumoRascunho(rascunho({ operacao: { tipo: "COMPRA_ESTOQUE", descricao: "  ", itens: [
       { descricao: "", quantidade: 1, valorUnitario: 0 },

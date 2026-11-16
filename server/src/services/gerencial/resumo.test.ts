@@ -10,7 +10,7 @@ vi.mock("./caixa.js", () => ({ consultarCaixaTx: mocks.caixa }));
 vi.mock("./estoque.js", () => ({ consultarEstoqueTx: mocks.estoque }));
 vi.mock("./nutricao.js", () => ({ consultarNutricaoTx: mocks.nutricao }));
 vi.mock("../pecuaria/custos/custos.js", () => ({ carregarFontesCustoTx: mocks.fontes }));
-import { obterResumoGerencial } from "./resumo.js";
+import { resumoSemDetalhes, obterResumoGerencial } from "./resumo.js";
 const usuario: UsuarioContexto = { id: 1, nome: "Consulta", email: "", papel: "consulta", status: "ATIVO", areas: ["pecuaria"], abas: [], flags: [], dono: false };
 const inicio = new Date("2026-10-01");
 const fim = new Date("2026-10-17");
@@ -56,7 +56,7 @@ describe("consulta gerencial", () => {
       }) },
     };
     mocks.transaction.mockImplementation(async (consulta: (conexao: typeof tx) => Promise<unknown>) => consulta(tx));
-    const financeiro = { ...usuario, areas: ["financeiro"], abas: ["dashboard"], flags: ["verValores", "verSalarios", "verInvestimento"] };
+    const financeiro = { ...usuario, areas: ["financeiro"], abas: ["dashboard"], flags: ["verValores", "verSalarios"] };
     const resultado = await obterResumoGerencial(financeiro, propriedadeId, inicio, fim, new Date("2026-10-19T02:59:59Z"));
     expect(tx.compromissoFinanceiro.findMany).toHaveBeenCalledWith({
       where: { tipo: "PAGAR", status: { in: ["PENDENTE", "PARCIAL"] }, ...(propriedadeId == null ? {} : { operacao: { propriedadeId } }) },
@@ -67,7 +67,7 @@ describe("consulta gerencial", () => {
     expect(resultado.compromissos).toMatchObject({ estado: "DISPONIVEL", dados: { data: "2026-10-18", totalPendente: "3.03", vencido: "1.01", aVencer: "2.02" } });
   });
 
-  it.each(["verValores", "verSalarios", "verInvestimento", "dashboard", "financeiro"])("omite obrigações e sua consulta sem %s", async permissao => {
+  it.each(["verValores", "verSalarios", "dashboard", "financeiro"])("omite obrigações e sua consulta sem %s", async permissao => {
     const tx = {
       $executeRaw: vi.fn(),
       propriedade: { findMany: vi.fn().mockResolvedValue([{ id: 1, nome: "Sítio" }]) },
@@ -79,10 +79,20 @@ describe("consulta gerencial", () => {
       ...usuario,
       areas: ["pecuaria", "financeiro"].filter(p => p !== permissao),
       abas: ["dashboard"].filter(p => p !== permissao),
-      flags: ["verValores", "verSalarios", "verInvestimento"].filter(p => p !== permissao),
+      flags: ["verValores", "verSalarios"].filter(p => p !== permissao),
     };
     const resultado = await obterResumoGerencial(perfil, 1, inicio, fim, fim);
     expect(resultado.compromissos).toEqual({ estado: "RESTRITO", motivo: expect.any(String) });
     expect(tx.compromissoFinanceiro.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe("resposta do painel sem listas detalhadas", () => {
+  it("mantém totais e contagens e esvazia as listas por animal-dia", () => {
+    const r = resumoSemDetalhes({ nutricao: { estado: "DISPONIVEL", dados: { lacunas: [1], fontes: [1, 2] } }, custos: { estado: "DISPONIVEL", dados: { componentesPendentes: 3, componentes: [1], finalidades: [{ finalidade: "ROTINA", componentes: [1] }] } }, caixa: { estado: "RESTRITO", motivo: "x" } });
+    expect(r.nutricao.dados).toEqual({ lacunas: [1], fontes: [] });
+    expect(r.custos.dados).toEqual({ componentesPendentes: 3, componentes: [], finalidades: [{ finalidade: "ROTINA", componentes: [] }] });
+    expect(resumoSemDetalhes({ nutricao: { estado: "RESTRITO" }, custos: { estado: "RESTRITO" } }).nutricao).toEqual({ estado: "RESTRITO" });
+  });
+});
+

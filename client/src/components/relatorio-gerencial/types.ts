@@ -2,12 +2,12 @@
 
 export type RegimeRelatorio = "realizado" | "previsto" | "ambos";
 export type Atividade = "leite" | "cafe" | "outros";
-export type TipoOperacao = "receita" | "custeio" | "investimento" | "transferencia" | "compromisso" | "parcial" | "estorno";
+export type TipoOperacao = "receita" | "despesa" | "transferencia" | "compromisso" | "parcial" | "estorno";
 
 export interface TotaisFluxo { entradas: number; saidas: number; resultado: number }
 export interface MesFluxo extends TotaisFluxo { mes: string }
-export interface ResultadoAtividade { atividade: Atividade; receita: number; custeio: number; investimento: number; resultado: number }
-export interface ResultadoPeriodo { receita: number; custeio: number; investimento: number; resultado: number; porAtividade: ResultadoAtividade[] }
+export interface ResultadoAtividade { atividade: Atividade; receita: number; despesa: number; resultado: number }
+export interface ResultadoPeriodo { receita: number; despesa: number; resultado: number; porAtividade: ResultadoAtividade[] }
 export interface CategoriaTotal { categoria: string; total: number; pct: number }
 export interface CentroTotal { centro: string; total: number; pct: number }
 export interface ItemCompromisso { id: string; descricao: string | null; fornecedor: string | null; categoria: string; valor: number; dataVencimento: string; diasAtraso: number; vencido: boolean }

@@ -89,3 +89,14 @@ describe("admissão de avaliação de aptidão na visita", () => {
     expect(mocks.tx.participanteVisita.createMany).not.toHaveBeenCalled();
   });
 });
+
+it("agenda expõe identidade explícita da etapa e programação sem inferir agrupamento pela data", async () => {
+  const programacaoId=uid(30),participacaoId=uid(31),etapaId=uid(32),momentoId=uid(33);
+  mocks.tx.programacaoIatf.findMany.mockResolvedValueOnce([{id:programacaoId,protocoloId:uid(34),propriedadeId:2,nome:"Turma novembro"}]);
+  mocks.tx.participanteIatf.findMany.mockResolvedValueOnce([{id:participacaoId,programacaoId,animalId}]);
+  mocks.tx.tarefaIatf.findMany.mockResolvedValueOnce([{id:tarefaId,participanteId:participacaoId,previstaEm:new Date("2026-02-01"),precisaoTemporal:"DIA",previsaoPendente:false}]);
+  mocks.tx.tarefaProtocolo.findMany.mockResolvedValueOnce([tarefa()]).mockResolvedValueOnce([{id:tarefaId,etapaId,execucaoId:participacaoId,etapa:{nome:"Aplicação",momento:{id:momentoId,nome:"D0"}}}]);
+  const r=await sugestoesVisita(2,"2026-02-01");
+  expect(r.retornos.find(r=>r.origem==="TAREFA_IATF")).toMatchObject({origemId:tarefaId,animalId,programacaoId,programacaoNome:"Turma novembro",etapaId,etapaNome:"Aplicação",momentoId,momentoNome:"D0",participacaoId});
+  expect(mocks.tx.tarefaProtocolo.findMany).toHaveBeenLastCalledWith(expect.objectContaining({where:{id:{in:[tarefaId]}}}));
+});

@@ -15,7 +15,7 @@ export async function consultarRelatoriosAnteriores(q:ConsultaRelatorio):Promise
  if(!fontes.has(q.fonte))return null;
  if(q.fonte==='partos'){
   const s=await emitirRelatorioPartos({propriedadeId:q.propriedadeId,inicio:q.inicio,fim:q.fim});
-  return paginarRelatorio(s.partos.filter(p=>!q.animalId||p.matriz.id===q.animalId).map(p=>({id:p.id,animalId:p.matriz.id,matriz:`${p.matriz.brinco}${p.matriz.nome?` · ${p.matriz.nome}`:''}`,sitio:q.propriedadeId,data:p.data,desfecho:p.desfecho,tipo:p.tipo,crias:p.crias.length,vivas:p.crias.filter(c=>c.viva).length,semVida:p.crias.filter(c=>!c.viva).length,induzido:p.induzido,dificuldade:p.dificuldade,assistencia:p.assistenciaDescricao,placenta:p.retencaoPlacenta,colostro:p.crias.reduce((n,c)=>n+c.colostro.length,0),responsavel:p.responsavel,observacao:p.observacao,versao:p.versao,lancador:p.lancador?.nome??null})),q);
+  return paginarRelatorio(s.partos.filter(p=>!q.animalId||p.matriz.id===q.animalId).map(p=>({id:p.id,animalId:p.matriz.id,matriz:`${p.matriz.brinco}${p.matriz.nome?` · ${p.matriz.nome}`:''}`,sitio:q.propriedadeId,data:p.data,desfecho:p.desfecho,tipo:p.tipo,crias:p.crias.length,vivas:p.crias.filter(c=>c.viva).length,semVida:p.crias.filter(c=>!c.viva).length,induzido:p.induzido,dificuldade:p.dificuldade,assistencia:p.assistenciaDescricao,placenta:p.retencaoPlacenta,grauPlacenta:p.grauRetencaoPlacenta??null,colostro:p.crias.reduce((n,c)=>n+c.colostro.length,0),responsavel:p.responsavel,observacao:p.observacao,versao:p.versao,lancador:p.lancador?.nome??null})),q);
  }
  if(q.fonte==='tentativas'){
   // O sítio pertence ao fato. Inclui a identidade mesmo quando a matriz já saiu.

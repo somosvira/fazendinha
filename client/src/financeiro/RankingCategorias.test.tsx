@@ -5,9 +5,8 @@ import { RankingCategorias } from "./RankingCategorias";
 import { obterAnaliseCategorias } from "./novo-api";
 vi.mock("./novo-api", () => ({ obterAnaliseCategorias: vi.fn().mockResolvedValue({ total: "0", categorias: [], linhas: [] }) }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
-it("mostra pizza e uma única categoria e abre seus lançamentos", async () => {
+it("mostra uma única categoria em barras e abre seus lançamentos", async () => {
   render(<RankingCategorias despesas={[{ categoriaId: "c1", categoria: "Alimentação", valor: "12000" }]} categorias={[]} inicio="2026-10-01" fim="2026-10-31" />);
-  expect(screen.getByRole("img", { name: "Distribuição das despesas por categoria" })).toBeTruthy();
   expect(screen.getAllByRole("listitem")).toHaveLength(1);
   expect(screen.getByText(/100%/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Detalhar Alimentação" }));

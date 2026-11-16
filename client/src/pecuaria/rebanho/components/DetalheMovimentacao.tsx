@@ -4,7 +4,6 @@
 // partir de uma linha de HistoricoMovimentacoes (Lotes · Histórico e DetalheLote).
 
 import { useCallback, useEffect, useState } from "react";
-import { Loader } from "../../../components/Loading";
 import { DialogFinanceiro } from "../../../financeiro/DialogFinanceiro";
 import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { buscarMovimentacao, RebanhoApiError } from "../api";
@@ -12,6 +11,7 @@ import type { MovimentacaoDetalhe } from "../types";
 import { formatarDataBR } from "../lib/rotulos";
 import { navegarPara } from "../../../router";
 import { ConfirmarDesfazerMovimentacao } from "./ConfirmarDesfazerMovimentacao";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 
 function rotuloDestino(mov: MovimentacaoDetalhe): string {
   return mov.destino.lote ? `${mov.destino.lote.nome} (${mov.destino.propriedade.nome})` : mov.destino.propriedade.nome;
@@ -54,10 +54,10 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
     navegarPara(`/pecuaria/rebanho/animais/${animalId}`);
   };
 
-  return <DialogFinanceiro titulo="Movimentação" eyebrow="Rebanho" className="sm:max-w-3xl" onClose={onFechar}
+  return <DialogFinanceiro titulo="Movimentação" eyebrow="" className="sm:max-w-3xl" onClose={onFechar}
       rodape={<Button secondary onClick={onFechar}>Fechar</Button>}>
       <div className="p-5"><ErrorBox erro={erro} />
-      {carregando && !mov ? <Loader label="Carregando movimentação" /> : mov && <div className="grid gap-5">
+      {carregando && !mov ? <EsqueletoFicha label="Carregando movimentação" /> : mov && <div className="grid gap-5">
         <div className="rounded-xl border border-border p-4 text-sm">
           <div className="flex flex-wrap items-center gap-2">
             {mov.direcao && <Pill tone={mov.direcao === "ENTRADA" ? "green" : "amber"}>{mov.direcao === "ENTRADA" ? "Entrada" : "Saída"}</Pill>}
@@ -67,7 +67,7 @@ export function DetalheMovimentacao({ id, podeLancar = true, onFechar, onMudou }
           <p className="mt-2 break-words">{mov.origens.length ? mov.origens.join(", ") : "Origem não identificada"} → {rotuloDestino(mov)}</p>
           {mov.motivo && <p className="mt-1 break-words text-ink-3">Motivo: {mov.motivo}</p>}
           <p className="mt-1 text-sm text-ink-3">{mov.criadoPor ?? "Sistema"} · {formatarDataBR(mov.criadoEm)}</p>
-          {mov.desfeitaEm && <p className="mt-1 text-sm font-medium text-red-700">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
+          {mov.desfeitaEm && <p className="mt-1 text-sm font-medium text-destructive">Desfeita em {formatarDataBR(mov.desfeitaEm)}{mov.desfeitaMotivo ? ` · ${mov.desfeitaMotivo}` : ""}</p>}
           {podeLancar && mov.podeDesfazer && <div className="mt-3"><Button secondary onClick={() => setDesfazendo(true)}>Desfazer movimentação</Button></div>}
         </div>
 

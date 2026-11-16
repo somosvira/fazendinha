@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ leitura: vi.fn(), sitio: vi.fn(), responder: vi.fn(), executar: vi.fn(), transcrever: vi.fn(), falar: vi.fn(), env: { ASSISTENTE_CONSULTA_ENABLED: true, OPENAI_API_KEY: "" } }));
+const mocks = vi.hoisted(() => ({ leitura: vi.fn(), sitio: vi.fn(), responder: vi.fn(), executar: vi.fn(), transcrever: vi.fn(), falar: vi.fn(), env: { JWT_SECRET: "segredo-unitario", ASSISTENTE_CONSULTA_ENABLED: true, OPENAI_API_KEY: "" } }));
 vi.mock("../services/assistente/voz.js", () => ({ sintetizarResposta: mocks.falar }));
 vi.mock("../env.js", () => ({ env: mocks.env }));
 vi.mock("../db.js", () => ({ prisma: { propriedade: { findFirst: mocks.sitio } } }));
@@ -110,4 +110,9 @@ it("não sintetiza resposta negada e aplica o mesmo limite por usuário à conve
   const bloqueada = await conversar(); expect(bloqueada.status).toBe(429);
   expect(bloqueada.headers.get("Retry-After")).toBe("60");
   expect(mocks.falar).not.toHaveBeenCalled();
+});
+it("metas são independentes do gate da IA e continuam exigindo usuário real", async () => {
+ mocks.env.ASSISTENTE_CONSULTA_ENABLED = false;
+ expect((await app.request("/metas/catalogo")).status).toBe(200);
+ usuario = null; expect((await app.request("/metas/catalogo")).status).toBe(401);
 });

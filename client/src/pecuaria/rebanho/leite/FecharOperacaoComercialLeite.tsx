@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { Button } from "@/components/ui/button";
 import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
 import { SelecaoQualidadeFechamento } from "./SelecaoQualidadeFechamento";
@@ -7,6 +8,7 @@ import type { OperacaoComercialLeiteDTO } from "./comercial-operacoes-types";
 import { registrarLeite } from "./operacoes-api";
 import { numeroComercial } from "./comercial-types";
 import { formatarLitros, hojeOperacional } from "./modelo";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 export function FecharOperacaoComercialLeite({
   operacao: o,
   config,
@@ -241,15 +243,7 @@ export function FecharOperacaoComercialLeite({
         <div className="leite-form-inline">
           <label>
             Data do fechamento
-            <input
-              required
-              type="date"
-              min={o.fim}
-              max={hojeOperacional()}
-              value={data}
-              disabled={!!o.fechamento}
-              onChange={(e) => setData(e.target.value)}
-            />
+            <DatePicker required min={o.fim} max={hojeOperacional()} value={data} disabled={!!o.fechamento} onChange={(valor) => setData(valor)} />
           </label>
           <label>
             Preço negociado por litro (R$)
@@ -290,10 +284,10 @@ export function FecharOperacaoComercialLeite({
           </label>
           <label>
             Centro de custo da receita
-            <select
+            <SelectCampo
               required
               value={centro}
-              onChange={(e) => setCentro(e.target.value)}
+              onValueChange={(valor) => setCentro(valor)}
             >
               <option value="">Selecione</option>
               {config.centrosCusto
@@ -303,13 +297,13 @@ export function FecharOperacaoComercialLeite({
                     {c.nome}
                   </option>
                 ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Categoria (opcional)
-            <select
+            <SelectCampo
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              onValueChange={(valor) => setCategoria(valor)}
             >
               <option value="">Sem categoria</option>
               {config.categorias
@@ -319,38 +313,33 @@ export function FecharOperacaoComercialLeite({
                     {c.nome}
                   </option>
                 ))}
-            </select>
+            </SelectCampo>
           </label>
           <label>
             Condição financeira
-            <select
+            <SelectCampo
               required
               value={condicao}
-              onChange={(e) => setCondicao(e.target.value)}
+              onValueChange={(valor) => setCondicao(valor)}
             >
               <option value="">Escolha explicitamente</option>
               <option value="A_PRAZO">A receber</option>
               <option value="A_VISTA">Recebido agora</option>
-            </select>
+            </SelectCampo>
           </label>
           {condicao === "A_PRAZO" && (
             <label>
               Vencimento
-              <input
-                required
-                type="date"
-                value={vencimento}
-                onChange={(e) => setVencimento(e.target.value)}
-              />
+              <DatePicker required value={vencimento} onChange={(valor) => setVencimento(valor)} />
             </label>
           )}
           {condicao === "A_VISTA" && (
             <label>
               Conta do recebimento
-              <select
+              <SelectCampo
                 required
                 value={conta}
-                onChange={(e) => setConta(e.target.value)}
+                onValueChange={(valor) => setConta(valor)}
               >
                 <option value="">Selecione</option>
                 {config.contas
@@ -360,7 +349,7 @@ export function FecharOperacaoComercialLeite({
                       {c.nome}
                     </option>
                   ))}
-              </select>
+              </SelectCampo>
             </label>
           )}
         </div>

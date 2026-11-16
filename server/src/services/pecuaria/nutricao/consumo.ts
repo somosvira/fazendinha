@@ -5,11 +5,11 @@ import { operacaoIdempotenteTx } from "../reproducao/operacoes.js";
 import { baixarLeiteNutricionalTx, consultarFornecimentosNutricionaisTx, estornarLeiteNutricionalTx, ingredienteLeiteProducaoTx, previaLeiteNutricionalTx, registrarFornecimentoNutricionalTx } from "../leite/nutricao.js";
 import { Prisma, UnidadeMedida } from "@prisma/client";
 import { prisma } from "../../../db.js";
-import { RebanhoError, auditar, travarAnimais } from "../rebanho/regras.js";
+import { RebanhoError, auditar, hojeFazendaDate, travarAnimais } from "../rebanho/regras.js";
 import { calcularAnimalDias } from "./animalDias.calc.js";
 import { obterBaseCusto, statusSaldoEstoque, estornarMovimentoTx } from "../../estoque/estoque.js";
 import { valorSaidaDaBase } from "../../estoque/estoque.calc.js";
-import { planejarSaidaTx, registrarSaidaValorizadaTx, travarValorizacaoTx } from "../../estoque/valorizacao.js";
+import { planejarSaidaTx, previaRetroatividadeTx, registrarSaidaValorizadaTx, travarValorizacaoTx } from "../../estoque/valorizacao.js";
 import { prepararPartidasTx, type SelecaoPartida } from "../../estoque/partidas.js";
 import { exigirPeriodoAberto } from "../../financeiro/regras.js";
 import { propriedadePrincipalId } from "../../propriedade.js";
@@ -85,11 +85,17 @@ async function saldoProduto(tx: Prisma.TransactionClient, produtoId: string, pro
   return movimentos.reduce((saldo, m) => m.tipo === "SAIDA" ? saldo.minus(m.quantidade) : saldo.plus(m.quantidade), decimal(0));
 }
 
+/** Lote com dieta de leite produzido na fazenda no período: fecha por período mesmo depois de adotar o diário ou mensal. */
+async function dietaComLeiteProprioTx(tx: Prisma.TransactionClient, loteId: string, propriedadeId: number, inicio: Date, fim: Date) {
+  const vigencias = await tx.vigenciaDietaLote.findMany({ where: { loteId, desde: { lte: fim }, OR: [{ ate: null }, { ate: { gt: inicio } }] }, select: { dieta: { select: { itens: { select: { produtoId: true, unidade: true } } } } } });
+  for (const v of vigencias) for (const i of v.dieta.itens) if (i.unidade === "L" && await ingredienteLeiteProducaoTx(tx, i.produtoId, propriedadeId)) return true;
+  return false;
+}
 export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: FechamentoInput, usuarioId: number | null) {
     // Mesma ordem de locks das ofertas e dos estornos.
     await travarAlimentacaoLeiteTx(tx, input.propriedadeId);
     // Leitura serializável do histórico, dentro da mesma transação da baixa.
-    if (env.NUTRICAO_MENSAL_ENABLED && await tx.configuracaoNutricao.findFirst({where:{propriedadeId:input.propriedadeId,desde:{lte:dia(input.fim)},OR:[{loteId:null},{loteId:input.loteId}]}})) throw new RebanhoError("CONFLITO", "Este período usa consumo diário; consulte o fechamento mensal");
+    if (env.NUTRICAO_MENSAL_ENABLED && await tx.configuracaoNutricao.findFirst({where:{propriedadeId:input.propriedadeId,desde:{lte:dia(input.fim)},OR:[{loteId:null},{loteId:input.loteId}]}}) && !await dietaComLeiteProprioTx(tx, input.loteId, input.propriedadeId, dia(input.inicio), dia(input.fim))) throw new RebanhoError("CONFLITO", "Este período usa consumo diário; consulte o fechamento mensal");
     const c = await contexto(tx, input);
     await travarAnimais(tx, c.participacao.participacoes.map((p) => p.animalId));
     const produtosLeite = await tx.entradaProducaoLeite.findMany({ where: { status: "CONFIRMADA", movimento: { propriedadeId: input.propriedadeId } }, select: { movimento: { select: { produtoId: true } } } });
@@ -148,7 +154,7 @@ export async function confirmarConsumoTx(tx: Prisma.TransactionClient, input: Fe
         const mov = await tx.movimentoEstoque.create({ data: { produtoId: previsto.produtoId, propriedadeId: input.propriedadeId,
           tipo: "SAIDA", origem: "NUTRICAO", data: c.fim, quantidade,
           custoUnitario: valores.custoUnitario, valorTotal: valores.valorTotal, centroCustoId: c.centroCustoId,
-          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio} a ${input.fim}`,
+          criadoPorId: usuarioId, observacao: `Consumo do lote ${c.lote.nome}: ${input.inicio.split("-").reverse().join("/")} a ${input.fim.split("-").reverse().join("/")}`,
           ...(distribuicao.length ? { alocacaoPartidaEstoques: { create: distribuicao.map((p) => ({ partidaId: p.partidaId, quantidade: p.quantidade })) } } : {}),
         } });
         await registrarSaidaValorizadaTx(tx, mov.id, plano);
@@ -304,6 +310,11 @@ export async function consumoAnimal(animalId: string, propriedadeId: number | nu
   })) };
 }
 
+/** Último dia fechado (fechamentos confirmados) de cada lote do escopo, numa consulta só. */
+export async function ultimosFechamentos(propriedadeId: number | null) {
+  const grupos = await prisma.fechamentoConsumo.groupBy({ by: ["loteId"], where: { status: "CONFIRMADO", ...(propriedadeId == null ? {} : { propriedadeId }) }, _max: { fim: true } });
+  return Object.fromEntries(grupos.map(g => [g.loteId, g._max.fim?.toISOString().slice(0, 10) ?? null]));
+}
 export async function estornarFechamento(id: string, propriedadeId: number, motivo: string, usuarioId: number | null) {
   return transacaoPecuaria(async (tx) => {
     await travarAlimentacaoLeiteTx(tx, propriedadeId);
@@ -318,7 +329,11 @@ export async function estornarFechamento(id: string, propriedadeId: number, moti
     await travarValorizacaoTx(tx, [...new Set([...fechamento.itens.map(i => i.produtoId), ...produtosLeite.map(e => e.movimento.produtoId)])].sort());
     for (const item of fechamento.itens) {
       await estornarLeiteNutricionalTx(tx, item.id, propriedadeId, usuarioId, motivo);
-      if (item.movimentoEstoqueId) await estornarMovimentoTx(tx, item.movimentoEstoqueId, { propriedadeId, data: fechamento.fim, usuarioId, observacao: motivo });
+      if (!item.movimentoEstoqueId) continue;
+      // Devolve na data do fechamento; se o produto já se movimentou depois, devolve hoje,
+      // sem reescrever o custo das movimentações seguintes.
+      const naData = await previaRetroatividadeTx(tx, item.produtoId, propriedadeId, fechamento.fim, item.movimentoEstoqueId);
+      await estornarMovimentoTx(tx, item.movimentoEstoqueId, { propriedadeId, data: naData.permitido ? fechamento.fim : hojeFazendaDate(), usuarioId, observacao: motivo });
     }
     const salvo = await tx.fechamentoConsumo.update({ where: { id }, data: { status: "ESTORNADO", motivoEstorno: motivo, estornadoEm: new Date() } });
     await auditar(tx, { entidade: "FechamentoConsumo", entidadeId: id, propriedadeId, acao: "ESTORNO", usuarioId,

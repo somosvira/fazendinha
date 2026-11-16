@@ -5,7 +5,7 @@
  * (acentos do português) e quebra páginas repetindo o cabeçalho das tabelas.
  */
 import type { SnapshotRelatorio } from "./relatorios.calc.js";
-import { ROTULO_CLASSIFICACAO, ROTULO_STATUS, ROTULO_TIPO } from "./relatorios.calc.js";
+import { ROTULO_STATUS, ROTULO_TIPO } from "./relatorios.calc.js";
 
 const LARGURA_PAGINA = 595.28;
 const ALTURA_PAGINA = 841.89;
@@ -237,7 +237,7 @@ const REGIME: Record<string, string> = { ambos: "Realizado + compromissos em abe
 
 export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
   const { gerencial: g, composicao: c, filtros, configuracao } = snapshot;
-  const filtrado = [filtros.tipos, filtros.status, filtros.centrosCusto, filtros.parceiros ?? [], filtros.categorias, filtros.classificacoes].some((itens) => itens.length > 0);
+  const filtrado = [filtros.tipos, filtros.status, filtros.centrosCusto, filtros.parceiros ?? [], filtros.categorias, filtros.grupos ?? []].some((itens) => itens.length > 0);
   const doc = new DocumentoPdf();
 
   doc.titulo(snapshot.nome);
@@ -251,7 +251,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     ["Centros de custo", lista(filtros.centrosCusto)],
     ["Parceiros", lista(filtros.parceiros ?? [])],
     ["Categorias", lista(filtros.categorias)],
-    ["Classificação", lista(filtros.classificacoes)],
+    ["Grupos de categorias", lista(filtros.grupos ?? [])],
   ]);
 
   doc.secao("Resumo");
@@ -261,12 +261,20 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
   if (g.resumo.saldoContasFinal != null) resumo.push([filtrado ? "Saldo final das contas (sem filtros)" : "Saldo final das contas", dinheiro(g.resumo.saldoContasFinal)]);
   doc.pares(resumo);
 
+  doc.secao("Compras e serviços por grupo de categorias");
+  doc.paragrafo("Itens de compras e serviços confirmados, pela data da operação, no grupo atual de cada categoria.", 7.5, 0.45);
+  doc.tabela(
+    [{ titulo: "Grupo", largura: 330 }, { titulo: "Total", largura: 110, alinhamento: "direita" }, { titulo: "%", largura: 60, alinhamento: "direita" }],
+    c.despesas.porGrupo.map((item) => [item.nome, dinheiro(item.total), percentual(item.pct)]),
+    { rodape: ["Total", dinheiro(c.despesas.total), c.despesas.porGrupo.length ? "100%" : ""] },
+  );
+
   doc.secao("Compras e serviços por categoria");
   doc.paragrafo("Itens de compras e serviços confirmados, pela data da operação. Cada item conta na própria categoria.", 7.5, 0.45);
   doc.tabela(
-    [{ titulo: "Categoria", largura: 170 }, { titulo: "Custeio", largura: 70, alinhamento: "direita" }, { titulo: "Investimento", largura: 70, alinhamento: "direita" }, { titulo: "Não classif.", largura: 70, alinhamento: "direita" }, { titulo: "Total", largura: 75, alinhamento: "direita" }, { titulo: "%", largura: 45, alinhamento: "direita" }],
-    c.despesas.porCategoria.map((item) => [item.nome, dinheiro(item.custeio), dinheiro(item.investimento), dinheiro(item.semClassificacao), dinheiro(item.total), percentual(item.pct)]),
-    { rodape: ["Total", dinheiro(c.despesas.custeio), dinheiro(c.despesas.investimento), dinheiro(c.despesas.semClassificacao), dinheiro(c.despesas.total), c.despesas.porCategoria.length ? "100%" : ""] },
+    [{ titulo: "Categoria", largura: 330 }, { titulo: "Total", largura: 110, alinhamento: "direita" }, { titulo: "%", largura: 60, alinhamento: "direita" }],
+    c.despesas.porCategoria.map((item) => [item.nome, dinheiro(item.total), percentual(item.pct)]),
+    { rodape: ["Total", dinheiro(c.despesas.total), c.despesas.porCategoria.length ? "100%" : ""] },
   );
 
   doc.secao("Compras e serviços por centro de custo");
@@ -291,7 +299,7 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
 
   if (g.resultado) {
     doc.secao("Resultado do caixa por natureza");
-    doc.pares([["Receitas", dinheiro(g.resultado.receita)], ["Custeio", dinheiro(g.resultado.custeio)], ["Investimento", dinheiro(g.resultado.investimento)], ["Resultado", dinheiro(g.resultado.resultado)]]);
+    doc.pares([["Receitas", dinheiro(g.resultado.receita)], ["Despesas", dinheiro(g.resultado.despesa)], ["Resultado", dinheiro(g.resultado.resultado)]]);
   }
 
   doc.secao("Operações confirmadas por tipo");
@@ -327,14 +335,14 @@ export function gerarPdfRelatorio(snapshot: SnapshotRelatorio): Buffer {
     ? `Exibindo as primeiras ${c.linhas.length} de ${c.totalLinhas} linhas. Os totais acima consideram todas as linhas.`
     : `${c.totalLinhas} linha(s), uma por item de operação no recorte.`, 7.5, 0.45);
   doc.tabela(
-    [{ titulo: "Data", largura: 46 }, { titulo: "Tipo", largura: 74 }, { titulo: "Operação / item", largura: 113 }, { titulo: "Qtd.", largura: 42, alinhamento: "direita" }, { titulo: "Categoria", largura: 72 }, { titulo: "Centro", largura: 57 }, { titulo: "Classif.", largura: 52 }, { titulo: "Valor", largura: 54, alinhamento: "direita" }],
+    [{ titulo: "Data", largura: 46 }, { titulo: "Tipo", largura: 74 }, { titulo: "Operação / item", largura: 113 }, { titulo: "Qtd.", largura: 42, alinhamento: "direita" }, { titulo: "Categoria", largura: 72 }, { titulo: "Centro", largura: 57 }, { titulo: "Grupo", largura: 52 }, { titulo: "Valor", largura: 54, alinhamento: "direita" }],
     c.linhas.map((linha) => [
       data(linha.data),
       `${ROTULO_TIPO[linha.tipo] ?? linha.tipo}${linha.status === "CONFIRMADA" ? "" : ` (${ROTULO_STATUS[linha.status] ?? linha.status})`}`,
       [`OP-${String(linha.operacaoNumero).padStart(4, "0")}`, linha.item ?? linha.descricao].filter(Boolean).join(" · "),
       linha.quantidade ? `${linha.quantidade}${linha.unidade ? ` ${linha.unidade}` : ""}` : "—",
       linha.categoria, linha.centroCusto,
-      linha.classificacao ? ROTULO_CLASSIFICACAO[linha.classificacao] : "—",
+      linha.grupo,
       dinheiro(linha.valor),
     ]),
     { tamanho: 7 },

@@ -28,6 +28,9 @@ import { navegarPara } from "../router";
 import { linkOperacaoFinanceira, validarRetornoInterno } from "./navegacao";
 import { brl, Button, type ColunaTabela, dataBR, Empty, ErrorBox, PageHeader, PaginaCarregando, PaginaFinanceira, Paginacao, Panel, StatusPill, TabelaFinanceira, TIPO_OPERACAO } from "./financeiro-ui";
 
+/** Devolução também liga animais, mas retira do rebanho em vez de cadastrar. */
+const temAnimais = (operacao: Operacao) => operacao.tipo !== "DEVOLUCAO" && operacao.itens.some((item) => !!item.animalId);
+
 function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
   if (filtro === "TODOS") return true;
   const transacoes = operacao.transacoes.filter((item) => item.tipo !== "REVERSAO");
@@ -37,7 +40,8 @@ function possuiEfeito(operacao: Operacao, filtro: EfeitoFiltro) {
   if (filtro === "TRANSFERENCIA") return transacoes.some((item) => item.tipo === "TRANSFERENCIA");
   if (filtro === "A_PAGAR") return operacao.compromissos.some((item) => item.tipo === "PAGAR");
   if (filtro === "A_RECEBER") return operacao.compromissos.some((item) => item.tipo === "RECEBER");
-  return !operacao.movimentosEstoque.length && !transacoes.length && !operacao.compromissos.length;
+  if (filtro === "ANIMAIS") return temAnimais(operacao);
+  return !operacao.movimentosEstoque.length && !transacoes.length && !operacao.compromissos.length && !temAnimais(operacao);
 }
 
 const inicioMes = () => { const data = new Date(); return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-01`; };
@@ -167,7 +171,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
 
       {loading && carregou && <div className="px-4 pt-3"><AtualizandoFinanceiro /></div>}
       <BarraConsulta ordenacao={ordem.controle} criterios={criterios} onLimpar={() => aplicarFiltros({ ...FILTROS_OPERACOES_VAZIOS, inicio, fim })}>
-        <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-white py-2.5 pl-9 pr-3 text-sm" /></label>
+        <label className="fin-filtro-busca relative w-full sm:w-auto"><Search aria-hidden size={16} className="absolute left-3 top-3 text-ink-3" /><Input aria-label="Buscar operações" value={busca} onChange={(e) => { setBusca(e.target.value); setPagina(1); }} placeholder="Buscar por operação, parceiro ou número" className="h-[42px] w-full rounded-lg border border-border bg-card py-2.5 pl-9 pr-3 text-sm" /></label>
         <span aria-hidden="true" className="operacoes-divisor-busca" />
         <PeriodoFinanceiroControl inicio={inicio} fim={fim} allowAll showIcon onChange={(periodo) => { setInicio(periodo.inicio); setFim(periodo.fim); setPagina(1); }} />
 

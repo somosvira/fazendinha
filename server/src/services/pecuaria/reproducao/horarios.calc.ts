@@ -11,6 +11,9 @@ export function lerDataIatf(valor: string) {
   const instante = new Date(entrada);
   return { instante, precisao, data: diaIatf(instante, precisao) };
 }
+export function dataDisponibilidadeIatf(temporal: ReturnType<typeof lerDataIatf>, agora = new Date()): Date {
+  return new Date(temporal.instante > agora ? diaIatf(agora) : temporal.data);
+}
 export function serializarDataIatf(valor: Date, precisao: PrecisaoIatf = "HORA") {
   return precisao === "DIA" ? diaIatf(valor, precisao) : valor.toISOString();
 }

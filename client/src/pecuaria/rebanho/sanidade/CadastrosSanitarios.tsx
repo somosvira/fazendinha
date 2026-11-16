@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { useBuscaUrl } from "../../../lib/useBuscaUrl";
 import { useFiltrosTabelaLocal } from "@/financeiro/useFiltrosTabelaLocal";
 import { BarraConsulta } from "@/financeiro/BarraConsulta";
@@ -6,12 +7,13 @@ import { reqV4 } from "../reproducao/api";
 import { CamposFormatoExame, type CampoExame } from "./CamposExame";
 import { useEffect, useRef, useState } from "react";
 import { Pencil, Power, PowerOff } from "lucide-react";
-import { Button, ErrorBox, Pill, TabelaFinanceira } from "../../../financeiro/financeiro-ui";
+import { Button, ErrorBox, Pill } from "../../../financeiro/financeiro-ui";
 import { CampoFormulario, classeInput, PainelCadastro as PainelBase } from "../../../financeiro/PainelCadastro";
 import { BuscaLista } from "@/components/BuscaLista";
 import { PaginacaoLocal, usePaginacaoLocal } from "@/components/PaginacaoLocal";
 import { listarTiposAplicacao, reqSanidade, salvarTipoAplicacao, type TipoAplicacao } from "./api";
 import { ProtocolosCadastro } from "./ProtocolosCadastro";
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 
 const PainelCadastro = (props: Parameters<typeof PainelBase>[0]) => <PainelBase {...props} compacto />;
 
@@ -133,7 +135,7 @@ export function CadastrosSanitarios({ podeLancar, cadastro, embutido = false, co
           {ocupado && <p role="status" className="py-3 text-sm">Atualizando cadastro…</p>}
           {erro && !painel && <Button secondary disabled={ocupado} onClick={() => setVersao((v) => v + 1)}>Tentar novamente</Button>}
         </div>
-        {carregando ? <p role="status" className="p-4">Carregando {titulo.toLowerCase()}…</p> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <TabelaFinanceira filtrosColunas={consulta.colunas}
+        {carregando ? <EsqueletoTabela label={`Carregando ${titulo.toLowerCase()}`} colunas={3} className="p-4" /> : !erro && !itens.length ? <p className="p-4 text-sm text-ink-3">Nenhum cadastro. {podeLancar ? "Use o botão acima para cadastrar." : ""}</p> : <ConsultaOperacional filtrosColunas={consulta.colunas}
           rotulo={titulo} itens={paginacao.itens} chaveDe={(item) => item.id}
           colunas={[
             { chave: "nome", titulo: "Nome", principal: true, celula: (item) => item.nome },

@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 
 const { transacao } = vi.hoisted(() => ({ transacao: vi.fn() }));
 vi.mock("../../db.js", () => ({ prisma: { $transaction: transacao } }));
-import { transacaoPecuaria } from "./transacao.js";
+import { timeoutTransacaoAnimais, transacaoPecuaria } from "./transacao.js";
 
 const conflito = () => new Prisma.PrismaClientKnownRequestError("serialização", { code: "P2034", clientVersion: "6" });
 const conflitoAdapter = () => Object.assign(new Error("TransactionWriteConflict"), { name: "DriverAdapterError", cause: { kind: "TransactionWriteConflict" } });
@@ -37,5 +37,19 @@ describe("confirmação pecuária serializável", () => {
     transacao.mockRejectedValue(Object.assign(new Error("ConnectionClosed"), { name: "DriverAdapterError", cause: { kind: "ConnectionClosed" } }));
     await expect(transacaoPecuaria(vi.fn())).rejects.toThrow("ConnectionClosed");
     expect(transacao).toHaveBeenCalledTimes(1);
+  });
+  it("aceita limite de tempo próprio e mantém o padrão de 30 s sem ele", async () => {
+    transacao.mockResolvedValue("ok");
+    await transacaoPecuaria(vi.fn(), { timeout: 110_000 });
+    expect(transacao).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: "Serializable", timeout: 110000 });
+    await transacaoPecuaria(vi.fn());
+    expect(transacao).toHaveBeenLastCalledWith(expect.any(Function), { isolationLevel: "Serializable", timeout: 30000 });
+  });
+  it("limite proporcional ao número de animais: 30 s + 600 ms por animal, até 120 s", () => {
+    expect(timeoutTransacaoAnimais(0)).toBe(30_000);
+    expect(timeoutTransacaoAnimais(1)).toBe(30_600);
+    expect(timeoutTransacaoAnimais(100)).toBe(90_000);
+    expect(timeoutTransacaoAnimais(200)).toBe(120_000);
+    expect(timeoutTransacaoAnimais(1000)).toBe(120_000);
   });
 });

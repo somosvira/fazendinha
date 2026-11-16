@@ -42,3 +42,11 @@ describe("cadastros financeiros ampliados", () => {
     await expect(exigirParceiroAtivo(db, uid(1), "SERVICO")).resolves.toMatchObject({ id: uid(1) });
   });
 });
+
+it("intervalo do parceiro é independente dos prazos legados", () => {
+  expect(patchParceiroSchema.parse({ intervaloPagamentoDias: 30 })).toEqual({ intervaloPagamentoDias: 30 });
+  expect(patchParceiroSchema.parse({ intervaloPagamentoDias: null })).toEqual({ intervaloPagamentoDias: null });
+  for (const valor of [0, -1, 30.5, 3651, "30/60", [30, 60]]) {
+    expect(patchParceiroSchema.safeParse({ intervaloPagamentoDias: valor }).success).toBe(false);
+  }
+});

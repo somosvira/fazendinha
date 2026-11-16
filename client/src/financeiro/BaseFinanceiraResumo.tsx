@@ -30,10 +30,10 @@ export function BaseFinanceiraResumo({ base, realizado, compromissos, inicio, fi
   return <section className="border-t border-border" aria-labelledby="base-financeira-titulo">
     <h2 id="base-financeira-titulo" className="sr-only">Base financeira</h2>
     <Card className="gap-0 overflow-hidden rounded-none border-0 py-0 shadow-none">
-      <div data-fin-tom="info" className="fin-cabecalho border-b border-border p-5"><h3 className="font-serif text-xl">Rastreabilidade<AjudaCampo rotulo="Ajuda: rastreabilidade" texto={<>Cada etapa tem sua própria contagem e grandeza financeira.</>} /></h3></div>
+      <div data-fin-tom="info" className="fin-cabecalho border-b border-border p-5"><h3 className="font-serif text-xl">Rastreabilidade</h3></div>
       <dl className="divide-y divide-border">{rows.map(row => <div key={row.label} className="grid gap-2 p-5 md:grid-cols-[180px_minmax(0,1fr)]"><dt><LinkPeriodo href={row.href}>{row.label}: {row.total}</LinkPeriodo>{row.ajuda && <AjudaCampo texto={row.ajuda} rotulo={`Ajuda: ${row.label}`} />}</dt><dd className="min-w-0 space-y-1 text-sm"><p className="break-words">{row.detail}</p>{row.value && <p className="break-words text-ink-3">{row.value}</p>}</dd></div>)}</dl>
       <div className="space-y-4 border-t border-border bg-surface-2 p-5 text-sm">
-        <div><h4 className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Operações<AjudaCampo rotulo="Ajuda: vínculos opcionais" texto={<>Parceiro, compromisso e efeito de estoque são opcionais conforme o fato de negócio.</>} /></h4><dl className="mt-2 grid gap-3 sm:grid-cols-3">
+        <div><h4 className="text-[11px] font-semibold uppercase tracking-[.12em] text-ink-3">Operações</h4><dl className="mt-2 grid gap-3 sm:grid-cols-3">
           <IndicadorBase label="Com efeito de estoque" valor={base.operacoes.comEstoque} />
           <IndicadorBase label="Sem parceiro" valor={base.operacoes.semParceiro} />
           <IndicadorBase label="Sem efeitos vinculados" valor={base.operacoes.semEfeitos} href={`/financeiro/operacoes?${query}&efeito=SEM_EFEITOS`} />

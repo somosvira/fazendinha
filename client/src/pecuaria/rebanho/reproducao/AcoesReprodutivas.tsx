@@ -1,3 +1,4 @@
+import { DatePicker } from "../../../components/DatePicker";
 import { FormEncerrarLactacao } from "./FormEncerrarLactacao";
 import { FormPesoSecagem } from "./FormPesoSecagem";
 import { PesoSecagemLactacao } from "./PesoSecagemLactacao";
@@ -26,6 +27,7 @@ import {
 } from "../../../financeiro/PainelCadastro";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { reqV4, type LactacaoReprodutiva, type AnimalReprodutivo, type PainelReprodutivo } from "./api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
 type Acao = {
   tipo:
     | "perda"
@@ -383,7 +385,7 @@ export function AcoesReprodutivas({
                 .finally(() => setOcupado(false));
             }}
           >
-            {acao.tipo==="perda"&&<><p className="text-sm">Descreva a observação e o contexto da perda no motivo obrigatório. A causa clínica pode permanecer desconhecida.</p><label>Causa clínica<select className={classeInput} value={causaClinica} onChange={e=>setCausaClinica(e.target.value)}><option value="DESCONHECIDA">Desconhecida</option><option value="SUSPEITA">Suspeita</option><option value="CONFIRMADA">Confirmada</option></select></label><label>Descrição da causa (quando conhecida)<textarea className={classeInput} value={descricaoCausa} required={causaClinica!=="DESCONHECIDA"} minLength={2} maxLength={1000} onChange={e=>setDescricaoCausa(e.target.value)}/></label><label>Evidências e referências (opcional, uma por linha)<textarea className={classeInput} rows={3} value={evidenciasPerda} onChange={e=>setEvidenciasPerda(e.target.value)} aria-describedby="evidencias-perda-ajuda"/></label><p id="evidencias-perda-ajuda" className="text-sm text-ink-3">Informe referências de exames, laudos ou observações de campo. Até 20 referências, com 2 a 1.000 caracteres cada.</p></>}
+            {acao.tipo==="perda"&&<><p className="text-sm">Descreva a observação e o contexto da perda no motivo obrigatório. A causa clínica pode permanecer desconhecida.</p><label>Causa clínica<SelectCampo className={classeInput} value={causaClinica} onValueChange={(valor) =>setCausaClinica(valor)}><option value="DESCONHECIDA">Desconhecida</option><option value="SUSPEITA">Suspeita</option><option value="CONFIRMADA">Confirmada</option></SelectCampo></label><label>Descrição da causa (quando conhecida)<textarea className={classeInput} value={descricaoCausa} required={causaClinica!=="DESCONHECIDA"} minLength={2} maxLength={1000} onChange={e=>setDescricaoCausa(e.target.value)}/></label><label>Evidências e referências (opcional, uma por linha)<textarea className={classeInput} rows={3} value={evidenciasPerda} onChange={e=>setEvidenciasPerda(e.target.value)} aria-describedby="evidencias-perda-ajuda"/></label><p id="evidencias-perda-ajuda" className="text-sm text-ink-3">Informe referências de exames, laudos ou observações de campo. Até 20 referências, com 2 a 1.000 caracteres cada.</p></>}
             <ErrorBox erro={erro} />
             <p className="text-sm">
               Animal {nome(acao.animalId)}. O histórico e os fatos anteriores
@@ -392,33 +394,22 @@ export function AcoesReprodutivas({
             {["perda", "restricao"].includes(acao.tipo) && (
               <label>
                 Data
-                <input
-                  type="date"
-                  required
-                  className={classeInput}
-                  value={data}
-                  onChange={(e) => setData(e.target.value)}
-                />
+                <DatePicker required className="mt-1.5" value={data} onChange={(valor) => setData(valor)} />
               </label>
             )}
             {acao.tipo === "previsao" && (
               <label>
                 Previsão (vazio remove a previsão)
-                <input
-                  type="date"
-                  className={classeInput}
-                  value={previsao}
-                  onChange={(e) => setPrevisao(e.target.value)}
-                />
+                <DatePicker className="mt-1.5" value={previsao} onChange={(valor) => setPrevisao(valor)} />
               </label>
             )}
             {acao.tipo === "vinculo" && (
               <label>
                 Tentativa comprovada
-                <select
+                <SelectCampo
                   className={classeInput}
                   value={tentativaId}
-                  onChange={(e) => setTentativaId(e.target.value)}
+                  onValueChange={(valor) => setTentativaId(valor)}
                 >
                   <option value="">Vínculo desconhecido</option>
                   {painel.tentativas
@@ -431,7 +422,7 @@ export function AcoesReprodutivas({
                         {t.data.slice(0, 10)} · {t.tipo}
                       </option>
                     ))}
-                </select>
+                </SelectCampo>
               </label>
             )}
             {acao.tipo === "identificacao" ? (

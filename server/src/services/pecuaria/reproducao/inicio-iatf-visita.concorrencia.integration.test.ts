@@ -1,3 +1,4 @@
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { randomUUID } from "node:crypto";
 import { Prisma, type Animal } from "@prisma/client";
 import { describe, expect, it } from "vitest";
@@ -13,6 +14,7 @@ async function criarFixture(tx: Prisma.TransactionClient) {
   const animais: Animal[] = [];
   for (let i = 0; i < 4; i++) animais.push(await tx.animal.create({ data: { brinco: `IVC-${token}-${i}`, sexo: "F", origem: "COMPRADO",
     dataNascimento: new Date("2020-01-01"), dataEntrada: new Date("2024-01-01"), localizacoes: { create: { propriedadeId: sitio.id, desde: new Date("2024-01-01") } } } }));
+  for (const a of animais) await criarAptidaoFixture(tx, a.id, sitio.id, new Date("2024-01-01"));
   const estrutura = await tx.protocolo.create({ data: { nome: `Corrida IATF ${token}`, versao: 1, tipo: "REPRODUTIVO",
     etapas: { create: { nome: "Retirada", ordem: 1, tipo: "RETIRADA", diaRelativo: 1, configuracao: { nome: "Retirada", tipo: "RETIRADA", intervalo: 1, unidade: "DIAS" } } } } });
   const protocolo = await tx.protocolo.update({where:{id:estrutura.id},data:{publicado:true,publicadoEm:new Date()}});
@@ -28,6 +30,7 @@ async function limparFixture(f: Fixture) {
     const dono = await tx.propriedade.findFirst({ where: { id: f.sitio.id, nome: `Corrida início visita ${f.token}` } });
     if (!dono) throw new Error("A limpeza exige a identidade exata da fixture");
     const animaisIds = f.animais.map(a => a.id);
+    await limparAptidaoFixture(tx, animaisIds);
     const participacoes = await tx.participacaoProtocolo.findMany({ where: { propriedadeId: f.sitio.id, protocoloId: f.protocolo.id, animalId: { in: animaisIds } }, select: { id: true } });
     await tx.auditoriaPecuaria.deleteMany({ where: { propriedadeId: f.sitio.id } });
     await tx.requisicaoPecuaria.deleteMany({ where: { propriedadeId: f.sitio.id } });

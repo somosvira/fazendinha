@@ -5,6 +5,8 @@ import { dataHoraISO } from "../reproducao/CampoDataIatf";
 import type { PaginaProtocolo } from "./EtapasProtocolo";
 import { Paginacao } from "../ui";
 import { reqProtocolo } from "./api";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+import { formatBRDateISO } from "../../../lib/hoje";
 
 type OpcaoInsercao = { id: string; data: string; nomeProdutoAplicado: string };
 export type OrigensRetirada = PaginaProtocolo<OpcaoInsercao> & {
@@ -76,11 +78,11 @@ export function InsercaoRetirada({ tarefaId, propriedadeId, realizadaEm, origem,
     {erroAtual && <Button secondary type="button" onClick={onTentarNovamente}>Consultar inserções novamente</Button>}
     {!origem && <p role="status">Consultando inserção deste animal…</p>}
     {mensagem && <p role="status" className="text-sm">{mensagem}</p>}
-    <label>Inserção do dispositivo deste animal<select required className={classeInput} value={valor} onChange={e => onChange(e.target.value)}>
+    <label>Inserção do dispositivo deste animal<SelectCampo required className={classeInput} value={valor} onValueChange={(valor) => onChange(valor)}>
       <option value="">Selecione a inserção válida</option>
       {valor && !dados?.itens.some(i => i.id === valor) && <option value={valor}>Referência selecionada · {valor}</option>}
-      {dados?.itens.map(i => <option key={i.id} value={i.id}>{i.data.slice(0, 10)} · {i.nomeProdutoAplicado}</option>)}
-    </select></label>
+      {dados?.itens.map(i => <option key={i.id} value={i.id}>{formatBRDateISO(i.data.slice(0, 10))} · {i.nomeProdutoAplicado}</option>)}
+    </SelectCampo></label>
     {dados && dados.total > 10 && <Paginacao paginaAtual={dados.pagina} totalPaginas={Math.ceil(dados.total / 10)} totalItens={dados.total} itensPorPagina={10} onPaginaChange={setPagina} rotulo="inserções válidas" idSelect={`insercoes-${tarefaId}`} />}
   </div>;
 }

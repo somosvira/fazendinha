@@ -8,7 +8,7 @@ const abrir = vi.fn();
 const itens = [{ id: "a", nome: "Manhã", litros: 0 }, { id: "b", nome: "Tarde", litros: null }];
 beforeEach(() => { localStorage.clear(); history.replaceState(null, "", "/pecuaria/leite?leiteSecao=ordenhas&ordenhasBusca=outubro&paginaOrdenhas=2#origem"); });
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
-const consulta = () => <ListaConsultaLeite preferencia="ordenhasVisualizacao" rotulo="Ordenhas" itens={itens} chaveDe={r => r.id} onAbrir={r => abrir(r.id)} colunas={[
+const consulta = () => <ListaConsultaLeite preferencia="ordenhasVisualizacao" padrao="visual" rotulo="Ordenhas" itens={itens} chaveDe={r => r.id} onAbrir={r => abrir(r.id)} colunas={[
   { chave: "nome", titulo: "Ordenha", principal: true, celula: r => r.nome },
   { chave: "litros", titulo: "Litros", celula: r => r.litros === null ? "Não aferido" : `${r.litros} L` },
   { chave: "acoes", titulo: "Ação", acoes: true, celula: r => <Button onClick={() => abrir(`acao:${r.id}`)}>Conferir {r.nome}</Button> },

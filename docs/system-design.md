@@ -18,7 +18,7 @@ flowchart LR
   Leitura --> Servicos
 ```
 
-Node atende desenvolvimento/testes; produção usa exclusivamente Workers. O frontend usa `/api` relativo. `worker.ts` e `index.ts` compartilham `app.ts`, com adapters de banco apropriados. O assistente financeiro não envia resultados financeiros ao modelo nem executa escrita. Bot legado e WhatsApp estão suspensos.
+Node atende desenvolvimento/testes; produção usa exclusivamente Workers. O frontend usa `/api` relativo. `worker.ts` e `index.ts` compartilham `app.ts`, com adapters de banco apropriados. O interpretador do assistente não recebe resultados financeiros; a locução e a síntese opcional do Radar recebem apenas o conteúdo já autorizado em seus fluxos. Escrita do chat está restrita à pesagem individual preparada e confirmada. Metas é uma página independente, com diário imutável de definições e medições, sem substituir fatos operacionais. Bot legado e WhatsApp estão suspensos.
 
 ## Fronteiras funcionais
 

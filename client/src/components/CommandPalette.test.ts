@@ -212,3 +212,30 @@ it("Enter prioriza o registro encontrado quando a resposta chega depois das pág
   fireEvent.keyDown(input, { key: "Enter" });
   expect(props.onNav).toHaveBeenCalledWith("estoque", "p", "/estoque/produtos/p");
 });
+
+describe("busca só de animais (Ctrl/⌘ Shift K)", () => {
+  const vaca = { id: "a1", brinco: "DEV-019", nome: "Lactantes 19", sexo: "F", situacao: "ATIVO", categoria: null, propriedade: {id:7,nome:"Sede"}, lote: null };
+  function prepararFetch() {
+    const mock = vi.fn(async (url: string) => ({ok:true,json:async()=>url.includes("/catalogos")?{propriedades:[],lotes:[],racas:[],motivosBaixa:[]}:url.includes("/categorias")?{itens:[]}:{itens:[vaca],total:1,painel:{}}}));
+    vi.stubGlobal("fetch", mock);return mock;
+  }
+  it("abre a listagem sem termo e Enter navega à ficha exata sem chamar a busca global", async () => {
+    const mock=prepararFetch();const props=baseProps();render(h(CommandPalette,{...props,modo:"animais"}));
+    await act(async()=>{await new Promise(r=>setTimeout(r,0));});
+    expect(screen.getByRole("button",{name:/DEV-019/})).toBeTruthy();
+    expect(mock.mock.calls.some(([url])=>url.startsWith("/api/busca"))).toBe(false);
+    expect(mock.mock.calls.some(([url])=>url.startsWith("/api/pecuaria/rebanho/animais?"))).toBe(true);
+    expect(screen.queryByRole("navigation",{name:"Tipos de resultado"})).toBeNull();
+    fireEvent.keyDown(screen.getByRole("searchbox",{name:"Buscar animal"}),{key:"Enter"});
+    expect(props.onNav).toHaveBeenCalledWith("pec-rebanho","a1",expect.stringContaining("/animais/a1?"));
+    expect(props.onFechar).toHaveBeenCalled();
+  });
+  it("troca entre modos mantendo o foco no campo correspondente", async () => {
+    prepararFetch();const props=baseProps();const {rerender}=render(h(CommandPalette,props));
+    rerender(h(CommandPalette,{...props,modo:"animais"}));
+    expect(document.activeElement).toBe(screen.getByRole("searchbox",{name:"Buscar animal"}));
+    rerender(h(CommandPalette,{...props,modo:"tudo"}));
+    expect(document.activeElement).toBe(screen.getByPlaceholderText(PLACEHOLDER));
+    await act(async()=>{await new Promise(r=>setTimeout(r,0));});
+  });
+});

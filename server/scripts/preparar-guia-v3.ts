@@ -71,8 +71,8 @@ async function limparCenario() {
   await prisma.usuario.deleteMany({ where: { email: { notIn: manterEmails } } });
   await prisma.propriedade.deleteMany({ where: { id: { notIn: [principal.id, destino.id] } } });
   await prisma.categoria.createMany({ data: [
-    { nome: 'Sanidade', classificacao: 'CUSTEIO', ativo: true, ordem: 1 },
-    { nome: 'Nutrição', classificacao: 'CUSTEIO', ativo: true, ordem: 2 },
+    { nome: 'Sanidade', ativo: true, ordem: 1 },
+    { nome: 'Nutrição', ativo: true, ordem: 2 },
   ], skipDuplicates: true });
   console.log(JSON.stringify({ limpeza: 'concluída', contaMantida: conta?.nome ?? 'Conta de testes V3', sitios: [principal.nome, destino.nome] }));
 }

@@ -1,3 +1,4 @@
+import { criarAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import { criarEntradaValorizadaFixture } from "../../../test/estoque-valorizado.fixture.js";
 import { criarTipoExame, editarTipoExame, corrigirExame } from "../sanidade/exames.js";
 import { randomUUID } from "node:crypto";
@@ -27,7 +28,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
       data: { nome: `IATF ${token}` },
     });
     const categoria = await prisma.categoria.create({
-      data: { nome: `Produtos IATF ${token}`, classificacao: "CUSTEIO" },
+      data: { nome: `Produtos IATF ${token}` },
     });
     const produto = await prisma.produto.create({
       data: {
@@ -73,6 +74,7 @@ comBanco("IATF planejada, executada e reentrada — banco descartável", () => {
         },
       },
     });
+    await criarAptidaoFixture(prisma, animal.id, sitio.id, new Date("2024-01-01"));
     await criarEntradaValorizadaFixture({
       data: {
         produtoId: produto.id,

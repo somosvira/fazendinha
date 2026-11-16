@@ -72,3 +72,23 @@
  .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-mais-filtros{grid-column:2;grid-row:2;min-width:0;margin:0}
  .leite-rotina-reformulada .leite-ordenhas-consulta .consulta-acoes{grid-column:1;grid-row:2;justify-self:start;order:0}
 }
+/* Fora de painel, o vazio acompanha a largura do conteúdo vizinho. */
+.leite-rotina-reformulada .fin-vazio,.leite-superficie .fin-vazio,.leite-grafico-producao .fin-vazio{margin-inline:0}
+/* Títulos curtos das rotinas: a identidade cede espaço às ações do cabeçalho em vez de quebrá-las. */
+@media(min-width:801px){.leite-rotina-reformulada .fin-cabecalho-identidade{flex:1 1 auto}}
+
+.leite-rotina-reformulada .leite-cabecalho-acoes[data-rotina="vendas"],
+.leite-rotina-reformulada .leite-cabecalho-acoes .leite-vendas-acoes {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: none;
+}
+.leite-vendas-acoes > button { min-height: 44px; }
+.leite-rotina-reformulada .leite-cabecalho-acoes[data-rotina="vendas"] .leite-configuracoes-acao {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+.leite-rotina-reformulada .leite-cabecalho-acoes[data-rotina="vendas"] .leite-configuracoes-acao > span { display: none; }

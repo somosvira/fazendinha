@@ -1,3 +1,4 @@
+import { quantidadePadraoTentativa } from "./atendimento.calc.js";
 import { describe, expect, it } from "vitest";
 import { compararExecucaoIatf, snapshotIatf } from "./iatf.calc.js";
 import { protocoloSchema } from "./schemas.js";
@@ -156,4 +157,11 @@ it("tipos de exames diferentes exigem desvio sem prever o resultado clínico", (
   const p = snapshotIatf({ nome: "Ultrassom", tipo: "AVALIACAO", intervalo: 0, unidade: "DIAS", planoAvaliacao: { tipo: "DIAGNOSTICO", tipoExameId: produto } }, {}, momento, momento, momento);
   expect(compararExecucaoIatf(p, momento.toISOString(), { finalidade: "DIAGNOSTICO", tipoExameId: produto, resultado: "NEGATIVO" }).diferencas).toEqual([]);
   expect(compararExecucaoIatf(p, momento.toISOString(), { finalidade: "DIAGNOSTICO", tipoExameId: material, resultado: "POSITIVO" }).diferencas).toMatchObject([{ campo: "tipoExameId", planejado: produto, realizado: material }]);
+});
+
+it("o padrão compatível de uma dose compara como planejado sem inventar desvio", () => {
+  const plano=snapshotIatf({nome:"IA",tipo:"TENTATIVA",intervalo:0,unidade:"DIAS",planoTentativa:{tipo:"IA",materialId:material,quantidade:1}}, {}, momento,momento,momento);
+  const dados={tipo:"IA",materialId:material,quantidade:quantidadePadraoTentativa("IA",undefined,"DOSE")};
+  expect(compararExecucaoIatf(plano,momento.toISOString(),dados).diferencas).toEqual([]);
+  expect(compararExecucaoIatf(plano,momento.toISOString(),{...dados,quantidade:2}).diferencas.map(d=>d.campo)).toEqual(["quantidade"]);
 });

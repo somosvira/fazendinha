@@ -15,7 +15,7 @@ export function permissoesGerencial(u:UsuarioContexto){
   const financeiro=temArea(u,"financeiro");const pecuaria=temArea(u,"pecuaria");const valores=financeiro&&temPermissao(u,"verValores");
   // Não existe marcação semântica de sigilo salarial nas categorias atuais.
   // Sem essa permissão, um total de caixa permite inferir valores protegidos.
-  const caixa=valores&&(u.dono||u.abas.includes("dashboard"))&&temPermissao(u,"verSalarios")&&temPermissao(u,"verInvestimento");
+  const caixa=valores&&(u.dono||u.abas.includes("dashboard"))&&temPermissao(u,"verSalarios");
   return {acesso:pecuaria||(financeiro&&(u.dono||u.abas.includes("dashboard"))),caixa,estoque:valores,nutricao:pecuaria&&valores,custos:pecuaria&&valores,clinico:pecuaria};
 }
 /** Uma fonte sem recorte não pode desaparecer da cobertura do agregado. */
@@ -50,8 +50,12 @@ export async function obterResumoGerencial(u:UsuarioContexto,propriedadeId:numbe
     for(const f of nutricao?.fontes??[])componentes.push({chave:`nutricao:${f.participacaoId}:${f.itemId}`,fonteId:f.participacaoId,tipoFonte:"NUTRICAO",animalId:f.animalId,data:textoDia(fim),descricao:"Nutrição rateada no período",estadoFato:"CONFIRMADO",participacaoId:null,
       finalidade:f.finalidade as "REPRODUCAO"|"SANIDADE"|"ROTINA"|null,natureza:"MATERIAL",estado:f.custoConhecido==null?"DESCONHECIDO":"CONHECIDO",valor:f.custoConhecido==null?null:new Prisma.Decimal(f.custoConhecido),origemId:f.movimentoEstoqueId});
     const custosBase=p.custos?consolidarCustos(componentes):null;
+    // Índices do sítio de cada fonte: procurar na lista inteira por componente ficava quadrático com um ano de nutrição.
+    // Primeira ocorrência vence, como no find original.
+    const sitioNutricao=new Map<string,number>();for(const f of nutricao?.fontes??[])if(!sitioNutricao.has(f.participacaoId))sitioNutricao.set(f.participacaoId,f.propriedadeId);
+    const sitioFonte=new Map<string,number>();for(const f of fontes.flat()){const k=`${f.tipo}:${f.id}`;if(!sitioFonte.has(k))sitioFonte.set(k,f.propriedadeId);}
     const custos=custosBase?{...sinalizarLacunasNutricao(custosBase,nutricao?.lacunas.length??0),
-      componentes:custosBase.componentes.map(c=>({...c,propriedadeId:c.tipoFonte==="NUTRICAO"?nutricao!.fontes.find(f=>f.participacaoId===c.fonteId)!.propriedadeId:fontes!.flat().find(f=>f.id===c.fonteId&&f.tipo===c.tipoFonte)!.propriedadeId}))}:null;
+      componentes:custosBase.componentes.map(c=>({...c,propriedadeId:c.tipoFonte==="NUTRICAO"?sitioNutricao.get(c.fonteId)!:sitioFonte.get(`${c.tipoFonte}:${c.fonteId}`)!}))}:null;
     const finalidades=["REPRODUCAO","SANIDADE","ROTINA",null].map(finalidade=>({finalidade:finalidade??"SEM_CLASSIFICACAO",...sinalizarLacunasNutricao(consolidarCustos(componentes.filter(c=>c.finalidade===finalidade)),nutricao?.lacunas.length??0)}));
     return {versao:"GERENCIAL_V1",corte:agora.toISOString(),periodo:{inicio:textoDia(inicio),fim:textoDia(fim)},escopo:{propriedadeId,sitios},
       caixa:caixa?disponivel(caixa):bloqueado("Caixa exige Financeiro, aba Visão geral, valores, salários e investimentos. As categorias atuais não permitem separar sigilo salarial com segurança."),
@@ -62,4 +66,15 @@ export async function obterResumoGerencial(u:UsuarioContexto,propriedadeId:numbe
       clinico:demandas!=null?disponivel({data:textoDia(hoje),acompanhamentosPendentes:demandas}):bloqueado("Acompanhamento exige Pecuária."),
       avisos:["Caixa, estoque e consumo representam momentos diferentes; seus totais não devem ser somados.","Nutrição e finalidade gerencial são recortes dos mesmos custos diretos.","Custos sem atribuição operacional não são rateados automaticamente entre animais."]};
   },{isolationLevel:Prisma.TransactionIsolationLevel.RepeatableRead,timeout:30000});
+}
+
+/** O painel só exibe totais e contagens. As listas por animal-dia chegavam a dezenas de MB em um ano
+ *  de rebanho grande; ficam fora da resposta, a menos que os detalhes sejam pedidos. */
+export function resumoSemDetalhes<R extends { nutricao?: { estado: string; dados?: unknown }; custos?: { estado: string; dados?: unknown } }>(resumo: R): R {
+  const tirar = <B extends { estado: string; dados?: unknown } | undefined>(bloco: B, campo: string): B =>
+    bloco?.estado === "DISPONIVEL" && bloco.dados && typeof bloco.dados === "object" ? { ...bloco, dados: { ...(bloco.dados as object), [campo]: [] } } : bloco;
+  const custos = tirar(resumo.custos, "componentes");
+  if (custos?.estado === "DISPONIVEL" && custos.dados && typeof custos.dados === "object" && Array.isArray((custos.dados as { finalidades?: unknown }).finalidades))
+    (custos.dados as { finalidades: object[] }).finalidades = (custos.dados as { finalidades: object[] }).finalidades.map(f => ({ ...f, componentes: [] }));
+  return { ...resumo, nutricao: tirar(resumo.nutricao, "fontes"), custos };
 }

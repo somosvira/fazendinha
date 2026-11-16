@@ -12,7 +12,7 @@ describe("nutrição individual", () => {
   it("mostra parcela, custo incompleto, dias e origem; permite paginar o histórico", async () => {
     render(<NutricaoAnimal animalId="animal" />);
     await screen.findByRole("rowheader", { name: "Silagem" });
-    expect(screen.getByRole("cell", { name: "10 KG" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "10 kg" })).toBeTruthy();
     expect(screen.getByRole("columnheader", { name: "Média por dia" })).toBeTruthy();
     expect(screen.getByText(/cobertura incompleta/)).toBeTruthy();
     const link = screen.getByRole("link", { name: /Abrir fechamento do lote/ });

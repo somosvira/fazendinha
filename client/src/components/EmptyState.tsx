@@ -10,6 +10,7 @@
  *  - vazio de verdade (não há nada cadastrado)  → mostra o CTA de criar.
  *  - vazio por filtro (busca/aba sem resultado) → passa `variant="filtro"`,
  *    esconde o CTA e sugere limpar o filtro.
+ *  - lista ou gráfico vazio dentro de uma seção que já tem título → `compacto`.
  */
 import { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
@@ -21,6 +22,7 @@ export function EmptyState({
   descricao,
   acao,
   variant = "vazio",
+  compacto = false,
   className = "",
 }: {
   /** Ícone lucide (default: Inbox). Passe um do módulo p/ dar contexto. */
@@ -31,24 +33,26 @@ export function EmptyState({
   /** CTA primário (ex.: <RebButton>+ Novo produto</RebButton>). Omitido em filtro. */
   acao?: ReactNode;
   variant?: "vazio" | "filtro";
+  /** Dentro de uma seção: menos altura, ícone menor, título da seção já existe. */
+  compacto?: boolean;
   className?: string;
 }) {
   return (
     <div
       className={
-        "flex flex-col items-center justify-center gap-3 rounded-[10px] border border-dashed border-border bg-[color:var(--bg-card-2)] px-6 py-16 text-center " +
-        className
+        "flex flex-col items-center justify-center rounded-[10px] border border-dashed border-border bg-[color:var(--bg-card-2)] px-6 text-center " +
+        (compacto ? "gap-2 py-6 " : "gap-3 py-10 ") + className
       }
       role="note"
     >
       <span
         aria-hidden
-        className="grid h-14 w-14 place-items-center rounded-full border border-border bg-[color:var(--bg-card)] text-ink-3"
+        className={(compacto ? "h-10 w-10 " : "h-14 w-14 ") + "grid place-items-center rounded-full border border-border bg-[color:var(--bg-card)] text-ink-3"}
       >
-        <Icon size={26} strokeWidth={1.5} />
+        <Icon size={compacto ? 20 : 26} strokeWidth={1.5} />
       </span>
       <div className="flex flex-col gap-1">
-        <p className="m-0 font-serif text-[19px] font-medium leading-tight text-foreground">{titulo}</p>
+        <p className={(compacto ? "text-[15px] " : "text-[17px] ") + "m-0 font-semibold leading-tight text-foreground"}>{titulo}</p>
         {descricao ? <p className="m-0 max-w-[42ch] text-sm leading-relaxed text-ink-2">{descricao}</p> : null}
       </div>
       {variant === "vazio" && acao ? <div className="mt-2">{acao}</div> : null}

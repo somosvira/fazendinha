@@ -5,6 +5,8 @@ import { listarPropriedades, type PropriedadeDTO } from "../../../api/propriedad
 import { Button, ErrorBox } from "../../../financeiro/financeiro-ui";
 import { getPropriedadeAtiva } from "../../../propriedadeScope";
 import { navegarPara } from "../../../router";
+import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoCampo } from "../../../components/Esqueleto";
 
 /** Consulta por sítio sem alterar a seleção global; o servidor continua autorizando cada request. */
 type PropsConsultaSitio = { children: (sitioId: number) => ReactNode; cabecalho?: (controle: ReactNode) => ReactNode };
@@ -44,10 +46,10 @@ function SelecionarSitio({ children, cabecalho }: PropsConsultaSitio) {
   return <div className="consulta-por-sitio">
     {cabecalho ? cabecalho(controle) : controle}
     <div className="rel-sitio-estado">
-      {carregando && <p role="status">Carregando sítios…</p>}
+      {carregando && <EsqueletoCampo label="Carregando sítios" />}
       <ErrorBox erro={erro}/>
       {erro && <Button secondary onClick={() => setRevisao(v => v + 1)}>Tentar novamente</Button>}
-      {!carregando && !erro && !sitios.length && <p>Nenhum sítio disponível para consulta.</p>}
+      {!carregando && !erro && !sitios.length && <Empty>Nenhum sítio disponível para consulta.</Empty>}
       {!carregando && !erro && selecionado && !sitio && sitios.length > 0 && <p role="status" className="text-sm text-muted-foreground">O sítio do endereço não está disponível. Escolha um sítio para consultar.</p>}
     </div>
     {!carregando && !erro && !sitio && sitios.length > 0 && <SelecionarSitioLeite sitiosDisponiveis={sitios} onSelecionar={id=>selecionar(String(id))}/>}

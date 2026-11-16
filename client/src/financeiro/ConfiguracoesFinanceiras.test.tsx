@@ -1,6 +1,5 @@
-import { alterarControle } from "../lib/controles.fixture";
+import { abrirFiltrosConsulta, alterarControle, aplicarFiltrosConsulta } from "../lib/controles.fixture";
 // @vitest-environment jsdom
-import { abrirFiltrosConsulta, aplicarFiltrosConsulta } from "@/lib/controles.fixture";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ConfiguracoesFinanceiras } from "./ConfiguracoesFinanceiras";
@@ -36,7 +35,7 @@ const config: Config = {
     { id: uid(7), nome: "Cooperativa", documento: "11222333000181", tipo: "FORNECEDOR", telefone: "3499990000", email: "coop@x.com", ativo: true, referencias: 2 },
     { id: uid(8), nome: "Agro Minas", documento: null, tipo: "FORNECEDOR", telefone: null, email: null, ativo: true, referencias: 0 },
   ],
-  categorias: [{ id: uid(11), nome: "Insumos", classificacao: "CUSTEIO", ativo: true, ordem: 0, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
+  categorias: [{ id: uid(11), nome: "Insumos", ativo: true, ordem: 0, usoGenetico: false, _count: { operacoes: 2, produtos: 1 } }],
   centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true, ordem: 0, _count: { operacoes: 3, produtos: 0 } }],
   produtos: [],
   produtosCadastro: [{ id: uid(30), nome: "Ração 22%", usoNutricional: true, unidade: "KG", minimoEstoque: "500", categoriaId: uid(11), categoriaNome: "Insumos", categoria: { id: uid(11), nome: "Insumos", usoGenetico: false }, ativo: true, centroCustoIds: [uid(20)], centrosCusto: [{ id: uid(20), nome: "Atividade leiteira", ativo: true }], fornecedores: [{ id: uid(7), nome: "Cooperativa", ativo: true }] }],
@@ -100,7 +99,7 @@ describe("ConfiguracoesFinanceiras — contas", () => {
     const painel = await screen.findByRole("dialog");
     await alterarControle(within(painel).getByLabelText("Nome de exibição"), { target: { value: "Caixa de teste" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar conta" }));
-    expect(within(painel).getByText("Informe a instituição financeira")).toBeTruthy();
+    expect(within(painel).getAllByText("Informe a instituição financeira")).toHaveLength(2);
     expect(criarConta).not.toHaveBeenCalled();
     expect(within(painel).queryByRole("option", { name: "Dinheiro" })).toBeNull();
     await escolherSelect(painel, "Tipo", "Caixa físico");
@@ -175,8 +174,14 @@ describe("ConfiguracoesFinanceiras — contas", () => {
 
   it("ações da linha têm dica no hover e não há setas de reordenar", async () => {
     await montar();
-    expect((primeiro("button", "Editar Banco principal") as HTMLButtonElement).title).toBe("Editar");
-    expect((primeiro("button", "Desativar Banco principal") as HTMLButtonElement).title).toBe("Desativar");
+    const editar = primeiro("button", "Editar Banco principal");
+    fireEvent.mouseEnter(editar);
+    expect(await screen.findByText("Editar", { exact: true })).toBeTruthy();
+    fireEvent.mouseLeave(editar);
+    const desativar = primeiro("button", "Desativar Banco principal");
+    fireEvent.mouseEnter(desativar);
+    expect(await screen.findByText("Desativar", { exact: true })).toBeTruthy();
+    fireEvent.mouseLeave(desativar);
     expect(screen.queryByRole("button", { name: /Mover .* para (cima|baixo)/ })).toBeNull();
   });
 
@@ -344,10 +349,20 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     const painel = await screen.findByRole("dialog");
     fireEvent.click(within(painel).getByRole("checkbox", { name: "Prestador de serviço" }));
     await alterarControle(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
-    await alterarControle(within(painel).getByLabelText("Prazos em dias"), { target: { value: "30/60" } });
+    await alterarControle(within(painel).getByLabelText("Intervalo em dias"), { target: { value: "30" } });
     await alterarControle(within(painel).getByLabelText("Forma de pagamento sugerida"), { target: { value: "BOLETO" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
-    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", prazosPagamento: [30,60], formaPagamentoPreferida: "BOLETO" }));
+    await waitFor(() => expect(atualizarParceiro).toHaveBeenCalledWith(uid(7), { papeis: ["FORNECEDOR", "PRESTADOR_SERVICO"], condicaoPagamentoPreferida: "A_PRAZO", intervaloPagamentoDias: 30, formaPagamentoPreferida: "BOLETO" }));
+  });
+  it("recusa uma lista de prazos no novo intervalo único", async () => {
+    await montar("parceiros");
+    fireEvent.click(primeiro("button", "Editar Cooperativa"));
+    const painel = await screen.findByRole("dialog");
+    await alterarControle(within(painel).getByLabelText("Condição sugerida"), { target: { value: "A_PRAZO" } });
+    await alterarControle(within(painel).getByLabelText("Intervalo em dias"), { target: { value: "30/60" } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Salvar parceiro" }));
+    expect(within(painel).getByLabelText("Intervalo em dias").getAttribute("aria-invalid")).toBe("true");
+    expect(atualizarParceiro).not.toHaveBeenCalled();
   });
   it("edição carrega nome, documento formatado, papel, telefone e e-mail", async () => {
     await montar("parceiros");
@@ -390,7 +405,7 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await alterarControle(within(painel).getByLabelText("E-mail"), { target: { value: "abc" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
     expect(await within(painel).findByText("E-mail inválido")).toBeTruthy();
-    expect(within(painel).getByText(/11 dígitos/)).toBeTruthy();
+    expect(within(painel).getAllByText(/11 dígitos/)).toHaveLength(2);
     expect(within(painel).getByLabelText("E-mail").getAttribute("aria-invalid")).toBe("true");
     expect(criarParceiro).not.toHaveBeenCalled();
   });
@@ -405,21 +420,24 @@ describe("ConfiguracoesFinanceiras — parceiros", () => {
     await alterarControle(within(painel).getByLabelText("Nome / razão social"), { target: { value: "Cooperativa 2" } });
     await alterarControle(within(painel).getByLabelText("CPF/CNPJ"), { target: { value: "11.222.333/0001-81" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar parceiro" }));
-    expect(await within(painel).findByText("Já existe um parceiro com este CPF/CNPJ")).toBeTruthy();
+    expect(await within(painel).findAllByText("Já existe um parceiro com este CPF/CNPJ")).toHaveLength(2);
     expect(criarParceiro).toHaveBeenCalledWith(expect.objectContaining({ nome: "Cooperativa 2", documento: "11222333000181", papeis: ["FORNECEDOR"], telefone: null, email: null }));
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });
 
 describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
-  it("cria categoria sem exigir grupo dentro da configuração financeira", async () => {
+  it("não salva categoria sem grupo e mostra a mensagem de obrigatoriedade", async () => {
     await montar("categorias");
     fireEvent.click(screen.getByRole("button", { name: "Nova categoria" }));
     const painel = await screen.findByRole("dialog");
-    await alterarControle(within(painel).getByLabelText("Nome da categoria"), { target: { value: "Ração" } });
-    await alterarControle(within(painel).getByLabelText("Classificação"), { target: { value: "CUSTEIO" } });
+    await alterarControle(within(painel).getByLabelText(/Nome da categoria/), { target: { value: "Ração" } });
     fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
-    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoId: null, classificacao: "CUSTEIO", ordem: 1 }));
+    expect((await within(painel).findAllByText("Selecione o grupo da categoria")).length).toBeGreaterThan(0);
+    expect(criarCategoria).not.toHaveBeenCalled();
+    await alterarControle(within(painel).getByLabelText(/Grupo de categorias/), { target: { value: uid(40) } });
+    fireEvent.click(within(painel).getByRole("button", { name: "Criar categoria" }));
+    await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith({ nome: "Ração", grupoId: uid(40), ordem: 1 }));
   });
 
   it("associa o grupo no cadastro da categoria e não oferece grupos inativos", async () => {
@@ -434,15 +452,15 @@ describe("ConfiguracoesFinanceiras — categorias e centros de custo", () => {
     await waitFor(() => expect(criarCategoria).toHaveBeenCalledWith(expect.objectContaining({ grupoId: uid(40) })));
   });
 
-  it("conserva grupo inativo na edição e permite deixar a categoria sem grupo", async () => {
+  it("conserva grupo inativo na edição e permite trocar por um grupo ativo", async () => {
     vi.mocked(obterConfiguracoesFinanceiras).mockResolvedValue({ ...config, categorias: [{ ...config.categorias[0], grupoId: uid(41), grupo: config.gruposCategorias![1] }] });
     await montar("categorias");
     fireEvent.click(primeiro("button", "Editar Insumos"));
     const painel = await screen.findByRole("dialog");
     expect(within(painel).getByRole("combobox", { name: "Grupo de categorias" }).textContent).toContain("Grupo antigo (inativo)");
-    await escolherSelect(painel, "Grupo de categorias", "Sem grupo");
+    await escolherSelect(painel, "Grupo de categorias", "Criação Animal");
     fireEvent.click(within(painel).getByRole("button", { name: "Salvar categoria" }));
-    await waitFor(() => expect(atualizarCategoria).toHaveBeenCalledWith(uid(11), expect.objectContaining({ grupoId: null })));
+    await waitFor(() => expect(atualizarCategoria).toHaveBeenCalledWith(uid(11), expect.objectContaining({ grupoId: uid(40) })));
   });
 
   it("cria grupos nas configurações", async () => {

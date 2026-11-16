@@ -12,3 +12,4 @@
 .alertas-detalhe-dados dt{font-size:12px;color:var(--muted-foreground)}
 .alertas-detalhe-dados dd{margin-top:4px;overflow-wrap:anywhere}
 @media(max-width:767px){.alertas-detalhe-dados{grid-template-columns:1fr}.alertas-painel-cabecalho{padding:16px}}
+.resumo-alertas-vazio{display:flex;flex-direction:row;flex-wrap:wrap;text-align:left;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px}.resumo-alertas-vazio>p,.resumo-alertas-vazio>.alertas-cobertura{margin:0;padding:0;background:transparent;font-size:15px}

@@ -4,7 +4,7 @@ import * as iatf from '../../src/services/pecuaria/reproducao/iatf.js';
 import { tentativaSchema, avaliacaoSchema, partoSchema, protocoloSchema, programacaoSchema } from '../../src/services/pecuaria/reproducao/schemas.js';
 import { criarTipoExame } from '../../src/services/pecuaria/sanidade/exames.js';
 import { criarDoenca } from '../../src/services/pecuaria/sanidade/ocorrencias.js';
-import { criarPoliticaElegibilidade, vincularPoliticaCiclo, decidirElegibilidadeCiclo } from '../../src/services/pecuaria/reproducao/elegibilidade.js';
+import { criarPoliticaElegibilidade, vincularPoliticaCiclo } from '../../src/services/pecuaria/reproducao/elegibilidade.js';
 import { registrarToqueAptidao } from '../../src/services/pecuaria/reproducao/toque-aptidao.js';
 import { FINALIDADE_APTIDAO } from '../../src/services/pecuaria/reproducao/toque-aptidao.calc.js';
 import { criarPoliticaAcompanhamento } from '../../src/services/pecuaria/reproducao/acompanhamento.js';
@@ -45,26 +45,25 @@ async function catalogos(c: Contexto) {
 export async function tentativa(c: Contexto, n: number, ordem: number, data: number, extras: Partial<Parameters<typeof registros.criarTentativa>[0]> = {}) {
   const nome = `tentativa:${n}:${ordem}`;
   const propriedadeId = c.numero(`sitio:${animaisSeed.find(a => a.numero === n)!.sitio}`);
-  await c.registro(nome, id => prisma.tentativaReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id(`animal:${n}`), data: dia(c.dias(data)), status: 'VALIDO' } }), () => registros.criarTentativa(tentativaSchema.parse({ chave: chave(nome), animalId: c.id(`animal:${n}`), propriedadeId, data: c.dias(data), tipo: 'IA', materialId: c.id('material:semen'), partidaId: data <= -30 ? null : c.id('partida:semen'), quantidade: 1, origem: data <= -30 ? 'DOCUMENTADA' : 'ESTOQUE', ...(data <= -30 ? { justificativaSemOrigem: 'Histórico sintético documentado de até dois anos, sem baixa retroativa de estoque nem custo presumido.' } : {}), responsavel: 'Equipe demonstrativa', observacao: AVISO, ...extras }), c.numero('usuario:dono')));
+  await c.registro(nome, id => prisma.tentativaReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id(`animal:${n}`), data: dia(c.dias(data)), status: 'VALIDO' } }), async () => { await aptidaoDemonstrativa(c, n, data, `aptidao:${nome}`); return registros.criarTentativa(tentativaSchema.parse({ chave: chave(nome), animalId: c.id(`animal:${n}`), propriedadeId, data: c.dias(data), tipo: 'IA', materialId: c.id('material:semen'), partidaId: data <= -30 ? null : c.id('partida:semen'), quantidade: 1, origem: data <= -30 ? 'DOCUMENTADA' : 'ESTOQUE', ...(data <= -30 ? { justificativaSemOrigem: 'Histórico sintético documentado de até dois anos, sem baixa retroativa de estoque nem custo presumido.' } : {}), responsavel: 'Equipe demonstrativa', observacao: AVISO, ...extras }), c.numero('usuario:dono')); });
   return c.id(nome);
 }
 export async function avaliar(c: Contexto, n: number, nome: string, data: number, resultado: Parameters<typeof registros.criarAvaliacao>[0]['resultado'], extras: Partial<Parameters<typeof registros.criarAvaliacao>[0]> = {}) {
   const propriedadeId = c.numero(`sitio:${animaisSeed.find(a => a.numero === n)!.sitio}`);
   await c.registro(nome, id => prisma.avaliacaoReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id(`animal:${n}`), data: dia(c.dias(data)), resultado, status: 'VALIDO' } }), () => registros.criarAvaliacao(avaliacaoSchema.parse({ chave: chave(nome), animalId: c.id(`animal:${n}`), propriedadeId, data: c.dias(data), resultado, tipoExameId: c.id('exame:Avaliação completa'), resultados: [{ campo: 'ANOTACAO', valor: AVISO }], observacao: AVISO, ...extras }), c.numero('usuario:dono')));
 }
-export async function liberarNovilhaSeed(c: Contexto, vinculoCicloId: string) {
-  const usuarioId = c.numero('usuario:dono'), propriedadeId = c.numero('sitio:Principal');
-  // O callback não roda para uma liberação legada já concluída. Não completar sua evidência retroativamente.
-  await acaoPecuaria(c, 'liberacao:49', async () => {
-    const animalId = c.id('animal:49'), data = c.dias(-30);
-    const exame = await c.registro('exameFato:aptidao:49', id => prisma.exameAnimal.findFirst({ where: id ? { id } : {
-      animalId, propriedadeId, data: dia(data), finalidadePrincipal: FINALIDADE_APTIDAO, resultadoOpcao: 'APTO', status: 'VALIDO',
-    } }), () => registrarToqueAptidao({ chave: chave('toque:aptidao:49'), animalId, propriedadeId, data,
-      resultado: 'APTO', responsavel: 'Equipe demonstrativa', observacao: AVISO }, usuarioId));
-    return decidirElegibilidadeCiclo({ chave: chave('liberacao:49'), propriedadeId, vinculoCicloId, data, tipo: 'LIBERAR',
-      aptaDesde: data, exameAptidaoId: String(exame.id), acaoLiberada: 'IA', anteciparPev: false, motivo: AVISO }, usuarioId);
-  });
+/** Só prepara cenários novos e explicitamente fictícios; nunca completa fatos legados. */
+async function aptidaoDemonstrativa(c: Contexto, n: number, data: number, nome: string) {
+  const animalId = c.id(`animal:${n}`), propriedadeId = c.numero(`sitio:${animaisSeed.find(a => a.numero === n)!.sitio}`);
+  return c.registro(`exameFato:${nome}`, id => prisma.exameAnimal.findFirst({ where: id ? { id } : { animalId, propriedadeId,
+    data: dia(c.dias(data)), finalidadePrincipal: FINALIDADE_APTIDAO, resultadoOpcao: 'APTO', status: 'VALIDO' } }),
+  () => registrarToqueAptidao({ chave: chave(`toque:${nome}`), animalId, propriedadeId, data: c.dias(data), resultado: 'APTO', responsavel: 'Equipe demonstrativa', observacao: AVISO }, c.numero('usuario:dono')));
 }
+export async function liberarNovilhaSeed(c: Contexto, _vinculoCicloId: string) {
+  // Chave legada conservada para não completar retroativamente uma ação já concluída.
+  await acaoPecuaria(c, 'liberacao:49', () => aptidaoDemonstrativa(c, 49, -30, 'aptidao:49'));
+}
+
 async function gestacao(c: Contexto, n: number, data: number, tipo: 'IA' | 'TE' = 'IA', sufixo = '') {
   const tentativaId = await tentativa(c, n, 1, data, tipo === 'TE' ? { tipo, materialId: c.id('material:embriao'), partidaId: data <= -30 ? null : c.id('partida:embriao') } : {});
   await avaliar(c, n, `positivo:${n}${sufixo}`, data + 30, 'POSITIVO', { tentativaId, previsaoParto: c.dias(data + (tipo === 'TE' ? 275 : 283)) });
@@ -76,7 +75,7 @@ export async function reproducao(c: Contexto) {
   const uid = c.numero('usuario:dono'), propriedadeId = c.numero('sitio:Principal');
   for (const a of animaisSeed.filter(a => a.sexo === 'F' && a.idade > 1000 && !a.criaParto)) {
     const p = c.numero(`sitio:${a.sitio}`), data = [35, 36].includes(a.numero) ? -650 : -690;
-    await c.registro(`inicial:${a.numero}`, id => prisma.situacaoInicialReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id(`animal:${a.numero}`), data: dia(c.dias(data)) } }), () => registros.criarSituacaoInicial({ chave: chave(`inicial:${a.numero}`), animalId: c.id(`animal:${a.numero}`), propriedadeId: p, data: c.dias(data), situacao: [33, 34, 35, 36].includes(a.numero) ? 'APTA' : 'VAZIA', ...([33, 34, 35, 36].includes(a.numero) ? { aptaDesde: c.dias(data) } : {}), observacao: AVISO }, uid));
+    await c.registro(`inicial:${a.numero}`, id => prisma.situacaoInicialReprodutiva.findFirst({ where: id ? { id } : { animalId: c.id(`animal:${a.numero}`), data: dia(c.dias(data)) } }), () => registros.criarSituacaoInicial({ chave: chave(`inicial:${a.numero}`), animalId: c.id(`animal:${a.numero}`), propriedadeId: p, data: c.dias(data), situacao: 'VAZIA', observacao: AVISO }, uid));
     await acaoPecuaria(c, `ciclo:${a.numero}`, () => vincularPoliticaCiclo({ chave: chave(`ciclo:${a.numero}`), animalId: c.id(`animal:${a.numero}`), propriedadeId: p, situacaoInicialId: c.id(`inicial:${a.numero}`) }, uid));
   }
   for (const n of faixa(9, 48)) await acaoPecuaria(c, `lactacao:${n}`, () => registrarLactacaoHistorica({ chave: chave(`lactacao:${n}`), animalId: c.id(`animal:${n}`), propriedadeId, inicio: c.dias(-450), ...(n >= 37 ? { encerradaEm: c.dias(-70) } : {}), motivo: 'Intervalo histórico sintético conhecido; parto anterior não documentado.' }, uid));
@@ -142,6 +141,7 @@ export async function protocolosReprodutivos(c: Contexto) {
         }, uid));
         await acaoPecuaria(c, 'ciclo:58', () => vincularPoliticaCiclo({ chave: chave('ciclo:58'), animalId: c.id('animal:58'), propriedadeId, situacaoInicialId: c.id('inicial:58') }, uid));
       }
+      for (const n of numeros) await aptidaoDemonstrativa(c, n, Math.min(inicio, 0), `aptidao:programacao:${nome}:${n}`);
       return iatf.criarProgramacao(programacaoSchema.parse({ chave: chave(`programacao:${nome}`), propriedadeId, protocoloId: c.id('protocolo:reprodutivo:true'), nome: `Reprodução ${nome}`, inicioPrevisto: c.dias(inicio), animais: numeros.map(n => ({ animalId: c.id(`animal:${n}`) })) }), uid);
     });
     for (const n of numeros) {

@@ -1,3 +1,4 @@
+import "./components/consulta-operacional.css";
 import { usaDesignOperacional } from "./lib/designOperacional";
 import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/descarteTrabalhoAtivo";
 /* Rio Novo — raiz.
@@ -9,6 +10,8 @@ import { descartarTrabalhoAtivo, type TipoTrabalhoAtivo } from "./financeiro/des
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { type Tab, type NavTab } from "./components/Shell";
 import { abrirRotaNovaOperacao, isNovaOperacaoFinanceira, isNovoRelatorioFinanceiro, isSubrotaFinanceira, isSubrotaRebanho, tabToPath, pathToTab, DEFAULT_TAB, navegarPara, normalizarLocalizacaoPecuaria, normalizarRotaPecuaria, isSubrotaPecuaria } from "./router";
+import { Header } from "./components/Header";
+import { VisualizacaoNoCabecalho } from "./components/VisualizacaoConsulta";
 import { AppSidebar } from "./components/AppSidebar";
 import "./financeiro/financeiro-theme.css";
 import { descartarRascunhoOperacao, descartarRascunhoRelatorioFinanceiro, obterRascunhoOperacao, obterRascunhoRelatorioFinanceiro } from "./financeiro/novo-api";
@@ -19,14 +22,15 @@ import { resumoRascunhoRelatorio } from "./financeiro/lib/rascunho-relatorio";
 import "./pecuaria/pecuaria-theme.css";
 import "./pecuaria/pecuaria-refino.css";
 import "./styles/abas.css";
-import "./styles/identidade-rural.css";
 import "./styles/tabelas-operacionais.css";
 import "./styles/operacional-aprovado.css";
+import "./styles/campo.css";
 import { setPropriedadeAtiva, getPropriedadeAtiva } from "./propriedadeScope";
 import { executarComGuardaNavegacao } from "./navegacaoGuardada";
 import { parseProdutoEstoqueId } from "./router";
 import { CommandPalette } from "./components/CommandPalette";
-import { AssistenteConsulta } from "./components/AssistenteConsulta";
+const PaginaMetas = lazy(() => import("./assistente/PaginaMetas").then(m => ({ default: m.PaginaMetas })));
+const PaginaIATerrano = lazy(() => import("./assistente/PaginaIATerrano").then(m => ({ default: m.PaginaIATerrano })));
 import { ASSISTENTE_ATIVO } from "./featureFlags";
 import { Login } from "./components/Login";
 import { DefinirSenha } from "./components/DefinirSenha";
@@ -36,9 +40,10 @@ import { fetchMe, logout } from "./api/auth";
 import { destinoDepoisDoLogin, interpretarRotaAuth, paginaInicialAutorizada, podeAcessarCaminho, podeAcessarTab, urlSigninPara } from "./navegacaoAuth";
 import { ABAS, type User } from "./data/acessos";
 import { temAcessoArea, TODAS_AREAS } from "./lib/areas";
-import { BootSplash, Loader } from "./components/Loading";
+import { BootSplash } from "./components/Loading";
 import { TerranoIntro } from "./components/TerranoIntro";
 import { LimiteCarregamentoArea } from "./components/LimiteCarregamentoArea";
+import { EsqueletoPagina } from "./components/Esqueleto";
 
 // Declarações estáveis: mudar sítio/rota conserva os mesmos contratos de montagem.
 // O shell e os tokens ficam disponíveis enquanto o domínio é baixado.
@@ -69,7 +74,6 @@ const INTRO_SEEN_KEY = "terrano:intro:seen";
 const INTERVALO_MIN_RECARGA_RASCUNHO = 30_000;
 
 // Se a IA legada voltar explicitamente, não sobrepor o novo chat ao composer.
-const ABAS_CHAT = new Set<Tab>(["ia"]);
 
 function deveTocarIntro(tabInicial: Tab): boolean {
   if (tabInicial !== "dashboard") return false;
@@ -109,6 +113,14 @@ function GatedTab({ user, abaLabel }: { user: User; abaLabel: string }) {
 
 
 
+/** Grava o sítio ativo na URL do painel administrativo sem criar entrada no histórico. */
+function fixarSitioNaUrlDoPainel(sitio: number | null) {
+  const url = new URL(window.location.href);
+  if (sitio == null) url.searchParams.delete("propriedadeId");
+  else url.searchParams.set("propriedadeId", String(sitio));
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+}
+
 export function App() {
   // Atualiza o parser de rotas públicas após replaceState().
   const [locationRevision, setLocationRevision] = useState(0);
@@ -145,6 +157,7 @@ export function App() {
   );
   const [mobileOpen, setMobileOpen] = useState(false);
   const [buscaAberta, setBuscaAberta] = useState(false);
+  const [modoBusca, setModoBusca] = useState<"tudo" | "animais">("tudo");
   // Colapso manual da sidebar (trilho ícone-only) — persistido entre sessões.
   const [sideColapsada, setSideColapsada] = useState<boolean>(() => {
     try { return localStorage.getItem("side-collapsed") === "1"; } catch { return false; }
@@ -165,10 +178,9 @@ export function App() {
     if (destino !== "gerencial" && !recebeOrigemGerencial) return getPropriedadeAtiva();
     const raw=new URLSearchParams(window.location.search).get("propriedadeId");
     if(raw && /^\d+$/.test(raw) && Number(raw)>0 && Number(raw)<=2147483647) { setPropriedadeAtiva(Number(raw)); return Number(raw); }
-    if (destino === "gerencial") {
-      setPropriedadeAtiva(null);
-      return null;
-    }
+    // Painel sem sítio na URL (favorito, recarga) mantém o sítio ativo e o grava na URL,
+    // para que o link continue reproduzindo o mesmo escopo.
+    if (destino === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
     return getPropriedadeAtiva();
   });
   const trocarPropriedade = (id: number | null) => {
@@ -304,12 +316,18 @@ export function App() {
     return () => { vivo = false; };
   }, []);
 
-  // atalho global ⌘K / Ctrl+K abre/fecha a command palette (Esc é tratado dentro dela)
+  // atalhos globais: ⌘K / Ctrl+K busca em tudo; ⌘⇧K / Ctrl+Shift+K busca só animais.
+  // Repetir o atalho do modo aberto fecha; o outro atalho troca de modo (Esc é tratado dentro dela).
+  const buscaRef = useRef({ aberta: false, modo: "tudo" as "tudo" | "animais" });
+  buscaRef.current = { aberta: buscaAberta, modo: modoBusca };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key.toLowerCase() === "k" || e.code === "KeyK")) {
         e.preventDefault();
-        setBuscaAberta((v) => !v);
+        const modo = e.shiftKey ? "animais" : "tudo";
+        const atual = buscaRef.current;
+        if (atual.aberta && atual.modo === modo) { setBuscaAberta(false); return; }
+        setModoBusca(modo); setBuscaAberta(true);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -394,9 +412,9 @@ export function App() {
       const sitioDaUrl = rawSitio && /^\d+$/.test(rawSitio) && Number(rawSitio)>0 && Number(rawSitio)<=2147483647 ? Number(rawSitio) : null;
       const mudaSitioBezerreiro = t === "pec-bezerreiro" && sitioDaUrl != null && sitioDaUrl !== getPropriedadeAtiva();
       const atualizar = () => {
-        if(t === "gerencial" || (t === "pec-bezerreiro" && sitioDaUrl != null)) {
+        if((t === "gerencial" || t === "pec-bezerreiro") && sitioDaUrl != null) {
           setPropriedadeAtiva(sitioDaUrl);setPropAtiva(sitioDaUrl);
-        }
+        } else if (t === "gerencial") fixarSitioNaUrlDoPainel(getPropriedadeAtiva());
         setTab(t ?? DEFAULT_TAB);
         setLocationRevision((valor) => valor + 1);
         setDeepLinkFiltros(t && [...sp.keys()].length && !isNovaOperacaoFinanceira(window.location.pathname) ? { tab: t, filtros: Object.fromEntries(sp.entries()) } : null);
@@ -454,7 +472,7 @@ export function App() {
     temAcessoArea(effectiveUser?.areas, area, !!effectiveUser?.dono);
 
   // Abas visíveis do grupo Financeiro (sem "rebanho" e sem "acessos" — Acessos
-  // mora no rodapé da sidebar, renderizado via isAdmin pelo AppSidebar).
+  // tem entrada na área de Configurações e no menu autorizado do cabeçalho).
   const visibleTabs = useMemo<NavTab[]>(() => {
     if (!effectiveUser || !hasArea("financeiro")) return [];
     return ABAS.filter((a) => effectiveUser.abas.includes(a.id)).map((a) => ({
@@ -552,8 +570,19 @@ export function App() {
     return <Login onEntrar={(novoToken, u) => entrar(novoToken, u)} />;
   }
 
+  const abrirFonteAssistente = (caminho: string, sitio: number | null) => { void executarComGuardaNavegacao(() => {
+    if (!podeAcessarCaminho(usuario, caminho)) return;
+    const destino = new URL(caminho, window.location.origin);
+    const id = Number(destino.searchParams.get("propriedadeId"));
+    const escopo = Number.isInteger(id) && id > 0 && id <= 2147483647 ? id : sitio;
+    setPropriedadeAtiva(escopo); setPropAtiva(escopo); setDeepLinkFiltros(null); navegarPara(caminho);
+  }); };
   const conteudo = !podeAcessarCaminho(usuario, window.location.pathname)
     ? <GatedTab user={effectiveUser} abaLabel="esta área" />
+    : tab === "metas"
+    ? <PaginaMetas propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
+    : tab === "assistente"
+    ? <PaginaIATerrano propriedadeId={propAtiva} onAbrirFonte={abrirFonteAssistente} />
     : tab === "pec-rebanho" || tab === "pec-alertas"
     ? <RebanhoContent podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-sanidade"
@@ -567,7 +596,7 @@ export function App() {
     : tab === "pec-nutricao"
     ? <Nutricao podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-bezerreiro"
-    ? <BezerreiroModulo key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
+    ? <BezerreiroModulo key={propAtiva ?? "consolidado"} onSelecionarSitio={trocarPropriedade} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} />
     : tab === "pec-leite"
     ? <LeiteModulo onSelecionarSitio={trocarPropriedade} podeExportar={!!effectiveUser.dono || effectiveUser.flags.includes("exportar")} key={propAtiva ?? "consolidado"} podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")} podeFinanceiro={!!effectiveUser.dono || ((effectiveUser.areas ?? []).includes("financeiro") && effectiveUser.flags.includes("verValores"))} />
     : tab === "gerencial"
@@ -607,6 +636,7 @@ export function App() {
           }}
         />
       )}
+    <VisualizacaoNoCabecalho key={usuario.id} usuarioId={usuario.id}>
     <div className={"app" + (sideColapsada ? " side-collapsed" : "")}>
       <a className="skip-link" href="#main-content">Ir para o conteúdo</a>
       <AppSidebar
@@ -617,14 +647,10 @@ export function App() {
         areas={effectiveUser.areas ?? [...TODAS_AREAS]}
         mobileOpen={mobileOpen}
         onMobileToggle={setMobileOpen}
-        onAbrirBusca={() => setBuscaAberta(true)}
         propAtiva={propAtiva}
         onTrocarProp={trocarPropriedade}
-        user={effectiveUser}
         colapsada={sideColapsada}
         onToggleColapsar={toggleSidebar}
-        onAcessos={() => navegarTab("acessos")}
-        onSair={onSair}
         // O atalho só aparece depois de se saber se há rascunho, para o "+" não
         // piscar antes de o rascunho existente carregar.
         trabalhoAtivo={podeVerRascunho && (rascunhoAtivo.conhecido || !!rascunhoAtivo.recuperacao)
@@ -634,18 +660,29 @@ export function App() {
           ? { resumo: resumoRascunhoRelatorioAtivo, ativo: rascunhoRelatorioAtivo.editando, onAbrir: abrirRascunhoRelatorioAtivo, onExcluir: () => excluirTrabalho("relatorio") }
           : null}
       />
+      <Header
+        user={effectiveUser}
+        mobileOpen={mobileOpen}
+        onMobileToggle={setMobileOpen}
+        onAbrirBusca={() => { setModoBusca("tudo"); setBuscaAberta(true); }}
+        onBuscarAnimal={podeAcessarCaminho(usuario, "/pecuaria/rebanho/animais") ? () => { setModoBusca("animais"); setBuscaAberta(true); } : undefined}
+        onAcessos={effectiveUser.dono || effectiveUser.flags.includes("gerenciarAcessos") ? () => navegarTab("acessos") : undefined}
+        onSair={onSair}
+      />
       <main id="main-content" className="app-main" {...(mobileOpen ? { inert: "" } : {})}>
         <div key={propAtiva ?? "all"} data-design-operacional={usaDesignOperacional(tab, window.location.pathname) ? "" : undefined} className={tab.startsWith("pec-") || window.location.pathname.startsWith("/configuracoes/pecuaria") ? "pecuaria-content" : tab === "estoque" ? "estoque-content" : "cooperativa-content"} style={{ display: "contents" }}>
-          <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><Loader label="Carregando área…" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
+          <LimiteCarregamentoArea contexto={`${tab}:${propAtiva ?? "all"}`}><Suspense fallback={<div className="shell-wide pagina-financeira"><EsqueletoPagina label="Carregando área" /></div>}>{conteudo}</Suspense></LimiteCarregamentoArea>
         </div>
       </main>
       <CommandPalette
         key={`busca:${usuario.id}:${propAtiva ?? "all"}`}
         escopo={propAtiva == null ? "Consolidado · Todos os sítios" : "Sítio selecionado"}
+        propriedadeId={propAtiva}
         podeLancar={!!effectiveUser.dono || effectiveUser.flags.includes("lancar")}
         podeVerValores={podeVerValores}
         podeVerCaminho={(caminho) => podeAcessarCaminho(usuario, caminho)}
         aberto={buscaAberta}
+        modo={modoBusca}
         onFechar={() => setBuscaAberta(false)}
         onNav={(t, _entidadeId, caminho) => {
           if (!caminho) { navegarTab(t); return; }
@@ -662,8 +699,8 @@ export function App() {
           return canAccessTab(t);
         }}
       />
-      {!ABAS_CHAT.has(tab) && <AssistenteConsulta key={`${token}:${usuario.id}:${propAtiva ?? "all"}:${JSON.stringify([usuario.areas, usuario.abas, usuario.flags, usuario.dono])}`} />}
     </div>
+    </VisualizacaoNoCabecalho>
     </>
   );
 }

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Metas da fazenda — proposta</title>
+<!-- Mockup estático para aprovação. Dados ilustrativos, no formato da seed de desenvolvimento. -->
+<style>
+@font-face { font-family: "Public Sans"; src: url("../../public/fonts/public-sans/public-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --papel: #f7f8fa; --folha: #ffffff; --tinta: #203c39; --tinta-2: #526863; --tinta-3: #6d817c;
+  --linha: #dfe7e5; --linha-forte: #7a928d; --pasto: #006f68; --pasto-claro: #e0efec;
+  --atraso: #8d3931; --atraso-claro: #fbefec; --atencao: #775930; --atencao-claro: #f6f0e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--papel); color: var(--tinta); font: 14px/1.5 "Public Sans", system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+button { font: inherit; color: inherit; cursor: pointer; }
+a { color: var(--pasto); font-weight: 600; text-underline-offset: 3px; }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--pasto); outline-offset: 2px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border: 1px solid var(--linha-forte); border-radius: 8px; background: var(--folha); font-weight: 600; }
+.btn.primario { background: var(--pasto); border-color: var(--pasto); color: #fff; }
+.btn.discreto { border-color: transparent; background: transparent; color: var(--tinta-2); padding: 0 8px; }
+
+.pagina { max-width: 1240px; margin: 0 auto; padding: 28px 32px 48px; }
+.cabecalho { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+.cabecalho p { margin: 2px 0 0; color: var(--tinta-2); }
+
+/* Resumo e filtro por situação */
+.resumo { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 18px; }
+.resumo button { border: 1px solid var(--linha); background: var(--folha); border-radius: 999px; padding: 6px 14px; font-size: 13px; }
+.resumo button[aria-pressed="true"] { border-color: var(--tinta); font-weight: 650; }
+.resumo b { font-weight: 700; }
+.ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+
+.metas { display: grid; gap: 14px; }
+.meta { background: var(--folha); border: 1px solid var(--linha); border-radius: 12px; overflow: hidden; }
+.meta > header { display: flex; justify-content: space-between; align-items: start; gap: 16px; padding: 16px 20px 0; }
+.meta h2 { font-size: 17px; margin: 0; }
+.meta .def { margin: 2px 0 0; color: var(--tinta-2); font-size: 13px; }
+.situacao { font-size: 12px; font-weight: 650; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.situacao.ok { background: var(--pasto-claro); color: var(--pasto); }
+.situacao.abaixo { background: var(--atencao-claro); color: var(--atencao); }
+.situacao.marco { background: var(--papel); color: var(--tinta-2); border: 1px solid var(--linha); }
+
+.corpo { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 28px; padding: 14px 20px 16px; align-items: center; }
+.atual dt { font-size: 13px; color: var(--tinta-2); }
+.atual dd { margin: 0 0 12px; }
+.grande { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+.delta { display: block; font-size: 13px; font-weight: 600; margin-top: 2px; }
+.delta.ruim { color: var(--atencao); }
+.delta.bom { color: var(--pasto); }
+.fatos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.fatos dt { font-size: 12px; color: var(--tinta-2); }
+.fatos dd { margin: 0; font-weight: 650; }
+
+.grafico svg { width: 100%; height: auto; display: block; }
+.grafico figcaption { font-size: 12px; color: var(--tinta-2); display: flex; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
+.legenda-linha { display: inline-block; width: 18px; border-top: 2px dashed var(--atencao); vertical-align: 3px; margin-right: 6px; }
+.legenda-faixa { display: inline-block; width: 12px; height: 10px; background: var(--atraso-claro); border: 1px solid #ecd2cc; vertical-align: -1px; margin-right: 6px; }
+
+.meta > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px 10px 20px; border-top: 1px solid var(--linha); font-size: 13px; color: var(--tinta-2); }
+.meta > footer .pendencia { color: var(--atencao); }
+.meta > footer div { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+/* barras mensais da CCS */
+.barras { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; align-items: end; height: 120px; position: relative; padding-top: 6px; }
+.barras .limite { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--atencao); }
+.barras .limite span { position: absolute; right: 0; top: -18px; font-size: 11px; color: var(--atencao); font-weight: 600; background: var(--folha); padding-left: 4px; }
+.barras div { display: grid; gap: 4px; justify-items: center; font-size: 11px; color: var(--tinta-2); height: 100%; align-content: end; }
+.barras i { display: block; width: 100%; max-width: 44px; background: #9cc9c3; border-radius: 4px 4px 0 0; }
+.barras i.alto { background: #d9b38c; }
+.barras b { font-size: 12px; color: var(--tinta); font-weight: 650; }
+
+/* marco */
+.etapas { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.etapas li { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; font-size: 13px; }
+.etapas .marca { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--linha-forte); display: grid; place-items: center; font-size: 12px; }
+.etapas .feito .marca { background: var(--pasto); border-color: var(--pasto); color: #fff; }
+.etapas .agora .marca { border-color: var(--atencao); }
+.etapas .feito span:nth-child(2) { color: var(--tinta-2); text-decoration: line-through; }
+.etapas .agora span:nth-child(2) { font-weight: 650; }
+.etapas time { color: var(--tinta-2); font-size: 12px; }
+.progresso { height: 8px; background: var(--papel); border-radius: 999px; overflow: hidden; margin: 6px 0 4px; border: 1px solid var(--linha); }
+.progresso i { display: block; height: 100%; width: 60%; background: var(--pasto); }
+
+.notas { max-width: 1240px; margin: 0 auto 48px; padding: 0 32px; color: var(--tinta-2); font-size: 13px; }
+.notas h2 { font-size: 14px; color: var(--tinta); }
+.notas li { margin: 4px 0; }
+
+@media (max-width: 860px) {
+  .corpo { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 640px) {
+  .pagina { padding: 68px 14px 32px; }
+  .cabecalho { flex-wrap: wrap; }
+  .meta > header { flex-direction: column; gap: 8px; padding: 14px 14px 0; }
+  .corpo { padding: 12px 14px 14px; }
+  .meta > footer { padding: 10px 14px; }
+  .notas { padding: 0 14px; }
+}
+</style>
+</head>
+<body>
+<main class="pagina">
+  <div class="cabecalho">
+    <div><h1>Metas da fazenda</h1><p>Sítio principal · acompanhamento em relação ao alvo</p></div>
+    <button class="btn primario"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Nova meta</button>
+  </div>
+
+  <div class="resumo" role="group" aria-label="Filtrar por situação">
+    <button aria-pressed="true">Todas <b>3</b></button>
+    <button aria-pressed="false"><span class="ponto" style="background:var(--atencao)"></span>Abaixo do alvo <b>1</b></button>
+    <button aria-pressed="false"><span class="ponto" style="background:var(--pasto)"></span>No alvo <b>1</b></button>
+    <button aria-pressed="false"><span class="ponto" style="background:var(--linha-forte)"></span>Marcos <b>1</b></button>
+  </div>
+
+  <div class="metas">
+    <!-- 1. Produção diária, apuração automática, abaixo do alvo -->
+    <article class="meta">
+      <header>
+        <div><h2>Produção diária do Sítio principal</h2><p class="def">Produção de leite · mínimo de 900 L por dia · apuração automática</p></div>
+        <span class="situacao abaixo">Abaixo do alvo há 2 dias</span>
+      </header>
+      <div class="corpo">
+        <dl class="atual">
+          <dt>Último dia apurado · 02/11</dt>
+          <dd><span class="grande">875 L</span><span class="delta ruim">25 L abaixo do mínimo</span></dd>
+          <div class="fatos">
+            <div><dt>Dias no alvo (30 dias)</dt><dd>22 de 28</dd></div>
+            <div><dt>Média do período</dt><dd>945 L</dd></div>
+            <div><dt>Melhor dia</dt><dd>1.023 L · 04/10</dd></div>
+            <div><dt>Prazo</dt><dd>Contínua</dd></div>
+          </div>
+        </dl>
+        <figure class="grafico" style="margin:0">
+          <svg viewBox="0 0 640 200" role="img" aria-label="Produção diária de 04/10 a 02/11 em relação ao mínimo de 900 litros">
+            <rect x="44" y="135.9" width="584" height="38.1" fill="#fbefec"/>
+            <g stroke="#dfe7e5" stroke-width="1">
+              <line x1="44" y1="40.6" x2="628" y2="40.6"/><line x1="44" y1="88.2" x2="628" y2="88.2"/><line x1="44" y1="174" x2="628" y2="174"/>
+            </g>
+            <g font-size="11" fill="#526863" text-anchor="end">
+              <text x="38" y="44">1.100</text><text x="38" y="92">1.000</text><text x="38" y="139.5">900</text>
+            </g>
+            <line x1="44" y1="135.9" x2="628" y2="135.9" stroke="#775930" stroke-width="2" stroke-dasharray="6 4"/>
+            <text x="50" y="130" font-size="11" fill="#775930" font-weight="600">Mínimo 900 L</text>
+            <rect x="557" y="12" width="41" height="162" fill="url(#hachura)"/>
+            <defs><pattern id="hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#d9cbb5" stroke-width="2"/></pattern></defs>
+            <text x="577.5" y="26" font-size="10" fill="#775930" text-anchor="middle">sem</text>
+            <text x="577.5" y="38" font-size="10" fill="#775930" text-anchor="middle">apuração</text>
+            <polyline fill="none" stroke="#006f68" stroke-width="2.5" stroke-linejoin="round" points="44.0,77.3 64.1,93.0 84.3,87.8 104.4,106.3 124.6,106.3 144.7,113.0 164.8,132.1 185.0,132.5 205.1,148.7 225.2,153.5 245.4,107.3 265.5,95.4 285.7,111.6 305.8,124.0 325.9,120.2 346.1,103.0 366.2,101.1 386.3,106.8 406.5,88.7 426.6,108.2 446.8,94.9 466.9,104.4 487.0,120.2 507.2,136.8 527.3,145.9 547.4,134.0"/>
+            <polyline fill="none" stroke="#006f68" stroke-width="2.5" points="607.9,141.6 628.0,147.8"/>
+            <g fill="#8d3931">
+              <circle cx="205.1" cy="148.7" r="4"/><circle cx="225.2" cy="153.5" r="4"/><circle cx="507.2" cy="136.8" r="4"/><circle cx="527.3" cy="145.9" r="4"/><circle cx="607.9" cy="141.6" r="4"/>
+            </g>
+            <circle cx="628" cy="147.8" r="6" fill="#8d3931" stroke="#fff" stroke-width="2"/>
+            <g font-size="11" fill="#526863" text-anchor="middle">
+              <text x="50" y="192">04/10</text><text x="185" y="192">11/10</text><text x="326" y="192">18/10</text><text x="467" y="192">25/10</text><text x="616" y="192">02/11</text>
+            </g>
+          </svg>
+          <figcaption><span><span class="legenda-linha"></span>Mínimo</span><span><span class="legenda-faixa"></span>Abaixo do alvo</span><span>Pontos vermelhos: dias abaixo do mínimo</span></figcaption>
+        </figure>
+      </div>
+      <footer>
+        <span class="pendencia">30 e 31/10 sem apuração: há parcelas sem confirmação no estoque.</span>
+        <div><a href="#">Confirmar parcelas</a><button class="btn discreto">Ver ordenhas</button><button class="btn discreto">Histórico</button><button class="btn discreto">Editar meta</button></div>
+      </footer>
+    </article>
+
+    <!-- 2. CCS mensal manual, no alvo, medição do mês pendente -->
+    <article class="meta">
+      <header>
+        <div><h2>CCS do tanque</h2><p class="def">Contagem de células somáticas · máximo de 400 mil/mL por mês · medição manual</p></div>
+        <span class="situacao ok">No alvo</span>
+      </header>
+      <div class="corpo">
+        <dl class="atual">
+          <dt>Outubro · laudo do laticínio</dt>
+          <dd><span class="grande">312 mil/mL</span><span class="delta bom">88 mil abaixo do máximo</span></dd>
+          <div class="fatos">
+            <div><dt>Meses no alvo</dt><dd>5 de 6</dd></div>
+            <div><dt>Próxima medição</dt><dd>Novembro · até 10/12</dd></div>
+          </div>
+        </dl>
+        <figure class="grafico" style="margin:0">
+          <div class="barras" aria-label="CCS mensal de maio a outubro">
+            <span class="limite" style="bottom:84px"><span>Máximo 400 mil</span></span>
+            <div><b>365</b><i style="height:73px"></i>mai</div>
+            <div><b>342</b><i style="height:68px"></i>jun</div>
+            <div><b>428</b><i class="alto" style="height:86px"></i>jul</div>
+            <div><b>377</b><i style="height:75px"></i>ago</div>
+            <div><b>331</b><i style="height:66px"></i>set</div>
+            <div><b>312</b><i style="height:62px"></i>out</div>
+          </div>
+        </figure>
+      </div>
+      <footer>
+        <span>Medição de novembro ainda não registrada.</span>
+        <div><button class="btn">Registrar medição</button><button class="btn discreto">Histórico</button><button class="btn discreto">Editar meta</button></div>
+      </footer>
+    </article>
+
+    <!-- 3. Marco operacional com etapas -->
+    <article class="meta">
+      <header>
+        <div><h2>Reforma do curral de espera</h2><p class="def">Marco operacional · prazo 15/12/2026</p></div>
+        <span class="situacao marco">3 de 5 etapas</span>
+      </header>
+      <div class="corpo">
+        <dl class="atual">
+          <dt>Andamento</dt>
+          <dd><span class="grande">60%</span><div class="progresso"><i></i></div><span class="delta" style="color:var(--tinta-2)">42 dias até o prazo</span></dd>
+        </dl>
+        <ol class="etapas">
+          <li class="feito"><span class="marca">✓</span><span>Orçamento aprovado</span><time>12/09</time></li>
+          <li class="feito"><span class="marca">✓</span><span>Compra do material</span><time>30/09</time></li>
+          <li class="feito"><span class="marca">✓</span><span>Piso concretado</span><time>20/10</time></li>
+          <li class="agora"><span class="marca"></span><span>Cobertura e calhas</span><time>previsto 20/11</time></li>
+          <li><span class="marca"></span><span>Bebedouros e liberação</span><time>previsto 10/12</time></li>
+        </ol>
+      </div>
+      <footer>
+        <span>Próxima etapa: cobertura e calhas.</span>
+        <div><button class="btn">Concluir etapa</button><button class="btn discreto">Histórico</button><button class="btn discreto">Editar meta</button></div>
+      </footer>
+    </article>
+  </div>
+</main>
+
+<section class="notas" aria-label="Notas da proposta">
+  <h2>O que muda em relação ao PR #357</h2>
+  <ul>
+    <li><strong>Apuração automática de verdade:</strong> o sistema apura todos os dias elegíveis sozinho. O botão “Apurar dia” some; quando um dia não fecha, o rodapé diz qual e por quê e leva a “Confirmar parcelas”.</li>
+    <li><strong>Gráfico com o alvo visível:</strong> o eixo tem margem abaixo do mínimo, a linha do alvo é tracejada e rotulada, a faixa abaixo do alvo é sombreada e os dias fora do alvo ficam marcados. Dias sem apuração aparecem hachurados, não como queda.</li>
+    <li><strong>Leitura antes do gráfico:</strong> valor atual, distância do alvo e quantos dias ficaram no alvo, para decidir sem interpretar o gráfico.</li>
+    <li><strong>Situação com contexto:</strong> “Abaixo do alvo há 2 dias” em vez de só “Abaixo”; resumo no topo filtra as metas por situação.</li>
+    <li><strong>Ações com nome:</strong> “Editar meta”, “Ver ordenhas” e “Registrar medição” com texto, sem botão só de ícone.</li>
+    <li><strong>Cada tipo com sua visualização:</strong> linha diária para produção, barras mensais para CCS, etapas com progresso para marcos.</li>
+  </ul>
+  <p><a href="index.html">Ver a proposta da IA Terrano</a></p>
+</section>
+</body>
+</html>

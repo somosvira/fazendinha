@@ -1,3 +1,4 @@
+import { ConsultaOperacional } from "@/components/ConsultaOperacional";
 import { Button } from "../../../components/ui/button";
 import { IdentificacaoReproducao, LinkReproducao } from "./ConsultaReproducaoUI";
 import { useEffect, useState } from "react";
@@ -7,7 +8,6 @@ import {
   ErrorBox,
   Modal,
   Pill,
-  TabelaFinanceira,
   type ColunaTabela,
 } from "../../../financeiro/financeiro-ui";
 import { formatBRDateISO } from "../../../lib/hoje";
@@ -24,6 +24,8 @@ import { registro } from "./folha-regras";
 import { CorrigirFato } from "./CorrigirFato";
 import { AnularFato } from "./AnularFato";
 import { ColostroCria } from "./ColostroCria";
+import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFicha } from "../../../components/Esqueleto";
 export type PartoOperacional = Omit<PartoRelatorio, "crias"> & {
   propriedadeId: number;
   status: string;
@@ -100,14 +102,14 @@ function Lista<T extends { id: string }>({
     atual = Math.min(pagina, total);
   return (
     <>
-      <TabelaFinanceira
+      <ConsultaOperacional
         rotulo={rotulo}
         itens={itens.slice((atual - 1) * 10, atual * 10)}
         chaveDe={(x) => x.id}
         colunas={colunas}
       />
       {!itens.length && (
-        <p className="p-4 text-sm text-ink-3">Nenhum registro informado.</p>
+        <Empty>Nenhum registro informado.</Empty>
       )}
       {itens.length > 10 && (
         <Paginacao
@@ -177,7 +179,7 @@ export function DetalheParto({
         </Button>
       </div>
     );
-  if (!parto) return <p role="status">Carregando parto…</p>;
+  if (!parto) return <EsqueletoFicha label="Carregando parto" />;
   const p = parto;
   const podeEditar = podeLancar && p.status === "VALIDO";
   const criaSelecionada = p.crias.find(c => c.id === criaColostro && c.viva);
@@ -236,7 +238,7 @@ export function DetalheParto({
       <section className="repro-parto-clinica" aria-label="Desfecho e assistência"><h2>Desfecho e assistência</h2><dl className="repro-dados-grade">
         <div><dt>Desfecho</dt><dd>{texto(p.desfecho)} · {texto(p.tipo)}</dd></div>
         <div><dt>Crias</dt><dd>{p.crias.length} · {p.crias.filter(c => c.viva).length} vivas</dd></div>
-        <div><dt>Retenção de placenta</dt><dd>{texto(p.retencaoPlacenta)}</dd></div>
+        <div><dt>Retenção de placenta</dt><dd>{texto(p.retencaoPlacenta)}</dd></div><div><dt>Grau de RP</dt><dd>{p.grauRetencaoPlacenta ?? "Não informado"}</dd></div>
         <div><dt>Dificuldade</dt><dd>{texto(p.dificuldade)}</dd></div>
         <div><dt>Assistência</dt><dd>{p.assistenciaDescricao ?? "Não informada"}</dd></div>
       </dl></section>
@@ -427,8 +429,8 @@ export function DetalheParto({
       </div>
       {podeEditar && acao === "corrigir" && <CorrigirFato complementoInicial={complemento} tipo="parto" id={p.id} animalId={p.matriz.id} propriedadeId={propriedadeId} tipoPartoInicial={p.tipo ?? undefined} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
       {podeEditar && acao === "anular" && <AnularFato tipo="partos" id={p.id} propriedadeId={propriedadeId} onFechar={() => setAcao(null)} onSalvo={atualizar}/>}
-      {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="Registro do parto" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
-      {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="Parto e pós-parto" onClose={() => setCriaColostro(null)}>
+      {criaAberta && <Modal titulo={`Cria ${criaAberta.ordem}`} eyebrow="" onClose={()=>setCriaAberta(null)}><div className="p-5"><p>{criaAberta.viva ? "Viva · identificação provisória" : "Sem vida · sem cadastro de animal ativo"}</p><p className="mt-2">Sexo: {texto(criaAberta.sexo)}</p><p className="mt-2">Peso informado: {texto(registro(criaAberta.filiacaoSnapshot).pesoKg)}</p></div></Modal>}
+      {podeEditar && criaSelecionada && <Modal titulo={`Colostro · cria ${criaSelecionada.ordem}`} eyebrow="" onClose={() => setCriaColostro(null)}>
         <div className="p-5"><ColostroCria key={criaSelecionada.id} criaId={criaSelecionada.id} propriedadeId={propriedadeId} dataParto={p.data} podeLancar={podeLancar} onMudou={atualizar}/></div>
       </Modal>}
       <SecaoRecolhivel titulo="Autoria e observações" abertaInicial={false} acoes={podeEditar ? <Button variant="ghost" onClick={() => setAcao("anular")}>Conferir anulação</Button> : undefined}>

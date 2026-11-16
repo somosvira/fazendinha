@@ -76,3 +76,18 @@ describe("composição comercial exata", () => {
     expect(descontarItens([{ valor: "10", elegivel: false }], "0", ["0"])[0].valorLiquido.toFixed(2)).toBe("10.00");
   });
 });
+
+describe("rateio em partes iguais", () => {
+  // Referência: o algoritmo geral (maior resto, empate pela posição), escrito à parte.
+  const referencia = (total: string, n: number) => {
+    const centavos = new Prisma.Decimal(total).mul(100), partes = Array.from({ length: n }, (_, indice) => { const quota = centavos.div(n); const inteiro = quota.toDecimalPlaces(0, Prisma.Decimal.ROUND_FLOOR); return { indice, inteiro, resto: quota.minus(inteiro) }; });
+    const faltam = centavos.minus(partes.reduce((s, p) => s.plus(p.inteiro), new Prisma.Decimal(0))).toNumber();
+    [...partes].sort((a, b) => b.resto.comparedTo(a.resto) || a.indice - b.indice).slice(0, faltam).forEach(p => { p.inteiro = p.inteiro.plus(1); });
+    return partes.map(p => p.inteiro.div(100).toFixed(2));
+  };
+  it("dá o mesmo resultado do caso geral para vários totais e quantidades de dias", () => {
+    for (const total of ["0.01", "0.99", "1", "10.07", "123.45", "875.6", "99999.99"]) for (const n of [2, 3, 7, 28, 30, 31, 365])
+      expect(repartirValor(total, Array(n).fill(1)).map(p => p.toFixed(2))).toEqual(referencia(total, n));
+  });
+});
+

@@ -3,11 +3,12 @@ import { dateFromIso, isoDate, type DateRange } from "../../../components/DateRa
 import { getHoje } from "../../../lib/hoje";
 
 export type PeriodoConsulta = { inicio: string; fim: string };
-type TipoConsulta = "partos" | "indicadores";
+type TipoConsulta = "partos" | "indicadores" | "indicadores-mensal";
 type ConsultaResolvida = { periodo: PeriodoConsulta; aviso: string | null; corrigirUrl: boolean };
 
 export function periodoPadrao(tipo: TipoConsulta): PeriodoConsulta {
   const hoje = getHoje();
+  if (tipo === "indicadores-mensal") return { inicio: isoDate(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1)), fim: isoDate(new Date(hoje.getFullYear(), hoje.getMonth(), 0)) };
   const inicio = tipo === "partos"
     ? new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 89)
     : new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
@@ -30,6 +31,14 @@ function daUrl(tipo: TipoConsulta): ConsultaResolvida {
   }
   if (!dataValida(inicio) || !dataValida(fim) || inicio > fim) {
     return { periodo: periodoPadrao(tipo), aviso: "Período inválido. Aplicado o período padrão da consulta.", corrigirUrl: true };
+  }
+  if (tipo === "indicadores-mensal") {
+    const mesAtual = isoDate(getHoje()).slice(0, 7);
+    const mes = inicio.slice(0, 7) > mesAtual ? mesAtual : inicio.slice(0, 7);
+    const [ano, numeroMes] = mes.split("-").map(Number);
+    const periodo = limitarAHoje({ inicio: `${mes}-01`, fim: isoDate(new Date(ano, numeroMes, 0)) });
+    const ajustado = periodo.inicio !== inicio || periodo.fim !== fim;
+    return { periodo, aviso: ajustado ? "Consulta ajustada ao mês de referência, limitada a hoje." : null, corrigirUrl: ajustado };
   }
   const periodo = limitarAHoje({ inicio, fim });
   const limitado = periodo.inicio !== inicio || periodo.fim !== fim;

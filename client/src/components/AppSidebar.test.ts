@@ -4,9 +4,7 @@ import { createElement as h } from "react";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { AppSidebar } from "./AppSidebar";
 import type { Tab } from "./Shell";
-import type { User } from "../data/acessos";
 
-const proprietario: User = { id: "u1", nome: "Marco Antônio", email: "marco@riovono.com", inicial: "M", papel: "proprietario", status: "ativo", ultimoAcesso: "hoje", abas: [], flags: [], dono: true };
 
 // Node 22+ define um `localStorage` global "experimental" (atrás de
 // --localstorage-file) que sombreia o do jsdom e quebra com "Cannot read
@@ -63,14 +61,10 @@ function baseProps(overrides: Partial<{
   areas: string[];
   mobileOpen: boolean;
   onMobileToggle: (open: boolean) => void;
-  onAbrirBusca: () => void;
   propAtiva: number | null;
   onTrocarProp: (id: number | null) => void;
-  user: User;
   colapsada: boolean;
   onToggleColapsar: () => void;
-  onAcessos: () => void;
-  onSair: () => void;
 }> = {}) {
   return {
     current: "dashboard" as Tab,
@@ -86,27 +80,15 @@ function baseProps(overrides: Partial<{
     areas: ["pecuaria", "agricultura", "equipe"],
     mobileOpen: false,
     onMobileToggle: vi.fn(),
-    onAbrirBusca: vi.fn(),
     propAtiva: null,
     onTrocarProp: vi.fn(),
-    user: proprietario,
     colapsada: false,
     onToggleColapsar: vi.fn(),
-    onAcessos: vi.fn(),
-    onSair: vi.fn(),
     ...overrides,
   };
 }
 
 describe("AppSidebar", () => {
-  it("não oferece Acessos ao perfil sem dono nem gerenciarAcessos", async () => {
-    const props = baseProps({ user: { ...proprietario, dono: false, flags: [] } });
-    render(h(AppSidebar, props));
-    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
-    await screen.findByRole("menu");
-    expect(screen.queryByText("Acessos")).toBeNull();
-    expect(props.onAcessos).not.toHaveBeenCalled();
-  });
 
   it("inicia os demais domínios recolhidos e reúne todas as páginas financeiras", () => {
     render(h(AppSidebar, baseProps()));
@@ -145,13 +127,6 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Rebanho")).toBeTruthy();
   });
 
-  it("abre a busca global pelo atalho visível da sidebar", () => {
-    const props = baseProps();
-    render(h(AppSidebar, props));
-
-    fireEvent.click(screen.getByRole("button", { name: "Buscar páginas, animais e ações" }));
-    expect(props.onAbrirBusca).toHaveBeenCalledOnce();
-  });
 
   it("esconde o módulo Equipe & Ponto quando podeVerFolha=false", () => {
     render(h(AppSidebar, baseProps({ })));
@@ -204,16 +179,4 @@ describe("AppSidebar", () => {
     expect(document.querySelector('[data-slot="sheet-content"]')).toBeTruthy();
   });
 
-  it("mantém o usuário no rodapé e o recolhimento junto à marca", async () => {
-    const props = baseProps();
-    render(h(AppSidebar, props));
-    fireEvent.click(screen.getByLabelText("Recolher menu lateral"));
-    expect(props.onToggleColapsar).toHaveBeenCalledTimes(1);
-
-    fireEvent.pointerDown(screen.getByLabelText("Menu da conta"), { button: 0 });
-    const acessos = await screen.findByText("Acessos");
-    expect(screen.queryByText("Preferências")).toBeNull();
-    fireEvent.click(acessos);
-    expect(props.onAcessos).toHaveBeenCalledTimes(1);
-  });
 });

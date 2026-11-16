@@ -39,6 +39,20 @@ describe("regras financeiras — parceiro e conflitos", () => {
     try { traduzirConflitoUnico(erro, { documento: "duplicado" }); } catch (e) { expect((e as FinanceiroError).campo).toBe("documento"); }
   });
 
+  it("traduz o conflito de documento retornado pelo adapter PostgreSQL", () => {
+    const erro = new Prisma.PrismaClientKnownRequestError("dup", {
+      code: "P2002", clientVersion: "6",
+      meta: { driverAdapterError: { cause: { kind: "UniqueConstraintViolation", constraint: { fields: ["documento"] } } } },
+    });
+    expect(() => traduzirConflitoUnico(erro, { documento: "CPF/CNPJ já cadastrado" }))
+      .toThrow(expect.objectContaining({ code: "CONFLITO", campo: "documento", message: "CPF/CNPJ já cadastrado" }));
+  });
+
+  it.each([undefined, {}, { kind: "UniqueConstraintViolation", constraint: { fields: ["nome"] } }, { kind: "Other", constraint: { fields: ["documento"] } }])("preserva conflitos de adapter sem campo mapeado: %j", (cause) => {
+    const erro = new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "6", meta: { driverAdapterError: { cause } } });
+    expect(() => traduzirConflitoUnico(erro, { documento: "duplicado" })).toThrow(erro);
+  });
+
   it("traduzirConflitoUnico relança o que não é P2002 e P2002 de campo não mapeado", () => {
     expect(() => traduzirConflitoUnico(new Error("x"), { documento: "d" })).toThrow("x");
     const outro = new Prisma.PrismaClientKnownRequestError("dup", { code: "P2002", clientVersion: "6", meta: { target: ["nome"] } });

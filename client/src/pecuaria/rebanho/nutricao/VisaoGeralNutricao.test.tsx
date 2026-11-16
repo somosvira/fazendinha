@@ -80,14 +80,14 @@ describe("panorama nutricional sem indicadores repetidos", () => {
 it("filtra pelo resumo de dietas sem reduzir a base completa nem perder a busca", async () => {
   window.history.replaceState(null, "", "/pecuaria/nutricao?buscaLote=Matrizes");
   render(<VisaoGeralNutricao />);
-  const sem = await screen.findByRole("button", { name: "Sem dieta 1" });
-  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  const sem = await screen.findByRole("button", { name: "1 lote sem dieta" });
+  expect(screen.getByText("1 de 2")).toBeTruthy();
   fireEvent.click(sem);
   expect(new URLSearchParams(window.location.search).get("situacaoDieta")).toBe("sem");
   expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
-  expect(screen.getByText("1 de 2 lotes")).toBeTruthy();
+  expect(screen.getByText("1 de 2")).toBeTruthy();
   expect(screen.getByText("Nenhum lote corresponde aos filtros.")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Sem dieta 1" }));
+  fireEvent.click(screen.getByRole("button", { name: "1 lote sem dieta" }));
   expect(new URLSearchParams(window.location.search).has("situacaoDieta")).toBe(false);
 });
 
@@ -98,7 +98,7 @@ it("alterna cartões e tabela sem perder a busca e oculta custos sem permissão"
   await screen.findByRole("link", {name:"Matrizes"});
   expect(screen.queryByRole("table")).toBeNull();
   expect(screen.queryByText(/379,50/)).toBeNull();
-  expect(screen.getByRole("img",{name:"1 de 2 lotes com dieta vigente"})).toBeTruthy();
+  expect(screen.getByText("1 de 2")).toBeTruthy();
   fireEvent.click(screen.getByRole("button",{name:"Tabela"}));
   expect(screen.getByRole("table",{name:"Nutrição por lote"})).toBeTruthy();
   expect(new URLSearchParams(window.location.search).get("buscaLote")).toBe("Matrizes");
@@ -109,7 +109,8 @@ it("mantém links nativos e ações independentes por cartão", async () => {
   window.history.replaceState(null, "", "/pecuaria/nutricao?visualNutricao=visual");
   const { container } = render(<VisaoGeralNutricao />);
   await screen.findByRole("link", { name: "Matrizes" });
-  const cartao = container.querySelector(".dietas-cartao")!;
+  const cartao = container.querySelector(".dieta-cartao")!;
+  // Mesmo padrão dos cartões de Lotes e Estoque: o nome e "Ver lote" no rodapé.
   expect(cartao.querySelectorAll("a")).toHaveLength(2);
   const link = cartao.querySelector("a")!;
   expect(link.className).toContain("dietas-cartao-link");

@@ -70,3 +70,17 @@ it("mantém aviso de limite sob StrictMode após normalizar a URL", () => {
   expect(result.current.aviso).toMatch(/limitado a hoje/);
   expect(result.current.fim).toBe("2026-10-17");
 });
+
+it("abre indicadores mensais no último mês completo e limita o mês atual ao corte factual", () => {
+  const { result } = renderHook(() => usePeriodoConsulta("indicadores-mensal"));
+  expect(result.current).toMatchObject({ inicio: "2026-09-01", fim: "2026-09-30" });
+  act(() => result.current.alterar({ start: new Date(2026, 9, 1), end: new Date(2026, 9, 31) }));
+  expect(result.current).toMatchObject({ inicio: "2026-10-01", fim: "2026-10-17" });
+});
+
+it("normaliza intervalos herdados para o mês exibido nos indicadores mensais", () => {
+  window.history.replaceState(null, "", "/pecuaria/reproducao?rotina=indicadores&inicio=2026-08-15&fim=2026-10-17");
+  const { result } = renderHook(() => usePeriodoConsulta("indicadores-mensal"));
+  expect(result.current).toMatchObject({ inicio: "2026-08-01", fim: "2026-08-31" });
+  expect(window.location.search).toContain("fim=2026-08-31");
+});

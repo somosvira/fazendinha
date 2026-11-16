@@ -9,6 +9,7 @@ import {
 } from "@testing-library/react";
 import { ConfirmacaoGruposLeite } from "./ConfirmacaoGruposLeite";
 import type { FolhaLeite, AnimalFolhaLeite, MedicaoLeite } from "./types";
+import { mudarCampo } from "@/lib/controles.fixture";
 const resumo = {
   litros: 25,
   esperadas: 3,
@@ -115,10 +116,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 function natureza(tipo: string) {
-  fireEvent.change(screen.getByLabelText("Natureza do grupo de Manhã"), {
+  mudarCampo(screen.getByLabelText("Natureza do grupo de Manhã"), {
     target: { value: tipo },
   });
-  fireEvent.change(
+  mudarCampo(
     screen.getByLabelText("Justificativa da natureza de Manhã"),
     { target: { value: "Separação declarada pela equipe" } },
   );
@@ -208,7 +209,7 @@ describe("confirmação da produção por grupos de animais", () => {
       "Buscar animal em Manhã",
     ) as HTMLInputElement;
     expect(busca.disabled).toBe(false);
-    fireEvent.change(busca, { target: { value: "Brisa" } });
+    mudarCampo(busca, { target: { value: "Brisa" } });
     expect(screen.queryByLabelText("Selecionar Aurora em Manhã · brinco a")).toBeNull();
     expect(
       screen.queryByRole("button", { name: /Confirmar grupo/ }),
@@ -226,7 +227,7 @@ describe("confirmação da produção por grupos de animais", () => {
       name: "Confirmar sessão de Manhã · 15 L",
     }) as HTMLButtonElement;
     expect(botao.disabled).toBe(true);
-    fireEvent.change(
+    mudarCampo(
       screen.getByLabelText("Justificativa da produção parcial de Manhã"),
       { target: { value: "Outra medição aguardando conferência" } },
     );

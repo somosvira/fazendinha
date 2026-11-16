@@ -1,3 +1,5 @@
+import { conferirImpactosTx, aplicarImpactosTx, type ConfirmacaoImpacto } from "../reproducao/impactos.js";
+import { reconciliarAlertasReprodutivosAnimalTx } from "../reproducao/alertas/produtor.js";
 import { custoAplicacao } from "./custo-aplicacao.js";
 import { vincularAplicacaoAlertaTx, revisarAplicacaoAnuladaTx } from "./alertas/atendimento.js";
 import { vincularFatoTarefaTx } from "../protocolos/vinculos.js";
@@ -20,9 +22,11 @@ import { consumirEstoqueTx } from "../consumo.js";
 import { alocacaoLoteSanitario, loteAplicacaoDTO } from "./lotes.js";
 import { conferirTarefaProtocoloTx, tipoAplicacaoLegadaId, type DesvioInput } from "./desvios.js";
 import { travarUsosProduto } from "../../estoque/usos.js";
+import { prefixarCampoErro, resolverProdutoIdTx } from "../../estoque/produtos-catalogo.js";
 
 export type AplicacaoInput = {
   chave?: string;
+  impacto?: ConfirmacaoImpacto;
   alertaId?: string;
   alertaRevisao?: number;
   confirmarCuidadoAlerta?: boolean;
@@ -40,6 +44,10 @@ export type AplicacaoInput = {
   origemInsumo: OrigemInsumoSanitario;
   nomeProdutoAplicado: string;
   produtoId?: string | null;
+  /** Item do catálogo adotado como Produto da fazenda ao confirmar (alternativa a produtoId). */
+  produtoCatalogoId?: string | null;
+  /** Categoria do Produto criado na adoção; sem ela, vale a sugestão do catálogo. */
+  categoriaId?: string | null;
   dose: string;
   unidadeDose: UnidadeMedida;
   carenciaLeiteHoras?: number | null;
@@ -76,14 +84,14 @@ export async function travarOrigensAplicacoesTx(tx: Prisma.TransactionClient, it
   if (produtosEstoque.length) await tx.$executeRaw`SELECT pg_advisory_xact_lock(h) FROM (SELECT DISTINCT hashtext(k) AS h FROM unnest(${produtosEstoque}::text[]) AS k) AS chaves ORDER BY h`;
 }
 
-async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput) {
+async function conferirLocalizacao(tx: Prisma.TransactionClient, input: AplicacaoInput, planejamentoFuturo = false) {
   const data = dia(input.data);
   await conferirAnimalNoFato(tx, input.animalId, input.propriedadeId, data);
   const momento = input.aplicadaEm ? new Date(input.aplicadaEm) : null;
   if (momento && (!Number.isFinite(momento.getTime()) || new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(momento) !== input.data)) {
     erro("A data e o horário da aplicação devem corresponder ao mesmo dia no Brasil", "aplicadaEm");
   }
-  if (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
+  if (!planejamentoFuturo && (momento && momento > new Date() || !momento && input.data > new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()))) erro("A aplicação não pode ocorrer no futuro", "aplicadaEm");
   if (input.ocorrenciaId) {
     const ocorrencia = await tx.ocorrenciaSanitaria.findFirst({ where: { id: input.ocorrenciaId, animalId: input.animalId, status: "VALIDO" } });
     if (!ocorrencia) erro("Ocorrência não pertence a este animal", "ocorrenciaId");
@@ -103,7 +111,7 @@ async function validarServico(tx: Prisma.TransactionClient, id: string, propried
 
 export { obterSaldo } from "../consumo.js";
 
-async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false) {
+async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInput, data: Date, usuarioId: number | null, previa = false, planejamentoFuturo = false) {
   if (input.produtoId) await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`produto-usos:${input.produtoId}`}))`;
   const produto = input.produtoId ? await tx.produto.findUnique({ where: { id: input.produtoId } }) : null;
   if (input.produtoId && !produto) erro("Produto não encontrado", "produtoId");
@@ -171,9 +179,9 @@ async function prepararOrigem(tx: Prisma.TransactionClient, input: AplicacaoInpu
     partidaValidadeSnapshot: partidaValidade };
 }
 
-export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false) {
+export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null, previa = false, planejamentoFuturo = false) {
     await travarAnimais(tx, [input.animalId]);
-    const data = await conferirLocalizacao(tx, input);
+    const data = await conferirLocalizacao(tx, input, previa && planejamentoFuturo);
     const destino = await tx.finalidadeAnimal.findFirst({ where: { animalId: input.animalId, desde: { lte: data }, OR: [{ ate: null }, { ate: { gt: data } }] } });
     const tipoLegadoId = tipoAplicacaoLegadaId(input.finalidade);
     const tipoAplicacao = await tx.tipoAplicacaoSanitaria.findFirst({ where: {
@@ -231,18 +239,37 @@ export async function prepararAplicacaoTx(tx: Prisma.TransactionClient, input: A
     return { dadosCriacao, desvioProtocoloSnapshot };
 }
 
-export async function criarAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null) {
+/** Troca `produtoCatalogoId` pelo produtoId efetivo, adotando o item na transação da aplicação (docs/produtos.md, Adoção). */
+export async function resolverProdutoAplicacaoTx(tx: Prisma.TransactionClient, input: AplicacaoInput, usuarioId: number | null): Promise<AplicacaoInput> {
+  if (!input.produtoCatalogoId) return input;
+  const produtoId = await resolverProdutoIdTx(tx, { produtoId: input.produtoId, produtoCatalogoId: input.produtoCatalogoId, categoriaId: input.categoriaId }, usuarioId);
+  return { ...input, produtoId, produtoCatalogoId: null, categoriaId: null };
+}
+
+export async function criarAplicacaoTx(tx: Prisma.TransactionClient, entrada: AplicacaoInput, usuarioId: number | null, opcoes: { impactosConferidos?: Awaited<ReturnType<typeof conferirImpactosTx>>; adiarEfeitos?: boolean } = {}) {
+    const input = await resolverProdutoAplicacaoTx(tx, entrada, usuarioId);
+    const previaImpacto = opcoes.impactosConferidos ?? await conferirImpactosTx(tx, {
+      origem: "PROCEDIMENTO", animalId: input.animalId, propriedadeId: input.propriedadeId, data: input.data,
+      tipoAplicacaoId: input.tipoAplicacaoId ?? tipoAplicacaoLegadaId(input.finalidade),
+    }, input.impacto);
+    if (previaImpacto.entrada.animalId !== input.animalId || previaImpacto.entrada.propriedadeId !== input.propriedadeId
+      || previaImpacto.entrada.data !== input.data || previaImpacto.entrada.origem !== "PROCEDIMENTO"
+      || previaImpacto.entrada.tipoAplicacaoId !== (input.tipoAplicacaoId ?? tipoAplicacaoLegadaId(input.finalidade))) {
+      throw new RebanhoError("CONFLITO", "Prévia interna incompatível com o procedimento");
+    }
+    if(previaImpacto.exigeConfirmacao&&(!usuarioId||usuarioId<1))throw new RebanhoError("VALIDACAO","Impactos exigem sessão real");
     const { dadosCriacao } = await prepararAplicacaoTx(tx, input, usuarioId);
     const criada = await tx.aplicacaoProduto.create({ data: dadosCriacao });
     if (input.tarefaId) await vincularFatoTarefaTx(tx, input.tarefaId, { aplicacaoId: criada.id }, usuarioId);
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: criada.id, animalId: input.animalId, propriedadeId: input.propriedadeId, acao: "REGISTRO", usuarioId,
       depois: { origemInsumo: criada.origemInsumo, operacaoServicoId: criada.operacaoServicoId, itemCompraDiretaId: criada.itemCompraDiretaId, movimentoEstoqueId: criada.movimentoEstoqueId, via: criada.via, desvioProtocoloSnapshot: criada.desvioProtocoloSnapshot, cienciaValidadeDesconhecida: !!input.cienciaValidadeDesconhecida, cienciaPartidaVencida: !!input.documentacaoExcepcional, motivoDocumentacaoExcepcional: input.motivoDocumentacaoExcepcional ?? null } });
     await vincularAplicacaoAlertaTx(tx, input, criada, usuarioId);
+    if(!opcoes.adiarEfeitos)await aplicarImpactosTx(tx,previaImpacto,{tipo:"AplicacaoProduto",id:criada.id},input.impacto,usuarioId);
     return criada;
 }
 
 export async function criarAplicacao(input: AplicacaoInput, usuarioId: number | null) {
-  if (input.alertaId && !input.chave) erro("O atendimento do alerta exige chave de confirmação", "chave");
+  if ((input.alertaId || input.impacto) && !input.chave) erro("O atendimento do alerta exige chave de confirmação", "chave");
   return confirmarFato(input, usuarioId, "APLICACAO", criarAplicacaoTx, (tx, id) => tx.aplicacaoProduto.findUniqueOrThrow({ where: { id } }));
 }
 
@@ -258,10 +285,16 @@ export async function criarAplicacoesColetivas(input: { chave: string; proprieda
       if (anterior.hashPayload !== hashPayload || anterior.usuarioId !== usuarioId || anterior.propriedadeId !== input.propriedadeId || anterior.operacao !== "APLICACAO_COLETIVA") throw new RebanhoError("CONFLITO", "Chave já utilizada com outros dados");
       return { aplicacoes: anterior.resultadoIds };
     }
-    await travarOrigensAplicacoesTx(tx, input.itens);
-    const aplicacoes = [];
+    // Adoções antes das travas de origem, que dependem do produtoId efetivo.
+    const itens: AplicacaoInput[] = [];
     for (const [linha, item] of input.itens.entries()) {
-      try { const a = await criarAplicacaoTx(tx, item, usuarioId); aplicacoes.push({ id: a.id, animalId: a.animalId }); }
+      try { itens.push(await resolverProdutoAplicacaoTx(tx, item, usuarioId)); }
+      catch (e) { throw prefixarCampoErro(e, `itens.${linha}.`); }
+    }
+    await travarOrigensAplicacoesTx(tx, itens);
+    const aplicacoes = [];
+    for (const [linha, item] of itens.entries()) {
+      try { const a = await criarAplicacaoTx(tx, item, usuarioId); aplicacoes.push({ id: a.id, animalId: a.animalId, produtoId: a.produtoId }); }
       catch (e) { if (e instanceof RebanhoError) throw new RebanhoError(e.code, `Linha ${linha + 1}: ${e.message}. Nenhuma aplicação foi gravada.`, `itens.${linha}.${e.campo ?? "animalId"}`); throw e; }
     }
     await tx.requisicaoPecuaria.create({ data: { chave: input.chave, propriedadeId: input.propriedadeId, usuarioId, operacao: "APLICACAO_COLETIVA", hashPayload, resultadoIds: aplicacoes } });
@@ -359,7 +392,10 @@ export async function carenciaAnimalTx(tx: Prisma.TransactionClient, animalId: s
 }
 
 export async function anularAplicacao(id: string, propriedadeId: number, motivo: string, usuarioId: number | null, destinoConsumo?: "DEVOLVER_ESTOQUE" | "MANTER_CONSUMO", administracaoMantida?: boolean | null) {
-  return transacaoPecuaria(async (tx) => {
+  return transacaoPecuaria(tx => anularAplicacaoTx(tx, id, propriedadeId, motivo, usuarioId, destinoConsumo, administracaoMantida));
+}
+
+export async function anularAplicacaoTx(tx: Prisma.TransactionClient, id: string, propriedadeId: number, motivo: string, usuarioId: number | null, destinoConsumo?: "DEVOLVER_ESTOQUE" | "MANTER_CONSUMO", administracaoMantida?: boolean | null) {
     const existente = await tx.aplicacaoProduto.findFirst({ where: { id, propriedadeId, status: "VALIDO" } });
     if (!existente) throw new RebanhoError("NAO_ENCONTRADO", "Aplicação não encontrada ou já anulada");
     await travarAnimais(tx, [existente.animalId]);
@@ -377,8 +413,8 @@ export async function anularAplicacao(id: string, propriedadeId: number, motivo:
     await marcarRegularizacaoFatoTx(tx, { fatoTipo: "APLICACAO", fatoId: id, destinoConsumo: destino, motivo, usuarioId });
     await auditar(tx, { entidade: "AplicacaoProduto", entidadeId: id, animalId: existente.animalId, acao: "ANULACAO", usuarioId,
       antes: existente, depois: { status: salva.status, motivo, destinoConsumo: destino, consumoMantido: salva.consumoMantido, administracaoMantida: salva.administracaoMantida } });
+    await reconciliarAlertasReprodutivosAnimalTx(tx,existente.animalId,usuarioId);
     return salva;
-  });
 }
 
 export async function corrigirCarencia(id: string, propriedadeId: number, input: Pick<AplicacaoInput, "estadoCarenciaLeite" | "estadoCarenciaCarne" | "carenciaLeiteHoras" | "carenciaCarneHoras" | "justificativaCarenciaCarne" | "justificativaCarenciaLeite"> & { motivo: string }, usuarioId: number | null) {

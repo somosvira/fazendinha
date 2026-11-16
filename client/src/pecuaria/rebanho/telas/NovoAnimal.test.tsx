@@ -191,3 +191,33 @@ describe("NovoAnimal", () => {
    await waitFor(()=>expect(consultarBezerreiro).toHaveBeenCalled());expect(screen.getByLabelText("Lote").textContent).toContain("Sem lote");
   });
  });
+
+describe("payload do cadastro compartilhado", () => {
+  it("segue enviando exatamente o corpo do cadastro avulso (origem comprado, sítio escolhido, sem nulos a menos)", async () => {
+    vi.mocked(cadastrarAnimal).mockResolvedValue({ id: "novo-1", avisos: [] } as never);
+    await montar();
+    fireEvent.change(screen.getByLabelText("Brinco"), { target: { value: " 4321 " } });
+    fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "Estrela" } });
+    await alterarControle(screen.getByLabelText("Sítio"), { target: { value: "1" } });
+    await alterarControle(screen.getByLabelText("Finalidade"), { target: { value: "CORTE" } });
+    fireEvent.change(screen.getByLabelText("Peso de entrada (kg)"), { target: { value: "180.5" } });
+    fireEvent.change(screen.getByLabelText("Observação"), { target: { value: " lote de leilão " } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar animal" }));
+    await waitFor(() => expect(cadastrarAnimal).toHaveBeenCalledOnce());
+    const corpo = vi.mocked(cadastrarAnimal).mock.calls[0][0];
+    expect(corpo).toEqual({
+      brinco: "4321", nome: "Estrela", brincoEletronico: null, sisbov: null, sexo: "F",
+      dataNascimento: corpo.dataNascimento, nascimentoEstimado: false, origem: "COMPRADO", dataEntrada: corpo.dataEntrada, partosAntesDaEntrada: 0,
+      observacao: "lote de leilão", propriedadeId: 1, loteId: null, aptidao: "CORTE", papelReprodutivo: "NENHUM", composicao: [], pesoEntradaKg: 180.5,
+      maeId: null, maeExternaId: null, paiId: null, paiExternoId: null,
+    });
+    expect(corpo.dataEntrada).toBe(corpo.dataNascimento);
+  });
+
+  it("mantém os ids históricos dos campos da página", async () => {
+    await montar();
+    for (const id of ["novo-animal-brinco", "novo-animal-nome", "novo-animal-sexo", "novo-animal-data-nascimento", "novo-animal-data-entrada", "novo-animal-propriedade", "novo-animal-lote", "novo-animal-aptidao", "novo-animal-peso", "novo-animal-observacao", "campo-genitor-mae", "campo-genitor-pai"]) {
+      expect(document.getElementById(id), id).toBeTruthy();
+    }
+  });
+});

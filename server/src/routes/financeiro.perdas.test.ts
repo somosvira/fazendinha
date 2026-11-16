@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uid } from "../lib/uid.fixture.js";
 const mocks = vi.hoisted(() => ({ obter: vi.fn(), listar: vi.fn(), estornar: vi.fn(), leitura: vi.fn(), escrita: vi.fn() }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ obterOperacao: mocks.obter, listarOperacoes: mocks.listar, estornarOperacao: mocks.estornar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, contarAnimaisOperacao: async () => 0, obterOperacao: mocks.obter, listarOperacoes: mocks.listar, estornarOperacao: mocks.estornar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: mocks.leitura, resolverEscopoEscrita: mocks.escrita }));
 import { financeiroRouter } from "./financeiro.js";
 const perda = { movimentoId: uid(1), produtoId: uid(2), produtoNome: "Vacina", quantidade: "2", unidade: "mL", sitio: { id: 3, nome: "Rio Novo" }, motivo: "Embalagem danificada", custoUnitario: "4", valorTotal: "8", lotes: [{ id: uid(9), nome: "Lote outubro", validade: "2026-12-31", quantidade: "2" }] };
@@ -44,7 +44,7 @@ describe("custos no detalhe da perda", () => {
     if (!flags.includes("verValores")) { expect(resposta.status).toBe(403); expect(mocks.estornar).not.toHaveBeenCalled(); return; }
     expect(resposta.status).toBe(201);
     expect(await resposta.json()).toMatchObject({ status: "CANCELADA", valorTotal, perdas: [{ produtoNome: "Vacina", quantidade: "2", valorTotal, custoUnitario: valorTotal == null ? null : "4" }], movimentosEstoque: [{ valorTotal }, { valorTotal }] });
-    expect(mocks.estornar).toHaveBeenCalledWith(uid(4), "Perda lançada incorretamente", { propriedadeId: 3, usuarioId: 7 });
+    expect(mocks.estornar).toHaveBeenCalledWith(uid(4), "Perda lançada incorretamente", { propriedadeId: 3, usuarioId: 7 }, { animais: 0 });
     expect(mocks.obter).toHaveBeenCalledWith(uid(4), 3);
   });
   it("não cancela nem relê a operação sem lancar", async () => {

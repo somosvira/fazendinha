@@ -4,7 +4,7 @@ import { EstoqueError } from "../services/estoque/estoque.js";
 import { FinanceiroError } from "../services/financeiro/regras.js";
 import { uid } from "../lib/uid.fixture.js";
 const mocks = vi.hoisted(() => ({ criar: vi.fn() }));
-vi.mock("../services/financeiro/operacoes.js", () => ({ criarOperacao: mocks.criar }));
+vi.mock("../services/financeiro/operacoes.js", () => ({ envolveAnimais: () => false, contarAnimaisOperacao: async () => 0, criarOperacao: mocks.criar }));
 vi.mock("../services/propriedade.js", () => ({ resolverEscopoLeitura: vi.fn().mockResolvedValue(1), resolverEscopoEscrita: vi.fn().mockResolvedValue(1) }));
 import { financeiroRouter } from "./financeiro.js";
 function appOperador() {

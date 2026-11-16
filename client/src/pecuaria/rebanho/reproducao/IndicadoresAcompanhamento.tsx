@@ -1,3 +1,4 @@
+import { Empty } from "@/financeiro/financeiro-ui";
 import {CiclosIndicadoresVisuais} from "./CiclosIndicadoresVisuais";
 import { AjudaCampo } from "../../../components/Dica";
 import { useState } from "react";
@@ -263,7 +264,7 @@ export function IndicadoresAcompanhamento({
           ))}
         </tbody>
       </table>
-      {!lista.length && <p className="p-3">Nenhum ciclo nesta população.</p>}
+      {!lista.length && <Empty>Nenhum ciclo nesta população.</Empty>}
     </div>
   );
   return (
@@ -375,7 +376,7 @@ export function IndicadoresAcompanhamento({
             </table>
           </div>
           {d.espera.pendenciasFila.length + d.pendenciasOrigemCiclo.length ===
-            0 && <p>Nenhuma pendência fora da fila nesta consulta.</p>}
+            0 && <Empty>Nenhuma pendência fora da fila nesta consulta.</Empty>}
         </section>
       )}
       {secao === "pendencias" && (

@@ -43,7 +43,6 @@ export const AREAS: Area[] = [
 // Permissões sensíveis (além da visibilidade de abas)
 export const FLAGS: Flag[] = [
   { id: "verValores", label: "Ver valores em R$", desc: "Sem isso, vê estrutura e categorias mas com valores ocultos" },
-  { id: "verInvestimento", label: "Ver pilha de Investimento", desc: "Compra de gado, máquinas, benfeitorias" },
   { id: "verSalarios", label: "Ver Pessoal / Salários", desc: "Folha, salários e detalhe de pessoal" },
   { id: "lancar", label: "Registrar operações", desc: "Criar compras, vendas, serviços e seus efeitos financeiros" },
   { id: "exportar", label: "Exportar / baixar", desc: "Gerar PDF, CSV e relatórios" },
@@ -57,7 +56,7 @@ export const PAPEIS: Record<string, Papel> = {
     desc: "Acesso total. Gerencia quem entra e o que cada um vê.",
     abas: ["dashboard", "gastos", "lancar", "caixinha", "cadastros", "relatorio"],
     areas: AREAS.map((a) => a.id),
-    flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
+    flags: ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
   },
   secretaria: {
     nome: "Secretária / Administrativo",
@@ -71,7 +70,7 @@ export const PAPEIS: Record<string, Papel> = {
     desc: "Lê e concilia. Exporta relatórios. Não lança no operacional.",
     abas: ["dashboard", "gastos", "caixinha", "cadastros", "relatorio"],
     areas: ["financeiro"],
-    flags: ["verValores", "verInvestimento", "verSalarios", "exportar"],
+    flags: ["verValores", "verSalarios", "exportar"],
   },
   gestor: {
     nome: "Gerente da fazenda",
@@ -99,7 +98,7 @@ export const usuarios: User[] = [
     status: "ativo",
     ultimoAcesso: "agora",
     abas: ["dashboard", "gastos", "lancar", "caixinha", "plano", "ia", "relatorio"],
-    flags: ["verValores", "verInvestimento", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
+    flags: ["verValores", "verSalarios", "lancar", "exportar", "gerenciarAcessos"],
     dono: true,
   },
   {
@@ -122,7 +121,7 @@ export const usuarios: User[] = [
     status: "ativo",
     ultimoAcesso: "há 2 dias",
     abas: ["dashboard", "gastos", "plano", "relatorio"],
-    flags: ["verValores", "verInvestimento", "verSalarios", "exportar"],
+    flags: ["verValores", "verSalarios", "exportar"],
   },
   {
     id: "roberto",

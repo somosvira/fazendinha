@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { transcreverAudioAssistente } from "../api/assistente";
 import { prepararAudio } from "../lib/midia-assistente";
 
-export function useAudioAssistente(ativo: boolean, onTexto: (texto: string) => void, onErro: (texto: string) => void) {
+export function useAudioAssistente(ativo: boolean, onTexto: (texto: string) => void, onErro: (texto: string) => void, sitio?: number | null) {
   const [gravando, setGravando] = useState(false);
   const [preparando, setPreparando] = useState(false);
   const [transcrevendo, setTranscrevendo] = useState(false);
@@ -43,7 +43,7 @@ export function useAudioAssistente(ativo: boolean, onTexto: (texto: string) => v
     try {
       const wav = await prepararAudio(blob, cortar);
       if (controller.signal.aborted || token !== versao.current) return;
-      const r = await transcreverAudioAssistente(wav, controller.signal);
+      const r = await transcreverAudioAssistente(wav, controller.signal, sitio);
       if (!controller.signal.aborted && token === versao.current) callbacks.current.onTexto(r.texto);
     } catch (e) {
       if (!controller.signal.aborted && token === versao.current) callbacks.current.onErro(e instanceof Error ? e.message : "Não foi possível transcrever o áudio.");

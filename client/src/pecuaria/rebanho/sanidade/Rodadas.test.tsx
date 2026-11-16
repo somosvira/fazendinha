@@ -20,7 +20,7 @@ const previa = { itens: [{ animalId: "a", inicio: "2026-10-06", tarefas: [{ etap
 const pagina = <T,>(itens: T[]) => ({ itens, total: itens.length, pagina: 1, porPagina: 10 });
 beforeEach(() => { window.history.replaceState(null, "", "/pecuaria/sanidade?aba=agenda&rodadaId=r"); vi.clearAllMocks(); mocks.cabecalhoComum.mockResolvedValue({ ...rodada, modo: "COLETIVO", tipo: "SANITARIO", contagens: { total: 2, atendidos: 0, pendentes: 2 }, precisaoTemporal: "DIA" }); mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens: { total: 2, atendidos: 0, pendentes: 2 } }])); mocks.tarefasComuns.mockResolvedValue(pagina([])); mocks.prever.mockResolvedValue(previa); mocks.preverAdicao.mockResolvedValue(previa); mocks.criar.mockResolvedValue(rodada); mocks.rodadas.mockResolvedValue(pagina([rodada])); mocks.rodada.mockResolvedValue(rodada); mocks.etapas.mockResolvedValue(pagina([{ id: "e", ordem: 1, diaRelativo: 0, tipo: "EXAME", contagens: { total: 7, pendentes: 5, realizadas: 2, dispensadas: 0, atrasadas: 1 }, contagensFiltradas: { total: 1, pendentes: 1, realizadas: 0, dispensadas: 0, atrasadas: 0 } }])); mocks.participantes.mockResolvedValue(pagina([])); mocks.tarefas.mockResolvedValue(pagina([{ id: "t", etapaId: "e", execucaoId: "x", previstaPara: "2026-10-06", situacao: "PENDENTE", parametros: { tipo: "EXAME" }, execucao: { animalId: "a", propriedadeId: 1, animal: { id: "a", brinco: "A01", nome: null }, protocolo: rodada.protocolo } }])); });
 afterEach(cleanup);
-async function preparar() { await screen.findByRole("option", { hidden: true,  name: "Protocolo publicado · v2" }); await alterarControle(screen.getByLabelText("Sítio na data de início"), { target: { value: "1" } }); await alterarControle(screen.getByLabelText("Nome do ciclo"), { target: { value: "Campanha de outubro" } }); await alterarControle(screen.getByLabelText("Protocolo publicado"), { target: { value: "p" } }); await alterarControle(screen.getByLabelText("Início de referência"), { target: { value: "2026-10-06" } }); fireEvent.click(screen.getByRole("button", { name: /Selecionar animais/ })); fireEvent.click(screen.getByRole("button", { name: "Usar animais" })); }
+async function preparar() { await screen.findByRole("option", { hidden: true, name: "Sítio A" }); await alterarControle(screen.getByLabelText("Sítio na data de início"), { target: { value: "1" } }); await alterarControle(screen.getByLabelText("Nome do ciclo"), { target: { value: "Campanha de outubro" } }); expect(screen.queryByLabelText("Buscar animais selecionados")).toBeNull(); fireEvent.click(screen.getByRole("combobox", { name: "Protocolo publicado" })); fireEvent.click(await screen.findByRole("option", { name: "Protocolo publicado · v2" })); await alterarControle(screen.getByLabelText("Início de referência"), { target: { value: "2026-10-06" } }); fireEvent.click(screen.getByRole("button", { name: /Selecionar animais/ })); fireEvent.click(screen.getByRole("button", { name: "Usar animais" })); }
 describe("ciclos de protocolos", () => {
   it("mostra cartões com progresso real e mantém a tabela como alternativa", async () => {
     window.history.replaceState(null,"","/pecuaria/sanidade?aba=agenda&visualCiclos=visual");
@@ -35,10 +35,10 @@ describe("ciclos de protocolos", () => {
     const contagens = { total: 2, pendentes: 2, atendidos: 0 };
     mocks.etapasComuns.mockResolvedValue(pagina([{ id: "e", nome: "Exame", ordem: 1, diaRelativo: 0, unidadeIntervalo: "DIAS", previstaPara: "2026-10-06", precisaoTemporal: "DIA", contagens }]));
     render(<AgendaRodadas filtros={{}} podeLancar={false} rodadaId="r" recarregarToken={0} onAbrir={vi.fn()} onExecutar={vi.fn()} onAcao={vi.fn()} />);
-    await screen.findByRole("button", { name: /Dia 0 Exame/ });
+    await screen.findByRole("button", { name: /D0 Exame/ });
     expect(screen.queryByRole("columnheader", { name: "Filtro atual" })).toBeNull();
     expect(screen.queryByText(/Comparar com/)).toBeNull();
-    expect(screen.getByRole("button", { name: /Dia 0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /D0 Exame.*0 atendidos · 2 pendentes/ })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.queryByText("realizadas", { exact: true })).toBeNull();
     expect(screen.queryByText("canceladas", { exact: true })).toBeNull();
@@ -120,7 +120,8 @@ describe("ciclos de protocolos", () => {
     await screen.findByText("2 atendidos · 5 pendentes");
     fireEvent.click((await screen.findAllByRole("button", { name: "Atender" }))[0]);
     expect(executar.mock.calls[0][0][0].execucao.animalId).toBe("a");
-    fireEvent.click(screen.getByRole("button", { name: "Adiar" }));
+    fireEvent.keyDown(screen.getByRole("button", { name: "Mais ações para A01" }), { key: "ArrowDown" });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Adiar atendimento" }));
     fireEvent.change(screen.getByLabelText("Nova previsão"), { target: { value: "2026-10-08" } });
     fireEvent.change(screen.getByLabelText("Justificativa"), { target: { value: "Animal indisponível na data prevista" } });
     fireEvent.click(screen.getByRole("button", { name: "Salvar" }));

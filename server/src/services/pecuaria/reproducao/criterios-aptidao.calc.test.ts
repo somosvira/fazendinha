@@ -22,10 +22,10 @@ describe("critérios selecionados indicam necessidade, sem liberação", () => {
     expect(avaliarCriteriosAptidao({ ...entrada, novilhas, pesagens: [{ ...pesagens[0], precisao: "MEDIDO" }] }).estado).toBe("AVALIACAO_DEVIDA");
     expect(avaliarCriteriosAptidao({ ...entrada, novilhas, referencia: new Date("2026-10-30"), pesagens: [{ ...pesagens[0], precisao: "MEDIDO" }] }).estado).toBe("PENDENCIA_DADOS");
   });
-  it("ECC exige escala compatível e não converte desconhecido", () => {
+  it("ECC histórico não dispara aviso nem exige evidência", () => {
     const novilhas = { ...grupo, eccMinimo: 3, escalaEcc: { minimo: 1, maximo: 5 }, validadeEccDias: 15 };
     const escores = [{ id: "e", data: referencia, valor: 4, escalaMin: 1, escalaMax: 9 }];
-    expect(avaliarCriteriosAptidao({ ...entrada, novilhas, escores }).estado).toBe("PENDENCIA_DADOS");
+    expect(avaliarCriteriosAptidao({ ...entrada, novilhas, escores }).estado).toBe("MANUAL");
   });
   it("45 dias pós-parto gera necessidade estável, sem agenda ou decisão", () => {
     const vaca = { ...entrada, classeReprodutiva: "VACA" as const, chaveCiclo: "PARTO:p", parto: new Date("2026-09-14"), diasAvaliacaoPosParto: 45 };

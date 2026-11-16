@@ -19,7 +19,9 @@ const mocks = vi.hoisted(() => ({
   listarParceiros: vi.fn(),
   obterUltimoPreco: vi.fn(),
   obterCustoMedio: vi.fn(),
+  listarPartidas: vi.fn(),
 }));
+vi.mock("../services/estoque/partidas.js", async (importOriginal) => ({ ...(await importOriginal<typeof import("../services/estoque/partidas.js")>()), listarPartidas: mocks.listarPartidas }));
 
 vi.mock("../services/estoque/estoque.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../services/estoque/estoque.js")>();
@@ -366,4 +368,22 @@ it("catálogo sanitário do produto atende Financeiro sem expor fatos pecuários
   expect((await appCom(soFinanceiro).request("/estoque/tipos-aplicacao-sanitarios?porPagina=11")).status).toBe(400);
   expect((await appCom({ ...base, areas: [] }).request("/estoque/tipos-aplicacao-sanitarios")).status).toBe(403);
   expect(mocks.listarTiposAplicacaoSanitarios).not.toHaveBeenCalled();
+});
+
+describe("GET /estoque/partidas/lote", () => {
+  it("devolve as partidas de cada produto numa só resposta, no sítio informado", async () => {
+    mocks.listarPartidas.mockImplementation(async (produtoId: string) => [{ id: `p-${produtoId}`, saldo: "5" }]);
+    const resposta = await appCom(semLancar).request(`/estoque/partidas/lote?produtoIds=${uid(1)},${uid(2)},${uid(1)}&propriedadeId=4`);
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toEqual({ [uid(1)]: [{ id: `p-${uid(1)}`, saldo: "5" }], [uid(2)]: [{ id: `p-${uid(2)}`, saldo: "5" }] });
+    expect(mocks.listarPartidas).toHaveBeenCalledTimes(2);
+    expect(mocks.listarPartidas).toHaveBeenCalledWith(uid(2), 4);
+  });
+  it("sem sítio usa o escopo de leitura e recusa lista vazia ou inválida", async () => {
+    mocks.listarPartidas.mockResolvedValue([]);
+    expect((await appCom(semLancar).request(`/estoque/partidas/lote?produtoIds=${uid(1)}`)).status).toBe(200);
+    expect(mocks.listarPartidas).toHaveBeenCalledWith(uid(1), 3);
+    expect((await appCom(semLancar).request("/estoque/partidas/lote?produtoIds=")).status).toBe(400);
+    expect((await appCom(semLancar).request("/estoque/partidas/lote?produtoIds=nao-e-uuid")).status).toBe(400);
+  });
 });

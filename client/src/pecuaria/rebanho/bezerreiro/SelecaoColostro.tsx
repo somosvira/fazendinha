@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { SelectBuscavel } from '@/components/SelectBuscavel';
 import { SelectCampo } from '@/financeiro/SelectCampo';
 import { Button } from '@/components/ui/button';
 import { consultaBezerreiro, consultarBezerreiro } from './api';
 import { PaginacaoBezerreiro, RecuperacaoConflito, useConsultaBezerreiro, useRecuperacaoConflito } from './ui';
 import { formatarDataBR } from '../lib/rotulos';
 import type { ContextoBezerreiro, OrigemColostro } from './types';
+import { EsqueletoTabela } from "../../../components/Esqueleto";
 export type PartoColostro = Omit<ContextoBezerreiro['partos'][number],'matrizId'> & {matrizId:string|null};
 export type PartosColostro = {itens:PartoColostro[];selecionado:PartoColostro|null;total:number;pagina:number;porPagina:number};
 export function usePartosColostro(sitio:number,data:string,valor:string,alvo:'MATRIZ'|'CRIA') {
@@ -24,10 +26,33 @@ export function SelecaoColostro({consulta,valor,alvo,aoSelecionar}:{consulta:Ret
       {consulta.itens.flatMap(p=>alvo==='MATRIZ'?[<option key={p.id} value={p.id}>{p.matriz.brinco} · {p.matriz.nome??'Sem nome'} · {formatarDataBR(p.data)}</option>]:p.crias.map(c=><option key={c.id} value={c.id}>{c.animal?.brinco??'Cria cadastrada'} · {c.animal?.nome??'Sem nome'} · nascimento {formatarDataBR(p.data)}</option>))}
     </SelectCampo></label>
     {consulta.erro&&<p role="alert" className="bez-erro">{consulta.erro}<Button type="button" variant="outline" onClick={consulta.tentar}>Tentar novamente</Button></p>}
-    {!consulta.erro&&!consulta.dados&&<p role="status">Carregando seleção nesta data…</p>}
+    {!consulta.erro&&!consulta.dados&&<EsqueletoTabela label="Carregando seleção nesta data" />}
     {valor&&consulta.dados&&!consulta.valido&&<p role="alert" className="bez-aviso">A seleção não está disponível neste sítio e data. Escolha outro registro; os demais campos foram preservados.</p>}
     {consulta.dados&&<PaginacaoBezerreiro pagina={consulta.pagina} total={consulta.dados.total} tamanho={consulta.dados.porPagina} mudar={consulta.setPagina}/>}
   </div>;
+}
+export function SeletorCriaColostro({ sitio, data, valor, aoSelecionar, erro }: {
+  sitio: number;
+  data: string;
+  valor: string;
+  aoSelecionar: (valor: string) => void;
+  erro?: string;
+}) {
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  return <div ref={setContainer} className="min-w-0"><SelectBuscavel containerPopover={container} key={`${sitio}:${data}`} rotulo="Cria destinatária" valor={valor} onChange={aoSelecionar}
+    placeholder="Selecionar cria" erroCampo={erro} contentClassName="rounded-lg"
+    buscar={async ({ busca, selecionadoId }) => {
+      const query = consultaBezerreiro({ data, alvo: 'CRIA', busca, pagina: 1, porPagina: 20, criaId: selecionadoId });
+      const { itens, selecionado, total } = await consultarBezerreiro<PartosColostro>(`/colostro/partos${query}`, sitio);
+      const partos = selecionadoId ? (selecionado ? [selecionado] : []) : itens;
+      return {
+        total,
+        itens: partos.flatMap(p => p.crias.map(c => ({
+          id: c.id,
+          nome: [c.animal?.brinco ?? 'Cria cadastrada', c.animal?.nome, formatarDataBR(p.data)].filter(Boolean).join(' · '),
+        }))),
+      };
+    }} /></div>;
 }
 export function useOrigemConferida(sitio:number,origem:OrigemColostro,contexto:ContextoBezerreiro,data:string,alvo:string) {
  const identidade=JSON.stringify([sitio,origem.id,data,alvo]);

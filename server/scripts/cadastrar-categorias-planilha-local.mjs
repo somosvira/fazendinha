@@ -87,7 +87,7 @@ try {
       if (anterior?.grupoId && anterior.grupoId !== grupo.id) throw Error(`Categoria já vinculada a outro grupo: ${anterior.nome}`);
       const categoria = anterior ? { ...anterior, grupoId: grupo.id } : {
         id: randomUUID(), nome: nomes[0], grupoId: grupo.id, ativo: true, ordem: ordemCategoria++,
-        classificacao: null, usoGenetico: false, usoSanitario: false, usoNutricional: false,
+        usoGenetico: false, usoSanitario: false, usoNutricional: false,
       };
       categorias.push({ origem: nomes[0], grupo: grupo.nome, anterior, categoria });
     }

@@ -35,7 +35,7 @@ const base: LinhaLancamento = {
   dataVencimento: "2026-03-10",
   descricao: "Compromisso",
   numeroDocumento: null,
-  categoria: { nome: "Ração", classificacao: null },
+  categoria: { nome: "Ração" },
   centroCusto: { nome: "Atv. Leiteira" },
   contaBancariaId: null,
   fornecedor: "Coop",
@@ -66,7 +66,7 @@ describe("relatório gerencial: ordem dos compromissos como montados pelo servi�
   const d = (v: string) => new Prisma.Decimal(v);
   const servico = {
     id: uid(1), numero: 1, tipo: "SERVICO", status: "CONFIRMADA", descricao: "Manutenção", valorTotal: d("60"),
-    categoriaId: uid(301), categoriaNome: "Manutenção", classificacao: "CUSTEIO", centroCustoId: null, centroCusto: null,
+    categoriaId: uid(301), categoriaNome: "Manutenção", centroCustoId: null, centroCusto: null,
     parceiro: null, documentos: [], itens: [], transacoes: [],
     compromissos: [1, 2, 3].map((seq) => ({ id: UUID_POR_SEQ[seq], seq, status: "PENDENTE", valorOriginal: d("20"), liquidacoes: [] })),
   };

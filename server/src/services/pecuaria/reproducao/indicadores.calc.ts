@@ -1,5 +1,5 @@
 import { dataCalendarioContexto, diasCalendarioContexto } from "./contexto-animal.calc.js";
-import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type ElegibilidadeNaData } from "./elegibilidade.calc.js";
+import { calcularElegibilidadesDoConjunto, type DadosElegibilidade, type ElegibilidadeNaData } from "./elegibilidade-indicadores-v2.calc.js";
 import { resolverPapelReprodutivo } from "../rebanho/papel-reprodutivo.calc.js";
 import type { ConsultaIndicadoresInput } from "./indicadores.schemas.js";
 

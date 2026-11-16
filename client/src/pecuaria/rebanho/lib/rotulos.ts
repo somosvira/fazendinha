@@ -26,6 +26,7 @@ export const ROTULO_TIPO_BAIXA: Record<TipoBaixa, string> = {
   EXTRAVIO: "Extravio",
   NAO_DETERMINADO: "Tipo não determinado na origem",
   CADASTRO_INDEVIDO: "Cadastro indevido",
+  COMPRA_ESTORNADA: "Compra estornada",
 };
 
 export const ROTULO_CLASSE_MOTIVO: Record<ClasseMotivoBaixa, string> = {
@@ -46,6 +47,7 @@ export const CLASSES_POR_TIPO: Record<TipoBaixa, ClasseMotivoBaixa[]> = {
   EXTRAVIO: [],
   NAO_DETERMINADO: [],
   CADASTRO_INDEVIDO: [],
+  COMPRA_ESTORNADA: [],
 };
 
 /** Um motivo da classe `classe` pode ser escolhido para uma baixa do tipo `tipo`? */

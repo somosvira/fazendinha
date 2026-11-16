@@ -54,7 +54,7 @@ export async function catalogos(c: ContextoSeed) {
   for (const nome of new Set(CATEGORIAS.map(([, grupo]) => grupo))) await c.registro(`grupo:${nome}`,
     id => prisma.grupoCategoria.findFirst({ where: id ? { id } : { nome } }), () => criarGrupoCategoria({ nome, ordem: 0 }, uid));
   for (const [ordem, [nome, grupo]] of CATEGORIAS.entries()) await c.registro(`categoria:${nome}`,
-    id => prisma.categoria.findFirst({ where: id ? { id } : { nome } }), () => criarCategoria({ nome, ordem, grupoId: c.id(`grupo:${grupo}`), classificacao: grupo === 'Receitas' ? null : grupo === 'Investimento' ? 'INVESTIMENTO' : 'CUSTEIO' }, uid));
+    id => prisma.categoria.findFirst({ where: id ? { id } : { nome } }), () => criarCategoria({ nome, ordem, grupoId: c.id(`grupo:${grupo}`) }, uid));
   if (!c.manifesto.etapas.includes('catalogos')) await regularizarCategoriasEstruturais(c);
   for (const [ref, nome, papel] of PARCEIROS) await c.registro(`parceiro:${ref}`,
     id => prisma.parceiro.findFirst({ where: id ? { id } : { nome } }), () => criarParceiro({ nome, papeis: [papel], usuarioId: uid }));
@@ -91,11 +91,11 @@ export async function regularizarCategoriasEstruturais(c: ContextoSeed) {
     const id = c.id(`categoria:${nome}`), grupoId = c.id(`grupo:${nome}`);
     await c.acao(`categoria:baseline:${nome}`, async () => {
       const atual = await prisma.categoria.findUniqueOrThrow({ where: { id } });
-      return atual.grupoId === grupoId && atual.classificacao === 'CUSTEIO';
+      return atual.grupoId === grupoId;
     }, async () => {
       const atual = await prisma.categoria.findUniqueOrThrow({ where: { id } });
-      if (id !== idEstrutural || atual.nome !== nome || atual.grupoId !== null || atual.classificacao !== 'CUSTEIO') throw new Error(`Categoria estrutural ${nome} divergiu do estado inicial da baseline. Não será reconfigurada automaticamente.`);
-      await atualizarCategoria(id, { grupoId, classificacao: 'CUSTEIO' }, c.usuarioId);
+      if (id !== idEstrutural || atual.nome !== nome || atual.grupoId !== null) throw new Error(`Categoria estrutural ${nome} divergiu do estado inicial da baseline. Não será reconfigurada automaticamente.`);
+      await atualizarCategoria(id, { grupoId }, c.usuarioId);
     });
   }
 }

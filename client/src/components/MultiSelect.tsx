@@ -84,8 +84,8 @@ export function MultiSelect<T extends MultiSelectValue>({
         <div
           data-slot="multi-select-control"
           className={cn(
-            "relative flex min-h-11 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-white p-1.5 pl-2.5 pr-10 text-sm transition-colors focus-within:ring-2 focus-within:ring-ring",
-            error ? "border-red-700" : "border-border",
+            "relative flex min-h-10 w-full flex-wrap items-center gap-1.5 rounded-lg border bg-card p-1 pl-2.5 pr-10 text-[length:inherit] transition-colors focus-within:ring-2 focus-within:ring-ring",
+            error ? "border-destructive" : "border-border",
             disabled && "cursor-not-allowed opacity-50",
           )}
         >
@@ -138,7 +138,7 @@ export function MultiSelect<T extends MultiSelectValue>({
                       className="multiselect-opcao cursor-pointer py-2.5"
                       data-marcado={checked}
                     >
-                      <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-[3px] border", checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-white")}>
+                      <span className={cn("flex size-4 shrink-0 items-center justify-center rounded-[3px] border", checked ? "border-primary bg-primary text-primary-foreground" : "border-input bg-card")}>
                         {checked ? <Check className="size-3" aria-hidden="true" /> : null}
                       </span>
                       <span className="min-w-0 flex-1 truncate">{option.label}</span>
@@ -151,7 +151,7 @@ export function MultiSelect<T extends MultiSelectValue>({
         </PopoverContent>
       </Popover>
 
-      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs text-red-700">{error}</p> : null}
+      {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs text-destructive">{error}</p> : null}
       {helpText ? <p id={helpId} className="mt-1.5 text-xs leading-5 text-ink-3">{helpText}</p> : null}
     </div>
   );

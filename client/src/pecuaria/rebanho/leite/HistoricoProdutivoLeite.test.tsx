@@ -28,8 +28,6 @@ it("ausência não vira produção zero ou secagem", async () => {
   render(<HistoricoProdutivoLeite animalId="animal" propriedadeId={1}/>);
   await screen.findByText("Nenhuma aferição no período");
   expect(screen.queryByRole("region", { name: "Volume conhecido" })).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "Sobre ausência de aferições" }));
-  expect(await screen.findByText("Sem registros não significa produção zero nem secagem.")).toBeTruthy();
 });
 it("recolhe produção inteira, incluindo a carência, e esconde suas ações", async () => {
   vi.mocked(consultarLeite).mockResolvedValue({ ...dados, controleIndividual: { quantidade: 1, unidade: "MESES", ultimaAfericao: null, proximaAfericao: null } });

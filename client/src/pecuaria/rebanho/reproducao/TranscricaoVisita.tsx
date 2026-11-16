@@ -1,22 +1,32 @@
+import { AvaliacaoContextualVisita, limparCamposContextuais } from "./AvaliacaoContextualVisita";
+import { PreviaAvaliacaoContextual } from "./PreviaAvaliacaoContextual";
+import type { PreviaAvaliacaoContextual as PreviaContextual } from "./avaliacao-contextual-api";
+import { DatePicker } from "../../../components/DatePicker";
 import {ListaAnimaisVisita} from "./ListaAnimaisVisita";
+import { ListChecks, RefreshCw } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button as BotaoInterface } from "@/components/ui/button";
 import { FiltrosAtendimentoVisita } from "./FiltrosAtendimentoVisita";
 import "./visitas-fluxo.css";
 import { nomeAtividadeVisita, lotesAtividadeVisita,origemAtividadeVisita } from "./apresentacao-visita";
+import { enumerados } from "./EditorSelecaoVisita";
 import { motivosComunsFolha } from "./folha-regras";
 import { CampoDataIatf } from "./CampoDataIatf";
 import { CamposResultadoExame } from "../sanidade/CamposExame";
 import type { TipoExame } from "../sanidade/CadastrosSanitarios";
 import { CamposAvaliacao } from "./CamposAvaliacao";
+import { CamposAptidao, rotulosAptidaoExame } from "./CamposAptidao";
 import { RegularizarOrigem, consumoMantidoUltimaAnulacao } from "./RegularizarOrigem";
 import { AlertasSanitarios } from "./AlertasSanitarios";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Button,
+  dataBR,
   ErrorBox,
   Pill,
 } from "../../../financeiro/financeiro-ui";
 import {
-  classeInput,
+  classeInput, PainelCadastro,
 } from "../../../financeiro/PainelCadastro";
 import { ConfirmacaoCiencia } from "../../../components/ConfirmacaoCiencia";
 import { FormAplicacaoServico } from "../sanidade/FormAplicacaoServico";
@@ -51,8 +61,42 @@ import {
 import { Iatf } from "./Iatf";
 import { AcoesReprodutivas } from "./AcoesReprodutivas";
 import { FormReproducao } from "./FormReproducao";
-import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita, contarColunasContextoVisita } from "./ContextoTabelaVisita";
-type PreviaVisita = { fingerprint: string; participantes: Array<{ participanteId: string; animalId: string; alteracoes: string[] }>; total?: number; pagina?: number; porPagina?: number; totalComAlteracoes?: number; execucaoProtocolos?: { estado: "CONFERIDA" | "DADOS_PENDENTES"; erro?: string; consumos?: Array<{ produtoNome?: string; quantidade?: string; unidade?: string }>; totalConsumos?: number; paginaConsumos?: number; porPaginaConsumos?: number } | null };
+import { CabecalhoContextoVisita, CelulasContextoVisita, ContextoInlineVisita } from "./ContextoTabelaVisita";
+import { Empty } from "@/financeiro/financeiro-ui";
+import { EsqueletoFormulario } from "../../../components/Esqueleto";
+import { SelectCampo } from "@/financeiro/SelectCampo";
+type PreviaContextualVisita =
+  | ({ estado: "CONFERIDA" } & PreviaContextual)
+  | { estado: "DADOS_PENDENTES"; erro: string };
+type PreviaVisita = {
+  fingerprint: string;
+  participantes: Array<{
+    participanteId: string;
+    animalId: string;
+    alteracoes: string[];
+    avaliacaoContextual?: PreviaContextualVisita;
+  }>;
+  total?: number;
+  pagina?: number;
+  porPagina?: number;
+  totalComAlteracoes?: number;
+  execucaoProtocolos?: {
+    estado: "CONFERIDA" | "DADOS_PENDENTES";
+    erro?: string;
+    consumos?: Array<{
+      produtoNome?: string;
+      quantidade?: string;
+      unidade?: string;
+    }>;
+    avaliacoes?: Array<
+      PreviaContextual & { tarefaId: string; animalId: string }
+    >;
+    totalConsumos?: number;
+    paginaConsumos?: number;
+    porPaginaConsumos?: number;
+  } | null;
+};
+
 export function Transcricao({
   visita,
   atividade: atividadeOriginal,
@@ -60,7 +104,6 @@ export function Transcricao({
   podeRegularizar = podeLancar,
   onMudou,
   registrarGuardaSaida,
-  onPlanejar,
 }: {
   visita: Visita;
   atividade: AtividadeVisita;
@@ -68,7 +111,6 @@ export function Transcricao({
   podeRegularizar?: boolean;
   onMudou: () => Promise<void>;
   registrarGuardaSaida?: (guarda: (() => Promise<boolean>) | null) => void;
-  onPlanejar?: () => void;
 }) {
   const [cacheParticipantes, setCacheParticipantes] = useState<Record<string, ParticipanteVisita>>(() => Object.fromEntries(atividadeOriginal.participantes.map(p => [p.id, p])));
   const atividade = useMemo(() => ({...atividadeOriginal, participantes: atividadeOriginal.totais ? Object.values(cacheParticipantes).sort((a,b)=>a.ordem-b.ordem) : atividadeOriginal.participantes}), [atividadeOriginal, cacheParticipantes]);
@@ -129,22 +171,11 @@ export function Transcricao({
       ),
   );
   const [selecionados, setSelecionados] = useState<string[]>([]);
-  const [detalhes, setDetalhes] = useState<string[]>([]);
-  const [detalhesFechados, setDetalhesFechados] = useState<string[]>([]);
-  function alternarDetalhes(id: string, expandido: boolean) {
-    setDetalhes(d=>expandido?d.filter(item=>item!==id):[...new Set([...d,id])]);
-    setDetalhesFechados(d=>expandido?[...new Set([...d,id])]:d.filter(item=>item!==id));
-    if (!expandido) {
-      const tabela = document.getElementById(`linha-${id}`)?.closest<HTMLElement>(".visita-tabela");
-      if (tabela) tabela.scrollLeft = 0;
-    }
-  }
+  const [detalheId, setDetalheId] = useState<string | null>(null);
   const [revisao, setRevisao] = useState<string[]>([]);
   const [paginaRevisao, setPaginaRevisao] = useState(1);
   useEffect(() => setPaginaRevisao(1), [revisao]);
-  const revisaoRef = useRef<HTMLElement>(null);
   const [focoPendencia, setFocoPendencia] = useState<string | null>(null);
-  useEffect(() => { if (revisao.length) revisaoRef.current?.focus(); }, [revisao]);
   const [confirmadosLocais, setConfirmadosLocais] = useState<string[]>([]);
   const [programarIatf, setProgramarIatf] = useState(false);
   const [avisoConfirmacao, setAvisoConfirmacao] = useState("");
@@ -173,18 +204,45 @@ export function Transcricao({
   }, [paginada, visita.id, visita.propriedadeId, atividadeOriginal, pagina, q, status, motivos, revisaoParticipantes]);
   const livre=origemAtividadeVisita(atividade)==="livre";
   const [individual,setIndividual]=useState<string|null>(()=>new URLSearchParams(window.location.search).get(prefixo+"animal"));
-  useEffect(()=>{ if(!paginada || !individual || cacheParticipantes[individual])return; let vivo=true; obterParticipanteVisita(visita.id,individual,visita.propriedadeId).then(p=>{if(vivo)integrarParticipantes([p]);}).catch(e=>{if(vivo)setErro(e.message);});return()=>{vivo=false;};},[individual,paginada,visita.id,visita.propriedadeId,cacheParticipantes]);
+  const avaliacaoIndividual = livre && atividade.tipo === "AVALIACAO_REPRODUTIVA";
+  const fechandoIndividual = useRef(false);
+  const [validarAtendimento, setValidarAtendimento] = useState(false);
+  const [erroAnimal, setErroAnimal] = useState<string | null>(null);
+  const animalCarregado = !!(individual && cacheParticipantes[individual]);
+  useEffect(() => {
+    setErroAnimal(null);
+    if (!paginada || !individual || animalCarregado) return;
+    let vigente = true;
+    obterParticipanteVisita(visita.id, individual, visita.propriedadeId)
+      .then(p => {
+        if (vigente) integrarParticipantes([p]);
+      })
+      .catch(e => {
+        if (!vigente) return;
+        const mensagem = e instanceof Error ? e.message : String(e);
+        setErroAnimal(mensagem);
+        if (!avaliacaoIndividual) setErro(mensagem);
+      });
+    return () => { vigente = false; };
+  }, [individual, paginada, visita.id, visita.propriedadeId, animalCarregado, avaliacaoIndividual]);
   const retornoIndividual=useRef<{scroll:number;rotulo:string}|null>(null);
   const abrirIndividual=(id:string)=>{
     const p=atividade.participantes.find(p=>p.id===id);if(!p)return;
     retornoIndividual.current={scroll:window.scrollY,rotulo:`Abrir atendimento de ${p.snapshot.brinco??p.ordem}${p.snapshot.nome?` · ${p.snapshot.nome}`:""}`};
-    setIndividual(id);setRevisao([]);setDetalhes(v=>[...new Set([...v,id])]);
+    setValidarAtendimento(false);setErro(null);setIndividual(id);setRevisao([]);setDetalheId(null);
     const url=new URL(window.location.href);url.searchParams.set(prefixo+"animal",id);window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
-    requestAnimationFrame(()=>document.getElementById(`linha-${id}`)?.querySelector<HTMLElement>("input,select,button")?.focus());
+    if (!avaliacaoIndividual) requestAnimationFrame(()=>document.getElementById(`linha-${id}`)?.querySelector<HTMLElement>("input,select,button")?.focus());
   };
   async function voltarListaIndividual(){
-    if(guardaAtual.current&&!(await guardaAtual.current()))return;
-    setIndividual(null);setPreparar(null);setRevisao([]);
+    if (fechandoIndividual.current) return;
+    fechandoIndividual.current = true;
+    try {
+      if (guardaAtual.current && !(await guardaAtual.current())) return;
+    } finally {
+      fechandoIndividual.current = false;
+    }
+    if (avaliacaoIndividual) { setValidarAtendimento(false); setErro(null); }
+    setIndividual(null);setPreparar(null);setDetalheId(null);setRevisao([]);
     const url=new URL(window.location.href);url.searchParams.delete(prefixo+"animal");window.history.replaceState(window.history.state,"",url.pathname+url.search+url.hash);
     requestAnimationFrame(()=>{const retorno=retornoIndividual.current;if(!retorno)return;const botao=Array.from(document.getElementById(`lista-livre-${atividade.id}`)?.querySelectorAll<HTMLButtonElement>("button")??[]).find(b=>b.getAttribute("aria-label")===retorno.rotulo);botao?.focus({preventScroll:true});window.scrollTo({top:retorno.scroll});});
   }
@@ -356,11 +414,28 @@ export function Transcricao({
     setAvisos((r) => ({ ...r, [p.id]: "Alterações não salvas" }));
   };
   function atualizarDados(p: ParticipanteVisita, mudanca: Record<string, unknown>) {
-    if ("resultado" in mudanca) setDetalhesFechados(d=>d.filter(id=>id!==p.id));
     rascunhosAtuais.current[p.id] = { ...rascunhosAtuais.current[p.id], dados: { ...(rascunhosAtuais.current[p.id]?.dados ?? {}), ...("conduta" in mudanca ? { cienciaSanitaria: false } : {}), ...mudanca }, status: "CONFIRMADO" };
     rascunhosSujos.current.add(p.id);
     setRascunhos({ ...rascunhosAtuais.current });
     setAvisos(a => ({ ...a, [p.id]: "Alterações não salvas" }));
+  }
+  function mudarContextualVisita(
+    p: ParticipanteVisita,
+    patch: Partial<RascunhoVisita>,
+    procedimento = false,
+  ) {
+    const atual = rascunhosAtuais.current[p.id] ?? {};
+    const clinicos = limparCamposContextuais({
+      ...(procedimento ? (atual.dados ?? {}) : atual),
+      ...patch,
+    });
+    rascunhosAtuais.current[p.id] = procedimento
+      ? { ...atual, dados: clinicos, status: "CONFIRMADO" }
+      : { ...clinicos, status: "CONFIRMADO" };
+    rascunhosSujos.current.add(p.id);
+    setRascunhos({ ...rascunhosAtuais.current });
+    setAvisos((v) => ({ ...v, [p.id]: "Alterações não salvas" }));
+    setPreviaConferencia(null);
   }
   async function persistir(p: ParticipanteVisita) {
     if (!rascunhosSujos.current.has(p.id) && !gravações.current[p.id]) return true;
@@ -470,7 +545,8 @@ export function Transcricao({
         ...a,
         ...Object.fromEntries(pendencias.map((p) => [p.id, p.erro!])),
       }));
-      setDetalhes(anteriores => [...new Set([...anteriores, ...pendencias.map(p => p.id)])]);
+      setRevisao([]);
+      if (!individual || atividade.tipo !== "AVALIACAO_REPRODUTIVA") setDetalheId(pendencias[0].id);
       setFocoPendencia(pendencias[0].id);
       setErro("Revise as pendências individuais antes de confirmar.");
       return false;
@@ -516,7 +592,10 @@ export function Transcricao({
         setPreviaConferencia(previa); setIdsPrevia(ids);  setAlteracoes(mudancas);
         if (!mesma) setCienciaAlteracoes(false);
         if (previa.execucaoProtocolos?.estado === "DADOS_PENDENTES") throw new Error(previa.execucaoProtocolos.erro ?? "Complete os dados dos procedimentos antes de confirmar.");
-        if (!mesma && previa.execucaoProtocolos) { setErro("Confira os procedimentos e os materiais previstos antes de confirmar o conjunto."); return false; }
+        const contextuais=previa.participantes.filter(p=>p.avaliacaoContextual);
+        const incompleta=contextuais.find(p=>p.avaliacaoContextual?.estado==="DADOS_PENDENTES");
+        if(incompleta?.avaliacaoContextual?.estado==="DADOS_PENDENTES")throw new Error(incompleta.avaliacaoContextual.erro);
+        if (!mesma && (previa.execucaoProtocolos || contextuais.length)) { setErro(contextuais.length||previa.execucaoProtocolos?.avaliacoes?.length?"Confira as avaliações e os cuidados projetados antes de confirmar o conjunto.":"Confira os procedimentos e os materiais previstos antes de confirmar o conjunto."); return false; }
         if (totalMudancas > 0 && (!mesma || !cienciaAlteracoes)) {
           setErro("Revise as mudanças desde a preparação e confirme ciência antes de registrar.");
           return false;
@@ -582,10 +661,12 @@ export function Transcricao({
     campo: keyof RascunhoVisita,
     label: string,
     type = "text",
+    maxLength?: number,
   ) => (
     <input
       aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`}
       type={type}
+      maxLength={maxLength}
       className={classeInput}
       disabled={!podeLancar || ocupado || confirmado(p)}
       value={String(rascunhos[p.id]?.[campo] ?? "")}
@@ -599,12 +680,12 @@ export function Transcricao({
     label: string,
     opcoes: [string, string][],
   ) => (
-    <label>{label}<select
+    <label>{label}<SelectCampo
       aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`}
       className={classeInput}
       disabled={!podeLancar || ocupado || confirmado(p)}
       value={String(rascunhos[p.id]?.[campo] ?? "")}
-      onChange={(e) => atualizar(p, campo, e.target.value)}
+      onValueChange={(valor) => atualizar(p, campo, valor)}
       onBlur={() => void persistir(p)}
     >
       <option value="">Selecione</option>
@@ -613,12 +694,12 @@ export function Transcricao({
           {r}
         </option>
       ))}
-    </select></label>
+    </SelectCampo></label>
   );
   const selectDados = (p: ParticipanteVisita, campo: string, label: string, opcoes: [string, string][]) => (
-    <label>{label}<select aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={!podeLancar || ocupado || confirmado(p)} value={String(rascunhos[p.id]?.dados?.[campo] ?? "")} onChange={e => atualizarDados(p, { [campo]: e.target.value })} onBlur={() => void persistir(p)}>
+    <label>{label}<SelectCampo aria-label={`${label} · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={!podeLancar || ocupado || confirmado(p)} value={String(rascunhos[p.id]?.dados?.[campo] ?? "")} onValueChange={(valor) => atualizarDados(p, { [campo]: valor })} onBlur={() => void persistir(p)}>
       <option value="">Selecione</option>{opcoes.map(([valor, nome]) => <option key={valor} value={valor}>{nome}</option>)}
-    </select></label>
+    </SelectCampo></label>
   );
   function gestacoesDoAnimal(p: ParticipanteVisita) {
     const animal = painel?.animais.find(a => a.animalId === p.animalId);
@@ -631,6 +712,8 @@ export function Transcricao({
   function pendenciaAvaliacao(p: ParticipanteVisita, r: RascunhoVisita | undefined) {
     const pendencia = pendenciaRascunho(r);
     if (pendencia || !r || ["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "")) return pendencia;
+    if (r.resultadoAptidao && (r.responsavel?.trim().length ?? 0) < 2)
+      return "Informe o responsável pela avaliação de aptidão.";
     if ((["RECONFIRMACAO", "SEXAGEM"].includes(r.resultado ?? "") ||
       (r.sexoFetal && r.resultado !== "POSITIVO")) && !r.gestacaoId)
       return "Vincule a gestação conhecida para esta avaliação.";
@@ -639,7 +722,6 @@ export function Transcricao({
     return null;
   }
   function mudarAvaliacao(p: ParticipanteVisita, mudanca: Record<string, unknown>) {
-    if ("resultado" in mudanca) setDetalhesFechados(d=>d.filter(id=>id!==p.id));
     rascunhosAtuais.current[p.id] = {
       ...rascunhosAtuais.current[p.id],
       ...Object.fromEntries(Object.entries(mudanca).map(([k, v]) => [k, v ?? ""])),
@@ -653,8 +735,7 @@ export function Transcricao({
   }
   function acaoAtendimento(p: ParticipanteVisita, status: string) {
     atualizar(p, "status", status);
-    setDetalhesFechados(d=>d.filter(id=>id!==p.id));
-    setDetalhes(anteriores => [...new Set([...anteriores, p.id])]);
+    if (!individual || atividade.tipo !== "AVALIACAO_REPRODUTIVA") setDetalheId(p.id);
     void persistir(p);
   }
   function tabelaAvaliacao() {
@@ -670,89 +751,127 @@ export function Transcricao({
               ? [...new Set([...anteriores, ...editaveis.map(p => p.id)])]
               : anteriores.filter(id => !editaveis.some(p => p.id === id)))} /></th>
           <CabecalhoContextoVisita />
-          <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
+          <th className="p-3">Resultado do atendimento</th><th className="p-3 text-right">Ações</th>
         </tr></thead>
         <tbody>{itensPagina.map(p => {
           const r = rascunhos[p.id] ?? {};
           const bloqueado = !podeLancar || ocupado || confirmado(p);
           const ausente = ["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "");
-          const exigeDetalhe = ausente || r.conduta === "DESCARTE" || r.conduta === "IATF"
-            || (r.resultado === "POSITIVO" && !r.tentativaId && !r.gestacaoId)
-            || ["SEXAGEM", "RECONFIRMACAO"].includes(r.resultado ?? "")
-            || (r.resultado === "NEGATIVO" && gestacoesDoAnimal(p).length > 0);
-          const expandido = detalhes.includes(p.id) || (exigeDetalhe && !detalhesFechados.includes(p.id));
           return <Fragment key={p.id}>
             <tr id={`linha-${p.id}`} className="border-b border-border align-top">
               <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`}
-                disabled={bloqueado} checked={selecionados.includes(p.id)}
+                disabled={bloqueado} checked={confirmado(p) || selecionados.includes(p.id)}
                 onChange={e => setSelecionados(anteriores => e.target.checked ? [...new Set([...anteriores, p.id])] : anteriores.filter(id => id !== p.id))} /></td>
               <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
               <td className="visita-resultado"><fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>
-                <CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r}
+                {r.avaliacaoContextual?<span>{resultadoPrincipalVisita(atividade.tipo,p,r)??"Avaliação contextual em preenchimento"}</span>:<CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r}
                   administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}}
-                  onChange={mudanca=>mudarAvaliacao(p,{...mudanca,status:"CONFIRMADO"})}/>
+                  onChange={mudanca=>mudarAvaliacao(p,{...mudanca,status:"CONFIRMADO"})}/>}
               </fieldset>{r.sexoFetal && <small>Sexo fetal: {r.sexoFetal === "F" ? "Fêmea" : "Macho"}</small>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
-              <td className="p-3 min-w-36 space-y-2">
-                <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
+              <td className="p-3 min-w-36 space-y-2 text-right">
+                <button type="button" className="visita-link h-auto" aria-label={"Detalhes · " + (p.snapshot.brinco ?? p.ordem)} aria-haspopup="dialog" onClick={() => setDetalheId(p.id)}>Detalhes</button>
                 <p role="status" className="text-sm">{avisos[p.id]}</p>
                 {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
               </td>
             </tr>
-            {expandido && <tr id={`detalhes-${p.id}`} className="visita-detalhes"><td colSpan={contarColunasContextoVisita() + 3} className="p-4">
+            {detalheId === p.id && !revisao.length && <PainelCadastro aberto={!preparar} titulo={"Detalhes · " + (p.snapshot.brinco ?? p.ordem)} rascunhoPersistido bloqueado={ocupado} onFechar={() => setDetalheId(null)} rodape={<Button secondary disabled={ocupado} onClick={() => setDetalheId(null)}>Fechar detalhes</Button>}>
               <ContextoInlineVisita contexto={p.snapshot} dataReferencia={visita.data} />
               {detalhesAvaliacao(p, r, bloqueado, ausente)}
-            </td></tr>}
+            </PainelCadastro>}
           </Fragment>;
         })}</tbody>
       </table>
-      {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
-      <p className="p-4 text-sm text-ink-3">RP refere-se ao último parto válido até a visita. Informações não preenchidas continuam pendentes. Gestação e tentativa exibidas são contexto; o vínculo clínico exige confirmação.</p>
+      {!itens.length && <Empty>Nenhum participante com estes filtros.</Empty>}
+
     </div>;
   }
-  function detalhesAvaliacao(p: ParticipanteVisita, r: RascunhoVisita, bloqueado: boolean, ausente: boolean) {
+  function detalhesAvaliacao(p: ParticipanteVisita, r: RascunhoVisita, bloqueado: boolean, ausente: boolean, emModalIndividual = false) {
     const animal = painel?.animais.find(a => a.animalId === p.animalId);
     const tentativas = [...(painel?.tentativas ?? []), ...(animal?.ultimaTentativa ? [{ ...animal.ultimaTentativa, animalId: p.animalId }] : [])]
       .filter((t, indice, lista) => t.animalId === p.animalId && t.status !== "ANULADO"
         && t.data.slice(0, 10) <= visita.data.slice(0, 10) && lista.findIndex(item => item.id === t.id) === indice);
     const gestacoes = gestacoesDoAnimal(p);
     const perdaPendente = r.resultado === "NEGATIVO" && gestacoes.length > 0;
-    return <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "NAO_ATENDIDO")}>Marcar ausente</Button>
-        <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "ADIADO")}>Adiar atendimento</Button>
-        {ausente && <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "")}>Voltar ao resultado</Button>}
-      </div>
-      <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-4 lg:grid-cols-2">
-        {ausente ? <label>Motivo do atendimento pendente{input(p, "motivo", "Motivo do atendimento pendente")}</label> : <>
-          <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />
-          <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label>
-          <label>Tipo de exame<select aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
-            value={r.tipoExameId ?? ""} onChange={e => {
-              const tipo = tiposExame.find(t => t.id === e.target.value);
-              mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] });
+    const camposExame = (tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo));
+    const exameRealizado = !!r.resultado && r.resultado !== "NAO_AVALIADO";
+    const podeVincular = !!r.avaliacaoContextual || exameRealizado;
+    const exigeJustificativa = r.resultado === "POSITIVO" && !r.tentativaId && !r.gestacaoId;
+    const temTentativas = tentativas.length > 0;
+    const temGestacoes = gestacoes.length > 0;
+    const mostrarVinculos = podeVincular && (!emModalIndividual || temTentativas || temGestacoes || exigeJustificativa);
+    const mostrarConduta = !r.avaliacaoContextual || r.conduta === "DESCARTE" || r.conduta === "AGUARDAR" ||
+      r.conduta === "IATF" || r.resultado === "INCONCLUSIVO" || !!r.retornoEm;
+
+    const campoResponsavel = <label>Responsável pela avaliação de aptidão
+      {input(p, "responsavel", "Responsável pela avaliação de aptidão", "text", 160)}
+    </label>;
+    const exame = <div className={emModalIndividual ? "visita-form-exame" : "grid min-w-0 gap-3 sm:grid-cols-2"}>
+          <label>Tipo de exame<SelectCampo aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput}
+            value={r.tipoExameId ?? ""} onValueChange={(valor) => {
+              const tipo = tiposExame.find(t => t.id === valor);
+              mudarAvaliacao(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [], avaliacaoContextual:undefined,vinculosConclusao:undefined,realizadoSemDG:undefined });
             }}>
             <option value="">Avaliação reprodutiva padrão</option>
             {tiposExame.filter(t => t.ativo || t.id === r.tipoExameId).map(t => <option disabled={!t.ativo} key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}
-          </select></label>
-          {r.resultado !== "NAO_AVALIADO" && <CamposResultadoExame
-            campos={(tiposExame.find(t => t.id === r.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))}
-            valores={r.resultados ?? []} onChange={resultados => mudarAvaliacao(p, { resultados })} />}
-          {r.resultado && r.resultado !== "NAO_AVALIADO" && <>
-            {select(p, "tentativaId", "Tentativa comprovada", tentativas.map(t => [t.id, `${t.data.slice(0, 10)} · ${t.tipo}`]))}
-            {gestacoes.length > 0 && select(p, "gestacaoId", "Gestação conhecida · confirmar vínculo", gestacoes.map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0, 10) ?? "sem data informada"}`]))}
-            {r.resultado === "POSITIVO" && !r.tentativaId && !r.gestacaoId && <label>Justificativa do vínculo desconhecido{input(p, "motivoVinculoDesconhecido", "Motivo da tentativa não comprovada")}</label>}
-          </>}
+          </SelectCampo></label>
+      {!r.avaliacaoContextual && exameRealizado && <CamposAvaliacao secao="detalhes" incluirAptidao={!emModalIndividual}
+        identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} />}
+          {!r.avaliacaoContextual && r.resultado !== "NAO_AVALIADO" && camposExame.length > 0 && <div className="sm:col-span-2">
+            <CamposResultadoExame campos={camposExame} valores={r.resultados ?? []} onChange={resultados => mudarAvaliacao(p, { resultados })} />
+          </div>}
+          <AvaliacaoContextualVisita participante={p} propriedadeId={visita.propriedadeId} dados={r} tiposExame={tiposExame}
+            onChange={patch => mudarContextualVisita(p, patch)} disabled={bloqueado} ocultarSemCatalogo={emModalIndividual} />
+    </div>;
+    const vinculos = <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+      {(!emModalIndividual || temTentativas) && select(p, "tentativaId", "Tentativa comprovada", tentativas.map(t => [t.id, `${t.data.slice(0, 10)} · ${t.tipo}`]))}
+      {temGestacoes && select(p, "gestacaoId", "Gestação conhecida · confirmar vínculo", gestacoes.map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0, 10) ?? "sem data informada"}`]))}
+      {exigeJustificativa && <label className={emModalIndividual && temTentativas && !temGestacoes ? undefined : "col-span-full"} data-campo="motivoVinculoDesconhecido">{emModalIndividual ? "Motivo para não vincular a tentativa" : "Justificativa do vínculo desconhecido"}
+        {input(p, "motivoVinculoDesconhecido", "Motivo da tentativa não comprovada")}
+      </label>}
+    </div>;
+    const encaminhamentos = <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          {!r.avaliacaoContextual && <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r} onChange={mudanca => mudarAvaliacao(p, mudanca)} /></label>}
           {r.conduta === "DESCARTE" && <label>Motivo do descarte{input(p, "motivo", "Motivo do descarte")}</label>}
           {(r.conduta === "AGUARDAR" || r.resultado === "INCONCLUSIVO" || r.retornoEm) && <label>Retorno{input(p, "retornoEm", "Retorno", "date")}</label>}
-          {r.conduta === "IATF" && <div className="lg:col-span-2 space-y-2">
+          {r.conduta === "IATF" && <div className="sm:col-span-2 space-y-2">
             <p className="text-sm">Indicação de IATF: o protocolo será programado depois da confirmação.</p>
             <AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0, 10)} acao="IATF" propriedadeId={visita.propriedadeId} />
             <label className="flex gap-2 text-sm"><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`}
               checked={r.cienciaSanitaria === true} onChange={e => atualizar(p, "cienciaSanitaria", e.target.checked)} />
               Revisei os alertas sanitários informados para esta indicação.</label>
           </div>}
+    </div>;
+    return <div className="space-y-3">
+      {!emModalIndividual && <div className="flex flex-wrap gap-2">
+        <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "NAO_ATENDIDO")}>Marcar ausente</Button>
+        <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "ADIADO")}>Adiar atendimento</Button>
+        {ausente && <Button secondary disabled={bloqueado} onClick={() => acaoAtendimento(p, "")}>Voltar ao resultado</Button>}
+      </div>}
+      <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid min-w-0 gap-3">
+        {ausente ? <div className={emModalIndividual ? "visita-form-secao" : undefined}>
+          <label>{emModalIndividual ? (r.status === "ADIADO" ? "Motivo do adiamento" : "Motivo da ausência") : "Motivo do atendimento pendente"}
+            {input(p, "motivo", "Motivo do atendimento pendente")}
+          </label>
+        </div> : <>
+          <section className={emModalIndividual ? "visita-form-secao" : undefined}>
+            {emModalIndividual && <h3>Exame</h3>}
+            {exame}
+            <AvaliacaoContextualVisita participante={p} propriedadeId={visita.propriedadeId} dados={r} tiposExame={tiposExame}
+              onChange={patch => mudarContextualVisita(p, patch)} disabled={bloqueado} ocultarSemCatalogo={emModalIndividual} />
+          </section>
+          {mostrarVinculos && <section className={emModalIndividual ? "visita-form-secao" : undefined}>
+            {emModalIndividual && <h3>Vínculos do exame</h3>}
+            {vinculos}
+          </section>}
+          {emModalIndividual && !r.avaliacaoContextual && exameRealizado && <CamposAptidao dados={r} emSecao
+            campoResponsavel={campoResponsavel} onChange={mudanca => mudarAvaliacao(p, mudanca)} />}
+          {r.resultadoAptidao && (!emModalIndividual || !!r.avaliacaoContextual) && campoResponsavel}
+          {mostrarConduta && <section className={emModalIndividual ? "visita-form-secao" : undefined}>
+            {emModalIndividual && <h3>Encaminhamento</h3>}
+            {encaminhamentos}
+          </section>}
         </>}
-        <label>Anotação original{input(p, "anotacaoOriginal", "Anotação original")}</label>
+        <label className={emModalIndividual ? "visita-form-nota" : undefined}>Anotação original{input(p, "anotacaoOriginal", "Anotação original")}</label>
       </fieldset>
       {perdaPendente && <div role="alert" className="rounded-lg border border-border p-3 space-y-3">
         <p>Há gestação conhecida na data da visita. O resultado vazio não registra perda automaticamente. Revise o diagnóstico ou registre a perda e sua data antes de confirmar.</p>
@@ -761,10 +880,79 @@ export function Transcricao({
           await onMudou();
         }} />}
       </div>}
-      {!confirmado(p) && podeLancar && <Button secondary disabled={ocupado} onClick={()=>setRevisao([p.id])}>Revisar animal</Button>}
+      {!emModalIndividual && !confirmado(p) && podeLancar && <Button secondary disabled={ocupado} onClick={()=>setRevisao([p.id])}>Revisar animal</Button>}
       {p.snapshot.pendenciasContexto?.length ? <ul className="text-sm">{p.snapshot.pendenciasContexto.map(m => <li key={m}>{m}</li>)}</ul> : null}
     </div>;
   }
+  function painelAvaliacaoIndividual(p: ParticipanteVisita) {
+    const rascunho = rascunhos[p.id] ?? {};
+    const ausente = ["ADIADO", "NAO_ATENDIDO"].includes(rascunho.status ?? "");
+    const bloqueado = !podeLancar || ocupado || confirmado(p);
+    return <div className="visita-avaliacao-individual grid min-w-0 gap-3">
+      <ContextoInlineVisita contexto={p.snapshot} dataReferencia={visita.data} />
+      <fieldset className="visita-form-secao visita-form-resultado" disabled={bloqueado} onBlur={() => void persistir(p)}>
+        <legend className="sr-only">Resultado do atendimento</legend>
+        <h3>Resultado do atendimento</h3>
+        {rascunho.avaliacaoContextual ? <>
+          <p className="text-sm">{ausente ? (rascunho.status === "ADIADO" ? "Adiado" : "Não atendido") : resultadoPrincipalVisita(atividade.tipo, p, rascunho) ?? "Avaliação contextual em preenchimento"}</p>
+          {ausente && !bloqueado && <Button secondary className="mt-3" onClick={() => acaoAtendimento(p, "")}>Voltar à avaliação</Button>}
+          {!ausente && !bloqueado && <div className="mt-3 flex flex-wrap gap-2">
+            <Button secondary onClick={() => acaoAtendimento(p, "NAO_ATENDIDO")}>Marcar ausente</Button>
+            <Button secondary onClick={() => acaoAtendimento(p, "ADIADO")}>Adiar atendimento</Button>
+          </div>}
+        </> : <CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={rascunho}
+          administrativo={{ status: rascunho.status, onChange: valor => acaoAtendimento(p, valor) }}
+          onChange={mudanca => mudarAvaliacao(p, { ...mudanca, status: "CONFIRMADO" })} />}
+      </fieldset>
+      {detalhesAvaliacao(p, rascunho, bloqueado, ausente, true)}
+      {avisos[p.id] && <p role="status" className="text-sm text-muted-foreground">{avisos[p.id]}</p>}
+      {confirmado(p) && <p role="status" className="text-sm font-medium">Atendimento confirmado</p>}
+      {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`}
+        propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"}
+        consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
+    </div>;
+  }
+
+  function voltarDaConferencia() {
+    setRevisao([]);
+    if (avaliacaoIndividual && individual) setErro(null);
+  }
+
+  function resumoAvaliacaoIndividual(p: ParticipanteVisita) {
+    const r = rascunhos[p.id] ?? {};
+    const ausente = r.status === "NAO_ATENDIDO" || r.status === "ADIADO";
+    const resultado = ausente ? (r.status === "ADIADO" ? "Adiado" : "Ausente") : resultadoPrincipalVisita(atividade.tipo, p, r);
+    const tipo = tiposExame.find(t => t.id === r.tipoExameId);
+    const aptidao = r.resultadoAptidao ? rotulosAptidaoExame[r.resultadoAptidao] : null;
+    const dataPreenchida = (data?: string | null) => data && Number.isFinite(Date.parse(data)) ? dataBR(data) : null;
+    const campos = [
+      ["Resultado", resultado],
+      ...(!ausente ? [
+        ["Tipo de exame", tipo?.nome ?? (r.tipoExameId ? "Tipo registrado no rascunho" : "Avaliação reprodutiva padrão")],
+        ["Sexo fetal", r.sexoFetal ? (r.sexoFetal === "F" ? "Fêmea" : "Macho") : null],
+        ["Aptidão reprodutiva", aptidao],
+        ["Responsável pela aptidão", aptidao ? r.responsavel?.trim() : null],
+        ["Reavaliação", dataPreenchida(r.retornoAptidaoEm)],
+        ["Conduta", r.conduta && (rotulosCondutaAvaliacao[r.conduta] ?? r.conduta)],
+        ["Retorno", dataPreenchida(r.retornoEm)],
+        ["Tentativa vinculada", r.tentativaId ? "Informada" : null],
+        ["Gestação vinculada", r.gestacaoId ? "Informada" : null],
+        ["Justificativa do vínculo", !r.tentativaId && !r.gestacaoId ? r.motivoVinculoDesconhecido : null],
+      ] : []),
+      ["Motivo", r.motivo],
+      ["Anotação original", r.anotacaoOriginal],
+    ];
+    return <section className="visita-form-secao visita-form-resumo">
+      <h3>{p.snapshot.brinco ?? p.ordem}{p.snapshot.nome && <span className="font-normal text-muted-foreground"> · {p.snapshot.nome}</span>}</h3>
+      <dl className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+        {campos.map(([rotulo, valor]) => valor ? <div key={rotulo} className="min-w-0 break-words">
+          <dt className="text-xs text-muted-foreground">{rotulo}</dt>
+          <dd className="mt-0.5 text-sm font-semibold">{valor}</dd>
+        </div> : null)}
+      </dl>
+    </section>;
+  }
+
   function campoDesvioSanitario(p: ParticipanteVisita) {
     const desvio = rascunhos[p.id]?.dados?.desvio as { motivo?: string } | undefined;
     return <label>Motivo do desvio da tarefa (se houver)
@@ -804,11 +992,45 @@ export function Transcricao({
   return (
     <section className="visita-painel visita-transcricao">
       <div className="visita-painel-cabecalho"><div><h2>{tituloAtividade}</h2><p>{lotesAtividadeVisita(atividade)} · {totalParticipantes} animais na lista preparada</p></div><span className="visita-badge">{confirmados} / {totalParticipantes} confirmados</span></div>
-      <div className="visita-contexto">{protocoloVisivel !== tituloAtividade && <div><span>Protocolo / seleção</span>{protocoloVisivel}</div>}<div><span>Data do atendimento</span>{visita.data.slice(0,10).split("-").reverse().join("/")}</div>{referenciaVisivel !== tituloAtividade && referenciaVisivel !== protocoloVisivel && <div className="visita-criterio"><span>Referência compartilhada</span>{referenciaVisivel}</div>}</div>
-      <div className="visita-aviso suave">{atividade.tipo === "AVALIACAO_REPRODUTIVA" || atividade.participantes.some(ehAvaliacaoTarefa) ? "Conclusão, sexo fetal e conduta são informações distintas. Os complementos aparecem em “Detalhes”." : "O resultado principal fica na linha. Os dados complementares do procedimento ficam em “Detalhes”."}</div>
+      <div className="visita-contexto">
+        {protocoloVisivel !== tituloAtividade && <div><span>Protocolo / seleção</span>{protocoloVisivel}</div>}
+        <div><span>Data do atendimento</span>{visita.data.slice(0,10).split("-").reverse().join("/")}</div>
+        {referenciaVisivel !== tituloAtividade && referenciaVisivel !== protocoloVisivel && <div className="visita-criterio">
+          <span>Referência compartilhada</span>
+          {comuns.length > 0 ? <ul className="visita-criterios-etiquetas" role="list" aria-label="Referência compartilhada">
+            {comuns.map(motivo => {
+              const separador = motivo.indexOf(": ");
+              const campo = separador < 0 ? "" : motivo.slice(0, separador);
+              const valor = separador < 0 ? motivo : motivo.slice(separador + 2);
+              const opcoes = campo === "Sexo" ? enumerados.SEXO : campo === "Situação reprodutiva" ? enumerados.SITUACAO : undefined;
+              const rotulo = opcoes ? valor.split(" ou ").map(item => opcoes.find(opcao => opcao.id === item)?.nome ?? item).join(" ou ") : valor;
+              const tom = campo === "Sexo" ? "identificacao" : campo === "Situação reprodutiva" ? "reproducao" : "criterio";
+              return <li key={motivo}><Badge variant="outline" className="visita-criterio-etiqueta" data-tom={tom}>
+                {campo && <>{campo}: </>}<strong>{rotulo}</strong>
+              </Badge></li>;
+            })}
+          </ul> : referenciaVisivel}
+        </div>}
+      </div>
+      {atividade.tipo === "AVALIACAO_REPRODUTIVA" && <dl className="flex flex-wrap gap-x-8 gap-y-3 border-b border-border px-4 py-4" aria-label="Resumo da avaliação">
+        <div><dt className="text-sm text-ink-3">Animais na lista</dt><dd className="font-semibold tabular-nums">{totalParticipantes}</dd></div>
+        <div><dt className="text-sm text-ink-3">Atendimentos confirmados</dt><dd className="font-semibold tabular-nums">{confirmados}</dd></div>
+        <div><dt className="text-sm text-ink-3">Aguardam confirmação</dt><dd className="font-semibold tabular-nums">{Math.max(0, totalParticipantes - confirmados)}</dd></div>
+        <div><dt className="text-sm text-ink-3">Nesta conferência</dt><dd className="font-semibold tabular-nums">{idsConferencia.length}</dd></div>
+      </dl>}
       <div className="visita-mensagens">
-        <ErrorBox erro={erro} />
-        {previaConferencia && ((previaConferencia.totalComAlteracoes ?? alteracoes.length) > 0 || (previaConferencia.total ?? 0) > 10 || previaConferencia.execucaoProtocolos) && (
+        <ErrorBox erro={revisao.length ? null : erro} />
+        {recibo && <section className="grid gap-3 rounded-lg border border-border p-3" aria-label="Recibo da confirmação"><h3 className="font-semibold">{recibo.total} participantes confirmados em conjunto</h3><ul>{recibo.itens.map(p=><li key={p.id}>{p.snapshot.brinco ?? p.animalId} · {p.status === "CONFIRMADO" ? "Atendido" : p.status === "ADIADO" ? "Adiado" : p.status === "NAO_ATENDIDO" ? "Não atendido" : p.status}<a className="ml-2 underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?sitio=${visita.propriedadeId}${p.snapshot.execucaoProtocolo?.fatoId ? `&fatoId=${encodeURIComponent(p.snapshot.execucaoProtocolo.fatoId)}` : ""}#${atividade.tipo.includes("SANITAR") ? "sanidade" : "reproducao"}`}>Abrir ficha do animal</a></li>)}</ul>{recibo.total>10&&<div className="flex gap-3"><Button secondary disabled={ocupado||recibo.pagina<=1} onClick={()=>void paginarRecibo(recibo.pagina-1)}>Recibo anterior</Button><span>Página {recibo.pagina} de {Math.ceil(recibo.total/10)}</span><Button secondary disabled={ocupado||recibo.pagina*10>=recibo.total} onClick={()=>void paginarRecibo(recibo.pagina+1)}>Próximo recibo</Button></div>}</section>}
+        {avisoConfirmacao && <p role="status" className="mb-3 text-sm">{avisoConfirmacao}</p>}
+        {totalParticipantes > 100 && <p className="text-sm mb-3">
+          A lista completa está preservada. Cada confirmação registra até 100 animais em conjunto;
+          os demais permanecem selecionados para o próximo subconjunto.
+        </p>}
+        {revisao.length > 0 && <PainelCadastro aberto camada={avaliacaoIndividual && individual ? "sobreDetalhe" : "padrao"} titulo={revisao.length === 1 ? "Revisar atendimento" : revisao.length + " atendimentos para confirmar"} bloqueado={ocupado} rascunhoPersistido
+          onFechar={voltarDaConferencia} erroRodape={erro}
+          rodape={<><Button secondary disabled={ocupado} onClick={voltarDaConferencia}>Voltar ao preenchimento</Button>
+            <Button disabled={ocupado} onClick={() => void confirmar(revisao)}>{avaliacaoIndividual && selecionado ? "Confirmar atendimento" : `Confirmar ${revisao.length} atendimento(s)`}</Button></>}>
+        {previaConferencia && ((previaConferencia.totalComAlteracoes ?? alteracoes.length) > 0 || (previaConferencia.total ?? 0) > 10 || previaConferencia.execucaoProtocolos || previaConferencia.participantes.some(p=>p.avaliacaoContextual)) && (
           <div className="rounded-lg border border-border p-4 mb-4">
             <ul className="text-sm space-y-2">
               {previaConferencia.participantes.map((a) => (
@@ -821,6 +1043,8 @@ export function Transcricao({
               ))}
             </ul>
             {(previaConferencia.total ?? 0) > 10 && <div className="flex flex-wrap gap-3"><p>Página {previaConferencia.pagina ?? 1} de {Math.ceil((previaConferencia.total ?? 0) / 10)} · {previaConferencia.totalComAlteracoes ?? 0} animais com contexto alterado.</p><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) <= 1} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) - 1)}>Contexto anterior</Button><Button secondary disabled={ocupado || (previaConferencia.pagina ?? 1) * 10 >= (previaConferencia.total ?? 0)} onClick={() => void paginarPrevia((previaConferencia.pagina ?? 1) + 1)}>Próximo contexto</Button></div>}
+            {previaConferencia.participantes.filter(p=>p.avaliacaoContextual).map(p=><section key={p.participanteId} className="grid gap-3 border-t border-border pt-4"><h3 className="font-semibold">Avaliação · {atividade.participantes.find(a=>a.id===p.participanteId)?.snapshot.brinco??"Animal selecionado"}</h3>{p.avaliacaoContextual?.estado==="CONFERIDA"?<PreviaAvaliacaoContextual dados={p.avaliacaoContextual}/>:p.avaliacaoContextual?.estado==="DADOS_PENDENTES"?<ErrorBox erro={p.avaliacaoContextual.erro}/>:null}</section>)}
+            {previaConferencia.execucaoProtocolos?.avaliacoes?.map(a=><section className="grid gap-3 border-t border-border pt-4" key={a.tarefaId}><h3 className="font-semibold">Avaliação da etapa · {atividade.participantes.find(p=>p.animalId===a.animalId)?.snapshot.brinco??"Animal selecionado"}</h3><PreviaAvaliacaoContextual dados={a}/></section>)}
             {previaConferencia.execucaoProtocolos && <div><p>{previaConferencia.execucaoProtocolos.estado === "CONFERIDA" ? "Procedimentos conferidos no servidor." : previaConferencia.execucaoProtocolos.erro}</p>{previaConferencia.execucaoProtocolos.consumos?.map((c, i) => <p key={i}>{c.produtoNome ?? "Material"}: {c.quantidade} {c.unidade}</p>)}{(previaConferencia.execucaoProtocolos.totalConsumos ?? 0) > 10 && <p>Materiais: página {previaConferencia.execucaoProtocolos.paginaConsumos ?? 1} de {Math.ceil((previaConferencia.execucaoProtocolos.totalConsumos ?? 0) / 10)}.</p>}</div>}
             {(previaConferencia.execucaoProtocolos?.totalConsumos ?? 0) > 10 && <div className="flex gap-3"><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) <= 1} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) - 1)}>Materiais anteriores</Button><Button secondary disabled={ocupado || (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) * 10 >= (previaConferencia.execucaoProtocolos?.totalConsumos ?? 0)} onClick={() => void paginarPrevia(previaConferencia.pagina ?? 1, (previaConferencia.execucaoProtocolos?.paginaConsumos ?? 1) + 1)}>Próximos materiais</Button></div>}
             <ConfirmacaoCiencia
@@ -834,15 +1058,7 @@ export function Transcricao({
             </ConfirmacaoCiencia>
           </div>
         )}
-        {recibo && <section className="grid gap-3 rounded-lg border border-border p-3" aria-label="Recibo da confirmação"><h3 className="font-semibold">{recibo.total} participantes confirmados em conjunto</h3><ul>{recibo.itens.map(p=><li key={p.id}>{p.snapshot.brinco ?? p.animalId} · {p.status === "CONFIRMADO" ? "Atendido" : p.status === "ADIADO" ? "Adiado" : p.status === "NAO_ATENDIDO" ? "Não atendido" : p.status}<a className="ml-2 underline" href={`/pecuaria/rebanho/animais/${encodeURIComponent(p.animalId)}?sitio=${visita.propriedadeId}${p.snapshot.execucaoProtocolo?.fatoId ? `&fatoId=${encodeURIComponent(p.snapshot.execucaoProtocolo.fatoId)}` : ""}#${atividade.tipo.includes("SANITAR") ? "sanidade" : "reproducao"}`}>Abrir ficha do animal</a></li>)}</ul>{recibo.total>10&&<div className="flex gap-3"><Button secondary disabled={ocupado||recibo.pagina<=1} onClick={()=>void paginarRecibo(recibo.pagina-1)}>Recibo anterior</Button><span>Página {recibo.pagina} de {Math.ceil(recibo.total/10)}</span><Button secondary disabled={ocupado||recibo.pagina*10>=recibo.total} onClick={()=>void paginarRecibo(recibo.pagina+1)}>Próximo recibo</Button></div>}</section>}
-        {avisoConfirmacao && <p role="status" className="mb-3 text-sm">{avisoConfirmacao}</p>}
-        {totalParticipantes > 100 && <p className="text-sm mb-3">
-          A lista completa está preservada. Cada confirmação registra até 100 animais em conjunto;
-          os demais permanecem selecionados para o próximo subconjunto.
-        </p>}
-        {revisao.length > 0 && <section ref={revisaoRef} tabIndex={-1} aria-label="Revisão do subconjunto" className="visita-confirmacao space-y-3">
-          <h3 className="font-semibold">Revisar {revisao.length} atendimento(s)</h3>
-          <ul className="max-h-64 overflow-y-auto text-sm space-y-1">
+          {avaliacaoIndividual && selecionado ? resumoAvaliacaoIndividual(selecionado) : <ul className="max-h-64 overflow-y-auto text-sm space-y-1">
             {revisao.slice((paginaRevisao - 1) * 10, paginaRevisao * 10).map(id => {
               const p = atividade.participantes.find(item => item.id === id)!;
               const r = rascunhos[id] ?? {};
@@ -855,51 +1071,86 @@ export function Transcricao({
                 {r.motivo ? ` · Motivo: ${r.motivo}` : ""}
               </li>;
             })}
-          </ul>
+          </ul>}
           {revisao.length > 10 && <div className="flex gap-3"><Button secondary disabled={paginaRevisao === 1} onClick={() => setPaginaRevisao(p => p - 1)}>Anterior</Button><span>Página {paginaRevisao} de {Math.ceil(revisao.length / 10)}</span><Button secondary disabled={paginaRevisao * 10 >= revisao.length} onClick={() => setPaginaRevisao(p => p + 1)}>Próxima</Button></div>}
           {revisao.length > 100 && <p className="text-sm">Escolha até 100 animais para uma confirmação única. Volte ao preenchimento para ajustar a seleção.</p>}
-          <div className="flex gap-2">
-            <Button disabled={ocupado} onClick={() => void confirmar(revisao)}>Confirmar {revisao.length} atendimento(s)</Button>
-            <Button secondary disabled={ocupado} onClick={() => setRevisao([])}>Voltar ao preenchimento</Button>
-          </div>
-        </section>}
+        </PainelCadastro>}
         {indicadosIatf.length > 0 && podeLancar && <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
           <p>{indicadosIatf.length} animal(is) com indicação de IATF confirmada. A indicação não inicia protocolo nem consome materiais.</p>
           <Button secondary disabled={!painel || ocupado} onClick={() => setProgramarIatf(true)}>Programar IATF para indicados ({indicadosIatf.length})</Button>
         </div>}
       </div>
-      {paginada && <div className="flex flex-wrap gap-3"><Button secondary disabled={ocupado || consultandoParticipantes || !podeLancar} onClick={()=>void selecionarPendentes()}>Selecionar até 100 pendentes dos filtros</Button><Button secondary disabled={ocupado || consultandoParticipantes} onClick={()=>setRevisaoParticipantes(v=>v+1)}>Atualizar participantes</Button>{consultandoParticipantes&&<p role="status">Consultando dez participantes…</p>}</div>}
-      <FiltrosAtendimentoVisita busca={q} onBusca={setQ} mostrarBusca={!livre || !!individual}
+      <FiltrosAtendimentoVisita busca={q} onBusca={setQ} mostrarBusca={!livre || (!avaliacaoIndividual && !!individual)}
         status={status} onStatus={setStatus} motivos={motivos} motivosDisponiveis={motivosDisponiveis}
-        onMotivos={setMotivos} selecionados={selecionadosPendentes.length} />
-      {livre&&!individual&&<div id={`lista-livre-${atividade.id}`}><ListaAnimaisVisita animais={itensListaLivre.map(p=>({id:p.id,animalId:p.animalId,brinco:String(p.snapshot.brinco??p.ordem),nome:p.snapshot.nome,status:confirmado(p)?"CONFIRMADO":p.status,temRascunho:Object.keys(rascunhos[p.id]??{}).length>0}))} busca={q} onBusca={setQ} onAbrir={abrirIndividual} selecionadoId={individual} paginacao={paginada ? {pagina:paginaParticipantes?.pagina ?? pagina,total:paginaParticipantes?.total ?? 0,onPagina:setPagina} : undefined}/></div>}
-      {livre&&individual&&<div className="p-4 flex flex-wrap justify-between gap-3"><h3 className="font-semibold">Atendimento individual · {selecionado?.snapshot.brinco??"Animal"}</h3><Button secondary disabled={ocupado} onClick={()=>void voltarListaIndividual()}>Voltar à lista de animais</Button></div>}
-      <div hidden={livre&&!individual}>
-      {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? tabelaAvaliacao() : <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Procedimentos dos animais" tabIndex={0}>
+        onMotivos={setMotivos} selecionados={selecionadosPendentes.length}
+        acoes={paginada && <>
+          {!avaliacaoIndividual && <BotaoInterface type="button" variant="outline" disabled={ocupado || consultandoParticipantes || !podeLancar}
+            title="Selecionar até 100 pendentes dos filtros" onClick={() => void selecionarPendentes()}>
+            <ListChecks aria-hidden />Selecionar pendentes
+          </BotaoInterface>}
+          <BotaoInterface type="button" variant="outline" size="icon" disabled={ocupado || consultandoParticipantes}
+            aria-label="Atualizar participantes" title="Atualizar participantes" onClick={() => setRevisaoParticipantes(v => v + 1)}>
+            <RefreshCw aria-hidden className={consultandoParticipantes ? "motion-safe:animate-spin" : undefined} />
+          </BotaoInterface>
+          {consultandoParticipantes && <span role="status" className="sr-only">Consultando participantes…</span>}
+        </>} />
+      {livre && (avaliacaoIndividual || !individual) && <div id={`lista-livre-${atividade.id}`}><ListaAnimaisVisita animais={itensListaLivre.map(p=>({id:p.id,animalId:p.animalId,brinco:String(p.snapshot.brinco??p.ordem),nome:p.snapshot.nome,status:confirmado(p)?"CONFIRMADO":p.status,temRascunho:Object.keys(rascunhos[p.id]??{}).length>0}))} busca={q} onBusca={setQ} onAbrir={abrirIndividual} abreModal={avaliacaoIndividual} selecionadoId={individual} paginacao={paginada ? {pagina:paginaParticipantes?.pagina ?? pagina,total:paginaParticipantes?.total ?? 0,onPagina:setPagina} : undefined}/></div>}
+      {livre && individual && !avaliacaoIndividual && <div className="p-4 flex flex-wrap justify-between gap-3"><h3 className="font-semibold">Atendimento individual · {selecionado?.snapshot.brinco??"Animal"}</h3><Button secondary disabled={ocupado} onClick={()=>void voltarListaIndividual()}>Voltar à lista de animais</Button></div>}
+      {avaliacaoIndividual && individual && <PainelCadastro
+        aberto titulo={selecionado ? "Atendimento · " + (selecionado.snapshot.brinco ?? selecionado.ordem) : "Atendimento individual"}
+        largura="sm:max-w-4xl"
+        subtitulo={selecionado?.snapshot.nome} rascunhoPersistido bloqueado={ocupado}
+        onFechar={() => void voltarListaIndividual()}
+        erroRodape={revisao.length ? null : erro ?? (validarAtendimento && selecionado && !confirmado(selecionado) ? pendenciaAvaliacao(selecionado, rascunhos[selecionado.id]) : null)}
+        rodape={<>
+          <Button secondary disabled={ocupado} onClick={() => void voltarListaIndividual()}>Voltar à lista de animais</Button>
+          {selecionado && podeLancar && !confirmado(selecionado) && <Button
+            disabled={ocupado || !idsComResultado.includes(selecionado.id)}
+            onClick={() => {
+              const pendencia = pendenciaAvaliacao(selecionado, rascunhosAtuais.current[selecionado.id]);
+              setErro(null);
+              setValidarAtendimento(!!pendencia);
+              if (!pendencia) {
+                setRevisao([selecionado.id]);
+                return;
+              }
+              const campo = pendencia === "Informe o responsável pela avaliação de aptidão."
+                ? 'input[aria-label^="Responsável pela avaliação de aptidão ·"]'
+                : pendencia === "Vincule a tentativa ou explique o vínculo desconhecido."
+                  ? '[data-campo="motivoVinculoDesconhecido"] input'
+                  : null;
+              if (campo) document.querySelector<HTMLElement>(".visita-avaliacao-individual")?.querySelector<HTMLElement>(campo)?.focus();
+            }}>
+            Revisar atendimento
+          </Button>}
+        </>}>
+        {selecionado ? painelAvaliacaoIndividual(selecionado) : erroAnimal || !paginada
+          ? <ErrorBox erro={erroAnimal ?? "Animal não encontrado nesta atividade."} />
+          : <p role="status" className="text-sm">Carregando atendimento…</p>}
+      </PainelCadastro>}
+      <div hidden={livre && (avaliacaoIndividual || !individual)}>
+      {atividade.tipo === "AVALIACAO_REPRODUTIVA" ? (avaliacaoIndividual ? null : tabelaAvaliacao()) : <div className="visita-tabela visita-tabela-atendimento" role="region" aria-label="Procedimentos dos animais" tabIndex={0}>
         <table className="w-full text-sm consulta-tabela">
           <thead className="sticky top-0 z-10 bg-card"><tr className="text-left border-y border-border">
             <th className="p-3"><input type="checkbox" aria-label="Selecionar todos os participantes filtrados" disabled={!podeLancar || ocupado || !itens.some(p => !confirmado(p))} checked={itens.filter(p => !confirmado(p)).length > 0 && itens.filter(p => !confirmado(p)).every(p => selecionados.includes(p.id))} onChange={e => setSelecionados(prev => e.target.checked ? [...new Set([...prev, ...itens.filter(p => !confirmado(p)).map(p => p.id)])] : prev.filter(id => !itens.some(p => p.id === id)))} /></th><CabecalhoContextoVisita />
-            <th className="p-3">Resultado do atendimento</th><th className="p-3">Detalhes</th>
+            <th className="p-3">Resultado do atendimento</th><th className="p-3 text-right">Ações</th>
           </tr></thead>
           <tbody>{itensPagina.map(p => {
             const r = rascunhos[p.id] ?? {};
-            const resultadoTarefa = String(r.dados?.resultado ?? "");
-            const exigeDetalhes = ["ADIADO","NAO_ATENDIDO"].includes(r.status ?? "") || (ehAvaliacaoTarefa(p) && !!resultadoTarefa && (resultadoTarefa === "SEXAGEM" || resultadoTarefa === "RECONFIRMACAO" || (resultadoTarefa === "POSITIVO" && !r.dados?.tentativaId && !r.dados?.gestacaoId) || !r.realizadaEm));
-            const expandido = detalhes.includes(p.id) || preparar?.id === p.id || (exigeDetalhes && !detalhesFechados.includes(p.id));
             const bloqueado = !podeLancar || ocupado || confirmado(p);
             return <Fragment key={p.id}>
               <tr className="border-b border-border align-top" id={`linha-${p.id}`}>
-                <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
+                <td className="p-3"><input type="checkbox" aria-label={`Selecionar ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} checked={confirmado(p) || selecionados.includes(p.id)} onChange={e => setSelecionados(e.target.checked ? [...new Set([...selecionados, p.id])] : selecionados.filter(id => id !== p.id))} /></td>
                 <CelulasContextoVisita contexto={p.snapshot} dataReferencia={visita.data} compacto/>
-                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}><CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={(r.dados ?? {}) as RascunhoVisita} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/></fieldset> : <select aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onChange={e=>{atualizar(p,"status",e.target.value);setDetalhes(d=>[...new Set([...d,p.id])]);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></select>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
-                <td className="p-3 min-w-36 space-y-2">
-                  <button type="button" className="visita-link h-auto" aria-label={`Detalhes · ${p.snapshot.brinco ?? p.ordem}`} aria-expanded={expandido} aria-controls={`detalhes-${p.id}`} onClick={()=>alternarDetalhes(p.id,expandido)}>{expandido ? "Fechar" : "Detalhes"}</button>
+                <td className="visita-resultado">{atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) ? <fieldset disabled={bloqueado} onBlur={()=>void persistir(p)}>{r.dados?.avaliacaoContextual?<span>{resultadoPrincipalVisita(atividade.tipo,p,r)??"Avaliação contextual em preenchimento"}</span>:<CamposAvaliacao secao="resultado" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} administrativo={{status:r.status,onChange:valor=>acaoAtendimento(p,valor)}} onChange={mudanca=>atualizarDados(p,mudanca)}/>}</fieldset> : <SelectCampo aria-label={`Atendimento · ${p.snapshot.brinco ?? p.ordem}`} title={r.status === "CONFIRMADO" ? atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado" : r.status === "ADIADO" ? "Adiado" : r.status === "NAO_ATENDIDO" ? "Não atendido" : "Selecionar resultado"} value={r.status ?? ""} disabled={bloqueado} onValueChange={(valor) =>{atualizar(p,"status",valor);setDetalheId(p.id);}} onBlur={()=>void persistir(p)}><option value="">Selecionar resultado</option><option value="CONFIRMADO">{atividade.tipo === "INICIAR_IATF" ? "Início realizado" : "Procedimento realizado"}</option><option value="ADIADO">Adiado</option><option value="NAO_ATENDIDO">Não atendido</option></SelectCampo>}{confirmado(p) && <small className="visita-confirmado">Confirmado</small>}</td>
+                <td className="p-3 min-w-36 space-y-2 text-right">
+                  <button type="button" className="visita-link h-auto" aria-label={"Detalhes · " + (p.snapshot.brinco ?? p.ordem)} aria-haspopup="dialog" onClick={() => setDetalheId(p.id)}>Detalhes</button>
                   <p role="status" className="text-sm">{avisos[p.id]}</p>
                   {podeRegularizar && p.regularizacaoPendente && <RegularizarOrigem path={`/visitas/${visita.id}/participantes/${p.id}/regularizacao`} propriedadeId={visita.propriedadeId} reabrirPermitido={visita.status !== "ENCERRADA"} consumoMantido={consumoMantidoUltimaAnulacao(p.historicoRegularizacao)} onMudou={onMudou} />}
                   {p.fatoId && <p className="text-sm text-ink-3">Fato registrado</p>}
                 </td>
               </tr>
-              {expandido && <tr id={`detalhes-${p.id}`} className="visita-detalhes"><td colSpan={contarColunasContextoVisita() + 3} className="p-4">
+              {detalheId === p.id && !revisao.length && <PainelCadastro aberto={!preparar} titulo={"Detalhes · " + (p.snapshot.brinco ?? p.ordem)} rascunhoPersistido bloqueado={ocupado} onFechar={() => setDetalheId(null)} rodape={<Button secondary disabled={ocupado} onClick={() => setDetalheId(null)}>Fechar detalhes</Button>}>
                 <ContextoInlineVisita contexto={p.snapshot} dataReferencia={visita.data} />
                 <div className="grid gap-4 lg:grid-cols-2">
                   {atividade.tipo === "TAREFA_IATF" && ehAvaliacaoTarefa(p) && <>
@@ -907,10 +1158,11 @@ export function Transcricao({
                       {selectDados(p, "tentativaId", "Tentativa comprovada", ((painel?.tentativas ?? []).filter(t => t.animalId === p.animalId && t.status !== "ANULADO" && t.data.slice(0,10) <= visita.data.slice(0,10)).map(t => [t.id, `${t.data.slice(0,10)} · ${t.tipo}`]) as [string,string][]))}
                       {selectDados(p, "gestacaoId", "Gestação conhecida", ((painel?.gestacoes ?? []).filter(g => g.animalId === p.animalId && g.status === "VALIDO" && (!g.confirmadaEm || g.confirmadaEm.slice(0,10) <= visita.data.slice(0,10)) && (!g.encerradaEm || g.encerradaEm.slice(0,10) > visita.data.slice(0,10))).map(g => [g.id, `Confirmada ${g.confirmadaEm?.slice(0,10) ?? "sem data"}`]) as [string,string][]))}
                       <fieldset disabled={bloqueado} onBlur={() => void persistir(p)} className="grid gap-3">
-                        <CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
-                        <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label>
+                        <AvaliacaoContextualVisita participante={p} propriedadeId={visita.propriedadeId} dados={r.dados??{}} tiposExame={tiposExame} onChange={patch=>mudarContextualVisita(p,patch,true)} disabled={bloqueado}/>
+                        {!r.dados?.avaliacaoContextual&&<><CamposAvaliacao secao="detalhes" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} />
+                        <label>Conduta<CamposAvaliacao secao="conduta" identificacao={p.snapshot.brinco ?? String(p.ordem)} dados={r.dados ?? {}} onChange={mudanca => atualizarDados(p, mudanca)} /></label></>}
                         {r.dados?.conduta === "DESCARTE" && <label>Motivo do descarte<input aria-label={`Motivo do descarte · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} value={String(r.dados?.motivo ?? "")} onChange={e => atualizarDados(p, { motivo: e.target.value })} /></label>}
-                        {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<input aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} type="date" value={String(r.dados?.retornoEm ?? "")} onChange={e => atualizarDados(p, { retornoEm: e.target.value || undefined })} /></label>}
+                        {(r.dados?.conduta === "AGUARDAR" || !!r.dados?.retornoEm) && <label>Retorno<DatePicker aria-label={`Retorno · ${p.snapshot.brinco ?? p.ordem}`} className="mt-1.5" value={String(r.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(p, { retornoEm: valor || undefined })} /></label>}
                         {r.dados?.conduta === "IATF" && <div><p>A indicação não inicia o protocolo. A programação fica disponível após confirmar.</p><AlertasSanitarios animalId={p.animalId} data={(r.realizadaEm || visita.data).slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.dados?.cienciaSanitaria === true} onChange={e => atualizarDados(p, { cienciaSanitaria: e.target.checked })} />Revisei os alertas sanitários para esta indicação.</label></div>}
                       </fieldset>
                       {r.dados?.resultado === "POSITIVO" && !r.dados?.tentativaId && !r.dados?.gestacaoId && <label>Justificativa do vínculo desconhecido<input className={classeInput} value={String(r.dados?.motivoVinculoDesconhecido ?? "")} onChange={e => atualizarDados(p, { motivoVinculoDesconhecido: e.target.value })} onBlur={() => void persistir(p)} /></label>}
@@ -918,8 +1170,8 @@ export function Transcricao({
                       <label>Anotação original<input className={classeInput} value={String(r.dados?.anotacaoOriginal ?? "")} onChange={e => atualizarDados(p, { anotacaoOriginal: e.target.value })} onBlur={() => void persistir(p)} /></label>
                       {["ADIADO", "NAO_ATENDIDO"].includes(r.status ?? "") && input(p, "motivo", "Motivo do atendimento pendente")}
                     </fieldset>
-                    <div className="grid gap-3"><label>Tipo de exame<select className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onChange={e => { const tipo = tiposExame.find(t => t.id === e.target.value); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</select></label>
-                      {!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
+                    <div className="grid gap-3"><label>Tipo de exame<SelectCampo className={classeInput} aria-label={`Tipo de exame · ${p.snapshot.brinco ?? p.ordem}`} disabled={bloqueado} value={String(r.dados?.tipoExameId ?? p.snapshot.tarefaPlanejada?.tarefa.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId ?? (preparar?.id === p.id ? tarefaPreparada?.planejadoSnapshot?.etapa.planoAvaliacao?.tipoExameId : ""))} onValueChange={(valor) => { const tipo = tiposExame.find(t => t.id === valor); atualizarDados(p, { tipoExameId: tipo?.id, formatoExameHash: tipo?.formatoExameHash, resultados: [] }); }}><option value="">Avaliação padrão da tarefa</option>{tiposExame.filter(t => t.ativo || t.id === r.dados?.tipoExameId).map(t => <option key={t.id} value={t.id}>{t.nome} · v{t.versaoFormato ?? 1}{t.ativo ? "" : " (inativo)"}</option>)}</SelectCampo></label>
+                      {!r.dados?.avaliacaoContextual&&!!r.dados?.tipoExameId && <CamposResultadoExame campos={(tiposExame.find(t => t.id === r.dados?.tipoExameId)?.campos ?? []).filter(c => !["CONCLUSAO_GESTACIONAL", "SEXO_FETAL"].includes(c.codigo))} valores={(r.dados?.resultados as import("../sanidade/CamposExame").ObservacaoExame[]) ?? []} onChange={resultados => atualizarDados(p, { resultados })} />}
                     </div>
                   </>}
                   {atividade.tipo === "TAREFA_IATF" && r.status === "ADIADO" && <CampoDataIatf rotulo={`Nova previsão · ${p.snapshot.brinco ?? p.ordem}`} valor={r.previstaPara ?? ""} onChange={v => atualizar(p, "previstaPara", v)} onBlur={() => void persistir(p)} disabled={bloqueado} />}
@@ -939,13 +1191,13 @@ export function Transcricao({
                         {referenciaIndisponivel ? <>
                           <p role="alert" className="text-sm">A participação salva no rascunho deixou de estar disponível. Resolva o vínculo antes de confirmar, escolhendo uma opção compatível.</p>
                           {!temProtocolo && compativeis.length === 0 && <p className="text-sm">Nenhuma participação pendente compatível está disponível. Este início antigo exige uma participação existente.</p>}
-                          <label>Participação IATF<select aria-label={`Participação IATF · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={bloqueado} value={r.participanteIatfId ?? ""} onChange={e => { atualizar(p, "participanteIatfId", e.target.value); void persistir(p); }} onBlur={() => void persistir(p)}>
+                          <label>Participação IATF<SelectCampo aria-label={`Participação IATF · ${p.snapshot.brinco ?? p.ordem}`} className={classeInput} disabled={bloqueado} value={r.participanteIatfId ?? ""} onValueChange={(valor) => { atualizar(p, "participanteIatfId", valor); void persistir(p); }} onBlur={() => void persistir(p)}>
                             <option value={r.participanteIatfId} disabled>Participação anterior indisponível · selecione uma opção</option>
                             {temProtocolo && compativeis.length === 0 && <option value="">Criar nova participação</option>}
                             {temProtocolo && compativeis.length === 1 && <option value={compativeis[0].id}>Usar participação pendente compatível · {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"}</option>}
                             {(!temProtocolo || compativeis.length > 1) && <option value="">{temProtocolo ? "Limpar escolha anterior" : "Selecione uma participação"}</option>}
                             {(!temProtocolo || compativeis.length > 1) && compativeis.map(t => <option key={t.id} value={t.id}>{t.protocoloNome ?? "Protocolo"} · v{t.protocoloVersao ?? "?"} · {t.programacaoNome ?? "Programação"} · previsto {t.inicioPrevisto.slice(0, 10)}</option>)}
-                          </select></label>
+                          </SelectCampo></label>
                         </> : <>
                           {temProtocolo && compativeis.length === 0 && <p className="text-sm">A participação e as tarefas serão criadas ao confirmar este início.</p>}
                           {compativeis.length === 1 && <p className="text-sm">Participação pendente: {compativeis[0].programacaoNome ?? compativeis[0].protocoloNome ?? "programação existente"} · previsto {compativeis[0].inicioPrevisto.slice(0, 10)}. Será reutilizada na confirmação.</p>}
@@ -956,32 +1208,31 @@ export function Transcricao({
                     <div><AlertasSanitarios animalId={p.animalId} data={visita.data.slice(0,10)} acao="IATF" propriedadeId={visita.propriedadeId} /><label className="flex gap-2 text-sm my-2"><input type="checkbox" aria-label={`Ciência sanitária · ${p.snapshot.brinco ?? p.ordem}`} checked={r.cienciaSanitaria === true} disabled={bloqueado} onChange={e => atualizar(p, "cienciaSanitaria", e.target.checked)} onBlur={() => void persistir(p)} />Revisei os alertas sanitários informados para este procedimento.</label></div>
                   </>}
                   {p.tarefaSanitariaId && preparar?.id !== p.id && campoDesvioSanitario(p)}
-                  {atividade.tipo !== "INICIAR_IATF" && <div><Button secondary disabled={bloqueado} onClick={() => { setPreparar(p); setDetalhes(prev => [...new Set([...prev, p.id])]); }}>Preencher procedimento</Button>{r.dados && <p className="text-sm mt-2">Procedimento preparado no rascunho</p>}</div>}
+                  {atividade.tipo !== "INICIAR_IATF" && <div><Button secondary disabled={bloqueado} onClick={() => { setPreparar(p); }}>Preencher procedimento</Button>{r.dados && <p className="text-sm mt-2">Procedimento preparado no rascunho</p>}</div>}
                   <label>Anotação original{input(p, "anotacaoOriginal", "Anotação original")}</label>
                   <label>Motivo de perda, correção, descarte ou pendência{input(p, "motivo", "Motivo de perda, correção, descarte ou pendência")}</label>
                   {podeLancar && !p.fatoId && <Button secondary disabled={ocupado} onClick={() => setRevisao([p.id])}>Conferir animal</Button>}
                 </div>
-              </td></tr>}
+              </PainelCadastro>}
             </Fragment>;
           })}</tbody>
         </table>
-        {!itens.length && <p className="p-5 text-sm">Nenhum participante com estes filtros.</p>}
+        {!itens.length && <Empty>Nenhum participante com estes filtros.</Empty>}
       </div>}
       {paginacaoAtendimento()}
       </div>
-      {programarIatf && painel && <section aria-label="Programar animais indicados para IATF" className="p-4 space-y-3">
-        <Button secondary onClick={() => setProgramarIatf(false)}>Fechar programação dos indicados</Button>
-        <p className="text-sm mb-4">A indicação já foi registrada. Escolha o protocolo e o início previsto para programar o grupo.</p>
+      {programarIatf && painel && <PainelCadastro aberto titulo="Programar animais indicados para IATF" onFechar={() => setProgramarIatf(false)}
+        rodape={<Button secondary onClick={() => setProgramarIatf(false)}>Fechar programação dos indicados</Button>}>
         <Iatf animais={indicadosIatf.map(p => ({
           animalId: p.animalId, brinco: p.snapshot.brinco ?? p.animalId, nome: p.snapshot.nome ?? null,
         }))}
           animaisIndicadosInicialmente={indicadosIatf.map(p => p.animalId)} propriedadeId={visita.propriedadeId}
           painel={painel} podeLancar={podeLancar} onMudou={onMudou} />
-      </section>}
-      {carregandoTarefa && <div role="status" className="p-4 space-y-2">
-        <p>Carregando os parâmetros desta tarefa…</p>
-        <Button secondary onClick={() => setPreparar(null)}>Cancelar carregamento</Button>
-      </div>}
+      </PainelCadastro>}
+      {carregandoTarefa && <PainelCadastro aberto camada="sobreDetalhe" titulo="Preparar procedimento" onFechar={() => setPreparar(null)}
+        rodape={<Button secondary onClick={() => setPreparar(null)}>Cancelar carregamento</Button>}>
+        <EsqueletoFormulario label="Carregando os parâmetros desta tarefa" />
+      </PainelCadastro>}
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (atividade.tipo === "APLICACAO_SANITARIA" ||
           tarefaPreparada?.tipo === "APLICACAO") && (
@@ -995,7 +1246,6 @@ export function Transcricao({
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
             onRegistrar={guardarProcedimento}
-            inline
           />
         )}
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
@@ -1017,23 +1267,22 @@ export function Transcricao({
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
             onRegistrar={guardarProcedimento}
-            inline
           />
         )}
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         atividade.tipo === "TAREFA_IATF" &&
         tarefaPreparada &&
         ["MANEJO", "RETIRADA"].includes(tarefaPreparada.tipo) && (
-          <section className="grid gap-3 rounded-lg border border-border p-4">
-            <h3 className="font-semibold">{tarefaPreparada.nome ?? "Registrar manejo"}</h3>
-            <p className="text-sm">A descrição da execução e o motivo do desvio permanecem nas anotações da linha. A confirmação cria somente a execução desta tarefa.</p>
-            <div><Button secondary onClick={() => setPreparar(null)}>Fechar</Button> <Button onClick={() => void guardarProcedimento({ observacao: rascunhos[preparar.id]?.anotacaoOriginal ?? "" }).then(() => setPreparar(null))}>Preparar manejo</Button></div>
-          </section>
+          <PainelCadastro aberto camada="sobreDetalhe" titulo={tarefaPreparada.nome ?? "Registrar manejo"} onFechar={() => setPreparar(null)}
+            rodape={<><Button secondary onClick={() => setPreparar(null)}>Cancelar</Button>
+              <Button onClick={() => void guardarProcedimento({ observacao: rascunhos[preparar.id]?.anotacaoOriginal ?? "" }).then(() => setPreparar(null))}>Preparar manejo</Button></>}>
+            <label className="grid gap-2">Anotação original{input(preparar, "anotacaoOriginal", "Anotação original do manejo")}</label>
+          </PainelCadastro>
         )}
       {preparar && !carregandoTarefa && parametrosDaTarefaCarregados &&
         (["EXAME_SANITARIO", "INICIAR_SANITARIO"].includes(atividade.tipo) || (atividade.tipo === "TAREFA_IATF" && tarefaPreparada?.tipo === "EXAME")) && (
           <FormFatoSanitario
-            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<input className={classeInput} type="date" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={e => atualizarDados(preparar, { retornoEm: e.target.value || undefined })}/></label>}</>}
+            conteudoExtra={<>{preparar.tarefaSanitariaId && campoDesvioSanitario(preparar)}{atividade.contexto?.finalidade === "APTIDAO_REPRODUTIVA" && <label>Retorno de aptidão informado<DatePicker className="mt-1.5" value={String(rascunhos[preparar.id]?.dados?.retornoEm ?? "")} onChange={(valor) => atualizarDados(preparar, { retornoEm: valor || undefined })} /></label>}</>}
             dataInicial={visita.data.slice(0, 10)}
             tipo={atividade.tipo === "EXAME_SANITARIO" || tarefaPreparada?.tipo === "EXAME" ? "exame" : "protocolo"}
             animalInicial={preparar.animalId}
@@ -1043,10 +1292,9 @@ export function Transcricao({
             onFechar={() => setPreparar(null)}
             onSalvo={() => setPreparar(null)}
             onRegistrar={guardarProcedimento}
-            inline
           />
         )}
-      <div className="visita-rodape"><div><strong>{confirmados} procedimentos confirmados</strong><small>{idsComResultado.length} resultado(s) em rascunho neste grupo · {selecionadosPendentes.length ? `${selecionadosPendentes.length} selecionados para conferência` : "nenhum procedimento é executado ao preencher"}</small></div><div className="visita-acoes">{onPlanejar && visita.status !== "ENCERRADA" && <button className="visita-botao" disabled={ocupado} onClick={onPlanejar}>Adicionar grupo</button>}<button className="visita-botao primario" aria-label={selecionadosPendentes.length ? `Revisar selecionados (${selecionadosPendentes.length})` : `Conferir resultados (${idsConferencia.length})`} disabled={!podeLancar || ocupado || !idsConferencia.length} onClick={()=>setRevisao(idsConferencia)}>Conferir {idsConferencia.length || ""} resultados</button></div></div>
+      {!avaliacaoIndividual && <div className="visita-rodape"><div><strong>{confirmados} procedimentos confirmados</strong><small>{idsComResultado.length} resultado(s) em rascunho neste grupo · {selecionadosPendentes.length ? `${selecionadosPendentes.length} selecionados para conferência` : "nenhum procedimento é executado ao preencher"}</small></div><div className="visita-acoes"><button className="visita-botao primario" aria-label={selecionadosPendentes.length ? `Revisar selecionados (${selecionadosPendentes.length})` : `Conferir resultados (${idsConferencia.length})`} disabled={!podeLancar || ocupado || !idsConferencia.length} onClick={()=>setRevisao(idsConferencia)}>Conferir {idsConferencia.length || ""} resultados</button></div></div>}
     </section>
   );
 }

@@ -17,7 +17,8 @@ function distribuir(total: Prisma.Decimal, participacoes: Participacao[], animal
   return parcelas.map((p) => p.div(fator).toFixed(casas));
 }
 
-export function calcularAtribuicao(participacoes: Participacao[], animalDias: number, itens: Item[]) {
+/** `resumida` pula os valores por dia de cada animal, que só as telas de detalhe usam. */
+export function calcularAtribuicao(participacoes: Participacao[], animalDias: number, itens: Item[], { resumida = false }: { resumida?: boolean } = {}) {
   if (animalDias <= 0 || participacoes.some((p) => !Number.isInteger(p.dias) || p.dias <= 0)
     || new Set(participacoes.map((p) => p.animalId)).size !== participacoes.length
     || participacoes.reduce((s, p) => s + p.dias, 0) !== animalDias) throw new Error("Participação incompatível com animal-dias");
@@ -33,9 +34,9 @@ export function calcularAtribuicao(participacoes: Participacao[], animalDias: nu
     coberturaCustoCompleta,
     participacoes: ordenadas.map((p, indice) => ({ ...p, coberturaCustoCompleta,
       custoConhecido: temCustoConhecido ? parcelas.reduce((s, i) => s.plus(i.custos?.[indice] ?? 0), new Prisma.Decimal(0)).toFixed(2) : null,
-      custoConhecidoPorDia: temCustoConhecido ? parcelas.reduce((s, i) => s.plus(i.custos?.[indice] ?? 0), new Prisma.Decimal(0)).div(p.dias).toFixed(4) : null,
+      custoConhecidoPorDia: temCustoConhecido && !resumida ? parcelas.reduce((s, i) => s.plus(i.custos?.[indice] ?? 0), new Prisma.Decimal(0)).div(p.dias).toFixed(4) : null,
       itens: parcelas.map(({ item, quantidades, custos }) => ({ produtoId: item.produtoId, unidade: item.unidade,
-        quantidadeAtribuida: quantidades[indice], quantidadePorDia: new Prisma.Decimal(quantidades[indice]).div(p.dias).toFixed(6), custoConhecido: custos?.[indice] ?? null })),
+        quantidadeAtribuida: quantidades[indice], quantidadePorDia: resumida ? null : new Prisma.Decimal(quantidades[indice]).div(p.dias).toFixed(6), custoConhecido: custos?.[indice] ?? null })),
     })),
   };
 }

@@ -3,9 +3,11 @@ import { Prisma } from "@prisma/client";
 import type { z } from "zod";
 import { prisma } from "../../db.js";
 import { getStorage } from "../../lib/storage.js";
-import { confirmarRascunhoOperacao } from "./operacoes.js";
+import { confirmarRascunhoOperacao, envolveAnimais } from "./operacoes.js";
+import { contarItensAnimais } from "./compra-animais.js";
+import { timeoutTransacaoAnimais, transacaoPecuaria } from "../pecuaria/transacao.js";
 import { auditar, FinanceiroError } from "./regras.js";
-import { operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
+import { MAX_ANIMAIS_POR_OPERACAO, operacaoSchema, type rascunhoOperacaoSchema } from "./schemas.js";
 import { includeOperacaoConfirmada } from "./idempotencia.js";
 
 type SalvarRascunhoInput = z.infer<typeof rascunhoOperacaoSchema> & {
@@ -62,8 +64,29 @@ export async function descartarRascunho(propriedadeId: number, usuarioId: number
   return removido;
 }
 
-export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string) {
-  return transacaoValidada(async (tx) => {
+/** Leitura prévia do rascunho: se a operação toca o Rebanho e quantos animais ela envolve. */
+export type PreviaRascunho = { envolveAnimais: boolean; animais: number };
+
+/** Rascunho cuja operação cadastra, devolve ou corrige animais (também escreve no Rebanho). */
+export async function lerPreviaRascunho(propriedadeId: number, usuarioId: number): Promise<PreviaRascunho> {
+  const previa = await prisma.rascunhoOperacao.findUnique({ where: chave(propriedadeId, usuarioId), select: { dados: true } });
+  const operacao = operacaoSchema.safeParse((previa?.dados as { operacao?: unknown } | undefined)?.operacao);
+  if (!operacao.success) return { envolveAnimais: false, animais: 0 };
+  return { envolveAnimais: envolveAnimais(operacao.data), animais: contarItensAnimais(operacao.data) };
+}
+
+/**
+ * `opcoes.previa`: leitura prévia que quem chama já fez (a rota confere a permissão da Pecuária com ela);
+ * sem ela, o serviço lê. Mesmo com ela, o conteúdo é conferido de novo dentro da transação.
+ */
+export async function confirmarRascunho(propriedadeId: number, usuarioId: number, versao?: number, chaveReenvio?: string, opcoes: { permitirAnimais?: boolean; previa?: PreviaRascunho } = {}) {
+  // Com animais, a confirmação segue a isolação do Rebanho. A leitura prévia escolhe a transação;
+  // dentro dela o conteúdo é conferido de novo, para um rascunho regravado no meio não escapar.
+  // O tempo usa o teto: o rascunho pode ter ganho animais depois da leitura prévia.
+  const previa = opcoes.previa ?? await lerPreviaRascunho(propriedadeId, usuarioId);
+  const comAnimais = previa.envolveAnimais;
+  const executar: typeof transacaoValidada = comAnimais ? (fn) => transacaoPecuaria(fn, { timeout: timeoutTransacaoAnimais(MAX_ANIMAIS_POR_OPERACAO) }) : transacaoValidada;
+  return executar(async (tx) => {
     if (chaveReenvio) {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`fin-rascunho-confirmacao:${chaveReenvio}`}))`;
       const anterior = await tx.auditoriaFinanceira.findFirst({ where: { acao: "CONFIRMACAO_RASCUNHO_IDEMPOTENTE", estadoPosterior: { path: ["chave"], equals: chaveReenvio } } });
@@ -87,6 +110,10 @@ export async function confirmarRascunho(propriedadeId: number, usuarioId: number
     const validacao = operacaoSchema.safeParse(conteudo.operacao);
     if (!validacao.success) {
       throw new FinanceiroError("VALIDACAO", validacao.error.issues[0]?.message ?? "Preencha todos os campos obrigatórios");
+    }
+    if (envolveAnimais(validacao.data)) {
+      if (opcoes.permitirAnimais === false) throw new FinanceiroError("CONFLITO", "Compra e devolução de animais exigem acesso à Pecuária");
+      if (!comAnimais) throw new FinanceiroError("CONFLITO", "O rascunho mudou durante a confirmação. Recarregue a página e confirme de novo.");
     }
     const operacao = await confirmarRascunhoOperacao(tx, { ...validacao.data, ...(chaveReenvio ? { chave: chaveReenvio } : {}), propriedadeId, usuarioId });
     await tx.documentoFinanceiro.updateMany({

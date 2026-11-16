@@ -1,3 +1,5 @@
+import { limparAlertasReprodutivosFixtureTx } from "../../../test/alertas-reprodutivos.fixture.js";
+import { criarAptidaoFixture, limparAptidaoFixture } from "../../../test/aptidao-reprodutiva.fixture.js";
 import * as iatf from "../reproducao/iatf.js";
 import { protocoloSchema, programacaoSchema } from "../reproducao/schemas.js";
 import { obterCabecalhoOperacao } from "./operacao.js";
@@ -21,6 +23,8 @@ const antes = (dias: number) => new Date(Date.parse(hojeFazenda()) - dias * 86_4
 // tabelas globais ou fixtures de outra suíte; o coordenador executa esta suíte.
 afterAll(async () => {
   if (!sitios.length) return;
+  await limparAlertasReprodutivosFixtureTx(prisma, animais);
+  await limparAptidaoFixture(prisma, animais);
   await prisma.requisicaoPecuaria.deleteMany({ where: { propriedadeId: { in: sitios } } });
   await prisma.auditoriaPecuaria.deleteMany({ where: { OR: [{ propriedadeId: { in: sitios } }, { animalId: { in: animais } }, { entidadeId: { in: protocolos } }] } });
   await prisma.vinculoTarefaProtocolo.deleteMany({ where: { tarefa: { execucao: { animalId: { in: animais } } } } });
@@ -52,7 +56,7 @@ async function fixture(quantidade: number, saldo: number) {
   const programacao = await prisma.programacaoProtocolo.create({ data: { protocoloId: protocolo.id, propriedadeId: sitio.id, nome: `Grupo teste ${run}`, inicioReferencia: new Date(antes(2)) } });
   const itens: Array<Extract<ExecucaoProtocoloInput["itens"][number],{tipo:"APLICACAO"}>> = [];
   for (let n = 0; n < quantidade; n++) {
-    const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `AC${run}${n}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio.id }), null); animais.push(animal.id);
+    const animal = await cadastrar(cadastrarAnimalSchema.parse({ brinco: `AC${run}${n}`, sexo: "F", origem: "COMPRADO", aptidao: "LEITE", dataNascimento: "2024-01-01", dataEntrada: "2026-08-01", propriedadeId: sitio.id }), null); animais.push(animal.id); await criarAptidaoFixture(prisma, animal.id, sitio.id, new Date("2026-08-01"));
     const inicio = { chave: crypto.randomUUID(), animalId: animal.id, propriedadeId: sitio.id, protocoloId: protocolo.id, inicio: antes(2) };
     const participacao = await iniciarExecucao(inicio, null);
     expect(participacao.tarefas.map(t => t.etapaId)).toEqual(protocolo.etapas.map(e => e.id));

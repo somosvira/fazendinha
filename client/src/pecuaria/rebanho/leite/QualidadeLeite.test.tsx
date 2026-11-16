@@ -83,6 +83,19 @@ beforeEach(() => {
     return { propriedadeId: 2, itens: [amostra], total: 1, pagina: 1, tamanho: 20 };
   });
 });
+it("pede confirmação ao fechar um formato editado e preserva o nome ao continuar", async () => {
+  render(<QualidadeLeite podeLancar />);
+  fireEvent.click(await screen.findByRole("button", { name: "Criar formato de laudo" }));
+  const editor = screen.getByRole("dialog", { name: "Formato do laudo" });
+  const nome = within(editor).getByRole("textbox", { name: "Nome do formato" }) as HTMLInputElement;
+  fireEvent.change(nome, { target: { value: "Formato em edição" } });
+  fireEvent.click(within(editor).getByRole("button", { name: "Fechar" }));
+
+  const confirmar = await screen.findByRole("dialog", { name: "Descartar alterações?" });
+  fireEvent.click(within(confirmar).getByRole("button", { name: "Continuar editando" }));
+  expect(nome.value).toBe("Formato em edição");
+  expect(registrarLeite).not.toHaveBeenCalled();
+});
 it("mostra zero e falso do laudo sem converter em ausência", async () => {
   render(<QualidadeLeite podeLancar={false} />);
   await tela.findByText("Tanque A");
@@ -185,7 +198,7 @@ it("correção só de datas de coleta pendente omite resultados e mantém motivo
   expect(payload).toMatchObject({ versaoEsperada: 2, motivo: "Conferido no laudo", dataRecebimentoLaudo: "2026-10-16" });
   expect(payload).not.toHaveProperty("resultados");
   expect(payload).not.toHaveProperty("dataResultadoLaboratorial");
-  expect((detalhe.getByLabelText("Data de recebimento do laudo (opcional)") as HTMLInputElement).value).toBe("2026-10-16");
+  expect((detalhe.getByLabelText("Data de recebimento do laudo (opcional)") as HTMLInputElement).value).toBe("16/10/2026");
 });
 it("limpa explicitamente uma data, preserva a outra e mostra datas do histórico", async () => {
   const item = { ...amostra, dataResultadoLaboratorial: "2026-10-15", dataRecebimentoLaudo: "2026-10-16", criadoEm: "2026-10-23T12:00:00Z" };
