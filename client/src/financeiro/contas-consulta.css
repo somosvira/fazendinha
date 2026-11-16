@@ -14,8 +14,8 @@
   flex: 0 0 54px;
   height: 54px;
   border-radius: 12px;
-  background: #e1f0ed;
-  color: #006f68;
+  background: var(--fin-filter-bg);
+  color: var(--primary);
 }
 .contas-saldo-valor, .contas-saldo-escopo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .contas-saldo-valor > span, .contas-saldo-escopo > span { font-size: 13px; color: var(--ink-3); }

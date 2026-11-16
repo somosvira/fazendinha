@@ -37,11 +37,11 @@
   }
   /* O contorno pertence à tabela, mesmo dentro de cards ou áreas de rolagem. */
   :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) {
-    border: 1px solid var(--fin-table-divider, #d8e0e5);
+    border: 1px solid var(--fin-tag-border);
   }
   /* Divisórias pertencem à tabela inteira, não a cada página. */
   :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > :is(thead, tbody, tfoot) > tr > :is(th, td):not(:last-child) {
-    border-inline-end: 1px solid var(--fin-table-divider, #d8e0e5);
+    border-inline-end: 1px solid var(--fin-tag-border);
   }
   :root :is(.app-main, .financeiro-colorido) table:not(.rg-tabela) > thead > tr > :is(th, td):not(:last-child) {
     border-inline-end-color: var(--fin-table-rule);
@@ -71,7 +71,7 @@
     font-variant-numeric: tabular-nums;
   }
   :root :is(.app-main, .financeiro-colorido) .fin-tabela > tbody > tr > td { height: 64px; }
-  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:last-child > :is(td, th) { border-bottom: 1px solid var(--fin-table-divider, #d8e0e5); }
+  :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:last-child > :is(td, th) { border-bottom: 1px solid var(--fin-tag-border); }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr:is(:hover, :focus-within) > :is(td, th) { background: var(--fin-table-hover); }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"] { cursor: pointer; }
   :root :is(.app-main, .financeiro-colorido) :is(.fin-tabela, .consulta-tabela, [data-slot="table"]) > tbody > tr[tabindex="0"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }

@@ -16,7 +16,7 @@
 .busca-global [cmdk-group]{padding:0;color:var(--ink)}
 .busca-global [cmdk-group-heading]{padding:14px 12px 8px;font-size:12px;font-weight:650;color:var(--ink-3)}
 .busca-global-linha[data-slot="command-item"]{gap:14px;min-height:62px;padding:12px;border-radius:8px;color:var(--ink);cursor:pointer}
-.busca-global-linha[data-selected="true"]{background:var(--nav-selected,#edf5f3);color:var(--ink)}
+.busca-global-linha[data-selected="true"]{background:var(--fin-table-hover);color:var(--ink)}
 .busca-global-linha>svg{flex-shrink:0;color:var(--ink-3)}
 .busca-global-texto{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px;line-height:1.4;overflow-wrap:anywhere}
 .busca-global-texto>span{font-size:14px;font-weight:650}
@@ -34,7 +34,7 @@
 .busca-global-familias{display:flex;flex-shrink:0;gap:8px;padding:10px 22px;overflow-x:auto;border-bottom:1px solid var(--rule-soft);scrollbar-width:thin}
 .busca-global-familias button{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;min-height:32px;padding:4px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--bg-card);color:var(--ink-2);font-size:13px;white-space:nowrap}
 .busca-global-familias button span{font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
-.busca-global-familias button[aria-pressed="true"]{border-color:var(--primary);background:var(--nav-selected,#edf5f3);color:var(--primary);font-weight:650}
+.busca-global-familias button[aria-pressed="true"]{border-color:var(--primary);background:var(--fin-table-hover);color:var(--primary);font-weight:650}
 .busca-global-familias button[aria-pressed="true"] span{color:var(--primary)}
 @media(max-width:600px){.busca-global-familias{padding-inline:16px}}
 

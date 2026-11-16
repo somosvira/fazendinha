@@ -18,7 +18,7 @@
 .modelo-emblema { display:grid; place-items:center; flex:0 0 28px; height:28px; color:var(--primary); }
 .modelo-emblema svg { width:20px; height:20px; }
 .modelo-situacao { display:inline-block; padding:3px 7px; border-radius:6px; background:var(--muted); color:var(--muted-foreground); font-size:13px; font-weight:500; line-height:1.4; }
-.modelo-situacao-aviso { background:var(--fin-warning-bg); color:var(--fin-warning,#775930); }
+.modelo-situacao-aviso { background:var(--fin-warning-bg); color:var(--warn); }
 .modelo-identidade .modelo-situacao { grid-column:1/-1; justify-self:start; max-width:100%; }
 .modelo-fatos { display:flex; flex-wrap:wrap; gap:8px 16px; margin:0; }
 .modelo-fatos > div { display:flex; flex-wrap:wrap; gap:5px; align-items:baseline; }

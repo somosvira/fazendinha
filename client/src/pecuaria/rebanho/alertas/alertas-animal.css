@@ -5,7 +5,7 @@
 .alertas-animal-total{color:var(--muted-foreground);margin-bottom:12px;font-size:13px}
 .alertas-animal-lista{display:grid;gap:10px}
 .alertas-animal-linha{display:grid;grid-template-columns:24px minmax(180px,1fr) minmax(100px,auto) 140px auto;align-items:center;gap:16px;padding:16px;border:1px solid var(--border);border-radius:12px}
-.alertas-animal-linha>svg{color:var(--fin-pendente-texto,#775930)}
+.alertas-animal-linha>svg{color:var(--warn)}
 .alertas-animal-linha>div{min-width:0;overflow-wrap:anywhere}
 .alertas-animal-motivo{font-size:13px;color:var(--muted-foreground);margin-top:4px;white-space:normal}
 .alertas-animal-data{display:grid;gap:4px;font-variant-numeric:tabular-nums;font-size:14px}

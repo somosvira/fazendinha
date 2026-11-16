@@ -194,13 +194,13 @@
 }
 .pecuaria-content .pec-protocolo-linha-tempo li {
   flex: 1 0 140px; display: grid; gap: 7px; padding: 16px;
-  border: 1px solid #d5e1d8; border-radius: 12px; background: #fff;
+  border: 1px solid var(--fin-skeleton); border-radius: 12px; background: var(--card);
 }
 .pecuaria-content .pec-protocolo-linha-tempo li > span {
   width: fit-content; padding: 5px 10px; border-radius: 8px;
-  background: #24493b; color: #fff; font-weight: 700;
+  background: var(--primary); color: var(--primary-foreground); font-weight: 700;
 }
-.pecuaria-content .pec-protocolo-linha-tempo small { color: #5a6d63; }
+.pecuaria-content .pec-protocolo-linha-tempo small { color: var(--muted-foreground); }
 
 /* Leitura operacional: resumos integrados e mais espaço para listas e ações. */
 .pecuaria-content .fin-cabecalho-pagina { margin-bottom: 12px; }

@@ -1,5 +1,5 @@
 /* O escopo no root alcança os portais Radix e restaura as outras áreas ao sair. */
-:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content)) {
+:root:has(:is(.financeiro-content, .pecuaria-content, .estoque-content, .cooperativa-content, .login-campo)) {
   /* Paleta da cooperativa (verde-azulado). Os nomes --campo-* são usados pelas
    * regras de caderno de campo (campo.css, abas.css, operacional-aprovado.css). */
   --campo-papel: #f7f8fa;
@@ -16,6 +16,20 @@
   --campo-atraso-claro: #fbefec;
   --campo-atencao: #775930;
   --campo-atencao-claro: #f6f0e5;
+  /* Papéis que antes viviam como cores soltas nos módulos. */
+  --campo-atencao-linha: #e6d3ad;   /* contorno de avisos */
+  --campo-atencao-forte: #a66c16;   /* traço/realce de aviso (não é texto) */
+  --campo-atraso-linha: #ecc8c4;    /* contorno de erro/vencido */
+  --campo-linha-media: #bdc8c0;     /* divisória mais marcada que --campo-linha */
+  --campo-info: #245e87;            /* texto informativo */
+  --campo-info-claro: #e4efff;      /* fundo informativo */
+  /* Séries de gráficos (categorias sem significado de estado). */
+  --serie-1: #006f68;
+  --serie-2: #78a98c;
+  --serie-3: #c39850;
+  --serie-4: #80634e;
+  --serie-5: #e4c58f;
+  --serie-6: #9b8066;
 
   --radius: 6px;
   --radius-btn: 6px;

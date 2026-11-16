@@ -34,16 +34,16 @@
 .estoque-resumo-produtos svg { color: var(--primary); flex-shrink: 0; }
 .estoque-resumo-valor { padding-left: 24px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; font-size: 14px; }
 .estoque-resumo-valor > span { display: flex; align-items: center; gap: 6px; font-size:14px; color: var(--ink-3); }
-.estoque-resumo-alerta { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid #eed7a8; border-radius: 7px; background: #fff6e6; color: #805114; font-size:14px; cursor: pointer; }
-.estoque-resumo-alerta:hover { background: #fbe8c5; }
+.estoque-resumo-alerta { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--campo-atencao-linha); border-radius: 7px; background: var(--fin-warning-bg); color: var(--warn); font-size:14px; cursor: pointer; }
+.estoque-resumo-alerta:hover { background: var(--fin-warning-bg); }
 .estoque-resumo-alerta[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
-.estoque-resumo-negativo { color: var(--destructive); background: #fff0ef; border-color: #edc6c3; }
+.estoque-resumo-negativo { color: var(--destructive); background: var(--fin-danger-bg); border-color: var(--campo-atraso-linha); }
 .estoque-consulta-abas > [role="tablist"] { max-width: 100%; overflow-x: auto; }
 .estoque-consulta-abas { min-width: 0; gap: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"] { min-width: 0; }
 .estoque-consulta-abas > [data-slot="tabs-content"][hidden] { display: none; }
 .estoque-consulta-abas > [data-slot="tabs-content"] > section:first-child { margin-top: 0; }
-.estoque-content .estoque-reposicao { display: flex; justify-content: flex-end; align-items: center; gap: 4px; color: #805114; margin-top: 4px; }
+.estoque-content .estoque-reposicao { display: flex; justify-content: flex-end; align-items: center; gap: 4px; color: var(--warn); margin-top: 4px; }
 .estoque-content .estoque-acao-produto { border: 1px solid var(--border); background: var(--card); }
 .estoque-menu-acoes { min-width: 210px; border-radius: 10px; }
 .estoque-menu-acoes [role="menuitem"] { min-height: 40px; padding: 10px 12px; border-radius: 6px; }

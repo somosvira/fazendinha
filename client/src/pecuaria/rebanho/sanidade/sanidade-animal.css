@@ -61,7 +61,7 @@
 .sanidade-aplicacoes-vazio > svg { width:32px; height:32px; color:var(--primary); }
 .sanidade-animal .sanidade-acao-anular { color:var(--destructive); }
 @media(max-width:600px) { .carencias-resumo-aplicacoes { grid-template-columns:1fr; } .carencia-destino-integrada { padding:16px; } .carencia-destino-integrada + .carencia-destino-integrada { border-left:0; border-top:1px solid var(--border); } }
-:root [data-design-operacional] .sanidade-animal .fin-tabela thead th { background:var(--table-header,#e2e7ea); color:var(--table-heading,#34434b); }
+:root [data-design-operacional] .sanidade-animal .fin-tabela thead th { background:var(--fin-table-header); color:var(--fin-table-heading); }
 .sanidade-animal .sanidade-acoes-linha { flex-wrap:wrap; gap:6px; }
 .sanidade-animal .sanidade-acao-anular { background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
 
