@@ -12,7 +12,7 @@ import { horarioRealizado, litros, numero, saldoUnidadeColostro, textoFisico } f
 import { EstadoConsulta, ModalBezerreiro, PaginacaoBezerreiro, RecuperacaoConflito, useRecuperacaoConflito, useComando, useConsultaBezerreiro } from './ui';
 import type { Configuracao, ContextoBezerreiro, OrigemColostro, Pagina, RetiradaColostro, UnidadeColostro, FornecimentoColostro } from './types';
 import { DetalheColostro, HistoricoColostro, parametrosDetalheColostro, type RecursoColostro } from './DetalheColostro';
-import { SelecaoColostro, usePartosColostro, useOrigemConferida, ConferirOrigemColostro, aguardaConferencia } from './SelecaoColostro';
+import { SelecaoColostro, SeletorCriaColostro, usePartosColostro, useOrigemConferida, ConferirOrigemColostro, aguardaConferencia } from './SelecaoColostro';
 type ProducaoRetirada = {tipo:'GERAL'|'INDIVIDUAL';medicaoGeralId:string|null;entradaId:string|null;versaoEsperada:number;quantidadeLitros:string;nomeOrdenha:string;primeiraRetirada:boolean|null;tanqueNome:string|null;recipiente:string|null;estoqueConfirmado:boolean};
 type AcaoOrigem = {tipo:'brix'|'destino'|'enriquecer';origem:OrigemColostro;unidade?:UnidadeColostro};
 export function ColostragemBezerreiro({sitio,podeLancar,revisao,aoSalvar,config,params,mudar}: {sitio:number;podeLancar:boolean;revisao:number;aoSalvar:()=>void;config:Configuracao;params:URLSearchParams;mudar:(v:Record<string,string>)=>void}) {
@@ -79,7 +79,9 @@ function FormDestinacao({sitio,origem:origemInicial,unidade,contexto:contextoIni
   const existente=modo==='existente',atual=candidatos.dados?.selecionado,fornecimentoValido=!!fornecimento&&fornecimento.criaId===criaId&&fornecimento.data===data&&atual?.id===fornecimento.id&&atual.quantidadeLitros===fornecimento.quantidadeLitros&&atual.ocorridoEm===fornecimento.ocorridoEm&&atual.horarioEstimado===fornecimento.horarioEstimado;
   const quantidade=existente?Number(fornecimento?.quantidadeLitros??0):Number(volume),total=quantidade+unidades.length*2;
   const excecao=origem.brix.situacao!=='ADEQUADO'&&(!origem.brix.data||origem.brix.data.slice(0,10)<=data);
-  return <ModalBezerreiro titulo={unidade?`Fornecer unidade ${unidade.codigo}`:'Destinar colostro para cria / banco'} form="destinar-colostro" textoSalvar="Confirmar destinação" aoFechar={aoFechar} {...comando}>
+  const selecionarCria = (id: string) => { setCria(id); setFornecimento(null); setPagina(1); };
+  const erroCria = criaId && selecao.dados && !selecao.valido ? 'Escolha uma cria disponível neste sítio e data.' : undefined;
+  return <ModalBezerreiro titulo={unidade?'Fornecer colostro à cria':'Destinar colostro para cria / banco'} form="destinar-colostro" textoSalvar="Confirmar destinação" aoFechar={aoFechar} {...comando}>
     <form id="destinar-colostro" onSubmit={e=>{
       e.preventDefault();if(aguardaConferencia(comando.conflito,recuperacao))return;
       if(origem.status!=='CONFIRMADO'){comando.setErro('Esta origem foi estornada. Cancele e selecione uma origem confirmada.');return;}
@@ -91,14 +93,28 @@ function FormDestinacao({sitio,origem:origemInicial,unidade,contexto:contextoIni
       void comando.salvar(`/colostro/origens/${origem.id}/destinacoes`,{versaoEsperada:origem.versao,data,ocorridoEm:existente?fornecimento?.ocorridoEm:horarioRealizado(data,hora),horarioEstimado:existente?fornecimento?.horarioEstimado:false,responsavel,crias:quantidade>0?[{criaId,quantidadeLitros:quantidade,tipo:unidade?'DESCONGELADO':'FRESCO',...(existente?{fornecimentoColostroId:fornecimento?.id}:{})}]:[],unidades:unidades.map(codigo=>({codigo})),...(unidade?{unidadeId:unidade.id}:{}),...(motivo.trim()&&quantidade>0?{excecaoBrix:{motivo:motivo.trim(),responsavel}}:{})});
     }}>
       <ConferirOrigemColostro estado={recuperacao} conflito={comando.conflito} aoConferir={selecao.tentar}/>
-      <fieldset disabled={comando.ocupado}><p className="bez-aviso">{litros(disponivel)} disponíveis · {origem.tipo==='ENRIQUECIDO'?'Enriquecido':'Não enriquecido'} · Brix {origem.brix.resultado==null?'não aferido':`${numero(origem.brix.resultado)}%`}</p>
-      <p className="bez-ajuda">Avaliação: {origem.brix.data?formatarDataBR(origem.brix.data):'não aferida'} · Limite registrado: {origem.brix.limiteInclusivo==null?'não informado':`≥ ${numero(origem.brix.limiteInclusivo)}%`}. A avaliação aplicável é conferida pelo servidor na data do fornecimento.</p>
-      <div className="bez-campos"><label>Data<DatePicker required value={data} onChange={setData}/></label><SelecaoColostro consulta={selecao} valor={criaId} alvo="CRIA" aoSelecionar={v=>{setCria(v);setPagina(1);}}/>
+      <fieldset disabled={comando.ocupado}>
+      <dl className="bez-destinacao-resumo">
+        {unidade && <div className="bez-destinacao-unidade"><dt>Unidade</dt><dd>{unidade.codigo}</dd></div>}
+        <div><dt>Disponível</dt><dd>{litros(disponivel)}</dd></div>
+        <div><dt>Tipo</dt><dd>{origem.tipo === 'ENRIQUECIDO' ? 'Enriquecido' : 'Não enriquecido'}</dd></div>
+        <div><dt>Brix</dt><dd className={excecao ? 'bez-destinacao-brix-atencao' : undefined}>{origem.brix.resultado == null ? 'Não aferido' : `${numero(origem.brix.resultado)}%`}
+          {origem.brix.limiteInclusivo != null && <small>Limite registrado: ≥ {numero(origem.brix.limiteInclusivo)}%</small>}
+        </dd></div>
+      </dl>
+      <div className="bez-campos"><label>Data<DatePicker required value={data} onChange={setData}/></label>
+      {unidade
+        ? <SeletorCriaColostro sitio={sitio} data={data} valor={criaId} aoSelecionar={selecionarCria} erro={erroCria} />
+        : <SelecaoColostro consulta={selecao} valor={criaId} alvo="CRIA" aoSelecionar={selecionarCria} />}
+      {unidade && selecao.erro && <div role="alert" className="bez-erro">{selecao.erro} <Button type="button" variant="outline" onClick={selecao.tentar}>Tentar novamente</Button></div>}
       <label>Fornecimento<SelectCampo value={modo} onValueChange={setModo}><option value="novo">Registrar novo fornecimento</option><option value="existente">Vincular fornecimento existente</option></SelectCampo></label>
-      {existente?<label>Registro existente<SelectCampo required value={fornecimento?.id??''} onValueChange={v=>setFornecimento((candidatos.dados?.selecionado?.id===v?candidatos.dados.selecionado:candidatos.dados?.itens.find(f=>f.id===v))??null)}><option value="">Selecione o registro da cria</option>{fornecimento&&!candidatos.dados?.selecionado&&!candidatos.dados?.itens.some(f=>f.id===fornecimento.id)&&<option value={fornecimento.id}>Registro {fornecimento.id} · revalide a seleção</option>}{[...(candidatos.dados?.selecionado?[candidatos.dados.selecionado]:[]),...(candidatos.dados?.itens??[]).filter(f=>f.id!==candidatos.dados?.selecionado?.id)].map(f=><option key={f.id} value={f.id}>{formatarDataBR(f.data)} · {f.ocorridoEm?new Date(f.ocorridoEm).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})+(f.horarioEstimado?' (estimado)':''):'horário não informado'} · {litros(f.quantidadeLitros)} · Válido, sem origem</option>)}</SelectCampo>{candidatos.erro&&<span role="alert">{candidatos.erro}<Button type="button" onClick={candidatos.tentar}>Tentar novamente</Button></span>}{candidatos.dados?.total===0&&<span className="bez-ajuda">Nenhum fornecimento compatível sem origem ativa nesta data.</span>}{candidatos.dados&&<PaginacaoBezerreiro pagina={pagina} total={candidatos.dados.total} tamanho={20} mudar={setPagina}/>}<span className="bez-ajuda">O vínculo conserva data, volume e horário do fato original, sem registrar outro fornecimento.</span></label>:<><label>Horário (opcional)<input type="time" value={hora} onChange={e=>setHora(e.target.value)}/></label><label>Fornecido à cria (L)<input type="number" max={disponivel} min="0" step="0.001" value={volume} onChange={e=>setVolume(e.target.value)}/></label></>}
+      {existente?<label>Registro existente<SelectCampo required value={fornecimento?.id??''} onValueChange={v=>setFornecimento((candidatos.dados?.selecionado?.id===v?candidatos.dados.selecionado:candidatos.dados?.itens.find(f=>f.id===v))??null)}><option value="">Selecione o registro da cria</option>{fornecimento&&!candidatos.dados?.selecionado&&!candidatos.dados?.itens.some(f=>f.id===fornecimento.id)&&<option value={fornecimento.id}>Registro {fornecimento.id} · revalide a seleção</option>}{[...(candidatos.dados?.selecionado?[candidatos.dados.selecionado]:[]),...(candidatos.dados?.itens??[]).filter(f=>f.id!==candidatos.dados?.selecionado?.id)].map(f=><option key={f.id} value={f.id}>{formatarDataBR(f.data)} · {f.ocorridoEm?new Date(f.ocorridoEm).toLocaleTimeString('pt-BR',{timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit'})+(f.horarioEstimado?' (estimado)':''):'horário não informado'} · {litros(f.quantidadeLitros)} · Válido, sem origem</option>)}</SelectCampo>{candidatos.erro&&<span role="alert">{candidatos.erro}<Button type="button" onClick={candidatos.tentar}>Tentar novamente</Button></span>}{candidatos.dados?.total===0&&<span className="bez-ajuda">Nenhum fornecimento compatível sem origem ativa nesta data.</span>}{candidatos.dados&&<PaginacaoBezerreiro pagina={pagina} total={candidatos.dados.total} tamanho={20} mudar={setPagina}/>}</label>:<><label>Horário (opcional)<input type="time" value={hora} onChange={e=>setHora(e.target.value)}/></label><label>Fornecido à cria (L)<input type="number" max={disponivel} min="0" step="0.001" value={volume} onChange={e=>setVolume(e.target.value)}/></label></>}
       {!unidade&&<label>Códigos das unidades de 2 L (um por linha)<textarea value={codigos} onChange={e=>setCodigos(e.target.value)}/></label>}<label>Responsável<input required value={responsavel} onChange={e=>setResponsavel(e.target.value)}/></label>
-      <label>Motivo da exceção Brix<textarea required={excecao&&quantidade>0} minLength={5} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></div>
-      <label className="bez-check"><input type="checkbox" required/>Conferi a destinação e os volumes.</label><p className="bez-ajuda">Total: {litros(total)}. O servidor confere novamente cria, data, volume, horário e ausência de vínculo ativo antes de confirmar.</p></fieldset>
+      <label className="col-span-full">Motivo da exceção Brix<textarea required={excecao&&quantidade>0} minLength={5} value={motivo} onChange={e=>setMotivo(e.target.value)}/></label></div>
+      <div className="bez-destinacao-conferencia">
+        <label className="bez-check"><input type="checkbox" required/>Conferi a destinação e os volumes.</label>
+        {!unidade && <span><strong>{litros(total)}</strong> no total</span>}
+      </div></fieldset>
     </form></ModalBezerreiro>;
 }
 function FormEnriquecimento({sitio,origem:origemInicial,unidade,contexto:contextoInicial,aoFechar,aoSalvar}: {sitio:number;origem:OrigemColostro;unidade?:UnidadeColostro;contexto:ContextoBezerreiro;aoFechar:()=>void;aoSalvar:()=>void}) {

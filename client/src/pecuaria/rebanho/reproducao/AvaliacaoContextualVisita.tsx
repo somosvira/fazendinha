@@ -43,6 +43,7 @@ export function AvaliacaoContextualVisita({
   tiposExame,
   onChange,
   disabled,
+  ocultarSemCatalogo,
 }: {
   participante: ParticipanteVisita;
   propriedadeId: number;
@@ -50,6 +51,7 @@ export function AvaliacaoContextualVisita({
   tiposExame: TipoExame[];
   onChange: (patch: Partial<RascunhoVisita>) => void;
   disabled: boolean;
+  ocultarSemCatalogo?: boolean;
 }) {
   const [necessidades, setNecessidades] = useState<DemandaAcompanhamento[]>([]);
   const [erro, setErro] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export function AvaliacaoContextualVisita({
     });
   }
   return (
-    <div className="grid gap-3 lg:col-span-2">
+    <div className={`grid gap-3 lg:col-span-2 ${ocultarSemCatalogo ? "sm:col-span-2 empty:hidden" : ""}`}>
       <AvaliacaoContextualCampos
         propriedadeId={propriedadeId}
         contexto={contextoAvaliacao({
@@ -137,6 +139,7 @@ export function AvaliacaoContextualVisita({
           });
         }}
         disabled={disabled}
+        ocultarSemCatalogo={ocultarSemCatalogo}
         identificacao={contexto.brinco ?? String(participante.ordem)}
       />
       {dados.avaliacaoContextual && erro && (

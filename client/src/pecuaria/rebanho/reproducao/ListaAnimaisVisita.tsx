@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { BuscaLista } from "@/components/BuscaLista";
 import { Paginacao } from "../ui";
 
 type AnimalVisita = {
@@ -15,6 +16,7 @@ export type ListaAnimaisVisitaProps = {
   onBusca: (valor: string) => void;
   onAbrir: (participanteId: string) => void;
   selecionadoId?: string | null;
+  abreModal?: boolean;
   paginacao?: {pagina:number;total:number;onPagina:(pagina:number)=>void};
 };
 
@@ -24,7 +26,7 @@ const rotulos: Record<string, string> = {
 const normalizar = (valor: string) => valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR");
 
 /** Escolhe o animal; confirmação e salvamento pertencem ao atendimento individual. */
-export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, selecionadoId, paginacao }: ListaAnimaisVisitaProps) {
+export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, selecionadoId, paginacao, abreModal }: ListaAnimaisVisitaProps) {
   const id = useId();
   const [pagina, setPagina] = useState(1);
   useEffect(() => setPagina(1), [busca]);
@@ -45,9 +47,9 @@ export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, seleciona
         </div>
       <p className="text-sm text-ink-3" aria-live="polite">{paginacao ? `${total} participantes nos filtros` : `${visiveis.length} de ${grupos.size} animais`}</p>
     </div>
-    <label htmlFor={`${id}-busca`} className="mt-4 block text-sm font-medium">Buscar por brinco ou nome</label>
-    <input id={`${id}-busca`} type="search" value={busca} onChange={evento => onBusca(evento.target.value)}
-      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary" />
+    <div className="mt-4">
+      <BuscaLista rotulo="Buscar por brinco ou nome" placeholder="Buscar por brinco ou nome" valor={busca} onChange={onBusca} />
+    </div>
     {!visiveis.length && <p className="mt-5 text-sm text-ink-3">{grupos.size ? "Nenhum animal corresponde à busca." : "Nenhum animal nesta seleção."}</p>}
     <ul className="mt-4 space-y-2" aria-label="Animais para atendimento individual">
       {(paginacao ? visiveis : visiveis.slice((paginaAtual - 1) * 10, paginaAtual * 10)).map(grupo => {
@@ -56,7 +58,7 @@ export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, seleciona
         const situacoes = [...new Set(grupo.map(item => rotulos[item.status] ?? "Situação não identificada"))];
         const temRascunho = grupo.some(item => item.temRascunho);
         return <li key={animal.animalId}>
-          <button type="button" onClick={() => onAbrir(animal.id)} aria-current={selecionado ? "true" : undefined}
+          <button type="button" onClick={() => onAbrir(animal.id)} aria-haspopup={abreModal ? "dialog" : undefined} aria-current={selecionado ? "true" : undefined}
             aria-label={`Abrir atendimento de ${animal.brinco}${animal.nome ? ` · ${animal.nome}` : ""}`}
             className={`flex w-full items-center justify-between gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${selecionado ? "border-primary bg-surface-2" : "border-border"}`}>
             <span className="min-w-0"><span className="block font-semibold break-words">{animal.brinco}{animal.nome && <span className="font-normal"> · {animal.nome}</span>}</span>
@@ -64,7 +66,7 @@ export function ListaAnimaisVisita({ animais, busca, onBusca, onAbrir, seleciona
                 <span>{situacoes.join(" · ")}</span>{temRascunho && <span className="font-semibold">Rascunho salvo</span>}
                 {grupo.length > 1 && <span>{grupo.length} registros na visita</span>}
               </span></span>
-            <span className="shrink-0 text-sm font-medium text-primary" aria-hidden="true">Abrir →</span>
+            <span className="shrink-0 text-sm font-medium text-primary" aria-hidden="true">{abreModal ? "Atender" : "Abrir"} →</span>
           </button>
         </li>;
       })}

@@ -11,7 +11,7 @@ import {
 
 const rotulos = { ...camposNumericos, ...camposValores };
 
-function ResumoCondicoes({ condicoes, opcoes }: { condicoes: CondicaoSelecao[]; opcoes: OpcoesSelecao }) {
+export function ResumoCondicoes({ condicoes, opcoes }: { condicoes: CondicaoSelecao[]; opcoes: OpcoesSelecao }) {
   const escolhas = { ...enumerados, LOTE: opcoes.lotes, CATEGORIA: opcoes.categorias, RACA: opcoes.racas, PROTOCOLO: opcoes.protocolos };
   return <dl className="divide-y divide-border rounded-lg border border-border">
     {condicoes.map((condicao, indice) => {

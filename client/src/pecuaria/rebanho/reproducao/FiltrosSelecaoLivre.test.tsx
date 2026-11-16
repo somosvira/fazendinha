@@ -12,9 +12,12 @@ describe("atalho de aptidão nos filtros livres", () => {
     const onMudar = vi.fn();
     const criterios: CriteriosSelecao = { versao: 2, todas: [], qualquer: [], ordenacao: [{ campo: "BRINCO", direcao: "ASC" }], politicaDesconhecidos: "EXCLUIR" };
     render(<FiltrosSelecaoLivre criterios={criterios} onMudar={onMudar} opcoes={{ lotes: [], categorias: [], racas: [], protocolos: [], tiposExame: [] }} data="2026-10-15" sitio="Fazenda" />);
-    fireEvent.click(screen.getByText("Mais características · idade, raça, peso, RP e identificação"));
+    fireEvent.click(screen.getByRole("button", { name: "Mais características" }));
+    expect(screen.getByRole("dialog", { name: "Mais características" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Finalidade" }));
     fireEvent.click(screen.getByRole("option", { name: "Reprodução" }));
+    expect(onMudar).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar filtros" }));
     expect(onMudar).toHaveBeenLastCalledWith(expect.objectContaining({ todas: [{ tipo: "VALORES", campo: "APTIDAO", valores: ["REPRODUCAO"] }] }));
   });
 
@@ -25,7 +28,8 @@ describe("atalho de aptidão nos filtros livres", () => {
     const { rerender } = render(<FiltrosSelecaoLivre criterios={criterios} {...props}/>);
 
     expect(screen.getByText("Não gestantes após aptidão reprodutiva (aptas ou vazias)")).toBeTruthy();
-    fireEvent.click(screen.getByRole("checkbox", { name: "Não gestantes após aptidão reprodutiva (aptas ou vazias)" }));
+    expect(screen.queryByRole("spinbutton", { name: "Dias: Não gestantes após aptidão reprodutiva (aptas ou vazias)" })).toBeNull();
+    fireEvent.click(screen.getByText("Não gestantes após aptidão reprodutiva (aptas ou vazias)"));
     const ativado = onMudar.mock.calls.at(-1)?.[0] as CriteriosSelecao;
     expect(ativado.qualquer.find(v => v.id === "aptidao")?.todas).toEqual([
       { tipo: "VALORES", campo: "SITUACAO", valores: ["APTA", "VAZIA"] },

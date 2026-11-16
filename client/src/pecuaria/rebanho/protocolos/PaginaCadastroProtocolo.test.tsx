@@ -30,12 +30,13 @@ beforeEach(() => {
 afterEach(cleanup);
 async function iniciarZero(tipo: "SANITARIO" | "REPRODUTIVO" = "SANITARIO") {
   render(<PaginaCadastroProtocolo tipo={tipo} podeLancar />);
-  fireEvent.click(screen.getByRole("radio", { name: /Começar do zero/ }));
-  fireEvent.click(screen.getByRole("button", { name: "Definir novo protocolo" }));
+  fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ }));
 }
 it("herda o domínio da rota e lista bases em páginas de dez sem rascunho ou área", async () => {
   vi.mocked(listarCadastrosProtocolos).mockImplementation(async (_tipo, atual) => pagina(Array.from({ length: atual === 1 ? 10 : 1 }, (_, i) => ({ ...meta, id: `p-${atual}-${i}`, nome: `Modelo ${atual}-${i}` })), 11, atual));
   render(<PaginaCadastroProtocolo tipo="SANITARIO" podeLancar />);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /Usar protocolo como base/ }));
   await screen.findByText("Modelo 1-0");
   const bases = screen.getByRole("region", { name: "Escolha de protocolo-base, com rolagem horizontal" });
   expect(bases.tabIndex).toBe(0);

@@ -21,7 +21,7 @@ vi.mock("../../../estoque/api",()=>({listarProdutos:vi.fn().mockResolvedValue([]
 vi.mock("../api",()=>({listarMaterialGenetico:vi.fn().mockResolvedValue([])}));
 afterEach(() => { cleanup(); setPropriedadeAtiva(null); window.history.replaceState(null, "", "/"); });
 function paginaNova(query = "") { setPropriedadeAtiva(7); window.history.replaceState(null, "", "/configuracoes/pecuaria/reproducao/protocolos/novo" + query); render(<PaginaCadastroProtocolo tipo="REPRODUTIVO" podeLancar />); }
-function comecarZero() { paginaNova(); fireEvent.click(screen.getByRole("radio", { name: /Começar do zero/ })); fireEvent.click(screen.getByRole("button", { name: "Definir novo protocolo" })); }
+function comecarZero() { paginaNova(); fireEvent.click(screen.getByRole("button", { name: /Começar do zero/ })); }
 it.each(["IA", "TE"] as const)("cria modelo %s com procedimentos no mesmo calendário e material definido no atendimento", async tentativaTipo => {
   vi.clearAllMocks();
   vi.mocked(reqV4).mockImplementation(async path => path.startsWith("/reproducao/biblioteca") ? [] : {});

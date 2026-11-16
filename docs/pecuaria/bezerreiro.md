@@ -66,6 +66,8 @@ O Brix do colostro usa formato real versionado do núcleo de Qualidade, com camp
 
 Destinação permite consumo direto da cria, congelamento ou ambos na mesma transação. O formulário permite escolher novo fornecimento ou vincular registro existente compatível da cria. A seleção conserva data/hora conhecida e volume do fato, com busca paginada e resolução do ID selecionado fora da página. O servidor revalida status, sítio na data, cronologia e ausência de origem ativa; não duplica litros já consumidos. A cria destinatária pode ser de outra matriz. O peso e a política usados para referência de volume permanecem no histórico; 10% é referência configurável, não quantidade automaticamente confirmada.
 
+Ao fornecer colostro de uma unidade, o formulário mostra o código, o saldo, o tipo e o Brix em um resumo. O seletor pesquisável da cria consulta o sítio e a data do fornecimento.
+
 `LoteColostro` vincula parto/matriz e produção. `OrigemColostro` identifica lote bruto ou resultado de enriquecimento, exclusivamente. As alocações conservam quantidade e vínculos com os fornecimentos reais. A destinação exige período financeiro aberto antes de qualquer escrita, inclusive origem enriquecida, unidade retirada e congelamento. Banco e destinação operam sobre o mesmo saldo físico compartilhado; entradas geridas pelo colostro não podem ser consumidas por uma saída genérica que ignore suas reservas.
 
 ## Banco e enriquecimento

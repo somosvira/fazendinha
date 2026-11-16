@@ -1,9 +1,10 @@
 import { CabecalhoRotinaLeite } from "./CabecalhoRotinaLeite";
-import { FileText, Plus } from "lucide-react";
+import { Ellipsis, FileText, Plus } from "lucide-react";
 import { CartaoVendaVisual } from "./VisuaisConsultaLeite";
 import { AjudaCampo } from "@/components/Dica";
 import { ListaConsultaLeite } from "./ListaConsultaLeite";
 import { useEffect, useRef, useState } from "react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Paginacao, Pill } from "../../../financeiro/financeiro-ui";
 import { obterConfiguracoesFinanceiras, type ConfiguracoesFinanceiras } from "../../../financeiro/novo-api";
@@ -14,7 +15,7 @@ import { HistoricoVendasLeite } from "./HistoricoVendasLeite";
 import { NovaVendaAvulsaLeite } from "./NovaVendaAvulsaLeite";
 import { consultarLeite } from "./operacoes-api";
 import { formatarLitros } from "./modelo";
-import { BarraComercialLeite, DialogComercialLeite, lerFiltrosComerciais, preservarFiltrosComerciais } from "./ComercialConsultaLeite";
+import { BarraComercialLeite, DialogComercialLeite, filtrosComerciaisIniciais, lerFiltrosComerciais, preservarFiltrosComerciais } from "./ComercialConsultaLeite";
 import { Empty } from "@/financeiro/financeiro-ui";
 import { EsqueletoFormulario } from "../../../components/Esqueleto";
 interface VendaUnificada { id: string; modalidade: "PERIODO" | "AVULSA"; comercialId: string | null; operacaoId: string | null; referencia: string; inicio: string; fim: string; data: string; parceiroId: string | null; parceiroNome: string | null; quantidadeLitros: string; valorTotal: string | null; situacao: string; versaoComercial: number | null }
@@ -29,6 +30,8 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   const [selecionada, setSelecionada] = useState<string | null>(() => new URLSearchParams(location.search).get("operacaoLeiteId"));
   const [nova, setNova] = useState(() => new URLSearchParams(location.search).get("novaOperacaoLeite") === "1"), [avulsa, setAvulsa] = useState(false), [historico, setHistorico] = useState<VendaUnificada | null>(null), [documentos, setDocumentos] = useState(() => { const q = new URLSearchParams(location.search); return q.get("leiteSecao") === "comercial" || q.get("vendasVisao") === "documentos"; }), [aviso, setAviso] = useState("");
   const { de, ate, comprador, busca, situacao, modalidade } = filtros;
+  const filtrosIniciais = filtrosComerciaisIniciais();
+  const consultaAlterada = !!(comprador || busca || situacao || modalidade || de !== filtrosIniciais.de || ate !== filtrosIniciais.ate);
   const ultimoSitio = useRef(sitio);
   useEffect(() => {
     const sync = () => { const q = new URLSearchParams(location.search); setFiltros(lerFiltrosComerciais("vendas")); setSelecionada(q.get("operacaoLeiteId")); setNova(q.get("novaOperacaoLeite") === "1"); setDocumentos(q.get("leiteSecao") === "comercial" || q.get("vendasVisao") === "documentos"); setPagina(1); };
@@ -53,11 +56,27 @@ export function VendasLeite({ podeLancar, podeFinanceiro }: { podeLancar: boolea
   function fecharDetalhe() { setSelecionada(null); setNova(false); const url = new URL(location.href); url.searchParams.delete("operacaoLeiteId"); url.searchParams.delete("novaOperacaoLeite"); history.replaceState(null, "", url); }
   function abrir(v: VendaUnificada) { if (v.comercialId) { setSelecionada(v.comercialId); const url = new URL(location.href); url.searchParams.set("operacaoLeiteId", v.comercialId); history.replaceState(null,"",url); } else setHistorico(v); }
   return <section className="leite-operacoes leite-comercial-consulta" aria-label="Vendas do leite">
-    <CabecalhoRotinaLeite titulo="Vendas de leite" rotuloAjuda="Sobre vendas de leite" acao={<><Button variant="outline" onClick={() => setDocumentos(true)}><FileText size={17} aria-hidden />Entregas e demonstrativos</Button>{podeLancar && <Button variant="outline" onClick={() => setNova(true)}><Plus size={17} aria-hidden />Nova operação por período</Button>}{podeLancar && podeFinanceiro && <Button onClick={() => setAvulsa(true)}><Plus size={17} aria-hidden />Venda avulsa</Button>}</>} />
+    <CabecalhoRotinaLeite titulo="Vendas de leite" acao={<div className="leite-vendas-acoes">
+      {podeLancar && (podeFinanceiro
+        ? <Button onClick={() => setAvulsa(true)}><Plus aria-hidden />Venda avulsa</Button>
+        : <Button onClick={() => setNova(true)}><Plus aria-hidden />Nova operação por período</Button>)}
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="icon" className="size-11" aria-label="Mais ações de vendas" title="Mais ações de vendas"><Ellipsis aria-hidden /></Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {podeLancar && podeFinanceiro && <DropdownMenuItem onSelect={() => setNova(true)}><Plus aria-hidden />Nova operação por período</DropdownMenuItem>}
+          <DropdownMenuItem onSelect={() => setDocumentos(true)}><FileText aria-hidden />Entregas e demonstrativos</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>} />
     <BarraComercialLeite vendas filtros={filtros} parceiros={cadastros.parceiros} onChange={f => { setFiltros(f); setPagina(1); }} />
     {aviso && <p role="status">{aviso}</p>}
-    {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : <>
-      {!dados.itens.length && <Empty>Nenhuma venda encontrada neste recorte.</Empty>}
+    {erro ? <p role="alert">{erro} <Button variant="outline" onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button></p> : !dados ? <p role="status">Consultando vendas…</p> : dados.total === 0 ? (
+      <Empty acao={consultaAlterada ? <Button variant="outline" onClick={() => { setFiltros(filtrosIniciais); setPagina(1); }}>Limpar filtros</Button> : undefined}>
+        Nenhuma venda encontrada.
+      </Empty>
+    ) : <>
       <dl className="leite-consulta-resumo"><div><dt>Operações no recorte</dt><dd>{dados.resumo.vendas}</dd></div><div><dt>Volume do recorte<AjudaCampo rotulo="Sobre o volume comercial do recorte" texto="Volume retirado nas operações abertas e avulsas mais o volume reconhecido nos fechamentos, pelo período inteiro de cada acordo. Não é a produção dos dias filtrados."/></dt><dd>{formatarLitros(Number(dados.resumo.totalLitros))}</dd></div><div><dt>Preço pendente</dt><dd>{dados.resumo.precoPendente}</dd></div><div><dt>Total comercial conhecido<AjudaCampo rotulo="Sobre valores conhecidos" texto="Valores conhecidos no recorte; operações com preço pendente não recebem valor zero presumido. Não equivale a dinheiro recebido."/></dt><dd>{!podeFinanceiro ? "Restrito" : dados.resumo.valorTotal === null ? "A apurar" : Number(dados.resumo.valorTotal).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</dd></div></dl>
       <ListaConsultaLeite layout="grade" renderizarVisual={v => <CartaoVendaVisual item={v} podeVerValores={podeFinanceiro} acao={<Button variant="outline" onClick={() => abrir(v)}>Abrir operação</Button>}/>} preferencia="vendasLeiteVisualizacao" rotulo="Vendas por período e avulsas" itens={dados.itens} chaveDe={v => `${v.modalidade}:${v.id}`} colunas={[
         { chave: "referencia", titulo: "Operação", principal: true, larguraMinima: 160, celula: v => <strong>{v.referencia}</strong> },
