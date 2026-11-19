@@ -165,7 +165,7 @@ export function OperacoesFinanceiras({ podeLancar = true }: { podeLancar?: boole
   const acoesCabecalho = podeLancar ? <div className="flex flex-wrap gap-2">{(rascunho || recuperacao) && <Button secondary onClick={continuarRascunho}><FilePenLine size={16} /> Continuar operação</Button>}<Button disabled={iniciandoNova} onClick={() => { void abrirNovaOperacao(); }}><Plus size={16} /> {iniciandoNova ? "Iniciando…" : "Nova operação"}</Button></div> : undefined;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Operações" descricao="Consulte compras, vendas e serviços e acompanhe seus efeitos financeiros e no estoque." acao={acoesCabecalho} />
+    <PageHeader eyebrow="" titulo="Operações" acao={acoesCabecalho} />
     <ErrorBox erro={erro} />
     {pilotoLocal && podeLancar && podeRascunho && !rascunho && !recuperacao && getPropriedadeAtiva() != null && <Button secondary onClick={() => setConferirArremate(true)}>Conferir compra de leilão simulada</Button>}
     {conferirArremate && <ArremateSimulado onFechar={() => setConferirArremate(false)} onRevisar={() => { setConferirArremate(false); navegarPara(URL_NOVA_OPERACAO + "?simulacao=erural"); setForm(true); }} />}

@@ -6,7 +6,7 @@ import { formatarLitros } from "./modelo";
 import type { AfericaoIndividual } from "./historico-types";
 import { Empty } from "@/financeiro/financeiro-ui";
 export function EvolucaoProducaoIndividual({ pontos }: { pontos: readonly AfericaoIndividual[] }) {
-  return <section className="animal-curva" aria-label="Evolução das aferições individuais"><header><h3>Evolução da produção</h3><AjudaCampo rotulo="Como ler a evolução individual" texto="Cada ponto representa somente os litros individuais medidos naquela data. A linha conecta observações, sem estimar dias entre controles. Aferições parciais são identificadas; pendências e exclusões não viram zero."/></header>
+  return <section className="animal-curva" aria-label="Evolução das aferições individuais"><header><h3>Evolução da produção</h3></header>
     {pontos.length ? <ChartContainer className="animal-curva-area" config={{ litros: { label: "Aferição individual", color: "var(--primary)" } }}>
       <LineChart data={[...pontos]} margin={{ top: 16, right: 24, bottom: 20, left: 8 }} accessibilityLayer>
         <CartesianGrid vertical={false} stroke="var(--border)"/><XAxis dataKey="data" tickMargin={12} tickFormatter={v => dataSanitaria(v).slice(0, 5)} fontSize={11} axisLine={false} tickLine={false}/>

@@ -109,7 +109,7 @@ export function VisaoGeralFinanceira({ onNav, podeLancar = true }: { onNav: (tab
   const painelCategorias = dadosAtuais && (<AnaliseCategorias compacto inicio={inicioPeriodo} fim={fimPeriodo} despesas={dadosAtuais.despesasPorCategoria} categorias={config?.categorias ?? []} />);
 
   return <PaginaFinanceira colorida><div className="dashboard-financeiro">
-    <PageHeader titulo="Visão geral financeira" descricao="Seu caixa, compromissos e movimentações em um só lugar." extra={<PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />} acao={podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>} />
+    <PageHeader titulo="Visão geral financeira" extra={<PeriodoFinanceiroControl inicio={inicioPeriodo} fim={fimPeriodo} onChange={periodo => { setInicioPeriodo(periodo.inicio); setFimPeriodo(periodo.fim); setMesCalendario(periodo.inicio.slice(0, 7)); }} />} acao={podeLancar && <Button disabled={preparando} onClick={() => { void iniciarNovaOperacao(); }}><Plus />Nova operação</Button>} />
     <ErrorBox erro={erro} />
     {(carregando || (!dadosAtuais && !erro)) && <div className="mt-3"><AtualizandoFinanceiro label="Atualizando… Os dados anteriores permanecem visíveis." /></div>}
     {erro && !dadosAtuais && <Button variant="outline" onClick={() => setRevisao(value => value + 1)}>Tentar novamente</Button>}

@@ -33,7 +33,7 @@ function ContextoCarencia({ contexto, animalId }: { contexto: ContextoCarenciaLe
       : `Prazo registrado até ${dataHoraSanitaria(prazo.ate)}${prazo.precisaoAproximada ? " (data aproximada)" : ""}.` : "Carência não informada.";
   }
   return <section id="carencia-producao-leite" aria-label="Carência do leite" className="producao-carencia-faixa">
-    <div><h3><ShieldCheck size={20} aria-hidden="true"/>Carência do leite<AjudaCampo rotulo="Sobre carência do leite" texto="Destino registrado separadamente; esta consulta não confirma descarte nem aptidão sanitária."/></h3><p>{texto}</p></div>
+    <div><h3><ShieldCheck size={20} aria-hidden="true"/>Carência do leite</h3><p>{texto}</p></div>
     <span>Referência: {dataSanitaria(contexto.dataReferencia)}</span>
     <Button variant="outline" onClick={() => navegarPara(`/pecuaria/rebanho/animais/${animalId}#sanidade`)}>Conferir Sanidade</Button>
   </section>;
@@ -85,7 +85,7 @@ export function HistoricoProdutivoLeite({ animalId, propriedadeId, recarregarTok
           <div><dt>Última aferição até {dataSanitaria(dados.periodo.fim)}</dt><dd>{dados.controleIndividual.ultimaAfericao ? dataSanitaria(dados.controleIndividual.ultimaAfericao) : "Não registrada"}</dd></div>
           <div><dt>Próxima referência<AjudaCampo rotulo="Sobre a próxima referência" texto="Data de referência calculada pelo intervalo configurado a partir do último controle, sem criar aferição ou estimar litros."/></dt><dd>{dados.controleIndividual.proximaAfericao ? dataSanitaria(dados.controleIndividual.proximaAfericao) : "Aguarda a primeira aferição"}</dd></div>
         </>}
-        <div><dt>Dias com participação registrada<AjudaCampo rotulo="Sobre a cobertura do período" texto="Dias com participação ativa em todo o recorte, inclusive pendentes. Não certifica volume conhecido para todas as ordenhas."/></dt><dd>{dados.coberturaPeriodo.diasComRegistro} de {dados.coberturaPeriodo.diasCalendario} dias</dd></div>
+        <div><dt>Dias com participação registrada</dt><dd>{dados.coberturaPeriodo.diasComRegistro} de {dados.coberturaPeriodo.diasCalendario} dias</dd></div>
       </dl>
       </section><ContextoCarencia contexto={dados.carenciaLeite} animalId={animalId}/>
     </>}

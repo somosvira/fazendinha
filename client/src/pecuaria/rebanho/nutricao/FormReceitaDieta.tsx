@@ -34,7 +34,7 @@ export function FormReceitaDieta({ dieta, editar, onVoltar, onSalvo }: { dieta?:
     <form id={formId} onSubmit={(e) => { e.preventDefault(); void salvar(); }}><fieldset disabled={ocupado} className="nutricao-card-corpo grid gap-5">
       <ErrorBox erro={erro} /><EstadoConsulta erro={produtos.erro} carregando={produtos.carregando} recarregar={produtos.carregar} />
       <section className="receita-form-identidade"><h3>Identificação da receita</h3><label>Nome da dieta<input className={classeInput} required minLength={2} maxLength={160} value={nome} onChange={(e) => { setAlterado(true); setNome(e.target.value); }} /></label></section>
-      <section className="receita-form-composicao"><div className="receita-form-composicao-titulo"><Leaf size={21} aria-hidden="true" /><h3 className="font-semibold">Ingredientes por cabeça/dia <AjudaCampo rotulo="Sobre as unidades e matéria seca" texto={"A unidade e a matéria seca vêm do cadastro do produto."} /></h3></div>
+      <section className="receita-form-composicao"><div className="receita-form-composicao-titulo"><Leaf size={21} aria-hidden="true" /><h3 className="font-semibold">Ingredientes por cabeça/dia </h3></div>
       {itens.map((i, indice) => {
         const produto = produtos.dados?.find((p) => p.id === i.produtoId);
         return <div key={indice} className="nutricao-ingrediente-form">

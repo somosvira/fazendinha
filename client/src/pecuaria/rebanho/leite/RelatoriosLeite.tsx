@@ -333,7 +333,7 @@ export function RelatoriosLeite({
         rodape={<>
           <Button variant="outline" type="button" onClick={()=>{setEmissao(null);setPeriodoAtual({inicio,fim});setFiltrosAbertos(false)}} disabled={ocupado||!inicio||!fim||inicio>fim||fim>hojeOperacional()}>Consultar produção atual</Button>
           {podeExportar && <Button type="submit" form={formPeriodoId} disabled={ocupado || !lista}>Emitir relatório preservado</Button>}
-        </>}><div className="leite-operacoes rel-emissao-grupos"><section aria-label="Exportar consulta de produção"><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} /></section><section aria-label="Consultar ou preservar relatório"><h3>Período do relatório <AjudaCampo rotulo="Sobre as emissões preservadas" texto={"Uma emissão conserva os dados consultados e a cobertura daquele momento. Abrir novamente não recalcula os números após correções."} /></h3>
+        </>}><div className="leite-operacoes rel-emissao-grupos"><section aria-label="Exportar consulta de produção"><ExportacaoProducaoLeite propriedadeId={sitio} podeExportar={podeExportar} /></section><section aria-label="Consultar ou preservar relatório"><h3>Período do relatório </h3>
 
       <form id={formPeriodoId}
           className="leite-form-inline"
@@ -665,7 +665,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
       />
       <div id={ancora("comercial")}/>
       {!!s.dados.comercial?.length && <section aria-label="Retiradas comerciais preservadas">
-        <h2>Retiradas comerciais <AjudaCampo rotulo="Sobre as retiradas físicas" texto={"A retirada física conserva sua data mesmo com preço pendente; não representa recebimento."} /></h2>
+        <h2>Retiradas comerciais </h2>
 
         <div className="leite-tabela-scroll" tabIndex={0} aria-label="Retiradas preservadas, com rolagem horizontal"><Table semContainer>
           <TableCaption>Retiradas comerciais e inversos no período</TableCaption><TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Produto</TableHead><TableHead>Litros</TableHead><TableHead>Movimento</TableHead><TableHead>Venda</TableHead></TableRow></TableHeader>
@@ -681,7 +681,7 @@ function ConteudoEmissao({ emissao, podeFinanceiro }: { emissao: Emissao; podeFi
       )}
       {s.valores ? (
         <>
-          <h2>Valores preservados <AjudaCampo rotulo="Sobre os valores preservados" texto={"Os valores são os conhecidos no corte da emissão. Custo direto não representa custo total nem lucro."} /></h2>
+          <h2>Valores preservados </h2>
           <dl className="leite-indicadores">
             <div>
               <dt>Custo direto registrado</dt>
@@ -754,7 +754,7 @@ function ComercialPreservado({
   const total = Math.max(dados.entregas.length, dados.demonstrativos.length);
   return (
     <section aria-label="Comercial preservado no relatório">
-      <h2>Expedição, aceite e faturamento  <AjudaCampo rotulo="Sobre o recorte dos documentos" texto={"Faturamento documentado, preço da venda e recebimento são referências distintas. O demonstrativo não confirma entrada de dinheiro. As parcelas consideradas pertencem às entregas do período consultado. Cabeçalhos e componentes dos demonstrativos conservam o período integral declarado pelo comprador."} /></h2>
+      <h2>Expedição, aceite e faturamento  </h2>
 
       <div className="leite-tabela-scroll">
         <Table semContainer>
@@ -890,7 +890,7 @@ function OperacoesPeriodoPreservadas({ dados, valores }: { dados: OperacaoPeriod
   const [pagina, setPagina] = useState(1);
   const linhas = dados.slice((pagina - 1) * 50, pagina * 50);
   return <section aria-label="Operações comerciais preservadas">
-    <h2>Operações comerciais por período integral  <AjudaCampo rotulo="Sobre o período comercial integral" texto={"Vendas legadas por data da retirada e faturamento documental têm recortes próprios. Seus valores não compõem um total combinado com estes acordos. Período comercial integral por sobreposição, sem rateio diário; valores não são receita exclusiva dos dias filtrados nem recebimento."} /></h2>
+    <h2>Operações comerciais por período integral  </h2>
 
 
     {!dados.length ? <Empty>Nenhuma operação comercial com período sobreposto ao filtro.</Empty> : <div className="leite-tabela-scroll" tabIndex={0} aria-label="Operações por período integral, com rolagem horizontal">

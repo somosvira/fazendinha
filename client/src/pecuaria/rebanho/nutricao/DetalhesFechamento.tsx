@@ -83,7 +83,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, metadado
         <div><dt>Centro de custo</dt><dd>{f.centroCusto.nome}</dd></div>
         <div><dt className="sr-only">Lote</dt><dd><LinkNutricional href={rotaNutricao({ loteId: f.lote.id })}>Ver lote</LinkNutricional></dd></div>
       </dl>
-      {f.status === "ESTORNADO" && <p className="nutricao-aviso">Estornado · excluído dos custos atuais do lote. O consumo original permanece no histórico.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}
+      {f.status === "ESTORNADO" && <p className="nutricao-aviso">Estornado · excluído dos custos atuais do lote.{f.motivoEstorno && <> Motivo: {f.motivoEstorno}</>}</p>}
     </section>
     <Panel className="nutricao-consumo-estoque"><div className="nutricao-card-cabecalho"><div><h2 className="h3">Consumo e estoque </h2></div></div>
       <div className="nutricao-consumo-composicao"><div className="min-w-0">{f.itens.length > 8 ? <TabelaConsultaLocal camposOrdenaveis={[{chave:"previsto",rotulo:"Previsto (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadePrevista},{chave:"conferido",rotulo:"Conferido (unidade do ingrediente)",tipo:"numero",obter:i=>i.quantidadeConfirmada}]} buscarPor={i=>i.produto.nome} definicoes={[
@@ -92,7 +92,7 @@ export function DetalhesFechamento({ fechamento: f, podeLancar = false, metadado
       ]} rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} /> : <TabelaFinanceira rotulo="Ingredientes do fechamento" itens={f.itens} chaveDe={(i) => i.produtoId} colunas={colunasItens} />}
     </div><DistribuicaoCustoFechamento fechamento={f} /></div></Panel>
     {f.itens.filter(i => i.leite).map(i => <Panel key={i.produtoId}><div className="nutricao-card-cabecalho"><h2 className="h3">Leite fornecido · {i.produto.nome}</h2></div><div className="nutricao-card-corpo"><ReferenciaLeite leite={i.leite!} propriedadeId={f.propriedadeId} verValores={f.verValores} verReferenciasComerciais={f.verReferenciasComerciais ?? false} animais={f.participacoes.map(p => ({ animalId: p.animalId, brinco: p.animal.brinco }))} podeLancar={podeLancar && f.status === "CONFIRMADO"} onRecarregar={onRecarregar} /></div></Panel>)}
-    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais <AjudaCampo rotulo="Sobre a atribuição aos animais" texto={"Estimativa proporcional aos dias no lote; não mede a ingestão individual."} /></h2></div><Pill>{f.participacoes.length} animais</Pill></div>
+    <Panel><div className="nutricao-card-cabecalho"><div><h2 className="h3">Atribuição aos animais </h2></div><Pill>{f.participacoes.length} animais</Pill></div>
       {f.verValores && !custoAnimais && <p className="nutricao-nota px-5 pb-2">O custo de cada animal aparece quando o custo do fechamento for apurado.</p>}
       <TabelaConsultaLocal camposOrdenaveis={[{chave:"dias",rotulo:"Dias no lote",tipo:"numero",obter:p=>p.dias},...(custoAnimais?[{chave:"medio",rotulo:"Custo por animal-dia",tipo:"numero" as const,obter:(p:Fechamento["participacoes"][number])=>p.custoConhecidoPorDia}]:[])]} buscarPor={p=>p.animal.brinco} definicoes={[
         {chave:"animal",rotulo:"Animal",tipo:"texto",obter:p=>p.animal.brinco},

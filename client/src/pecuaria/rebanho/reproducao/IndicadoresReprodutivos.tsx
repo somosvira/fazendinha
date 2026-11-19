@@ -423,7 +423,7 @@ function RelatorioIndicadores({
               <Button disabled={ocupado} type="submit">
                 {ocupado ? "Consultando…" : "Aplicar"}
               </Button>
-              <AjudaCampo rotulo="Sobre a estimativa de concepção" texto="A estimativa é uma escolha explícita para ponderar tentativas anteriores sem diagnóstico. Deixá-la em branco conserva essa pendência."/>
+              
             </div>
           </GrupoFiltrosIndicadores>
         </form></ControleRelatorio>);

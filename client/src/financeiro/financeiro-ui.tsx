@@ -55,7 +55,7 @@ export function PaginaCarregando({ label, estrutura = "lista" }: { label: string
  * que uma falha no fetch nunca deixe a tela girando para sempre — o guard
  * `if (!dados) return <PaginaCarregando/>` sozinho engole o erro, porque os
  * dados continuam nulos e o ErrorBox lá embaixo nunca é alcançado. */
-export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
+export function PaginaSemDados({ titulo, descricao, label, erro, onTentarNovamente }: { titulo: string; descricao?: string; label: string; erro: string | null; onTentarNovamente?: () => void }) {
   if (!erro) return <PaginaCarregando label={label} />;
   return <PaginaFinanceira><PageHeader eyebrow="" titulo={titulo} descricao={descricao} /><ErrorBox erro={erro} />{onTentarNovamente && <Button secondary className="mt-4" onClick={onTentarNovamente}>Tentar novamente</Button>}</PaginaFinanceira>;
 }

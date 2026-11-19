@@ -311,6 +311,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const [de, setDe] = useState(() => estadoDaUrl().de);
   const [ate, setAte] = useState(() => estadoDaUrl().ate);
   const [situacao, setSituacao] = useState(() => estadoDaUrl().situacao);
+  useEffect(() => { if (aba === "ocorrencias" && !situacao) setSituacao("ABERTA"); }, [aba, situacao]);
   const edicaoFiltros = useRascunhoConsulta({ animalId, loteId, de, ate, situacao, buscaAnimal, doencaVisual }, { animalId: "", loteId: "", de: "", ate: "", situacao: "", buscaAnimal: "", doencaVisual: "" }, v => { setDoencaVisual(v.doencaVisual); setAnimalId(v.animalId); setLoteId(v.loteId); setDe(v.de); setAte(v.ate); setSituacao(v.situacao); setBuscaAnimal(v.buscaAnimal); setPagina(1); });
 
   const [erro, setErro] = useState<string | null>(null);
@@ -818,7 +819,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   ];
   const erroFiltro = edicaoFiltros.rascunho.de && edicaoFiltros.rascunho.ate && edicaoFiltros.rascunho.de > edicaoFiltros.rascunho.ate ? "A data inicial deve ser igual ou anterior à final." : null;
   const filtrosColunas = filtrosDasColunas(camposConsulta,edicaoFiltros,erroFiltro);
-  const filtrosTabela = (acao?: ReactNode, resumo?: ReactNode) => <BarraConsulta campos={camposConsulta} edicaoFiltros={edicaoFiltros} erroFiltros={erroFiltro} acao={acao} resumo={resumo} criterios={[...(aba === "ocorrencias" && doencaVisual ? [{id:"doencaVisual",rotulo:`Doença: ${doencas.find(d=>d.id===doencaVisual)?.nome ?? "Selecionada"}`,limpar:()=>{setDoencaVisual("");setPagina(1);}}] : []),...filtrosAtivos.map(f=>({id:f.chave,rotulo:f.rotulo,limpar:()=>{f.limpar();setPagina(1);}})),...(situacao?[{id:"situacao",rotulo:opcoesSituacao.find(([v])=>v===situacao)?.[1]??situacao,limpar:()=>{setSituacao("");setPagina(1);}}]:[])]} onLimpar={()=>{limparFiltros();setDoencaVisual("");}}>
+  const filtrosTabela = (acao?: ReactNode, resumo?: ReactNode) => <BarraConsulta campos={camposConsulta} edicaoFiltros={edicaoFiltros} erroFiltros={erroFiltro} acao={acao} resumo={resumo} criterios={[...(aba === "ocorrencias" && doencaVisual ? [{id:"doencaVisual",rotulo:`Doença: ${doencas.find(d=>d.id===doencaVisual)?.nome ?? "Selecionada"}`,limpar:()=>{setDoencaVisual("");setPagina(1);}}] : []),...filtrosAtivos.map(f=>({id:f.chave,rotulo:f.rotulo,limpar:()=>{f.limpar();setPagina(1);}})),...(situacao&&!(aba==="ocorrencias"&&["ABERTA","ENCERRADA"].includes(situacao))&&!(aba==="exames"&&situacao==="AGUARDANDO_RESULTADO")?[{id:"situacao",rotulo:opcoesSituacao.find(([v])=>v===situacao)?.[1]??situacao,limpar:()=>{setSituacao("");setPagina(1);}}]:[])]} onLimpar={()=>{limparFiltros();setDoencaVisual("");}}>
     <label className="fin-filtro-busca relative"><span className="sr-only">Buscar animal</span><Search size={16} aria-hidden className="absolute left-3 top-3"/><input aria-label="Buscar animal" className={`${classeInput} pl-9`} value={buscaAnimal} placeholder="Brinco ou nome" onChange={e=>{setBuscaAnimal(e.target.value);setPagina(1);}}/></label>
     <PeriodoFinanceiroControl inicio={de} fim={ate} allowAll label="Período sanitário" onChange={v=>{setDe(v.inicio);setAte(v.fim);setPagina(1);}}/>
   </BarraConsulta>;
@@ -826,14 +827,12 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
   const examesVisiveis = exames.filter(e => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao));
   const tarefasVisiveis = tarefas.filter(t => noPeriodo(t.previstaPara, t.situacao));
   const hojeSanitario = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
-  const resumoPagina = aba === "ocorrencias" ? [
-    { nome: "abertas", qtd: resumoOcorrencias?.abertas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !o.fim).length },
-    { nome: "encerradas", qtd: resumoOcorrencias?.encerradas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !!o.fim).length },
-  ] : aba === "exames" ? [
-    { nome: "aguardando resultado", qtd: examesVisiveis.filter(e => e.status !== "ANULADO" && resultadoExameSanitario(e) === "Aguardando resultado").length },
-  ] : aba === "aplicacoes" ? [
-    { nome: "origens pendentes", qtd: aplicacoes.filter(a => a.status !== "ANULADO" && a.origemInsumo === "SEM_ORIGEM_JUSTIFICADA").length },
-  ] : aba === "agenda" ? [
+  const qtdAbertas = resumoOcorrencias?.abertas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !o.fim).length;
+  const qtdEncerradas = resumoOcorrencias?.encerradas ?? ocorrenciasVisiveis.filter(o => o.status !== "ANULADO" && !!o.fim).length;
+  const qtdAguardando = examesVisiveis.filter(e => e.status !== "ANULADO" && resultadoExameSanitario(e) === "Aguardando resultado").length;
+  const abasOcorrencias = <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Situação das ocorrências" active={situacao} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "ABERTA", label: `Abertas (${qtdAbertas})` }, { id: "ENCERRADA", label: `Já encerradas (${qtdEncerradas})` }]} />;
+  const abasExames = <SubTabs variant="financeiro" aparencia="botoes" ariaLabel="Situação dos exames" active={situacao === "AGUARDANDO_RESULTADO" ? situacao : ""} onSelect={v => { setSituacao(v); setPagina(1); }} tabs={[{ id: "", label: "Todos" }, { id: "AGUARDANDO_RESULTADO", label: `Aguardando resultado (${qtdAguardando})` }]} />;
+  const resumoPagina = aba === "agenda" ? [
     { nome: "pendentes", qtd: tarefasVisiveis.filter(t => t.situacao === "PENDENTE").length },
     { nome: "atrasadas", qtd: tarefasVisiveis.filter(t => rotuloTarefaSanitaria(t.situacao, t.previstaPara, hojeSanitario) === "Atrasada").length },
   ] : [];
@@ -949,7 +948,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           )}
           {aba === "ocorrencias" && (
             <>
-              <AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/>
+              <div className="consulta-visual-barra sanidade-agenda-visoes">{abasOcorrencias}<AlternarVisualizacaoSanitaria rotulo="Visualização das ocorrências" {...visualOcorrencias}/></div>
               {visualOcorrencias.modo === "visual" ? carregandoAba || erroAba ? null : <CartoesOcorrencias itens={ocorrenciasVisiveis} resumo={resumoOcorrencias} nomeAnimal={nomeAnimal} acoes={o=>colunasOcorrencias.find(c=>c.chave==="acoes")!.celula(o)} onAbrir={o=>abrirDetalhe("ocorrencia",o.id,o.propriedadeId)} doencaId={doencaVisual} onDoenca={id=>{setDoencaVisual(id);setPagina(1);}}/> : <>
               <TabelaFinanceira visualizacao="tabela" filtrosColunas={filtrosColunas} rotulo="Ocorrências sanitárias" itens={ocorrenciasVisiveis} chaveDe={(o) => o.id} onAbrir={(o) => abrirDetalhe("ocorrencia", o.id, o.propriedadeId)} colunas={colunasOcorrencias} /></>}
               {ocorrenciasPaginadas && totalOcorrencias > 0 && <Paginacao paginaAtual={pagina} totalPaginas={Math.max(1,Math.ceil(totalOcorrencias/50))} totalItens={totalOcorrencias} itensPorPagina={50} onPaginaChange={setPagina} rotulo="ocorrências" idSelect="pagina-ocorrencias"/>}
@@ -992,7 +991,6 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
                 { chave: "leite", titulo: "Leite", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.leite} agora={agoraCarencias} revisao={c.revisaoLeitePendente} /> },
                 { chave: "carne", titulo: "Abate / carne", larguraMinima: 240, larguraFlexivel: true, celula: c => <PrazoCarencia estado={c.carne} agora={agoraCarencias} /> },
               ]} />
-              {!carregandoAba && !erroAba && <p className="sanidade-nota-historico">O tratamento e seus lançamentos permanecem no histórico.</p>}
               {!carregandoAba && !erroAba && !carencias.length && (
                 <Empty>Nenhuma carência encontrada para os filtros atuais.</Empty>
               )}
@@ -1001,7 +999,7 @@ function ConteudoSanidade({ podeLancar }: { podeLancar: boolean }) {
           {aba === "aplicacoes" && <SanidadeAnimal filtrosColunas={filtrosColunas} resumoUI={resumoUI} filtrosUI={(acao) => filtrosTabela(acao, resumoUI)} geral animalId={animalId} propriedadeId={animal?.propriedade?.id ?? null} podeLancar={podeLancar} recarregarToken={revisao} lista={aplicacoes.map((a) => ({ ...a, animal: a.animal ?? animais.find((v) => v.id === a.animalId) }))} abrirDetalhe={abrirDetalhe} onMudou={atualizarAplicacao} />}
           {aba === "exames" && (
             <>
-              <ConsultaExames nomeAnimal={e => nomeAnimal(e.animalId)} filtrosColunas={filtrosColunas} rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
+              <ConsultaExames abas={abasExames} nomeAnimal={e => nomeAnimal(e.animalId)} filtrosColunas={filtrosColunas} rotulo="Exames sanitários" itens={exames.filter((e) => noPeriodo(e.data, e.status, null, e.resultadoTexto ?? e.resultadoNumero ?? e.resultadoOpcao))} chaveDe={(e) => e.id} onAbrir={(e) => abrirDetalhe("exame", e.id, e.propriedadeId)} colunas={[
                 { chave: "animal", titulo: "Animal", principal: true, larguraMinima: 180, celula: (e) => <LinkInterno area="pecuaria" href={linkFichaAnimal(e.animalId)}>{nomeAnimal(e.animalId)}</LinkInterno> },
                 { chave: "tipo", titulo: "Exame / coleta", larguraMinima: 200, celula: (e) => <><div>{e.tipoExame.nome}</div><div className="text-sm text-ink-3">{dataSanitaria(e.data)}</div></> },
                 { chave: "resultado", titulo: "Resultado / situação", larguraMinima: 240, larguraFlexivel: true, celula: (e) => <>{resultadoExameSanitario(e) !== "Aguardando resultado" && <div className="mb-1">{resultadoExameSanitario(e)}</div>}<EstadoSanitario tom={e.status === "ANULADO" ? "neutro" : resultadoExameSanitario(e) === "Aguardando resultado" ? "atencao" : "verde"}>{e.status === "ANULADO" ? "Anulado" : resultadoExameSanitario(e) === "Aguardando resultado" ? "Aguardando resultado" : "Resultado informado"}</EstadoSanitario></> },

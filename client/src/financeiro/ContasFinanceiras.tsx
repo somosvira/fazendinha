@@ -131,7 +131,7 @@ export function ContasFinanceiras({ onNav }: { onNav: (tab: Tab) => void }) {
     {chave:"tipo",ativo:!!tipoConta,limpar:()=>filtrosAvancados.editar("tipo",""),conteudo:<CampoFiltro rotulo="Tipo de conta"><SelectCampo aria-label="Filtrar tipo de conta" value={filtrosAvancados.rascunho.tipo} onValueChange={v=>filtrosAvancados.editar("tipo",v)}><option value="">Todos os tipos</option>{Object.entries(TIPO_CONTA).map(([valor,texto])=><option key={valor} value={valor}>{texto}</option>)}</SelectCampo></CampoFiltro>},
     {chave:"situacao",colunas:[],ativo:!!statusConta,limpar:()=>filtrosAvancados.editar("status",""),conteudo:<CampoFiltro rotulo="Situação"><SelectCampo aria-label="Filtrar situação da conta" value={filtrosAvancados.rascunho.status} onValueChange={v=>filtrosAvancados.editar("status",v)}><option value="">Todas as situações</option><option value="ATIVA">Ativas</option><option value="INATIVA">Inativas</option></SelectCampo></CampoFiltro>},
   ];
-  if (!config) return <PaginaSemDados titulo="Contas e extratos" descricao="Selecione uma conta para acompanhar seu saldo e consultar as movimentações." label="Carregando contas" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
+  if (!config) return <PaginaSemDados titulo="Contas e extratos" label="Carregando contas" erro={erro} onTentarNovamente={() => { void carregar(); }} />;
   const contasDoSaldo = config.contas.filter(c => c.ativo && c.incluirNoSaldoGeral);
   const saldoGeral = somarSaldos(contasDoSaldo);
   const instituicoes = Array.from(new Set(config.contas.map(c => c.instituicao).filter((i): i is string => !!i))).sort();

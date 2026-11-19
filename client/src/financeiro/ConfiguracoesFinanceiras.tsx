@@ -203,7 +203,7 @@ export function ConfiguracoesFinanceiras({ abaInicial = "contas", podeEditar: pe
     : <Button disabled={processando} onClick={() => abrirNovo(aba === "contas" ? "conta" : aba === "parceiros" ? "parceiro" : aba === "produtos" ? "produto" : "centro")}><Plus size={16} /> {aba === "contas" ? "Nova conta" : aba === "parceiros" ? "Novo parceiro" : aba === "produtos" ? "Novo produto" : "Novo centro de custo"}</Button>;
 
   return <PaginaFinanceira colorida><div className="financeiro-configuracoes">
-    <PageHeader titulo="Configurações financeiras" descricao="Mantenha contas, parceiros, produtos e categorias usados nos lançamentos." acao={podeEditar ? acao : undefined} />
+    <PageHeader titulo="Configurações financeiras" acao={podeEditar ? acao : undefined} />
     <ErrorBox erro={erro} />
     {!podeEditar && <p className="mt-4 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-ink-3">Você tem acesso de consulta a estes cadastros.</p>}
     <Tabs value={aba} onValueChange={v => trocarAba(v as Aba)} className="min-w-0">

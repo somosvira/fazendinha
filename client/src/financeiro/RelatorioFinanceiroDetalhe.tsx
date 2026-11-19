@@ -72,7 +72,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
     return () => { atual = false; };
   }, [id]);
 
-  if (!dados) return <PaginaSemDados titulo="Relatório financeiro" descricao="Relatório emitido e preservado no histórico." label="Carregando relatório" erro={erro} />;
+  if (!dados) return <PaginaSemDados titulo="Relatório financeiro" label="Carregando relatório" erro={erro} />;
   const snapshot = dados.snapshot;
   const linhas = ordemItens.ordenar(snapshot?.composicao.linhas.map((linha, indice) => ({ ...linha, indice })) ?? []);
   const periodo = `${dataCurta(dados.parametros.dataInicio)} a ${dataCurta(dados.parametros.dataFim)}`;
@@ -92,7 +92,6 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
     <nav className="fin-breadcrumb" aria-label="Caminho da página"><ol className="flex flex-wrap items-center gap-2"><li><a href="/financeiro" onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); navegarPara("/financeiro"); } }}>Financeiro</a></li><li className="flex items-center gap-2"><span aria-hidden="true">/</span><a href="/financeiro/relatorios" onClick={e => { if (!e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); onVoltar(); } }}>Relatórios</a></li><li className="flex min-w-0 items-center gap-2" aria-current="page"><span aria-hidden="true">/</span>{dados.nome}</li></ol></nav>
     <PageHeader eyebrow="" titulo={dados.nome} descricao={<span className="relatorio-metadados"><span>{dados.propriedade} · {periodo}</span><span className="relatorio-data-emissao">Emitido em {dataHora(dados.geradoEm)}</span><StatusPill status={dados.status} /><InformacaoRelatorio titulo="Informações do relatório">
       <dl className="relatorio-criterios"><div><dt>Gerado por</dt><dd>{dados.autor}</dd></div><div><dt>Emissão</dt><dd>{dataHora(dados.geradoEm)}</dd></div>{dados.concluidoEm && <div><dt>Conclusão</dt><dd>{dataHora(dados.concluidoEm)}</dd></div>}{snapshot && <div><dt>Leitura</dt><dd>{leitura}</dd></div>}</dl>
-      <p className="relatorio-info-texto">Os dados deste relatório foram preservados na emissão.</p>
       {criterios.length > 0 && <section className="relatorio-info-filtros"><h3>Filtros utilizados</h3><dl className="relatorio-criterios">{criterios.map(([rotulo, valores]) => <div key={rotulo}><dt>{rotulo}</dt><dd>{valores.join(", ")}</dd></div>)}</dl></section>}
     </InformacaoRelatorio></span>} acao={acao} />
     <ErrorBox erro={erro} />
@@ -107,7 +106,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
         <TabsContent value="resumo">
           <Panel className="relatorio-resumo">
             <section className="relatorio-caixa" aria-label="Caixa no período">
-              <h2>Caixa no período<InformacaoRelatorio titulo="Caixa no período"><p>Entradas e saídas realizadas no período. O resultado do caixa é a diferença entre elas e não representa lucro; entradas podem incluir aportes. O saldo final inclui a abertura e todas as contas históricas da fazenda, inclusive inativas e fora do saldo geral, sem os filtros de operações.</p></InformacaoRelatorio></h2>
+              <h2>Caixa no período</h2>
               <div className="relatorio-caixa-valores">{([
                 ["Resultado do caixa", snapshot.gerencial.resumo.resultado],
                 ["Entradas realizadas", snapshot.gerencial.resumo.entradas],
@@ -116,14 +115,14 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
               ] as const).map(([titulo, valor]) => <section className={`relatorio-indicador${titulo === "Resultado do caixa" ? " relatorio-indicador-destaque" : ""}`} aria-label={titulo} key={titulo}><h3>{titulo}</h3><strong>{valor == null ? "—" : brl(valor)}</strong>{valor == null && <p className="relatorio-indisponivel">Não incluído nesta leitura</p>}</section>)}</div>
             </section>
             {(snapshot.gerencial.resumo.aPagar != null || snapshot.gerencial.resumo.aReceber != null) && <div className="relatorio-compromissos-resumo">
-              <h2>Compromissos<InformacaoRelatorio titulo="Compromissos"><p>Valores em aberto com vencimento no período, na posição salva na emissão. Não compõem o resultado do caixa nem o saldo das contas.</p></InformacaoRelatorio></h2>
+              <h2>Compromissos</h2>
               {snapshot.gerencial.resumo.aPagar != null && <section aria-label="A pagar"><span>A pagar</span><strong>{brl(snapshot.gerencial.resumo.aPagar)}</strong></section>}
               {snapshot.gerencial.resumo.aReceber != null && <section aria-label="A receber"><span>A receber</span><strong>{brl(snapshot.gerencial.resumo.aReceber)}</strong></section>}
               {snapshot.gerencial.compromissos && <button className="relatorio-atalho" onClick={() => { setSecaoAnalise("compromissos"); mudarAba("analises"); }}>Ver compromissos<ArrowRight size={15} aria-hidden="true" /></button>}
             </div>}
             <GraficosCaixaRelatorio dto={snapshot.gerencial} informacao={(titulo, texto) => <InformacaoRelatorio titulo={titulo}><p>{texto}</p></InformacaoRelatorio>} />
             <div className="relatorio-compras">
-              <section aria-label="Compras e serviços" className="relatorio-indicador"><h2>Compras e serviços<InformacaoRelatorio titulo="Compras e serviços"><p>Itens confirmados, pela data da operação. Os grupos de categorias compõem este valor.</p></InformacaoRelatorio></h2><strong>{brl(snapshot.composicao.despesas.total)}</strong>
+              <section aria-label="Compras e serviços" className="relatorio-indicador"><h2>Compras e serviços</h2><strong>{brl(snapshot.composicao.despesas.total)}</strong>
                 <dl className="relatorio-grupos">{snapshot.composicao.despesas.porGrupo.map((grupo) => <div key={grupo.nome}><dt>{grupo.nome}</dt><dd>{brl(grupo.total)}</dd></div>)}</dl>
                 <button className="relatorio-atalho" onClick={() => { setSecaoAnalise("compras"); mudarAba("analises"); }}>Ver análise por categoria<ArrowRight size={15} aria-hidden="true" /></button>
               </section>
@@ -140,7 +139,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
                 { chave: "final", titulo: "Saldo final", larguraMinima: 95, alinhamento: "direita", celula: c => <strong>{brl(c.saldoFinal)}</strong> },
               ]} /> : <Empty>Nenhuma conta salva nesta emissão.</Empty>}
             </section>}
-            <section className="relatorio-operacoes" aria-label="Operações no período"><div className="relatorio-secao-titulo"><h2>Operações no período<InformacaoRelatorio titulo="Operações no período"><p>Quantidade e valor das operações agrupados por tipo, conforme o relatório emitido. Esses valores não representam o saldo das contas.</p></InformacaoRelatorio></h2><div className="relatorio-secao-acoes"><span>{snapshot.composicao.porTipo.reduce((total, tipo) => total + tipo.operacoes, 0)} operações</span><button className="relatorio-atalho" onClick={() => mudarAba("itens")}>Ver itens<ArrowRight size={15} aria-hidden="true" /></button></div></div>
+            <section className="relatorio-operacoes" aria-label="Operações no período"><div className="relatorio-secao-titulo"><h2>Operações no período</h2><div className="relatorio-secao-acoes"><span>{snapshot.composicao.porTipo.reduce((total, tipo) => total + tipo.operacoes, 0)} operações</span><button className="relatorio-atalho" onClick={() => mudarAba("itens")}>Ver itens<ArrowRight size={15} aria-hidden="true" /></button></div></div>
               {snapshot.composicao.porTipo.length ? <TabelaFinanceira compacta larguraMinimaParaTabela={420} rotulo="Operações por tipo" itens={snapshot.composicao.porTipo} chaveDe={t => t.tipo} colunas={[
                 { chave: "tipo", titulo: "Tipo de operação", principal: true, celula: t => t.rotulo },
                 { chave: "quantidade", titulo: "Quantidade", alinhamento: "centro", celula: t => t.operacoes },
@@ -155,7 +154,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
           <Panel className="relatorio-analises"><RelatorioFinanceiroAnalises snapshot={snapshot} secaoDestino={secaoAnalise} onChegar={() => setSecaoAnalise(null)} informacao={(titulo, texto) => <InformacaoRelatorio titulo={titulo}><p>{texto}</p></InformacaoRelatorio>} /></Panel>
         </TabsContent>
         <TabsContent value="itens">
-      <Panel className="fin-painel relatorio-itens"><div className="relatorio-itens-cabecalho"><div><h2>Itens das operações</h2><p>Dados salvos na emissão</p></div><div className="relatorio-itens-contagem"><OrdenarConsulta controle={ordemItens.controle}/><span>{linhas.length} {linhas.length === 1 ? "item salvo" : "itens salvos"}</span><InformacaoRelatorio titulo="Itens das operações"><p>Uma linha por item de operação no recorte. Valores de tipos diferentes não representam um total de despesas ou o resultado do caixa.</p></InformacaoRelatorio></div></div>
+      <Panel className="fin-painel relatorio-itens"><div className="relatorio-itens-cabecalho"><div><h2>Itens das operações</h2></div><div className="relatorio-itens-contagem"><OrdenarConsulta controle={ordemItens.controle}/><span>{linhas.length} {linhas.length === 1 ? "item salvo" : "itens salvos"}</span></div></div>
         {snapshot.composicao.truncado && <p className="relatorio-itens-aviso" role="note">As primeiras {linhas.length} de {snapshot.composicao.totalLinhas} linhas ficaram salvas; os totais consideram todas.</p>}
         {snapshot.composicao.linhas.length
           ? <TabelaFinanceira ordenacao={ordemItens.controle} compacta rotulo="Itens das operações" colunas={colunasItens} itens={linhas.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA)} chaveDe={(l) => l.indice} />
@@ -165,7 +164,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
 
         </TabsContent>
         <TabsContent value="documento">
-      <PreviaDocumento informacao={<InformacaoRelatorio titulo="Prévia gerencial"><p>Prévia HTML dos dados salvos na emissão. Sua apresentação é independente do PDF exportado.</p><p>Pagamentos rateados pelas categorias dos itens, compromissos em aberto e saldo das contas (o saldo das contas nunca é filtrado).</p><p>O saldo histórico inclui todas as contas da fazenda, inclusive inativas e fora do saldo geral. A disponibilidade atual da visão geral considera somente contas ativas incluídas nesse total.</p></InformacaoRelatorio>}>
+      <PreviaDocumento>
         <RelatorioGerencialDocumento dto={snapshot.gerencial} template={{ ...templatePadrao(), titulo: dados.nome }} />
       </PreviaDocumento>
         </TabsContent>
@@ -174,7 +173,7 @@ export function RelatorioFinanceiroDetalhe({ id, podeExportar, onVoltar }: { id:
   </PaginaFinanceira>;
 }
 
-function PreviaDocumento({ children, informacao }: { children: ReactNode; informacao: ReactNode }) {
+function PreviaDocumento({ children, informacao }: { children: ReactNode; informacao?: ReactNode }) {
   const canvas = useRef<HTMLDivElement>(null);
   const [largura, setLargura] = useState(1008);
   const [zoomManual, setZoomManual] = useState<number | null>(null);

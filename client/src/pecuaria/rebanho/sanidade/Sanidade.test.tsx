@@ -159,7 +159,7 @@ describe("busca e atualização da Sanidade", () => {
     expect(tabela.getByText("Finalidade alterada · conferir no histórico")).toBeTruthy();
     expect(tabela.queryByRole("columnheader", { name: "Orientação" })).toBeNull();
     expect(tabela.queryByText("O tratamento e seus lançamentos permanecem no histórico.")).toBeNull();
-    expect(screen.getAllByText("O tratamento e seus lançamentos permanecem no histórico.")).toHaveLength(1);
+    expect(screen.queryByText("O tratamento e seus lançamentos permanecem no histórico.")).toBeNull();
     expect(tabela.getByRole("link", { name: "DEV-001 · Aurora" }).getAttribute("href")).toBe("/pecuaria/sanidade?aba=carencias&animalId=um");
   });
   it("abre gerenciador sem filtro de animal e sem permissão de valores", async () => {

@@ -52,10 +52,12 @@ export async function listarOcorrencias(animalId: string | undefined, propriedad
 /** Contagens do recorte inteiro, sem confundir a página da lista com o panorama. */
 export async function listarOcorrenciasPaginadas(animalId: string | undefined, propriedadeId: number | null, filtro: ConsultaSanitaria) {
   const where = whereOcorrencias(animalId, propriedadeId, filtro);
+  // Abertas e encerradas ignoram a situação escolhida, para as abas mostrarem sempre os dois totais.
+  const base = whereOcorrencias(animalId, propriedadeId, { ...filtro, situacao: undefined });
   const [itens, total, abertas, encerradas, anuladas, grupos] = await Promise.all([
     listarOcorrencias(animalId, propriedadeId, filtro), prisma.ocorrenciaSanitaria.count({ where }),
-    prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "VALIDO", fim: null }] } }),
-    prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "VALIDO", fim: { not: null } }] } }),
+    prisma.ocorrenciaSanitaria.count({ where: { AND: [base, { status: "VALIDO", fim: null }] } }),
+    prisma.ocorrenciaSanitaria.count({ where: { AND: [base, { status: "VALIDO", fim: { not: null } }] } }),
     prisma.ocorrenciaSanitaria.count({ where: { AND: [where, { status: "ANULADO" }] } }),
     prisma.ocorrenciaSanitaria.groupBy({ by: ["doencaId", "doencaNomeSnapshot"], where: { AND: [where, { status: "VALIDO", fim: null }] }, _count: { _all: true } }),
   ]);

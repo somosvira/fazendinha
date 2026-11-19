@@ -59,7 +59,7 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
         ...(podeLancar ? [{ chave: "acao", titulo: "Ação", acoes: true, celula: (s: SituacaoLote) => <LinkNutricional className="nutricao-botao-secundario" href={rotaOperacaoNutricional("consumo", s.resumo.lote.id)}>Fechar período</LinkNutricional> }] : []),
       ]} />
     </Secao>}
-    {d.aProcessar.length > 0 && <Secao titulo="Dias a processar" total={d.aProcessar.length} descricao="Lotes no fechamento diário ou mensal com dias encerrados ainda não processados. Processar calcula o consumo de cada dia; no diário automático, também dá a baixa no estoque.">
+    {d.aProcessar.length > 0 && <Secao titulo="Dias a processar" total={d.aProcessar.length}>
       <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Lotes com dias a processar" itens={d.aProcessar} chaveDe={s => s.resumo.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: (s: SituacaoLote) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: s.resumo.lote.id })}>{s.resumo.lote.nome}</LinkNutricional><p className="nutricao-secundario">{s.resumo.lote.propriedade.nome}</p></> },
         { chave: "tipo", titulo: "Tipo de fechamento", celula: (s: SituacaoLote) => s.mensal ? MODELOS[s.mensal.modelo].rotulo : "—" },
@@ -77,7 +77,7 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
       ]} />
     </Secao>}
     {d.estoqueIndisponivel && <p className="nutricao-nota nutricao-alertas-estado" role="status">Não foi possível consultar o estoque das dietas agora.</p>}
-    {d.semDieta.length > 0 && <Secao titulo="Lotes sem dieta vigente" total={d.semDieta.length} descricao="Sem dieta, o consumo desses animais não entra nos custos da nutrição.">
+    {d.semDieta.length > 0 && <Secao titulo="Lotes sem dieta vigente" total={d.semDieta.length}>
       <TabelaFinanceira visualizacao={visualizacao} compacta rotulo="Lotes sem dieta vigente" itens={d.semDieta} chaveDe={r => r.lote.id} colunas={[
         { chave: "lote", titulo: "Lote", principal: true, celula: (r: ResumoNutricional) => <><LinkNutricional href={rotaNutricao({ aba: "lotes", loteId: r.lote.id })}>{r.lote.nome}</LinkNutricional><p className="nutricao-secundario">{r.lote.propriedade.nome}</p></> },
         { chave: "animais", titulo: "Animais", alinhamento: "direita", celula: (r: ResumoNutricional) => r.lote.animaisAtivos },
@@ -95,10 +95,10 @@ export function AlertasNutricao({ podeLancar }: { podeLancar: boolean }) {
   </div>;
 }
 
-function Secao({ titulo, descricao, total, children }: { titulo: string; descricao: string; total: number; children: React.ReactNode }) {
+function Secao({ titulo, descricao, total, children }: { titulo: string; descricao?: string; total: number; children: React.ReactNode }) {
   return <Panel className="nutricao-alerta-secao overflow-hidden">
     <header className="nutricao-alerta-cabecalho">
-      <h2>{titulo} <AjudaCampo rotulo={`Sobre ${titulo.toLocaleLowerCase("pt-BR")}`} texto={descricao} /></h2>
+      <h2>{titulo}{descricao && <> <AjudaCampo rotulo={`Sobre ${titulo.toLocaleLowerCase("pt-BR")}`} texto={descricao} /></>}</h2>
       <span className="nutricao-alerta-total">{total}</span>
     </header>
     {children}

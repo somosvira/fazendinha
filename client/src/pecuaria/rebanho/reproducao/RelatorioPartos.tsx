@@ -204,7 +204,7 @@ export function FolhaRelatorioPartos({ snapshot, operacional = false }: { snapsh
           <td className="border p-2">{c.ordem} · {textoPreservado(registro(c.filiacaoSnapshot).brincoInformado ?? c.animalId)}<p>Sexo: {c.sexo} · {c.viva ? "Viva" : "Sem vida"}</p>{operacional && c.animalId && <a className="font-semibold underline" href={`/pecuaria/rebanho/animais/${c.animalId}#reproducao`}>Abrir ficha da cria {c.ordem}</a>}</td>
           <td className="border p-2"><p>Peso informado no nascimento: {registro(c.filiacaoSnapshot).pesoKg == null ? "Não informado" : `${textoPreservado(registro(c.filiacaoSnapshot).pesoKg)} kg`}</p><p>Pesagens vinculadas: {pesos(c.pesos)}</p></td>
           <td className="border p-2">{c.colostro.length ? c.colostro.map(f => <p key={f.id}>{horarioRelatorio(f.data, f.ocorridoEm, f.horarioEstimado)} · Quantidade: {f.quantidadeLitros == null ? "Não informada" : `${f.quantidadeLitros} L`} · Unidade informada: {f.unidadeInformada ?? "—"} · Método: {f.metodoQualidade ?? "—"} · Brix: {f.qualidadeBrix ?? "—"} · Qualidade: {f.qualidadeClassificacao ?? "—"} · Tipo: {f.tipo ?? "—"} · Forma: {f.forma ?? "—"} · Responsável: {f.responsavel ?? "—"} · Obs.: {f.observacao ?? "—"}</p>) : "Sem fornecimento registrado"}</td>
-        </tr>) : <tr><td colSpan={3} className="border p-2">Sem cria registrada; o parto permanece contado.</td></tr>}</tbody>
+        </tr>) : <tr><td colSpan={3} className="border p-2">Sem cria registrada.</td></tr>}</tbody>
       </table>
     </section>)}
   </article>;

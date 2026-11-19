@@ -56,7 +56,6 @@ export function ImpactosOperacao({ operacao }: { operacao: Operacao }) {
   return <div className="fin-efeitos-operacao flex flex-wrap gap-1.5">
     {movimentoAberto && <MovimentoEstoqueModal movimentoId={movimentoAberto.id} propriedadeId={operacao.propriedadeId} unidade={movimentoAberto.unidade} onFechar={() => setMovimentoAberto(null)} />}
     {temEstoque && <Contexto titulo="Movimentos de estoque" icone={<Package size={18} aria-hidden />} acionador="estoque" rotulo="Ver impacto no estoque" classe="operacoes-impacto-trigger">
-      <p>Esta operação registrou os movimentos abaixo. Entradas acrescentam unidades ao estoque e saídas retiram unidades.</p>
       <ul className="operacoes-contexto-lista">{operacao.movimentosEstoque.map(m => {
         const item = operacao.itens.find(i => i.produtoId === m.produtoId);
         return <li key={m.id}><strong>{m.tipo === "ENTRADA" ? "Entrada" : m.tipo === "SAIDA" ? "Saída" : "Ajuste"} · {item?.descricao ?? "Produto vinculado"}</strong><span>{Number(m.quantidade).toLocaleString("pt-BR")} {item?.unidade ?? "unidades"} · <StatusPill status={m.status} /></span>
@@ -65,7 +64,6 @@ export function ImpactosOperacao({ operacao }: { operacao: Operacao }) {
       })}</ul>
     </Contexto>}
     {animais.length > 0 && <Contexto titulo="Animais cadastrados" icone={<Package size={18} aria-hidden />} acionador="animais" rotulo="Ver animais cadastrados" classe="operacoes-impacto-trigger">
-      <p>Esta operação cadastrou os animais abaixo no rebanho.</p>
       <ul className="operacoes-contexto-lista">{animais.map(i => <li key={i.id}><strong>{i.animal ? [i.animal.brinco, i.animal.nome].filter(Boolean).join(" · ") : i.descricao}</strong></li>)}</ul>
     </Contexto>}
     {(["PAGAMENTO", "RECEBIMENTO", "TRANSFERENCIA"] as const).map(tipo => {

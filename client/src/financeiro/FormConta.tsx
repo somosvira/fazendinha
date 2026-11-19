@@ -90,7 +90,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
         </div>
       </>}
       {tipo === "CAIXA" && <CamposCadastro prefixo="conta" campos={CAMPOS_CAIXA} valores={extras} onChange={(k, v) => setExtras((s) => ({ ...s, [k]: v }))} erros={erros} />}
-      <CampoFormulario id="conta-identificacao" rotulo="Identificação da conta" erro={erros.identificacao} ajuda="Referência opcional para reconhecer a conta; não precisa repetir os dados bancários acima.">{(p) => <Input {...p} value={identificacao} onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: Conta de custeio" className={classeInput} />}</CampoFormulario>
+      <CampoFormulario id="conta-identificacao" rotulo="Identificação da conta" erro={erros.identificacao}>{(p) => <Input {...p} value={identificacao} onChange={(e) => setIdentificacao(e.target.value)} placeholder="Ex.: Conta de custeio" className={classeInput} />}</CampoFormulario>
       </section>
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Saldo e disponibilidade</h3>
@@ -99,7 +99,7 @@ export function FormConta({ conta, aberto, ordemInicial = 0, onSalvo, onFechar }
         <CampoFormulario id="conta-data" rotulo="Data do saldo de abertura" obrigatorio erro={erros.dataSaldoAbertura}>{(p) => <DatePicker className="mt-1.5" popoverClassName="financeiro-colorido conta-calendario rounded-xl w-[min(360px,calc(100vw-24px))]" id={p.id} aria-invalid={p["aria-invalid"]} aria-describedby={p["aria-describedby"]} aria-label="Data do saldo de abertura" required disabled={!aberturaEditavel} value={dataSaldoAbertura} onChange={setDataSaldoAbertura} />}</CampoFormulario>
       </div>
       {!aberturaEditavel && <p className="rounded-lg border border-border bg-surface-2 p-3 text-xs text-ink-2">Esta conta já possui movimentos; saldo e data de abertura não podem mais ser alterados.</p>}
-      <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium"><Checkbox  aria-label="Incluir no saldo geral" checked={incluirNoSaldoGeral} onCheckedChange={(checked) => setIncluirNoSaldoGeral(checked === true)} /><span>Incluir no saldo geral</span><span className="text-xs font-normal text-ink-3">Contas fora do saldo geral continuam com extrato próprio.</span></label>
+      <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-medium"><Checkbox  aria-label="Incluir no saldo geral" checked={incluirNoSaldoGeral} onCheckedChange={(checked) => setIncluirNoSaldoGeral(checked === true)} /><span>Incluir no saldo geral</span></label>
       </section>
       <section className="grid gap-4 border-t border-border pt-4">
         <h3 className="text-sm font-semibold text-ink">Observações</h3>

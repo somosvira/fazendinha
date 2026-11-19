@@ -37,7 +37,7 @@ export function ValorizacaoProduto({ produtoId, propriedadeId, podeEditar, onSal
     } catch (e) { setErro(e instanceof Error ? e.message : String(e)); } finally { setOcupado(false); }
   }
   return <section className="estoque-valorizacao" aria-label="Valorização do estoque">
-    <h3 className="font-semibold">Valor do saldo e abertura documentada<AjudaCampo rotulo="Ajuda: valor do saldo" texto="Custos anteriores são preservados. Saldo sem valor comprovado exige evidência; zero comprovado pode ser informado explicitamente. A abertura documenta o valor disponível. Não altera quantidade, compras, pagamentos ou custos antigos. Em produto sem rastreio, as origens serão consumidas pela data e ordem comprovadas." /></h3>
+    <h3 className="font-semibold">Valor do saldo e abertura documentada</h3>
 
     <label className="mt-3 block text-sm">Data de corte<DatePicker className="mt-1.5" aria-label="Data de corte" max={hoje()} value={data} disabled={ocupado} onChange={setData} /></label>
     <ErrorBox erro={erro} />

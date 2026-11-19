@@ -87,7 +87,7 @@ export function ProgramacaoRetirada({ podeLancar, tituloPagina = false }: { pode
   }, [data, sitio, revisao]);
   return (
     <section className="leite-operacoes leite-programacao-retirada">
-      <Titulo className="leite-titulo-secao">Rotina de coleta <AjudaCampo rotulo="Sobre a rotina de coleta" texto={"Configure a frequência e consulte as próximas previsões. A rotina não cria retirada, venda, alerta ou movimento automático."} /></Titulo>
+      <Titulo className="leite-titulo-secao">Rotina de coleta </Titulo>
 
       <div className="leite-form-inline">
         <label>

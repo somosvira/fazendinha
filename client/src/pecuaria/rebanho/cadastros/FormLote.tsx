@@ -66,7 +66,7 @@ export function FormLote({ lote, propriedades, propriedadeInicialId, onSalvo, on
             <option value="">Selecione</option>
             {propriedades.map((prop) => <option key={prop.id} value={prop.id}>{prop.nome}</option>)}
           </SelectCampo>}</CampoFormulario>}
-      <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo" ajuda="Será o padrão dos fechamentos, com possibilidade de substituição na conferência.">{(p) => <SelectCampo {...p} className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => setCentroCustoId(valorSelecionado)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</SelectCampo>}</CampoFormulario>
+      <CampoFormulario id="lote-centro" rotulo="Centro de custo do consumo">{(p) => <SelectCampo {...p} className={classeInput} value={centroCustoId} onValueChange={(valorSelecionado) => setCentroCustoId(valorSelecionado)}><option value="">Não definido</option>{centros.filter((c) => c.ativo || c.id === centroCustoId).map((c) => <option key={c.id} value={c.id} disabled={!c.ativo}>{c.nome}{c.ativo ? "" : " (inativo)"}</option>)}</SelectCampo>}</CampoFormulario>
       <CampoFormulario id="lote-observacao" rotulo="Observação" erro={erros.observacao}>{(p) => <textarea {...p} maxLength={500} value={observacao} onChange={(e) => setObservacao(e.target.value)} className={classeInput} />}</CampoFormulario>
     </form>
   </PainelCadastro>;

@@ -130,7 +130,7 @@ export function ConferenciaSaldoLeite({
     }
   }
   return (
-    <SecaoDetalhesLeite  titulo={<>Conferência física do tanque em {data}</>} acoes={<AjudaCampo rotulo="Sobre a conferência física" texto={"Informe o volume realmente observado para este produto no encerramento do dia. A conferência não cria entrada, saída nem ajuste no estoque. A comparação com o razão fica preservada ao emitir o relatório."} />}>
+    <SecaoDetalhesLeite  titulo={<>Conferência física do tanque em {data}</>}>
 
 
       {atual ? (

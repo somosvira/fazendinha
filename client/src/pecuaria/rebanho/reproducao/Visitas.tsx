@@ -239,7 +239,7 @@ export function Visitas({ podeLancar }: { podeLancar: boolean }) {
         <p>A visita será encerrada e ficará disponível para consulta e impressão.</p>
         <p className="mt-2 font-medium">{pendentes} {pendentes === 1 ? "atendimento pendente" : "atendimentos pendentes"}</p>
       </PainelCadastro>}
-      {visita && rota.etapa !== "atendimento" && visita.status === "ENCERRADA" && <Panel><CabecalhoTabela titulo="Visita encerrada" descricao="A lista permanece disponível para consulta e impressão."/><div className="p-4">{visita.atividades.map(a=><Button key={a.id} secondary onClick={()=>void irEtapa("atendimento",{atividade:a.id})}>{a.nome}</Button>)}</div></Panel>}
+      {visita && rota.etapa !== "atendimento" && visita.status === "ENCERRADA" && <Panel><CabecalhoTabela titulo="Visita encerrada"/><div className="p-4">{visita.atividades.map(a=><Button key={a.id} secondary onClick={()=>void irEtapa("atendimento",{atividade:a.id})}>{a.nome}</Button>)}</div></Panel>}
       {visita && !mostraPlanner && !mostraAtendimento && visita.impressoes.length > 0 && <Panel className="mt-5"><CabecalhoTabela titulo="Listas de impressão preservadas"/><div className="p-4 flex flex-wrap gap-2">{visita.impressoes.map(i=><Button secondary key={i.id} onClick={()=>void reimprimir(i.id)}>Reimprimir lista {i.criadoEm?.slice(0,10)??i.id.slice(0,8)}</Button>)}{!visita.impressoes.length&&<p className="text-sm text-ink-3">Nenhuma lista gerada.</p>}</div></Panel>}
     </>}
   </div>{impressao && <FolhaVisita snapshot={impressao}/>}</PaginaFinanceira>;

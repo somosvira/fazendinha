@@ -152,7 +152,7 @@ export function RelatoriosFinanceiros({ podeExportar = true }: { podeExportar?: 
   </div> : undefined;
 
   return <PaginaFinanceira colorida>
-    <PageHeader eyebrow="" titulo="Relatórios financeiros" descricao="Consulte relatórios gerados ou prepare uma análise por período e sítio." acao={acoes} />
+    <PageHeader eyebrow="" titulo="Relatórios financeiros" acao={acoes} />
     <ErrorBox erro={erro} />
     {erro && <Button secondary disabled={atualizando} onClick={() => void carregar()}>Tentar novamente</Button>}
     {aviso && <div role="status" className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--pos)_30%,var(--card))] bg-[var(--fin-positive-bg)] p-4 text-sm text-[var(--pos)]">{aviso}</div>}

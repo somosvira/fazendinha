@@ -26,7 +26,7 @@ export function VinculosPecuaria({ operacaoId, compacto = false }: { operacaoId:
   if (!podeAcessarArea("pecuaria")) return null;
   if (dados && !erro && dados.fatos.length === 0 && dados.itensDiretos.length === 0) return null;
   return <section className={compacto ? "fin-painel min-w-0 rounded-2xl border border-border bg-card p-4 sm:p-6" : "border-t border-border p-6"} data-fin-tom="info" aria-label="Vínculos com a Pecuária">
-    <h2 className="flex items-center gap-3 text-base font-semibold text-ink"><span className="fin-section-icon"><Link aria-hidden /></span>Procedimentos vinculados<AjudaCampo rotulo="Ajuda: custos dos procedimentos" texto={<>Esta é a origem financeira dos procedimentos, sem nova despesa. O custo do medicamento e o rateio do Serviço são separados.</>} /></h2>
+    <h2 className="flex items-center gap-3 text-base font-semibold text-ink"><span className="fin-section-icon"><Link aria-hidden /></span>Procedimentos vinculados</h2>
 
     {erro && <p className="mt-3 text-sm text-destructive">{erro} <Button variant="link" type="button" className="h-auto p-0 underline" onClick={() => setRevisao((v) => v + 1)}>Tentar novamente</Button></p>}
     {!dados && !erro && <EsqueletoLista label="Carregando vínculos" itens={2} className="mt-3" />}

@@ -71,7 +71,7 @@ export function CatalogoProdutos() {
     return () => { vivo = false; clearTimeout(timer); };
   }, [busca, pagina, revisao]);
   return <section className="mt-6 grid gap-4" aria-label="Catálogo de produtos">
-    <div><h2 className="text-lg font-semibold">Catálogo de produtos</h2><p className="text-sm text-ink-3">Produtos que o sistema já traz. Use-os direto numa compra ou aplicação: eles entram em Produtos ao salvar.</p></div>
+    <div><h2 className="text-lg font-semibold">Catálogo de produtos</h2></div>
     <Panel>
       <div className="grid gap-3 p-4"><label className="text-sm">Buscar por produto ou fabricante<Input type="search" value={busca} onChange={e => { setBusca(e.target.value); setPagina(1); }} /></label></div>
       <ErrorBox erro={erro} />{erro && <Button secondary onClick={() => setRevisao(r => r + 1)}>Tentar novamente</Button>}

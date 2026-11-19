@@ -325,7 +325,7 @@ export function EstoqueContent({ centroCustoIdInicial, titulo, avisoFiltro }: { 
       <div className="min-w-0">
         {erroCatalogo ? <Empty>Não foi possível filtrar os produtos: {erroCatalogo} <Button secondary onClick={() => setRevisaoFiltro(r => r + 1)}>Tentar novamente</Button></Empty> : saldos.loading || cargaCatalogo ? <EsqueletoTabela label="Carregando estoque" className="p-6" />
           : saldos.erro ? <Empty>Não foi possível consultar os saldos: {saldos.erro} <Button secondary onClick={saldos.recarregar}>Tentar novamente</Button></Empty>
-          : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque. Registre uma compra para estoque ou um inventário inicial.</Empty>
+          : saldos.data.length === 0 ? <Empty>Nenhum produto com movimento de estoque.</Empty>
           : saldosVisiveis.length === 0 ? <Empty>{filtrosAtivos ? "Nenhum produto bate com a busca." : "Nenhum produto para exibir."}</Empty>
           : <>
               {visual.modo === "visual" ? <CartoesProdutos itens={saldosDaPagina} propriedadeId={sitioEfetivo} verValores={verValores} acoes={s=><>{s.materialGeneticoId&&<LinkInterno href={hrefMaterialGenetico(s.materialGeneticoId)} area="pecuaria">Identidade genética</LinkInterno>}{colunasSaldos.find(c=>c.chave==="acoes")?.celula(s)}</>}/> : <TabelaFinanceira visualizacao="tabela" ordenacao={ordenacaoSaldos.controle} compacta filtrosColunas={filtrosDasColunas(camposSaldos, edicaoCompletaSaldos, consultaSaldos.erro)} rotulo="Saldos de estoque" itens={saldosDaPagina} colunas={colunasSaldos} chaveDe={(s) => s.produtoId} classeLinha={s => s.saldo < 0 ? "bg-[color:var(--fin-danger-bg)]/40" : s.abaixoMinimo ? "bg-amber-50/40" : ""} />}
