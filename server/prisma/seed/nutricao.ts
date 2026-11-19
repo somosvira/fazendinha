@@ -22,7 +22,7 @@ export async function nutricaoGeral(c: Contexto) {
   }
   // O ensaio de estorno antecede os demais fatos dos mesmos produtos/sítio.
   const loteId = c.id('lote:Lactantes'), propriedadeId = c.numero('sitio:Principal');
-  const inicio = c.dias(-80), fim = c.dias(-79), nome = 'nutricao:estorno';
+  const inicio = c.mes(-2, 10), fim = c.mes(-2, 11), nome = 'nutricao:estorno';
   await c.registro(nome, id => prisma.fechamentoConsumo.findFirst({ where: id ? { id } : { loteId, inicio: dia(inicio), fim: dia(fim) } }), async () => {
     await confirmarConsumo({ chave: chave(nome), loteId, propriedadeId, inicio, fim, itens: INGREDIENTES.map(ref => ({
       produtoId: c.id(`produto:${ref}`), quantidadeConfirmada: ref === 'racao' ? 10 : 0, motivoAjuste: 'Fornecimento sintético para estorno; demais ingredientes explicitamente não fornecidos.', modoEstoque: 'BAIXA_ESTOQUE' as const,
