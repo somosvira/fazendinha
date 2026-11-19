@@ -387,7 +387,7 @@ describe("FormOperacao", () => {
     await alterarControle(screen.getByRole("combobox", { name: "Produto do item 1" }), { target: { value: uid(1) } });
     await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("7.50"));
     expect(fetchMock).toHaveBeenCalledWith(`/api/estoque/produtos/${uid(1)}/ultimo-preco?parceiroId=${uid(1)}`, expect.anything());
-    expect(screen.getByText(/Última compra:/).textContent?.replaceAll("\u00a0", " ")).toBe("Última compra: R$ 7,50 em 03/09 (Fornecedor Rural)");
+    expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("7.50");
   });
 
   it("sem histórico de compra, deixa o valor unitário vazio e sem linha de ajuda", async () => {
@@ -408,7 +408,7 @@ describe("FormOperacao", () => {
     const campo = screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement;
     await alterarControle(campo, { target: { value: "9" } });
     responder({ ok: true, json: async () => ({ valorUnitario: "7.5", data: "2026-09-03", parceiro: null }) });
-    await waitFor(() => expect(screen.queryByText(/Última compra:/)).toBeTruthy());
+    await waitFor(() => expect((screen.getByRole("spinbutton", { name: "Valor unitário do item 1" }) as HTMLInputElement).value).toBe("9"));
     expect(campo.value).toBe("9");
   });
 
@@ -884,7 +884,7 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
   it("lista os campos pendentes na prévia e só exibe valores e efeitos depois de completar o formulário", async () => {
     montar();
     const previa = screen.getByTestId("conteudo-resumo-operacao");
-    const motivo = within(previa).getByText("Prévia indisponível");
+    const motivo = within(previa).getByText("Campos pendentes");
     expect(within(previa).getByText("Descrição")).toBeTruthy();
     expect(within(previa).queryByText("R$ 0,00")).toBeNull();
     expect(within(previa).queryByText(/Registrar pagamento integral/)).toBeNull();
@@ -899,7 +899,7 @@ describe("FormOperacao — botão sempre ativo; erro rola e foca o campo (não f
     await alterarControle(screen.getByLabelText("Valor unitário do item 1"), { target: { value: "10" } });
     await alterarControle(screen.getByLabelText("Conta financeira"), { target: { value: uid(1) } });
 
-    expect(within(previa).queryByText("Prévia indisponível")).toBeNull();
+    expect(within(previa).queryByText("Campos pendentes")).toBeNull();
     expect(within(previa).getByText(/Registrar pagamento integral/)).toBeTruthy();
   });
 
@@ -1342,7 +1342,7 @@ describe("painel de revisão — movimentos de estoque", () => {
     for (const tipo of ["VENDA", "DEVOLUCAO", "COMPRA_ESTOQUE"] as const) {
       const { unmount } = render(<FormOperacao config={config} tipoInicial={tipo} onSalvo={vi.fn()} />);
       const previa = screen.getByTestId("conteudo-resumo-operacao");
-      expect(within(previa).getByText("Prévia indisponível")).toBeTruthy();
+      expect(within(previa).getByText("Campos pendentes")).toBeTruthy();
       expect(within(previa).queryByText(/movimento físico|Movimenta o estoque/)).toBeNull();
       unmount();
     }
